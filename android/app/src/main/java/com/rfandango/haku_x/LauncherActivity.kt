@@ -101,7 +101,19 @@ class LauncherActivity : Activity() {
         // value during native startup.  The asynchronous write can race
         // that read, leaving the previous game's URI on disk.
         .commit()
-      startActivity(Intent(this, MainActivity::class.java))
+      val intent = Intent(this, MainActivity::class.java)
+      if (romUri.scheme == "content") {
+        // Frontends such as ES-DE hand over a content:// URI that carries only
+        // a transient read grant, scoped to the lifetime of this activity.  The
+        // finish() below revokes it, normally long before the :xemu process has
+        // started far enough to open the file, leaving the emulator with no
+        // readable disc.  Re-granting it to MainActivity ties the grant to the
+        // emulation session instead.  A file:// URI must not be attached here:
+        // that would trip FileUriExposedException.
+        intent.data = romUri
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+      }
+      startActivity(intent)
       finish()
       return
     }

@@ -7,20 +7,46 @@ fix (commit 96e4b77) that is not present in the tagged 0.3.1 release.
 
 ## What it fixes
 
-`LauncherActivity` — the entry point external frontends such as ES-DE use —
-wrote the selected game's `dvdUri` to SharedPreferences with the asynchronous
-`apply()` and then immediately started `MainActivity`. `MainActivity` runs in a
-separate process (`android:process=":xemu"`) and reads that value back from disk
-during native startup, so it could race the pending write and observe either the
-previous game's URI (wrong game boots) or no value at all (the Xbox dashboard's
-"Please insert an Xbox disc" screen). The fix uses the synchronous `commit()`.
+Two separate defects on the external-frontend launch path, both of which had to
+be fixed before launching from ES-DE worked.
+
+### 1. Stale/empty `dvdUri` (upstream commit 96e4b77)
+
+`LauncherActivity` wrote the selected game's `dvdUri` to SharedPreferences with
+the asynchronous `apply()` and then immediately started `MainActivity`, which
+runs in a separate process (`android:process=":xemu"`) and reads that value back
+from disk during native startup. The read could race the pending write and see
+either the previous game's URI or no value at all. Fixed by using `commit()`.
+
+### 2. Revoked URI permission (this branch)
+
+ES-DE launches with `%DATA%=%ROMSAF%`, handing over a Storage Access Framework
+`content://` URI that carries only a *transient* read grant, scoped to the
+lifetime of the activity that received it. `LauncherActivity` started
+`MainActivity` with a bare intent — no data URI, no grant flag — and then called
+`finish()`, revoking the grant before the `:xemu` process had started far enough
+to open the file. Both `openFileDescriptor` and the `openInputStream` copy
+fallback threw, `out.dvd` was left empty, and the emulator booted with no disc:
+
+```
+Prefs dvdUri=content://com.android.externalstorage.documents/tree/...
+JNI exception in openFileDescriptor
+Failed to open DVD URI as fd, falling back to copy
+JNI exception in openInputStream
+Failed to sync DVD image
+Config final dvd=
+```
+
+Fixed by re-granting the URI to `MainActivity`, whose grant lasts for the
+emulation session. Only applied for `content://` URIs — attaching a `file://`
+URI to an intent would raise `FileUriExposedException` on API 24 and above.
 
 ## Details
 
 - Package: `com.rfandango.haku_x` (identical to the release, so ES-DE needs no
   configuration change)
 - ABI: `arm64-v8a`
-- sha256: `76a515d422f4bbb91ff8f331a635ce742a76e0ca4d5796c2668111b7c88f050c`
+- sha256: `6921ebd06f380e0671a9c3d33bd4241b592c6064da087d1f51a8bfb88be73219`
 
 ## Install
 
