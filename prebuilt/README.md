@@ -41,12 +41,33 @@ Fixed by re-granting the URI to `MainActivity`, whose grant lasts for the
 emulation session. Only applied for `content://` URIs — attaching a `file://`
 URI to an intent would raise `FileUriExposedException` on API 24 and above.
 
+The forwarding is best effort. A URI the app cannot re-grant makes
+`startActivity` raise `SecurityException`, which took the whole process down
+and left a black screen instead of a running emulator:
+
+```
+am_crash: java.lang.SecurityException, UID 10138 does not have permission to
+content://com.android.externalstorage.documents/tree/E6C6-D7AA%3AGames%2Fxbox/...
+```
+
+It now falls back to a plain intent, so a URI that cannot be forwarded still
+reaches the emulator, which either opens it through a persisted grant or
+reports a missing disc.
+
+### A note on path case
+
+SAF document IDs are case-sensitive strings even on a case-insensitive volume
+such as exFAT. A persisted grant on `E6C6-D7AA:Games/XBox` therefore does not
+cover a URI naming `E6C6-D7AA:Games/xbox`, though both resolve to one directory
+on disk. A frontend configured with a differently-cased ROM path than the one
+picked in this app will hand over URIs it has no permission for.
+
 ## Details
 
 - Package: `com.rfandango.haku_x` (identical to the release, so ES-DE needs no
   configuration change)
 - ABI: `arm64-v8a`
-- sha256: `6921ebd06f380e0671a9c3d33bd4241b592c6064da087d1f51a8bfb88be73219`
+- sha256: `4a8f38522370f36d3e5fc3ec87584a21a7397fbe35ffaf618e3aa0d4ef1cfe98`
 
 ## Install
 
