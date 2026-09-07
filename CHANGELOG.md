@@ -1,5 +1,46 @@
 # Changelog
 
+## v0.3.3-j1
+
+Fork build. Suffixed versions distinguish it from upstream releases.
+
+### Bug Fixes
+- **Fix launching a game from an external frontend** — ES-DE hands over a
+  Storage Access Framework `content://` URI carrying only a transient read
+  grant, scoped to the activity that receives it. `LauncherActivity` started
+  the emulator without forwarding that grant and then finished, revoking it
+  before the `:xemu` process could open the file. No disc was attached and the
+  machine booted to the dashboard asking for one. The grant is now forwarded to
+  `MainActivity`, where it lasts for the emulation session.
+- **Fix the crash when a ROM URI cannot be forwarded** — an unforwardable URI
+  made `startActivity` raise `SecurityException` and took the process down,
+  showing a black screen. It now falls back to a plain intent, so the emulator
+  either opens the file through a persisted grant or reports a missing disc.
+- **Fix exiting a game launched from a frontend** — quitting always opened the
+  hakuX library, even when the frontend had chosen the game. Such a session now
+  returns to the frontend it came from.
+- **Fix the log capture silencing its own diagnostics** — fourteen tags the
+  code logs under were dropped by the capture filter, among them `hakuX-crash`,
+  the guest kernel BugCheck detector that KNOWN_ISSUES.md tells people to
+  collect.
+- **Fix duplicated logs across processes** — the app and the emulator each
+  rotated and streamed into one pair of files, so both held two copies of a
+  single session. Each process now keeps its own pair, and exporting collects
+  all of them.
+- **Fix the build pinning one machine's JDK** — `gradle.properties` committed
+  an absolute `org.gradle.java.home`, so the build only configured where that
+  exact directory existed.
+
+### Included from upstream
+- Stale game launches from external frontends (rfandango/hakuX#7), which was
+  never released: `dvdUri` was written asynchronously and the emulator process
+  could read the previous game's value, or none at all.
+
+### Notes
+- Signed with a fork release key, so it will not install over an official
+  build. Uninstall first, and export the Xbox HDD from Settings beforehand to
+  keep saves. Subsequent releases from this fork upgrade in place.
+
 ## v0.2.1
 
 ### Bug Fixes
