@@ -54,6 +54,16 @@ It now falls back to a plain intent, so a URI that cannot be forwarded still
 reaches the emulator, which either opens it through a persisted grant or
 reports a missing disc.
 
+### 3. Exiting returned to the library, not to the frontend
+
+`MainActivity` ended every session by starting `GameLibraryActivity`, with no
+notion of who had chosen the game, so quitting a game launched from ES-DE
+landed in hakuX's own library instead of back in the frontend.
+
+`LauncherActivity` now marks the intent it sends, and a session started that
+way finishes its task on exit rather than opening the library, so the frontend
+returns to the foreground. Launching from the library is unchanged.
+
 ### A note on path case
 
 SAF document IDs are case-sensitive strings even on a case-insensitive volume
@@ -67,7 +77,7 @@ picked in this app will hand over URIs it has no permission for.
 - Package: `com.rfandango.haku_x` (identical to the release, so ES-DE needs no
   configuration change)
 - ABI: `arm64-v8a`
-- sha256: `4a8f38522370f36d3e5fc3ec87584a21a7397fbe35ffaf618e3aa0d4ef1cfe98`
+- sha256: `25c1334eb9ecc1fe9808009cef145f65510d5c07841111bc49a557cf989bddca`
 
 ## Install
 
