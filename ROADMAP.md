@@ -35,7 +35,8 @@ the build still works.
 
 ## 2. Build the oracle
 
-**Status: not started. The hard part is already done by someone else.**
+**Status: the harness is built and validated; nothing has been booted yet.**
+Runbook: [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md).
 
 [`abaire/nxdk_pgraph_tests`](https://github.com/abaire/nxdk_pgraph_tests) is a
 test program that runs on real Xbox hardware and on emulators, covering texture
@@ -48,13 +49,18 @@ tracks xemu against them with a comparison tool and a GitHub Action.
 Hardware ground truth is the one thing that cannot be produced without an Xbox
 and a devkit. It exists and is published.
 
+- [x] Get a runnable disc image and a way to configure it. The release ships a
+      built XISO, and `docs/testing/make_test_iso.py` adds the config file it
+      needs — without one, results never leave the emulated hard disk.
+- [x] Wire the output into the existing comparison tooling.
+      `docs/testing/collect_results.py` turns an upload directory into the
+      layout `compare.py` expects; validated against the hardware goldens.
 - [ ] Run the suite on this build, on device
-- [ ] Wire its output into the existing comparison tooling against the goldens
 - [ ] Publish the first accuracy figures for an ARM Xbox emulator — nobody has
       them
 - [ ] Add it to CI as a regression gate
 
-Step three is worth more than any amount of new code. It converts "textures
+The third step is worth more than any amount of new code. It converts "textures
 look wrong in some games" into a named failing test with a pixel diff.
 
 ## 3. Video
@@ -116,6 +122,22 @@ QEMU's TCG translates x86 basic blocks to ARM64 machine code
 *quality*, not architecture. Closing it means writing a purpose-built
 x86-to-ARM64 recompiler — compiler engineering with a brutal oracle problem —
 and would discard the NV2A emulation, which is the hard and valuable part.
+
+**The desktop builds.** xemu's Linux, macOS and Windows targets are inherited
+here and are not maintained. They do not currently compile, in at least two
+ways that predate this fork's visible history: `ui/xemu.c` includes a
+target-private header unconditionally, and `util/qemu-timer.c` calls
+`nanosleep` where mingw does not declare it. No desktop code was removed to get
+here — the `#ifndef __ANDROID__` paths are almost all GL-versus-GLES
+portability, still intact — it simply was never built. Their workflows are kept
+runnable with `workflow_dispatch` rather than deleted, so the decision is
+reversible.
+
+The one thing this costs is a reference implementation. A working desktop build
+would let the pgraph suite run under desktop xemu as well, and the difference
+between the two result sets is what the ARM port broke specifically, as opposed
+to what xemu already gets wrong. If that comparison ever becomes the thing
+blocking progress, fixing the two guards above is an afternoon.
 
 **Anything derived from leaked material.** The XDK and Xbox source have leaked
 more than once. Using them is not a grey area next to emulation: emulation

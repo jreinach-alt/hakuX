@@ -1,8 +1,9 @@
 name: Release (Tag Pushed)
 
+# Desktop builds are not maintained in this fork; see ci.yml. Releases are
+# cut by hand, so this no longer fires on a v* tag.
 on:
-  push:
-    tags: ['v*']
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

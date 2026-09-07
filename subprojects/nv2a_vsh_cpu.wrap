@@ -1,4 +1,8 @@
 [wrap-git]
 url=https://github.com/xemu-project/nv2a_vsh_cpu
-revision=561fe80da57a881f89000256b459440c0178a7ce
+# 561fe80da57a881f89000256b459440c0178a7ce, inherited from upstream xemu, is not
+# reachable in that repository: meson and CMake both fail to fetch it, so a
+# clean checkout cannot configure. Pinned instead to the current tip of main,
+# which carries the four sources this build compiles.
+revision=1115255708c10c4841b65dcd2223262e7a316598
 depth=1
