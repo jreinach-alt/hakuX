@@ -129,6 +129,12 @@
   <string name="settings_export_hdd_copying">Exporting HDD image…</string>
   <string name="settings_export_hdd_success">HDD image exported successfully.</string>
   <string name="settings_export_hdd_failed">Failed to export HDD image: %1$s</string>
+  <string name="settings_export_eeprom">Export EEPROM</string>
+  <string name="settings_export_eeprom_desc">Save a copy of the console EEPROM. It holds the language, video and aspect ratio settings along with the console\'s identity keys, and is not included in the HDD image. Back it up alongside the HDD.</string>
+  <string name="settings_export_eeprom_no_file">No EEPROM found to export. Boot a game once to generate one.</string>
+  <string name="settings_export_eeprom_copying">Exporting EEPROM\u2026</string>
+  <string name="settings_export_eeprom_success">EEPROM exported successfully.</string>
+  <string name="settings_export_eeprom_failed">Failed to export EEPROM: %1$s</string>
   <string name="settings_recreate_hdd_confirm_title">Recreate hard disk?</string>
   <string name="settings_recreate_hdd_confirm_message">This will overwrite the current Xbox HDD image with a fresh copy from the original file. ALL save games, installed titles, and dashboard data will be permanently lost.\n\nMake sure the emulator is not running.</string>
   <string name="settings_recreate_hdd_success">Hard disk image recreated successfully.</string>

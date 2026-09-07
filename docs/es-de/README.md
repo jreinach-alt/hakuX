@@ -37,6 +37,35 @@ naming `Games/xbox` is not covered by permission granted on `Games/XBox`,
 though both name one directory on disk, so the emulator cannot open the file
 and reports a missing disc.
 
+## If you already have a custom es_systems.xml
+
+Do not overwrite it. Copy the single `<command>` line for the fork into the
+`xbox` system you already have, keeping your own `<path>` and your other
+commands:
+
+```xml
+<command label="hakuX fork (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
+```
+
+`es_find_rules.xml` still needs the `HAKUX-FORK` block, since that is what
+`%EMULATOR_HAKUX-FORK%` resolves against.
+
+## What the command line does
+
+ES-DE turns that line into an Android intent:
+
+| Token | Effect |
+|---|---|
+| `%EMULATOR_HAKUX-FORK%` | Resolves through `es_find_rules.xml` to the package and activity to start |
+| `%ACTION%` | The intent action — `android.intent.action.VIEW` |
+| `%DATA%` | The intent's data URI |
+| `%ROMSAF%` | Expands to the Storage Access Framework `content://` URI for the selected game |
+| `%ACTIVITY_CLEAR_TASK%`, `%ACTIVITY_CLEAR_TOP%` | Start fresh rather than resuming a task left over from a previous session |
+
+The two activity flags are optional. The emulator drops its own task when a
+game launched from a frontend exits, so there is usually nothing to clear, but
+they cost nothing and cover a session left behind by a crash.
+
 ## Why the entry looks the way it does
 
 The find rule names the activity in full:

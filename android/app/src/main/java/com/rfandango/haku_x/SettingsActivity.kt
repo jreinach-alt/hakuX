@@ -359,6 +359,13 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
+  private val exportEeprom =
+    registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+      if (uri != null) {
+        exportEepromToUri(uri)
+      }
+    }
+
   private val pickLogDir =
     registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
       if (uri != null) dumpLogsToDir(uri)
@@ -645,6 +652,14 @@ class SettingsActivity : AppCompatActivity() {
         Toast.makeText(this, getString(R.string.settings_export_hdd_no_file), Toast.LENGTH_LONG).show()
       } else {
         exportHdd.launch("hdd.img")
+      }
+    }
+
+    findViewById<MaterialButton>(R.id.btn_export_eeprom).setOnClickListener {
+      if (!resolveEepromFile().isFile) {
+        Toast.makeText(this, getString(R.string.settings_export_eeprom_no_file), Toast.LENGTH_LONG).show()
+      } else {
+        exportEeprom.launch("eeprom.bin")
       }
     }
 
@@ -1248,6 +1263,40 @@ class SettingsActivity : AppCompatActivity() {
       target.delete()
       null
     }
+  }
+
+  /**
+   * Copy the console EEPROM to a location the user chooses.
+   *
+   * It is not part of the HDD image, and it carries the emulated console's
+   * identity — the HDD and online keys — as well as the language, video
+   * standard and aspect ratio. A machine that loses it generates a fresh one,
+   * so restoring only the HDD leaves those saves on a different console.
+   */
+  private fun exportEepromToUri(uri: Uri) {
+    val source = resolveEepromFile()
+    if (!source.isFile) {
+      Toast.makeText(this, getString(R.string.settings_export_eeprom_no_file), Toast.LENGTH_LONG).show()
+      return
+    }
+    Toast.makeText(this, getString(R.string.settings_export_eeprom_copying), Toast.LENGTH_SHORT).show()
+    Thread {
+      try {
+        contentResolver.openOutputStream(uri)?.use { output ->
+          source.inputStream().use { input ->
+            input.copyTo(output)
+          }
+        } ?: throw IOException("Unable to open output")
+        runOnUiThread {
+          Toast.makeText(this, getString(R.string.settings_export_eeprom_success), Toast.LENGTH_SHORT).show()
+        }
+      } catch (e: Exception) {
+        Log.e("SettingsActivity", "EEPROM export failed", e)
+        runOnUiThread {
+          Toast.makeText(this, getString(R.string.settings_export_eeprom_failed, e.message), Toast.LENGTH_LONG).show()
+        }
+      }
+    }.start()
   }
 
   private fun resolveEepromFile(): File {

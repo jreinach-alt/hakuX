@@ -9,6 +9,14 @@
   option is repeated here: dropping this file in must not cost you the
   emulators you already had.
 
+  The fork's command carries ACTIVITY_CLEAR_TASK and ACTIVITY_CLEAR_TOP, as
+  most of ES-DE's bundled commands do. They are not required — the emulator
+  drops its own task when a game launched from a frontend exits — but they
+  guarantee a launch starts fresh rather than resuming a task left behind by a
+  crash or a backgrounded session. The other commands are left exactly as ES-DE
+  ships them: installing this file should not quietly change how the other
+  emulators are launched.
+
   CHECK <path> BEFORE USING THIS. It must match your ROM directory exactly,
   including capitalisation. Storage Access Framework document ids are
   case-sensitive strings even on a case-insensitive card, so a folder named
@@ -21,7 +29,7 @@
         <fullname>Microsoft Xbox</fullname>
         <path>%ROMPATH%/xbox</path>
         <extension>.iso .ISO .xiso .XISO</extension>
-        <command label="hakuX fork (Standalone)">%EMULATOR_HAKUX-FORK% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
+        <command label="hakuX fork (Standalone)">%EMULATOR_HAKUX-FORK% %ACTIVITY_CLEAR_TASK% %ACTIVITY_CLEAR_TOP% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
         <command label="hakuX (Standalone)">%EMULATOR_HAKUX% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
         <command label="X1 BOX (Standalone)">%EMULATOR_X1-BOX% %ACTION%=android.intent.action.VIEW %DATA%=%ROMSAF%</command>
         <command label="Xenra (Standalone)">%EMULATOR_XENRA% %DATA%=%ROMSAF%</command>

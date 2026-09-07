@@ -39,6 +39,11 @@ Fork build. Suffixed versions distinguish it from upstream releases.
   already handled: it logs under `xemu-vk-validation` and carries on with
   validation off.
 
+- **Export EEPROM** — the console EEPROM sits outside the HDD image and had no
+  export, so backing up saves left the console's language, video standard,
+  aspect ratio and identity keys behind. Settings now exports it beside the
+  HDD.
+
 ### Included from upstream
 - Stale game launches from external frontends (rfandango/hakuX#7), which was
   never released: `dvdUri` was written asynchronously and the emulator process
