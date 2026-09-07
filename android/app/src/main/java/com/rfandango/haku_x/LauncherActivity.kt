@@ -135,7 +135,10 @@ class LauncherActivity : Activity() {
    * rather than disappearing.
    */
   private fun startMainActivity(romUri: Uri) {
-    val plain = { Intent(this, MainActivity::class.java) }
+    val plain = {
+      Intent(this, MainActivity::class.java)
+        .putExtra(MainActivity.EXTRA_FROM_FRONTEND, true)
+    }
 
     // A file:// URI must never be attached to an intent: that raises
     // FileUriExposedException on API 24 and above.
