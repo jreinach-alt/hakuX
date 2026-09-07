@@ -12,17 +12,23 @@ class HakuXApplication : Application() {
 
   companion object {
     private const val TAG = "HakuXApp"
-    private const val CURRENT_LOG = "current.log"
-    private const val PREVIOUS_LOG = "previous.log"
-
     private val LOG_TAGS = arrayOf(
       // App
       "hakuX:V", "hakuX-phase:V", "hakuX-cpu:V", "hakuX-stall:V",
       "hakuX-rw:V", "hakuX-rpbrk:V", "hakuX-tex:V",
       "hakuX-mmio:V", "hakuX-nop:V", "hakuX-mhist:V",
+      "hakuX-compat:V", "hakuX-config:V", "hakuX-diag:V",
+      "hakuX-texreplace:V", "hakuX-watchdog:V",
+      "hakuX-vk:V", "hakuX-vk-dbg:V",
       "xemu:V", "xemu-sfp:V", "xemu-surf:V", "xemu-vsync:V",
       "xemu-gpu:V", "xemu-pace:V", "xemu-work:V",
+      "xemu-android:V", "xemu-fpu:V", "xemu-glsl:V", "xemu-vaf:V",
+      "xemu-vulkan:V", "xemu-vk-debug:V", "xemu-vk-validation:V",
       "nv2a:V",
+      // Guest kernel crash detection (BugCheck 0x1E and friends). Emitted from
+      // target/i386 and accel/tcg; omitting it silenced the very diagnostics
+      // KNOWN_ISSUES.md tells people to collect.
+      "hakuX-crash:V",
       // Native crash
       "DEBUG:V", "libc:V", "crash_dump:V", "tombstoned:V",
       // Memory / OOM
@@ -38,14 +44,43 @@ class HakuXApplication : Application() {
     @Volatile
     private var logProcess: Process? = null
 
+    /**
+     * Suffix distinguishing this process's logs from another's.
+     *
+     * The emulator runs in a separate `:xemu` process, and Application.onCreate
+     * runs once per process. Without a suffix both processes rotate and stream
+     * into one file, and the older process's still-open handle keeps writing to
+     * the inode the younger one just renamed — so `current.log` and
+     * `previous.log` end up holding two copies of one session.
+     */
+    private fun processSuffix(): String {
+      val name = try {
+        File("/proc/self/cmdline").readText().trim('\u0000', ' ', '\n')
+      } catch (_: Exception) {
+        ""
+      }
+      val colon = name.indexOf(':')
+      return if (colon >= 0) "-" + name.substring(colon + 1) else ""
+    }
+
+    private fun isMainProcess(): Boolean = processSuffix().isEmpty()
+
     fun getLogFile(context: android.content.Context, name: String): File =
       File(context.filesDir, name)
 
     fun currentLogFile(context: android.content.Context): File =
-      getLogFile(context, CURRENT_LOG)
+      getLogFile(context, "current${processSuffix()}.log")
 
     fun previousLogFile(context: android.content.Context): File =
-      getLogFile(context, PREVIOUS_LOG)
+      getLogFile(context, "previous${processSuffix()}.log")
+
+    /** Every rotated log on disk, whichever process wrote it. */
+    fun allLogFiles(context: android.content.Context): List<File> =
+      context.filesDir
+        .listFiles { f -> f.isFile && f.name.endsWith(".log") &&
+                          (f.name.startsWith("current") || f.name.startsWith("previous")) }
+        ?.sortedBy { it.name }
+        ?: emptyList()
   }
 
   override fun onCreate() {
@@ -68,8 +103,13 @@ class HakuXApplication : Application() {
   private fun startLogCapture() {
     Thread {
       try {
-        // Clear logcat buffer so we only capture this session
-        Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+        // Clear the buffer so this file holds only the current session. The
+        // buffer is shared system-wide, so only the main process may do it:
+        // were :xemu to clear it too, it would discard what the launcher had
+        // not yet drained — including a crash in LauncherActivity itself.
+        if (isMainProcess()) {
+            Runtime.getRuntime().exec(arrayOf("logcat", "-c")).waitFor()
+        }
 
         // Write session separator header
         val current = currentLogFile(this)

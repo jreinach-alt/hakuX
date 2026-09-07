@@ -907,28 +907,17 @@ class SettingsActivity : AppCompatActivity() {
         val dir = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri)
         var exported = 0
 
-        val current = HakuXApplication.currentLogFile(this)
-        if (current.exists() && current.length() > 0) {
-          val name = "hakux_current_${timestamp}.log"
-          val outFile = dir?.createFile("text/plain", name)
-          if (outFile != null) {
-            contentResolver.openOutputStream(outFile.uri)?.use { out ->
-              current.inputStream().use { it.copyTo(out) }
-            }
-            exported++
+        // Each process keeps its own pair of logs, so export whatever is on
+        // disk rather than two fixed names: the emulator's own output lives in
+        // the :xemu process's files and would otherwise be left behind.
+        for (log in HakuXApplication.allLogFiles(this)) {
+          if (log.length() <= 0) continue
+          val name = "hakux_${log.nameWithoutExtension}_${timestamp}.log"
+          val outFile = dir?.createFile("text/plain", name) ?: continue
+          contentResolver.openOutputStream(outFile.uri)?.use { out ->
+            log.inputStream().use { it.copyTo(out) }
           }
-        }
-
-        val previous = HakuXApplication.previousLogFile(this)
-        if (previous.exists() && previous.length() > 0) {
-          val name = "hakux_previous_${timestamp}.log"
-          val outFile = dir?.createFile("text/plain", name)
-          if (outFile != null) {
-            contentResolver.openOutputStream(outFile.uri)?.use { out ->
-              previous.inputStream().use { it.copyTo(out) }
-            }
-            exported++
-          }
+          exported++
         }
 
         runOnUiThread {
