@@ -1,25 +1,26 @@
 #!/usr/bin/env bash
-# Capture a complete, filtered log for one hakuX launch attempt.
+# Capture one hakuX launch attempt into a timestamped directory.
 #
-#   ./hakux-capture.sh esde      # launch the game from ES-DE
-#   ./hakux-capture.sh manual    # launch the same game from the hakuX library
+#   ./tools/hakux-capture.sh esde          # launch from ES-DE
+#   ./tools/hakux-capture.sh manual        # launch from the hakuX library
+#   ./tools/hakux-capture.sh esde 60       # capture for 60s instead of 45
 #
-# Produces a timestamped directory holding the system log for the launch plus
-# the app's own rolling logs.  Attach the whole directory, or logcat.log alone.
+# Capturing runs for a fixed number of seconds with a visible countdown, so
+# there is nothing to press and nothing that can exit early.  Start it, then
+# launch the game while the countdown runs.
 
 set -uo pipefail
 
 LABEL="${1:-run}"
+SECS="${2:-45}"
 : "${ANDROID_SERIAL:=ee317437}"
 export ANDROID_SERIAL
 
 PKG="com.rfandango.haku_x"
 OUT="hakux-${LABEL}-$(date +%Y%m%d-%H%M%S)"
-mkdir -p "$OUT"
 
-# Start the server explicitly.  The first adb call in a shell has to bring the
-# daemon up and fails while that happens, which would look like a missing
-# device.
+# The first adb call in a shell has to start the daemon and fails while that
+# happens, which would look like a missing device.
 adb start-server >/dev/null 2>&1
 
 # This handset is often attached twice, over USB and over wireless TLS, so
@@ -42,16 +43,18 @@ if [ "$ready" -ne 1 ]; then
   exit 1
 fi
 
-# Record what we are actually testing, so a stale install cannot mislead us.
+mkdir -p "$OUT"
+
+# Record what is actually installed, so a stale build cannot mislead us.
 {
-  echo "label:   $LABEL"
-  echo "serial:  $ANDROID_SERIAL"
-  echo "date:    $(date -Is)"
+  echo "label:  $LABEL"
+  echo "serial: $ANDROID_SERIAL"
+  echo "date:   $(date -Is)"
   echo
   adb shell getprop ro.product.model
   adb shell getprop ro.build.version.release
   echo
-  adb shell dumpsys package "$PKG" | grep -E "versionName|versionCode|firstInstallTime|lastUpdateTime|flags=" | head
+  adb shell dumpsys package "$PKG" | grep -E "versionName|versionCode|lastUpdateTime" | head
 } > "$OUT/env.txt" 2>&1
 
 adb logcat -c 2>/dev/null
@@ -63,26 +66,40 @@ adb logcat -v threadtime \
   xemu:V nv2a:V SDL:V \
   ActivityTaskManager:V ActivityManager:V WindowManager:V \
   AndroidRuntime:V DEBUG:V libc:V tombstoned:V \
-  '*:S' > "$OUT/logcat.log" 2>&1 &
+  '*:S' </dev/null > "$OUT/logcat.log" 2>&1 &
 CAP_PID=$!
+trap 'kill "$CAP_PID" 2>/dev/null' EXIT INT TERM
 
-sleep 1
 echo
-echo "  Capturing.  Now launch the game via: $LABEL"
-echo "  Wait for it to fail (or for the game to come up), then come back here."
+echo "  Capturing for ${SECS}s into $OUT/"
+echo "  >>> LAUNCH THE GAME NOW ($LABEL) <<<"
 echo
-read -r -p "  Press ENTER to stop capturing... " _
+for ((i = SECS; i > 0; i--)); do
+  printf "\r  %3ds remaining ... " "$i"
+  sleep 1
+done
+printf "\r                                   \r"
 
 kill "$CAP_PID" 2>/dev/null
 wait "$CAP_PID" 2>/dev/null
+trap - EXIT INT TERM
 
 # The app keeps its own rotating logs; grab them before anything relaunches.
 adb shell run-as "$PKG" cat files/current.log  > "$OUT/app-current.log"  2>/dev/null
 adb shell run-as "$PKG" cat files/previous.log > "$OUT/app-previous.log" 2>/dev/null
 find "$OUT" -type f -empty -delete
 
+lines=$(wc -l < "$OUT/logcat.log" 2>/dev/null || echo 0)
+hakux=$(grep -c "hakuX" "$OUT/logcat.log" 2>/dev/null || echo 0)
+
+echo "  Captured $lines lines, $hakux mentioning hakuX."
+if [ "$hakux" -lt 5 ]; then
+  echo
+  echo "  WARNING: almost nothing from hakuX was captured.  The launch probably"
+  echo "  happened outside the capture window - rerun and launch as soon as the"
+  echo "  countdown starts, or allow more time:  $0 $LABEL 90"
+fi
 echo
-echo "  Done:"
 ls -lh "$OUT"
 echo
 echo "  Attach the files in $OUT/"
