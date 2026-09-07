@@ -2,7 +2,26 @@
 
 ## v0.3.3-j1
 
-Fork build. Suffixed versions distinguish it from upstream releases.
+The first release of this fork. It fixes launching a game from an external
+frontend such as ES-DE, which did not work in any released build.
+
+**Two things to know before installing:**
+
+- It installs **alongside** an official hakuX build rather than replacing it.
+  Nothing is uninstalled and no saves are at risk.
+- Launching it from ES-DE needs two configuration files. See
+  [`docs/es-de/`](docs/es-de/).
+
+### New
+- **Installs alongside an official build** — the fork ships under its own
+  application id, `com.jreinach.hakux`, and appears as *hakuX (fork)*. An
+  official install keeps its HDD image, EEPROM and settings untouched. Moving
+  saves across is optional and non-destructive; see
+  [`android/MIGRATING.md`](android/MIGRATING.md).
+- **Export EEPROM** — the console EEPROM sits outside the HDD image and had no
+  export, so backing up saves left the console's language, video standard,
+  aspect ratio and identity keys behind. Settings now exports it beside the
+  HDD.
 
 ### Bug Fixes
 - **Fix launching a game from an external frontend** — ES-DE hands over a
@@ -32,17 +51,12 @@ Fork build. Suffixed versions distinguish it from upstream releases.
   exact directory existed.
 
 ### Improvements
-- **Smaller release download** — the Vulkan validation layer, a development
-  tool, shipped in every build and accounted for roughly a quarter of the
-  download. It now ships only in debug builds; the release APK drops from
-  30.3 MiB to 23.4 MiB. Requesting validation without the layer present was
-  already handled: it logs under `xemu-vk-validation` and carries on with
-  validation off.
-
-- **Export EEPROM** — the console EEPROM sits outside the HDD image and had no
-  export, so backing up saves left the console's language, video standard,
-  aspect ratio and identity keys behind. Settings now exports it beside the
-  HDD.
+- **Smaller download** — the Vulkan validation layer, a development tool,
+  shipped in every build and accounted for roughly a quarter of the download.
+  It now ships only in debug builds; the release APK drops from 30.3 MiB to
+  23.4 MiB. Requesting validation without the layer present was already
+  handled: it logs under `xemu-vk-validation` and carries on with validation
+  off.
 
 ### Included from upstream
 - Stale game launches from external frontends (rfandango/hakuX#7), which was
@@ -50,9 +64,11 @@ Fork build. Suffixed versions distinguish it from upstream releases.
   could read the previous game's value, or none at all.
 
 ### Notes
-- Signed with a fork release key, so it will not install over an official
-  build. Uninstall first, and export the Xbox HDD from Settings beforehand to
-  keep saves. Subsequent releases from this fork upgrade in place.
+- Signed with this fork's own key. Releases from this fork upgrade in place
+  with `adb install -r`; an official build is a separate app and is unaffected
+  either way.
+- Version names carry a `-jN` suffix so they cannot be confused with, or
+  collide with, upstream releases.
 
 ## v0.3.1
 
