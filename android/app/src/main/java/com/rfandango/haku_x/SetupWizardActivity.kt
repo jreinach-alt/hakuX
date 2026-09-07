@@ -5,6 +5,8 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
+import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
@@ -333,21 +335,95 @@ class SetupWizardActivity : AppCompatActivity() {
     return uri.toString()
   }
 
+  /**
+   * Copy the chosen file into app storage, showing progress for as long as it
+   * takes.
+   *
+   * A retail HDD image is around a gigabyte, and copying one off an exFAT card
+   * takes minutes. Navigation is disabled for the duration, so without a
+   * progress indicator the wizard is a static screen with dead controls —
+   * indistinguishable from a hang, which is exactly how it was reported.
+   */
   private fun copyUriAsync(uri: Uri, destName: String, onDone: (String?) -> Unit) {
-    if (isCopying) return
+    if (isCopying) {
+      Toast.makeText(this, "A copy is already running. Please wait.", Toast.LENGTH_SHORT).show()
+      return
+    }
     isCopying = true
     updateButtons()
-    Toast.makeText(this, "Copying file...", Toast.LENGTH_SHORT).show()
+
+    val totalBytes = sourceSizeOf(uri)
+    val (dialog, bar) = showCopyProgressDialog(totalBytes)
+
     Thread {
-      val path = copyUriToAppStorage(uri, destName)
+      val path = copyUriToAppStorage(uri, destName, totalBytes) { percent ->
+        runOnUiThread { bar.progress = percent }
+      }
       runOnUiThread {
+        if (!isFinishing && !isDestroyed) {
+          dialog.dismiss()
+        }
         isCopying = false
         onDone(path)
       }
     }.start()
   }
 
-  private fun copyUriToAppStorage(uri: Uri, destName: String): String? {
+  /**
+   * The size of what [uri] points at, or -1 when the provider does not report
+   * one. Progress is shown as indeterminate in that case rather than as a bar
+   * pinned at zero.
+   */
+  private fun sourceSizeOf(uri: Uri): Long {
+    return try {
+      DocumentFile.fromSingleUri(this, uri)?.length()?.takeIf { it > 0L } ?: -1L
+    } catch (_: Exception) {
+      -1L
+    }
+  }
+
+  /** Returns the dialog and the bar inside it, so the copy can drive the bar. */
+  private fun showCopyProgressDialog(totalBytes: Long): Pair<android.app.AlertDialog, ProgressBar> {
+    val pad = (24 * resources.displayMetrics.density).toInt()
+    val layout = LinearLayout(this).apply {
+      orientation = LinearLayout.VERTICAL
+      setPadding(pad, pad, pad, pad)
+    }
+    val message = TextView(this).apply {
+      text = if (totalBytes > 0L) {
+        "Copying %.1f MB. This can take a few minutes from a memory card."
+          .format(totalBytes / 1048576.0)
+      } else {
+        "Copying. This can take a few minutes from a memory card."
+      }
+    }
+    val bar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+      isIndeterminate = totalBytes <= 0L
+      max = 100
+      progress = 0
+      layoutParams = LinearLayout.LayoutParams(
+        LinearLayout.LayoutParams.MATCH_PARENT,
+        LinearLayout.LayoutParams.WRAP_CONTENT,
+      ).apply { topMargin = pad / 2 }
+    }
+    layout.addView(message)
+    layout.addView(bar)
+
+    val dialog = android.app.AlertDialog.Builder(this)
+      .setTitle("Copying file")
+      .setView(layout)
+      .setCancelable(false)
+      .create()
+    dialog.show()
+    return dialog to bar
+  }
+
+  private fun copyUriToAppStorage(
+    uri: Uri,
+    destName: String,
+    totalBytes: Long,
+    onPercent: (Int) -> Unit,
+  ): String? {
     val tag = "hakuX"
     val base = getExternalFilesDir(null) ?: filesDir
     val dir = File(base, "x1box")
@@ -356,11 +432,11 @@ class SetupWizardActivity : AppCompatActivity() {
       return null
     }
     val target = File(dir, destName)
-    Log.i(tag, "copyUriToAppStorage: $uri -> ${target.absolutePath}")
+    Log.i(tag, "copyUriToAppStorage: $uri -> ${target.absolutePath} (total=$totalBytes)")
     return try {
       val bytesCopied = contentResolver.openInputStream(uri)?.use { input ->
         FileOutputStream(target).use { output ->
-          input.copyTo(output)
+          CopyProgress.copy(input, output, totalBytes, onPercent)
         }
       } ?: return null
       Log.i(tag, "copyUriToAppStorage: done  bytes=$bytesCopied  fileSize=${target.length()}")

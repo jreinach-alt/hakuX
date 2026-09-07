@@ -2,32 +2,21 @@
 
 ## Setup Wizard Appears to Freeze While Copying the HDD Image
 
-**Symptom:** Selecting a HDD image in the setup wizard leaves the screen
-apparently frozen. The Next button does nothing. Re-selecting the same file
-seems to unstick it, as does simply waiting.
+**Fixed.** The wizard now shows a progress dialog for the duration of the copy,
+determinate when the provider reports a size and indeterminate when it does
+not, and says so rather than silently ignoring a second selection while a copy
+is running.
 
-**Root cause:** `SetupWizardActivity.copyUriAsync()` copies the chosen image
-into app storage on a background thread — correctly — but reports progress only
-through a `Toast.LENGTH_SHORT`, which disappears after about two seconds. A
-retail HDD image is around a gigabyte (a typical `xbox_hdd.qcow2` is ~985 MB),
-and copying that from an exFAT card takes far longer than the toast lasts.
-Meanwhile `updateButtons()` disables navigation for the duration, so the wizard
-shows a static screen with dead controls and no indication that anything is
-happening.
-
-Re-selecting the file does not actually restart anything: `copyUriAsync()`
-opens with `if (isCopying) return`, so the second attempt is silently dropped.
-Navigating the picker again simply takes long enough for the first copy to
-finish, which makes the re-selection look like the fix.
-
-**Workaround:** Wait. The copy completes on its own; how long depends on the
-image size and the speed of the card.
-
-**Fix needed:** Show real progress for the duration of the copy. The pattern
-already exists in this codebase — `GameLibraryActivity` tracks XISO conversion
-across its copy, convert and save phases — so the wizard should use the same
-approach rather than a toast. Silently dropping a second selection should also
-tell the user a copy is already running.
+The original report, for the record: selecting a HDD image left the screen
+apparently frozen with the Next button dead. `copyUriAsync()` copied the image
+on a background thread — correctly — but reported progress only through a
+`Toast.LENGTH_SHORT`, which disappears after about two seconds, while
+`updateButtons()` disabled navigation for the duration. A retail image is
+around a gigabyte, so a copy off an exFAT card ran for minutes behind a static
+screen. Re-selecting the file appeared to help but did nothing:
+`copyUriAsync()` opened with `if (isCopying) return`, so the second attempt was
+dropped, and navigating the picker again simply took long enough for the first
+copy to finish.
 
 ---
 
