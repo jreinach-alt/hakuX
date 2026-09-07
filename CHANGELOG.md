@@ -54,6 +54,71 @@ Fork build. Suffixed versions distinguish it from upstream releases.
   build. Uninstall first, and export the Xbox HDD from Settings beforehand to
   keep saves. Subsequent releases from this fork upgrade in place.
 
+## v0.3.1
+
+Reconstructed from the commit history; no release notes were published upstream
+for this version.
+
+### Improvements
+- **Persistent log capture** — continuous background capture to file with
+  session rotation, replacing the single-shot logcat export, so a previous
+  session's logs survive a crash and restart
+- **Profiling instrumentation gated behind `NV2A_PERF_LOG`**, off by default
+- **Lazy surface eviction** — eviction downloads are skipped when VRAM data is
+  never read, and the remaining ones are inlined to remove a per-eviction
+  finish
+- **Multi-threaded S3TC texture decompression**, extended to 3D textures
+- **XISO converter no longer needs Rust or Cargo** — the Rust xdvdfs converter
+  was replaced with extract-xiso
+
+### Bug Fixes
+- Fix texture cache thrashing caused by an aggressive memory budget trim
+- Fix BC3 corruption by disabling native BC for 3D textures
+- Fix per-draw surface dumps and JSON overflow in diagnostic capture
+
+### Reverted
+- The GPU compute shader for BC3/DXT5 texture decompression added in v0.3.0
+
+## v0.3.0
+
+Reconstructed from the commit history; no release notes were published upstream
+for this version.
+
+### New Features
+- **Per-game settings** — overrides stored per title, edited through the
+  existing settings UI with changed values highlighted
+- **Xbox dashboard management** with NAT networking, Insignia support and HDD
+  tools
+- **Game compatibility quirks layer** — a title-id lookup applying per-game
+  workarounds, starting with a scene-graph cycle breaker for Fable
+- **Xbox kernel crash detection** — BugCheck and NULL page fault diagnostics
+  with register and stack context
+- **Texture dump and replacement infrastructure**
+- **Skip boot animation** toggle
+- **Debug log export** from settings
+- **Diagnostic viewer** and device pull scripts under `debug-tools/`
+
+### Improvements
+- Native BC texture upload where `textureCompressionBC` is available, plus
+  adaptive BCn compression for uncompressed textures
+- Batched render sync events and NEON-optimised blits
+- Bindless textures removed in favour of tighter descriptor management
+- Vertex shader emulator stub replaced; uniform uploads optimised
+- `:xemu` process separation restored, isolating the emulator from the app
+- The original ISO is kept after an automatic XISO conversion
+- `SettingsActivity` refactored for consistency
+
+### Bug Fixes
+- Fix a 30 fps trap caused by a redundant deferral guard
+- Fix surface eviction VRAM corruption and stale texture sampling
+- Fix a Vulkan pipeline exhaustion crash and a NOP assert on Android
+- Fix an RCU SIGSEGV when emulation was restarted quickly
+- Fix a shader binding crash alongside conditional VBLANK deferral
+- Fix XISO conversion launching the original file when SAF renamed the output
+- Fix the XISO converter missing from release builds
+- Fix diagnostic frame dumps not starting from the pause menu, and captures
+  completing with zero draws
+
 ## v0.2.1
 
 ### Bug Fixes
