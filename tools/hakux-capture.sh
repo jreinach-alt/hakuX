@@ -17,9 +17,28 @@ PKG="com.rfandango.haku_x"
 OUT="hakux-${LABEL}-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$OUT"
 
-if ! adb get-state >/dev/null 2>&1; then
-  echo "No device for serial '$ANDROID_SERIAL'. Devices seen:" >&2
+# Start the server explicitly.  The first adb call in a shell has to bring the
+# daemon up and fails while that happens, which would look like a missing
+# device.
+adb start-server >/dev/null 2>&1
+
+# This handset is often attached twice, over USB and over wireless TLS, so
+# match the serial exactly rather than assuming a single transport.
+ready=0
+for _ in 1 2 3 4 5 6; do
+  if adb devices | awk -v s="$ANDROID_SERIAL" '$1 == s && $2 == "device" { ok = 1 } END { exit !ok }'; then
+    ready=1
+    break
+  fi
+  sleep 1
+done
+
+if [ "$ready" -ne 1 ]; then
+  echo "No device ready for serial '$ANDROID_SERIAL'. Devices seen:" >&2
   adb devices -l >&2
+  echo >&2
+  echo "If the serial is listed but shows 'offline' or 'unauthorized', accept the" >&2
+  echo "USB debugging prompt on the handheld, or run: adb disconnect" >&2
   exit 1
 fi
 
