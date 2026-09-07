@@ -359,6 +359,13 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
+  private val exportEeprom =
+    registerForActivityResult(ActivityResultContracts.CreateDocument("application/octet-stream")) { uri ->
+      if (uri != null) {
+        exportEepromToUri(uri)
+      }
+    }
+
   private val pickLogDir =
     registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
       if (uri != null) dumpLogsToDir(uri)
@@ -648,6 +655,14 @@ class SettingsActivity : AppCompatActivity() {
       }
     }
 
+    findViewById<MaterialButton>(R.id.btn_export_eeprom).setOnClickListener {
+      if (!resolveEepromFile().isFile) {
+        Toast.makeText(this, getString(R.string.settings_export_eeprom_no_file), Toast.LENGTH_LONG).show()
+      } else {
+        exportEeprom.launch("eeprom.bin")
+      }
+    }
+
     // Audio - DSP
     setupSwitch(R.id.switch_use_dsp, "use_dsp", false)
 
@@ -907,28 +922,17 @@ class SettingsActivity : AppCompatActivity() {
         val dir = androidx.documentfile.provider.DocumentFile.fromTreeUri(this, treeUri)
         var exported = 0
 
-        val current = HakuXApplication.currentLogFile(this)
-        if (current.exists() && current.length() > 0) {
-          val name = "hakux_current_${timestamp}.log"
-          val outFile = dir?.createFile("text/plain", name)
-          if (outFile != null) {
-            contentResolver.openOutputStream(outFile.uri)?.use { out ->
-              current.inputStream().use { it.copyTo(out) }
-            }
-            exported++
+        // Each process keeps its own pair of logs, so export whatever is on
+        // disk rather than two fixed names: the emulator's own output lives in
+        // the :xemu process's files and would otherwise be left behind.
+        for (log in HakuXApplication.allLogFiles(this)) {
+          if (log.length() <= 0) continue
+          val name = "hakux_${log.nameWithoutExtension}_${timestamp}.log"
+          val outFile = dir?.createFile("text/plain", name) ?: continue
+          contentResolver.openOutputStream(outFile.uri)?.use { out ->
+            log.inputStream().use { it.copyTo(out) }
           }
-        }
-
-        val previous = HakuXApplication.previousLogFile(this)
-        if (previous.exists() && previous.length() > 0) {
-          val name = "hakux_previous_${timestamp}.log"
-          val outFile = dir?.createFile("text/plain", name)
-          if (outFile != null) {
-            contentResolver.openOutputStream(outFile.uri)?.use { out ->
-              previous.inputStream().use { it.copyTo(out) }
-            }
-            exported++
-          }
+          exported++
         }
 
         runOnUiThread {
@@ -1259,6 +1263,40 @@ class SettingsActivity : AppCompatActivity() {
       target.delete()
       null
     }
+  }
+
+  /**
+   * Copy the console EEPROM to a location the user chooses.
+   *
+   * It is not part of the HDD image, and it carries the emulated console's
+   * identity — the HDD and online keys — as well as the language, video
+   * standard and aspect ratio. A machine that loses it generates a fresh one,
+   * so restoring only the HDD leaves those saves on a different console.
+   */
+  private fun exportEepromToUri(uri: Uri) {
+    val source = resolveEepromFile()
+    if (!source.isFile) {
+      Toast.makeText(this, getString(R.string.settings_export_eeprom_no_file), Toast.LENGTH_LONG).show()
+      return
+    }
+    Toast.makeText(this, getString(R.string.settings_export_eeprom_copying), Toast.LENGTH_SHORT).show()
+    Thread {
+      try {
+        contentResolver.openOutputStream(uri)?.use { output ->
+          source.inputStream().use { input ->
+            input.copyTo(output)
+          }
+        } ?: throw IOException("Unable to open output")
+        runOnUiThread {
+          Toast.makeText(this, getString(R.string.settings_export_eeprom_success), Toast.LENGTH_SHORT).show()
+        }
+      } catch (e: Exception) {
+        Log.e("SettingsActivity", "EEPROM export failed", e)
+        runOnUiThread {
+          Toast.makeText(this, getString(R.string.settings_export_eeprom_failed, e.message), Toast.LENGTH_LONG).show()
+        }
+      }
+    }.start()
   }
 
   private fun resolveEepromFile(): File {

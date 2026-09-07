@@ -26,12 +26,12 @@ android {
   ndkVersion = "29.0.14206865"
 
   defaultConfig {
-    applicationId = "com.rfandango.haku_x"
+    applicationId = "com.jreinach.hakux"
     minSdk = 26
     targetSdk = 36
 
-    versionCode = 5
-    versionName = "0.3.1"
+    versionCode = 6
+    versionName = "0.3.3-j1"
 
     ndk {
       abiFilters += listOf("arm64-v8a")
@@ -63,7 +63,7 @@ android {
 
   buildTypes {
     debug {
-      resValue("string", "app_name", "HakuX")
+      resValue("string", "app_name", "hakuX (fork)")
       ndk {
         debugSymbolLevel = "NONE"
       }
@@ -76,7 +76,7 @@ android {
       }
     }
     release {
-      resValue("string", "app_name", "HakuX")
+      resValue("string", "app_name", "hakuX (fork)")
       externalNativeBuild {
         cmake {
           arguments += listOf(

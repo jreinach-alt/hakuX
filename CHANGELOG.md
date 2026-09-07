@@ -1,5 +1,140 @@
 # Changelog
 
+## v0.3.3-j1
+
+The first release of this fork. It fixes launching a game from an external
+frontend such as ES-DE, which did not work in any released build.
+
+**Two things to know before installing:**
+
+- It installs **alongside** an official hakuX build rather than replacing it.
+  Nothing is uninstalled and no saves are at risk.
+- Launching it from ES-DE needs two configuration files. See
+  [`docs/es-de/`](docs/es-de/).
+
+### New
+- **Installs alongside an official build** — the fork ships under its own
+  application id, `com.jreinach.hakux`, and appears as *hakuX (fork)*. An
+  official install keeps its HDD image, EEPROM and settings untouched. Moving
+  saves across is optional and non-destructive; see
+  [`android/MIGRATING.md`](android/MIGRATING.md).
+- **Export EEPROM** — the console EEPROM sits outside the HDD image and had no
+  export, so backing up saves left the console's language, video standard,
+  aspect ratio and identity keys behind. Settings now exports it beside the
+  HDD.
+
+### Bug Fixes
+- **Fix launching a game from an external frontend** — ES-DE hands over a
+  Storage Access Framework `content://` URI carrying only a transient read
+  grant, scoped to the activity that receives it. `LauncherActivity` started
+  the emulator without forwarding that grant and then finished, revoking it
+  before the `:xemu` process could open the file. No disc was attached and the
+  machine booted to the dashboard asking for one. The grant is now forwarded to
+  `MainActivity`, where it lasts for the emulation session.
+- **Fix the crash when a ROM URI cannot be forwarded** — an unforwardable URI
+  made `startActivity` raise `SecurityException` and took the process down,
+  showing a black screen. It now falls back to a plain intent, so the emulator
+  either opens the file through a persisted grant or reports a missing disc.
+- **Fix exiting a game launched from a frontend** — quitting always opened the
+  hakuX library, even when the frontend had chosen the game. Such a session now
+  returns to the frontend it came from.
+- **Fix the log capture silencing its own diagnostics** — fourteen tags the
+  code logs under were dropped by the capture filter, among them `hakuX-crash`,
+  the guest kernel BugCheck detector that KNOWN_ISSUES.md tells people to
+  collect.
+- **Fix duplicated logs across processes** — the app and the emulator each
+  rotated and streamed into one pair of files, so both held two copies of a
+  single session. Each process now keeps its own pair, and exporting collects
+  all of them.
+- **Fix the build pinning one machine's JDK** — `gradle.properties` committed
+  an absolute `org.gradle.java.home`, so the build only configured where that
+  exact directory existed.
+
+### Improvements
+- **Smaller download** — the Vulkan validation layer, a development tool,
+  shipped in every build and accounted for roughly a quarter of the download.
+  It now ships only in debug builds; the release APK drops from 30.3 MiB to
+  23.4 MiB. Requesting validation without the layer present was already
+  handled: it logs under `xemu-vk-validation` and carries on with validation
+  off.
+
+### Included from upstream
+- Stale game launches from external frontends (rfandango/hakuX#7), which was
+  never released: `dvdUri` was written asynchronously and the emulator process
+  could read the previous game's value, or none at all.
+
+### Notes
+- Signed with this fork's own key. Releases from this fork upgrade in place
+  with `adb install -r`; an official build is a separate app and is unaffected
+  either way.
+- Version names carry a `-jN` suffix so they cannot be confused with, or
+  collide with, upstream releases.
+
+## v0.3.1
+
+Reconstructed from the commit history; no release notes were published upstream
+for this version.
+
+### Improvements
+- **Persistent log capture** — continuous background capture to file with
+  session rotation, replacing the single-shot logcat export, so a previous
+  session's logs survive a crash and restart
+- **Profiling instrumentation gated behind `NV2A_PERF_LOG`**, off by default
+- **Lazy surface eviction** — eviction downloads are skipped when VRAM data is
+  never read, and the remaining ones are inlined to remove a per-eviction
+  finish
+- **Multi-threaded S3TC texture decompression**, extended to 3D textures
+- **XISO converter no longer needs Rust or Cargo** — the Rust xdvdfs converter
+  was replaced with extract-xiso
+
+### Bug Fixes
+- Fix texture cache thrashing caused by an aggressive memory budget trim
+- Fix BC3 corruption by disabling native BC for 3D textures
+- Fix per-draw surface dumps and JSON overflow in diagnostic capture
+
+### Reverted
+- The GPU compute shader for BC3/DXT5 texture decompression added in v0.3.0
+
+## v0.3.0
+
+Reconstructed from the commit history; no release notes were published upstream
+for this version.
+
+### New Features
+- **Per-game settings** — overrides stored per title, edited through the
+  existing settings UI with changed values highlighted
+- **Xbox dashboard management** with NAT networking, Insignia support and HDD
+  tools
+- **Game compatibility quirks layer** — a title-id lookup applying per-game
+  workarounds, starting with a scene-graph cycle breaker for Fable
+- **Xbox kernel crash detection** — BugCheck and NULL page fault diagnostics
+  with register and stack context
+- **Texture dump and replacement infrastructure**
+- **Skip boot animation** toggle
+- **Debug log export** from settings
+- **Diagnostic viewer** and device pull scripts under `debug-tools/`
+
+### Improvements
+- Native BC texture upload where `textureCompressionBC` is available, plus
+  adaptive BCn compression for uncompressed textures
+- Batched render sync events and NEON-optimised blits
+- Bindless textures removed in favour of tighter descriptor management
+- Vertex shader emulator stub replaced; uniform uploads optimised
+- `:xemu` process separation restored, isolating the emulator from the app
+- The original ISO is kept after an automatic XISO conversion
+- `SettingsActivity` refactored for consistency
+
+### Bug Fixes
+- Fix a 30 fps trap caused by a redundant deferral guard
+- Fix surface eviction VRAM corruption and stale texture sampling
+- Fix a Vulkan pipeline exhaustion crash and a NOP assert on Android
+- Fix an RCU SIGSEGV when emulation was restarted quickly
+- Fix a shader binding crash alongside conditional VBLANK deferral
+- Fix XISO conversion launching the original file when SAF renamed the output
+- Fix the XISO converter missing from release builds
+- Fix diagnostic frame dumps not starting from the pause menu, and captures
+  completing with zero draws
+
 ## v0.2.1
 
 ### Bug Fixes

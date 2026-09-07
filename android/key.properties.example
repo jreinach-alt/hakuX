@@ -1,0 +1,13 @@
+# Copy this file to android/key.properties and fill in the blanks.
+#
+# key.properties and the keystore itself are both gitignored. Never commit
+# either one, and never paste their contents into a chat, an issue or a log.
+#
+# storeFile is resolved relative to android/app/, not to this directory, so an
+# absolute path to a keystore kept OUTSIDE the repository is strongly
+# preferred: it cannot then be committed by accident.
+
+storeFile=/absolute/path/to/hakux-release.jks
+storePassword=
+keyAlias=hakux
+keyPassword=
