@@ -36,6 +36,7 @@ the build still works.
 ## 2. Build the oracle
 
 **Status: not started. The hard part is already done by someone else.**
+Groundwork and open questions: [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md).
 
 [`abaire/nxdk_pgraph_tests`](https://github.com/abaire/nxdk_pgraph_tests) is a
 test program that runs on real Xbox hardware and on emulators, covering texture

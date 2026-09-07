@@ -61,6 +61,7 @@ The emulator ships no copyrighted content. You supply, from hardware you own:
 | [`ROADMAP.md`](ROADMAP.md) | Where this is going, and what is deliberately out of scope |
 | [`KNOWN_ISSUES.md`](KNOWN_ISSUES.md) | Open problems, with root causes where they are understood |
 | [`docs/es-de/`](docs/es-de/) | ES-DE configuration files and instructions |
+| [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md) | Measuring rendering accuracy against real-hardware captures |
 | [`android/MIGRATING.md`](android/MIGRATING.md) | Moving saves from an official build |
 | [`android/RELEASING.md`](android/RELEASING.md) | Signing and publishing a build |
 

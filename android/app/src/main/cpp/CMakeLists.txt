@@ -62,6 +62,38 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tomlplusplus)
 
+# --- nv2a_vsh_cpu (NV2A vertex shader emulation) ---
+# The meson build resolves this through subprojects/nv2a_vsh_cpu.wrap, which
+# this CMake build never reads, and the directory is not tracked in git — so a
+# clean checkout has nothing to compile and fails at configure. Use a local
+# checkout when one exists, so the meson build and an existing working tree are
+# unaffected, and fetch it otherwise.
+set(NV2A_VSH_CPU_GIT_REV "1115255708c10c4841b65dcd2223262e7a316598")
+set(NV2A_VSH_CPU_LOCAL "${REPO_ROOT}/subprojects/nv2a_vsh_cpu")
+if(EXISTS "${NV2A_VSH_CPU_LOCAL}/src/nv2a_vsh_cpu.c")
+  set(NV2A_VSH_CPU_DIR "${NV2A_VSH_CPU_LOCAL}")
+  message(STATUS "Using local nv2a_vsh_cpu at ${NV2A_VSH_CPU_DIR}")
+else()
+  FetchContent_Declare(
+    nv2a_vsh_cpu
+    GIT_REPOSITORY "https://github.com/xemu-project/nv2a_vsh_cpu"
+    GIT_TAG "${NV2A_VSH_CPU_GIT_REV}"
+  )
+  FetchContent_GetProperties(nv2a_vsh_cpu)
+  if(NOT nv2a_vsh_cpu_POPULATED)
+    if(POLICY CMP0169)
+      cmake_policy(PUSH)
+      cmake_policy(SET CMP0169 OLD)
+    endif()
+    FetchContent_Populate(nv2a_vsh_cpu)
+    if(POLICY CMP0169)
+      cmake_policy(POP)
+    endif()
+  endif()
+  set(NV2A_VSH_CPU_DIR "${nv2a_vsh_cpu_SOURCE_DIR}")
+  message(STATUS "Fetched nv2a_vsh_cpu to ${NV2A_VSH_CPU_DIR}")
+endif()
+
 # --- libslirp (user-mode NAT networking) ---
 set(LIBSLIRP_GIT_REV "26be815b86e8d49add8c9a8b320239b9594ff03d")
 FetchContent_Declare(
@@ -623,10 +655,10 @@ list(APPEND XEMU_CORE_SOURCES
   "${REPO_ROOT}/ui/vnc-stubs.c"
   "${REPO_ROOT}/target/i386/kvm/hyperv-stub.c"
   "${CMAKE_CURRENT_LIST_DIR}/kvmclock_stub.c"
-  "${REPO_ROOT}/subprojects/nv2a_vsh_cpu/src/nv2a_vsh_emulator.c"
-  "${REPO_ROOT}/subprojects/nv2a_vsh_cpu/src/nv2a_vsh_emulator_execution_state.c"
-  "${REPO_ROOT}/subprojects/nv2a_vsh_cpu/src/nv2a_vsh_cpu.c"
-  "${REPO_ROOT}/subprojects/nv2a_vsh_cpu/src/nv2a_vsh_disassembler.c"
+  "${NV2A_VSH_CPU_DIR}/src/nv2a_vsh_emulator.c"
+  "${NV2A_VSH_CPU_DIR}/src/nv2a_vsh_emulator_execution_state.c"
+  "${NV2A_VSH_CPU_DIR}/src/nv2a_vsh_cpu.c"
+  "${NV2A_VSH_CPU_DIR}/src/nv2a_vsh_disassembler.c"
   "${CMAKE_CURRENT_LIST_DIR}/samplerate_stub.c"
   "${CMAKE_CURRENT_LIST_DIR}/fast_hash_stub.c"
   "${CMAKE_CURRENT_LIST_DIR}/libintl_stub.c"
@@ -862,7 +894,7 @@ target_compile_options(xemu_core PRIVATE -g1
 target_include_directories(xemu_core PRIVATE
   "${REPO_ROOT}"
   "${REPO_ROOT}/include"
-  "${REPO_ROOT}/subprojects/nv2a_vsh_cpu/src"
+  "${NV2A_VSH_CPU_DIR}/src"
   "${REPO_ROOT}/ui"
   "${REPO_ROOT}/ui/thirdparty/stb_image"
   "${REPO_ROOT}/linux-headers"
