@@ -37,6 +37,25 @@ naming `Games/xbox` is not covered by permission granted on `Games/XBox`,
 though both name one directory on disk, so the emulator cannot open the file
 and reports a missing disc.
 
+## The two files behave differently
+
+This catches people out, so it is worth stating plainly:
+
+| File | Behaviour in `custom_systems` |
+|---|---|
+| `es_find_rules.xml` | **Complements** the bundled file. A minimal file adding one emulator is safe — everything else keeps working. |
+| `es_systems.xml` | A system with the same `<name>` **replaces** the bundled one entirely. |
+
+That is why the find-rules file here contains a single `<emulator>` block while
+the systems file repeats every Xbox launch command: dropping in a systems file
+listing only the fork would remove X1 BOX and Xenra from your Xbox menu.
+
+## If you already have a custom es_find_rules.xml
+
+Do not overwrite it. Copy the `<emulator name="HAKUX-FORK">` block into your
+existing file, inside the `<ruleList>` element, and do not duplicate the
+`<ruleList>` and `</ruleList>` lines.
+
 ## If you already have a custom es_systems.xml
 
 Do not overwrite it. Copy the single `<command>` line for the fork into the
