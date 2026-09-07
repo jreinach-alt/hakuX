@@ -31,6 +31,14 @@ Fork build. Suffixed versions distinguish it from upstream releases.
   an absolute `org.gradle.java.home`, so the build only configured where that
   exact directory existed.
 
+### Improvements
+- **Smaller release download** — the Vulkan validation layer, a development
+  tool, shipped in every build and accounted for roughly a quarter of the
+  download. It now ships only in debug builds; the release APK drops from
+  30.3 MiB to 23.4 MiB. Requesting validation without the layer present was
+  already handled: it logs under `xemu-vk-validation` and carries on with
+  validation off.
+
 ### Included from upstream
 - Stale game launches from external frontends (rfandango/hakuX#7), which was
   never released: `dvdUri` was written asynchronously and the emulator process
