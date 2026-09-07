@@ -35,8 +35,8 @@ the build still works.
 
 ## 2. Build the oracle
 
-**Status: not started. The hard part is already done by someone else.**
-Groundwork and open questions: [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md).
+**Status: the harness is built and validated; nothing has been booted yet.**
+Runbook: [`docs/testing/pgraph-harness.md`](docs/testing/pgraph-harness.md).
 
 [`abaire/nxdk_pgraph_tests`](https://github.com/abaire/nxdk_pgraph_tests) is a
 test program that runs on real Xbox hardware and on emulators, covering texture
@@ -49,13 +49,18 @@ tracks xemu against them with a comparison tool and a GitHub Action.
 Hardware ground truth is the one thing that cannot be produced without an Xbox
 and a devkit. It exists and is published.
 
+- [x] Get a runnable disc image and a way to configure it. The release ships a
+      built XISO, and `docs/testing/make_test_iso.py` adds the config file it
+      needs — without one, results never leave the emulated hard disk.
+- [x] Wire the output into the existing comparison tooling.
+      `docs/testing/collect_results.py` turns an upload directory into the
+      layout `compare.py` expects; validated against the hardware goldens.
 - [ ] Run the suite on this build, on device
-- [ ] Wire its output into the existing comparison tooling against the goldens
 - [ ] Publish the first accuracy figures for an ARM Xbox emulator — nobody has
       them
 - [ ] Add it to CI as a regression gate
 
-Step three is worth more than any amount of new code. It converts "textures
+The third step is worth more than any amount of new code. It converts "textures
 look wrong in some games" into a named failing test with a pixel diff.
 
 ## 3. Video

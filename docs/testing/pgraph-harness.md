@@ -17,41 +17,153 @@ For the GPU, that problem is already solved by somebody else.
 | Repository | What it holds |
 |---|---|
 | [`abaire/nxdk_pgraph_tests`](https://github.com/abaire/nxdk_pgraph_tests) | A test program that builds to an Xbox disc image and runs on real hardware and emulators. 100 test source files: alpha func, antialiasing, attribute carryover and setters, blending, blend surfaces, bump mapping, bump env luminance, clears, texture formats, surface formats, combiners, vertex shaders. |
-| `abaire/nxdk_pgraph_tests_golden_results` | Reference framebuffers **captured from real NV2A silicon**. |
-| [`abaire/xemu-nxdk_pgraph_tests_results`](https://github.com/abaire/xemu-nxdk_pgraph_tests_results) | Results tracked across xemu versions, with `dev_scripts/compare.py` driving `perceptualdiff`, and a GitHub Action that runs the hardware comparison. |
+| [`abaire/nxdk_pgraph_tests_golden_results`](https://github.com/abaire/nxdk_pgraph_tests_golden_results) | 5,608 reference framebuffers **captured from real NV2A silicon**, as `results/<Suite_Name>/<Test_Name>.png`. 769 of them are depth captures. |
+| [`abaire/xemu-nxdk_pgraph_tests_results`](https://github.com/abaire/xemu-nxdk_pgraph_tests_results) | Results tracked across xemu versions, with `dev_scripts/compare.py` driving `perceptualdiff`. |
+| [`abaire/xemu-pgraph-ci-tools`](https://github.com/abaire/xemu-pgraph-ci-tools) | The package behind `compare.py`. Its `runner` drives a desktop xemu binary and is not usable here; its `comparator` is. |
 | [`abaire/nxdk_vsh_tests`](https://github.com/abaire/nxdk_vsh_tests) | Vertex shader tests specifically. |
 
 The hardware goldens are the part that cannot be reproduced without an Xbox and
 a devkit. They are published.
 
-## Getting the disc image
+## The disc image
 
-**Check the releases first.** `nxdk_pgraph_tests` publishes releases with
-attached assets, most recently 2026-09-01. If a built disc image is among them,
-everything below about toolchains is unnecessary — download it and skip to
-running.
+`nxdk_pgraph_tests` publishes a built `nxdk_pgraph_tests_xiso.iso` with its
+releases, so **the nxdk toolchain is not needed to run the suite** — only to
+change the tests. The image this document was written against:
 
-Building from source needs, per its README:
+```
+sha256  2371e74342a007999786948629d758672130d5afe7830db21e5d99c6855e4ee0
+size    5,767,168 bytes
+```
 
-- The nxdk, as a submodule, from `abaire/nxdk` on the `nxdk_pgraph_tester`
-  branch. The suite requires pbkit modifications the upstream nxdk does not
-  carry, so a stock nxdk will not do.
-- `pip3 install nv2a-vsh`, which assembles some test vertex shaders.
-- A bootstrap pass: `./prewarm-nxdk.sh` builds every nxdk sample project to
-  produce the libraries the toolchain needs.
-- `git clone --recursive`, or `git submodule update --init --recursive`.
+Building it from source, if you ever need to, wants the nxdk as a submodule
+from `abaire/nxdk` on the `nxdk_pgraph_tester` branch (the suite needs pbkit
+changes upstream nxdk does not carry), `pip3 install nv2a-vsh`, a
+`./prewarm-nxdk.sh` bootstrap pass, and a recursive clone.
 
-## The harness
+## Configuring a run
 
-1. Run the disc image under this build, on device.
-2. Capture the framebuffers it writes.
-3. Compare against the hardware goldens with the existing `compare.py` and
-   `perceptualdiff` tooling, rather than writing new comparison code.
-4. Once it runs unattended, add it to CI as a regression gate.
+The suite reads `d:\nxdk_pgraph_tests_config.json` — from the disc it booted
+from — and **the released image does not carry one**. Run with the defaults and
+results are written to `e:\nxdk_pgraph_tests`, which on Android means they are
+sealed inside `hdd.img` with no way to get them out.
 
-Step 3 is the point of the exercise: it turns "textures look wrong in some
-games" into a named failing test with a pixel diff, which can be bisected,
-assigned and closed.
+`make_test_iso.py` adds that file to a copy of the image:
+
+```sh
+python3 docs/testing/make_test_iso.py nxdk_pgraph_tests_xiso.iso \
+    -o pgraph-configured.iso \
+    --ftp-host 192.168.1.50 --ftp-port 2121 \
+    --ftp-user pgraph --ftp-password pgraph \
+    --shutdown-on-completion
+```
+
+Nothing already on the disc moves: the config and a rebuilt root directory
+table are appended and the volume descriptor is repointed. The script verifies
+its own output by re-reading it and resolving every name through a tree descent
+the way the kernel does.
+
+`--shard-count N` with `--shard-index 0..N-1` splits a full run across several
+images, which matters — a complete pass is thousands of tests. `--config FILE`
+takes a prepared JSON instead, so individual suites can be skipped; start from
+the `sample-config.json` already on the disc, which enumerates every test.
+
+Copy the configured image into your ROM folder and launch it like a game.
+
+## Getting the results off the device
+
+### Over FTP, which is the reason to configure anything
+
+The suite writes each captured framebuffer to the emulated hard disk **and**,
+when an FTP server is configured, uploads it. Uploads are the only copy you can
+reach. Two things make this work on Android:
+
+- This build has `INTERNET`, links libslirp, and selects the `nat` backend when
+  networking is on, so the guest reaches the LAN through the phone's stack.
+- `nxdk_ftp_client_lib` uses **PASV**, so the guest opens both the control and
+  the data connection outbound. Nothing has to route back in.
+
+Turn networking on in **Settings → Online / Insignia → "Enable online
+networking (Insignia)"**. That switch alone is what the emulator reads; do not
+apply the Insignia DNS preset, which is for Xbox Live and unrelated here.
+
+On the machine you will compare on:
+
+```sh
+pip install pyftpdlib
+python3 -m pyftpdlib -p 2121 -w -u pgraph -P pgraph -d ./ftpdump
+```
+
+Point `--ftp-host` at that machine's LAN address, not at a hostname — the
+config parses an IPv4 literal and nothing else. Some notes that will save an
+afternoon:
+
+- **The server must not be on Windows.** Uploads are named
+  `Suite name::Test.png`, and `:` cannot appear in a Windows filename. WSL,
+  Linux and macOS are all fine.
+- Allow the control port and the passive data ports through the firewall.
+  `pyftpdlib` picks ephemeral passive ports unless told otherwise.
+- `10.0.2.2` reaches the phone's own localhost through slirp, so an FTP server
+  running on the phone is possible — but it has to report a PASV address the
+  guest can then connect back to, and a server that answers `127.0.0.1` will
+  hang the transfer. The LAN machine is the path of least resistance.
+
+### Off the hard disk, if you cannot use a network
+
+There is no export path for this today, only the parts one would be built
+from. `e:` lives at offset `0xABE80000` in the image
+(`android/app/src/main/cpp/xemu_hdd_tools_jni.c:88`), and a complete FATX
+implementation with directory walking and cluster chains is already in-tree at
+`android/app/src/main/cpp/xemu_fatx_import.c` — its public surface is
+dashboard-specific, but the machinery under it is not. Settings can export the
+image (`hdd.img`, qcow2 or raw), so a host-side extractor is also possible.
+Either would be a contained, useful change.
+
+## Comparing against hardware
+
+`compare.py` discovers results by walking a directory: the leaf directory names
+the suite, the PNG names the test. The uploads arrive flat, so
+`collect_results.py` rearranges them:
+
+```sh
+python3 docs/testing/collect_results.py ./ftpdump \
+    -o local/results --run-id hakuX-0.3.3-j1/Android_arm64/vk_Adreno_740
+```
+
+Then, from a checkout of `xemu-nxdk_pgraph_tests_results`:
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r dev_scripts/requirements.txt
+.venv/bin/python3 dev_scripts/compare.py \
+    local/results/hakuX-0.3.3-j1/Android_arm64/vk_Adreno_740 -o local/compare
+```
+
+Omitting `--against` compares to the hardware goldens, which is the comparison
+that matters. `perceptualdiff` must be on `PATH`. The `--run-id` is only a
+label, but it is the label that ends up in the report, so name the driver in
+it: which driver produced a result is half the finding.
+
+Do not use `dev_scripts/generate_local_site_for_custom_xemu_build.sh` — it
+builds and launches a desktop xemu binary, and its `stat -f` is macOS-only.
+
+## What is verified and what is not
+
+Verified here, against the real artifacts:
+
+- The configured image round-trips. Every one of the 31 entries in the stock
+  image is byte-identical afterwards, exactly one is added, and a kernel-style
+  tree descent resolves it case-insensitively.
+- Every key the generated config emits is a key `runtime_config.cpp` actually
+  parses. Unknown keys are ignored silently, so a typo would have cost a run.
+- `collect_results.py` output feeds the real comparator: a sample rebuilt into
+  upload form and passed back through `ResultsInfo` matched its goldens 48 of
+  48, with nothing unmatched, and the run identifier parsed as intended.
+
+Not verified: **none of this has been booted.** The suite has not been run
+under this emulator, on device or otherwise. Expect the first pass to surface
+setup problems rather than rendering ones — and expect some tests to hang or
+crash before the suite completes, which is what `--shard-count` is for.
 
 ## The experiment worth running first
 
