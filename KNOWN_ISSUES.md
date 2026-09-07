@@ -1,5 +1,36 @@
 # Known Issues
 
+## Setup Wizard Appears to Freeze While Copying the HDD Image
+
+**Symptom:** Selecting a HDD image in the setup wizard leaves the screen
+apparently frozen. The Next button does nothing. Re-selecting the same file
+seems to unstick it, as does simply waiting.
+
+**Root cause:** `SetupWizardActivity.copyUriAsync()` copies the chosen image
+into app storage on a background thread — correctly — but reports progress only
+through a `Toast.LENGTH_SHORT`, which disappears after about two seconds. A
+retail HDD image is around a gigabyte (a typical `xbox_hdd.qcow2` is ~985 MB),
+and copying that from an exFAT card takes far longer than the toast lasts.
+Meanwhile `updateButtons()` disables navigation for the duration, so the wizard
+shows a static screen with dead controls and no indication that anything is
+happening.
+
+Re-selecting the file does not actually restart anything: `copyUriAsync()`
+opens with `if (isCopying) return`, so the second attempt is silently dropped.
+Navigating the picker again simply takes long enough for the first copy to
+finish, which makes the re-selection look like the fix.
+
+**Workaround:** Wait. The copy completes on its own; how long depends on the
+image size and the speed of the card.
+
+**Fix needed:** Show real progress for the duration of the copy. The pattern
+already exists in this codebase — `GameLibraryActivity` tracks XISO conversion
+across its copy, convert and save phases — so the wizard should use the same
+approach rather than a toast. Silently dropping a second selection should also
+tell the user a copy is already running.
+
+---
+
 ## Diagnostic Frame Capture Freezes Game
 
 **Symptom:** Triggering a multi-frame diagnostic capture (e.g. 10 frames) from the pause menu causes the game to freeze indefinitely.
