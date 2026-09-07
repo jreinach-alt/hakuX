@@ -64,19 +64,6 @@ The emulator ships no copyrighted content. You supply, from hardware you own:
 | [`android/MIGRATING.md`](android/MIGRATING.md) | Moving saves from an official build |
 | [`android/RELEASING.md`](android/RELEASING.md) | Signing and publishing a build |
 
-## Contributing upstream
-
-Fixes here are offered back to
-[rfandango/hakuX](https://github.com/rfandango/hakuX). This fork is a place to
-work, not a destination — if upstream takes a change, the fork does not need to
-carry it.
-
-Hardware knowledge must come from public documentation, published
-reverse-engineering work such as [XboxDevWiki](https://xboxdevwiki.net), or
-behaviour observed on hardware you own. Leaked SDKs, source or internal
-documentation cannot be used: they would make the result unusable by every
-project it might otherwise help.
-
 ## License
 
 Inherits xemu / QEMU / X1 BOX licensing. Emulator code is primarily **GNU GPL
