@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!--
+  ES-DE custom find rule for the hakuX fork build.
+
+  Copy to:  <ES-DE data folder>/custom_systems/es_find_rules.xml
+
+  The class name is deliberately fully qualified. The fork ships under its own
+  application id while the code keeps its original namespace, so the activity
+  is com.rfandango.haku_x.LauncherActivity inside package com.jreinach.hakux.
+  The ".LauncherActivity" shorthand ES-DE uses for the official build would
+  resolve to com.jreinach.hakux.LauncherActivity, which does not exist.
+-->
+<ruleList>
+    <emulator name="HAKUX-FORK">
+        <!-- Microsoft Xbox emulator hakuX (fork build) -->
+        <rule type="androidpackage">
+            <entry>com.jreinach.hakux/com.rfandango.haku_x.LauncherActivity</entry>
+        </rule>
+    </emulator>
+</ruleList>

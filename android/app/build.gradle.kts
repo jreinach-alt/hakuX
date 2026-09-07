@@ -26,7 +26,7 @@ android {
   ndkVersion = "29.0.14206865"
 
   defaultConfig {
-    applicationId = "com.rfandango.haku_x"
+    applicationId = "com.jreinach.hakux"
     minSdk = 26
     targetSdk = 36
 
@@ -63,7 +63,7 @@ android {
 
   buildTypes {
     debug {
-      resValue("string", "app_name", "HakuX")
+      resValue("string", "app_name", "hakuX (fork)")
       ndk {
         debugSymbolLevel = "NONE"
       }
@@ -76,7 +76,7 @@ android {
       }
     }
     release {
-      resValue("string", "app_name", "HakuX")
+      resValue("string", "app_name", "hakuX (fork)")
       externalNativeBuild {
         cmake {
           arguments += listOf(
