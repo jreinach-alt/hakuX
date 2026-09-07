@@ -27,7 +27,10 @@ adb start-server >/dev/null 2>&1
 # match the serial exactly rather than assuming a single transport.
 ready=0
 for _ in 1 2 3 4 5 6; do
-  if adb devices | awk -v s="$ANDROID_SERIAL" '$1 == s && $2 == "device" { ok = 1 } END { exit !ok }'; then
+  # tr -d '\r' matters: Windows adb.exe reached through WSL interop ends every
+  # line with CRLF, which would leave $2 as "device\r" and never compare equal.
+  if adb devices 2>/dev/null | tr -d '\r' \
+       | awk -v s="$ANDROID_SERIAL" '$1 == s && $2 == "device" { ok = 1 } END { exit !ok }'; then
     ready=1
     break
   fi
@@ -55,6 +58,8 @@ mkdir -p "$OUT"
   adb shell getprop ro.build.version.release
   echo
   adb shell dumpsys package "$PKG" | grep -E "versionName|versionCode|lastUpdateTime" | head
+  echo
+  echo "adb binary: $(command -v adb)"
 } > "$OUT/env.txt" 2>&1
 
 adb logcat -c 2>/dev/null
@@ -85,8 +90,8 @@ wait "$CAP_PID" 2>/dev/null
 trap - EXIT INT TERM
 
 # The app keeps its own rotating logs; grab them before anything relaunches.
-adb shell run-as "$PKG" cat files/current.log  > "$OUT/app-current.log"  2>/dev/null
-adb shell run-as "$PKG" cat files/previous.log > "$OUT/app-previous.log" 2>/dev/null
+adb shell run-as "$PKG" cat files/current.log  2>/dev/null | tr -d '\r' > "$OUT/app-current.log"
+adb shell run-as "$PKG" cat files/previous.log 2>/dev/null | tr -d '\r' > "$OUT/app-previous.log"
 find "$OUT" -type f -empty -delete
 
 lines=$(wc -l < "$OUT/logcat.log" 2>/dev/null || echo 0)
