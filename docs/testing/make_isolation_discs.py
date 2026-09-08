@@ -33,6 +33,7 @@ fails loudly rather than silently — check the log before trusting a result.
 """
 import argparse
 import collections
+import hashlib
 import json
 import os
 import subprocess
@@ -77,7 +78,7 @@ def tests_to_skip(results_dir, goldens_dir, suite):
     return sorted(out)
 
 
-def config_for(suite_key, keep, skip):
+def config_for(suite_key, keep, skip, out_dir="e:/nxdk_pgraph_tests"):
     suite = {"skipped": False, keep: {"skipped": False}}
     for t in skip:
         if t != keep:
@@ -101,10 +102,48 @@ def config_for(suite_key, keep, skip):
                         "ftp_password": "xbox", "ftp_timeout_milliseconds": 10000},
             },
             "sharding": {"index": 0, "count": 0},
-            "output_directory_path": "e:/nxdk_pgraph_tests",
+            "output_directory_path": out_dir,
         },
         "test_suites": {suite_key: suite},
     }
+
+
+def build_every_test(args):
+    """One disc per test in a suite, each with its own guest output directory."""
+    suite = args.every_test
+    tests = tests_to_skip(args.results, args.goldens, suite)
+    if not tests:
+        sys.exit(f"no tests found for suite {suite}")
+    suite_key = suite.replace("_", " ")
+    os.makedirs(args.out_dir, exist_ok=True)
+    manifest = []
+    for n, test in enumerate(tests):
+        # Guest dir names must be unique *across suites*, not just within one:
+        # two suites both numbering from 000 overwrite each other's progress
+        # logs in the shared image, which silently destroys the per-run
+        # verification this whole scheme exists to provide. Namespace by a hash
+        # of the suite name, and keep it short for FATX.
+        tag = hashlib.md5(suite.encode()).hexdigest()[:4]
+        out_dir = f"e:/{tag}{n:03d}"
+        cfg_path = os.path.join(args.out_dir, f"cfg-{n:03d}.json")
+        iso_path = os.path.join(args.out_dir, f"iso-{n:03d}.iso")
+        with open(cfg_path, "w", encoding="utf-8") as fh:
+            json.dump(config_for(suite_key, test, tests, out_dir), fh, indent=2)
+        r = subprocess.run(
+            [sys.executable, os.path.join(HERE, "make_test_iso.py"), args.base,
+             "-o", iso_path, "--config", cfg_path],
+            capture_output=True, text=True)
+        if r.returncode != 0:
+            print(f"  {test}: BUILD FAILED {(r.stderr or r.stdout).strip()[:50]}")
+            continue
+        manifest.append({"suite": suite, "suite_key": suite_key, "test": test,
+                         "guest_dir": out_dir.split("/", 1)[1], "iso": iso_path})
+    mpath = os.path.join(args.out_dir, "manifest.json")
+    with open(mpath, "w", encoding="utf-8") as fh:
+        json.dump(manifest, fh, indent=2)
+    print(f"{len(manifest)} discs for {suite} in {args.out_dir}")
+    print("Run them all, then pull the image ONCE and extract each guest_dir.")
+    return 0
 
 
 def main():
@@ -120,7 +159,17 @@ def main():
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--suite", action="append",
                     help="restrict to these suites (repeatable)")
+    ap.add_argument("--every-test", metavar="SUITE",
+                    help="build one disc per test in SUITE rather than one per "
+                         "suite, to re-measure a whole suite free of "
+                         "contamination. Each disc writes to its own guest "
+                         "output directory, so a single image pull afterwards "
+                         "yields a separate progress log per run -- pulling a "
+                         "1.1GB image per run otherwise dominates the cost.")
     args = ap.parse_args()
+
+    if args.every_test:
+        return build_every_test(args)
 
     os.makedirs(args.out_dir, exist_ok=True)
     rows = parse_crossmatch(args.crossmatch)
