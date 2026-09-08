@@ -681,7 +681,8 @@ void pgraph_gl_bind_textures(NV2AState *d)
     NV2A_GL_DGROUP_BEGIN("%s", __func__);
 
     for (i=0; i<NV2A_MAX_TEXTURES; i++) {
-        bool enabled = pgraph_is_texture_enabled(pg, i);
+        bool enabled = pgraph_is_texture_enabled(pg, i) &&
+                       pgraph_is_texture_descriptor_decodable(pg, i);
         /* FIXME: What happens if texture is disabled but stage is active? */
 
         glActiveTexture(GL_TEXTURE0 + i);
@@ -710,6 +711,8 @@ void pgraph_gl_bind_textures(NV2AState *d)
         if (filter & NV_PGRAPH_TEXFILTER0_BSIGNED) NV2A_UNIMPLEMENTED("NV_PGRAPH_TEXFILTER0_BSIGNED");
 
         TextureShape state = pgraph_get_texture_shape(pg, i);
+        const BasicColorFormatInfo gl_fmt_info =
+            pgraph_get_color_format_info(state.color_format);
         hwaddr texture_vram_offset, palette_vram_offset = 0;
         size_t length, palette_length = 0;
         bool is_indexed = (state.color_format ==
@@ -787,7 +790,7 @@ void pgraph_gl_bind_textures(NV2AState *d)
 #endif
                 apply_texture_parameters(r,
                                          r->texture_binding[i],
-                                         &kelvin_color_format_info_map[state.color_format],
+                                         &gl_fmt_info,
                                          state.dimensionality,
                                          filter,
                                          address,
@@ -924,7 +927,7 @@ void pgraph_gl_bind_textures(NV2AState *d)
 
         apply_texture_parameters(r,
                                  binding,
-                                 &kelvin_color_format_info_map[state.color_format],
+                                 &gl_fmt_info,
                                  state.dimensionality,
                                  filter,
                                  address,

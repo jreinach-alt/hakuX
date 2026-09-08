@@ -144,9 +144,25 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         }
 
         uint32_t ctl_0 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4);
+        /*
+         * A stage whose descriptor cannot be decoded gets the binder's dummy
+         * texture (vk/texture.c, gl/texture.c), so the shader must not sample
+         * it: dim_tex[] would be left at 0 and get_sampler_type() would hit
+         * "Unhandled texture dimensions".  Clear only that case.
+         *
+         * Do NOT clear the mode merely because the stage is inactive or
+         * disabled.  PS_TEXTUREMODES_PASSTHRU (0x04) is reported inactive by
+         * pgraph_is_texture_stage_active() precisely because it needs no
+         * texture, but it still has shader logic to emit — clearing it to
+         * PS_TEXTUREMODES_NONE breaks Pixel shader::Passthru.
+         */
+        bool decodable = pgraph_is_texture_descriptor_decodable(pg, i);
         bool enabled = pgraph_is_texture_stage_active(pg, i) &&
-                       (ctl_0 & NV_PGRAPH_TEXCTL0_0_ENABLE);
+                       (ctl_0 & NV_PGRAPH_TEXCTL0_0_ENABLE) && decodable;
         if (!enabled) {
+            if (!decodable && (ctl_0 & NV_PGRAPH_TEXCTL0_0_ENABLE)) {
+                state->shader_stage_program &= ~(0x1Fu << (i * 5));
+            }
             continue;
         }
 
@@ -157,7 +173,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         state->dim_tex[i] = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_DIMENSIONALITY);
 
         unsigned int color_format = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_COLOR);
-        BasicColorFormatInfo f = kelvin_color_format_info_map[color_format];
+        BasicColorFormatInfo f = pgraph_get_color_format_info(color_format);
         state->rect_tex[i] = f.linear;
         state->tex_x8y24[i] =
             color_format ==

@@ -78,6 +78,40 @@ const BasicColorFormatInfo kelvin_color_format_info_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8] = { 4, true },
 };
 
+BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format)
+{
+    static const BasicColorFormatInfo undefined_format;
+    if (color_format >= ARRAY_SIZE(kelvin_color_format_info_map)) {
+        return undefined_format;
+    }
+    return kelvin_color_format_info_map[color_format];
+}
+
+bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    uint32_t fmt = pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + texture_idx * 4);
+
+    unsigned int color_format = GET_MASK(fmt, NV_PGRAPH_TEXFMT0_COLOR);
+    if (color_format >= ARRAY_SIZE(kelvin_color_format_info_map) ||
+        kelvin_color_format_info_map[color_format].bytes_per_pixel == 0) {
+        return false;
+    }
+    unsigned int dimensionality =
+        GET_MASK(fmt, NV_PGRAPH_TEXFMT0_DIMENSIONALITY);
+    if (dimensionality < 1 || dimensionality > 3) {
+        return false;
+    }
+    hwaddr dma_len;
+    hwaddr offset = pgraph_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + texture_idx * 4);
+    if (GET_MASK(fmt, NV_PGRAPH_TEXFMT0_CONTEXT_DMA)) {
+        nv_dma_map(d, pg->dma_b, &dma_len);
+    } else {
+        nv_dma_map(d, pg->dma_a, &dma_len);
+    }
+    return offset < dma_len;
+}
+
 hwaddr pgraph_get_texture_phys_addr(PGRAPHState *pg, int texture_idx)
 {
     NV2AState *d = container_of(pg, NV2AState, pgraph);
@@ -142,7 +176,7 @@ hwaddr pgraph_get_texture_palette_phys_addr_length(PGRAPHState *pg, int texture_
 
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape)
 {
-    BasicColorFormatInfo f = kelvin_color_format_info_map[shape->color_format];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
     size_t length = 0;
 
     if (f.linear) {
@@ -259,7 +293,7 @@ TextureShape pgraph_get_texture_shape(PGRAPHState *pg, int texture_idx)
                  lod_bias);
 
     assert(color_format < ARRAY_SIZE(kelvin_color_format_info_map));
-    BasicColorFormatInfo f = kelvin_color_format_info_map[color_format];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(color_format);
     if (f.bytes_per_pixel == 0) {
         fprintf(stderr, "nv2a: unimplemented texture color format 0x%x\n",
                 color_format);

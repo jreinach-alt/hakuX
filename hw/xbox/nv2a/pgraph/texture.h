@@ -62,6 +62,8 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
 hwaddr pgraph_get_texture_phys_addr(PGRAPHState *pg, int texture_idx);
 hwaddr pgraph_get_texture_palette_phys_addr_length(PGRAPHState *pg, int texture_idx, size_t *length);
 TextureShape pgraph_get_texture_shape(PGRAPHState *pg, int texture_idx);
+bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx);
+BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format);
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape);
 
 static inline float pgraph_convert_lod_bias_to_float(uint32_t lod_bias)

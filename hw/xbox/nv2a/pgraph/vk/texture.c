@@ -121,7 +121,7 @@ static void memcpy_image(void *dst, void *src, int min_stride, int dst_stride, i
 // FIXME: Move to common
 static size_t get_cubemap_layer_size(PGRAPHState *pg, TextureShape s)
 {
-    BasicColorFormatInfo f = kelvin_color_format_info_map[s.color_format];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(s.color_format);
     bool is_compressed =
         pgraph_is_texture_format_compressed(pg, s.color_format);
     unsigned int block_size;
@@ -164,7 +164,7 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
     NV2AState *d = container_of(pg, NV2AState, pgraph);
     PGRAPHVkState *r = pg->vk_renderer_state;
     TextureShape s = pgraph_get_texture_shape(pg, texture_idx);
-    BasicColorFormatInfo f = kelvin_color_format_info_map[s.color_format];
+    BasicColorFormatInfo f = pgraph_get_color_format_info(s.color_format);
 
     NV2A_VK_DGROUP_BEGIN("Texture %d: cubemap=%d, dimensionality=%d, color_format=0x%x, levels=%d, width=%d, height=%d, depth=%d border=%d, min_mipmap_level=%d, max_mipmap_level=%d, pitch=%d",
         texture_idx,
@@ -1294,7 +1294,7 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     NV2AState *d = container_of(pg, NV2AState, pgraph);
     PGRAPHVkState *r = pg->vk_renderer_state;
     TextureShape state = pgraph_get_texture_shape(pg, texture_idx);
-    BasicColorFormatInfo f_basic = kelvin_color_format_info_map[state.color_format];
+    BasicColorFormatInfo f_basic = pgraph_get_color_format_info(state.color_format);
 
     const hwaddr texture_vram_offset = pgraph_get_texture_phys_addr(pg, texture_idx);
     size_t texture_length = pgraph_get_texture_length(pg, &state);
@@ -1993,7 +1993,8 @@ void pgraph_vk_bind_textures(NV2AState *d)
     resolve_possibly_dirty_textures(d);
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        if (!pgraph_is_texture_enabled(pg, i)) {
+        if (!pgraph_is_texture_enabled(pg, i) ||
+            !pgraph_is_texture_descriptor_decodable(pg, i)) {
             if (r->texture_bindings[i] != &r->dummy_texture) {
                 r->texture_bindings[i] = &r->dummy_texture;
                 r->texture_bindings_changed = true;

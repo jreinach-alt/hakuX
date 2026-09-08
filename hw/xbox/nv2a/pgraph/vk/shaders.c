@@ -1195,9 +1195,9 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
         float scale = r->texture_bindings[i]->key.scale;
 
         BasicColorFormatInfo f_basic =
-            kelvin_color_format_info_map[pg->vk_renderer_state
-                                             ->texture_bindings[i]
-                                             ->key.state.color_format];
+            pgraph_get_color_format_info(
+                pg->vk_renderer_state->texture_bindings[i]
+                    ->key.state.color_format);
         if (!f_basic.linear) {
             scale = 1.0;
         }
