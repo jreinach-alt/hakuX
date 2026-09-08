@@ -80,6 +80,28 @@ stops suppressing the hook on its own.
 Note this is not only a crash-path concern — because of issue #20 a *successful*
 run does not exit by itself either.
 
+**Show the pixels, not the number.** Any comparison that is not *bit-identical*
+gets surfaced as images at the end of the turn — the hardware capture, our
+output, and the difference map. A figure cannot be scrutinised: "0.00 mean
+error" was reported as pixel-exact on a test differing across 1,536 pixels, and
+an RGB-only compare hid 1,279 differing alpha pixels. Both were caught by
+looking, not by reading.
+
+```bash
+docs/testing/diff_specimen.py -o cmp.html --goldens goldens/results \
+    --results out --all-differing
+```
+
+Report **differing-pixel count with max delta**, per channel group. A mean
+cannot tell "this format is not decoded at all" (max 255) from "rounding"
+(max 8), and that is the entire triage decision. Note also that upstream's own
+criterion is `perceptualdiff` — any pixel threshold used here is ours, and
+should be described as ours rather than as agreement with hardware.
+
+**A PR that closes or downgrades a test carries the comparison.** Same tool,
+attached to the pull request. Nobody should have to take "this now matches" on
+trust, and a reviewer who can see the frames can catch a wrong call in seconds.
+
 **Instrumentation is not free.** A `syscall(SYS_gettid)` added to the pushbuffer
 inner loop — 144,712 calls in a few seconds — throttled the emulator so badly it
 presented as a renderer deadlock, and the side-effects were investigated as
