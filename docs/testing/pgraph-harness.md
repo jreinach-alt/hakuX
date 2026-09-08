@@ -88,6 +88,22 @@ The per-test key is `skipped`, confirmed against the strings in the XBE
 (`[skipped] must be a boolean`). An unrecognised key is ignored silently, so a
 typo costs a whole run.
 
+**Always set `enable_progress_log: true`.** It writes
+`pgraph_progress_log.txt` alongside the PNGs, naming every test the suite
+started and completed:
+
+```
+Starting [2/2] Texture DXT::DXT1_plasma_dxt1
+  Completed [2/2] 'DXT1_plasma_dxt1' in 80ms
+Testing completed normally, closing log.
+```
+
+This is the only reliable evidence that a result is from the run you think it
+is. `--newer-than` passes files that were never rewritten, FATX mtimes advance
+on files whose tests never executed, and run duration says nothing because the
+emulator does not exit on guest power-off (issue #20). A conclusion has already
+been drawn from a run that never reached its tests.
+
 Copy the configured image into your ROM folder and launch it like a game.
 
 ## Getting the results off the device
