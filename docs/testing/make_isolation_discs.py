@@ -18,9 +18,12 @@ already the "in company" arm, so one disc per suite is enough rather than two.
 
 For each suite it picks the most unambiguous substitution (largest ratio between
 the error against its own golden and against the golden it actually reproduces),
-enables that one test, and skips every other test the sweep recorded for that
-suite. Each disc has `enable_progress_log` on, because neither `--newer-than`
-nor FATX mtimes prove a test ran — see docs/testing/pgraph-harness.md.
+enables that one test, and skips every other test it can name for that suite.
+The skip list unions the sweep's results with the goldens: a test that *aborts*
+writes no PNG, so results alone miss it and it runs regardless, defeating the
+isolation. Each disc has `enable_progress_log` on, because neither
+`--newer-than` nor FATX mtimes prove a test ran — see
+docs/testing/pgraph-harness.md, and check the log shows our test as `[1/1]`.
 
 Suite names come from the results directory with underscores turned into
 spaces. That matches the XBE for every suite present in `sample-config.json`,
@@ -53,12 +56,24 @@ def parse_crossmatch(path):
     return rows
 
 
-def tests_that_ran(results_dir, suite):
-    """Every test the sweep recorded for this suite — the exact skip list."""
-    out = []
+def tests_to_skip(results_dir, goldens_dir, suite):
+    """Every test name we can find for this suite, to skip all but one.
+
+    Union of two sources on purpose. The sweep's results are what actually
+    produced output, but a test that *aborts* writes no PNG and so is absent
+    from them -- and would then run, defeating the isolation. The goldens
+    enumerate every test the suite can run. Over-skipping is harmless; a name
+    the XBE does not know is ignored.
+    """
+    out = set()
     for name in os.listdir(results_dir):
         if name.endswith(".png") and name.startswith(suite + "::"):
-            out.append(name[:-4].split("::", 1)[1])
+            out.add(name[:-4].split("::", 1)[1])
+    gdir = os.path.join(goldens_dir, suite)
+    if os.path.isdir(gdir):
+        for name in os.listdir(gdir):
+            if name.endswith(".png"):
+                out.add(name[:-4])
     return sorted(out)
 
 
@@ -98,6 +113,9 @@ def main():
     ap.add_argument("crossmatch", help="output of crossmatch.py")
     ap.add_argument("--results", required=True,
                     help="the sweep's results dir, to enumerate what each suite ran")
+    ap.add_argument("--goldens", required=True,
+                    help="goldens/results — enumerates tests that abort and so "
+                         "write no output, which the results dir cannot")
     ap.add_argument("--base", required=True, help="stock nxdk_pgraph_tests xiso")
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--suite", action="append",
@@ -121,7 +139,7 @@ def main():
     print("-" * 88)
     manifest = []
     for suite, (_ratio, test, other, own, oth) in sorted(best.items()):
-        skip = tests_that_ran(args.results, suite)
+        skip = tests_to_skip(args.results, args.goldens, suite)
         if test not in skip:
             skip.append(test)
         suite_key = suite.replace("_", " ")

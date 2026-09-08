@@ -25,6 +25,7 @@ and a truncated run silently returns the previous run's images.
 import argparse
 import json
 import os
+import re
 import sys
 
 try:
@@ -49,13 +50,31 @@ def err(a, b):
     return float(np.abs(a - b).mean())
 
 
+STARTING = re.compile(r"Starting \[(\d+)/(\d+)\]\s+(.+?)::(\S+)")
+
+
 def ran_ok(logpath, test):
-    """Did the suite's own log record this test completing?"""
+    """Did the suite's own log record this test running FIRST, and finishing?
+
+    Running first is what makes the run an isolation test. A disc that enables
+    one test can still execute others -- the skip list is built from tests the
+    sweep recorded, and a test that aborts writes no output, so it is missing
+    from that list and runs anyway. If anything preceded our test, contamination
+    was possible and the run proves nothing.
+    """
     if not os.path.exists(logpath):
         return False, "no progress log"
     text = open(logpath, encoding="utf-8", errors="replace").read()
-    if f"Completed" not in text or test not in text:
-        return False, "test not in progress log"
+    order = [(int(m.group(1)), int(m.group(2)), m.group(4))
+             for m in STARTING.finditer(text)]
+    if not order:
+        return False, "no tests in progress log"
+    ours = [i for i, _n, t in order if t == test]
+    if not ours:
+        return False, f"test never ran ({len(order)} others did)"
+    if ours[0] != 1:
+        preceded = next(t for i, _n, t in order if i == 1)
+        return False, f"not first, ran after {preceded}"
     if "Testing completed normally" not in text:
         return False, "log does not say completed normally"
     return True, ""
@@ -114,10 +133,11 @@ def main():
         if tally[k]:
             print(f"  {k:<15} {tally[k]}")
     if tally["NO-RUN"]:
-        print("\nNO-RUN means the disc did not run the test — most likely the "
-              "suite name guessed from the results directory does not match the "
-              "XBE. Fix the name and rebuild that disc; do not read anything "
-              "into its images, they are the previous run's.")
+        print("\nNO-RUN means the run does not support a verdict: the disc ran "
+              "nothing (suite name guessed wrong), or something executed before "
+              "our test so contamination was still possible. Rebuild that disc "
+              "with a complete skip list and re-run; do not read anything into "
+              "its images.")
     return 0
 
 

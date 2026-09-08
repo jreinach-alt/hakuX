@@ -66,6 +66,20 @@ it had been forgotten.
 trap 'adb -s "$SERIAL" shell am force-stop "$PKG"' EXIT   # in every script
 ```
 
+A per-script trap is necessary but not sufficient: it says nothing about a turn
+ending while a background campaign holds the device, which is how this went
+wrong twice. `docs/testing/stop-emulator.sh` is wired to a **Stop hook** in
+`.claude/settings.json` so the emulator is force-stopped whenever an agent
+finishes responding, on every attached device.
+
+A long-running batch that legitimately owns the device holds a lease by
+touching `/tmp/hakux-device-lease` at least once every 90s; the hook then
+defers and says so. The lease is deliberately short-lived, so a batch that dies
+stops suppressing the hook on its own.
+
+Note this is not only a crash-path concern — because of issue #20 a *successful*
+run does not exit by itself either.
+
 **Instrumentation is not free.** A `syscall(SYS_gettid)` added to the pushbuffer
 inner loop — 144,712 calls in a few seconds — throttled the emulator so badly it
 presented as a renderer deadlock, and the side-effects were investigated as
