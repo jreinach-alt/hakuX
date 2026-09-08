@@ -335,6 +335,7 @@ typedef struct DeferredSurfaceDownload {
     SurfaceFormatInfo host_fmt;
     BasicSurfaceFormatInfo fmt;
     bool use_compute_to_swizzle;
+    bool partial; /* Covered only a row range, not the whole surface */
     SurfaceBinding *surface; /* Source surface for flag cleanup at completion */
 } DeferredSurfaceDownload;
 

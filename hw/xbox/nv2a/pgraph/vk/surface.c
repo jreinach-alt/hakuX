@@ -549,6 +549,7 @@ static bool download_surface_record_deferred(NV2AState *d,
     dl->host_fmt = surface->host_fmt;
     dl->fmt = surface->fmt;
     dl->use_compute_to_swizzle = false;
+    dl->partial = partial;
     dl->surface = surface;
 
     r->staging_dst_offset = aligned_offset + staging_size;
@@ -604,8 +605,12 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
                                            DIRTY_MEMORY_NV2A_TEX);
             s->download_pending = false;
             s->download_row_count = 0;
-            s->draw_dirty = false;
-            s->download_generation = s->draw_generation;
+            /* See download_surface: a partial download leaves the rows it
+             * did not copy stale, so it must not retire the generation. */
+            if (!dl->partial) {
+                s->draw_dirty = false;
+                s->download_generation = s->draw_generation;
+            }
         }
     }
 
@@ -661,10 +666,16 @@ void pgraph_vk_download_surface_complete_deferred(NV2AState *d)
             memory_region_set_client_dirty(d->vram, s->vram_addr,
                                            s->pitch * s->height,
                                            DIRTY_MEMORY_NV2A_TEX);
+            /* See download_surface: a partial download leaves the rows it
+             * did not copy stale, so it must not retire the generation. */
+            bool was_partial = s->download_row_count > 0 &&
+                               s->download_row_count < s->height;
             s->download_pending = false;
             s->download_row_count = 0;
-            s->draw_dirty = false;
-            s->download_generation = s->draw_generation;
+            if (!was_partial) {
+                s->draw_dirty = false;
+                s->download_generation = s->draw_generation;
+            }
         }
         r->display_predownload_pending = false;
         r->display_predownload_surface = NULL;
@@ -1172,6 +1183,14 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
 
     // FIXME: Respect write enable at last TOU?
 
+    /* A download covering only part of the surface must not retire the
+     * surface's dirty state: the rows it did not copy are still stale in
+     * VRAM, and clearing draw_dirty here would make every later CPU read of
+     * those rows skip the download entirely and see whatever was there
+     * before.  Only a full-surface download can retire the generation. */
+    bool was_partial = surface->download_row_count > 0 &&
+                       surface->download_row_count < surface->height;
+
     download_surface_to_buffer(d, surface, d->vram_ptr + surface->vram_addr);
 
     memory_region_set_client_dirty(d->vram, surface->vram_addr,
@@ -1183,8 +1202,10 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
 
     surface->download_pending = false;
     surface->download_row_count = 0;
-    surface->draw_dirty = false;
-    surface->download_generation = surface->draw_generation;
+    if (!was_partial) {
+        surface->draw_dirty = false;
+        surface->download_generation = surface->draw_generation;
+    }
 }
 
 /*
@@ -1376,10 +1397,16 @@ void pgraph_vk_process_pending_downloads(NV2AState *d)
         memory_region_set_client_dirty(d->vram, surface->vram_addr,
                                        surface->pitch * surface->height,
                                        DIRTY_MEMORY_NV2A_TEX);
+        bool was_partial = surface->download_row_count > 0 &&
+                           surface->download_row_count < surface->height;
         surface->download_pending = false;
         surface->download_row_count = 0;
-        surface->draw_dirty = false;
-        surface->download_generation = surface->draw_generation;
+        /* See download_surface: only a full-surface download may retire
+         * the generation; a partial one leaves other rows stale. */
+        if (!was_partial) {
+            surface->draw_dirty = false;
+            surface->download_generation = surface->draw_generation;
+        }
     }
 
     qatomic_set(&r->downloads_pending, false);
@@ -1454,10 +1481,16 @@ void pgraph_vk_download_dirty_surfaces(NV2AState *d)
         memory_region_set_client_dirty(d->vram, surface->vram_addr,
                                        surface->pitch * surface->height,
                                        DIRTY_MEMORY_NV2A_TEX);
+        bool was_partial = surface->download_row_count > 0 &&
+                           surface->download_row_count < surface->height;
         surface->download_pending = false;
         surface->download_row_count = 0;
-        surface->draw_dirty = false;
-        surface->download_generation = surface->draw_generation;
+        /* See download_surface: only a full-surface download may retire
+         * the generation; a partial one leaves other rows stale. */
+        if (!was_partial) {
+            surface->draw_dirty = false;
+            surface->download_generation = surface->draw_generation;
+        }
     }
 
     qatomic_set(&r->download_dirty_surfaces_pending, false);
@@ -1493,7 +1526,17 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
             unsigned int row_start = 0;
             unsigned int row_count = surface->height;
 
-            if (!surface->swizzle && surface->pitch > 0 &&
+            /* Download the whole surface, not just the rows this access
+             * touched.  Narrowing to a row range is only sound if something
+             * tracks which rows are already current for this draw
+             * generation; nothing does.  Retiring the generation after a
+             * partial copy leaves the untouched rows stale (the suite's
+             * captures came back with one correct scanline), and not
+             * retiring it makes every later access re-download and finish,
+             * which stalls the guest outright.  One full download per draw
+             * generation is the behaviour the generation counter assumes. */
+            if (false &&
+                !surface->swizzle && surface->pitch > 0 &&
                 surface->host_fmt.vk_format != VK_FORMAT_D24_UNORM_S8_UINT &&
                 surface->host_fmt.vk_format != VK_FORMAT_D32_SFLOAT_S8_UINT) {
                 hwaddr surf_offset = (addr > surface->vram_addr)
