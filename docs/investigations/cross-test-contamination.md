@@ -137,9 +137,33 @@ Two things can clear it wrongly:
    *consumes* the dirty bit across a page-aligned range — the first caller
    clears it for every other texture sharing those pages.
 
-Hypothesis 1 is cheap to test: store a frame number that can never match
-`pg->frame_time`, rebuild, re-run the pair disc. A patch doing exactly that is
-on branch `wt/texture-staleness`.
+### Hypothesis 1 is disproven
+
+Tested by storing a frame number that can never match `pg->frame_time`, so the
+"clean this frame" verdict is never reused, at all three store sites including
+the initialiser. Built and run against the pair disc:
+
+| build | `DXT1_plasma` vs own golden | vs sibling |
+|---|---|---|
+| unpatched | 14.86 | 0.79 |
+| per-frame cache disabled | **14.86** | **0.79** |
+
+Output was **byte-identical** (`e8b1b6086245` both times), and FATX mtimes
+confirm both tests genuinely re-ran (20:05:48). The per-frame dirty cache is not
+the mechanism.
+
+### Hypothesis 2, and a probe that outranks it
+
+Rather than test the `test_and_clear` range behaviour directly, the sharper
+question is whether the content comparison would catch the change *at all*.
+Forcing `possibly_dirty = true` makes the texture hash unconditionally:
+
+- if `DXT1_plasma` then renders correctly, the fault is in dirty *detection* —
+  the data was there and we failed to notice;
+- if it still renders the sibling, the bytes in VRAM at bind time really are the
+  old texture's, and the fault is upstream of the texture cache entirely.
+
+That probe distinguishes a whole class of hypotheses in one build.
 
 ## Why this matters
 
