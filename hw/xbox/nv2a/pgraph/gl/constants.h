@@ -208,6 +208,17 @@ typedef struct ColorFormatInfo {
     bool depth;
 } ColorFormatInfo;
 
+/* 16-bit normalised two-channel format. GLES reaches these through
+ * EXT_texture_norm16; GL_R16 is already resolvable here but its two-channel
+ * sibling is not, so name it the same way the LOD-bias shim above does. */
+#ifndef GL_RG16
+# ifdef GL_RG16_EXT
+#  define GL_RG16 GL_RG16_EXT
+# else
+#  define GL_RG16 0x822C
+# endif
+#endif
+
 static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8] =
         {1, false, GL_R8, GL_RED, GL_UNSIGNED_BYTE,
@@ -310,9 +321,20 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
         {2, true, GL_DEPTH_COMPONENT16, GL_DEPTH_COMPONENT, NV2A_GL_Z16_FLOAT_TYPE,
           {GL_RED, GL_ZERO, GL_ONE, GL_ZERO}, true},
 
+    [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] =
+        {2, false, GL_R16, GL_RED, GL_UNSIGNED_SHORT,
+         {GL_RED, GL_RED, GL_RED, GL_ONE}},
+    /* Two 16-bit channels holding R and B.  Component order mirrors SZ_R8B8,
+     * which is the same channel layout at 8 bits. */
+    [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] =
+        {4, false, GL_RG16, GL_RG, GL_UNSIGNED_SHORT,
+         {GL_GREEN, GL_RED, GL_RED, GL_GREEN}},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] =
         {2, true, GL_R16, GL_RED, GL_UNSIGNED_SHORT,
          {GL_RED, GL_RED, GL_RED, GL_ONE}},
+    [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] =
+        {4, true, GL_RG16, GL_RG, GL_UNSIGNED_SHORT,
+         {GL_GREEN, GL_RED, GL_RED, GL_GREEN}},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8] =
         {4, false, GL_RGBA8, GL_RGBA, NV2A_GL_UNSIGNED_INT_8_8_8_8_REV},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8] =

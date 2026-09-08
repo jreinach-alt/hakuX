@@ -69,7 +69,10 @@ const BasicColorFormatInfo kelvin_color_format_info_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT] = { 2, true,
                                                                   true },
 
+    [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] = { 2, false },
+    [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] = { 4, false },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] = { 2, true },
+    [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] = { 4, true },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8] = { 4, false },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8] = { 4, false },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8] = { 4, false },
