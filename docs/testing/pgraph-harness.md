@@ -41,6 +41,33 @@ from `abaire/nxdk` on the `nxdk_pgraph_tester` branch (the suite needs pbkit
 changes upstream nxdk does not carry), `pip3 install nv2a-vsh`, a
 `./prewarm-nxdk.sh` bootstrap pass, and a recursive clone.
 
+## What the goldens are, and what "matching" means
+
+`goldens/` is a clone of
+[abaire/nxdk_pgraph_tests_golden_results](https://github.com/abaire/nxdk_pgraph_tests_golden_results)
+— framebuffer captures of
+[abaire/nxdk_pgraph_tests](https://github.com/abaire/nxdk_pgraph_tests) taken on
+**real XBOX 1.0 hardware** by the test suite's author. 5,608 PNGs, RGBA, 640x480.
+
+Three things to get right before quoting a number:
+
+**Exactness and tolerance are different claims.** A mean absolute error of
+"0.00" is not bit-identity: 1,536 pixels differing by 1 and 87,381 pixels
+differing by 8 both round to 0.00. Report **differing-pixel count and max
+delta**, which separate "a format is not decoded at all" (max 255) from
+"rounding" (max 6) — a distinction a mean destroys, and one that decides whether
+a defect is worth chasing.
+
+**Alpha is part of the comparison unless you decide otherwise.** The goldens are
+RGBA and differ from our output in alpha on some tests even where RGB is
+identical. The upstream README warns its captures respect alpha in a way the
+console's final composition may not, so dropping it is defensible — but it must
+be a stated decision, not a silent `.convert("RGB")`.
+
+**Upstream's criterion is `perceptualdiff`** (`goldens/scripts/compare.sh`), not
+pixel arithmetic. Any threshold used here is ours, and should be labelled as
+such rather than presented as "matches hardware".
+
 ## Configuring a run
 
 The suite reads `d:\nxdk_pgraph_tests_config.json` — from the disc it booted
