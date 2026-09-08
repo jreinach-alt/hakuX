@@ -65,8 +65,28 @@ the way the kernel does.
 
 `--shard-count N` with `--shard-index 0..N-1` splits a full run across several
 images, which matters — a complete pass is thousands of tests. `--config FILE`
-takes a prepared JSON instead, so individual suites can be skipped; start from
-the `sample-config.json` already on the disc, which enumerates every test.
+takes a prepared JSON instead, so individual suites can be skipped.
+
+**`sample-config.json` on the disc does not enumerate every test.** It lists
+3,465 tests across 65 suites, but the XBE registers more than that — `Blend
+surface`, `Surface format`, `Lighting spotlight` and `Texture palette` all run
+and appear in results while being absent from that file. Building an allowlist
+from it silently skips everything it omits. Prefer `skip_tests_by_default:
+false` with explicit skips.
+
+Config semantics, measured on device rather than assumed:
+
+| form | behaviour |
+|---|---|
+| `skip_tests_by_default: true`, no suites | runs nothing, shuts down cleanly |
+| `skip_tests_by_default: true` + `{suite: {skipped: false}}` | enables that suite |
+| `skip_tests_by_default: false` + `{suite: {skipped: true}}` | skips that suite |
+| `{suite: {test: {skipped: true}}}` | skips that one test |
+| `{suite: {test: {skipped: false}}}` under `skip_tests_by_default: true` | does **not** enable a single test |
+
+The per-test key is `skipped`, confirmed against the strings in the XBE
+(`[skipped] must be a boolean`). An unrecognised key is ignored silently, so a
+typo costs a whole run.
 
 Copy the configured image into your ROM folder and launch it like a game.
 
@@ -108,10 +128,31 @@ afternoon:
   guest can then connect back to, and a server that answers `127.0.0.1` will
   hang the transfer. The LAN machine is the path of least resistance.
 
-### Off the hard disk, if you cannot use a network
+### Off the hard disk — the simpler path
 
-There is no export path for this today, only the parts one would be built
-from. `e:` lives at offset `0xABE80000` in the image
+`docs/testing/extract_results.py` reads the results straight out of `hdd.img`
+host-side: it parses the qcow2 (no `qemu-img` needed), walks the FATX
+filesystem on the E: partition, and writes the files out flat, in the same
+`Suite name::Test.png` shape the FTP upload produces, so `collect_results.py`
+consumes it unchanged.
+
+```sh
+adb pull /sdcard/Android/data/<pkg>/files/x1box/hdd.img
+python3 docs/testing/extract_results.py hdd.img -o ./ftpdump
+```
+
+**The results directory accumulates across runs**, so `--newer-than` takes a
+cutoff and extracts only files written after it. Note the guest clock is offset
+from host time — take the cutoff from the image's own newest timestamp before
+the run, not from the host clock.
+
+This makes networking optional. The FTP route below still works, but it needs
+the emulator's own networking switch enabled (Settings -> Online / Insignia),
+and with it disabled the guest hangs indefinitely at "Initializing network..."
+rather than failing.
+
+The original note on this section follows; the machinery it describes is what
+`extract_results.py` was built from. `e:` lives at offset `0xABE80000` in the image
 (`android/app/src/main/cpp/xemu_hdd_tools_jni.c:88`), and a complete FATX
 implementation with directory walking and cluster chains is already in-tree at
 `android/app/src/main/cpp/xemu_fatx_import.c` — its public surface is
@@ -160,10 +201,11 @@ Verified here, against the real artifacts:
   upload form and passed back through `ResultsInfo` matched its goldens 48 of
   48, with nothing unmatched, and the run identifier parsed as intended.
 
-Not verified: **none of this has been booted.** The suite has not been run
-under this emulator, on device or otherwise. Expect the first pass to surface
-setup problems rather than rendering ones — and expect some tests to hang or
-crash before the suite completes, which is what `--shard-count` is for.
+Verified on device since: the suite runs to completion on a Retroid Pocket
+Nova (Adreno 740, Vulkan), 3,132 tests in about 4m20s, and the results have
+been compared against the hardware goldens. See `KNOWN_ISSUES.md` for what that
+comparison found, and the corrections below for where this document was
+wrong.
 
 ## The experiment worth running first
 

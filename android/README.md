@@ -10,7 +10,17 @@ runs an event loop. The xemu core is not yet wired.
 - Build Tools 36.1.0
 - NDK r29+ (configured to 29.0.14206865 in Gradle)
 - CMake 3.30.3
-- JDK 21
+- JDK 21 (**not** 25 — the build targets Java 21 and will not configure on 25)
+- **meson** — the native build compiles glib with it. Without meson the build
+  fails late inside CMake with `meson not found in PATH; required to build glib
+  for Android`, not at configure time.
+- **ninja on `PATH`** — meson needs it. One ships with the SDK at
+  `$ANDROID_SDK_ROOT/cmake/3.30.3/bin/ninja`, but Gradle passes it to CMake via
+  `-DCMAKE_MAKE_PROGRAM` only, so meson cannot see it. Add that directory to
+  `PATH` or the build fails with `Could not detect Ninja v1.8.2 or newer`.
+
+Both of the last two are installed explicitly by `.github/workflows/android.yml`.
+A clean checkout does not build from the list above alone.
 - Rust toolchain (`cargo`) for ISO->XISO converter
   - On Windows, this project uses `stable-x86_64-pc-windows-gnu` (to avoid MSVC `link.exe`)
   - Install once:
