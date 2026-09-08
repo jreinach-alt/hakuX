@@ -110,23 +110,56 @@ implementing both as exclusive. That belongs to
 [#11](https://github.com/jreinach-alt/hakuX/issues/11) as a concrete defect, and
 it is a considerably better lead than "38 of 92 tests fail".
 
-## Unclassified
+## Classified: all 24 colour suites
 
-The remaining 24 suites have not been isolated and must not be attributed to
-either cause without running the discs. Counts:
+Every suite was run with its most unambiguous substitution enabled alone, on the
+#20-fixed build, with the progress log confirming `[1/1]` in each case.
 
-```
-44 Texture_cubemap     20 W_buffering      16 Texture_shadow_comparator  12 Attrib_carryover
-34 Line_width          18 Fog_param        15 Texture_signed_component   11 Depth_buffer_ff
-30 Depth_buffer        17 Fog_gen          15 Blend_tests                 8 ZMinMaxControl
-26 Window_clip *       14 W_param          14 Image_blit                  … 11 more
-```
-`*` classified above.
+| verdict | suites |
+|---|---|
+| **contamination** (correct alone) | `Texture_DXT`, `Texture_render_target` |
+| **missing-state** (wrong alone) | `Attrib_carryover`, `Blend_surface`, `Blend_tests`, `Depth_buffer`, `Fog_exceptional_value`, `Fog_gen`, `Fog_param`, `Lighting_spotlight`, `Line_width`, `Specular`, `Stipple_tests`, `Surface_format`, `Texture_perspective`, `Texture_shadow_comparator`, `Texture_signed_component_tests`, `W_param`, `Window_clip`, `ZMinMaxControl`, `ZPass_pixel_count` |
+| **unclear** | `Bump_map`, `Image_blit`, `Texture_cubemap` |
 
-The pattern across the population — a sibling differing by exactly one state
-bit, the first-run variant winning — fits cause 2 at least as well as cause 1,
-so the split may well favour unimplemented state distinctions. `Texture DXT` is
-so far the only proven contamination case.
+**Contamination is the rare case: 2 of 24.** The overwhelming majority are
+distinctions the emulator does not implement, where the test renders its
+sibling's image no matter what ran before it. That is good news for triage — it
+converts "this suite fails a lot" into a named missing feature — but it means
+the population is emphatically not one bug, and the original framing of this
+investigation was wrong.
+
+The two contamination cases are both *pixel-exact* alone:
+
+| suite | test | in sweep | alone |
+|---|---|---|---|
+| `Texture_DXT` | `DXT3_plasma` | 15.81 | **0.00** |
+| `Texture_render_target` | `TexFmt_A8_L` | 67.42 | **0.00** (0 of 307,200 px) |
+
+`Texture_render_target` matters most: [#4](https://github.com/jreinach-alt/hakuX/issues/4)
+records 40 of 41 tests failing and reads as a fundamental render-to-texture
+defect. At least part of that is contamination, not render-to-texture.
+
+The three unclear cases each need their own look, and one is genuinely odd:
+
+- `Texture_cubemap` 31.93 → **2.78**. Much better alone but not correct, which
+  looks like contamination layered on a smaller real defect.
+- `Bump_map` 33.41 → 32.50. Barely moves, and does not match the sibling either.
+- `Image_blit` 30.68 → **163.19**. Substantially *worse* alone. A blit test run
+  with nothing before it has no source surface to copy, so this may be the test
+  depending on prior state by design rather than an emulator fault — worth
+  confirming before treating it as a defect.
+
+## Scope correction: depth captures
+
+Of the 328 substitutions, **55 are `_ZB` depth captures**, which the colour
+analysis excludes because they fail through readback conversion
+([#16](https://github.com/jreinach-alt/hakuX/issues/16)) rather than depth
+behaviour. The honest colour figure is **273**.
+
+Two suites — `Depth_buffer_fixed_function` (11) and `W_buffering` (20) — have
+*no* colour substitutions at all. Their entire appearance here is #16 and they
+are excluded above. `crossmatch.py` should grow a `--exclude-suffix _ZB` flag so
+this is not re-derived.
 
 ## Candidate mechanism for the contamination case
 
