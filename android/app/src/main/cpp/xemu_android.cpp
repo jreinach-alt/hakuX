@@ -56,6 +56,7 @@ extern "C" bool runstate_is_running(void);
 extern "C" void xemu_android_pause_emulation(void);
 extern "C" void xemu_android_resume_emulation(void);
 extern "C" void xemu_android_request_exit(void);
+extern "C" void xemu_android_notify_core_exited(void);
 
 extern "C" bool xemu_android_is_debug_logging_enabled(void)
 {
@@ -999,7 +1000,15 @@ static int SDLCALL QemuThreadMain(void* data) {
   LogInfoInt("QemuThreadMain: show_welcome=%d", g_config.general.show_welcome ? 1 : 0);
   LogInfoFmt("QemuThreadMain: bootrom=%s", g_config.sys.files.bootrom_path ? g_config.sys.files.bootrom_path : "(null)");
   LogInfo("QemuThreadMain: starting");
-  return xemu_android_main(ctx->argc, ctx->argv);
+  int rc = xemu_android_main(ctx->argc, ctx->argv);
+
+  /* Release the display loop.  A guest-initiated power-off (which is what
+   * the pgraph suite's enable_shutdown_on_completion does at the end of
+   * every shard) leaves it spinning otherwise, and SDL_main never reaches
+   * its _exit(). */
+  LogInfoInt("QemuThreadMain: core exited rc=%d, releasing display loop", rc);
+  xemu_android_notify_core_exited();
+  return rc;
 }
 
 #ifndef XEMU_OPT_TB_CACHE_HINTS

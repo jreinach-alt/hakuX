@@ -1564,6 +1564,23 @@ void xemu_android_resume_emulation(void)
     g_android_vm_resume_requested = true;
 }
 
+/*
+ * Called by the Android glue once qemu_main() has returned.
+ *
+ * The display loop's other exit test, qemu_shutdown_requested_get(), cannot
+ * catch a guest-initiated power-off: QEMU's own main loop consumes the request
+ * with qatomic_xchg (qemu_shutdown_requested, system/runstate.c), so by the
+ * time this loop next polls, the cause has been reset to SHUTDOWN_CAUSE_NONE
+ * and the core thread has already exited.  The loop then spins forever and
+ * SDL_main never reaches its _exit(), leaving the process alive on whatever
+ * the guest drew last.  Only the UI quit path sets g_android_should_quit, so
+ * a guest power-off needs this second notifier.
+ */
+void xemu_android_notify_core_exited(void)
+{
+    g_android_should_quit = true;
+}
+
 void xemu_android_request_exit(void)
 {
     shutdown_action = SHUTDOWN_ACTION_POWEROFF;
