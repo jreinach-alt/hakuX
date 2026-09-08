@@ -54,16 +54,23 @@ baseline suite run and closes with another**, so its result is a measured delta
 rather than a list of commits. Two weeks is the working assumption; single root
 causes have repeatedly taken more than a day to isolate.
 
-Sprint order, subject to what the pre-fork baseline (issue #17) shows:
+Sprint order:
 
 | sprint | theme | issues | why this order |
 |---|---|---|---|
-| 0 | Make measurement trustworthy | #15, #17 | Fix order-dependence and establish what we broke versus inherited. Everything after this is mis-prioritised without it. |
+| 0 | Make measurement trustworthy | #15 | Fix order-dependence. Until a sweep can be diffed against another sweep, no claim about whether a change helped is worth anything. |
 | 1 | Textures | #3, #4, #5, #6 | Largest cluster, worst severity, and the suspected cause of the one visible fault reported from real play. |
 | 2 | Surfaces and blits | #7, #16 | `Image_blit` overlaps are the second-worst colour failures; depth readback unblocks honest depth figures. |
 | 3 | Fixed-function shading | #8, #9, #10 | Fog and lighting are broad and user-visible in outdoor scenes. |
 | 4 | Geometry and raster | #11, #12, #13 | Clipping, attributes, line/point rules. |
 | — | Deferred | #14 | Blend precision. Revisit only when nothing visible remains. |
+
+Bisection (issue #17) is a technique used inside sprints, not a sprint of its
+own. When an issue looks like a regression, `git bisect run` over the ~139
+fork-era commits touching the renderer costs under an hour and hands over the
+diff that broke it. That is a much cheaper repair path than deriving hardware
+behaviour from goldens — but it is worth doing per issue, on demand, rather
+than as an upfront survey.
 
 Crash and hang work is **not** on this schedule. It arrives from play, it is
 found by different means, and it preempts accuracy work when it appears — but it
