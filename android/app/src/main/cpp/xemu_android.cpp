@@ -20,6 +20,7 @@
 #include <string>
 #include <vector>
 #include <fcntl.h>
+#include <pthread.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <errno.h>
@@ -121,6 +122,86 @@ static void LogErrorInt(const char* fmt, int value) {
 
 static void LogErrorFmt(const char* fmt, const char* detail) {
   __android_log_print(ANDROID_LOG_ERROR, kLogTag, fmt, detail);
+}
+
+/*
+ * Android discards a process's stderr, so every fprintf(stderr, ...) the QEMU
+ * and nv2a code makes is invisible here.  That matters most in exactly the
+ * cases one needs it: pgraph prints the offending value to stderr immediately
+ * before abort()ing on an unimplemented surface or texture format, so the
+ * crash arrives with no indication of which format caused it.
+ *
+ * Pump stderr through a pipe onto logcat instead.  stderr is unbuffered, so a
+ * message is in the pipe before the abort() that follows it, and the SIGABRT
+ * handler sleeps 200ms before re-raising, which is ample time for the reader
+ * thread to drain and log it.
+ */
+static void* StderrPumpThread(void* arg) {
+  int fd = static_cast<int>(reinterpret_cast<intptr_t>(arg));
+  char buf[512];
+  size_t used = 0;
+
+  for (;;) {
+    ssize_t n = read(fd, buf + used, sizeof(buf) - used);
+    if (n <= 0) {
+      if (n < 0 && errno == EINTR) continue;
+      break;
+    }
+    used += static_cast<size_t>(n);
+
+    /* Log each complete line, then keep any partial tail for the next read. */
+    size_t start = 0;
+    for (size_t i = 0; i < used; i++) {
+      if (buf[i] != '\n') continue;
+      buf[i] = '\0';
+      if (i > start) {
+        __android_log_print(ANDROID_LOG_ERROR, "hakuX-stderr", "%s",
+                            buf + start);
+      }
+      start = i + 1;
+    }
+    used -= start;
+    memmove(buf, buf + start, used);
+
+    /* A line longer than the buffer would otherwise wedge the pump. */
+    if (used == sizeof(buf)) {
+      buf[sizeof(buf) - 1] = '\0';
+      __android_log_print(ANDROID_LOG_ERROR, "hakuX-stderr", "%s", buf);
+      used = 0;
+    }
+  }
+
+  close(fd);
+  return nullptr;
+}
+
+static void RedirectStderrToLogcat() {
+  int fds[2];
+  if (pipe(fds) != 0) {
+    LogErrorInt("stderr redirect: pipe failed, errno=%d", errno);
+    return;
+  }
+
+  setvbuf(stderr, nullptr, _IONBF, 0);
+  if (dup2(fds[1], STDERR_FILENO) < 0) {
+    LogErrorInt("stderr redirect: dup2 failed, errno=%d", errno);
+    close(fds[0]);
+    close(fds[1]);
+    return;
+  }
+  close(fds[1]);
+
+  pthread_t thread;
+  int rc = pthread_create(&thread, nullptr, StderrPumpThread,
+                          reinterpret_cast<void*>(
+                              static_cast<intptr_t>(fds[0])));
+  if (rc != 0) {
+    LogErrorInt("stderr redirect: pthread_create failed, rc=%d", rc);
+    close(fds[0]);
+    return;
+  }
+  pthread_detach(thread);
+  LogInfo("stderr redirected to logcat (tag hakuX-stderr)");
 }
 
 static bool EnsureDirExists(const std::string& path) {
@@ -1028,6 +1109,7 @@ extern "C" int xemu_android_main(int argc, char** argv) {
     LogError("xemu core not linked; qemu_main missing");
     return 1;
   }
+  RedirectStderrToLogcat();
   LogInfo("xemu_android_main: qemu_init");
   auto t_init_start = SDL_GetTicks();
   qemu_init(argc, argv);
