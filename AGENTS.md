@@ -86,8 +86,19 @@ git log --format="%ad" --date=short -S "<symbol>" -- . | tail -1   # when it app
 Prerequisites are in [`android/README.md`](android/README.md). Two are missing
 from most setups and fail obscurely: **meson**, and **ninja on `PATH`**.
 
+A distribution `java-25` package under `/usr/lib/jvm` is typically a **JRE**,
+and Gradle fails on it late and obscurely:
+
+```
+Toolchain installation '/usr/lib/jvm/java-25-openjdk-amd64'
+does not provide the required capabilities: [JAVA_COMPILER]
+```
+
+Check for `bin/javac`, not `bin/java`. On this machine the JDK is at
+`~/toolchains/jdk21`.
+
 ```bash
-export JAVA_HOME=/path/to/jdk21          # 21, not 25
+export JAVA_HOME=/path/to/jdk21          # 21, not 25; must contain bin/javac
 export ANDROID_SDK_ROOT=$HOME/Android/Sdk
 export PATH="$JAVA_HOME/bin:$ANDROID_SDK_ROOT/cmake/3.30.3/bin:$HOME/.local/bin:$PATH"
 cd android && ./gradlew --no-daemon assembleDebug
@@ -112,6 +123,7 @@ Hard-won operational facts, each of which cost real time:
 | `pidof <pkg>:xemu` matches nothing | Use `ps -A -o NAME \| grep -x '<pkg>:xemu'`. |
 | ISO filenames contain spaces and parentheses | The device-side shell re-parses adb arguments; quote for *that* shell too. |
 | `e:\nxdk_pgraph_tests` accumulates across runs | Use `extract_results.py --newer-than`, with a cutoff taken from the image's own newest timestamp — the guest clock is offset from host time. |
+| `--newer-than` does **not** prove a file is fresh | Files that were not rewritten still come through it. Before concluding anything from a result, compare the FATX mtime in the pulled image against the pre-run image — a test that did not re-run keeps its old timestamp. A conclusion about `Window clip` reversed on this. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
 
 ## Verifying a change
@@ -126,6 +138,30 @@ python3 docs/testing/make_test_iso.py pgraph-smoke.iso -o probe.iso --config cfg
 python3 docs/testing/extract_results.py hdd.img -o out --newer-than <cutoff>
 python3 docs/testing/collect_results.py out -o local/results --run-id <label>
 ```
+
+```bash
+# 3. Is the test even measuring what its name says?
+python3 docs/testing/crossmatch.py out --goldens goldens/results
+```
+
+**Ask what a failing test is actually rendering before you debug it.** 328 of
+the 864 failures in the baseline sweep reproduce a *different test's* golden
+more closely than their own — see
+[`docs/investigations/cross-test-contamination.md`](docs/investigations/cross-test-contamination.md).
+Days went into "the DXT decoder is wrong" before anyone asked, and the decoder
+was fine.
+
+That signature has two causes and they need opposite fixes, so **classify with a
+pair/solo disc before theorising**: build one disc enabling the failing test plus
+the test it impersonates, and one enabling the failing test alone.
+
+| solo result | meaning |
+|---|---|
+| correct alone | contamination — earlier state leaking forward |
+| still wrong alone | a state distinction we do not implement at all |
+
+`Texture DXT` is the first, `Window clip` the second, and they looked identical
+until the discs were run.
 
 **Regression-test one suite at a time, not the full sweep.** Some pgraph tests
 are order-dependent (issue #15): a test can pass in one sweep and fail in the
