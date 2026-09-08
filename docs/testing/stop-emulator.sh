@@ -37,11 +37,21 @@ if [ -f "$LEASE" ]; then
     fi
 fi
 
+# Match ANY process belonging to the package, not just "<pkg>:xemu".  The
+# launcher activity runs as bare "<pkg>" and the emulator child may not have
+# spawned yet (or may have exited leaving the activity up); either way the app
+# is on screen holding the display.  Checking only the :xemu child missed
+# exactly that case in testing.
 stopped=""
-for serial in $(adb devices 2>/dev/null | awk 'NR>1 && $2=="device" {print $1}'); do
+# `adb devices` emits CRLF, so without stripping CR the state field is
+# "device\r", never matches, and this loop silently iterates over nothing --
+# the hook then exits 0 having done nothing, which is indistinguishable from
+# success.  This bit once; keep the tr.
+for serial in $(adb devices 2>/dev/null | tr -d '\r' |
+                awk 'NR>1 && $2=="device" {print $1}'); do
+    procs=$(adb -s "$serial" shell 'ps -A -o NAME' 2>/dev/null | tr -d '\r')
     for pkg in $PKGS; do
-        if adb -s "$serial" shell 'ps -A -o NAME' 2>/dev/null |
-               tr -d '\r' | grep -qx "$pkg:xemu"; then
+        if printf '%s\n' "$procs" | grep -qE "^${pkg}(:.*)?$"; then
             adb -s "$serial" shell am force-stop "$pkg" >/dev/null 2>&1
             stopped="$stopped $serial/$pkg"
         fi
