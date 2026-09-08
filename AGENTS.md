@@ -163,6 +163,30 @@ Hard-won operational facts, each of which cost real time:
 | A run cut off by your wait loop is not a completed run | The emulator does not exit on guest power-off (#20), so waiting for the process to die always hits your timeout. Confirm completion from the progress log's "Testing completed normally", never from the run's duration. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
 
+## Sharing one device between a long sweep and active work
+
+A full re-baseline is ~1,600 single-test runs, several hours of the only Nova.
+`docs/testing/sweep_queue.sh` works that queue so it can be preempted:
+
+```bash
+docs/testing/sweep_queue.sh start queue.txt   # queue is one Suite::Test per line
+docs/testing/sweep_queue.sh pause             # blocks until the Nova is genuinely free
+docs/testing/sweep_queue.sh resume
+docs/testing/sweep_queue.sh status
+```
+
+`pause` returns only once the runner has parked, so the device really is yours
+before you install anything. **Every `resume` reinstalls the baseline APK**, and
+each result records the APK hash that produced it — otherwise an experimental
+build installed during a pause silently measures half the queue on a different
+binary, and nothing in the results would show it.
+
+The runner holds the device lease while working, so the Stop hook defers; on
+pause it drops the lease, so the hook protects the device again.
+
+Discs are built just-in-time (`make_isolation_discs.py --build-one`) because
+1,591 ISOs would be ~9GB.
+
 ## Verifying a change
 
 ```bash

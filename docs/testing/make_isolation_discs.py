@@ -108,6 +108,33 @@ def config_for(suite_key, keep, skip, out_dir="e:/nxdk_pgraph_tests"):
     }
 
 
+def build_one(args):
+    """One disc for one test, written to --out-dir/iso.iso, plan on stdout."""
+    suite, test = args.build_one.split("::", 1)
+    skip = tests_to_skip(args.results, args.goldens, suite)
+    if test not in skip:
+        skip.append(test)
+    # Unique across the whole corpus, not just within a suite: two suites both
+    # numbering from zero overwrote each other's progress logs once already.
+    tag = hashlib.md5(args.build_one.encode()).hexdigest()[:8]
+    out_dir = f"e:/{tag}"
+    os.makedirs(args.out_dir, exist_ok=True)
+    cfg_path = os.path.join(args.out_dir, "cfg.json")
+    iso_path = os.path.join(args.out_dir, "iso.iso")
+    with open(cfg_path, "w", encoding="utf-8") as fh:
+        json.dump(config_for(suite.replace("_", " "), test, skip, out_dir), fh, indent=2)
+    r = subprocess.run(
+        [sys.executable, os.path.join(HERE, "make_test_iso.py"), args.base,
+         "-o", iso_path, "--config", cfg_path],
+        capture_output=True, text=True)
+    if r.returncode != 0:
+        print((r.stderr or r.stdout).strip()[:200], file=sys.stderr)
+        return 1
+    print(json.dumps({"suite": suite, "test": test, "guest_dir": tag,
+                      "iso": iso_path}))
+    return 0
+
+
 def build_every_test(args):
     """One disc per test in a suite, each with its own guest output directory."""
     suite = args.every_test
@@ -159,6 +186,10 @@ def main():
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--suite", action="append",
                     help="restrict to these suites (repeatable)")
+    ap.add_argument("--build-one", metavar="Suite::Test",
+                    help="build a single disc for one test and exit. Lets a long "
+                         "queue build discs just-in-time instead of writing "
+                         "thousands of ISOs up front.")
     ap.add_argument("--every-test", metavar="SUITE",
                     help="build one disc per test in SUITE rather than one per "
                          "suite, to re-measure a whole suite free of "
@@ -168,6 +199,8 @@ def main():
                          "1.1GB image per run otherwise dominates the cost.")
     args = ap.parse_args()
 
+    if args.build_one:
+        return build_one(args)
     if args.every_test:
         return build_every_test(args)
 
