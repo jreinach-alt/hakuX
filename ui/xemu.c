@@ -1575,10 +1575,28 @@ void xemu_android_resume_emulation(void)
  * SDL_main never reaches its _exit(), leaving the process alive on whatever
  * the guest drew last.  Only the UI quit path sets g_android_should_quit, so
  * a guest power-off needs this second notifier.
+ *
+ * Setting the flag is necessary but not sufficient.  qemu_init_subsystems()
+ * takes qemu_main_loop_lock on the core thread (system/runstate.c) and the
+ * QEMU main loop only ever drops it around qemu_poll_ns()
+ * (os_host_main_loop_wait, util/main-loop.c).  When main_loop_should_exit()
+ * ends the loop the lock is still held, and nothing on the exit path releases
+ * it -- on every other platform qemu_default_main() ends in exit(), so a lock
+ * owned by a dying thread costs nothing.  On Android that exit() is a plain
+ * return (system/main.c) and the process lives on, so the mutex stays owned
+ * by a thread that is about to die.  sdl2_gl_refresh() takes the same lock
+ * once per rendered frame, so the display loop parks on it within one frame
+ * of the core deciding to exit and never gets back to the test above.
+ *
+ * Hand the lock back here.  This runs on the core thread, which owns it, and
+ * after the quit flag is set, so the display loop wakes with the flag already
+ * visible -- the unlock/lock pair orders the store -- and stops on its next
+ * pass.
  */
 void xemu_android_notify_core_exited(void)
 {
     g_android_should_quit = true;
+    qemu_mutex_unlock_main_loop();
 }
 
 void xemu_android_request_exit(void)
