@@ -55,6 +55,17 @@ bisect lands on something meaningful and a reviewer can follow the reasoning.
 Group by story, not by file: a fix and the test that proves it belong together;
 a fix and an unrelated doc change do not. Push only when asked.
 
+**Stop the emulator when a run ends.** Always, including on failure and on the
+paths where you gave up. A left-running emulator holds the device at full GPU
+load; a handheld will not trickle-charge against that draw, so an abandoned run
+flattens the battery instead of merely wasting it. This is not hypothetical — a
+Nova was found looping the Crimson Skies intro long after the test that started
+it had been forgotten.
+
+```bash
+trap 'adb -s "$SERIAL" shell am force-stop "$PKG"' EXIT   # in every script
+```
+
 **Instrumentation is not free.** A `syscall(SYS_gettid)` added to the pushbuffer
 inner loop — 144,712 calls in a few seconds — throttled the emulator so badly it
 presented as a renderer deadlock, and the side-effects were investigated as

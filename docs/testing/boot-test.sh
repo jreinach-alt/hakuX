@@ -24,6 +24,11 @@ mkdir -p "$OUTDIR"
 
 a() { adb -s "$SERIAL" "$@"; }
 
+# Leave nothing running. An emulator left up holds the GPU at full load, and a
+# handheld will not trickle-charge against that draw — an abandoned run flattens
+# the battery rather than merely wasting it.
+trap 'a shell am force-stop "$PKG" >/dev/null 2>&1' EXIT INT TERM
+
 a shell am force-stop "$PKG" >/dev/null 2>&1
 # A sleeping screen minimises the app about two seconds after launch. The run
 # then looks like a crash and is not one.
