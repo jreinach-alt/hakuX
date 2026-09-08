@@ -63,7 +63,12 @@ android {
 
   buildTypes {
     debug {
-      resValue("string", "app_name", "hakuX (fork)")
+      // Distinct id and label so a debug build installs alongside the release
+      // instead of contending for the same package.  Two installs sharing a
+      // name and icon are indistinguishable in the launcher, and settings
+      // changed in one silently do not apply to the other.
+      applicationIdSuffix = ".debug"
+      resValue("string", "app_name", "hakuX (debug)")
       ndk {
         debugSymbolLevel = "NONE"
       }
