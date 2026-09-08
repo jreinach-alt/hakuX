@@ -39,20 +39,33 @@ and crossmatch cannot tell them apart:
 a suite is attributed to either cause. Build two discs: one enabling the failing
 test plus the test it impersonates, one enabling the failing test alone.
 
-### Verify a run actually happened
+### Verify a run actually happened — and how not to
 
-Extraction's `--newer-than` filter is not reliable enough to prove a file is
-fresh — files that were not rewritten still come through. Check the FATX mtime
-directly:
+This cost a wrong conclusion, so it is worth stating plainly.
 
-```python
-fs = Fatx(Qcow2(img), *PARTITIONS["E"])
-_a, c, _s = fs.resolve("nxdk_pgraph_tests/<Suite>")
-{n: mt for n, _at, _f, _sz, mt in fs.listdir(c)}
+`extract_results.py --newer-than` does not prove a file is fresh: files that
+were never rewritten come through it. The obvious fix — comparing FATX mtimes
+against the pre-run image — **is also wrong**. An image whose plasma tests
+provably never executed (the emulator stalled after a single 32x32 texture bind)
+still showed both files with advanced timestamps. Directory entries are
+rewritten for reasons unrelated to the test writing output.
+
+The only trustworthy record is the suite's own. Set `enable_progress_log: true`
+in the disc config and read `pgraph_progress_log.txt` from the results:
+
+```
+Starting [1/2] Texture DXT::DXT1_plasma_alpha_dxt1
+  Completed [1/2] 'DXT1_plasma_alpha_dxt1' in 87ms
+Starting [2/2] Texture DXT::DXT1_plasma_dxt1
+  Completed [2/2] 'DXT1_plasma_dxt1' in 80ms
+Testing completed normally, closing log.
 ```
 
-A test that did not re-run keeps its old timestamp. Both classifications below
-were confirmed this way.
+Nor can completion be inferred from how long a run took: the emulator does not
+exit on guest power-off (#20), so every disc runs to the harness timeout.
+
+Every result below has been re-taken on an unmodified build with the progress
+log enabled.
 
 ## Classified: `Texture DXT` — contamination
 
@@ -61,10 +74,11 @@ were confirmed this way.
 | pair | `DXT1_plasma_alpha`, `DXT1_plasma` | **14.86** | 0.79 |
 | solo | `DXT1_plasma` only | **0.36** ✓ | 15.35 |
 
-Mean absolute per-subpixel error, same build, same session. mtimes confirm
-`DXT1_plasma` was rewritten in the solo run (19:40:48) while the sibling was not
-(19:37:16), and the bytes changed. **One sibling running first is sufficient to
-corrupt it; alone it is correct.**
+Mean absolute per-subpixel error, same unmodified build. The progress log
+records `[1/2]`+`[2/2]` on the pair disc and `[1/1]` on the solo disc, both
+ending "Testing completed normally", and the output bytes differ between the two
+runs. **One sibling running first is sufficient to corrupt it; alone it is
+correct.**
 
 The fault is in texture data specifically, not the frame:
 
@@ -85,8 +99,10 @@ and mislabelled output.
 | pair | `rE_…`, `rI_…` | 20.55 | 0.01 |
 | solo | `rI_…` only | **20.55** | **0.01** |
 
-Byte-identical output in both runs; mtimes confirm `rI_` was genuinely re-run in
-the solo disc (19:53:20) while `rE_` was not (19:49:22).
+Byte-identical output in both runs, and the solo disc's progress log reads
+`Starting [1/1] Window clip::rI_x0y0_w0h0-x0y0_w0h0` — it ran, alone, and still
+produced `rE_`'s image. (This conclusion was first drawn from mtimes, which do
+not support it; it survived re-testing by the sound method.)
 
 `rI_` renders `rE_`'s image **even when it runs alone**. This is not leakage —
 we are ignoring the inclusive/exclusive distinction in the clip region and
@@ -148,22 +164,30 @@ the initialiser. Built and run against the pair disc:
 | unpatched | 14.86 | 0.79 |
 | per-frame cache disabled | **14.86** | **0.79** |
 
-Output was **byte-identical** (`e8b1b6086245` both times), and FATX mtimes
-confirm both tests genuinely re-ran (20:05:48). The per-frame dirty cache is not
-the mechanism.
+Output was **byte-identical** (`e8b1b6086245` both times), progress-log verified
+on a re-test. The per-frame dirty cache is not the mechanism.
 
-### Hypothesis 2, and a probe that outranks it
+### Hypothesis 2 is still open — the obvious probe destroys the experiment
 
-Rather than test the `test_and_clear` range behaviour directly, the sharper
-question is whether the content comparison would catch the change *at all*.
-Forcing `possibly_dirty = true` makes the texture hash unconditionally:
+The sharper question is whether the content comparison would catch the change at
+all, so the natural probe is to force `possibly_dirty = true` and hash the
+texture unconditionally.
 
-- if `DXT1_plasma` then renders correctly, the fault is in dirty *detection* —
-  the data was there and we failed to notice;
-- if it still renders the sibling, the bytes in VRAM at bind time really are the
-  old texture's, and the fault is upstream of the texture cache entirely.
+**That probe does not work, and it fails deceptively.** Hashing every texture on
+every bind slows the guest enough that the watchdog stops the VM
+(`STALL: frames=480 ... get==put`), and the run dies after a single 32x32
+texture bind — before either plasma test executes. The stale PNGs from the
+previous run are then extracted and compared, and the result reads exactly like
+"the probe changed nothing". It was caught only because the probe's own log
+showed one bind of the wrong size.
 
-That probe distinguishes a whole class of hypotheses in one build.
+This is the `AGENTS.md` rule about instrumentation cost, met in a new place: the
+cost did not merely perturb the measurement, it silently substituted a different
+one.
+
+A workable version needs to avoid the per-bind cost — hash only when the shape
+key matches an existing binding, or gate the probe to the DXT formats under
+test — and must be run with the progress log on so a truncated run is visible.
 
 ## Why this matters
 
