@@ -229,14 +229,24 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
             }
         }
 
-        /* Keep track of textures uploaded as signed normalized data.
-         * Those must not be remapped a second time in the fragment shader.
-         * GLES uploads as unsigned RGBA8, so detect signed via color format. */
-        if (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL) {
-            state->snorm_tex[i] =
-                color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5;
-        }
-        /* VK/desktop GL: snorm_tex left at default (false) — FIXME */
+        /* Textures whose channels reach the shader already signed, so it must
+         * not remap them again.
+         *
+         * Signedness belongs in the sampler, before filtering: the bump maps
+         * hold 0x7f and 0x80 in adjacent quadrants, neighbouring values
+         * unsigned but +127 and -128 signed. Converting after the fetch makes
+         * every boundary saturate to +/-1 instead of sweeping through zero,
+         * which is what the Vulkan path did -- this was set for OpenGL only. */
+        uint32_t sign_filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
+        const uint32_t any_signed = NV_PGRAPH_TEXFILTER0_ASIGNED |
+                                    NV_PGRAPH_TEXFILTER0_RSIGNED |
+                                    NV_PGRAPH_TEXFILTER0_GSIGNED |
+                                    NV_PGRAPH_TEXFILTER0_BSIGNED;
+        state->snorm_tex[i] =
+            ((sign_filter & any_signed) &&
+             pgraph_color_format_has_signed_variant(color_format)) ||
+            (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL &&
+             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5);
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);

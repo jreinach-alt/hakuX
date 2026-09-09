@@ -63,6 +63,16 @@ hwaddr pgraph_get_texture_phys_addr(PGRAPHState *pg, int texture_idx);
 hwaddr pgraph_get_texture_palette_phys_addr_length(PGRAPHState *pg, int texture_idx, size_t *length);
 TextureShape pgraph_get_texture_shape(PGRAPHState *pg, int texture_idx);
 bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx);
+
+/* True when this colour format can be uploaded as signed normalised data.
+ *
+ * Per-channel signedness (RSIGNED/GSIGNED/BSIGNED/ASIGNED in
+ * NV_PGRAPH_TEXFILTER0) has to be applied *before* filtering: the hardware
+ * sampler interpolates signed values. Converting after the fetch instead makes
+ * a boundary between 0x7f and 0x80 -- adjacent unsigned, opposite extremes
+ * signed -- saturate to +/-1 rather than sweep through zero. Only formats with
+ * a signed counterpart can do that; packed 5551/565 cannot. */
+bool pgraph_color_format_has_signed_variant(unsigned int color_format);
 BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format);
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape);
 

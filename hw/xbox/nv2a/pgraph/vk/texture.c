@@ -89,6 +89,36 @@ static enum S3TC_DECOMPRESS_FORMAT kelvin_format_to_s3tc_format(int color_format
     }
 }
 
+/* Signed-normalised counterpart of an unsigned format, or 0 if there is none.
+ *
+ * Used when NV_PGRAPH_TEXFILTER0 marks any channel signed. The conversion has
+ * to happen in the sampler, before filtering: the bump maps hold 0x7f and 0x80
+ * in adjacent quadrants, which are neighbouring values unsigned but +127 and
+ * -128 signed. Interpolating unsigned and converting afterwards saturates to
+ * +/-1 at every boundary instead of sweeping through zero. TextureKey includes
+ * the filter register, so a texture bound with different signedness gets its
+ * own cache entry and its own image. */
+static VkFormat kelvin_format_to_snorm(VkFormat f)
+{
+    switch (f) {
+    case VK_FORMAT_B8G8R8A8_UNORM: return VK_FORMAT_B8G8R8A8_SNORM;
+    case VK_FORMAT_R8G8B8A8_UNORM: return VK_FORMAT_R8G8B8A8_SNORM;
+    case VK_FORMAT_R8G8_UNORM:     return VK_FORMAT_R8G8_SNORM;
+    case VK_FORMAT_R8_UNORM:       return VK_FORMAT_R8_SNORM;
+    default:                       return (VkFormat)0;
+    }
+}
+
+static bool texture_wants_snorm(uint32_t filter, unsigned int color_format)
+{
+    const uint32_t any_signed = NV_PGRAPH_TEXFILTER0_ASIGNED |
+                                NV_PGRAPH_TEXFILTER0_RSIGNED |
+                                NV_PGRAPH_TEXFILTER0_GSIGNED |
+                                NV_PGRAPH_TEXFILTER0_BSIGNED;
+    return (filter & any_signed) &&
+           pgraph_color_format_has_signed_variant(color_format);
+}
+
 /* Returns the native Vulkan BC format for a DXT texture, or 0 if the format
  * is not a compressed DXT texture. Only call when BC support is available. */
 static VkFormat kelvin_format_to_native_bc(int color_format)
@@ -524,6 +554,11 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
                          : (VkFormat)0;
     if (native_bc) {
         vkf.vk_format = native_bc;
+    } else if (texture_wants_snorm(binding->key.filter, state->color_format)) {
+        VkFormat sn = kelvin_format_to_snorm(vkf.vk_format);
+        if (sn) {
+            vkf.vk_format = sn;
+        }
     }
 
     VK_LOG("upload_texture: idx=%d fmt=%d %ux%u cubemap=%d levels=%d",
@@ -1457,6 +1492,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * a surface_to_texture frame vs BC3 when no surface overlaps), the
      * cached image cannot be reused — treat it as a miss. */
     VkFormat expected_fmt = kelvin_color_format_vk_map[state.color_format].vk_format;
+    if (texture_wants_snorm(key.filter, state.color_format)) {
+        VkFormat sn = kelvin_format_to_snorm(expected_fmt);
+        if (sn) expected_fmt = sn;
+    }
     if (!surface_to_texture && r->texture_compression_bc_supported &&
         state.dimensionality != 3) {
         VkFormat bc = kelvin_format_to_native_bc(state.color_format);
@@ -1621,6 +1660,12 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                           state.dimensionality != 3)
                          ? kelvin_format_to_native_bc(state.color_format)
                          : (VkFormat)0;
+    if (!native_bc && texture_wants_snorm(key.filter, state.color_format)) {
+        VkFormat sn = kelvin_format_to_snorm(vkf.vk_format);
+        if (sn) {
+            vkf.vk_format = sn;
+        }
+    }
     if (native_bc) {
         vkf.vk_format = native_bc;
         vkf.component_map = (VkComponentMapping){

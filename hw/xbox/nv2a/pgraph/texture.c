@@ -90,6 +90,32 @@ BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format)
     return kelvin_color_format_info_map[color_format];
 }
 
+bool pgraph_color_format_has_signed_variant(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8Y8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8:
+        return true;
+    default:
+        return false;
+    }
+}
+
 bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx)
 {
     NV2AState *d = container_of(pg, NV2AState, pgraph);
