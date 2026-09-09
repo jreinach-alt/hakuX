@@ -98,6 +98,15 @@ cannot tell "this format is not decoded at all" (max 255) from "rounding"
 criterion is `perceptualdiff` — any pixel threshold used here is ours, and
 should be described as ours rather than as agreement with hardware.
 
+**Every surfaced page carries its build identity.** Commit SHA in the filename,
+in the `<title>`, and in a header block alongside the device serial, the results
+directory and the time. Two comparisons that differ only in content are
+indistinguishable at a glance otherwise, and a client that keys on filename may
+show the *first* one instead of the new one — which has happened. A page whose
+provenance is unclear is worse than no page, because it invites a decision based
+on the wrong build. `diff_specimen.py` does all of this automatically; anything
+hand-rolled must do the same.
+
 **A PR that closes or downgrades a test carries the comparison.** Same tool,
 attached to the pull request. Nobody should have to take "this now matches" on
 trust, and a reviewer who can see the frames can catch a wrong call in seconds.

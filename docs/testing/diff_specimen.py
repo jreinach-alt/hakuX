@@ -24,8 +24,10 @@ test must carry this.
 """
 import argparse
 import base64
+import datetime
 import io
 import os
+import subprocess
 import sys
 
 try:
@@ -109,12 +111,44 @@ figcaption em{display:block;color:var(--ink-3);font-size:11px}
 color:var(--ink-3)}
 .metric dd{margin:2px 0 0;font-family:var(--mono);font-size:19px;font-weight:500;
 font-variant-numeric:tabular-nums}
+.build{display:flex;flex-wrap:wrap;gap:8px 24px;margin:0 0 30px;padding:13px 17px;
+background:var(--surface);border:1px solid var(--edge);border-radius:8px}
+.build div{display:flex;flex-direction:column;gap:1px}
+.build dt{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;
+text-transform:uppercase;color:var(--ink-3)}
+.build dd{margin:0;font-family:var(--mono);font-size:13px;color:var(--ink)}
 @media(max-width:860px){.strip,.metrics{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:520px){.strip{grid-template-columns:1fr}}
 """
 
 
-def build(specs, title):
+def build_identity(results_dir):
+    """Commit, time and inputs, so two comparisons can never be confused.
+
+    A page without this is indistinguishable from the last one at a glance, and
+    a client that keys on filename may not even show it. Every published
+    comparison carries where it came from.
+    """
+    def git(*a):
+        try:
+            return subprocess.run(("git",) + a, capture_output=True, text=True,
+                                  cwd=os.path.dirname(os.path.abspath(__file__))
+                                  ).stdout.strip()
+        except Exception:
+            return ""
+    sha = git("rev-parse", "--short", "HEAD") or "unknown"
+    dirty = " +dirty" if git("status", "--porcelain") else ""
+    when = datetime.datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z")
+    rows = [("commit", sha + dirty), ("results", os.path.basename(results_dir.rstrip("/"))),
+            ("generated", when)]
+    dev = os.environ.get("SERIAL")
+    if dev:
+        rows.insert(2, ("device", dev))
+    cells = "".join(f"<div><dt>{k}</dt><dd>{v}</dd></div>" for k, v in rows)
+    return sha, f'<dl class="build">{cells}</dl>'
+
+
+def build(specs, title, identity=""):
     parts = []
     for s in specs:
         m, gain = s["m"], s["gain"]
@@ -145,6 +179,7 @@ def build(specs, title):
 <div class="wrap">
   <span class="eyebrow">hakuX &middot; pgraph accuracy harness</span>
   <h1>{title}</h1>
+  {identity}
   <p class="lede">Framebuffers from real XBOX 1.0 hardware
   (abaire/nxdk_pgraph_tests_golden_results) beside our output, with the difference
   shown at 1:1 and amplified. Small errors are invisible unamplified, which is how
@@ -195,10 +230,18 @@ def main():
     if not specs:
         print("nothing to show — every test compared is bit-identical")
         return 0
-    with open(args.output, "w", encoding="utf-8") as fh:
-        fh.write(build(specs, args.title))
-    kb = os.path.getsize(args.output) // 1024
-    print(f"wrote {args.output} ({len(specs)} specimen(s), {kb} KB)")
+    sha, identity = build_identity(args.results)
+    out = args.output
+    # Stamp the filename too: a client that keys on name will otherwise show an
+    # older page when a second comparison arrives.
+    root, ext = os.path.splitext(out)
+    if sha != "unknown" and sha not in root:
+        out = f"{root}_{sha}{ext}"
+    with open(out, "w", encoding="utf-8") as fh:
+        fh.write(build(specs, f"{args.title} {sha}".strip(), identity))
+    args.output = out
+    kb = os.path.getsize(out) // 1024
+    print(f"wrote {out} ({len(specs)} specimen(s), {kb} KB)")
     return 0
 
 
