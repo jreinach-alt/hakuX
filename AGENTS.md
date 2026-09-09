@@ -111,6 +111,31 @@ hand-rolled must do the same.
 attached to the pull request. Nobody should have to take "this now matches" on
 trust, and a reviewer who can see the frames can catch a wrong call in seconds.
 
+**A palette gate cannot see placement.** `palette_gate.py` asks whether we drew
+the hardware's colours in the hardware's proportions; it is the right first
+filter for low-palette suites and it caught a 92% solid-red render that a mean
+error called fixed. It is blind to the right colour in the wrong place, which is
+exactly what a coordinate or perturbation defect looks like. Pair it with
+`placement_gate.py`, which counts differing pixels, before calling a suite done.
+
+**Suspect the memory before the maths.** Bump map rendered ~4,900 colours where
+silicon renders four. Eight hypotheses were eliminated in the shader, the
+sampler and the coordinates before anyone dumped the bytes. Guest VRAM held a
+perfect two-colour checkerboard; what reached the GPU was 36% someone else's
+pixels. The habit that finds this quickly: dump the source and the decoded
+result to files, pull them, and *look at them as images* — a swizzle-order
+staircase in the corruption told us the loss was a contiguous tail, and its size
+(94,208 bytes) named the surface that overwrote it.
+
+**A retained GPU copy of guest memory is a write-back obligation, and it needs a
+watch.** Surfaces here are shelved or invalidated lazily: the VkImage is kept and
+written back to VRAM only if something later reads that memory. That obligation
+outlives the surface's life as a render target, so between the two the guest can
+take the memory back — and it does. Anything that defers a copy into guest
+memory must keep watching that memory until the copy lands, and must drop the
+copy if the guest writes there first: once the CPU has written a range, VRAM is
+authoritative for it.
+
 **Instrumentation is not free.** A `syscall(SYS_gettid)` added to the pushbuffer
 inner loop — 144,712 calls in a few seconds — throttled the emulator so badly it
 presented as a renderer deadlock, and the side-effects were investigated as
