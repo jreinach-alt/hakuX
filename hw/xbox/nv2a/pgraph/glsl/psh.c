@@ -1282,13 +1282,19 @@ static MString* psh_convert(struct PixelShader *ps)
 
             mstring_append_fmt(vars, "dsdt%d = bumpMat[%d] * dsdt%d;\n", i, i, i);
 
+            /* Border adjustment applies to the perturbed coordinate just as
+             * it does to every other sampling mode. BUMPENVMAP and
+             * BUMPENVMAP_LUM were the only two of eleven that skipped it. */
+            mstring_append_fmt(vars, "vec3 bumpST%d = vec3(pT%d.xy + dsdt%d, pT%d.z);\n",
+                               i, i, i, i);
+            apply_border_adjustment(ps, vars, i, "bumpST%d");
             if (ps->state->dim_tex[i] == 2) {
-                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(pT%d.xy + dsdt%d));\n",
-                    i, i, tex_remap, i, i);
+                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(bumpST%d.xy));\n",
+                    i, i, tex_remap, i);
             } else if (ps->state->dim_tex[i] == 3) {
                 // FIXME: Does hardware pass through the r/z coordinate or is it 0?
-                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, vec3(pT%d.xy + dsdt%d, pT%d.z));\n",
-                    i, i, i, i, i);
+                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, bumpST%d.xyz);\n",
+                    i, i, i);
             } else {
                 assert(!"Unhandled texture dimensions");
             }
@@ -1309,13 +1315,16 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(vars, "dsdtl%d.st = bumpMat[%d] * dsdtl%d.st;\n",
                                i, i, i);
 
+            mstring_append_fmt(vars, "vec3 bumpSTL%d = vec3(pT%d.xy + dsdtl%d.st, pT%d.z);\n",
+                               i, i, i, i);
+            apply_border_adjustment(ps, vars, i, "bumpSTL%d");
             if (ps->state->dim_tex[i] == 2) {
-                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(pT%d.xy + dsdtl%d.st));\n",
-                    i, i, tex_remap, i, i);
+                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(bumpSTL%d.xy));\n",
+                    i, i, tex_remap, i);
             } else if (ps->state->dim_tex[i] == 3) {
                 // FIXME: Does hardware pass through the r/z coordinate or is it 0?
-                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, vec3(pT%d.xy + dsdtl%d.st, pT%d.z));\n",
-                    i, i, i, i, i);
+                mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, bumpSTL%d.xyz);\n",
+                    i, i, i);
             } else {
                 assert(!"Unhandled texture dimensions");
             }
