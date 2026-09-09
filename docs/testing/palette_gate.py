@@ -46,13 +46,33 @@ def palette_of(img):
 
 
 def check(gold, ours):
-    """Return (off_palette_px, total, distinct_ours, mean_distance)."""
+    """Membership *and* distribution.
+
+    Membership alone is not a test. A render that fills the whole quad with one
+    colour from the palette scores a perfect zero off-palette while being
+    completely wrong -- that happened here, and the gate passed it: a change
+    collapsed the sample to a single texel, produced a 92% solid red square,
+    and reported 38/40. Two signals were visible and ignored: the render had
+    *fewer* colours than the hardware, and its differing-pixel count went up.
+
+    So also compare how much of the frame each palette colour covers. If
+    hardware puts 45% grey somewhere and we put none, that is a failure no
+    matter how legal our colours are.
+    """
     pal = palette_of(gold)
     flat = ours.reshape(-1, 3).astype(np.int32)
-    # Chebyshev distance to the nearest colour hardware actually produced.
     dist = np.min(np.abs(flat[:, None, :] - pal[None, :, :]).max(axis=2), axis=1)
-    return (int((dist > 0).sum()), flat.shape[0],
-            len(palette_of(ours)), float(dist.mean()))
+
+    total = flat.shape[0]
+    worst = 0.0
+    gflat = gold.reshape(-1, 3).astype(np.int32)
+    for c in pal:
+        gs = float((np.abs(gflat - c).max(axis=1) == 0).sum()) / total
+        os_ = float((np.abs(flat - c).max(axis=1) == 0).sum()) / total
+        worst = max(worst, abs(gs - os_))
+
+    return (int((dist > 0).sum()), total, len(palette_of(ours)),
+            float(dist.mean()), worst)
 
 
 def main():
@@ -88,31 +108,36 @@ def main():
         if len(pal) > args.max_palette:
             skipped += 1
             continue
-        off, total, distinct, mean = check(gold, ours)
-        rows.append((suite, test, len(pal), distinct, off, total, mean))
+        off, total, distinct, mean, skew = check(gold, ours)
+        rows.append((suite, test, len(pal), distinct, off, total, mean, skew))
 
     if not rows:
         print(f"no low-palette tests found ({skipped} continuous-tone, skipped)")
         return 0
 
     w = max(len(r[1]) for r in rows) + 1
-    print(f"{'test':<{w}} {'hw':>4} {'ours':>7} {'off-palette':>13} {'mean dist':>10}  verdict")
-    print("-" * (w + 50))
+    print(f"{'test':<{w}} {'hw':>4} {'ours':>7} {'off-palette':>13} "
+          f"{'worst area':>11}  verdict")
+    print("-" * (w + 52))
     failed = 0
-    for suite, test, npal, distinct, off, total, mean in rows:
-        ok = off == 0
+    for suite, test, npal, distinct, off, total, mean, skew in rows:
+        # A colour whose share of the frame is off by more than this is a
+        # structural difference even when every colour used is legal.
+        ok = off == 0 and skew <= 0.02
         failed += not ok
         pct = off / total * 100
+        why = "" if ok else ("  off-palette" if off else f"  area skew {skew*100:.0f}%")
         print(f"{test:<{w}} {npal:>4} {distinct:>7,} {off:>9,} {pct:>5.1f}% "
-              f"{mean:>10.2f}  {'PASS' if ok else 'FAIL'}")
+              f"{skew*100:>10.1f}%  {'PASS' if ok else 'FAIL'}{why}")
 
-    print(f"\n  {len(rows) - failed}/{len(rows)} render only colours the hardware produces")
+    print(f"\n  {len(rows) - failed}/{len(rows)} match the hardware's palette "
+          f"*and* its coverage")
     if skipped:
         print(f"  {skipped} continuous-tone test(s) skipped — gate does not apply")
     if failed:
-        print("\n  A failing test is drawing colours silicon never emits. That is a\n"
-              "  structural fault, not a precision one, and no pixel count makes it\n"
-              "  acceptable.")
+        print("\n  A failing test either draws colours silicon never emits, or covers\n"
+              "  the frame with them in the wrong proportions. Both are structural\n"
+              "  faults. Membership alone would pass a solid-colour render.")
     return 1 if failed else 0
 
 
