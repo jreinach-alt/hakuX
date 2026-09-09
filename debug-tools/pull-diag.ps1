@@ -16,6 +16,12 @@
 .PARAMETER Device
     ADB device serial (passed to adb -s). If omitted, uses default device.
 
+.PARAMETER Package
+    Installed application id. Defaults to this fork's, com.jreinach.hakux.
+    It previously defaulted to com.rfandango.haku_x - the upstream source
+    namespace rather than the installed id - so it found no sessions on a
+    device running this build.
+
 .EXAMPLE
     .\pull-diag.ps1
     .\pull-diag.ps1 -OutputDir C:\dumps -KeepOnDevice
@@ -24,11 +30,12 @@
 param(
     [string]$OutputDir = "diag_dumps",
     [switch]$KeepOnDevice,
-    [string]$Device
+    [string]$Device,
+    [string]$Package
 )
 
 $ErrorActionPreference = "Stop"
-$pkg = "com.rfandango.haku_x"
+$pkg = if ($Package) { $Package } else { "com.jreinach.hakux" }
 $deviceBase = "/data/data/$pkg/files"
 
 function Invoke-Adb {
