@@ -290,9 +290,13 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         VK_FORMAT_R16_UNORM, // FIXME
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_ZERO },
     },
+    /* Hardware forces red to 1.0 for Y16 and puts the luminance in green
+     * and blue only -- unlike Y8/AY8/A8Y8, which replicate to all three.
+     * Measured: TexFmt_Y16 golden has R=255 across the quad while G and B
+     * track the ramp exactly. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] = {
         VK_FORMAT_R16_UNORM,
-        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }
+        { VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }
     },
     /* Two 16-bit channels holding R and B.  Component order mirrors SZ_R8B8,
      * which is the same channel layout at 8 bits. */
@@ -300,9 +304,13 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         VK_FORMAT_R16G16_UNORM,
         { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }
     },
+    /* Hardware forces red to 1.0 for Y16 and puts the luminance in green
+     * and blue only -- unlike Y8/AY8/A8Y8, which replicate to all three.
+     * Measured: TexFmt_Y16 golden has R=255 across the quad while G and B
+     * track the ramp exactly. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] = {
         VK_FORMAT_R16_UNORM,
-        { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }
+        { VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] = {
         VK_FORMAT_R16G16_UNORM,

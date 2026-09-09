@@ -323,7 +323,7 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
 
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] =
         {2, false, GL_R16, GL_RED, GL_UNSIGNED_SHORT,
-         {GL_RED, GL_RED, GL_RED, GL_ONE}},
+         {GL_ONE, GL_RED, GL_RED, GL_ONE}},
     /* Two 16-bit channels holding R and B.  Component order mirrors SZ_R8B8,
      * which is the same channel layout at 8 bits. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] =
@@ -331,7 +331,7 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
          {GL_GREEN, GL_RED, GL_RED, GL_GREEN}},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] =
         {2, true, GL_R16, GL_RED, GL_UNSIGNED_SHORT,
-         {GL_RED, GL_RED, GL_RED, GL_ONE}},
+         {GL_ONE, GL_RED, GL_RED, GL_ONE}},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] =
         {4, true, GL_RG16, GL_RG, GL_UNSIGNED_SHORT,
          {GL_GREEN, GL_RED, GL_RED, GL_GREEN}},
