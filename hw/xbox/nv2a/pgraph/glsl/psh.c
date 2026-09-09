@@ -1290,32 +1290,13 @@ static MString* psh_convert(struct PixelShader *ps)
                                    i, ps->input_tex[i], ps->input_tex[i]);
             }
 
-            /* The bump matrix coefficients are in texel units, so the offset
-             * has to be divided by the texture size before it is added to a
-             * normalised coordinate. Applied raw it displaced the sample by
-             * ~0.64 of the whole image -- 160+ texels -- which is why every
-             * sub-texel correction (filter, border, perspective) measured as a
-             * no-op. Rect textures already address in texels. */
             mstring_append_fmt(vars, "dsdt%d = bumpMat[%d] * dsdt%d;\n", i, i, i);
-            if (!ps->state->rect_tex[i]) {
-                mstring_append_fmt(vars,
-                    "dsdt%d /= vec2(textureSize(texSamp%d, 0));\n", i, i);
-            }
 
             /* Border adjustment applies to the perturbed coordinate just as
              * it does to every other sampling mode. BUMPENVMAP and
              * BUMPENVMAP_LUM were the only two of eleven that skipped it. */
-            /* The bump path addresses in texel units. Linear (rect) textures
-             * already do, so only swizzled ones need the divide. */
-            if (ps->state->rect_tex[i]) {
-                mstring_append_fmt(vars,
-                    "vec3 bumpST%d = vec3(pT%d.xy + dsdt%d, pT%d.z);\n",
-                    i, i, i, i);
-            } else {
-                mstring_append_fmt(vars,
-                    "vec3 bumpST%d = vec3(pT%d.xy / vec2(textureSize(texSamp%d, 0)) + dsdt%d, pT%d.z);\n",
-                    i, i, i, i, i);
-            }
+            mstring_append_fmt(vars, "vec3 bumpST%d = vec3(pT%d.xy + dsdt%d, pT%d.z);\n",
+                               i, i, i, i);
             apply_border_adjustment(ps, vars, i, "bumpST%d");
             if (ps->state->dim_tex[i] == 2) {
                 mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(bumpST%d.xy));\n",
@@ -1341,27 +1322,11 @@ static MString* psh_convert(struct PixelShader *ps)
                                    i, ps->input_tex[i], ps->input_tex[i], ps->input_tex[i]);
             }
 
-            /* The bump matrix coefficients are in texel units, so the offset
-             * has to be divided by the texture size before it is added to a
-             * normalised coordinate. Applied raw it displaced the sample by
-             * ~0.64 of the whole image -- 160+ texels -- which is why every
-             * sub-texel correction (filter, border, perspective) measured as a
-             * no-op. Rect textures already address in texels. */
-            mstring_append_fmt(vars, "dsdtl%d.st = bumpMat[%d] * dsdtl%d.st;\n", i, i, i);
-            if (!ps->state->rect_tex[i]) {
-                mstring_append_fmt(vars,
-                    "dsdtl%d.st /= vec2(textureSize(texSamp%d, 0));\n", i, i);
-            }
+            mstring_append_fmt(vars, "dsdtl%d.st = bumpMat[%d] * dsdtl%d.st;\n",
+                               i, i, i);
 
-            if (ps->state->rect_tex[i]) {
-                mstring_append_fmt(vars,
-                    "vec3 bumpSTL%d = vec3(pT%d.xy + dsdtl%d.st, pT%d.z);\n",
-                    i, i, i, i);
-            } else {
-                mstring_append_fmt(vars,
-                    "vec3 bumpSTL%d = vec3(pT%d.xy / vec2(textureSize(texSamp%d, 0)) + dsdtl%d.st, pT%d.z);\n",
-                    i, i, i, i, i);
-            }
+            mstring_append_fmt(vars, "vec3 bumpSTL%d = vec3(pT%d.xy + dsdtl%d.st, pT%d.z);\n",
+                               i, i, i, i);
             apply_border_adjustment(ps, vars, i, "bumpSTL%d");
             if (ps->state->dim_tex[i] == 2) {
                 mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(bumpSTL%d.xy));\n",

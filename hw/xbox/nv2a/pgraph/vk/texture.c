@@ -28,7 +28,6 @@
 #include "hw/xbox/nv2a/pgraph/swizzle.h"
 #include "qemu/fast-hash.h"
 #include "qemu/lru.h"
-#include "hw/xbox/nv2a/pgraph/psh_regs.h"
 #include "renderer.h"
 #include "texture_dump.h"
 #include "texture_replace.h"
@@ -1861,15 +1860,7 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     unsigned int min_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MIN);
     assert(min_filter < ARRAY_SIZE(pgraph_texture_min_filter_vk_map));
 
-    /* A stage sampled through a bump perturbation is a dependent read. */
-    unsigned int stage_mode =
-        (pgraph_reg_r(pg, NV_PGRAPH_SHADERPROG) >> (texture_idx * 5)) & 0x1F;
-    bool dependent_read = stage_mode == PS_TEXTUREMODES_BUMPENVMAP ||
-                          stage_mode == PS_TEXTUREMODES_BUMPENVMAP_LUM;
-
-    if (dependent_read) {
-        vk_mag_filter = vk_min_filter = VK_FILTER_NEAREST;
-    } else if (is_linear_filter_supported_for_format(r, state.color_format)) {
+    if (is_linear_filter_supported_for_format(r, state.color_format)) {
         vk_mag_filter = pgraph_texture_min_filter_vk_map[mag_filter];
         vk_min_filter = pgraph_texture_min_filter_vk_map[min_filter];
     } else {
