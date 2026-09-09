@@ -1,0 +1,67 @@
+name: NV2A index
+
+# docs/testing/nv2a_index.json is derived from this tree and from the
+# nxdk_pgraph_tests sources. Committing a derived file means it can go stale,
+# and a stale index is worse than none: it answers authoritatively and wrongly,
+# which is the failure the index exists to remove. So the build checks it.
+#
+# Cheap on purpose - no compiler, no NDK, seconds not minutes.
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'hw/xbox/**'
+      - 'docs/testing/nv2a_index.py'
+      - 'docs/testing/nv2a_index.json'
+      - 'docs/testing/nv2a_issues.toml'
+      - '.github/workflows/nv2a-index.yml'
+  pull_request:
+    paths:
+      - 'hw/xbox/**'
+      - 'docs/testing/nv2a_index.py'
+      - 'docs/testing/nv2a_index.json'
+      - 'docs/testing/nv2a_issues.toml'
+      - '.github/workflows/nv2a-index.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: nv2a-index-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+
+      # The suite half of the index is derived from the test program's own
+      # source: suite names from its constructors, hardware symbols from what
+      # it pushes. pbkitplusplus carries the shared format tables that several
+      # suites iterate instead of naming a format.
+      - name: Check out the pgraph test sources
+        run: |
+          git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests \
+              "$RUNNER_TEMP/nxdk_pgraph_tests"
+          git clone --depth 1 https://github.com/abaire/pbkitplusplus \
+              "$RUNNER_TEMP/pbkitplusplus"
+
+      - name: Check the index matches the tree
+        run: |
+          python3 docs/testing/nv2a_index.py check \
+              --tests "$RUNNER_TEMP/nxdk_pgraph_tests" \
+              --support "$RUNNER_TEMP/pbkitplusplus"
+
+      # A failure above means the committed index no longer describes the
+      # tree. Regenerate and commit it with the change that moved it:
+      #
+      #   docs/testing/nv2a_index.py build \
+      #       --tests <nxdk_pgraph_tests> --support <pbkitplusplus>
+      #
+      # It is not generated during the build on purpose. Queries have to work
+      # in a fresh checkout with no network and no test sources, which is the
+      # situation an agent tracing a defect is usually in.
