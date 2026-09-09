@@ -1,4 +1,3504 @@
 {
+ "gaps": [
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/acpi_xbox.c:77",
+   "symbols": [],
+   "text": "// FIXME: Add GPIO to VM state"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/amd_smbus.c:139",
+   "symbols": [],
+   "text": "abort();"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/chihiro.c:256",
+   "symbols": [],
+   "text": "#if 0 // FIXME"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/chihiro.c:273",
+   "symbols": [],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/eeprom_generation.c:112",
+   "symbols": [],
+   "text": "// FIXME: temporarily set default London (GMT+0) time zone and English language"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/lpc47m157.c:175",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/lpc47m157.c:199",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/smbus_xbox_smc.c:193",
+   "symbols": [],
+   "text": "smc->intstatus_reg = 0; // FIXME: Confirm clear on read"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/smbus_xbox_smc.c:350",
+   "symbols": [],
+   "text": "// FIXME: Ideally this would be called on a tray state change callback (see"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xblc.c:278",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xblc.c:313",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xblc.c:371",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xbox.c:64",
+   "symbols": [],
+   "text": "/* FIXME: Clean this up and propagate errors to UI */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xbox.c:354",
+   "symbols": [],
+   "text": "/* FIXME: Stub the memory controller */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xbox_pci.c:141",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xbox_pci.c:193",
+   "symbols": [],
+   "text": "/* TODO: move to xbox-pci init */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xbox_pci.c:287",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid-gamepad.c:142",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid-gamepad.c:150",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid-gamepad.c:155",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid-gamepad.c:228",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid-gamepad.c:237",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:138",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid.c:148",
+   "symbols": [],
+   "text": "/* FIXME: This should also be a STALL */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:158",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:170",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:189",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid.c:194",
+   "symbols": [],
+   "text": "/* FIXME: ! */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid.c:198",
+   "symbols": [],
+   "text": "//FIXME: Intended for the hub: usbd_get_hub_descriptor, UT_READ_CLASS?!"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:200",
+   "symbols": [],
+   "text": "//assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid.c:204",
+   "symbols": [],
+   "text": "/* FIXME: ! */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/xid.c:213",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/xid.h:109",
+   "symbols": [],
+   "text": "uint8_t report_id; // FIXME: is this correct?"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/debug.h:43",
+   "symbols": [],
+   "text": "/* Debug prints to identify when unimplemented or unconfirmed features"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/debug.h:60",
+   "symbols": [],
+   "text": "#define NV2A_UNIMPLEMENTED(format, ...) do { \\"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/debug.h:67",
+   "symbols": [],
+   "text": "#define NV2A_UNIMPLEMENTED(...) do {} while (0)"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:86",
+   "symbols": [],
+   "text": "/* TODO: Handle targets and classes properly */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:110",
+   "symbols": [],
+   "text": "// TODO: Determine HW behavior if tiles are consecutive."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:157",
+   "symbols": [],
+   "text": "/* FIXME: This case is sometimes hit during early Xbox startup."
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/nv2a.c:158",
+   "symbols": [],
+   "text": "*        Presumably a race-condition where VGA isn't initialized, yet."
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/nv2a.c:176",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:496",
+   "symbols": [],
+   "text": "// memory_region_unref(&vga->vram); // FIXME: Is ths right?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:698",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a.c:711",
+   "symbols": [],
+   "text": "// FIXME: Split this up into subsections"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/nv2a_regs.h:1463",
+   "symbols": [],
+   "text": "* Eventually we'll probably adopt nouveau names for these internals."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/nv2a_regs.h:1503",
+   "symbols": [],
+   "text": "* FIXME: Remove NV2A_MAX_BATCH_LENGTH_V2 at some point in the future."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pfifo.c:263",
+   "symbols": [],
+   "text": "// TODO think more about locking"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pfifo.c:325",
+   "symbols": [],
+   "text": "* TODO: Check this range is correct for the nv2a */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pfifo.c:402",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pfifo.c:441",
+   "symbols": [],
+   "text": "// TODO: should we become busy here??"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pfifo.c:473",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pfifo.c:600",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pfifo.c:623",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pfifo.c:755",
+   "symbols": [],
+   "text": "/* XXX: Think this is different to what nouveau calculates... */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/prmdio.c:50",
+   "symbols": [],
+   "text": "/* FIXME: Confirm wrap-around */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/user.c:60",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/user.c:64",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/user.c:107",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/user.c:115",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/user.c:119",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:822",
+   "symbols": [
+    "NV_PGRAPH_RDI_DATA",
+    "NV_PGRAPH_RDI_INDEX",
+    "NV_PGRAPH_RDI_INDEX_ADDRESS",
+    "NV_PGRAPH_RDI_INDEX_SELECT"
+   ],
+   "text": "/* FIXME: Overflow into select? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:933",
+   "symbols": [
+    "NV_PGRAPH_CHANNEL_CTX_TRIGGER",
+    "NV_PGRAPH_RDI_DATA",
+    "NV_PGRAPH_RDI_INDEX",
+    "NV_PGRAPH_RDI_INDEX_ADDRESS",
+    "NV_PGRAPH_RDI_INDEX_SELECT"
+   ],
+   "text": "/* FIXME: Overflow into select? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1005",
+   "symbols": [
+    "NV_PGRAPH_DEBUG_3",
+    "NV_PGRAPH_DEBUG_3_HW_CONTEXT_SWITCH",
+    "NV_PGRAPH_INTR_CONTEXT_SWITCH",
+    "NV_PGRAPH_TRAPPED_ADDR",
+    "NV_PGRAPH_TRAPPED_ADDR_CHID"
+   ],
+   "text": "/* TODO: hardware context switching */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1122",
+   "symbols": [],
+   "text": "// FIXME: We need a mechanism for renderer to initialize new GL contexts"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1865",
+   "symbols": [
+    "NV_PGRAPH_INTR_ERROR",
+    "NV_PGRAPH_NSOURCE",
+    "NV_PGRAPH_NSOURCE_NOTIFICATION",
+    "NV_PGRAPH_TRAPPED_ADDR",
+    "NV_PGRAPH_TRAPPED_ADDR_CHID",
+    "NV_PGRAPH_TRAPPED_ADDR_MTHD",
+    "NV_PGRAPH_TRAPPED_ADDR_SUBCH",
+    "NV_PGRAPH_TRAPPED_DATA_LOW"
+   ],
+   "text": "NV_PGRAPH_NSOURCE_NOTIFICATION); /* TODO: check this */"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1918",
+   "symbols": [
+    "NV_PGRAPH_SURFACE",
+    "NV_PGRAPH_SURFACE_WRITE_3D"
+   ],
+   "text": "* FLIP_STALL may not be called (after pause/resume)."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:1967",
+   "symbols": [
+    "NV097_SET_CONTEXT_DMA_A",
+    "NV097_SET_CONTEXT_DMA_NOTIFIES"
+   ],
+   "text": "// TODO: these should be loading the dma objects from ramin here?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2171",
+   "symbols": [
+    "NV097_SET_FOG_MODE",
+    "NV097_SET_FOG_MODE_V_EXP",
+    "NV097_SET_FOG_MODE_V_EXP2",
+    "NV097_SET_FOG_MODE_V_LINEAR",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_EXP",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_EXP2",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_LINEAR",
+    "NV_PGRAPH_CSV0_C",
+    "NV_PGRAPH_CSV0_C_DIFFUSE",
+    "NV_PGRAPH_CSV0_C_SPECULAR",
+    "NV_PGRAPH_CSV0_D_FOG_MODE"
+   ],
+   "text": "/* FIXME: There is also NV_PGRAPH_CSV0_D_FOG_MODE */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2187",
+   "symbols": [
+    "NV097_SET_FOG_GEN_MODE",
+    "NV097_SET_FOG_MODE_V_EXP2_ABS",
+    "NV097_SET_FOG_MODE_V_EXP_ABS",
+    "NV097_SET_FOG_MODE_V_LINEAR_ABS",
+    "NV_PGRAPH_CONTROL_3",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_EXP2",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_EXP2_ABS",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_EXP_ABS",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE_LINEAR_ABS"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2209",
+   "symbols": [
+    "NV097_SET_FOG_ENABLE",
+    "NV097_SET_FOG_GEN_MODE_V_ABS_PLANAR",
+    "NV097_SET_FOG_GEN_MODE_V_FOG_X",
+    "NV097_SET_FOG_GEN_MODE_V_PLANAR",
+    "NV_PGRAPH_CSV0_D",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE_ABS_PLANAR",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE_FOG_X",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE_PLANAR",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE_RADIAL"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2218",
+   "symbols": [
+    "NV097_SET_FOG_COLOR",
+    "NV097_SET_FOG_ENABLE",
+    "NV_PGRAPH_CONTROL_3",
+    "NV_PGRAPH_CONTROL_3_FOGENABLE",
+    "NV_PGRAPH_CSV0_D",
+    "NV_PGRAPH_CSV0_D_FOGENABLE",
+    "NV_PGRAPH_CSV0_D_FOGGENMODE"
+   ],
+   "text": "FIXME: There is also:"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2556",
+   "symbols": [
+    "NV097_SET_STENCIL_OP_FAIL",
+    "NV097_SET_STENCIL_OP_V_DECR",
+    "NV097_SET_STENCIL_OP_V_INCR",
+    "NV097_SET_STENCIL_OP_V_INVERT",
+    "NV_PGRAPH_CONTROL_2",
+    "NV_PGRAPH_CONTROL_2_STENCIL_OP_V_DECR",
+    "NV_PGRAPH_CONTROL_2_STENCIL_OP_V_DECRSAT",
+    "NV_PGRAPH_CONTROL_2_STENCIL_OP_V_INCR",
+    "NV_PGRAPH_CONTROL_2_STENCIL_OP_V_INVERT"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2628",
+   "symbols": [
+    "NV097_SET_FRONT_POLYGON_MODE",
+    "NV097_SET_FRONT_POLYGON_MODE_V_FILL",
+    "NV097_SET_FRONT_POLYGON_MODE_V_LINE",
+    "NV097_SET_FRONT_POLYGON_MODE_V_POINT",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_FILL",
+    "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE",
+    "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_POINT"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2669",
+   "symbols": [
+    "NV097_SET_CULL_FACE_V_BACK",
+    "NV097_SET_CULL_FACE_V_FRONT",
+    "NV097_SET_CULL_FACE_V_FRONT_AND_BACK",
+    "NV097_SET_FRONT_FACE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_CULLCTRL",
+    "NV_PGRAPH_SETUPRASTER_CULLCTRL_BACK",
+    "NV_PGRAPH_SETUPRASTER_CULLCTRL_FRONT",
+    "NV_PGRAPH_SETUPRASTER_CULLCTRL_FRONT_AND_BACK"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2700",
+   "symbols": [
+    "NV097_SET_MATERIAL_ALPHA",
+    "NV097_SET_MATERIAL_EMISSION",
+    "NV_PGRAPH_CSV0_C",
+    "NV_PGRAPH_CSV0_C_NORMALIZATION_ENABLE"
+   ],
+   "text": "// FIXME: Verify NV_IGRAPH_XF_LTCTXA_CM_COL is correct"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2742",
+   "symbols": [
+    "NV097_SET_TEXGEN_S",
+    "NV097_SET_TEXGEN_S_NORMAL_MAP",
+    "NV097_SET_TEXGEN_S_REFLECTION_MAP",
+    "NV_PGRAPH_CSV1_A_T0_S_NORMAL_MAP",
+    "NV_PGRAPH_CSV1_A_T0_S_REFLECTION_MAP",
+    "NV_PGRAPH_CSV1_A_T0_S_SPHERE_MAP"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2866",
+   "symbols": [
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_TEXGEN_PLANE_S",
+    "NV_PGRAPH_FOGPARAM0"
+   ],
+   "text": "/* FIXME: No idea where slot = 2 is */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:2961",
+   "symbols": [],
+   "text": "// FIXME: This handling is not correct, but is distinct without crashing."
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3170",
+   "symbols": [
+    "NV097_SET_BACK_LIGHT_SPECULAR_COLOR",
+    "NV097_SET_LIGHT_AMBIENT_COLOR"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3244",
+   "symbols": [
+    "NV097_SET_LIGHT_LOCAL_ATTENUATION",
+    "NV097_SET_VERTEX4F"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3549",
+   "symbols": [
+    "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3844",
+   "symbols": [
+    "NV097_DRAW_ARRAYS",
+    "NV097_DRAW_ARRAYS_COUNT",
+    "NV097_DRAW_ARRAYS_START_INDEX",
+    "NV097_INLINE_ARRAY"
+   ],
+   "text": "/* FIXME: HW throws an exception if the start index is > 0xFFFF. This"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3902",
+   "symbols": [
+    "NV097_SET_VERTEX_DATA2F_M",
+    "NV097_SET_VERTEX_DATA4F_M"
+   ],
+   "text": "/* FIXME: Should these really be set to 0.0 and 1.0 ? Conditions? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4006",
+   "symbols": [
+    "NV097_SET_ANTI_ALIASING_CONTROL",
+    "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP",
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CULL"
+   ],
+   "text": "/* FIXME: Should raise NV_PGRAPH_NSOURCE_DATA_ERROR_PENDING */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4007",
+   "symbols": [
+    "NV097_SET_ANTI_ALIASING_CONTROL",
+    "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE",
+    "NV097_SET_ZMIN_MAX_CONTROL_ZCLAMP_EN_CLAMP",
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN",
+    "NV_PGRAPH_ZCOMPRESSOCCLUDE_ZCLAMP_EN_CLAMP"
+   ],
+   "text": "assert(!\"Invalid zclamp value\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4016",
+   "symbols": [
+    "NV097_SET_ANTI_ALIASING_CONTROL",
+    "NV097_SET_ANTI_ALIASING_CONTROL_ENABLE",
+    "NV097_SET_COLOR_CLEAR_VALUE",
+    "NV097_SET_ZSTENCIL_CLEAR_VALUE",
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_ZSTENCILCLEARVALUE"
+   ],
+   "text": "// FIXME: Handle the remaining bits (observed values 0xFFFF0000, 0xFFFF0001)"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4084",
+   "symbols": [
+    "NV097_SET_COMBINER_CONTROL",
+    "NV097_SET_SHADOW_DEPTH_FUNC",
+    "NV097_SET_SHADOW_ZSLOPE_THRESHOLD",
+    "NV_PGRAPH_COMBINECTL",
+    "NV_PGRAPH_SHADOWCTL",
+    "NV_PGRAPH_SHADOWCTL_SHADOW_ZFUNC",
+    "NV_PGRAPH_SHADOWZSLOPETHRESHOLD"
+   ],
+   "text": "assert(parameter == 0x7F800000); /* FIXME: Unimplemented */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4236",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8"
+   ],
+   "text": "assert(!\"CLEAR_SURFACE not supported for selected surface format\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4242",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8"
+   ],
+   "text": "/* FIXME: CLEAR_SURFACE seems to work like memset, so maybe we"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4250",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8"
+   ],
+   "text": "assert(!\"CLEAR_SURFACE handling for LE_X1A7R8G8B8_Z1A7R8G8B8 and LE_X1A7R8G8B8_O1A7R8G8B8 is untested\"); /* Untested */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4272",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z16",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8",
+    "NV_PGRAPH_ZSTENCILCLEARVALUE"
+   ],
+   "text": "/* FIXME: Remove bit for stencil clear? */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4293",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4303",
+   "symbols": [
+    "NV097_GET_REPORT_OFFSET"
+   ],
+   "text": "uint64_t timestamp = 0x0011223344556677; /* FIXME: Update timestamp?! */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4304",
+   "symbols": [
+    "NV097_GET_REPORT_OFFSET"
+   ],
+   "text": "uint32_t done = 0; // FIXME: Check"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:139",
+   "symbols": [],
+   "text": "/* subchannels state we're not sure the location of... */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:158",
+   "symbols": [],
+   "text": "} surface_binding_dim; // FIXME: Refactor"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:183",
+   "symbols": [],
+   "text": "bool enable_vertex_program_write; // FIXME: Not used anywhere???"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:243",
+   "symbols": [],
+   "text": "/* FIXME: Unknown size, possibly endless, 1250 will do for now */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:255",
+   "symbols": [],
+   "text": "bool clearing; // FIXME: Internal"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:314",
+   "symbols": [],
+   "text": "// FIXME: Move from here"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:318",
+   "symbols": [],
+   "text": "// FIXME: Add new function pgraph_is_texture_sampler_active()"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/pgraph.h:461",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_CENTER_CORNER_2",
+    "NV097_SET_SURFACE_FORMAT_ANTI_ALIASING_SQUARE_OFFSET_4"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:69",
+   "symbols": [],
+   "text": "assert(!\"Unexpected primitive mode\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:434",
+   "symbols": [],
+   "text": "assert(!\"Unexpected primitive mode\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/rdi.c:37",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/rdi.c:49",
+   "symbols": [],
+   "text": "assert(false); /* Untested */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:124",
+   "symbols": [
+    "NV_PGRAPH_TEXPALETTE0_LENGTH_128",
+    "NV_PGRAPH_TEXPALETTE0_LENGTH_256",
+    "NV_PGRAPH_TEXPALETTE0_LENGTH_32",
+    "NV_PGRAPH_TEXPALETTE0_LENGTH_64",
+    "NV_PGRAPH_TEXPALETTE0_OFFSET"
+   ],
+   "text": "default: assert(false); break;"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:266",
+   "symbols": [],
+   "text": "abort();"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:284",
+   "symbols": [],
+   "text": "* FIXME: Is this actually needed?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:297",
+   "symbols": [],
+   "text": "/* FIXME: What about 3D mipmaps? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:357",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8"
+   ],
+   "text": "// TODO: Investigate whether a non-1 depth is possible."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:360",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8"
+   ],
+   "text": "assert(depth == 1); /* FIXME */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:361",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8"
+   ],
+   "text": "// FIXME: only valid if control0 register allows for colorspace"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:381",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5"
+   ],
+   "text": "assert(depth == 1); /* FIXME */"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:389",
+   "symbols": [],
+   "text": "* signed values. R is probably unsigned."
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vertex.c:80",
+   "symbols": [],
+   "text": "assert(!\"Unsupported attribute type\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/blit.c:56",
+   "symbols": [],
+   "text": "assert(false && \"Unknown blit operation\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/blit.c:100",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:98",
+   "symbols": [],
+   "text": "GL_LINEAR /* TODO: Convolution filter... */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:139",
+   "symbols": [],
+   "text": "/* FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:278",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8"
+   ],
+   "text": "{2, false, GL_RGB8_SNORM, GL_RGB, GL_BYTE}, /* FIXME: This might be signed */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:303",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_DEPTH_Y16_FIXED"
+   ],
+   "text": "/* FIXME: Uses fixed-point format to match surface format hack below. */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:350",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z16"
+   ],
+   "text": "// FIXME: Map channel color"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:361",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z16",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
+   ],
+   "text": "/* FIXME: GL does not support packing floating-point Z24S8 OOTB, so for"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/debug.c:42",
+   "symbols": [],
+   "text": "assert(!\"OpenGL error detected\");                                                        \\"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/gl/debug.c:59",
+   "symbols": [],
+   "text": "* According to GL_KHR_debug this should work, therefore probably"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:177",
+   "symbols": [],
+   "text": "/* FIXME: improve interlace handling, pvideo */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:317",
+   "symbols": [],
+   "text": "// FIXME: This check against PVIDEO_SIZE_IN does not match HW behavior."
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:324",
+   "symbols": [],
+   "text": "// content is not valid, it is probably good enough to treat it as an"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:379",
+   "symbols": [],
+   "text": "/* TODO: support other color formats */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:470",
+   "symbols": [],
+   "text": "/* XXX: There's apparently a bug in some Intel OpenGL drivers for"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:594",
+   "symbols": [],
+   "text": "/* FIXME: Sanity check surface dimensions */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/display.c:640",
+   "symbols": [],
+   "text": "// FIXME: Possible race condition with pgraph, consider lock"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:96",
+   "symbols": [
+    "NV_PGRAPH_CLEARRECTX",
+    "NV_PGRAPH_CLEARRECTX_XMAX",
+    "NV_PGRAPH_CLEARRECTX_XMIN",
+    "NV_PGRAPH_CLEARRECTY",
+    "NV_PGRAPH_CLEARRECTY_YMAX",
+    "NV_PGRAPH_CLEARRECTY_YMIN"
+   ],
+   "text": "/* FIXME: Needs confirmation */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:126",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE"
+   ],
+   "text": "/* FIXME: Respect window clip?!?! */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:131",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE"
+   ],
+   "text": "/* FIXME: Maybe also disable it here? + GL implementation dependent */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:294",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE"
+   ],
+   "text": "/* FIXME: GL implementation dependent */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:337",
+   "symbols": [],
+   "text": "/* FIXME: Consider moving to PSH w/ window clip */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:391",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE",
+    "NV_PGRAPH_CONTROL_0_ZENABLE",
+    "NV_PGRAPH_CONTROL_1",
+    "NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE"
+   ],
+   "text": "// FIXME: Check PGRAPH register 0x880."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/renderer.c:243",
+   "symbols": [],
+   "text": "/* FIXME: Flush more? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/reports.c:38",
+   "symbols": [
+    "NV097_GET_REPORT_TYPE",
+    "NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT"
+   ],
+   "text": "/* FIXME: Multisampling affects this (both: OGL and Xbox GPU),"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/gl/reports.c:39",
+   "symbols": [
+    "NV097_GET_REPORT_TYPE",
+    "NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT"
+   ],
+   "text": "*        not sure if CLEARs also count"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/reports.c:41",
+   "symbols": [
+    "NV097_GET_REPORT_TYPE",
+    "NV097_GET_REPORT_TYPE_ZPASS_PIXEL_CNT"
+   ],
+   "text": "/* FIXME: What about clipping regions etc? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/reports.c:83",
+   "symbols": [],
+   "text": "/* FIXME: Does this have a value in parameter? Also does this (also?) modify"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:43",
+   "symbols": [],
+   "text": "assert(!\"Invalid primitive_mode\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:222",
+   "symbols": [],
+   "text": "assert(!\"Invalid shader module kind\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:653",
+   "symbols": [],
+   "text": "/* FIXME: Make this configurable */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:669",
+   "symbols": [],
+   "text": "/* FIXME: Make this configurable */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:689",
+   "symbols": [],
+   "text": "pgraph_gl_shader_write_cache_reload_list(pg); // FIXME: also flushes, rename for clarity"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:784",
+   "symbols": [],
+   "text": "/* program_size might be zero on some systems, if no binary formats are supported */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:861",
+   "symbols": [],
+   "text": "// FIXME: Dirty tracking"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:862",
+   "symbols": [],
+   "text": "// FIXME: Consider UBO to align with VK renderer"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:938",
+   "symbols": [],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:957",
+   "symbols": [],
+   "text": "/* FIXME: Does this apply to CLEARs too? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1076",
+   "symbols": [],
+   "text": "// FIXME: Better checks/handling on formats and surface-texture compat"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1082",
+   "symbols": [],
+   "text": "// FIXME: Support zeta to color"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1381",
+   "symbols": [],
+   "text": "// FIXME: Better checks/handling on formats and surface-texture compat"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1393",
+   "symbols": [],
+   "text": "// FIXME: Support zeta to color"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1398",
+   "symbols": [],
+   "text": "// FIXME: Support rendering surface to cubemap face"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1403",
+   "symbols": [],
+   "text": "// FIXME: Support rendering surface to mip levels"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2267",
+   "symbols": [],
+   "text": "/* FIXME: Allocate big buffer up front and re-alloc if necessary."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2268",
+   "symbols": [],
+   "text": "* FIXME: Consider swizzle in shader"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2294",
+   "symbols": [],
+   "text": "/* FIXME: Replace this with a hw accelerated version */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2343",
+   "symbols": [],
+   "text": "/* FIXME: Respect write enable at last TOU? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2464",
+   "symbols": [],
+   "text": "// FIXME: Don't query GL for texture binding"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2468",
+   "symbols": [],
+   "text": "// FIXME: Replace with FBO to not disturb current state"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2488",
+   "symbols": [],
+   "text": "/* FIXME: Replace this scaling */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2625",
+   "symbols": [],
+   "text": "abort();"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2721",
+   "symbols": [],
+   "text": "/* FIXME: Support same color/zeta surface target? In the mean time,"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2727",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2793",
+   "symbols": [],
+   "text": "/* FIXME: Refactor */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2846",
+   "symbols": [],
+   "text": "/* FIXME: Refactor */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2901",
+   "symbols": [],
+   "text": "/* FIXME: Cannot monitor for reads/writes; flush now */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3020",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE"
+   ],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3071",
+   "symbols": [],
+   "text": "// FIXME: We should download all surfaces to ram, but need to"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:663",
+   "symbols": [],
+   "text": "/* FIXME: Color channels might be wrong order */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:685",
+   "symbols": [],
+   "text": "/* FIXME: What happens if texture is disabled but stage is active? */"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:707",
+   "symbols": [
+    "NV_PGRAPH_BORDERCOLOR0",
+    "NV_PGRAPH_TEXADDRESS0",
+    "NV_PGRAPH_TEXCTL0_0",
+    "NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY",
+    "NV_PGRAPH_TEXFILTER0",
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "if (filter & NV_PGRAPH_TEXFILTER0_ASIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_ASIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:708",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV_PGRAPH_BORDERCOLOR0",
+    "NV_PGRAPH_TEXADDRESS0",
+    "NV_PGRAPH_TEXCTL0_0",
+    "NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY",
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "if (filter & NV_PGRAPH_TEXFILTER0_RSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_RSIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:709",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV_PGRAPH_BORDERCOLOR0",
+    "NV_PGRAPH_TEXCTL0_0",
+    "NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY",
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "if (filter & NV_PGRAPH_TEXFILTER0_GSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_GSIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:710",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV_PGRAPH_TEXCTL0_0",
+    "NV_PGRAPH_TEXCTL0_0_MAX_ANISOTROPY",
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "if (filter & NV_PGRAPH_TEXFILTER0_BSIGNED) NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_BSIGNED\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:824",
+   "symbols": [],
+   "text": "// FIXME: Restructure to support rendering surfaces to cubemap faces"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:971",
+   "symbols": [],
+   "text": "assert(!\"Invalid format\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1005",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1083",
+   "symbols": [],
+   "text": "// FIXME: Consider preserving the border."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1130",
+   "symbols": [],
+   "text": "// FIXME: Consider preserving the border."
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1270",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1310",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/vertex.c:161",
+   "symbols": [
+    "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/gl/vertex.c:243",
+   "symbols": [],
+   "text": "/* FIXME: Double check */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:127",
+   "symbols": [],
+   "text": "assert(false && \"Unknown blit operation\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:196",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/buffer.c:366",
+   "symbols": [],
+   "text": "// FIXME: Add fallback path for device using host mapped memory"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/compile_worker.c:46",
+   "symbols": [],
+   "text": "assert(!\"Invalid shader module kind\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:43",
+   "symbols": [],
+   "text": "VK_FILTER_LINEAR /* TODO: Convolution filter... */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:84",
+   "symbols": [],
+   "text": "/* FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:270",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_DEPTH_Y16_FIXED"
+   ],
+   "text": "VK_FORMAT_R16_UNORM, // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:274",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_DEPTH_Y16_FIXED"
+   ],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:280",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED"
+   ],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:286",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16"
+   ],
+   "text": "VK_FORMAT_R16_UNORM, // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:290",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8"
+   ],
+   "text": "VK_FORMAT_R16_UNORM, // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:344",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5"
+   ],
+   "text": "// FIXME: Force alpha to zero"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:359",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8"
+   ],
+   "text": "// FIXME: Force alpha to zero"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:374",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_B8",
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8"
+   ],
+   "text": "// FIXME: Map channel color"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:382",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8"
+   ],
+   "text": "// FIXME: Map channel color"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:395",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z16",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
+   ],
+   "text": "// FIXME: Actually support stored float format"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/display.c:253",
+   "symbols": [],
+   "text": "// FIXME: Dirty tracking. We don't necessarily need to upload so much."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/display.c:1342",
+   "symbols": [],
+   "text": "// FIXME: This check against PVIDEO_SIZE_IN does not match HW behavior."
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/vk/display.c:1349",
+   "symbols": [],
+   "text": "// content is not valid, it is probably good enough to treat it as an"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/display.c:1366",
+   "symbols": [],
+   "text": "/* TODO: support other color formats */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/display.c:1428",
+   "symbols": [],
+   "text": "int display_size_loc = uniform_index(l, \"display_size\");  // FIXME: Cache"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:360",
+   "symbols": [],
+   "text": "assert(!\"Invalid primitive_mode\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1220",
+   "symbols": [],
+   "text": "// FIXME: If nothing was dirty, don't even try creating the key or hashing."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1576",
+   "symbols": [
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE"
+   ],
+   "text": "// FIXME: Dither"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1579",
+   "symbols": [
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE"
+   ],
+   "text": "// FIXME: point size"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1580",
+   "symbols": [
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE"
+   ],
+   "text": "// FIXME: Edge Antialiasing"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1585",
+   "symbols": [
+    "NV_PGRAPH_ANTIALIASING",
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_DITHERENABLE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE",
+    "NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE"
+   ],
+   "text": "// FIXME: VK_EXT_line_rasterization"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1590",
+   "symbols": [
+    "NV_PGRAPH_ANTIALIASING_ENABLE",
+    "NV_PGRAPH_SETUPRASTER",
+    "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE",
+    "NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE"
+   ],
+   "text": "// FIXME: No direct analog. Just do it with MSAA."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1723",
+   "symbols": [],
+   "text": "// FIXME: Partial updates"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1788",
+   "symbols": [],
+   "text": "// FIXME: We should handle this. Make the query buffer bigger, but at least"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1850",
+   "symbols": [],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2627",
+   "symbols": [],
+   "text": "// FIXME: Refactor below"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2663",
+   "symbols": [],
+   "text": "// FIXME: Add more metrics for determining command buffer 'fullness' and"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3116",
+   "symbols": [],
+   "text": "/* FIXME: Consider moving to PSH w/ window clip */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5167",
+   "symbols": [
+    "NV097_CLEAR_SURFACE_COLOR",
+    "NV097_CLEAR_SURFACE_STENCIL",
+    "NV097_CLEAR_SURFACE_Z"
+   ],
+   "text": "// FIXME: If doing a full surface clear, mark the surface for full clear"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5300",
+   "symbols": [],
+   "text": "// FIXME: What does hardware do when min >= max?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5301",
+   "symbols": [],
+   "text": "// FIXME: What does hardware do when min >= surface size?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5403",
+   "symbols": [
+    "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F"
+   ],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5452",
+   "symbols": [],
+   "text": "/* FIXME: Does this apply to CLEARs too? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5605",
+   "symbols": [],
+   "text": "// FIXME: SIMD memcpy"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5606",
+   "symbols": [],
+   "text": "// FIXME: Caching"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5607",
+   "symbols": [],
+   "text": "// FIXME: Account for only what is drawn"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5954",
+   "symbols": [],
+   "text": "/* FIXME: Double check */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/glsl.c:258",
+   "symbols": [],
+   "text": "// XXX: Note emit_nonsemantic_shader_debug_source actually does nothing"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/glsl.c:403",
+   "symbols": [],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/image.c:311",
+   "symbols": [],
+   "text": "assert(!\"unsupported layout transition!\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/instance.c:418",
+   "symbols": [],
+   "text": "// FIXME: Support independent graphics, compute queues"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/instance.c:524",
+   "symbols": [],
+   "text": "// FIXME: Check formats"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/instance.c:525",
+   "symbols": [],
+   "text": "// FIXME: Check vram"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:1324",
+   "symbols": [],
+   "text": "/* TODO: implement depth download via diag path */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/renderer.h:1276",
+   "symbols": [],
+   "text": "// FIXME: Merge these into a structure"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/shaders.c:954",
+   "symbols": [],
+   "text": "assert(!\"Invalid shader module kind\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:1256",
+   "symbols": [],
+   "text": "// @TODO: move stbi__convert_format to here"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:1282",
+   "symbols": [],
+   "text": "// @TODO: move stbi__convert_format16 to here"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:1283",
+   "symbols": [],
+   "text": "// @TODO: special case RGB-to-Y (and RGBA-to-YA) for 8-bit-to-16-bit case to keep more precision"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:3190",
+   "symbols": [],
+   "text": "z->spec_end   = stbi__get8(z->s); // should be 63, but might be 0"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:4793",
+   "symbols": [],
+   "text": "// on the data being untouched, but could probably be done"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:5787",
+   "symbols": [],
+   "text": "// some people claim that the most significant bit might be used for alpha"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:5820",
+   "symbols": [],
+   "text": "STBI_NOTUSED(tga_x_origin); // @TODO"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/stb_image.h:5821",
+   "symbols": [],
+   "text": "STBI_NOTUSED(tga_y_origin); // @TODO"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:26",
+   "symbols": [],
+   "text": "// TODO: Float depth format (low priority, but would be better for accuracy)"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:193",
+   "symbols": [],
+   "text": "assert(!\"Unsupported host fmt\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:404",
+   "symbols": [],
+   "text": "// FIXME: Smarter workgroup size calculation could factor in multiple"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:506",
+   "symbols": [],
+   "text": "// FIXME: Smarter workgroup scaling"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:520",
+   "symbols": [],
+   "text": "// FIXME: Check max group count"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface-compute.c:582",
+   "symbols": [],
+   "text": "// FIXME: Smarter workgroup scaling"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:44",
+   "symbols": [],
+   "text": "const int num_invalid_surfaces_to_keep = 10;  // FIXME: Make automatic"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:59",
+   "symbols": [],
+   "text": "// FIXME: It's just flush"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:86",
+   "symbols": [],
+   "text": "return d->pgraph.surface_scale_factor; // FIXME: Move internal to renderer"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:99",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE"
+   ],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:113",
+   "symbols": [],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:931",
+   "symbols": [],
+   "text": "// FIXME: Verify output of depth stencil conversion"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:1173",
+   "symbols": [],
+   "text": "// FIXME: Respect write enable at last TOU?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2682",
+   "symbols": [],
+   "text": "abort();"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2692",
+   "symbols": [],
+   "text": "// FIXME: Support float 16,24b float format surface"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2802",
+   "symbols": [],
+   "text": "// FIXME: We don't need to be so aggressive flushing the command list"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2813",
+   "symbols": [],
+   "text": "// FIXME: Support same color/zeta surface target? In the mean time,"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2818",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2885",
+   "symbols": [],
+   "text": "// FIXME: Refactor"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:2957",
+   "symbols": [],
+   "text": "// FIXME: Refactor"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3002",
+   "symbols": [],
+   "text": "// FIXME: Cannot monitor for reads/writes; flush now"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3017",
+   "symbols": [],
+   "text": "// FIXME: Move to common?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3201",
+   "symbols": [],
+   "text": "pgraph_vk_reload_surface_scale_factor(pg); // FIXME: Move internal"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3228",
+   "symbols": [],
+   "text": "// FIXME: We should download all surfaces to ram, but need to"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:55",
+   "symbols": [],
+   "text": "assert(0 < idx && idx < ARRAY_SIZE(pgraph_texture_addr_vk_map));"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:59",
+   "symbols": [],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:60",
+   "symbols": [],
+   "text": "// FIXME: We can shrink the size of this structure"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:61",
+   "symbols": [],
+   "text": "// FIXME: Use simple allocator"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:77",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8"
+   ],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:88",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:108",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8"
+   ],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:121",
+   "symbols": [],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:158",
+   "symbols": [],
+   "text": "// FIXME: Move to common"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:159",
+   "symbols": [],
+   "text": "// FIXME: More refactoring"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:160",
+   "symbols": [],
+   "text": "// FIXME: Possible parallelization of decoding"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:161",
+   "symbols": [],
+   "text": "// FIXME: Bounds checking"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:332",
+   "symbols": [],
+   "text": "// FIXME: Consider preserving the border."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:340",
+   "symbols": [],
+   "text": "// FIXME: Crop by 4 pixels on each side"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:508",
+   "symbols": [],
+   "text": "// FIXME: Make sure we update sampler when data matches. Should we add filtering"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1633",
+   "symbols": [],
+   "text": "assert(0 < state.dimensionality);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1790",
+   "symbols": [],
+   "text": "// FIXME: Handle custom color in shader"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1803",
+   "symbols": [
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_ASIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1805",
+   "symbols": [
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_MAG",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_RSIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1807",
+   "symbols": [
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_MAG",
+    "NV_PGRAPH_TEXFILTER0_MIN",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_GSIGNED\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/vk/texture.c:1809",
+   "symbols": [
+    "NV_PGRAPH_TEXFILTER0_ASIGNED",
+    "NV_PGRAPH_TEXFILTER0_BSIGNED",
+    "NV_PGRAPH_TEXFILTER0_GSIGNED",
+    "NV_PGRAPH_TEXFILTER0_MAG",
+    "NV_PGRAPH_TEXFILTER0_MIN",
+    "NV_PGRAPH_TEXFILTER0_RSIGNED"
+   ],
+   "text": "NV2A_UNIMPLEMENTED(\"NV_PGRAPH_TEXFILTER0_BSIGNED\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/vk/vertex.c:235",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:106",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z16",
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8",
+    "NV_PGRAPH_ZCLIPMAX",
+    "NV_PGRAPH_ZCLIPMIN"
+   ],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:50",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE",
+    "NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH"
+   ],
+   "text": "/* FIXME: Missing support for 2-sided-poly mode */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:64",
+   "symbols": [],
+   "text": "/* FIXME: Missing support for 2-sided-poly mode */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:113",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:37",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8"
+   ],
+   "text": "// TODO: https://github.com/xemu-project/xemu/issues/2260"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:210",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED("
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:223",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV_PGRAPH_TEXFILTER0",
+    "NV_PGRAPH_TEXFILTER0_MIN"
+   ],
+   "text": "/* VK/desktop GL: snorm_tex left at default (false) \u2014 FIXME */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:229",
+   "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV_PGRAPH_TEXFILTER0",
+    "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL",
+    "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_GAUSSIAN_3",
+    "NV_PGRAPH_TEXFILTER0_CONVOLUTION_KERNEL_QUINCUNX",
+    "NV_PGRAPH_TEXFILTER0_MIN",
+    "NV_PGRAPH_TEXFILTER0_MIN_CONVOLUTION_2D_LOD0"
+   ],
+   "text": "/* FIXME: We do not distinguish between min and mag when"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:259",
+   "symbols": [
+    "NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
+   ],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:393",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:411",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:423",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:456",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:488",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:671",
+   "symbols": [],
+   "text": "// FIXME: Cleanup"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:688",
+   "symbols": [],
+   "text": "assert(!\"Unhandled texture dimensions\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:696",
+   "symbols": [],
+   "text": "assert(!\"Shadow map support not implemented for this mode\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:700",
+   "symbols": [],
+   "text": "assert(!\"Unhandled texture dimensions\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:719",
+   "symbols": [],
+   "text": "assert(!\"Shadow map support not implemented for this mode\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:731",
+   "symbols": [],
+   "text": "assert(!\"Shadow map support not implemented for this mode\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:967",
+   "symbols": [],
+   "text": "\"    return col.rgb;\\n\" // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:970",
+   "symbols": [],
+   "text": "\"    return col.rgb;\\n\" // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:973",
+   "symbols": [],
+   "text": "\"    return col.rgb;\\n\" // FIXME"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1181",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED(\"Dot Mapping mode %s\", dotmap_func);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1214",
+   "symbols": [],
+   "text": "assert(!\"Unhandled texture dimensions\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1258",
+   "symbols": [],
+   "text": "/* Input color channels already signed (FIXME: May not always want signed textures in this case) */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1262",
+   "symbols": [],
+   "text": "/* Convert to signed (FIXME: loss of accuracy due to filtering/interpolation) */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1273",
+   "symbols": [],
+   "text": "// FIXME: Does hardware pass through the r/z coordinate or is it 0?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1277",
+   "symbols": [],
+   "text": "assert(!\"Unhandled texture dimensions\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1284",
+   "symbols": [],
+   "text": "/* Input color channels already signed (FIXME: May not always want signed textures in this case) */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1288",
+   "symbols": [],
+   "text": "/* Convert to signed (FIXME: loss of accuracy due to filtering/interpolation) */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1300",
+   "symbols": [],
+   "text": "// FIXME: Does hardware pass through the r/z coordinate or is it 0?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1304",
+   "symbols": [],
+   "text": "assert(!\"Unhandled texture dimensions\");"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1314",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED(\"PS_TEXTUREMODES_BRDF\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1334",
+   "symbols": [],
+   "text": "// FIXME: mstring_append_fmt(vars, \"gl_FragDepth = t%d.x;\\n\", i);"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1433",
+   "symbols": [],
+   "text": "NV2A_UNIMPLEMENTED(\"PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1437",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1483",
+   "symbols": [],
+   "text": "assert(!\"Unhandled key mode.\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1540",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1808",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE",
+    "NV_PGRAPH_ZOFFSETFACTOR"
+   ],
+   "text": "/* FIXME: for w-buffering, polygon slope in screen-space is"
+  },
+  {
+   "kind": "STUB",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/psh.c:1813",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_0",
+    "NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE",
+    "NV_PGRAPH_ZOFFSETFACTOR"
+   ],
+   "text": "NV2A_UNIMPLEMENTED(\"NV_PGRAPH_ZOFFSETFACTOR only partially implemented for w-buffering\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:165",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:186",
+   "symbols": [],
+   "text": "/* FIXME: could be nicer if some channels share the same texgen */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:188",
+   "symbols": [],
+   "text": "/* TODO: TexGen View Model missing! */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:207",
+   "symbols": [],
+   "text": "/* FIXME: u, r and m only have to be calculated once */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:209",
+   "symbols": [],
+   "text": "//FIXME: tNormal before or after normalization? Always normalize?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:212",
+   "symbols": [],
+   "text": "/* FIXME: This would consume 1 division fewer and *might* be"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:227",
+   "symbols": [],
+   "text": "/* FIXME: u and r only have to be calculated once, can share the one from SPHERE_MAP */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:240",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:260",
+   "symbols": [],
+   "text": "//FIXME: Do 2 passes if we want 2 sided-lighting?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:310",
+   "symbols": [],
+   "text": "\"  if (d <= lightLocalRange(%d)) {\\n\"  /* FIXME: Double check that range is inclusive */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:361",
+   "symbols": [],
+   "text": "\"      attenuation *= spotDirDotVP + spotDir.w;\\n\" /* FIXME: lightSpotFalloff */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:366",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:419",
+   "symbols": [],
+   "text": "/* TODO: Implement two-sided lighting */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:452",
+   "symbols": [],
+   "text": "/* FIXME: Do we have to clamp here? */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:469",
+   "symbols": [],
+   "text": "assert(!\"Invalid foggen mode\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c:256",
+   "symbols": [],
+   "text": "return r; //FIXME: = c_reg?!"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c:326",
+   "symbols": [],
+   "text": "//FIXME: does this really require the \"correction\" doe in convert_c_register?!"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c:334",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c:383",
+   "symbols": [],
+   "text": "assert(!\"TODO: Emulate writeable const registers\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:112",
+   "symbols": [
+    "NV_PGRAPH_CSV0_C",
+    "NV_PGRAPH_CSV0_C_SPECULAR_ENABLE",
+    "NV_PGRAPH_CSV0_D",
+    "NV_PGRAPH_CSV0_D_MODE"
+   ],
+   "text": "vsh->surface_scale_factor = pg->surface_scale_factor; // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:147",
+   "symbols": [
+    "NV_PGRAPH_CONTROL_3",
+    "NV_PGRAPH_CONTROL_3_FOGENABLE",
+    "NV_PGRAPH_CONTROL_3_FOG_MODE",
+    "NV_PGRAPH_CONTROL_3_SHADEMODE",
+    "NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH"
+   ],
+   "text": "/*FIXME: Use CSV0_D? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:317",
+   "symbols": [],
+   "text": "/* FIXME: Is the fog still calculated / passed somehow?! */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:321",
+   "symbols": [],
+   "text": "/* FIXME: Does foggen do something here? Let's do some tracking.."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:330",
+   "symbols": [],
+   "text": "/* FIXME: Do this per pixel? */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:373",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.h:51",
+   "symbols": [],
+   "text": "unsigned int surface_scale_factor;  // FIXME: Remove"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/thirdparty/gloffscreen/common.c:39",
+   "symbols": [],
+   "text": "/* TODO: weird strides */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/aci.c:77",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/apu.c:364",
+   "symbols": [],
+   "text": "assert(!\"SDL_OpenAudioDevice failed\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/apu.c:419",
+   "symbols": [],
+   "text": "qemu_mutex_lock(&d->lock); // FIXME: Can fail if thread is pegged, add flag"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/apu.c:424",
+   "symbols": [],
+   "text": "// FIXME: Reset DSP state"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/apu.c:497",
+   "symbols": [],
+   "text": "// FIXME: Remove unnecessary fields"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/apu_regs.h:81",
+   "symbols": [],
+   "text": "#   define NV_PAPU_GPOFBASE0_VALUE                          0x00FFFFFF // FIXME: Use ffff00 mask but shift appropriately"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/apu_regs.h:336",
+   "symbols": [],
+   "text": "#define ADPCM_SAMPLES_PER_BLOCK 64 // FIXME: Should be 65? Check interpolation"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/hrtf.h:78",
+   "symbols": [],
+   "text": "// FIXME: Match hardware parameter transition"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:41",
+   "symbols": [],
+   "text": "// FIXME: Check notify enable"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:42",
+   "symbols": [],
+   "text": "// FIXME: Set NV1BA0_NOTIFICATION_STATUS_IN_PROGRESS when appropriate"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:45",
+   "symbols": [],
+   "text": "// FIXME: Refactor this out of here"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:46",
+   "symbols": [],
+   "text": "// FIXME: Actually provied current envelope state"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:215",
+   "symbols": [],
+   "text": "// FIXME: Should set CBO here?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:218",
+   "symbols": [],
+   "text": "d->vp.ssl[selected_handle].ssl_seg = 0; // FIXME: verify this"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:219",
+   "symbols": [],
+   "text": "d->vp.ssl[selected_handle].ssl_index = 0; // FIXME: verify this"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:240",
+   "symbols": [],
+   "text": "// FIXME: Will count be overwritten in other cases too?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:261",
+   "symbols": [],
+   "text": "// FIXME: Will count be overwritten in other cases too?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:276",
+   "symbols": [],
+   "text": "// FIXME: What if already in release? Restart envelope?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:277",
+   "symbols": [],
+   "text": "// FIXME: Should release count ascend or descend?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:358",
+   "symbols": [],
+   "text": "// FIXME: Xbox software seems to reliably set voice HRTF handles"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:442",
+   "symbols": [],
+   "text": "// FIXME: Is there an upper limit for the SGE table size?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:443",
+   "symbols": [],
+   "text": "// FIXME: NV_PAPU_VPSGEADDR is probably bad, as outbuf SGE use the same"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:457",
+   "symbols": [],
+   "text": "//FIXME: Use NV1BA0_PIO_SET_OUTBUF_BA_ADDRESS = 0x007FFF00 ?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:460",
+   "symbols": [],
+   "text": "//assert(false); //FIXME: Enable assert! no idea what this reg does"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:465",
+   "symbols": [],
+   "text": "//FIXME: Use NV1BA0_PIO_SET_OUTBUF_LEN_VALUE = 0x007FFF00 ?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:468",
+   "symbols": [],
+   "text": "//assert(false); //FIXME: Enable assert! no idea what this reg does"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:475",
+   "symbols": [],
+   "text": "// FIXME: Is there an upper limit for the SGE table size?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:476",
+   "symbols": [],
+   "text": "// FIXME: NV_PAPU_VPSGEADDR is probably bad, as inbuf SGE use the same"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:504",
+   "symbols": [],
+   "text": "// FIXME: Refactor into above"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:528",
+   "symbols": [],
+   "text": "// FIXME: Entries are 64b, assuming they are stored"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:567",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:571",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:645",
+   "symbols": [],
+   "text": "/* TODO: these should instead be queueing up fe commands */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:654",
+   "symbols": [],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:689",
+   "symbols": [],
+   "text": "voice_set_mask(d, v, lvl_reg, lvl_mask, 0x00); // FIXME: Confirm this?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:709",
+   "symbols": [],
+   "text": "// FIXME: [division by zero]"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:716",
+   "symbols": [],
+   "text": "// FIXME: Overflow in hardware"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:717",
+   "symbols": [],
+   "text": "//       The actual value seems to overflow, but not sure how"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:722",
+   "symbols": [],
+   "text": "// FIXME: Comparison could also be the other way around?! Test please."
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:728",
+   "symbols": [],
+   "text": "count = hold_time * 16; // FIXME: Skip next phase if count is 0?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:761",
+   "symbols": [],
+   "text": "// FIXME: Decay should return a value no less than sustain"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:766",
+   "symbols": [],
+   "text": "// FIXME: This formula and threshold is not accurate, but I can't"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:772",
+   "symbols": [],
+   "text": "// FIXME: Should we still update lvl?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:787",
+   "symbols": [],
+   "text": "0x00); // FIXME: is this only set to 0 once or forced to zero?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:804",
+   "symbols": [],
+   "text": "// FIXME: Appears to be an exponential but unsure about actual"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:807",
+   "symbols": [],
+   "text": "// FIXME: Based on sustain level or just decay of current level?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:808",
+   "symbols": [],
+   "text": "// FIXME: Update level? A very similar, alternative decay function"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:809",
+   "symbols": [],
+   "text": "// (probably what the hw actually does): y(t)=2^(-10t), which would"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:815",
+   "symbols": [],
+   "text": "count--; // FIXME: Should release count ascend or descend?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:828",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:868",
+   "symbols": [],
+   "text": "NV_PAVS_VOICE_CFG_FMT_LINKED); /* FIXME? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:886",
+   "symbols": [],
+   "text": "int16_t adpcm_decoded[65*2]; // FIXME: Move out of here"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:888",
+   "symbols": [],
+   "text": "// FIXME: Only update if necessary"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:903",
+   "symbols": [],
+   "text": "// This is probably cleared when the first sample is played"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:904",
+   "symbols": [],
+   "text": "// FIXME: How will this behave if CBO > EBO on first play?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:905",
+   "symbols": [],
+   "text": "// FIXME: How will this behave if paused?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:915",
+   "symbols": [],
+   "text": "// FIXME: Confirm. Unsure if this should wait until end of SSL or"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:971",
+   "symbols": [],
+   "text": "ebo = seg_len - 1; // FIXME: Confirm seg_len-1 is last valid sample index"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1006",
+   "symbols": [],
+   "text": "// FIXME: Restructure this loop"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1020",
+   "symbols": [],
+   "text": "block_size); // FIXME: Use idiomatic DMA function"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1074",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1167",
+   "symbols": [],
+   "text": "// FIXME: Don't do 2ch resampling if this is a mono voice"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1172",
+   "symbols": [],
+   "text": "assert(0);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1409",
+   "symbols": [],
+   "text": "// FIXME: If phase negations means to flip the signal upside down"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1424",
+   "symbols": [],
+   "text": "// FIXME: Move to function"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1435",
+   "symbols": [],
+   "text": "// FIXME: Cutoff modulation via NV_PAVS_VOICE_CFG_ENV1_EF_FCSCALE"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1462",
+   "symbols": [],
+   "text": "// FIXME: ParaEQ"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1468",
+   "symbols": [],
+   "text": "// FIXME: Not sure if submix/voice headroom factor in for HRTF"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1488",
+   "symbols": [],
+   "text": "* TODO: Are the 2D, 3D and MP voice lists merely a DirectSound"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1686",
+   "symbols": [],
+   "text": "// TODO: To simplify submix scheduling, we make a few assumptions based"
+  },
+  {
+   "kind": "HEDGE",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1688",
+   "symbols": [],
+   "text": "// multipass sources suggests the hardware may not be so strict. We'll"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.h:82",
+   "symbols": [],
+   "text": "// FIXME: Where are these stored?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.h:94",
+   "symbols": [],
+   "text": "// FIXME: Stored in RAM"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.h:101",
+   "symbols": [],
+   "text": "uint32_t inbuf_sge_handle; //FIXME: Where is this stored?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.h:102",
+   "symbols": [],
+   "text": "uint32_t outbuf_sge_handle; //FIXME: Where is this stored?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp.c:174",
+   "symbols": [],
+   "text": "/* FIXME: DMA timing be done cleaner. Xbox enables running"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp.c:215",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp.c:237",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:425",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:906",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:912",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:923",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:957",
+   "symbols": [],
+   "text": "return 0x00FFFFFF; // FIXME: What does the DSP actually do in this case?"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:966",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:1005",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:1034",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:1073",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:1116",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_cpu.c:1152",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:127",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:149",
+   "symbols": [],
+   "text": "// bool     unk9                    = (control >>  9) & 1; /* FIXME: What does this do? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:152",
+   "symbols": [],
+   "text": "// uint32_t dsp_step                = (control >> 14) & 0x3FF; // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:164",
+   "symbols": [],
+   "text": "// bool lsb = (format == 6); // FIXME"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:178",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:200",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:205",
+   "symbols": [],
+   "text": "// FIXME: Remove this intermediate buffer"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:215",
+   "symbols": [],
+   "text": "// FIXME: Above xfer size calculation instead of"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:232",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:248",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:255",
+   "symbols": [],
+   "text": "/* FIXME: Move to function; then reuse for both directions */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:271",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:283",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:297",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:324",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:352",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_dma.c:367",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:35",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1584",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1594",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1604",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1614",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1624",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1634",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1644",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1654",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:1691",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4178",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4188",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4198",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4208",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4218",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4228",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4238",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4248",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4258",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_A1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:4268",
+   "symbols": [],
+   "text": "dsp->registers[DSP_REG_B1] &= BITMASK(24); /* FIXME: useless ? */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:5983",
+   "symbols": [],
+   "text": "//TODO: cycles?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:5999",
+   "symbols": [],
+   "text": "//TODO: cycles"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:6849",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:7380",
+   "symbols": [],
+   "text": "// TODO: I don't think this is right"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:7753",
+   "symbols": [],
+   "text": "// TODO: cycles"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:7777",
+   "symbols": [],
+   "text": "// TODO: cycles"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/dsp_emu.c.inc:7882",
+   "symbols": [],
+   "text": "// TODO: cycles?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/dsp/gp_ep.c:424",
+   "symbols": [],
+   "text": "d->ep_frame_div = 0; /* FIXME: Still unsure about frame sync */"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:176",
+   "symbols": [],
+   "text": "assert(!\"Unsupported register access\");"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:206",
+   "symbols": [],
+   "text": "assert(!\"Unsupported register access\");"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:256",
+   "symbols": [],
+   "text": "// FIXME: MII status mask?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:421",
+   "symbols": [],
+   "text": "assert((desc.length + 1) >= size); // FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:544",
+   "symbols": [],
+   "text": "// FIXME"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:571",
+   "symbols": [],
+   "text": "/* FIXME: bcast filtering */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:577",
+   "symbols": [],
+   "text": "/* FIXME: Confirm PFF_MYADDR filters mcast */"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/nvnet/nvnet.c:850",
+   "symbols": [],
+   "text": "// FIXME"
+  }
+ ],
  "issues": {
   "10": {
    "suites": [
@@ -100,7 +3600,8 @@
   }
  },
  "provenance": {
-  "emulator_commit": "5b4f5778dc6c7edb875ace0f2dd069718540dc4f",
+  "emulator_commit": "5361e536dbc3656ec80187826ae644e96e4d2b85",
+  "gaps": 506,
   "resolved_tables": 1,
   "sites": 2569,
   "suites": 102,

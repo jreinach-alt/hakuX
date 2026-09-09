@@ -23,6 +23,7 @@ Usage:
     nv2a_index.py query suite "Bump map"   what it exercises and where
     nv2a_index.py query file PATH[:LINE]   what lives here and who tests it
     nv2a_index.py query ident snorm_tex    cross-ref any identifier
+    nv2a_index.py query gaps "Fog gen"     known-wrong markers in that code
     nv2a_index.py blast FILE [FILE...]     suites to re-measure after a patch
 """
 
@@ -52,6 +53,19 @@ IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 #   DEF_METHOD(NV097, SET_SURFACE_COLOR_OFFSET)  ->  NV097_SET_SURFACE_COLOR_OFFSET
 # Without this the index reports every implemented method as having no site,
 # which is worse than an empty index - it is an authoritative wrong answer.
+# Known-wrong markers already in the code. The last class is the point:
+# an unmarked hedge ("R is probably unsigned", pgraph/texture.c:389 - the
+# comment behind issue #21) is a lead that grepping for FIXME never finds,
+# and it carries no marker for anyone to notice it later.
+GAP_RES = (
+    ("MARKED", re.compile(r"\b(FIXME|TODO|XXX|HACK)\b")),
+    ("STUB", re.compile(r"\bNV2A_UNIMPLEMENTED\b")),
+    ("ABORT", re.compile(r"assert\s*\(\s*(?:false|0|!\s*\")|\babort\s*\(\s*\)")),
+    ("HEDGE", re.compile(r"\b(probably|might be|may not be|not sure|unclear|"
+                         r"unconfirmed|we assume|presumably|best guess)\b", re.I)),
+)
+COMMENTISH_RE = re.compile(r"^\s*(/\*|\*|//)|/\*|//")
+
 DEF_METHOD_RE = re.compile(r"\bDEF_METHOD(?:_[A-Z0-9_]+)?\s*\(\s*(\w+)\s*,\s*(\w+)")
 
 SUITE_RES = (
@@ -189,6 +203,43 @@ def resolve_tables(support_dirs):
     return tables
 
 
+def scan_gaps(repo, sites):
+    """Harvest known-wrong markers and attach them to nearby symbols.
+
+    Derived, not curated: a punch list kept as a file goes stale the moment
+    somebody fixes an entry. This regenerates, so a fixed FIXME leaves the
+    list by being fixed.
+    """
+    by_file = {}
+    for symbol, refs in sites.items():
+        for ref in refs:
+            path, line = ref["loc"].rsplit(":", 1)
+            by_file.setdefault(path, {}).setdefault(int(line), set()).add(symbol)
+
+    gaps = []
+    for full, rel in source_files(repo):
+        with open(full, errors="replace") as fh:
+            lines = fh.readlines()
+        for n, line in enumerate(lines, 1):
+            for kind, pattern in GAP_RES:
+                if not pattern.search(line):
+                    continue
+                # HEDGE only counts inside prose; elsewhere it is a variable name
+                if kind == "HEDGE" and not COMMENTISH_RE.search(line):
+                    continue
+                near = set()
+                for probe in range(max(1, n - 8), n + 9):
+                    near |= by_file.get(rel, {}).get(probe, set())
+                gaps.append({
+                    "loc": "%s:%d" % (rel, n),
+                    "kind": kind,
+                    "text": line.strip()[:170],
+                    "symbols": sorted(near),
+                })
+                break
+    return gaps
+
+
 def parse_suites(tests_root, tables=None):
     """Suite name -> the hardware symbols its own source pushes.
 
@@ -264,6 +315,7 @@ def build_index(repo, tests_root, support_dirs=None):
     sites = scan_sites(repo, symbols)
     tables = resolve_tables(support_dirs) if support_dirs else {}
     suites = parse_suites(tests_root, tables) if tests_root else {}
+    gaps = scan_gaps(repo, sites)
     return {
         "schema": 1,
         "provenance": {
@@ -275,9 +327,11 @@ def build_index(repo, tests_root, support_dirs=None):
             "symbols": len(symbols),
             "sites": sum(len(v) for v in sites.values()),
             "suites": len(suites),
+            "gaps": len(gaps),
         },
         "symbols": symbols,
         "sites": sites,
+        "gaps": gaps,
         "suites": suites,
         "issues": load_issues(),
     }
@@ -323,6 +377,60 @@ def print_sites(sites, limit=None):
         print("  ... %d more" % (len(sites) - limit))
 
 
+def gaps_for_files(index, files):
+    want = set(files)
+    return [g for g in index.get("gaps", []) if g["loc"].split(":")[0] in want]
+
+
+def print_gaps(gaps, limit=40):
+    # Scarcest and least self-announcing first. A bare assert(false) in a
+    # default branch is ordinary defensive code; an unmarked hedge is an
+    # unresolved question nobody will ever grep for.
+    order = {"HEDGE": 0, "STUB": 1, "MARKED": 2, "ABORT": 3}
+    shown = sorted(gaps, key=lambda g: (order.get(g["kind"], 9), g["loc"]))
+    for g in shown[:limit]:
+        print("  %-7s %-46s %s" % (g["kind"], g["loc"], g["text"][:88]))
+    if len(shown) > limit:
+        print("  ... %d more" % (len(shown) - limit))
+
+
+def summarise_gaps(gaps, indent="  "):
+    counts = {}
+    for g in gaps:
+        counts[g["kind"]] = counts.get(g["kind"], 0) + 1
+    if not counts:
+        return
+    print(indent + "known-wrong here: " +
+          ", ".join("%d %s" % (counts[k], k) for k in
+                    sorted(counts, key=lambda k: -counts[k])))
+
+
+def q_gaps(index, target):
+    """Known-wrong markers, scoped to a suite, a file or a symbol."""
+    if target in index["suites"] or any(target.lower() in s.lower() for s in index["suites"]):
+        suite = target if target in index["suites"] else next(
+            s for s in sorted(index["suites"]) if target.lower() in s.lower())
+        syms = set(index["suites"][suite]["symbols"])
+        files = {s["loc"].split(":")[0]
+                 for sym in syms & set(index["sites"])
+                 for s in index["sites"][sym]}
+        gaps = [g for g in gaps_for_files(index, files)
+                if not g["symbols"] or set(g["symbols"]) & syms]
+        iss = issues_for_suite(index, suite)
+        print("KNOWN-WRONG IN THE CODE %r EXERCISES%s" %
+              (suite, ("   tracker #" + ", #".join(iss)) if iss else ""))
+        print("%d marker(s) across %d file(s)\n" % (len(gaps), len(files)))
+        print_gaps(gaps)
+        return
+    hits = [g for g in index.get("gaps", [])
+            if target in g["loc"] or target in g["symbols"]
+            or any(target in s for s in g["symbols"])]
+    if not hits:
+        sys.exit("no known-wrong markers matching %r" % target)
+    print("%d marker(s) matching %r\n" % (len(hits), target))
+    print_gaps(hits, limit=80)
+
+
 def q_symbol(index, name):
     matches = [s for s in index["symbols"] if name.lower() in s.lower()]
     if not matches:
@@ -339,6 +447,10 @@ def q_symbol(index, name):
     print("  defined  %s" % meta["defined_at"])
     print("\nSITES (%d)" % len(sites))
     print_sites(sites)
+    near = [g for g in index.get("gaps", []) if sym in g["symbols"]]
+    if near:
+        print("\nKNOWN-WRONG NEARBY (%d)" % len(near))
+        print_gaps(near, limit=12)
     stubs = [s for s in sites if s["role"] == "STUB"]
     if stubs:
         print("\n!! %d site(s) are stubbed - this state is not fully emulated" % len(stubs))
@@ -388,6 +500,11 @@ def q_suite(index, name):
         print("\nSTUBBED STATE THIS SUITE TOUCHES (%d)" % len(stubbed))
         for sym, loc in sorted(set(stubbed))[:20]:
             print("  %-52s %s" % (sym, loc))
+    gaps = gaps_for_files(index, files)
+    if gaps:
+        print()
+        summarise_gaps(gaps, indent="")
+        print("  nv2a_index.py query gaps %r  for the list" % suite)
     if unimpl:
         print("\nDEFINED BUT NO SITE FOUND UNDER hw/xbox (%d)" % len(unimpl))
         for s in sorted(unimpl)[:20]:
@@ -526,7 +643,7 @@ def main():
     c.add_argument("--support", action="append", default=[])
 
     q = sub.add_parser("query", help="look something up")
-    q.add_argument("kind", choices=["symbol", "suite", "file", "ident"])
+    q.add_argument("kind", choices=["symbol", "suite", "file", "ident", "gaps"])
     q.add_argument("target")
 
     bl = sub.add_parser("blast", help="suites to re-measure after touching these files")
@@ -562,6 +679,8 @@ def main():
         return q_file(index, args.target)
     if args.kind == "ident":
         return q_ident(REPO, args.target)
+    if args.kind == "gaps":
+        return q_gaps(index, args.target)
 
 
 if __name__ == "__main__":
