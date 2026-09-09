@@ -673,6 +673,27 @@ typedef struct RenderThread {
     int queue_depth;
 } RenderThread;
 
+/*
+ * The texture cache key. Two textures with equal keys are the same texture as
+ * far as this renderer is concerned, so anything the hardware distinguishes
+ * that is NOT a field here will be served a sibling's binding.
+ *
+ * Hashed as a raw struct - fast_hash(&key, sizeof(key)) at vk/texture.c:1434 -
+ * so the memset at :1317 is load-bearing. Populate a new field or lose that
+ * memset and padding enters the hash.
+ *
+ * THE KEY IS NOT RECOMPUTED ON EVERY BIND. check_textures_dirty()
+ * (vk/texture.c:1942) returns early unless a binding is missing or
+ * pg->texture_dirty[unit] is set, so pgraph_vk_bind_textures returns at :1986
+ * without rebuilding this. A key field whose method handler does not set
+ * texture_dirty therefore cannot take effect.
+ *
+ * Two handlers do not set it, and both feed fields below:
+ *   SET_TEXTURE_ADDRESS       pgraph.c:2118  ->  .address
+ *   SET_TEXTURE_BORDER_COLOR  pgraph.c:3739  ->  .border_color
+ * Every neighbouring texture handler does. See
+ * docs/investigations/nv2a-sweep-2026-09.md and issues #3 and #19.
+ */
 typedef struct TextureKey {
     TextureShape state;
     hwaddr texture_vram_offset;
@@ -721,6 +742,29 @@ typedef struct PooledSurfaceImage {
     VmaAllocation allocation_scratch;
 } PooledSurfaceImage;
 
+/*
+ * A live texture binding. The dirty-tracking fields are the subtle ones and
+ * are why a texture can be stale without anything looking wrong:
+ *
+ *   possibly_dirty     set when a surface or guest write overlaps this
+ *                      texture's VRAM. Gates the content comparison below -
+ *                      when false the texture is never re-hashed and never
+ *                      re-uploaded.
+ *   hash               content hash, compared only while possibly_dirty.
+ *   dirty_check_frame  per-frame memo of the VRAM dirty test, added
+ *   dirty_check_result post-fork in 21f7d7c3e5. pg->frame_time advances only
+ *                      on NV097_FLIP_INCREMENT_WRITE, so a texture rewritten
+ *                      twice inside one flip interval is only tested once.
+ *                      Investigated as a cause of #19 and disproven there;
+ *                      still the reason a re-upload can be skipped.
+ *   draw_time          LRU recency.
+ *   submit_time        in-flight tracking; a binding pinned by an unfinished
+ *                      frame cannot be evicted, which is the LRU-exhaustion
+ *                      case in KNOWN_ISSUES.md.
+ *
+ * The VRAM dirty bit these depend on is consumed page-wide by six
+ * uncoordinated callers - see docs/nv2a/pipeline.md, "Invalidation".
+ */
 typedef struct TextureBinding {
     LruNode node;
     QTAILQ_ENTRY(TextureBinding) active_entry;
