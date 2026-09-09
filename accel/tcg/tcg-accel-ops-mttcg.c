@@ -36,7 +36,8 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-mttcg.h"
 #ifdef XBOX
-#include "cpu.h"
+/* nv2a_int.h no longer drags in cpu.h, and this file is built into the
+ * target-agnostic system sourceset where cpu.h is unavailable. */
 #include "hw/xbox/nv2a/nv2a_int.h"
 #endif
 

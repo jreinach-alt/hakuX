@@ -22,6 +22,8 @@
 #ifndef HW_XBOX_NV2A_DEBUG_H
 #define HW_XBOX_NV2A_DEBUG_H
 
+#include "qemu/timer.h"
+
 #include <stdint.h>
 
 #define NV2A_XPRINTF(x, ...) do { \

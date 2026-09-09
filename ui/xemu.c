@@ -134,6 +134,8 @@ static QemuSemaphore display_init_sem;
 
 static void toggle_full_screen(struct sdl2_console *scon);
 
+/* Used by the shared refresh path, not only the Android one. */
+static uint64_t g_android_frame_counter = 0;
 #ifdef __ANDROID__
 int bdrv_flush_all(void);
 static bool g_android_gl_bgra_supported = true;
@@ -143,7 +145,6 @@ static volatile bool g_android_display_loop_exited = false;
 static volatile bool g_android_vm_pause_requested = false;
 static volatile bool g_android_vm_resume_requested = false;
 static volatile bool g_android_flush_requested = false;
-static uint64_t g_android_frame_counter = 0;
 static int g_android_target_fps = 60;
 static int64_t g_android_frame_interval_ns = 16666666;
 static int g_android_display_mode = 0; /* 0=stretch, 1=4:3, 2=16:9 */
