@@ -47,7 +47,18 @@ typedef struct {
     uint32_t device_id;
     uint32_t driver_version;
     uint8_t  pipeline_cache_uuid[VK_UUID_SIZE];
+    /* Fingerprint of the shader cache key's layout. The caches on disk store
+     * ShaderState blobs verbatim, so a build whose struct layout differs
+     * reinterprets them as garbage -- in practice an assertion inside shader
+     * generation during warmup, thousands of lines from the actual cause.
+     * Including the sizes here wipes the cache automatically on the common
+     * case; bump SHADER_STATE_LAYOUT_VERSION by hand when a field changes
+     * without changing any of the sizes. */
+    uint32_t shader_state_layout;
 } GpuDriverIdentity;
+
+/* Bump when ShaderState/PshState/VshState change layout but not size. */
+#define SHADER_STATE_LAYOUT_VERSION 1
 
 static void remove_directory_recursive(const char *path)
 {
@@ -84,6 +95,10 @@ static void check_driver_identity_and_wipe_caches(PGRAPHVkState *r)
     current.driver_version = r->device_props.driverVersion;
     memcpy(current.pipeline_cache_uuid, r->device_props.pipelineCacheUUID,
            VK_UUID_SIZE);
+    current.shader_state_layout = (uint32_t)sizeof(ShaderState) * 2654435761u +
+                                  (uint32_t)sizeof(PshState) * 2246822519u +
+                                  (uint32_t)sizeof(VshState) * 3266489917u +
+                                  SHADER_STATE_LAYOUT_VERSION;
 
     bool match = false;
     gchar *data = NULL;
@@ -98,16 +113,18 @@ static void check_driver_identity_and_wipe_caches(PGRAPHVkState *r)
         char *spv_dir = g_strdup_printf("%sspv_cache", base);
         char *plc_path = g_strdup_printf("%svk_pipeline_cache.bin", base);
 
-        VK_LOG("Driver changed -- wiping shader and pipeline caches");
+        VK_LOG("Driver or shader-state layout changed -- wiping caches");
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_INFO, "hakuX-vk",
-            "Driver identity mismatch: wiping spv_cache and pipeline cache "
-            "(vendor=%04x device=%04x driverVer=%08x)",
-            current.vendor_id, current.device_id, current.driver_version);
+            "Cache identity mismatch: wiping spv_cache and pipeline cache "
+            "(vendor=%04x device=%04x driverVer=%08x layout=%08x)",
+            current.vendor_id, current.device_id, current.driver_version,
+            current.shader_state_layout);
 #else
-        fprintf(stderr, "xemu-vk: Driver identity mismatch: wiping caches "
-                "(vendor=%04x device=%04x driverVer=%08x)\n",
-                current.vendor_id, current.device_id, current.driver_version);
+        fprintf(stderr, "xemu-vk: Cache identity mismatch: wiping caches "
+                "(vendor=%04x device=%04x driverVer=%08x layout=%08x)\n",
+                current.vendor_id, current.device_id, current.driver_version,
+                current.shader_state_layout);
 #endif
 
         char *smk_path = g_strdup_printf("%sshader_module_keys.bin", base);
