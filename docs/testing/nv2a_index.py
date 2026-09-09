@@ -390,11 +390,23 @@ def load_issues():
     """The one hand-written table: tracker issue -> suites. Validated by check."""
     if not os.path.exists(ISSUES_PATH):
         return {}
-    issues, current = {}, None
+    issues, current, pending = {}, None, None
     with open(ISSUES_PATH, errors="replace") as fh:
         for line in fh:
-            line = line.split("#", 1)[0].strip()
-            if not line:
+            # Strip trailing comments, but not a '#' inside a quoted string.
+            if not line.lstrip().startswith("#"):
+                line = re.sub(r'\s+#(?=(?:[^"]*"[^"]*")*[^"]*$).*$', "", line)
+            line = line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if pending is not None:          # continuing a multi-line array
+                pending += " " + line
+                if "]" not in pending:
+                    continue
+                body = pending[pending.index("[") + 1:pending.rindex("]")]
+                issues[current]["suites"] = [v.strip().strip('"')
+                                             for v in body.split(",") if v.strip()]
+                pending = None
                 continue
             m = re.match(r"^\[issue\.(\d+)\]$", line)
             if m:
@@ -407,11 +419,16 @@ def load_issues():
             if m:
                 issues[current]["title"] = m.group(1)
                 continue
-            m = re.match(r"^suites\s*=\s*\[(.*)\]$", line)
-            if m:
-                issues[current]["suites"] = [
-                    v.strip().strip('"') for v in m.group(1).split(",") if v.strip()
-                ]
+            if re.match(r"^suites\s*=\s*\[", line):
+                # Arrays wrap across lines. Reading only single-line ones made
+                # five issues silently suite-less, and check() could not see it
+                # because an empty list has nothing to disagree with.
+                if "]" in line:
+                    body = line[line.index("[") + 1:line.rindex("]")]
+                    issues[current]["suites"] = [v.strip().strip('"')
+                                                 for v in body.split(",") if v.strip()]
+                else:
+                    pending = line
     return issues
 
 
@@ -798,7 +815,15 @@ def cmd_check(repo, tests_root, support_dirs=None):
         problems.append("suites differ (committed %d, tests tree %d)"
                         % (len(committed.get("suites", {})), len(fresh.get("suites", {}))))
     known = set(fresh["suites"] or committed.get("suites", {}))
-    for num, meta in load_issues().items():
+    parsed = load_issues()
+    if not parsed:
+        problems.append("nv2a_issues.toml parsed to nothing")
+    for num, meta in parsed.items():
+        # An issue with no suites is not a valid entry - it is the signature of
+        # a parser that silently dropped them.
+        if not meta["suites"]:
+            problems.append("issue #%s has no suites (parse failure or empty entry)"
+                            % num)
         for suite in meta["suites"]:
             if known and suite not in known:
                 problems.append("issue #%s names unknown suite %r" % (num, suite))
