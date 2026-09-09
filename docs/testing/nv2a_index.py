@@ -24,6 +24,7 @@ Usage:
     nv2a_index.py query file PATH[:LINE]   what lives here and who tests it
     nv2a_index.py query ident snorm_tex    cross-ref any identifier
     nv2a_index.py query gaps "Fog gen"     known-wrong markers in that code
+    nv2a_index.py query unread "Fog gen"   state it sets that nothing reads
     nv2a_index.py blast FILE [FILE...]     suites to re-measure after a patch
 """
 
@@ -43,7 +44,12 @@ REGS_H = "hw/xbox/nv2a/nv2a_regs.h"
 SCAN_ROOTS = ["hw/xbox"]
 SCAN_EXTS = (".c", ".h", ".inc", ".cpp")
 
-SYMBOL_RE = re.compile(r"^\s*#\s*define\s+(NV097_[A-Z0-9_]+|NV_PGRAPH_[A-Z0-9_]+)\s+(\S+)")
+SYMBOL_RE = re.compile(r"^(#(?:\s*)?)define\s+(NV097_[A-Z0-9_]+|NV_PGRAPH_[A-Z0-9_]+)\s+(\S+)")
+# Indentation in nv2a_regs.h encodes the hierarchy - see docs/nv2a/vocabulary.md.
+# "#define" is a register or method, "#   define" a field mask, "#       define"
+# an enum value of that field. Without this a missing enum value and a missing
+# register read the same, and they are very different findings.
+DEPTH_KIND = {0: "register/method", 1: "field", 2: "enum-value"}
 IDENT_RE = re.compile(r"\b[A-Za-z_][A-Za-z0-9_]*\b")
 # Suites declare their name three different ways; all three are load-bearing.
 # Missing any of them silently drops suites from the index, which is how the
@@ -94,11 +100,14 @@ def parse_regs(repo):
             m = SYMBOL_RE.match(line)
             if not m:
                 continue
-            name, value = m.group(1), m.group(2)
+            name, value = m.group(2), m.group(3)
+            indent = len(m.group(1)) - 1
+            depth = 0 if indent < 2 else (1 if indent < 6 else 2)
             symbols[name] = {
                 "value": value,
                 "defined_at": "%s:%d" % (REGS_H, n),
                 "family": "NV097" if name.startswith("NV097_") else "NV_PGRAPH",
+                "kind": DEPTH_KIND[depth],
             }
     return symbols
 
@@ -134,7 +143,7 @@ def classify(line, symbol):
     return "REF"
 
 
-def scan_sites(repo, symbols):
+def scan_sites(repo, symbols, seen_idents=None):
     """Every reference to a known symbol under hw/xbox, classified."""
     sites = {}
     for full, rel in source_files(repo):
@@ -142,6 +151,8 @@ def scan_sites(repo, symbols):
             continue
         with open(full, errors="replace") as fh:
             for n, line in enumerate(fh, 1):
+                if seen_idents is not None:
+                    seen_idents.update(IDENT_RE.findall(line))
                 hits = {}
                 if "NV097_" in line or "NV_PGRAPH_" in line:
                     for ident in set(IDENT_RE.findall(line)):
@@ -201,6 +212,100 @@ def resolve_tables(support_dirs):
                     if syms:
                         tables.setdefault(m.group(1), set()).update(syms)
     return tables
+
+
+def map_method_regs(repo):
+    """method -> the PGRAPH registers its handler touches.
+
+    Tests push NV097_* methods and never name a register, while the state
+    that goes unread is almost all NV_PGRAPH_* fields. Without this hop a
+    suite can never be joined to the state it actually drives. Derived by
+    attributing every NV_PGRAPH_* reference to the DEF_METHOD block it falls
+    inside, which is exact because handlers do not nest.
+    """
+    method_regs = {}
+    for full, rel in source_files(repo):
+        if not rel.endswith(".c"):
+            continue
+        with open(full, errors="replace") as fh:
+            lines = fh.readlines()
+        current = None
+        for line in lines:
+            found = DEF_METHOD_RE.search(line)
+            if found:
+                # the macro's own #define lines are not handlers
+                current = (None if line.lstrip().startswith("#")
+                           else "%s_%s" % found.groups())
+                continue
+            if current is None:
+                continue
+            for ident in IDENT_RE.findall(line):
+                if ident.startswith("NV_PGRAPH_"):
+                    method_regs.setdefault(current, set()).add(ident)
+    return {k: sorted(v) for k, v in sorted(method_regs.items())}
+
+
+def find_unread(symbols, sites, seen):
+    """Symbols with no site, split into genuinely absent and merely renamed.
+
+    A symbol with no reference is a candidate ignored state bit - the shape
+    behind the missing-state half of the accuracy tracker. But the emulator
+    also keeps parallel enums for state it does handle: PRIM_TYPE_LINE_LOOP
+    (pgraph/vsh_regs.h:189) is NV097_SET_BEGIN_END_OP_LINE_LOOP under another
+    name. Reporting those as ignored would be confidently wrong, so they are
+    separated out - and a parallel name is its own unenforced coupling.
+    """
+    unread = {}
+    for name, meta in symbols.items():
+        if name in sites:
+            continue
+        parts = name.split("_")
+        aliases = []
+        for start in range(1, len(parts) - 1):
+            tail = "_".join(parts[start:])
+            if len(tail) < 6:
+                break
+            aliases = sorted(i for i in seen
+                             if i != name and i.endswith("_" + tail))
+            if aliases:
+                break
+        unread[name] = {
+            "kind": meta["kind"],
+            "defined_at": meta["defined_at"],
+            "aliases": aliases[:4],
+        }
+
+    # Rank the enum values. An unread enum value means very different things
+    # depending on whether its parent field is read, and whether any sibling
+    # value is:
+    #
+    #   ZFUNC_ALWAYS         parent read, NO sibling referenced -> the value is
+    #                        used numerically and the names are decoration
+    #   PROVOKING_VERTEX_    parent read, siblings referenced, this one not ->
+    #   FIRST                the code branches on some values and not others.
+    #                        That is a real unhandled case.
+    #   (parent unread)      the whole field is ignored.
+    for name, entry in unread.items():
+        if entry["kind"] != "enum-value":
+            continue
+        parts = name.split("_")
+        parent = next((p for p in ("_".join(parts[:i])
+                                   for i in range(len(parts) - 1, 2, -1))
+                       if symbols.get(p, {}).get("kind") == "field"), None)
+        if parent is None:
+            entry["signal"] = "unknown-parent"
+            continue
+        siblings = [s for s in symbols
+                    if s != name and s.startswith(parent + "_")
+                    and symbols[s]["kind"] == "enum-value"]
+        if parent not in sites:
+            entry["signal"] = "field-ignored"
+        elif any(s in sites for s in siblings):
+            entry["signal"] = "unhandled-case"
+        else:
+            entry["signal"] = "positional"
+        entry["parent"] = parent
+    return unread
 
 
 def scan_gaps(repo, sites):
@@ -312,7 +417,10 @@ def load_issues():
 
 def build_index(repo, tests_root, support_dirs=None):
     symbols = parse_regs(repo)
-    sites = scan_sites(repo, symbols)
+    seen = set()
+    sites = scan_sites(repo, symbols, seen)
+    unread = find_unread(symbols, sites, seen)
+    method_regs = map_method_regs(repo)
     tables = resolve_tables(support_dirs) if support_dirs else {}
     suites = parse_suites(tests_root, tables) if tests_root else {}
     gaps = scan_gaps(repo, sites)
@@ -328,10 +436,13 @@ def build_index(repo, tests_root, support_dirs=None):
             "sites": sum(len(v) for v in sites.values()),
             "suites": len(suites),
             "gaps": len(gaps),
+            "unread": sum(1 for v in unread.values() if not v["aliases"]),
         },
         "symbols": symbols,
         "sites": sites,
         "gaps": gaps,
+        "unread": unread,
+        "method_regs": method_regs,
         "suites": suites,
         "issues": load_issues(),
     }
@@ -403,6 +514,74 @@ def summarise_gaps(gaps, indent="  "):
     print(indent + "known-wrong here: " +
           ", ".join("%d %s" % (counts[k], k) for k in
                     sorted(counts, key=lambda k: -counts[k])))
+
+
+def q_unread(index, target=None):
+    """Symbols with no reader: candidate ignored state."""
+    unread = index.get("unread", {})
+    scope = None
+    if target and target not in ("all", "*"):
+        match = [s for s in index["suites"] if target.lower() in s.lower()]
+        if match:
+            scope = match[0]
+            methods = set(index["suites"][scope]["symbols"])
+            regs = set()
+            for m in methods:
+                regs.update(index.get("method_regs", {}).get(m, []))
+            keep = set(methods) | regs
+            unread = {k: v for k, v in unread.items()
+                      if k in keep or any(k.startswith(r + "_") for r in regs)}
+        else:
+            unread = {k: v for k, v in unread.items()
+                      if target.upper() in k.upper()}
+    if not unread:
+        sys.exit("no unread symbols matching %r" % target)
+
+    absent = {k: v for k, v in unread.items() if not v["aliases"]}
+    aliased = {k: v for k, v in unread.items() if v["aliases"]}
+    if scope:
+        iss = issues_for_suite(index, scope)
+        print("STATE %r EXERCISES THAT NOTHING READS%s\n"
+              % (scope, ("   tracker #" + ", #".join(iss)) if iss else ""))
+    print("%d symbol(s) with no site under hw/xbox — %d absent, %d renamed\n"
+          % (len(unread), len(absent), len(aliased)))
+
+    positional = [k for k, v in absent.items() if v.get("signal") == "positional"]
+    groups = [
+        ("REGISTER/METHOD - nothing references it at all",
+         [k for k, v in absent.items() if v["kind"] == "register/method"]),
+        ("FIELD - the whole field is unread",
+         [k for k, v in absent.items() if v["kind"] == "field"]),
+        ("ENUM VALUE - its field is unread entirely",
+         [k for k, v in absent.items() if v.get("signal") == "field-ignored"]),
+        ("ENUM VALUE - siblings are handled, this case is not",
+         [k for k, v in absent.items() if v.get("signal") == "unhandled-case"]),
+    ]
+    for title, rows in groups:
+        rows = sorted(rows)
+        if not rows:
+            continue
+        print("%s (%d)" % (title, len(rows)))
+        for name in rows[:25]:
+            extra = absent[name].get("parent", "")
+            print("  %-56s %s" % (name, extra or absent[name]["defined_at"]))
+        if len(rows) > 25:
+            print("  ... %d more" % (len(rows) - 25))
+        print()
+    if positional:
+        print("%d enum value(s) omitted: their field is read but the value is used"
+              % len(positional))
+        print("numerically, so the name being unreferenced means nothing.\n")
+    if aliased:
+        print("HANDLED UNDER ANOTHER NAME (%d) — not ignored, but nothing keeps"
+              % len(aliased))
+        print("the two spellings in step:")
+        for name in sorted(aliased)[:12]:
+            print("  %-52s -> %s" % (name, ", ".join(aliased[name]["aliases"][:2])))
+        if len(aliased) > 12:
+            print("  ... %d more" % (len(aliased) - 12))
+    print("\nA symbol with no reader is a CANDIDATE, not a finding: it may be")
+    print("read through a mask this scan cannot follow. Verify before acting.")
 
 
 def q_gaps(index, target):
@@ -506,10 +685,16 @@ def q_suite(index, name):
         summarise_gaps(gaps, indent="")
         print("  nv2a_index.py query gaps %r  for the list" % suite)
     if unimpl:
-        print("\nDEFINED BUT NO SITE FOUND UNDER hw/xbox (%d)" % len(unimpl))
-        for s in sorted(unimpl)[:20]:
-            print("  " + s)
-        print("  (a symbol with no reader is a candidate ignored state bit)")
+        ur = index.get("unread", {})
+        absent = [s for s in unimpl if not ur.get(s, {}).get("aliases")]
+        renamed = [s for s in unimpl if ur.get(s, {}).get("aliases")]
+        print("\nNOTHING READS THESE (%d absent, %d handled under another name)"
+              % (len(absent), len(renamed)))
+        for s in sorted(absent)[:15]:
+            print("  %-56s %s" % (s, ur.get(s, {}).get("kind", "")))
+        if len(absent) > 15:
+            print("  ... %d more" % (len(absent) - 15))
+        print("  nv2a_index.py query unread %r  for the full split" % suite)
 
 
 def q_file(index, spec):
@@ -643,8 +828,9 @@ def main():
     c.add_argument("--support", action="append", default=[])
 
     q = sub.add_parser("query", help="look something up")
-    q.add_argument("kind", choices=["symbol", "suite", "file", "ident", "gaps"])
-    q.add_argument("target")
+    q.add_argument("kind",
+                   choices=["symbol", "suite", "file", "ident", "gaps", "unread"])
+    q.add_argument("target", nargs="?")
 
     bl = sub.add_parser("blast", help="suites to re-measure after touching these files")
     bl.add_argument("files", nargs="+")
@@ -671,6 +857,8 @@ def main():
         return cmd_blast(load_index(), args.files)
 
     index = load_index()
+    if args.kind != "unread" and not args.target:
+        sys.exit("query %s needs a target" % args.kind)
     if args.kind == "symbol":
         return q_symbol(index, args.target)
     if args.kind == "suite":
@@ -681,6 +869,8 @@ def main():
         return q_ident(REPO, args.target)
     if args.kind == "gaps":
         return q_gaps(index, args.target)
+    if args.kind == "unread":
+        return q_unread(index, args.target)
 
 
 if __name__ == "__main__":
