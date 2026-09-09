@@ -32,6 +32,8 @@ as a candidate until an isolation run says otherwise.
 | document | what it covers |
 |---|---|
 | [`nv2a-sweep-2026-09.md`](nv2a-sweep-2026-09.md) | Verified structural findings across the NV2A subsystems, mapped to open issues |
+| [`freeze-analysis.md`](freeze-analysis.md) | Pre-fork freeze chase, thirteen hypotheses eliminated, unresolved |
+| [`gl-artifacts.md`](gl-artifacts.md) | Pre-fork GL texture artifacts. Scope header matters — Android runs Vulkan |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
 ## Missing, and referenced by open issues
@@ -39,4 +41,7 @@ as a candidate until an isolation run says otherwise.
 | path | referenced by | status |
 |---|---|---|
 | `cross-test-contamination.md` | #19 body | never committed; the analysis survives only as #19's comments |
-| `freeze-analysis.md` | #20 body | never committed; `FREEZE_ANALYSIS.md` at the repo root is the pre-fork version |
+
+`freeze-analysis.md` was on this list until the pre-fork `FREEZE_ANALYSIS.md`
+was moved here, which resolves #20's link.
+

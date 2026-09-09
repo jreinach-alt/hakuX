@@ -1,4 +1,14 @@
-# Game Freeze Root Cause Analysis
+# Freeze analysis (pre-fork)
+
+> **Dated 2026-03-31, inherited at the fork, and unresolved.** Thirteen
+> hypotheses were eliminated and no fix was found. Kept because eliminated
+> hypotheses are worth as much as a conclusion — do not re-run these.
+>
+> **This is not issue #20.** #20 is a guest power-off that never exits the
+> emulator; the freeze below is a guest parked in a kernel halt loop mid-run.
+> #20's body links here for background, not because this covers it.
+>
+> Nothing in it has been re-checked against the current tree.
 
 ## Active Investigation: Location-Specific Freeze (master vs x1_box)
 

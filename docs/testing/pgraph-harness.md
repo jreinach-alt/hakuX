@@ -187,7 +187,8 @@ or otherwise.
 
 Framebuffer comparison sees rendering divergence. It is blind to the timing and
 interrupt-ordering class of bug — a hang passes every pixel test it never
-reaches. `FREEZE_ANALYSIS.md` documents one such freeze, chased through
+reaches. [`../investigations/freeze-analysis.md`](../investigations/freeze-analysis.md)
+documents one such freeze, chased through
 thirteen eliminated hypotheses without a fix. That needs a different oracle:
 a deterministic trace of the interrupt, PFIFO and VBLANK event stream, diffed
 between desktop xemu and this build. See `ROADMAP.md` item 5.

@@ -1,4 +1,16 @@
-# GL Texture Artifact Investigation
+# GL texture artifact investigation (pre-fork)
+
+> **Dated 2026-03-31, inherited at the fork.** The state-cache fixes it
+> describes were applied and later reverted — see `KNOWN_ISSUES.md`.
+>
+> **Read the scope before the content: on Android the renderer is Vulkan.**
+> `android/app/src/main/cpp/xemu_android.cpp:616` and
+> `xemu_settings_android.cc:69` override the `OPENGL` default in
+> `config_spec.yml:230`, so nothing here describes what runs on device.
+> The 2026-09 sweep also found the GL path omits window clipping and the
+> `gl_FragDepth` write entirely — see
+> [`nv2a-sweep-2026-09.md`](nv2a-sweep-2026-09.md). Treat this as an
+> account of a renderer the project does not currently ship.
 
 ## Symptoms
 Misplaced geometry, dragged/stretched textures on the OpenGL ES renderer after porting from x1_box.

@@ -71,7 +71,9 @@ tell the user a copy is already running.
 
 **Root cause:** The GL state cache optimization (state save/restore reduction) introduced state desync between clear/display paths and the draw path. The optimization was reverted. Artifacts may also stem from inherent GL renderer limitations (CPU-side format conversions, surface scaling differences).
 
-**Status:** GL state cache optimization reverted. Some residual artifacts may exist from the x1_box GL port. See `GL_ARTIFACT_INVESTIGATION.md` for detailed analysis.
+**Status:** GL state cache optimization reverted. Some residual artifacts may exist from the x1_box GL port. See [`docs/investigations/gl-artifacts.md`](docs/investigations/gl-artifacts.md)
+for detailed analysis — and note its scope header: Android runs Vulkan, so
+that document does not describe the shipped renderer.
 
 ---
 

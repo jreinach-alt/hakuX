@@ -99,7 +99,8 @@ processors do not run at all.
 
 **Status: hardest, deliberately last.**
 
-`FREEZE_ANALYSIS.md` documents a freeze chased through thirteen eliminated
+[`docs/investigations/freeze-analysis.md`](docs/investigations/freeze-analysis.md)
+documents a freeze chased through thirteen eliminated
 hypotheses without a fix. The guest parks in a kernel halt loop with no PGRAPH
 interrupt pending, and the same build runs correctly on desktop xemu. It is an
 interrupt delivery and ordering divergence, not a clock-rate one — running the
