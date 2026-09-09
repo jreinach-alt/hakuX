@@ -1576,6 +1576,35 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
         }
     }
 
+    /*
+     * Shelved and invalidated surfaces still hold a GPU copy of VRAM they no
+     * longer own, to be written back if something reads that memory. A guest
+     * write is not a read: it says the guest has taken the memory back, so the
+     * copy is superseded and must not be written over it.
+     *
+     * The bump-map suite is where this showed. Its 256x256 checkerboard is
+     * built at 0x027eb000; a retired 256x256 render target sat at 0x02814000,
+     * inside it. Binding the texture triggered that target's lazy writeback,
+     * which put 94,208 bytes -- 36% of the texture -- of a previous test's
+     * pixels over the guest's own data, in all 40 tests.
+     */
+    if (write) {
+        SurfaceBinding *retained;
+        QTAILQ_FOREACH(retained, &r->shelved_surfaces, entry) {
+            if (check_surface_overlaps_range(retained, addr, len)) {
+                retained->draw_dirty = false;
+                retained->shelved_dirty = false;
+                retained->download_generation = retained->draw_generation;
+            }
+        }
+        QTAILQ_FOREACH(retained, &r->invalid_surfaces, entry) {
+            if (check_surface_overlaps_range(retained, addr, len)) {
+                retained->draw_dirty = false;
+                retained->download_generation = retained->draw_generation;
+            }
+        }
+    }
+
     qemu_mutex_unlock(&d->pgraph.lock);
 
     if (wait_for_downloads) {
@@ -1588,24 +1617,46 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
     }
 }
 
+static void unregister_cpu_access_callback(SurfaceBinding *surface)
+{
+    if (tcg_enabled() && surface->access_cb) {
+        mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
+    }
+    /* Clearing this is what makes register/unregister safe to call in any
+     * order: a surface can now be retired with its watch still up, and both
+     * the free paths and surface_put re-run these unconditionally. */
+    surface->access_cb = NULL;
+}
+
 static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
 {
+    /* Re-arm from scratch: a recycled binding may carry a watch over the
+     * address it had in its previous life. */
+    unregister_cpu_access_callback(surface);
+
     if (tcg_enabled()) {
         if (surface->width && surface->height) {
             surface->access_cb = mem_access_callback_insert(
                 qemu_get_cpu(0), d->vram, surface->vram_addr, surface->size,
                 &surface_access_callback, d);
-        } else {
-            surface->access_cb = NULL;
         }
     }
 }
 
-static void unregister_cpu_access_callback(NV2AState *d,
-                                           SurfaceBinding const *surface)
+/*
+ * Retire a surface's watch on its VRAM, unless it still owes that VRAM a
+ * writeback.
+ *
+ * Shelving and invalidation are lazy: the VkImage is kept and written back
+ * only if something later reads the memory. That obligation outlives the
+ * surface's time as a render target, and until it is discharged the guest may
+ * take the memory back. Dropping the watch at retirement made those writes
+ * invisible, and the eventual writeback landed on top of them.
+ */
+static void unregister_cpu_access_callback_if_clean(SurfaceBinding *surface)
 {
-    if (tcg_enabled()) {
-        mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
+    if (!surface->draw_dirty) {
+        unregister_cpu_access_callback(surface);
     }
 }
 
@@ -1667,7 +1718,7 @@ static void invalidate_surface(NV2AState *d, SurfaceBinding *surface)
         unbind_surface(d, false);
     }
 
-    unregister_cpu_access_callback(d, surface);
+    unregister_cpu_access_callback_if_clean(surface);
 
     g_hash_table_remove(r->surface_addr_map,
                         (gpointer)(uintptr_t)surface->vram_addr);
@@ -1696,7 +1747,7 @@ static void shelve_surface(NV2AState *d, SurfaceBinding *surface)
         unbind_surface(d, false);
     }
 
-    unregister_cpu_access_callback(d, surface);
+    unregister_cpu_access_callback_if_clean(surface);
 
     g_hash_table_remove(r->surface_addr_map,
                         (gpointer)(uintptr_t)surface->vram_addr);
@@ -1784,6 +1835,7 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
             pgraph_vk_surface_download_if_dirty(d, other_surface);
             QTAILQ_REMOVE(&r->shelved_surfaces, other_surface, entry);
             deferred_downloads_clear_surface(r, other_surface);
+            unregister_cpu_access_callback(other_surface);
             destroy_surface_image(r, other_surface);
             g_free(other_surface);
         }
@@ -2138,6 +2190,7 @@ static void prune_invalid_surfaces(PGRAPHVkState *r, int keep)
             }
             QTAILQ_REMOVE(&r->invalid_surfaces, surface, entry);
             deferred_downloads_clear_surface(r, surface);
+            unregister_cpu_access_callback(surface);
             destroy_surface_image(r, surface);
             g_free(surface);
         }
@@ -2187,6 +2240,7 @@ static void expire_old_surfaces(NV2AState *d)
             pgraph_vk_surface_download_if_dirty(d, s);
             QTAILQ_REMOVE(&r->shelved_surfaces, s, entry);
             deferred_downloads_clear_surface(r, s);
+            unregister_cpu_access_callback(s);
             destroy_surface_image(r, s);
             g_free(s);
         } else {
@@ -3280,6 +3334,7 @@ void pgraph_vk_surface_flush(NV2AState *d)
         pgraph_vk_surface_download_if_dirty(d, s);
         QTAILQ_REMOVE(&r->shelved_surfaces, s, entry);
         deferred_downloads_clear_surface(r, s);
+        unregister_cpu_access_callback(s);
         destroy_surface_image(r, s);
         g_free(s);
     }
