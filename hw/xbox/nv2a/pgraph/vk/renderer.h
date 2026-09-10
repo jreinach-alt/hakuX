@@ -786,6 +786,24 @@ typedef struct TextureBinding {
     bool dirty_check_result;
 } TextureBinding;
 
+/*
+ * A texture's Vulkan objects, retired but not yet destroyed. A draw that
+ * sampled the texture can be recorded in the current command buffer or
+ * submitted and not yet executed, and the push descriptor it was bound
+ * through holds the VkImageView and VkSampler handles until the GPU reads
+ * them. Retired objects therefore sit in the list of the frame slot that was
+ * current when they were retired, and are destroyed only once that slot's
+ * fence has been waited on -- the same lifetime deferred_framebuffers get.
+ * See texture_cache_release_node_resources in texture.c.
+ */
+typedef struct DeferredTextureRelease {
+    VkImageView image_view;
+    VkSampler sampler; /* VK_NULL_HANDLE when shared through sampler_cache */
+    VkImage image;
+    VmaAllocation allocation;
+    TextureImageConfig image_config;
+} DeferredTextureRelease;
+
 typedef struct QueryReport {
     QSIMPLEQ_ENTRY(QueryReport) entry;
     bool clear;
@@ -1115,6 +1133,8 @@ typedef struct PGRAPHVkState {
 
     VkFramebuffer deferred_framebuffers[NUM_SUBMIT_FRAMES][MAX_FRAMEBUFFERS];
     int deferred_framebuffer_count[NUM_SUBMIT_FRAMES];
+    GArray *deferred_texture_releases[NUM_SUBMIT_FRAMES]; /* DeferredTextureRelease */
+    GArray *deferred_surface_releases[NUM_SUBMIT_FRAMES]; /* DeferredSurfaceRelease, surface.c */
 
     VkRenderPass render_pass;
     VkRenderPass begin_render_pass;
@@ -1564,6 +1584,8 @@ void pgraph_vk_gl_make_context_current(void);
 // texture.c
 void pgraph_vk_init_textures(PGRAPHState *pg);
 void pgraph_vk_finalize_textures(PGRAPHState *pg);
+void pgraph_vk_drain_deferred_texture_releases(PGRAPHVkState *r, int frame);
+void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame);
 void pgraph_vk_bind_textures(NV2AState *d);
 bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg);
 void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d, hwaddr addr,
