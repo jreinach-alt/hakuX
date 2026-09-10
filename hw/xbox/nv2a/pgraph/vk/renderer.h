@@ -114,7 +114,7 @@ struct OptBisectStats {
     int tex_zero_reupload;
     int draws_skipped_no_pipeline;
     int draws_skipped_null_pipeline;
-    int sd_eviction_skipped;
+    int sd_eviction_dl;      /* downloads taken when a dirty surface is evicted */
     int sd_shelved_unshelved;
     int sd_shelved_lazy_dl;
     int sync_range_skip;

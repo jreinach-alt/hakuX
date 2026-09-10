@@ -2742,17 +2742,35 @@ static unsigned int kelvin_map_texgen(uint32_t parameter, unsigned int channel)
         texgen = NV_PGRAPH_CSV1_A_T0_S_EYE_LINEAR; break;
     case NV097_SET_TEXGEN_S_OBJECT_LINEAR:
         texgen = NV_PGRAPH_CSV1_A_T0_S_OBJECT_LINEAR; break;
+    /*
+     * Sphere mapping exists for S and T; reflection and normal mapping for
+     * S, T and R. A guest can still ask for them on the other channels --
+     * `Texgen with texture matrix` does -- and this used to abort the
+     * emulator on the spot. What the hardware does with the request is not
+     * known; treating the channel as disabled draws a frame to measure
+     * against the goldens, which an abort never can (issue #28).
+     */
     case NV097_SET_TEXGEN_S_SPHERE_MAP:
-        assert(channel < 2);
+        if (channel >= 2) {
+            NV2A_UNIMPLEMENTED("texgen SPHERE_MAP on channel %u", channel);
+            texgen = NV_PGRAPH_CSV1_A_T0_S_DISABLE; break;
+        }
         texgen = NV_PGRAPH_CSV1_A_T0_S_SPHERE_MAP; break;
     case NV097_SET_TEXGEN_S_REFLECTION_MAP:
-        assert(channel < 3);
+        if (channel >= 3) {
+            NV2A_UNIMPLEMENTED("texgen REFLECTION_MAP on channel %u", channel);
+            texgen = NV_PGRAPH_CSV1_A_T0_S_DISABLE; break;
+        }
         texgen = NV_PGRAPH_CSV1_A_T0_S_REFLECTION_MAP; break;
     case NV097_SET_TEXGEN_S_NORMAL_MAP:
-        assert(channel < 3);
+        if (channel >= 3) {
+            NV2A_UNIMPLEMENTED("texgen NORMAL_MAP on channel %u", channel);
+            texgen = NV_PGRAPH_CSV1_A_T0_S_DISABLE; break;
+        }
         texgen = NV_PGRAPH_CSV1_A_T0_S_NORMAL_MAP; break;
     default:
-        assert(false);
+        NV2A_UNIMPLEMENTED("texgen mode 0x%x on channel %u", parameter, channel);
+        texgen = NV_PGRAPH_CSV1_A_T0_S_DISABLE;
         break;
     }
     return texgen;

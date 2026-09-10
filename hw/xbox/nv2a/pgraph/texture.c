@@ -440,31 +440,36 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8 ||
                s.color_format ==
                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8) {
-        // TODO: Investigate whether a non-1 depth is possible.
-        // Generally the hardware asserts when attempting to use volumetric
-        // textures in linear formats.
-        assert(depth == 1); /* FIXME */
+        /*
+         * Slices are walked like the I8 case above: one slice_pitch apart in
+         * the source, packed tight in the output. Both of these used to
+         * assert(depth == 1), which aborted the emulator from the Volume
+         * texture suite (issue #28). Whether the hardware accepts a volume in
+         * a linear YUV format is not established -- its goldens are the way
+         * to find out, and an abort produces none.
+         */
         // FIXME: only valid if control0 register allows for colorspace
         // conversion
-        size = width * height * 4;
+        size = width * height * depth * 4;
         converted_data = g_malloc(size);
         uint8_t *pixel = converted_data;
-        for (int y = 0; y < height; y++) {
-            const uint8_t *line = &data[y * row_pitch * depth];
-            for (int x = 0; x < width; x++, pixel += 4) {
-                if (s.color_format ==
-                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {
-                    convert_yuy2_to_rgb(line, x, &pixel[0], &pixel[1],
-                                        &pixel[2]);
-                } else {
-                    convert_uyvy_to_rgb(line, x, &pixel[0], &pixel[1],
-                                        &pixel[2]);
+        for (int z = 0; z < depth; z++) {
+            for (int y = 0; y < height; y++) {
+                const uint8_t *line = data + z * slice_pitch + y * row_pitch;
+                for (int x = 0; x < width; x++, pixel += 4) {
+                    if (s.color_format ==
+                        NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {
+                        convert_yuy2_to_rgb(line, x, &pixel[0], &pixel[1],
+                                            &pixel[2]);
+                    } else {
+                        convert_uyvy_to_rgb(line, x, &pixel[0], &pixel[1],
+                                            &pixel[2]);
+                    }
+                    pixel[3] = 255;
                 }
-                pixel[3] = 255;
             }
         }
     } else if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5) {
-        assert(depth == 1); /* FIXME */
         /*
          * Plain unsigned expansion of all three fields, measured rather than
          * guessed. Reading the levels hardware actually emits out of the
@@ -484,30 +489,36 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
          * is now listed in pgraph_color_format_has_signed_variant(): the bump
          * paths that need signed dS/dT still get it, from the sampler.
          */
-        size = width * height * 4;
+        size = width * height * depth * 4;
         converted_data = g_malloc(size);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                uint16_t rgb655 = *(uint16_t *)(data + y * row_pitch + x * 2);
-                uint8_t *pixel = &converted_data[(y * width + x) * 4];
-                pixel[0] = ((rgb655 >> 10) & 0x3F) * 0xFF / 0x3F;
-                /* Green stays open, and is not a bit-selection problem.
-                 * Across Texture format's gradient hardware's green completes
-                 * two ramps where this completes one (correlation with screen
-                 * x +0.500 against +0.999), so that test alone is fitted far
-                 * better by bits [8:5] or [8:4]. Both were tried on device and
-                 * both are overfits: they take BumpMap_R6G5B5 from 23,793
-                 * differing pixels to 58,317 and 64,214 respectively, the
-                 * latter being no better than the signed decode this replaced.
-                 * The two suites want opposite bit windows, which means the
-                 * difference between them is not in the decode. The obvious
-                 * candidate is what else differs -- Bump map sets the
-                 * per-channel signedness bits and Texture format does not.
-                 * So keep the decode neutral and plain, and leave green to be
-                 * explained rather than fitted. See issue #21. */
-                pixel[1] = ((rgb655 >> 5) & 0x1F) * 0xFF / 0x1F;
-                pixel[2] = (rgb655 & 0x1F) * 0xFF / 0x1F;
-                pixel[3] = 0xFF;
+        for (int z = 0; z < depth; z++) {
+            const uint8_t *slice = data + z * slice_pitch;
+            uint8_t *out = converted_data + z * height * width * 4;
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    uint16_t rgb655 =
+                        *(uint16_t *)(slice + y * row_pitch + x * 2);
+                    uint8_t *pixel = &out[(y * width + x) * 4];
+                    pixel[0] = ((rgb655 >> 10) & 0x3F) * 0xFF / 0x3F;
+                    /* Green stays open, and is not a bit-selection problem.
+                     * Across Texture format's gradient hardware's green
+                     * completes two ramps where this completes one
+                     * (correlation with screen x +0.500 against +0.999), so
+                     * that test alone is fitted far better by bits [8:5] or
+                     * [8:4]. Both were tried on device and both are overfits:
+                     * they take BumpMap_R6G5B5 from 23,793 differing pixels to
+                     * 58,317 and 64,214 respectively, the latter no better
+                     * than the signed decode this replaced. The two suites
+                     * want opposite bit windows, which means the difference
+                     * between them is not in the decode. The obvious candidate
+                     * is what else differs -- Bump map sets the per-channel
+                     * signedness bits and Texture format does not. So keep the
+                     * decode neutral and plain, and leave green to be
+                     * explained rather than fitted. See issue #21. */
+                    pixel[1] = ((rgb655 >> 5) & 0x1F) * 0xFF / 0x1F;
+                    pixel[2] = (rgb655 & 0x1F) * 0xFF / 0x1F;
+                    pixel[3] = 0xFF;
+                }
             }
         }
     } else {

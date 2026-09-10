@@ -1711,41 +1711,23 @@ static void invalidate_surface(NV2AState *d, SurfaceBinding *surface)
     }
 
     /*
-     * These were assertions that the caller had already marked the binding
-     * dirty before invalidating the surface under it. The invariant is real --
-     * a draw after this must not reuse the binding -- but asserting it kills
-     * the process, and Color zeta overlap::AdjacentWithAA trips it, which is
-     * one of the suites never measured until the surface-format aborts were
-     * removed. Colour and zeta sharing an address is unimplemented here (see
-     * the coupling notes in docs/investigations/sweeps/sweep-surface.md), so
-     * the guest reaching this is expected rather than impossible.
-     *
-     * Unbinding is what *makes* the binding dirty, so set it instead of
-     * demanding the caller already did. Warn once so a caller that skipped it
-     * stays visible rather than silently fixed.
+     * Invalidating the surface that is currently bound is legitimate: a new
+     * binding can overlap it in VRAM, and the guest is allowed to lay out
+     * colour and zeta so that they do -- Color zeta overlap::AdjacentWithAA
+     * puts zeta right after a 64x64 colour surface whose antialiased
+     * footprint is larger, and the suite says hardware is nondeterministic
+     * there. See also the coupling notes in
+     * docs/investigations/sweeps/sweep-surface.md. What has to happen is a
+     * rebind on the next update, so ask for one. This used to assert that one
+     * was already pending, which aborted the emulator from that test on both
+     * renderers (issue #28).
      */
     if (surface == r->color_binding) {
-        if (!d->pgraph.surface_color.buffer_dirty) {
-            static bool warned;
-            if (!warned) {
-                warned = true;
-                fprintf(stderr, "nv2a: colour surface invalidated while bound "
-                                "and not marked dirty; rebinding forced\n");
-            }
-            d->pgraph.surface_color.buffer_dirty = true;
-        }
+        d->pgraph.surface_color.buffer_dirty = true;
         unbind_surface(d, true);
     }
     if (surface == r->zeta_binding) {
-        if (!d->pgraph.surface_zeta.buffer_dirty) {
-            static bool warned;
-            if (!warned) {
-                warned = true;
-                fprintf(stderr, "nv2a: zeta surface invalidated while bound "
-                                "and not marked dirty; rebinding forced\n");
-            }
-            d->pgraph.surface_zeta.buffer_dirty = true;
-        }
+        d->pgraph.surface_zeta.buffer_dirty = true;
         unbind_surface(d, false);
     }
 
@@ -1839,14 +1821,24 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
                 other_surface->height, other_surface->pitch);
             OPT_STAT_INC(dif_overlap);
             /*
-             * Lazy overlap: skip download now. The invalidated surface's
-             * VkImage is preserved in the invalid_surfaces list. If a
-             * texture later reads from this VRAM range, the overlap check
-             * in pgraph_vk_download_surfaces_in_range_if_dirty will
-             * download it then. Otherwise the data is never needed.
+             * Record the download now; it completes in
+             * pgraph_vk_surface_update() before the new binding uploads from
+             * VRAM, which is the whole point. invalidate_surface() keeps the
+             * VkImage alive in invalid_surfaces until then.
+             *
+             * This used to be skipped as "lazy overlap" on the theory that a
+             * later texture read would trigger the download, and otherwise
+             * the data was never needed. It is needed by the surface being
+             * created right here: it uploads from VRAM, and VRAM still holds
+             * whatever was there before the evicted surface was drawn. The
+             * Image blit Overlap_* captures showed the previous test's frame
+             * with only the final blit and quad on top, because the clear and
+             * the render-to-subsurface both lived in evicted bindings whose
+             * downloads were never taken (issue #7).
              */
             if (other_surface->draw_dirty) {
-                OPT_STAT_INC(sd_eviction_skipped);
+                OPT_STAT_INC(sd_eviction_dl);
+                download_surface_deferred(d, other_surface);
             }
             invalidate_surface(d, other_surface);
         }
@@ -3059,16 +3051,25 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     "incompatible", surface->vram_addr);
                 compare_surfaces(surface, &target);
                 /*
-                 * Lazy eviction: skip downloading GPU data to VRAM now.
-                 * The shelved VkImage preserves the rendered data. Download
-                 * will happen lazily only when something actually reads the
-                 * VRAM (texture overlap, CPU read, surface expiration).
-                 * If the surface is unshelved (same format re-bound), the
-                 * VkImage is reused directly — no download needed at all.
+                 * Same contract as invalidate_overlapping_surfaces(): the
+                 * binding that replaces this one uploads from VRAM in this
+                 * very surface_update, after the deferred downloads complete,
+                 * so what this surface drew has to be in VRAM by then. The
+                 * shelved VkImage is still kept for a same-format rebind.
+                 *
+                 * This used to skip the download and rely on "texture
+                 * overlap, CPU read, surface expiration" to take it later.
+                 * Expiration is timing-dependent, and a suite that changes
+                 * surface format between tests -- Depth buffer fixed
+                 * function flips Z16/Z24 and fixed/float -- came back with
+                 * 42 of 80 captures differing between three runs of the same
+                 * binary.
                  */
                 surface->shelved_dirty = surface->draw_dirty;
                 if (surface->draw_dirty) {
-                    OPT_STAT_INC(sd_eviction_skipped);
+                    OPT_STAT_INC(sd_eviction_dl);
+                    download_surface_deferred(d, surface);
+                    surface->shelved_dirty = false;
                 }
                 shelve_surface(d, surface);
                 SURF_TIMER_ACC(lk_evict_ns, _gt1);

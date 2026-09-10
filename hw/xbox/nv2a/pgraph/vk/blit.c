@@ -229,6 +229,23 @@ void pgraph_vk_image_blit(NV2AState *d)
 
     hwaddr dest_size = (image_blit->height - 1) * context_surfaces->dest_pitch +
                        image_blit->width * bytes_per_pixel;
+    hwaddr source_size =
+        (image_blit->height - 1) * context_surfaces->source_pitch +
+        image_blit->width * bytes_per_pixel;
+
+    /*
+     * Bring VRAM up to date under both ranges before the copy touches it.
+     * The surface lookups above and below match on the exact base address,
+     * so a blit into the middle of a surface -- which is precisely what the
+     * Image blit Overlap_* tests do, one pixel just inside a corner -- found
+     * nothing, wrote its pixel into VRAM, and then had it overwritten when
+     * the surface it landed inside was downloaded. Hardware sees one VRAM;
+     * this is what makes ours behave like it (issue #7).
+     */
+    pgraph_vk_download_surfaces_in_range_if_dirty(
+        pg, source_addr + source_offset, source_size);
+    pgraph_vk_download_surfaces_in_range_if_dirty(
+        pg, dest_addr + dest_offset, dest_size);
 
     uint8_t *source_row = source + source_offset;
     uint8_t *dest_row = dest + dest_offset;
