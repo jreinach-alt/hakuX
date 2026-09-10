@@ -59,11 +59,21 @@ while [ "$s" -lt "$TIMEOUT" ]; do
     touch "$LEASE"          # hold off the Stop hook while we legitimately run
     a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu" || break
 done
+TIMED_OUT=0
 if [ "$s" -ge "$TIMEOUT" ]; then
-    echo "TIMEOUT after ${s}s — the guest never exited"
-    exit 1
+    # Extract anyway. A run that overruns has usually written most of its
+    # captures, and the progress log names the test it stopped on -- which is
+    # the single most useful thing you can have about a hang. Exiting here
+    # threw all of that away and left "0 files", which reads as "the guest
+    # wrote nothing" when it means "we never looked". Two hangs were
+    # misdiagnosed that way before this was fixed.
+    echo "TIMEOUT after ${s}s — the guest never exited; extracting anyway"
+    TIMED_OUT=1
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    sleep 2
+else
+    echo "ran ${s}s"
 fi
-echo "ran ${s}s"
 
 # The image is ~1.5GB; allow generously for it but never indefinitely.
 ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
@@ -75,3 +85,8 @@ python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" | tail -
 # before the next run needs the room.
 rm -f "$HDD"
 echo "results: $RESULTS ($(ls "$RESULTS" 2>/dev/null | wc -l) files)"
+if [ "$TIMED_OUT" = 1 ]; then
+    echo "  ^ PARTIAL: the guest did not exit. The tail of"
+    echo "    $RESULTS/pgraph_progress_log.txt names the test it stopped on."
+    exit 1
+fi
