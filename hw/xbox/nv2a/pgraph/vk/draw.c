@@ -34,6 +34,22 @@ static bool g_xemu_async_compile = false;
 static bool g_xemu_frame_skip = false;
 static int g_xemu_submit_frames = 3;
 
+/*
+ * A stage whose texture registers were written since its last bind. The
+ * generation counters only move when a register's value changes, and a
+ * title rewriting a texture in place re-sends the same values, so this is
+ * the only sign the binder has to look at the texture again.
+ */
+static inline bool any_texture_dirty(PGRAPHState *pg)
+{
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (pg->texture_dirty[i]) {
+            return true;
+        }
+    }
+    return false;
+}
+
 struct OptBisectStats g_opt_stats;
 
 #ifdef __ANDROID__
@@ -1181,6 +1197,7 @@ static void create_pipeline(PGRAPHState *pg)
         !r->pipeline_state_dirty &&
         pg->texture_state_gen == r->last_texture_state_gen &&
         r->texture_vram_gen == r->last_texture_vram_gen &&
+        !any_texture_dirty(pg) &&
         !check_render_pass_dirty(pg) &&
         pg->shader_state_gen == r->last_shader_state_gen &&
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
@@ -1193,7 +1210,8 @@ static void create_pipeline(PGRAPHState *pg)
 
     NV2A_PHASE_TIMER_BEGIN(pipe_bind_tex);
     if (pg->texture_state_gen != r->last_texture_state_gen ||
-        r->texture_vram_gen != r->last_texture_vram_gen) {
+        r->texture_vram_gen != r->last_texture_vram_gen ||
+        any_texture_dirty(pg)) {
         pgraph_vk_bind_textures(d);
         r->last_texture_state_gen = pg->texture_state_gen;
         r->last_texture_vram_gen = r->texture_vram_gen;
@@ -2754,7 +2772,8 @@ static void begin_pre_draw(PGRAPHState *pg)
                  (!r->push_descriptors_supported &&
                   r->descriptor_set_index <= 0)) { OPT_STAT_INC(sfp_miss_no_desc); sfp_ok = false; }
         else if (!r->push_descriptors_supported &&
-                 pg->texture_state_gen != r->last_texture_state_gen) { OPT_STAT_INC(sfp_miss_tex_gen); sfp_ok = false; }
+                 (pg->texture_state_gen != r->last_texture_state_gen ||
+                  any_texture_dirty(pg))) { OPT_STAT_INC(sfp_miss_tex_gen); sfp_ok = false; }
         else if (pg->non_dynamic_reg_gen != r->last_non_dynamic_reg_gen) { OPT_STAT_INC(sfp_miss_reg_gen); sfp_ok = false; }
         else if (pg->primitive_mode != r->shader_binding->state.geom.primitive_mode) { OPT_STAT_INC(sfp_miss_prim_mode); sfp_ok = false; }
         else if (pg->program_data_dirty) { OPT_STAT_INC(sfp_miss_prog_dirty); sfp_ok = false; }
@@ -2765,14 +2784,11 @@ static void begin_pre_draw(PGRAPHState *pg)
                 tex_vram_clean = true;
                 for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
                     TextureBinding *b = r->texture_bindings[i];
+                    /* Flagged means a check found its pages written: it
+                     * has to be re-hashed, which the fast path cannot do. */
                     if (b && b != &r->dummy_texture && b->possibly_dirty) {
-                        if (b->dirty_check_frame == pg->frame_time &&
-                            !b->dirty_check_result) {
-                            b->possibly_dirty = false;
-                        } else {
-                            tex_vram_clean = false;
-                            break;
-                        }
+                        tex_vram_clean = false;
+                        break;
                     }
                 }
                 if (tex_vram_clean) {
@@ -2783,7 +2799,8 @@ static void begin_pre_draw(PGRAPHState *pg)
             if (tex_vram_clean) {
                 bool sfp_had_tex_change = false;
                 if (r->push_descriptors_supported &&
-                    pg->texture_state_gen != r->last_texture_state_gen) {
+                    (pg->texture_state_gen != r->last_texture_state_gen ||
+                     any_texture_dirty(pg))) {
                     uint32_t saved_shader_gen = pg->shader_state_gen;
                     NV2AState *d_push = container_of(pg, NV2AState, pgraph);
                     pgraph_vk_bind_textures(d_push);
@@ -3576,6 +3593,7 @@ static bool check_draw_mergeable(PGRAPHState *pg, DrawQueue *q)
     if (pg->shader_state_gen != q->shader_state_gen ||
         pg->pipeline_state_gen != q->pipeline_state_gen ||
         pg->texture_state_gen != q->texture_state_gen ||
+        any_texture_dirty(pg) ||
         pg->vertex_attr_gen != q->vertex_attr_gen ||
         r->texture_vram_gen != q->texture_vram_gen ||
         r->framebuffer_dirty ||

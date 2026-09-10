@@ -549,37 +549,68 @@ void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d,
     }
 }
 
+struct texture_overlap_visit {
+    hwaddr addr, end;
+};
+
+static void mark_overlapping_texture_visitor(Lru *lru, LruNode *node,
+                                             void *opaque)
+{
+    struct texture_overlap_visit *v = opaque;
+    TextureBinding *b = container_of(node, TextureBinding, node);
+    if (b->possibly_dirty) {
+        return;
+    }
+    uintptr_t t0 = b->key.texture_vram_offset;
+    uintptr_t t1 = t0 + b->key.texture_length - 1;
+    bool overlapping = !(v->addr > t1 || t0 > v->end);
+    if (b->key.palette_length > 0) {
+        uintptr_t p0 = b->key.palette_vram_offset;
+        uintptr_t p1 = p0 + b->key.palette_length - 1;
+        overlapping |= !(v->addr > p1 || p0 > v->end);
+    }
+    b->possibly_dirty |= overlapping;
+}
+
+/*
+ * Whether the guest wrote [addr, addr + size) since the bits were last read.
+ * Reading clears them, so the write is passed on to every cached binding
+ * over those pages: a 2D texture under a 3D one, the same bytes at another
+ * format, the binding that will be looked up next. Only the binding that
+ * asked used to learn of it, and any other over the same memory kept its
+ * image and served the old content (Texture cubemap, Texture 3D as 2D).
+ */
 static bool check_texture_dirty(NV2AState *d, hwaddr addr, hwaddr size)
 {
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
     hwaddr end = TARGET_PAGE_ALIGN(addr + size);
     addr &= TARGET_PAGE_MASK;
     assert(end < memory_region_size(d->vram));
-    return memory_region_test_and_clear_dirty(d->vram, addr, end - addr,
-                                              DIRTY_MEMORY_NV2A_TEX);
+    bool dirty = memory_region_test_and_clear_dirty(d->vram, addr, end - addr,
+                                                    DIRTY_MEMORY_NV2A_TEX);
+    if (dirty) {
+        struct texture_overlap_visit v = { .addr = addr, .end = end - 1 };
+        lru_visit_active(&r->texture_cache, mark_overlapping_texture_visitor,
+                         &v);
+        r->texture_vram_gen++;
+    }
+    return dirty;
 }
 
-static void resolve_possibly_dirty_textures(NV2AState *d)
+/* Whether the guest wrote the binding's texture (or palette) memory since
+ * the bits were last read. Reads and clears them. */
+static bool texture_vram_written(NV2AState *d, TextureBinding *b)
 {
-    PGRAPHState *pg = &d->pgraph;
-    PGRAPHVkState *r = pg->vk_renderer_state;
-
-    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        TextureBinding *b = r->texture_bindings[i];
-        if (!b || b == &r->dummy_texture || !b->possibly_dirty) continue;
-        if (b->dirty_check_frame == pg->frame_time) continue;
-
-        bool vram_dirty = check_texture_dirty(
-            d, b->key.texture_vram_offset, b->key.texture_length);
-        if (b->key.palette_length > 0) {
-            vram_dirty |= check_texture_dirty(
-                d, b->key.palette_vram_offset, b->key.palette_length);
-        }
-        b->dirty_check_frame = pg->frame_time;
-        b->dirty_check_result = vram_dirty;
-        if (!vram_dirty) {
-            b->possibly_dirty = false;
-        }
+    bool written = check_texture_dirty(d, b->key.texture_vram_offset,
+                                       b->key.texture_length);
+    if (b->key.palette_length > 0) {
+        written |= check_texture_dirty(d, b->key.palette_vram_offset,
+                                       b->key.palette_length);
     }
+    if (written) {
+        b->possibly_dirty = true;
+    }
+    return written;
 }
 
 // FIXME: Make sure we update sampler when data matches. Should we add filtering
@@ -1561,34 +1592,22 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         possibly_dirty = true;
     }
 
+    /*
+     * The dirty bits are the only word on whether the guest wrote the
+     * texture since it was uploaded, and a title can write it between two
+     * draws of one frame (Texture 3D as 2D writes a slice and draws again),
+     * so they are read on every bind rather than once per frame: the scan
+     * is a few words of bitmap, the hash it can save is the whole texture.
+     */
     if (!surface_to_texture && !possibly_dirty_checked) {
-        bool skip_dirty_check = binding_found &&
-            snode->dirty_check_frame == pg->frame_time &&
-            !snode->dirty_check_result;
-        if (!skip_dirty_check) {
-            bool vram_dirty = check_texture_dirty(
-                d, texture_vram_offset, texture_length);
-            if (texture_palette_data_size) {
-                vram_dirty |= check_texture_dirty(
-                    d, texture_palette_vram_offset, texture_palette_data_size);
-            }
-            if (vram_dirty) {
-                possibly_dirty = true;
-            }
-            if (binding_found) {
-                snode->dirty_check_frame = pg->frame_time;
-                snode->dirty_check_result = vram_dirty;
-            }
+        bool vram_dirty = check_texture_dirty(
+            d, texture_vram_offset, texture_length);
+        if (texture_palette_data_size) {
+            vram_dirty |= check_texture_dirty(
+                d, texture_palette_vram_offset, texture_palette_data_size);
         }
-    }
-
-    if (binding_found && possibly_dirty && !surface_to_texture) {
-        bool vram_confirmed_clean =
-            snode->dirty_check_frame == pg->frame_time &&
-            !snode->dirty_check_result;
-        if (vram_confirmed_clean) {
-            snode->possibly_dirty = false;
-            possibly_dirty = false;
+        if (vram_dirty) {
+            possibly_dirty = true;
         }
     }
 
@@ -2040,7 +2059,9 @@ static bool check_textures_dirty(PGRAPHState *pg)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        if (!r->texture_bindings[i] || pg->texture_dirty[i]) {
+        if (!r->texture_bindings[i] || pg->texture_dirty[i] ||
+            (r->texture_bindings[i] != &r->dummy_texture &&
+             r->texture_bindings[i]->possibly_dirty)) {
             return true;
         }
     }
@@ -2086,8 +2107,6 @@ void pgraph_vk_bind_textures(NV2AState *d)
         return;
     }
 
-    resolve_possibly_dirty_textures(d);
-
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         if (!pgraph_is_texture_enabled(pg, i) ||
             !pgraph_is_texture_descriptor_decodable(pg, i)) {
@@ -2105,22 +2124,21 @@ void pgraph_vk_bind_textures(NV2AState *d)
             continue;
         }
 
-        if (!pg->texture_dirty[i] && r->texture_bindings[i] &&
-            r->texture_bindings[i] != &r->dummy_texture &&
-            r->texture_bindings[i]->possibly_dirty) {
-            if (r->texture_bindings[i]->dirty_check_frame == pg->frame_time &&
-                !r->texture_bindings[i]->dirty_check_result) {
-                r->texture_bindings[i]->possibly_dirty = false;
-                continue;
-            }
-        }
-
+        /*
+         * The stage's registers were written again (a SetTexture), which
+         * on its own means nothing has to change: the same texture, bound
+         * with the same state, stays bound as long as the guest has not
+         * written it. That last part has to be checked every time. Writing
+         * the registers with their old values is exactly how a title
+         * presents a texture it updated in place, and taking the write as
+         * "unchanged, skip" served every later draw the old content
+         * (Texture cubemap's 42 tests that rewrite the stage 3 cubemap).
+         */
         if (pg->texture_dirty[i] && r->tex_reg_cache[i].valid &&
             r->texture_bindings[i] &&
             r->texture_bindings[i] != &r->dummy_texture &&
-            r->texture_bindings[i]->dirty_check_frame == pg->frame_time &&
-            !r->texture_bindings[i]->dirty_check_result &&
-            !r->texture_bindings[i]->possibly_dirty) {
+            !r->texture_bindings[i]->possibly_dirty &&
+            !texture_vram_written(d, r->texture_bindings[i])) {
             uint32_t cur[8] = {
                 pgraph_vk_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4),
                 pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4),
@@ -2178,8 +2196,6 @@ static void texture_cache_entry_init(Lru *lru, LruNode *node, const void *state)
     snode->image_view = VK_NULL_HANDLE;
     snode->sampler = VK_NULL_HANDLE;
     snode->submit_time = 0;
-    snode->dirty_check_frame = 0;
-    snode->dirty_check_result = false;
 
     if (!snode->in_active_list) {
         QTAILQ_INSERT_HEAD(&r->texture_active_list, snode, active_entry);

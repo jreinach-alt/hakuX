@@ -71,8 +71,12 @@ order-dependence bugs live in the gap between them.
 
 The gate is the part that bites: **if `texture_dirty[i]` is false, the key is
 never recomputed**, so key fields that no handler marks dirty cannot take
-effect. `SET_TEXTURE_ADDRESS` (`pgraph.c:2118`) and `SET_TEXTURE_BORDER_COLOR`
-(`pgraph.c:3739`) do not set it, and both are key fields.
+effect. Every texture method handler now sets it, `SET_TEXTURE_ADDRESS` and
+`SET_TEXTURE_BORDER_COLOR` included, and sets it on every write rather than
+only on a changed value: a title that rewrote a texture in place re-sends the
+same register values, and that write is the only sign the binder gets. The
+draw path (`vk/draw.c`, `any_texture_dirty`) reaches the rebind on that flag
+as well as on the generation counters, which only move when a value changes.
 
 ### Surface cache
 
@@ -115,6 +119,14 @@ vk/draw.c:5119      bitmap_test_and_clear_atomic(...)    <- hand-inlined
 ```
 
 **Two bypass the API**, so grepping the function name finds four of six.
+
+For textures the consumption is coordinated: `check_texture_dirty`
+(`vk/texture.c`) passes a hit on to every cached binding over the pages
+(`possibly_dirty`), so a 2D texture under a 3D one, or the same bytes bound at
+a second format, re-hashes its content whichever binding read the bits. The
+bits are read on every bind of a flagged stage, not once per flip; a binding
+flagged by another's check is re-hashed even when its own read finds the bits
+already clear.
 
 The three mechanisms are independent. State reached through one is invisible to
 the other two, and no single place records which state uses which. That is the

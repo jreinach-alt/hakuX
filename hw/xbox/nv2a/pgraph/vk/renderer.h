@@ -759,24 +759,24 @@ typedef struct PooledSurfaceImage {
  * A live texture binding. The dirty-tracking fields are the subtle ones and
  * are why a texture can be stale without anything looking wrong:
  *
- *   possibly_dirty     set when a surface or guest write overlaps this
- *                      texture's VRAM. Gates the content comparison below -
- *                      when false the texture is never re-hashed and never
- *                      re-uploaded.
+ *   possibly_dirty     set when a surface download or a guest write was
+ *                      found over this texture's VRAM. Gates the content
+ *                      comparison below - when false the texture is never
+ *                      re-hashed and never re-uploaded. Cleared only by that
+ *                      comparison, never by a later look at the dirty bits:
+ *                      the bits are consumed by whichever binding reads them
+ *                      first, so check_texture_dirty (vk/texture.c) passes a
+ *                      hit on to every cached binding over the pages.
  *   hash               content hash, compared only while possibly_dirty.
- *   dirty_check_frame  per-frame memo of the VRAM dirty test, added
- *   dirty_check_result post-fork in 21f7d7c3e5. pg->frame_time advances only
- *                      on NV097_FLIP_INCREMENT_WRITE, so a texture rewritten
- *                      twice inside one flip interval is only tested once.
- *                      Investigated as a cause of #19 and disproven there;
- *                      still the reason a re-upload can be skipped.
  *   draw_time          LRU recency.
  *   submit_time        in-flight tracking; a binding pinned by an unfinished
  *                      frame cannot be evicted, which is the LRU-exhaustion
  *                      case in KNOWN_ISSUES.md.
  *
- * The VRAM dirty bit these depend on is consumed page-wide by six
- * uncoordinated callers - see docs/nv2a/pipeline.md, "Invalidation".
+ * The VRAM dirty bit is read on every bind of a stage whose registers were
+ * written, not once per flip: a texture rewritten twice inside one flip
+ * interval is seen both times (Texture 3D as 2D). See docs/nv2a/pipeline.md,
+ * "Invalidation".
  */
 typedef struct TextureBinding {
     LruNode node;
@@ -794,8 +794,6 @@ typedef struct TextureBinding {
     uint64_t last_hash_vram_gen; /* VRAM gen when content hash was last computed */
     unsigned int draw_time;
     uint32_t submit_time;
-    unsigned int dirty_check_frame;
-    bool dirty_check_result;
 } TextureBinding;
 
 /*

@@ -668,8 +668,10 @@ static inline bool fast_entry_apply(PGRAPHState *pg,
 {
     if (f->xlat >= XLAT_TEX_DIRTY_0 && f->xlat <= XLAT_TEX_DIRTY_3) {
         int slot = f->xlat - XLAT_TEX_DIRTY_0;
-        bool changed = (p != pgraph_reg_r(pg, f->reg));
-        pg->texture_dirty[slot] |= changed;
+        /* Written with the value it already had counts: that is how a
+         * title presents a texture it rewrote in place, and the binder
+         * reads the dirty bits only for a stage marked here. */
+        pg->texture_dirty[slot] = true;
         pgraph_reg_w(pg, f->reg, p);
         return true;
     }
@@ -700,8 +702,7 @@ static inline bool fast_entry_apply_atomic(PGRAPHState *pg,
 {
     if (f->xlat >= XLAT_TEX_DIRTY_0 && f->xlat <= XLAT_TEX_DIRTY_3) {
         int slot = f->xlat - XLAT_TEX_DIRTY_0;
-        bool changed = (p != qatomic_read(&pg->regs_[f->reg]));
-        pg->texture_dirty[slot] |= changed;
+        pg->texture_dirty[slot] = true;
         pgraph_reg_w_atomic(pg, f->reg, p);
         return true;
     }
@@ -2175,8 +2176,7 @@ DEF_METHOD(NV097, SET_TEXTURE_ADDRESS)
 {
     int slot = (method - NV097_SET_TEXTURE_ADDRESS) / 64;
     unsigned int reg = NV_PGRAPH_TEXADDRESS0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3718,8 +3718,7 @@ DEF_METHOD(NV097, SET_TEXTURE_OFFSET)
 {
     int slot = (method - NV097_SET_TEXTURE_OFFSET) / 64;
     unsigned int reg = NV_PGRAPH_TEXOFFSET0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3747,7 +3746,6 @@ DEF_METHOD(NV097, SET_TEXTURE_FORMAT)
         GET_MASK(parameter, NV097_SET_TEXTURE_FORMAT_BASE_SIZE_P);
 
     unsigned int reg = NV_PGRAPH_TEXFMT0 + slot * 4;
-    uint32_t prev = pgraph_reg_r(pg, reg);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_CONTEXT_DMA, dma_select);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_CUBEMAPENABLE, cubemap);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BORDER_SOURCE, border_source);
@@ -3758,16 +3756,14 @@ DEF_METHOD(NV097, SET_TEXTURE_FORMAT)
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BASE_SIZE_V, log_height);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BASE_SIZE_P, log_depth);
 
-    bool fmt_changed = (pgraph_reg_r(pg, reg) != prev);
-    pg->texture_dirty[slot] |= fmt_changed;
+    pg->texture_dirty[slot] = true;
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_CONTROL0)
 {
     int slot = (method - NV097_SET_TEXTURE_CONTROL0) / 64;
     unsigned int reg = NV_PGRAPH_TEXCTL0_0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3775,8 +3771,7 @@ DEF_METHOD(NV097, SET_TEXTURE_CONTROL1)
 {
     int slot = (method - NV097_SET_TEXTURE_CONTROL1) / 64;
     unsigned int reg = NV_PGRAPH_TEXCTL1_0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3784,8 +3779,7 @@ DEF_METHOD(NV097, SET_TEXTURE_FILTER)
 {
     int slot = (method - NV097_SET_TEXTURE_FILTER) / 64;
     unsigned int reg = NV_PGRAPH_TEXFILTER0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3793,8 +3787,7 @@ DEF_METHOD(NV097, SET_TEXTURE_IMAGE_RECT)
 {
     int slot = (method - NV097_SET_TEXTURE_IMAGE_RECT) / 64;
     unsigned int reg = NV_PGRAPH_TEXIMAGERECT0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3810,21 +3803,18 @@ DEF_METHOD(NV097, SET_TEXTURE_PALETTE)
         GET_MASK(parameter, NV097_SET_TEXTURE_PALETTE_OFFSET);
 
     unsigned int reg = NV_PGRAPH_TEXPALETTE0 + slot * 4;
-    uint32_t prev = pgraph_reg_r(pg, reg);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_CONTEXT_DMA, dma_select);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_LENGTH, length);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_OFFSET, offset);
 
-    bool pal_changed = (pgraph_reg_r(pg, reg) != prev);
-    pg->texture_dirty[slot] |= pal_changed;
+    pg->texture_dirty[slot] = true;
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_BORDER_COLOR)
 {
     int slot = (method - NV097_SET_TEXTURE_BORDER_COLOR) / 64;
     unsigned int reg = NV_PGRAPH_BORDERCOLOR0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
