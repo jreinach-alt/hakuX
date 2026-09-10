@@ -2331,6 +2331,44 @@ static void texture_cache_entry_post_evict(Lru *lru, LruNode *node)
     texture_cache_release_node_resources(r, snode);
 }
 
+/*
+ * A surface's image view is being retired. A texture slot that samples the
+ * surface directly (tex_surface_direct) still holds that handle in
+ * push_tex_infos, and the fast path re-pushes those infos as long as the
+ * slot looks unchanged -- so a draw after the retirement pushed a view that
+ * no longer existed, which the validation layer segfaulted on at record
+ * time and lavapipe survived only by timing (issue #34). Drop the handle
+ * from every cache that could hand it back, and make the slot re-resolve
+ * from VRAM on its next bind.
+ */
+void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (view == VK_NULL_HANDLE) {
+        return;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (r->tex_surface_direct[i] && r->tex_surface_direct_views[i] == view) {
+            r->tex_surface_direct[i] = false;
+            r->tex_surface_direct_views[i] = VK_NULL_HANDLE;
+            r->tex_binding_cache[i].binding = NULL;
+            r->tex_binding_cache[i].key_hash = 0;
+            pg->texture_dirty[i] = true;
+            r->texture_bindings_changed = true;
+            r->push_tex_dirty = true;
+        }
+    }
+    for (int c = 0; c < TEX_DESC_CACHE_SIZE; c++) {
+        if (!r->tex_desc_cache[c].valid) continue;
+        for (int t = 0; t < NV2A_MAX_TEXTURES; t++) {
+            if (r->tex_desc_cache[c].image_views[t] == view) {
+                r->tex_desc_cache[c].valid = false;
+                break;
+            }
+        }
+    }
+}
+
 static bool texture_cache_entry_compare(Lru *lru, LruNode *node,
                                         const void *key)
 {

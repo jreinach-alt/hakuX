@@ -1598,6 +1598,7 @@ void pgraph_vk_gl_make_context_current(void);
 void pgraph_vk_init_textures(PGRAPHState *pg);
 void pgraph_vk_finalize_textures(PGRAPHState *pg);
 void pgraph_vk_drain_deferred_texture_releases(PGRAPHVkState *r, int frame);
+void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view);
 void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame);
 void pgraph_vk_bind_textures(NV2AState *d);
 bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg);

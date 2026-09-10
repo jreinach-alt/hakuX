@@ -2158,6 +2158,9 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
 
 static void migrate_surface_image(SurfaceBinding *dst, SurfaceBinding *src)
 {
+    /* The view now belongs to a surface at a different address; a texture
+     * slot still sampling it directly would read the wrong surface. */
+    pgraph_vk_texture_surface_view_retired(&g_nv2a->pgraph, src->image_view);
     dst->image = src->image;
     dst->image_view = src->image_view;
     dst->image_layout = src->image_layout;
@@ -2199,6 +2202,9 @@ typedef struct DeferredSurfaceRelease {
 
 static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface)
 {
+    pgraph_vk_texture_surface_view_retired(&g_nv2a->pgraph,
+                                           surface->image_view);
+
     unsigned int w = surface->width ? surface->width : 1;
     unsigned int h = surface->height ? surface->height : 1;
     unsigned int sf = g_nv2a->pgraph.surface_scale_factor;
