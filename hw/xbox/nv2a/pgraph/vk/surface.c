@@ -433,7 +433,13 @@ static bool download_surface_record_deferred(NV2AState *d,
         VkBufferImageCopy copy_regions[2];
         copy_regions[0] = (VkBufferImageCopy){
             .bufferOffset = aligned_offset,
-            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            /* Colour, or a D16 depth surface: the only zeta format that
+             * takes this direct copy (no_conversion_necessary above), and
+             * it has no colour aspect. The validation layer reported the
+             * colour aspect on every Z16 download (VUID 09105); lavapipe
+             * copied anyway, hardware is not obliged to. */
+            .imageSubresource.aspectMask = surface->color ?
+                VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT,
             .imageSubresource.layerCount = 1,
         };
 
