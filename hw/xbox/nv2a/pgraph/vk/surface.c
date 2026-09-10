@@ -28,6 +28,7 @@
 #include "qemu/compiler.h"
 #include "ui/xemu-settings.h"
 #include "renderer.h"
+#include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
 
 /* Lightweight surface sub-timers — compiled out when profiling is off */
 #if NV2A_PERF_LOG

@@ -5,6 +5,11 @@ endif
 tcg_ss = ss.source_set()
 
 tcg_ss.add(files(
+  # Fork addition. The Android build globs sources (CMakeLists.txt
+  # file(GLOB_RECURSE)), so new files compile there automatically and
+  # were never listed here - the meson build referenced their symbols
+  # and never built them.
+  'tb-cache-hints.c',
   'cpu-exec.c',
   'cpu-exec-common.c',
   'tcg-runtime.c',

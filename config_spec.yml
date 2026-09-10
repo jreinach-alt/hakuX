@@ -370,3 +370,16 @@ perf:
   cache_shaders:
     type: bool
     default: true
+  # Added by the Android port. These existed only in the checked-in
+  # include/xemu-config.h, which is a GENERATED file - so any build that
+  # regenerated it from this schema lost them and failed to compile
+  # hw/xbox/nv2a/nv2a.c. Defaults match android/.../xemu_settings_android.cc.
+  unlock_framerate:
+    type: bool
+    default: true
+  skip_occlusion_queries:
+    type: bool
+    default: false
+  texture_cache_size:
+    type: integer
+    default: 0

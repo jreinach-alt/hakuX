@@ -1,4 +1,7 @@
 specific_ss.add(files(
+	# Fork addition; the Android build globs sources so this was
+	# never listed here. See accel/tcg/meson.build.
+	'game-compat.c',
 	'acpi_xbox.c',
 	'amd_smbus.c',
 	# 'chihiro-usb.c',
