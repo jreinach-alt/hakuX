@@ -535,6 +535,45 @@ static void resolve_possibly_dirty_textures(NV2AState *d)
     }
 }
 
+/*
+ * Ask the dirty bitmap, before every draw, whether the guest wrote any bound
+ * texture since it was last looked at.  The texture bind loop only runs when
+ * a texture register or texture_vram_gen changed, and a CPU rewrite of the
+ * texels changes neither: Texture CPU Update drew its second quad with the
+ * first upload, and every Texture_cubemap dot-product test sampled the cube
+ * the suite's first test had written.  Four bitmap range tests per draw.
+ *
+ * The bits are consumed here, so the finding is left in the binding's memo
+ * for the bind loop to act on rather than re-asked.
+ */
+void pgraph_vk_poll_bound_textures(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    bool any = false;
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        TextureBinding *b = r->texture_bindings[i];
+        if (!b || b == &r->dummy_texture || b->possibly_dirty) continue;
+
+        bool vram_dirty = check_texture_dirty(
+            d, b->key.texture_vram_offset, b->key.texture_length);
+        if (b->key.palette_length > 0) {
+            vram_dirty |= check_texture_dirty(
+                d, b->key.palette_vram_offset, b->key.palette_length);
+        }
+        if (vram_dirty) {
+            b->possibly_dirty = true;
+            b->dirty_check_frame = pg->frame_time;
+            b->dirty_check_result = true;
+            any = true;
+        }
+    }
+    if (any) {
+        r->texture_vram_gen++;
+    }
+}
+
 // FIXME: Make sure we update sampler when data matches. Should we add filtering
 // options to the textureshape?
 static void upload_texture_image(PGRAPHState *pg, int texture_idx,
@@ -1518,9 +1557,18 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     }
 
     if (!surface_to_texture && !possibly_dirty_checked) {
+        /*
+         * The bitmap is test-and-clear, so a verdict already taken this
+         * frame -- by the per-draw poll or an earlier bind -- is the only
+         * one there is: asking again reads clean, and writing that into the
+         * memo made the block below drop the flag right after the poll had
+         * raised it.
+         */
         bool skip_dirty_check = binding_found &&
-            snode->dirty_check_frame == pg->frame_time &&
-            !snode->dirty_check_result;
+            snode->dirty_check_frame == pg->frame_time;
+        if (skip_dirty_check && snode->dirty_check_result) {
+            possibly_dirty = true;
+        }
         if (!skip_dirty_check) {
             bool vram_dirty = check_texture_dirty(
                 d, texture_vram_offset, texture_length);
@@ -2007,7 +2055,11 @@ static bool check_textures_dirty(PGRAPHState *pg)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        if (!r->texture_bindings[i] || pg->texture_dirty[i]) {
+        TextureBinding *b = r->texture_bindings[i];
+        /* A binding flagged by the per-draw VRAM poll is as dirty as a
+         * register change; returning early here left it stale. */
+        if (!b || pg->texture_dirty[i] ||
+            (b != &r->dummy_texture && b->possibly_dirty)) {
             return true;
         }
     }

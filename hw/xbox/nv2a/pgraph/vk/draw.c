@@ -2725,6 +2725,10 @@ static void begin_pre_draw(PGRAPHState *pg)
     assert(!r->color_binding || r->color_binding->initialized);
     assert(!r->zeta_binding || r->zeta_binding->initialized);
 
+    /* Bumps texture_vram_gen when the guest rewrote a bound texture, which
+     * every fast path below already treats as a reason to rebind. */
+    pgraph_vk_poll_bound_textures(container_of(pg, NV2AState, pgraph));
+
     {
         bool sfp_ok = true;
         if (pg->clearing)                { OPT_STAT_INC(sfp_miss_clearing); sfp_ok = false; }
@@ -2769,6 +2773,13 @@ static void begin_pre_draw(PGRAPHState *pg)
                 }
             }
 
+            if (!tex_vram_clean) {
+                /* A bound texture's memory changed under it; the full path
+                 * below rebinds.  Staying on the fast path here drew the
+                 * previous upload (Texture CPU Update, Texture_cubemap). */
+                OPT_STAT_INC(sfp_miss_tex_gen);
+                sfp_ok = false;
+            }
             if (tex_vram_clean) {
                 bool sfp_had_tex_change = false;
                 if (r->push_descriptors_supported &&
@@ -2922,9 +2933,9 @@ static void begin_pre_draw(PGRAPHState *pg)
         !r->need_descriptor_rebind &&
         r->push_ubo_set_index > 0 &&
         (r->push_descriptors_supported || r->descriptor_set_index > 0) &&
+        r->texture_vram_gen == r->last_texture_vram_gen &&
         (r->push_descriptors_supported ||
-             (pg->texture_state_gen == r->last_texture_state_gen &&
-              r->texture_vram_gen == r->last_texture_vram_gen)) &&
+         pg->texture_state_gen == r->last_texture_state_gen) &&
         pg->shader_state_gen == r->last_shader_state_gen &&
         pg->pipeline_state_gen == r->last_pipeline_state_gen &&
         pg->primitive_mode == r->shader_binding->state.geom.primitive_mode &&
@@ -2956,7 +2967,8 @@ static void begin_pre_draw(PGRAPHState *pg)
         }
         r->pre_draw_skipped = false;
         if (r->push_descriptors_supported &&
-            pg->texture_state_gen != r->last_texture_state_gen) {
+            (pg->texture_state_gen != r->last_texture_state_gen ||
+             r->texture_vram_gen != r->last_texture_vram_gen)) {
             NV2AState *d_mfp_push = container_of(pg, NV2AState, pgraph);
             pgraph_vk_bind_textures(d_mfp_push);
             r->last_texture_state_gen = pg->texture_state_gen;

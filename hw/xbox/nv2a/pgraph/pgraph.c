@@ -140,6 +140,12 @@ static void pgraph_init_reg_category_table(void)
         pgraph_reg_category_table[(NV_PGRAPH_TEXFILTER0    + i * 4) / 4] |= REG_CAT_TEXTURE;
         pgraph_reg_category_table[(NV_PGRAPH_TEXIMAGERECT0 + i * 4) / 4] |= REG_CAT_TEXTURE;
         pgraph_reg_category_table[(NV_PGRAPH_TEXPALETTE0   + i * 4) / 4] |= REG_CAT_TEXTURE;
+        /* The sampler is texture state too: the draw path only re-binds
+         * textures when texture_state_gen moved, so a wrap mode or border
+         * colour written between two draws was invisible to it
+         * (Texture_border's six wrap modes all drew as repeat). */
+        pgraph_reg_category_table[(NV_PGRAPH_TEXADDRESS0   + i * 4) / 4] |= REG_CAT_TEXTURE;
+        pgraph_reg_category_table[(NV_PGRAPH_BORDERCOLOR0  + i * 4) / 4] |= REG_CAT_TEXTURE;
     }
 
     unsigned int pipeline_regs[] = {
