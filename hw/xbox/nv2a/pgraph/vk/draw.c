@@ -1739,14 +1739,28 @@ static void push_vertex_attr_values(PGRAPHState *pg)
     }
 }
 
+/*
+ * The template must have been created from a layout compatible with the
+ * pipeline's, push-constant range included; the range is sized by the
+ * shader's uniform attribute count, the same way create_pipeline sizes it.
+ */
+static int push_template_index(PGRAPHVkState *r, bool use_push_constants,
+                               uint32_t uniform_attrs)
+{
+    return use_push_constants ? __builtin_popcount(uniform_attrs) : 0;
+}
+
 static void push_texture_descriptors(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+    int n = push_template_index(r, r->use_push_constants_for_uniform_attrs,
+                                r->shader_binding->state.vsh.uniform_attrs);
 
     vkCmdPushDescriptorSetWithTemplateKHR(
-        r->command_buffer, r->push_tex_update_template,
+        r->command_buffer, r->push_tex_update_template[n],
         r->pipeline_binding->layout, 0, r->push_tex_infos);
     r->push_tex_dirty = false;
+    r->push_tex_pushed_index = n;
 }
 
 static void bind_descriptor_sets(PGRAPHState *pg)
@@ -1767,7 +1781,19 @@ static void bind_descriptor_sets(PGRAPHState *pg)
         2, dynamic_offsets);
 
     if (r->push_descriptors_supported) {
-        if (r->push_tex_dirty) {
+        /*
+         * Binding a pipeline whose layout is not compatible for set 0 with
+         * the one the descriptors were pushed under -- a different
+         * push-constant range, since each shader sizes its own -- leaves
+         * set 0 unbound, and the draw would sample through whatever the
+         * driver left there. The validation layer reported it on 456 draws
+         * of the Clear suite once the templates matched (issue #34,
+         * finding 3). Push again whenever the shape changes.
+         */
+        int n = push_template_index(
+            r, r->use_push_constants_for_uniform_attrs,
+            r->shader_binding ? r->shader_binding->state.vsh.uniform_attrs : 0);
+        if (r->push_tex_dirty || n != r->push_tex_pushed_index) {
             push_texture_descriptors(pg);
         }
     } else {
@@ -2598,6 +2624,7 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
          * after flushing all frames. */
         r->need_descriptor_rebind = true;
         r->push_tex_dirty = true;
+        r->push_tex_pushed_index = -1;
         r->uniforms_changed = true;
         r->in_command_buffer = false;
         r->color_drawn_in_cb = false;
@@ -4292,6 +4319,9 @@ static bool try_snapshot_draw_arrays(NV2AState *d, ReorderWindowEntry *e)
 
     e->pipeline_binding = r->pipeline_binding;
     e->layout = r->pipeline_binding->layout;
+    e->push_template_index = push_template_index(
+        r, r->use_push_constants_for_uniform_attrs,
+        r->shader_binding ? r->shader_binding->state.vsh.uniform_attrs : 0);
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
@@ -4426,6 +4456,9 @@ static bool try_snapshot_inline_elements(NV2AState *d, ReorderWindowEntry *e)
 
     e->pipeline_binding = r->pipeline_binding;
     e->layout = r->pipeline_binding->layout;
+    e->push_template_index = push_template_index(
+        r, r->use_push_constants_for_uniform_attrs,
+        r->shader_binding ? r->shader_binding->state.vsh.uniform_attrs : 0);
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
@@ -4660,7 +4693,8 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
             memcmp(e->rw_push_tex_infos, prev->rw_push_tex_infos,
                    sizeof(e->rw_push_tex_infos)) != 0) {
             vkCmdPushDescriptorSetWithTemplateKHR(
-                r->command_buffer, r->push_tex_update_template,
+                r->command_buffer,
+                r->push_tex_update_template[e->push_template_index],
                 e->layout, 0, e->rw_push_tex_infos);
         }
     } else {

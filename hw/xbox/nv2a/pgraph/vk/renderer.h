@@ -1025,6 +1025,7 @@ typedef struct ReorderWindowEntry {
     int num_push_values;
     bool use_push_constants;
     VkPipelineLayout layout;
+    int push_template_index; /* push_tex_update_template[] entry for layout */
 
     VkDescriptorImageInfo rw_push_tex_infos[NV2A_MAX_TEXTURES];
     bool rw_use_push_descriptors;
@@ -1080,8 +1081,19 @@ typedef struct PGRAPHVkState {
     int push_ubo_set_base_count;
     VkDescriptorImageInfo push_tex_infos[NV2A_MAX_TEXTURES];
     bool push_tex_dirty;
-    VkDescriptorUpdateTemplate push_tex_update_template;
-    VkPipelineLayout push_template_layout;
+    /*
+     * One texture push-descriptor template per pipeline-layout shape. A
+     * template is only usable with a layout compatible for its set with the
+     * one it was created from, and compatibility includes the push-constant
+     * ranges: every pipeline carries a range sized to its shader's uniform
+     * attributes (draw.c), so a template made from a layout with no range
+     * was incompatible with all of them (issue #34, finding 2). Indexed by
+     * that attribute count; entry 0 has no range.
+     */
+    VkDescriptorUpdateTemplate
+        push_tex_update_template[NV2A_VERTEXSHADER_ATTRIBUTES + 1];
+    VkPipelineLayout push_template_layout[NV2A_VERTEXSHADER_ATTRIBUTES + 1];
+    int push_tex_pushed_index; /* shape the set was last pushed with; -1 none */
 
     VkPhysicalDevice physical_device;
     VkPhysicalDeviceFeatures enabled_physical_device_features;
