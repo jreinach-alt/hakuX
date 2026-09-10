@@ -78,22 +78,28 @@ is tracked separately so it does not silently consume a sprint.
 
 ## 1. Make releases and builds repeatable
 
-**Status: partly done.**
+**Status: done.**
 
 - [x] Persistent release signing, so releases upgrade in place instead of
       costing users their saves ([`android/RELEASING.md`](android/RELEASING.md))
 - [x] Own application id, so this fork cannot damage an official install
 - [x] Crash diagnostics no longer silenced by the app's own log filter
-- [ ] **`subprojects/nv2a_vsh_cpu.wrap` pins a revision that does not exist
-      upstream**, so a clean checkout cannot configure. This blocks CI, which
-      clones fresh.
-- [ ] **Android CI.** The existing workflows build Linux, macOS and Windows;
-      the Android port — the reason this project exists — is never compiled.
-      That is how a dead subproject pin, a machine-specific JDK path and an
-      unvalidated frontend integration all shipped.
+- [x] `subprojects/nv2a_vsh_cpu.wrap` pins a revision that resolves, so a clean
+      checkout configures. This was blocking CI, which clones fresh.
+- [x] **Android CI** ([`android.yml`](.github/workflows/android.yml)) builds the
+      port on every push and pull request. Its absence is how a dead subproject
+      pin, a machine-specific JDK path and an unvalidated frontend integration
+      all shipped.
+- [x] **Desktop CI** ([`desktop.yml`](.github/workflows/desktop.yml)), added
+      because the Linux target builds again. It carries android.yml's triggers
+      deliberately: `hw/xbox/nv2a`'s headers now have two consumers, and a
+      change validated against one of them broke the other with nothing to
+      catch it.
 
-Highest value per hour on the list, and everything after it depends on knowing
-the build still works.
+Everything after this depends on knowing the build still works, and now two
+builds say so. The desktop one also runs the pgraph suite without a device —
+see [`docs/testing/desktop-runs.md`](docs/testing/desktop-runs.md) — which is
+worth knowing about before planning device time.
 
 ## 2. Build the oracle
 
