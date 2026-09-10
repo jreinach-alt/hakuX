@@ -28,12 +28,30 @@ What it reports, per test:
     a wrong one: nothing drew, or the capture beat the draw to it. Mixed into a
     pixel-difference average it reads as dozens of subtly broken tests instead
     of one thing that did not run, so it is counted separately.
+  * for a depth capture (``*_ZB.png``), how many of the differing pixels are
+    off by exactly one in the stored depth value. The PNG holds the zeta
+    surface as it sits in memory: for z24 the 24-bit depth is spread over the
+    A, R and G bytes with the stencil in B, for z16 it is packed as R5G6B5. A
+    byte-wise comparison cannot see that 0x0100 and 0x00ff are neighbours, so
+    the depth is decoded and compared as an integer, and a capture whose only
+    differences are +-1 is reported as its own category, "exact (+-1)". It is
+    never folded into bit-identical: +-1 in the last bit of the depth is where
+    the emulated transform rounds differently from the hardware, which is a
+    real difference and a small one, and the score should say both. The
+    tolerance is exactly one, and it applies to depth captures only; colour is
+    compared as before (issue #32).
 
 The split matters. A mean cannot tell "this format is not decoded at all"
 (max 255) from "rounding" (max 8), and that is the whole triage decision; and
 comparing RGB alone once hid 1,279 differing alpha pixels behind a clean score.
 Suites are ranked by the share of their tests that are bit-identical, because
 that is the only claim that needs no threshold to defend.
+
+The per-test TSV has one row per test: suite, test, solo, status, differing,
+max_rgb, max_a, pixels, off_by_one. For a depth capture ``differing`` counts
+pixels whose decoded depth or stencil differs and ``off_by_one`` those whose
+depth is off by exactly one with the stencil equal; ``max_rgb`` and ``max_a``
+stay the raw channel maxima. For a colour capture ``off_by_one`` is 0.
 """
 
 import argparse
@@ -49,6 +67,32 @@ except ImportError:
     sys.exit("needs numpy and pillow: pip install numpy pillow")
 
 STARTING = re.compile(r"Starting \[(\d+)/(\d+)\] (.+?)::(.+)")
+
+# Test names carry the zeta format the capture was taken with: Depth_buffer
+# (DepthFmt_z16_*), Depth_buffer_fixed_function (z16_*) and W_buffering
+# (WBuf16D_*, ZBuf16F_*, ...). Everything else that saves a depth buffer
+# (Clear, Color_Zeta_Disable, Color_zeta_overlap, Depth_function, Stencil,
+# Stencil_func, ZPass_pixel_count) runs with the default z24s8 surface.
+Z16_NAME = re.compile(r"(^|_)z16_|^[WZ]Buf16[DF]_")
+
+
+def depth_bits(test):
+    """16 or 24: the width of the depth value stored in a ``_ZB`` capture."""
+    return 16 if Z16_NAME.search(test) else 24
+
+
+def decode_depth(img, bits):
+    """(depth, stencil) integer arrays from an RGBA capture of a zeta surface.
+
+    The test saves the surface bytes as they are: a z24s8 pixel is the little
+    endian word (depth << 8) | stencil, so B is the stencil and the depth is
+    A:R:G high to low; a z16 pixel is the 16-bit depth read back as R5G6B5.
+    """
+    a = img.astype(np.int64)
+    if bits == 24:
+        return (a[..., 3] << 16) | (a[..., 0] << 8) | a[..., 1], a[..., 2]
+    depth = ((a[..., 0] >> 3) << 11) | ((a[..., 1] >> 2) << 5) | (a[..., 2] >> 3)
+    return depth, np.zeros_like(depth)
 
 
 def read_log(path):
@@ -76,7 +120,7 @@ def score_dir(args):
         suite, test = name[:-4].split("::", 1)
         gp = os.path.join(goldens, suite, test + ".png")
         if not os.path.exists(gp):
-            rows.append((suite, test, solo, "no-golden", 0, 0, 0, 0))
+            rows.append((suite, test, solo, "no-golden", 0, 0, 0, 0, 0))
             continue
         try:
             g = np.asarray(Image.open(gp).convert("RGBA"), dtype=np.int16)
@@ -87,12 +131,23 @@ def score_dir(args):
             rows.append((suite, test, solo, "unreadable", 0, 0, 0, 0))
             continue
         if g.shape != o.shape:
-            rows.append((suite, test, solo, "size", 0, 0, 0, g.shape[0] * g.shape[1]))
+            rows.append((suite, test, solo, "size", 0, 0, 0,
+                         g.shape[0] * g.shape[1], 0))
             continue
         d = np.abs(g - o)
         rgb = d[..., :3].max(axis=2)
         alpha = d[..., 3]
-        differing = int(((rgb > 0) | (alpha > 0)).sum())
+        off_by_one = 0
+        if test.endswith("_ZB"):
+            bits = depth_bits(test)
+            gz, gs = decode_depth(g, bits)
+            oz, os_ = decode_depth(o, bits)
+            dz = np.abs(gz - oz)
+            ds = np.abs(gs - os_)
+            differing = int(((dz > 0) | (ds > 0)).sum())
+            off_by_one = int(((dz == 1) & (ds == 0)).sum())
+        else:
+            differing = int(((rgb > 0) | (alpha > 0)).sum())
 
         # The overlay text is drawn pure white by the guest. Pixels that are
         # white on exactly one side mean the two runs printed different text,
@@ -113,7 +168,8 @@ def score_dir(args):
         if label_delta > 8:
             status = "label-differs"
         rows.append((suite, test, solo, status, differing,
-                     int(rgb.max()), int(alpha.max()), g.shape[0] * g.shape[1]))
+                     int(rgb.max()), int(alpha.max()), g.shape[0] * g.shape[1],
+                     off_by_one))
     return rows
 
 
@@ -164,7 +220,8 @@ def main():
 
     if args.tsv:
         with open(args.tsv, "w") as f:
-            f.write("suite\ttest\tsolo\tstatus\tdiffering\tmax_rgb\tmax_a\tpixels\n")
+            f.write("suite\ttest\tsolo\tstatus\tdiffering\tmax_rgb\tmax_a"
+                    "\tpixels\toff_by_one\n")
             for r in sorted(rows):
                 f.write("\t".join(str(x) for x in r) + "\n")
 
@@ -172,6 +229,10 @@ def main():
     blanks = [r for r in rows if r[3] == "blank"]
     stale = [r for r in rows if r[3] == "label-differs"]
     exact = [r for r in scored if r[4] == 0]
+    # Depth captures whose every differing pixel is one depth unit away from
+    # the hardware's. A category of their own, on purpose: not bit-identical,
+    # and not the same failure as a wrong depth either.
+    within1 = [r for r in scored if r[3] == "ok" and 0 < r[4] == r[8]]
     nogold = [r for r in rows if r[3] == "no-golden"]
     sized = [r for r in rows if r[3] == "size"]
     shared = {r[0] for r in rows if not r[2]}
@@ -186,26 +247,31 @@ def main():
                 print(f"       {suite}::{test}")
         else:
             print(f"  every repeated test scored identically on each run\n")
-    print(f"  bit-identical to hardware : {len(exact):5d}  "
+    print(f"  bit-identical to hardware   : {len(exact):5d}  "
           f"({len(exact)/max(len(scored),1)*100:.1f}% of scored)")
-    print(f"  differ                    : {len(scored)-len(exact)-len(blanks):5d}")
-    print(f"  blank -- nothing drew     : {len(blanks):5d}")
+    print(f"  depth within +-1 of hardware: {len(within1):5d}  "
+          f"(depth captures off by exactly one; not counted above)")
+    print(f"  differ                      : "
+          f"{len(scored)-len(exact)-len(within1)-len(blanks):5d}")
+    print(f"  blank -- nothing drew       : {len(blanks):5d}")
     if stale:
-        print(f"  label differs from golden : {len(stale):5d}  "
+        print(f"  label differs from golden   : {len(stale):5d}  "
               f"<- goldens built from a different test suite; not comparable")
         for suite, test, *_ in stale[:8]:
             print(f"       {suite}::{test}")
     if sized:
-        print(f"  wrong size                : {len(sized):5d}")
+        print(f"  wrong size                  : {len(sized):5d}")
     if nogold:
-        print(f"  no golden to compare      : {len(nogold):5d}")
+        print(f"  no golden to compare        : {len(nogold):5d}")
 
     suites = {}
-    for suite, test, solo, status, differing, mrgb, ma, px in scored:
+    for suite, test, solo, status, differing, mrgb, ma, px, ob1 in scored:
         s = suites.setdefault(suite, {"n": 0, "exact": 0, "px": 0, "tot": 0,
-                                      "mrgb": 0, "ma": 0, "blank": 0})
+                                      "mrgb": 0, "ma": 0, "blank": 0,
+                                      "within1": 0})
         s["n"] += 1
         s["exact"] += differing == 0
+        s["within1"] += status == "ok" and 0 < differing == ob1
         s["px"] += differing
         s["tot"] += px
         s["mrgb"] = max(s["mrgb"], mrgb)
@@ -215,15 +281,16 @@ def main():
     order = sorted(suites.items(), key=lambda kv: (kv[1]["exact"] / kv[1]["n"],
                                                    -kv[1]["px"] / max(kv[1]["tot"], 1)))
     w = max(len(k) for k in suites) + 1
-    print(f"\n{'suite':<{w}} {'exact':>11} {'blank':>7} {'px differing':>13} "
-          f"{'max RGB':>8} {'max A':>6}")
-    print("-" * (w + 50))
+    print(f"\n{'suite':<{w}} {'exact':>11} {'+-1 only':>8} {'blank':>7} "
+          f"{'px differing':>13} {'max RGB':>8} {'max A':>6}")
+    print("-" * (w + 59))
     for name, s in order:
         share = s["px"] / max(s["tot"], 1) * 100
         mark = " *" if name in shared else ""
         blank = f"{s['blank']}" if s["blank"] else "-"
-        print(f"{name:<{w}} {s['exact']:>4}/{s['n']:<6} {blank:>7} {share:>12.2f}% "
-              f"{s['mrgb']:>8} {s['ma']:>6}{mark}")
+        within1 = f"{s['within1']}" if s["within1"] else "-"
+        print(f"{name:<{w}} {s['exact']:>4}/{s['n']:<6} {within1:>8} {blank:>7} "
+              f"{share:>12.2f}% {s['mrgb']:>8} {s['ma']:>6}{mark}")
     if shared:
         print("\n  * ran on a shared disc, not one test per run — these are the "
               "suites\n    the isolation build could not split, so contamination "

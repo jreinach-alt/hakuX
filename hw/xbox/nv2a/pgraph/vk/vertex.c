@@ -67,11 +67,17 @@ void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset,
     if (end > fs->vertex_ram_flush_max) {
         fs->vertex_ram_flush_max = end;
     }
-    if (offset < fs->vertex_ram_propagate_min) {
-        fs->vertex_ram_propagate_min = offset;
-    }
-    if (end > fs->vertex_ram_propagate_max) {
-        fs->vertex_ram_propagate_max = end;
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        FrameStagingState *other = &r->frame_staging[i];
+        if (other == fs) {
+            continue;
+        }
+        if (offset < other->vertex_ram_stale_min) {
+            other->vertex_ram_stale_min = offset;
+        }
+        if (end > other->vertex_ram_stale_max) {
+            other->vertex_ram_stale_max = end;
+        }
     }
 
     bitmap_set(get_uploaded_bitmap(r), start_bit, nbits);
@@ -125,6 +131,39 @@ static char const * const vertex_data_array_format_to_str[] = {
     [NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP] = "CMP",
 };
 
+/*
+ * Which attributes come from arrays and which from their persistent values
+ * (uniform_attrs), and which need unpacking (compressed_attrs) or swizzling
+ * (swizzle_attrs), is part of the vertex shader: each mask is a different
+ * variant. The masks are derived here from the array formats, and nothing
+ * else announces a change in them to the shader-state check, which
+ * pgraph_vk_bind_pipeline only reaches when shader_state_gen has moved.
+ * A draw that enables or disables an attribute and changes nothing else --
+ * every Attrib carryover test draws position-only right after a draw with
+ * a diffuse and one more attribute from arrays -- kept the previous
+ * variant, whose array inputs the new vertex input state no longer
+ * provides, and the position it fetched was undefined.
+ *
+ * Bump the generations the shader gate and the single-draw fast path are
+ * keyed on when the masks change, as SET_SURFACE_FORMAT does for the zeta
+ * format.
+ */
+static void attr_masks_changed(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    if (pg->uniform_attrs == r->bound_uniform_attrs &&
+        pg->compressed_attrs == r->bound_compressed_attrs &&
+        pg->swizzle_attrs == r->bound_swizzle_attrs) {
+        return;
+    }
+    r->bound_uniform_attrs = pg->uniform_attrs;
+    r->bound_compressed_attrs = pg->compressed_attrs;
+    r->bound_swizzle_attrs = pg->swizzle_attrs;
+    pg->shader_state_gen++;
+    pg->non_dynamic_reg_gen++;
+    pg->any_reg_gen++;
+}
+
 void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
                                       unsigned int max_element,
                                       bool inline_data,
@@ -163,6 +202,7 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
                                      num_elements * r->cached_attr_layout[i].stride);
             }
         }
+        attr_masks_changed(pg);
         return;
     }
     OPT_STAT_INC(vtx_cache_misses);
@@ -336,6 +376,7 @@ void pgraph_vk_bind_vertex_attributes(NV2AState *d, unsigned int min_element,
         r->cached_uniform_attrs = pg->uniform_attrs;
         r->cached_swizzle_attrs = pg->swizzle_attrs;
     }
+    attr_masks_changed(pg);
 
     NV2A_VK_DGROUP_END();
 }
@@ -383,4 +424,5 @@ void pgraph_vk_bind_vertex_attributes_inline(NV2AState *d)
             pg->uniform_attrs |= 1 << i;
         }
     }
+    attr_masks_changed(pg);
 }

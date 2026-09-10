@@ -170,9 +170,10 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.dif_dds_fb,
                 g_opt_stats.dif_other);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
-                "evict[dl:%d unshelve:%d dl:%d]",
+                "evict[dl:%d unshelve:%d stale:%d dl:%d]",
                 g_opt_stats.sd_eviction_dl,
                 g_opt_stats.sd_shelved_unshelved,
+                g_opt_stats.sd_shelved_stale,
                 g_opt_stats.sd_shelved_lazy_dl);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "buf_detail: ds%d ubo%d fb%d stg%d comp%d vtx%d",
@@ -2592,6 +2593,16 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 next_fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
                 next_fs->vertex_ram_flush_max = 0;
 
+                /*
+                 * The outgoing frame's copy is the newest. Bring the
+                 * incoming frame's copy up to date over everything that
+                 * was uploaded while it was not current; that can span
+                 * several frames, so the range is kept on the receiving
+                 * frame rather than on the frame that took the upload
+                 * (issue #39: with three frames, a vertex buffer uploaded
+                 * once never reached the third copy, and every draw from
+                 * it in that frame read zeros).
+                 */
                 if (!next_fs->vertex_ram_initialized) {
                     size_t total = cur_fs->vertex_ram.buffer_size;
                     memcpy(next_fs->vertex_ram.mapped,
@@ -2599,18 +2610,18 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                     next_fs->vertex_ram_flush_min = 0;
                     next_fs->vertex_ram_flush_max = total;
                     next_fs->vertex_ram_initialized = true;
-                } else if (cur_fs->vertex_ram_propagate_min <
-                           cur_fs->vertex_ram_propagate_max) {
-                    size_t off = cur_fs->vertex_ram_propagate_min;
-                    size_t len = cur_fs->vertex_ram_propagate_max - off;
+                } else if (next_fs->vertex_ram_stale_min <
+                           next_fs->vertex_ram_stale_max) {
+                    size_t off = next_fs->vertex_ram_stale_min;
+                    size_t len = next_fs->vertex_ram_stale_max - off;
                     memcpy(next_fs->vertex_ram.mapped + off,
                            cur_fs->vertex_ram.mapped + off, len);
                     next_fs->vertex_ram_flush_min = off;
                     next_fs->vertex_ram_flush_max = off + len;
                 }
 
-                cur_fs->vertex_ram_propagate_min = VK_WHOLE_SIZE;
-                cur_fs->vertex_ram_propagate_max = 0;
+                next_fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
+                next_fs->vertex_ram_stale_max = 0;
             }
 
             r->current_frame = next_frame;
@@ -5253,6 +5264,38 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     unsigned int xmax = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);
     unsigned int ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
     unsigned int ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
+
+    /*
+     * The surface clip rectangle bounds a clear as it bounds a draw: the
+     * memory outside it is left alone whatever the clear rect says. The
+     * surface image here spans the clip offset plus its size, so a clear
+     * rect reaching above or left of the clip would otherwise land in it.
+     * pbkit paints its debug text with clears, and Surface clip's
+     * DebugTextShouldClip expects the lines above a half-height clip to
+     * stay invisible; its rt_ tests fill the memory around the clip from
+     * the CPU and expect a full-surface clear to leave that fill alone.
+     * A zero clip size is not a hardware case that has been measured (the
+     * suite sends the surface size instead), so it bounds nothing here.
+     */
+    {
+        unsigned int cx = pg->surface_shape.clip_x;
+        unsigned int cy = pg->surface_shape.clip_y;
+        unsigned int cw = pg->surface_shape.clip_width;
+        unsigned int ch = pg->surface_shape.clip_height;
+        if (cw) {
+            xmin = MAX(xmin, cx);
+            xmax = MIN(xmax, cx + cw - 1);
+        }
+        if (ch) {
+            ymin = MAX(ymin, cy);
+            ymax = MIN(ymax, cy + ch - 1);
+        }
+        if (xmin > xmax || ymin > ymax) {
+            /* Entirely outside the clip: nothing is written. */
+            pg->clearing = false;
+            return;
+        }
+    }
 
     NV2A_VK_DGROUP_BEGIN("CLEAR min=(%d,%d) max=(%d,%d)%s%s", xmin, ymin, xmax,
                          ymax, write_color ? " color" : "",

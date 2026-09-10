@@ -78,6 +78,7 @@ typedef struct PshState {
     enum PshDepthFormat depth_format;
 } PshState;
 
+int pgraph_glsl_window_clip_count(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
 
 #define PSH_UNIFORM_DECL_X(S, DECL) \

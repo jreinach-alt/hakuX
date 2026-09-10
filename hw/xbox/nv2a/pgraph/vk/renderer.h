@@ -116,6 +116,7 @@ struct OptBisectStats {
     int draws_skipped_null_pipeline;
     int sd_eviction_dl;      /* downloads taken when a dirty surface is evicted */
     int sd_shelved_unshelved;
+    int sd_shelved_stale;    /* unshelved, but VRAM changed underneath: re-uploaded */
     int sd_shelved_lazy_dl;
     int sync_range_skip;
     int sync_early_exit;
@@ -267,8 +268,17 @@ typedef struct FrameStagingState {
     StorageBuffer vertex_ram;
     VkDeviceSize vertex_ram_flush_min;
     VkDeviceSize vertex_ram_flush_max;
-    VkDeviceSize vertex_ram_propagate_min;
-    VkDeviceSize vertex_ram_propagate_max;
+    /*
+     * Range of vertex_ram written to some other frame's copy since this
+     * frame was last current. The current frame's copy is the newest: every
+     * upload lands in it, and it received everything written while it was
+     * not current when it was rotated in. Rotating this frame in copies
+     * this range from the outgoing frame and clears it. Tracking the range
+     * on the receiving side is what lets an upload reach every frame of the
+     * ring, not only the next one (issue #39).
+     */
+    VkDeviceSize vertex_ram_stale_min;
+    VkDeviceSize vertex_ram_stale_max;
     bool vertex_ram_initialized;
     unsigned long *uploaded_bitmap;
 } FrameStagingState;
@@ -295,6 +305,7 @@ typedef struct SurfaceBinding {
     int draw_time;
     bool draw_dirty;
     bool shelved_dirty;  /* Shelved without downloading GPU data to VRAM */
+    bool vram_newer;     /* Shelved, and VRAM under it was rewritten since */
     bool download_pending;
     bool upload_pending;
 
@@ -1224,6 +1235,11 @@ typedef struct PGRAPHVkState {
 
     uint32_t last_vertex_attr_gen;
     uint32_t pipeline_vertex_attr_gen;
+    /* Attribute masks the shader generation was last bumped for; see
+     * attr_masks_changed() in vertex.c. */
+    uint16_t bound_uniform_attrs;
+    uint16_t bound_compressed_attrs;
+    uint16_t bound_swizzle_attrs;
     int pipeline_num_active_attr_descs;
     int pipeline_num_active_bind_descs;
     uint32_t last_shader_state_gen;

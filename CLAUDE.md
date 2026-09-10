@@ -13,7 +13,9 @@ Claude Code specifics:
 - Device work needs `adb`. Read the "Working with a device" table in `AGENTS.md`
   before injecting input — the obvious approach terminates the emulator.
 - Avoid `pkill -f <pattern>` where the pattern can match your own shell; it
-  will kill the tool call. Kill by PID.
+  will kill the tool call. Kill by PID. `pgrep -f` has the same blind spot:
+  the pattern is in your own shell's command line, so a wait loop on it waits
+  for yourself. Wait on a PID, or on a line in the job's log.
 - Do not put a scratch script in the working directory with a stdlib module's
   name. A file called `bisect.py` or `dis.py` next to your work will shadow the
   standard library and be executed by unrelated imports.

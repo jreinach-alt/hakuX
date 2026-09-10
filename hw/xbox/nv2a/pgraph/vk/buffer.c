@@ -450,8 +450,8 @@ bool pgraph_vk_init_buffers(NV2AState *d, Error **errp)
         };
         fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
         fs->vertex_ram_flush_max = 0;
-        fs->vertex_ram_propagate_min = VK_WHOLE_SIZE;
-        fs->vertex_ram_propagate_max = 0;
+        fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
+        fs->vertex_ram_stale_max = 0;
         fs->vertex_ram_initialized = false;
 
         char name[64];
