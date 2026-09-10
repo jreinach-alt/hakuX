@@ -5710,6 +5710,19 @@ void pgraph_vk_flush_draw(NV2AState *d)
         return;
     }
 
+    if (pg->surface_binding_dim.width == 0 ||
+        pg->surface_binding_dim.height == 0) {
+        /*
+         * An empty clip rectangle binds a surface with no pixels. Nothing
+         * can rasterise into it, and a framebuffer or render area of zero
+         * extent is invalid to create -- the Surface clip suite does this
+         * a dozen times a run, and the validation layer reported each one
+         * before crashing on the draw that followed (issue #34).
+         */
+        NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
+        return;
+    }
+
     r->num_vertex_ram_buffer_syncs = 0;
 
 #ifndef NDEBUG
