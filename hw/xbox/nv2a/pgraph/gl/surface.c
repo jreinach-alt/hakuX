@@ -26,6 +26,7 @@
 #include "debug.h"
 #include "renderer.h"
 
+#include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
 #ifdef __ANDROID__
 #include <android/log.h>
 #ifdef __aarch64__
@@ -511,6 +512,7 @@ static inline void android_neon_pack_z24s8_row_to_guest(
 }
 #endif
 
+
 static void android_surface_guest_to_rgba8(const SurfaceBinding *surface,
                                            const uint8_t *src,
                                            unsigned int width,
@@ -880,6 +882,27 @@ static bool android_surface_to_texture_rgba8_compatible(
     default:
         return false;
     }
+}
+#endif
+
+#ifndef __ANDROID__
+/*
+ * The __ANDROID__ block above defines these helpers, but the shared code
+ * below calls them unconditionally. Off Android there is no Android log to
+ * drain, so they are no-ops. (android_log_surface_download_errors stub)
+ */
+static bool android_log_and_drain_gl_errors(const char *ctx)
+{
+    (void)ctx;
+    return false;
+}
+
+static bool android_log_surface_download_errors(const char *ctx,
+                                                const SurfaceBinding *surface)
+{
+    (void)ctx;
+    (void)surface;
+    return false;
 }
 #endif
 

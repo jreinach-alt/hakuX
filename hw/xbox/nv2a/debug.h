@@ -22,6 +22,16 @@
 #ifndef HW_XBOX_NV2A_DEBUG_H
 #define HW_XBOX_NV2A_DEBUG_H
 
+/* Only the non-ARM64 nv2a_clock_ns() below calls qemu_clock_get_ns(); the
+ * ARM64 one reads cntvct_el0 directly. Pulling qemu/timer.h in unconditionally
+ * reaches qemu/bswap.h, whose CPU_CONVERT needs glue() from qemu/osdep.h --
+ * and this header is included by android/app/src/main/cpp/xemu_android.cpp,
+ * a plain C++ translation unit that does not (and should not) include osdep.h
+ * before SDL and the STL. So take it only where it is used. */
+#ifndef __aarch64__
+#include "qemu/timer.h"
+#endif
+
 #include <stdint.h>
 
 #define NV2A_XPRINTF(x, ...) do { \

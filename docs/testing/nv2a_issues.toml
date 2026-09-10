@@ -1,0 +1,93 @@
+# Tracker issue -> pgraph test suites.
+#
+# This is the ONE hand-maintained table in the index. Everything else in
+# nv2a_index.json is derived from the emulator tree and the nxdk_pgraph_tests
+# source, and regenerates.
+#
+# It is hand-written because only a human decided which suites a given issue is
+# about. It is still checked: `nv2a_index.py check` fails if any suite named
+# here is not a real derived suite name, so a rename upstream or a typo here is
+# caught rather than silently dropping a suite from every query.
+#
+# Suite names must match the DERIVED spelling exactly (spaces, not underscores
+# -- the underscored form is the results directory name, and the index carries
+# that separately as results_name).
+
+[issue.3]
+title = "Texture addressing: borders, wrap modes, cubemaps and perspective"
+suites = ["Texture border", "Texture border color", "TextureWrapMode",
+          "Texture cubemap", "Texture 2D as cubemap", "Texture perspective",
+          "Texture perspective enable", "Texture anisotropy", "Texture 3D as 2D"]
+
+[issue.4]
+title = "Render-to-texture diverges from silicon"
+suites = ["Texture render target"]
+
+[issue.5]
+title = "Texture CPU update, signed components and palettes"
+suites = ["Texture CPU Update", "Texture signed component tests", "Texture palette"]
+
+[issue.6]
+title = "DXT1 decode rounding differs from silicon"
+suites = ["Texture DXT"]
+
+[issue.7]
+title = "Image blit: overlapping source and destination"
+suites = ["Image blit"]
+
+[issue.8]
+title = "Fog"
+suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
+          "Fog exceptional value", "Fog coord vec4"]
+
+[issue.9]
+title = "Fixed-function lighting and specular"
+suites = ["Lighting spotlight", "Lighting accumulation", "Lighting range",
+          "Lighting control", "Lighting Two Sided", "Material color source",
+          "Specular", "Specular back"]
+
+[issue.10]
+title = "Bump mapping"
+suites = ["Bump map", "Bump env lum"]
+
+[issue.11]
+title = "Clipping, viewport and stencil"
+suites = ["Window clip", "Viewport", "Stencil"]
+
+[issue.12]
+title = "Vertex attributes and primitive assembly"
+suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
+
+[issue.13]
+title = "Line and point rasterisation"
+suites = ["Line width", "Point size", "Point params", "Swath width",
+          "2D Lines", "Smoothing control", "Stipple tests"]
+
+[issue.14]
+title = "Blend precision (low priority)"
+suites = ["Blend tests"]
+
+[issue.15]
+title = "pgraph suite: some tests are order-dependent"
+suites = ["Pixel shader"]
+
+[issue.16]
+title = "Depth surface readback converts incorrectly"
+suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
+
+# #19 spans 24 suites. Listed here are the suites its classification pass names
+# explicitly: the two confirmed contamination cases plus the missing-state set.
+[issue.19]
+title = "328 of 864 failing tests render another test's image (two causes)"
+suites = ["Texture DXT", "Texture render target", "Attrib carryover",
+          "Blend surface", "Blend tests", "Depth buffer",
+          "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
+          "Line width", "Specular", "Stipple tests", "Surface format",
+          "Texture perspective", "Texture shadow comparator",
+          "Texture signed component tests", "W param", "Window clip",
+          "ZMinMaxControl", "ZPass pixel count", "Bump map", "Image blit",
+          "Texture cubemap"]
+
+[issue.21]
+title = "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"
+suites = ["Texture format", "Bump map", "Bump env lum"]

@@ -1,13 +1,48 @@
 # Investigations
 
-Long-form records of individual bugs chased in depth. Each is a snapshot of what
-was tried and what was ruled out, kept so the same ground is not covered twice.
+Findings that are too long for an issue comment and too specific for the
+README. An issue says *what is wrong*; a file here says *what we looked at, what
+we established, and what we could not*.
 
-These are **not** the issue tracker. Open work lives in
-[GitHub issues](https://github.com/jreinach-alt/hakuX/issues); these documents
-are the reasoning behind it.
+## Why these live in the repo
 
-| document | subject | status |
+Issue #19 was investigated across a week on one machine. The conclusions reached
+the tracker; the tooling that produced them and the write-up the issue links to
+never left that machine, and it is now offline. `docs/investigations/` and
+`docs/testing/` are where that work goes, committed as it is produced.
+
+Two of these documents are still dangling links from open issues, listed below
+so they are not silently forgotten.
+
+## Convention
+
+Every claim carries a `file.c:line`. Every document separates:
+
+- **VERIFIED** — read in the code, cited, re-checkable by anyone
+- **INFERRED** — reasoning on top of verified facts, labelled as such
+- **UNRESOLVED** — what the work could not settle, stated plainly
+
+A finding that reproduces a measurement is not thereby a cause. This project has
+twice lost time to a plausible explanation that measured well and was wrong (see
+#19's two self-corrections), so a code fact that *predicts* a symptom is written
+as a candidate until an isolation run says otherwise.
+
+## Contents
+
+| document | what it covers |
+|---|---|
+| [`nv2a-sweep-2026-09.md`](nv2a-sweep-2026-09.md) | Verified structural findings across the NV2A subsystems, mapped to open issues |
+| [`freeze-analysis.md`](freeze-analysis.md) | Pre-fork freeze chase, thirteen hypotheses eliminated, unresolved |
+| [`gl-artifacts.md`](gl-artifacts.md) | Pre-fork GL texture artifacts. Scope header matters — Android runs Vulkan |
+| [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
+| [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
+
+## Missing, and referenced by open issues
+
+| path | referenced by | status |
 |---|---|---|
-| [`freeze-analysis.md`](freeze-analysis.md) | Location-specific freeze: guest parks in a kernel halt loop, no PGRAPH interrupt pending, works on desktop xemu. Thirteen hypotheses eliminated. | **open** — roadmap item 5 |
-| [`gl-texture-artifacts.md`](gl-texture-artifacts.md) | Misplaced geometry and stretched textures on the GLES renderer after the x1_box port. | fixes applied (`427055fba3`); needs re-confirmation |
+| `cross-test-contamination.md` | #19 body | never committed; the analysis survives only as #19's comments |
+
+`freeze-analysis.md` was on this list until the pre-fork `FREEZE_ANALYSIS.md`
+was moved here, which resolves #20's link.
+

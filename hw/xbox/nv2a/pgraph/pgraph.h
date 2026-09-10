@@ -24,10 +24,10 @@
 
 #include "xemu-config.h"
 #include "qemu/osdep.h"
+#include "exec/hwaddr.h"
 #include "qemu/bitmap.h"
 #include "qemu/units.h"
 #include "qemu/thread.h"
-#include "cpu.h"
 
 #include "surface.h"
 #include "texture.h"

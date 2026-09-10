@@ -38,6 +38,27 @@
 
 #include <glib.h>
 
+/*
+ * Hand-copied VkFormat values, because this file deliberately includes no
+ * Vulkan header. SIX ARE WRONG, verified against vulkan_core.h:1411-1540:
+ *
+ *   R8G8B8_SNORM           25 here,  24 actual
+ *   A8B8G8R8_UNORM_PACK32  50 here,  51 actual
+ *   R5G6B5_UNORM_PACK16    84 here,   4 actual
+ *   A1R5G5B5_UNORM_PACK16  86 here,   8 actual
+ *   A4R4G4B4_UNORM_PACK16 105 here,  1000340000 actual (an extension format)
+ *   BC1_RGBA_UNORM        131 here, 133 actual (131 is BC1_RGB)
+ *
+ * Effect: every 16-bit packed format and R6G5B5 fall through to the default
+ * case below, fail the size check, and are SILENTLY NEVER DUMPED - no error,
+ * no log. R8G8B8_SNORM is R6G5B5's host format, so the texture at the centre
+ * of issue #21 cannot be dumped at all, which is exactly when someone would
+ * reach for this tool.
+ *
+ * FIXME: not corrected here because it wants a device to confirm the dumps
+ * come out right afterwards, and because the real fix is arguably to include
+ * the header rather than to hand-maintain the numbers.
+ */
 /* Vulkan format enum values we care about for pixel conversion */
 #define VK_FMT_R8_UNORM              9
 #define VK_FMT_R8G8_UNORM            16

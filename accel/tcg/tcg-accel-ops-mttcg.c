@@ -36,7 +36,16 @@
 #include "tcg-accel-ops.h"
 #include "tcg-accel-ops-mttcg.h"
 #ifdef XBOX
+/* nv2a_int.h no longer drags in cpu.h, and on the desktop build this file
+ * lands in the target-agnostic system sourceset, where cpu.h will not
+ * resolve. The Android build compiles it per target and the __ANDROID__
+ * diagnostics below read x86 state (CPUX86State, R_EAX, eflags), so it does
+ * need the header there. COMPILING_PER_TARGET is the condition that actually
+ * distinguishes the two: meson defines it only for per-target compilation,
+ * and android/app/src/main/cpp/CMakeLists.txt defines it always. */
+#ifdef COMPILING_PER_TARGET
 #include "cpu.h"
+#endif
 #include "hw/xbox/nv2a/nv2a_int.h"
 #endif
 

@@ -43,7 +43,6 @@
 #include "hw/display/vga_int.h"
 #include "hw/display/vga_regs.h"
 #include "hw/pci/pci.h"
-#include "cpu.h"
 
 #include "trace.h"
 

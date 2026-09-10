@@ -20,6 +20,7 @@
  */
 
 #include "qemu/osdep.h"
+#include "system/tcg.h"
 #include "hw/display/vga_int.h"
 #include "hw/xbox/nv2a/nv2a_int.h"
 #include "hw/xbox/nv2a/pgraph/util.h"
@@ -29,6 +30,7 @@
 #ifdef __ANDROID__
 #include <android/log.h>
 #include <EGL/egl.h>
+#include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
 /* EGL_EGLEXT_PROTOTYPES enables KHR function declarations in eglext.h.
  * We use KHR variants because eglCreateSync (EGL 1.5) is only in
  * libEGL.so stubs from API 29+; the KHR equivalents exist from API 21. */

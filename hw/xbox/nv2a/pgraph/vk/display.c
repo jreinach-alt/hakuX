@@ -17,10 +17,12 @@
  * License along with this library; if not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <SDL.h>
 #include "renderer.h"
 #include "qemu/error-report.h"
 #include <EGL/egl.h>
 #include <math.h>
+#include "system/tcg.h"   /* tcg_enabled(); was implied by cpu.h */
 #ifdef __ANDROID__
 #include <android/log.h>
 #define DBG_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX-vk-dbg", __VA_ARGS__)
@@ -54,14 +56,14 @@ static bool load_ahb_interop_symbols(VkDevice device)
     ahb_interop_loaded = true;
 
     p_eglGetNativeClientBufferANDROID =
-        (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)eglGetProcAddress(
+        (PFNEGLGETNATIVECLIENTBUFFERANDROIDPROC)SDL_GL_GetProcAddress(
             "eglGetNativeClientBufferANDROID");
     p_eglCreateImageKHR =
-        (PFNEGLCREATEIMAGEKHRPROC)eglGetProcAddress("eglCreateImageKHR");
+        (PFNEGLCREATEIMAGEKHRPROC)SDL_GL_GetProcAddress("eglCreateImageKHR");
     p_eglDestroyImageKHR =
-        (PFNEGLDESTROYIMAGEKHRPROC)eglGetProcAddress("eglDestroyImageKHR");
+        (PFNEGLDESTROYIMAGEKHRPROC)SDL_GL_GetProcAddress("eglDestroyImageKHR");
     p_glEGLImageTargetTexture2DOES =
-        (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)eglGetProcAddress(
+        (PFNGLEGLIMAGETARGETTEXTURE2DOESPROC)SDL_GL_GetProcAddress(
             "glEGLImageTargetTexture2DOES");
     p_vkGetAndroidHardwareBufferPropertiesANDROID =
         (PFN_vkGetAndroidHardwareBufferPropertiesANDROID)vkGetDeviceProcAddr(
@@ -102,19 +104,19 @@ static bool load_gl_external_memory_symbols(void)
     gl_external_memory_loaded = true;
 
     p_glDeleteMemoryObjectsEXT =
-        (PFNGLDELETEMEMORYOBJECTSEXTPROC)eglGetProcAddress(
+        (PFNGLDELETEMEMORYOBJECTSEXTPROC)SDL_GL_GetProcAddress(
             "glDeleteMemoryObjectsEXT");
     p_glIsMemoryObjectEXT =
-        (PFNGLISMEMORYOBJECTEXTPROC)eglGetProcAddress(
+        (PFNGLISMEMORYOBJECTEXTPROC)SDL_GL_GetProcAddress(
             "glIsMemoryObjectEXT");
     p_glCreateMemoryObjectsEXT =
-        (PFNGLCREATEMEMORYOBJECTSEXTPROC)eglGetProcAddress(
+        (PFNGLCREATEMEMORYOBJECTSEXTPROC)SDL_GL_GetProcAddress(
             "glCreateMemoryObjectsEXT");
     p_glImportMemoryFdEXT =
-        (PFNGLIMPORTMEMORYFDEXTPROC)eglGetProcAddress(
+        (PFNGLIMPORTMEMORYFDEXTPROC)SDL_GL_GetProcAddress(
             "glImportMemoryFdEXT");
     p_glTexStorageMem2DEXT =
-        (PFNGLTEXSTORAGEMEM2DEXTPROC)eglGetProcAddress(
+        (PFNGLTEXSTORAGEMEM2DEXTPROC)SDL_GL_GetProcAddress(
             "glTexStorageMem2DEXT");
 
     gl_external_memory_available = p_glDeleteMemoryObjectsEXT &&

@@ -219,6 +219,20 @@ typedef struct ColorFormatInfo {
 # endif
 #endif
 
+/*
+ * ONE OF FOUR TABLES THAT MUST AGREE, WITH NOTHING ENFORCING IT.
+ *
+ *   pgraph/texture.c        kelvin_color_format_info_map  guest-side layout
+ *   pgraph/vk/constants.h   kelvin_color_format_vk_map    host format, Vulkan
+ *   pgraph/gl/constants.h   kelvin_color_format_gl_map    host format, GL
+ *   pgraph/vk/texture_dump.c                              host format, again
+ *
+ * Adding or changing a format means touching all four. They are indexed by
+ * the same NV097_SET_TEXTURE_FORMAT_COLOR_* constant and sized [66], so a
+ * missing row is a zero row rather than a compile error.
+ *
+ * docs/testing/nv2a_index.py query symbol <the format> lists every site.
+ */
 static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8] =
         {1, false, GL_R8, GL_RED, GL_UNSIGNED_BYTE,

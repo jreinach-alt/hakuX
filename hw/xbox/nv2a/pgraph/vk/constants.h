@@ -154,6 +154,28 @@ typedef struct VkColorFormatInfo {
     VkComponentMapping component_map;
 } VkColorFormatInfo;
 
+/*
+ * ONE OF FOUR TABLES THAT MUST AGREE, WITH NOTHING ENFORCING IT.
+ *
+ *   pgraph/texture.c        kelvin_color_format_info_map  guest-side layout
+ *   pgraph/vk/constants.h   kelvin_color_format_vk_map    host format, Vulkan
+ *   pgraph/gl/constants.h   kelvin_color_format_gl_map    host format, GL
+ *   pgraph/vk/texture_dump.c                              host format, again
+ *
+ * Adding or changing a format means touching all four. They are indexed by
+ * the same NV097_SET_TEXTURE_FORMAT_COLOR_* constant and sized [66], so a
+ * missing row is a zero row rather than a compile error.
+ *
+ * docs/testing/nv2a_index.py query symbol <the format> lists every site.
+ */
+/*
+ * A row marked "Converted" is not the guest format: pgraph_convert_texture_data
+ * has already rewritten the pixels and this is the format of the RESULT. The
+ * conversion and this entry must agree about signedness as well as layout -
+ * SZ_R6G5B5 converts to signed bytes and lands in an SNORM image here, which
+ * the fragment shader must then NOT remap again. See glsl/psh.c snorm_tex and
+ * docs/investigations/nv2a-sweep-2026-09.md.
+ */
 static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8] = {
         VK_FORMAT_R8_UNORM,
