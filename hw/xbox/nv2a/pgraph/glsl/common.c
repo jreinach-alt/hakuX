@@ -26,9 +26,17 @@ const char *uniform_element_type_to_str[] = {
 };
 
 MString *pgraph_glsl_get_vtx_header(MString *out, bool location, bool smooth,
-                                    bool in, bool prefix, bool array)
+                                    bool noperspective, bool in, bool prefix,
+                                    bool array)
 {
-    const char *smooth_s = "";
+    /*
+     * SET_CONTROL0 can turn texture perspective off, and the hardware then
+     * interpolates colours and texture coordinates linearly in screen
+     * space (Texture_perspective: tex_*_pers_n).  GLSL's noperspective is
+     * exactly that; only the Vulkan path gets it, GLES would need
+     * GL_NV_shader_noperspective_interpolation.
+     */
+    const char *smooth_s = (noperspective && location) ? "noperspective " : "";
     const char *flat_s = "flat ";
     const char *qualifier_s = smooth ? smooth_s : flat_s;
     const char *in_out_s = in ? "in" : "out";

@@ -427,16 +427,21 @@ static const MethodFastPath method_fast[0x800] = {
     [MI(0x1824)] = MF_DIRECT(NV_PGRAPH_EYEVEC0 + 8),
 
     /* SET_TEXTURE_ADDRESS  CASE_4 stride=64 */
-    [MI(0x1B08)]       = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 0),
-    [MI(0x1B08 + 64)]  = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 4),
-    [MI(0x1B08 + 128)] = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 8),
-    [MI(0x1B08 + 192)] = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 12),
+    /* Wrap modes and border colour select the sampler, so a change has
+     * to rebind the texture like the format and offset methods do.  As
+     * MF_DIRECT they only wrote the register: Texture_border's six wrap
+     * modes all drew as repeat, and Texture_border_color never took a new
+     * colour, because nothing between the draws marked the stage dirty. */
+    [MI(0x1B08)]       = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 0,  0),
+    [MI(0x1B08 + 64)]  = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 4,  1),
+    [MI(0x1B08 + 128)] = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 8,  2),
+    [MI(0x1B08 + 192)] = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 12, 3),
 
     /* SET_TEXTURE_BORDER_COLOR  CASE_4 stride=64 */
-    [MI(0x1B24)]       = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 0),
-    [MI(0x1B24 + 64)]  = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 4),
-    [MI(0x1B24 + 128)] = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 8),
-    [MI(0x1B24 + 192)] = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 12),
+    [MI(0x1B24)]       = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 0,  0),
+    [MI(0x1B24 + 64)]  = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 4,  1),
+    [MI(0x1B24 + 128)] = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 8,  2),
+    [MI(0x1B24 + 192)] = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 12, 3),
 
     /* SET_SEMAPHORE_OFFSET  0x1D6C */
     [MI(0x1D6C)] = MF_DIRECT(NV_PGRAPH_SEMAPHOREOFFSET),
@@ -1055,6 +1060,9 @@ void pgraph_init(NV2AState *d)
     pg->material_alpha = 0.0f;
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_SHADEMODE,
          NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH);
+    /* Perspective-correct interpolation until a SET_CONTROL0 says
+     * otherwise; the bit's reset state on hardware is not known. */
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE, 1);
     pg->primitive_mode = PRIM_TYPE_INVALID;
 
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
@@ -2153,6 +2161,12 @@ DEF_METHOD(NV097, SET_CONTROL0)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0,
              NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE,
              z_perspective);
+
+    bool texture_perspective =
+        parameter & NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE;
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0,
+             NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE,
+             texture_perspective);
 }
 
 DEF_METHOD(NV097, SET_LIGHT_CONTROL)

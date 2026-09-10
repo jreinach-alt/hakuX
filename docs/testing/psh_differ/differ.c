@@ -171,6 +171,7 @@ static const Field fields[] = {
     F(smooth_shading, K_BOOL, 0, 1),
     F(depth_clipping, K_BOOL, 0, 1),
     F(z_perspective,  K_BOOL, 0, 1),
+    F(noperspective,  K_BOOL, 0, 1),
     F(depth_needed,   K_BOOL, 0, 1),
 
     /* Only Z16 and Z24S8 exist; anything else asserts in set_psh_state. */

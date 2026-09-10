@@ -105,6 +105,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                                           NV_PGRAPH_SHADOWCTL_SHADOW_ZFUNC);
     state->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                            NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
+    state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                             NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
 
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
@@ -1106,7 +1108,8 @@ static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
     pgraph_glsl_get_vtx_header(preflight, ps->opts.vulkan,
-                             ps->state->smooth_shading, true, false, false);
+                             ps->state->smooth_shading,
+                             ps->state->noperspective, true, false, false);
 
     if (ps->opts.vulkan) {
         if (ps->opts.ubo_set > 0) {

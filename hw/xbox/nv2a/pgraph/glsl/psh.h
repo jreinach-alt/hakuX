@@ -71,6 +71,7 @@ typedef struct PshState {
     bool smooth_shading;
     bool depth_clipping;
     bool z_perspective;
+    bool noperspective; /* SET_CONTROL0 texture perspective off */
     bool depth_needed;
 
     unsigned int surface_zeta_format;

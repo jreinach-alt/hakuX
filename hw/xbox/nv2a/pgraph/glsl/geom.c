@@ -43,6 +43,8 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
 
     state->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                            NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
+    state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                             NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
 }
 
 bool pgraph_glsl_need_geom(const GeomState *state)
@@ -127,10 +129,10 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                        "#define v_vtxPos v_vtxPos0\n"
                        "\n",
                        layout_in, layout_out);
-    pgraph_glsl_get_vtx_header(output, opts.vulkan, state->smooth_shading, true,
-                               true, true);
     pgraph_glsl_get_vtx_header(output, opts.vulkan, state->smooth_shading,
-                               false, false, false);
+                               state->noperspective, true, true, true);
+    pgraph_glsl_get_vtx_header(output, opts.vulkan, state->smooth_shading,
+                               state->noperspective, false, false, false);
 
     mstring_append(
         output,

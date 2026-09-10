@@ -69,6 +69,7 @@ typedef struct {
 
     bool smooth_shading;
     bool z_perspective;
+    bool noperspective; /* SET_CONTROL0 texture perspective off */
 
     bool is_fixed_function;
     union {

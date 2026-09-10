@@ -31,6 +31,7 @@ typedef struct {
     enum ShaderPolygonMode polygon_back_mode;
     bool smooth_shading;
     bool z_perspective;
+    bool noperspective; /* SET_CONTROL0 texture perspective off */
 } GeomState;
 
 typedef struct GenGeomGlslOptions {

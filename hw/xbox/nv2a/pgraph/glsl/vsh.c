@@ -127,6 +127,8 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
 
     vsh->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                          NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
+    vsh->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                           NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
 
     vsh->point_params_enable = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
                                         NV_PGRAPH_CSV0_D_POINTPARAMSENABLE);
@@ -233,7 +235,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "}\n");
 
     pgraph_glsl_get_vtx_header(header, opts.vulkan, state->smooth_shading,
-                               false, opts.prefix_outputs, false);
+                               state->noperspective, false,
+                               opts.prefix_outputs, false);
 
     if (opts.prefix_outputs) {
         mstring_append(header,
