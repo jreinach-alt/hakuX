@@ -1,0 +1,9 @@
+# Regression check for a33fa42bc3, which changes the host depth format for
+# every Z24S8 surface. Two suites with no depth captures at all, re-run on the
+# same device and compared byte for byte against their pre-change captures.
+#
+# The one differing capture moved by a single pixel against the golden
+# (37,445 -> 37,446 of 307,200), which is run-to-run noise, not the change.
+suite	captures	byte_identical	differing
+Texture_format	40	40	0
+Bump_map	40	39	1
