@@ -319,11 +319,21 @@ docs/testing/order_dependence.py --suite "Pixel shader" ...     # self-contamina
 docs/testing/order_dependence.py --target "Pixel shader::Passthru" ...  # which suite does it
 ```
 
-A run is about 17 seconds on the desktop lane. Order-dependence is a property
+A run is about 40 seconds on the desktop lane, which runs the Vulkan renderer
+on lavapipe (see `docs/testing/desktop-runs.md`). Order-dependence is a property
 of what the emulator resets between draws, so it reproduces on any renderer —
 unlike an accuracy question, which that lane cannot settle. Measured so far:
-`Pixel shader` does **not** contaminate itself, 0 of 8 tests, so #15's example
-is being contaminated from outside its own suite.
+`Pixel shader` does **not** contaminate itself, and `Pixel shader::Passthru`
+is unchanged behind every one of the other 99 suites on both renderers (#15).
+A run that stops writing captures for `--stall` seconds is killed and reported
+as stalled; a segfault is retried and printed, never silently.
+
+**The Khronos validation layer runs on the lane.** `apt-get install
+vulkan-validationlayers`, then `[display.vulkan] validation_layers = true` in
+the toml; reports go to stderr as `[vk]` lines. It found eight defects in one
+afternoon that no capture showed (#34), so run it on any change to the Vulkan
+backend before calling the change verified. Count distinct VUIDs, not lines:
+one root cause cascades into thousands of messages.
 
 ## Conventions
 
