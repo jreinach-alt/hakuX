@@ -97,6 +97,33 @@ so it is the one to measure against. OpenGL does depth fixed-function, which
 leaves the fragment depth block in `glsl/psh.c` dead there: a depth result from
 an OpenGL run says nothing about the shipping path.
 
+## Running with the validation layer
+
+`vulkan-validationlayers` (1.3.275 on Ubuntu 24.04) works on lavapipe. Turn it
+on in the toml and the messages arrive on stderr as `[vk] …`:
+
+```
+[display.vulkan]
+validation_layers = true
+```
+
+```
+grep -o 'VUID-[A-Za-z0-9_-]*' run.log | sort | uniq -c | sort -rn
+```
+
+collapses a run to its distinct findings; one invalid call inside a command
+buffer makes the layer flag every later command in it, so the raw count says
+nothing until it is grouped. `assert_on_validation_msg = true` aborts at the
+first message with a backtrace. Issue #34 records what the suite reports today.
+
+Two limits. The layer does not see a resource destroyed while a submitted
+command buffer still references it -- that class needed a core dump and
+`mesa-vulkan-drivers-dbgsym` (from `ddebs.ubuntu.com`) to name the frame,
+which is how #29 was found. And the layer itself segfaults inside
+`vkCmdPushDescriptorSetWithTemplateKHR` on some discs (`Surface clip`) over
+finding 2 in #34, so a run that dies under validation is not evidence of an
+emulator crash until the core says so.
+
 **Timings from the guest are wrong.** The progress log reported a completed
 test as taking `-25027ms`. Wall-clock timing of the whole run is trustworthy;
 the guest's own figure is not.
