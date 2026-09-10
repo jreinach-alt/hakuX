@@ -145,6 +145,11 @@ static void pgraph_init_reg_category_table(void)
         pgraph_reg_category_table[(NV_PGRAPH_TEXFILTER0    + i * 4) / 4] |= REG_CAT_TEXTURE;
         pgraph_reg_category_table[(NV_PGRAPH_TEXIMAGERECT0 + i * 4) / 4] |= REG_CAT_TEXTURE;
         pgraph_reg_category_table[(NV_PGRAPH_TEXPALETTE0   + i * 4) / 4] |= REG_CAT_TEXTURE;
+        /* Sampler state: the draw path only rebinds textures when this
+         * generation moves, so a wrap-mode or border-colour change has to
+         * count as texture state or the first sampler stays bound. */
+        pgraph_reg_category_table[(NV_PGRAPH_TEXADDRESS0   + i * 4) / 4] |= REG_CAT_TEXTURE;
+        pgraph_reg_category_table[(NV_PGRAPH_BORDERCOLOR0  + i * 4) / 4] |= REG_CAT_TEXTURE;
     }
 
     unsigned int pipeline_regs[] = {
@@ -431,17 +436,22 @@ static const MethodFastPath method_fast[0x800] = {
     [MI(0x1820)] = MF_DIRECT(NV_PGRAPH_EYEVEC0 + 4),
     [MI(0x1824)] = MF_DIRECT(NV_PGRAPH_EYEVEC0 + 8),
 
-    /* SET_TEXTURE_ADDRESS  CASE_4 stride=64 */
-    [MI(0x1B08)]       = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 0),
-    [MI(0x1B08 + 64)]  = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 4),
-    [MI(0x1B08 + 128)] = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 8),
-    [MI(0x1B08 + 192)] = MF_DIRECT(NV_PGRAPH_TEXADDRESS0 + 12),
+    /* SET_TEXTURE_ADDRESS  CASE_4 stride=64
+     * The address mode and the border colour are sampler state: a change
+     * needs the stage rebound (a new sampler) like the filter does, so these
+     * mark the stage dirty rather than only writing the register. Writing
+     * only the register left a texture reused with new wrap modes sampling
+     * with its first ones (Texture border 2D and xemu#1034). */
+    [MI(0x1B08)]       = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 0,  0),
+    [MI(0x1B08 + 64)]  = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 4,  1),
+    [MI(0x1B08 + 128)] = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 8,  2),
+    [MI(0x1B08 + 192)] = MF_TEX(NV_PGRAPH_TEXADDRESS0 + 12, 3),
 
     /* SET_TEXTURE_BORDER_COLOR  CASE_4 stride=64 */
-    [MI(0x1B24)]       = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 0),
-    [MI(0x1B24 + 64)]  = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 4),
-    [MI(0x1B24 + 128)] = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 8),
-    [MI(0x1B24 + 192)] = MF_DIRECT(NV_PGRAPH_BORDERCOLOR0 + 12),
+    [MI(0x1B24)]       = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 0,  0),
+    [MI(0x1B24 + 64)]  = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 4,  1),
+    [MI(0x1B24 + 128)] = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 8,  2),
+    [MI(0x1B24 + 192)] = MF_TEX(NV_PGRAPH_BORDERCOLOR0 + 12, 3),
 
     /* SET_SEMAPHORE_OFFSET  0x1D6C */
     [MI(0x1D6C)] = MF_DIRECT(NV_PGRAPH_SEMAPHOREOFFSET),
@@ -2159,7 +2169,10 @@ DEF_METHOD(NV097, SET_COMBINER_SPECULAR_FOG_CW1)
 DEF_METHOD(NV097, SET_TEXTURE_ADDRESS)
 {
     int slot = (method - NV097_SET_TEXTURE_ADDRESS) / 64;
-    pgraph_reg_w(pg, NV_PGRAPH_TEXADDRESS0 + slot * 4, parameter);
+    unsigned int reg = NV_PGRAPH_TEXADDRESS0 + slot * 4;
+    bool changed = (parameter != pgraph_reg_r(pg, reg));
+    pg->texture_dirty[slot] |= changed;
+    pgraph_reg_w(pg, reg, parameter);
 }
 
 DEF_METHOD(NV097, SET_CONTROL0)
@@ -3798,7 +3811,10 @@ DEF_METHOD(NV097, SET_TEXTURE_PALETTE)
 DEF_METHOD(NV097, SET_TEXTURE_BORDER_COLOR)
 {
     int slot = (method - NV097_SET_TEXTURE_BORDER_COLOR) / 64;
-    pgraph_reg_w(pg, NV_PGRAPH_BORDERCOLOR0 + slot * 4, parameter);
+    unsigned int reg = NV_PGRAPH_BORDERCOLOR0 + slot * 4;
+    bool changed = (parameter != pgraph_reg_r(pg, reg));
+    pg->texture_dirty[slot] |= changed;
+    pgraph_reg_w(pg, reg, parameter);
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_SET_BUMP_ENV_MAT)
