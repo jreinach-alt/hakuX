@@ -136,17 +136,23 @@ class Lane:
         """Returns {capture: md5}, or None if the run cannot be trusted.
 
         A segfault is retried, an assert is not. The Vulkan lane on lavapipe
-        dies in the flip path roughly one run in four, before and after every
-        change tried so far (issue #29); that is noise, and a rerun is clean.
-        An abort (exit 134) is the emulator refusing the disc, and rerunning
-        it would only report the same refusal with a straight face.
+        used to die roughly one run in four, and this retry was written off
+        as noise. It was not: the core was a texture or surface image view
+        destroyed while a submitted draw still referenced it (issue #29), and
+        one disc -- Surface clip ahead of Pixel shader::Passthru -- crashed
+        on every attempt, which is how the retry exposed it. The retry stays,
+        printed, so that a crash of unknown origin costs one run and not the
+        scan. An abort (exit 134) is the emulator refusing the disc, and
+        rerunning it would only report the same refusal with a straight face.
         """
-        for attempt in range(1 + self.a.retry_segv):
+        attempts = 1 + self.a.retry_segv
+        for attempt in range(1, attempts + 1):
             result = self._run_once(tag, whole, isolate)
             if result is not None or self.why != "emulator exited 139":
                 return result
-            print(f"  ({tag}: segfault, retry {attempt + 1} of "
-                  f"{self.a.retry_segv})", flush=True)
+            print(f"  ({tag}: attempt {attempt} of {attempts} segfaulted"
+                  f"{'; retrying' if attempt < attempts else ''})",
+                  flush=True)
         return None
 
     def _run_once(self, tag, whole, isolate):
