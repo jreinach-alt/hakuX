@@ -1625,12 +1625,15 @@ void pgraph_gl_surface_invalidate(NV2AState *d, SurfaceBinding *surface)
 
     trace_nv2a_pgraph_surface_invalidated(surface->vram_addr);
 
+    /* See invalidate_surface() in vk/surface.c: an overlapping binding may
+     * legitimately evict the bound surface; request the rebind rather than
+     * asserting one was pending (issue #28). */
     if (surface == r->color_binding) {
-        assert(d->pgraph.surface_color.buffer_dirty);
+        d->pgraph.surface_color.buffer_dirty = true;
         pgraph_gl_unbind_surface(d, true);
     }
     if (surface == r->zeta_binding) {
-        assert(d->pgraph.surface_zeta.buffer_dirty);
+        d->pgraph.surface_zeta.buffer_dirty = true;
         pgraph_gl_unbind_surface(d, false);
     }
 

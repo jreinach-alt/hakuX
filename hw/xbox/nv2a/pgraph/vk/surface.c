@@ -1710,12 +1710,22 @@ static void invalidate_surface(NV2AState *d, SurfaceBinding *surface)
         surface->invalidation_frame = -1;
     }
 
+    /*
+     * Invalidating the surface that is currently bound is legitimate: a new
+     * binding can overlap it in VRAM, and the guest is allowed to lay out
+     * colour and zeta so that they do -- Color zeta overlap::AdjacentWithAA
+     * puts zeta right after a 64x64 colour surface whose antialiased
+     * footprint is larger, and the suite says hardware is nondeterministic
+     * there. What has to happen is a rebind on the next update, so ask for
+     * one. This used to assert that one was already pending, which aborted
+     * the emulator from that test on both renderers (issue #28).
+     */
     if (surface == r->color_binding) {
-        assert(d->pgraph.surface_color.buffer_dirty);
+        d->pgraph.surface_color.buffer_dirty = true;
         unbind_surface(d, true);
     }
     if (surface == r->zeta_binding) {
-        assert(d->pgraph.surface_zeta.buffer_dirty);
+        d->pgraph.surface_zeta.buffer_dirty = true;
         unbind_surface(d, false);
     }
 
