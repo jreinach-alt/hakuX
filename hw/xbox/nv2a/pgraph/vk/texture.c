@@ -148,6 +148,22 @@ static void memcpy_image(void *dst, void *src, int min_stride, int dst_stride, i
     }
 }
 
+/*
+ * Whether a compressed texture is kept in its block format on the device.
+ * A bordered cubemap is decoded instead: its faces are cropped to the
+ * reported size (see get_texture_layout), which is not a block-aligned
+ * operation on DXT data.
+ */
+static VkFormat texture_native_bc_format(PGRAPHVkState *r,
+                                         const TextureShape *s)
+{
+    if (!r->texture_compression_bc_supported || s->dimensionality == 3 ||
+        (s->cubemap && s->border)) {
+        return (VkFormat)0;
+    }
+    return kelvin_format_to_native_bc(s->color_format);
+}
+
 // FIXME: Move to common
 static size_t get_cubemap_layer_size(PGRAPHState *pg, TextureShape s)
 {
@@ -156,13 +172,10 @@ static size_t get_cubemap_layer_size(PGRAPHState *pg, TextureShape s)
         pgraph_is_texture_format_compressed(pg, s.color_format);
     unsigned int block_size;
 
-    unsigned int w = s.width, h = s.height;
+    unsigned int w, h, d;
     size_t length = 0;
 
-    if (!f.linear && s.border) {
-        w = MAX(16, w * 2);
-        h = MAX(16, h * 2);
-    }
+    pgraph_get_texture_storage_size(&s, &w, &h, &d);
 
     if (is_compressed) {
         block_size =
@@ -183,6 +196,43 @@ static size_t get_cubemap_layer_size(PGRAPHState *pg, TextureShape s)
     }
 
     return ROUND_UP(length, NV2A_CUBEMAP_FACE_ALIGNMENT);
+}
+
+/*
+ * A cubemap face stored with a texture border is decoded at its storage size
+ * (pgraph_get_texture_storage_size). The face image is the reported size and
+ * a cube lookup addresses it by direction, so there is no coordinate to map
+ * into the storage as the 2D case does; keep the interior and drop the
+ * border texels. Level n of the storage halves each level, so the 4-texel
+ * offset holds as long as the level is still wide enough to carry it.
+ */
+static void crop_cubemap_face_border(uint8_t **data, size_t *size,
+                                     unsigned int storage_width,
+                                     unsigned int storage_height,
+                                     unsigned int bytes_per_pixel,
+                                     unsigned int base_width,
+                                     unsigned int base_height, int level,
+                                     unsigned int *out_width,
+                                     unsigned int *out_height)
+{
+    unsigned int w = MAX(base_width >> level, 1);
+    unsigned int h = MAX(base_height >> level, 1);
+    unsigned int off_x = storage_width >= w + 8 ? 4 : 0;
+    unsigned int off_y = storage_height >= h + 8 ? 4 : 0;
+    w = MIN(w, storage_width - off_x);
+    h = MIN(h, storage_height - off_y);
+
+    size_t src_stride = (size_t)storage_width * bytes_per_pixel;
+    size_t dst_stride = (size_t)w * bytes_per_pixel;
+    uint8_t *cropped = g_malloc(dst_stride * h);
+    memcpy_image(cropped, *data + off_y * src_stride + off_x * bytes_per_pixel,
+                 dst_stride, dst_stride, src_stride, h);
+
+    g_free(*data);
+    *data = cropped;
+    *size = dst_stride * h;
+    *out_width = w;
+    *out_height = h;
 }
 
 // FIXME: Move to common
@@ -230,14 +280,13 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                                                     &texture_palette_data_size);
     void *palette_data_ptr = (char *)d->vram_ptr + texture_palette_vram_offset;
 
-    unsigned int adjusted_width = s.width, adjusted_height = s.height,
-                 adjusted_pitch = s.pitch, adjusted_depth = s.depth;
+    unsigned int adjusted_width, adjusted_height, adjusted_depth,
+                 adjusted_pitch = s.pitch;
 
-    if (!f.linear && s.border) {
-        adjusted_width = MAX(16, adjusted_width * 2);
-        adjusted_height = MAX(16, adjusted_height * 2);
+    pgraph_get_texture_storage_size(&s, &adjusted_width, &adjusted_height,
+                                    &adjusted_depth);
+    if (adjusted_width != s.width) {
         adjusted_pitch = adjusted_width * (s.pitch / s.width);
-        adjusted_depth = MAX(16, s.depth * 2);
     }
 
     TextureLayout *layout = g_malloc0(sizeof(TextureLayout));
@@ -301,8 +350,7 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                     size_t compressed_size =
                         (size_t)(physical_width / 4) * (physical_height / 4) * block_size;
 
-                    VkFormat _bc_fmt = r->texture_compression_bc_supported
-                        ? kelvin_format_to_native_bc(s.color_format) : (VkFormat)0;
+                    VkFormat _bc_fmt = texture_native_bc_format(r, &s);
                     if (_bc_fmt) {
                         /* Native BC path: upload compressed blocks directly.
                          * DXT blocks are already in linear order (L_ prefix).
@@ -325,8 +373,10 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                         assert(converted);
 
                         if (s.cubemap && adjusted_width != s.width) {
-                            tex_width = s.width;
-                            tex_height = s.height;
+                            crop_cubemap_face_border(&converted, &converted_size,
+                                                     width, height, 4, s.width,
+                                                     s.height, level,
+                                                     &tex_width, &tex_height);
                         }
 
                         layout->layers[layer].levels[level] = (TextureLevel){
@@ -359,15 +409,12 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                     }
 
                     if (s.cubemap && adjusted_width != s.width) {
-                        // FIXME: Consider preserving the border.
-                        // There does not seem to be a way to reference the border
-                        // texels in a cubemap, so they are discarded.
-                        // glPixelStorei(GL_UNPACK_ROW_LENGTH, adjusted_width);
-                        tex_width = s.width;
-                        tex_height = s.height;
-                        // pixel_data += 4 * f.bytes_per_pixel + 4 * pitch;
-
-                        // FIXME: Crop by 4 pixels on each side
+                        crop_cubemap_face_border(&converted, &converted_size,
+                                                 width, height,
+                                                 converted_size /
+                                                     (width * height),
+                                                 s.width, s.height, level,
+                                                 &tex_width, &tex_height);
                     }
 
                     layout->layers[layer].levels[level] = (TextureLevel){
@@ -548,10 +595,7 @@ static void upload_texture_image(PGRAPHState *pg, int texture_idx,
 
     /* Override format for native BC upload.
      * Skip for 3D textures — Vulkan doesn't guarantee BC for VK_IMAGE_TYPE_3D. */
-    VkFormat native_bc = (r->texture_compression_bc_supported &&
-                          state->dimensionality != 3)
-                         ? kelvin_format_to_native_bc(state->color_format)
-                         : (VkFormat)0;
+    VkFormat native_bc = texture_native_bc_format(r, state);
     if (native_bc) {
         vkf.vk_format = native_bc;
     } else if (texture_wants_snorm(binding->key.filter, state->color_format)) {
@@ -1655,10 +1699,8 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * NOT when a texture replacement exists (replacements are uncompressed). */
     bool has_replacement = pgraph_vk_texture_replace_is_enabled() &&
         pgraph_vk_texture_replace_lookup(content_hash, NULL, NULL, NULL) != NULL;
-    VkFormat native_bc = (!surface_to_texture && !has_replacement &&
-                          r->texture_compression_bc_supported &&
-                          state.dimensionality != 3)
-                         ? kelvin_format_to_native_bc(state.color_format)
+    VkFormat native_bc = (!surface_to_texture && !has_replacement)
+                         ? texture_native_bc_format(r, &state)
                          : (VkFormat)0;
     if (!native_bc && texture_wants_snorm(key.filter, state.color_format)) {
         VkFormat sn = kelvin_format_to_snorm(vkf.vk_format);
@@ -1680,12 +1722,21 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     assert(state.dimensionality <
            ARRAY_SIZE(dimensionality_to_vk_image_view_type));
 
+    /* The image holds the texture as stored, border included; a cubemap
+     * face is cropped to the reported size instead (get_texture_layout). */
+    unsigned int image_width = state.width, image_height = state.height,
+                 image_depth = state.depth;
+    if (!state.cubemap) {
+        pgraph_get_texture_storage_size(&state, &image_width, &image_height,
+                                        &image_depth);
+    }
+
     VkImageCreateInfo image_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = dimensionality_to_vk_image_type[state.dimensionality],
-        .extent.width = state.width,
-        .extent.height = state.height,
-        .extent.depth = state.depth,
+        .extent.width = image_width,
+        .extent.height = image_height,
+        .extent.depth = image_depth,
         .mipLevels = f_basic.linear ? 1 : state.levels,
         .arrayLayers = state.cubemap ? 6 : 1,
         .format = vkf.vk_format,

@@ -75,6 +75,9 @@ bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx);
 bool pgraph_color_format_has_signed_variant(unsigned int color_format);
 BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format);
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape);
+void pgraph_get_texture_storage_size(const TextureShape *shape,
+                                     unsigned int *width, unsigned int *height,
+                                     unsigned int *depth);
 
 static inline float pgraph_convert_lod_bias_to_float(uint32_t lod_bias)
 {

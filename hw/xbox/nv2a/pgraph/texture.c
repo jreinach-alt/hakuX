@@ -224,6 +224,37 @@ hwaddr pgraph_get_texture_palette_phys_addr_length(PGRAPHState *pg, int texture_
     return palette_data - d->vram_ptr;
 }
 
+/*
+ * The size, in texels, of the base level as it sits in memory. A swizzled
+ * texture whose border comes from the texture (NV097_SET_TEXTURE_FORMAT
+ * BORDER_SOURCE_TEXTURE) is stored at twice its reported size, at least 16
+ * texels a side, with the image itself offset by the 4-texel border: a 32x32
+ * texture occupies 64x64 texels, a 4x4 one 16x16. Everything that touches
+ * the data has to agree on this size: the decode, the VkImage that holds it,
+ * and the length the dirty check covers. Texture coordinates still address
+ * the reported size; apply_border_adjustment in glsl/psh.c maps them into
+ * the storage.
+ */
+void pgraph_get_texture_storage_size(const TextureShape *shape,
+                                     unsigned int *width, unsigned int *height,
+                                     unsigned int *depth)
+{
+    BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
+    unsigned int w = shape->width, h = shape->height, d = shape->depth;
+
+    if (!f.linear && shape->border) {
+        w = MAX(16, w * 2);
+        h = MAX(16, h * 2);
+        if (shape->dimensionality == 3) {
+            d = MAX(16, d * 2);
+        }
+    }
+
+    *width = w;
+    *height = h;
+    *depth = d;
+}
+
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape)
 {
     BasicColorFormatInfo f = pgraph_get_color_format_info(shape->color_format);
@@ -235,7 +266,8 @@ size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape)
         length = shape->height * shape->pitch;
     } else {
         if (shape->dimensionality >= 2) {
-            unsigned int w = shape->width, h = shape->height;
+            unsigned int w, h, d;
+            pgraph_get_texture_storage_size(shape, &w, &h, &d);
             int level;
             if (!pgraph_is_texture_format_compressed(pg, shape->color_format)) {
                 for (level = 0; level < shape->levels; level++) {
@@ -267,7 +299,7 @@ size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape)
                 length *= 6;
             }
             if (shape->dimensionality >= 3) {
-                length *= shape->depth;
+                length *= d;
             }
         }
     }
