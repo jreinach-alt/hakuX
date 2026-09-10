@@ -243,20 +243,6 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
     VK_CHECK(vkCreateDescriptorSetLayout(r->device, &tex_layout_info, NULL,
                                          &r->push_tex_set_layout));
 
-    /* Create a canonical pipeline layout for the update template */
-    VkDescriptorSetLayout template_set_layouts[2] = {
-        r->push_tex_set_layout,
-        r->push_ubo_set_layout,
-    };
-    VkPipelineLayoutCreateInfo template_layout_info = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-        .setLayoutCount = 2,
-        .pSetLayouts = template_set_layouts,
-    };
-    VK_CHECK(vkCreatePipelineLayout(r->device, &template_layout_info, NULL,
-                                    &r->push_template_layout));
-
-    /* Create descriptor update template for push texture descriptors */
     VkDescriptorUpdateTemplateEntry template_entries[NV2A_MAX_TEXTURES];
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         template_entries[i] = (VkDescriptorUpdateTemplateEntry){
@@ -268,19 +254,48 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
             .stride = sizeof(VkDescriptorImageInfo),
         };
     }
-    VkDescriptorUpdateTemplateCreateInfo template_info = {
-        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
-        .descriptorUpdateEntryCount = NV2A_MAX_TEXTURES,
-        .pDescriptorUpdateEntries = template_entries,
-        .templateType =
-            VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR,
-        .descriptorSetLayout = r->push_tex_set_layout,
-        .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
-        .pipelineLayout = r->push_template_layout,
-        .set = 0,
+
+    /*
+     * One template per pipeline-layout shape. The layouts here mirror the
+     * ones create_pipeline builds in draw.c -- the same two set layouts and,
+     * for n > 0, the same vertex-stage push-constant range of n attributes
+     * -- so each template is compatible with every pipeline of that shape.
+     */
+    VkDescriptorSetLayout template_set_layouts[2] = {
+        r->push_tex_set_layout,
+        r->push_ubo_set_layout,
     };
-    VK_CHECK(vkCreateDescriptorUpdateTemplate(r->device, &template_info, NULL,
-                                              &r->push_tex_update_template));
+    for (int n = 0; n <= NV2A_VERTEXSHADER_ATTRIBUTES; n++) {
+        VkPushConstantRange push_range = {
+            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+            .offset = 0,
+            .size = n * 4 * sizeof(float),
+        };
+        VkPipelineLayoutCreateInfo template_layout_info = {
+            .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+            .setLayoutCount = 2,
+            .pSetLayouts = template_set_layouts,
+            .pushConstantRangeCount = n > 0 ? 1 : 0,
+            .pPushConstantRanges = n > 0 ? &push_range : NULL,
+        };
+        VK_CHECK(vkCreatePipelineLayout(r->device, &template_layout_info,
+                                        NULL, &r->push_template_layout[n]));
+
+        VkDescriptorUpdateTemplateCreateInfo template_info = {
+            .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_CREATE_INFO,
+            .descriptorUpdateEntryCount = NV2A_MAX_TEXTURES,
+            .pDescriptorUpdateEntries = template_entries,
+            .templateType =
+                VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR,
+            .descriptorSetLayout = r->push_tex_set_layout,
+            .pipelineBindPoint = VK_PIPELINE_BIND_POINT_GRAPHICS,
+            .pipelineLayout = r->push_template_layout[n],
+            .set = 0,
+        };
+        VK_CHECK(vkCreateDescriptorUpdateTemplate(
+            r->device, &template_info, NULL,
+            &r->push_tex_update_template[n]));
+    }
 }
 
 static void destroy_push_descriptor_resources(PGRAPHState *pg)
@@ -288,9 +303,11 @@ static void destroy_push_descriptor_resources(PGRAPHState *pg)
     PGRAPHVkState *r = pg->vk_renderer_state;
     if (!r->push_descriptors_supported) return;
 
-    vkDestroyDescriptorUpdateTemplate(r->device,
-                                       r->push_tex_update_template, NULL);
-    vkDestroyPipelineLayout(r->device, r->push_template_layout, NULL);
+    for (int n = 0; n <= NV2A_VERTEXSHADER_ATTRIBUTES; n++) {
+        vkDestroyDescriptorUpdateTemplate(
+            r->device, r->push_tex_update_template[n], NULL);
+        vkDestroyPipelineLayout(r->device, r->push_template_layout[n], NULL);
+    }
     vkDestroyDescriptorSetLayout(r->device, r->push_tex_set_layout, NULL);
 }
 

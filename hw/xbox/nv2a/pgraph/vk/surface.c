@@ -258,6 +258,25 @@ static bool download_surface_record_deferred(NV2AState *d,
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_DOWNLOAD);
 
+    /*
+     * Draws are queued for merging and reordering and recorded later; a
+     * download recorded now would sit in the command buffer ahead of the
+     * draws that made the surface dirty, and copy the surface from before
+     * them. That is what a guest saw when it read a framebuffer back while
+     * its last draw was still queued: the clear, and none of the draw. On
+     * the desktop lane the queue is flushed by a flip or a state change at
+     * times that wander with host speed, so identical runs of Depth buffer
+     * fixed function came back with the quad drawn in one and blank in the
+     * next, 38 of 80 captures over three runs. Record the draws first,
+     * which is what the synchronous path gets from pgraph_vk_finish.
+     */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
     unsigned int scaled_width = surface->width,
                  scaled_height = surface->height;
     pgraph_apply_scaling_factor(pg, &scaled_width, &scaled_height);
@@ -558,6 +577,7 @@ static bool download_surface_record_deferred(NV2AState *d,
     dl->use_compute_to_swizzle = false;
     dl->partial = partial;
     dl->surface = surface;
+    dl->draw_generation = surface->draw_generation;
 
     r->staging_dst_offset = aligned_offset + staging_size;
     return true;
@@ -612,11 +632,25 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
                                            DIRTY_MEMORY_NV2A_TEX);
             s->download_pending = false;
             s->download_row_count = 0;
-            /* See download_surface: a partial download leaves the rows it
-             * did not copy stale, so it must not retire the generation. */
+            /*
+             * See download_surface: a partial download leaves the rows it
+             * did not copy stale, so it must not retire the generation.
+             *
+             * A full one retires the generation the copy captured, not the
+             * one the surface has now. The copy was recorded earlier -- at
+             * the flip, for the display pre-download -- and a draw that
+             * landed between then and this fence is not in the staging
+             * buffer. Crediting it made the surface clean with VRAM one
+             * draw behind, and the next guest readback found nothing to
+             * download: the Depth buffer fixed function captures came back
+             * as the clear and no quad, in one run out of three, depending
+             * on where the flip fell.
+             */
             if (!dl->partial) {
-                s->draw_dirty = false;
-                s->download_generation = s->draw_generation;
+                s->download_generation = dl->draw_generation;
+                if (s->draw_generation == dl->draw_generation) {
+                    s->draw_dirty = false;
+                }
             }
         }
     }
@@ -2126,6 +2160,9 @@ static void create_surface_image(PGRAPHState *pg, SurfaceBinding *surface)
 
 static void migrate_surface_image(SurfaceBinding *dst, SurfaceBinding *src)
 {
+    /* The view now belongs to a surface at a different address; a texture
+     * slot still sampling it directly would read the wrong surface. */
+    pgraph_vk_texture_surface_view_retired(&g_nv2a->pgraph, src->image_view);
     dst->image = src->image;
     dst->image_view = src->image_view;
     dst->image_layout = src->image_layout;
@@ -2167,6 +2204,9 @@ typedef struct DeferredSurfaceRelease {
 
 static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface)
 {
+    pgraph_vk_texture_surface_view_retired(&g_nv2a->pgraph,
+                                           surface->image_view);
+
     unsigned int w = surface->width ? surface->width : 1;
     unsigned int h = surface->height ? surface->height : 1;
     unsigned int sf = g_nv2a->pgraph.surface_scale_factor;
@@ -2799,6 +2839,34 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
             pg, cmd, surface->image, surface->host_fmt.vk_format,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, default_layout);
         surface->image_layout = default_layout;
+    } else {
+        /*
+         * Skipping the layout transition also skipped the dependency it
+         * carried. The transfer write has to be visible before the next
+         * render pass loads this attachment, or a draw samples it directly
+         * (tex_surface_direct); the validation layer reported the load as
+         * a read-after-write hazard on every upload (issue #34, finding 4).
+         */
+        VkImageMemoryBarrier post_barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = surface->image,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,
+                                  VK_REMAINING_MIP_LEVELS, 0,
+                                  VK_REMAINING_ARRAY_LAYERS },
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                             VK_ACCESS_SHADER_READ_BIT,
+        };
+        vkCmdPipelineBarrier(cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0, 0, NULL, 0, NULL, 1, &post_barrier);
     }
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_2);
