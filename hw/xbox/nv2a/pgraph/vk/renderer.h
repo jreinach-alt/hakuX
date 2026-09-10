@@ -116,6 +116,7 @@ struct OptBisectStats {
     int draws_skipped_null_pipeline;
     int sd_eviction_dl;      /* downloads taken when a dirty surface is evicted */
     int sd_shelved_unshelved;
+    int sd_shelved_stale;    /* unshelved, but VRAM changed underneath: re-uploaded */
     int sd_shelved_lazy_dl;
     int sync_range_skip;
     int sync_early_exit;
@@ -295,6 +296,7 @@ typedef struct SurfaceBinding {
     int draw_time;
     bool draw_dirty;
     bool shelved_dirty;  /* Shelved without downloading GPU data to VRAM */
+    bool vram_newer;     /* Shelved, and VRAM under it was rewritten since */
     bool download_pending;
     bool upload_pending;
 

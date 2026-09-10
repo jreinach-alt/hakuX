@@ -170,9 +170,10 @@ static void opt_stats_log_and_reset(void)
                 g_opt_stats.dif_dds_fb,
                 g_opt_stats.dif_other);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
-                "evict[dl:%d unshelve:%d dl:%d]",
+                "evict[dl:%d unshelve:%d stale:%d dl:%d]",
                 g_opt_stats.sd_eviction_dl,
                 g_opt_stats.sd_shelved_unshelved,
+                g_opt_stats.sd_shelved_stale,
                 g_opt_stats.sd_shelved_lazy_dl);
         __android_log_print(ANDROID_LOG_INFO, "hakuX-stall",
                 "buf_detail: ds%d ubo%d fb%d stg%d comp%d vtx%d",

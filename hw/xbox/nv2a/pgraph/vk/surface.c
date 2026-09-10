@@ -47,6 +47,8 @@ const int max_surface_frame_time_delta = 5;
 
 static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface);
 static void download_surface_deferred(NV2AState *d, SurfaceBinding *surface);
+static void surface_vram_written(PGRAPHVkState *r, hwaddr addr, size_t size,
+                                 SurfaceBinding *except);
 /* Forward declaration — defined below, also called from texture.c */
 
 void pgraph_vk_set_surface_scale_factor(NV2AState *d, unsigned int scale)
@@ -580,6 +582,8 @@ static bool download_surface_record_deferred(NV2AState *d,
     dl->draw_generation = surface->draw_generation;
 
     r->staging_dst_offset = aligned_offset + staging_size;
+    surface_vram_written(r, surface->vram_addr,
+                         surface->pitch * surface->height, surface);
     return true;
 }
 
@@ -592,6 +596,31 @@ static void deferred_downloads_clear_surface(PGRAPHVkState *r,
     for (int i = 0; i < r->num_deferred_downloads; i++) {
         if (r->deferred_downloads[i].surface == surface) {
             r->deferred_downloads[i].surface = NULL;
+        }
+    }
+}
+
+/*
+ * A download is about to rewrite VRAM. A shelved surface whose image was kept
+ * for a same-format rebind will then disagree with the memory under it if the
+ * two overlap: the rebind used to take the image as-is and lose the write.
+ * Called when the download is recorded, not when it completes: an eviction
+ * records the outgoing surface's download and unshelves the incoming one in
+ * the same surface_update, and the upload that unshelving now requests runs
+ * after the deferred downloads complete.
+ * Surface clip renders into the framebuffer as B8, G8B8 or R5G6B5 between
+ * A8R8G8B8 passes -- the narrow surface's download landed, the A8R8G8B8
+ * surface came back off the shelf with its old pixels, and its next
+ * download put those pixels back over the top (#11).
+ */
+static void surface_vram_written(PGRAPHVkState *r, hwaddr addr, size_t size,
+                                 SurfaceBinding *except)
+{
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        if (s != except && s->vram_addr < addr + size &&
+            addr < s->vram_addr + s->size) {
+            s->vram_newer = true;
         }
     }
 }
@@ -1208,6 +1237,8 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
 
 static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
 {
+    PGRAPHVkState *r = d->pgraph.vk_renderer_state;
+
     if (!(surface->download_pending || force) || !surface->width ||
         !surface->height) {
         return;
@@ -1234,6 +1265,7 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
 
     download_surface_to_buffer(d, surface, d->vram_ptr + surface->vram_addr);
 
+    surface_vram_written(r, surface->vram_addr, surface->pitch * surface->height, surface);
     memory_region_set_client_dirty(d->vram, surface->vram_addr,
                                    surface->pitch * surface->height,
                                    DIRTY_MEMORY_VGA);
@@ -1803,6 +1835,7 @@ static void shelve_surface(NV2AState *d, SurfaceBinding *surface)
     g_hash_table_remove(r->surface_addr_map,
                         (gpointer)(uintptr_t)surface->vram_addr);
     QTAILQ_REMOVE(&r->surfaces, surface, entry);
+    surface->vram_newer = false;
     QTAILQ_INSERT_HEAD(&r->shelved_surfaces, surface, entry);
     r->surface_list_gen++;
 }
@@ -3174,8 +3207,10 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         if (should_create) {
             SURF_TIMER_INIT(_gt2);
             bool unshelved = false;
+            bool shelf_stale = false;
             surface = get_shelved_surface(r, target.vram_addr, &target);
             if (surface) {
+                shelf_stale = surface->vram_newer;
                 migrate_surface_image(&target, surface);
                 unshelved = true;
             } else {
@@ -3194,14 +3229,22 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
             if (unshelved) {
                 /*
-                 * The VkImage already contains valid data from the
-                 * previous binding, so skip the VRAM upload and mark
-                 * the surface as initialized. No VRAM download was
-                 * needed — the lazy eviction saved a GPU finish.
+                 * The VkImage still holds what this binding drew, so the
+                 * VRAM upload can be skipped -- unless the memory under it
+                 * changed while it sat on the shelf: another surface's
+                 * download was recorded for it (vram_newer), or the CPU
+                 * wrote it (mem_dirty, the same test the compatible-hit
+                 * path makes).
+                 * Taking the image as-is in that case put stale pixels
+                 * back over the newer ones.
                  */
-                surface->upload_pending = false;
-                surface->initialized = true;
-                OPT_STAT_INC(sd_shelved_unshelved);
+                surface->upload_pending = shelf_stale || mem_dirty;
+                surface->initialized = !surface->upload_pending;
+                if (surface->upload_pending) {
+                    OPT_STAT_INC(sd_shelved_stale);
+                } else {
+                    OPT_STAT_INC(sd_shelved_unshelved);
+                }
             }
 
             SURF_TIMER_INIT(_gt3);
