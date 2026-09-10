@@ -1017,6 +1017,32 @@ static const DisplayChangeListenerOps dcl_gl_ops = {
     .dpy_gl_update           = sdl2_gl_scanout_flush,
 };
 
+
+/*
+ * Report a fatal startup error.
+ *
+ * These paths used to reach only a modal dialog. Headless - CI, an automated
+ * sweep, a container - SDL implements that dialog by forking a helper and
+ * waiting on it, so the process hung in wait4() forever having printed
+ * nothing about why it could not start. Print first, always, so a log says
+ * what happened; raise a dialog only on a video driver that can show one.
+ *
+ * A bare X server such as Xvfb still reports itself as x11 and may block in
+ * the dialog, but the reason is on stderr by then, which is the half that
+ * matters for automation.
+ */
+static void xemu_report_fatal(const char *title, const char *msg,
+                              SDL_Window *parent)
+{
+    fprintf(stderr, "%s\n%s\n", title, msg);
+    fflush(stderr);
+
+    const char *drv = SDL_GetCurrentVideoDriver();
+    if (drv && strcmp(drv, "offscreen") != 0 && strcmp(drv, "dummy") != 0) {
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, title, msg, parent);
+    }
+}
+
 static void sdl2_display_very_early_init(DisplayOptions *o)
 {
 #ifdef __ANDROID__
@@ -1120,6 +1146,9 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
     // On Android, always use OpenGL window even for Vulkan because Vulkan
     // needs GL context for external memory display presentation
 #ifdef __ANDROID__
+    /* The Android port always presents through GLES, whichever renderer the
+     * NV2A backend uses, so the window is always an OpenGL one here. */
+    bool use_vulkan = false;
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
 #else
     bool use_vulkan = (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_VULKAN);
@@ -1147,17 +1176,27 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
         SDL_SetWindowPosition(m_window, SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED);
     }
 
-    m_context = SDL_GL_CreateContext(m_window);
+    /*
+     * Only the GL renderer needs a GL context. This used to be created
+     * unconditionally - including on a window made with SDL_WINDOW_VULKAN
+     * rather than SDL_WINDOW_OPENGL, which is not valid SDL usage - and the
+     * GL 4.0 requirement below was then enforced fatally in Vulkan mode. A
+     * system with a working Vulkan driver but weak GL could not start at all,
+     * and headless runs died on a requirement they had no use for.
+     */
+    if (!use_vulkan) {
+        m_context = SDL_GL_CreateContext(m_window);
 
 #ifndef __ANDROID__
-    if (m_context != NULL && epoxy_gl_version() < 40) {
-        SDL_GL_MakeCurrent(NULL, NULL);
-        SDL_GL_DeleteContext(m_context);
-        m_context = NULL;
-    }
+        if (m_context != NULL && epoxy_gl_version() < 40) {
+            SDL_GL_MakeCurrent(NULL, NULL);
+            SDL_GL_DeleteContext(m_context);
+            m_context = NULL;
+        }
 #endif
+    }
 
-    if (m_context == NULL) {
+    if (!use_vulkan && m_context == NULL) {
 #ifdef __ANDROID__
         const char *msg =
             "Unable to create OpenGL ES context. This usually means the\r\n"
@@ -1171,16 +1210,13 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
             "\r\n"
             "xemu cannot continue and will now exit.";
 #endif
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-            "Unable to create OpenGL context",
-            msg,
-            m_window);
+        xemu_report_fatal("Unable to create OpenGL context", msg, m_window);
         SDL_DestroyWindow(m_window);
         SDL_Quit();
         exit(1);
     }
 
-    if (SDL_GL_MakeCurrent(m_window, m_context) != 0) {
+    if (!use_vulkan && SDL_GL_MakeCurrent(m_window, m_context) != 0) {
         fprintf(stderr, "Failed to make GL context current: %s\n", SDL_GetError());
         SDL_DestroyWindow(m_window);
         SDL_Quit();
@@ -1206,10 +1242,15 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
 
     fprintf(stderr, "CPU: %s\n", xemu_get_cpu_info());
     fprintf(stderr, "OS_Version: %s\n", xemu_get_os_info());
-    fprintf(stderr, "GL_VENDOR: %s\n", glGetString(GL_VENDOR));
-    fprintf(stderr, "GL_RENDERER: %s\n", glGetString(GL_RENDERER));
-    fprintf(stderr, "GL_VERSION: %s\n", glGetString(GL_VERSION));
-    fprintf(stderr, "GL_SHADING_LANGUAGE_VERSION: %s\n", glGetString(GL_SHADING_LANGUAGE_VERSION));
+    /* glGetString needs a current GL context, which Vulkan mode does not
+     * create. The Vulkan backend reports its own device separately. */
+    if (!use_vulkan) {
+        fprintf(stderr, "GL_VENDOR: %s\n", glGetString(GL_VENDOR));
+        fprintf(stderr, "GL_RENDERER: %s\n", glGetString(GL_RENDERER));
+        fprintf(stderr, "GL_VERSION: %s\n", glGetString(GL_VERSION));
+        fprintf(stderr, "GL_SHADING_LANGUAGE_VERSION: %s\n",
+                glGetString(GL_SHADING_LANGUAGE_VERSION));
+    }
 #ifdef __ANDROID__
     {
         const char *vendor = (const char *)glGetString(GL_VENDOR);
@@ -2412,10 +2453,8 @@ int main(int argc, char **argv)
 
     if (!xemu_settings_load()) {
         const char *err_msg = xemu_settings_get_error_message();
-        fprintf(stderr, "%s", err_msg);
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR,
-            "Failed to load xemu config file", err_msg,
-            m_window);
+        xemu_report_fatal("Failed to load xemu config file", err_msg,
+                          m_window);
         SDL_Quit();
         exit(1);
     }
