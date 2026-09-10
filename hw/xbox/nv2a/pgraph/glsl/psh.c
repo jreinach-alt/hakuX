@@ -1271,6 +1271,84 @@ static MString* psh_convert(struct PixelShader *ps)
             "float area(vec2 a, vec2 b, vec2 c) {\n"
             "    return kahan_det(b - a, c - a);\n"
             "}\n");
+        if (ps->state->z_perspective) {
+            /*
+             * Slope-scaled polygon offset under w-buffering.  The hardware
+             * evaluates it once per primitive, as the difference in w between
+             * two adjacent pixel centres, stepping along the axis of the
+             * larger 1/w gradient from the first pixel the rasteriser covers
+             * (the top-most row of the triangle clipped to the window, at
+             * the column nearest the top vertex).  Wall/Roof/Floor in
+             * W_buffering reproduce to the unit; applying the factor per
+             * pixel to w^2, as before, varied 30x across one quad.  Small
+             * unclipped triangles pick a reference on a 4-pixel grid instead;
+             * see docs/investigations/wbuffer-slope-offset.md.
+             */
+            mstring_append(preflight,
+                "float wbufSlopeStep(vec4 p0, vec4 p1, vec4 p2, vec4 clip) {\n"
+                "    vec2 d1 = p1.xy - p0.xy, d2 = p2.xy - p0.xy;\n"
+                "    float det = d1.x * d2.y - d2.x * d1.y;\n"
+                "    if (det == 0.0) return 0.0;\n"
+                /* 1/w differences as (w0-w1)/(w0*w1): 1/w1 - 1/w0 cancels to
+                 * nothing in float32 once w is in the millions (LargeZ). */
+                "    vec2 b = vec2((p0.w - p1.w) / (p0.w * p1.w), (p0.w - p2.w) / (p0.w * p2.w));\n"
+                "    float pa = (b.x * d2.y - b.y * d1.y) / det;\n"
+                "    float pb = (d1.x * b.y - d2.x * b.x) / det;\n"
+                "    float xtop = (p0.y <= p1.y && p0.y <= p2.y) ? p0.x : (p1.y <= p2.y ? p1.x : p2.x);\n"
+                "    vec2 poly[8];\n"
+                "    int n = 3;\n"
+                "    poly[0] = p0.xy; poly[1] = p1.xy; poly[2] = p2.xy;\n"
+                "    for (int side = 0; side < 4; side++) {\n"
+                "        vec2 kept[8];\n"
+                "        int m = 0;\n"
+                "        for (int i = 0; i < n; i++) {\n"
+                "            vec2 a = poly[i], b = poly[(i + 1) % n];\n"
+                "            float da = side == 0 ? a.x - clip.x : side == 1 ? clip.z - a.x : side == 2 ? a.y - clip.y : clip.w - a.y;\n"
+                "            float db = side == 0 ? b.x - clip.x : side == 1 ? clip.z - b.x : side == 2 ? b.y - clip.y : clip.w - b.y;\n"
+                "            if (da >= 0.0) kept[m++] = a;\n"
+                "            if ((da >= 0.0) != (db >= 0.0)) kept[m++] = mix(a, b, da / (da - db));\n"
+                "        }\n"
+                "        n = m;\n"
+                "        if (n == 0) return 0.0;\n"
+                "        for (int i = 0; i < n; i++) poly[i] = kept[i];\n"
+                "    }\n"
+                "    float ymin = poly[0].y;\n"
+                "    for (int i = 1; i < n; i++) ymin = min(ymin, poly[i].y);\n"
+                "    float r = ceil(ymin - 0.5);\n"
+                "    float c = 0.0;\n"
+                "    bool found = false;\n"
+                "    for (int k = 0; k < 4 && !found; k++) {\n"
+                "        float yc = r + 0.5, lo = 1e30, hi = -1e30;\n"
+                "        for (int i = 0; i < n; i++) {\n"
+                "            vec2 a = poly[i], b = poly[(i + 1) % n];\n"
+                "            if ((a.y <= yc) != (b.y <= yc)) {\n"
+                "                float x = a.x + (b.x - a.x) * (yc - a.y) / (b.y - a.y);\n"
+                "                lo = min(lo, x); hi = max(hi, x);\n"
+                "            } else if (a.y == yc && b.y == yc) {\n"
+                "                lo = min(lo, min(a.x, b.x)); hi = max(hi, max(a.x, b.x));\n"
+                "            }\n"
+                "        }\n"
+                "        float first = ceil(lo - 0.5), last = ceil(hi - 0.5) - 1.0;\n"
+                "        if (hi > lo && last >= first) {\n"
+                "            c = clamp(floor(xtop), first, last);\n"
+                "            found = true;\n"
+                "        } else {\n"
+                "            r += 1.0;\n"
+                "        }\n"
+                "    }\n"
+                "    if (!found) return 0.0;\n"
+                /* The pair is the 2x2 pixel quad holding the anchor: a clip
+                 * edge at column 159 measures the pair (158,159), a vertex at
+                 * 637.31 the pair (636,637). */
+                "    c = 2.0 * floor(c * 0.5);\n"
+                "    r = 2.0 * floor(r * 0.5);\n"
+                "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"
+                "    float i1 = 1.0 / p0.w + pa * (c + 0.5 - p0.x) + pb * (r + 0.5 - p0.y);\n"
+                "    float i2 = i1 + step;\n"
+                "    if (i1 <= 0.0 || i2 <= 0.0) return 0.0;\n"
+                "    return abs(step) / (i1 * i2);\n"
+                "}\n");
+        }
     }
 
     MString *clip = mstring_new();
@@ -1325,7 +1403,19 @@ static MString* psh_convert(struct PixelShader *ps)
 
     if (ps->state->depth_needed) {
         if (ps->state->z_perspective) {
-            mstring_append(
+            /*
+             * The slope offset's reference pixel is found on the triangle
+             * clipped to the window.  clipRegion is in scaled surface pixels,
+             * vtxPos is not.  Region 0 is the one guests set; the other seven
+             * usually hold their reset value and count as regions too, so the
+             * count does not say whether region 0 is the clip.  An exclusive
+             * clip has no single "first pixel"; leave the triangle unclipped.
+             */
+            const char *wclip =
+                !ps->state->window_clip_exclusive ?
+                    "vec4(clipRegion[0]) / vec4(vec2(surfaceScale), vec2(surfaceScale))" :
+                    "vec4(-1e9, -1e9, 1e9, 1e9)";
+            mstring_append_fmt(
                 clip,
                 "vec2 unscaled_xy = gl_FragCoord.xy / vec2(surfaceScale);\n"
                 "precise float bc0 = area(unscaled_xy, vtxPos1.xy, vtxPos2.xy);\n"
@@ -1344,7 +1434,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "precise float zlo = (vtxPos0.w - zhi) + (bc1*(vtxPos1.w - vtxPos0.w) + bc2*(vtxPos2.w - vtxPos0.w));\n"
                 "precise float zvalue = zhi + zlo;\n"
                 "if (zvalue > 0.0) {\n"
-                "  float zslopeofs = depthFactor*triMZ*zvalue*zvalue;\n"
+                "  float zslopeofs = depthFactor != 0.0 ? depthFactor * wbufSlopeStep(vtxPos0, vtxPos1, vtxPos2, %s) : 0.0;\n"
                 "  zlo += depthOffset;\n"
                 "  zlo += zslopeofs;\n"
                 "  zvalue = zhi + zlo;\n"
@@ -1356,7 +1446,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "  zvalue = uintBitsToFloat(0x7F7FFFFFu);\n"
                 "  zhi = 0.0; zlo = zvalue;\n"
                 "}\n"
-                "precise float zfloor = zhi + floor(zlo);\n");
+                "precise float zfloor = zhi + floor(zlo);\n", wclip);
         } else {
             mstring_append(
                 clip,
@@ -2203,16 +2293,8 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         if (polygon_offset_enabled) {
             uint32_t zfactor_u32 = pgraph_reg_r(pg, NV_PGRAPH_ZOFFSETFACTOR);
             zfactor = *(float *)&zfactor_u32;
-            if (zfactor != 0.0f &&
-                (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
-                 NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE)) {
-                /* FIXME: for w-buffering, polygon slope in screen-space is
-                 * computed per-pixel, but Xbox appears to use constant that
-                 * is the polygon slope at the first visible pixel in top-left
-                 * order.
-                 */
-                NV2A_UNIMPLEMENTED("NV_PGRAPH_ZOFFSETFACTOR only partially implemented for w-buffering");
-            }
+            /* Under w-buffering the shader applies this once per primitive,
+             * at the first covered pixel (wbufSlopeStep). */
         }
 
         values->depthFactor[0] = zfactor;
