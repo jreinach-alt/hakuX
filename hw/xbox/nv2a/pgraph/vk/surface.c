@@ -2797,6 +2797,34 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
             pg, cmd, surface->image, surface->host_fmt.vk_format,
             VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, default_layout);
         surface->image_layout = default_layout;
+    } else {
+        /*
+         * Skipping the layout transition also skipped the dependency it
+         * carried. The transfer write has to be visible before the next
+         * render pass loads this attachment, or a draw samples it directly
+         * (tex_surface_direct); the validation layer reported the load as
+         * a read-after-write hazard on every upload (issue #34, finding 4).
+         */
+        VkImageMemoryBarrier post_barrier = {
+            .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+            .oldLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .newLayout = VK_IMAGE_LAYOUT_GENERAL,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .image = surface->image,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,
+                                  VK_REMAINING_MIP_LEVELS, 0,
+                                  VK_REMAINING_ARRAY_LAYERS },
+            .srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT,
+            .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_READ_BIT |
+                             VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT |
+                             VK_ACCESS_SHADER_READ_BIT,
+        };
+        vkCmdPipelineBarrier(cmd,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+                VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+            0, 0, NULL, 0, NULL, 1, &post_barrier);
     }
 
     nv2a_profile_inc_counter(NV2A_PROF_QUEUE_SUBMIT_2);
