@@ -2150,12 +2150,27 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
                          0, r->bitmap_size);
         }
     }
-    pgraph_vk_reclaim_descriptor_overflow(r);
-
-    // All GPU work is complete — safe to reuse all descriptor sets
-    r->descriptor_set_index = 0;
-    r->push_ubo_set_index = 0;
-    pgraph_vk_compute_finish_complete(r);
+    /*
+     * Everything submitted has completed, so the descriptor sets those
+     * submissions bound are free. The sets bound by the command buffer that
+     * is still recording are not: it has not been submitted, and its draws
+     * and dispatches read their descriptors when it is. Resetting the ring
+     * indices here regardless -- as this did -- made the next draw rewrite
+     * push_ubo_sets[0] while an earlier draw in the same command buffer
+     * still pointed at it, and that draw then ran with the later shader's
+     * uniform range. The validation layer reported it on every frame of
+     * every suite (issue #34, finding 1), and which draws share a command
+     * buffer depends on when finishes fall, which is how a lane too slow to
+     * hold its frame timing produced different captures from identical
+     * runs. Reclaim only when nothing is recording; a ring that runs out
+     * mid-buffer grows through the overflow pools until then.
+     */
+    if (!r->in_command_buffer) {
+        pgraph_vk_reclaim_descriptor_overflow(r);
+        r->descriptor_set_index = 0;
+        r->push_ubo_set_index = 0;
+        pgraph_vk_compute_finish_complete(r);
+    }
 }
 
 static void flush_reorder_window_internal(NV2AState *d);
