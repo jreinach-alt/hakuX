@@ -1,12 +1,11 @@
 name: CI
 
+# The Linux, macOS and Windows builds are not maintained in this fork, which
+# targets Android. They are kept runnable on demand rather than deleted, but
+# they no longer run on every push: a permanently red matrix hides a real
+# failure in the Android build, which is the check that matters here.
 on:
-  pull_request:
-  push:
-    branches-ignore:
-      - master
-    tags-ignore:
-      - "v*"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}

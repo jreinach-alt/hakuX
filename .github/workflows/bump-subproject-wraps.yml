@@ -1,9 +1,14 @@
 name: Bump Meson subprojects
 
+# The .wrap files are a meson mechanism, and meson only builds the desktop
+# targets this fork no longer maintains. The Android build fetches every
+# subproject itself with FetchContent against its own pinned revisions and
+# never reads a wrap, so a weekly bump would churn files nothing consumes —
+# and would move subprojects/nv2a_vsh_cpu.wrap away from the matching pin in
+# android/app/src/main/cpp/CMakeLists.txt. Still runnable by hand if the
+# desktop build is ever revived.
 on:
   workflow_dispatch:
-  schedule:
-    - cron: '0 6 * * 1'
 
 concurrency:
   group: ${{ github.workflow }}

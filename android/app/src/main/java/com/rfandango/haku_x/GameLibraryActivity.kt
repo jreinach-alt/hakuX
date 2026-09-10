@@ -640,7 +640,7 @@ class GameLibraryActivity : AppCompatActivity() {
       }
 
       // Verify the output XISO has valid magic before launching
-      if (!isXisoIntact(outputDoc.uri, outputTemp.length())) {
+      if (!isXisoIntact(outputDoc.uri)) {
         Log.e(TAG, "convert: phase 2 FAILED — output XISO integrity check failed")
         outputDoc.delete()
         convertOutputDoc = null
@@ -721,19 +721,7 @@ class GameLibraryActivity : AppCompatActivity() {
       val input = contentResolver.openInputStream(uri) ?: return false
       input.use { stream ->
         FileOutputStream(target).use { output ->
-          val buf = ByteArray(65536)
-          var copied = 0L
-          var lastPct = -1
-          while (true) {
-            val n = stream.read(buf)
-            if (n <= 0) break
-            output.write(buf, 0, n)
-            copied += n
-            if (totalBytes > 0) {
-              val pct = (copied * 100 / totalBytes).toInt().coerceIn(0, 100)
-              if (pct != lastPct) { lastPct = pct; onPercent(pct) }
-            }
-          }
+          CopyProgress.copy(stream, output, totalBytes, onPercent)
         }
       }
       true
@@ -745,19 +733,7 @@ class GameLibraryActivity : AppCompatActivity() {
       val output = contentResolver.openOutputStream(targetUri, "w") ?: return false
       FileInputStream(source).use { input ->
         output.use { stream ->
-          val buf = ByteArray(65536)
-          var copied = 0L
-          var lastPct = -1
-          while (true) {
-            val n = input.read(buf)
-            if (n <= 0) break
-            stream.write(buf, 0, n)
-            copied += n
-            if (totalBytes > 0) {
-              val pct = (copied * 100 / totalBytes).toInt().coerceIn(0, 100)
-              if (pct != lastPct) { lastPct = pct; onPercent(pct) }
-            }
-          }
+          CopyProgress.copy(input, stream, totalBytes, onPercent)
         }
       }
       true
@@ -765,20 +741,13 @@ class GameLibraryActivity : AppCompatActivity() {
   }
 
   /**
-   * Verify XISO integrity by checking the XDVDFS magic at both the primary
-   * (sector 32 = 0x10000) and secondary (last 2KB) volume descriptor locations.
+   * Verify XISO integrity by checking the XDVDFS magic at the primary volume
+   * descriptor, sector 32 (0x10000).
    */
-  private fun isXisoIntact(uri: Uri, fileSize: Long): Boolean {
-    val magic = "MICROSOFT*XBOX*MEDIA".toByteArray(Charsets.US_ASCII)
+  private fun isXisoIntact(uri: Uri): Boolean {
     return try {
       contentResolver.openInputStream(uri)?.use { stream ->
-        // Check primary descriptor at offset 0x10000
-        val skipped = stream.skip(0x10000L)
-        if (skipped < 0x10000L) return false
-        val buf = ByteArray(magic.size)
-        val read = stream.read(buf)
-        if (read != magic.size || !buf.contentEquals(magic)) return false
-        true
+        XisoFormat.hasVolumeMagic(stream)
       } ?: false
     } catch (_: Exception) { false }
   }
@@ -818,7 +787,7 @@ class GameLibraryActivity : AppCompatActivity() {
     // If this is a .xiso.iso file, verify integrity before launching
     val lower = game.relativePath.lowercase(Locale.ROOT)
     if (lower.endsWith(".xiso.iso")) {
-      if (!isXisoIntact(game.uri, game.sizeBytes)) {
+      if (!isXisoIntact(game.uri)) {
         // Corrupt XISO — check if original ISO exists to rebuild from
         val isoName = game.relativePath.substringAfterLast('/').let {
           it.removeSuffix(".xiso.iso") + ".iso"
@@ -852,7 +821,7 @@ class GameLibraryActivity : AppCompatActivity() {
       val xisoGame = findExistingXiso(game)
       Log.i(TAG, "launchGame: existingXiso=${xisoGame?.relativePath ?: "none"}")
       if (xisoGame != null) {
-        val intact = isXisoIntact(xisoGame.uri, xisoGame.sizeBytes)
+        val intact = isXisoIntact(xisoGame.uri)
         Log.i(TAG, "launchGame: xiso intact=$intact")
         if (intact) {
           launchGameDirectly(xisoGame.uri)

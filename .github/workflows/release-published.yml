@@ -18,7 +18,7 @@ jobs:
 
   update_ppa_snapshot:
     name: Update PPA snapshot
-    if: ${{ !github.event.release.prerelease }}
+    if: ${{ github.repository_owner == 'xemu-project' && !github.event.release.prerelease }}
     uses: ./.github/workflows/update-ppa.yml
     with:
       release: ${{ github.event.release.name }}

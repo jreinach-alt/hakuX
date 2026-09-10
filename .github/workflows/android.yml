@@ -67,6 +67,21 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('android/**/*.gradle*', 'android/gradle/wrapper/gradle-wrapper.properties') }}
           restore-keys: gradle-${{ runner.os }}-
 
+      # Ahead of the build: the unit tests need only Kotlin compilation, so a
+      # logic regression is reported in seconds rather than after the NDK
+      # build has spent five minutes getting to the same answer.
+      - name: Test
+        working-directory: android
+        run: ./gradlew testDebugUnitTest --no-daemon --stacktrace
+
+      - name: Upload test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: android/app/build/reports/tests/testDebugUnitTest
+          if-no-files-found: ignore
+
       - name: Build
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon --stacktrace

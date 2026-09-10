@@ -15,12 +15,14 @@ pass over the older entries.
 
 ## Setup Wizard appears to freeze while copying the HDD image
 
-**Symptom:** The wizard appears to hang when importing a hard disk image.
+**Fixed.** The wizard shows a progress dialog for the duration of the copy now —
+determinate when the provider reports a size, indeterminate when it does not —
+and says so rather than silently dropping a second selection while a copy runs.
 
-**Cause:** Copying an 8 GB image through the Storage Access Framework is slow and
-the copy is not incrementally reported.
-
-**What to do:** Wait. It is progressing.
+Kept here because the symptom is memorable and the old builds are still out
+there: on those, importing a retail image off an exFAT card left the screen
+apparently frozen with Next dead, for minutes, and re-selecting the file did
+nothing. It was progressing. If you see it, update.
 
 ---
 
