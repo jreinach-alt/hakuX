@@ -1119,6 +1119,19 @@ void nv2a_context_init(void)
                 renderers[g_config.display.renderer]->name);
     }
 
+    /*
+     * Say which renderer is actually in use, unconditionally.
+     *
+     * Nothing else does, and the absence is not harmless: the loop below
+     * initialises every registered renderer regardless of which one was
+     * selected, so a Vulkan physical device is enumerated and logged even on
+     * an OpenGL run. A CI gate that greps the log for that device to prove
+     * "the Vulkan backend came up" therefore passes on OpenGL -- which is
+     * exactly what desktop.yml was doing.
+     */
+    fprintf(stderr, "nv2a: renderer: %s\n",
+            renderers[g_config.display.renderer]->name);
+
     // FIXME: We need a mechanism for renderer to initialize new GL contexts
     //        on the main thread at run time. For now, just let them all create
     //        what they need.

@@ -136,7 +136,7 @@ jobs:
       # miss the path that matters. Mesa's lavapipe gives a stock runner a
       # conformant software Vulkan device; SDL's offscreen driver cannot make a
       # Vulkan surface, so this one needs a virtual X server.
-      - name: Start the emulated machine headless on Vulkan
+      - name: Start the emulated machine headless, requesting Vulkan
         env:
           SDL_AUDIODRIVER: dummy
         run: |
@@ -159,15 +159,26 @@ jobs:
             grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
             exit 1
           fi
-          # Proves the Vulkan backend actually came up rather than the process
-          # merely surviving: it has to have enumerated a physical device.
-          if ! grep -q 'Available physical devices' smoke-vk.log; then
-            echo "::error::Vulkan backend never enumerated a device"
+          # This used to grep for 'Available physical devices' and call that
+          # proof the Vulkan backend came up. It is not: nv2a_context_init
+          # initialises every registered renderer regardless of which one is
+          # selected, so that line appears on an OpenGL run too. The gate was
+          # green either way and proved nothing.
+          #
+          # nv2a now names the renderer it actually uses. Check that instead.
+          if ! grep -q '^nv2a: renderer:' smoke-vk.log; then
+            echo "::error::no renderer line - binary predates it, or died first"
             grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
             exit 1
           fi
-          echo "Vulkan backend up:"
-          grep -A3 'Available physical devices' smoke-vk.log | head -6
+          renderer=$(grep -m1 '^nv2a: renderer:' smoke-vk.log | cut -d' ' -f3-)
+          echo "renderer in use: $renderer"
+          if [ "$renderer" != "Vulkan" ]; then
+            # Not an error yet: on a container the toml below does not actually
+            # select Vulkan, and that is its own bug rather than this gate's.
+            # Warn loudly instead of failing until renderer selection is fixed.
+            echo "::warning::asked for Vulkan, got '$renderer' - renderer selection is not honoured, see the tracking issue"
+          fi
 
       - name: Upload startup log
         if: always()
