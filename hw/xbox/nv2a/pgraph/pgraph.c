@@ -4280,24 +4280,23 @@ void pgraph_get_clear_depth_stencil_value(PGRAPHState *pg, float *depth,
     *depth = 1.0;
 
     switch (pg->surface_shape.zeta_format) {
+    /*
+     * The depth buffer holds the guest's encoding, fixed-point or float alike
+     * -- see the F16/F24 cases in glsl/psh.c. The clear value out of
+     * NV_PGRAPH_ZSTENCILCLEARVALUE is already in that encoding, so it wants
+     * normalising and nothing else. It used to be decoded to a float and
+     * divided by f16_max/f24_max, which matched the old storage convention.
+     */
     case NV097_SET_SURFACE_FORMAT_ZETA_Z16: {
         uint16_t z = clear_zstencil & 0xFFFF;
         /* FIXME: Remove bit for stencil clear? */
-        if (pg->surface_shape.z_format) {
-            *depth = convert_f16_to_float(z) / f16_max;
-        } else {
-            *depth = z / (float)0xFFFF;
-        }
+        *depth = z / (float)0xFFFF;
         break;
     }
     case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8: {
         *stencil = clear_zstencil & 0xFF;
         uint32_t z = clear_zstencil >> 8;
-        if (pg->surface_shape.z_format) {
-            *depth = convert_f24_to_float(z) / f24_max;
-        } else {
-            *depth = z / (float)0xFFFFFF;
-        }
+        *depth = z / (float)0xFFFFFF;
         break;
     }
     default:

@@ -1606,6 +1606,38 @@ static MString* psh_convert(struct PixelShader *ps)
                 ps->code,
                 "gl_FragDepth = uintBitsToFloat(floatBitsToUint(floor(zvalue) / 16777216.0) + 1u);\n");
             break;
+        /*
+         * The float depth formats store an encoding, not the value. Writing
+         * zvalue/zmax put a linear number in the buffer where the guest reads
+         * an F16/F24 encoding, so a readback agreed with hardware on almost no
+         * pixel at all (issue #16).
+         *
+         * Encode here instead and store the encoded integer as the UNORM. The
+         * encodings are monotonic in z, so comparing them as integers orders
+         * depths exactly as comparing the floats would and the depth test is
+         * unaffected; the integer then survives the UNORM round trip
+         * bit-exactly, which leaves the readback and upload paths alone --
+         * they already treat the buffer as an integer.
+         */
+        case DEPTH_FORMAT_F16:
+            /* convert_f16_to_float in pgraph/util.h, inverted. Below the
+             * smallest representable value the encoding has nothing to say. */
+            mstring_append(
+                ps->code,
+                "uint zbits = floatBitsToUint(max(zvalue, 0.0));\n"
+                "uint zf16 = zbits < 0x3C000000u ? 0u\n"
+                "          : min((zbits - 0x3C000000u) >> 11, 0xFFFFu);\n"
+                "gl_FragDepth = float(zf16) / 65535.0;\n");
+            break;
+        case DEPTH_FORMAT_F24:
+            /* convert_f24_to_float, inverted. Normalised like D24 above so the
+             * existing pack shader recovers it unchanged. */
+            mstring_append(
+                ps->code,
+                "uint zbits = floatBitsToUint(max(zvalue, 0.0));\n"
+                "uint zf24 = min(zbits >> 7, 0xFFFFFFu);\n"
+                "gl_FragDepth = uintBitsToFloat(floatBitsToUint(float(zf24) / 16777216.0) + 1u);\n");
+            break;
         default:
             mstring_append(ps->code,
                            "gl_FragDepth = zvalue / clipRange.y;\n");
