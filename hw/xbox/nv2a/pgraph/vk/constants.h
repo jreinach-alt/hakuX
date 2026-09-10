@@ -375,8 +375,12 @@ typedef struct SurfaceFormatInfo {
 
 static const BasicSurfaceFormatInfo kelvin_surface_color_format_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] = { 2 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] = { 2 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] = { 2 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] = { 4 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] = { 4 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_B8] = { 1 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8] = { 2 },
@@ -386,6 +390,17 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] =
     {
         // FIXME: Force alpha to zero
+        2,
+        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    /* The _O1 twin of the entry above: same layout, the X bit reads back as
+     * one instead of zero. Was `unimplemented color surface format 0x2` and
+     * abort(), five tests into Blend surface (issue #28). */
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] =
+    {
+        // FIXME: Force alpha to one
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -401,6 +416,42 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] =
     {
         // FIXME: Force alpha to zero
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    /* The _O8 twin of X8R8G8B8_Z8R8G8B8: the X byte reads back as ones instead
+     * of zeros. Was `unimplemented color surface format 0x5` and abort(), six
+     * tests into Blend surface (issue #28). With this every colour surface
+     * format the hardware defines, 0x1 to 0xA, has an entry. */
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] =
+    {
+        // FIXME: Force alpha to one
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    /*
+     * X1A7R8G8B8: seven bits of alpha in 24..30 under a fixed X bit that reads
+     * back as 0 (_Z) or 1 (_O). Kept as B8G8R8A8 on the host, so rendering and
+     * blending are right to within the 7-bit quantisation, and a readback
+     * hands the guest an 8-bit alpha where it expects X1A7 -- the X bit and
+     * the alpha LSB come back wrong. That is a defect to measure; what was
+     * here before was `unimplemented color surface format 0x7` and abort(),
+     * which took Surface format and Blend surface out of every sweep and is
+     * issue #24.
+     */
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] =
+    {
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] =
+    {
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
