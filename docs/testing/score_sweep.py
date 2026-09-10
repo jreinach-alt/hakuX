@@ -54,7 +54,7 @@ def read_log(path):
                     total = int(m.group(2))
                     names.append(m.group(4).strip())
     except OSError:
-        return True, []
+        return False, []
     return total == 1, names
 
 
@@ -70,9 +70,14 @@ def score_dir(args):
         if not os.path.exists(gp):
             rows.append((suite, test, solo, "no-golden", 0, 0, 0, 0))
             continue
-        g = np.asarray(Image.open(gp).convert("RGBA"), dtype=np.int16)
-        o = np.asarray(Image.open(os.path.join(run_dir, name)).convert("RGBA"),
-                       dtype=np.int16)
+        try:
+            g = np.asarray(Image.open(gp).convert("RGBA"), dtype=np.int16)
+            o = np.asarray(Image.open(os.path.join(run_dir, name)).convert("RGBA"),
+                           dtype=np.int16)
+        except Exception:
+            # A truncated capture is a finding of its own; count it.
+            rows.append((suite, test, solo, "unreadable", 0, 0, 0, 0))
+            continue
         if g.shape != o.shape:
             rows.append((suite, test, solo, "size", 0, 0, 0, g.shape[0] * g.shape[1]))
             continue
@@ -96,14 +101,24 @@ def main():
     ap = argparse.ArgumentParser(
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--out", required=True, help="sweep state's out/ directory")
+    ap.add_argument("--out", required=True,
+                    help="sweep state's out/ directory, or with --flat a single "
+                         "directory of Suite::Test.png captures")
+    ap.add_argument("--flat", action="store_true",
+                    help="--out is one directory of captures rather than a tree "
+                         "of per-run directories. A whole-suite disc writes this "
+                         "shape; there is no progress log, so nothing is solo and "
+                         "contamination between tests is not ruled out.")
     ap.add_argument("--goldens", required=True)
     ap.add_argument("--tsv", help="write the per-test table here")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
     args = ap.parse_args()
 
-    dirs = [os.path.join(args.out, d) for d in sorted(os.listdir(args.out))
-            if os.path.isdir(os.path.join(args.out, d))]
+    if args.flat:
+        dirs = [args.out]
+    else:
+        dirs = [os.path.join(args.out, d) for d in sorted(os.listdir(args.out))
+                if os.path.isdir(os.path.join(args.out, d))]
     captures = []
     with ProcessPoolExecutor(max_workers=args.jobs) as ex:
         for got in ex.map(score_dir, [(d, args.goldens) for d in dirs],
