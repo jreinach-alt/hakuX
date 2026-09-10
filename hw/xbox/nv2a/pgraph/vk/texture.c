@@ -324,10 +324,6 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                             texture_data_ptr, width, height);
                         assert(converted);
 
-                        if (s.cubemap && adjusted_width != s.width) {
-                            tex_width = s.width;
-                            tex_height = s.height;
-                        }
 
                         layout->layers[layer].levels[level] = (TextureLevel){
                             .width = tex_width,
@@ -358,14 +354,9 @@ static TextureLayout *get_texture_layout(PGRAPHState *pg, int texture_idx)
                         converted = unswizzled;
                     }
 
-                    if (s.cubemap && adjusted_width != s.width) {
-                        // FIXME: Consider preserving the border.
-                        // There does not seem to be a way to reference the border
-                        // texels in a cubemap, so they are discarded.
-                        // glPixelStorei(GL_UNPACK_ROW_LENGTH, adjusted_width);
-                        tex_width = s.width;
-                        tex_height = s.height;
-                        // pixel_data += 4 * f.bytes_per_pixel + 4 * pitch;
+                    /* A bordered cube face keeps its ring like a 2D texture;
+                     * the shader steps onto the interior per face. */
+                    if (false) {
 
                         // FIXME: Crop by 4 pixels on each side
                     }
@@ -1736,9 +1727,9 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * corner (ring plus a sliver of interior) and the shader's border
      * remap then sampled texel (n·u + 4)/2: every Texture_border 2D and 3D
      * test showed the grey ring where the hardware shows the interior.
-     * Cubemaps keep the logical size; their layout crops to it.
+     * Cube faces are stored the same way, one bordered face per layer.
      */
-    if (!f_basic.linear && state.border && !state.cubemap) {
+    if (!f_basic.linear && state.border) {
         state.width = MAX(16, state.width * 2);
         state.height = MAX(16, state.height * 2);
         if (state.dimensionality == 3) {

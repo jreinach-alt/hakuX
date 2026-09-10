@@ -1,0 +1,20 @@
+# Texture_border on the Nova. after = bordered cube faces kept whole and remapped on the face (this commit); before = ad1caa0788.
+# test	after_px	before_px
+2D	90	90
+2D_BorderTex_SZ	0	0
+3D_BorderTex_SZ_16x1	0	0
+3D_BorderTex_SZ_16x16	0	0
+3D_BorderTex_SZ_1x1	0	0
+3D_BorderTex_SZ_2x2	0	0
+3D_BorderTex_SZ_32x32	0	0
+3D_BorderTex_SZ_4x4	0	0
+3D_BorderTex_SZ_4x8	0	0
+3D_BorderTex_SZ_8x2	0	0
+3D_BorderTex_SZ_8x8	0	0
+Cube_BorderTex_SZ_16x16	37	99223
+Cube_BorderTex_SZ_1x1	0	112693
+Cube_BorderTex_SZ_2x2	0	112697
+Cube_BorderTex_SZ_32x32	4504	93378
+Cube_BorderTex_SZ_4x4	0	112702
+Cube_BorderTex_SZ_8x8	0	112687
+xemu#1034	27	27

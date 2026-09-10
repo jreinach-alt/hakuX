@@ -202,7 +202,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         state->border_logical_size[i][1] = 0.0f;
         state->border_logical_size[i][2] = 0.0f;
         if (border_source != NV_PGRAPH_TEXFMT0_BORDER_SOURCE_COLOR) {
-            if (!f.linear && !cubemap) {
+            if (!f.linear) {
                 // The actual texture will be (at least) double the reported
                 // size and shifted by a 4 texel border but texture coordinates
                 // will still be relative to the reported size.
@@ -1051,6 +1051,16 @@ static void apply_border_adjustment(const struct PixelShader *ps, MString *vars,
     char var_name[32] = {0};
     snprintf(var_name, sizeof(var_name), var_template, i);
 
+    if (ps->state->tex_cubemap[i]) {
+        mstring_append_fmt(
+            vars,
+            "%s.xyz = remapBorderCube(%s.xyz, vec2(%f, %f), vec2(%f, %f));\n",
+            var_name, var_name,
+            ps->state->border_logical_size[i][0], ps->state->border_logical_size[i][1],
+            ps->state->border_inv_real_size[i][0], ps->state->border_inv_real_size[i][1]);
+        return;
+    }
+
     mstring_append_fmt(
         vars,
         "vec3 t%dLogicalSize = vec3(%f, %f, %f);\n"
@@ -1221,6 +1231,33 @@ static MString* psh_convert(struct PixelShader *ps)
         "    vec2(-1.0,-1.0),vec2(0.0,-1.0),vec2(1.0,-1.0),\n"
         "    vec2(-1.0, 0.0),vec2(0.0, 0.0),vec2(1.0, 0.0),\n"
         "    vec2(-1.0, 1.0),vec2(0.0, 1.0),vec2(1.0, 1.0));\n"
+        /* A bordered cube face is a 2n-square image with the n-square
+         * interior at (4,4), like a bordered 2D texture.  A cube lookup is by
+         * direction, so the step onto the interior happens on the face the
+         * direction selects: project to that face, remap (s,t) the 2D way,
+         * and rebuild a direction on the same face.  Face conventions are
+         * the Vulkan/GL ones. */
+        "vec3 remapBorderCube(vec3 d, vec2 logical, vec2 invReal) {\n"
+        "    vec3 a = abs(d);\n"
+        "    vec2 st; int face;\n"
+        "    if (a.x >= a.y && a.x >= a.z) {\n"
+        "        face = d.x > 0.0 ? 0 : 1;\n"
+        "        st = vec2(d.x > 0.0 ? -d.z : d.z, -d.y) / a.x;\n"
+        "    } else if (a.y >= a.z) {\n"
+        "        face = d.y > 0.0 ? 2 : 3;\n"
+        "        st = vec2(d.x, d.y > 0.0 ? d.z : -d.z) / a.y;\n"
+        "    } else {\n"
+        "        face = d.z > 0.0 ? 4 : 5;\n"
+        "        st = vec2(d.z > 0.0 ? d.x : -d.x, -d.y) / a.z;\n"
+        "    }\n"
+        "    st = ((st * 0.5 + 0.5) * logical + 4.0) * invReal * 2.0 - 1.0;\n"
+        "    if (face == 0) return vec3(1.0, -st.y, -st.x);\n"
+        "    if (face == 1) return vec3(-1.0, -st.y, st.x);\n"
+        "    if (face == 2) return vec3(st.x, 1.0, st.y);\n"
+        "    if (face == 3) return vec3(st.x, -1.0, -st.y);\n"
+        "    if (face == 4) return vec3(st.x, -st.y, 1.0);\n"
+        "    return vec3(-st.x, -st.y, -1.0);\n"
+        "}\n"
         "vec2 remapCubeTo2D(vec3 texCoord) {\n"
         "    vec2 uv;\n"
         "    vec3 absTexCoord = abs(texCoord);\n"
@@ -1599,6 +1636,7 @@ static MString* psh_convert(struct PixelShader *ps)
             }
             break;
         case PS_TEXTUREMODES_CUBEMAP:
+            apply_border_adjustment(ps, vars, i, "pT%d");
             if (!ps->state->tex_cubemap[i]) {
                 mstring_append_fmt(vars,
                     "pT%d.xy = remapCubeTo2D(pT%d.xyz);\n",
