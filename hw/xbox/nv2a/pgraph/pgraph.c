@@ -124,6 +124,11 @@ static void pgraph_init_reg_category_table(void)
         pgraph_reg_category_table[(NV_PGRAPH_COMBINEALPHAO0 + i * 4) / 4] |= REG_CAT_SHADER;
         pgraph_reg_category_table[(NV_PGRAPH_COMBINECOLORI0 + i * 4) / 4] |= REG_CAT_SHADER;
         pgraph_reg_category_table[(NV_PGRAPH_COMBINECOLORO0 + i * 4) / 4] |= REG_CAT_SHADER;
+        /* The window clip rectangles decide how many the fragment shader
+         * tests (psh.c); a change here has to reach the shader-state cache
+         * as well as the dirty check. */
+        pgraph_reg_category_table[(NV_PGRAPH_WINDOWCLIPX0 + i * 4) / 4] |= REG_CAT_SHADER;
+        pgraph_reg_category_table[(NV_PGRAPH_WINDOWCLIPY0 + i * 4) / 4] |= REG_CAT_SHADER;
     }
 
     for (int i = 0; i < 4; i++) {
@@ -2036,14 +2041,33 @@ DEF_METHOD(NV097, SET_CONTEXT_DMA_REPORT)
     pg->dma_report = parameter;
 }
 
+/*
+ * The surface clip size is an input to the fragment shader: a window clip
+ * rectangle that covers the whole surface is left out of the shader's
+ * rectangle count (pgraph_glsl_window_clip_count), so the same registers can
+ * mean a different shader on a different surface. Bump the generation the
+ * shader-state check is gated on, as SET_SURFACE_FORMAT does for the zeta
+ * format.
+ */
+static void pgraph_surface_clip_size_changed(PGRAPHState *pg)
+{
+    pg->shader_state_gen++;
+    pg->non_dynamic_reg_gen++;
+    pg->any_reg_gen++;
+}
+
 DEF_METHOD(NV097, SET_SURFACE_CLIP_HORIZONTAL)
 {
     d->pgraph.renderer->ops.surface_update(d, false, true, true);
 
     pg->surface_shape.clip_x =
         GET_MASK(parameter, NV097_SET_SURFACE_CLIP_HORIZONTAL_X);
+    unsigned int old_width = pg->surface_shape.clip_width;
     pg->surface_shape.clip_width =
         GET_MASK(parameter, NV097_SET_SURFACE_CLIP_HORIZONTAL_WIDTH);
+    if (pg->surface_shape.clip_width != old_width) {
+        pgraph_surface_clip_size_changed(pg);
+    }
 }
 
 DEF_METHOD(NV097, SET_SURFACE_CLIP_VERTICAL)
@@ -2052,8 +2076,12 @@ DEF_METHOD(NV097, SET_SURFACE_CLIP_VERTICAL)
 
     pg->surface_shape.clip_y =
         GET_MASK(parameter, NV097_SET_SURFACE_CLIP_VERTICAL_Y);
+    unsigned int old_height = pg->surface_shape.clip_height;
     pg->surface_shape.clip_height =
         GET_MASK(parameter, NV097_SET_SURFACE_CLIP_VERTICAL_HEIGHT);
+    if (pg->surface_shape.clip_height != old_height) {
+        pgraph_surface_clip_size_changed(pg);
+    }
 }
 
 DEF_METHOD(NV097, SET_SURFACE_FORMAT)

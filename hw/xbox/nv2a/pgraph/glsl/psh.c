@@ -59,32 +59,45 @@ static uint32_t get_color_key_mask_for_texture(PGRAPHState *pg, int i)
     return get_colorkey_mask(color_format);
 }
 
+/*
+ * How many window clip rectangles the fragment shader has to test. A
+ * rectangle that covers the whole surface clips nothing and is left out, so
+ * the count depends on the surface size as well as the sixteen registers.
+ * The GL renderer clips with glScissor and its shader tests none.
+ *
+ * pgraph_glsl_check_shader_state_dirty compares this rather than listing the
+ * registers: a guest that set its rectangles and nothing else used to draw
+ * with the previous shader, unclipped -- every inclusive Window clip test.
+ */
+int pgraph_glsl_window_clip_count(PGRAPHState *pg)
+{
+    if (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL) {
+        return 0;
+    }
+    unsigned int sw = pg->surface_shape.clip_width;
+    unsigned int sh = pg->surface_shape.clip_height;
+    int count = 0;
+    for (int i = 0; i < 8; i++) {
+        uint32_t x = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPX0 + i * 4);
+        uint32_t y = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPY0 + i * 4);
+        unsigned int x_min = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMIN);
+        unsigned int x_max = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMAX) + 1;
+        unsigned int y_min = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMIN);
+        unsigned int y_max = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMAX) + 1;
+        bool trivial = (x_min == 0 && y_min == 0 &&
+                        x_max >= sw && y_max >= sh);
+        if (!trivial) {
+            count++;
+        }
+    }
+    return count;
+}
+
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
     state->window_clip_exclusive = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                                    NV_PGRAPH_SETUPRASTER_WINDOWCLIPTYPE;
-
-    /* Window clip counting — used by VK for shader-based clipping.
-     * GL handles window clips via glScissor, so skip the computation. */
-    if (g_config.display.renderer != CONFIG_DISPLAY_RENDERER_OPENGL) {
-        unsigned int sw = pg->surface_shape.clip_width;
-        unsigned int sh = pg->surface_shape.clip_height;
-        int count = 0;
-        for (int i = 0; i < 8; i++) {
-            uint32_t x = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPX0 + i * 4);
-            uint32_t y = pgraph_reg_r(pg, NV_PGRAPH_WINDOWCLIPY0 + i * 4);
-            unsigned int x_min = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMIN);
-            unsigned int x_max = GET_MASK(x, NV_PGRAPH_WINDOWCLIPX0_XMAX) + 1;
-            unsigned int y_min = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMIN);
-            unsigned int y_max = GET_MASK(y, NV_PGRAPH_WINDOWCLIPY0_YMAX) + 1;
-            bool trivial = (x_min == 0 && y_min == 0 &&
-                            x_max >= sw && y_max >= sh);
-            if (!trivial) {
-                count++;
-            }
-        }
-        state->window_clip_count = count;
-    }
+    state->window_clip_count = pgraph_glsl_window_clip_count(pg);
 
     state->combiner_control = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL);
     state->shader_stage_program = pgraph_reg_r(pg, NV_PGRAPH_SHADERPROG);

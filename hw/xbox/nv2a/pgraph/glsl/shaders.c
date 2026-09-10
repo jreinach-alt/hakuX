@@ -128,6 +128,18 @@ bool pgraph_glsl_check_shader_state_dirty(PGRAPHState *pg,
         return true;
     }
 
+    /*
+     * The window clip registers are not in the list above: the shader only
+     * carries how many rectangles to test, so compare that. The rectangles
+     * themselves are uniforms, refreshed on every draw. Every input to the
+     * count bumps shader_state_gen (the registers through their category,
+     * the surface clip size in its method handlers), which is what brings
+     * a draw here in the first place.
+     */
+    if (pgraph_glsl_window_clip_count(pg) != state->psh.window_clip_count) {
+        return true;
+    }
+
     for (int i = 0; i < 4; i++) {
         if (pgraph_is_reg_dirty(pg, NV_PGRAPH_TEXCTL0_0 + i * 4) ||
             pgraph_is_reg_dirty(pg, NV_PGRAPH_TEXFILTER0 + i * 4) ||
