@@ -104,11 +104,28 @@ def main():
 
     dirs = [os.path.join(args.out, d) for d in sorted(os.listdir(args.out))
             if os.path.isdir(os.path.join(args.out, d))]
-    rows = []
+    captures = []
     with ProcessPoolExecutor(max_workers=args.jobs) as ex:
         for got in ex.map(score_dir, [(d, args.goldens) for d in dirs],
                           chunksize=8):
-            rows.extend(got)
+            captures.extend(got)
+
+    # A test can be captured more than once: the suites that could not be split
+    # one-test-per-disc appear in every disc that carried them, and 2D_Lines
+    # lands nine times. Counting captures instead of tests inflates every
+    # total, so fold them here -- and report whether the repeats agreed, which
+    # is the only determinism check this data can offer for free.
+    rows, repeats, disagreed = [], 0, []
+    first = {}
+    for r in captures:
+        k = (r[0], r[1])
+        if k in first:
+            repeats += 1
+            if (first[k][3], first[k][4]) != (r[3], r[4]):
+                disagreed.append(k)
+            continue
+        first[k] = r
+        rows.append(r)
 
     if args.tsv:
         with open(args.tsv, "w") as f:
@@ -123,7 +140,16 @@ def main():
     sized = [r for r in rows if r[3] == "size"]
     shared = {r[0] for r in rows if not r[2]}
 
-    print(f"{len(rows)} captures from {len(dirs)} runs\n")
+    print(f"{len(rows)} tests from {len(dirs)} runs "
+          f"({len(captures)} captures, {repeats} repeated)\n")
+    if repeats:
+        if disagreed:
+            print(f"  !! {len(disagreed)} test(s) scored differently on a repeat "
+                  f"run -- the results are not deterministic:")
+            for suite, test in disagreed[:5]:
+                print(f"       {suite}::{test}")
+        else:
+            print(f"  every repeated test scored identically on each run\n")
     print(f"  bit-identical to hardware : {len(exact):5d}  "
           f"({len(exact)/max(len(scored),1)*100:.1f}% of scored)")
     print(f"  differ                    : {len(scored)-len(exact)-len(blanks):5d}")

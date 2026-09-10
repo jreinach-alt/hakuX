@@ -32,6 +32,7 @@ as a candidate until an isolation run says otherwise.
 | document | what it covers |
 |---|---|
 | [`nv2a-sweep-2026-09.md`](nv2a-sweep-2026-09.md) | Verified structural findings across the NV2A subsystems, mapped to open issues |
+| [`sweep-2026-09-08.md`](sweep-2026-09-08.md) | The measured side: 1,871 tests run one-per-disc and scored against silicon, by failure shape |
 | [`freeze-analysis.md`](freeze-analysis.md) | Pre-fork freeze chase, thirteen hypotheses eliminated, unresolved |
 | [`gl-artifacts.md`](gl-artifacts.md) | Pre-fork GL texture artifacts. Scope header matters — Android runs Vulkan |
 | [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
