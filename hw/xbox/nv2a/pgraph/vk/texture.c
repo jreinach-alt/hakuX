@@ -2218,20 +2218,62 @@ static void texture_cache_release_node_resources(PGRAPHVkState *r, TextureBindin
             break;
         }
     }
-    if (!sampler_cached) {
-        vkDestroySampler(r->device, snode->sampler, NULL);
-    }
+
+    /*
+     * Nothing is destroyed here. A draw that sampled this texture can be
+     * recorded in the current command buffer or submitted and not yet
+     * executed, and its push descriptor holds these handles until the GPU
+     * reads it. Eviction checks submit_time before arriving here; the
+     * format-mismatch path in pgraph_vk_bind_textures did not, and a driver
+     * that resolves push-descriptor handles at execution time -- lavapipe,
+     * on its submit thread -- dereferenced the freed view and segfaulted,
+     * one lane run in four (issue #29). Retire into the current frame
+     * slot instead: its fence completes after every earlier submission, so
+     * the drain is late enough for both the recorded and the in-flight
+     * case. The image goes back to the pool at the same point, so it is
+     * not handed to a new texture while the old draw may still read it.
+     */
+    DeferredTextureRelease retired = {
+        .image_view = snode->image_view,
+        .sampler = sampler_cached ? VK_NULL_HANDLE : snode->sampler,
+        .image = snode->image,
+        .allocation = snode->allocation,
+        .image_config = snode->image_config,
+    };
+    g_array_append_val(r->deferred_texture_releases[r->current_frame],
+                       retired);
+
     snode->sampler = VK_NULL_HANDLE;
-
-    vkDestroyImageView(r->device, snode->image_view, NULL);
     snode->image_view = VK_NULL_HANDLE;
-
-    if (snode->image != VK_NULL_HANDLE) {
-        image_pool_release(r, &snode->image_config, snode->image,
-                           snode->allocation);
-    }
     snode->image = VK_NULL_HANDLE;
     snode->allocation = VK_NULL_HANDLE;
+}
+
+/*
+ * Destroy what was retired into a frame slot. The caller has waited on that
+ * slot's fence (or knows nothing was ever submitted from it): the frame
+ * rotation and pgraph_vk_flush_all_frames in draw.c, and the finalizer.
+ */
+void pgraph_vk_drain_deferred_texture_releases(PGRAPHVkState *r, int frame)
+{
+    GArray *retired = r->deferred_texture_releases[frame];
+    if (!retired) {
+        return;
+    }
+    for (guint i = 0; i < retired->len; i++) {
+        DeferredTextureRelease *t =
+            &g_array_index(retired, DeferredTextureRelease, i);
+        if (t->sampler != VK_NULL_HANDLE) {
+            vkDestroySampler(r->device, t->sampler, NULL);
+        }
+        if (t->image_view != VK_NULL_HANDLE) {
+            vkDestroyImageView(r->device, t->image_view, NULL);
+        }
+        if (t->image != VK_NULL_HANDLE) {
+            image_pool_release(r, &t->image_config, t->image, t->allocation);
+        }
+    }
+    g_array_set_size(retired, 0);
 }
 
 static bool texture_cache_entry_pre_evict(Lru *lru, LruNode *node)
@@ -2304,6 +2346,10 @@ static void texture_cache_init(PGRAPHVkState *r)
     lru_init(&r->texture_cache, texture_hash_buckets);
     QTAILQ_INIT(&r->texture_active_list);
     image_pool_init(r);
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        r->deferred_texture_releases[i] =
+            g_array_new(FALSE, FALSE, sizeof(DeferredTextureRelease));
+    }
     r->texture_cache_entries = g_malloc_n(texture_cache_size, sizeof(TextureBinding));
     assert(r->texture_cache_entries != NULL);
     for (int i = 0; i < texture_cache_size; i++) {
@@ -2319,6 +2365,12 @@ static void texture_cache_init(PGRAPHVkState *r)
 static void texture_cache_finalize(PGRAPHVkState *r)
 {
     lru_flush(&r->texture_cache);
+    /* Everything retired above lands in the pool; drain that afterwards. */
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        pgraph_vk_drain_deferred_texture_releases(r, i);
+        g_array_free(r->deferred_texture_releases[i], TRUE);
+        r->deferred_texture_releases[i] = NULL;
+    }
     image_pool_drain(r);
     lru_destroy(&r->texture_cache);
     g_free(r->texture_cache_entries);
@@ -2442,6 +2494,10 @@ void pgraph_vk_finalize_textures(PGRAPHState *pg)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
     assert(!r->in_command_buffer);
+
+    /* Retired textures are destroyed by texture_cache_finalize; the GPU
+     * must be done with them first. */
+    pgraph_vk_flush_all_frames(pg);
 
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         r->texture_bindings[i] = NULL;

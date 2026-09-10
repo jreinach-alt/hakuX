@@ -433,7 +433,13 @@ static bool download_surface_record_deferred(NV2AState *d,
         VkBufferImageCopy copy_regions[2];
         copy_regions[0] = (VkBufferImageCopy){
             .bufferOffset = aligned_offset,
-            .imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+            /* Colour, or a D16 depth surface: the only zeta format that
+             * takes this direct copy (no_conversion_necessary above), and
+             * it has no colour aspect. The validation layer reported the
+             * colour aspect on every Z16 download (VUID 09105); lavapipe
+             * copied anyway, hardware is not obliged to. */
+            .imageSubresource.aspectMask = surface->color ?
+                VK_IMAGE_ASPECT_COLOR_BIT : VK_IMAGE_ASPECT_DEPTH_BIT,
             .imageSubresource.layerCount = 1,
         };
 
@@ -2137,11 +2143,30 @@ static void migrate_surface_image(SurfaceBinding *dst, SurfaceBinding *src)
     src->allocation_scratch = VK_NULL_HANDLE;
 }
 
+/*
+ * A surface's Vulkan objects, retired but not yet destroyed. The image can be
+ * sampled directly by a draw (tex_surface_direct), be an attachment of a
+ * framebuffer, or be one end of a copy, in a command buffer that is still
+ * recording or submitted and not yet executed. Destroying it there was a
+ * use-after-free: lavapipe resolves push-descriptor image views on its submit
+ * thread, and dereferenced a shelved surface's freed view on every run of
+ * Surface clip (issue #29). The shelved paths never had an in-flight check,
+ * and surface_in_flight() only knows about invalidation. So nothing is
+ * destroyed here: it is retired into the frame slot that is current, and
+ * destroyed once that slot's fence has been waited on -- the lifetime
+ * deferred_framebuffers already get, in the same three places in draw.c.
+ */
+typedef struct DeferredSurfaceRelease {
+    VkImageView image_view;
+    VkImage image;
+    VmaAllocation allocation;
+    VkImage image_scratch;
+    VmaAllocation allocation_scratch;
+    SurfaceImageConfig image_config;
+} DeferredSurfaceRelease;
+
 static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface)
 {
-    vkDestroyImageView(r->device, surface->image_view, NULL);
-    surface->image_view = VK_NULL_HANDLE;
-
     unsigned int w = surface->width ? surface->width : 1;
     unsigned int h = surface->height ? surface->height : 1;
     unsigned int sf = g_nv2a->pgraph.surface_scale_factor;
@@ -2157,15 +2182,49 @@ static void destroy_surface_image(PGRAPHVkState *r, SurfaceBinding *surface)
                  VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                  VK_IMAGE_USAGE_TRANSFER_SRC_BIT | surface->host_fmt.usage,
     };
-    surface_image_pool_release(r, &pool_cfg,
-                               surface->image, surface->allocation,
-                               surface->image_scratch,
-                               surface->allocation_scratch);
+    DeferredSurfaceRelease retired = {
+        .image_view = surface->image_view,
+        .image = surface->image,
+        .allocation = surface->allocation,
+        .image_scratch = surface->image_scratch,
+        .allocation_scratch = surface->allocation_scratch,
+        .image_config = pool_cfg,
+    };
+    g_array_append_val(r->deferred_surface_releases[r->current_frame],
+                       retired);
 
+    surface->image_view = VK_NULL_HANDLE;
     surface->image = VK_NULL_HANDLE;
     surface->allocation = VK_NULL_HANDLE;
     surface->image_scratch = VK_NULL_HANDLE;
     surface->allocation_scratch = VK_NULL_HANDLE;
+}
+
+/*
+ * Destroy what was retired into a frame slot, and hand its image to the pool.
+ * The caller has waited on that slot's fence, or knows nothing was submitted
+ * from it: the frame rotation and pgraph_vk_flush_all_frames in draw.c, and
+ * the finalizer.
+ */
+void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame)
+{
+    GArray *retired = r->deferred_surface_releases[frame];
+    if (!retired) {
+        return;
+    }
+    for (guint i = 0; i < retired->len; i++) {
+        DeferredSurfaceRelease *s =
+            &g_array_index(retired, DeferredSurfaceRelease, i);
+        if (s->image_view != VK_NULL_HANDLE) {
+            vkDestroyImageView(r->device, s->image_view, NULL);
+        }
+        if (s->image != VK_NULL_HANDLE) {
+            surface_image_pool_release(r, &s->image_config, s->image,
+                                       s->allocation, s->image_scratch,
+                                       s->allocation_scratch);
+        }
+    }
+    g_array_set_size(retired, 0);
 }
 
 static bool check_invalid_surface_is_compatibile(SurfaceBinding *surface,
@@ -3370,6 +3429,10 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);
     QTAILQ_INIT(&r->shelved_surfaces);
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        r->deferred_surface_releases[i] =
+            g_array_new(FALSE, FALSE, sizeof(DeferredSurfaceRelease));
+    }
     r->surface_addr_map = g_hash_table_new(g_direct_hash, g_direct_equal);
     r->surface_list_gen = 0;
 
@@ -3388,6 +3451,14 @@ void pgraph_vk_finalize_surfaces(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
     pgraph_vk_surface_flush(container_of(pg, NV2AState, pgraph));
+    /* The flush retired every surface and waited for the GPU behind any
+     * download; destroy them now, then empty the pool they land in. */
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        pgraph_vk_drain_deferred_surface_releases(r, i);
+        g_array_free(r->deferred_surface_releases[i], TRUE);
+        r->deferred_surface_releases[i] = NULL;
+    }
+    pgraph_vk_surface_image_pool_drain(r);
     if (r->surface_addr_map) {
         g_hash_table_destroy(r->surface_addr_map);
         r->surface_addr_map = NULL;

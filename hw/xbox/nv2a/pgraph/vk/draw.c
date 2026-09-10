@@ -615,6 +615,8 @@ void pgraph_vk_finalize_pipelines(PGRAPHState *pg)
             vkDestroyFramebuffer(r->device, r->deferred_framebuffers[i][j], NULL);
         }
         r->deferred_framebuffer_count[i] = 0;
+        pgraph_vk_drain_deferred_texture_releases(r, i);
+        pgraph_vk_drain_deferred_surface_releases(r, i);
         vkDestroyFence(r->device, r->frame_fences[i], NULL);
     }
     vkDestroyFence(r->device, r->aux_fence, NULL);
@@ -2134,6 +2136,10 @@ void pgraph_vk_flush_all_frames(PGRAPHState *pg)
             r->deferred_framebuffer_count[i] = 0;
         }
         if (i != r->current_frame) {
+            /* The current slot's command buffer may still be recording
+             * draws that reference what was retired into it. */
+            pgraph_vk_drain_deferred_texture_releases(r, i);
+            pgraph_vk_drain_deferred_surface_releases(r, i);
             r->frame_staging[i].index_staging.buffer_offset = 0;
             r->frame_staging[i].vertex_inline_staging.buffer_offset = 0;
             r->frame_staging[i].uniform_staging.buffer_offset = 0;
@@ -2504,6 +2510,8 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                                          NULL);
                 }
                 r->deferred_framebuffer_count[next_frame] = 0;
+                pgraph_vk_drain_deferred_texture_releases(r, next_frame);
+                pgraph_vk_drain_deferred_surface_releases(r, next_frame);
                 r->frame_staging[next_frame].index_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].vertex_inline_staging.buffer_offset = 0;
                 r->frame_staging[next_frame].uniform_staging.buffer_offset = 0;
