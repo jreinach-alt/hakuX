@@ -311,6 +311,20 @@ next with no code change. A full-sweep diff will show regressions that are not
 real. Confirm any single-test delta by running that suite in isolation on both
 builds.
 
+Which tests those are is measurable rather than folklore, and it does not need
+the device:
+
+```bash
+docs/testing/order_dependence.py --suite "Pixel shader" ...     # self-contamination
+docs/testing/order_dependence.py --target "Pixel shader::Passthru" ...  # which suite does it
+```
+
+A run is about 17 seconds on the desktop lane. Order-dependence is a property
+of what the emulator resets between draws, so it reproduces on any renderer —
+unlike an accuracy question, which that lane cannot settle. Measured so far:
+`Pixel shader` does **not** contaminate itself, 0 of 8 tests, so #15's example
+is being contaminated from outside its own suite.
+
 ## Conventions
 
 - Defects live in GitHub issues, grouped by likely shared cause, each carrying

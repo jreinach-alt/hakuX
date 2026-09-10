@@ -209,21 +209,32 @@ QEMU's TCG translates x86 basic blocks to ARM64 machine code
 x86-to-ARM64 recompiler — compiler engineering with a brutal oracle problem —
 and would discard the NV2A emulation, which is the hard and valuable part.
 
-**The desktop builds.** xemu's Linux, macOS and Windows targets are inherited
-here and are not maintained. They do not currently compile, in at least two
-ways that predate this fork's visible history: `ui/xemu.c` includes a
-target-private header unconditionally, and `util/qemu-timer.c` calls
-`nanosleep` where mingw does not declare it. No desktop code was removed to get
-here — the `#ifndef __ANDROID__` paths are almost all GL-versus-GLES
-portability, still intact — it simply was never built. Their workflows are kept
-runnable with `workflow_dispatch` rather than deleted, so the decision is
-reversible.
+**Shipping the desktop builds.** xemu's macOS and Windows targets are inherited
+here and are not maintained. Their workflows are kept runnable with
+`workflow_dispatch` rather than deleted, so the decision is reversible.
 
-The one thing this costs is a reference implementation. A working desktop build
-would let the pgraph suite run under desktop xemu as well, and the difference
-between the two result sets is what the ARM port broke specifically, as opposed
-to what xemu already gets wrong. If that comparison ever becomes the thing
-blocking progress, fixing the two guards above is an afternoon.
+**Linux is a different case now, and this section used to say otherwise.** It
+did not compile — `ui/xemu.c` included a target-private header unconditionally
+and `util/qemu-timer.c` called `nanosleep` where mingw does not declare it —
+and both are fixed. It builds, it is gated by
+[`desktop.yml`](.github/workflows/desktop.yml), and it runs the pgraph suite
+against a software Vulkan device in about 17 seconds a test
+([`docs/testing/desktop-runs.md`](docs/testing/desktop-runs.md)). It is not
+shipped to users and is not meant to be; it is a test lane.
+
+What that lane is and is not good for matters, because the distinction is easy
+to get wrong. It does **not** reproduce what a player holding a Nova sees, so
+it cannot settle an accuracy question — the goldens are the oracle for those,
+and the device is where they are measured. It is exactly right for questions
+that are about state handling rather than about a particular GPU:
+
+- **Order-dependence** (issue #15). Whether a test's result changes according
+  to what ran before it is a property of what the emulator resets between
+  draws, and reproduces on any renderer.
+  [`docs/testing/order_dependence.py`](docs/testing/order_dependence.py)
+  measures it.
+- **Crashes, aborts and hangs.** Goal 1 above. A run that dies, dies here too.
+- **Iterating on one suite** twenty times without booking device time.
 
 **Anything derived from leaked material.** The XDK and Xbox source have leaked
 more than once. Using them is not a grey area next to emulation: emulation
