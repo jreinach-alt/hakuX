@@ -69,6 +69,7 @@ typedef struct PshState {
     int window_clip_count;
 
     bool smooth_shading;
+    bool texture_perspective;
     bool depth_clipping;
     bool z_perspective;
     bool depth_needed;

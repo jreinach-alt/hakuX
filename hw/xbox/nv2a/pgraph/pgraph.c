@@ -1070,6 +1070,11 @@ void pgraph_init(NV2AState *d)
     pg->material_alpha = 0.0f;
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_SHADEMODE,
          NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH);
+    /* D3D turns texture perspective on when it creates the device; a title
+     * that never writes SET_CONTROL0 expects perspective-correct
+     * interpolation, so start there. */
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE,
+                1);
     pg->primitive_mode = PRIM_TYPE_INVALID;
 
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
@@ -2194,6 +2199,12 @@ DEF_METHOD(NV097, SET_CONTROL0)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0,
              NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE,
              z_perspective);
+
+    bool texture_perspective =
+        parameter & NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE;
+    PG_SET_MASK(NV_PGRAPH_CONTROL_0,
+             NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE,
+             texture_perspective);
 }
 
 DEF_METHOD(NV097, SET_LIGHT_CONTROL)

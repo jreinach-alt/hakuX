@@ -122,6 +122,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    state->texture_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                                 NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE;
 
     state->depth_clipping =
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE),
@@ -1227,20 +1229,23 @@ static MString* psh_convert(struct PixelShader *ps)
         }
     }
 
+    /* Texture perspective off: the vertex shader scaled every varying by
+     * w, and 1/w interpolated linearly is gl_FragCoord.w (see vsh.c). */
+    const char *lin = ps->state->texture_perspective ? "" : " * gl_FragCoord.w";
     MString *vars = mstring_new();
-    mstring_append(vars, "vec4 pD0 = vtxD0;\n");
-    mstring_append(vars, "vec4 pD1 = vtxD1;\n");
-    mstring_append(vars, "vec4 pB0 = vtxB0;\n");
-    mstring_append(vars, "vec4 pB1 = vtxB1;\n");
-    mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, clamp(vtxFog, 0.0, 1.0));\n");
-    mstring_append(vars, "vec4 pT0 = vtxT0;\n");
-    mstring_append(vars, "vec4 pT1 = vtxT1;\n");
-    mstring_append(vars, "vec4 pT2 = vtxT2;\n");
+    mstring_append_fmt(vars, "vec4 pD0 = vtxD0%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pD1 = vtxD1%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pB0 = vtxB0%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pB1 = vtxB1%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pFog = vec4(fogColor.rgb, clamp(vtxFog%s, 0.0, 1.0));\n", lin);
+    mstring_append_fmt(vars, "vec4 pT0 = vtxT0%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pT1 = vtxT1%s;\n", lin);
+    mstring_append_fmt(vars, "vec4 pT2 = vtxT2%s;\n", lin);
     if (ps->state->point_sprite) {
         assert(!ps->state->rect_tex[3]);
         mstring_append(vars, "vec4 pT3 = vec4(gl_PointCoord, 1.0, 1.0);\n");
     } else {
-        mstring_append(vars, "vec4 pT3 = vtxT3;\n");
+        mstring_append_fmt(vars, "vec4 pT3 = vtxT3%s;\n", lin);
     }
     mstring_append(vars, "\n");
     mstring_append(vars, "vec4 v0 = pD0;\n");

@@ -140,6 +140,8 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
     vsh->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                    NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                           NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    vsh->texture_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
+                               NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE;
 
     vsh->fog_enable =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;
@@ -431,6 +433,32 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
                        "  vtxD1 = vec4(0.0, 0.0, 0.0, 1.0);\n"
                        "  vtxB1 = vec4(0.0, 0.0, 0.0, 1.0);\n"
         );
+    }
+
+    if (!state->texture_perspective) {
+        /*
+         * With texture perspective off (NV097_SET_CONTROL0) the hardware
+         * interpolates every varying linearly in screen space, the colours
+         * as well as the texture coordinates: the Texture perspective
+         * suite's diffuse gradients are straight lines in x with it off and
+         * hyperbolic with it on. Depth keeps its own switch
+         * (Z_PERSPECTIVE_ENABLE). Get that out of a perspective-correct
+         * interpolator by handing it a*w: it produces
+         * (sum l_i a_i) / (sum l_i / w_i) over the screen barycentrics l,
+         * and gl_FragCoord.w is sum l_i / w_i, so the fragment shader
+         * multiplies the two back into sum l_i a_i. Exact, and it survives
+         * clipping, which noperspective did not on every driver.
+         */
+        mstring_append(body,
+                       "  vtxD0 *= oPos.w;\n"
+                       "  vtxD1 *= oPos.w;\n"
+                       "  vtxB0 *= oPos.w;\n"
+                       "  vtxB1 *= oPos.w;\n"
+                       "  vtxFog *= oPos.w;\n"
+                       "  vtxT0 *= oPos.w;\n"
+                       "  vtxT1 *= oPos.w;\n"
+                       "  vtxT2 *= oPos.w;\n"
+                       "  vtxT3 *= oPos.w;\n");
     }
 
     if (opts.vulkan) {

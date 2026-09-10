@@ -68,6 +68,7 @@ typedef struct {
     float point_params[8];
 
     bool smooth_shading;
+    bool texture_perspective;
     bool z_perspective;
 
     bool is_fixed_function;
