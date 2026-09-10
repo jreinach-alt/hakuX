@@ -35,6 +35,7 @@ as a candidate until an isolation run says otherwise.
 | [`sweep-2026-09-08.md`](sweep-2026-09-08.md) | The measured side: 1,871 tests run one-per-disc and scored against silicon, by failure shape |
 | [`freeze-analysis.md`](freeze-analysis.md) | Pre-fork freeze chase, thirteen hypotheses eliminated, unresolved |
 | [`gl-artifacts.md`](gl-artifacts.md) | Pre-fork GL texture artifacts. Scope header matters — Android runs Vulkan |
+| [`depth-readback-scale.md`](depth-readback-scale.md) | Why a 24 bit depth word could not round trip: four disagreeing scales, and a unorm grid half a unit out of phase with float32 |
 | [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
