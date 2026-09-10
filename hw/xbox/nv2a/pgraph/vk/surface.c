@@ -577,6 +577,7 @@ static bool download_surface_record_deferred(NV2AState *d,
     dl->use_compute_to_swizzle = false;
     dl->partial = partial;
     dl->surface = surface;
+    dl->draw_generation = surface->draw_generation;
 
     r->staging_dst_offset = aligned_offset + staging_size;
     return true;
@@ -631,11 +632,25 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
                                            DIRTY_MEMORY_NV2A_TEX);
             s->download_pending = false;
             s->download_row_count = 0;
-            /* See download_surface: a partial download leaves the rows it
-             * did not copy stale, so it must not retire the generation. */
+            /*
+             * See download_surface: a partial download leaves the rows it
+             * did not copy stale, so it must not retire the generation.
+             *
+             * A full one retires the generation the copy captured, not the
+             * one the surface has now. The copy was recorded earlier -- at
+             * the flip, for the display pre-download -- and a draw that
+             * landed between then and this fence is not in the staging
+             * buffer. Crediting it made the surface clean with VRAM one
+             * draw behind, and the next guest readback found nothing to
+             * download: the Depth buffer fixed function captures came back
+             * as the clear and no quad, in one run out of three, depending
+             * on where the flip fell.
+             */
             if (!dl->partial) {
-                s->draw_dirty = false;
-                s->download_generation = s->draw_generation;
+                s->download_generation = dl->draw_generation;
+                if (s->draw_generation == dl->draw_generation) {
+                    s->draw_dirty = false;
+                }
             }
         }
     }

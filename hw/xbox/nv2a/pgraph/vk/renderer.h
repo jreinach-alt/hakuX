@@ -337,6 +337,7 @@ typedef struct DeferredSurfaceDownload {
     bool use_compute_to_swizzle;
     bool partial; /* Covered only a row range, not the whole surface */
     SurfaceBinding *surface; /* Source surface for flag cleanup at completion */
+    uint32_t draw_generation; /* what the copy captured; see completion */
 } DeferredSurfaceDownload;
 
 typedef struct ShaderModuleInfo {
