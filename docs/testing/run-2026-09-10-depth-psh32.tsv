@@ -1,0 +1,13 @@
+# Depth captures (*_ZB) on apk-psh32 (7f29351a7a, exact-floor depth) vs the same suites on v6/baab7ad5dc, Retroid Pocket Nova.
+# The model predicted exact; hardware kept a symmetric +/-1 residual about a sixth the size of the old biased one.
+suite	captures	build	exact	near	wrong	differing_px
+Depth_buffer	72	before(v6)	22	0	50	505280
+Depth_buffer	72	psh32	22	0	50	155280
+Depth_buffer_fixed_function	40	before(v6)	6	14	20	317130
+Depth_buffer_fixed_function	40	psh32	6	14	20	314300
+W_buffering	265	before(v6)	94	64	107	10499122
+W_buffering	265	psh32	96	65	104	8798649
+# single captures
+# DepthFmt_z24_Cn_FZn_Mffffff_ZB  57,741 (+1:56,959 -1:781)  ->  10,497 (+1:4,828 -1:5,669)
+# DepthFmt_z24_Cn_FZn_Mc00003_ZB  28,141 (+1:28,069 -1:71)   ->   1,694 (+1:1,570 -1:124)
+# DepthFmt_z24_Cn_FZn_M40000b_ZB   2,884 (+1:2,864  -1:20)   ->     628 (+1:608   -1:20)
