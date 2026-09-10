@@ -291,6 +291,20 @@ the test it impersonates, and one enabling the failing test alone.
 `Texture DXT` is the first, `Window clip` the second, and they looked identical
 until the discs were run.
 
+When the answer is "a state distinction we do not implement at all", the pixel
+shader half of that question needs no device:
+
+```bash
+cd docs/testing/psh_differ && make && ./build/psh-differ
+```
+
+It varies one field of `PshState` at a time and reports whether the generated
+GLSL changes. State that produces byte-identical GLSL never reached the GPU.
+Three seconds, no ROMs, no hardware. Read
+[`docs/testing/psh_differ/README.md`](docs/testing/psh_differ/README.md) before
+acting on a result — "no effect" is a claim about which baselines were tried,
+and extending them is the intended use.
+
 **Regression-test one suite at a time, not the full sweep.** Some pgraph tests
 are order-dependent (issue #15): a test can pass in one sweep and fail in the
 next with no code change. A full-sweep diff will show regressions that are not

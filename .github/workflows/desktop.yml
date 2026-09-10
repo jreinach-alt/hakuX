@@ -54,6 +54,29 @@ jobs:
             nlohmann-json3-dev \
             xvfb
 
+      # Seconds, and it fails for a reason no other gate here catches: the
+      # differ compiles psh.c out of the tree with the emulator-state functions
+      # carved out by signature. Rename or reshape one of those and the carve
+      # stops matching. Running it first means that shows up before the
+      # twenty-minute build rather than after.
+      - name: Pixel shader state differ
+        run: |
+          set -o pipefail
+          make -C docs/testing/psh_differ
+          ./docs/testing/psh_differ/build/psh-differ > psh-differ.log 2> psh-differ.err
+          if grep -q 'does not generate' psh-differ.err; then
+            echo "::error::a psh-differ baseline no longer generates a shader"
+            cat psh-differ.err
+            exit 1
+          fi
+          if ! grep -q '^TOTAL' psh-differ.log; then
+            echo "::error::psh-differ produced no report"
+            tail -40 psh-differ.log psh-differ.err
+            exit 1
+          fi
+          grep -E '^(field|-----|TOTAL)' psh-differ.log
+          sed -n '/^No effect on the emitted GLSL/,/^$/p' psh-differ.log
+
       # meson is not installed; QEMU's configure bootstraps it into a venv,
       # which is why python3-venv is above.
       - name: Restore compiler cache

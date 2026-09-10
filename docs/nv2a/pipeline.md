@@ -146,3 +146,20 @@ docs/testing/nv2a_index.py blast hw/xbox/nv2a/pgraph/texture.c
 
 `blast` is the one to run before a device measurement: it names the suites that
 share code with your change, which is the set that has to be re-measured.
+
+## Asking the shader generator
+
+`query unread` finds state nothing *reads*, by reading the source. The pixel
+shader generator can be asked the stronger question directly, because
+`pgraph_glsl_gen_psh()` is a pure function of `PshState`:
+
+```sh
+cd docs/testing/psh_differ && make
+./build/psh-differ                          # every field, every baseline
+./build/psh-differ --show 'alphakill[2]=1'  # the diff for one of them
+```
+
+Change one field, generate again, compare the text. Byte-identical GLSL means
+that state never reached the GPU — which is a defect only if the hardware acts
+on it, and only if a baseline actually reached the code path. Both caveats are
+in [`../testing/psh_differ/README.md`](../testing/psh_differ/README.md).
