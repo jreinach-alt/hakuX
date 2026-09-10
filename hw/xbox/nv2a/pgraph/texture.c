@@ -438,44 +438,54 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8 ||
                s.color_format ==
                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8) {
-        // TODO: Investigate whether a non-1 depth is possible.
-        // Generally the hardware asserts when attempting to use volumetric
-        // textures in linear formats.
-        assert(depth == 1); /* FIXME */
+        /*
+         * Slices are walked like the I8 case above: one slice_pitch apart in
+         * the source, packed tight in the output. Both of these used to
+         * assert(depth == 1), which aborted the emulator from the Volume
+         * texture suite (issue #28). Whether the hardware accepts a volume in
+         * a linear YUV format is not established -- its goldens are the way
+         * to find out, and an abort produces none.
+         */
         // FIXME: only valid if control0 register allows for colorspace
         // conversion
-        size = width * height * 4;
+        size = width * height * depth * 4;
         converted_data = g_malloc(size);
         uint8_t *pixel = converted_data;
-        for (int y = 0; y < height; y++) {
-            const uint8_t *line = &data[y * row_pitch * depth];
-            for (int x = 0; x < width; x++, pixel += 4) {
-                if (s.color_format ==
-                    NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {
-                    convert_yuy2_to_rgb(line, x, &pixel[0], &pixel[1],
-                                        &pixel[2]);
-                } else {
-                    convert_uyvy_to_rgb(line, x, &pixel[0], &pixel[1],
-                                        &pixel[2]);
+        for (int z = 0; z < depth; z++) {
+            for (int y = 0; y < height; y++) {
+                const uint8_t *line = data + z * slice_pitch + y * row_pitch;
+                for (int x = 0; x < width; x++, pixel += 4) {
+                    if (s.color_format ==
+                        NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {
+                        convert_yuy2_to_rgb(line, x, &pixel[0], &pixel[1],
+                                            &pixel[2]);
+                    } else {
+                        convert_uyvy_to_rgb(line, x, &pixel[0], &pixel[1],
+                                            &pixel[2]);
+                    }
+                    pixel[3] = 255;
                 }
-                pixel[3] = 255;
             }
         }
     } else if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5) {
-        assert(depth == 1); /* FIXME */
-        size = width * height * 3;
+        size = width * height * depth * 3;
         converted_data = g_malloc(size);
-        for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                uint16_t rgb655 = *(uint16_t *)(data + y * row_pitch + x * 2);
-                int8_t *pixel = (int8_t *)&converted_data[(y * width + x) * 3];
-                /* Maps 5 bit G and B signed value range to 8 bit
-                 * signed values. R is probably unsigned.
-                 */
-                rgb655 ^= (1 << 9) | (1 << 4);
-                pixel[0] = ((rgb655 & 0xFC00) >> 10) * 0x7F / 0x3F;
-                pixel[1] = ((rgb655 & 0x03E0) >> 5) * 0xFF / 0x1F - 0x80;
-                pixel[2] = (rgb655 & 0x001F) * 0xFF / 0x1F - 0x80;
+        for (int z = 0; z < depth; z++) {
+            const uint8_t *slice = data + z * slice_pitch;
+            int8_t *out = (int8_t *)converted_data + z * height * width * 3;
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    uint16_t rgb655 =
+                        *(uint16_t *)(slice + y * row_pitch + x * 2);
+                    int8_t *pixel = &out[(y * width + x) * 3];
+                    /* Maps 5 bit G and B signed value range to 8 bit
+                     * signed values. R is probably unsigned.
+                     */
+                    rgb655 ^= (1 << 9) | (1 << 4);
+                    pixel[0] = ((rgb655 & 0xFC00) >> 10) * 0x7F / 0x3F;
+                    pixel[1] = ((rgb655 & 0x03E0) >> 5) * 0xFF / 0x1F - 0x80;
+                    pixel[2] = (rgb655 & 0x001F) * 0xFF / 0x1F - 0x80;
+                }
             }
         }
     } else {
