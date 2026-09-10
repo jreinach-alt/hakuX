@@ -67,11 +67,17 @@ void pgraph_vk_update_vertex_ram_buffer(PGRAPHState *pg, hwaddr offset,
     if (end > fs->vertex_ram_flush_max) {
         fs->vertex_ram_flush_max = end;
     }
-    if (offset < fs->vertex_ram_propagate_min) {
-        fs->vertex_ram_propagate_min = offset;
-    }
-    if (end > fs->vertex_ram_propagate_max) {
-        fs->vertex_ram_propagate_max = end;
+    for (int i = 0; i < NUM_SUBMIT_FRAMES; i++) {
+        FrameStagingState *other = &r->frame_staging[i];
+        if (other == fs) {
+            continue;
+        }
+        if (offset < other->vertex_ram_stale_min) {
+            other->vertex_ram_stale_min = offset;
+        }
+        if (end > other->vertex_ram_stale_max) {
+            other->vertex_ram_stale_max = end;
+        }
     }
 
     bitmap_set(get_uploaded_bitmap(r), start_bit, nbits);

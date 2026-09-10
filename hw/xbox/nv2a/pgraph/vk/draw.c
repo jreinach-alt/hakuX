@@ -2593,6 +2593,16 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                 next_fs->vertex_ram_flush_min = VK_WHOLE_SIZE;
                 next_fs->vertex_ram_flush_max = 0;
 
+                /*
+                 * The outgoing frame's copy is the newest. Bring the
+                 * incoming frame's copy up to date over everything that
+                 * was uploaded while it was not current; that can span
+                 * several frames, so the range is kept on the receiving
+                 * frame rather than on the frame that took the upload
+                 * (issue #39: with three frames, a vertex buffer uploaded
+                 * once never reached the third copy, and every draw from
+                 * it in that frame read zeros).
+                 */
                 if (!next_fs->vertex_ram_initialized) {
                     size_t total = cur_fs->vertex_ram.buffer_size;
                     memcpy(next_fs->vertex_ram.mapped,
@@ -2600,18 +2610,18 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
                     next_fs->vertex_ram_flush_min = 0;
                     next_fs->vertex_ram_flush_max = total;
                     next_fs->vertex_ram_initialized = true;
-                } else if (cur_fs->vertex_ram_propagate_min <
-                           cur_fs->vertex_ram_propagate_max) {
-                    size_t off = cur_fs->vertex_ram_propagate_min;
-                    size_t len = cur_fs->vertex_ram_propagate_max - off;
+                } else if (next_fs->vertex_ram_stale_min <
+                           next_fs->vertex_ram_stale_max) {
+                    size_t off = next_fs->vertex_ram_stale_min;
+                    size_t len = next_fs->vertex_ram_stale_max - off;
                     memcpy(next_fs->vertex_ram.mapped + off,
                            cur_fs->vertex_ram.mapped + off, len);
                     next_fs->vertex_ram_flush_min = off;
                     next_fs->vertex_ram_flush_max = off + len;
                 }
 
-                cur_fs->vertex_ram_propagate_min = VK_WHOLE_SIZE;
-                cur_fs->vertex_ram_propagate_max = 0;
+                next_fs->vertex_ram_stale_min = VK_WHOLE_SIZE;
+                next_fs->vertex_ram_stale_max = 0;
             }
 
             r->current_frame = next_frame;
