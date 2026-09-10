@@ -763,6 +763,7 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
     case PS_TEXTUREMODES_CUBEMAP:
     case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
     case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
+    case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
     case PS_TEXTUREMODES_DOT_STR_CUBE:
         if (state->shadow_map[i]) {
             fprintf(stderr, "Shadow map support not implemented for mode %d\n", mode);
@@ -1526,10 +1527,26 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
+            /* As DOT_RFLCT_SPEC, with the eye vector taken from
+             * NV097_SET_EYE_VECTOR instead of the q components of the
+             * three stages' coordinates. */
             assert(i == 3);
-            mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST */\n",
-                               i);
-            NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST");
+            mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST */\n");
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
+                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d);\n",
+                i, i-2, i-1, i);
+            mstring_append_fmt(vars, "vec3 e_%d = eyeVec.xyz;\n", i);
+            mstring_append_fmt(vars, "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
+                               i, i, i, i, i, i, i);
+            apply_border_adjustment(ps, vars, i, "rv_%d");
+            if (!ps->state->tex_cubemap[i]) {
+                mstring_append_fmt(vars,
+                    "rv_%d.xy = remapCubeTo2D(rv_%d);\n", i, i);
+            }
+            mstring_append_fmt(vars,
+                "vec4 t%d = texture(texSamp%d, rv_%d%s);\n",
+                i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
             break;
         default:
             fprintf(stderr, "Unknown ps tex mode: 0x%x\n", ps->tex_modes[i]);
@@ -1887,6 +1904,16 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         if (locs[PshUniform_texScale] != -1) {
             values->texScale[0] = 1.0; /* Renderer will override this */
         }
+    }
+
+    if (locs[PshUniform_eyeVec] != -1) {
+        for (int i = 0; i < 3; i++) {
+            uint32_t bits = pgraph_reg_r(pg, NV_PGRAPH_EYEVEC0 + i * 4);
+            float v;
+            memcpy(&v, &bits, sizeof(v));
+            values->eyeVec[0][i] = v;
+        }
+        values->eyeVec[0][3] = 0.0f;
     }
 
     if (locs[PshUniform_fogColor] != -1) {
