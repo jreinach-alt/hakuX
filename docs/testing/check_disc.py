@@ -55,9 +55,18 @@ def main():
     enabled = [s for s, v in suites.items()
                if not (v.get("skipped", False) if isinstance(v, dict) else False)]
     print(f"{a.iso}")
+    shutdown = settings.get('enable_shutdown_on_completion')
     print(f"  output: {settings.get('output_directory_path')}   "
           f"skip_by_default={settings.get('skip_tests_by_default')}   "
-          f"progress_log={settings.get('enable_progress_log')}")
+          f"progress_log={settings.get('enable_progress_log')}   "
+          f"shutdown_on_completion={shutdown}")
+    if not shutdown:
+        # Without it the guest reboots and reruns the suite when it finishes,
+        # and run_disc.sh waits out its whole cap. With it the process exits
+        # seconds after the last capture. Pass --shutdown-on-completion to
+        # make_test_iso.py.
+        print("  WARNING: no shutdown-on-completion; this run will idle to its"
+              " timeout instead of exiting when the suite finishes")
     print(f"  enabled suites ({len(enabled)}): " + ", ".join(enabled))
     missing = [s for s in a.expect if s not in enabled]
     if missing:
