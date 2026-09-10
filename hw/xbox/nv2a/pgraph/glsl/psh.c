@@ -148,8 +148,10 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         /*
          * A stage whose descriptor cannot be decoded gets the binder's dummy
          * texture (vk/texture.c, gl/texture.c), so the shader must not sample
-         * it: dim_tex[] would be left at 0 and get_sampler_type() would hit
-         * "Unhandled texture dimensions".  Clear only that case.
+         * it: dim_tex[] would be left at 0 and the mode would emit a sample
+         * of a texture that is not there.  Clear only that case.  A 1D
+         * texture counts as undecodable for this purpose -- see
+         * pgraph_is_texture_descriptor_decodable().
          *
          * Do NOT clear the mode merely because the stage is inactive or
          * disabled.  PS_TEXTUREMODES_PASSTHRU (0x04) is reported inactive by
@@ -330,6 +332,7 @@ struct PixelShader {
     struct PSStageInfo stage[8];
     struct FCInputInfo final_input;
     int tex_modes[4], input_tex[4], dot_map[4];
+    bool tex_unusable[4];
 
     MString *varE, *varF;
     MString *code;
@@ -361,6 +364,35 @@ static void add_const_ref(struct PixelShader *ps, const char *var)
 
 static MString* get_var(struct PixelShader *ps, int reg, bool is_dest)
 {
+    /*
+     * Register codes arrive as guest data out of NV_PGRAPH_COMBINE*I0..7 and
+     * nothing validates them on the way in, so every value of the 4-bit field
+     * has to produce *something*. The policy (issue #26): an encoding the
+     * hardware reserves or a use it forbids never aborts the generator. A
+     * reserved source reads as zero, a read-only destination discards, and
+     * each is logged once so the unknown is on record. What silicon does with
+     * these is not established; this is a claim about not dying, not about
+     * being right.
+     */
+    bool final_combiner = ps->cur_stage == 8;
+    if (is_dest) {
+        switch (reg) {
+        case PS_REGISTER_C0:
+        case PS_REGISTER_C1:
+        case PS_REGISTER_FOG:
+        case PS_REGISTER_V1R0_SUM:
+        case PS_REGISTER_EF_PROD:
+            /* Emitting the register name here produced an assignment to a
+             * uniform or an expression -- a shader that generates, caches,
+             * and then fails to compile, which the differ cannot see. */
+            NV2A_UNIMPLEMENTED("combiner stage %d writes read-only register "
+                               "0x%x; discarded", ps->cur_stage, reg);
+            return mstring_from_str("");
+        default:
+            break;
+        }
+    }
+
     switch (reg) {
     case PS_REGISTER_DISCARD:
         if (is_dest) {
@@ -423,12 +455,22 @@ static MString* get_var(struct PixelShader *ps, int reg, bool is_dest)
                     ps->final_input.inv_r0 ? "(1.0 - r0)" : "r0");
         }
     case PS_REGISTER_EF_PROD:
+        if (!final_combiner) {
+            /* E and F only exist in the final combiner; varE/varF are NULL
+             * before it, and this dereferenced them. */
+            NV2A_UNIMPLEMENTED("combiner stage %d reads EF_PROD, which only "
+                               "the final combiner defines; reads as zero",
+                               ps->cur_stage);
+            return mstring_from_str("vec4(0.0)");
+        }
         return mstring_from_fmt("vec4(%s * %s, 0.0)",
                                 mstring_get_str(ps->varE),
                                 mstring_get_str(ps->varF));
     default:
-        assert(false);
-        return NULL;
+        /* 0x6 and 0x7 are unassigned in PS_REGISTER. */
+        NV2A_UNIMPLEMENTED("combiner stage %d uses reserved register 0x%x; "
+                           "reads as zero", ps->cur_stage, reg);
+        return mstring_from_str(is_dest ? "" : "vec4(0.0)");
     }
 }
 
@@ -500,30 +542,35 @@ static MString* get_input_var(struct PixelShader *ps, struct InputInfo in, bool 
 
 static MString* get_output(MString *reg, int mapping)
 {
-    MString *res;
-    switch (mapping) {
-    case PS_COMBINEROUTPUT_IDENTITY:
+    /*
+     * The mapping is two fields, not an enum: bit 3 subtracts 0.5, bits 4-5
+     * pick a scale of x1, x2, x4 or x0.5. The six PS_COMBINEROUTPUT_* names
+     * are the six combinations D3D exposes; 0x28 (bias, x4) and 0x38 (bias,
+     * x0.5) are the other two, and the switch this replaces asserted on them.
+     * Decoding the fields separately gives every one of the eight a meaning
+     * -- the one a fixed function unit would give it -- and produces the
+     * same text as before for the six that were named. The two new ones are
+     * unverified against silicon; no golden exercises them.
+     */
+    static const char *scale[4] = { NULL, " * 2.0", " * 4.0", " / 2.0" };
+    bool bias = mapping & PS_COMBINEROUTPUT_BIAS;
+    const char *sc = scale[(mapping >> 4) & 3];
+
+    if (!bias && !sc) {
         mstring_ref(reg);
-        res = reg;
-        break;
-    case PS_COMBINEROUTPUT_BIAS:
-        res = mstring_from_fmt("(%s - 0.5)", mstring_get_str(reg));
-        break;
-    case PS_COMBINEROUTPUT_SHIFTLEFT_1:
-        res = mstring_from_fmt("(%s * 2.0)", mstring_get_str(reg));
-        break;
-    case PS_COMBINEROUTPUT_SHIFTLEFT_1_BIAS:
-        res = mstring_from_fmt("((%s - 0.5) * 2.0)", mstring_get_str(reg));
-        break;
-    case PS_COMBINEROUTPUT_SHIFTLEFT_2:
-        res = mstring_from_fmt("(%s * 4.0)", mstring_get_str(reg));
-        break;
-    case PS_COMBINEROUTPUT_SHIFTRIGHT_1:
-        res = mstring_from_fmt("(%s / 2.0)", mstring_get_str(reg));
-        break;
-    default:
-        assert(false);
-        break;
+        return reg;
+    }
+    MString *base = bias ? mstring_from_fmt("(%s - 0.5)", mstring_get_str(reg))
+                         : NULL;
+    if (!sc) {
+        return base;
+    }
+    MString *res = mstring_from_fmt("(%s%s)",
+                                    base ? mstring_get_str(base)
+                                         : mstring_get_str(reg),
+                                    sc);
+    if (base) {
+        mstring_unref(base);
     }
     return res;
 }
@@ -697,6 +744,85 @@ static void add_final_stage_code(struct PixelShader *ps, struct FCInputInfo fina
     ps->varE = ps->varF = NULL;
 }
 
+/* NV097_SET_DOT_RGBMAPPING packs 4-bit nibbles; the hardware defines eight
+ * modes. Anything above indexes past dotmap_funcs[]. */
+static int dotmap_index(struct PixelShader *ps, int i)
+{
+    int m = ps->dot_map[i];
+    if (m >= 8) {
+        NV2A_UNIMPLEMENTED("dot mapping mode %d on stage %d; using "
+                           "ZERO_TO_ONE", m, i);
+        return 0;
+    }
+    return m;
+}
+
+/* Modes that leave a dot product behind for a later stage to consume. */
+static bool mode_defines_dot(enum PS_TEXTUREMODES mode)
+{
+    switch (mode) {
+    case PS_TEXTUREMODES_DOTPRODUCT:
+    case PS_TEXTUREMODES_DOT_ST:
+    case PS_TEXTUREMODES_DOT_ZW:
+    case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
+    case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
+    case PS_TEXTUREMODES_DOT_STR_3D:
+    case PS_TEXTUREMODES_DOT_STR_CUBE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/*
+ * Emit what an inconsistent stage produces: a zero texel, and a zero dot
+ * product if the mode would have defined one, so a later stage that names it
+ * still compiles.
+ */
+static void emit_stage_as_none(MString *vars, int i, enum PS_TEXTUREMODES mode,
+                               const char *why)
+{
+    if (mode_defines_dot(mode)) {
+        mstring_append_fmt(vars, "float dot%d = 0.0;\n", i);
+    }
+    mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* stage %d: %s */\n",
+                       i, i, why);
+}
+
+/*
+ * NV_texture_shader calls a stage *inconsistent* when it sits where its
+ * inputs cannot exist -- DOT_ST needs a dot product from the stage before it,
+ * DOT_RFLCT_SPEC needs two, a dependent read needs a texel -- or when the
+ * feeding stages are not the modes that produce those inputs, and specifies
+ * that an inconsistent stage behaves as NONE. The stage program is guest
+ * data, so every combination is reachable, and before this the generator
+ * either asserted on the first kind or emitted a reference to an undefined
+ * dot%d on the second, which is a shader that generates, caches, and fails
+ * to compile. Both now behave as NONE and are logged once per mode.
+ */
+static bool stage_consistent(struct PixelShader *ps, MString *vars, int i,
+                             int lo, int hi, int dots_needed, const char *mode)
+{
+    const char *why = NULL;
+    if (i < lo || i > hi) {
+        why = "mode not valid in this stage";
+    } else {
+        for (int k = 1; k <= dots_needed; k++) {
+            if (!mode_defines_dot(ps->tex_modes[i - k])) {
+                why = "feeding stage produces no dot product";
+                break;
+            }
+        }
+    }
+    if (!why) {
+        return true;
+    }
+    NV2A_UNIMPLEMENTED("%s in texture stage %d: %s; treated as NONE",
+                       mode, i, why);
+    emit_stage_as_none(vars, i, ps->tex_modes[i], why);
+    return false;
+}
+
 static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES mode, int i)
 {
     const char *sampler2D = "sampler2D";
@@ -712,6 +838,12 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
         return NULL;
 
     case PS_TEXTUREMODES_PROJECT2D:
+        if (state->shadow_map[i] && dim != 2) {
+            /* psh_append_shadowmap() samples a 2D projection. */
+            NV2A_UNIMPLEMENTED("%dD shadow map on stage %d", dim, i);
+            ps->tex_unusable[i] = true;
+            return NULL;
+        }
         if (dim == 2) {
             if (state->tex_x8y24[i] && ps->opts.vulkan) {
                 return "usampler2D";
@@ -721,20 +853,31 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
             }
             return sampler2D;
         }
-        if (dim == 3) return sampler3D;
-        assert(!"Unhandled texture dimensions");
+        if (dim == 3) {
+            if (state->tex_x8y24[i] && ps->opts.vulkan) {
+                NV2A_UNIMPLEMENTED("3D depth texture on stage %d", i);
+                ps->tex_unusable[i] = true;
+                return NULL;
+            }
+            return sampler3D;
+        }
+        NV2A_UNIMPLEMENTED("%dD texture in mode %d on stage %d", dim, mode, i);
+        ps->tex_unusable[i] = true;
         return NULL;
 
     case PS_TEXTUREMODES_BUMPENVMAP:
     case PS_TEXTUREMODES_BUMPENVMAP_LUM:
     case PS_TEXTUREMODES_DOT_ST:
         if (state->shadow_map[i]) {
-            fprintf(stderr, "Shadow map support not implemented for mode %d\n", mode);
-            assert(!"Shadow map support not implemented for this mode");
+            /* A depth format bound to a bump or dot stage: sample it as a
+             * colour texture rather than stop. */
+            NV2A_UNIMPLEMENTED("shadow map in mode %d on stage %d; sampled "
+                               "as colour", mode, i);
         }
         if (dim == 2) return sampler2D;
         if (dim == 3 && mode != PS_TEXTUREMODES_DOT_ST) return sampler3D;
-        assert(!"Unhandled texture dimensions");
+        NV2A_UNIMPLEMENTED("%dD texture in mode %d on stage %d", dim, mode, i);
+        ps->tex_unusable[i] = true;
         return NULL;
 
     case PS_TEXTUREMODES_PROJECT3D:
@@ -743,7 +886,17 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
             return "usampler2D";
         }
         if (state->shadow_map[i]) {
+            if (dim != 2) {
+                NV2A_UNIMPLEMENTED("%dD shadow map on stage %d", dim, i);
+                ps->tex_unusable[i] = true;
+                return NULL;
+            }
             return sampler2D;
+        }
+        if (dim != 2 && dim != 3) {
+            NV2A_UNIMPLEMENTED("%dD texture in mode %d on stage %d", dim, mode, i);
+            ps->tex_unusable[i] = true;
+            return NULL;
         }
         return dim == 2 ? sampler2D : sampler3D;
 
@@ -752,10 +905,15 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
     case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
     case PS_TEXTUREMODES_DOT_STR_CUBE:
         if (state->shadow_map[i]) {
-            fprintf(stderr, "Shadow map support not implemented for mode %d\n", mode);
-            assert(!"Shadow map support not implemented for this mode");
+            NV2A_UNIMPLEMENTED("shadow map in mode %d on stage %d; sampled "
+                               "as colour", mode, i);
         }
-        assert(dim == 2);
+        if (dim != 2) {
+            NV2A_UNIMPLEMENTED("%dD texture in cube mode %d on stage %d",
+                               dim, mode, i);
+            ps->tex_unusable[i] = true;
+            return NULL;
+        }
         if (state->tex_cubemap[i]) {
             return samplerCube;
         }
@@ -764,10 +922,15 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
     case PS_TEXTUREMODES_DPNDNT_AR:
     case PS_TEXTUREMODES_DPNDNT_GB:
         if (state->shadow_map[i]) {
-            fprintf(stderr, "Shadow map support not implemented for mode %d\n", mode);
-            assert(!"Shadow map support not implemented for this mode");
+            NV2A_UNIMPLEMENTED("shadow map in mode %d on stage %d; sampled "
+                               "as colour", mode, i);
         }
-        assert(dim == 2);
+        if (dim != 2) {
+            NV2A_UNIMPLEMENTED("%dD texture in dependent mode %d on stage %d",
+                               dim, mode, i);
+            ps->tex_unusable[i] = true;
+            return NULL;
+        }
         return sampler2D;
     }
 }
@@ -1226,7 +1389,12 @@ static MString* psh_convert(struct PixelShader *ps)
     mstring_append(vars, "vec4 pT1 = vtxT1;\n");
     mstring_append(vars, "vec4 pT2 = vtxT2;\n");
     if (ps->state->point_sprite) {
-        assert(!ps->state->rect_tex[3]);
+        if (ps->state->rect_tex[3]) {
+            /* gl_PointCoord is 0..1 and the stage's remap scales it to the
+             * linear texture's size on sampling, which is plausibly what the
+             * hardware does too; it only asserted because nobody had checked. */
+            NV2A_UNIMPLEMENTED("point sprite over a linear texture on stage 3");
+        }
         mstring_append(vars, "vec4 pT3 = vec4(gl_PointCoord, 1.0, 1.0);\n");
     } else {
         mstring_append(vars, "vec4 pT3 = vtxT3;\n");
@@ -1245,13 +1413,19 @@ static MString* psh_convert(struct PixelShader *ps)
     for (int i = 0; i < 4; i++) {
 
         const char *sampler_type = get_sampler_type(ps, ps->tex_modes[i], i);
+        if (ps->tex_unusable[i]) {
+            /* get_sampler_type() found a dimensionality or format it has no
+             * sampler for; every path below would sample it. */
+            emit_stage_as_none(vars, i, ps->tex_modes[i],
+                               "no sampler for this texture");
+            continue;
+        }
 
         g_autofree gchar *normalize_tex_coords = g_strdup_printf("norm%d", i);
         const char *tex_remap = ps->state->rect_tex[i] ? normalize_tex_coords : "";
 
-        assert(ps->dot_map[i] < 8);
-        const char *dotmap_func = dotmap_funcs[ps->dot_map[i]];
-        if (ps->dot_map[i] > 3) {
+        const char *dotmap_func = dotmap_funcs[dotmap_index(ps, i)];
+        if (dotmap_index(ps, i) > 3) {
             NV2A_UNIMPLEMENTED("Dot Mapping mode %s", dotmap_func);
         }
 
@@ -1265,8 +1439,15 @@ static MString* psh_convert(struct PixelShader *ps)
                 psh_append_shadowmap(ps, i, false, vars);
             } else {
                 apply_border_adjustment(ps, vars, i, "pT%d");
-                if (((ps->state->conv_tex[i] == CONVOLUTION_FILTER_GAUSSIAN) ||
-                     (ps->state->conv_tex[i] == CONVOLUTION_FILTER_QUINCUNX))) {
+                bool convolve = ps->state->conv_tex[i] == CONVOLUTION_FILTER_GAUSSIAN ||
+                                ps->state->conv_tex[i] == CONVOLUTION_FILTER_QUINCUNX;
+                if (convolve && ps->state->dim_tex[i] != 2) {
+                    NV2A_UNIMPLEMENTED("convolution filter on a %dD texture, "
+                                       "stage %d; sampled unfiltered",
+                                       ps->state->dim_tex[i], i);
+                    convolve = false;
+                }
+                if (convolve) {
                     apply_convolution_filter(ps, vars, i);
                 } else {
                     if (ps->state->dim_tex[i] == 2) {
@@ -1285,7 +1466,8 @@ static MString* psh_convert(struct PixelShader *ps)
                         mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, vec4(pT%d.xy, 0.0, pT%d.w));\n",
                                            i, i, i, i);
                     } else {
-                        assert(!"Unhandled texture dimensions");
+                        mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* %dD texture */\n",
+                                           i, ps->state->dim_tex[i]);
                     }
                 }
             }
@@ -1311,7 +1493,11 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, ps->state->tex_cubemap[i] ? "z" : "");
             break;
         case PS_TEXTUREMODES_PASSTHRU:
-            assert(ps->state->border_logical_size[i][0] == 0.0f && "Unexpected border texture on passthru");
+            if (ps->state->border_logical_size[i][0] != 0.0f) {
+                /* Passthru samples nothing, so the border has nothing to
+                 * adjust; it only mattered because this used to assert. */
+                NV2A_UNIMPLEMENTED("border texture on passthru stage %d", i);
+            }
             mstring_append_fmt(vars, "vec4 t%d = pT%d;\n", i, i);
             break;
         case PS_TEXTUREMODES_CLIPPLANE: {
@@ -1326,7 +1512,7 @@ static MString* psh_convert(struct PixelShader *ps)
             break;
         }
         case PS_TEXTUREMODES_BUMPENVMAP:
-            assert(i >= 1);
+            if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_BUMPENVMAP")) break;
 
             if (ps->state->snorm_tex[ps->input_tex[i]]) {
                 /* Input color channels already signed (FIXME: May not always want signed textures in this case) */
@@ -1354,11 +1540,12 @@ static MString* psh_convert(struct PixelShader *ps)
                 mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, bumpST%d.xyz);\n",
                     i, i, i);
             } else {
-                assert(!"Unhandled texture dimensions");
+                mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* %dD texture */\n",
+                                   i, ps->state->dim_tex[i]);
             }
             break;
         case PS_TEXTUREMODES_BUMPENVMAP_LUM:
-            assert(i >= 1);
+            if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_BUMPENVMAP_LUM")) break;
 
             if (ps->state->snorm_tex[ps->input_tex[i]]) {
                 /* Input color channels already signed (FIXME: May not always want signed textures in this case) */
@@ -1384,20 +1571,21 @@ static MString* psh_convert(struct PixelShader *ps)
                 mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, bumpSTL%d.xyz);\n",
                     i, i, i);
             } else {
-                assert(!"Unhandled texture dimensions");
+                mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* %dD texture */\n",
+                                   i, ps->state->dim_tex[i]);
             }
 
             mstring_append_fmt(vars, "t%d = t%d * (bumpScale[%d] * dsdtl%d.p + bumpOffset[%d]);\n",
                 i, i, i, i, i);
             break;
         case PS_TEXTUREMODES_BRDF:
-            assert(i >= 2);
+            if (!stage_consistent(ps, vars, i, 2, 3, 2, "PS_TEXTUREMODES_BRDF")) break;
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_BRDF */\n",
                                i);
             NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_BRDF");
             break;
         case PS_TEXTUREMODES_DOT_ST:
-            assert(i >= 2);
+            if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ST")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_ST */\n");
             mstring_append_fmt(vars,
                "float dot%d = dot(pT%d.xyz, %s(t%d));\n"
@@ -1409,7 +1597,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, tex_remap, i);
             break;
         case PS_TEXTUREMODES_DOT_ZW:
-            assert(i >= 2);
+            if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ZW")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_ZW */\n");
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
                 i, i, dotmap_func, ps->input_tex[i]);
@@ -1417,13 +1605,12 @@ static MString* psh_convert(struct PixelShader *ps)
             // FIXME: mstring_append_fmt(vars, "gl_FragDepth = t%d.x;\n", i);
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
-            assert(i == 2);
+            if (!stage_consistent(ps, vars, i, 2, 2, 1, "PS_TEXTUREMODES_DOT_RFLCT_DIFF")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_DIFF */\n");
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
                 i, i, dotmap_func, ps->input_tex[i]);
-            assert(ps->dot_map[i+1] < 8);
             mstring_append_fmt(vars, "float dot%d_n = dot(pT%d.xyz, %s(t%d));\n",
-                i, i+1, dotmap_funcs[ps->dot_map[i+1]], ps->input_tex[i+1]);
+                i, i+1, dotmap_funcs[dotmap_index(ps, i+1)], ps->input_tex[i+1]);
             mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d_n);\n",
                 i, i-1, i, i);
             apply_border_adjustment(ps, vars, i, "n_%d");
@@ -1436,7 +1623,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
-            assert(i == 3);
+            if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_RFLCT_SPEC")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_SPEC */\n");
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
                 i, i, dotmap_func, ps->input_tex[i]);
@@ -1456,7 +1643,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
             break;
         case PS_TEXTUREMODES_DOT_STR_3D:
-            assert(i == 3);
+            if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_3D")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_STR_3D */\n");
             mstring_append_fmt(vars,
                "float dot%d = dot(pT%d.xyz, %s(t%d));\n"
@@ -1470,7 +1657,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, tex_remap, i, ps->state->dim_tex[i] == 2 ? ".xy" : "");
             break;
         case PS_TEXTUREMODES_DOT_STR_CUBE:
-            assert(i == 3);
+            if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_CUBE")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_STR_CUBE */\n");
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
                 i, i, dotmap_func, ps->input_tex[i]);
@@ -1487,37 +1674,53 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
             break;
         case PS_TEXTUREMODES_DPNDNT_AR:
-            assert(i >= 1);
-            assert(!ps->state->rect_tex[i]);
+            if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_DPNDNT_AR")) break;
+            if (ps->state->rect_tex[i]) {
+                /* The dependent coordinate is a colour in 0..1; what the
+                 * hardware does with it against a linear (unnormalised)
+                 * texture is not established. Keep drawing. */
+                NV2A_UNIMPLEMENTED("dependent AR read from a linear texture, "
+                                   "stage %d", i);
+            }
             mstring_append_fmt(vars, "vec2 t%dAR = t%d.ar;\n", i, ps->input_tex[i]);
             apply_border_adjustment(ps, vars, i, "t%dAR");
             mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(t%dAR));\n",
                 i, i, tex_remap, i);
             break;
         case PS_TEXTUREMODES_DPNDNT_GB:
-            assert(i >= 1);
-            assert(!ps->state->rect_tex[i]);
+            if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_DPNDNT_GB")) break;
+            if (ps->state->rect_tex[i]) {
+                /* The dependent coordinate is a colour in 0..1; what the
+                 * hardware does with it against a linear (unnormalised)
+                 * texture is not established. Keep drawing. */
+                NV2A_UNIMPLEMENTED("dependent GB read from a linear texture, "
+                                   "stage %d", i);
+            }
             mstring_append_fmt(vars, "vec2 t%dGB = t%d.gb;\n", i, ps->input_tex[i]);
             apply_border_adjustment(ps, vars, i, "t%dGB");
             mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(t%dGB));\n",
                 i, i, tex_remap, i);
             break;
         case PS_TEXTUREMODES_DOTPRODUCT:
-            assert(i == 1 || i == 2);
+            if (!stage_consistent(ps, vars, i, 1, 2, 0, "PS_TEXTUREMODES_DOTPRODUCT")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOTPRODUCT */\n");
             mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
                 i, i, dotmap_func, ps->input_tex[i]);
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
-            assert(i == 3);
+            if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST")) break;
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST */\n",
                                i);
             NV2A_UNIMPLEMENTED("PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST");
             break;
         default:
-            fprintf(stderr, "Unknown ps tex mode: 0x%x\n", ps->tex_modes[i]);
-            assert(false);
+            /* Five bits per stage in NV097_SET_SHADER_STAGE_PROGRAM; the
+             * hardware defines 0x00..0x12. */
+            NV2A_UNIMPLEMENTED("texture mode 0x%x on stage %d; zero texel",
+                               ps->tex_modes[i], i);
+            mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* unknown mode 0x%x */\n",
+                               i, ps->tex_modes[i]);
             break;
         }
 

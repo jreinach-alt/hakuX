@@ -154,6 +154,19 @@ bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx)
     if (dimensionality < 1 || dimensionality > 3) {
         return false;
     }
+    if (dimensionality == 1) {
+        /*
+         * 1D textures are not implemented. The Vulkan binder asserts on them
+         * and the shader generator had no sampler for them (issue #25), and
+         * no golden exercises one, so implementing them blind would be a
+         * guess. Undecodable is the honest answer: the stage draws the dummy
+         * texture, the mode is cleared, and it is on record. A real
+         * implementation replaces this branch.
+         */
+        NV2A_UNIMPLEMENTED("1D texture on stage %d; drawing the dummy "
+                           "texture", texture_idx);
+        return false;
+    }
     hwaddr dma_len;
     hwaddr offset = pgraph_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + texture_idx * 4);
     if (GET_MASK(fmt, NV_PGRAPH_TEXFMT0_CONTEXT_DMA)) {
