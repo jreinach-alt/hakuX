@@ -59,6 +59,7 @@ typedef struct PshState {
     float border_inv_real_size[4][3];
 
     bool shadow_map[4];
+    bool tex_depth_float[4];
     enum PshShadowDepthFunc shadow_depth_func;
 
     bool alpha_test;

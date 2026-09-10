@@ -181,6 +181,14 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                 NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED ||
             color_format ==
                 NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT;
+        /* A float depth texture holds the NV2A encoding, not a value (see
+         * the F16/F24 cases in psh_convert). The shadow comparison decodes
+         * it; a fixed-point one it just scales. */
+        state->tex_depth_float[i] =
+            color_format ==
+                NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT ||
+            color_format ==
+                NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT;
 
         uint32_t border_source =
             GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BORDER_SOURCE);
@@ -800,6 +808,43 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
                            "vec4 t%d_depth = vec4(float(t%d_depth_raw.x >> 8) "
                            "/ 16777215.0, 1.0, 0.0, 0.0);\n",
                            i, i);
+    }
+
+    if (compare_z && ps->state->tex_depth_float[i]) {
+        /*
+         * The texture holds the float depth encoding, normalised by the host
+         * UNORM format. Recover the integer and decode it -- the inverse of
+         * convert_f16_to_float / convert_f24_to_float in pgraph/util.h --
+         * instead of scaling by f16_max, which assumed the texture held a
+         * linear value. It never did for a texture read from guest memory,
+         * and since psh_convert started storing the encoding it does not for
+         * a rendered depth surface either (issue #30).
+         */
+        if (extract_msb_24b) {
+            mstring_append_fmt(vars, "uint t%d_enc = t%d_depth_raw.x >> 8;\n",
+                               i, i);
+        } else {
+            mstring_append_fmt(
+                vars, "uint t%d_enc = uint(roundEven(t%d_depth.x * %s));\n",
+                i, i, ps->state->tex_x8y24[i] ? "16777215.0" : "65535.0");
+        }
+        if (ps->state->tex_x8y24[i]) {
+            mstring_append_fmt(
+                vars,
+                "float t%d_z = uintBitsToFloat(t%d_enc << 7);\n"
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n", /* f24_max */
+                i, i, i, i, i);
+        } else {
+            mstring_append_fmt(
+                vars,
+                "float t%d_z = t%d_enc == 0u ? 0.0\n"
+                "           : uintBitsToFloat((t%d_enc << 11) + 0x3C000000u);\n"
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n", /* f16_max */
+                i, i, i, i, i, i);
+        }
+        mstring_append_fmt(vars, "vec4 t%d = vec4(t%d_z %s pT%d.z ? 1.0 : 0.0);\n",
+                           i, i, comparison, i);
+        return;
     }
 
     // Depth.y != 0 indicates 24 bit; depth.z != 0 indicates float.

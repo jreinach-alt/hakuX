@@ -159,6 +159,7 @@ static const Field fields[] = {
     F4x3(border_logical_size),
     F4x3(border_inv_real_size),
     F4(shadow_map,  K_BOOL, 0, 1),
+    F4(tex_depth_float, K_BOOL, 0, 1),
 
     F(shadow_depth_func, K_INT, SHADOW_DEPTH_FUNC_NEVER, SHADOW_DEPTH_FUNC_ALWAYS),
     F(alpha_test,        K_BOOL, 0, 1),
@@ -404,8 +405,11 @@ static void bl_surface(PshState *s)
 
     memset(s, 0, sizeof(*s));
     s->combiner_control = 2;
-    s->shader_stage_program = stage_program(PS_TEXTUREMODES_PROJECT2D,
-                                            PS_TEXTUREMODES_PROJECT2D,
+    /* PROJECT3D on the first two stages: that is the only shadow path that
+     * compares against a reference depth, and so the only one that has to
+     * decode a float depth texture. PROJECT2D compares against zero. */
+    s->shader_stage_program = stage_program(PS_TEXTUREMODES_PROJECT3D,
+                                            PS_TEXTUREMODES_PROJECT3D,
                                             PS_TEXTUREMODES_PROJECT2D,
                                             PS_TEXTUREMODES_PROJECT2D);
     for (i = 0; i < 4; i++) {
@@ -427,6 +431,10 @@ static void bl_surface(PshState *s)
     }
     s->shadow_depth_func = SHADOW_DEPTH_FUNC_LEQUAL;
     s->tex_x8y24[0] = true;
+    /* [0] is a 24-bit float depth texture, [1] a 16-bit one; 2 and 3 stay
+     * fixed-point so both shadow paths are generated. */
+    s->tex_depth_float[0] = true;
+    s->tex_depth_float[1] = true;
 
     s->border_logical_size[0][0] = 64.0f;
     s->border_logical_size[0][1] = 64.0f;
