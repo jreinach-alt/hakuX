@@ -52,8 +52,20 @@ static char const *const required_device_extensions[] = {
     VK_EXT_QUEUE_FAMILY_FOREIGN_EXTENSION_NAME,
     VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
 #else
-    VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-    VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+    /*
+     * The FD interop extensions are deliberately absent here. They exist to
+     * hand the rendered image to a GL context without a copy, and the display
+     * path already has a download fallback for when that is unavailable
+     * (display.use_external_memory). Requiring them at device-selection time
+     * meant a device that could run everything else was rejected outright:
+     * Mesa's lavapipe has no VK_KHR_external_semaphore_fd, so the only
+     * software Vulkan device available to CI and to a headless test lane was
+     * refused, and the run silently continued on OpenGL.
+     *
+     * They are requested as optional below instead. Android still requires
+     * them: its presentation path goes through AHardwareBuffer and has no
+     * such fallback.
+     */
 #endif
 };
 
@@ -490,6 +502,24 @@ static void add_optional_device_extension_names(
     r->push_descriptors_supported = add_extension_if_available(
         available_extensions, enabled_extension_names,
         VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+
+#ifdef __ANDROID__
+    /* Both are in the required list on Android, so the device would not have
+     * been selected without them. */
+    r->external_memory_fd_enabled = true;
+#elif !defined(WIN32)
+    /* Zero-copy presentation needs both. Without them the display path
+     * downloads the frame instead, which is slower and entirely correct. */
+    r->external_memory_fd_enabled =
+        add_extension_if_available(available_extensions, enabled_extension_names,
+                                   VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME) &&
+        add_extension_if_available(available_extensions, enabled_extension_names,
+                                   VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME);
+    if (!r->external_memory_fd_enabled) {
+        fprintf(stderr,
+                "nv2a: no FD memory/semaphore interop; presenting by download\n");
+    }
+#endif
 }
 
 static bool check_device_support_required_extensions(VkPhysicalDevice device)
