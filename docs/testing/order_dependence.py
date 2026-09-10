@@ -133,7 +133,23 @@ class Lane:
         return {"settings": s, "test_suites": suites}
 
     def run(self, tag, whole=(), isolate=None):
-        """Returns {capture: md5}, or None if the run cannot be trusted."""
+        """Returns {capture: md5}, or None if the run cannot be trusted.
+
+        A segfault is retried, an assert is not. The Vulkan lane on lavapipe
+        dies in the flip path roughly one run in four, before and after every
+        change tried so far (issue #29); that is noise, and a rerun is clean.
+        An abort (exit 134) is the emulator refusing the disc, and rerunning
+        it would only report the same refusal with a straight face.
+        """
+        for attempt in range(1 + self.a.retry_segv):
+            result = self._run_once(tag, whole, isolate)
+            if result is not None or self.why != "emulator exited 139":
+                return result
+            print(f"  ({tag}: segfault, retry {attempt + 1} of "
+                  f"{self.a.retry_segv})", flush=True)
+        return None
+
+    def _run_once(self, tag, whole, isolate):
         self.why = None
         whole, isolate = set(whole), dict(isolate or {})
         cfg = self.work / f"cfg_{tag}.json"
@@ -290,6 +306,9 @@ def main():
     ap.add_argument("--work", default="order-runs")
     ap.add_argument("--renderer", default="VULKAN", choices=["VULKAN", "OPENGL"])
     ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument("--retry-segv", type=int, default=2,
+                    help="rerun a run that segfaulted this many times; "
+                         "asserts are never retried")
     ap.add_argument("--xemu-toml", required=True)
     ap.add_argument("--bootrom", required=True)
     ap.add_argument("--flashrom", required=True)
