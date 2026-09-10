@@ -156,7 +156,7 @@ def default_config(args):
             "enable_autorun_immediately": args.autorun and args.autorun_immediately,
             "enable_shutdown_on_completion": args.shutdown_on_completion,
             "enable_pgraph_region_diff": False,
-            "skip_tests_by_default": False,
+            "skip_tests_by_default": bool(args.suite),
             "delay_milliseconds_between_tests": args.delay_between_tests,
             "delay_milliseconds_before_exit": args.delay_before_exit,
             "network": {
@@ -178,7 +178,12 @@ def default_config(args):
             },
             "sharding": {"index": args.shard_index, "count": args.shard_count},
             "output_directory_path": args.output_dir,
-        }
+        },
+        # Naming a suite switches the disc to opt-in: skip_tests_by_default
+        # above flips, and only these run. The value must be {"skipped": False}
+        # -- a per-test dict looks reasonable and silently runs nothing, which
+        # cost a device round trip to notice.
+        "test_suites": {name: {"skipped": False} for name in args.suite},
     }
 
 
@@ -204,6 +209,11 @@ def main(argv=None):
                      metavar="MS", help="default: 10000")
 
     run = parser.add_argument_group("run behaviour")
+    run.add_argument("--suite", action="append", default=[], metavar="NAME",
+                     help="run only this suite, repeatable. Names use spaces, "
+                          "not underscores (\"Bump map\", not \"Bump_map\") -- "
+                          "the underscored form is the results directory. "
+                          "Without this the disc runs everything.")
     run.add_argument("--output-dir", default="e:/nxdk_pgraph_tests",
                      help="where the suite writes results on the guest "
                           "(default: %(default)s). Must be on a writable drive.")
