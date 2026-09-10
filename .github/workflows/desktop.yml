@@ -174,10 +174,12 @@ jobs:
           renderer=$(grep -m1 '^nv2a: renderer:' smoke-vk.log | cut -d' ' -f3-)
           echo "renderer in use: $renderer"
           if [ "$renderer" != "Vulkan" ]; then
-            # Not an error yet: on a container the toml below does not actually
-            # select Vulkan, and that is its own bug rather than this gate's.
-            # Warn loudly instead of failing until renderer selection is fixed.
-            echo "::warning::asked for Vulkan, got '$renderer' - renderer selection is not honoured, see the tracking issue"
+            # Not an error yet. The toml does select Vulkan; lavapipe is then
+            # rejected for lacking VK_KHR_external_semaphore_fd, and the run
+            # continues on OpenGL. Until there is a software Vulkan device that
+            # can actually run this renderer, failing here would only report
+            # the runner's capabilities. Say so instead.
+            echo "::warning::asked for Vulkan, got '$renderer' - the runner has no Vulkan device this renderer can use, so this step is an OpenGL smoke test"
           fi
 
       - name: Upload startup log
