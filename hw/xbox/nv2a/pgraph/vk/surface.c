@@ -2848,7 +2848,9 @@ static void populate_surface_binding_target_sized(NV2AState *d, bool color,
                ARRAY_SIZE(r->kelvin_surface_zeta_vk_map));
         fmt = kelvin_surface_zeta_format_map[pg->surface_shape.zeta_format];
         host_fmt = r->kelvin_surface_zeta_vk_map[pg->surface_shape.zeta_format];
-        // FIXME: Support float 16,24b float format surface
+        /* The guest's float zeta formats need no host format of their own:
+         * they are stored as their encoding, in the same 24 or 16 bits as the
+         * fixed point ones. See the F24/F16 cases in glsl/psh.c. */
     }
 
     DMAObject dma = nv_dma_load(d, dma_address);
@@ -3324,17 +3326,34 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
                 "continuing with best-effort mapping.\n");
     }
 
-    // Check if the device supports preferred VK_FORMAT_D24_UNORM_S8_UINT
-    // format, fall back to D32_SFLOAT_S8_UINT otherwise.
+    /*
+     * Z24S8 goes in a float depth image in preference to a 24 bit unorm one,
+     * because a 24 bit guest depth word cannot survive the unorm quantiser.
+     * gl_FragDepth is a float32; in the top octave its grid is 2^-24 while the
+     * unorm grid is 1/(2^24-1), and the two drift half a unit out of phase
+     * around z = 2^23. The nearest float to the depth word decodes to Z plus
+     * very nearly a half, so which integer the driver stores comes down to how
+     * it rounds -- Adreno keeps 0x800008 where hardware has 0x800007. A float
+     * image has no quantiser: every guest depth word is exactly representable,
+     * and the readback is exact in both directions. It costs 8 bytes a pixel
+     * against 4, which is the price of the surface being readable at all.
+     *
+     * D24_UNORM_S8_UINT remains the fallback for devices without the float
+     * format, still writing through the ULP nudge that the unorm scale needs.
+     */
     r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;
-    if (check_surface_internal_formats_supported(r, &zeta_d24_unorm_s8_uint,
+    if (check_surface_internal_formats_supported(r, &zeta_d32_sfloat_s8_uint,
                                                  1)) {
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
-            zeta_d24_unorm_s8_uint;
-    } else if (check_surface_internal_formats_supported(
-                   r, &zeta_d32_sfloat_s8_uint, 1)) {
-        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d32_sfloat_s8_uint;
+        /* Every writer and reader of a Z24S8 surface has to know this; see
+         * PGRAPHState::zeta_stored_as_float. */
+        pg->zeta_stored_as_float = true;
+    } else if (check_surface_internal_formats_supported(
+                   r, &zeta_d24_unorm_s8_uint, 1)) {
+        r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
+            zeta_d24_unorm_s8_uint;
+        pg->zeta_stored_as_float = false;
     } else {
         fprintf(stderr,
                 "Warning: No suitable Vulkan Z24S8 depth-stencil format; "
@@ -3342,6 +3361,10 @@ void pgraph_vk_init_surfaces(PGRAPHState *pg)
         r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] =
             zeta_d16;
     }
+    fprintf(stderr, "nv2a: Z24S8 host format 0x%x, depth stored as %s\n",
+            r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]
+                .vk_format,
+            pg->zeta_stored_as_float ? "float" : "unorm");
 
     QTAILQ_INIT(&r->surfaces);
     QTAILQ_INIT(&r->invalid_surfaces);

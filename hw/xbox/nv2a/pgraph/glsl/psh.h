@@ -98,6 +98,8 @@ DECL_UNIFORM_TYPES(PshUniform, PSH_UNIFORM_DECL_X)
 
 typedef struct GenPshGlslOptions {
     bool vulkan;
+    /* See PGRAPHState::zeta_stored_as_float. */
+    bool float_depth_storage;
     bool gles;
     int gles_version;
     int ubo_binding;

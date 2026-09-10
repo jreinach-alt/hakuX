@@ -4289,6 +4289,10 @@ void pgraph_get_clear_depth_stencil_value(PGRAPHState *pg, float *depth,
      * glsl/psh.c for why the float ones store their encoding rather than their
      * value. So the clear is the same arithmetic either way, and decoding the
      * float here would disagree with every pixel the rasteriser writes.
+     *
+     * The scale has to match how the host image stores that word, which is why
+     * Z24S8 asks pg->zeta_stored_as_float. Getting it wrong is worth one unit
+     * of depth, and lands exactly on the truncation boundary near z = 2^23.
      */
     case NV097_SET_SURFACE_FORMAT_ZETA_Z16: {
         uint16_t z = clear_zstencil & 0xFFFF;
@@ -4299,7 +4303,7 @@ void pgraph_get_clear_depth_stencil_value(PGRAPHState *pg, float *depth,
     case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8: {
         *stencil = clear_zstencil & 0xFF;
         uint32_t z = clear_zstencil >> 8;
-        *depth = z / (float)0xFFFFFF;
+        *depth = z / (float)(pg->zeta_stored_as_float ? 0x1000000 : 0xFFFFFF);
         break;
     }
     default:

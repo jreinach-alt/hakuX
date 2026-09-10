@@ -1617,7 +1617,24 @@ static MString* psh_convert(struct PixelShader *ps)
          * surface-compute.c correct as it already stands, and makes the clear
          * path identical for fixed and float, which is the tell that this is
          * the representation the rest of the pipeline already assumed.
+         *
+         * Both 24 bit cases then have to agree with how the host image stores
+         * what they write. A 24 bit unorm image scales by 0xFFFFFF, so dividing
+         * by 2^24 lands half a unit low and the extra ULP is what pulls it back
+         * onto the right integer. A float image stores exactly what it is
+         * given, so the same ULP would push it a whole unit high -- and
+         * dividing by 2^24 there is not an approximation at all, every guest
+         * depth word being exactly representable. Getting this backwards costs
+         * one unit of depth over the whole surface; it showed up as a cleared
+         * Z24S8 buffer reading back 0x800008 where silicon has 0x800007,
+         * because the product lands right on the truncation boundary near
+         * z = 2^23 and the smallest disagreement in the GPU's rounding flips
+         * it.
          */
+        const char *z24_open =
+            ps->opts.float_depth_storage ? "" : "uintBitsToFloat(floatBitsToUint(";
+        const char *z24_close = ps->opts.float_depth_storage ? "" : ") + 1u)";
+
         switch (ps->state->depth_format) {
         case DEPTH_FORMAT_D16:
             mstring_append(
@@ -1625,18 +1642,18 @@ static MString* psh_convert(struct PixelShader *ps)
                 "gl_FragDepth = floor(zvalue) / 65535.0;\n");
             break;
         case DEPTH_FORMAT_D24:
-            mstring_append(
-                ps->code,
-                "gl_FragDepth = uintBitsToFloat(floatBitsToUint(floor(zvalue) / 16777216.0) + 1u);\n");
+            mstring_append_fmt(
+                ps->code, "gl_FragDepth = %sfloor(zvalue) / 16777216.0%s;\n",
+                z24_open, z24_close);
             break;
         case DEPTH_FORMAT_F24:
             /* f24 is the top 24 bits of the float32, per convert_f24_to_float
              * in pgraph/util.h, which rebuilds it with (f24 << 7). */
-            mstring_append(
+            mstring_append_fmt(
                 ps->code,
-                "gl_FragDepth = uintBitsToFloat(floatBitsToUint(\n"
-                "    float(floatBitsToUint(max(zvalue, 0.0)) >> 7)\n"
-                "        / 16777216.0) + 1u);\n");
+                "gl_FragDepth = %sfloat(floatBitsToUint(max(zvalue, 0.0)) >> 7)\n"
+                "        / 16777216.0%s;\n",
+                z24_open, z24_close);
             break;
         case DEPTH_FORMAT_F16:
             /* f16 is (f16 << 11) + 0x3C000000, so the inverse is

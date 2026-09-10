@@ -3069,6 +3069,10 @@ void pgraph_gl_init_surfaces(PGRAPHState *pg)
 {
     PGRAPHGLState *r = pg->gl_renderer_state;
 
+    /* GL keeps Z24S8 in GL_DEPTH24_STENCIL8, a 24 bit unorm image. Stated
+     * rather than left over from whichever renderer ran before this one. */
+    pg->zeta_stored_as_float = false;
+
     pgraph_gl_reload_surface_scale_factor(pg);
     glGenFramebuffers(1, &r->gl_framebuffer);
     glBindFramebuffer(GL_FRAMEBUFFER, r->gl_framebuffer);

@@ -100,7 +100,16 @@ void pgraph_glsl_set_clip_range_uniform_value(PGRAPHState *pg, float clipRange[4
         zmax = pg->surface_shape.z_format ? f16_max : (float)0xFFFF;
         break;
     case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8:
-        zmax = pg->surface_shape.z_format ? f24_max : (float)0xFFFFFF;
+        /*
+         * clipRange.y is what the vertex shaders divide oPos.z by, so for the
+         * fixed point format it is the scale the depth word is stored at, and
+         * it has to agree with the host image -- 2^24 for a float one. See
+         * PGRAPHState::zeta_stored_as_float; dividing by 0xFFFFFF and reading
+         * back at 2^24 is worth a whole unit of depth over most of the range.
+         */
+        zmax = pg->surface_shape.z_format ?
+                   f24_max :
+                   (float)(pg->zeta_stored_as_float ? 0x1000000 : 0xFFFFFF);
         break;
     default:
         assert(0);

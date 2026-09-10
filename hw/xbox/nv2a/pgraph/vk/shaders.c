@@ -765,6 +765,8 @@ static void shader_binding_build_module_keys(
     psh_key->kind = VK_SHADER_STAGE_FRAGMENT_BIT;
     psh_key->psh.state = binding->state.psh;
     psh_key->psh.glsl_opts.vulkan = true;
+    psh_key->psh.glsl_opts.float_depth_storage =
+        r->nv2a->pgraph.zeta_stored_as_float;
     psh_key->psh.glsl_opts.ubo_binding = 1;
     psh_key->psh.glsl_opts.ubo_set = 1;
     psh_key->psh.glsl_opts.tex_binding = 0;

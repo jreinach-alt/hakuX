@@ -277,6 +277,17 @@ typedef struct PGRAPHState {
     unsigned int surface_scale_factor;
     uint8_t *scale_buf;
 
+    /*
+     * True when the host keeps a Z24S8 surface in a floating point depth image
+     * rather than a 24 bit unorm one. The two need different normalisation:
+     * unorm storage scales by 0xFFFFFF because that is what the format means,
+     * float storage has to scale by 2^24 so that every guest depth word is an
+     * exactly representable float and the round trip loses nothing. Set by the
+     * renderer once the depth format is chosen; see the depth cases in
+     * glsl/psh.c.
+     */
+    bool zeta_stored_as_float;
+
     const PGRAPHRenderer *renderer;
     union {
         PGRAPHNullState *null_renderer_state;

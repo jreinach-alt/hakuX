@@ -23,8 +23,6 @@
 #include "renderer.h"
 #include <vulkan/vulkan_core.h>
 
-// TODO: Float depth format (low priority, but would be better for accuracy)
-
 const char *pack_d24_unorm_s8_uint_to_z24s8_glsl =
     "layout(push_constant) uniform PushConstants { uint width_in, width_out; };\n"
     "layout(set = 0, binding = 0) buffer DepthIn { uint depth_in[]; };\n"
@@ -83,7 +81,7 @@ const char *pack_d32_sfloat_s8_uint_to_z24s8_glsl =
     "void main() {\n"
     "    uint idx_out = gl_GlobalInvocationID.x;\n"
     "    uint idx_in = get_input_idx(idx_out);\n"
-    "    uint depth_value = int(depth_in[idx_in] * float(0xffffff));\n"
+    "    uint depth_value = min(uint(depth_in[idx_in] * 16777216.0), 0xffffffu);\n"
     "    uint stencil_value = (stencil_in[idx_in / 4] >> ((idx_in % 4) * 8)) & 0xff;\n"
     "    depth_stencil_out[idx_out] = depth_value << 8 | stencil_value;\n"
     "}\n";
@@ -103,7 +101,7 @@ const char *unpack_z24s8_to_d32_sfloat_s8_uint_glsl =
     "    uint idx_out = gl_GlobalInvocationID.x;\n"
     "    uint idx_in = get_input_idx(idx_out);\n"
     // Conversion to float depth must be the same as in fragment shader
-    "    depth_out[idx_out] = uintBitsToFloat(floatBitsToUint(float(depth_stencil_in[idx_in] >> 8) / 16777216.0) + 1u);\n"
+    "    depth_out[idx_out] = float(depth_stencil_in[idx_in] >> 8) / 16777216.0;\n"
     "    if (idx_out % 4 == 0) {\n"
     "       uint stencil_value = 0;\n"
     "       for (int i = 0; i < 4; i++) {\n" // Include next 3 pixels
@@ -116,7 +114,10 @@ const char *unpack_z24s8_to_d32_sfloat_s8_uint_glsl =
 
 // Direct depth pack: samples depth from image, reads stencil from buffer.
 // Works for both D24_UNORM_S8_UINT and D32_SFLOAT_S8_UINT since both return
-// float depth when sampled.
+// float depth when sampled -- but not with the same scale. DEPTH_SCALE carries
+// the one the image was written with: 0xFFFFFF for unorm, because that is what
+// the format means, and 2^24 for float, which is exact in both directions. It
+// is a #define rather than a printf slot because the body is full of `%`.
 static const char *pack_depth_stencil_direct_glsl =
     "layout(push_constant) uniform PushConstants { uint width_in, width_out; };\n"
     "layout(set = 0, binding = 0) uniform sampler2D depth_tex;\n"
@@ -131,7 +132,7 @@ static const char *pack_depth_stencil_direct_glsl =
     "    uint in_y = out_y * scale;\n"
     "    uint idx_in = in_y * width_in + in_x;\n"
     "    float depth = texelFetch(depth_tex, ivec2(in_x, in_y), 0).r;\n"
-    "    uint depth_value = uint(depth * float(0xFFFFFF));\n"
+    "    uint depth_value = min(uint(depth * DEPTH_SCALE), 0xFFFFFFu);\n"
     "    uint stencil_value = (stencil_in[idx_in / 4] >> ((idx_in % 4) * 8)) & 0xFFu;\n"
     "    packed_out[idx_out] = depth_value << 8 | stencil_value;\n"
     "}\n";
@@ -680,6 +681,7 @@ void pgraph_vk_pack_depth_stencil_direct(PGRAPHState *pg,
     ComputePipelineKey key;
     memset(&key, 0, sizeof(key));
     key.compute_type = COMPUTE_TYPE_DEPTH_STENCIL_DIRECT;
+    key.host_fmt = surface->host_fmt.vk_format;
     key.pack = true;
     key.workgroup_size = workgroup_size;
 
@@ -791,7 +793,11 @@ static void pipeline_cache_entry_init(Lru *lru, LruNode *node,
         glsl = g_strdup_printf(
             "#version 450\n"
             "layout(local_size_x = %d, local_size_y = 1, local_size_z = 1) in;\n"
-            "%s", snode->key.workgroup_size, pack_depth_stencil_direct_glsl);
+            "#define DEPTH_SCALE %s\n"
+            "%s", snode->key.workgroup_size,
+            snode->key.host_fmt == VK_FORMAT_D32_SFLOAT_S8_UINT ?
+                "16777216.0" : "float(0xFFFFFF)",
+            pack_depth_stencil_direct_glsl);
         layout = r->compute.direct_pipeline_layout;
         break;
     default:
