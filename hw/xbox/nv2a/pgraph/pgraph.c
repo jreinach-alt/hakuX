@@ -1119,6 +1119,19 @@ void nv2a_context_init(void)
                 renderers[g_config.display.renderer]->name);
     }
 
+    /*
+     * Say which renderer is actually in use, unconditionally.
+     *
+     * Nothing else does, and the absence is not harmless: the loop below
+     * initialises every registered renderer regardless of which one was
+     * selected, so a Vulkan physical device is enumerated and logged even on
+     * an OpenGL run. A CI gate that greps the log for that device to prove
+     * "the Vulkan backend came up" therefore passes on OpenGL -- which is
+     * exactly what desktop.yml was doing.
+     */
+    fprintf(stderr, "nv2a: renderer: %s\n",
+            renderers[g_config.display.renderer]->name);
+
     // FIXME: We need a mechanism for renderer to initialize new GL contexts
     //        on the main thread at run time. For now, just let them all create
     //        what they need.
@@ -4260,9 +4273,10 @@ void pgraph_get_clear_color(PGRAPHState *pg, float rgba[4])
         /* Seven bits of alpha, so 127 is the divisor, not 255. The assert
          * that used to follow this said "untested" -- and it made the tests
          * that would have tested it impossible to run, because it aborts the
-         * process rather than the test. Clear::SCF_X1A7R8G8B8_O1A7R8G8B8 and
-         * Blend surface's O1A7 cases exercise it; let them, and let the
-         * goldens say whether the arithmetic is right. */
+         * process rather than the test, taking the whole Clear suite out of
+         * every sweep. Clear::SCF_X1A7R8G8B8_O1A7R8G8B8 and Blend surface's
+         * O1A7 cases exercise it; let them, and let the goldens say whether
+         * the arithmetic is right. */
         *a = ((clear_color >> 24) & 0x7F) / 127.0f;
         break;
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:
@@ -4284,11 +4298,13 @@ void pgraph_get_clear_depth_stencil_value(PGRAPHState *pg, float *depth,
 
     switch (pg->surface_shape.zeta_format) {
     /*
-     * The host depth buffer holds the guest's depth *word* normalised, for both
-     * the fixed point and the float formats -- see the F24/F16 cases in
-     * glsl/psh.c for why the float ones store their encoding rather than their
-     * value. So the clear is the same arithmetic either way, and decoding the
-     * float here would disagree with every pixel the rasteriser writes.
+     * The depth buffer holds the guest's depth *word*, fixed point and float
+     * alike -- see the F16/F24 cases in glsl/psh.c for why the float formats
+     * store their encoding rather than their value. The clear value out of
+     * NV_PGRAPH_ZSTENCILCLEARVALUE is already in that encoding, so it wants
+     * normalising and nothing else; it used to be decoded and divided by
+     * f16_max/f24_max, which matched the old storage convention and now would
+     * disagree with every pixel the rasteriser writes.
      *
      * The scale has to match how the host image stores that word, which is why
      * Z24S8 asks pg->zeta_stored_as_float. Getting it wrong is worth one unit

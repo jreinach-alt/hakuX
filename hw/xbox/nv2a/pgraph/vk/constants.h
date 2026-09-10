@@ -408,7 +408,8 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
      * The Z and O variants differ only in what the unused bits read back as --
      * zero or one -- not in storage layout, so each shares its counterpart's
      * host format. Getting those pad bits right is a separate, smaller problem
-     * than not rendering at all.
+     * than not rendering at all: this one was `unimplemented color surface
+     * format 0x2` and abort(), five tests into Blend surface (issue #28).
      */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] =
     {
@@ -433,6 +434,10 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT,
     },
+    /* The _O8 twin of X8R8G8B8_Z8R8G8B8: the X byte reads back as ones instead
+     * of zeros. Was `unimplemented color surface format 0x5` and abort(), six
+     * tests into Blend surface (issue #28). With this every colour surface
+     * format the hardware defines, 0x1 to 0xA, has an entry. */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] =
     {
         // FIXME: Force alpha to one
@@ -442,10 +447,14 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
         VK_IMAGE_ASPECT_COLOR_BIT,
     },
     /*
-     * X1A7R8G8B8 is one pad bit, a *seven* bit alpha and 8-bit colour. The
-     * closest host format has eight bits of alpha, so alpha resolution here is
-     * one bit finer than the guest's and the pad bit is not reproduced. Wrong
-     * in the top bits, right everywhere else, and vastly better than abort().
+     * X1A7R8G8B8: seven bits of alpha in 24..30 under a fixed X bit that reads
+     * back as 0 (_Z) or 1 (_O). Kept as B8G8R8A8 on the host, so rendering and
+     * blending are right to within the 7-bit quantisation, and a readback
+     * hands the guest an 8-bit alpha where it expects X1A7 -- the X bit and
+     * the alpha LSB come back wrong. That is a defect to measure; what was
+     * here before was `unimplemented color surface format 0x7` and abort(),
+     * which took Surface format and Blend surface out of every sweep and is
+     * issue #24.
      */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] =
     {

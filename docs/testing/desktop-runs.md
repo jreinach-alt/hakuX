@@ -13,7 +13,7 @@ path towards running the suite in CI.
 | | |
 |---|---|
 | Desktop build | `configure --target-list=i386-softmmu --extra-cflags=-DXBOX=1`; deps are listed in [`.github/workflows/desktop.yml`](../../.github/workflows/desktop.yml) |
-| Software Vulkan | `mesa-vulkan-drivers` provides lavapipe, a conformant Vulkan 1.4 device |
+| Software Vulkan | `mesa-vulkan-drivers` provides lavapipe, a conformant Vulkan 1.4 device. **Note:** lavapipe cannot actually run this Vulkan renderer — it lacks `VK_KHR_external_semaphore_fd`, so the device is rejected and the run continues on OpenGL. Setting `renderer = "VULKAN"` is honoured but does not get you Vulkan. Check the `nv2a: renderer:` line before believing a run exercised it. |
 | A virtual display | `xvfb-run`. SDL's `offscreen` driver cannot create a Vulkan surface |
 | MCPX + flash ROM | yours; the project ships none |
 | A hard disk | generated — [`../../tools/make_xbox_hdd.py`](../../tools/make_xbox_hdd.py) |

@@ -182,8 +182,21 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
     pg->vk_renderer_state->need_descriptor_rebind = true;
     pg->vk_renderer_state->deferred_downloads_frame = -1;
 
+    pgraph_vk_debug_init();
+
+    pgraph_vk_init_instance(pg, errp);
+    if (*errp) {
+        return;
+    }
+
 #if HAVE_EXTERNAL_MEMORY
-    bool use_external_memory = pgraph_vk_gl_external_memory_available();
+    /*
+     * After init_instance, not before: on desktop the FD interop extensions
+     * are optional now, so whether they were actually enabled is only known
+     * once the device exists. Asking earlier read a flag nobody had set yet.
+     */
+    bool use_external_memory = pgraph_vk_gl_external_memory_available() &&
+                               pg->vk_renderer_state->external_memory_fd_enabled;
     if (!use_external_memory) {
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_WARN, "hakuX",
@@ -197,13 +210,6 @@ static void pgraph_vk_init(NV2AState *d, Error **errp)
 #endif
     pg->vk_renderer_state->display.use_external_memory = use_external_memory;
 #endif
-
-    pgraph_vk_debug_init();
-
-    pgraph_vk_init_instance(pg, errp);
-    if (*errp) {
-        return;
-    }
 
     check_driver_identity_and_wipe_caches(pg->vk_renderer_state);
 

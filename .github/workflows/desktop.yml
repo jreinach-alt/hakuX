@@ -54,6 +54,29 @@ jobs:
             nlohmann-json3-dev \
             xvfb
 
+      # Seconds, and it fails for a reason no other gate here catches: the
+      # differ compiles psh.c out of the tree with the emulator-state functions
+      # carved out by signature. Rename or reshape one of those and the carve
+      # stops matching. Running it first means that shows up before the
+      # twenty-minute build rather than after.
+      - name: Pixel shader state differ
+        run: |
+          set -o pipefail
+          make -C docs/testing/psh_differ
+          ./docs/testing/psh_differ/build/psh-differ > psh-differ.log 2> psh-differ.err
+          if grep -q 'does not generate' psh-differ.err; then
+            echo "::error::a psh-differ baseline no longer generates a shader"
+            cat psh-differ.err
+            exit 1
+          fi
+          if ! grep -q '^TOTAL' psh-differ.log; then
+            echo "::error::psh-differ produced no report"
+            tail -40 psh-differ.log psh-differ.err
+            exit 1
+          fi
+          grep -E '^(field|-----|TOTAL)' psh-differ.log
+          sed -n '/^No effect on the emitted GLSL/,/^$/p' psh-differ.log
+
       # meson is not installed; QEMU's configure bootstraps it into a venv,
       # which is why python3-venv is above.
       - name: Restore compiler cache
@@ -113,7 +136,7 @@ jobs:
       # miss the path that matters. Mesa's lavapipe gives a stock runner a
       # conformant software Vulkan device; SDL's offscreen driver cannot make a
       # Vulkan surface, so this one needs a virtual X server.
-      - name: Start the emulated machine headless on Vulkan
+      - name: Start the emulated machine headless, requesting Vulkan
         env:
           SDL_AUDIODRIVER: dummy
         run: |
@@ -136,15 +159,28 @@ jobs:
             grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
             exit 1
           fi
-          # Proves the Vulkan backend actually came up rather than the process
-          # merely surviving: it has to have enumerated a physical device.
-          if ! grep -q 'Available physical devices' smoke-vk.log; then
-            echo "::error::Vulkan backend never enumerated a device"
+          # This used to grep for 'Available physical devices' and call that
+          # proof the Vulkan backend came up. It is not: nv2a_context_init
+          # initialises every registered renderer regardless of which one is
+          # selected, so that line appears on an OpenGL run too. The gate was
+          # green either way and proved nothing.
+          #
+          # nv2a now names the renderer it actually uses. Check that instead.
+          if ! grep -q '^nv2a: renderer:' smoke-vk.log; then
+            echo "::error::no renderer line - binary predates it, or died first"
             grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
             exit 1
           fi
-          echo "Vulkan backend up:"
-          grep -A3 'Available physical devices' smoke-vk.log | head -6
+          renderer=$(grep -m1 '^nv2a: renderer:' smoke-vk.log | cut -d' ' -f3-)
+          echo "renderer in use: $renderer"
+          if [ "$renderer" != "Vulkan" ]; then
+            # Not an error yet. The toml does select Vulkan; lavapipe is then
+            # rejected for lacking VK_KHR_external_semaphore_fd, and the run
+            # continues on OpenGL. Until there is a software Vulkan device that
+            # can actually run this renderer, failing here would only report
+            # the runner's capabilities. Say so instead.
+            echo "::warning::asked for Vulkan, got '$renderer' - the runner has no Vulkan device this renderer can use, so this step is an OpenGL smoke test"
+          fi
 
       - name: Upload startup log
         if: always()

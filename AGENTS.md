@@ -309,11 +309,39 @@ the test it impersonates, and one enabling the failing test alone.
 `Texture DXT` is the first, `Window clip` the second, and they looked identical
 until the discs were run.
 
+When the answer is "a state distinction we do not implement at all", the pixel
+shader half of that question needs no device:
+
+```bash
+cd docs/testing/psh_differ && make && ./build/psh-differ
+```
+
+It varies one field of `PshState` at a time and reports whether the generated
+GLSL changes. State that produces byte-identical GLSL never reached the GPU.
+Three seconds, no ROMs, no hardware. Read
+[`docs/testing/psh_differ/README.md`](docs/testing/psh_differ/README.md) before
+acting on a result — "no effect" is a claim about which baselines were tried,
+and extending them is the intended use.
+
 **Regression-test one suite at a time, not the full sweep.** Some pgraph tests
 are order-dependent (issue #15): a test can pass in one sweep and fail in the
 next with no code change. A full-sweep diff will show regressions that are not
 real. Confirm any single-test delta by running that suite in isolation on both
 builds.
+
+Which tests those are is measurable rather than folklore, and it does not need
+the device:
+
+```bash
+docs/testing/order_dependence.py --suite "Pixel shader" ...     # self-contamination
+docs/testing/order_dependence.py --target "Pixel shader::Passthru" ...  # which suite does it
+```
+
+A run is about 17 seconds on the desktop lane. Order-dependence is a property
+of what the emulator resets between draws, so it reproduces on any renderer —
+unlike an accuracy question, which that lane cannot settle. Measured so far:
+`Pixel shader` does **not** contaminate itself, 0 of 8 tests, so #15's example
+is being contaminated from outside its own suite.
 
 ## Conventions
 

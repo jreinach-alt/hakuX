@@ -125,7 +125,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                               state->depth_clipping;
     }
 
-    int num_stages = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL) & 0xFF;
+    int num_stages =
+        psh_num_combiner_stages(pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL));
     for (int i = 0; i < num_stages; i++) {
         state->rgb_inputs[i] =
             pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4);
@@ -180,6 +181,14 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                 NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED ||
             color_format ==
                 NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT;
+        /* A float depth texture holds the NV2A encoding, not a value (see
+         * the F16/F24 cases in psh_convert). The shadow comparison decodes
+         * it; a fixed-point one it just scales. */
+        state->tex_depth_float[i] =
+            color_format ==
+                NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FLOAT ||
+            color_format ==
+                NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT;
 
         uint32_t border_source =
             GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BORDER_SOURCE);
@@ -801,6 +810,43 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
                            "vec4 t%d_depth = vec4(float(t%d_depth_raw.x >> 8) "
                            "/ 16777215.0, 1.0, 0.0, 0.0);\n",
                            i, i);
+    }
+
+    if (compare_z && ps->state->tex_depth_float[i]) {
+        /*
+         * The texture holds the float depth encoding, normalised by the host
+         * UNORM format. Recover the integer and decode it -- the inverse of
+         * convert_f16_to_float / convert_f24_to_float in pgraph/util.h --
+         * instead of scaling by f16_max, which assumed the texture held a
+         * linear value. It never did for a texture read from guest memory,
+         * and since psh_convert started storing the encoding it does not for
+         * a rendered depth surface either (issue #30).
+         */
+        if (extract_msb_24b) {
+            mstring_append_fmt(vars, "uint t%d_enc = t%d_depth_raw.x >> 8;\n",
+                               i, i);
+        } else {
+            mstring_append_fmt(
+                vars, "uint t%d_enc = uint(roundEven(t%d_depth.x * %s));\n",
+                i, i, ps->state->tex_x8y24[i] ? "16777215.0" : "65535.0");
+        }
+        if (ps->state->tex_x8y24[i]) {
+            mstring_append_fmt(
+                vars,
+                "float t%d_z = uintBitsToFloat(t%d_enc << 7);\n"
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n", /* f24_max */
+                i, i, i, i, i);
+        } else {
+            mstring_append_fmt(
+                vars,
+                "float t%d_z = t%d_enc == 0u ? 0.0\n"
+                "           : uintBitsToFloat((t%d_enc << 11) + 0x3C000000u);\n"
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n", /* f16_max */
+                i, i, i, i, i, i);
+        }
+        mstring_append_fmt(vars, "vec4 t%d = vec4(t%d_z %s pT%d.z ? 1.0 : 0.0);\n",
+                           i, i, comparison, i);
+        return;
     }
 
     // Depth.y != 0 indicates 24 bit; depth.z != 0 indicates float.
@@ -1647,22 +1693,27 @@ static MString* psh_convert(struct PixelShader *ps)
                 z24_open, z24_close);
             break;
         case DEPTH_FORMAT_F24:
-            /* f24 is the top 24 bits of the float32, per convert_f24_to_float
-             * in pgraph/util.h, which rebuilds it with (f24 << 7). */
+            /* convert_f24_to_float in pgraph/util.h, inverted: f24 is the top
+             * 24 bits of the float32, rebuilt with (f24 << 7). Normalised like
+             * D24 above, so the pack shader recovers it unchanged. */
             mstring_append_fmt(
                 ps->code,
-                "gl_FragDepth = %sfloat(floatBitsToUint(max(zvalue, 0.0)) >> 7)\n"
-                "        / 16777216.0%s;\n",
+                "uint zf24 = min(floatBitsToUint(max(zvalue, 0.0)) >> 7,\n"
+                "                0xFFFFFFu);\n"
+                "gl_FragDepth = %sfloat(zf24) / 16777216.0%s;\n",
                 z24_open, z24_close);
             break;
         case DEPTH_FORMAT_F16:
-            /* f16 is (f16 << 11) + 0x3C000000, so the inverse is
-             * (bits - 0x3C000000) >> 11, and anything below that bias is 0. */
+            /* convert_f16_to_float, inverted: f16 is (f16 << 11) + 0x3C000000.
+             * Below that bias the encoding has nothing to say. F16 lives on a
+             * Z16 surface, which is D16_UNORM on every host, so it needs none
+             * of the Z24S8 scale dance -- 65535.0 is the format's own scale. */
             mstring_append(
                 ps->code,
-                "uint zbits_f16 = floatBitsToUint(max(zvalue, 0.0));\n"
-                "gl_FragDepth = zbits_f16 < 0x3C000000u ? 0.0\n"
-                "    : float((zbits_f16 - 0x3C000000u) >> 11) / 65535.0;\n");
+                "uint zbits = floatBitsToUint(max(zvalue, 0.0));\n"
+                "uint zf16 = zbits < 0x3C000000u ? 0u\n"
+                "          : min((zbits - 0x3C000000u) >> 11, 0xFFFFu);\n"
+                "gl_FragDepth = float(zf16) / 65535.0;\n");
             break;
         default:
             mstring_append(ps->code,
@@ -1729,7 +1780,12 @@ MString *pgraph_glsl_gen_psh(const PshState *state, GenPshGlslOptions opts)
     ps.opts = opts;
     ps.state = state;
 
-    ps.num_stages = state->combiner_control & 0xFF;
+    ps.num_stages = psh_num_combiner_stages(state->combiner_control);
+    if ((state->combiner_control & 0xFF) > PSH_MAX_COMBINER_STAGES) {
+        NV2A_UNIMPLEMENTED("%d combiner stages, the hardware has %d",
+                           state->combiner_control & 0xFF,
+                           PSH_MAX_COMBINER_STAGES);
+    }
     ps.flags = state->combiner_control >> 8;
     for (i = 0; i < 4; i++) {
         ps.tex_modes[i] = (state->shader_stage_program >> (i * 5)) & 0x1F;
