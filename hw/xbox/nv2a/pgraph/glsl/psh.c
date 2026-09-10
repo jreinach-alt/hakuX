@@ -1596,6 +1596,28 @@ static MString* psh_convert(struct PixelShader *ps)
     }
 
     if (ps->state->depth_needed) {
+        /*
+         * zvalue is in the guest's depth units -- vtxPos.w for W buffering,
+         * vtxPos.z otherwise -- and what lands in the host depth buffer has to
+         * be something the readback can turn back into the guest's 24 or 16 bit
+         * depth word.
+         *
+         * For the float formats that means storing the *encoding*, not the
+         * decoded value. Normalising the value itself by clipRange.y, which is
+         * f24_max = 1e30 for F24, is what the default case below used to do,
+         * and it destroys the buffer: a realistic zvalue of 325 lands at 3e-28
+         * and every drawn pixel reads back as zero. Measured against hardware
+         * on W buffering, where silicon has 0x874500 (f24 for 325.0) and this
+         * had 0x000000.
+         *
+         * The encoding is safe to store because IEEE-754 bit patterns of
+         * non-negative floats are monotonic in the value, so depth comparisons
+         * still order correctly, and it costs no precision -- 24 bits of guest
+         * depth in 24 bits of host depth. It also makes the readback in
+         * surface-compute.c correct as it already stands, and makes the clear
+         * path identical for fixed and float, which is the tell that this is
+         * the representation the rest of the pipeline already assumed.
+         */
         switch (ps->state->depth_format) {
         case DEPTH_FORMAT_D16:
             mstring_append(
@@ -1606,6 +1628,24 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append(
                 ps->code,
                 "gl_FragDepth = uintBitsToFloat(floatBitsToUint(floor(zvalue) / 16777216.0) + 1u);\n");
+            break;
+        case DEPTH_FORMAT_F24:
+            /* f24 is the top 24 bits of the float32, per convert_f24_to_float
+             * in pgraph/util.h, which rebuilds it with (f24 << 7). */
+            mstring_append(
+                ps->code,
+                "gl_FragDepth = uintBitsToFloat(floatBitsToUint(\n"
+                "    float(floatBitsToUint(max(zvalue, 0.0)) >> 7)\n"
+                "        / 16777216.0) + 1u);\n");
+            break;
+        case DEPTH_FORMAT_F16:
+            /* f16 is (f16 << 11) + 0x3C000000, so the inverse is
+             * (bits - 0x3C000000) >> 11, and anything below that bias is 0. */
+            mstring_append(
+                ps->code,
+                "uint zbits_f16 = floatBitsToUint(max(zvalue, 0.0));\n"
+                "gl_FragDepth = zbits_f16 < 0x3C000000u ? 0.0\n"
+                "    : float((zbits_f16 - 0x3C000000u) >> 11) / 65535.0;\n");
             break;
         default:
             mstring_append(ps->code,

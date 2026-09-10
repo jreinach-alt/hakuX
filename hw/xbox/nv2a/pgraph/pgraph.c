@@ -4283,24 +4283,23 @@ void pgraph_get_clear_depth_stencil_value(PGRAPHState *pg, float *depth,
     *depth = 1.0;
 
     switch (pg->surface_shape.zeta_format) {
+    /*
+     * The host depth buffer holds the guest's depth *word* normalised, for both
+     * the fixed point and the float formats -- see the F24/F16 cases in
+     * glsl/psh.c for why the float ones store their encoding rather than their
+     * value. So the clear is the same arithmetic either way, and decoding the
+     * float here would disagree with every pixel the rasteriser writes.
+     */
     case NV097_SET_SURFACE_FORMAT_ZETA_Z16: {
         uint16_t z = clear_zstencil & 0xFFFF;
         /* FIXME: Remove bit for stencil clear? */
-        if (pg->surface_shape.z_format) {
-            *depth = convert_f16_to_float(z) / f16_max;
-        } else {
-            *depth = z / (float)0xFFFF;
-        }
+        *depth = z / (float)0xFFFF;
         break;
     }
     case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8: {
         *stencil = clear_zstencil & 0xFF;
         uint32_t z = clear_zstencil >> 8;
-        if (pg->surface_shape.z_format) {
-            *depth = convert_f24_to_float(z) / f24_max;
-        } else {
-            *depth = z / (float)0xFFFFFF;
-        }
+        *depth = z / (float)0xFFFFFF;
         break;
     }
     default:
