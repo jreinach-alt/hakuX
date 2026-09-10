@@ -1177,23 +1177,30 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
     }
 
     /*
-     * Only the GL renderer needs a GL context. This used to be created
-     * unconditionally - including on a window made with SDL_WINDOW_VULKAN
-     * rather than SDL_WINDOW_OPENGL, which is not valid SDL usage - and the
-     * GL 4.0 requirement below was then enforced fatally in Vulkan mode. A
-     * system with a working Vulkan driver but weak GL could not start at all,
-     * and headless runs died on a requirement they had no use for.
+     * The GL context is wanted even in Vulkan mode: the xemu UI presents the
+     * rendered frame through GL, importing the Vulkan image via external
+     * memory. So it is still created here.
+     *
+     * What changed is that its absence is only FATAL for the GL renderer. In
+     * Vulkan mode a missing or too-old GL context costs presentation, not
+     * emulation, and a headless run (-display none) never presents at all. It
+     * used to exit(1), so a machine with a working Vulkan driver and weak GL
+     * could not start in the renderer it was told to use.
      */
-    if (!use_vulkan) {
-        m_context = SDL_GL_CreateContext(m_window);
+    m_context = SDL_GL_CreateContext(m_window);
 
 #ifndef __ANDROID__
-        if (m_context != NULL && epoxy_gl_version() < 40) {
-            SDL_GL_MakeCurrent(NULL, NULL);
-            SDL_GL_DeleteContext(m_context);
-            m_context = NULL;
-        }
+    if (m_context != NULL && epoxy_gl_version() < 40) {
+        SDL_GL_MakeCurrent(NULL, NULL);
+        SDL_GL_DeleteContext(m_context);
+        m_context = NULL;
+    }
 #endif
+
+    if (m_context == NULL && use_vulkan) {
+        fprintf(stderr,
+                "No usable OpenGL context; continuing on Vulkan. Presenting to "
+                "a window needs one, so use -display none if this is headless.\n");
     }
 
     if (!use_vulkan && m_context == NULL) {
@@ -1216,7 +1223,7 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
         exit(1);
     }
 
-    if (!use_vulkan && SDL_GL_MakeCurrent(m_window, m_context) != 0) {
+    if (m_context != NULL && SDL_GL_MakeCurrent(m_window, m_context) != 0) {
         fprintf(stderr, "Failed to make GL context current: %s\n", SDL_GetError());
         SDL_DestroyWindow(m_window);
         SDL_Quit();
@@ -1242,9 +1249,9 @@ static void sdl2_display_very_early_init(DisplayOptions *o)
 
     fprintf(stderr, "CPU: %s\n", xemu_get_cpu_info());
     fprintf(stderr, "OS_Version: %s\n", xemu_get_os_info());
-    /* glGetString needs a current GL context, which Vulkan mode does not
-     * create. The Vulkan backend reports its own device separately. */
-    if (!use_vulkan) {
+    /* glGetString needs a current context, which a Vulkan-only start may not
+     * have. The Vulkan backend reports its own device separately. */
+    if (m_context != NULL) {
         fprintf(stderr, "GL_VENDOR: %s\n", glGetString(GL_VENDOR));
         fprintf(stderr, "GL_RENDERER: %s\n", glGetString(GL_RENDERER));
         fprintf(stderr, "GL_VERSION: %s\n", glGetString(GL_VERSION));
