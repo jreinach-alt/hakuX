@@ -1,0 +1,117 @@
+name: Desktop build
+
+# WHY THIS EXISTS
+#
+# Until 2026-09 the Linux target did not build, so hw/xbox/nv2a's headers had
+# exactly one consumer: the Android port. Two commits on the docs/tooling
+# sprint changed those headers, were verified against the desktop build that
+# had just been unblocked, and broke Android - which is the build that ships.
+# Nothing caught it; a person reading the diff did.
+#
+# A header shared by two builds needs both of them gated. Android is covered by
+# android.yml. This is the other half, and it deliberately carries the same
+# triggers so a single push runs both.
+#
+# It is also the tier-2 test target: a place to run the emulator without the
+# handheld. Mesa's lavapipe supplies a conformant software Vulkan device on a
+# stock runner, so this can grow into running the pgraph suite here. Today it
+# proves the build and a headless start.
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false   # the QEMU ROM submodules are unused by this build
+
+      # Found by iteration against a bare container; every one of these was a
+      # hard configure failure, not an optional feature. glib and pixman are
+      # QEMU's own requirements; the rest are xemu's UI and the NV2A backends.
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq \
+            ninja-build ccache python3-venv pkg-config \
+            libglib2.0-dev libpixman-1-dev \
+            libsdl2-dev libepoxy-dev libgtk-3-dev \
+            libvulkan-dev mesa-vulkan-drivers \
+            libslirp-dev libpcap-dev libssl-dev libgmp-dev \
+            libpng-dev libsamplerate0-dev libasound2-dev libpulse-dev \
+            libcap-ng-dev libattr1-dev libdrm-dev libpcre2-dev \
+            nlohmann-json3-dev
+
+      # meson is not installed; QEMU's configure bootstraps it into a venv,
+      # which is why python3-venv is above.
+      - name: Restore compiler cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: desktop-ccache-${{ github.sha }}
+          restore-keys: desktop-ccache-
+
+      - name: Configure
+        run: |
+          mkdir -p build-linux
+          cd build-linux
+          ../configure \
+            --target-list=i386-softmmu \
+            --extra-cflags="-DXBOX=1" \
+            --disable-werror --disable-docs --disable-guest-agent --disable-tools
+
+      - name: Build
+        run: ninja -C build-linux -j"$(nproc)" qemu-system-i386
+
+      # Compiling is not enough: the two breakages this gate exists for were a
+      # missing include and a missing symbol, and one of those only shows at
+      # link. Starting the machine also exercises NV2A init, which is where the
+      # shared headers actually get used.
+      - name: Start the emulated machine headless
+        env:
+          SDL_VIDEODRIVER: offscreen
+          SDL_AUDIODRIVER: dummy
+        run: |
+          cd build-linux
+          set +e
+          timeout -k 5 40 ./qemu-system-i386 -machine xbox -display none > smoke.log 2>&1
+          rc=$?
+          set -e
+          # 124 is the timeout killing a healthy long-running process, which is
+          # the expected outcome - there is no BIOS or disc here to boot.
+          if [ "$rc" -ne 124 ] && [ "$rc" -ne 0 ]; then
+            echo "::error::emulator exited $rc instead of running"
+            grep -viE '^ALSA lib|snd_' smoke.log | tail -40
+            exit 1
+          fi
+          if grep -qiE 'Assertion|assert failed|Segmentation fault' smoke.log; then
+            echo "::error::assertion or crash during startup"
+            grep -viE '^ALSA lib|snd_' smoke.log | tail -40
+            exit 1
+          fi
+          if ! grep -q 'xemu_version' smoke.log; then
+            echo "::error::no version banner - the binary did not get far enough to be meaningful"
+            tail -40 smoke.log
+            exit 1
+          fi
+          echo "started clean:"
+          grep -viE '^ALSA lib|snd_' smoke.log | head -12
+
+      - name: Upload startup log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-smoke-log
+          path: build-linux/smoke.log
+          if-no-files-found: ignore
