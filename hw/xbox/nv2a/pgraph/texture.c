@@ -114,6 +114,8 @@ BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format)
 bool pgraph_color_format_has_signed_variant(unsigned int color_format)
 {
     switch (color_format) {
+    /* Converted to unsigned RGBA8 above; signedness comes from the sampler. */
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5:
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8:
@@ -463,19 +465,49 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
         }
     } else if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5) {
         assert(depth == 1); /* FIXME */
-        size = width * height * 3;
+        /*
+         * Plain unsigned expansion of all three fields, measured rather than
+         * guessed. Reading the levels hardware actually emits out of the
+         * Texture format golden: red lands on 64 levels of the v*255/63 grid,
+         * green and blue on 32 levels of v*255/31 -- and green's and blue's
+         * level sets are *identical*. There is no signedness in the format.
+         *
+         * The decode this replaces flipped the sign bits of green and blue,
+         * biased them to int8 and stored an SNORM image. Half of each range
+         * then clamped away, which is the 32 -> 17 level collapse recorded in
+         * issue #21, and it inverted blue outright.
+         *
+         * Signedness on this hardware is a *sampler* property -- the
+         * per-channel bits of NV_PGRAPH_TEXFILTER0 -- not a property of the
+         * stored format, so it does not belong in the decode at all. It is
+         * applied by texture_wants_snorm() instead, which is why this format
+         * is now listed in pgraph_color_format_has_signed_variant(): the bump
+         * paths that need signed dS/dT still get it, from the sampler.
+         */
+        size = width * height * 4;
         converted_data = g_malloc(size);
         for (int y = 0; y < height; y++) {
             for (int x = 0; x < width; x++) {
                 uint16_t rgb655 = *(uint16_t *)(data + y * row_pitch + x * 2);
-                int8_t *pixel = (int8_t *)&converted_data[(y * width + x) * 3];
-                /* Maps 5 bit G and B signed value range to 8 bit
-                 * signed values. R is probably unsigned.
-                 */
-                rgb655 ^= (1 << 9) | (1 << 4);
-                pixel[0] = ((rgb655 & 0xFC00) >> 10) * 0x7F / 0x3F;
-                pixel[1] = ((rgb655 & 0x03E0) >> 5) * 0xFF / 0x1F - 0x80;
-                pixel[2] = (rgb655 & 0x001F) * 0xFF / 0x1F - 0x80;
+                uint8_t *pixel = &converted_data[(y * width + x) * 4];
+                pixel[0] = ((rgb655 >> 10) & 0x3F) * 0xFF / 0x3F;
+                /* Green stays open, and is not a bit-selection problem.
+                 * Across Texture format's gradient hardware's green completes
+                 * two ramps where this completes one (correlation with screen
+                 * x +0.500 against +0.999), so that test alone is fitted far
+                 * better by bits [8:5] or [8:4]. Both were tried on device and
+                 * both are overfits: they take BumpMap_R6G5B5 from 23,793
+                 * differing pixels to 58,317 and 64,214 respectively, the
+                 * latter being no better than the signed decode this replaced.
+                 * The two suites want opposite bit windows, which means the
+                 * difference between them is not in the decode. The obvious
+                 * candidate is what else differs -- Bump map sets the
+                 * per-channel signedness bits and Texture format does not.
+                 * So keep the decode neutral and plain, and leave green to be
+                 * explained rather than fitted. See issue #21. */
+                pixel[1] = ((rgb655 >> 5) & 0x1F) * 0xFF / 0x1F;
+                pixel[2] = (rgb655 & 0x1F) * 0xFF / 0x1F;
+                pixel[3] = 0xFF;
             }
         }
     } else {

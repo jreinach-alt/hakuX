@@ -242,11 +242,13 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                                     NV_PGRAPH_TEXFILTER0_RSIGNED |
                                     NV_PGRAPH_TEXFILTER0_GSIGNED |
                                     NV_PGRAPH_TEXFILTER0_BSIGNED;
+        /* R6G5B5 used to need a renderer-specific exception here, because GL
+         * stored it in an SNORM image while Vulkan did not. Both now convert it
+         * to unsigned RGBA8 and take signedness from the sampler, so the rule
+         * is the same one every other format follows. */
         state->snorm_tex[i] =
-            ((sign_filter & any_signed) &&
-             pgraph_color_format_has_signed_variant(color_format)) ||
-            (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL &&
-             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5);
+            (sign_filter & any_signed) &&
+            pgraph_color_format_has_signed_variant(color_format);
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);

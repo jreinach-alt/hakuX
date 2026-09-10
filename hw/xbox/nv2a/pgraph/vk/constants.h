@@ -172,8 +172,11 @@ typedef struct VkColorFormatInfo {
  * A row marked "Converted" is not the guest format: pgraph_convert_texture_data
  * has already rewritten the pixels and this is the format of the RESULT. The
  * conversion and this entry must agree about signedness as well as layout -
- * SZ_R6G5B5 converts to signed bytes and lands in an SNORM image here, which
- * the fragment shader must then NOT remap again. See glsl/psh.c snorm_tex and
+ * SZ_R6G5B5 converts to plain unsigned RGBA8 and lands in a UNORM image here.
+ * It used to convert to signed bytes and land in an SNORM image, which the
+ * fragment shader then had to know not to remap again; signedness is a sampler
+ * property on this hardware, so it is applied by texture_wants_snorm() now and
+ * the conversion no longer has an opinion. See glsl/psh.c snorm_tex and
  * docs/investigations/nv2a-sweep-2026-09.md.
  */
 static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
@@ -266,7 +269,7 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5] = {
-        VK_FORMAT_R8G8B8_SNORM, // Converted
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8] = {
         VK_FORMAT_R8G8_UNORM,

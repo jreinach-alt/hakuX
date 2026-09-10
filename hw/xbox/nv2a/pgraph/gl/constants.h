@@ -299,8 +299,11 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
         {2, true, GL_RG8, GL_RG, GL_UNSIGNED_BYTE,
          {GL_RED, GL_RED, GL_RED, GL_GREEN}},
 
+    /* Converted to unsigned RGBA8 by pgraph_convert_texture_data; the levels
+     * hardware emits are plain unsigned expansions (R on v*255/63, G and B on
+     * v*255/31). Signedness is a sampler property, not a format property. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5] =
-        {2, false, GL_RGB8_SNORM, GL_RGB, GL_BYTE}, /* FIXME: This might be signed */
+        {2, false, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8] =
         {2, false, GL_RG8, GL_RG, GL_UNSIGNED_BYTE,
          {GL_RED, GL_GREEN, GL_RED, GL_GREEN}},
