@@ -21,6 +21,7 @@
 #include "qemu/fast-hash.h"
 #include "qemu/mstring.h"
 #include "renderer.h"
+#include "xemu-version-macro.h"
 #include "ui/xemu-settings.h"
 
 #if OPT_ASYNC_COMPILE
@@ -932,6 +933,51 @@ static bool shader_cache_entry_compare(Lru *lru, LruNode *node, const void *key)
 static bool shader_module_warmup_in_progress;
 static void (*shader_warmup_progress_cb)(int current, int total);
 
+/*
+ * shader_module_keys.bin holds raw ShaderModuleCacheKey structs so the
+ * modules a title used can be compiled ahead of its first draw. The structs
+ * are internal state: any change to them, or to what the generators make of
+ * them, turns a file from another build into keys that parse but mean
+ * something else. Such a key still compiles at warm-up, and a real draw that
+ * hashes to it then runs with the wrong module -- one of them left the
+ * vertex stage without a position and crashed the device. So the file names
+ * the build that wrote it, and a file from any other build is discarded.
+ */
+typedef struct ShaderModuleKeyFileHeader {
+    char magic[8];
+    uint32_t key_size;
+    uint32_t reserved;
+    uint64_t build_id;
+} ShaderModuleKeyFileHeader;
+
+static const char shader_module_key_file_magic[8] = "XEMUSMK";
+
+static ShaderModuleKeyFileHeader shader_module_key_file_header(void)
+{
+    const char *build = XEMU_COMMIT " " XEMU_DATE;
+    ShaderModuleKeyFileHeader h;
+    memset(&h, 0, sizeof(h));
+    memcpy(h.magic, shader_module_key_file_magic, sizeof(h.magic));
+    h.key_size = sizeof(ShaderModuleCacheKey);
+    h.build_id = fast_hash((const uint8_t *)build, strlen(build));
+    return h;
+}
+
+static bool shader_module_key_file_header_matches(const void *data,
+                                                  size_t len)
+{
+    ShaderModuleKeyFileHeader expected = shader_module_key_file_header();
+    return len >= sizeof(expected) &&
+           memcmp(data, &expected, sizeof(expected)) == 0;
+}
+
+static bool shader_module_key_is_plausible(const ShaderModuleCacheKey *key)
+{
+    return key->kind == VK_SHADER_STAGE_VERTEX_BIT ||
+           key->kind == VK_SHADER_STAGE_GEOMETRY_BIT ||
+           key->kind == VK_SHADER_STAGE_FRAGMENT_BIT;
+}
+
 void shader_module_key_persist(const ShaderModuleCacheKey *key)
 {
     if (!g_config.perf.cache_shaders || shader_module_warmup_in_progress) {
@@ -941,8 +987,25 @@ void shader_module_key_persist(const ShaderModuleCacheKey *key)
     const char *base = xemu_settings_get_base_path();
     char *path = g_strdup_printf("%sshader_module_keys.bin", base);
 
-    FILE *f = fopen(path, "ab");
+    FILE *f = fopen(path, "r+b");
+    bool start_over = f == NULL;
     if (f) {
+        ShaderModuleKeyFileHeader on_disk;
+        size_t got = fread(&on_disk, 1, sizeof(on_disk), f);
+        if (!shader_module_key_file_header_matches(&on_disk, got)) {
+            fclose(f);
+            start_over = true;
+        }
+    }
+    if (start_over) {
+        f = fopen(path, "wb");
+        if (f) {
+            ShaderModuleKeyFileHeader h = shader_module_key_file_header();
+            fwrite(&h, sizeof(h), 1, f);
+        }
+    }
+    if (f) {
+        fseek(f, 0, SEEK_END);
         fwrite(key, sizeof(ShaderModuleCacheKey), 1, f);
         fclose(f);
     }
@@ -1093,13 +1156,25 @@ static void shader_cache_init(PGRAPHState *pg)
         gchar *data = NULL;
         gsize len = 0;
 
-        if (g_file_get_contents(path, &data, &len, NULL) && len > 0) {
-            size_t num_keys = len / sizeof(ShaderModuleCacheKey);
-            ShaderModuleCacheKey *keys = (ShaderModuleCacheKey *)data;
+        if (g_file_get_contents(path, &data, &len, NULL) && len > 0 &&
+            !shader_module_key_file_header_matches(data, len)) {
+            VK_LOG_ERROR("Shader module warm-up: shader_module_keys.bin is "
+                         "from another build, ignoring it");
+            len = 0;
+        }
+        if (data && len > sizeof(ShaderModuleKeyFileHeader)) {
+            size_t num_keys = (len - sizeof(ShaderModuleKeyFileHeader)) /
+                              sizeof(ShaderModuleCacheKey);
+            ShaderModuleCacheKey *keys =
+                (ShaderModuleCacheKey *)(data +
+                                         sizeof(ShaderModuleKeyFileHeader));
 
             shader_module_warmup_in_progress = true;
             int warmed = 0;
             for (size_t i = 0; i < num_keys; i++) {
+                if (!shader_module_key_is_plausible(&keys[i])) {
+                    continue;
+                }
                 uint64_t hash = hash_shader_module_key(&keys[i]);
                 if (!lru_contains_hash(&r->shader_module_cache, hash)) {
                     lru_lookup(&r->shader_module_cache, hash, &keys[i]);
