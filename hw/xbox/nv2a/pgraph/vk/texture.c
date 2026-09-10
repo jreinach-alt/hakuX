@@ -1680,6 +1680,24 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     assert(state.dimensionality <
            ARRAY_SIZE(dimensionality_to_vk_image_view_type));
 
+    /*
+     * A swizzled texture with a texture-supplied border is decoded at the
+     * size the border makes it -- max(16, 2n) per axis, the same rule as
+     * get_texture_layout -- so the image has to be that size as well.
+     * Created at the logical size, the level copy kept only the top-left
+     * corner (ring plus a sliver of interior) and the shader's border
+     * remap then sampled texel (n·u + 4)/2: every Texture_border 2D and 3D
+     * test showed the grey ring where the hardware shows the interior.
+     * Cubemaps keep the logical size; their layout crops to it.
+     */
+    if (!f_basic.linear && state.border && !state.cubemap) {
+        state.width = MAX(16, state.width * 2);
+        state.height = MAX(16, state.height * 2);
+        if (state.dimensionality == 3) {
+            state.depth = MAX(16, state.depth * 2);
+        }
+    }
+
     VkImageCreateInfo image_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = dimensionality_to_vk_image_type[state.dimensionality],

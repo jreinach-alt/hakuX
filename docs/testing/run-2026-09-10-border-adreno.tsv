@@ -1,0 +1,20 @@
+# Texture_border on the Nova. after = VkImage created at the bordered extent (max(16,2n)); before = logical extent (3439aaab75 + #31).
+# test	after_px	before_px
+2D	50772	61678
+2D_BorderTex_SZ	132	58827
+3D_BorderTex_SZ_16x1	0	81920
+3D_BorderTex_SZ_16x16	0	72690
+3D_BorderTex_SZ_1x1	0	57600
+3D_BorderTex_SZ_2x2	0	57920
+3D_BorderTex_SZ_32x32	0	79948
+3D_BorderTex_SZ_4x4	0	61550
+3D_BorderTex_SZ_4x8	0	62560
+3D_BorderTex_SZ_8x2	0	61120
+3D_BorderTex_SZ_8x8	0	64000
+Cube_BorderTex_SZ_16x16	99223	99223
+Cube_BorderTex_SZ_1x1	112693	112693
+Cube_BorderTex_SZ_2x2	112697	112697
+Cube_BorderTex_SZ_32x32	93378	93378
+Cube_BorderTex_SZ_4x4	112702	112702
+Cube_BorderTex_SZ_8x8	112687	112687
+xemu#1034	64690	64690
