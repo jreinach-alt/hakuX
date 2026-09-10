@@ -9,6 +9,17 @@
 # exit by itself, so this happens on the *success* path too, not just on
 # crashes.
 #
+# Stopping the emulator is only half of it. On this device ES-DE
+# (org.es_de.frontend) is the *home* app, and its main window carries
+# FLAG_KEEP_SCREEN_ON, so force-stopping the emulator hands the foreground back
+# to a window that pins the display on for good. Measured on a Retroid Pocket
+# Nova: asleep and idle draws +122uA (charging), the same device sitting on
+# ES-DE with the screen lit draws -107mA, and the screen-off timeout never
+# fires because the flag suppresses it. So put the device back to sleep
+# explicitly. KEYCODE_SLEEP overrides FLAG_KEEP_SCREEN_ON where the timeout
+# cannot -- verified: Awake -> Asleep, display suspend blocker released,
+# current_now back to 0.
+#
 # Per-script `trap ... EXIT` handlers are not enough on their own: they only
 # cover their own script, and say nothing about a turn ending while a
 # background campaign holds the device.
@@ -56,6 +67,9 @@ for serial in $(adb devices 2>/dev/null | tr -d '\r' |
             stopped="$stopped $serial/$pkg"
         fi
     done
+    # Whether or not we stopped anything, do not leave the screen lit: the
+    # emulator may already have exited on its own straight back onto ES-DE.
+    adb -s "$serial" shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
 done
 
 [ -n "$stopped" ] && echo "hakuX: force-stopped the emulator on:$stopped"

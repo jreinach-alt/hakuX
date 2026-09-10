@@ -136,6 +136,39 @@ memory must keep watching that memory until the copy lands, and must drop the
 copy if the guest writes there first: once the CPU has written a range, VRAM is
 authoritative for it.
 
+**The handheld stops charging because the supply is 4.5W, and stays awake
+because ES-DE is the home app.** Both were measured on the Nova rather than
+guessed, and neither is hakuX's doing:
+
+- `/sys/class/power_supply/usb/usb_type` reports `Unknown [SDP] DCP CDP ACA C
+  PD PD_DRP PD_PPS BrickID` — the brackets mark the active type. **SDP** is a
+  PC data port: `current_max=900000` at `voltage_max=5000000`, so **4.5W in**.
+  Measured `current_now`: asleep and idle **+122uA**; adb polled once a second
+  with no app, still asleep, **+2.1mA** (so adb itself is innocent); emulator
+  running **-459mA average, -1122mA peak**. A three-hour sweep takes roughly
+  1.4Ah out of a 5.18Ah battery. The port negotiates DCP/CDP/PD, so a wall
+  charger plus `adb tcpip 5555` moves the input to 15W+ and the problem goes
+  away. That is the only real fix for long runs; everything below is damage
+  control.
+- ES-DE (`org.es_de.frontend`) is the device's **default home app**, and its
+  `MainActivityHomeApp` window carries `FLAG_KEEP_SCREEN_ON` (verified:
+  `mOwnerUid=10140`, and the `SCREEN_BRIGHT_WAKE_LOCK 'WindowManager/displayId:0'`
+  is attributed to `WorkSource{10140}`). So force-stopping the emulator hands
+  the foreground straight back to a window that pins the display on, the 30s
+  timeout never fires, and the device sits at **-107mA** indefinitely. It also
+  holds an `AudioMix` wake lock.
+
+`KEYCODE_SLEEP` overrides `FLAG_KEEP_SCREEN_ON` where the timeout cannot —
+Awake to Asleep, display suspend blocker released, `current_now` back to 0.
+`stop-emulator.sh` and `sweep_queue.sh` now send it wherever they release the
+device. Any new runner must do the same: stopping the emulator is only half of
+leaving the device alone.
+
+```bash
+adb shell dumpsys power | grep -E "mWakefulness|DisplaySuspendBlocker"
+adb shell cat /sys/class/power_supply/battery/current_now   # <0 = draining
+```
+
 **Instrumentation is not free.** A `syscall(SYS_gettid)` added to the pushbuffer
 inner loop — 144,712 calls in a few seconds — throttled the emulator so badly it
 presented as a renderer deadlock, and the side-effects were investigated as

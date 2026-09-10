@@ -73,6 +73,14 @@ run_one() {  # $1 = Suite::Test ; echoes guest_dir on success
     echo "$gdir"
 }
 
+# ES-DE (org.es_de.frontend) is this device's home app and its window carries
+# FLAG_KEEP_SCREEN_ON, so the moment the emulator leaves the foreground the
+# display is pinned on and the screen-off timeout never fires. Measured on the
+# Nova: asleep and idle draws +122uA, the same device parked on ES-DE with the
+# screen lit draws -107mA. Anywhere this script hands the device back, put the
+# panel out. KEYCODE_SLEEP overrides the flag; the timeout cannot.
+sleep_panel() { a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1; }
+
 collect() {
     local img="$STATE/hdd.img"
     a pull "$HDD" "$img" >/dev/null 2>&1 || return 1
@@ -96,6 +104,7 @@ worker() {
                 a shell am force-stop "$PKG" >/dev/null 2>&1
                 rm -f "$LEASE"          # let the Stop hook protect the device again
                 collect >> "$LOG" 2>&1
+                sleep_panel
                 touch "$IDLE"
                 echo "$(now) paused, device free" >> "$LOG"
                 paused=1
@@ -125,6 +134,7 @@ worker() {
     done
     collect >> "$LOG" 2>&1
     rm -f "$LEASE"
+    sleep_panel
     echo "$(now) QUEUE EMPTY" >> "$LOG"
 }
 
@@ -142,6 +152,7 @@ case "${1:-status}" in
     for _ in $(seq 1 40); do [ -f "$IDLE" ] && break; sleep 2; done
     if [ -f "$IDLE" ]; then
         a shell am force-stop "$PKG" >/dev/null 2>&1
+        sleep_panel
         echo "paused — the Nova is yours. $(wc -l < "$QUEUE") test(s) still queued."
     else
         echo "WARNING: runner did not confirm idle; check $LOG before using the device."
