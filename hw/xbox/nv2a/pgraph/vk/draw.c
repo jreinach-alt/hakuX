@@ -5243,6 +5243,38 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     unsigned int ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);
     unsigned int ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);
 
+    /*
+     * The surface clip rectangle bounds a clear as it bounds a draw: the
+     * memory outside it is left alone whatever the clear rect says. The
+     * surface image here spans the clip offset plus its size, so a clear
+     * rect reaching above or left of the clip would otherwise land in it.
+     * pbkit paints its debug text with clears, and Surface clip's
+     * DebugTextShouldClip expects the lines above a half-height clip to
+     * stay invisible; its rt_ tests fill the memory around the clip from
+     * the CPU and expect a full-surface clear to leave that fill alone.
+     * A zero clip size is not a hardware case that has been measured (the
+     * suite sends the surface size instead), so it bounds nothing here.
+     */
+    {
+        unsigned int cx = pg->surface_shape.clip_x;
+        unsigned int cy = pg->surface_shape.clip_y;
+        unsigned int cw = pg->surface_shape.clip_width;
+        unsigned int ch = pg->surface_shape.clip_height;
+        if (cw) {
+            xmin = MAX(xmin, cx);
+            xmax = MIN(xmax, cx + cw - 1);
+        }
+        if (ch) {
+            ymin = MAX(ymin, cy);
+            ymax = MIN(ymax, cy + ch - 1);
+        }
+        if (xmin > xmax || ymin > ymax) {
+            /* Entirely outside the clip: nothing is written. */
+            pg->clearing = false;
+            return;
+        }
+    }
+
     NV2A_VK_DGROUP_BEGIN("CLEAR min=(%d,%d) max=(%d,%d)%s%s", xmin, ymin, xmax,
                          ymax, write_color ? " color" : "",
                          write_zeta ? " zeta" : "");
