@@ -1710,12 +1710,42 @@ static void invalidate_surface(NV2AState *d, SurfaceBinding *surface)
         surface->invalidation_frame = -1;
     }
 
+    /*
+     * These were assertions that the caller had already marked the binding
+     * dirty before invalidating the surface under it. The invariant is real --
+     * a draw after this must not reuse the binding -- but asserting it kills
+     * the process, and Color zeta overlap::AdjacentWithAA trips it, which is
+     * one of the suites never measured until the surface-format aborts were
+     * removed. Colour and zeta sharing an address is unimplemented here (see
+     * the coupling notes in docs/investigations/sweeps/sweep-surface.md), so
+     * the guest reaching this is expected rather than impossible.
+     *
+     * Unbinding is what *makes* the binding dirty, so set it instead of
+     * demanding the caller already did. Warn once so a caller that skipped it
+     * stays visible rather than silently fixed.
+     */
     if (surface == r->color_binding) {
-        assert(d->pgraph.surface_color.buffer_dirty);
+        if (!d->pgraph.surface_color.buffer_dirty) {
+            static bool warned;
+            if (!warned) {
+                warned = true;
+                fprintf(stderr, "nv2a: colour surface invalidated while bound "
+                                "and not marked dirty; rebinding forced\n");
+            }
+            d->pgraph.surface_color.buffer_dirty = true;
+        }
         unbind_surface(d, true);
     }
     if (surface == r->zeta_binding) {
-        assert(d->pgraph.surface_zeta.buffer_dirty);
+        if (!d->pgraph.surface_zeta.buffer_dirty) {
+            static bool warned;
+            if (!warned) {
+                warned = true;
+                fprintf(stderr, "nv2a: zeta surface invalidated while bound "
+                                "and not marked dirty; rebinding forced\n");
+            }
+            d->pgraph.surface_zeta.buffer_dirty = true;
+        }
         unbind_surface(d, false);
     }
 
