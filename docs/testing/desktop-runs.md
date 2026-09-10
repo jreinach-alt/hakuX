@@ -13,7 +13,7 @@ path towards running the suite in CI.
 | | |
 |---|---|
 | Desktop build | `configure --target-list=i386-softmmu --extra-cflags=-DXBOX=1`; deps are listed in [`.github/workflows/desktop.yml`](../../.github/workflows/desktop.yml) |
-| Software Vulkan | `mesa-vulkan-drivers` provides lavapipe, a conformant Vulkan 1.4 device. **Note:** lavapipe cannot actually run this Vulkan renderer — it lacks `VK_KHR_external_semaphore_fd`, so the device is rejected and the run continues on OpenGL. Setting `renderer = "VULKAN"` is honoured but does not get you Vulkan. Check the `nv2a: renderer:` line before believing a run exercised it. |
+| Software Vulkan | `mesa-vulkan-drivers` provides lavapipe, a conformant Vulkan 1.4 device, and since 611c2b4 the Vulkan renderer runs on it. Before that it was rejected for lacking `VK_KHR_external_semaphore_fd` and a run that asked for Vulkan silently ran OpenGL (#29); the extension is only needed for zero-copy presentation, which now falls back to a download. Check the `nv2a: renderer:` line before believing a run exercised it. |
 | A virtual display | `xvfb-run`. SDL's `offscreen` driver cannot create a Vulkan surface |
 | MCPX + flash ROM | yours; the project ships none |
 | A hard disk | generated — [`../../tools/make_xbox_hdd.py`](../../tools/make_xbox_hdd.py) |
@@ -77,20 +77,25 @@ implementations. A difference seen here and not on the Nova, or the reverse, is
 a driver difference until proven otherwise.
 
 **lavapipe lacks `VK_KHR_external_semaphore_fd`.** The xemu UI presents a
-Vulkan frame by importing it into GL through external memory, so `-display xemu`
-is unavailable here and runs are headless. Any test path that depends on GL/VK
-interop will behave differently.
+Vulkan frame by importing it into GL through external memory. That import was
+required until 611c2b4, which is why lavapipe was rejected outright (#29); it
+is optional now, and the renderer presents by downloading the frame instead.
+So the zero-copy GL/VK interop path is never exercised on this lane, and a
+defect in it cannot be seen here.
 
 **No screenshots of the UI.** Xvfb has a window but its GLX cannot give the
 GL 4.0 the UI wants; SDL's offscreen driver gives GL 4.5 but has no window.
 The suite's own framebuffer captures are unaffected - they are what
 `diff_specimen.py` reads - but watching a run happen is not currently possible.
 
-**The GL renderer aborts early.** `nv2a: unimplemented color surface format
-0x7` kills a run within seconds of the suite starting, so only Vulkan is usable
-here today. That is a real defect, not an environment problem - see the
-unmapped-format `abort()` in
-[`../investigations/nv2a-sweep-2026-09.md`](../investigations/nv2a-sweep-2026-09.md).
+**Both renderers run here, and they are not interchangeable.** The OpenGL
+renderer used to die within seconds of a whole-disc run on `nv2a: unimplemented
+color surface format 0x7` (the unmapped-format `abort()` in
+[`../investigations/nv2a-sweep-2026-09.md`](../investigations/nv2a-sweep-2026-09.md));
+baa6c2a maps that format in both renderers. Vulkan is the renderer that ships,
+so it is the one to measure against. OpenGL does depth fixed-function, which
+leaves the fragment depth block in `glsl/psh.c` dead there: a depth result from
+an OpenGL run says nothing about the shipping path.
 
 **Timings from the guest are wrong.** The progress log reported a completed
 test as taking `-25027ms`. Wall-clock timing of the whole run is trustworthy;
@@ -107,4 +112,7 @@ nothing to show — every test compared is bit-identical
 ```
 
 Boot, one test, power-off and extraction in 18 s wall clock, on
-`0.3.3-j1-70-g92dcf54`, Vulkan on llvmpipe.
+`0.3.3-j1-70-g92dcf54`. It was recorded as Vulkan on llvmpipe; it was OpenGL.
+lavapipe was rejected at that revision and nothing said so (#29). The capture
+is bit-identical either way, which is a fact about `ImgBlt_SRCCOPY_XRGB`, not
+about the Vulkan backend.
