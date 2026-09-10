@@ -1226,6 +1226,11 @@ typedef struct PGRAPHVkState {
 
     uint32_t last_vertex_attr_gen;
     uint32_t pipeline_vertex_attr_gen;
+    /* Attribute masks the shader generation was last bumped for; see
+     * attr_masks_changed() in vertex.c. */
+    uint16_t bound_uniform_attrs;
+    uint16_t bound_compressed_attrs;
+    uint16_t bound_swizzle_attrs;
     int pipeline_num_active_attr_descs;
     int pipeline_num_active_bind_descs;
     uint32_t last_shader_state_gen;
