@@ -2775,9 +2775,40 @@ static void populate_surface_binding_target_sized(NV2AState *d, bool color,
         fmt = kelvin_surface_color_format_map[pg->surface_shape.color_format];
         host_fmt = kelvin_surface_color_format_vk_map[pg->surface_shape.color_format];
         if (host_fmt.host_bytes_per_pixel == 0) {
-            fprintf(stderr, "nv2a: unimplemented color surface format 0x%x\n",
-                    pg->surface_shape.color_format);
-            abort();
+            /*
+             * An unmapped colour surface format used to abort(), which takes
+             * the whole run down rather than the one surface. A whole-suite
+             * pgraph run died 37 seconds in on format 0x7 because of it, and
+             * the same abort stopped the desktop runs -- which is why the
+             * suite has only ever been runnable one test per disc. Fall back
+             * to a host format of the same guest pixel width: the addressing
+             * stays correct, the colours do not, and the run reaches the end
+             * where that is visible and measurable.
+             */
+            static uint32_t warned_color_formats;
+            uint32_t warn_bit = 1u << (pg->surface_shape.color_format & 31);
+            if (!(warned_color_formats & warn_bit)) {
+                warned_color_formats |= warn_bit;
+                fprintf(stderr,
+                        "nv2a: unimplemented color surface format 0x%x, "
+                        "substituting a %u-byte host format; colours from this "
+                        "surface will be wrong\n",
+                        pg->surface_shape.color_format, fmt.bytes_per_pixel);
+            }
+            switch (fmt.bytes_per_pixel) {
+            case 1:
+                host_fmt = kelvin_surface_color_format_vk_map
+                    [NV097_SET_SURFACE_FORMAT_COLOR_LE_B8];
+                break;
+            case 2:
+                host_fmt = kelvin_surface_color_format_vk_map
+                    [NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5];
+                break;
+            default:
+                host_fmt = kelvin_surface_color_format_vk_map
+                    [NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];
+                break;
+            }
         }
     } else {
         surface = &pg->surface_zeta;

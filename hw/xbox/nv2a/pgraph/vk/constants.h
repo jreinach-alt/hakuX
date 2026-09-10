@@ -376,10 +376,20 @@ typedef struct SurfaceFormatInfo {
     VkImageAspectFlags aspect;
 } SurfaceFormatInfo;
 
+/*
+ * Guest-side pixel width for every colour surface format the register can name.
+ * This drives surface size and pitch arithmetic, so a missing row is not a
+ * cosmetic gap -- it computes the wrong extent for guest memory. Complete even
+ * where the host mapping below is an approximation.
+ */
 static const BasicSurfaceFormatInfo kelvin_surface_color_format_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] = { 2 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] = { 2 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] = { 2 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] = { 4 },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] = { 4 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] = { 4 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_B8] = { 1 },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8] = { 2 },
@@ -389,6 +399,20 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] =
     {
         // FIXME: Force alpha to zero
+        2,
+        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    /*
+     * The Z and O variants differ only in what the unused bits read back as --
+     * zero or one -- not in storage layout, so each shares its counterpart's
+     * host format. Getting those pad bits right is a separate, smaller problem
+     * than not rendering at all.
+     */
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] =
+    {
+        // FIXME: Force alpha to one
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -404,6 +428,34 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] =
     {
         // FIXME: Force alpha to zero
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] =
+    {
+        // FIXME: Force alpha to one
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    /*
+     * X1A7R8G8B8 is one pad bit, a *seven* bit alpha and 8-bit colour. The
+     * closest host format has eight bits of alpha, so alpha resolution here is
+     * one bit finer than the guest's and the pad bit is not reproduced. Wrong
+     * in the top bits, right everywhere else, and vastly better than abort().
+     */
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] =
+    {
+        4,
+        VK_FORMAT_B8G8R8A8_UNORM,
+        VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        VK_IMAGE_ASPECT_COLOR_BIT,
+    },
+    [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] =
+    {
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,

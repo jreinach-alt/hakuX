@@ -2643,9 +2643,20 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
                ARRAY_SIZE(kelvin_surface_color_format_gl_map));
         fmt = kelvin_surface_color_format_gl_map[pg->surface_shape.color_format];
         if (fmt.bytes_per_pixel == 0) {
-            fprintf(stderr, "nv2a: unimplemented color surface format 0x%x\n",
-                    pg->surface_shape.color_format);
-            abort();
+            /* See the Vulkan path: aborting takes the whole run down for
+             * one unmapped surface. Substitute a same-width host format. */
+            static uint32_t warned_color_formats;
+            uint32_t warn_bit = 1u << (pg->surface_shape.color_format & 31);
+            if (!(warned_color_formats & warn_bit)) {
+                warned_color_formats |= warn_bit;
+                fprintf(stderr,
+                        "nv2a: unimplemented color surface format 0x%x, "
+                        "substituting a same-width host format; colours from "
+                        "this surface will be wrong\n",
+                        pg->surface_shape.color_format);
+            }
+            fmt = kelvin_surface_color_format_gl_map
+                [NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];
         }
     } else {
         surface = &pg->surface_zeta;

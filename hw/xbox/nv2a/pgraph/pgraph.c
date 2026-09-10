@@ -4231,9 +4231,20 @@ void pgraph_get_clear_color(PGRAPHState *pg, float rgba[4])
         *r = 1.0f;
         *g = 0.0f;
         *b = 1.0f;
-        fprintf(stderr, "CLEAR_SURFACE for color_format 0x%x unsupported",
-                pg->surface_shape.color_format);
-        assert(!"CLEAR_SURFACE not supported for selected surface format");
+        /* Warn once and carry on. Xbox D3D cannot clear B8/G8B8 surfaces, so
+         * reaching this is the guest doing something unusual -- not a reason
+         * to take down a run that may have hundreds of tests left in it. */
+        {
+            static uint32_t warned;
+            uint32_t warn_bit = 1u << (pg->surface_shape.color_format & 31);
+            if (!(warned & warn_bit)) {
+                warned |= warn_bit;
+                fprintf(stderr,
+                        "nv2a: CLEAR_SURFACE for color format 0x%x is "
+                        "unsupported; clearing to magenta\n",
+                        pg->surface_shape.color_format);
+            }
+        }
         break;
     }
 
@@ -4246,8 +4257,13 @@ void pgraph_get_clear_color(PGRAPHState *pg, float rgba[4])
      */
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:
+        /* Seven bits of alpha, so 127 is the divisor, not 255. The assert
+         * that used to follow this said "untested" -- and it made the tests
+         * that would have tested it impossible to run, because it aborts the
+         * process rather than the test. Clear::SCF_X1A7R8G8B8_O1A7R8G8B8 and
+         * Blend surface's O1A7 cases exercise it; let them, and let the
+         * goldens say whether the arithmetic is right. */
         *a = ((clear_color >> 24) & 0x7F) / 127.0f;
-        assert(!"CLEAR_SURFACE handling for LE_X1A7R8G8B8_Z1A7R8G8B8 and LE_X1A7R8G8B8_O1A7R8G8B8 is untested"); /* Untested */
         break;
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:
         *a = ((clear_color >> 24) & 0xFF) / 255.0f;
