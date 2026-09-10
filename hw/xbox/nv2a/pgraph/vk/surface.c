@@ -258,6 +258,25 @@ static bool download_surface_record_deferred(NV2AState *d,
 
     nv2a_profile_inc_counter(NV2A_PROF_SURF_DOWNLOAD);
 
+    /*
+     * Draws are queued for merging and reordering and recorded later; a
+     * download recorded now would sit in the command buffer ahead of the
+     * draws that made the surface dirty, and copy the surface from before
+     * them. That is what a guest saw when it read a framebuffer back while
+     * its last draw was still queued: the clear, and none of the draw. On
+     * the desktop lane the queue is flushed by a flip or a state change at
+     * times that wander with host speed, so identical runs of Depth buffer
+     * fixed function came back with the quad drawn in one and blank in the
+     * next, 38 of 80 captures over three runs. Record the draws first,
+     * which is what the synchronous path gets from pgraph_vk_finish.
+     */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
     unsigned int scaled_width = surface->width,
                  scaled_height = surface->height;
     pgraph_apply_scaling_factor(pg, &scaled_width, &scaled_height);
