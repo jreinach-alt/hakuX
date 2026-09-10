@@ -35,7 +35,11 @@ LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd.img}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-a() { adb -s "$SERIAL" "$@"; }
+# Every adb call gets a deadline. Without one this script finished a run,
+# extracted its results, and then sat for seven hours wedged in the exit trap
+# because adb stopped answering -- the work was done and the job still looked
+# alive. A device that goes unresponsive must not be able to hold a slot.
+a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 release() {
     a shell am force-stop "$PKG" >/dev/null 2>&1
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
@@ -61,8 +65,10 @@ if [ "$s" -ge "$TIMEOUT" ]; then
 fi
 echo "ran ${s}s"
 
-a pull /storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img "$HDD" >/dev/null 2>&1 \
-    || { echo "pull failed"; exit 1; }
+# The image is ~1.5GB; allow generously for it but never indefinitely.
+ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
+    a pull /storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img "$HDD" \
+    >/dev/null 2>&1 || { echo "pull failed or timed out"; exit 1; }
 rm -rf "$RESULTS"
 python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" | tail -1
 # The image is the whole point of the fixed path: take it back off the disk
