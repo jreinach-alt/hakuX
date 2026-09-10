@@ -25,6 +25,13 @@ For the GPU, that problem is already solved by somebody else.
 The hardware goldens are the part that cannot be reproduced without an Xbox and
 a devkit. They are published.
 
+## Running it without a device
+
+The whole loop also runs on a desktop build with a software GPU - no handheld,
+no Adreno - in about 18 seconds for a single test, and the first capture taken
+that way was bit-identical to its hardware golden. Recipe and limits:
+[`desktop-runs.md`](desktop-runs.md).
+
 ## The disc image
 
 `nxdk_pgraph_tests` publishes a built `nxdk_pgraph_tests_xiso.iso` with its

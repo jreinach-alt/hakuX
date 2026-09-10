@@ -51,7 +51,8 @@ jobs:
             libslirp-dev libpcap-dev libssl-dev libgmp-dev \
             libpng-dev libsamplerate0-dev libasound2-dev libpulse-dev \
             libcap-ng-dev libattr1-dev libdrm-dev libpcre2-dev \
-            nlohmann-json3-dev
+            nlohmann-json3-dev \
+            xvfb
 
       # meson is not installed; QEMU's configure bootstraps it into a venv,
       # which is why python3-venv is above.
@@ -108,10 +109,49 @@ jobs:
           echo "started clean:"
           grep -viE '^ALSA lib|snd_' smoke.log | head -12
 
+      # The renderer Android actually ships is Vulkan, so a GL-only gate would
+      # miss the path that matters. Mesa's lavapipe gives a stock runner a
+      # conformant software Vulkan device; SDL's offscreen driver cannot make a
+      # Vulkan surface, so this one needs a virtual X server.
+      - name: Start the emulated machine headless on Vulkan
+        env:
+          SDL_AUDIODRIVER: dummy
+        run: |
+          cd build-linux
+          mkdir -p ~/.local/share/xemu/xemu
+          printf '[display]\nrenderer = "VULKAN"\n' > ~/.local/share/xemu/xemu/xemu.toml
+          set +e
+          xvfb-run -a --server-args="-screen 0 1280x720x24" \
+            timeout -k 5 40 ./qemu-system-i386 -machine xbox -display none \
+            > smoke-vk.log 2>&1
+          rc=$?
+          set -e
+          if [ "$rc" -ne 124 ] && [ "$rc" -ne 0 ]; then
+            echo "::error::Vulkan startup exited $rc instead of running"
+            grep -viE '^ALSA lib|snd_|^sdl:|^audio:' smoke-vk.log | tail -40
+            exit 1
+          fi
+          if grep -qiE 'Assertion|assert failed|Segmentation fault' smoke-vk.log; then
+            echo "::error::assertion or crash during Vulkan startup"
+            grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
+            exit 1
+          fi
+          # Proves the Vulkan backend actually came up rather than the process
+          # merely surviving: it has to have enumerated a physical device.
+          if ! grep -q 'Available physical devices' smoke-vk.log; then
+            echo "::error::Vulkan backend never enumerated a device"
+            grep -viE '^ALSA lib|snd_' smoke-vk.log | tail -40
+            exit 1
+          fi
+          echo "Vulkan backend up:"
+          grep -A3 'Available physical devices' smoke-vk.log | head -6
+
       - name: Upload startup log
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: desktop-smoke-log
-          path: build-linux/smoke.log
+          path: |
+            build-linux/smoke.log
+            build-linux/smoke-vk.log
           if-no-files-found: ignore

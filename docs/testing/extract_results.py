@@ -138,6 +138,38 @@ class Qcow2:
         return bytes(out)
 
 
+class Raw:
+    """A flat disk image.
+
+    The desktop build writes one of these - qemu only produces qcow2 when asked
+    - and this module's own usage string has always offered "qcow2 or raw",
+    but main() constructed Qcow2 unconditionally, so a raw image was rejected
+    with "not a qcow2 image". Reads past the end return zeroes, matching what
+    the FATX layer expects of untouched disk.
+    """
+
+    def __init__(self, path):
+        self.f = open(path, "rb")
+        self.f.seek(0, 2)
+        self.size = self.f.tell()
+
+    def read(self, offset, length):
+        if offset >= self.size:
+            return b"\0" * length
+        self.f.seek(offset)
+        data = self.f.read(length)
+        return data + b"\0" * (length - len(data))
+
+
+def open_image(path):
+    """Pick a reader by magic rather than by extension."""
+    with open(path, "rb") as fh:
+        magic = fh.read(4)
+    if len(magic) == 4 and struct.unpack(">I", magic)[0] == 0x514649FB:
+        return Qcow2(path)
+    return Raw(path)
+
+
 class Fatx:
     def __init__(self, image, part_offset, part_size):
         self.image = image
@@ -275,7 +307,7 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     offset, size = PARTITIONS[args.partition]
-    image = Qcow2(args.image)
+    image = open_image(args.image)
     fs = Fatx(image, offset, size)
     print(f"{args.partition}: FATX, {fs.bytes_per_cluster} B/cluster, "
           f"FAT{fs.fat_type}, root cluster {fs.root_cluster}")
