@@ -1809,14 +1809,24 @@ static void invalidate_overlapping_surfaces(NV2AState *d,
                 other_surface->height, other_surface->pitch);
             OPT_STAT_INC(dif_overlap);
             /*
-             * Lazy overlap: skip download now. The invalidated surface's
-             * VkImage is preserved in the invalid_surfaces list. If a
-             * texture later reads from this VRAM range, the overlap check
-             * in pgraph_vk_download_surfaces_in_range_if_dirty will
-             * download it then. Otherwise the data is never needed.
+             * Record the download now; it completes in
+             * pgraph_vk_surface_update() before the new binding uploads from
+             * VRAM, which is the whole point. invalidate_surface() keeps the
+             * VkImage alive in invalid_surfaces until then.
+             *
+             * This used to be skipped as "lazy overlap" on the theory that a
+             * later texture read would trigger the download, and otherwise
+             * the data was never needed. It is needed by the surface being
+             * created right here: it uploads from VRAM, and VRAM still holds
+             * whatever was there before the evicted surface was drawn. The
+             * Image blit Overlap_* captures showed the previous test's frame
+             * with only the final blit and quad on top, because the clear and
+             * the render-to-subsurface both lived in evicted bindings whose
+             * downloads were never taken (issue #7).
              */
             if (other_surface->draw_dirty) {
-                OPT_STAT_INC(sd_eviction_skipped);
+                OPT_STAT_INC(sd_eviction_dl);
+                download_surface_deferred(d, other_surface);
             }
             invalidate_surface(d, other_surface);
         }
@@ -2996,16 +3006,25 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                     "incompatible", surface->vram_addr);
                 compare_surfaces(surface, &target);
                 /*
-                 * Lazy eviction: skip downloading GPU data to VRAM now.
-                 * The shelved VkImage preserves the rendered data. Download
-                 * will happen lazily only when something actually reads the
-                 * VRAM (texture overlap, CPU read, surface expiration).
-                 * If the surface is unshelved (same format re-bound), the
-                 * VkImage is reused directly — no download needed at all.
+                 * Same contract as invalidate_overlapping_surfaces(): the
+                 * binding that replaces this one uploads from VRAM in this
+                 * very surface_update, after the deferred downloads complete,
+                 * so what this surface drew has to be in VRAM by then. The
+                 * shelved VkImage is still kept for a same-format rebind.
+                 *
+                 * This used to skip the download and rely on "texture
+                 * overlap, CPU read, surface expiration" to take it later.
+                 * Expiration is timing-dependent, and a suite that changes
+                 * surface format between tests -- Depth buffer fixed
+                 * function flips Z16/Z24 and fixed/float -- came back with
+                 * 42 of 80 captures differing between three runs of the same
+                 * binary.
                  */
                 surface->shelved_dirty = surface->draw_dirty;
                 if (surface->draw_dirty) {
-                    OPT_STAT_INC(sd_eviction_skipped);
+                    OPT_STAT_INC(sd_eviction_dl);
+                    download_surface_deferred(d, surface);
+                    surface->shelved_dirty = false;
                 }
                 shelve_surface(d, surface);
                 SURF_TIMER_ACC(lk_evict_ns, _gt1);
