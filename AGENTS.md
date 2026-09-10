@@ -111,6 +111,24 @@ hand-rolled must do the same.
 attached to the pull request. Nobody should have to take "this now matches" on
 trust, and a reviewer who can see the frames can catch a wrong call in seconds.
 
+**Read the label before believing the diff.** Every capture has the test's own
+parameters printed over it in white by the guest. If those pixels differ between
+our render and the golden, the golden was produced by a *different build of
+nxdk_pgraph_tests* — and that build may have uploaded different source data, in
+which case the comparison is not measuring this emulator at all.
+
+`TexFmt_R6G5B5` cost hours as a suspected decode defect. Hardware prints
+`C: 0`; we print `C: 1`. That is the suite's own `require_conversion`, and it
+selects between two entirely different upload paths — a hand-written packer or
+SDL converting to the row's pixel format. Different bytes reached texture
+memory, so the "two gradient ramps versus one" that looked like a channel bug
+was the two runs texturing from different data. Fitting a decode to it produced
+two models that each matched that one test and made `Bump map` worse.
+
+One capture in forty was affected, and the evidence was on screen the whole
+time. `score_sweep.py` now reports `label-differs` per test; treat such a row as
+void rather than as a defect.
+
 **A palette gate cannot see placement.** `palette_gate.py` asks whether we drew
 the hardware's colours in the hardware's proportions; it is the right first
 filter for low-palette suites and it caught a 92% solid-red render that a mean

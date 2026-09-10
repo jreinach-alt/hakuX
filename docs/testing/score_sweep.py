@@ -15,6 +15,14 @@ What it reports, per test:
 
   * differing pixels, as a count and a share of the frame
   * max delta over R, G and B, and separately over A
+  * whether the capture's on-screen label matches the golden's. Every capture
+    carries the test's own parameters printed over it in white. If those pixels
+    differ, the golden was produced by a *different build of the test suite*,
+    which may have uploaded different source data -- the comparison is then not
+    measuring this emulator at all. TexFmt_R6G5B5 was chased for hours as a
+    decode defect before anyone read the label: hardware prints "C: 0" and we
+    print "C: 1", the suite's own require_conversion flag, which selects
+    between two completely different upload paths.
   * whether the capture is *blank* -- one colour over more than 90% of a frame
     whose golden is richer than that. A blank frame is a different failure from
     a wrong one: nothing drew, or the capture beat the draw to it. Mixed into a
@@ -86,13 +94,25 @@ def score_dir(args):
         alpha = d[..., 3]
         differing = int(((rgb > 0) | (alpha > 0)).sum())
 
+        # The overlay text is drawn pure white by the guest. Pixels that are
+        # white on exactly one side mean the two runs printed different text,
+        # so the goldens and the disc are different builds of the suite.
+        gw = (g[..., :3] >= 250).all(axis=2)
+        ow = (o[..., :3] >= 250).all(axis=2)
+        label_delta = int((gw ^ ow).sum())
+
         flat = o[..., :3].reshape(-1, 3)
         _, counts = np.unique(flat, axis=0, return_counts=True)
         gold_colours = len(np.unique(g[..., :3].reshape(-1, 3), axis=0))
         blank = (counts.max() / flat.shape[0] > 0.90 and len(counts) <= 4
                  and gold_colours > 4)
 
-        rows.append((suite, test, solo, "blank" if blank else "ok", differing,
+        status = "blank" if blank else "ok"
+        # Report it, do not silently downgrade the row: a differing label makes
+        # the pixel comparison untrustworthy, not automatically wrong.
+        if label_delta > 8:
+            status = "label-differs"
+        rows.append((suite, test, solo, status, differing,
                      int(rgb.max()), int(alpha.max()), g.shape[0] * g.shape[1]))
     return rows
 
@@ -148,8 +168,9 @@ def main():
             for r in sorted(rows):
                 f.write("\t".join(str(x) for x in r) + "\n")
 
-    scored = [r for r in rows if r[3] in ("ok", "blank")]
+    scored = [r for r in rows if r[3] in ("ok", "blank", "label-differs")]
     blanks = [r for r in rows if r[3] == "blank"]
+    stale = [r for r in rows if r[3] == "label-differs"]
     exact = [r for r in scored if r[4] == 0]
     nogold = [r for r in rows if r[3] == "no-golden"]
     sized = [r for r in rows if r[3] == "size"]
@@ -169,6 +190,11 @@ def main():
           f"({len(exact)/max(len(scored),1)*100:.1f}% of scored)")
     print(f"  differ                    : {len(scored)-len(exact)-len(blanks):5d}")
     print(f"  blank -- nothing drew     : {len(blanks):5d}")
+    if stale:
+        print(f"  label differs from golden : {len(stale):5d}  "
+              f"<- goldens built from a different test suite; not comparable")
+        for suite, test, *_ in stale[:8]:
+            print(f"       {suite}::{test}")
     if sized:
         print(f"  wrong size                : {len(sized):5d}")
     if nogold:
