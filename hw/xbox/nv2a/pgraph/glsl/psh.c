@@ -125,7 +125,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                               state->depth_clipping;
     }
 
-    int num_stages = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL) & 0xFF;
+    int num_stages =
+        psh_num_combiner_stages(pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL));
     for (int i = 0; i < num_stages; i++) {
         state->rgb_inputs[i] =
             pgraph_reg_r(pg, NV_PGRAPH_COMBINECOLORI0 + i * 4);
@@ -1670,7 +1671,12 @@ MString *pgraph_glsl_gen_psh(const PshState *state, GenPshGlslOptions opts)
     ps.opts = opts;
     ps.state = state;
 
-    ps.num_stages = state->combiner_control & 0xFF;
+    ps.num_stages = psh_num_combiner_stages(state->combiner_control);
+    if ((state->combiner_control & 0xFF) > PSH_MAX_COMBINER_STAGES) {
+        NV2A_UNIMPLEMENTED("%d combiner stages, the hardware has %d",
+                           state->combiner_control & 0xFF,
+                           PSH_MAX_COMBINER_STAGES);
+    }
     ps.flags = state->combiner_control >> 8;
     for (i = 0; i < 4; i++) {
         ps.tex_modes[i] = (state->shader_stage_program >> (i * 5)) & 0x1F;

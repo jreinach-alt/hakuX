@@ -108,7 +108,8 @@ bool pgraph_glsl_check_shader_state_dirty(PGRAPHState *pg,
         }
     }
 
-    int num_stages = pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL) & 0xFF;
+    int num_stages =
+        psh_num_combiner_stages(pgraph_reg_r(pg, NV_PGRAPH_COMBINECTL));
     for (int i = 0; i < num_stages; i++) {
         if (pgraph_is_reg_dirty(pg, NV_PGRAPH_COMBINEALPHAI0 + i * 4) ||
             pgraph_is_reg_dirty(pg, NV_PGRAPH_COMBINEALPHAO0 + i * 4) ||

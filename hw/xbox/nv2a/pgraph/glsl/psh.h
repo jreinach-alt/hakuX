@@ -96,6 +96,23 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
 
 DECL_UNIFORM_TYPES(PshUniform, PSH_UNIFORM_DECL_X)
 
+/*
+ * The register file has eight combiner stages: NV_PGRAPH_COMBINEALPHAI0 and
+ * NV_PGRAPH_COMBINEALPHAO0 sit 0x20 apart, and every array here is sized for
+ * eight. The stage count arrives in the low byte of NV097_SET_COMBINER_CONTROL
+ * as guest data, and nothing masks it on the way in, so a count of 0xFF walked
+ * the loops in psh.c and shaders.c past the end of those arrays.
+ *
+ * What the hardware does with a count above eight is not known. Not indexing
+ * past the registers that exist is the part that is.
+ */
+#define PSH_MAX_COMBINER_STAGES 8
+
+static inline int psh_num_combiner_stages(uint32_t combiner_control)
+{
+    return MIN(combiner_control & 0xFF, PSH_MAX_COMBINER_STAGES);
+}
+
 typedef struct GenPshGlslOptions {
     bool vulkan;
     bool gles;
