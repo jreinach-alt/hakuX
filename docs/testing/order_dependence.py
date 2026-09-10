@@ -36,7 +36,9 @@ import hashlib
 import json
 import os
 import shutil
+import signal
 import subprocess
+import time
 import sys
 from pathlib import Path
 
@@ -155,6 +157,57 @@ class Lane:
                   flush=True)
         return None
 
+    def _run_emulator(self, log, hdd):
+        """Run the emulator until it exits, stalls, or hits the cap.
+
+        A crash is cheap to detect -- the exit code says so at once. A stall
+        is not: the emulator stays alive with the guest stuck, and a fixed
+        cap sized for the largest suite (W buffering is 530 tests) means a
+        stalled run of a small one costs the same twenty minutes. The guest
+        writes every capture and its progress log into the qcow2, so the
+        image's mtime is a progress signal the host can read for free: if
+        it has not advanced in --stall seconds while the emulator is alive,
+        the run is stuck and is killed now, and the reason says "stalled"
+        rather than the cap's bare exit code. --timeout stays as the ceiling
+        for a run that keeps writing and still does not finish.
+        """
+        env = {**os.environ, "SDL_AUDIODRIVER": "dummy"}
+        with open(log, "wb") as fh:
+            proc = subprocess.Popen(
+                ["xvfb-run", "-a", "--server-args=-screen 0 640x480x24",
+                 str(self.a.emulator), "-machine", "xbox", "-display", "none"],
+                stdout=fh, stderr=subprocess.STDOUT, env=env,
+                cwd=str(Path(self.a.emulator).parent),
+                start_new_session=True)
+            started_at = last_write = time.monotonic()
+            last_mtime = hdd.stat().st_mtime
+            while True:
+                try:
+                    rc = proc.wait(timeout=5)
+                    return rc
+                except subprocess.TimeoutExpired:
+                    pass
+                now = time.monotonic()
+                mtime = hdd.stat().st_mtime
+                if mtime != last_mtime:
+                    last_mtime, last_write = mtime, now
+                if now - last_write > self.a.stall:
+                    self.why = (f"stalled: nothing written to the disk for "
+                                f"{self.a.stall}s, {int(now - started_at)}s "
+                                f"into the run")
+                    break
+                if now - started_at > self.a.timeout:
+                    self.why = (f"exceeded {self.a.timeout}s while still "
+                                f"writing; raise --timeout for this suite")
+                    break
+            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                proc.wait(timeout=10)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+            return -1
+
     def _run_once(self, tag, whole, isolate):
         self.why = None
         whole, isolate = set(whole), dict(isolate or {})
@@ -172,16 +225,9 @@ class Lane:
             flashrom=self.a.flashrom, eeprom=self.a.eeprom, hdd=hdd, dvd=iso))
 
         log = self.work / f"run_{tag}.log"
-        with open(log, "wb") as fh:
-            rc = subprocess.run(
-                ["xvfb-run", "-a", "--server-args=-screen 0 640x480x24",
-                 "timeout", "-k", "5", str(self.a.timeout),
-                 str(self.a.emulator), "-machine", "xbox", "-display", "none"],
-                stdout=fh, stderr=subprocess.STDOUT,
-                env={**os.environ, "SDL_AUDIODRIVER": "dummy"},
-                cwd=str(Path(self.a.emulator).parent)).returncode
+        rc = self._run_emulator(log, hdd)
         if rc != 0:
-            self.why = f"emulator exited {rc}"
+            self.why = self.why or f"emulator exited {rc}"
             return None
 
         out = self.work / f"out_{tag}"
@@ -311,7 +357,11 @@ def main():
                     help="JSON file whose .settings block seeds each config")
     ap.add_argument("--work", default="order-runs")
     ap.add_argument("--renderer", default="VULKAN", choices=["VULKAN", "OPENGL"])
-    ap.add_argument("--timeout", type=int, default=900)
+    ap.add_argument("--timeout", type=int, default=3600,
+                    help="ceiling for a run that keeps writing captures")
+    ap.add_argument("--stall", type=int, default=240,
+                    help="seconds without a write to the qcow2 before a live "
+                         "emulator is declared stuck and killed")
     ap.add_argument("--retry-segv", type=int, default=2,
                     help="rerun a run that segfaulted this many times; "
                          "asserts are never retried")
