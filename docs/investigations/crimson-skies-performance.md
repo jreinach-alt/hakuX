@@ -134,3 +134,43 @@ In rough order of expected return:
 
 None of this is upscaling work. Anything that buys frame time at 1x buys the
 same at 2x, and 2x is already nearly free.
+
+
+## A 60 fps title to benchmark against: Fuzion Frenzy
+
+Crimson Skies cannot show a gain above 30 because it paces itself there, so a
+title that asks for more was needed. Found by measurement rather than
+reputation, 2026-09-11.
+
+**Fuzion Frenzy asks for every VBLANK and we do not always give it one.**
+In a vsync-locked scene it reports exactly 1.00 VBLANKs per flip at a 16.7 ms
+interval, and it has produced single frames as short as 10.9 ms. In a
+four-player minigame it fell to 43-47 fps with 21 ms frames, which is the
+state with headroom to measure against. Gameplay is about ninety seconds from
+launch behind an alternating Start and A sequence, with no menu to navigate:
+`docs/testing/perf/bench_ff.sh`.
+
+Two method notes, both learned the hard way.
+
+**A title screen tells you nothing about a title's target.** Panzer Dragoon
+Orta's menu runs unlocked at 115-121 fps with 0.47 VBLANKs per flip, flipping
+roughly twice per refresh without waiting. Any "minimum frame time" heuristic
+taken there reports a 60 fps target for everything, and a first attempt at
+exactly that returned 0.4 ms "frames" for two titles. Useful by-product: it
+proves the emulator does not cap the guest's flip rate, since the guest
+reached 119 fps against a 60 Hz display.
+
+**VBLANKs per flip separates gameplay from menus, and that is what to filter
+on.** Menus here sit near 0.5, a locked scene at 1.00, a missed one above. The
+baseline above discards unlocked samples on that basis rather than trying to
+time the input sequence.
+
+Still open: the harness enters the first minigame but does not stay in a
+*named* one, and the minigames differ in load, which is why the run above
+reads 59 and the four-player observation read 43. Pinning it to one minigame
+is what this needs before it is a repeatable before-and-after.
+
+Titles whose gameplay target is still unmeasured: Panzer Dragoon Orta,
+RalliSport Challenge 2, Ninja Gaiden Black. Ninja Gaiden Black's intro runs
+about two minutes fifteen and does not respond to keypresses, so it needs
+waiting out rather than skipping.

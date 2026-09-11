@@ -8,7 +8,10 @@ set -u
 S=ee317437; PKG=com.jreinach.hakux.debug
 ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
 W=/home/justin/hakux-work/perf
-GAME='/storage/E6C6-D7AA/Games/XBox/Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso'
+# GAME can be overridden to benchmark a different title. Crimson Skies paces
+# itself to 30 and so cannot show a gain above it; Fuzion Frenzy asks for every
+# VBLANK and we do not sustain it, which makes it the one to measure against.
+GAME="${GAME:-/storage/E6C6-D7AA/Games/XBox/Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso}"
 
 SCALE="${1:?usage: run_perf.sh <surface_scale> <tag> [measure_s]}"
 TAG="${2:?}"
@@ -68,7 +71,7 @@ adb -s $S shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu" \
     || { echo "[$TAG] emulator not running, aborting"; exit 1; }
 
 echo "[$TAG] advancing through intro"
-bash $W/pad.sh mash 12 1.5 >/dev/null 2>&1
+bash $W/pad.sh ${MASH:-mash 12 1.5} >/dev/null 2>&1
 command sleep $SETTLE
 
 adb -s $S exec-out screencap -p > $W/${TAG}-start.png 2>/dev/null

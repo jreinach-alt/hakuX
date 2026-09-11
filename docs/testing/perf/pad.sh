@@ -24,5 +24,13 @@ case "${1:-}" in
     axis)  shift; axis "$@" ;;
     mash)  shift; n=${1:-10}; gap=${2:-1.2}
            for i in $(seq 1 "$n"); do press A; command sleep "$gap"; done ;;
+    # Alternating Start and A. Some titles need Start to leave an attract or
+    # "press start" screen and A to take menu defaults; A alone stalls on the
+    # first and Start alone stalls on the second.
+    startmash) shift; n=${1:-10}; gap=${2:-1.0}
+           for i in $(seq 1 "$n"); do
+               press START; command sleep "$gap"
+               press A;     command sleep "$gap"
+           done ;;
     *) echo "usage: pad.sh {press <BTN> [ms] | axis <code> <val> | mash [n] [gap_s]}"; exit 2 ;;
 esac
