@@ -113,12 +113,25 @@ def parse_regs(repo):
 
 
 def source_files(repo):
+    """Every scanned source, in a fixed order.
+
+    os.walk visits directories in whatever order the filesystem hands back,
+    and that order reaches the index: sites are recorded per symbol in the
+    order the files are read. Two machines then build byte-different indexes
+    from the same tree, and `check` fails with the counts matching and the
+    contents not -- which is exactly what CI saw against an index generated
+    on a different filesystem. Collect first and sort by repository-relative
+    path so the output depends on the tree and nothing else.
+    """
+    found = []
     for root in SCAN_ROOTS:
         for dirpath, _, names in os.walk(os.path.join(repo, root)):
-            for name in sorted(names):
+            for name in names:
                 if name.endswith(SCAN_EXTS):
                     full = os.path.join(dirpath, name)
-                    yield full, os.path.relpath(full, repo)
+                    found.append((os.path.relpath(full, repo), full))
+    for rel, full in sorted(found):
+        yield full, rel
 
 
 def classify(line, symbol):
