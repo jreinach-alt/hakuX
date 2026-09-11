@@ -519,27 +519,38 @@ GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz
         mstring_append(body, "  oB1 = backSpecular;\n");
     }
 
+    /* The lit specular only leaves the unit on its own output with both
+     * SPECULAR_ENABLE and SEPARATE_SPECULAR set. Otherwise it is folded
+     * into the diffuse, with SPECULAR_ENABLE off as much as with
+     * SEPARATE_SPECULAR off, and the specular output is the vertex colour
+     * or, with specular disabled, black with the alpha at one. The fold
+     * carries the sign: beyond the pole of the rational evaluator (a
+     * normal longer than one takes N.H past it) the factor is negative,
+     * the separate output clamps it away but the fold subtracts it from
+     * the ambient. The Lighting control goldens show both: with
+     * SEPARATE_SPECULAR off or SPECULAR_ENABLE off the highlight is added
+     * to the diffuse, and on the sphere and cylinder, whose normals are
+     * longer than one, the ambient disappears where the highlight would
+     * be beyond the pole. */
+    if (state->fixed_function.lighting &&
+        (!state->specular_enable || !state->separate_specular)) {
+        mstring_append(body,
+                       "  oD0.xyz += oD1.xyz;\n"
+                       "  oB0.xyz += oB1.xyz;\n");
+    }
     if (!state->specular_enable) {
         mstring_append(body, "  oD1 = vec4(0.0, 0.0, 0.0, 1.0);\n");
         mstring_append(body, "  oB1 = vec4(0.0, 0.0, 0.0, 1.0);\n");
     } else {
         if (!state->separate_specular) {
-            if (state->fixed_function.lighting) {
-				mstring_append(body,
-				               "  oD0.xyz += oD1.xyz;\n"
-				               "  oB0.xyz += oB1.xyz;\n"
-				);
-            }
-			mstring_append(body,
-				           "  oD1 = specular;\n"
-				           "  oB1 = backSpecular;\n"
-			);
+            mstring_append(body,
+                           "  oD1 = specular;\n"
+                           "  oB1 = backSpecular;\n");
         }
         if (state->ignore_specular_alpha) {
             mstring_append(body,
                            "  oD1.a = 1.0;\n"
-                           "  oB1.a = 1.0;\n"
-            );
+                           "  oB1.a = 1.0;\n");
         }
     }
 
