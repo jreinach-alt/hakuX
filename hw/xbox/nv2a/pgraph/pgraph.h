@@ -227,6 +227,9 @@ typedef struct PGRAPHState {
     /* SET_LINE_WIDTH, in eighths of a pixel. */
     uint32_t line_width;
 
+    /* SET_STIPPLE_PATTERN, a 32x32 bitmap of screen pixels. */
+    uint32_t stipple_pattern[NV097_SET_STIPPLE_PATTERN_COUNT];
+
     VertexAttribute vertex_attributes[NV2A_VERTEXSHADER_ATTRIBUTES];
     uint16_t compressed_attrs;
     uint16_t uniform_attrs;

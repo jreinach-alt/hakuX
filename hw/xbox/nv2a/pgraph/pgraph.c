@@ -2698,6 +2698,18 @@ DEF_METHOD(NV097, SET_LINE_WIDTH)
     }
 }
 
+DEF_METHOD(NV097, SET_STIPPLE_ENABLE)
+{
+    PG_SET_MASK(NV_PGRAPH_SETUPRASTER,
+                NV_PGRAPH_SETUPRASTER_STIPPLEENABLE, parameter != 0);
+}
+
+DEF_METHOD_INC(NV097, SET_STIPPLE_PATTERN)
+{
+    int slot = (method - NV097_SET_STIPPLE_PATTERN) / 4;
+    pg->stipple_pattern[slot] = parameter;
+}
+
 DEF_METHOD(NV097, SET_POLYGON_OFFSET_SCALE_FACTOR)
 {
     pgraph_reg_w(pg, NV_PGRAPH_ZOFFSETFACTOR, parameter);

@@ -30,6 +30,7 @@
 #include "hw/xbox/nv2a/debug.h"
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
 #include "ui/xemu-settings.h"
+#include "../prim_rewrite.h"
 #include "psh.h"
 
 DEF_UNIFORM_INFO_ARR(PshUniform, PSH_UNIFORM_DECL_X)
@@ -69,6 +70,39 @@ static uint32_t get_color_key_mask_for_texture(PGRAPHState *pg, int i)
  * registers: a guest that set its rectangles and nothing else used to draw
  * with the previous shader, unclipped -- every inclusive Window clip test.
  */
+/*
+ * Whether the 32x32 stipple pattern masks this draw. It only ever reaches
+ * filled polygons: with the pattern set to all zeroes the Stipple tests
+ * golden loses every triangle, quad and polygon and keeps its points and
+ * its line loop untouched, the way OpenGL's polygon stipple behaves.
+ *
+ * The primitive is taken through the same rewrite the geometry stage uses
+ * rather than read raw. Both renderers reuse a shader state whose only
+ * refreshed primitive field is that rewritten mode, so anything derived
+ * from the raw mode goes stale: two raw modes that rewrite alike have to
+ * answer alike, and this way they do. The enable and the polygon mode are
+ * both SETUPRASTER bits outside the dynamic mask, so a change to either
+ * brings the state back here.
+ */
+bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg)
+{
+    uint32_t setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+
+    if (!GET_MASK(setupraster, NV_PGRAPH_SETUPRASTER_STIPPLEENABLE)) {
+        return false;
+    }
+
+    enum ShaderPolygonMode front_mode = (enum ShaderPolygonMode)GET_MASK(
+        setupraster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);
+    if (front_mode != POLY_MODE_FILL) {
+        return false;
+    }
+
+    return pgraph_prim_rewrite_get_output_mode(
+               (enum ShaderPrimitiveMode)pg->primitive_mode, front_mode) ==
+           PRIM_TYPE_TRIANGLES;
+}
+
 int pgraph_glsl_window_clip_count(PGRAPHState *pg)
 {
     if (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL) {
@@ -126,6 +160,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
     state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
                             NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
+    state->stipple = pgraph_glsl_polygon_stipple_enabled(pg);
     state->fog_enable = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) &
                         NV_PGRAPH_CONTROL_3_FOGENABLE;
     state->fog_mode = (enum VshFogMode)GET_MASK(
@@ -1703,6 +1738,28 @@ static MString* psh_convert(struct PixelShader *ps)
     }
 
     MString *clip = mstring_new();
+
+    if (ps->state->stipple) {
+        /*
+         * The pattern is a 32x32 bitmap of screen pixels, in unscaled
+         * surface coordinates. Each word holds one row as four bytes,
+         * leftmost byte first and most significant bit leftmost within a
+         * byte, so the pixel at x takes bit (x & 31) ^ 7. The rows run
+         * bottom up: the top row of the Stipple tests square, which sits
+         * at a multiple of 32, shows the last word of the pattern.
+         */
+        mstring_append(clip,
+            "/*  Polygon stipple */\n"
+            "{\n"
+            "  ivec2 sxy = ivec2(gl_FragCoord.xy) / surfaceScale;\n"
+            "  int srow = 31 - (sxy.y & 31);\n"
+            "  int sword = stipplePattern[srow >> 2][srow & 3];\n"
+            "  if (((sword >> ((sxy.x & 31) ^ 7)) & 1) == 0) {\n"
+            "    discard;\n"
+            "  }\n"
+            "}\n");
+    }
+
     int wc_count = ps->state->window_clip_count;
 
     if (wc_count > 0) {
@@ -2735,6 +2792,14 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         }
 
         values->depthFactor[0] = zfactor;
+    }
+
+    if (locs[PshUniform_stipplePattern] != -1) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 4; j++) {
+                values->stipplePattern[i][j] = pg->stipple_pattern[i * 4 + j];
+            }
+        }
     }
 
     if (locs[PshUniform_surfaceScale] != -1) {
