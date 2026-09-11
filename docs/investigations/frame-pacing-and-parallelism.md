@@ -286,9 +286,49 @@ pushbuffer. No code executes from the pushbuffer, so `page_find` would return
 nothing, the helper would do nothing, and the callback would stay off after
 the first write instead of re-arming.
 
-The remedy is QEMU-core work on how code-write detection is armed for a page
-that mixes hot code and hot data, and it carries real correctness risk. It is
-flagged here rather than started.
+### Where that page is, and why the obvious fix will not work
+
+Logging the guest virtual address and the span of offsets written within each
+page turns the inference above into an observation, and removes an idea.
+
+| page frame | hits | guest address | offsets written |
+|---|---|---|---|
+| **0x42b4** | 888,000, +5,500 per 120 frames | **0x205f22** | **0x150 – 0xf3c** |
+| 0x43c8 | 111,500, +1,000 | 0x3190ac | 0x78 – 0x1000 |
+| 0x512e | 14,580, +350 | 0x8112ef00 | 0xec0 – 0xf0c |
+| 0x403a | 20,434, static | 0x8003ad39 | 0x898 – 0xd3a |
+| 0x4402, 0x4403 | 5,180 each, static | 0xd0089ffc, 0xd008affc | whole page |
+| 0x404c | 165, static | 0x8004ce24 | 0xe24 – 0xe28 |
+
+**The two growing pages are in the game's own image.** Guest addresses
+0x205f22 and 0x3190ac sit about 2 MB and 3 MB into the address space, which is
+where an XBE's sections live, not in the 0x80000000 kernel range or the
+0xD0000000 aperture that the static entries occupy. So this is the title's own
+code and data, which is consistent with the mechanism and confirms it is not
+anything the renderer is doing.
+
+**And the writes cover nearly the whole page**, 0x150 to 0xf3c on the hot one
+and 0x78 to the end on the second. That kills the attractive fix. If the
+written data sat in one corner of the page with the code in another, moving or
+padding it would separate them. It does not; data and code are interleaved
+across the page, so there is no boundary to move.
+
+What remains is that **arming is per-page while invalidation is per-range**.
+The callback is re-armed across a whole page whenever any code is generated on
+it, then the next store anywhere in that page pays the entry cost even when no
+translated block overlaps the bytes written. Finer-grained arming is the
+lever, and that is core work on code-write detection with real correctness
+risk, so it is flagged here and not started.
+
+One thing this measurement does not separate: how many of those calls actually
+invalidate a block versus merely reach the invalidator and find no overlap.
+The first is regeneration cost, the second is pure overhead, and they have
+different fixes. That needs one more counter.
+
+Note on the addresses: the guest virtual address is the reliable half. The
+page frame is a `ram_addr_t`, an offset across all memory blocks rather than a
+console physical address, so it should not be read as a location in the
+console's 64 MB.
 
 **Correction recorded deliberately.** This document previously named the
 per-draw texture dirty poll as the lead, on the strength of that poll issuing

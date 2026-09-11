@@ -250,20 +250,27 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_notdirty_invalidate_calls;
         extern uint64_t hakux_notdirty_page[8];
         extern uint64_t hakux_notdirty_hits[8];
+        extern uint64_t hakux_notdirty_vaddr[8];
+        extern uint32_t hakux_notdirty_off_lo[8];
+        extern uint32_t hakux_notdirty_off_hi[8];
         static uint64_t prev_total, prev_inval;
-        char nd[256];
+        char nd[768];
         int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
                          (unsigned long long)(hakux_notdirty_total - prev_total),
                          (unsigned long long)(hakux_notdirty_invalidate_calls - prev_inval));
         prev_total = hakux_notdirty_total;
         prev_inval = hakux_notdirty_invalidate_calls;
-        for (int i = 0; i < 8 && n < (int)sizeof(nd) - 32; i++) {
+        for (int i = 0; i < 8 && n < (int)sizeof(nd) - 80; i++) {
             if (!hakux_notdirty_hits[i]) {
                 continue;
             }
-            n += snprintf(nd + n, sizeof(nd) - n, " %llx=%llu",
+            n += snprintf(nd + n, sizeof(nd) - n,
+                          " pfn%llx n=%llu va=%llx off=%x..%x",
                           (unsigned long long)hakux_notdirty_page[i],
-                          (unsigned long long)hakux_notdirty_hits[i]);
+                          (unsigned long long)hakux_notdirty_hits[i],
+                          (unsigned long long)hakux_notdirty_vaddr[i],
+                          hakux_notdirty_off_lo[i],
+                          hakux_notdirty_off_hi[i]);
         }
         __android_log_print(ANDROID_LOG_INFO, "hakuX-pages", "%s", nd);
     }

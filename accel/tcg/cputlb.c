@@ -1349,6 +1349,13 @@ static bool victim_tlb_hit(CPUState *cpu, size_t mmu_idx, size_t index,
 uint64_t hakux_notdirty_total;
 uint64_t hakux_notdirty_page[HAKUX_ND_SLOTS];
 uint64_t hakux_notdirty_hits[HAKUX_ND_SLOTS];
+/* Guest virtual address last seen writing the page, and the span of offsets
+ * within it. The span says whether the writes sit in one small region of the
+ * page or are scattered through it, which decides whether separating the data
+ * from the code could even help. */
+uint64_t hakux_notdirty_vaddr[HAKUX_ND_SLOTS];
+uint32_t hakux_notdirty_off_lo[HAKUX_ND_SLOTS];
+uint32_t hakux_notdirty_off_hi[HAKUX_ND_SLOTS];
 uint64_t hakux_notdirty_invalidate_calls;
 
 static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
@@ -1375,8 +1382,20 @@ static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
             slot = coldest;
             hakux_notdirty_page[slot] = pfn;
             hakux_notdirty_hits[slot] = 0;
+            hakux_notdirty_off_lo[slot] = 0xffffffffu;
+            hakux_notdirty_off_hi[slot] = 0;
         }
         hakux_notdirty_hits[slot]++;
+        hakux_notdirty_vaddr[slot] = (uint64_t)mem_vaddr;
+        {
+            uint32_t off = (uint32_t)(ram_addr & 0xfff);
+            if (off < hakux_notdirty_off_lo[slot]) {
+                hakux_notdirty_off_lo[slot] = off;
+            }
+            if (off + size > hakux_notdirty_off_hi[slot]) {
+                hakux_notdirty_off_hi[slot] = off + size;
+            }
+        }
     }
 
     if (!physical_memory_get_dirty_flag(ram_addr, DIRTY_MEMORY_CODE)) {
