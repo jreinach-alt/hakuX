@@ -211,6 +211,13 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
             GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_BORDER_SOURCE);
         bool cubemap = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_CUBEMAPENABLE);
         state->tex_cubemap[i] = cubemap;
+        {
+            uint32_t a = pgraph_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);
+            state->addr_border[i] =
+                (GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 1 : 0) |
+                (GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 2 : 0) |
+                (GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) == NV_PGRAPH_TEXADDRESS0_ADDRU_BORDER ? 4 : 0);
+        }
         state->border_logical_size[i][0] = 0.0f;
         state->border_logical_size[i][1] = 0.0f;
         state->border_logical_size[i][2] = 0.0f;
@@ -1607,10 +1614,14 @@ static MString* psh_convert(struct PixelShader *ps)
                 apply_border_adjustment(ps, vars, i, "pT%d");
                 bool convolve = ps->state->conv_tex[i] == CONVOLUTION_FILTER_GAUSSIAN ||
                                 ps->state->conv_tex[i] == CONVOLUTION_FILTER_QUINCUNX;
-                if (convolve && ps->state->dim_tex[i] != 2) {
-                    NV2A_UNIMPLEMENTED("convolution filter on a %dD texture, "
+                if (convolve && (ps->state->dim_tex[i] != 2 ||
+                                 ps->state->tex_cubemap[i])) {
+                    /* textureProj has no cube form; the filter tap loop
+                     * would not compile against a samplerCube. */
+                    NV2A_UNIMPLEMENTED("convolution filter on a %dD%s texture, "
                                        "stage %d; sampled unfiltered",
-                                       ps->state->dim_tex[i], i);
+                                       ps->state->dim_tex[i],
+                                       ps->state->tex_cubemap[i] ? " cube" : "", i);
                     convolve = false;
                 }
                 if (convolve) {
@@ -1635,6 +1646,30 @@ static MString* psh_convert(struct PixelShader *ps)
                         mstring_append_fmt(vars, "vec4 t%d = vec4(0.0); /* %dD texture */\n",
                                            i, ps->state->dim_tex[i]);
                     }
+                }
+                /*
+                 * A BORDER axis replaces the texel with the border colour
+                 * register, verbatim, whatever the texture's format.  The
+                 * sampler's custom border colour goes through the image
+                 * view's component mapping and the format's channel set,
+                 * which turned 0x33FF22CC into opaque white on A8 and green
+                 * on BGRA (Texture_border_color).  Decide it here instead.
+                 */
+                if ((ps->state->addr_border[i] & 3) &&
+                    ps->state->dim_tex[i] == 2 && !ps->state->tex_cubemap[i] &&
+                    !ps->state->shadow_map[i]) {
+                    mstring_append_fmt(vars,
+                        "{\n"
+                        "  vec2 bc = %s(pT%d.xy) / pT%d.w;\n"
+                        "  if ((%s && (bc.x < 0.0 || bc.x > 1.0)) ||\n"
+                        "      (%s && (bc.y < 0.0 || bc.y > 1.0))) {\n"
+                        "    t%d = borderColor[%d];\n"
+                        "  }\n"
+                        "}\n",
+                        tex_remap, i, i,
+                        (ps->state->addr_border[i] & 1) ? "true" : "false",
+                        (ps->state->addr_border[i] & 2) ? "true" : "false",
+                        i, i);
                 }
             }
             break;
@@ -2290,6 +2325,13 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         }
     }
 
+    if (locs[PshUniform_borderColor] != -1) {
+        for (int i = 0; i < 4; i++) {
+            pgraph_argb_pack32_to_rgba_float(
+                pgraph_reg_r(pg, NV_PGRAPH_BORDERCOLOR0 + i * 4),
+                values->borderColor[i]);
+        }
+    }
     if (locs[PshUniform_eyeVec] != -1) {
         for (int k = 0; k < 3; k++) {
             uint32_t bits = pgraph_reg_r(pg, NV_PGRAPH_EYEVEC0 + k * 4);

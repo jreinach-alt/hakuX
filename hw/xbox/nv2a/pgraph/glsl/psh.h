@@ -54,6 +54,8 @@ typedef struct PshState {
     bool tex_x8y24[4];
     int dim_tex[4];
     bool tex_cubemap[4];
+    /* NV_PGRAPH_TEXADDRESSn axes in BORDER mode: 1 U, 2 V, 4 P */
+    uint8_t addr_border[4];
 
     float border_logical_size[4][3];
     float border_inv_real_size[4][3];
@@ -83,6 +85,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
 
 #define PSH_UNIFORM_DECL_X(S, DECL) \
     DECL(S, alphaRef, int, 1)       \
+    DECL(S, borderColor, vec4, 4)   \
     DECL(S, bumpMat, mat2, 4)       \
     DECL(S, bumpOffset, float, 4)   \
     DECL(S, bumpScale, float, 4)    \

@@ -135,6 +135,8 @@ static void pgraph_init_reg_category_table(void)
         pgraph_reg_category_table[(NV_PGRAPH_TEXCTL0_0  + i * 4) / 4] |= REG_CAT_SHADER;
         pgraph_reg_category_table[(NV_PGRAPH_TEXFILTER0 + i * 4) / 4] |= REG_CAT_SHADER;
         pgraph_reg_category_table[(NV_PGRAPH_TEXFMT0    + i * 4) / 4] |= REG_CAT_SHADER;
+        /* cylinder-wrap bits reach the geometry shader */
+        pgraph_reg_category_table[(NV_PGRAPH_TEXADDRESS0 + i * 4) / 4] |= REG_CAT_SHADER;
     }
 
     for (int i = 0; i < 4; i++) {

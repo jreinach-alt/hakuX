@@ -154,6 +154,7 @@ static const Field fields[] = {
     F4(colorkey_mode, K_INT, COLOR_KEY_NONE, COLOR_KEY_DISCARD),
     F4(conv_tex,    K_INT, CONVOLUTION_FILTER_DISABLED, CONVOLUTION_FILTER_GAUSSIAN),
     F4(tex_x8y24,   K_BOOL, 0, 1),
+    F4(addr_border, K_INT, 0, 7),
     F4(dim_tex,     K_INT, 1, 3),
     F4(tex_cubemap, K_BOOL, 0, 1),
     F4x3(border_logical_size),
