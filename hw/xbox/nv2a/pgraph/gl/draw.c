@@ -44,6 +44,26 @@ static inline void android_log_gl_errors(const char *ctx)
 }
 #endif
 
+/*
+ * A clear writes the surface the way a draw does, and the surface-to-texture
+ * path has to be told: it only refreshes a texture bound straight from a
+ * surface when that surface's draw time has moved on. A surface that is
+ * cleared and not otherwise drawn to keeps the draw time it had, so a texture
+ * sampled from it afterwards still shows what was there before the clear.
+ */
+static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHGLState *r = pg->gl_renderer_state;
+
+    pg->draw_time++;
+    if (r->color_binding && write_color) {
+        r->color_binding->draw_time = pg->draw_time;
+    }
+    if (r->zeta_binding && write_zeta) {
+        r->zeta_binding->draw_time = pg->draw_time;
+    }
+}
+
 void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -140,6 +160,7 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
     glDisable(GL_SCISSOR_TEST);
 
     pgraph_gl_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_drawn(pg, write_color, write_zeta);
 
     if (r->color_binding) {
         r->color_binding->cleared = full_clear && write_color;
@@ -167,7 +188,8 @@ void pgraph_gl_draw_begin(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     pgraph_gl_surface_update(d, true, true, depth_test || stencil_test);
 
@@ -310,15 +332,17 @@ void pgraph_gl_draw_begin(NV2AState *d)
     /* Edge Antialiasing */
 #ifdef __ANDROID__
     glLineWidth(MIN(r->supported_aliased_line_width_range[1],
-                    pg->surface_scale_factor));
+                    (pg->line_width / 8.0f) * pg->surface_scale_factor));
 #else
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {
         glEnable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_smooth_line_width_range[1], pg->surface_scale_factor));
+        glLineWidth(MIN(r->supported_smooth_line_width_range[1],
+                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
     } else {
         glDisable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_aliased_line_width_range[1], pg->surface_scale_factor));
+        glLineWidth(MIN(r->supported_aliased_line_width_range[1],
+                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
     }
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {
@@ -385,7 +409,8 @@ void pgraph_gl_draw_end(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     if (is_nop_draw) {
         // FIXME: Check PGRAPH register 0x880.

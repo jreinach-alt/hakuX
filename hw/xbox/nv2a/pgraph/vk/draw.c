@@ -334,7 +334,8 @@ void pgraph_vk_draw_begin(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     pgraph_vk_surface_update(d, true, true, depth_test || stencil_test);
 
@@ -3098,6 +3099,13 @@ mfp_miss: (void)0;
     }
 }
 
+/* The width SET_LINE_WIDTH asks for, at the scale the surface is drawn at
+ * and within what the device can actually draw. */
+static float pgraph_vk_line_width(PGRAPHState *pg)
+{
+    return (pg->line_width / 8.0f) * pg->surface_scale_factor;
+}
+
 static float clamp_line_width_to_device_limits(PGRAPHState *pg, float width)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3208,8 +3216,8 @@ static void begin_draw(PGRAPHState *pg)
         vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
         if (r->pipeline_binding->has_dynamic_line_width) {
-            float line_width =
-                clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            float line_width = clamp_line_width_to_device_limits(
+                pg, pgraph_vk_line_width(pg));
             vkCmdSetLineWidth(r->command_buffer, line_width);
         }
     }
@@ -4348,7 +4356,7 @@ static bool try_snapshot_draw_arrays(NV2AState *d, ReorderWindowEntry *e)
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
-            clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -4485,7 +4493,7 @@ static bool try_snapshot_inline_elements(NV2AState *d, ReorderWindowEntry *e)
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
-            clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -4826,9 +4834,11 @@ static void flush_reorder_window_internal(NV2AState *d)
         pg->draw_time++;
         if (r->color_binding && e->color_write) {
             r->color_binding->draw_time = pg->draw_time;
+            pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
         }
         if (r->zeta_binding && (e->depth_test || e->stencil_test)) {
             r->zeta_binding->draw_time = pg->draw_time;
+            pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
         }
         pgraph_vk_set_surface_dirty(pg, e->color_write,
                                     e->depth_test || e->stencil_test);
@@ -4875,7 +4885,8 @@ void pgraph_vk_draw_end(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     if (is_nop_draw) {
         NV2A_VK_DPRINTF("nop draw!\n");
@@ -5066,9 +5077,11 @@ post_draw:
     pg->draw_time++;
     if (r->color_binding && pgraph_color_write_enabled(pg)) {
         r->color_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
     }
     if (r->zeta_binding && pgraph_zeta_write_enabled(pg)) {
         r->zeta_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
     }
 
     pgraph_vk_set_surface_dirty(pg, color_write, depth_test || stencil_test);
@@ -5215,6 +5228,55 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     r->num_vertex_ram_buffer_syncs = 0;
 
     NV2A_VK_DGROUP_END();
+}
+
+/*
+ * A surface bound straight to a texture unit and then written has to bring
+ * the texture binding back through pgraph_vk_bind_textures. That is where the
+ * barrier making the write visible to a sampled read is issued, and the fast
+ * path in bind_pipeline skips the whole texture bind while the texture state
+ * is unchanged -- which a draw or a clear into the surface does not change.
+ * Without this the next draw samples the surface with no barrier against its
+ * own writes, which the validation layer reports as a read-after-write hazard
+ * and a tiler is free to honour.
+ */
+void pgraph_vk_surface_written_while_sampled(PGRAPHState *pg,
+                                             SurfaceBinding *surface)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!surface || surface->image_view == VK_NULL_HANDLE) {
+        return;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (r->tex_surface_direct[i] &&
+            r->tex_surface_direct_views[i] == surface->image_view) {
+            pg->texture_state_gen++;
+            return;
+        }
+    }
+}
+
+/*
+ * A clear writes the surface the way a draw does, and the surface-to-texture
+ * path has to be told: it only refreshes a texture bound straight from a
+ * surface when that surface's draw time has moved on. A surface that is
+ * cleared and not otherwise drawn to keeps the draw time it had, so a texture
+ * sampled from it afterwards still shows what was there before the clear.
+ */
+static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    pg->draw_time++;
+    if (r->color_binding && write_color) {
+        r->color_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
+    }
+    if (r->zeta_binding && write_zeta) {
+        r->zeta_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
+    }
 }
 
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
@@ -5395,6 +5457,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
             pg->clearing = false;
             pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+            mark_clear_drawn(pg, write_color, write_zeta);
             NV2A_VK_DGROUP_END();
             return;
         }
@@ -5491,6 +5554,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     pg->clearing = false;
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_drawn(pg, write_color, write_zeta);
 
     NV2A_VK_DGROUP_END();
 }

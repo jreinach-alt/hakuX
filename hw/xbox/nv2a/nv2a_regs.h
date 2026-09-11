@@ -513,6 +513,10 @@
 #   define NV_PGRAPH_SETUPRASTER_POINTSMOOTHENABLE              (1 << 9)
 #   define NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE               (1 << 10)
 #   define NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE               (1 << 11)
+    /* Not a documented hardware bit: the emulator keeps
+     * SET_STIPPLE_ENABLE here so that it takes part in the shader state
+     * like the other raster switches. */
+#   define NV_PGRAPH_SETUPRASTER_STIPPLEENABLE                  (1 << 12)
 #   define NV_PGRAPH_SETUPRASTER_CULLCTRL                       0x00600000
 #       define NV_PGRAPH_SETUPRASTER_CULLCTRL_FRONT                 1
 #       define NV_PGRAPH_SETUPRASTER_CULLCTRL_BACK                  2
@@ -1027,6 +1031,8 @@
 #   define NV097_SET_SHADE_MODE                               0x0000037C
 #       define NV097_SET_SHADE_MODE_V_FLAT                        0x1D00
 #       define NV097_SET_SHADE_MODE_V_SMOOTH                      0x1D01
+#   define NV097_SET_LINE_WIDTH                               0x00000380
+#       define NV097_SET_LINE_WIDTH_MAX                           0x000001FF
 #   define NV097_SET_POLYGON_OFFSET_SCALE_FACTOR              0x00000384
 #   define NV097_SET_POLYGON_OFFSET_BIAS                      0x00000388
 #   define NV097_SET_FRONT_POLYGON_MODE                       0x0000038C
@@ -1095,6 +1101,9 @@
 #   define NV097_SET_VIEWPORT_SCALE                           0x00000AF0
 #   define NV097_SET_TRANSFORM_PROGRAM                        0x00000B00
 #   define NV097_SET_TRANSFORM_CONSTANT                       0x00000B80
+#   define NV097_SET_STIPPLE_ENABLE                           0x0000147C
+#   define NV097_SET_STIPPLE_PATTERN                          0x00001480
+#       define NV097_SET_STIPPLE_PATTERN_COUNT                    32
 #   define NV097_SET_VERTEX3F                                 0x00001500
 #   define NV097_SET_BACK_LIGHT_AMBIENT_COLOR                 0x00000C00
 #   define NV097_SET_BACK_LIGHT_DIFFUSE_COLOR                 0x00000C0C

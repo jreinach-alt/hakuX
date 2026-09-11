@@ -224,6 +224,12 @@ typedef struct PGRAPHState {
 
     float point_params[8];
 
+    /* SET_LINE_WIDTH, in eighths of a pixel. */
+    uint32_t line_width;
+
+    /* SET_STIPPLE_PATTERN, a 32x32 bitmap of screen pixels. */
+    uint32_t stipple_pattern[NV097_SET_STIPPLE_PATTERN_COUNT];
+
     VertexAttribute vertex_attributes[NV2A_VERTEXSHADER_ATTRIBUTES];
     uint16_t compressed_attrs;
     uint16_t uniform_attrs;
@@ -339,6 +345,38 @@ static inline uint32_t pgraph_reg_r(PGRAPHState *pg, unsigned int r)
 {
     assert(r % 4 == 0);
     return pg->regs_[r];
+}
+
+/* Whether this draw puts anything on screen through the line rasteriser,
+ * either because the primitive is made of lines or because the polygon
+ * mode asks for its edges. */
+static inline bool pgraph_draw_rasterises_lines(PGRAPHState *pg)
+{
+    switch (pg->primitive_mode) {
+    case PRIM_TYPE_LINES:
+    case PRIM_TYPE_LINE_LOOP:
+    case PRIM_TYPE_LINE_STRIP:
+        return true;
+    case PRIM_TYPE_TRIANGLES:
+    case PRIM_TYPE_TRIANGLE_STRIP:
+    case PRIM_TYPE_TRIANGLE_FAN:
+    case PRIM_TYPE_QUADS:
+    case PRIM_TYPE_QUAD_STRIP:
+    case PRIM_TYPE_POLYGON:
+        return GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),
+                        NV_PGRAPH_SETUPRASTER_FRONTFACEMODE) ==
+               NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE;
+    default:
+        return false;
+    }
+}
+
+/* A line width of zero covers no pixel centres, so the line rasteriser
+ * puts nothing on screen: the Line width golden for 0.0 keeps the points
+ * the test draws alongside its lines and loses every line. */
+static inline bool pgraph_draw_is_empty_line(PGRAPHState *pg)
+{
+    return pg->line_width == 0 && pgraph_draw_rasterises_lines(pg);
 }
 
 static inline void pgraph_reg_w(PGRAPHState *pg, unsigned int r, uint32_t v)
