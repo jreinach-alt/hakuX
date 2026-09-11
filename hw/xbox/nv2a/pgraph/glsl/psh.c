@@ -1340,8 +1340,20 @@ static MString* psh_convert(struct PixelShader *ps)
         "vec3 dotmap_hilo_hemisphere_gl(vec4 col) {\n"
         "    return col.rgb;\n" // FIXME
         "}\n"
+        /* Signed HILO with the hemisphere completion of NV_texture_shader:
+         * the two 16-bit components are two's complement over 32767 (the
+         * 8-bit MINUS1_TO_1 rule, sign3, at 16 bits) and the third is
+         * sqrt(1 - hi^2 - lo^2).  The D3D and GL variants are rejected by
+         * the hardware (Texture_cubemap skips them: invalid data error),
+         * so only this one can be checked. */
         "vec3 dotmap_hilo_hemisphere(vec4 col) {\n"
-        "    return col.rgb;\n" // FIXME
+        "    uint hi_i = uint(col.a * float(0xff)) << 8\n"
+        "              | uint(col.r * float(0xff));\n"
+        "    uint lo_i = uint(col.g * float(0xff)) << 8\n"
+        "              | uint(col.b * float(0xff));\n"
+        "    float hi_f = (hi_i >= 0x8000u ? float(hi_i) - 65536.0 : float(hi_i)) / 32767.0;\n"
+        "    float lo_f = (lo_i >= 0x8000u ? float(lo_i) - 65536.0 : float(lo_i)) / 32767.0;\n"
+        "    return vec3(hi_f, lo_f, sqrt(max(0.0, 1.0 - hi_f * hi_f - lo_f * lo_f)));\n"
         "}\n"
         "const float[9] gaussian3x3 = float[9](\n"
         "    1.0/16.0, 2.0/16.0, 1.0/16.0,\n"
