@@ -201,10 +201,16 @@ static void append_lighting(const VshState *state, MString *body,
 
             /* lightLocalRange will be 1e+30 here */
 
+            /* The direction register is used as it is, like the half
+             * vector register: D3D normalises before writing it, and
+             * with an unnormalised one the diffuse scales by its length
+             * (the Specular ControlFlags_FF golden lights its quads with
+             * (1, 0, 1) and their diffuse is that of a unit vector times
+             * the square root of two, saturating on one side). */
             mstring_append_fmt(body,
                 "  {\n"
                 "    float attenuation = 1.0;\n"
-                "    vec3 lightDirection = normalize(lightInfiniteDirection[%d]);\n"
+                "    vec3 lightDirection = lightInfiniteDirection[%d];\n"
                 "    float nDotVP = max(0.0, dot(N, lightDirection));\n",
                 i);
             if (state->fixed_function.local_eye) {
