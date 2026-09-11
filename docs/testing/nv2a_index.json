@@ -3447,6 +3447,7 @@
  ],
  "issues": {
   "10": {
+   "disposition": "unclassified",
    "suites": [
     "Bump map",
     "Bump env lum"
@@ -3454,6 +3455,7 @@
    "title": "Bump mapping"
   },
   "11": {
+   "disposition": "unclassified",
    "suites": [
     "Window clip",
     "Viewport",
@@ -3462,6 +3464,7 @@
    "title": "Clipping, viewport and stencil"
   },
   "12": {
+   "disposition": "unclassified",
    "suites": [
     "Attrib carryover",
     "Attrib setter",
@@ -3471,6 +3474,7 @@
    "title": "Vertex attributes and primitive assembly"
   },
   "13": {
+   "disposition": "unclassified",
    "suites": [
     "Line width",
     "Point size",
@@ -3483,18 +3487,21 @@
    "title": "Line and point rasterisation"
   },
   "14": {
+   "disposition": "unclassified",
    "suites": [
     "Blend tests"
    ],
    "title": "Blend precision (low priority)"
   },
   "15": {
+   "disposition": "harness",
    "suites": [
     "Pixel shader"
    ],
    "title": "pgraph suite: some tests are order-dependent"
   },
   "16": {
+   "disposition": "unclassified",
    "suites": [
     "W buffering",
     "Depth buffer",
@@ -3503,6 +3510,7 @@
    "title": "Depth surface readback converts incorrectly"
   },
   "19": {
+   "disposition": "unclassified",
    "suites": [
     "Texture DXT",
     "Texture render target",
@@ -3532,6 +3540,7 @@
    "title": "328 of 864 failing tests render another test's image (two causes)"
   },
   "21": {
+   "disposition": "unclassified",
    "suites": [
     "Texture format",
     "Bump map",
@@ -3540,6 +3549,7 @@
    "title": "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"
   },
   "3": {
+   "disposition": "unclassified",
    "suites": [
     "Texture border",
     "Texture border color",
@@ -3553,13 +3563,29 @@
    ],
    "title": "Texture addressing: borders, wrap modes, cubemaps and perspective"
   },
+  "35": {
+   "disposition": "unmodelled-hardware",
+   "suites": [
+    "Texture shadow comparator"
+   ],
+   "title": "Projective shadow comparison: residual after the reference quantisation"
+  },
   "4": {
+   "disposition": "unclassified",
    "suites": [
     "Texture render target"
    ],
    "title": "Render-to-texture diverges from silicon"
   },
+  "46": {
+   "disposition": "unknown-semantics",
+   "suites": [
+    "Texture shadow comparator"
+   ],
+   "title": "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
+  },
   "5": {
+   "disposition": "unclassified",
    "suites": [
     "Texture CPU Update",
     "Texture signed component tests",
@@ -3568,18 +3594,21 @@
    "title": "Texture CPU update, signed components and palettes"
   },
   "6": {
+   "disposition": "unknown-semantics",
    "suites": [
     "Texture DXT"
    ],
    "title": "DXT1 decode rounding differs from silicon"
   },
   "7": {
+   "disposition": "unclassified",
    "suites": [
     "Image blit"
    ],
    "title": "Image blit: overlapping source and destination"
   },
   "8": {
+   "disposition": "unclassified",
    "suites": [
     "Fog",
     "Fog gen",
@@ -3592,6 +3621,7 @@
    "title": "Fog"
   },
   "9": {
+   "disposition": "unclassified",
    "suites": [
     "Lighting spotlight",
     "Lighting accumulation",
@@ -4157,7 +4187,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "97ac91617e9e28e4469125f08f4d1964c4ce02fa",
+  "emulator_commit": "48627a91067b9cb2f3f18ba6e0e3317eb7adf9eb",
   "gaps": 501,
   "resolved_tables": 1,
   "sites": 2718,

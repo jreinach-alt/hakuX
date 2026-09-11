@@ -41,6 +41,20 @@ INDEX_PATH = os.path.join(HERE, "nv2a_index.json")
 ISSUES_PATH = os.path.join(HERE, "nv2a_issues.toml")
 
 REGS_H = "hw/xbox/nv2a/nv2a_regs.h"
+# What blocks the remaining work on an issue, which is not the same question as
+# how bad it is. Everything below "defect" means stop writing code, but each for
+# a different reason and with a different way back in, so one "wontfix" would
+# lose the distinction that matters.
+DISPOSITIONS = {
+    "defect":              "a rule is known or derivable; work it",
+    "precision-floor":     "our float pipeline against their fixed point; no rule exists",
+    "unmodelled-hardware": "real and understood, but reproducing it is disproportionate",
+    "unknown-semantics":   "we do not know what the hardware does; needs an experiment, not code",
+    "host-dependent":      "differs between host GPUs, so not a stable target to fit",
+    "harness":             "about measurement rather than accuracy",
+    "unclassified":        "not yet triaged against the goldens",
+}
+
 SCAN_ROOTS = ["hw/xbox"]
 SCAN_EXTS = (".c", ".h", ".inc", ".cpp")
 
@@ -424,13 +438,18 @@ def load_issues():
             m = re.match(r"^\[issue\.(\d+)\]$", line)
             if m:
                 current = m.group(1)
-                issues[current] = {"title": "", "suites": []}
+                issues[current] = {"title": "", "suites": [],
+                                   "disposition": "unclassified"}
                 continue
             if current is None:
                 continue
             m = re.match(r'^title\s*=\s*"(.*)"$', line)
             if m:
                 issues[current]["title"] = m.group(1)
+                continue
+            m = re.match(r'^disposition\s*=\s*"(.*)"$', line)
+            if m:
+                issues[current]["disposition"] = m.group(1)
                 continue
             if re.match(r"^suites\s*=\s*\[", line):
                 # Arrays wrap across lines. Reading only single-line ones made
@@ -837,6 +856,10 @@ def cmd_check(repo, tests_root, support_dirs=None):
         if not meta["suites"]:
             problems.append("issue #%s has no suites (parse failure or empty entry)"
                             % num)
+        if meta.get("disposition") not in DISPOSITIONS:
+            problems.append("issue #%s has disposition %r, which is not one of: %s"
+                            % (num, meta.get("disposition"),
+                               ", ".join(sorted(DISPOSITIONS))))
         for suite in meta["suites"]:
             if known and suite not in known:
                 problems.append("issue #%s names unknown suite %r" % (num, suite))

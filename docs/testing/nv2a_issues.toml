@@ -13,72 +13,111 @@
 # -- the underscored form is the results directory name, and the index carries
 # that separately as results_name).
 
+# Each entry also carries a `disposition`: what blocks the REMAINING work, which
+# is not the same question as how bad the defect is. An issue keeps `defect` for
+# as long as any part of it is actionable; the other values mean stop writing
+# code, and say what would let it restart. `nv2a_index.py check` rejects a value
+# outside the set, the same way it rejects an unknown suite name.
+#
+#   defect               a rule is known or derivable; work it
+#   precision-floor      our float pipeline against their fixed point; no rule exists
+#   unmodelled-hardware  real and understood, but reproducing it is disproportionate
+#   unknown-semantics    we do not know what the hardware does; needs an experiment
+#   host-dependent       differs between host GPUs, so not a stable target to fit
+#   harness              about measurement rather than accuracy
+#   unclassified         not yet triaged against the goldens
+#
+# Only set something other than `unclassified` where there is a measurement
+# behind it. A guess here is worse than an admission of ignorance, because the
+# whole point of the field is to stop someone re-deriving what was already ruled
+# out.
+
 [issue.3]
 title = "Texture addressing: borders, wrap modes, cubemaps and perspective"
+disposition = "unclassified"
 suites = ["Texture border", "Texture border color", "TextureWrapMode",
           "Texture cubemap", "Texture 2D as cubemap", "Texture perspective",
           "Texture perspective enable", "Texture anisotropy", "Texture 3D as 2D"]
 
 [issue.4]
 title = "Render-to-texture diverges from silicon"
+disposition = "unclassified"
 suites = ["Texture render target"]
 
 [issue.5]
 title = "Texture CPU update, signed components and palettes"
+disposition = "unclassified"
 suites = ["Texture CPU Update", "Texture signed component tests", "Texture palette"]
 
+# DXT1's residual is a correct block decode plus a per-texel perturbation
+# with 5-6-5 truncation statistics (mean -0.5, std 2.33/1.13/2.27, green
+# exactly half of red and blue). Not positional, not a function of the
+# palette value, not on a replication grid. Needs a dump of what the
+# texture unit emits, not more fitting. See #4's DXT1 comments.
 [issue.6]
 title = "DXT1 decode rounding differs from silicon"
+disposition = "unknown-semantics"
 suites = ["Texture DXT"]
 
 [issue.7]
 title = "Image blit: overlapping source and destination"
+disposition = "unclassified"
 suites = ["Image blit"]
 
 [issue.8]
 title = "Fog"
+disposition = "unclassified"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
 [issue.9]
 title = "Fixed-function lighting and specular"
+disposition = "unclassified"
 suites = ["Lighting spotlight", "Lighting accumulation", "Lighting range",
           "Lighting control", "Lighting Two Sided", "Material color source",
           "Specular", "Specular back"]
 
 [issue.10]
 title = "Bump mapping"
+disposition = "unclassified"
 suites = ["Bump map", "Bump env lum"]
 
 [issue.11]
 title = "Clipping, viewport and stencil"
+disposition = "unclassified"
 suites = ["Window clip", "Viewport", "Stencil"]
 
 [issue.12]
 title = "Vertex attributes and primitive assembly"
+disposition = "unclassified"
 suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
 
 [issue.13]
 title = "Line and point rasterisation"
+disposition = "unclassified"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 
 [issue.14]
 title = "Blend precision (low priority)"
+disposition = "unclassified"
 suites = ["Blend tests"]
 
 [issue.15]
 title = "pgraph suite: some tests are order-dependent"
+disposition = "harness"
 suites = ["Pixel shader"]
 
 [issue.16]
 title = "Depth surface readback converts incorrectly"
+disposition = "unclassified"
 suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
 
 # #19 spans 24 suites. Listed here are the suites its classification pass names
 # explicitly: the two confirmed contamination cases plus the missing-state set.
 [issue.19]
 title = "328 of 864 failing tests render another test's image (two causes)"
+disposition = "unclassified"
 suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "Blend surface", "Blend tests", "Depth buffer",
           "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
@@ -90,4 +129,26 @@ suites = ["Texture DXT", "Texture render target", "Attrib carryover",
 
 [issue.21]
 title = "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"
+disposition = "unclassified"
 suites = ["Texture format", "Bump map", "Bump env lum"]
+
+# Comparator scope resolved in 97ac9161 (236/288 -> 260/288). Everything left is
+# something other than the comparison: PROJECT2D's missing reference (its own
+# issue), the documented fixed-function vs programmable 24-bit depth offset that
+# the test itself works around with two reference values, and 420 px of genuine
+# depth-value crossings. Kept open rather than closed because the residual is
+# real; kept off the work queue by the disposition.
+[issue.35]
+title = "Projective shadow comparison: residual after the reference quantisation"
+suites = ["Texture shadow comparator"]
+disposition = "unmodelled-hardware"
+
+# Split from #35. PROJECT2D emits `t_depth.x <op> 0.0` with no reference at all.
+# 116 of the suite's 128 2* captures pass through that, so it is right for
+# something; the 12 that fail do so only on tie-sensitive operators, which is
+# what a missing reference would also look like. The goldens are consistent with
+# both readings, so this needs a test that varies r under PROJECT2D on hardware.
+[issue.46]
+title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
+suites = ["Texture shadow comparator"]
+disposition = "unknown-semantics"
