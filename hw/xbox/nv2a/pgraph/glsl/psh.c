@@ -1068,15 +1068,20 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
             mstring_append_fmt(
                 vars,
                 "float t%d_z = uintBitsToFloat(t%d_enc << 7);\n"
-                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n", /* f24_max */
-                i, i, i, i, i);
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n" /* f24_max */
+                "pT%d.z = uintBitsToFloat(floatBitsToUint(pT%d.z) & 0xFFFFFF80u);\n",
+                i, i, i, i, i, i, i);
         } else {
             mstring_append_fmt(
                 vars,
                 "float t%d_z = t%d_enc == 0u ? 0.0\n"
                 "           : uintBitsToFloat((t%d_enc << 11) + 0x3C000000u);\n"
-                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n", /* f16_max */
-                i, i, i, i, i, i);
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n" /* f16_max */
+                "pT%d.z = floatBitsToUint(pT%d.z) < 0x3C000000u ? 0.0\n"
+                "       : uintBitsToFloat(((floatBitsToUint(pT%d.z)\n"
+                "                           - 0x3C000000u) & 0xFFFFF800u)\n"
+                "                         + 0x3C000000u);\n",
+                i, i, i, i, i, i, i, i, i);
         }
         mstring_append_fmt(vars, "vec4 t%d = vec4(t%d_z %s pT%d.z ? 1.0 : 0.0);\n",
                            i, i, comparison, i);
@@ -1095,9 +1100,11 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
             "}\n"
             "t%d_depth.x *= t%d_max_depth;\n"
             "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, t%d_max_depth);\n"
+            "pT%d.z = t%d_max_depth > 512.0 ? floor(pT%d.z) : pT%d.z;\n"
             "vec4 t%d = vec4(t%d_depth.x %s pT%d.z ? 1.0 : 0.0);\n",
             i, i, i, i, i,
             i, i, i, i, i, i,
+            i, i, i, i,
             i, i, comparison, i);
     } else {
         mstring_append_fmt(
