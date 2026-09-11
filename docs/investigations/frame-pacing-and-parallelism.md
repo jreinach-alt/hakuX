@@ -140,7 +140,45 @@ Against the measured 19.5 ms draw phase at 1x, the second group is most of
 to 11 ms depending on where `pgraph_vk_bind_textures` falls, which needs a
 finer timer to settle.
 
-### Ranked, with the caveat first
+### Step 1 is done, and it reorders the rest
+
+Measured 2026-09-11 with the always-on `Ri` figure, Crimson Skies, one run,
+`simple_vblank` on. The title gives both populations: its cruise is self-paced
+at 30 and says nothing about the ceiling, its heavy sections are missing its
+own target and are genuinely emulator-bound. Only the second is read here.
+
+| emulator-bound frames | ms |
+|---|---|
+| frame | 50.2 |
+| guest CPU thread busy | 41.5 |
+| renderer busy | 29.0 |
+| renderer idle, waiting on the guest | 21.2 |
+
+The two poles are far apart, and the bounds follow directly:
+
+- **Renderer cost to zero** bounds the frame at the guest's 41.5 ms, which is
+  24 fps against 20 now. About a fifth.
+- **Guest cost to zero** bounds it at the renderer's 29.0 ms, which is 34 fps.
+
+**The guest CPU emulation is the critical path.** The guest is busy 83% of the
+wall clock and blocked on the renderer for the remaining 8.7 ms of the frame,
+which is the whole of what renderer work can recover.
+
+That is not what the ranking below assumed. Texture binding at 7.2 ms is still
+the largest single renderer item, but it sits inside the smaller pole: even
+removing all of it cannot beat the 24 fps bound, and would realistically
+return a few percent. It stays worth doing, and it is no longer the thing to
+do first.
+
+What the measurement points at instead is the guest side, and one lead is
+already visible from the texture work: `memory_region_set_log(d->vram, true,
+DIRTY_MEMORY_NV2A_TEX)` puts every guest write to video memory through
+dirty-bitmap logging, and that cost lands on the guest thread, not the
+renderer. Per-texture invalidation would then be worth more than its renderer
+share suggests, because the same tracking is charged twice. That is a
+hypothesis and has not been measured.
+
+### The original ranking, with the caveat that produced the above
 
 **The guest CPU thread is at 85% and the renderer thread at 48%.** Before
 moving renderer work anywhere, establish which one actually bounds the frame,
