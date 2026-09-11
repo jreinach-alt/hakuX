@@ -13,6 +13,13 @@ GAME='/storage/E6C6-D7AA/Games/XBox/Crimson Skies - High Road to Revenge (USA) (
 SCALE="${1:?usage: run_perf.sh <surface_scale> <tag> [measure_s]}"
 TAG="${2:?}"
 MEASURE="${3:-45}"
+# ENVV holds newline-separated KEY=VALUE pairs; the app copies them into the
+# emulator's environment before it starts. Used for the diagnostic overrides.
+ENVV="${ENVV:-}"
+# BOOLPREFS: comma-separated name=true|false pairs written into the app prefs.
+BOOLPREFS="${BOOLPREFS:-}"
+# INTPREFS: comma-separated name=value pairs written as integer prefs.
+INTPREFS="${INTPREFS:-}"
 BOOT=${BOOT_S:-75}
 SETTLE=${SETTLE_S:-12}
 
@@ -22,13 +29,29 @@ command sleep 2
 # surface_scale lives in the app's prefs, which a debuggable build lets us
 # write directly. Read-modify-write so nothing else in the file is lost.
 adb -s $S exec-out run-as $PKG cat shared_prefs/x1box_prefs.xml > $W/prefs-cur.xml
-python3 - "$SCALE" <<'PY'
+python3 - "$SCALE" "$ENVV" "$BOOLPREFS" "$INTPREFS" <<'PY'
 import re, sys
+from xml.sax.saxutils import escape
 p = "/home/justin/hakux-work/perf/prefs-cur.xml"
 s = open(p).read()
 scale = int(sys.argv[1])
+envv = sys.argv[2] if len(sys.argv) > 2 else ""
+bools = sys.argv[3] if len(sys.argv) > 3 else ""
+ints = sys.argv[4] if len(sys.argv) > 4 else ""
 s = re.sub(r'\s*<int name="surface_scale".*?/>\n', '\n', s)
-s = s.replace('</map>', f'    <int name="surface_scale" value="{scale}" />\n</map>')
+s = re.sub(r'\s*<string name="env_vars">.*?</string>\n', '\n', s, flags=re.S)
+add = f'    <int name="surface_scale" value="{scale}" />\n'
+if envv:
+    add += f'    <string name="env_vars">{escape(envv)}</string>\n'
+for pair in [x for x in bools.split(",") if "=" in x]:
+    k, v = pair.split("=", 1)
+    s = re.sub(r'\s*<boolean name="%s".*?/>\n' % re.escape(k), '\n', s)
+    add += f'    <boolean name="{k}" value="{v}" />\n'
+for pair in [x for x in ints.split(",") if "=" in x]:
+    k, v = pair.split("=", 1)
+    s = re.sub(r'\s*<int name="%s".*?/>\n' % re.escape(k), '\n', s)
+    add += f'    <int name="{k}" value="{v}" />\n'
+s = s.replace('</map>', add + '</map>')
 open("/home/justin/hakux-work/perf/prefs-new.xml", "w").write(s)
 PY
 adb -s $S push -q $W/prefs-new.xml /data/local/tmp/p.xml >/dev/null 2>&1 \
