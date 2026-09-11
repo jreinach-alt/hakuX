@@ -402,18 +402,24 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
      * instead of becoming NaN, and every product is held to it so that two
      * of them multiplied together cannot overflow past it. */
     /* The lighting unit works on floats with a 13-bit fraction: the
-     * Celsius transform model converts every value it takes in by
-     * dropping the low ten bits of the float32 fraction, and its multiply
-     * and add truncate towards zero as well. lt() drops the registers and
-     * the vertex colours to that precision on their way in; the arithmetic
-     * that follows is still float32, so the last count can still differ.
-     * Five lights with an ambient of 0.1 sum to 127 on the hardware, not
-     * 128 (Lighting accumulation Directional-5), which no rounding of the
-     * float32 sum produces. */
+     * Celsius transform model (envytools, xf_s2lt) rounds every value it
+     * takes in to the nearest such float, adding half a unit at bit 9
+     * before dropping the low ten bits, except that a value whose bits 10
+     * to 17 are all set is dropped without the half unit; its multiply
+     * and add then truncate towards zero. lt() brings the registers and
+     * the vertex colours to that precision on their way in; the
+     * arithmetic that follows is still float32, so the last count can
+     * still differ. Five lights with an ambient of 0.1 sum to 127 on the
+     * hardware, not 128 (Lighting accumulation Directional-5), which no
+     * rounding of the float32 sum produces. */
     mstring_append(header,
-        "float lt(float x) { return uintBitsToFloat(floatBitsToUint(x) & 0xFFFFFC00u); }\n"
-        "vec3 lt(vec3 v) { return uintBitsToFloat(floatBitsToUint(v) & 0xFFFFFC00u); }\n"
-        "vec4 lt(vec4 v) { return uintBitsToFloat(floatBitsToUint(v) & 0xFFFFFC00u); }\n"
+        "uint ltBits(uint u) {\n"
+        "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
+        "  return u & 0xFFFFFC00u;\n"
+        "}\n"
+        "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
+        "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
+        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
         "float specularFactor(float x, vec3 k) {\n"
         "  float n = x + k.x;\n"
         "  float d = x * k.y + k.z;\n"
