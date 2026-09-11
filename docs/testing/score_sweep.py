@@ -48,10 +48,12 @@ Suites are ranked by the share of their tests that are bit-identical, because
 that is the only claim that needs no threshold to defend.
 
 The per-test TSV has one row per test: suite, test, solo, status, differing,
-max_rgb, max_a, pixels, off_by_one. For a depth capture ``differing`` counts
+max_rgb, max_a, pixels, off_by_one. For a colour capture ``off_by_one``
+counts differing pixels no channel of which is more than one step out. For a
+depth capture ``differing`` counts
 pixels whose decoded depth or stencil differs and ``off_by_one`` those whose
 depth is off by exactly one with the stencil equal; ``max_rgb`` and ``max_a``
-stay the raw channel maxima. For a colour capture ``off_by_one`` is 0.
+stay the raw channel maxima. 
 """
 
 import argparse
@@ -148,6 +150,15 @@ def score_dir(args):
             off_by_one = int(((dz == 1) & (ds == 0)).sum())
         else:
             differing = int(((rgb > 0) | (alpha > 0)).sum())
+            # A colour capture's off-by-one bucket, for the same reason the
+            # depth one exists. Measured across 727 captures, the pixels in
+            # this bucket sit 0.01 to 0.04 of a step from the hardware's
+            # value: two nearly identical computations landing either side
+            # of a quantisation boundary, not a rounding rule, which would
+            # put half of them across it. See docs/testing/
+            # run-2026-09-11-residual-classes.tsv and issue #38.
+            off_by_one = int(((rgb <= 1) & (alpha <= 1)
+                              & ((rgb > 0) | (alpha > 0))).sum())
 
         # The overlay text is drawn pure white by the guest. Pixels that are
         # white on exactly one side mean the two runs printed different text,
@@ -249,8 +260,8 @@ def main():
             print(f"  every repeated test scored identically on each run\n")
     print(f"  bit-identical to hardware   : {len(exact):5d}  "
           f"({len(exact)/max(len(scored),1)*100:.1f}% of scored)")
-    print(f"  depth within +-1 of hardware: {len(within1):5d}  "
-          f"(depth captures off by exactly one; not counted above)")
+    print(f"  within +-1 of hardware      : {len(within1):5d}  "
+          f"(every differing pixel one step out; not counted above)")
     print(f"  differ                      : "
           f"{len(scored)-len(exact)-len(within1)-len(blanks):5d}")
     print(f"  blank -- nothing drew       : {len(blanks):5d}")
