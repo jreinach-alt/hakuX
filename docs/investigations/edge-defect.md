@@ -37,9 +37,8 @@ the twelve `Viewport` offsets, including the XDK default 0.53125 and the
   100 px quads at integer positions, four with a programmable shader that
   carries its own D3D-style viewport, four with the fixed-function pipeline,
   then sweeps `SetViewportOffset`. Measured against gold along rows 190/290
-  and columns 170/270/370/470 of every capture (`vpext.py` in this session's
-  scratchpad; the numbers below are reproducible from the goldens and the
-  `clipbase` captures):
+  and columns 170/270/370/470 of every capture
+  (`docs/testing/probe_viewport_extents.py`):
   - offsets 0, +0.53125, −0.53125, +1.0, −1.0, with scale 0 or 2: ours equals
     gold in every run of every row and column checked. The programmable quads
     never move; the fixed-function quads move by the offset.
@@ -104,7 +103,7 @@ NV2A vertex ALU at that level; `nv2a_vsh_cpu` implements `RCP` as `1.0f / in`
   `lighting_accumulation_tests.cpp:184`, `lighting_range_tests.cpp:152` 24,
   `lighting_spotlight_tests.cpp:256` 16 (its own texture, same quad).
 - Measured first row of each new cell, `Material_color_source::Emissive_me0`,
-  columns 560/600/630 (`cbprobe.py`):
+  columns 560/600/630 (`docs/testing/probe_checker_ties.py`):
 
 | cell edge (rows) | 37.5 | 75 | 112.5 | 150 | 187.5 | 225 | 262.5 | 300 | 337.5 | 375 | 412.5 | 450 |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
