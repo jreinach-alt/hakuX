@@ -87,8 +87,8 @@ struct LightingSide {
 static const char *vertex_color_rgb(enum MaterialColorSource src)
 {
     switch (src) {
-    case MATERIAL_COLOR_SRC_DIFFUSE: return "diffuse.rgb";
-    case MATERIAL_COLOR_SRC_SPECULAR: return "specular.rgb";
+    case MATERIAL_COLOR_SRC_DIFFUSE: return "ltDiffuse.rgb";
+    case MATERIAL_COLOR_SRC_SPECULAR: return "ltSpecular.rgb";
     default: return NULL;
     }
 }
@@ -96,8 +96,8 @@ static const char *vertex_color_rgb(enum MaterialColorSource src)
 static const char *vertex_color_scale(enum MaterialColorSource src)
 {
     switch (src) {
-    case MATERIAL_COLOR_SRC_DIFFUSE: return "diffuse.xyz * ";
-    case MATERIAL_COLOR_SRC_SPECULAR: return "specular.xyz * ";
+    case MATERIAL_COLOR_SRC_DIFFUSE: return "ltDiffuse.xyz * ";
+    case MATERIAL_COLOR_SRC_SPECULAR: return "ltSpecular.xyz * ";
     default: return "";
     }
 }
@@ -367,17 +367,17 @@ GLSL_DEFINE(invModelViewMat3, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT3))
 GLSL_DEFINE(eyePosition, GLSL_C(NV_IGRAPH_XF_XFCTX_EYEP))
 "\n"
 "#define lightAmbientColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_AMB) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_AMB) " + (i)*6].xyz)\n"
 "#define lightDiffuseColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_DIF) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_DIF) " + (i)*6].xyz)\n"
 "#define lightSpecularColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_SPC) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_SPC) " + (i)*6].xyz)\n"
 "#define lightBackAmbientColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BAMB) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BAMB) " + (i)*6].xyz)\n"
 "#define lightBackDiffuseColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BDIF) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BDIF) " + (i)*6].xyz)\n"
 "#define lightBackSpecularColor(i) "
-    "ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BSPC) " + (i)*6].xyz\n"
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BSPC) " + (i)*6].xyz)\n"
 "\n"
 "#define lightSpotFalloff(i) "
     "ltctxa[" stringify(NV_IGRAPH_XF_LTCTXA_L0_K) " + (i)*2].xyz\n"
@@ -388,10 +388,10 @@ GLSL_DEFINE(eyePosition, GLSL_C(NV_IGRAPH_XF_XFCTX_EYEP))
     "ltc1[" stringify(NV_IGRAPH_XF_LTC1_r0) " + (i)].x\n"
 "\n"
 GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
-GLSL_DEFINE(sceneAmbientColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz")
-GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz")
-GLSL_DEFINE(backSceneAmbientColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz")
-GLSL_DEFINE(backMaterialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz")
+"#define sceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz)\n"
+"#define materialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz)\n"
+"#define backSceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz)\n"
+"#define backMaterialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz)\n"
 "\n"
 );
 
@@ -401,7 +401,19 @@ GLSL_DEFINE(backMaterialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) 
      * stands in for that infinity so that a zero factor stays zero in GLSL
      * instead of becoming NaN, and every product is held to it so that two
      * of them multiplied together cannot overflow past it. */
+    /* The lighting unit works on floats with a 13-bit fraction: the
+     * Celsius transform model converts every value it takes in by
+     * dropping the low ten bits of the float32 fraction, and its multiply
+     * and add truncate towards zero as well. lt() drops the registers and
+     * the vertex colours to that precision on their way in; the arithmetic
+     * that follows is still float32, so the last count can still differ.
+     * Five lights with an ambient of 0.1 sum to 127 on the hardware, not
+     * 128 (Lighting accumulation Directional-5), which no rounding of the
+     * float32 sum produces. */
     mstring_append(header,
+        "float lt(float x) { return uintBitsToFloat(floatBitsToUint(x) & 0xFFFFFC00u); }\n"
+        "vec3 lt(vec3 v) { return uintBitsToFloat(floatBitsToUint(v) & 0xFFFFFC00u); }\n"
+        "vec4 lt(vec4 v) { return uintBitsToFloat(floatBitsToUint(v) & 0xFFFFFC00u); }\n"
         "float specularFactor(float x, vec3 k) {\n"
         "  float n = x + k.x;\n"
         "  float d = x * k.y + k.z;\n"
@@ -533,6 +545,9 @@ GLSL_DEFINE(backMaterialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) 
         mstring_append(body, "  oB0 = vec4(0.0, 0.0, 0.0, 1.0);\n");
         mstring_append(body, "  oB1 = vec4(0.0, 0.0, 0.0, 1.0);\n");
     } else {
+        /* The vertex colours enter the lighting unit at its precision. */
+        mstring_append(body, "  vec4 ltDiffuse = lt(diffuse);\n"
+                             "  vec4 ltSpecular = lt(specular);\n");
         struct LightingSide front = {
             .normal = "tNormal",
             .diffuse_out = "oD0",
