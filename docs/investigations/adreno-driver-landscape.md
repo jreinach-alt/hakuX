@@ -133,7 +133,7 @@ That has two consequences worth separating:
 
 ## What the evaluation found
 
-Run 2026-09-11. Same build (`c2f931ed8d`), same discs, driver swapped
+Run 2026-09-11. Same build (the shadow-grid fix, now `27b583e17c`), same discs, driver swapped
 underneath between runs, 826 captures across seven suites compared md5 for
 md5. Raw scores in `docs/testing/run-2026-09-11-driver-*.tsv`; the harness is
 in `docs/testing/drivers/`.

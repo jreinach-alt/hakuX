@@ -1,7 +1,7 @@
 # Where Crimson Skies' frame time goes on the Nova
 
 Measured 2026-09-11. Retroid Pocket Nova, Adreno 740, Turnip T30. Build
-`d6a2430e6b`. Harness and raw logs in `docs/testing/perf/`.
+`33557e82ab`. Harness and raw logs in `docs/testing/perf/`.
 
 The question was whether the roughly 30 fps this game shows is the emulator's
 limit or the game's, where the ceiling is, and what upscaling costs.

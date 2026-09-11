@@ -1,7 +1,7 @@
 # The 30 fps cap, and where the work could be split
 
 Measured 2026-09-11. Retroid Pocket Nova, Adreno 740, Turnip T30. Builds
-`d6a2430e6b` through `0f8ecb80b9`. Harness in `docs/testing/perf/`.
+`33557e82ab` through `9edf95861d`. Harness in `docs/testing/perf/`.
 
 Three questions: what holds Crimson Skies at 30 and can we override it; what
 parallelising the renderer would involve; and whether this emulator spreads
