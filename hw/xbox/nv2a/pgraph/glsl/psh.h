@@ -24,6 +24,7 @@
 
 #include "common.h"
 #include "hw/xbox/nv2a/pgraph/psh_regs.h"
+#include "hw/xbox/nv2a/pgraph/vsh_regs.h"
 
 typedef struct PGRAPHState PGRAPHState;
 
@@ -70,6 +71,8 @@ typedef struct PshState {
 
     bool smooth_shading;
     bool texture_perspective;
+    bool fog_enable;
+    enum VshFogMode fog_mode;
     bool depth_clipping;
     bool z_perspective;
     bool depth_needed;
@@ -95,6 +98,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
     DECL(S, depthOffset, float, 1)  \
     DECL(S, eyeVec, vec4, 1)        \
     DECL(S, fogColor, vec4, 1)      \
+    DECL(S, fogParam, vec2, 1)      \
     DECL(S, surfaceScale, ivec2, 1) \
     DECL(S, texScale, float, 4)
 
