@@ -498,8 +498,20 @@ static bool check_texture_dirty(NV2AState *d, hwaddr addr, hwaddr size)
     hwaddr end = TARGET_PAGE_ALIGN(addr + size);
     addr &= TARGET_PAGE_MASK;
     assert(end < memory_region_size(d->vram));
-    return memory_region_test_and_clear_dirty(d->vram, addr, end - addr,
-                                              DIRTY_MEMORY_NV2A_TEX);
+    bool dirty = memory_region_test_and_clear_dirty(d->vram, addr, end - addr,
+                                                    DIRTY_MEMORY_NV2A_TEX);
+    if (dirty) {
+        /*
+         * The bits are consumed by this test, so every cached binding that
+         * aliases the range has to hear about the write now, not only the
+         * one that asked.  Texture_3D_as_2D writes a 64x64x2 volume over
+         * the memory the previous test had bound as a 64x64 2D texture:
+         * the volume's own bind cleared the bits, and the 2D reference
+         * square drawn next reused the previous test's texels.
+         */
+        pgraph_vk_mark_textures_possibly_dirty(d, addr, end - addr);
+    }
+    return dirty;
 }
 
 static void resolve_possibly_dirty_textures(NV2AState *d)
