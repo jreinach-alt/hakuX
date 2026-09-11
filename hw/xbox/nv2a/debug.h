@@ -153,6 +153,18 @@ typedef struct FramePacingStats {
      * for every VBLANK and misses drifts above 1.0 and wanders with the
      * scene. That distinction is not visible in a frame rate. */
     float vblanks_per_flip;
+    /* How long the pfifo thread had nothing to do, per guest frame. That
+     * thread decodes every method and builds every Vulkan draw, so the share
+     * of the frame it spends idle is the share the guest side owns. It is the
+     * one number that says whether making the renderer faster can help at
+     * all, and it costs nothing: the clock read at the top of the wait was
+     * already unconditional, only the accumulation was behind NV2A_PERF_LOG.
+     *
+     * Read it only on a title that wants more frames than it is getting. A
+     * title pacing itself to 30 leaves both sides idle and the ratio says
+     * nothing about the ceiling. */
+    int64_t renderer_idle_acc_ns;
+    float renderer_idle_ms;
     float vblank_jitter_ms;
     float vblank_delivery_ms;
     bool unlock_mode_active;
