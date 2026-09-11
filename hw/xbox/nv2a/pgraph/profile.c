@@ -243,6 +243,17 @@ void nv2a_profile_flip_stall(void)
 
     g_nv2a_stats.phase_working.post_flip = true;
 
+    /* VBLANKs consumed by the frame that just ended. */
+    {
+        static unsigned int prev_vblank_count;
+        FramePacingStats *p = &g_nv2a_stats.pacing;
+        unsigned int n = p->vblank_fired - prev_vblank_count;
+        prev_vblank_count = p->vblank_fired;
+        if (n <= 16) {
+            p->vblanks_per_flip = p->vblanks_per_flip * 0.9f + (float)n * 0.1f;
+        }
+    }
+
     /* Track game frame time (flip-to-flip interval) */
     static int64_t prev_flip_us;
     if (prev_flip_us) {
@@ -312,7 +323,8 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
 {
     FramePacingStats *p = &g_nv2a_stats.pacing;
     snprintf(buf, bufsize,
-             "G:%.1f(%.1f-%.1f) D:%.1f(%.1f-%.1f) S:%.1f J:%.1f Df:%u Vd:%.1f Ul:%c",
+             "G:%.1f(%.1f-%.1f) D:%.1f(%.1f-%.1f) S:%.1f J:%.1f Df:%u Vd:%.1f "
+             "Ul:%c Vpf:%.2f",
              p->game_frame_ms,
              p->game_frame_min_ms,
              p->game_frame_max_ms,
@@ -323,7 +335,8 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
              p->vblank_jitter_ms,
              p->defers_total,
              p->vblank_delivery_ms,
-             p->unlock_mode_active ? 'Y' : 'N');
+             p->unlock_mode_active ? 'Y' : 'N',
+             p->vblanks_per_flip);
     /* Reset min/max every call so the window reflects recent behavior */
     p->game_frame_min_ms = 0;
     p->game_frame_max_ms = 0;

@@ -148,6 +148,11 @@ typedef struct FramePacingStats {
     unsigned int defers_total;
     unsigned int defers_window;
     unsigned int vblank_fired;
+    /* How many VBLANKs elapse between the guest's flips. A title that asks
+     * for every second VBLANK sits at 2.0 whatever the load; one that asks
+     * for every VBLANK and misses drifts above 1.0 and wanders with the
+     * scene. That distinction is not visible in a frame rate. */
+    float vblanks_per_flip;
     float vblank_jitter_ms;
     float vblank_delivery_ms;
     bool unlock_mode_active;
