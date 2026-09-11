@@ -170,6 +170,43 @@ removing all of it cannot beat the 24 fps bound, and would realistically
 return a few percent. It stays worth doing, and it is no longer the thing to
 do first.
 
+### What the guest thread is doing
+
+Profiled with simpleperf on the device, two independent runs of 20 and 25
+seconds during the same gameplay sequence. A `user` build refuses
+`perf_event_open` on a bare pid, but `--app` on a debuggable package with the
+software `cpu-clock` event is permitted, which is how these were taken.
+Reports in `docs/testing/perf/run-2026-09-11-crimson-profile-*.txt`.
+
+Top of the critical-path thread, both runs agreeing to a tenth of a percent:
+
+| share | symbol | what it is |
+|---|---|---|
+| 10.6% | `tlb_reset_dirty` | walks the TLB clearing dirty flags |
+| 8.4% | `tcg_flush_jmp_cache` | translation block jump cache flush |
+| 5.2% | `qht_lookup_custom` | translation block hash lookup |
+| 5.0% | `voice_lock` | **audio voice lock, on the guest thread** |
+| 3.9% | `flush_idcache_range` | icache flush after code generation |
+| 3.9% | `helper_lookup_tb_ptr` | translation block lookup |
+| ~2% | `tb_lookup_cmp`, `mmu_lookup1` | more of the same two families |
+
+**The thread that bounds the frame is not mostly executing guest code.** The
+two largest families are memory dirty tracking and translation-block
+lookup and invalidation, and they are emulator bookkeeping rather than
+emulated work. `voice_lock` at 5% is audio contention landing on the wrong
+thread entirely.
+
+Two caveats on reading this further. The build omits frame pointers and DWARF
+unwinding did not recover userspace callers, so **which** call site drives
+`tlb_reset_dirty` is not established here; a frame-pointer build would settle
+it and is the obvious next step. And the per-symbol shares in the saved report
+do not sum to 100, so treat the individual rows as sound and any grouping of
+them as not yet validated.
+
+What this does establish is that the dirty-tracking hypothesis below is the
+right thing to test first, and it now has a number attached rather than being
+a guess.
+
 What the measurement points at instead is the guest side, and one lead is
 already visible from the texture work: `memory_region_set_log(d->vram, true,
 DIRTY_MEMORY_NV2A_TEX)` puts every guest write to video memory through
