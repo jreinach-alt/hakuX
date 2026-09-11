@@ -1337,6 +1337,20 @@ static bool victim_tlb_hit(CPUState *cpu, size_t mmu_idx, size_t index,
     return false;
 }
 
+/*
+ * Diagnostic, read by the nv2a profiler. A guest store landing here means the
+ * page holds translated code, so the store invalidates it and the code is
+ * regenerated, which re-arms this callback. That loop is the largest cost on
+ * the thread that bounds a frame, and the question this answers is whether it
+ * is a handful of pages -- a buffer written next to code, which could be
+ * separated -- or spread across memory, which could not.
+ */
+#define HAKUX_ND_SLOTS 8
+uint64_t hakux_notdirty_total;
+uint64_t hakux_notdirty_page[HAKUX_ND_SLOTS];
+uint64_t hakux_notdirty_hits[HAKUX_ND_SLOTS];
+uint64_t hakux_notdirty_invalidate_calls;
+
 static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
                            CPUTLBEntryFull *full, uintptr_t retaddr)
 {
@@ -1344,7 +1358,29 @@ static void notdirty_write(CPUState *cpu, vaddr mem_vaddr, unsigned size,
 
     trace_memory_notdirty_write_access(mem_vaddr, ram_addr, size);
 
+    {
+        uint64_t pfn = ram_addr >> 12;
+        int slot = -1, coldest = 0;
+        hakux_notdirty_total++;
+        for (int i = 0; i < HAKUX_ND_SLOTS; i++) {
+            if (hakux_notdirty_hits[i] && hakux_notdirty_page[i] == pfn) {
+                slot = i;
+                break;
+            }
+            if (hakux_notdirty_hits[i] < hakux_notdirty_hits[coldest]) {
+                coldest = i;
+            }
+        }
+        if (slot < 0) {
+            slot = coldest;
+            hakux_notdirty_page[slot] = pfn;
+            hakux_notdirty_hits[slot] = 0;
+        }
+        hakux_notdirty_hits[slot]++;
+    }
+
     if (!physical_memory_get_dirty_flag(ram_addr, DIRTY_MEMORY_CODE)) {
+        hakux_notdirty_invalidate_calls++;
         tb_invalidate_phys_range_fast(cpu, ram_addr, size, retaddr);
     }
 

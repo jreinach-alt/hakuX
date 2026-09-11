@@ -243,6 +243,32 @@ void nv2a_profile_flip_stall(void)
 
     g_nv2a_stats.phase_working.post_flip = true;
 
+    /* Where the guest's stores into code pages are landing. */
+#ifdef __ANDROID__
+    if ((g_nv2a_stats.frame_count % 120) == 0) {
+        extern uint64_t hakux_notdirty_total;
+        extern uint64_t hakux_notdirty_invalidate_calls;
+        extern uint64_t hakux_notdirty_page[8];
+        extern uint64_t hakux_notdirty_hits[8];
+        static uint64_t prev_total, prev_inval;
+        char nd[256];
+        int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
+                         (unsigned long long)(hakux_notdirty_total - prev_total),
+                         (unsigned long long)(hakux_notdirty_invalidate_calls - prev_inval));
+        prev_total = hakux_notdirty_total;
+        prev_inval = hakux_notdirty_invalidate_calls;
+        for (int i = 0; i < 8 && n < (int)sizeof(nd) - 32; i++) {
+            if (!hakux_notdirty_hits[i]) {
+                continue;
+            }
+            n += snprintf(nd + n, sizeof(nd) - n, " %llx=%llu",
+                          (unsigned long long)hakux_notdirty_page[i],
+                          (unsigned long long)hakux_notdirty_hits[i]);
+        }
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-pages", "%s", nd);
+    }
+#endif
+
     /* Dirty-bitmap queries for the frame that just ended. */
     {
         FramePacingStats *p = &g_nv2a_stats.pacing;

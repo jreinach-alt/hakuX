@@ -247,6 +247,49 @@ That also explains why raising the translation block cache from 128 MB to
 512 MB changed nothing: this is not a capacity miss, it is invalidation. And
 it fits the ~53% translation-block hit rate seen earlier.
 
+### It is one page
+
+The loop needs the guest to keep writing a page that keeps having code
+generated on it. Counting those writes by page frame, over 120-frame windows
+in Fuzion Frenzy:
+
+| page frame | hits | behaviour |
+|---|---|---|
+| **0x42b4** | 924,000 cumulative, **+5,300 per 120 frames** | growing constantly |
+| 0x43c8 | 35,900, +250 per window | growing slowly |
+| 0x403a | 20,625 | static |
+| 0x4403, 0x4402 | 5,180 each | static |
+| 0x512e | 4,677 | static |
+| 0x404c | 170 | static |
+
+About 7,000 slow stores per 120 frames, roughly 58 a frame, and **one page is
+about 71% of them** at some 44 hits a frame. Not spread across memory. One
+page.
+
+Two things follow that make this tractable rather than hopeless.
+
+**The invalidation is already range-precise.** `tb_invalidate_phys_range_fast`
+passes the exact written range to `tb_invalidate_phys_page_range__locked`, so
+it does nothing when no translated block overlaps the write. There is no
+page-granularity bug to fix here.
+
+**Which means code really is being regenerated on that page.** `notdirty_write`
+removes the callback once the page is dirty, so for it to fire 44 times a
+frame something must keep re-arming it, and the only thing that does is
+`tb_link_page` after generating code there. So page 0x42b4 holds executed code
+with hot data beside it, at a granularity where the writes overlap blocks.
+That is an inference from the mechanism rather than a direct observation; the
+direct version is to dump what the guest has mapped there.
+
+That also rules out the guess worth ruling out: this is **not** the NV2A
+pushbuffer. No code executes from the pushbuffer, so `page_find` would return
+nothing, the helper would do nothing, and the callback would stay off after
+the first write instead of re-arming.
+
+The remedy is QEMU-core work on how code-write detection is armed for a page
+that mixes hot code and hot data, and it carries real correctness risk. It is
+flagged here rather than started.
+
 **Correction recorded deliberately.** This document previously named the
 per-draw texture dirty poll as the lead, on the strength of that poll issuing
 about 1,480 dirty-bitmap test-and-clear calls per guest frame. That count is
