@@ -488,8 +488,17 @@ void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d,
 
         if (overlapping) {
             any_newly_dirty = true;
+            /*
+             * Stamp the per-frame memo too.  A binding checked clean earlier
+             * this frame, then written and marked here, was being confirmed
+             * clean again by that memo in create_texture and drew its old
+             * texels: Texture_signed_component_tests' gradient tests rewrite
+             * one texture eight times in a frame under eight filter keys.
+             */
+            tnode->possibly_dirty = true;
+            tnode->dirty_check_frame = d->pgraph.frame_time;
+            tnode->dirty_check_result = true;
         }
-        tnode->possibly_dirty |= overlapping;
     }
     if (any_newly_dirty) {
         r->texture_vram_gen++;
