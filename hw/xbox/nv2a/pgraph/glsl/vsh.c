@@ -257,10 +257,15 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
          *                       together 7,644,736 -> 8,464,262 px
          *
          * So the granularity is bracketed on both sides and the rounding mode
-         * is settled. The one-pixel edge differences that remain -- a quad
-         * bottom edge a row short, a texture column at the exact quad centre --
-         * are not this constant, and changing it to chase them makes things
-         * worse. See issues #11 and #4.
+         * is settled. The one-pixel differences that remain are not this
+         * constant: the checkerboard cell edges a row over in the lighting
+         * suites and the centre column of Texture_render_target are texel
+         * ties (an interpolated coordinate on an exact texel boundary, which
+         * hardware and host break differently), and the two Viewport offsets
+         * at exactly 9/16 are the fixed-function transform landing a few ULP
+         * either side of the snap boundary. Changing this constant to chase
+         * them makes things worse. See docs/investigations/edge-defect.md
+         * and issues #11 and #4.
          */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"

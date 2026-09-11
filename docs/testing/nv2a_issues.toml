@@ -41,6 +41,9 @@ suites = ["Texture border", "Texture border color", "TextureWrapMode",
 
 [issue.4]
 title = "Render-to-texture diverges from silicon"
+# Column 320 in every capture is a texel tie at u = 128 (boundary-shift class,
+# 26 of 29 failing captures are otherwise exact); the rest is format decoding.
+# docs/investigations/edge-defect.md.
 disposition = "unclassified"
 suites = ["Texture render target"]
 
@@ -72,6 +75,9 @@ suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
 
 [issue.9]
 title = "Fixed-function lighting and specular"
+# 3-34% of each suite is the checkerboard background's texel ties (boundary-shift
+# class, precision floor); the remainder is lighting arithmetic and is the issue.
+# docs/investigations/edge-defect.md.
 disposition = "unclassified"
 suites = ["Lighting spotlight", "Lighting accumulation", "Lighting range",
           "Lighting control", "Lighting Two Sided", "Material color source",
@@ -84,7 +90,10 @@ suites = ["Bump map", "Bump env lum"]
 
 [issue.11]
 title = "Clipping, viewport and stencil"
-disposition = "unclassified"
+# 118/120 exact. The two Viewport captures (offsets exactly +9/16 and -7/16) are
+# the fixed-function transform landing a few ULP either side of the 1/16 snap
+# boundary that coincides with the sample. docs/investigations/edge-defect.md.
+disposition = "unmodelled-hardware"
 suites = ["Window clip", "Viewport", "Stencil"]
 
 [issue.12]

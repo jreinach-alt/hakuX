@@ -15,11 +15,24 @@ the *sign* distribution of the one-step differences:
                 Not a rounding rule -- a rounding rule is one-directional.
                 Our computed value sits a fraction of a step either side of
                 the hardware's, so this is arithmetic or filter precision.
+  boundary-shift
+                every differing pixel lies in an isolated one-pixel band (the
+                rows or columns either side agree with the golden) and equals
+                the golden's neighbour across the band.  A quantisation
+                boundary that landed one pixel over: a texel edge on an exact
+                tie, a colour step, a depth compare, a snapped vertex.  These
+                are the same shape whatever produced them, and they are the
+                precision floor of interpolation, not a rule to derive
+                (docs/investigations/edge-defect.md).  Checked before the
+                one-step classes because shape says more than magnitude: a
+                texel tie on a smooth gradient is a one-step difference too.
   structural    some channel differs by more than one step.
 
 The distinction matters because the two one-step classes want opposite
 corrections: truncating the shader output moves one-step-hi toward the
-hardware and one-step-sym away from it (issue #38).
+hardware and one-step-sym away from it (issue #38).  The TSV also carries
+the boundary-shift channel count for every capture, so a sweep can report
+how much of a structural capture is the band and how much is the residual.
 
 Usage:
   classify_residuals.py RESULTS_DIR [RESULTS_DIR ...] --goldens DIR [--tsv OUT]
@@ -32,7 +45,41 @@ import os
 import sys
 from collections import defaultdict
 
-CLASSES = ["exact", "one-step-hi", "one-step-lo", "one-step-sym", "structural"]
+CLASSES = ["exact", "boundary-shift", "one-step-hi", "one-step-lo",
+           "one-step-sym", "structural"]
+
+
+def _shifted_eq(a, b, dy, dx):
+    """a[y, x] == b[y + dy, x + dx] wherever both are in range."""
+    import numpy as np
+    h, w = a.shape[:2]
+    out = np.zeros((h, w), bool)
+    ys = slice(max(0, -dy), h - max(0, dy))
+    xs = slice(max(0, -dx), w - max(0, dx))
+    ys2 = slice(max(0, dy), h - max(0, -dy))
+    xs2 = slice(max(0, dx), w - max(0, -dx))
+    out[ys, xs] = (a[ys, xs] == b[ys2, xs2]).all(axis=2)
+    return out
+
+
+def boundary_shift_mask(ours, gold):
+    """Differing pixels that are a one-pixel displacement of a boundary.
+
+    A pixel qualifies when it differs, the rows (or columns) on either side
+    of it agree with the golden at that x (or y), and our value equals the
+    golden's value one pixel above or below (or left or right).  Requiring
+    the band to be isolated is what separates a displaced boundary from a
+    one-step error inside a gradient, which would also match a neighbour.
+    """
+    import numpy as np
+    d = (ours != gold).any(axis=2)
+    iso_r = np.zeros_like(d)
+    iso_r[1:-1] = ~d[:-2] & ~d[2:]
+    iso_c = np.zeros_like(d)
+    iso_c[:, 1:-1] = ~d[:, :-2] & ~d[:, 2:]
+    vert = (_shifted_eq(ours, gold, 1, 0) | _shifted_eq(ours, gold, -1, 0)) & iso_r
+    horiz = (_shifted_eq(ours, gold, 0, 1) | _shifted_eq(ours, gold, 0, -1)) & iso_c
+    return d & (vert | horiz)
 
 
 def classify(ours, gold):
@@ -41,18 +88,21 @@ def classify(ours, gold):
     nz = d != 0
     n = int(nz.sum())
     if n == 0:
-        return "exact", 0, 0, 0
+        return "exact", 0, 0, 0, 0
+    band = int(nz[boundary_shift_mask(ours, gold)].sum())
+    if band == n:
+        return "boundary-shift", n, 0, 0, band
     v = d[nz]
     pos = int((v == 1).sum())
     neg = int((v == -1).sum())
     if pos + neg != n:
-        return "structural", n, pos, neg
+        return "structural", n, pos, neg, band
     share = pos / n
     if share >= 0.8:
-        return "one-step-hi", n, pos, neg
+        return "one-step-hi", n, pos, neg, band
     if share <= 0.2:
-        return "one-step-lo", n, pos, neg
-    return "one-step-sym", n, pos, neg
+        return "one-step-lo", n, pos, neg, band
+    return "one-step-sym", n, pos, neg, band
 
 
 def main(argv=None):
@@ -86,12 +136,15 @@ def main(argv=None):
             if a.shape != b.shape:
                 continue
             seen.add((suite, test))
-            kind, n, pos, neg = classify(a, b)
-            rows.append((suite, test, kind, n, pos, neg))
+            kind, n, pos, neg, band = classify(a, b)
+            rows.append((suite, test, kind, n, pos, neg, band))
 
     per_suite = defaultdict(lambda: defaultdict(int))
-    for suite, _, kind, _, _, _ in rows:
+    band_px = defaultdict(lambda: [0, 0])
+    for suite, _, kind, n, _, _, band in rows:
         per_suite[suite][kind] += 1
+        band_px[suite][0] += n
+        band_px[suite][1] += band
 
     width = max([len(s) for s in per_suite] + [5])
     print(f"{'suite':{width}} " + " ".join(f"{c:>12}" for c in CLASSES))
@@ -104,9 +157,17 @@ def main(argv=None):
             totals[c] += counts[c]
     print(f"{'TOTAL':{width}} " + " ".join(f"{totals[c]:>12}" for c in CLASSES))
 
+    print()
+    print(f"{'suite':{width}} {'differing':>12} {'boundary':>12} {'share':>7}")
+    for suite in sorted(band_px):
+        n, band = band_px[suite]
+        share = f"{100.0 * band / n:6.1f}%" if n else "      -"
+        print(f"{suite:{width}} {n:>12} {band:>12} {share:>7}")
+
     if args.tsv:
         with open(args.tsv, "w") as f:
-            f.write("suite\ttest\tclass\tdiffering_channels\tplus_one\tminus_one\n")
+            f.write("suite\ttest\tclass\tdiffering_channels\tplus_one\tminus_one"
+                    "\tboundary_shift_channels\n")
             for r in rows:
                 f.write("\t".join(str(x) for x in r) + "\n")
     return 0
