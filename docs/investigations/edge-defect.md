@@ -293,6 +293,40 @@ every capture the bias improves has a second, unrelated residual: the 24
 render-target captures still carry 12 to 71 px on **row 240**, which is the
 v-tie at the same texel 128, left alone by design.
 
+It also cannot reach the shadow comparator.  That path samples through
+`psh_append_shadowmap`, a different emission site, and the tie there is
+between the interpolated depth *reference* and an integral threshold, not
+between a texture coordinate and a texel boundary.  A bias in u and v does
+nothing to a comparison in z.
+
+### The device answer, and why u-only shipped
+
+The Adreno lane ran both probes on a Retroid Pocket Nova, Adreno 740,
+Turnip T30.  First row of each new checkerboard cell, `Material_color_source`:
+
+| row | 37.5 | 75 | 112.5 | 150 | 187.5 | 225 | 262.5 | 300 | 337.5 | 375 | 412.5 | 450 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| hardware | 38 | **76** | 113 | **151** | 188 | **226** | 263 | 300 | 338 | 375 | 413 | 450 |
+| lavapipe | 38 | 75 | 113 | 150 | 188 | 225 | 263 | 300 | 338 | 375 | 413 | 450 |
+| Adreno | 38 | 75 | 113 | 150 | 188 | **226** | 263 | 300 | 338 | **376** | 413 | **451** |
+
+Three hosts, three answers, in both directions: Adreno sides with lavapipe at
+rows 75 and 150, with hardware at 225, and goes a row past both at 375 and
+450.  Turnip 26.3.0, Turnip 26.1.0 and the Qualcomm proprietary driver produce
+byte-identical edge rows, so this is our arithmetic meeting a different FP
+unit, not driver variance.  On the render target's centre column Adreno
+matches lavapipe (its column 320 equals gold's column 319), so that boundary
+is host-independent between the two lanes and the bias moves both onto
+hardware's answer at once.
+
+That settles u.  It does not settle v: the bias would have to *change* the
+checkerboard rows to make the lanes agree there, and on lavapipe it does not
+move a single one of the twelve (they are already resolved up).  Whether it
+moves Adreno's three outliers onto the same list is a device measurement
+nobody has taken.  Until it is taken, biasing v costs 162 px on this lane for
+a predicted benefit on another, so v stays zero and the experiment is the
+device lane's to run.
+
 ### One measurement bought something else
 
 `Stencil::Stencil_REPLACE` came out 40,000 px wrong in the first swept run and
@@ -331,18 +365,22 @@ trades the top-half rows for the bottom-half rows and fixes nothing.
    remaining two captures `unmodelled-hardware`; the tie rows in #9 and the
    centre column in #4 are named in the issues so the work there targets the
    rest.
-2. **Deterministic texel-tie resolution.** Built and measured; see the
-   section above. The u-only form is strictly non-regressive across 1,008
-   captures and worth −8,427 px, but changes no test's state, so it is held
-   pending the device probes: the case for putting a rule in the shared
-   shader path is portability, and that turns on whether Adreno breaks these
-   ties like lavapipe, like hardware, or a third way. The prediction written
-   here before the run, "`Texture_render_target` 11 → about 37 exact", was
-   wrong: the u tie is only half of each of those captures' residual.
-3. **No rasteriser change.** The two `Viewport` captures and
+2. **Deterministic texel-tie resolution in u.** Built, swept, and landed once
+   the device probes came back: Adreno resolves these ties a third way and in
+   both directions, so the pixels were host-unstable, and it agrees with
+   lavapipe on the render target's centre column, so the bias moves both lanes
+   onto hardware's answer there. Strictly non-regressive across 1,008
+   captures, −8,427 px, no test changes state. The prediction written here
+   before the run, "`Texture_render_target` 11 → about 37 exact", was wrong:
+   the u tie is only half of each of those captures' residual.
+3. **The v axis stays open**, as a device measurement rather than a code
+   change: does the same bias in v move Adreno's three outlying checkerboard
+   rows onto lavapipe's list? On this lane it moves none of the twelve, so the
+   question cannot be answered here.
+4. **No rasteriser change.** The two `Viewport` captures and
    `ProjAdjacentGeometry_0.5625` stay red. If the NV2A transform precision is
    ever wanted, it is a hardware measurement (a finer sweep than the
    ±0.0001 the corpus already has, run through the upstream golden
    pipeline), not a constant.
-4. **Shadow boundary and lit-gradient bands** stay where they are: #35 and
+5. **Shadow boundary and lit-gradient bands** stay where they are: #35 and
    #38, precision floor, now counted as such.
