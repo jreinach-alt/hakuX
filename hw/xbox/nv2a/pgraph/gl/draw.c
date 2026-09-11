@@ -44,6 +44,26 @@ static inline void android_log_gl_errors(const char *ctx)
 }
 #endif
 
+/*
+ * A clear writes the surface the way a draw does, and the surface-to-texture
+ * path has to be told: it only refreshes a texture bound straight from a
+ * surface when that surface's draw time has moved on. A surface that is
+ * cleared and not otherwise drawn to keeps the draw time it had, so a texture
+ * sampled from it afterwards still shows what was there before the clear.
+ */
+static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHGLState *r = pg->gl_renderer_state;
+
+    pg->draw_time++;
+    if (r->color_binding && write_color) {
+        r->color_binding->draw_time = pg->draw_time;
+    }
+    if (r->zeta_binding && write_zeta) {
+        r->zeta_binding->draw_time = pg->draw_time;
+    }
+}
+
 void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -140,6 +160,7 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
     glDisable(GL_SCISSOR_TEST);
 
     pgraph_gl_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_drawn(pg, write_color, write_zeta);
 
     if (r->color_binding) {
         r->color_binding->cleared = full_clear && write_color;

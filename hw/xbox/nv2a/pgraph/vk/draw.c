@@ -4834,9 +4834,11 @@ static void flush_reorder_window_internal(NV2AState *d)
         pg->draw_time++;
         if (r->color_binding && e->color_write) {
             r->color_binding->draw_time = pg->draw_time;
+            pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
         }
         if (r->zeta_binding && (e->depth_test || e->stencil_test)) {
             r->zeta_binding->draw_time = pg->draw_time;
+            pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
         }
         pgraph_vk_set_surface_dirty(pg, e->color_write,
                                     e->depth_test || e->stencil_test);
@@ -5075,9 +5077,11 @@ post_draw:
     pg->draw_time++;
     if (r->color_binding && pgraph_color_write_enabled(pg)) {
         r->color_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
     }
     if (r->zeta_binding && pgraph_zeta_write_enabled(pg)) {
         r->zeta_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
     }
 
     pgraph_vk_set_surface_dirty(pg, color_write, depth_test || stencil_test);
@@ -5224,6 +5228,55 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
     r->num_vertex_ram_buffer_syncs = 0;
 
     NV2A_VK_DGROUP_END();
+}
+
+/*
+ * A surface bound straight to a texture unit and then written has to bring
+ * the texture binding back through pgraph_vk_bind_textures. That is where the
+ * barrier making the write visible to a sampled read is issued, and the fast
+ * path in bind_pipeline skips the whole texture bind while the texture state
+ * is unchanged -- which a draw or a clear into the surface does not change.
+ * Without this the next draw samples the surface with no barrier against its
+ * own writes, which the validation layer reports as a read-after-write hazard
+ * and a tiler is free to honour.
+ */
+void pgraph_vk_surface_written_while_sampled(PGRAPHState *pg,
+                                             SurfaceBinding *surface)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!surface || surface->image_view == VK_NULL_HANDLE) {
+        return;
+    }
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (r->tex_surface_direct[i] &&
+            r->tex_surface_direct_views[i] == surface->image_view) {
+            pg->texture_state_gen++;
+            return;
+        }
+    }
+}
+
+/*
+ * A clear writes the surface the way a draw does, and the surface-to-texture
+ * path has to be told: it only refreshes a texture bound straight from a
+ * surface when that surface's draw time has moved on. A surface that is
+ * cleared and not otherwise drawn to keeps the draw time it had, so a texture
+ * sampled from it afterwards still shows what was there before the clear.
+ */
+static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    pg->draw_time++;
+    if (r->color_binding && write_color) {
+        r->color_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->color_binding);
+    }
+    if (r->zeta_binding && write_zeta) {
+        r->zeta_binding->draw_time = pg->draw_time;
+        pgraph_vk_surface_written_while_sampled(pg, r->zeta_binding);
+    }
 }
 
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
@@ -5404,6 +5457,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 
             pg->clearing = false;
             pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+            mark_clear_drawn(pg, write_color, write_zeta);
             NV2A_VK_DGROUP_END();
             return;
         }
@@ -5500,6 +5554,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     pg->clearing = false;
 
     pgraph_vk_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_drawn(pg, write_color, write_zeta);
 
     NV2A_VK_DGROUP_END();
 }
