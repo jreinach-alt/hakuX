@@ -139,10 +139,32 @@ GLSL_DEFINE(eyePosition, GLSL_C(NV_IGRAPH_XF_XFCTX_EYEP))
 "#define lightLocalRange(i) "
     "ltc1[" stringify(NV_IGRAPH_XF_LTC1_r0) " + (i)].x\n"
 "\n"
+GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
 GLSL_DEFINE(sceneAmbientColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz")
 GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz")
 "\n"
 );
+
+    /* See the light loop below for what these model. The lighting unit's
+     * multiply gives zero for zero times anything, its reciprocal of zero
+     * is infinity, and nothing is clamped before the colour sum. FLOAT_MAX
+     * stands in for that infinity so that a zero factor stays zero in GLSL
+     * instead of becoming NaN, and every product is held to it so that two
+     * of them multiplied together cannot overflow past it. */
+    mstring_append(header,
+        "float specularFactor(float x, vec3 k) {\n"
+        "  float n = x + k.x;\n"
+        "  float d = x * k.y + k.z;\n"
+        "  if (n <= 0.0) return 0.0;\n"
+        "  return d == 0.0 ? FLOAT_MAX : n / d;\n"
+        "}\n"
+        "float ltMul(float a, float b) {\n"
+        "  return (a == 0.0 || b == 0.0) ? 0.0 : clamp(a * b, -FLOAT_MAX, FLOAT_MAX);\n"
+        "}\n"
+        "vec3 ltMul(vec3 c, float s) {\n"
+        "  return mix(clamp(c * s, vec3(-FLOAT_MAX), vec3(FLOAT_MAX)), vec3(0.0),\n"
+        "             equal(c, vec3(0.0)));\n"
+        "}\n");
 
     unsigned int count;
     bool mix;
@@ -303,20 +325,30 @@ GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz
             if (state->fixed_function.light[i] == LIGHT_LOCAL
                     || state->fixed_function.light[i] == LIGHT_SPOT) {
 
+                /* The lighting unit's reciprocal of zero is infinity, and
+                 * its multiply gives zero for zero times anything, so a light
+                 * with all three attenuation values at zero lights every
+                 * channel its colour is nonzero in and none it is zero in
+                 * (the Lighting spotlight AtFixed 0/0/0 golden). A large
+                 * finite value has the same effect in GLSL, where zero times
+                 * infinity would be NaN. Without a local eye the half vector
+                 * is built from the eye direction register, not from a zero
+                 * vector. */
                 mstring_append_fmt(body,
                     "  vec3 tPos = tPosition.xyz/tPosition.w;\n"
                     "  vec3 VP = lightLocalPosition[%d] - tPos;\n"
                     "  float d = length(VP);\n"
                     "  if (d <= lightLocalRange(%d)) {\n"  /* FIXME: Double check that range is inclusive */
                     "    VP = normalize(VP);\n"
-                    "    float attenuation = 1.0 / (lightLocalAttenuation[%d].x\n"
-                    "                                 + lightLocalAttenuation[%d].y * d\n"
-                    "                                 + lightLocalAttenuation[%d].z * d * d);\n"
+                    "    float attDen = lightLocalAttenuation[%d].x\n"
+                    "                   + lightLocalAttenuation[%d].y * d\n"
+                    "                   + lightLocalAttenuation[%d].z * d * d;\n"
+                    "    float attenuation = attDen == 0.0 ? FLOAT_MAX : 1.0 / attDen;\n"
                     "    vec3 halfVector = normalize(VP + %s);\n"
                     "    float nDotVP = max(0.0, dot(tNormal, VP));\n"
                     "    float nDotHV = max(0.0, dot(tNormal, halfVector));\n",
                     i, i, i, i, i,
-                    state->fixed_function.local_eye ? "VPeye" : "vec3(0.0, 0.0, 0.0)"
+                    state->fixed_function.local_eye ? "VPeye" : "eyeDirection"
                 );
             }
 
@@ -346,37 +378,66 @@ GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz
                 /* Everything done already */
                 break;
             case LIGHT_SPOT:
-                /* https://docs.microsoft.com/en-us/windows/win32/direct3d9/attenuation-and-spotlight-factor#spotlight-factor */
+                /* The spot direction register holds the axis scaled so that
+                 * x = dot(dir, VP) + w runs from 0 at the outer cone to 1 at
+                 * the inner one, and the three falloff values feed the same
+                 * rational evaluator the lighting unit uses for the specular
+                 * power: S = (x + k0) / (x k1 + k2), zero once the numerator
+                 * goes negative. That is the form D3D's falloff tables are
+                 * fitted to (S(1) = 1 for every table entry), and it holds
+                 * across the Lighting spotlight goldens: with (0, 1, 0) the
+                 * cone is lit flat, with (0, -0.4946, 1.4946) linearly, and
+                 * the ten falloff sweeps follow it to a step. The previous
+                 * linear ramp ignored the falloff values altogether. Inside
+                 * the inner cone x is held at 1.
+                 *
+                 * The factor is not clamped. It scales the attenuation that
+                 * both the diffuse and the specular term are multiplied by,
+                 * so with all three falloff values at zero the reciprocal of
+                 * zero saturates both of them across the whole cone (the
+                 * FoFixed 0/0/0 golden is flat magenta from a red diffuse and
+                 * a half-blue specular), which a factor held at one cannot
+                 * reproduce. */
                 mstring_append_fmt(body,
                     "    vec4 spotDir = lightSpotDirection(%d);\n"
-                    "    float invScale = 1.0 / length(spotDir.xyz);\n"
-                    "    float cosHalfPhi = -invScale*spotDir.w;\n"
-                    "    float cosHalfTheta = invScale + cosHalfPhi;\n"
-                    "    float spotDirDotVP = dot(spotDir.xyz, VP);\n"
-                    "    float rho = invScale*spotDirDotVP;\n"
-                    "    if (rho > cosHalfTheta) {\n"
-                    "    } else if (rho <= cosHalfPhi) {\n"
-                    "      attenuation = 0.0;\n"
-                    "    } else {\n"
-                    "      attenuation *= spotDirDotVP + spotDir.w;\n" /* FIXME: lightSpotFalloff */
-                    "    }\n",
-                    i);
+                    "    vec3 spotK = lightSpotFalloff(%d);\n"
+                    "    float spotX = min(dot(spotDir.xyz, VP) + spotDir.w, 1.0);\n"
+                    "    float spotN = spotX + spotK.x;\n"
+                    "    float spotD = spotX * spotK.y + spotK.z;\n"
+                    "    float spotS = spotD == 0.0 ? FLOAT_MAX : spotN / spotD;\n"
+                    "    attenuation = spotN <= 0.0 ? 0.0 : ltMul(attenuation, spotS);\n",
+                    i, i);
                 break;
             default:
                 assert(false);
                 break;
             }
 
+            /* The specular power is not a pow(). The lighting unit evaluates
+             * a rational function of the half-vector dot product with three
+             * coefficients, S = (x + k0) / (x k1 + k2), zero once the
+             * numerator goes negative; that is the form D3D's specular
+             * tables are fitted to and the Specular goldens follow. Which
+             * three depends on the half vector: an infinite light seen by a
+             * non-local eye has its half vector precomputed and normalised,
+             * and uses the first triple on x = N.H; everything else builds
+             * the half vector per vertex and uses the second triple, fitted
+             * for half the power, on x = (N.H)^2, which is what falls out of
+             * the unnormalised sum without a square root. */
+            bool half_precomputed = state->fixed_function.light[i] == LIGHT_INFINITE &&
+                                    !state->fixed_function.local_eye;
             mstring_append_fmt(body,
                 "    float pf;\n"
                 "    if (nDotVP == 0.0 || nDotHV == 0.0) {\n"
                 "      pf = 0.0;\n"
                 "    } else {\n"
-                "      pf = pow(nDotHV, specularPower);\n"
+                "      pf = specularFactor(%s, specularParams[%d]);\n"
                 "    }\n"
-                "    vec3 lightAmbient = lightAmbientColor(%d) * attenuation;\n"
-                "    vec3 lightDiffuse = lightDiffuseColor(%d) * attenuation * nDotVP;\n"
-                "    vec3 lightSpecular = lightSpecularColor(%d) * attenuation * pf;\n",
+                "    vec3 lightAmbient = ltMul(lightAmbientColor(%d), attenuation);\n"
+                "    vec3 lightDiffuse = ltMul(lightDiffuseColor(%d), ltMul(attenuation, nDotVP));\n"
+                "    vec3 lightSpecular = ltMul(lightSpecularColor(%d), ltMul(attenuation, pf));\n",
+                half_precomputed ? "nDotHV" : "nDotHV * nDotHV",
+                half_precomputed ? 0 : 1,
                 i, i, i);
 
             mstring_append(body,

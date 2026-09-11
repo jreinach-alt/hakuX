@@ -122,8 +122,6 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
     vsh->ignore_specular_alpha =
         !GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),
                   NV_PGRAPH_CSV0_C_ALPHA_FROM_MATERIAL_SPECULAR);
-    vsh->specular_power = pg->specular_power;
-    vsh->specular_power_back = pg->specular_power_back;
 
     vsh->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                          NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
@@ -560,8 +558,12 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                    sizeof(pg->light_local_attenuation));
         }
 
-        if (locs[VshUniform_specularPower] != -1) {
-            values->specularPower[0] = pg->specular_power;
+        if (locs[VshUniform_specularParams] != -1) {
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 3; j++) {
+                    values->specularParams[i][j] = pg->specular_params[i * 3 + j];
+                }
+            }
         }
     }
 }
