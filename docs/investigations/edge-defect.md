@@ -213,11 +213,92 @@ value is the only one whose side is decided by the last ULP of the transform.
   column and at six checkerboard rows; the device lane has been asked
   (PR #45) for the same two probes. If Adreno breaks them a third way, the
   deterministic rule below is worth building for portability alone.
+- Whether `Stencil::Stencil_REPLACE` is intermittently wrong. It scored 0 px
+  on three consecutive runs and 40,000 px on a fourth, on builds whose only
+  difference cannot reach it (the test samples no texture; it draws three
+  untextured quads through a passthrough shader). A whole 200x200 quad came
+  out green instead of red, which is the third draw passing a stencil or
+  depth test it should fail. Run-to-run nondeterminism at that scale means
+  every score in this project carries some flake, so it is worth a rate.
 - The exact NV2A interpolator and vertex-ALU rounding. Both are measurable
   with purpose-built tests (a vertex sweep across n + 9/16 finer than the
   corpus's ±0.0001; a 1:1 textured quad with a per-texel pattern), which
   means hardware time through the nxdk_pgraph_tests golden pipeline, and
   neither is worth guessing at.
+
+## The texel-tie bias: built, swept, measured
+
+Plan item 2 below, implemented and measured on lavapipe against a matched
+baseline: the same tree with only the one-line shader change reverted, the
+same eight discs, 1,008 captures.  The change biases the texture coordinate
+up by a constant in normalized space, sized to cover fp32 interpolation noise
+(2^-18 of the texture, about fifteen times the error on an interpolated
+coordinate, 0.001 texels on a 256 texture) and far below any subtexel
+position a guest can express.  A coordinate that is mathematically on a
+boundary then lands on it instead of a few ULP either side; one that is
+genuinely below stays below.  In `psh.c`'s `PS_TEXTUREMODES_PROJECT2D` 2D
+path, carried through `textureProj` by scaling the bias by w:
+
+```c
+mstring_append(preflight,
+               "const vec2 texelTieBias = vec2(1.0 / 262144.0, 0.0);\n");
+...
+mstring_append_fmt(vars,
+    "vec4 t%d = textureProj(texSamp%d,\n"
+    "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
+    i, i, tex_remap, i, i, i);
+```
+
+### Result
+
+| | diff px | captures better | captures worse | exact |
+|---|---|---|---|---|
+| baseline | 14,038,276 | | | 502 / 1,008 |
+| bias in u only | 14,029,849 (**−8,427**) | 33 | **0** | 502 |
+| bias in u and v | 14,017,984 (**−20,292**) | 33 | 104 | 502 |
+
+Where it moves, u only:
+
+| suite | base px | after px | delta | captures |
+|---|---|---|---|---|
+| `Texture_render_target` | 210,751 | 205,021 | −5,730 | 24, each −285 |
+| `Point_params` | 28,798 | 26,581 | −2,217 | 3 |
+| `Swath_width` | 347,910 | 347,430 | −480 | 6, each −80 |
+
+Everything else is bit-identical: `Texture_format`, `Texture_DXT`,
+`Volume_texture`, `Blend_tests`, all eleven lighting and material suites,
+`Texture_shadow_comparator`, `Window_clip`, `Viewport`, `Stencil`,
+`Line_width`, `Point_size`, `2D_Lines`, `Smoothing_control`, `Stipple_tests`
+and `Vertex_shader_rounding_tests`.  975 of 1,008 captures unchanged to the
+byte.
+
+### Why u only
+
+Biasing v as well buys 12,027 px more, almost all of it text glyphs in three
+`Point_params` captures, and costs 162 px spread over 104 captures: exactly
+the checkerboard cell **corners**, where a u-tie and a v-tie coincide, three
+pixels per capture.  At a corner hardware picks (u up, v down); ours already
+picked that, and biasing v up moves it to the diagonal texel, which on a
+checkerboard is the other colour.
+
+That asymmetry is hardware's, not a fitting choice.  Hardware's u-ties
+resolve up in both quads measured (the render target's centre column, the
+checkerboard's column edges).  Its v-ties do not resolve consistently: down
+at texels 40, 80 and 120, up at 160, 200 and 240 on the same quad, and down
+at texel 128 on the render target where the *u*-tie at the same value on the
+same quad goes up.  A DDA rasteriser accumulating u along the scanline and v
+between scanlines would behave this way.  So u has a rule that every
+measurement so far agrees with and v demonstrably does not, and biasing v is
+guessing.  Two quads is thin evidence for the u rule and the doc should say
+so; what the bias actually guarantees is that our own outcome stops being
+decided by host float noise.
+
+### What it does not do
+
+No capture changes state.  The exact count is 502 before and after, because
+every capture the bias improves has a second, unrelated residual: the 24
+render-target captures still carry 12 to 71 px on **row 240**, which is the
+v-tie at the same texel 128, left alone by design.
 
 ## What not to do
 
@@ -235,18 +316,14 @@ trades the top-half rows for the bottom-half rows and fixes nothing.
    remaining two captures `unmodelled-hardware`; the tie rows in #9 and the
    centre column in #4 are named in the issues so the work there targets the
    rest.
-2. **Deterministic texel-tie resolution, gated on measurement.** Before a
-   nearest-filtered sample, round the texel-space coordinate to the nearest
-   1/256 texel (the subtexel precision Vulkan reports on both lanes), so an
-   interpolated value a few ULP either side of an integer lands on it and
-   `floor` is decided by the boundary, not by the host's interpolation noise.
-   Expected on lavapipe: `Texture_render_target` 11 → about 37 exact, the
-   checkerboard rows unchanged (they are already "up" here), no other suite
-   moved unless it carries a near-tie within 1/512 texel. The change lives at
-   the sampling sites in `hw/xbox/nv2a/pgraph/glsl/psh.c` (2D at `:2002` and
-   `:2057`, rect normalisation at `:2395`), keyed on the stage's filter. It
-   goes in only if the lavapipe sweep shows no regression and the device
-   probes show Adreno does not already match hardware.
+2. **Deterministic texel-tie resolution.** Built and measured; see the
+   section above. The u-only form is strictly non-regressive across 1,008
+   captures and worth −8,427 px, but changes no test's state, so it is held
+   pending the device probes: the case for putting a rule in the shared
+   shader path is portability, and that turns on whether Adreno breaks these
+   ties like lavapipe, like hardware, or a third way. The prediction written
+   here before the run, "`Texture_render_target` 11 → about 37 exact", was
+   wrong: the u tie is only half of each of those captures' residual.
 3. **No rasteriser change.** The two `Viewport` captures and
    `ProjAdjacentGeometry_0.5625` stay red. If the NV2A transform precision is
    ever wanted, it is a hardware measurement (a finer sweep than the
