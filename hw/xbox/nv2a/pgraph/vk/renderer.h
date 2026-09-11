@@ -552,8 +552,7 @@ typedef struct RenderCommandSnapshot {
     bool ltc1_any_dirty;
 
     float material_alpha;
-    float specular_power;
-    float specular_power_back;
+    float material_alpha_back;
     float specular_params[6];
     float specular_params_back[6];
     float point_params[8];
@@ -1377,8 +1376,6 @@ typedef struct PGRAPHVkState {
 
     /* Cached uniform state for dirty tracking */
     float cached_material_alpha;
-    float cached_specular_power;
-    float cached_specular_power_back;
     float cached_point_params[8];
     float cached_light_infinite_half_vector[NV2A_MAX_LIGHTS][3];
     float cached_light_infinite_direction[NV2A_MAX_LIGHTS][3];

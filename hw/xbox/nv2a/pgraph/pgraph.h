@@ -210,6 +210,8 @@ typedef struct PGRAPHState {
     bool ltc1_any_dirty;
 
     float material_alpha;
+    float material_alpha_back;
+    uint32_t color_material_back; /* SET_COLOR_MATERIAL bits 8-15 */
 
     // should figure out where these are in lighting context
     float light_infinite_half_vector[NV2A_MAX_LIGHTS][3];
@@ -218,9 +220,7 @@ typedef struct PGRAPHState {
     float light_local_attenuation[NV2A_MAX_LIGHTS][3];
 
     float specular_params[6];
-    float specular_power;
     float specular_params_back[6];
-    float specular_power_back;
 
     float point_params[8];
 

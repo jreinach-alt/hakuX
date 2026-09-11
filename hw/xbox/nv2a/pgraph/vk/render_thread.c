@@ -83,8 +83,7 @@ void pgraph_vk_snapshot_state(PGRAPHState *pg, RenderCommandSnapshot *snap)
     snap->ltc1_any_dirty = pg->ltc1_any_dirty;
 
     snap->material_alpha = pg->material_alpha;
-    snap->specular_power = pg->specular_power;
-    snap->specular_power_back = pg->specular_power_back;
+    snap->material_alpha_back = pg->material_alpha_back;
     memcpy(snap->specular_params, pg->specular_params,
            sizeof(snap->specular_params));
     memcpy(snap->specular_params_back, pg->specular_params_back,

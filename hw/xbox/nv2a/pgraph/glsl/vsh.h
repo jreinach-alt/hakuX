@@ -39,6 +39,10 @@ typedef struct FixedFunctionVshState {
     enum MaterialColorSource ambient_src;
     enum MaterialColorSource diffuse_src;
     enum MaterialColorSource specular_src;
+    enum MaterialColorSource back_emission_src;
+    enum MaterialColorSource back_ambient_src;
+    enum MaterialColorSource back_diffuse_src;
+    enum MaterialColorSource back_specular_src;
     bool local_eye;
 } FixedFunctionVshState;
 
@@ -59,8 +63,7 @@ typedef struct {
     bool specular_enable;
     bool separate_specular;
     bool ignore_specular_alpha;
-    float specular_power;
-    float specular_power_back;
+    bool two_side_light;
 
     bool point_params_enable;
     float point_size;
@@ -91,8 +94,9 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *state);
     DECL(S, ltctxa, vec4, NV2A_LTCTXA_COUNT)                 \
     DECL(S, ltctxb, vec4, NV2A_LTCTXB_COUNT)                 \
     DECL(S, material_alpha, float, 1)                        \
+    DECL(S, material_alpha_back, float, 1)                   \
     DECL(S, pointParams, float, 8)                           \
-    DECL(S, specularPower, float, 1)                         \
+    DECL(S, specularParams, vec3, 4)                         \
     DECL(S, surfaceSize, vec2, 1)
 
 DECL_UNIFORM_TYPES(VshUniform, VSH_UNIFORM_DECL_X)

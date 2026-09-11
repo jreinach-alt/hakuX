@@ -324,6 +324,10 @@
 #   define NV_PGRAPH_CSV0_C_AMBIENT                             (3 << 23)
 #   define NV_PGRAPH_CSV0_C_EMISSION                            (3 << 25)
 #   define NV_PGRAPH_CSV0_C_NORMALIZATION_ENABLE                (1 << 27)
+    /* Not a documented hardware bit: the emulator keeps SET_LIGHT_TWO_SIDE_ENABLE
+     * here so that it takes part in the shader state like the other lighting
+     * switches. */
+#   define NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN                   (1 << 28)
 #   define NV_PGRAPH_CSV0_C_LOCALEYE                            (1 << 30)
 #   define NV_PGRAPH_CSV0_C_LIGHTING                            (1 << 31)
 #define NV_PGRAPH_CSV1_B                                 0x00000FBC
@@ -1146,8 +1150,10 @@
 #           define NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_CMP        6
 #       define NV097_SET_VERTEX_DATA_ARRAY_FORMAT_SIZE            0x000000F0
 #       define NV097_SET_VERTEX_DATA_ARRAY_FORMAT_STRIDE          0xFFFFFF00
+#   define NV097_SET_BACK_MATERIAL_ALPHA                      0x000017AC
 #   define NV097_SET_LOGIC_OP_ENABLE                          0x000017BC
 #   define NV097_SET_LOGIC_OP                                 0x000017C0
+#   define NV097_SET_LIGHT_TWO_SIDE_ENABLE                    0x000017C4
 #   define NV097_CLEAR_REPORT_VALUE                           0x000017C8
 #       define NV097_CLEAR_REPORT_VALUE_TYPE                      0xFFFFFFFF
 #           define NV097_CLEAR_REPORT_VALUE_TYPE_ZPASS_PIXEL_CNT      1

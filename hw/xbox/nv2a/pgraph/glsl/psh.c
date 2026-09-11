@@ -124,6 +124,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
+                            NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
     state->fog_enable = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) &
                         NV_PGRAPH_CONTROL_3_FOGENABLE;
     state->fog_mode = (enum VshFogMode)GET_MASK(
@@ -1842,8 +1844,16 @@ static MString* psh_convert(struct PixelShader *ps)
     }
 
     MString *vars = mstring_new();
-    mstring_append(vars, "vec4 pD0 = vtxD0;\n");
-    mstring_append(vars, "vec4 pD1 = vtxD1;\n");
+    /* With two-sided lighting on, a back-facing fragment takes the back
+     * colour outputs; with it off the front outputs serve both faces and
+     * the back ones are never looked at (Lighting Two Sided golden). */
+    if (ps->state->two_side_light) {
+        mstring_append(vars, "vec4 pD0 = gl_FrontFacing ? vtxD0 : vtxB0;\n");
+        mstring_append(vars, "vec4 pD1 = gl_FrontFacing ? vtxD1 : vtxB1;\n");
+    } else {
+        mstring_append(vars, "vec4 pD0 = vtxD0;\n");
+        mstring_append(vars, "vec4 pD1 = vtxD1;\n");
+    }
     mstring_append(vars, "vec4 pB0 = vtxB0;\n");
     mstring_append(vars, "vec4 pB1 = vtxB1;\n");
     append_fog_factor(ps, vars, "");

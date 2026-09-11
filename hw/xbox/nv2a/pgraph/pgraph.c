@@ -671,8 +671,10 @@ static inline bool fast_entry_apply(PGRAPHState *pg,
 {
     if (f->xlat >= XLAT_TEX_DIRTY_0 && f->xlat <= XLAT_TEX_DIRTY_3) {
         int slot = f->xlat - XLAT_TEX_DIRTY_0;
-        bool changed = (p != pgraph_reg_r(pg, f->reg));
-        pg->texture_dirty[slot] |= changed;
+        /* Written with the value it already had counts: that is how a
+         * title presents a texture it rewrote in place, and the binder
+         * reads the dirty bits only for a stage marked here. */
+        pg->texture_dirty[slot] = true;
         pgraph_reg_w(pg, f->reg, p);
         return true;
     }
@@ -703,8 +705,7 @@ static inline bool fast_entry_apply_atomic(PGRAPHState *pg,
 {
     if (f->xlat >= XLAT_TEX_DIRTY_0 && f->xlat <= XLAT_TEX_DIRTY_3) {
         int slot = f->xlat - XLAT_TEX_DIRTY_0;
-        bool changed = (p != qatomic_read(&pg->regs_[f->reg]));
-        pg->texture_dirty[slot] |= changed;
+        pg->texture_dirty[slot] = true;
         pgraph_reg_w_atomic(pg, f->reg, p);
         return true;
     }
@@ -2175,7 +2176,9 @@ DEF_METHOD(NV097, SET_COMBINER_SPECULAR_FOG_CW1)
 DEF_METHOD(NV097, SET_TEXTURE_ADDRESS)
 {
     int slot = (method - NV097_SET_TEXTURE_ADDRESS) / 64;
-    pgraph_reg_w(pg, NV_PGRAPH_TEXADDRESS0 + slot * 4, parameter);
+    unsigned int reg = NV_PGRAPH_TEXADDRESS0 + slot * 4;
+    pg->texture_dirty[slot] = true;
+    pgraph_reg_w(pg, reg, parameter);
 }
 
 DEF_METHOD(NV097, SET_CONTROL0)
@@ -2227,6 +2230,15 @@ DEF_METHOD(NV097, SET_COLOR_MATERIAL)
              (parameter >> 4) & 3);
     PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_SPECULAR,
              (parameter >> 6) & 3);
+
+    /* The back face's four selectors have no register of their own. */
+    uint32_t back = (parameter >> 8) & 0xFF;
+    if (pg->color_material_back != back) {
+        pg->color_material_back = back;
+        pg->shader_state_gen++;
+        pg->non_dynamic_reg_gen++;
+        pg->any_reg_gen++;
+    }
 }
 
 DEF_METHOD(NV097, SET_FOG_MODE)
@@ -2355,6 +2367,12 @@ DEF_METHOD(NV097, SET_LIGHTING_ENABLE)
 {
     PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_LIGHTING,
              parameter);
+}
+
+DEF_METHOD(NV097, SET_LIGHT_TWO_SIDE_ENABLE)
+{
+    PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN,
+             parameter != 0);
 }
 
 DEF_METHOD(NV097, SET_POINT_PARAMS_ENABLE)
@@ -2771,6 +2789,11 @@ DEF_METHOD(NV097, SET_MATERIAL_ALPHA)
     pg->material_alpha = *(float*)&parameter;
 }
 
+DEF_METHOD(NV097, SET_BACK_MATERIAL_ALPHA)
+{
+    pg->material_alpha_back = *(float*)&parameter;
+}
+
 DEF_METHOD(NV097, SET_SPECULAR_ENABLE)
 {
     PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_SPECULAR_ENABLE, parameter);
@@ -2978,117 +3001,12 @@ DEF_METHOD_INC(NV097, SET_FOG_PLANE)
     pg->vsh_constants_dirty[NV_IGRAPH_XF_XFCTX_FOG] = true;
 }
 
-struct CurveCoefficients {
-  float a;
-  float b;
-  float c;
-};
-
-static const struct CurveCoefficients curve_coefficients[] = {
-  {1.000108475163, -9.838607076280, 54.829089549713},
-  {1.199164441703, -3.292603784852, 7.799987995214},
-  {8.653441252033, 29.189473787191, 43.586027561823},
-  {-531.307758450301, 117.398468683934, 113.155490738338},
-  {-4.662713151292, 1.221108944572, 1.217360986939},
-  {-124.435242105211, 35.401219563514, 35.408114377045},
-  {10672560.259502287954, 21565843.555823743343, 10894794.336297152564},
-  {-51973801.463933646679, -104199997.554352939129, -52225454.356278456748},
-  {972270.324080004124, 2025882.096547174733, 1054898.052467488218},
-};
-
-static const float kCoefficient0StepPoints[] = {
-  -0.022553957999, // power = 1.25
-  -0.421539008617, // power = 4.00
-  -0.678715527058, // power = 9.00
-  -0.838916420937, // power = 20.00
-  -0.961754500866, // power = 90.00
-  -0.990773200989, // power = 375.00
-  -0.994858562946, // power = 650.00
-  -0.996561050415, // power = 1000.00
-  -0.999547004700, // power = 1250.00
-};
-
-static float reconstruct_quadratic(float c0, const struct CurveCoefficients *coefficients) {
-  return coefficients->a + coefficients->b * c0 + coefficients->c * c0 * c0;
-}
-
-static float reconstruct_saturation_growth_rate(float c0, const struct CurveCoefficients *coefficients) {
-  return (coefficients->a * c0) / (coefficients->b + coefficients->c * c0);
-}
-
-static float (* const reconstruct_func_map[])(float, const struct CurveCoefficients *) = {
-  reconstruct_quadratic, // 1.0..1.25 max error 0.01 %
-  reconstruct_quadratic, // 1.25..4.0 max error 2.2 %
-  reconstruct_quadratic, // 4.0..9.0 max error 2.3 %
-  reconstruct_saturation_growth_rate, // 9.0..20.0 max error 1.4 %
-  reconstruct_saturation_growth_rate, // 20.0..90.0 max error 2.1 %
-  reconstruct_saturation_growth_rate, // 90.0..375.0 max error 2.8%
-  reconstruct_quadratic, // 375..650 max error 1.0 %
-  reconstruct_quadratic, // 650..1000 max error 1.7%
-  reconstruct_quadratic, // 1000..1250 max error 1.0%
-};
-
-static float reconstruct_specular_power(const float *params) {
-  // See https://github.com/dracc/xgu/blob/db3172d8c983629f0dc971092981846da22438ae/xgux.h#L279
-
-  // Values < 1.0 will result in a positive c1 and (c2 - c0 * 2) will be very
-  // close to the original value.
-  if (params[1] > 0.0f && params[2] < 1.0f) {
-    return params[2] - (params[0] * 2.0f);
-  }
-
-  float c0 = params[0];
-  float c3 = params[3];
-  // FIXME: This handling is not correct, but is distinct without crashing.
-  // It does not appear possible for a DirectX-generated value to be positive,
-  // so while this differs from hardware behavior, it may be irrelevant in
-  // practice.
-  if (c0 > 0.0f || c3 > 0.0f) {
-    return 0.0001f;
-  }
-
-  float reconstructed_power = 0.f;
-  for (uint32_t i = 0; i < sizeof(kCoefficient0StepPoints) / sizeof(kCoefficient0StepPoints[0]); ++i) {
-    if (c0 > kCoefficient0StepPoints[i]) {
-      reconstructed_power = reconstruct_func_map[i](c0, &curve_coefficients[i]);
-      break;
-    }
-  }
-
-  float reconstructed_half_power = 0.f;
-  for (uint32_t i = 0; i < sizeof(kCoefficient0StepPoints) / sizeof(kCoefficient0StepPoints[0]); ++i) {
-    if (c3 > kCoefficient0StepPoints[i]) {
-      reconstructed_half_power = reconstruct_func_map[i](c3, &curve_coefficients[i]);
-      break;
-    }
-  }
-
-  // The range can be extended beyond 1250 by using the half power params. This
-  // will only work for DirectX generated values, arbitrary params could
-  // erroneously trigger this.
-  //
-  // There are some very low power (~1) values that have inverted powers, but
-  // they are easily identified by comparatively high c0 parameters.
-  if (reconstructed_power == 0.f || (reconstructed_half_power > reconstructed_power && c0 < -0.1f)) {
-    return reconstructed_half_power * 2.f;
-  }
-
-  return reconstructed_power;
-}
-
+/* The six values feed the lighting unit's rational power evaluator as they
+ * are (see vsh-ff.c); nothing is reconstructed from them. */
 DEF_METHOD_INC(NV097, SET_SPECULAR_PARAMS)
 {
     int slot = (method - NV097_SET_SPECULAR_PARAMS) / 4;
     pg->specular_params[slot] = *(float *)&parameter;
-    if (slot == 5) {
-        float new_power = reconstruct_specular_power(pg->specular_params);
-        if (pg->specular_power != new_power) {
-            pg->shader_state_gen++;
-            pg->non_dynamic_reg_gen++;
-            pg->any_reg_gen++;
-        }
-        pg->specular_power = new_power;
-    }
 }
 
 DEF_METHOD_INC(NV097, SET_SCENE_AMBIENT_COLOR)
@@ -3716,8 +3634,7 @@ DEF_METHOD(NV097, SET_TEXTURE_OFFSET)
 {
     int slot = (method - NV097_SET_TEXTURE_OFFSET) / 64;
     unsigned int reg = NV_PGRAPH_TEXOFFSET0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3745,7 +3662,6 @@ DEF_METHOD(NV097, SET_TEXTURE_FORMAT)
         GET_MASK(parameter, NV097_SET_TEXTURE_FORMAT_BASE_SIZE_P);
 
     unsigned int reg = NV_PGRAPH_TEXFMT0 + slot * 4;
-    uint32_t prev = pgraph_reg_r(pg, reg);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_CONTEXT_DMA, dma_select);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_CUBEMAPENABLE, cubemap);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BORDER_SOURCE, border_source);
@@ -3756,16 +3672,14 @@ DEF_METHOD(NV097, SET_TEXTURE_FORMAT)
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BASE_SIZE_V, log_height);
     PG_SET_MASK(reg, NV_PGRAPH_TEXFMT0_BASE_SIZE_P, log_depth);
 
-    bool fmt_changed = (pgraph_reg_r(pg, reg) != prev);
-    pg->texture_dirty[slot] |= fmt_changed;
+    pg->texture_dirty[slot] = true;
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_CONTROL0)
 {
     int slot = (method - NV097_SET_TEXTURE_CONTROL0) / 64;
     unsigned int reg = NV_PGRAPH_TEXCTL0_0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3773,8 +3687,7 @@ DEF_METHOD(NV097, SET_TEXTURE_CONTROL1)
 {
     int slot = (method - NV097_SET_TEXTURE_CONTROL1) / 64;
     unsigned int reg = NV_PGRAPH_TEXCTL1_0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3782,8 +3695,7 @@ DEF_METHOD(NV097, SET_TEXTURE_FILTER)
 {
     int slot = (method - NV097_SET_TEXTURE_FILTER) / 64;
     unsigned int reg = NV_PGRAPH_TEXFILTER0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3791,8 +3703,7 @@ DEF_METHOD(NV097, SET_TEXTURE_IMAGE_RECT)
 {
     int slot = (method - NV097_SET_TEXTURE_IMAGE_RECT) / 64;
     unsigned int reg = NV_PGRAPH_TEXIMAGERECT0 + slot * 4;
-    bool changed = (parameter != pgraph_reg_r(pg, reg));
-    pg->texture_dirty[slot] |= changed;
+    pg->texture_dirty[slot] = true;
     pgraph_reg_w(pg, reg, parameter);
 }
 
@@ -3808,19 +3719,19 @@ DEF_METHOD(NV097, SET_TEXTURE_PALETTE)
         GET_MASK(parameter, NV097_SET_TEXTURE_PALETTE_OFFSET);
 
     unsigned int reg = NV_PGRAPH_TEXPALETTE0 + slot * 4;
-    uint32_t prev = pgraph_reg_r(pg, reg);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_CONTEXT_DMA, dma_select);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_LENGTH, length);
     PG_SET_MASK(reg, NV_PGRAPH_TEXPALETTE0_OFFSET, offset);
 
-    bool pal_changed = (pgraph_reg_r(pg, reg) != prev);
-    pg->texture_dirty[slot] |= pal_changed;
+    pg->texture_dirty[slot] = true;
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_BORDER_COLOR)
 {
     int slot = (method - NV097_SET_TEXTURE_BORDER_COLOR) / 64;
-    pgraph_reg_w(pg, NV_PGRAPH_BORDERCOLOR0 + slot * 4, parameter);
+    unsigned int reg = NV_PGRAPH_BORDERCOLOR0 + slot * 4;
+    pg->texture_dirty[slot] = true;
+    pgraph_reg_w(pg, reg, parameter);
 }
 
 DEF_METHOD(NV097, SET_TEXTURE_SET_BUMP_ENV_MAT)
@@ -4132,15 +4043,6 @@ DEF_METHOD_INC(NV097, SET_SPECULAR_PARAMS_BACK)
 {
     int slot = (method - NV097_SET_SPECULAR_PARAMS_BACK) / 4;
     pg->specular_params_back[slot] = *(float *)&parameter;
-    if (slot == 5) {
-        float new_power = reconstruct_specular_power(pg->specular_params_back);
-        if (pg->specular_power_back != new_power) {
-            pg->shader_state_gen++;
-            pg->non_dynamic_reg_gen++;
-            pg->any_reg_gen++;
-        }
-        pg->specular_power_back = new_power;
-    }
 }
 
 DEF_METHOD(NV097, SET_SHADER_CLIP_PLANE_MODE)

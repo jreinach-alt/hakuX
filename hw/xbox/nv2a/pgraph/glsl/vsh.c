@@ -45,6 +45,14 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
         pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_DIFFUSE);
     state->specular_src = (enum MaterialColorSource)GET_MASK(
         pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_SPECULAR);
+    state->back_emission_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 0) & 3);
+    state->back_ambient_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 2) & 3);
+    state->back_diffuse_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 4) & 3);
+    state->back_specular_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
 
     for (int i = 0; i < 4; i++) {
         state->texture_matrix_enable[i] = pg->texture_matrix_enable[i];
@@ -122,8 +130,8 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
     vsh->ignore_specular_alpha =
         !GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),
                   NV_PGRAPH_CSV0_C_ALPHA_FROM_MATERIAL_SPECULAR);
-    vsh->specular_power = pg->specular_power;
-    vsh->specular_power_back = pg->specular_power_back;
+    vsh->two_side_light = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),
+                                   NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN);
 
     vsh->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                          NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
@@ -465,6 +473,9 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         memcpy(values->pointParams, pg->point_params, sizeof(pg->point_params));
     }
 
+    if (locs[VshUniform_material_alpha_back] != -1) {
+        values->material_alpha_back[0] = pg->material_alpha_back;
+    }
     if (locs[VshUniform_material_alpha] != -1) {
         values->material_alpha[0] = pg->material_alpha;
     }
@@ -535,8 +546,14 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                    sizeof(pg->light_local_attenuation));
         }
 
-        if (locs[VshUniform_specularPower] != -1) {
-            values->specularPower[0] = pg->specular_power;
+        if (locs[VshUniform_specularParams] != -1) {
+            for (int i = 0; i < 2; i++) {
+                for (int j = 0; j < 3; j++) {
+                    values->specularParams[i][j] = pg->specular_params[i * 3 + j];
+                    values->specularParams[2 + i][j] =
+                        pg->specular_params_back[i * 3 + j];
+                }
+            }
         }
     }
 }
