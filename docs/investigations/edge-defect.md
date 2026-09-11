@@ -213,13 +213,6 @@ value is the only one whose side is decided by the last ULP of the transform.
   column and at six checkerboard rows; the device lane has been asked
   (PR #45) for the same two probes. If Adreno breaks them a third way, the
   deterministic rule below is worth building for portability alone.
-- Whether `Stencil::Stencil_REPLACE` is intermittently wrong. It scored 0 px
-  on three consecutive runs and 40,000 px on a fourth, on builds whose only
-  difference cannot reach it (the test samples no texture; it draws three
-  untextured quads through a passthrough shader). A whole 200x200 quad came
-  out green instead of red, which is the third draw passing a stencil or
-  depth test it should fail. Run-to-run nondeterminism at that scale means
-  every score in this project carries some flake, so it is worth a rate.
 - The exact NV2A interpolator and vertex-ALU rounding. Both are measurable
   with purpose-built tests (a vertex sweep across n + 9/16 finer than the
   corpus's ±0.0001; a 1:1 textured quad with a per-texel pattern), which
@@ -299,6 +292,28 @@ No capture changes state.  The exact count is 502 before and after, because
 every capture the bias improves has a second, unrelated residual: the 24
 render-target captures still carry 12 to 71 px on **row 240**, which is the
 v-tie at the same texel 128, left alone by design.
+
+### One measurement bought something else
+
+`Stencil::Stencil_REPLACE` came out 40,000 px wrong in the first swept run and
+0 px in the matched baseline, which read as a large regression from a change
+that cannot reach it: the test samples no texture, it draws three untextured
+quads through a passthrough shader.  Six runs of the clipping disc settled it
+as run-to-run nondeterminism, twice failing, on builds differing only by that
+one constant and with the same binary giving both outcomes.  The whole 200x200
+centre region comes out green where the golden is red, which is the third draw
+passing where it should fail because the middle stencil-only draw never landed.
+
+That is #39, closed on 2026-09-10 with a real root cause and fix in `2dd2321`
+whose verification was two runs of this disc.  At roughly one failure in three,
+two runs pass by chance four times in nine.  Reopened with the evidence.
+
+The bound this puts on everything here is worth stating: a capture that fails
+one run in three means a single-run sweep carries noise, and a change measured
+by one run before and one after can show a difference it did not cause.  The
+A/B above survives that only because 975 of its 1,008 captures are identical
+to the byte and the 33 that move do so by the same amount on every capture of
+a kind.
 
 ## What not to do
 
