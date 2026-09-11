@@ -983,6 +983,18 @@ static void define_colorkey_comparator(MString *preflight)
  * An infinite or NaN coordinate (flagged by the vertex shader, since the
  * value itself cannot be interpolated) and a NaN factor take a fixed
  * result: 1 for linear, linear_abs and exp, 0 for the rest.
+ *
+ * The factor reaches the combiner as eight bits, and the hardware truncates
+ * rather than rounds: with the linear sweeps' diffuse of (0, 0, 1) and fog
+ * colour of (1, 0, 0) the captures hold exactly floor(255 f) in blue and
+ * 255 minus that in red. A guard of 1/32 of a step absorbs the hardware's
+ * own arithmetic noise: with it 2550 of the 2560 linear quads match,
+ * without it 2524, and rounding to nearest gets 2124. The exponential
+ * modes truncate too, but what they truncate is the hardware's own
+ * approximation of 2^x, which sits above the true value by up to a step
+ * at small factors and is not modelled here; until it is, rounding the
+ * exact exponential lands closer to the captures than truncating it
+ * (2352 of 2560 exp quads against 2154), so only the linear modes truncate.
  */
 static void append_fog_factor(const struct PixelShader *ps, MString *vars,
                               const char *lin)
@@ -1032,6 +1044,11 @@ static void append_fog_factor(const struct PixelShader *ps, MString *vars,
                        "}\n"
                        "fogFactor = clamp(fogFactor, 0.0, 1.0);\n",
                        lin, factor, special);
+    if (ps->state->fog_mode == FOG_MODE_LINEAR ||
+        ps->state->fog_mode == FOG_MODE_LINEAR_ABS) {
+        mstring_append(vars,
+                       "fogFactor = floor(fogFactor * 255.0 + 0.03125) / 255.0;\n");
+    }
     mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, fogFactor);\n");
 }
 
