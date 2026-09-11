@@ -167,7 +167,8 @@ void pgraph_gl_draw_begin(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     pgraph_gl_surface_update(d, true, true, depth_test || stencil_test);
 
@@ -310,15 +311,17 @@ void pgraph_gl_draw_begin(NV2AState *d)
     /* Edge Antialiasing */
 #ifdef __ANDROID__
     glLineWidth(MIN(r->supported_aliased_line_width_range[1],
-                    pg->surface_scale_factor));
+                    (pg->line_width / 8.0f) * pg->surface_scale_factor));
 #else
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {
         glEnable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_smooth_line_width_range[1], pg->surface_scale_factor));
+        glLineWidth(MIN(r->supported_smooth_line_width_range[1],
+                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
     } else {
         glDisable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_aliased_line_width_range[1], pg->surface_scale_factor));
+        glLineWidth(MIN(r->supported_aliased_line_width_range[1],
+                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
     }
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {
@@ -385,7 +388,8 @@ void pgraph_gl_draw_end(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     if (is_nop_draw) {
         // FIXME: Check PGRAPH register 0x880.

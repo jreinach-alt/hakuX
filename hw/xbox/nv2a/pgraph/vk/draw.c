@@ -334,7 +334,8 @@ void pgraph_vk_draw_begin(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     pgraph_vk_surface_update(d, true, true, depth_test || stencil_test);
 
@@ -3098,6 +3099,13 @@ mfp_miss: (void)0;
     }
 }
 
+/* The width SET_LINE_WIDTH asks for, at the scale the surface is drawn at
+ * and within what the device can actually draw. */
+static float pgraph_vk_line_width(PGRAPHState *pg)
+{
+    return (pg->line_width / 8.0f) * pg->surface_scale_factor;
+}
+
 static float clamp_line_width_to_device_limits(PGRAPHState *pg, float width)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3208,8 +3216,8 @@ static void begin_draw(PGRAPHState *pg)
         vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
         if (r->pipeline_binding->has_dynamic_line_width) {
-            float line_width =
-                clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            float line_width = clamp_line_width_to_device_limits(
+                pg, pgraph_vk_line_width(pg));
             vkCmdSetLineWidth(r->command_buffer, line_width);
         }
     }
@@ -4348,7 +4356,7 @@ static bool try_snapshot_draw_arrays(NV2AState *d, ReorderWindowEntry *e)
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
-            clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -4485,7 +4493,7 @@ static bool try_snapshot_inline_elements(NV2AState *d, ReorderWindowEntry *e)
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
         e->line_width =
-            clamp_line_width_to_device_limits(pg, pg->surface_scale_factor);
+            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -4875,7 +4883,8 @@ void pgraph_vk_draw_end(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     if (is_nop_draw) {
         NV2A_VK_DPRINTF("nop draw!\n");

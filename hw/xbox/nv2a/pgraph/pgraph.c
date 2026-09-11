@@ -1072,6 +1072,7 @@ void pgraph_init(NV2AState *d)
     pg->cached_graphics_class = 0;
 
     pg->material_alpha = 0.0f;
+    pg->line_width = 8; /* 1.0 */
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_SHADEMODE,
          NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH);
     /* Perspective-correct interpolation until a SET_CONTROL0 says
@@ -2683,6 +2684,18 @@ DEF_METHOD(NV097, SET_PROVOKING_VERTEX)
     assert((parameter & ~1) == 0);
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX,
              parameter);
+}
+
+DEF_METHOD(NV097, SET_LINE_WIDTH)
+{
+    /* Nine bits of eighths of a pixel, so 0 to 63.875. A value that does
+     * not fit leaves the width alone rather than being masked or clamped:
+     * the Line width goldens for every width from 64.0 up, and for -1,
+     * are the 1.0 the suite restores after each test, not the 0.0 a mask
+     * would give or the 63.875 a clamp would. */
+    if (parameter <= NV097_SET_LINE_WIDTH_MAX) {
+        pg->line_width = parameter;
+    }
 }
 
 DEF_METHOD(NV097, SET_POLYGON_OFFSET_SCALE_FACTOR)
