@@ -32,6 +32,8 @@ typedef struct {
     bool smooth_shading;
     bool z_perspective;
     bool noperspective; /* SET_CONTROL0 texture perspective off */
+    /* NV_PGRAPH_TEXADDRESSn cylinder-wrap bits per stage: 1 U, 2 V, 4 P, 8 Q */
+    uint8_t cylinder_wrap[4];
 } GeomState;
 
 typedef struct GenGeomGlslOptions {

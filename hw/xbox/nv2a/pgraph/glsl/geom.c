@@ -45,6 +45,23 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
                            NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
     state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                              NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
+    for (int i = 0; i < 4; i++) {
+        /* The bit only takes effect on an axis in WRAP address mode:
+         * TextureWrapMode's CYLWRAP tile wraps U (WRAP) and leaves V
+         * (MIRROR) interpolated the long way round. */
+        uint32_t a = pgraph_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);
+        bool u = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) ==
+                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
+        bool v = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) ==
+                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
+        bool p = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) ==
+                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
+        state->cylinder_wrap[i] =
+            ((u && (a & NV_PGRAPH_TEXADDRESS0_WRAP_U)) ? 1 : 0) |
+            ((v && (a & NV_PGRAPH_TEXADDRESS0_WRAP_V)) ? 2 : 0) |
+            ((p && (a & NV_PGRAPH_TEXADDRESS0_WRAP_P)) ? 4 : 0) |
+            ((a & NV_PGRAPH_TEXADDRESS0_WRAP_Q) ? 8 : 0);
+    }
 }
 
 bool pgraph_glsl_need_geom(const GeomState *state)
@@ -127,12 +144,37 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                        "%s"
                        "\n"
                        "#define v_vtxPos v_vtxPos0\n"
+                       /* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):
+                        * the coordinate is interpolated the short way round
+                        * the unit cylinder, so a vertex more than half a turn
+                        * from the first vertex's value moves by a whole turn
+                        * before interpolation.  D3D's texture-wrap render
+                        * state; TextureWrapMode's CYLWRAP tile. */
+                       "vec4 cylWrap(vec4 ref, vec4 c, bvec4 on) {\n"
+                       "  vec4 d = c - ref;\n"
+                       "  vec4 adj = vec4(greaterThan(d, vec4(0.5))) - vec4(lessThan(d, vec4(-0.5)));\n"
+                       "  return c - adj * vec4(on);\n"
+                       "}\n"
                        "\n",
                        layout_in, layout_out);
     pgraph_glsl_get_vtx_header(output, opts.vulkan, state->smooth_shading,
                                state->noperspective, true, true, true);
     pgraph_glsl_get_vtx_header(output, opts.vulkan, state->smooth_shading,
                                state->noperspective, false, false, false);
+
+    char tex_lines[4][160];
+    for (int i = 0; i < 4; i++) {
+        uint8_t w = state->cylinder_wrap[i];
+        if (w) {
+            snprintf(tex_lines[i], sizeof(tex_lines[i]),
+                     "  vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(%s, %s, %s, %s));\n",
+                     i, i, i, (w & 1) ? "true" : "false", (w & 2) ? "true" : "false",
+                     (w & 4) ? "true" : "false", (w & 8) ? "true" : "false");
+        } else {
+            snprintf(tex_lines[i], sizeof(tex_lines[i]),
+                     "  vtxT%d = v_vtxT%d[index];\n", i, i);
+        }
+    }
 
     mstring_append(
         output,
@@ -149,10 +191,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         "  vtxB0 = v_vtxB0[%s];\n"
         "  vtxB1 = v_vtxB1[%s];\n"
         "  vtxFog = v_vtxFog[index];\n"
-        "  vtxT0 = v_vtxT0[index];\n"
-        "  vtxT1 = v_vtxT1[index];\n"
-        "  vtxT2 = v_vtxT2[index];\n"
-        "  vtxT3 = v_vtxT3[index];\n"
+        "%s%s%s%s"
         "  vtxPos0 = pz[0];\n"
         "  vtxPos1 = pz[1];\n"
         "  vtxPos2 = pz[2];\n"
@@ -163,7 +202,8 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         provoking_index,
         provoking_index,
         provoking_index,
-        provoking_index);
+        provoking_index,
+        tex_lines[0], tex_lines[1], tex_lines[2], tex_lines[3]);
 
     if (need_triz) {
         mstring_append(
