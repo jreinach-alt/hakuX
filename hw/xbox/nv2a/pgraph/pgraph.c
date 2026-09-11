@@ -2229,6 +2229,15 @@ DEF_METHOD(NV097, SET_COLOR_MATERIAL)
              (parameter >> 4) & 3);
     PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_SPECULAR,
              (parameter >> 6) & 3);
+
+    /* The back face's four selectors have no register of their own. */
+    uint32_t back = (parameter >> 8) & 0xFF;
+    if (pg->color_material_back != back) {
+        pg->color_material_back = back;
+        pg->shader_state_gen++;
+        pg->non_dynamic_reg_gen++;
+        pg->any_reg_gen++;
+    }
 }
 
 DEF_METHOD(NV097, SET_FOG_MODE)
@@ -2357,6 +2366,12 @@ DEF_METHOD(NV097, SET_LIGHTING_ENABLE)
 {
     PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_LIGHTING,
              parameter);
+}
+
+DEF_METHOD(NV097, SET_LIGHT_TWO_SIDE_ENABLE)
+{
+    PG_SET_MASK(NV_PGRAPH_CSV0_C, NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN,
+             parameter != 0);
 }
 
 DEF_METHOD(NV097, SET_POINT_PARAMS_ENABLE)
@@ -2771,6 +2786,11 @@ DEF_METHOD_INC(NV097, SET_MATERIAL_EMISSION)
 DEF_METHOD(NV097, SET_MATERIAL_ALPHA)
 {
     pg->material_alpha = *(float*)&parameter;
+}
+
+DEF_METHOD(NV097, SET_BACK_MATERIAL_ALPHA)
+{
+    pg->material_alpha_back = *(float*)&parameter;
 }
 
 DEF_METHOD(NV097, SET_SPECULAR_ENABLE)

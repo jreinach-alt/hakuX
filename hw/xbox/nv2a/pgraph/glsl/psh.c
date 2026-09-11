@@ -124,6 +124,8 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
     state->texture_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                                  NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE;
+    state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
+                            NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
     state->fog_enable = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) &
                         NV_PGRAPH_CONTROL_3_FOGENABLE;
     state->fog_mode = (enum VshFogMode)GET_MASK(
@@ -1467,10 +1469,16 @@ static MString* psh_convert(struct PixelShader *ps)
      * w, and 1/w interpolated linearly is gl_FragCoord.w (see vsh.c). */
     const char *lin = ps->state->texture_perspective ? "" : " * gl_FragCoord.w";
     MString *vars = mstring_new();
-    mstring_append_fmt(vars, "vec4 pD0 = vtxD0%s;\n", lin);
-    mstring_append_fmt(vars, "vec4 pD1 = vtxD1%s;\n", lin);
-    mstring_append_fmt(vars, "vec4 pB0 = vtxB0%s;\n", lin);
-    mstring_append_fmt(vars, "vec4 pB1 = vtxB1%s;\n", lin);
+    /* With two-sided lighting on, a back-facing fragment takes the back
+     * colour outputs; with it off the front outputs serve both faces and
+     * the back ones are never looked at (Lighting Two Sided golden). */
+    if (ps->state->two_side_light) {
+        mstring_append_fmt(vars, "vec4 pD0 = (gl_FrontFacing ? vtxD0 : vtxB0)%s;\n", lin);
+        mstring_append_fmt(vars, "vec4 pD1 = (gl_FrontFacing ? vtxD1 : vtxB1)%s;\n", lin);
+    } else {
+        mstring_append_fmt(vars, "vec4 pD0 = vtxD0%s;\n", lin);
+        mstring_append_fmt(vars, "vec4 pD1 = vtxD1%s;\n", lin);
+    }
     append_fog_factor(ps, vars, lin);
     mstring_append_fmt(vars, "vec4 pT0 = vtxT0%s;\n", lin);
     mstring_append_fmt(vars, "vec4 pT1 = vtxT1%s;\n", lin);

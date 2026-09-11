@@ -552,6 +552,7 @@ typedef struct RenderCommandSnapshot {
     bool ltc1_any_dirty;
 
     float material_alpha;
+    float material_alpha_back;
     float specular_params[6];
     float specular_params_back[6];
     float point_params[8];

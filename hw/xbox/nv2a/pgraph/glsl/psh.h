@@ -72,6 +72,7 @@ typedef struct PshState {
 
     bool smooth_shading;
     bool texture_perspective;
+    bool two_side_light;
     bool fog_enable;
     enum VshFogMode fog_mode;
     bool depth_clipping;
