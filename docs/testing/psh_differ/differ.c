@@ -151,6 +151,7 @@ static const Field fields[] = {
     F(fog_mode,     K_INT, FOG_MODE_LINEAR, FOG_MODE_EXP2_ABS),
     F4(rect_tex,    K_BOOL, 0, 1),
     F4(snorm_tex,   K_BOOL, 0, 1),
+    F4(tex_signed,  K_INT, 0, 15),
     F4x4(compare_mode),
     F4(alphakill,   K_BOOL, 0, 1),
     F4(colorkey_mode, K_INT, COLOR_KEY_NONE, COLOR_KEY_DISCARD),
