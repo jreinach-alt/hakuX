@@ -512,7 +512,15 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
                     uint16_t rgb655 =
                         *(uint16_t *)(slice + y * row_pitch + x * 2);
                     uint8_t *pixel = &out[(y * width + x) * 4];
-                    pixel[0] = ((rgb655 >> 10) & 0x3F) * 0xFF / 0x3F;
+                    /* Bit replication, i.e. v*255/63 rounded to nearest:
+                     * Texture_render_target's R6G5B5 row (a source our own
+                     * packer wrote, unlike Texture_format's, see #21) sits
+                     * one count above the truncating v*255/63 on half its
+                     * pixels and matches replication everywhere. */
+                    unsigned r6 = (rgb655 >> 10) & 0x3F;
+                    unsigned g5 = (rgb655 >> 5) & 0x1F;
+                    unsigned b5 = rgb655 & 0x1F;
+                    pixel[0] = (r6 << 2) | (r6 >> 4);
                     /* Green stays open, and is not a bit-selection problem.
                      * Across Texture format's gradient hardware's green
                      * completes two ramps where this completes one
@@ -528,8 +536,8 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
                      * signedness bits and Texture format does not. So keep the
                      * decode neutral and plain, and leave green to be
                      * explained rather than fitted. See issue #21. */
-                    pixel[1] = ((rgb655 >> 5) & 0x1F) * 0xFF / 0x1F;
-                    pixel[2] = (rgb655 & 0x1F) * 0xFF / 0x1F;
+                    pixel[1] = (g5 << 3) | (g5 >> 2);
+                    pixel[2] = (b5 << 3) | (b5 >> 2);
                     pixel[3] = 0xFF;
                 }
             }
