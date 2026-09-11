@@ -115,7 +115,10 @@ static bool texture_wants_snorm(uint32_t filter, unsigned int color_format)
                                 NV_PGRAPH_TEXFILTER0_RSIGNED |
                                 NV_PGRAPH_TEXFILTER0_GSIGNED |
                                 NV_PGRAPH_TEXFILTER0_BSIGNED;
-    return (filter & any_signed) &&
+    /* The sampler can only sign the whole texel.  A partial set of flags
+     * is applied per channel in the pixel shader after the fetch instead
+     * (Texture_signed_component_tests). */
+    return (filter & any_signed) == any_signed &&
            pgraph_color_format_has_signed_variant(color_format);
 }
 

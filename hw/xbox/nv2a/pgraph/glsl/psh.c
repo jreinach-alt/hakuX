@@ -283,8 +283,14 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
          * stored it in an SNORM image while Vulkan did not. Both now convert it
          * to unsigned RGBA8 and take signedness from the sampler, so the rule
          * is the same one every other format follows. */
+        /* The sampler signs the whole texel or nothing (the image format
+         * is SNORM or UNORM), so it is used only when every channel is
+         * flagged.  A partial set of flags -- Texture_signed_component_tests
+         * sweeps all sixteen -- is applied per channel after the fetch,
+         * exact for nearest filtering, off only across a 0x7f/0x80 step
+         * under linear filtering. */
         state->snorm_tex[i] =
-            (sign_filter & any_signed) &&
+            (sign_filter & any_signed) == any_signed &&
             pgraph_color_format_has_signed_variant(color_format);
         state->tex_signed[i] = sign_filter & any_signed;
         state->shadow_map[i] = f.depth;
@@ -1323,6 +1329,35 @@ static void append_fog_factor(const struct PixelShader *ps, MString *vars,
     mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, fogFactor);\n");
 }
 
+/* Does a later stage read stage i's texel as raw bytes (a bump map or a
+ * dot-product input)?  Those paths apply the channel signs themselves. */
+static bool stage_consumed_raw(const struct PixelShader *ps, int i)
+{
+    for (int j = i + 1; j < 4; j++) {
+        if (ps->input_tex[j] != i) {
+            continue;
+        }
+        switch (ps->tex_modes[j]) {
+        case PS_TEXTUREMODES_BUMPENVMAP:
+        case PS_TEXTUREMODES_BUMPENVMAP_LUM:
+        case PS_TEXTUREMODES_DOTPRODUCT:
+        case PS_TEXTUREMODES_DOT_ST:
+        case PS_TEXTUREMODES_DOT_ZW:
+        case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
+        case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
+        case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
+        case PS_TEXTUREMODES_DOT_STR_3D:
+        case PS_TEXTUREMODES_DOT_STR_CUBE:
+        case PS_TEXTUREMODES_DPNDNT_AR:
+        case PS_TEXTUREMODES_DPNDNT_GB:
+            return true;
+        default:
+            break;
+        }
+    }
+    return false;
+}
+
 static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
@@ -1397,6 +1432,15 @@ static MString* psh_convert(struct PixelShader *ps)
         "    float xf = float(x) * 255.0;\n"
         "    if (xf >= 128.0) return (xf - 256.0) / 127.0;\n"
         "               else return xf / 127.0;\n"
+        "}\n"
+        /* A texture channel flagged signed in NV_PGRAPH_TEXFILTER, as the
+         * combiner receives it: two's complement over 127.5, so 0x7f is
+         * 254/255 and 0x80 clamps to -1.  Not the dot-mapping rules above,
+         * which divide by 127. */
+        "float signed_channel(float x) {\n"
+        "    float xf = float(x) * 255.0;\n"
+        "    if (xf >= 128.0) xf -= 256.0;\n"
+        "    return xf / 127.5;\n"
         "}\n"
         "float sign3_to_0_to_1(float x) {\n"
         "    if (x >= 0.0) return x/2.0;\n"
@@ -2203,6 +2247,33 @@ static MString* psh_convert(struct PixelShader *ps)
             }
             mstring_append_fmt(preflight, "uniform %s texSamp%d;\n",
                                sampler_type, i);
+
+            /* Channels flagged signed on a texture the sampler holds
+             * unsigned: two's complement over 127, the SNORM reading.  A
+             * texel a later bump or dot-product stage consumes is left as
+             * bytes; those stages sign their inputs themselves. */
+            if (ps->state->tex_signed[i] && !stage_consumed_raw(ps, i)) {
+                if (ps->state->snorm_tex[i]) {
+                    /* The sampler signed it over 127; the hardware's scale
+                     * is 127.5 (a 0x7f texel reaches the combiner as
+                     * 254/255: Texture_signed_component_tests, every
+                     * flagged block one step under full). */
+                    mstring_append_fmt(vars, "t%d *= 127.0 / 127.5;\n", i);
+                } else {
+                    static const struct { uint32_t bit; char c; } chan[] = {
+                        { NV_PGRAPH_TEXFILTER0_RSIGNED, 'r' },
+                        { NV_PGRAPH_TEXFILTER0_GSIGNED, 'g' },
+                        { NV_PGRAPH_TEXFILTER0_BSIGNED, 'b' },
+                        { NV_PGRAPH_TEXFILTER0_ASIGNED, 'a' },
+                    };
+                    for (int c = 0; c < 4; c++) {
+                        if (ps->state->tex_signed[i] & chan[c].bit) {
+                            mstring_append_fmt(vars, "t%d.%c = signed_channel(t%d.%c);\n",
+                                               i, chan[c].c, i, chan[c].c);
+                        }
+                    }
+                }
+            }
 
             /* As this means a texture fetch does happen, do alphakill */
             if (ps->state->alphakill[i]) {
