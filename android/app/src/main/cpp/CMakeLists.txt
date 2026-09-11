@@ -860,6 +860,13 @@ file(WRITE "${XEMU_VERSION_HEADER}"
 "#define XEMU_DATE          \"${XEMU_DATE}\"\n"
 )
 
+# The nv2a profiler's frame-phase breakdown is compiled out by default
+# because it puts a clock read around every method the puller executes,
+# which changes the timing it exists to measure. Turn it on for a
+# diagnostic build only:  ./gradlew assembleDebug -Pperflog=true
+# The lighter always-on pacing line in profile.c needs none of this.
+option(HAKUX_PERF_LOG "Compile in the nv2a frame-phase profiler" OFF)
+
 target_compile_definitions(xemu_core PRIVATE
   ANDROID
   __ANDROID__
@@ -872,6 +879,7 @@ target_compile_definitions(xemu_core PRIVATE
   $<$<BOOL:${XEMU_ENABLE_VULKAN}>:VMA_STATIC_VULKAN_FUNCTIONS=0>
   $<$<BOOL:${XEMU_ENABLE_VULKAN}>:VMA_DYNAMIC_VULKAN_FUNCTIONS=0>
   CONFIG_RENDERDOC
+  $<$<BOOL:${HAKUX_PERF_LOG}>:NV2A_PERF_LOG=1>
   $<$<BOOL:${XEMU_OPT_NATIVE_FLOAT}>:XEMU_OPT_NATIVE_FLOAT=1>
   $<$<BOOL:${XEMU_OPT_TCG_PEEPHOLE}>:XEMU_OPT_TCG_PEEPHOLE=1>
   $<$<BOOL:${XEMU_OPT_TB_CACHE_HINTS}>:XEMU_OPT_TB_CACHE_HINTS=1>
@@ -984,6 +992,7 @@ add_library(xemu SHARED
 
 target_compile_definitions(xemu PRIVATE ANDROID __ANDROID__ XBOX CONFIG_SDL CONFIG_OPENGL
   CONFIG_RENDERDOC
+  $<$<BOOL:${HAKUX_PERF_LOG}>:NV2A_PERF_LOG=1>
   $<$<BOOL:${XEMU_OPT_NATIVE_FLOAT}>:XEMU_OPT_NATIVE_FLOAT=1>
   $<$<BOOL:${XEMU_OPT_TCG_PEEPHOLE}>:XEMU_OPT_TCG_PEEPHOLE=1>
   $<$<BOOL:${XEMU_OPT_TB_CACHE_HINTS}>:XEMU_OPT_TB_CACHE_HINTS=1>

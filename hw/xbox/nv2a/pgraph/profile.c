@@ -256,6 +256,25 @@ void nv2a_profile_flip_stall(void)
     }
     prev_flip_us = now;
 
+#ifdef __ANDROID__
+    /*
+     * Always-on pacing line, roughly twice a second at 60 fps and less often
+     * when the guest is slower. The heavyweight breakdown below needs
+     * NV2A_PERF_LOG, which puts a clock read around every method in the puller
+     * and so changes the number it is measuring. This one costs an snprintf
+     * per 60 guest frames and answers the first question on its own: if
+     * display frame time sits at the limiter's interval while game frame time
+     * is far above it, the guest is the slow side and no cap is involved.
+     */
+    if ((g_nv2a_stats.frame_count % 60) == 0) {
+        char pbuf[256];
+        nv2a_profile_get_pacing_str(pbuf, sizeof(pbuf));
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "gfps=%d %s", (int)g_nv2a_stats.increment_fps,
+                            pbuf);
+    }
+#endif
+
 #if defined(__ANDROID__) && NV2A_PERF_LOG
     if ((g_nv2a_stats.frame_count % 60) == 0) {
         char buf[512];
