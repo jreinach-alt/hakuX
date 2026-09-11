@@ -286,6 +286,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         state->snorm_tex[i] =
             (sign_filter & any_signed) &&
             pgraph_color_format_has_signed_variant(color_format);
+        state->tex_signed[i] = sign_filter & any_signed;
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
@@ -1139,6 +1140,94 @@ static void define_colorkey_comparator(MString *preflight)
 }
 
 
+
+/*
+ * One channel of a bump environment map's input texture, signed the way
+ * the hardware signs it. The filter register flags each channel on its
+ * own: a flagged channel is two's complement per texel and then filtered
+ * (the Bump map goldens sweep through zero across a 0x7f/0x80 boundary),
+ * an unflagged one is filtered unsigned and the eight-bit result is then
+ * read as two's complement (the same boundary is a hard step). The sampler
+ * can only be signed as a whole, so with a mix of flags the unflagged
+ * channels are rebuilt from a gather of the signed texels; that path
+ * filters at the base level only.
+ */
+static void append_bump_channel(const struct PixelShader *ps, MString *vars,
+                                int i, int k, int comp, uint32_t flag_bit,
+                                bool luminance, const char *name,
+                                bool gather_ok)
+{
+    static const char chan[] = "rgba";
+    bool flagged = ps->state->tex_signed[k] & flag_bit;
+    bool snorm = ps->state->snorm_tex[k];
+    const char *c = &chan[comp];
+
+    if (flagged && snorm) {
+        /* The sampler signed and filtered it. */
+        if (luminance) {
+            mstring_append_fmt(vars, "float %s = sign3_to_0_to_1(bump_snorm(t%d.%c));\n", name, k, *c);
+        } else {
+            mstring_append_fmt(vars, "float %s = bump_snorm(t%d.%c);\n", name, k, *c);
+        }
+    } else if (flagged && gather_ok) {
+        /* Signed on a format the sampler holds unsigned. */
+        if (luminance) {
+            mstring_append_fmt(vars, "float %s = sign3_to_0_to_1(bump_signed_gather(textureGather(texSamp%d, bumpUV%d, %d), bumpF%d));\n",
+                               name, k, i, comp, i);
+        } else {
+            mstring_append_fmt(vars, "float %s = bump_signed_gather(textureGather(texSamp%d, bumpUV%d, %d), bumpF%d);\n",
+                               name, k, i, comp, i);
+        }
+    } else if (!flagged && snorm && gather_ok) {
+        /* Unsigned next to a signed sibling: back to bytes, filtered
+         * unsigned, then read as two's complement. */
+        if (luminance) {
+            mstring_append_fmt(vars, "float %s = bump_unsigned_gather(textureGather(texSamp%d, bumpUV%d, %d), bumpF%d);\n",
+                               name, k, i, comp, i);
+        } else {
+            mstring_append_fmt(vars, "float %s = bump_signed(bump_unsigned_gather(textureGather(texSamp%d, bumpUV%d, %d), bumpF%d));\n",
+                               name, k, i, comp, i);
+        }
+    } else if (snorm) {
+        /* No way to rebuild the unsigned value: take the signed one. */
+        if (luminance) {
+            mstring_append_fmt(vars, "float %s = sign3_to_0_to_1(bump_snorm(t%d.%c));\n", name, k, *c);
+        } else {
+            mstring_append_fmt(vars, "float %s = bump_snorm(t%d.%c);\n", name, k, *c);
+        }
+    } else {
+        /* Unsigned sampler, filtered unsigned; the offsets are then read as
+         * two's complement (a flagged channel lands here only when the
+         * input mode gives the gather nothing to work with). */
+        if (luminance) {
+            mstring_append_fmt(vars, "float %s = bump_unsigned(t%d.%c);\n", name, k, *c);
+        } else {
+            mstring_append_fmt(vars, "float %s = bump_signed(t%d.%c);\n", name, k, *c);
+        }
+    }
+}
+
+/* The gather path above needs the input stage's sampling position; it is
+ * only available for a plain projective 2D input. Emits bumpUV/bumpF for
+ * stage i from texture k and says whether it could. */
+static bool append_bump_coords(const struct PixelShader *ps, MString *vars, int i, int k)
+{
+    if (ps->tex_modes[k] != PS_TEXTUREMODES_PROJECT2D ||
+        ps->state->dim_tex[k] != 2 || ps->state->tex_cubemap[k] ||
+        ps->state->conv_tex[k] != CONVOLUTION_FILTER_DISABLED) {
+        return false;
+    }
+    if (ps->state->rect_tex[k]) {
+        mstring_append_fmt(vars, "vec2 bumpUV%d = norm%d(pT%d.xy / pT%d.w);\n", i, k, k, k);
+    } else {
+        mstring_append_fmt(vars, "vec2 bumpUV%d = pT%d.xy / pT%d.w;\n", i, k, k);
+    }
+    mstring_append_fmt(vars,
+                       "vec2 bumpF%d = fract(bumpUV%d * vec2(textureSize(texSamp%d, 0)) - 0.5);\n",
+                       i, i, k);
+    return true;
+}
+
 /*
  * The fog factor, applied to the interpolated fog coordinate here rather
  * than at the vertices: the Fog suite's exp captures shade smoothly across
@@ -1312,6 +1401,50 @@ static MString* psh_convert(struct PixelShader *ps)
         "float sign3_to_0_to_1(float x) {\n"
         "    if (x >= 0.0) return x/2.0;\n"
         "           else return 1.0+x/2.0;\n"
+        "}\n"
+        /* The bump environment map reads its offsets as two's complement bytes
+         * over 128, not 127: the Bump map goldens' checkerboard phase sits a
+         * texel and a half behind the /127 reading, which is 127/128 of the
+         * way. What it reads is the filtered value rounded back to eight bits,
+         * signed or not: the Bump env lum goldens step through 1, 2, 3 across
+         * a 0x01/0x03 tent whichever way the channel is flagged, where an
+         * unrounded sweep drifts. bump_signed takes an unsigned channel after
+         * filtering; bump_snorm a channel the sampler already signed over 127;
+         * bump_unsigned a luminance channel left unsigned. */
+        "float bump_signed(float x) {\n"
+        "    float xf = round(float(x) * 255.0);\n"
+        "    if (xf >= 128.0) return (xf - 256.0) / 128.0;\n"
+        "               else return xf / 128.0;\n"
+        "}\n"
+        "float bump_snorm(float x) {\n"
+        "    return round(x * 127.0) / 128.0;\n"
+        "}\n"
+        "float bump_unsigned(float x) {\n"
+        "    return round(x * 255.0) / 255.0;\n"
+        "}\n"
+        /* A flagged channel of a texture the sampler cannot hold signed (the
+         * 16-bit formats): each texel two's complement first, then filtered,
+         * the way the sampler does it for the formats it can sign. */
+        "float bump_signed_gather(vec4 g, vec2 f) {\n"
+        "    vec4 sg = vec4(bump_signed(g.x), bump_signed(g.y), bump_signed(g.z), bump_signed(g.w));\n"
+        "    float v = mix(mix(sg.w, sg.z, f.x), mix(sg.x, sg.y, f.x), f.y);\n"
+        "    return round(v * 128.0) / 128.0;\n"
+        "}\n"
+        /* A channel the filter register leaves unsigned while a sibling is
+         * signed: the sampler holds the whole texture signed, so the four
+         * texels come back over 127 (with -128 clamped to -1) and are turned
+         * back into their bytes, filtered as the unsigned values they are,
+         * and only then read as two's complement. The filtered value is an
+         * eight-bit one on the hardware (a 0x7f/0x80 boundary steps at the
+         * midpoint of the tent, not at its end), so it is rounded back to a
+         * byte. g is a textureGather result, f the bilinear weights. */
+        "float bump_unsigned_gather(vec4 g, vec2 f) {\n"
+        "    vec4 b = round(g * 127.0);\n"
+        "    b += vec4(lessThan(b, vec4(0.0))) * 256.0;\n"
+        "    b = mix(b, vec4(128.0), vec4(equal(g, vec4(-1.0))));\n"
+        "    vec4 u = b / 255.0;\n"
+        "    float v = mix(mix(u.w, u.z, f.x), mix(u.x, u.y, f.x), f.y);\n"
+        "    return round(v * 255.0) / 255.0;\n"
         "}\n"
         "vec3 dotmap_zero_to_one(vec4 col) {\n"
         "    return col.rgb;\n"
@@ -1828,14 +1961,15 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_BUMPENVMAP:
             if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_BUMPENVMAP")) break;
 
-            if (ps->state->snorm_tex[ps->input_tex[i]]) {
-                /* Input color channels already signed (FIXME: May not always want signed textures in this case) */
-                mstring_append_fmt(vars, "vec2 dsdt%d = t%d.bg;\n",
-                                   i, ps->input_tex[i]);
-            } else {
-                /* Convert to signed (FIXME: loss of accuracy due to filtering/interpolation) */
-                mstring_append_fmt(vars, "vec2 dsdt%d = vec2(sign3(t%d.b), sign3(t%d.g));\n",
-                                   i, ps->input_tex[i], ps->input_tex[i]);
+            {
+                int k = ps->input_tex[i];
+                bool gather_ok = append_bump_coords(ps, vars, i, k);
+                char sname[16], tname[16];
+                snprintf(sname, sizeof(sname), "bumpS%d", i);
+                snprintf(tname, sizeof(tname), "bumpT%d", i);
+                append_bump_channel(ps, vars, i, k, 2, NV_PGRAPH_TEXFILTER0_BSIGNED, false, sname, gather_ok);
+                append_bump_channel(ps, vars, i, k, 1, NV_PGRAPH_TEXFILTER0_GSIGNED, false, tname, gather_ok);
+                mstring_append_fmt(vars, "vec2 dsdt%d = vec2(%s, %s);\n", i, sname, tname);
             }
 
             mstring_append_fmt(vars, "dsdt%d = bumpMat[%d] * dsdt%d;\n", i, i, i);
@@ -1861,14 +1995,17 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_BUMPENVMAP_LUM:
             if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_BUMPENVMAP_LUM")) break;
 
-            if (ps->state->snorm_tex[ps->input_tex[i]]) {
-                /* Input color channels already signed (FIXME: May not always want signed textures in this case) */
-                mstring_append_fmt(vars, "vec3 dsdtl%d = vec3(t%d.bg, sign3_to_0_to_1(t%d.r));\n",
-                                   i, ps->input_tex[i], ps->input_tex[i]);
-            } else {
-                /* Convert to signed (FIXME: loss of accuracy due to filtering/interpolation) */
-                mstring_append_fmt(vars, "vec3 dsdtl%d = vec3(sign3(t%d.b), sign3(t%d.g), t%d.r);\n",
-                                   i, ps->input_tex[i], ps->input_tex[i], ps->input_tex[i]);
+            {
+                int k = ps->input_tex[i];
+                bool gather_ok = append_bump_coords(ps, vars, i, k);
+                char sname[16], tname[16], lname[16];
+                snprintf(sname, sizeof(sname), "bumpS%d", i);
+                snprintf(tname, sizeof(tname), "bumpT%d", i);
+                snprintf(lname, sizeof(lname), "bumpL%d", i);
+                append_bump_channel(ps, vars, i, k, 2, NV_PGRAPH_TEXFILTER0_BSIGNED, false, sname, gather_ok);
+                append_bump_channel(ps, vars, i, k, 1, NV_PGRAPH_TEXFILTER0_GSIGNED, false, tname, gather_ok);
+                append_bump_channel(ps, vars, i, k, 0, NV_PGRAPH_TEXFILTER0_RSIGNED, true, lname, gather_ok);
+                mstring_append_fmt(vars, "vec3 dsdtl%d = vec3(%s, %s, %s);\n", i, sname, tname, lname);
             }
 
             mstring_append_fmt(vars, "dsdtl%d.st = bumpMat[%d] * dsdtl%d.st;\n",
