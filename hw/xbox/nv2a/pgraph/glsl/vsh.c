@@ -335,54 +335,54 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         float infinite_fogdistance_result = 0.0f;
         float nan_fogfactor_result = 0.0f;
 
+        /*
+         * What the hardware makes of the three fog parameters, read off the
+         * Fog param goldens (fog coordinate swept from -1.4 in steps of
+         * 0.01, bias at each mode's zero point, multiplier at +-2, +-1,
+         * +-0.5, +-0.25):
+         *
+         *   linear      f = bias + m * d - 1
+         *   linear_abs  f = bias + m * |d| - 1
+         *   exp         f = 2^(16 (bias + m d - 1.5))
+         *   exp_abs     f = 2^(-16 |bias + m d - 1.5|)
+         *   exp2        f = 2^(16 (bias - 2 (m d)^2 - 1.5))
+         *   exp2_abs    f = 2^(-16 |bias - 2 (m d)^2 - 1.5|)
+         *
+         * The bias enters the exponent, not the sum: the earlier
+         * bias + 2^(16 m d) - 1.5 agrees with the hardware only at the bias
+         * of 1.5 that D3D's fog tables produce, and was 22-24 steps out at
+         * the others. The _abs modes take the magnitude of the distance for
+         * linear and of the exponent for exp, which is what makes the exp_abs
+         * curve asymmetric about zero. With D3D's parameters (bias 1.5,
+         * m = -density / (2 ln 256)) exp reduces to e^(-density d).
+         */
         switch (state->fog_mode) {
         case FOG_MODE_LINEAR:
-        case FOG_MODE_LINEAR_ABS:
-
-            /* f = (end - d) / (end - start)
-             *    fogParam.y = -1 / (end - start)
-             *    fogParam.x = 1 - end * fogParam.y;
-             */
             infinite_fogdistance_result = 1.0f;
             nan_fogfactor_result = 1.0f;
-            mstring_append(body, "  float fogFactor = fogParam.x + fogDistance * fogParam.y;\n");
-            mstring_append(body, "  fogFactor -= 1.0;\n");
+            mstring_append(body, "  float fogFactor = fogParam.x + fogDistance * fogParam.y - 1.0;\n");
+            break;
+        case FOG_MODE_LINEAR_ABS:
+            infinite_fogdistance_result = 1.0f;
+            nan_fogfactor_result = 1.0f;
+            mstring_append(body, "  float fogFactor = fogParam.x + abs(fogDistance) * fogParam.y - 1.0;\n");
             break;
         case FOG_MODE_EXP:
             infinite_fogdistance_result = 1.0f;
             nan_fogfactor_result = 1.0f;
-            /* fallthrough */
+            mstring_append(body, "  float fogFactor = exp2(16.0 * (fogParam.x + fogDistance * fogParam.y - 1.5));\n");
+            break;
         case FOG_MODE_EXP_ABS:
-
-            /* f = 1 / (e^(d * density))
-             *    fogParam.y = -density / (2 * ln(256))
-             *    fogParam.x = 1.5
-             */
-            mstring_append(body, "  float fogFactor = fogParam.x + exp2(fogDistance * fogParam.y * 16.0);\n");
-            mstring_append(body, "  fogFactor -= 1.5;\n");
+            mstring_append(body, "  float fogFactor = exp2(-16.0 * abs(fogParam.x + fogDistance * fogParam.y - 1.5));\n");
             break;
         case FOG_MODE_EXP2:
+            mstring_append(body, "  float fogFactor = exp2(16.0 * (fogParam.x - 2.0 * fogDistance * fogDistance * fogParam.y * fogParam.y - 1.5));\n");
+            break;
         case FOG_MODE_EXP2_ABS:
-
-            /* f = 1 / (e^((d * density)^2))
-             *    fogParam.y = -density / (2 * sqrt(ln(256)))
-             *    fogParam.x = 1.5
-             */
-
-            mstring_append(body, "  float fogFactor = fogParam.x + exp2(-fogDistance * fogDistance * fogParam.y * fogParam.y * 32.0);\n");
-            mstring_append(body, "  fogFactor -= 1.5;\n");
+            mstring_append(body, "  float fogFactor = exp2(-16.0 * abs(fogParam.x - 2.0 * fogDistance * fogDistance * fogParam.y * fogParam.y - 1.5));\n");
             break;
         default:
             assert(false);
-            break;
-        }
-        switch (state->fog_mode) {
-        case FOG_MODE_LINEAR_ABS:
-        case FOG_MODE_EXP_ABS:
-        case FOG_MODE_EXP2_ABS:
-            mstring_append(body, "  fogFactor = abs(fogFactor);\n");
-            break;
-        default:
             break;
         }
 
