@@ -349,6 +349,51 @@ A/B above survives that only because 975 of its 1,008 captures are identical
 to the byte and the 33 that move do so by the same amount on every capture of
 a kind.
 
+### The constant cannot be raised much, and the ceiling is the content's
+
+The device lane reported that its choice at column 320 is not contiguous down
+the quad: correct on 103 rows and wrong on 182, alternating in 23 runs and
+flipping on adjacent rows near the bottom.  That is a quantity drifting across
+the tie as the scanline advances, so the worst-case excursion could exceed the
+bias, and the obvious remedy is a larger constant.  It is not available.
+
+Measured by sweeping the constant on this lane, against the same baseline:
+
+| bias | texels on a 256 texture | Texture_render_target | Texture_format etc. | lighting |
+|---|---|---|---|---|
+| 1/262144 (shipped) | 0.00098 | **−5,730 px, 0 worse** | unchanged | unchanged |
+| 1/65536 | 0.0039 | +1,417 px, 14 worse | unchanged | unchanged |
+| 1/16384 | 0.0156 | +19,419 px, 32 worse | +57,419 px, 34 worse | unchanged |
+| 1/4096 | 0.0625 | +91,723 px, 33 worse | +146,423 px, 36 worse | unchanged |
+
+The first failure names the limit.  At 1/65536 seven captures that were exact
+break, all of them at **column 455**, not at 320.  Working the quad's geometry
+exactly (`177.6875 .. 463.3125`, 285.625 px carrying 256 texels):
+
+| column | u | distance to the nearest texel edge |
+|---|---|---|
+| 320 | 128.000000 | **0** — a true tie |
+| 455 | 248.997812 | 0.002188 texels **below** texel 249 |
+
+So column 455 is not a tie: it is genuinely below its edge, hardware agrees
+that it is below, and we get it right without help.  A bias of 0.0039 texels
+carries it over and we get it wrong.  The shipped 0.00098 texels is 45% of
+that gap.
+
+**This bounds the method, not just the constant.**  A uniform bias cannot
+distinguish "exactly on the boundary" from "0.002 texels below the boundary",
+and neither can the round-to-nearest-boundary formulation, because both act on
+everything within epsilon of an edge and the discrimination threshold is the
+same quantity.  The ceiling is set by the closest genuine near-boundary
+coordinate the content contains, which in this suite is 0.002188 texels.
+There is therefore about 2.2x of headroom and no more.
+
+The consequence for the open v-axis and device work: if the residue after the
+bias needs a constant larger than roughly twice the shipped one, raising it is
+not the answer and the approach has to change -- to something that knows a
+coordinate's intended value rather than guessing from its proximity to an
+edge.
+
 ## What not to do
 
 `roundScreenCoords` is measured on both sides (`vsh.c:243`): 1/32 and 1/8
