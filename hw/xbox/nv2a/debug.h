@@ -165,6 +165,12 @@ typedef struct FramePacingStats {
      * nothing about the ceiling. */
     int64_t renderer_idle_acc_ns;
     float renderer_idle_ms;
+    /* Dirty-bitmap test-and-clear calls per guest frame, from the per-draw
+     * bound-texture poll. Each one that finds a bit forces a TLB dirty reset
+     * across every CPU, which is why this count matters more than its own
+     * cost. Sizes the prize for batching them through the snapshot API. */
+    uint32_t tex_dirty_query_acc;
+    float tex_dirty_queries;
     float vblank_jitter_ms;
     float vblank_delivery_ms;
     bool unlock_mode_active;

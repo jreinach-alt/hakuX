@@ -207,6 +207,47 @@ What this does establish is that the dirty-tracking hypothesis below is the
 right thing to test first, and it now has a number attached rather than being
 a guess.
 
+### The dirty-tracking lead, sized
+
+`pgraph_vk_poll_bound_textures` runs **before every draw**, and for each bound
+texture unit asks the dirty bitmap whether the guest rewrote it, plus a second
+query for the palette. It exists for a correctness reason recorded in its own
+comment: a CPU rewrite of texels changes no register and no generation counter,
+so without the poll `Texture_CPU_Update` drew its second quad from the first
+upload and every cube-map dot-product test sampled a stale cube.
+
+Counted on device, Crimson Skies, always-on:
+
+| | per guest frame |
+|---|---|
+| dirty-bitmap test-and-clear calls | **~1,480** |
+
+At 18 fps that is about 27,000 a second. Each call goes
+`memory_region_test_and_clear_dirty` → `physical_memory_test_and_clear_dirty`
+→ `physical_memory_dirty_bits_cleared` → `tlb_reset_dirty_range_all`, which
+walks **every CPU's TLB**. The *clear* is the expensive half, not the test.
+
+That is consistent with `tlb_reset_dirty` being the largest single symbol on
+the critical-path thread, though the two have not been causally linked: the
+profile could not recover userspace callers, and a frame-pointer build did not
+fix it because `add_compile_options` only affects targets declared after it and
+the core library is declared earlier in that file. So treat this as two
+measurements pointing the same way, not one proven chain.
+
+**The remedy QEMU already provides** is the snapshot pair,
+`memory_region_snapshot_and_clear_dirty` and
+`memory_region_snapshot_get_dirty`, which exist so a caller can pay the clear
+once over a whole region and then answer many per-range questions from the
+snapshot for nothing. The display and migration paths use it for this exact
+reason. Batching the poll through it would take the clears from ~1,480 a frame
+to one per poll boundary.
+
+The open design question, and the reason this is not a one-line change: where
+the snapshot boundary sits. Per frame is cheapest and would reintroduce the
+mid-frame-rewrite bug the poll was added to fix. Per draw preserves
+correctness and still cuts the clears by the number of ranges queried, four to
+eight. That needs measuring rather than choosing.
+
 What the measurement points at instead is the guest side, and one lead is
 already visible from the texture work: `memory_region_set_log(d->vram, true,
 DIRTY_MEMORY_NV2A_TEX)` puts every guest write to video memory through

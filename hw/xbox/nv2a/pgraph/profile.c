@@ -243,6 +243,14 @@ void nv2a_profile_flip_stall(void)
 
     g_nv2a_stats.phase_working.post_flip = true;
 
+    /* Dirty-bitmap queries for the frame that just ended. */
+    {
+        FramePacingStats *p = &g_nv2a_stats.pacing;
+        p->tex_dirty_queries = p->tex_dirty_queries * 0.8f +
+                               (float)p->tex_dirty_query_acc * 0.2f;
+        p->tex_dirty_query_acc = 0;
+    }
+
     /* Renderer idle for the frame that just ended. */
     {
         FramePacingStats *p = &g_nv2a_stats.pacing;
@@ -334,7 +342,7 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
     FramePacingStats *p = &g_nv2a_stats.pacing;
     snprintf(buf, bufsize,
              "G:%.1f(%.1f-%.1f) D:%.1f(%.1f-%.1f) S:%.1f J:%.1f Df:%u Vd:%.1f "
-             "Ul:%c Vpf:%.2f Ri:%.1f",
+             "Ul:%c Vpf:%.2f Ri:%.1f Tq:%.0f",
              p->game_frame_ms,
              p->game_frame_min_ms,
              p->game_frame_max_ms,
@@ -347,7 +355,8 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
              p->vblank_delivery_ms,
              p->unlock_mode_active ? 'Y' : 'N',
              p->vblanks_per_flip,
-             p->renderer_idle_ms);
+             p->renderer_idle_ms,
+             p->tex_dirty_queries);
     /* Reset min/max every call so the window reflects recent behavior */
     p->game_frame_min_ms = 0;
     p->game_frame_max_ms = 0;

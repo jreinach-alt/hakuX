@@ -507,6 +507,7 @@ void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d,
 
 static bool check_texture_dirty(NV2AState *d, hwaddr addr, hwaddr size)
 {
+    g_nv2a_stats.pacing.tex_dirty_query_acc++;
     hwaddr end = TARGET_PAGE_ALIGN(addr + size);
     addr &= TARGET_PAGE_MASK;
     assert(end < memory_region_size(d->vram));
