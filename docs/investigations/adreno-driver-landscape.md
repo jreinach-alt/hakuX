@@ -131,25 +131,74 @@ That has two consequences worth separating:
 2. **A user question.** Whatever the emulator does on the stock driver is
    what someone sees on first launch, and nobody has measured it.
 
-## What to evaluate, and how
+## What the evaluation found
 
-The evaluation should answer, in order:
+Run 2026-09-11. Same build (`c2f931ed8d`), same discs, driver swapped
+underneath between runs, 826 captures across seven suites compared md5 for
+md5. Raw scores in `docs/testing/run-2026-09-11-driver-*.tsv`; the harness is
+in `docs/testing/drivers/`.
 
-1. **Does the stock driver change the golden numbers?** Same build, same
-   discs, driver switched. Any suite that moves is driver-dependent and
-   should be excluded from accuracy work until it is understood.
-2. **Does Turnip version matter?** T30 against the older T26 already on the
-   device, and ideally against something near the video's 23.3.0. If the
-   numbers are stable across three years of Mesa, the accuracy lane can stop
-   worrying about driver drift.
-3. **What does each cost in frame time and memory?** Not covered anywhere in
-   the tracker.
+| suite | captures | identical on all three | exact: Turnip | exact: stock |
+|---|---|---|---|---|
+| `Texture_shadow_comparator` | 288 | 288 | 176 | 176 |
+| `Lighting` (11 suites) | 195 | 178 | 27 | 27 |
+| `Texture_cubemap` | 72 | 52 | **31** | **22** |
+| `3D_primitive` | 160 | 160 | - | - |
+| `Texture_DXT` | 75 | 75 | - | - |
+| `Blend_surface` | 32 | 32 | - | - |
+| `Texture_anisotropy` | 4 | 1 | 0 | 0 |
+
+**1. Does Turnip's version matter? No.** Mesa 26.1.0 (T26) and Mesa 26.3.0
+(T30) produced **byte-identical output on all 826 captures**, every suite,
+including every failing one. Two Mesa releases apart is not the three-year
+gap to the 23.3.0 in the video, but within this range the accuracy lane can
+stop worrying about Turnip drift entirely.
+
+**2. Does the stock driver change the numbers? On three things, and one of
+them costs tests.**
+
+- **Cube-map dot-product reflection.** Nine captures that are bit-exact on
+  Turnip are not on stock: every `DotReflectConst` at `-1to1`, plus
+  `DotReflectDiffuse` and two `DotReflectSpec`. They miss by 3 to 150 px,
+  which is enough to lose the row. All nine are full-range coordinates, so
+  the disagreement is about which face a lookup at the seam selects. Nothing
+  goes the other way: stock wins nothing.
+- **Anisotropic filtering.** Three of four captures differ and stock is
+  about 46% worse by pixel count (87,643 against 60,094). This is the
+  acknowledged vendor tap pattern, now confirmed as genuinely a vendor
+  choice rather than something the emulator can fix.
+- **Lighting, cosmetically.** Thirteen captures differ by a handful of
+  pixels out of 3.1 million. No row changes status.
+
+Everything else, including the whole shadow, primitive, DXT and blend
+surface suites, is identical bit for bit on a proprietary driver and two
+Mesa builds. That is stronger than expected: deterministic fp32 shader work
+compiled for the same Adreno FP units leaves a conformant driver little
+freedom, and the three missing features below never came into it.
+
+**3. Frame time and memory.** Still not measured.
+
+## What this means
+
+**For the accuracy lane.** The driver is not a confound. A residual measured
+here is the emulator's, not Mesa's, everywhere except anisotropic filtering
+and cube-map seams. Those two should be excluded from accuracy work or
+scored against a named driver.
+
+**For users.** The release build installs with no custom driver, so it falls
+back to stock, and a stock user gets visibly worse anisotropic filtering and
+loses nine cube-map reflection rows. The three features stock lacks
+(`shaderTessellationAndGeometryPointSize`, `VK_EXT_memory_budget`,
+`VK_EXT_extended_dynamic_state3`) did **not** produce a single wrong pixel in
+this sweep, including on the primitive suite the first one should have
+reached. So the case for installing Turnip is reflection and filtering
+quality, not the feature gaps.
 
 Method note: a driver can be installed without the app's UI. The loader reads
 `files/gpu_driver/meta.json` for a `libraryName` and loads that `.so` from
 the same directory, so on a debuggable build a driver can be placed, swapped
-or disabled over adb, which makes an automated sweep across drivers possible.
-Moving `meta.json` aside is enough to fall back to the system driver.
+or disabled over adb. Moving `meta.json` aside falls back to the system
+driver. `docs/testing/drivers/swap_driver.sh` does this and always restores.
 
 ## Sources
 
