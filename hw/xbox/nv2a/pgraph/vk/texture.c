@@ -1563,6 +1563,16 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         possibly_dirty = true;
     }
 
+    /*
+     * A mark left on an unbound binding by an aliasing write in an earlier
+     * frame outlives the dirty bits: whoever polled the range since has
+     * consumed them.  Such a binding's own bitmap check therefore reads
+     * clean and must not talk it out of the hash comparison -- only that
+     * comparison, or the upload, retires the mark.  Texture_signed_component
+     * _tests' gradient rows drew a binding last used two tests earlier with
+     * that test's texels.
+     */
+    bool pending_mark = binding_found && snode->possibly_dirty;
     if (binding_found) {
         NV2A_VK_DPRINTF("Cache hit");
         r->texture_bindings[texture_idx] = snode;
@@ -1601,7 +1611,8 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         }
     }
 
-    if (binding_found && possibly_dirty && !surface_to_texture) {
+    if (binding_found && possibly_dirty && !surface_to_texture &&
+        !pending_mark) {
         bool vram_confirmed_clean =
             snode->dirty_check_frame == pg->frame_time &&
             !snode->dirty_check_result;
