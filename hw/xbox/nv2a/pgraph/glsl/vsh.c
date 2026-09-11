@@ -145,12 +145,6 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
 
     vsh->fog_enable =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;
-    if (vsh->fog_enable) {
-        /*FIXME: Use CSV0_D? */
-        vsh->fog_mode =
-            (enum VshFogMode)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
-                                      NV_PGRAPH_CONTROL_3_FOG_MODE);
-    }
 
     vsh->is_fixed_function = fixed_function;
     if (fixed_function) {
@@ -245,6 +239,7 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
                        "#define vtxB0 v_vtxB0\n"
                        "#define vtxB1 v_vtxB1\n"
                        "#define vtxFog v_vtxFog\n"
+                       "#define vtxFogSpecial v_vtxFogSpecial\n"
                        "#define vtxT0 v_vtxT0\n"
                        "#define vtxT1 v_vtxT1\n"
                        "#define vtxT2 v_vtxT2\n"
@@ -316,6 +311,18 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         }
     }
 
+    /*
+     * The fog factor is not a vertex quantity on this hardware. The Fog
+     * suite's exp captures shade smoothly across a triangle whose vertices
+     * span depths 50 to 200, where interpolating a per-vertex factor gives a
+     * different, flatter gradient; the linear captures agree either way. So
+     * the vertex stage only produces the fog coordinate, and the fragment
+     * shader applies the mode function to the interpolated coordinate
+     * (see psh.c). An infinite or NaN coordinate is flagged separately so
+     * the fragment shader can substitute the fixed result the hardware
+     * gives for it, instead of interpolating the value itself.
+     */
+    mstring_append(body, "  float fogSpecial = 0.0;\n");
     if (!state->fog_enable) {
         /* FIXME: Is the fog still calculated / passed somehow?! */
         mstring_append(body, "  oFog = vec4(1.0);\n");
@@ -329,82 +336,20 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              */
             mstring_append(body, "  float fogDistance = oFog.x;\n");
         }
-
-        /* FIXME: Do this per pixel? */
-
-        float infinite_fogdistance_result = 0.0f;
-        float nan_fogfactor_result = 0.0f;
-
-        /*
-         * What the hardware makes of the three fog parameters, read off the
-         * Fog param goldens (fog coordinate swept from -1.4 in steps of
-         * 0.01, bias at each mode's zero point, multiplier at +-2, +-1,
-         * +-0.5, +-0.25):
-         *
-         *   linear      f = bias + m * d - 1
-         *   linear_abs  f = bias + m * |d| - 1
-         *   exp         f = 2^(16 (bias + m d - 1.5))
-         *   exp_abs     f = 2^(-16 |bias + m d - 1.5|)
-         *   exp2        f = 2^(16 (bias - 2 (m d)^2 - 1.5))
-         *   exp2_abs    f = 2^(-16 |bias - 2 (m d)^2 - 1.5|)
-         *
-         * The bias enters the exponent, not the sum: the earlier
-         * bias + 2^(16 m d) - 1.5 agrees with the hardware only at the bias
-         * of 1.5 that D3D's fog tables produce, and was 22-24 steps out at
-         * the others. The _abs modes take the magnitude of the distance for
-         * linear and of the exponent for exp, which is what makes the exp_abs
-         * curve asymmetric about zero. With D3D's parameters (bias 1.5,
-         * m = -density / (2 ln 256)) exp reduces to e^(-density d).
-         */
-        switch (state->fog_mode) {
-        case FOG_MODE_LINEAR:
-            infinite_fogdistance_result = 1.0f;
-            nan_fogfactor_result = 1.0f;
-            mstring_append(body, "  float fogFactor = fogParam.x + fogDistance * fogParam.y - 1.0;\n");
-            break;
-        case FOG_MODE_LINEAR_ABS:
-            infinite_fogdistance_result = 1.0f;
-            nan_fogfactor_result = 1.0f;
-            mstring_append(body, "  float fogFactor = fogParam.x + abs(fogDistance) * fogParam.y - 1.0;\n");
-            break;
-        case FOG_MODE_EXP:
-            infinite_fogdistance_result = 1.0f;
-            nan_fogfactor_result = 1.0f;
-            mstring_append(body, "  float fogFactor = exp2(16.0 * (fogParam.x + fogDistance * fogParam.y - 1.5));\n");
-            break;
-        case FOG_MODE_EXP_ABS:
-            mstring_append(body, "  float fogFactor = exp2(-16.0 * abs(fogParam.x + fogDistance * fogParam.y - 1.5));\n");
-            break;
-        case FOG_MODE_EXP2:
-            mstring_append(body, "  float fogFactor = exp2(16.0 * (fogParam.x - 2.0 * fogDistance * fogDistance * fogParam.y * fogParam.y - 1.5));\n");
-            break;
-        case FOG_MODE_EXP2_ABS:
-            mstring_append(body, "  float fogFactor = exp2(-16.0 * abs(fogParam.x - 2.0 * fogDistance * fogDistance * fogParam.y * fogParam.y - 1.5));\n");
-            break;
-        default:
-            assert(false);
-            break;
-        }
-
-        /* Fog is clamped to min/max normal float values here to match HW
-         * interpolation. It is then clamped to [0,1] in the pixel shader.
-         */
-        // clang-format off
-        mstring_append_fmt(
-            body,
-            "  if (isinf(fogDistance)) {\n"
-            "    oFog = vec4(%f);\n"
-            "  } else {\n"
-            "    oFog = clamp(NaNToValue(vec4(fogFactor), %f), -FLOAT_MAX, FLOAT_MAX);\n"
-            "  }\n",
-            infinite_fogdistance_result, nan_fogfactor_result);
-        // clang-format on
+        mstring_append(body,
+                       "  if (isinf(fogDistance) || isnan(fogDistance)) {\n"
+                       "    fogSpecial = 1.0;\n"
+                       "    oFog = vec4(0.0);\n"
+                       "  } else {\n"
+                       "    oFog = vec4(fogDistance);\n"
+                       "  }\n");
     }
 
     mstring_append(body, "\n"
                    "  vtxD0 = clamp(NaNToOne(oD0), 0.0, 1.0);\n"
                    "  vtxB0 = clamp(NaNToOne(oB0), 0.0, 1.0);\n"
                    "  vtxFog = oFog.x;\n"
+                   "  vtxFogSpecial = fogSpecial;\n"
                    "  vtxT0 = oT0;\n"
                    "  vtxT1 = oT1;\n"
                    "  vtxT2 = oT2;\n"
@@ -511,13 +456,6 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
 
     if (locs[VshUniform_clipRange] != -1) {
         pgraph_glsl_set_clip_range_uniform_value(pg, values->clipRange[0]);
-    }
-
-    if (locs[VshUniform_fogParam] != -1) {
-        uint32_t param_0 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM0);
-        uint32_t param_1 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM1);
-        values->fogParam[0][0] = *(float *)&param_0;
-        values->fogParam[0][1] = *(float *)&param_1;
     }
 
     if (locs[VshUniform_pointParams] != -1) {

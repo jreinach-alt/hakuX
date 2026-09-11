@@ -124,6 +124,10 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+    state->fog_enable = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) &
+                        NV_PGRAPH_CONTROL_3_FOGENABLE;
+    state->fog_mode = (enum VshFogMode)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3), NV_PGRAPH_CONTROL_3_FOG_MODE);
 
     state->depth_clipping =
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ZCOMPRESSOCCLUDE),
@@ -1134,6 +1138,85 @@ static void define_colorkey_comparator(MString *preflight)
     // clang-format on
 }
 
+
+/*
+ * The fog factor, applied to the interpolated fog coordinate here rather
+ * than at the vertices: the Fog suite's exp captures shade smoothly across
+ * a triangle spanning depths 50 to 200, where a factor interpolated from the
+ * vertices gives a flatter gradient. What the hardware makes of the fog
+ * parameters, read off the Fog param goldens (coordinate swept from -1.4 in
+ * 0.01 steps at multipliers of +-2, +-1, +-0.5, +-0.25, and the bias swept
+ * from 1.0 in 0.005 steps with the multiplier at 0):
+ *
+ *   linear      f = bias + m d - 1
+ *   linear_abs  f = bias + m |d| - 1
+ *   exp         f = 2^(16 x)        with x = bias + m d - 1.5
+ *   exp_abs     f = 2^(-16 |x|)
+ *   exp2        f = 2^(-32 x^2)
+ *   exp2_abs    f = 2^(-32 x^2)
+ *
+ * The bias enters the exponent, and for exp2 the bias sweep is a Gaussian
+ * about 1.5, not an exponential, so bias and distance combine before the
+ * square. The _abs modes take the magnitude of the distance for linear and
+ * of the exponent for exp; exp2's is already even. With D3D's parameters
+ * (bias 1.5, m = -density / (2 ln 256) or -density / (2 sqrt(ln 256))) exp
+ * reduces to e^(-density d) and exp2 to e^(-(density d)^2).
+ *
+ * An infinite or NaN coordinate (flagged by the vertex shader, since the
+ * value itself cannot be interpolated) and a NaN factor take a fixed
+ * result: 1 for linear, linear_abs and exp, 0 for the rest.
+ */
+static void append_fog_factor(const struct PixelShader *ps, MString *vars,
+                              const char *lin)
+{
+    if (!ps->state->fog_enable) {
+        mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, 1.0);\n");
+        return;
+    }
+
+    const char *factor;
+    const char *special;
+    switch (ps->state->fog_mode) {
+    case FOG_MODE_LINEAR:
+        factor = "fogParam.x + fogCoord * fogParam.y - 1.0";
+        special = "1.0";
+        break;
+    case FOG_MODE_LINEAR_ABS:
+        factor = "fogParam.x + abs(fogCoord) * fogParam.y - 1.0";
+        special = "1.0";
+        break;
+    case FOG_MODE_EXP:
+        factor = "exp2(16.0 * fogX)";
+        special = "1.0";
+        break;
+    case FOG_MODE_EXP_ABS:
+        factor = "exp2(-16.0 * abs(fogX))";
+        special = "0.0";
+        break;
+    case FOG_MODE_EXP2:
+    case FOG_MODE_EXP2_ABS:
+        factor = "exp2(-32.0 * fogX * fogX)";
+        special = "0.0";
+        break;
+    default:
+        assert(!"Invalid fog mode");
+        factor = "1.0";
+        special = "1.0";
+        break;
+    }
+
+    mstring_append_fmt(vars,
+                       "float fogCoord = vtxFog%s;\n"
+                       "float fogX = fogParam.x + fogCoord * fogParam.y - 1.5;\n"
+                       "float fogFactor = %s;\n"
+                       "if (vtxFogSpecial > 0.5 || isnan(fogFactor)) {\n"
+                       "  fogFactor = %s;\n"
+                       "}\n"
+                       "fogFactor = clamp(fogFactor, 0.0, 1.0);\n",
+                       lin, factor, special);
+    mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, fogFactor);\n");
+}
+
 static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
@@ -1557,7 +1640,7 @@ static MString* psh_convert(struct PixelShader *ps)
     mstring_append(vars, "vec4 pD1 = vtxD1;\n");
     mstring_append(vars, "vec4 pB0 = vtxB0;\n");
     mstring_append(vars, "vec4 pB1 = vtxB1;\n");
-    mstring_append(vars, "vec4 pFog = vec4(fogColor.rgb, clamp(vtxFog, 0.0, 1.0));\n");
+    append_fog_factor(ps, vars, "");
     mstring_append(vars, "vec4 pT0 = vtxT0;\n");
     mstring_append(vars, "vec4 pT1 = vtxT1;\n");
     mstring_append(vars, "vec4 pT2 = vtxT2;\n");
@@ -2350,6 +2433,13 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
             GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_BLUE) / 255.0;
         values->fogColor[0][3] =
             GET_MASK(fog_color, NV_PGRAPH_FOGCOLOR_ALPHA) / 255.0;
+    }
+
+    if (locs[PshUniform_fogParam] != -1) {
+        uint32_t param_0 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM0);
+        uint32_t param_1 = pgraph_reg_r(pg, NV_PGRAPH_FOGPARAM1);
+        memcpy(&values->fogParam[0][0], &param_0, sizeof(float));
+        memcpy(&values->fogParam[0][1], &param_1, sizeof(float));
     }
 
     if (locs[PshUniform_clipRange] != -1) {

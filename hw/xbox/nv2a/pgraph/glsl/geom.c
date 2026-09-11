@@ -191,6 +191,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         "  vtxB0 = v_vtxB0[%s];\n"
         "  vtxB1 = v_vtxB1[%s];\n"
         "  vtxFog = v_vtxFog[index];\n"
+        "  vtxFogSpecial = v_vtxFogSpecial[index];\n"
         "%s%s%s%s"
         "  vtxPos0 = pz[0];\n"
         "  vtxPos1 = pz[1];\n"

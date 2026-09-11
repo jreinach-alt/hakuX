@@ -55,7 +55,6 @@ typedef struct {
     uint16_t swizzle_attrs;
 
     bool fog_enable;
-    enum VshFogMode fog_mode;
 
     bool specular_enable;
     bool separate_specular;
@@ -83,7 +82,6 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *state);
 #define VSH_UNIFORM_DECL_X(S, DECL)                          \
     DECL(S, c, vec4, NV2A_VERTEXSHADER_CONSTANTS)            \
     DECL(S, clipRange, vec4, 1)                              \
-    DECL(S, fogParam, vec2, 1)                               \
     DECL(S, inlineValue, vec4, NV2A_VERTEXSHADER_ATTRIBUTES) \
     DECL(S, lightInfiniteDirection, vec3, NV2A_MAX_LIGHTS)   \
     DECL(S, lightInfiniteHalfVector, vec3, NV2A_MAX_LIGHTS)  \
