@@ -290,21 +290,43 @@ GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz
             alpha_source = alpha_source_specular;
         }
 
-        if (state->fixed_function.ambient_src == MATERIAL_COLOR_SRC_MATERIAL) {
-            mstring_append_fmt(body, "oD0 = vec4(sceneAmbientColor, %s);\n", alpha_source);
-        } else if (state->fixed_function.ambient_src == MATERIAL_COLOR_SRC_DIFFUSE) {
-            mstring_append_fmt(body, "oD0 = vec4(diffuse.rgb, %s);\n", alpha_source);
-        } else if (state->fixed_function.ambient_src == MATERIAL_COLOR_SRC_SPECULAR) {
-            mstring_append_fmt(body, "oD0 = vec4(specular.rgb, %s);\n", alpha_source);
+        /* SET_SCENE_AMBIENT_COLOR is a constant term and SET_MATERIAL_EMISSION
+         * a factor applied to one vertex colour; the emission and ambient
+         * source selectors pick that colour and whether the constant term
+         * survives. Every Material_color_source golden fits this to the
+         * byte:
+         *
+         *   emission   ambient    oD0 before the lights are added
+         *   material   material   SCENE_AMBIENT
+         *   vertex E   material   SCENE_AMBIENT + E * MATERIAL_EMISSION
+         *   material   vertex A   SCENE_AMBIENT + A * MATERIAL_EMISSION
+         *   vertex E   vertex A   E + A * MATERIAL_EMISSION
+         *
+         * and each light's ambient colour is scaled by A when the ambient
+         * comes from a vertex colour. That is what D3D relies on: it
+         * programs the constant term with the material emission plus the
+         * scene ambient times the material ambient, and the factor with the
+         * scene ambient (or one), which is where the register names come
+         * from. The previous code scaled the ambient source by the factor
+         * unconditionally and then added the emission source, which only
+         * matches the last two rows. */
+        const char *vertex_color[] = {
+            [MATERIAL_COLOR_SRC_DIFFUSE] = "diffuse.rgb",
+            [MATERIAL_COLOR_SRC_SPECULAR] = "specular.rgb",
+        };
+        const char *constant = "sceneAmbientColor";
+        const char *scaled = NULL;
+        if (state->fixed_function.ambient_src != MATERIAL_COLOR_SRC_MATERIAL) {
+            scaled = vertex_color[state->fixed_function.ambient_src];
+            if (state->fixed_function.emission_src != MATERIAL_COLOR_SRC_MATERIAL) {
+                constant = vertex_color[state->fixed_function.emission_src];
+            }
+        } else if (state->fixed_function.emission_src != MATERIAL_COLOR_SRC_MATERIAL) {
+            scaled = vertex_color[state->fixed_function.emission_src];
         }
-
-        mstring_append(body, "oD0.rgb *= materialEmissionColor.rgb;\n");
-        if (state->fixed_function.emission_src == MATERIAL_COLOR_SRC_MATERIAL) {
-            mstring_append(body, "oD0.rgb += sceneAmbientColor;\n");
-        } else if (state->fixed_function.emission_src == MATERIAL_COLOR_SRC_DIFFUSE) {
-            mstring_append(body, "oD0.rgb += diffuse.rgb;\n");
-        } else if (state->fixed_function.emission_src == MATERIAL_COLOR_SRC_SPECULAR) {
-            mstring_append(body, "oD0.rgb += specular.rgb;\n");
+        mstring_append_fmt(body, "oD0 = vec4(%s, %s);\n", constant, alpha_source);
+        if (scaled) {
+            mstring_append_fmt(body, "oD0.rgb += %s * materialEmissionColor;\n", scaled);
         }
 
         mstring_append(body, "oD1 = vec4(0.0, 0.0, 0.0, specular.a);\n");
@@ -440,8 +462,23 @@ GLSL_DEFINE(materialEmissionColor, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz
                 half_precomputed ? 0 : 1,
                 i, i, i);
 
-            mstring_append(body,
-                "    oD0.xyz += lightAmbient;\n");
+            switch (state->fixed_function.ambient_src) {
+            case MATERIAL_COLOR_SRC_MATERIAL:
+                mstring_append(body,
+                               "    oD0.xyz += lightAmbient;\n");
+                break;
+            case MATERIAL_COLOR_SRC_DIFFUSE:
+                mstring_append(body,
+                               "    oD0.xyz += diffuse.xyz * lightAmbient;\n");
+                break;
+            case MATERIAL_COLOR_SRC_SPECULAR:
+                mstring_append(body,
+                               "    oD0.xyz += specular.xyz * lightAmbient;\n");
+                break;
+            default:
+                assert(false);
+                break;
+            }
 
             switch (state->fixed_function.diffuse_src) {
             case MATERIAL_COLOR_SRC_MATERIAL:
