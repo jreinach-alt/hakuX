@@ -193,6 +193,17 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "\n"
         "#define FLOAT_MAX uintBitsToFloat(0x7F7FFFFFu)\n"
         "\n"
+        /* A vertex colour is carried with a 13-bit fraction, the low ten
+         * bits of the float dropped rather than rounded. The Point size
+         * goldens pin it: the test walks a channel up in steps of 0.1,
+         * and where the accumulated float lands a hair above a half count
+         * the hardware still gives the lower byte -- 0.7 comes out 178 and
+         * 0.9 comes out 229, which rounding the float cannot produce and
+         * truncating its fraction first does, for all ten steps. */
+        "vec4 colorPrecision(vec4 c) {\n"
+        "  return uintBitsToFloat(floatBitsToUint(c) & 0xFFFFFC00u);\n"
+        "}\n"
+        "\n"
         "vec4 oPos = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oD0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oD1 = vec4(0.0,0.0,0.0,1.0);\n"
@@ -354,8 +365,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
     }
 
     mstring_append(body, "\n"
-                   "  vtxD0 = clamp(NaNToOne(oD0), 0.0, 1.0);\n"
-                   "  vtxB0 = clamp(NaNToOne(oB0), 0.0, 1.0);\n"
+                   "  vtxD0 = colorPrecision(clamp(NaNToOne(oD0), 0.0, 1.0));\n"
+                   "  vtxB0 = colorPrecision(clamp(NaNToOne(oB0), 0.0, 1.0));\n"
                    "  vtxFog = oFog.x;\n"
                    "  vtxFogSpecial = fogSpecial;\n"
                    "  vtxT0 = oT0;\n"
@@ -372,8 +383,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 
     if (state->specular_enable) {
         mstring_append(body,
-                       "  vtxD1 = clamp(NaNToOne(oD1), 0.0, 1.0);\n"
-                       "  vtxB1 = clamp(NaNToOne(oB1), 0.0, 1.0);\n"
+                       "  vtxD1 = colorPrecision(clamp(NaNToOne(oD1), 0.0, 1.0));\n"
+                       "  vtxB1 = colorPrecision(clamp(NaNToOne(oB1), 0.0, 1.0));\n"
         );
 
         if (state->ignore_specular_alpha) {
