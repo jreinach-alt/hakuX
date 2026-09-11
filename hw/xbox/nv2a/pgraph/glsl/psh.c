@@ -1889,8 +1889,12 @@ static MString* psh_convert(struct PixelShader *ps)
                                    i, ps->state->dim_tex[i]);
             }
 
-            mstring_append_fmt(vars, "t%d = t%d * (bumpScale[%d] * dsdtl%d.p + bumpOffset[%d]);\n",
-                i, i, i, i, i);
+            /* The luminance scales the colour and leaves the alpha alone: the
+             * Bump env lum goldens blend their half-alpha checkerboard over
+             * the clear colour with exactly the texture's alpha, whatever the
+             * luminance does to the colour. */
+            mstring_append_fmt(vars, "t%d.rgb *= bumpScale[%d] * dsdtl%d.p + bumpOffset[%d];\n",
+                i, i, i, i);
             break;
         case PS_TEXTUREMODES_BRDF:
             if (!stage_consistent(ps, vars, i, 2, 3, 2, "PS_TEXTUREMODES_BRDF")) break;
