@@ -240,9 +240,28 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "  return mix(src, vec4(replacement), isnan(src));\n"
         "}\n"
         "\n"
-        // Xbox NV2A rasterizer appears to have 4 bit precision fixed-point
-        // fractional part and to convert floating-point coordinates by
-        // by truncating (not flooring).
+        /*
+         * The rasteriser carries 4 fractional bits and truncates. That was
+         * inherited as a guess ("appears to"); it is now measured, and three
+         * alternatives are worse:
+         *
+         *   1/32 truncation     Texture_render_target 356 -> 2,195 px on
+         *                       TexFmt_A8R8G8B8, spreading the residual from
+         *                       one column to four
+         *   1/8 truncation      predicts all twelve Viewport offsets and
+         *                       improves those two captures 500 -> 300 px, but
+         *                       costs Texture_render_target nine exact tests,
+         *                       11/40 -> 2/40
+         *   round half up       Blend_tests, Specular, Specular_back,
+         *   at 1/16             Material_color_source and Lighting_spotlight
+         *                       together 7,644,736 -> 8,464,262 px
+         *
+         * So the granularity is bracketed on both sides and the rounding mode
+         * is settled. The one-pixel edge differences that remain -- a quad
+         * bottom edge a row short, a texture column at the exact quad centre --
+         * are not this constant, and changing it to chase them makes things
+         * worse. See issues #11 and #4.
+         */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"
         "}\n");

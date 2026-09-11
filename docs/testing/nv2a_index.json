@@ -1939,13 +1939,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:346",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:365",
    "symbols": [],
    "text": "/* FIXME: Is the fog still calculated / passed somehow?! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:350",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:369",
    "symbols": [],
    "text": "/* FIXME: Does foggen do something here? Let's do some tracking.."
   },
@@ -4187,7 +4187,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "48627a91067b9cb2f3f18ba6e0e3317eb7adf9eb",
+  "emulator_commit": "54520f8a265ecc6ed81f4c7889344520c36e22ef",
   "gaps": 501,
   "resolved_tables": 1,
   "sites": 2718,
