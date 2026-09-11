@@ -162,6 +162,35 @@ The earlier figure of 230,034 of 446,954 px for `Specular` was a
 rows-with-many-diffs criterion that swept in lit gradient rows; it is
 withdrawn. The remainder in #9 is real lighting arithmetic, not an edge.
 
+### Confirmation from `Vertex_shader_rounding_tests`
+
+The corpus already carries the disc this question would otherwise need:
+a passthrough vertex shader (no transform arithmetic) draws quads offset by
+biases 0, 0.001, 0.4999, 0.5, 0.5624, 0.5625, 0.5626, 0.999 and 1.0
+(`vertex_shader_rounding_tests.cpp:26`, its own comment: "Boundaries at
+1/16") on the framebuffer, on a smaller and a larger render target, as eight
+adjacent quads, and as the same eight quads projected through the D3D-style
+viewport; plus two top-left fill-rule sweeps in 1/16 steps and two
+render-target viewport tests. It had never been run on this lane. Config:
+`docs/testing/configs/vertex_shader_rounding.json`. Result: **47 of 51
+exact**.
+
+| family | tests | exact | note |
+|---|---|---|---|
+| `Geometry` (passthrough, framebuffer) | 9 | 9 | green starts at 200/120 up to bias 0.5624 and at 201/121 from 0.5625, on both sides |
+| `GeometrySubscreen`, `GeometrySuperscreen` | 18 | 18 | render targets smaller and larger than the framebuffer |
+| `AdjacentGeometry` | 9 | 9 | |
+| `ProjAdjacentGeometry` | 9 | 8 | 0.5625 fails: 498 px on row 240 and columns 320/420, boundary-shift; 0.5624 and 0.5626 exact |
+| `TopLeftRaster`, `TopLeftRaster_Fixed` | 2 | 2 | fill rule, 1/16 sweeps, programmable and fixed-function |
+| `RenderTarget` | 1 | 1 | viewport offset 320.53125 on a render target |
+| `Compositing` | 3 | 0 | one-step-hi; a blend accumulated over four passes, #14's class, not geometry |
+
+The snap, the sample point and the fill rule are exact on the suite written
+to probe them, on the framebuffer and on render targets at both scales. The
+one geometry failure is again the transformed vertex at exactly 9/16, with
+the biases one ten-thousandth either side exact on both hosts: the boundary
+value is the only one whose side is decided by the last ULP of the transform.
+
 ## INFERRED
 
 - The hardware v-tie rule (down below texel 128, up from 144, on this quad)
@@ -185,8 +214,10 @@ withdrawn. The remainder in #9 is real lighting arithmetic, not an edge.
   (PR #45) for the same two probes. If Adreno breaks them a third way, the
   deterministic rule below is worth building for portability alone.
 - The exact NV2A interpolator and vertex-ALU rounding. Both are measurable
-  with purpose-built discs (a vertex sweep across n + 9/16 ± 2⁻ᵏ; a 1:1
-  textured quad with a per-texel pattern) and neither is worth guessing at.
+  with purpose-built tests (a vertex sweep across n + 9/16 finer than the
+  corpus's ±0.0001; a 1:1 textured quad with a per-texel pattern), which
+  means hardware time through the nxdk_pgraph_tests golden pipeline, and
+  neither is worth guessing at.
 
 ## What not to do
 
@@ -216,8 +247,10 @@ trades the top-half rows for the bottom-half rows and fixes nothing.
    `:2057`, rect normalisation at `:2395`), keyed on the stage's filter. It
    goes in only if the lavapipe sweep shows no regression and the device
    probes show Adreno does not already match hardware.
-3. **No rasteriser change.** The two `Viewport` captures stay red. If the
-   NV2A transform precision is ever wanted, it is a disc and a measurement,
-   not a constant.
+3. **No rasteriser change.** The two `Viewport` captures and
+   `ProjAdjacentGeometry_0.5625` stay red. If the NV2A transform precision is
+   ever wanted, it is a hardware measurement (a finer sweep than the
+   ±0.0001 the corpus already has, run through the upstream golden
+   pipeline), not a constant.
 4. **Shadow boundary and lit-gradient bands** stay where they are: #35 and
    #38, precision floor, now counted as such.
