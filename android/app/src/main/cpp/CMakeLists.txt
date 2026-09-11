@@ -894,6 +894,13 @@ target_compile_definitions(xemu_core PRIVATE
   QEMU_VERSION_MICRO=${QEMU_VERSION_MICRO}
   CONFIG_TLS_PRIORITY=\"NORMAL\"
 )
+# Frame pointers on the debug build only. Without them simpleperf recovers no
+# userspace callers, and the call graph is what separated a texture-dirty
+# theory from the real cause: guest stores invalidating translated code. The
+# release build is left alone.
+target_compile_options(xemu_core PRIVATE
+  $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+  $<$<CONFIG:Debug>:-mno-omit-leaf-frame-pointer>)
 
 target_compile_options(xemu_core PRIVATE -g1
   $<$<OR:$<CONFIG:Release>,$<CONFIG:RelWithDebInfo>,$<CONFIG:MinSizeRel>>:-UNDEBUG>
@@ -997,6 +1004,9 @@ target_compile_definitions(xemu PRIVATE ANDROID __ANDROID__ XBOX CONFIG_SDL CONF
   $<$<BOOL:${XEMU_OPT_TCG_PEEPHOLE}>:XEMU_OPT_TCG_PEEPHOLE=1>
   $<$<BOOL:${XEMU_OPT_TB_CACHE_HINTS}>:XEMU_OPT_TB_CACHE_HINTS=1>
 )
+target_compile_options(xemu PRIVATE
+  $<$<CONFIG:Debug>:-fno-omit-frame-pointer>
+  $<$<CONFIG:Debug>:-mno-omit-leaf-frame-pointer>)
 if(XEMU_ENABLE_VULKAN)
   target_compile_definitions(xemu PRIVATE CONFIG_VULKAN VK_NO_PROTOTYPES)
 endif()

@@ -207,46 +207,53 @@ What this does establish is that the dirty-tracking hypothesis below is the
 right thing to test first, and it now has a number attached rather than being
 a guess.
 
-### The dirty-tracking lead, sized
+### What the guest thread is really doing: retranslating
 
-`pgraph_vk_poll_bound_textures` runs **before every draw**, and for each bound
-texture unit asks the dirty bitmap whether the guest rewrote it, plus a second
-query for the palette. It exists for a correctness reason recorded in its own
-comment: a CPU rewrite of texels changes no register and no generation counter,
-so without the poll `Texture_CPU_Update` drew its second quad from the first
-upload and every cube-map dot-product test sampled a stale cube.
+A frame-pointer build (debug only, see `CMakeLists.txt`) made the call graph
+recoverable, and it refutes the dirty-tracking theory this document carried
+before. Two chains account for most of the thread, and neither is the texture
+poll.
 
-Counted on device, Crimson Skies, always-on:
+**Chain one, guest stores invalidating code.** Inclusive shares on the TCG
+vCPU thread, which the profile now names outright as `mttcg_cpu_thread_fn`:
 
-| | per guest frame |
-|---|---|
-| dirty-bitmap test-and-clear calls | **~1,480** |
+```
+do_st4_mmu                     14.7%   a guest 4-byte store
+  mmu_lookup                   21.2%   taking the slow path
+    mmu_watch_or_dirty         15.2%
+      notdirty_write           13.8%   the page holds translated code
+        tb_invalidate_phys_range_fast  11.7%
+```
 
-At 18 fps that is about 27,000 a second. Each call goes
-`memory_region_test_and_clear_dirty` → `physical_memory_test_and_clear_dirty`
-→ `physical_memory_dirty_bits_cleared` → `tlb_reset_dirty_range_all`, which
-walks **every CPU's TLB**. The *clear* is the expensive half, not the test.
+**Chain two, the retranslation that follows, re-arming the detection:**
 
-That is consistent with `tlb_reset_dirty` being the largest single symbol on
-the critical-path thread, though the two have not been causally linked: the
-profile could not recover userspace callers, and a frame-pointer build did not
-fix it because `add_compile_options` only affects targets declared after it and
-the core library is declared earlier in that file. So treat this as two
-measurements pointing the same way, not one proven chain.
+```
+cpu_exec_loop                  24.6%
+  tb_gen_code                  19.1%   generating code again
+    tb_link_page               11.6%
+      physical_memory_test_and_clear_dirty  11.3%
+        tlb_reset_dirty_range_all          11.1%
+          tlb_reset_dirty                  10.6% self
+```
 
-**The remedy QEMU already provides** is the snapshot pair,
-`memory_region_snapshot_and_clear_dirty` and
-`memory_region_snapshot_get_dirty`, which exist so a caller can pay the clear
-once over a whole region and then answer many per-range questions from the
-snapshot for nothing. The display and migration paths use it for this exact
-reason. Batching the poll through it would take the clears from ~1,480 a frame
-to one per poll boundary.
+So the largest single symbol on the critical-path thread is reached from
+**code generation**, at 99.7% attribution, and not from any NV2A dirty
+tracking. The guest writes 32-bit values into pages QEMU believes contain
+translated code; each store invalidates, the invalidation forces
+regeneration, and regeneration re-arms code-write detection by clearing dirty
+bits, which walks every CPU's TLB. A self-sustaining loop.
 
-The open design question, and the reason this is not a one-line change: where
-the snapshot boundary sits. Per frame is cheapest and would reintroduce the
-mid-frame-rewrite bug the poll was added to fix. Per draw preserves
-correctness and still cuts the clears by the number of ranges queried, four to
-eight. That needs measuring rather than choosing.
+That also explains why raising the translation block cache from 128 MB to
+512 MB changed nothing: this is not a capacity miss, it is invalidation. And
+it fits the ~53% translation-block hit rate seen earlier.
+
+**Correction recorded deliberately.** This document previously named the
+per-draw texture dirty poll as the lead, on the strength of that poll issuing
+about 1,480 dirty-bitmap test-and-clear calls per guest frame. That count is
+real and still worth reducing, but it is on the renderer thread and is **not**
+what costs the guest thread its 10.6%. The two were consistent and
+independent, which is exactly how a plausible wrong answer looks. The call
+graph is what separated them.
 
 What the measurement points at instead is the guest side, and one lead is
 already visible from the texture work: `memory_region_set_log(d->vram, true,
