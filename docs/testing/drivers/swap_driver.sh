@@ -18,6 +18,9 @@ push_driver() {  # $1 = local dir holding meta.json + vulkan.purple.so
 restore() {
     adb -s $S shell am force-stop $PKG
     push_driver "$D/T30"
+    # the stock arm renames meta.json rather than deleting it; drop the spare
+    # so the driver directory is left exactly as it was found
+    adb -s $S shell "run-as $PKG rm -f files/gpu_driver/meta.json.off"
     echo "restored: $(adb -s $S shell run-as $PKG cat files/gpu_driver/meta.json | grep packageVersion)"
 }
 
