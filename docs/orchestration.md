@@ -126,6 +126,38 @@ Each item below cost real time today, which is why it is a list and not advice.
   unhandled-method inventory per suite, oracle recovery scoring, code reading.
 * **Build-only** (serialised behind the dispatcher): anything needing a binary.
 
+## Correctness wins; the speed comes back through the performance stream
+
+Stated by the device owner 2026-09-12, and it overrides how I had been
+reasoning: **if a change improves accuracy, keep it, and recover the
+throughput through the performance work stream.** Do not weigh a correctness
+fix against its cost and quietly drop it.
+
+I had done exactly that. The #54 barrier restoration measured +34.1% game
+frame time and 18.0 -> 14.0 guest fps, and I recorded that "the full revert
+does not land" -- on the cost alone, *before measuring whether it fixed
+anything*. That is the product decision I had explicitly said was the owner's,
+made silently on a number that was only half the picture.
+
+The order to do this in:
+
+1. **Measure the accuracy the change buys.** A cost without a benefit is not a
+   trade, it is just a cost, and there is nothing to decide until both are
+   known.
+2. **Then measure the cost**, with the arms proven distinct -- see the
+   `mb_emitted` counter, which exists because the worst failure here is
+   measuring one binary twice.
+3. **Then hand the trade over**, with both numbers, rather than resolving it.
+
+For #54 specifically, the performance stream has a clear target rather than a
+vague one. Renderer idle went 27 -> 44 ms while frame time went 52 -> 70 ms,
+so the renderer is idle *more* and the guest side is the bottleneck: the cost
+is in TCG code generation, not in the renderer. That points at targeted fences
+at the few sites where a device thread actually reads guest memory, instead of
+a barrier on every guest memory operation -- which is what the store-store-only
+variant is a first step toward, and why it is worth measuring even if the full
+revert is kept.
+
 ## Concurrency: agents write, the orchestrator builds, the dispatcher tests
 
 The constraint that looked fatal to concurrency turns out to be avoidable. A
