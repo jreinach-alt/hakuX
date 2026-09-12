@@ -1033,6 +1033,55 @@ suites = ["Texture border", "W buffering"]
 # Other consumers of the same stale field, none audited: vk/texture.c via
 # pgraph_vk_surface_get(), vk/renderer.c:1144 (a state-block KEY), and about a
 # dozen gl/surface.c pack/unpack sites.
+# FIXED 2026-09-12 in b6239ccb87, and the audit refuted two things I wrote when
+# filing it.
+#
+# The compatible-reuse path now refreshes host_fmt, fmt and a new drawn_format,
+# with pgraph_vk_surface_drawn_format() as the accessor. Eleven lines of
+# behaviour. The field that mattered is NOT the one the issue named:
+# host_fmt.sampled_pad_alpha already carries the measured pad readback and is
+# precisely the field check_surface_compatibility does not compare. The
+# assignment is provably a one-field change -- within each collision group every
+# other host_fmt member is a function of vk_format, and vk_format equality is
+# the gate just passed -- and it keeps existing VkImageViews valid, since those
+# are built from vk_format and aspect.
+#
+# CORRECTION 1: renderer.c:1144 is NOT a render cache key. I called it one. It
+# is the diagnostic state fingerprint hashed into diag_cur_fingerprints for
+# frame-diff detection, so a stale format there makes two draws hash alike and
+# the tooling under-report. Cosmetic.
+#
+# CORRECTION 2: the "fifteen coupled consumers" are not coupled. TWELVE read a
+# DIFFERENT STRUCT -- GL has its own SurfaceBinding at gl/renderer.h:42 with no
+# drawn_format, so a Vulkan change cannot reach them. Of the Vulkan-side reads,
+# all eight are diagnostics: JSON text, the diag hash, a debug object name
+# whose only caller is on the create path, and a trace. None renders anything.
+# So the blast radius I priced does not exist, and refreshing shape wholesale
+# would have been pixel-inert on Vulkan too -- and bought nothing.
+#
+# shape is deliberately NOT refreshed, for two reasons found in code: its other
+# six fields are geometry and a non-strict match reuses a surface LARGER than
+# asked for (which is why surface_binding_dim is filled from surface-> and not
+# target), so a wholesale refresh would have the binding claim a size its image
+# lacks; and refreshing only its format fields has no single right source,
+# because populate_surface_binding_target_sized hands a zeta target
+# r->color_binding->shape entire, geometry and formats together.
+#
+# Predicted PIXEL-INERT -- not "no regressions", no movement: sampled_pad_alpha
+# is the only field it can change and has zero readers outside constants.h.
+# Verification arm queued.
+#
+# GL HAS THE IDENTICAL DEFECT independently at gl/surface.c:2827-2840, not
+# fixed by this. Smaller exposure -- every row within a GL collision group is
+# byte-identical, so only shape goes stale there and fmt never does.
+#
+# HAZARD for #48's implementer, verified: do NOT put the swizzle on
+# surface->image_view. draw.c:900-902 binds that view as the colour/zeta
+# ATTACHMENT while texture.c:1705/1720 puts the SAME view into
+# tex_surface_direct_views[] as a SAMPLED texture; it is created once per image
+# and migrated across reuse, so a swizzle there would alter what rendering
+# writes and go stale exactly the way host_fmt just did. It needs its own
+# sampled view.
 [issue.55]
 title = "Surface bindings never refresh their colour format on compatible reuse, and fifteen sites read it"
 disposition = "defect"
