@@ -511,3 +511,37 @@ trades the top-half rows for the bottom-half rows and fixes nothing.
    pipeline), not a constant.
 5. **Shadow boundary and lit-gradient bands** stay where they are: #35 and
    #38, precision floor, now counted as such.
+
+### Correction: v also costs `Bump_env_lum` 3,910 px
+
+The cost accounting above is incomplete, and the code carried a comment saying
+the opposite of what it did.
+
+`psh.c` read `u only, and v deliberately zero` long after `b844a486` biased
+both axes. That is the stale-comment-beside-a-change failure this repository
+warns about, and I wrote it. Corrected in place.
+
+The measurement that prompted the re-check: the bump disc was not among the
+eight swept at `3734463c`. Running it against the same tree with only the v
+component zeroed:
+
+| suite | u and v | u only |
+|---|---|---|
+| `Bump_env_lum` RGB | 1,770,536 | **1,766,626 (−3,910)** |
+| `Bump_map` RGB | 356,151 | 356,151 (**0**, and 0 px moved) |
+
+So v costs 3,910 px in `Bump_env_lum`, against the 285 px this page recorded
+across all measured suites — roughly fourteen times the charge. **The change
+remains net positive**: `Point_params` gains 12,027 px, so the balance is about
++7,800 rather than +11,700. Not a reason to revert it, but the ledger was
+wrong and the sweep should have included the bump disc.
+
+`Bump_map` moving **zero pixels** is the other half, and it kills a hypothesis:
+that suite's vertical sub-pixel error is not decided by this bias. The
+reasoning that led there was sound as far as it went -- its vertical bump
+displacement is exactly -128 texels, an exact integer on an 8-texel checker, so
+every vertical sample sits on a texel boundary while the horizontal
+displacement of 41.40 texels never does, which matches horizontal being exact
+and vertical not. But if those were ties this bias could reach, zeroing it
+would have moved something. It moved nothing. Whatever resolves them is
+elsewhere.

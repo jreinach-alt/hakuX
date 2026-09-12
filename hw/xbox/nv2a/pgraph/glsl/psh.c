@@ -1425,14 +1425,23 @@ static MString* psh_convert(struct PixelShader *ps)
      * can express: 0.001 texels on a 256 texture.  A coordinate exactly on a
      * boundary then lands on it; one genuinely below stays below.
      *
-     * u only, and v deliberately zero.  Hardware's u-ties resolve up in every
-     * quad measured, so biasing u moves us onto its answer.  Its v-ties do
-     * not: they go down at texels 40, 80 and 120 and up at 160, 200 and 240
-     * on one quad, and down at texel 128 on a quad whose u-tie at the same
-     * value goes up -- the signature of a rasteriser accumulating u along the
-     * scanline and v between scanlines.  There is no v rule to move onto, and
-     * biasing v anyway costs the checkerboard cell corners, where a u-tie and
-     * a v-tie coincide and the diagonal texel is the other colour.
+     * Both axes are biased, but they rest on different arguments and the v
+     * half is the weaker one.  Hardware's u-ties resolve up in every quad
+     * measured, so biasing u moves us onto its answer.  Its v-ties do not:
+     * they go down at texels 40, 80 and 120 and up at 160, 200 and 240 on one
+     * quad, and down at texel 128 on a quad whose u-tie at the same value
+     * goes up -- the signature of a rasteriser accumulating u along the
+     * scanline and v between scanlines.  There is no v rule to move onto, so
+     * v was shipped at b844a486 on a narrower case: the hosts disagree in v
+     * and a bias at least makes them agree, which the device lane confirmed.
+     *
+     * v is not free, and its cost is larger than that commit recorded.  It
+     * charged 285 px across 179 lighting and material captures, isolated
+     * pixels at checkerboard cell corners where a u-tie and a v-tie coincide
+     * and the diagonal texel is the other colour.  Measured since against the
+     * bump disc, which was not in that sweep, v also costs Bump_env_lum
+     * 3,910 px.  The change is still net positive -- Point_params gains
+     * 12,027 px -- but by roughly 7,800 rather than 11,700.
      * docs/investigations/edge-defect.md carries the measurements.
      */
     mstring_append(preflight,
