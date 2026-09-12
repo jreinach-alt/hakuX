@@ -170,6 +170,38 @@ title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
 # un-swizzled -- no capture exercises it, and an unverified inverse is a
 # second bug. Needs a game smoke test.
 # docs/investigations/gpu-tile-blit-swizzle.md.
+#
+# FIXED AND VERIFIED ON DEVICE 2026-09-12, f1a7703876. Per-capture A/B against
+# baseline b5ed87489c, 97 captures each, progress_log_proof true on both, same
+# disc, only the commit differing:
+#   BlitBeyondWidth  284,628 -> 0   BIT-IDENTICAL
+#   96 captures unchanged, 0 worse.  Image_blit 15/41 -> 16/41 exact.
+#
+# The first attempt (d42a8d79bc) swizzled every blit into a tiled region and
+# regressed Texture_Framebuffer_Blit::FBToZetaAsTex 14,383 -> 34,382 -- the
+# hazard the investigation had itself flagged, since that test blits the
+# framebuffer over the depth buffer and then SAMPLES it, so the write was
+# swizzled while the texture fetch stayed linear. Note the correction: the
+# framebuffer's COLOUR tile is registered VALID-clear, but the DEPTH tile is
+# valid.
+#
+# f1a7703876 gates the swizzle on a blit the tile actually clipped
+# (clipped_dest_size < dest_size), which separates the four blits by arithmetic
+# alone with no dependence on renderer state -- deliberately NOT gated on
+# whether a binding exists at the destination, because a stale binding left by
+# an earlier test would silently veto the swizzle and restore the 284,628 with
+# nothing in the code to explain it. The gate is a RESTRICTION, not a mechanism
+# claim: hardware remaps every write into a tiled region whether it clips or
+# not.
+#
+# FOLLOW-UP, specced and not implemented: swizzle on tile creation/teardown in
+# pfb.c instead, since that is the only moment the remap becomes observable.
+# It removes the gate heuristic and the standing hazard for real titles, which
+# set tiles up properly and currently depend on the clip gate never firing on
+# them. Two things to settle first: the inverse permutation on tile CREATION
+# (pre-existing bytes are reinterpreted, not moved), and a surface still live
+# in a VkImage and not yet downloaded when the tile is torn down. Needs
+# pfb.c + nv2a.c + nv2a_int.h.
 suites = ["Image blit"]
 disposition = "defect"
 
