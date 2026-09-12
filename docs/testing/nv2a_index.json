@@ -2468,7 +2468,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/texture.c:464",
+   "loc": "hw/xbox/nv2a/pgraph/texture.c:483",
    "symbols": [],
    "text": "// FIXME: only valid if control0 register allows for colorspace"
   },
@@ -2564,14 +2564,13 @@
    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:315",
    "symbols": [
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT"
    ],
    "text": "VK_FORMAT_R16_UNORM, // FIXME"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:420",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:502",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5"
    ],
@@ -2579,7 +2578,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:461",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:552",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8"
    ],
@@ -2587,15 +2586,13 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:485",
-   "symbols": [
-    "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8"
-   ],
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:583",
+   "symbols": [],
    "text": "* here before was `unimplemented color surface format 0x7` and abort(),"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:512",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:638",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_B8",
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8"
@@ -2604,7 +2601,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:520",
+   "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:646",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8"
    ],
@@ -4163,7 +4160,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "c6dd6fcdfb10e682d3f2b02e4727987d92d5670f",
+  "emulator_commit": "77074dfdae1d7cb972e4ea9edefd2c10d1576bd0",
   "gaps": 495,
   "resolved_tables": 0,
   "sites": 2748,
@@ -7332,12 +7329,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:393",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:470",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] = { 4 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:503",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:629",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] ="
    },
@@ -7364,12 +7361,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:394",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:471",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_B8] = { 1 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:510",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:636",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_B8] ="
    },
@@ -7401,12 +7398,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:395",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:472",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:518",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:644",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8] ="
    },
@@ -7453,12 +7450,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:388",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:465",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:437",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:523",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] ="
    },
@@ -7490,12 +7487,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:392",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:469",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] = { 4 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:496",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:622",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] ="
    }
@@ -7517,12 +7514,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:391",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:468",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] = { 4 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:489",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:615",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] ="
    }
@@ -7544,12 +7541,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:387",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:464",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:422",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:504",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] ="
    },
@@ -7611,12 +7608,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:386",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:463",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:399",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:476",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] ="
    },
@@ -7643,12 +7640,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:390",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:467",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] = { 4 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:464",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:555",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] ="
    },
@@ -7710,12 +7707,12 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:389",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:466",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] = { 4 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:444",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:530",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] ="
    },
@@ -7822,7 +7819,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z16: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:529",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:655",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = { 2 },"
    },
@@ -7859,7 +7856,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8: {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:530",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:656",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] = { 4 },"
    },
@@ -8482,7 +8479,7 @@
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/texture.c:474",
+    "loc": "hw/xbox/nv2a/pgraph/texture.c:493",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8) {"
    },
@@ -8657,7 +8654,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:355",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:390",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8] = {"
    }
@@ -8825,7 +8822,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:358",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:393",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8] = {"
    }
@@ -8967,7 +8964,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] = { 4, true },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:340",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:375",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16] = {"
    }
@@ -9056,7 +9053,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:362",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:397",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8] = {"
    }
@@ -9202,7 +9199,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] = { 2, true },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:336",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:371",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16] = {"
    }
@@ -9503,7 +9500,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:344",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:379",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8] = {"
    }
@@ -9671,7 +9668,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:347",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:382",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8] = {"
    }
@@ -9789,7 +9786,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] = { 4, false },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:328",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:363",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] = {"
    }
@@ -9848,7 +9845,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/texture.c:485",
+    "loc": "hw/xbox/nv2a/pgraph/texture.c:504",
     "role": "REF",
     "text": "} else if (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5) {"
    },
@@ -9932,7 +9929,7 @@
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:351",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:386",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8] = {"
    }
@@ -10068,7 +10065,7 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] = { 2, false },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:322",
+    "loc": "hw/xbox/nv2a/pgraph/vk/constants.h:330",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] = {"
    }
@@ -18290,7 +18287,7 @@
     "text": "uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/texture.c:499",
+    "loc": "hw/xbox/nv2a/pgraph/texture.c:518",
     "role": "COMMENT",
     "text": "* per-channel bits of NV_PGRAPH_TEXFILTER0 -- not a property of the"
    },
