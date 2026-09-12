@@ -28,6 +28,20 @@ the *sign* distribution of the one-step differences:
                 texel tie on a smooth gradient is a one-step difference too.
   structural    some channel differs by more than one step.
 
+Every row also carries `golden_colours`: how many distinct colours the
+*golden* holds over the pixels where we differ.  That is the capture's
+discriminating power, and it is a different question from how wrong we are.
+When it is **one**, the golden is flat everywhere the disagreement is, so
+every wrong model scores identically and the only thing the capture can say
+is pass or fail.  Such a capture is safe to verify against and unsafe to fit
+to, and its channel count must never drive a ranking -- the number is the
+size of a region, not the size of a defect (`Fog_gen`'s six `VS radial`
+captures are 2.17M channels of one flat colour; the fog distance fitted to
+them scored 94.9% and was wrong).  Two colours is already a partition with a
+boundary in it and discriminates perfectly well, so the threshold is one and
+not "few": `DotSTR3D_0to1`'s golden holds two colours where we differ and
+pins the texel rule to exact per-corner counts.
+
 The distinction matters because the two one-step classes want opposite
 corrections: truncating the shader output moves one-step-hi toward the
 hardware and one-step-sym away from it (issue #38).  The TSV also carries
@@ -82,27 +96,44 @@ def boundary_shift_mask(ours, gold):
     return d & (vert | horiz)
 
 
+def golden_colours(gold, differing):
+    """Distinct colours the golden holds over the pixels where we differ.
+
+    One means the golden is flat across the whole disagreement: it can say
+    pass or fail and nothing else.
+    """
+    import numpy as np
+    px = gold[differing]
+    if px.size == 0:
+        return 0
+    key = ((px[:, 0].astype(np.int64) << 16)
+           | (px[:, 1].astype(np.int64) << 8)
+           | px[:, 2].astype(np.int64))
+    return int(np.unique(key).size)
+
+
 def classify(ours, gold):
     import numpy as np
     d = ours.astype(np.int16) - gold.astype(np.int16)
     nz = d != 0
     n = int(nz.sum())
     if n == 0:
-        return "exact", 0, 0, 0, 0
+        return "exact", 0, 0, 0, 0, 0
+    cols = golden_colours(gold, nz.any(axis=2))
     band = int(nz[boundary_shift_mask(ours, gold)].sum())
     if band == n:
-        return "boundary-shift", n, 0, 0, band
+        return "boundary-shift", n, 0, 0, band, cols
     v = d[nz]
     pos = int((v == 1).sum())
     neg = int((v == -1).sum())
     if pos + neg != n:
-        return "structural", n, pos, neg, band
+        return "structural", n, pos, neg, band, cols
     share = pos / n
     if share >= 0.8:
-        return "one-step-hi", n, pos, neg, band
+        return "one-step-hi", n, pos, neg, band, cols
     if share <= 0.2:
-        return "one-step-lo", n, pos, neg, band
-    return "one-step-sym", n, pos, neg, band
+        return "one-step-lo", n, pos, neg, band, cols
+    return "one-step-sym", n, pos, neg, band, cols
 
 
 def main(argv=None):
@@ -136,12 +167,12 @@ def main(argv=None):
             if a.shape != b.shape:
                 continue
             seen.add((suite, test))
-            kind, n, pos, neg, band = classify(a, b)
-            rows.append((suite, test, kind, n, pos, neg, band))
+            kind, n, pos, neg, band, cols = classify(a, b)
+            rows.append((suite, test, kind, n, pos, neg, band, cols))
 
     per_suite = defaultdict(lambda: defaultdict(int))
     band_px = defaultdict(lambda: [0, 0])
-    for suite, _, kind, n, _, _, band in rows:
+    for suite, _, kind, n, _, _, band, _ in rows:
         per_suite[suite][kind] += 1
         band_px[suite][0] += n
         band_px[suite][1] += band
@@ -164,10 +195,34 @@ def main(argv=None):
         share = f"{100.0 * band / n:6.1f}%" if n else "      -"
         print(f"{suite:{width}} {n:>12} {band:>12} {share:>7}")
 
+    flat = defaultdict(lambda: [0, 0, 0, 0])
+    for suite, _, _, n, _, _, _, cols in rows:
+        if not n:
+            continue
+        flat[suite][0] += n
+        flat[suite][2] += 1
+        if cols == 1:
+            flat[suite][1] += n
+            flat[suite][3] += 1
+    ranked = sorted(flat.items(), key=lambda kv: -kv[1][1])
+    ranked = [r for r in ranked if r[1][1]]
+    if ranked:
+        print()
+        print("channels whose golden holds ONE colour where we differ -- pass/fail")
+        print("only, never a ranking weight:")
+        print(f"{'suite':{width}} {'channels':>12} {'flat':>12} {'share':>7} {'caps':>6}")
+        tot = sum(v[0] for v in flat.values())
+        tflat = sum(v[1] for v in flat.values())
+        for suite, (n, fl, caps, fcaps) in ranked:
+            print(f"{suite:{width}} {n:>12} {fl:>12} "
+                  f"{100.0 * fl / n:6.1f}% {fcaps:>3}/{caps:<3}")
+        print(f"{'TOTAL':{width}} {tot:>12} {tflat:>12} "
+              f"{100.0 * tflat / tot if tot else 0:6.1f}%")
+
     if args.tsv:
         with open(args.tsv, "w") as f:
             f.write("suite\ttest\tclass\tdiffering_channels\tplus_one\tminus_one"
-                    "\tboundary_shift_channels\n")
+                    "\tboundary_shift_channels\tgolden_colours\n")
             for r in rows:
                 f.write("\t".join(str(x) for x in r) + "\n")
     return 0

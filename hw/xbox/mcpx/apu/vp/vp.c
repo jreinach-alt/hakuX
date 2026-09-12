@@ -568,6 +568,7 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
          * settles the question on the next run of any title that plays audio.
          * Routed through __android_log_print because a core fprintf(stderr)
          * never reaches logcat on Android. docs/investigations/audio-assessment.md. */
+#ifdef __ANDROID__
         if (d->vp.submix_headroom[slot]) {
             static uint32_t logged_slots;
             if (!(logged_slots & (1u << slot))) {
@@ -581,6 +582,7 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
                     (602 * d->vp.submix_headroom[slot]) % 100);
             }
         }
+#endif
         break;
     case SE2FE_IDLE_VOICE:
         if (d->regs[NV_PAPU_FETFORCE1] & NV_PAPU_FETFORCE1_SE2FE_IDLE_VOICE) {

@@ -6,21 +6,36 @@ population and the boundary-shift band from each suite's differing channels.
 Ranking by raw differing pixels put fog and bump maps near the top; they are
 much smaller than they looked, and the order below is the one worth working.
 
-| suite | captures | exact | non-precision channels | dominant class |
-|---|---:|---:|---:|---|
-| **Blend tests** | 105 | 16 | **6,499,208** | structural (44) |
-| Fog gen | 60 | 4 | 2,186,712 | one-step-sym (43) |
-| Line width | 61 | 1 | 815,888 | structural (60) |
-| Bump map | 38 | 0 | 780,558 | structural (27) |
-| Texture format | 40 | 18 | 720,384 | exact (18) |
-| Bump env lum | 40 | 0 | 657,905 | structural (32) |
-| Texture DXT | 15 | 0 | 523,692 | one-step-lo (8) |
-| Specular | 22 | 0 | 495,115 | structural (20) |
-| Texture cubemap | 72 | 6 | 480,346 | structural (64) |
-| Specular back | 17 | 0 | 476,338 | structural (15) |
-| Fog exceptional value | 96 | 12 | 434,704 | structural (84) |
-| Fog carryover | 11 | 0 | 356,144 | structural (11) |
-| Texture render target | 40 | 11 | 308,248 | boundary-shift (26) |
+| suite | captures | exact | non-precision channels | flat-golden | **ranked on** | dominant class |
+|---|---:|---:|---:|---:|---:|---|
+| **Blend tests** | 105 | 16 | 6,499,208 | 0 | **6,499,208** | structural (44) |
+| Line width | 61 | 1 | 815,888 | 0 | **815,888** | structural (60) |
+| Bump map | 38 | 0 | 780,558 | 0 | **780,558** | structural (27) |
+| Texture format | 40 | 18 | 720,384 | 0 | **720,384** | exact (18) |
+| Bump env lum | 40 | 0 | 657,905 | 5,064 | **652,841** | structural (32) |
+| Texture DXT | 15 | 0 | 523,692 | 0 | **523,692** | one-step-lo (8) |
+| Specular | 22 | 0 | 495,115 | 0 | **495,115** | structural (20) |
+| Texture cubemap | 72 | 6 | 480,346 | 6 | **480,340** | structural (64) |
+| Specular back | 17 | 0 | 476,338 | 0 | **476,338** | structural (15) |
+| Fog exceptional value | 96 | 12 | 434,704 | 0 | **434,704** | structural (84) |
+| Texture render target | 40 | 11 | 308,248 | 0 | **308,248** | boundary-shift (26) |
+| Fog carryover | 11 | 0 | 356,144 | 262,144 | **94,000** | structural (11) |
+| Fog gen | 60 | 4 | 2,186,712 | 2,172,192 | **14,520** | one-step-sym (43) |
+
+**Updated 2026-09-12 with a flat-golden column, and it reorders the board.**
+`flat-golden` is the part of each suite's non-precision channels sitting in
+captures whose golden holds exactly **one** colour over the pixels we differ
+in. Such a capture scores every wrong model identically, so it is a pass/fail
+oracle and its channel count is the size of a region rather than the size of a
+defect. Ranking on the remainder moves `Fog gen` from second place to last in
+this table -- 2,186,712 to 14,520 -- and `Fog carryover` from twelfth to
+below it. Neither is "done"; both are bounded by what the corpus can see, and
+`unfalsifiable-goldens.md` has the evidence and the reverted fix that made the
+case.
+
+The column comes from `classify_residuals.py`'s `golden_colours` output, joined
+in `docs/testing/run-2026-09-12-golden-discrimination.tsv`. Across the corpus
+it is 2,464,510 of 15,337,853 channels, 16.1%, in 76 of 1,444 captures.
 
 ## What the top row turned out to be, and what it is now
 
