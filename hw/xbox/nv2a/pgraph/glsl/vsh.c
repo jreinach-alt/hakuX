@@ -162,6 +162,163 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
     }
 }
 
+/* Output register index of oFog, mirroring vsh-prog.c's decoder. */
+#define VSH_OUTPUT_REG_FOG 5
+
+/*
+ * Map a program's constant register field onto an index into vsh_constants,
+ * the same way vsh-prog.c's convert_c_register() does for the generated
+ * code.  Kept in step with it by hand: that one is file-static, and
+ * vsh-prog.c is the program translator rather than a shared header.
+ */
+static int vsh_constant_index(uint8_t c_reg)
+{
+    int16_t r = ((((c_reg >> 5) & 7) - 3) * 32) + (c_reg & 31);
+    r += VSH_D3DSCM_CORRECTION; /* to map -96..95 to 0..191 */
+    return r;
+}
+
+/* Does this instruction land a value in the fog output register? */
+static bool vsh_token_writes_fog(const uint32_t *token)
+{
+    if (vsh_get_field(token, FLD_OUT_O_MASK) == 0) {
+        return false;
+    }
+    if (vsh_get_field(token, FLD_OUT_ORB) != OUTPUT_O) {
+        return false;
+    }
+    if ((vsh_get_field(token, FLD_OUT_ADDRESS) & 0xf) != VSH_OUTPUT_REG_FOG) {
+        return false;
+    }
+
+    /* Only the unit the output mux selects reaches the register. */
+    if (vsh_get_field(token, FLD_OUT_MUX) == OMUX_MAC) {
+        return vsh_get_field(token, FLD_MAC) != MAC_NOP;
+    }
+    return vsh_get_field(token, FLD_ILU) != ILU_NOP;
+}
+
+/*
+ * Classify a single instruction's write to oFog.
+ *
+ * Only a MOV copies a source component through unchanged, so only a MOV
+ * leaves a value the CPU can read back.  MAC_MOV reads input A; every ILU
+ * opcode reads input C.  The generated code is
+ * `MOV(oFog, <mask>, <src><swizzle>)`, which expands to
+ * `oFog.<mask> = _MOV(_in(src)).<mask>` (vsh-prog.c), and every non-empty
+ * fog write mask begins at x -- that is the "most significant masked
+ * component applies to x" rule the fog_mask_str table implements.  So
+ * oFog.x receives the source component the x swizzle slot selects,
+ * whatever the destination mask is.
+ */
+static VshFogWrite vsh_classify_fog_write(const uint32_t *token,
+                                          const VshState *state)
+{
+    VshFogWrite w = { .kind = VSH_FOG_WRITE_COMPUTED };
+
+    VshFieldName neg_field;
+    VshParameterType param;
+
+    if (vsh_get_field(token, FLD_OUT_MUX) == OMUX_MAC) {
+        if (vsh_get_field(token, FLD_MAC) != MAC_MOV) {
+            return w;
+        }
+        neg_field = FLD_A_NEG;
+        param = (VshParameterType)vsh_get_field(token, FLD_A_MUX);
+    } else {
+        if (vsh_get_field(token, FLD_ILU) != ILU_MOV) {
+            return w;
+        }
+        neg_field = FLD_C_NEG;
+        param = (VshParameterType)vsh_get_field(token, FLD_C_MUX);
+    }
+
+    /* The swizzle fields sit immediately after the negate bit, x first. */
+    w.component = vsh_get_field(token, neg_field + 1);
+    w.negate = vsh_get_field(token, neg_field) > 0;
+
+    switch (param) {
+    case PARAM_C:
+        if (vsh_get_field(token, FLD_A0X) > 0) {
+            /* c[A0+n]: the index is only known once the program runs. */
+            return w;
+        }
+        w.reg = vsh_constant_index(vsh_get_field(token, FLD_CONST));
+        if (w.reg < 0 || w.reg >= NV2A_VERTEXSHADER_CONSTANTS) {
+            return w;
+        }
+        w.kind = VSH_FOG_WRITE_CONST;
+        return w;
+
+    case PARAM_V:
+        w.reg = vsh_get_field(token, FLD_V);
+        if (w.reg >= NV2A_VERTEXSHADER_ATTRIBUTES) {
+            return w;
+        }
+        /*
+         * A compressed or D3D-swizzled attribute reaches the shader
+         * through a conversion the stored attribute value has not had
+         * applied, so its components no longer line up.
+         */
+        if (state->compressed_attrs & (1 << w.reg)) {
+            return w;
+        }
+        if (state->swizzle_attrs & (1 << w.reg)) {
+            return w;
+        }
+        w.kind = VSH_FOG_WRITE_ATTR;
+        return w;
+
+    default:
+        /* A temporary register holds whatever the program computed. */
+        return w;
+    }
+}
+
+VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state)
+{
+    VshFogWrite w = { .kind = VSH_FOG_WRITE_NONE };
+
+    if (state->is_fixed_function) {
+        /*
+         * The transform unit always produces a coordinate, from FOGGEN and
+         * the transformed position -- never absent, never CPU-readable.
+         */
+        w.kind = VSH_FOG_WRITE_COMPUTED;
+        return w;
+    }
+
+    const ProgrammableVshState *prog = &state->programmable;
+
+    for (int i = 0; i < prog->program_length; i++) {
+        const uint32_t *token = prog->program_data[i];
+
+        if (vsh_token_writes_fog(token)) {
+            if (w.kind != VSH_FOG_WRITE_NONE) {
+                /*
+                 * Two writes: the register ends up holding the later one,
+                 * and which instruction that is depends on the program's
+                 * flow.
+                 */
+                w.kind = VSH_FOG_WRITE_COMPUTED;
+                return w;
+            }
+
+            w = vsh_classify_fog_write(token, state);
+            if (w.kind == VSH_FOG_WRITE_COMPUTED) {
+                return w;
+            }
+        }
+
+        /* The program ends here, as it does for the translator. */
+        if (vsh_get_field(token, FLD_FINAL)) {
+            break;
+        }
+    }
+
+    return w;
+}
+
 MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 {
     MString *uniforms = mstring_new();
@@ -211,8 +368,9 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "vec4 oB1 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oPts = vec4(0.0,0.0,0.0,1.0);\n"
         /* oFog does not start cleared on hardware.  A program that never
-         * writes it renders with the value the previous program left, which
-         * is measured rather than unknown -- see the fog block below (#42). */
+         * writes it renders with the value the previous program left, so
+         * this initialiser is not what such a program reads: the fog block
+         * below substitutes the carried coordinate instead (#42). */
         "vec4 oFog = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT1 = vec4(0.0,0.0,0.0,1.0);\n"
@@ -480,22 +638,57 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              * program does not write oD1 either, so a spec-alpha read would
              * be exactly as unwritten as oFog.
              *
-             * Not fixed here, because the value is GPU-resident -- the last
-             * oFog.x the previous draw's last vertex wrote, which has to
-             * survive a pipeline change.  That is a small buffer both
-             * renderers bind, i.e. descriptor-set work outside this file,
-             * and it is the whole cost of the issue; the condition it needs
-             * (does this program write oFog) is decidable from the program
-             * text.  Both tests prime with a doubled draw and say why --
-             * "one or more of the vertices in the unset draw case still
-             * have arbitrary values from previous operations" -- so the
+             * Carried here as a CPU-side shadow, in carriedFogCoord.  The
+             * faithful alternative -- keeping the value on the GPU, where
+             * the vertex stage computed it -- was priced and refused: it
+             * needs a vertex-stage storage buffer written by one draw and
+             * read by the next, which collides with the Vulkan draw
+             * reorder window, cannot name "the previous draw's last
+             * vertex" (vertex invocation order is undefined), and puts a
+             * read-after-write barrier between every draw in the frame.  A
+             * value the CPU resolves per draw is immune to all three,
+             * because each draw's uniforms are snapshotted in API order.
+             *
+             * The shadow is only exact when the previous program's write
+             * is one the CPU can read back: `mov oFog, c[n]` or
+             * `mov oFog, v[n]` (see pgraph_glsl_vsh_fog_write).  It cannot
+             * follow a *computed* fog value, and does not try -- a program
+             * that computes one leaves the shadow alone rather than
+             * guessing.  That limit is not exercised by anything we
+             * measure: both priming shaders are plain moves,
+             * fog_vec4_xyzw.vsh writing `mov oFog.xyzw, #fog_value.xyzw`
+             * from c[120] and passthrough.vsh writing `mov oFog, iFog`,
+             * which is also why those two suites pin the value in the
+             * first place.  A guest that computed a coordinate and then
+             * relied on a later program inheriting it would need the GPU
+             * design above; record it as a known gap rather than reading
+             * this as an oversight.
+             *
+             * Both tests prime with a doubled draw and say why -- "one or
+             * more of the vertices in the unset draw case still have
+             * arbitrary values from previous operations" -- so the
              * register file is per-vertex-slot and simply not cleared.  A
-             * single last-written scalar is a simplification that those two
-             * tests deliberately make safe, and a guest relying on more
-             * would be relying on hardware the test author calls
-             * non-hermetic.
+             * single last-written scalar is a simplification that those
+             * two tests deliberately make safe, and a guest relying on
+             * more would be relying on hardware the test author calls
+             * non-hermetic.  It is also why the ten Carryover<Primitive>
+             * captures are expected not to move: one scalar cannot
+             * reproduce a per-slot register file, and their goldens only
+             * bound the value anyway.
+             *
+             * Vulkan only.  The GL renderer keeps the cleared initialiser
+             * above: it has no per-draw hook that resolves the shadow, and
+             * building one there is not worth a fog corner.  When the
+             * uniform is not supplied it reads 0.0, which is exactly the
+             * unfogged behaviour GL has today.
              */
-            mstring_append(body, "  float fogDistance = oFog.x;\n");
+            if (opts.vulkan &&
+                pgraph_glsl_vsh_fog_write(state).kind == VSH_FOG_WRITE_NONE) {
+                mstring_append(body,
+                               "  float fogDistance = carriedFogCoord;\n");
+            } else {
+                mstring_append(body, "  float fogDistance = oFog.x;\n");
+            }
         }
         mstring_append(body,
                        "  if (isinf(fogDistance) || isnan(fogDistance)) {\n"
@@ -613,6 +806,18 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         QEMU_BUILD_BUG_MSG(sizeof(values->c) != sizeof(pg->vsh_constants),
                            "Uniform value size inconsistency");
         memcpy(values->c, pg->vsh_constants, sizeof(pg->vsh_constants));
+    }
+
+    if (locs[VshUniform_carriedFogCoord] != -1) {
+        /*
+         * #42's carried fog coordinate is cross-draw state a renderer has
+         * to keep, so it is resolved per draw by the renderer rather than
+         * read out of pg here (see pgraph_vk_update_shader_uniforms).  Set
+         * a defined value regardless: a renderer that does not carry it
+         * gets today's unfogged behaviour, and the uniform never holds
+         * stack garbage that would churn the upload hash.
+         */
+        values->carriedFogCoord[0] = 0.0f;
     }
 
     if (locs[VshUniform_clipRange] != -1) {

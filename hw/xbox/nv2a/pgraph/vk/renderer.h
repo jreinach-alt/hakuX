@@ -1374,6 +1374,15 @@ typedef struct PGRAPHVkState {
     uint64_t last_vsh_uniform_hash;
     uint64_t last_psh_uniform_hash;
 
+    /*
+     * #42: the fog coordinate the last vertex program to write oFog left in
+     * it.  Hardware never clears that register, so a program that does not
+     * write it renders with this value rather than a cleared one.  Zero
+     * until a program writes a coordinate we can read back, which is the
+     * cleared behaviour we had before.
+     */
+    float last_fog_coord;
+
     /* Cached uniform state for dirty tracking */
     float cached_material_alpha;
     float cached_point_params[8];

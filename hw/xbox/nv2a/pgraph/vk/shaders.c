@@ -1170,6 +1170,61 @@ static void apply_uniform_updates(ShaderUniformLayout *layout,
     }
 }
 
+/*
+ * Resolve #42's carried fog coordinate for this draw, and update the shadow
+ * the next draw will read.
+ *
+ * Hardware's oFog is never cleared: a vertex program that does not write it
+ * rasterises with the coordinate the previous program left there.  Keeping
+ * that value where the vertex stage produced it would mean a vertex-stage
+ * storage buffer written by one draw and read by the next -- which collides
+ * with the draw reorder window below, cannot name "the previous draw's last
+ * vertex" because vertex invocation order is undefined, and needs a
+ * read-after-write barrier between every draw.  Resolving it on the CPU
+ * sidesteps all three: the value is folded into this draw's uniform
+ * snapshot, which is taken in API order whatever order the draws execute in.
+ *
+ * The cost is that only a fog write the CPU can read back is followed -- a
+ * move from a constant register or from a vertex attribute.  A program that
+ * *computes* its coordinate leaves the shadow untouched rather than
+ * substituting a wrong value; see the note in glsl/vsh.c for why nothing we
+ * measure exercises that, and why it is a recorded gap rather than an
+ * oversight.
+ */
+static void update_carried_fog_coord(PGRAPHState *pg, PGRAPHVkState *r,
+                                     const VshState *vsh_state,
+                                     VshUniformValues *values)
+{
+    VshFogWrite w = pgraph_glsl_vsh_fog_write(vsh_state);
+
+    switch (w.kind) {
+    case VSH_FOG_WRITE_CONST: {
+        /* vsh_constants holds raw bits, as the uniform upload does. */
+        uint32_t bits = pg->vsh_constants[w.reg][w.component];
+        float v;
+        memcpy(&v, &bits, sizeof(v));
+        r->last_fog_coord = w.negate ? -v : v;
+        break;
+    }
+    case VSH_FOG_WRITE_ATTR: {
+        /*
+         * inline_value tracks the attribute's value for the draw's last
+         * (or provoking) vertex in every path that binds attributes, which
+         * is the vertex whose oFog survives into the next draw.
+         */
+        float v = pg->vertex_attributes[w.reg].inline_value[w.component];
+        r->last_fog_coord = w.negate ? -v : v;
+        break;
+    }
+    case VSH_FOG_WRITE_NONE:
+    case VSH_FOG_WRITE_COMPUTED:
+        /* Nothing readable was written: the register keeps what it held. */
+        break;
+    }
+
+    values->carriedFogCoord[0] = r->last_fog_coord;
+}
+
 void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
 {
     NV2A_VK_DGROUP_BEGIN("%s", __func__);
@@ -1202,6 +1257,7 @@ void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
     VshUniformValues vsh_values;
     pgraph_glsl_set_vsh_uniform_values(pg, &binding->state.vsh,
                                   binding->vsh.uniform_locs, &vsh_values);
+    update_carried_fog_coord(pg, r, &binding->state.vsh, &vsh_values);
     apply_uniform_updates(vsh_layout, VshUniformInfo,
                           binding->vsh.uniform_locs, &vsh_values,
                           VshUniform__COUNT);

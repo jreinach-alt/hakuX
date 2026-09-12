@@ -87,6 +87,7 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *state);
 
 #define VSH_UNIFORM_DECL_X(S, DECL)                          \
     DECL(S, c, vec4, NV2A_VERTEXSHADER_CONSTANTS)            \
+    DECL(S, carriedFogCoord, float, 1)                       \
     DECL(S, clipRange, vec4, 1)                              \
     DECL(S, inlineValue, vec4, NV2A_VERTEXSHADER_ATTRIBUTES) \
     DECL(S, lightInfiniteDirection, vec3, NV2A_MAX_LIGHTS)   \
@@ -117,6 +118,34 @@ typedef struct GenVshGlslOptions {
 
 MString *pgraph_glsl_gen_vsh(const VshState *state,
                              GenVshGlslOptions glsl_opts);
+
+/*
+ * How a vertex program writes the fog output register, for #42: hardware
+ * never clears oFog, so a program that does not write it renders with the
+ * coordinate the previous program left there.  A renderer that wants to
+ * carry that value has to know both whether this program writes oFog at
+ * all and, when it does, whether the written value is one the CPU can
+ * read back.
+ */
+typedef enum VshFogWriteKind {
+    /* Never writes oFog: renders with the carried coordinate. */
+    VSH_FOG_WRITE_NONE,
+    /* mov oFog<mask>, c[reg]<swizzle> -- readable from vsh_constants. */
+    VSH_FOG_WRITE_CONST,
+    /* mov oFog<mask>, v[reg]<swizzle> -- readable from the attribute. */
+    VSH_FOG_WRITE_ATTR,
+    /* Writes a value only the vertex stage can produce. */
+    VSH_FOG_WRITE_COMPUTED,
+} VshFogWriteKind;
+
+typedef struct VshFogWrite {
+    VshFogWriteKind kind;
+    int reg; /* Constant or attribute index, for CONST and ATTR. */
+    int component; /* Source component landing in oFog.x. */
+    bool negate; /* Source is negated. */
+} VshFogWrite;
+
+VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state);
 
 void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                                         const VshUniformLocs locs,
