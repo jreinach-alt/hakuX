@@ -74,3 +74,34 @@ if [ "$appeared" = 0 ]; then
 else
     echo "held $(basename "$ISO") for ${s}s"
 fi
+
+# Pull anything the guest recorded. The audio harness needs this: a PCM tap in
+# the APU writes to the app's external files dir, and a soak is worthless as a
+# measurement if the capture stays on the device. Generic on purpose -- PULL_GLOB
+# names what to fetch, so the same path serves audio captures, register dumps or
+# anything else a future harness writes.
+#
+# Force-stop FIRST so the file is closed and flushed before it is read; a
+# half-written capture measures as a quieter one, which is exactly the kind of
+# artefact that would be mistaken for a level change.
+if [ -n "${PULL_GLOB:-}" ] && [ -n "${PULL_DEST:-}" ]; then
+    a shell am force-stop "$PKG" >/dev/null 2>&1
+    mkdir -p "$PULL_DEST"
+    files=$(a shell "ls -1 ${GUEST_FILES:-/sdcard/Android/data/$PKG/files}/$PULL_GLOB 2>/dev/null" | tr -d '\r')
+    if [ -z "$files" ]; then
+        echo "PULL: nothing matched $PULL_GLOB"
+    else
+        for f in $files; do
+            if a pull "$f" "$PULL_DEST/" >/dev/null 2>&1 && [ -s "$PULL_DEST/$(basename "$f")" ]; then
+                echo "PULL: $(basename "$f") $(stat -c%s "$PULL_DEST/$(basename "$f")") bytes"
+                # Remove it on the device so the next soak cannot measure this
+                # run's audio appended to the next run's.
+                a shell "rm -f '$f'" >/dev/null 2>&1
+            else
+                # A pull can exit 0 having written nothing; that has surfaced
+                # thirty lines later as a missing-file error before now.
+                echo "PULL FAILED or empty: $f"
+            fi
+        done
+    fi
+fi

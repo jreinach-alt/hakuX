@@ -120,9 +120,10 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
-    local title seconds
+    local title seconds pull_glob
     title=$(jq_get "$req" title "")
     seconds=$(jq_get "$req" seconds 60)
+    pull_glob=$(jq_get "$req" pull_glob "")
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
@@ -176,14 +177,20 @@ serve_one() {
         fi
         touch "$LEASE"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
+            PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'
 import json, os, sys
 rdir, sha, title, seconds, who, purpose, ref, lines = sys.argv[1:9]
+pulled = []
+pdir = os.path.join(rdir, "pulled")
+if os.path.isdir(pdir):
+    for f in sorted(os.listdir(pdir)):
+        pulled.append(dict(file=f, bytes=os.path.getsize(os.path.join(pdir, f))))
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                requester=who, purpose=purpose, ref=ref,
-               logcat_lines=int(lines)),
+               logcat_lines=int(lines), pulled=pulled),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
