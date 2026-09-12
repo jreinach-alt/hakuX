@@ -81,3 +81,12 @@ suites = ["Blend tests"]
 [issue.21]
 title = "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"
 suites = ["Texture format", "Bump map", "Bump env lum"]
+
+# Split out of #19 once its isolation pass named the individual features.
+[issue.47]
+title = "Image blit: the clip rectangle object (class 0x19) is not implemented"
+suites = ["Image blit"]
+
+[issue.48]
+title = "Destination alpha read from stored bits on X-format surfaces, not the format's constant"
+suites = ["Blend surface", "Surface format"]
