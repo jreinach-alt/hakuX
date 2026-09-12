@@ -12,9 +12,26 @@ whole golden set against the corpus both lanes rank from:
 | rows in it | **1,444** |
 | **coverage** | **25.7%** |
 
-**Sixty suites with goldens are absent from the corpus entirely** -- not
-partially measured, not scoring zero: absent. 4,164 golden captures have never
-been compared against anything.
+**Sixty suites with goldens are absent from this corpus entirely** -- not
+partially measured, not scoring zero: absent from the file, so absent from
+every ranking built on it.
+
+**Corrected, and the correction matters.** An earlier revision of this page
+said those 4,164 captures "have never been compared against anything". That is
+false. The device lane counted it properly: their own tonight's scoring covers
+24 suites, so the union of what current rankings actually see is **50 of 100**,
+and a further 29 of the 60 appear in the 2026-09-08 full sweep (79 suites) even
+though they are not in either current corpus. `W_buffering`, `Shade_model`,
+`3D_primitive`, `Depth_buffer` and `W_param` are all in
+`docs/investigations/sweeps/` -- measured, then dropped out of the working set.
+
+**Sixteen suites have no scored record in any of the three** (240 golden
+entries): `Texgen_with_texture_matrix` 66, `Surface_clip` 47, `Depth_Clamp` 40,
+`Clear` 32, `Stencil_func` 16, `Texture_Matrix` 11, `Color_zeta_overlap` 9,
+`SetVertexData` 7, `Texture_BRDF` 3, `Depth_function` 2, `Zero_stride` 2, and
+five suites of one capture each. Even that is about the *systematic* record:
+`v0.4.0-j1`'s notes quote figures for `Surface_clip` and `Clear`, so individual
+runs happened outside these files.
 
 The largest:
 
