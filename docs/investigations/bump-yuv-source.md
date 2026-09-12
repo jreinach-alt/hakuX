@@ -266,3 +266,41 @@ show up exactly like this — one-sided, sub-pixel, and larger on the axis with
 the smaller scale factor (0.69 vertical against 0.76 horizontal, and vertical
 is the axis that is wrong). That should be checked before any more effort goes
 into the bump channel arithmetic, which is where I had been looking.
+
+## Correction: it is not a sub-pixel shift. It is whole lines on a period of 21.
+
+Everything above about a "vertical sub-pixel displacement" is wrong, and the
+mistake was in the instrument rather than the data.
+
+Counting where the wrong pixels actually are, rather than inferring an offset
+from edge positions:
+
+| capture | px | rows > 100 px | cols > 100 px | on those lines | scattered |
+|---|---:|---|---|---:|---:|
+| `BumpMap_A8R8G8B8_L` | 3,296 | 76, 97, 118, 139, 256, 277, 298, 319 | 188, 193, 236, 246, 257, 368, 373, 416, 426, 437 | **3,296** | **0** |
+| `BumpMap_A8` | 1,688 | the same eight | none | **1,688** | **0** |
+| `BumpMap_G8B8` | 3,296 | the same eight | the same ten | **3,296** | **0** |
+
+**Every wrong pixel is on a whole row or a whole column, and none is anywhere
+else.** The rows are identical across formats and spaced **21 px** apart in two
+groups of four. Formats differ only in whether they also carry the columns:
+`A8` has the eight rows and nothing more at 1,688 px, and the formats at 3,296
+add the ten columns.
+
+That is the shape the corpus classifier already reported — "isolated rows on a
+period of 21" — and I should have started from it instead of re-deriving.
+
+**Why the earlier measurement misled.** Comparing edge positions row by row and
+averaging the 0/1 shifts assumes the defect is spread across rows. Eight wrong
+rows out of 338 produce a small non-zero mean, which reads exactly like a
+uniform sub-pixel offset and is nothing of the kind. The mean was real; the
+interpretation was invented. Combined with the periodic-phase problem already
+noted above, that estimator produced two wrong readings in a row and should not
+be used on this suite again.
+
+So the open question changes shape entirely. It is not "what coefficient is a
+hair off" but "what recurs every 21 px vertically", with a structure that is
+format-independent in its rows and format-dependent in its columns. Nothing
+about bump channel arithmetic explains a period, and the `bump_signed` /
+displacement work above, while correct as description, was aimed at the wrong
+question.
