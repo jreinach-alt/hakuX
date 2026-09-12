@@ -41,6 +41,8 @@ as a candidate until an isolation run says otherwise.
 | [`surface-as-texture-decode.md`](surface-as-texture-decode.md) | Why a colour surface sampled as a texture came back with red and blue swapped: the declared texture format decides the decode, and borrowing the surface's own view skips it. Includes the ABGR diffuse convention that inverts the conclusion if read wrong |
 | [`line-width-residual.md`](line-width-residual.md) | What is left in `Line width` after the register landed: the device's own minimum and granularity below 1.25px, and a 3-4% shortfall at every width that is the line ends. Opens with the mistake that hid it — measuring against captures four days older than the fix |
 | [`target-ranking-2026-09-12.md`](target-ranking-2026-09-12.md) | What to work on next, ranked on the reclassified corpus rather than on raw differing pixels, with the contamination caveat that outranks it |
+| [`blend-white-swatch.md`](blend-white-swatch.md) | What is left in `Blend tests` on Adreno after the decode fix: every one of the 1,591 remaining misses is the white swatch, flat across equations and both factor sets, and not one within two steps |
+| [`issue-19-isolation-2026-09-12.md`](issue-19-isolation-2026-09-12.md) | #19 measured on one binary: 2 contamination against 82 missing-state, the ten features those name, and the test-coverage gap the progress logs exposed |
 | [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
