@@ -74,6 +74,12 @@ products, `tex_remap` empty because the stage is not `rect_tex`. That is
 structurally the same fetch the rule below attributes to hardware, which is
 why the defect is narrower than "wrong mode" and is worth stating precisely.
 
+> **Superseded.** That paragraph was written before the validation layer was
+> pointed at this suite. The fetch was not "structurally the same" as anything
+> -- declaring `sampler2D` against the cube view made it **undefined**. See
+> "It was undefined behaviour" at the end of this note; read that before acting
+> on anything between here and it.
+
 ## What the texture actually is
 
 Also wrong in the earlier note: "the 3D texture here is the eight corners of
@@ -424,3 +430,116 @@ The measurement that closes it is the resolved texel index, not another sign:
 emit `ivec2(fract(dotSTR3.xy) * textureSize(texSamp3, 0))` into R and G. Only
 0 and 63 are permitted per axis on the reading above, so anything else names
 the step that corrupts the address.
+
+## It was undefined behaviour, and that is why nothing added up
+
+Added 2026-09-12, and it retires most of the puzzles above.
+
+Running the cube suite **twice on the same binary**, 71 of the 78 captures are
+byte-identical and the seven that move are exactly the `DotSTR3D_*` family:
+
+| capture | run A vs golden | run B vs golden | **A vs B** |
+|---|---:|---:|---:|
+| `DotSTR3D_0to1` | 49,606 | 48,597 | **42,554** |
+| `DotSTR3D_-1to1D3D` | 49,523 | 50,033 | **43,976** |
+| `DotSTR3D_HiLo_1` | 44,075 | 48,031 | **13,865** |
+| `DotSTR3D_Bad2D` | **0** | 19,714 | **19,714** |
+
+The validation layer names the cause, eight times over the suite:
+
+```
+VUID-vkCmdDrawIndexed-viewType-07752
+the descriptor (binding 3, index 0) ImageView type is
+VK_IMAGE_VIEW_TYPE_CUBE but the OpTypeImage has (Dim = 2D)
+```
+
+`get_sampler_type()` routed `DOT_STR_3D` through the `PROJECT3D` case, which
+ends in `sampler2D`/`sampler3D` and never consults `tex_cubemap[i]` -- where
+`CUBEMAP`, `DOT_STR_CUBE` and all three `DOT_RFLCT_*` do. A cubemap-flagged
+stage gets a cube view, so the fetch was undefined.
+
+**That accounts for every observation this note could not explain**: the
+texel-frequency dither, half the cube on texels the corner rule forbids, the
+corner position at chance with a flat confusion matrix, and a demonstrably
+flat sign field feeding a fetch that produced noise. The inputs were always
+clean; the fetch was not.
+
+Two things it voids. **Every single-run score on these seven captures**, ours
+and the device lane's, including the "`samplerCube` when `tex_cubemap[i]` moves
+zero captures" negative -- that was noise against noise, and it was probably
+testing the right change. And **the `DotSTR3D_Bad2D` regression attributed to
+`ad1caa07`**: that capture is byte-exact in some runs and 19,714 px out in
+others on one binary, so the commit had nothing to do with it.
+
+What it does **not** void is the probe, which replaced the fetch with an
+arithmetic readout and so never went through the UB: the 0.003 magnitude and
+the flat sign field are measurements of `dotSTR3` itself and stand. Nor the
+rule or the predicted counts, which come from the goldens.
+
+### The fix, and what it did and did not buy
+
+`dot_str_3d_is_cube()` now gates both the sampler declaration and the fetch --
+one predicate for both, because they have to agree or the shader does not
+compile and two copies of an expression drift. `PROJECT3D` is deliberately
+left alone despite sharing the case: it emits `textureProj()`, which has no
+cube form, so a cube sampler there would trade a wrong result for one that
+does not build. **It carries the same latent violation and wants its own fix.**
+
+Measured against a bar registered before the run:
+
+| | result |
+|---|---|
+| determinism, three runs, all seven captures | **0 px**, was 13,865-43,976 |
+| `viewType-07752` under validation | **8 -> 0** |
+| `DotSTR3D_Bad2D` vs golden | **19,714 -> 0**, byte-exact and stable |
+| the six cubemap captures | **unchanged**, still 48,031-50,526 px |
+| corner counts vs the prediction | **not met**, and the unsigned captures still produce a non-zero red where the rule forbids one |
+
+So the mode is now deterministic and spec-clean and **still does not implement
+the hardware rule**. That was the registered expectation rather than a
+disappointment: a `samplerCube` lookup is a smooth direction sample and the
+rule says silicon lands on a corner texel, which are different operations.
+The gain is that these captures are instruments now. The corner rule has never
+actually been tested, because until this landed there was nothing stable to
+test it against.
+
+One loose end, flagged rather than asserted: the six cubemap captures come out
+byte-identical to one of the two pre-fix outcomes, which is not what two
+different sampling operations should do. Most likely lavapipe's undefined 2D
+read of a cube view was already indexing layer 0 through the same filtering
+path. Unproven, and it changes none of the numbers above.
+
+## Where the remaining error is: our face selection leaves the positive faces
+
+Measured once the captures became deterministic, which is the first time this
+question could be asked. A temporary probe emitted the cube face our lookup
+selects, per pixel, over the golden's cube region:
+
+| capture | `+X` | `-X` | `+Y` | `-Y` | `-Z` |
+|---|---:|---:|---:|---:|---:|
+| `DotSTR3D_HiLo_1` | **100.0%** | - | - | - | - |
+| `DotSTR3D_0to1` | 78.4% | 0.1% | 13.6% | 7.9% | - |
+| `DotSTR3D_-1to1D3D` | 33.1% | 15.6% | 17.1% | 33.0% | 1.1% |
+
+Set that against what the goldens permit. Every golden colour is in the
+odd-parity set `{R, G, B, W}`, which is the corner set of a **positive** face;
+the negative faces carry the even-parity set `{C, M, Y, K}` and **not one
+golden pixel is ever one of those**. So:
+
+> **Silicon never leaves the positive faces. We reach a negative face on up to
+> 49% of pixels.**
+
+That is a measured constraint rather than an inference, and it splits the
+remaining error in two:
+
+- **`HiLo_1` picks `+X` on every pixel**, and its golden is the `x = 0` edge
+  pair of `+X`, so on that capture our *face* already agrees with silicon and
+  only the within-face position is wrong.
+- **The signed dotmaps diverge on the face itself**, reaching `-X`, `-Y` and a
+  little `-Z` where silicon reaches none.
+
+The obvious candidate is that the hardware address unit works on magnitudes,
+which would make a negative face unreachable by construction and sits well
+with "lands on a corner". That is a hypothesis and is written here rather than
+in the tracker; what is established is the face distribution above and the
+goldens' parity, both of which are direct measurements.
