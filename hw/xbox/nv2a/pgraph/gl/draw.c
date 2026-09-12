@@ -61,6 +61,50 @@ static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
     }
     if (r->zeta_binding && write_zeta) {
         r->zeta_binding->draw_time = pg->draw_time;
+ * True when the colour surface format stores no alpha bits at all, so the
+ * blend unit has no destination alpha to read and substitutes 1.0.
+ *
+ * Measured on Blend surface's DstAlpha/1-DstAlpha pairs (issue #48): on both
+ * X8R8G8B8 variants and both X1R5G5B5 variants, the golden is 255 everywhere
+ * for DST_ALPHA and 0 everywhere for ONE_MINUS_DST_ALPHA, which pins Ad = 1.0
+ * from two complementary directions. R5G6B5, which already lands on a host
+ * format with no alpha component, is bit-exact and is the control. The `Z`
+ * variants do not read their pad bits as zero here; that distinction belongs to
+ * the texture unit, not the blend unit. See the Vulkan renderer's copy of this
+ * comment for the full derivation.
+ *
+ * X1A7R8G8B8 is excluded: its seven alpha bits are real data.
+ */
+static bool surface_color_format_dst_alpha_is_one(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/*
+ * Fold a known Ad = 1.0 into a blend factor. SRC_ALPHA_SATURATE is min(As,
+ * 1 - Ad) and so is also 0 here, but is left alone: no capture exercises it on
+ * an alpha-less surface, and changing it would be unmeasured.
+ */
+static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
+{
+    switch (factor) {
+    case NV_PGRAPH_BLEND_SFACTOR_DST_ALPHA:
+        return NV_PGRAPH_BLEND_SFACTOR_ONE;
+    case NV_PGRAPH_BLEND_SFACTOR_ONE_MINUS_DST_ALPHA:
+        return NV_PGRAPH_BLEND_SFACTOR_ZERO;
+    default:
+        return factor;
     }
 }
 
@@ -212,6 +256,12 @@ void pgraph_gl_draw_begin(NV2AState *d)
                                     NV_PGRAPH_BLEND_SFACTOR);
         uint32_t dfactor = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND),
                                     NV_PGRAPH_BLEND_DFACTOR);
+        if (r->color_binding &&
+            surface_color_format_dst_alpha_is_one(
+                r->color_binding->shape.color_format)) {
+            sfactor = blend_factor_with_dst_alpha_one(sfactor);
+            dfactor = blend_factor_with_dst_alpha_one(dfactor);
+        }
         assert(sfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         assert(dfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         glBlendFunc(pgraph_blend_factor_gl_map[sfactor],

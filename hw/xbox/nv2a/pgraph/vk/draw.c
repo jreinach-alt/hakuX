@@ -59,6 +59,104 @@ static bool g_vaf_disabled = false;
 
 #define DM_LOG(...) do {} while(0)
 
+/*
+ * True when the colour surface format stores no alpha bits at all, so the
+ * blend unit has no destination alpha to read and substitutes 1.0.
+ *
+ * Measured on Blend surface's DstAlpha/1-DstAlpha pairs (issue #48). Those
+ * tests build a swatch with `result = S x Ad` (sf=DST_ALPHA, df=ZERO, ADD) over
+ * backgrounds whose alpha is 0x00/0x40/0x80/0xFF, then show it twice: once with
+ * the surface's own alpha and once with alpha forced to 1.0. In the
+ * forced-alpha half the golden is 255 in all four columns for DST_ALPHA and 0
+ * in all four for ONE_MINUS_DST_ALPHA -- on X8R8G8B8_Z8R8G8B8 and
+ * X8R8G8B8_O8R8G8B8 alike, and on both X1R5G5B5 variants. Two factors that are
+ * complements agreeing on the same Ad is what makes this a measurement rather
+ * than a fit: Ad = 0 would have inverted both.
+ *
+ * So the `Z` variant does NOT read its pad bits as zero here, and the FIXME on
+ * that row in constants.h is wrong about the blend unit -- forcing zero is what
+ * made those captures worse when it was tried. The Z/O distinction is real but
+ * lives in the *texture* unit: reading such a surface back as a texture gives
+ * alpha 0 for `Z` and 255 for `O`, which is what the other half of each swatch
+ * shows and is a separate defect in the texture path, not here.
+ *
+ * R5G6B5 is the control: it already maps to a host format with no alpha
+ * component, Vulkan supplies 1.0 for free, and its captures are bit-exact. The
+ * X variants are only wrong because they borrow an 8888/1555 host format and so
+ * have a real alpha channel holding whatever was last written.
+ *
+ * X1A7R8G8B8 is deliberately excluded: its seven alpha bits are real data, and
+ * the goldens confirm it -- the forced-alpha half reads 0/64/129/255, the
+ * stored alpha expanded from seven bits, not a constant.
+ */
+static bool surface_color_format_dst_alpha_is_one(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_G8B8:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/*
+ * Fold a known Ad = 1.0 into a blend factor, so the fixed-function unit never
+ * consults the host attachment's alpha channel.
+ *
+ * SRC_ALPHA_SATURATE is min(As, 1 - Ad) and so is also 0 under Ad = 1, but it
+ * is left alone on purpose: no capture in the corpus exercises it on an
+ * alpha-less surface, and substituting it would be an unmeasured second change
+ * riding along with a measured one.
+ */
+static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
+{
+    switch (factor) {
+    case NV_PGRAPH_BLEND_SFACTOR_DST_ALPHA:
+        return NV_PGRAPH_BLEND_SFACTOR_ONE;
+    case NV_PGRAPH_BLEND_SFACTOR_ONE_MINUS_DST_ALPHA:
+        return NV_PGRAPH_BLEND_SFACTOR_ZERO;
+    default:
+        return factor;
+    }
+}
+
+/*
+ * The blend register with any destination-alpha factor already resolved against
+ * the bound colour surface's format.
+ *
+ * Returning a rewritten register rather than a pair of factors is what keeps
+ * the dynamic path's cache honest: `dyn_state.blend` is keyed on this value, so
+ * a surface format change that alters the factors invalidates the cache by
+ * itself. Keying on the raw register instead would carry the previous surface's
+ * blend state across a format change, which is a bug this substitution would
+ * otherwise have introduced.
+ */
+static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
+
+    if (!r->color_binding ||
+        !surface_color_format_dst_alpha_is_one(
+            r->color_binding->shape.color_format)) {
+        return blend_reg;
+    }
+
+    uint32_t sfactor = GET_MASK(blend_reg, NV_PGRAPH_BLEND_SFACTOR);
+    uint32_t dfactor = GET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR);
+    SET_MASK(blend_reg, NV_PGRAPH_BLEND_SFACTOR,
+             blend_factor_with_dst_alpha_one(sfactor));
+    SET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR,
+             blend_factor_with_dst_alpha_one(dfactor));
+    return blend_reg;
+}
+
 static void vaf_stats_log_and_reset(void)
 {
     static int vaf_frame = 0;
@@ -1124,6 +1222,15 @@ static void init_pipeline_key(PGRAPHState *pg, PipelineKey *key)
     for (int i = 0; i < ARRAY_SIZE(regs); i++) {
         key->regs[i] = pgraph_vk_reg_r(pg, regs[i]);
     }
+    /*
+     * Blend enters the key in its effective form, because the static path now
+     * bakes a destination-alpha substitution that depends on the surface
+     * format. The render pass state only carries the *host* format, and
+     * A8R8G8B8 and X8R8G8B8_Z8R8G8B8 share one -- so keying on the raw register
+     * would hand an X surface the pipeline built for an A8R8G8B8 draw. Inert
+     * where eds3 blend is supported: regs[0] is zeroed below.
+     */
+    key->regs[0] = pgraph_vk_effective_blend_reg(pg);
 #if OPT_DYNAMIC_STATES
     bool use_dyn_ds = r->extended_dynamic_state_supported;
     if (use_dyn_ds) {
@@ -1503,10 +1610,11 @@ static void create_pipeline(PGRAPHState *pg)
         if (pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND) & NV_PGRAPH_BLEND_EN) {
             color_blend_attachment.blendEnable = VK_TRUE;
 
+            uint32_t effective_blend = pgraph_vk_effective_blend_reg(pg);
             uint32_t sfactor =
-                GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_SFACTOR);
+                GET_MASK(effective_blend, NV_PGRAPH_BLEND_SFACTOR);
             uint32_t dfactor =
-                GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_DFACTOR);
+                GET_MASK(effective_blend, NV_PGRAPH_BLEND_DFACTOR);
             assert(sfactor < ARRAY_SIZE(pgraph_blend_factor_vk_map));
             assert(dfactor < ARRAY_SIZE(pgraph_blend_factor_vk_map));
             color_blend_attachment.srcColorBlendFactor =
@@ -3393,7 +3501,10 @@ static void begin_draw(PGRAPHState *pg)
 
 #if OPT_DYNAMIC_BLEND
         if (r->eds3_blend_supported) {
-            uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
+            /* Effective, not raw: see pgraph_vk_effective_blend_reg. This is
+             * the live path on Adreno -- eds3 blend is supported there, which
+             * makes the static pipeline path below dead. */
+            uint32_t blend_reg = pgraph_vk_effective_blend_reg(pg);
             uint32_t ctl0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
             if (!r->dyn_state.valid ||
                 blend_reg != r->dyn_state.blend ||
@@ -4227,7 +4338,15 @@ static void snapshot_dynamic_state(PGRAPHState *pg, ReorderWindowEntry *e)
     e->dyn_control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);
     e->dyn_control_2 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2);
 #if OPT_DYNAMIC_BLEND
-    e->dyn_blend = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
+    /*
+     * Effective, because this snapshot is replayed straight into
+     * vkCmdSetColorBlendEquationEXT and never written back to a register --
+     * unlike the draw queue's `dyn_blend`, which restores NV_PGRAPH_BLEND and
+     * must therefore stay raw. Recording the raw value here would let a
+     * reordered draw blend against the host attachment's alpha channel on a
+     * surface format that has no alpha.
+     */
+    e->dyn_blend = pgraph_vk_effective_blend_reg(pg);
     e->dyn_color_write_control_0 = e->dyn_control_0;
 #endif
 
