@@ -394,6 +394,39 @@ not the answer and the approach has to change -- to something that knows a
 coordinate's intended value rather than guessing from its proximity to an
 edge.
 
+## VERIFIED on a second host: the constant has headroom, and the residue is v
+
+The device lane ran the shipped u bias on Adreno 740 / Turnip T30, same probes.
+On the render-target centre column, **181 of 285 rows taking `gold[319]` went to
+0** -- no residue at all, not a small number concentrated in the top rows. So
+the accumulated interpolation error never exceeds 0.00098 texels anywhere in
+that quad on that host either, and the constant is not sitting on its limit.
+Whole suite, `RenderTextureLoop` skipped: 24 captures better, **0 worse**,
+each by exactly 181 px, and column 455 did not break. A uniform per-capture
+delta is the shape that survives the single-run caveat #39 put on every count
+we trade, which a total would not.
+
+The checkerboard probe is unchanged there, as predicted: the snap is u only and
+those twelve rows are v-ties.
+
+**What is left is the v-tie, and only the v-tie.** On this lane, after the bias,
+26 of the 29 non-exact `Texture_render_target` captures have their *entire*
+residual on **row 240** -- 71 px on the A8R8G8B8 family, 12 on the AY8 family,
+one row, nothing else. Row 240 is v = 128.0, the same tie at the same texel
+value as the column the bias just fixed. The three exceptions are DXT1 and its
+two relatives, which carry an unrelated 41,210 px. The device lane's equivalent
+residual is 111 px per capture; if it also sits on row 240, the two lanes
+differ only in which of that row's texels flip, which is the same host
+disagreement the checkerboard already showed.
+
+So the remaining question is not "what else is wrong" but the one already
+stated: whether v is a tie on their host at all. That is still one line
+(`vec2(1.0 / 262144.0, 1.0 / 262144.0)`) and still their measurement, because
+hardware's v-ties resolve in *both* directions -- down at texels 40, 80 and 120,
+up at 160, 200 and 240 -- so a one-directional v bias cannot be justified as
+modelling hardware. Its only case is host stability, and only their probe can
+establish that.
+
 ## What not to do
 
 `roundScreenCoords` is measured on both sides (`vsh.c:243`): 1/32 and 1/8
