@@ -193,6 +193,26 @@ title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) 
 # source to [0,1] before blending, killing the negative half -- so it needs a
 # float intermediate or shader-side blending.
 # docs/investigations/signed-blend-equations.md.
+#
+# VALIDATED 2026-09-12 on 15x the data, against the full 1,568-test oracle
+# rather than the 105 #spot_ grids the rule was fitted on: 448/448 signed
+# captures and 176,160,768 of 176,160,768 channels exact, with 0 of 224 factor
+# pairs deviating on either equation. There is no residual to characterise.
+# The control passed first -- 1,120/1,120 unsigned captures, 440,401,920
+# channels -- and seven rival rules were scored on the same goldens and
+# rejected (sign threshold 127 and 129, wrap rather than saturate, signed
+# destination, factors honoured, 0.5 bias, destination-only signing), nearest
+# at 135,697,408/176,160,768. The rule also holds on ALPHA, which the #spot_
+# fit could not reach, so it survives being composed with itself.
+#
+# Two things for whoever implements it. Fixing this will NOT make these
+# captures exact -- stack C stays wrong until #50 lands, so whole-capture
+# exactness will read as no progress; score stacks A and B, where the prize is
+# 91,557,488 channels. And the cost is entirely in the implementation shape,
+# not the rule: Vulkan cannot express it, so it needs a float intermediate or
+# shader-side blending, and the three candidate shapes are in
+# signed-blend-equations.md.
+# docs/investigations/blend-signed-full-oracle.md.
 disposition = "defect"
 suites = ["Blend tests", "Texture signed component tests"]
 
