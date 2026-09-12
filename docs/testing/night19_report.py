@@ -26,6 +26,7 @@ silently leaves the previous run's image in place, and that reads as a pass.
 import argparse
 import glob
 import os
+import subprocess
 import sys
 
 try:
@@ -97,7 +98,41 @@ def company_sha(state):
         return None
     shas = {f[3] for f in (l.rstrip("\n").split("\t") for l in open(rows))
             if len(f) >= 4 and f[0] == "company"}
-    return shas.pop() if len(shas) == 1 else None
+    if len(shas) == 1:
+        return shas.pop()
+    # No rows and several rows mean opposite things, and calling both of them
+    # "mixed" reads as a binary mix-up when it is really an empty run.
+    return "" if not shas else None
+
+
+def blend_section(state):
+    """Score any fresh Blend tests arm against silicon's blend model.
+
+    The company arm is a capture set produced on one known binary, which is
+    exactly what the surface-as-texture decode fix needs to be checked on --
+    the Adreno half of that finding was measured on a corpus run from an
+    older APK and is one binary short of quotable until this runs. So the
+    sweep finishes the measurement itself instead of leaving it for someone
+    to remember in the morning.
+
+    Prediction on the books, from the remote lane: 10,026 of 18,000 before
+    the fix, 16,379 after it, with the residue collapsing to one step.
+    """
+    arms = [d for d in glob.glob(os.path.join(state, "company", "*"))
+            if glob.glob(os.path.join(d, "Blend_tests::#spot_*.png"))]
+    if not arms:
+        return
+    here = os.path.dirname(os.path.abspath(__file__))
+    print("## Blend tests, against silicon's blend model\n")
+    for arm in sorted(arms):
+        n = len(glob.glob(os.path.join(arm, "Blend_tests::#spot_*.png")))
+        print(f"`{os.path.basename(arm)}`, {n} #spot_ captures:\n")
+        r = subprocess.run(
+            [sys.executable, os.path.join(here, "blend_channel_order.py"),
+             "--captures", arm],
+            capture_output=True, text=True)
+        out = (r.stdout or r.stderr).strip()
+        print("```\n" + out + "\n```\n")
 
 
 def main():
@@ -112,7 +147,13 @@ def main():
     groups = sorted(glob.glob(os.path.join(args.state, "crossmatch_*.txt")))
 
     print("# Issue #19: what the accused tests do when run alone\n")
-    print(f"Company arm APK: `{csha or 'MIXED — see rows.tsv'}`\n")
+    if csha:
+        print(f"Company arm APK: `{csha}`\n")
+    elif csha == "":
+        print("No company arm measured yet.\n")
+    else:
+        print("Company arm APK: **MIXED — see rows.tsv**, so no row below is"
+              " safe to compare.\n")
 
     verdicts = {"contamination": [], "missing-state": [], "partial": [],
                 "no-run": [], "mismatched-binary": []}
@@ -170,6 +211,8 @@ def main():
             shown = "—" if e is None else f"{e:.2f}"
             print(f"| `{suite}::{test}` | `{other}` | {own:.2f} | {shown} | {note} |")
         print()
+
+    blend_section(args.state)
 
     print("## Totals\n")
     order = ["contamination", "partial", "missing-state", "no-run",
