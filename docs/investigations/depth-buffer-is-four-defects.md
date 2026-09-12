@@ -175,3 +175,32 @@ else spends the afternoon on it.
 `Image_blit`'s -0.70 over half a million one-step pixels is itself a directional
 signal in a suite nobody has looked at, which is worth someone's time -- but as
 its own thing.
+
+## What the D24 fix left behind
+
+`5dac36b2` takes the Z24 fixed-point cell from 309,710 differing pixels to
+233,112. The residual is worth characterising, because it is not what I
+expected it to be.
+
+| | pixels | ours +1 | ours -1 |
+|---|---:|---:|---:|
+| before | 154,855 | 147,790 (95.4%) | 7,065 (4.6%) |
+| after | 116,556 | 102,267 (**87.7%**) | 14,289 (12.3%) |
+
+(`Cn` half only; `Cy` doubles both.)
+
+Removing the float32 rounding should have removed a *bias* — the base
+fraction added to a delta with no room for it can only round up. It did, a
+little: 95.4% one-sided becomes 87.7%. But a residual that is still seven to
+one upward is a second systematic bias, not the symmetric sampling error I
+predicted in the commit. Only 38.5% of what is left sits on a horizontal
+depth step in the golden, so it is not simply edge pixels either.
+
+The most likely remaining candidate, stated as a candidate: hardware's depth
+interpolator is not computing the exact linear value we are now computing
+correctly. It works on a fixed-point grid with a bounded number of fractional
+bits, and if it truncates on that grid, an exact floor sits at or above its
+answer -- systematically, and by at most one unit, which is what we measure.
+If that is right then the target is not exactness but hardware's arithmetic,
+and the way in is a microbenchmark that writes known depths at known
+positions rather than more work on this suite.
