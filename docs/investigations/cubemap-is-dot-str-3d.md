@@ -508,3 +508,38 @@ byte-identical to one of the two pre-fix outcomes, which is not what two
 different sampling operations should do. Most likely lavapipe's undefined 2D
 read of a cube view was already indexing layer 0 through the same filtering
 path. Unproven, and it changes none of the numbers above.
+
+## Where the remaining error is: our face selection leaves the positive faces
+
+Measured once the captures became deterministic, which is the first time this
+question could be asked. A temporary probe emitted the cube face our lookup
+selects, per pixel, over the golden's cube region:
+
+| capture | `+X` | `-X` | `+Y` | `-Y` | `-Z` |
+|---|---:|---:|---:|---:|---:|
+| `DotSTR3D_HiLo_1` | **100.0%** | - | - | - | - |
+| `DotSTR3D_0to1` | 78.4% | 0.1% | 13.6% | 7.9% | - |
+| `DotSTR3D_-1to1D3D` | 33.1% | 15.6% | 17.1% | 33.0% | 1.1% |
+
+Set that against what the goldens permit. Every golden colour is in the
+odd-parity set `{R, G, B, W}`, which is the corner set of a **positive** face;
+the negative faces carry the even-parity set `{C, M, Y, K}` and **not one
+golden pixel is ever one of those**. So:
+
+> **Silicon never leaves the positive faces. We reach a negative face on up to
+> 49% of pixels.**
+
+That is a measured constraint rather than an inference, and it splits the
+remaining error in two:
+
+- **`HiLo_1` picks `+X` on every pixel**, and its golden is the `x = 0` edge
+  pair of `+X`, so on that capture our *face* already agrees with silicon and
+  only the within-face position is wrong.
+- **The signed dotmaps diverge on the face itself**, reaching `-X`, `-Y` and a
+  little `-Z` where silicon reaches none.
+
+The obvious candidate is that the hardware address unit works on magnitudes,
+which would make a negative face unreachable by construction and sits well
+with "lands on a corner". That is a hypothesis and is written here rather than
+in the tracker; what is established is the face distribution above and the
+goldens' parity, both of which are direct measurements.
