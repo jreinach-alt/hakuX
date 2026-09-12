@@ -55,7 +55,7 @@ a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 # Killing by PID matters: a pattern kill here would match this script's own
 # command line.
 CAPTURE_LOG="${CAPTURE_LOG:-}"
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-unhandled:W hakuX-audiocap:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-unhandled:W hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 LOGCAT_PID=""
 
 release() {

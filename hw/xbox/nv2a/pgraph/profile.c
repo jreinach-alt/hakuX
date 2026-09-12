@@ -243,6 +243,25 @@ void nv2a_profile_flip_stall(void)
 
     g_nv2a_stats.phase_working.post_flip = true;
 
+    /* Which binary is this? Emitted once, on the first frame, because the
+     * 120-frame page line below never fires on a short run: a 13-test disc
+     * finishes well inside 120 guest frames, so a correctness A/B carried no
+     * proof that its two arms were different builds -- which is exactly the
+     * arm where that proof matters most. Identity had to be recovered
+     * afterwards from APK hashes. See #54 and the mb_emitted counter in
+     * tcg/tcg-op.c: zero means this build elides guest memory barriers. */
+#ifdef __ANDROID__
+    if (g_nv2a_stats.frame_count == 1) {
+        extern uint64_t hakux_mb_emitted;
+        extern uint64_t hakux_tb_generated;
+        extern int __android_log_print(int, const char *, const char *, ...);
+        __android_log_print(4, "hakuX-build",
+                            "mb_emitted=%llu tb_generated=%llu",
+                            (unsigned long long)hakux_mb_emitted,
+                            (unsigned long long)hakux_tb_generated);
+    }
+#endif
+
     /* Where the guest's stores into code pages are landing. */
 #ifdef __ANDROID__
     if ((g_nv2a_stats.frame_count % 120) == 0) {
