@@ -98,7 +98,7 @@ disposition = "harness"
 suites = ["Pixel shader"]
 
 [issue.16]
-title = "Depth surface readback converts incorrectly"
+title = "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point half is exact or one ULP"
 # Half of this is done and the framing needs revising. The *_ZB captures are the
 # raw zeta word as ARGB8888 (depth = A<<16|R<<8|G, stencil = B); decoded that way
 # the readback round-trips against known geometry, so the conversion is not the
@@ -230,8 +230,26 @@ disposition = "unclassified"
 
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
+# Re-measured on the merged head with both f0829404 and fb9cf8c7 in: Specular
+# ControlFlags_VS is 102,240 px, so the figure this issue was filed with is the
+# POST-fix number and fb9cf8c7 does not close it. The missing light term is
+# real -- 220,892 channels on the front, 144,810 on the back.
+#
+# unknown-semantics rather than defect because the obvious fix is measured
+# dead, not unwritten. A light loop was built and deliberately held back:
+# -55,030 channels, no regressions, only the two lit captures moved, and 12%
+# of what the lights should account for is the wrong number for a correct
+# model. Cause: TestControlFlags drives the PROGRAM's model matrix per draw
+# while modelViewMat0 sits at the XDK default, so a normal built from the
+# fixed-function register cannot follow the rotation that hardware's lighting
+# follows.
+#
+# The experiment that would restart this: determine where the lighting unit
+# takes its geometry from when a vertex program owns the transform. That needs
+# hardware evidence -- a fourth candidate derived from here is what the held
+# negative already rules out.
 suites = ["Specular", "Specular back", "Lighting control"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.50]
 title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in reverse vertical order (not a blend defect)"
