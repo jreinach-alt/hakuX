@@ -63,9 +63,22 @@ title = "Line and point rasterisation"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 
+# Reclassified 2026-09-11. It is not precision: of 18,000 sampled #spot_
+# pixels, zero are off by one or two steps, and 6,353 of the 7,974 misses are R
+# and B the wrong way round -- a render target read in the surface's channel
+# order instead of the texture's. See issue 44 and
+# docs/investigations/blend-render-target-channel-order.md.
 [issue.14]
-title = "Blend precision (low priority)"
+title = "Blend: 4/5 of the residual is issue 44's channel order, not precision"
 suites = ["Blend tests"]
+
+# The largest single non-precision population in the corpus (6,499,208
+# channels on the reclassified 2026-09-12 numbers), and host-dependent:
+# lavapipe scores 16,625 of 18,000 sampled pixels where Adreno scores 10,026.
+[issue.44]
+title = "A render target sampled as a texture is read in the surface's channel order"
+suites = ["Blend tests", "Texture render target", "Blend surface",
+          "Surface format", "Image blit"]
 
 [issue.15]
 title = "pgraph suite: some tests are order-dependent"
