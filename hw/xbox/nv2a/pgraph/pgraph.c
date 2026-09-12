@@ -1854,6 +1854,41 @@ slow_path:
 unhandled:
     trace_nv2a_pgraph_method_unhandled(subchannel, pg->cached_graphics_class,
                                            method, parameter);
+#ifdef __ANDROID__
+    /*
+     * The trace above goes through QEMU's trace framework, which does not
+     * reach logcat, so on Android a method we do not implement is dropped in
+     * complete silence. That is the worst possible failure mode for an
+     * accuracy question: #19's isolation pass found all six Image_blit clip
+     * tests rendering the *unclipped* blit, and no clip-rectangle class is
+     * defined in nv2a_regs.h at all -- but "we ignore it" and "the guest never
+     * sends it" are indistinguishable from outside.
+     *
+     * One line per distinct (class, method) pair, so a suite that hammers an
+     * unimplemented method logs once rather than thousands of times.
+     */
+    static struct { uint32_t cls, method; } seen[64];
+    static unsigned int n_seen;
+    bool already = false;
+    for (unsigned int i = 0; i < n_seen; i++) {
+        if (seen[i].cls == pg->cached_graphics_class &&
+            seen[i].method == method) {
+            already = true;
+            break;
+        }
+    }
+    if (!already) {
+        if (n_seen < ARRAY_SIZE(seen)) {
+            seen[n_seen].cls = pg->cached_graphics_class;
+            seen[n_seen].method = method;
+            n_seen++;
+        }
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-unhandled",
+                            "class 0x%04x method 0x%04x param 0x%08x (sub %d)",
+                            pg->cached_graphics_class, method, parameter,
+                            subchannel);
+    }
+#endif
     return num_processed;
 }
 
