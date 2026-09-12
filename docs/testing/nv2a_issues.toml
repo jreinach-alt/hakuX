@@ -356,7 +356,36 @@ title = "Texture cubemap: DOT_STR_3D saturates to a corner texel on silicon and 
 # What Bad2D actually shows, from the image rather than the histogram: we do
 # not land on a wrong corner, we DITHER BOTH CHECKER COLOURS at texel
 # frequency where silicon is one flat #FFFF44 across all 56,909 px. Same shape
-# as the cubemap captures.
+# as the cubemap captures. Note stage 3 is written once in Initialize() in that
+# suite, so a "sampled the wrong texture" reading does not follow; which part
+# of ad1caa07's window changed it is NOT established.
+#
+# THE SATURATION MECHANISM IS FALSIFIED, by arithmetic and before any run. The
+# claim was that the dot products run far outside [0,1] and saturate at
+# CLAMP_TO_EDGE. They do not: pT1..3 are rows of the INVERSE fixed-function
+# composite matrix (model_view x perspective x viewport, so the forward matrix
+# carries the 640x480 and 0x00FFFFFF scales and the inverse carries their
+# reciprocals), bounding |dot| at 0.00299, 0.00299 and 9.37e-7. dotSTR3 never
+# leaves a box of side 0.003 about the origin, and rotations are orthonormal so
+# no convention changes the lengths.
+#
+# That also leaves OUR output unexplained, which is the more useful half: at
+# (0.003, 0.003) with box filtering every fragment should land on texel (0,0)
+# and the cube should be flat, and ours is texel-frequency noise across all
+# eight corners. So the coordinate reaching our sampler is not dotSTR3.xy as
+# computed, and one of the texcoord / filter / binding assumptions is wrong.
+#
+# The observable rule and the predicted counts above are UNAFFECTED -- they
+# rest on the goldens, not on the explanation: the fetched texel is a corner
+# picked by sign(dot1), sign(dot2).
+#
+# Untested candidate, deliberately recorded as a candidate: the test sets
+# SetTexCoord1/2/3(..., 0.f), so w is ZERO, and the dot modes take pT.xyz raw
+# where every other pT consumer divides by pT.w. A projective divide in the
+# hardware address unit would send every component to +/-inf with the sign of
+# the numerator -- making magnitudes irrelevant by construction and producing
+# exactly the structure the goldens show. Settling it needs one instrumented
+# run emitting vec4(clamp(abs(dotSTR3),0,1),1) in place of the fetch.
 #
 # Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
 # +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
