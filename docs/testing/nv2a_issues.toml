@@ -34,10 +34,49 @@
 
 [issue.4]
 title = "Render-to-texture diverges from silicon"
+# MEASURED OUT 2026-09-12: there is no residual specific to rendering INTO a
+# texture, and the number that ranked this issue first on the structural board
+# was test contamination rather than a measurement.
+#
+# The 9,034,555-channel / 1-of-41 figure came from a capture set with
+# RenderTextureLoop INCLUDED. That test runs first alphabetically and disables
+# the texture stage, so the 40 format tests that never set it up render with no
+# stage: each differs by exactly 81,225 px -- the whole quad -- while the loop
+# test itself is pixel-exact. That is #27 verbatim. Reproduced to all seven
+# digits from such a set; a no-loop set of the same suite on the same build
+# gives 752,908 channels, 5 exact. The "2.8x disagreement between the lanes"
+# was not a disagreement either: 3,209,634 px against 9,034,555 channels on the
+# same captures, ratio 2.815.
+#
+# The YUV half is ALREADY FIXED by 52defa5b ("hardware rounds each YUV term
+# separately"): Texture_format's UYVY_L and YUY2_L are 0 of 388,150 --
+# pixel-exact. The 563,668 figure in the corpus TSV predates it.
+#
+# What remains is the SOURCE texture's decode surfaced through a render target
+# that is itself exact: ~102,758 channels, 97.1% of it DXT1 (99,769 channels,
+# which is #6) plus a 2,989-channel precision floor. That floor is one row:
+# row 240 only, band height exactly 1, ours equal to gold[row+1] on 285 of 285
+# columns and to gold[row-1] on none. It is the v-tie at v = 128.0 that
+# edge-defect.md left open deliberately, against a measured 2.2x ceiling for
+# the bias method.
+#
+# Predicted on a no-loop disc: ~102,758 channels, 13 of 40 exact. UYVY_L and
+# YUY2_L must go 230,455 -> 0, DXT1 must stay at 99,769, and the 26
+# boundary-shift captures must not move. A fresh isolated sweep is queued.
+#
+# Ruled out, all measured: the d42a8d79bc tile hazard cannot reach a 3D render
+# (nothing outside blit.c consults a tile); the render-then-sample dependency
+# is present and correct (bind_surface_as_texture hand-rolls the
+# GENERAL->GENERAL barrier that the equal-layout early return skips); the
+# swizzle compute shader's hardcoded 4-byte element is unreachable (both
+# callers gate on bytes_per_pixel == 4); no capture aligns to any block size;
+# and the bump suites are not a second YUV instrument (all four have
+# golden_colours = 2, so they score every model identically).
+# docs/investigations/render-to-texture-residual.md.
 # Column 320 in every capture is a texel tie at u = 128 (boundary-shift class,
 # 26 of 29 failing captures are otherwise exact); the rest is format decoding.
 # docs/investigations/edge-defect.md.
-disposition = "unclassified"
+disposition = "precision-floor"
 suites = ["Texture render target"]
 
 [issue.6]

@@ -1,5 +1,26 @@
 # 57% of the corpus is one-step, and one-step can mean "not ours"
 
+> **CORRECTION 2026-09-12 — the `Texture_render_target` figure in this file is
+> the #27 contamination, not a measurement of the suite.**
+>
+> The 9,034,555-channel / 1-of-41 reading was taken from a capture set with
+> `RenderTextureLoop` INCLUDED. That test runs first alphabetically and
+> disables the texture stage, so the 40 format tests that never set it up
+> render with no stage: each differs by exactly 81,225 px, the whole quad,
+> while the loop test itself is pixel-exact. The same figure reproduces to all
+> seven digits from such a set. A no-loop set of the same suite on the same
+> build gives **752,908 channels, 5 exact**.
+>
+> This file's own staleness check compared two loop-included sets against each
+> other, so they agreed by sharing the contamination.
+>
+> The "2.8x gap between the lanes" it records is also not a disagreement: one
+> lane counted pixels and the other channels on the same captures — 3,209,634
+> px and 9,034,555 channels, ratio 2.815.
+>
+> Do not rank on any number in this file for that suite. See
+> `render-to-texture-residual.md`.
+
 Tonight the bump suites' 6.46M px of one-step alpha turned out to be lavapipe's
 blend, confirmed on Adreno with zero pixels differing. That was worth doing
 again across the whole corpus, because the ranking both lanes work from counts
