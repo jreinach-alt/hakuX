@@ -1,5 +1,30 @@
 # Where the corpus bounds the hardware value but cannot determine it
 
+> **CORRECTION 2026-09-12 — colour count is a PROXY for saturation, and it has
+> a false-negative mode. Two fog entries below are wrongly listed.**
+>
+> What decides whether a capture can pin a value is not how many distinct
+> colours the golden holds, but whether the value sits **interior to the
+> transfer function's range** or **at the end of it**. A golden holding a
+> single colour still pins the value exactly if that colour is a partial
+> *mix* rather than a clip.
+>
+> `Fog_coord_vec4 CoordNotSet` is the counterexample: **one** colour over
+> 30,568 px, and it fixes the fog factor to 1/255. Its final combiner is
+> `f*C0 + (1-f)*diffuse` with C0 = (0.5, 0, 0.75) against white diffuse, which
+> clips at neither end, so the 8-bit factor inverts straight out of the
+> colour -- and exactly one factor in 0..255 reproduces the golden on all
+> three channels. `Fog_carryover` is likewise pinning rather than saturated.
+>
+> **Of the 448,742 fog channels this file calls unfalsifiable, 127,998 are
+> pinning evidence.** That is the capture which settled #42, and listing it
+> here is what hid the answer.
+>
+> So: use `golden_colours` to *rank* candidates for suspicion, never to
+> exclude a capture. Before discarding one, check whether its transfer
+> function clips at the value in question. See #42's note in
+> `glsl/vsh.c` and `nv2a_issues.toml`.
+
 Some goldens are saturated. Where hardware's output has clipped to one colour
 across the whole region we differ in, the capture tells you the hardware value
 was *at least* past the clipping threshold and nothing else. Every model that

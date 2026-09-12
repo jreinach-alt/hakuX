@@ -345,6 +345,47 @@ title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad o
 suites = ["Fog gen"]
 disposition = "unknown-semantics"
 
+# MEASURED 2026-09-12, so this is no longer unknown-semantics. Hardware's
+# oFog is an output register that is never cleared: a vertex program that does
+# not write it renders with the last value the PREVIOUS program left there. We
+# initialise `vec4 oFog = vec4(0.0,0.0,0.0,1.0)` per invocation in
+# glsl/vsh.c:213 and then read fogDistance = oFog.x, so a fog-silent program
+# fogs with coordinate 0 and the draw renders unfogged. The differing line is
+# that initialiser, and the value that belongs there is not a constant.
+#
+# Pinned two independent ways:
+#   Fog_coord_vec4 CoordNotSet -- combiner f*C0 + (1-f)*diffuse with
+#     C0 = (0.5,0,0.75) on white diffuse clips at neither end, so the 8-bit
+#     factor inverts out of the colour, and EXACTLY ONE factor in 0..255
+#     reproduces the golden (223,192,239) on all three channels: 63 =
+#     trunc(0.25 x 255), the oFog.x the two priming draws wrote from c[120].
+#     diffuse was taken from the suite's own X-0.00 golden so the inversion
+#     does not lean on our renderer.
+#   Fog_carryover FogCarryover -- in all six fog modes the no-coordinate
+#     triangle is BIT-IDENTICAL to the explicit-coordinate one in the same
+#     frame, 4,032 px per mode pair, at coordinates 0.6/0.1/0.2 whose biases
+#     keep the factor interior. Our explicit-coordinate triangles match gold
+#     in all six, which is what isolates the defect to the carried value.
+#
+# Ruled out: a fixed fallback coordinate (killed by monotonicity alone -- no
+# constant is 0.6, 0.1 and 0.2 at once); reading the FOG_COORD attribute when
+# the program is fog-silent (fits all eleven Fog_carryover captures, because
+# there the previous program copied that attribute into oFog, so the two
+# suites are DEGENERATE for that pair -- CoordNotSet separates them, since
+# fog_tests.cpp never calls SetFogCoord at all); honouring FOGGEN under a
+# program (already dead at +7,449,481 channels, and dead again here because
+# an unset program leaves oD1 as unwritten as oFog).
+#
+# The naive saturating fix is PRICED AND REFUSED: the 10 Carryover<Primitive>
+# captures are genuinely clipped so they bound rather than choose the value,
+# and such a fix sends them to zero while FogCarryover keeps 8,064 of 12,096 px
+# and CoordNotSet keeps all 30,568 with its error TRIPLED from (32,63,16) to
+# (96,192,48). The one capture that discriminates is the one it makes worse.
+#
+# No functional diff yet because the needed value is GPU-resident -- the last
+# oFog.x the previous draw's last vertex wrote, surviving a pipeline change --
+# which is descriptor-set work in vk/renderer.c, shaders.c and vsh.h. The
+# CONDITION is free: whether a program writes oFog is decidable from its text.
 [issue.42]
 title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
 # Mechanism known, value not obtainable from this corpus. Every failing pixel is
@@ -359,7 +400,7 @@ title = "nv2a: the fog output register keeps its last value when a vertex progra
 # the goldens here are saturated (one to three colours where we differ), so a
 # differing-pixel reduction proves nothing about the carried value.
 suites = ["Fog carryover", "Fog vsh"]
-disposition = "unknown-semantics"
+disposition = "defect"
 
 [issue.43]
 title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
