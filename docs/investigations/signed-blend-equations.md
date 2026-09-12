@@ -68,6 +68,52 @@ captures -- tops out at 44.6% (factors ignored, no bias, wrap). No candidate in
 that space is the rule, which is why this document stops here rather than
 proposing one.
 
+## VERIFIED against a second suite, with a control
+
+`Texture signed component tests` draws a 256 texel gradient 1:1 over a CPU
+written 12 pixel checkerboard of 255 and 127, straight to the framebuffer with
+no render target in the way. The texel value is `x & 0xFF` and the quads sit at
+x in [64, 320) and [320, 576), so the source is known analytically rather than
+read back from our own render -- which matters, because this suite exists to
+question our texture decode, and an earlier attempt to read the source from our
+own capture produced 192 of 256 source values mapping to more than one result.
+
+Each mask block alternates unsigned and signed rows; only the unsigned ones are
+used here. Each is drawn twice, at source alpha 255 and 127.
+
+**The control:** the suite's plain `ADD` case fits `S*a + D*(1-a)` on
+**795 of 795** consistent triples. Layout, checkerboard phase, channel mapping
+and source model are therefore all correct, and the signed numbers below rest
+on a validated harness.
+
+### Both factors are ignored
+
+Source alpha 127 and 255 give **identical** results for every observed
+`(S, D)` under both signed equations, though the factors are
+`SRC_ALPHA`/`INV_SRC_ALPHA` and the control case varies strongly with it. Taken
+with `dfactor=0` and `dfactor=1` being identical in the `#spot_` captures, the
+signed equations ignore both blend factors.
+
+### The rule, and where it stops
+
+| destination | hardware |
+|---|---|
+| 0 (`#spot_`) | 0 for every source, white included |
+| 51 (`#spot_`) | `(S + D) mod 256` exactly |
+| 127 (this suite) | `(S + D) mod 256` exactly, across the whole source range |
+| 255 (this suite) | **255** for S up to ~124, then `(S + D) mod 256 = S - 1` from S ~144 |
+
+At D = 127 the wrap is clean end to end: S = 124 gives 251, S = 144 gives 15
+(271 - 256), S = 252 gives 123. At D = 255 the top half wraps the same way --
+S = 144 gives 143, S = 252 gives 251 -- but the bottom half saturates at 255
+instead of wrapping to S - 1.
+
+So the rule is `(S + D) mod 256` with both factors ignored **for mid-range
+destinations**, and something else at both extremes of D. Candidates tried and
+rejected against the full curve: clamp everywhere; clamp when the wrapped
+result would be below 128 (fits D = 255, contradicts D = 127); signed 8 bit
+operands; saturation in 9 bits; a 0.5 bias in any of the forms above.
+
 ## Next
 
 The discriminating experiment is a destination sweep: the `#spot_` captures
