@@ -554,6 +554,33 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
         slot = (method-NV1BA0_PIO_SET_SUBMIX_HEADROOM)/4;
         d->vp.submix_headroom[slot] =
             argument & NV1BA0_PIO_SET_SUBMIX_HEADROOM_AMOUNT;
+        /* Every use of this field is a DIVISION -- here, and at the two sites
+         * in the monitor mix below -- with no compensating multiply anywhere
+         * under hw/xbox/mcpx. On the default path (use_dsp false) the mixbins
+         * are discarded, so unlike the DSP path there is no scene to earn the
+         * divisor back, and the field is three bits: 6.02 dB of loss per unit,
+         * up to 42 dB. That is a candidate cause of the reported "volume is
+         * low even at maximum", but only if titles actually program a
+         * non-zero value -- it resets to zero and nothing in this tree records
+         * what the XDK writes, which would make any gain change here inert.
+         *
+         * So log it once per slot rather than guessing. One line, and it
+         * settles the question on the next run of any title that plays audio.
+         * Routed through __android_log_print because a core fprintf(stderr)
+         * never reaches logcat on Android. docs/investigations/audio-assessment.md. */
+        if (d->vp.submix_headroom[slot]) {
+            static uint32_t logged_slots;
+            if (!(logged_slots & (1u << slot))) {
+                logged_slots |= 1u << slot;
+                extern int __android_log_print(int, const char*, const char*, ...);
+                __android_log_print(4, "hakuX-audio",
+                    "submix_headroom[%d] = %d -- monitor mix divides by %d (-%d.%02d dB)",
+                    slot, d->vp.submix_headroom[slot],
+                    1 << d->vp.submix_headroom[slot],
+                    (602 * d->vp.submix_headroom[slot]) / 100,
+                    (602 * d->vp.submix_headroom[slot]) % 100);
+            }
+        }
         break;
     case SE2FE_IDLE_VOICE:
         if (d->regs[NV_PAPU_FETFORCE1] & NV_PAPU_FETFORCE1_SE2FE_IDLE_VOICE) {
