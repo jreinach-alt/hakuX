@@ -65,3 +65,42 @@ claim that died came from a sample standing in for a region, or a number whose
 date I had not checked. Both are cheap to avoid and neither is visible in the
 result — a point sample through structured content will manufacture whatever
 agreement you go looking for, and with enough captures it will look convincing.
+
+## Addendum: the five largest unmeasured suites, measured
+
+All five have goldens and no rows in either lane's current corpus. All five run
+on the disc we already have — the gap was that the rankings stopped seeing
+them, not that they were unrunnable.
+
+| suite | captures | exact | differing | one-step | **not ±1** |
+|---|---:|---:|---:|---:|---:|
+| `W_buffering` | 530 | 108 | 4,833,156 | 2,303,941 | **2,529,215** |
+| `3D_primitive` | 160 | 4 | 3,866,664 | 3,184,200 | 682,464 |
+| `Shade_model` | 168 | 12 | 3,896,446 | 3,337,260 | 559,186 |
+| `Depth_buffer_fixed_function` | 80 | 6 | 662,890 | 336,802 | 326,088 |
+| `Front_face` | 24 | 4 | 404,688 | 287,640 | 117,048 |
+
+962 captures, 4.21M non-one-step channels that no ranking has been counting.
+
+**`W_buffering` differs by 2.2× between hosts.** The remote lane measures
+5,553,462 non-one-step channels on lavapipe; Adreno gives **2,529,215**. Every
+time a figure has diverged that far between hosts tonight, part of it has
+turned out not to be ours — the bump alpha was the clear case, at 6.46M px
+that vanished entirely on Adreno. So this suite's ranking position depends on
+which host you ask, and it should not be ranked from one.
+
+**`3D_primitive` and `Shade_model` are 82% and 86% one-step**, so most of their
+large raw figures is the precision class, the same shape as `Fog_param`.
+Their structural remainders, 682k and 559k, are what is worth ranking.
+
+**`Front_face` produced 24 captures against 36 goldens**, so that suite is
+another partial-retirement case like `Depth buffer` — a third of its oracle
+needs the 2025 disc.
+
+Two harness bugs of mine on the way, both silent rather than loud, both the
+same shape as the six above: the guest directory was derived by `cut -c1-5` in
+the disc builder and hardcoded in the runner, so all five suites would have
+extracted 0 files and read as "renders nothing"; and restarting the run over
+the same log path while the killed process still held that descriptor
+interleaved a stale `0 files` line from the dead run into the live one. Both
+caught by reading the *first* suite's output rather than waiting for all five.
