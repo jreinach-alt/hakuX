@@ -317,6 +317,20 @@ case "${1:-status}" in
     log "=== dispatcher serving; queue=$D/queue ==="
     while :; do
         shopt -s nullglob
+        # Served in glob order, which is ASCII order, and that is the whole
+        # priority mechanism. Normal requests are named with an epoch prefix so
+        # they sort by arrival. Two conventions ride on top:
+        #
+        #   0-*   jumps the queue -- a 45-second probe that unblocks an agent
+        #         should not sit behind two 26-minute A/B arms.
+        #   z-*   idle priority -- the full-corpus scoreboard sweep enqueues
+        #         one request per suite as z-sweep-*, so every digit-prefixed
+        #         request from an agent sorts ahead of all of them. The sweep
+        #         then fills whatever gaps the session leaves without ever
+        #         blocking a fix from being verified.
+        #
+        # It yields between suites rather than mid-suite, so an agent waits at
+        # most one suite instead of the remaining hours.
         reqs=("$D"/queue/*.req)
         if [ "${#reqs[@]}" -eq 0 ]; then
             resume_sweep
