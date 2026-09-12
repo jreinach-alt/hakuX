@@ -92,6 +92,25 @@ typedef struct ImageBlitState {
     unsigned int width, height;
 } ImageBlitState;
 
+/*
+ * The destination clip rectangle the 2D classes blit through (class 0x19).
+ * Zero width or height means the guest has not set one; hardware treats an
+ * unset rectangle as unbounded, not as empty, so the blit path must not read
+ * a zero size as "clip everything away". Issue #47.
+ */
+typedef struct ClipRectangleState {
+    hwaddr object_instance;
+    unsigned int x, y;
+    unsigned int width, height;
+    /*
+     * Whether the guest has written a size. "Never set" and "set to zero" are
+     * different states and the blit must not confuse them: unset is unbounded,
+     * a written zero clips everything away. Image blit's Clip_320_240_0_0 and
+     * Clip_320_240_0_10 are the two tests that tell them apart.
+     */
+    bool size_written;
+} ClipRectangleState;
+
 typedef struct BetaState {
   hwaddr object_instance;
   uint32_t beta;
@@ -139,6 +158,7 @@ typedef struct PGRAPHState {
     /* subchannels state we're not sure the location of... */
     ContextSurfaces2DState context_surfaces_2d;
     ImageBlitState image_blit;
+    ClipRectangleState clip_rectangle;
     KelvinState kelvin;
     BetaState beta;
 

@@ -819,6 +819,17 @@
 #   define NV012_SET_OBJECT                                   0x00000000
 #   define NV012_SET_BETA                                     0x00000300
 
+/*
+ * The NV clip-rectangle object. The 2D classes below take their destination
+ * clip from it, and the guest binds and sets it in every Image blit clip test
+ * -- see issue #47, where a register log caught all three of these methods
+ * being dropped because the class was not defined here at all.
+ */
+#define NV_CONTEXT_CLIP_RECTANGLE                        0x0019
+#   define NV019_SET_OBJECT                                   0x00000000
+#   define NV019_SET_POINT                                    0x00000300
+#   define NV019_SET_SIZE                                     0x00000304
+
 #define NV_MEMORY_TO_MEMORY_FORMAT                       0x0039
 
 #define NV_CONTEXT_PATTERN                               0x0044
