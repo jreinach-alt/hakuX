@@ -201,3 +201,47 @@ reliably find work. It has to be measured.
 
 `Depth_buffer` is partial -- this disc runs 144 of its 784 goldens, which is the
 subset problem the device lane found from the other direction.
+
+## Corrections to the table above
+
+The device lane's suggestion -- check capture count against golden count on
+every suite, since the mismatch is the tell for a partial retirement and it is
+free -- caught two errors in my own consolidation within a minute of being
+applied.
+
+**`Depth_buffer_fixed_function` was double-counted.** It appears on two discs
+here (`iso_risk.iso` and `iso_dbff.iso`) and my consolidation summed both runs:
+160 captures against 80 goldens, and **681,452 structural channels where the
+true figure is 340,726**. Deduplicating by suite and keeping the fullest run
+fixes it.
+
+**Three suites are partial and were not marked as such:** `Depth_buffer`
+144/784, `Image_blit` 41/42, `Texture_border` 1/18. Their numbers are floors,
+not totals.
+
+**The corrected total for previously-absent suites is 16,801,045 structural
+channels**, not 17,141,771. Against the previously-known corpus of 16,621,450
+that still slightly more than doubles the known population, but the margin is
+thin enough that the claim deserved the better number.
+
+## And the ranking claim does not survive one host
+
+I wrote that `W_buffering` "ranks second". The device lane measured it on
+Adreno: **2,529,215 structural against this lane's 5,553,462 -- a 2.2x split.**
+
+Every figure that has diverged that far between the two lanes tonight has
+turned out to be partly not ours; the bump alpha was 6.46M px that vanished
+entirely on a real GPU. That does not make the difference lavapipe's, and
+nobody has shown that it is. It does mean **a number that halves depending on
+the rasteriser cannot set a rank from one host**, and I should not have put it
+second on a single measurement after spending the night establishing exactly
+that.
+
+`3D_primitive` splits the same way: 1,127,533 here against 682,464 on Adreno.
+`Shade_model` and `3D_primitive` are also 86% and 82% one-step on their arm, so
+their rankable remainders are far below their raw differing counts.
+
+The defensible statement is the one this page started with: **the corpus was
+built over a quarter of the golden set, the suites outside it hold at least as
+much structural defect as the suites inside, and three of them are already
+exact.** Where any individual suite ranks needs both hosts.
