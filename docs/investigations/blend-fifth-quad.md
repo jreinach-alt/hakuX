@@ -1,4 +1,4 @@
-# `Blend tests`: the arithmetic is right, the fifth quad is the first one again
+# `Blend tests`: the arithmetic is right, and the residual is one quad
 
 Measured 2026-09-12 on the recovered 1,568-test oracle, APK `64c01cc70067`.
 
@@ -15,49 +15,48 @@ grids replaced them. The 2025-03-14 release still generates them:
 is the entire finding, and no amount of work on the modern subset could have
 found it.
 
-## The result
+## The result, and one claim of mine to disregard
 
-Over the 1,120 tests using the five **unsigned** equations:
+Over the 1,120 tests using the five **unsigned** equations, what is solid is
+the *location*:
 
 | | |
 |---|---:|
-| quads 1–4 matching silicon at their centres | **4,480 / 4,480** |
-| our quad 5 equal to our own quad 1 | **1,119 / 1,120** |
-| captures wrong in any *other* way | **0** |
+| captures differing on exactly 16,384 px | **847** |
+| captures differing on 8,192 px | 246 |
+| the differing region, measured | **256 rows × 64 cols, one quad** |
+| captures wrong anywhere else in the frame | **0** |
 
-**The blend arithmetic is correct.** Every one of the first four quads, in every
-one of the 1,120 tests, across all five equations and all fifteen source and
-fifteen destination factors, matches hardware. There is no factor-mapping
-error, no equation error and no rounding error to find here.
+So the residual is confined to the fifth quad and the rest of the frame —
+including the other four quads, across all five equations and all fifteen
+source and fifteen destination factors — matches hardware. **The blend
+arithmetic is right.** That part is established by the pixel counts and the
+bounding boxes, and it stands.
 
-**The fifth quad renders the first quad's result.** Not a different wrong
-colour — the first quad's, exactly, 1,119 times out of 1,120. Where the test
-happens to want the same colour in both positions the capture comes out exact,
-which is the whole of the 255 "passing" captures; the other 865 differ on
-precisely the fifth quad's 64×256 pixels and nowhere else.
+**The mechanism is not established, and my first answer was wrong.** I reported
+that the fifth quad renders the first quad's result, on the strength of
+single-pixel samples at row 240 agreeing on 1,119 of 1,120 captures. Comparing
+the whole 256×64 *region* against our own first quad instead: **identical on 0
+of 224**. The quads are not flat — the same file read one row apart gives
+different colours — so a row of point samples was never measuring "the quad's
+colour", and the agreement it produced was an artefact of the sampling.
 
-Three examples, at the fifth quad's centre:
+What the region actually contains, on `1_MAX_1` (`MAX` ignores both factors, so
+the expected result is `max(source, destination)` per channel):
 
-| test | silicon | ours | our quad 1 |
-|---|---|---|---|
-| `1_MAX_1` | (48, 48, 196) | (196, 48, 48) | (196, 48, 48) |
-| `srcRGB_ADD_1-srcRGB` | (47, 47, 161) | (176, 48, 48) | (176, 48, 48) |
-| `1_MIN_dstRGB` | (26, 26, 36) | (48, 4, 4) | (48, 4, 4) |
+| | colours present in the differing region |
+|---|---|
+| silicon | (0,0,221) (0,221,0) (44,44,192) (44,192,44) (48,48,196) (48,196,48) |
+| ours | (0,0,192) (0,192,0) (44,44,192) (44,192,44) (4,4,196) (4,196,4) |
 
-## What it is not
-
-It is **not** a blend defect, and that is the point. `MIN` and `MAX` do not
-consult the blend factors at all and behave identically, so the mechanism is
-upstream of blending: the fifth draw is issued with the first draw's source
-colour. Something about the state the fifth quad sets is not reaching us, or is
-reaching us as the first quad's.
-
-It is also **not** the signed-equation problem. The 448 `SADD`/`SREVSUB` tests
-fail on five or six quads each rather than one, which is #43 and has its rule
-already derived. Splitting them out is what left the unsigned result this
-clean.
-
-## Where to look
+Where silicon has 221 we have 192, and where it has 48 we have 4 — and in both
+cases the value we produce is the *lower* of the pair, with the two flat
+background colours shared. That is the shape of the source contributing
+nothing: the fifth draw's source either never arrives or is being taken as the
+destination. **That is a hypothesis, not a finding** — it fits one test's
+colour inventory and has not been checked across the suite, and the last two
+hypotheses I offered for this region did not survive contact with a better
+measurement.## Where to look
 
 The suite draws its quads in sequence with a colour change between them. On the
 evidence, four of those changes take effect and the fifth does not — so the
