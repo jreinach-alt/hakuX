@@ -673,157 +673,53 @@ disposition = "defect"
 suites = ["Blend tests"]
 
 [issue.51]
-title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked by two dot-product signs"
-# The rule, at the level of the observable and no further: under DOT_STR_3D the
-# fetched texel is a CORNER of the texture, picked by sign(dot_{i-2}) and
-# sign(dot_{i-1}); the third component selects nothing. WHY it saturates is
-# open. The first answer -- the dots run far outside [0,1] and clamp -- is
-# FALSIFIED: reconstructing the exact matrix chain gives |dot1|,|dot2| <=
-# 0.00299 and |dot3| <= 9.4e-7, because the composite includes the 640x480
-# viewport and a 0x00FFFFFF depth scale and it is the INVERSE that is used.
-# That also leaves our own output unexplained, which matters more: at 0.003
-# with box filtering every fragment should land on texel (0,0) and be flat,
-# and ours is texel-frequency noise, so the coordinate reaching our sampler is
-# not dotSTR3.xy either. Untested candidate, written up in the doc and
-# deliberately not asserted here: the test sets texcoord w = 0 on all three
-# stages and the dot modes never divide by w, so a projective divide in the
-# hardware address unit would send every component to +-inf with the sign of
-# the numerator. One instrumented run settles it.
-# Evidence for the observable rule: the goldens hold NO colour outside the
-# four +X-face corners
+title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic, and the corner rule is still unimplemented"
+# FIXED, PARTLY. Until the samplerCube gate landed, DOT_STR_3D declared
+# sampler2D against a VK_IMAGE_VIEW_TYPE_CUBE image view --
+# VUID-vkCmdDrawIndexed-viewType-07752, eight instances on the cube suite,
+# binding 3. get_sampler_type() routed the mode through the PROJECT3D case,
+# which never consults tex_cubemap[i] where CUBEMAP, DOT_STR_CUBE and all
+# three DOT_RFLCT_* do. The fetch was undefined and the output proved it: on
+# ONE binary run twice, 71 of 78 captures byte-identical and the seven
+# DotSTR3D_* moving by 13,865-43,976 px, Bad2D byte-exact in one run and
+# 19,714 px out in the other.
+#
+# MEASURED AFTER, against a bar registered before the run: determinism 0 px
+# across three runs on all seven; viewType-07752 8 -> 0; Bad2D 19,714 -> 0 and
+# stable. The six cubemap captures are UNCHANGED at 48,031-50,526 px and the
+# predicted corner counts are NOT met -- the unsigned captures still produce a
+# non-zero red where the rule forbids one. So the sampler declaration was not
+# the addressing rule, and the mode is now deterministic, spec-clean and still
+# wrong. What that bought is instruments: every earlier single-run score on
+# these captures was noise, so the rule below has never actually been tested.
+#
+# PROJECT3D carries the SAME latent violation and was deliberately not folded
+# in: it emits textureProj(), which has no cube form, so a cube sampler there
+# trades a wrong result for one that does not build. It wants its own fix.
+#
+# THE RULE, still the target, derived from the goldens and so unaffected by any
+# of the above: the fetched texel is a CORNER of the texture, picked by
+# sign(dot_{i-2}) and sign(dot_{i-1}); the third component selects nothing.
+# Evidence: the goldens hold NO colour outside the four +X-face corners
 # {#0000FF,#FF0000,#00FF00,#FFFFFF}; the three unsigned dotmaps cannot flip
 # sign(dot_{i-2}) and their #FF0000 count is exactly 0 over ~87k cube px; the
-# regions are flat with smooth boundaries, which is a sign field of M_i.f(N)
-# and not a varying fetch; and DotSTRCube_*, same coordinate and same texture,
-# is within 130 px. Bad2D confirms it on a plain 2D texture: silicon is one
-# flat #FFFF44 over all 56,909 px, one texel of 4,096, where we dither both
-# checker colours at texel frequency.
-# Predicted counts (B/R/G/W) the fix must reproduce: 0to1 28114/0/28795/1042,
-# HiLo_1 28385/0/28524/1170, HiLoHemi 28958/0/27951/1376, -1to1
-# 14446/14562/13723/15220, -1to1D3D 13093/13722/14832/16594, -1to1GL
+# regions are flat with smooth boundaries, a sign field of M_i.f(N) rather than
+# a varying fetch; DotSTRCube_*, same coordinate and same texture, is within
+# 130 px; and silicon's Bad2D is one flat #FFFF44 over all 56,909 px, one texel
+# of 4,096.
+# Predicted counts (B/R/G/W) a correct implementation must reproduce: 0to1
+# 28114/0/28795/1042, HiLo_1 28385/0/28524/1170, HiLoHemi 28958/0/27951/1376,
+# -1to1 14446/14562/13723/15220, -1to1D3D 13093/13722/14832/16594, -1to1GL
 # 14527/14457/13849/15282.
 #
-# Two register facts this entry used to carry the wrong way round, both
-# readable in the test source and neither needing a run: tex_cubemap[3] is
-# TRUE (texture_cubemap_tests.cpp calls SetCubemapEnable), and dim_tex[3] is
-# 2, not 3 (GetDimensionality returns 3 only for depth > 1 and the test sets
-# 64x64). So the stage is a cubemap-flagged 2D texture, not a volume, and we
-# already emit texture(texSamp3, dotSTR3.xy) -- structurally the same fetch
-# the rule attributes to hardware, so the defect is NARROWER than "wrong
-# mode". The two probes recorded against those readings stand as measured, but
-# the remapCubeTo2D row's +59,142 on Texture_2D_as_cubemap equals
-# DotSTR3D_Bad2D's residue on the current build with no probe applied, so it
-# cannot be told apart from a baseline change.
+# DEAD ENDS, so nobody re-derives them. The saturation mechanism is falsified
+# by arithmetic: the dots are rows of the INVERSE composite, which carries the
+# 640x480 viewport and a 0x00FFFFFF depth scale, so |dot1|,|dot2| <= 0.00299
+# and |dot3| <= 9.4e-7 -- nothing saturates a [0,1] address from there. The
+# "samplerCube moves zero captures" negative was noise against noise. There is
+# no Bad2D regression from ad1caa07; that was variance. Two register facts read
+# straight from the test source: tex_cubemap[3] is TRUE and dim_tex[3] is 2.
 # docs/investigations/cubemap-is-dot-str-3d.md.
-#
-# ad1caa07's own effect, measured separately because it is nearby and easy to
-# confuse with the above: 2,565,441 differing px -> 320,535 across both
-# cubemap suites, with the "other 71" going 2,223,987 -> 4,644.
-#
-# RETRACTED: there is no DotSTR3D_Bad2D regression from ad1caa07. This entry
-# carried one on my authority and it was wrong twice over -- first with a
-# mechanism ("sampled a stale texture and happened to agree"), then as a
-# "measured regression with no mechanism". Bad2D came back BYTE-EXACT on a
-# later run of the same binary. It is run-to-run variance, and the reason is
-# the undefined behaviour recorded below: every single-run score on the seven
-# DotSTR3D_* captures is meaningless, including the one I filed this row from.
-#
-# What Bad2D actually shows, from the image rather than the histogram: we do
-# not land on a wrong corner, we DITHER BOTH CHECKER COLOURS at texel
-# frequency where silicon is one flat #FFFF44 across all 56,909 px. Same shape
-# as the cubemap captures. Note stage 3 is written once in Initialize() in that
-# suite, so a "sampled the wrong texture" reading does not follow; which part
-# of ad1caa07's window changed it is NOT established.
-#
-# THE SATURATION MECHANISM IS FALSIFIED, by arithmetic and before any run. The
-# claim was that the dot products run far outside [0,1] and saturate at
-# CLAMP_TO_EDGE. They do not: pT1..3 are rows of the INVERSE fixed-function
-# composite matrix (model_view x perspective x viewport, so the forward matrix
-# carries the 640x480 and 0x00FFFFFF scales and the inverse carries their
-# reciprocals), bounding |dot| at 0.00299, 0.00299 and 9.37e-7. dotSTR3 never
-# leaves a box of side 0.003 about the origin, and rotations are orthonormal so
-# no convention changes the lengths.
-#
-# That also leaves OUR output unexplained, which is the more useful half: at
-# (0.003, 0.003) with box filtering every fragment should land on texel (0,0)
-# and the cube should be flat, and ours is texel-frequency noise across all
-# eight corners. So the coordinate reaching our sampler is not dotSTR3.xy as
-# computed, and one of the texcoord / filter / binding assumptions is wrong.
-#
-# The observable rule and the predicted counts above are UNAFFECTED -- they
-# rest on the goldens, not on the explanation: the fetched texel is a corner
-# picked by sign(dot1), sign(dot2).
-#
-# Untested candidate, deliberately recorded as a candidate: the test sets
-# SetTexCoord1/2/3(..., 0.f), so w is ZERO, and the dot modes take pT.xyz raw
-# where every other pT consumer divides by pT.w. A projective divide in the
-# hardware address unit would send every component to +/-inf with the sign of
-# the numerator -- making magnitudes irrelevant by construction and producing
-# exactly the structure the goldens show. Settling it needs one instrumented
-# run emitting vec4(clamp(abs(dotSTR3),0,1),1) in place of the fetch.
-#
-# That probe ran on Adreno (ec13c70e60). MEASURED: every cube pixel has |dot|
-# in [0.001, 0.01), confirming the 0.003 bound on device and killing the
-# saturation mechanism for good; no pixel is non-finite, so the projective
-# divide does not describe OUR shader (it may still describe silicon); and on
-# the unsigned captures only two sign pairs occur, confirming #FF0000 = 0 at
-# the mechanism level. Also MEASURED: the (sign1, sign2) field is FLAT --
-# 92.4% to 99.9% of interior cube pixels agree with all four neighbours,
-# within a couple of points of the golden's own output flatness -- while our
-# OUTPUT is dithered at 7.2% to 78.8%. So the dither enters between dotSTR3
-# and the sampled texel, not in the signs.
-#
-# RETRACTED from that same run: a claim that only the sign-to-corner
-# assignment remained. It rested on comparing four sign-pair populations to
-# four golden corner populations SORTED, and those four goldens are all within
-# 17% of each other, so any roughly-equal four-way partition matches. Tested
-# spatially it is at chance (24.2/25.9/26.5% against marginals 24.9/25.4/
-# 25.3%), there is no dominant permutation, and half our cube lands on the four
-# texels the corner rule FORBIDS (20,770 of 41,647 on -1to1D3D) -- which an
-# assignment error among four corners cannot do.
-#
-# The live candidate: |dot3| is bounded at 9.37e-7 against 0.00299 for the
-# other two, so its sign is numerical noise per pixel while theirs are stable.
-# If our fetch consumes three components where hardware consumes two, that
-# gives eight reachable corners instead of four, a flat field on the first two
-# axes and dither contributed entirely by the third -- which fits every
-# measured fact. The probe cannot settle it: R and G carried sign(dot1) and
-# sign(dot2) and nothing carried sign(dot3). Next probe puts the third sign in
-# B. docs/investigations/dot-str-3d-probe.md.
-#
-# Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
-# +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
-# is an edge pair on all three. +X comes from the addressing argument and
-# GenerateCubemap's write order, not from the pixels, so a fix that picks a
-# different positive face is not thereby wrong.
-#
-# THE FETCH IS UNDEFINED BEHAVIOUR, and that explains every observation we
-# could not account for. The validation layer names it, eight instances on the
-# cube suite:
-#   VUID-vkCmdDrawIndexed-viewType-07752 -- descriptor (binding 3, index 0)
-#   ImageView type is VK_IMAGE_VIEW_TYPE_CUBE but the OpTypeImage has
-#   (Dim = 2D) and (Arrayed = 0)
-# Binding 3 is texture stage 3. get_sampler_type() routes
-# PS_TEXTUREMODES_DOT_STR_3D through the PROJECT3D case, which ends
-# `return dim == 2 ? sampler2D : sampler3D` and NEVER consults
-# tex_cubemap[i] -- unlike CUBEMAP, DOT_STR_CUBE and all three DOT_RFLCT_*,
-# which all check it. The texture is cubemap-flagged so its view is TYPE_CUBE;
-# the shader declares 2D. Spec violation, result undefined.
-#
-# Consequence for measurement, and it invalidates a lot: running the suite
-# twice on the SAME BINARY leaves 71 of 78 captures byte-identical and moves
-# exactly the seven DotSTR3D_* captures -- Bad2D 0 px on one run and 19,714 on
-# the next, 0to1 differing from ITSELF by 42,554 px across runs. So no
-# single-run score of ours on those seven means anything, and a candidate fix
-# must be scored over repeat runs until the variance is gone. It also voids the
-# recorded negative "samplerCube when tex_cubemap[i] moves zero captures":
-# that was noise against noise, and it was probably testing the right fix.
-#
-# What survives: the probe results (it replaced the fetch with an arithmetic
-# readout, so it never went through the UB -- the 0.003 magnitude and the flat
-# sign field are measurements of dotSTR3 itself, which is computed correctly),
-# and the hardware rule with its predicted counts, which come from the goldens
-# rather than from our renderer.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
 
