@@ -130,28 +130,102 @@ Assumed, and untestable from the corpus:
   that preserves 16-pixel runs, so it should not be used as evidence either
   way. Compare regions.
 
-## Why no other capture changes
+## Measured on device: the swizzle, then the regression it caused
 
-The swizzle is taken only when a tile with the **VALID** flag covers the
-destination. pbkit registers the framebuffer's tile with flags zero — that is
-what the test's "intentionally incorrect to match pbkit" comment is about — so
-no other blit in the suite finds a valid tile. Corroboration rather than proof:
-if the framebuffer tile were valid, `nv_clip_gpu_tile_blit` would already be
-clipping full-screen blits to the back buffer at that tile's limit, and the
-`SRCCOPY`, `BLENDAND` and `Clip_*` captures would not be bit-exact today.
+A/B on the Nova, 97 captures per arm, `progress_log_proof` true on both, same
+disc, only the swizzle commit differing (baseline `b5ed87489c`, fix
+`d42a8d79bc`):
 
-## The boundary, and what is deliberately not done
+```
+compared 97   better 1   worse 1   same 95
 
-Only the blit **destination** is remapped. That is enough for this test and it
-is the whole of what the corpus can validate, but it is not self-consistency:
+  Image_blit::BlitBeyondWidth              284,628 ->      0   (-284,628)
+  Texture_Framebuffer_Blit::FBToZetaAsTex   14,383 -> 34,382   (+19,999)
+```
 
-- A blit that *reads* out of a live tile is not un-swizzled. No capture
-  exercises it, and an unverified inverse is a second bug waiting; left for
-  whoever has a test for it.
-- 3D renders and scanout still treat tiled memory as linear. A title that
-  blits into a tile it has registered as valid and then scans that out would
-  now see a scrambled result, where before it saw a correct one. The complete
-  fix is a remap at the memory controller, applied to every access — which is
-  well outside `blit.c`. **This is the thing to watch in a game smoke test.**
-  If it bites, the narrow options are to gate the swizzle on the destination
-  not being a bound render surface, or to revert to linear and accept #33.
+`BlitBeyondWidth` went to **0, bit-identical**, as predicted — the layout above
+is right, on hardware, to the byte.
+
+The regression is the read path this note had already flagged as the thing to
+watch, and it corrects one claim made here earlier. "pbkit registers the
+framebuffer's tile with flags zero" is true of the **colour** tile only.
+`Texture_Framebuffer_Blit::FBToZetaAsTex` blits the framebuffer over
+`pb_depth_stencil_buffer()`, and the **depth** tile *is* registered valid. The
+test then samples that buffer as a texture (`NV097_SET_TEXTURE_OFFSET`), and a
+texture fetch in this emulator is linear. Write swizzled, read linear, +19,999
+pixels.
+
+So the earlier statement should have been: no other blit in the *Image blit*
+suite finds a valid tile. The sibling suite does, which is why it was in the
+regression set.
+
+## The gate, and that it is a restriction rather than a mechanism
+
+The swizzle now applies only to a blit the tile **actually clipped**
+(`clipped_dest_size < dest_size`), not to every blit landing in a valid tile.
+
+This is not a claim about hardware. Hardware remaps every write into a tiled
+region whether or not it also clips one. It is a claim about *our* consistency:
+the remap is invisible while the tile is valid, because every consumer goes
+through it and it cancels, and we model tiling nowhere else — so swizzling a
+write whose reader is one of our linear paths corrupts it. A blit that overruns
+its tile is the one configuration hardware evidence covers and the only one in
+the corpus where the guest drops the tile and reads the bytes back afterwards,
+which is when the remap stops cancelling.
+
+The gate separates the two captures by arithmetic alone, which is why it was
+chosen over a surface-cache test that cannot be checked without running:
+
+| blit | `dest_size` | after tile clip | path |
+|---|---:|---:|---|
+| `BlitBeyondWidth` #1, 1024x512 into pitch 2560 | 1,312,256 | 1,228,800 | **swizzled** |
+| `BlitBeyondWidth` #3, 640x480 out, tile dropped | 1,228,800 | 1,228,800 | linear |
+| `FBToZetaAsTex`, 640x480 over zeta | 1,228,800 | 1,228,800 | linear |
+| `FBToTexture`, same blit into texture memory | — | — | linear (untiled) |
+
+Only the first blit needs the swizzle, and it is the only one that gets it. The
+gate is strictly more restrictive than the measured arm — it can only move a
+blit from swizzled to linear — so no capture that was unchanged in the A/B can
+move. Replayed through the gate, `BlitBeyondWidth` still reproduces its golden
+at 0 differing pixels outside the text overlay.
+
+A surface-cache gate ("destination is not a tracked surface") was the other
+candidate and was rejected: it depends on whether a binding happens to exist at
+`target_buffer`, a fresh `MmAllocateContiguousMemoryEx` allocation, and a stale
+binding left at that address by an earlier test would silently veto the swizzle
+and put `BlitBeyondWidth` back to 284,628 with nothing in the code to say why.
+
+`FBToZetaAsTex` differed by **14,383 pixels before any of this work**, for an
+unrelated reason. Returning it to 14,383 is the bar; that residual is not
+attributable to the tile swizzle in either direction.
+
+## The mechanism-level fix, which is not in blit.c
+
+The gate closes the regression but leaves the model heuristic. The correct fix
+is neither the blit write nor the texture read: it is to keep storing tiled
+memory **linearly** — so that everything cancels, exactly as hardware does
+while a tile is valid — and to permute the covered range **when a tile is
+created or torn down**, which is the only moment the remap becomes observable.
+
+Applied to the two captures:
+
+- `FBToZetaAsTex`: the depth tile stays valid throughout, memory stays linear,
+  the texture fetch is linear. Correct, with no gate.
+- `BlitBeyondWidth`: step 5 reassigns tile 0, so at that instant the 1,228,800
+  bytes it covered are permuted into their physical order; the following blit
+  reads them linearly and sees the swizzle. Correct, with no gate.
+
+It also removes the standing hazard for real titles, which set their tiles up
+properly and would otherwise depend on the clip gate never firing on them.
+
+That work belongs with the tile registers in `pfb.c`, with the permutation
+moved next to `nv_clip_gpu_tile_blit` in `nv2a.c` and exported through
+`nv2a_int.h` — three files this change does not own, so it is not attempted
+here. Two things to settle when it is: the inverse permutation on tile
+*creation*, since pre-existing bytes are reinterpreted rather than moved; and
+what to do about a surface whose contents are still live in a `VkImage` and not
+yet downloaded when the tile is torn down.
+
+Still deliberately not done: a blit that *reads* out of a live tile is not
+un-swizzled. No capture exercises it, and the design above removes the need for
+it entirely.

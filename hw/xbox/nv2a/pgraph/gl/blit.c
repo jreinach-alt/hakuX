@@ -267,22 +267,23 @@ void pgraph_gl_image_blit(NV2AState *d)
     hwaddr clipped_dest_size =
         nv_clip_gpu_tile_blit(d, dest_addr + dest_offset, dest_size);
 
+    /*
+     * Only a blit the tile actually clipped is written through the tile's
+     * address map. The reasoning, and the FBToZetaAsTex measurement that
+     * forced the restriction, are on the Vulkan copy in pgraph/vk/blit.c.
+     */
+    BlitGpuTile dest_tile = { false, 0, 0, 0 };
+
     if (clipped_dest_size < dest_size) {
         adjusted_height = clipped_dest_size / context_surfaces->dest_pitch;
         size_t consumed_bytes = adjusted_height * context_surfaces->dest_pitch;
 
         leftover_bytes = clipped_dest_size - consumed_bytes;
+
+        dest_tile = find_blit_gpu_tile(d, dest_addr + dest_offset,
+                                       context_surfaces->dest_pitch);
     }
 
-    /*
-     * If the destination sits inside an active tile, the same bytes go to the
-     * same offsets, but those offsets are shuffled by the tile. Only a tile
-     * with the VALID flag set counts -- pbkit registers the framebuffer's tile
-     * with that flag clear, which is why nothing else in the Image blit suite
-     * takes this path.
-     */
-    BlitGpuTile dest_tile = find_blit_gpu_tile(d, dest_addr + dest_offset,
-                                               context_surfaces->dest_pitch);
     hwaddr dest_tile_offset =
         dest_tile.valid ? dest_addr + dest_offset - dest_tile.base : 0;
     uint8_t *dest_tile_base = d->vram_ptr + dest_tile.base;
