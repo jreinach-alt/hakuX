@@ -1072,6 +1072,14 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
                 "pT%d.z = uintBitsToFloat(floatBitsToUint(pT%d.z) & 0xFFFFFF80u);\n",
                 i, i, i, i, i, i, i);
         } else {
+            /* NOTE: the reference is quantised onto the F16 grid below with a
+             * flush-to-zero threshold of 2^-7, where the depth *write* in
+             * psh_convert now uses 2^-6 -- an F16 exponent field of zero means
+             * zero, so the lowest binade has no representation. The two want
+             * the same grid. Left alone deliberately: this is the
+             * `Texture shadow comparator` cell (#30) with its own goldens, and
+             * only the lowest binade of a reference depth can differ, so it is
+             * a separate measurement rather than a free ride on this one. */
             mstring_append_fmt(
                 vars,
                 "float t%d_z = t%d_enc == 0u ? 0.0\n"
@@ -2615,13 +2623,32 @@ static MString* psh_convert(struct PixelShader *ps)
             break;
         case DEPTH_FORMAT_F16:
             /* convert_f16_to_float, inverted: f16 is (f16 << 11) + 0x3C000000.
-             * Below that bias the encoding has nothing to say. F16 lives on a
-             * Z16 surface, which is D16_UNORM on every host, so it needs none
-             * of the Z24S8 scale dance -- 65535.0 is the format's own scale. */
+             * F16 lives on a Z16 surface, which is D16_UNORM on every host, so
+             * it needs none of the Z24S8 scale dance -- 65535.0 is the
+             * format's own scale.
+             *
+             * The flush-to-zero threshold is 2^-6, not the 2^-7 the bias
+             * suggests. Read the encoding as a float: the top four bits of the
+             * 16 are an exponent field added to 0x3C000000's exponent, and the
+             * low twelve are the mantissa. Exponent field zero -- every
+             * encoding below 0x1000 -- means *zero*, which is what
+             * convert_f16_to_float already says in its `f16 == 0` case, so the
+             * whole lowest binade [2^-7, 2^-6) has no representation. Encoding
+             * it as 1..4095 writes values hardware never produces.
+             *
+             * Bracketed on the 392 test Depth buffer oracle rather than
+             * reasoned from the bias: over the 49 `z16 FZy` depth captures
+             * silicon's smallest rasterised encoding is 4098, across 1,897,792
+             * pixels, with none below 4096; and at the 192,864 pixels where
+             * silicon writes 0 our encodings run 15 to 4094. 4094 below, 4098
+             * above, and 4096 is a binade boundary and not a fitted constant.
+             * Those 192,864 pixels are 97.9% of this cell's error; the rest of
+             * the surface, big quad included, is already bit-identical, which
+             * is what says the encoding itself is right. Issue #16, #52. */
             mstring_append(
                 ps->code,
                 "uint zbits = floatBitsToUint(max(zvalue, 0.0));\n"
-                "uint zf16 = zbits < 0x3C000000u ? 0u\n"
+                "uint zf16 = zbits < 0x3C800000u ? 0u\n"
                 "          : min((zbits - 0x3C000000u) >> 11, 0xFFFFu);\n"
                 "gl_FragDepth = float(zf16) / 65535.0;\n");
             break;
