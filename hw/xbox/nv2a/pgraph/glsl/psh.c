@@ -1917,23 +1917,68 @@ static MString* psh_convert(struct PixelShader *ps)
                 "bc1 *= inv_bcsum;\n"
                 "bc2 *= inv_bcsum;\n"
                 /*
-                 * The interpolated delta is small; the vertex depth it is
-                 * added to can be up to 2^24, where a float32 has a ULP of a
-                 * whole unit. Summing them first rounds the fraction away --
-                 * ties-to-even at 2^20 turns .9375 into 1.0 -- and floor()
-                 * then lands one above hardware, which keeps the fraction in
-                 * fixed point. So the base's integer part is kept aside and
-                 * only its fraction rides along with the delta; zfloor is
-                 * exact wherever the delta itself is. Modelled against the
-                 * Depth buffer goldens: 0 of 126,796 pixels differ, from
-                 * 38,235 before. Issue #32.
+                 * Hardware keeps the depth fraction in fixed point; a float32
+                 * cannot, because a guest depth word runs to 2^24 where the
+                 * ULP is a whole unit. Keeping the base vertex's integer part
+                 * aside (#32) fixed the half of that which came from adding
+                 * the base in, but not the half that comes from the
+                 * interpolated delta: on the Depth buffer big quad the delta
+                 * itself reaches 5.6M, where the ULP is already 0.5, so the
+                 * products bc*(dz) have no room for a fraction either. floor()
+                 * then lands one *above* hardware -- never below, because the
+                 * base fraction being added in is positive -- and no amount of
+                 * splitting afterwards recovers it, the bits are gone at the
+                 * multiply.
+                 *
+                 * So the delta is carried as an unevaluated sum: each product
+                 * keeps the bits it dropped (fma against the rounded product,
+                 * the kahan_det trick above), the two are added with a
+                 * two-sum, and the floor is taken on the pair rather than on
+                 * the rounded head. Only the head's integer part is large;
+                 * once it is set aside with zhi, what remains is order 1 and
+                 * a float32 holds its fraction exactly.
+                 *
+                 * Modelled over the four quad geometries this suite draws,
+                 * against the same interpolation in double, that is exact on
+                 * 100% of samples where the old form managed 56-99%. Measured
+                 * on all 784 Depth buffer goldens it is worth rather less:
+                 * D24's differing pixels go 309,710 to 233,112, a quarter of
+                 * them. So this removes the float32 error and something else
+                 * accounts for the remaining three quarters -- most likely
+                 * where the depth is sampled rather than how it is summed,
+                 * since what is left is still capped at exactly one unit.
+                 * Issue #16, #32.
                  */
                 "precise float zhi = floor(vtxPos0.z);\n"
+                "precise float zd1 = vtxPos1.z - vtxPos0.z;\n"
+                "precise float zd2 = vtxPos2.z - vtxPos0.z;\n"
+                "precise float zp1 = bc1*zd1;\n"
+                "precise float zp2 = bc2*zd2;\n"
+                "precise float zt1 = fma(bc1, zd1, -zp1);\n"
+                "precise float zt2 = fma(bc2, zd2, -zp2);\n"
+                "precise float zdh = zp1 + zp2;\n"
+                "precise float zbv = zdh - zp1;\n"
+                "precise float zav = zdh - zbv;\n"
+                "precise float zdt = ((zp1 - zav) + (zp2 - zbv)) + (zt1 + zt2);\n"
+                "precise float zdn = floor(zdh);\n"
+                "precise float zbase = zhi + zdn;\n"
+                "precise float zrem = ((vtxPos0.z - zhi) + (zdh - zdn)) + zdt;\n"
+                "zrem += depthOffset;\n"
+                "zrem += depthFactor*triMZ;\n"
+                /*
+                 * zvalue keeps its original association. Only the fixed point
+                 * formats read zfloor; F16 and F24 take the *bit pattern* of
+                 * zvalue, and rebuilding it through the split above moves its
+                 * low bits. Measured: splitting zvalue too costs F24 3,686,518
+                 * channels and takes its worst error from 12,585 depth units
+                 * to 6,727,533, against the 79,522 channels the split wins on
+                 * D24. The split belongs to the floor, not to the value.
+                 */
                 "precise float zlo = (vtxPos0.z - zhi) + (bc1*(vtxPos1.z - vtxPos0.z) + bc2*(vtxPos2.z - vtxPos0.z));\n"
                 "zlo += depthOffset;\n"
                 "zlo += depthFactor*triMZ;\n"
                 "precise float zvalue = zhi + zlo;\n"
-                "precise float zfloor = zhi + floor(zlo);\n");
+                "precise float zfloor = zbase + floor(zrem);\n");
         }
 
         if (ps->state->depth_clipping) {
