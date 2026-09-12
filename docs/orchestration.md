@@ -126,6 +126,73 @@ Each item below cost real time today, which is why it is a list and not advice.
   unhandled-method inventory per suite, oracle recovery scoring, code reading.
 * **Build-only** (serialised behind the dispatcher): anything needing a binary.
 
+## Concurrency: agents write, the orchestrator builds, the dispatcher tests
+
+The constraint that looked fatal to concurrency turns out to be avoidable. A
+fresh worktree cannot build the native side here -- JDK 21 against a system
+Java 25 JRE -- so the first conclusion was that implementers must share one
+tree and therefore take turns. That conclusion was wrong, because *an agent
+writing a fix does not need to build it*. Only the fold-in needs a build, and
+there is exactly one of those.
+
+So the pipeline is:
+
+1. **Agents work in isolated worktrees, and do not build.** Each is told
+   explicitly not to run gradle/meson/ninja, because a build attempt in a
+   worktree only wastes the time it takes to fail. They reason from source and
+   from captures already on disk.
+2. **Each agent owns a disjoint set of files**, named in its brief, and is
+   told that needing a file outside the set means stopping and reporting
+   rather than editing. Disjointness is what makes the fold-in a
+   fast-forward instead of a merge.
+3. **The orchestrator reviews the diff and folds it into the shared tree**,
+   then builds once. This is where compile errors surface -- the cost of
+   agents that cannot build -- and it is cheaper than four toolchains.
+4. **One dispatcher run tests the folded tree.** Batching is the whole point:
+   four fixes in one boot and one image pull, rather than four of each.
+5. **Land on measurement.** Better-per-capture with no regressions lands. A
+   mixed result escalates. A result that contradicts the agent's own
+   prediction goes back to that agent -- we push through to root cause rather
+   than reverting a change that works but is unexplained.
+
+**Every agent states a falsifiable prediction before it measures anything**,
+naming which captures should move and which must not. This is the single most
+useful item in a brief: it is how the fold-in is judged, and it is what makes
+a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
+have been caught at the prediction stage.
+
+### Territories as allocated 2026-09-12
+
+| stream | files owned |
+|---|---|
+| depth (#16 float Z) | `vk/surface-compute.c`, `glsl/psh.c` |
+| image blit (#33) | `vk/blit.c`, `gl/blit.c` |
+| viewport (#49) | `glsl/vsh.c`, `glsl/vsh-ff.c`, `glsl/vsh-prog.c` |
+| audio (assessment) | `hw/xbox/mcpx/apu/**`, `hw/xbox/mcpx/aci.c` |
+
+Note `glsl/psh.c` and `glsl/vsh.c` are in the same directory and belong to
+different agents; the brief says so explicitly, because "the shader
+directory" is the obvious wrong-sized unit of ownership. `pgraph.c` belongs to
+nobody by default -- it is the file every stream is tempted to reach into, and
+the one whose conflicts are worst.
+
+**Guardrail against related-issue collisions**, which is a different failure
+from file collisions: two agents on #16 and #52 would not touch the same
+files, yet would derive the same mechanism twice. So the claimed list in every
+brief names the *issues* under way as well as the files, and issues split from
+a common parent (#16/#52, #9/#53/#38, #43/#50) are never assigned
+concurrently.
+
+### Why the remote lane is different
+
+A second session on another machine has its own checkout and cannot be given
+a worktree here. For it, a file claim is really a claim on *who commits*, and
+the coordination channel is asynchronous: it posts `ASK:` lines in a PR
+comment and a monitor wakes the orchestrator. That is slower than a worktree
+handoff and the briefs should prefer work for it that needs no claim at all
+-- test-repo changes, analysis, docs -- keeping `hw/` claims for when there is
+no alternative.
+
 ## The three new streams have no oracle, and that changes everything
 
 Audio, timing and performance have **no goldens**. "Verified" cannot mean
