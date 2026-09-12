@@ -173,3 +173,45 @@ match TEX1's colours there, they are worth ~133k px on this lane, and the
 device lane measures 435,201 px on Adreno with 0% of it within one step. That
 is where the `Bump_map` work should go, and the YUV pair should be set aside
 rather than fitted.
+
+## The other thirty-six: a vertical-only sub-pixel displacement error
+
+With the YUV pair set aside, the remaining 133,159 px on this lane are one
+shape, and it is measurable to a fraction of a pixel.
+
+Every non-YUV capture has **max |delta| = 221 and zero pixels at |delta| = 1**.
+221 is exactly 254 - 33, the gap between the two TEX1 cell colours, so these
+are pixels that landed on the wrong side of a checker boundary. Cell selection,
+not precision — which is why none of it is one-step.
+
+Whole-pixel alignment is already correct: testing integer shifts from -3 to +3
+in both axes, zero shift is the best for every capture. The disagreement is
+sub-pixel, and it is one-sided:
+
+| capture | horizontal edge shift | vertical edge shift |
+|---|---|---|
+| `BumpMap_A8R8G8B8_L` | **0.000 px** over 2,055 edges | +0.083 px over 4,577 |
+| `BumpMap_A8` | **0.000 px** over 4,692 edges | +0.082 px over 4,829 |
+
+Horizontal is exact — every edge, every row, no exceptions. Vertical is short
+by about a twelfth of a pixel, which shows up as one edge in twelve landing a
+pixel out. That asymmetry is the finding: dS comes from blue and dT from green
+(`append_bump_channel` components 2 and 1), and the blue path is exact while
+the green path is not.
+
+The source colour makes that suggestive. Past the first two rows and columns
+the bump texture is `0x00804500`: blue `0x45` = 69, comfortably positive, and
+green `0x80` = 128 — **exactly the two's-complement boundary**, the one value
+where `/127`, `/128`, `/127.5` and the clamping rules all disagree. The channel
+that is exact carries an ordinary value; the channel that is off carries the
+boundary value.
+
+I have not converted the 0.083 px into a coefficient. A first attempt through
+the quad magnification put the implied dT error near 5e-4, which is an order of
+magnitude smaller than the gap between `/127` and `/128`, so either the
+magnification assumption or the model is wrong and the number should not be
+quoted until it is derived properly rather than estimated.
+
+`Y16` is not this defect. Its vertical shifts run -20 to -33 px and its
+horizontal edge counts do not even match the golden's, so it is a separate and
+much larger problem worth 44,832 px across its two captures.
