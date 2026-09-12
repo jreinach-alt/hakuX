@@ -145,9 +145,61 @@ disposition = "defect"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
+# NOT A BUMP-ARITHMETIC DEFECT. Measured 2026-09-12: the bump matrix, scale and
+# offset are already correct, and the 818,008 px decomposes into six disjoint
+# classes that sum exactly:
+#   YUV bump source (UYVY/YUY2)    4 captures   445,984 px   54.5%
+#   R16B16                         4            169,184      20.7%
+#   sub-pixel filter jitter       30             91,204      11.1%
+#   #38 coordinate floor, SOLE    40             63,040       7.7%
+#   Y16 in Bump_map                2             44,748       5.5%
+#   DXT1                           2              3,848       0.5%
+#
+# Two measurements carry it. 40 of the 82 captures sit at exactly 1,576
+# structural px and ALL 40 MASKS ARE BYTE-IDENTICAL -- checked elementwise, 11
+# horizontal rows on a 21-row period, format-independent. Those captures have
+# ZERO bump error; they are #38. And the red/grey boundary position is a direct
+# readout of the applied displacement: we place 89.7-99.5% of the goldens'
+# boundaries exactly, mean absolute error 0.006-0.224 px on a 5.25 px cell,
+# where a wrong matrix entry would move boundaries by whole cells.
+#
+# So the remaining work is TEXTURE INPUT, not bump: R16B16 through
+# BUMPENVMAP_LUM at psh.c:2065 (101,330 px, and the only discriminating
+# goldens), dotmap_hilo_1 at psh.c:1507 (67,854 px), Y16 decode (44,748 px),
+# and YUV at pgraph/texture.c:475 plus the cache key -- NOT psh.c (445,984 px).
+#
+# Rivals scored: dS=B dT=G (what psh.c does) 80.41% against dS=R dT=G, the
+# formula documented in pixel_shader_tests.h, at 25.21%; dS=G dT=B 53.00%;
+# dS=G dT=R 39.49%; /127 78.32% and unrounded 80.06%, both below the current
+# rule. The dot_map nibble decode is measured CORRECT (psh.c:2551-2553 gives
+# 4,4,0, exactly the test's intent), so that hypothesis is dead not open.
+#
+# DISCRIMINATION IS THE TRAP HERE: only 2 of 82 captures can confirm a rule
+# (BumpEnvLum_R16B16 and _L, 115 golden colours over 50,665 px), 4 weakly, and
+# 76 cannot -- 1 to 2 golden colours in the structural mask. The corpus sheet's
+# 85-118 colours are counted over the whole differing mask, which is 97%
+# off-by-one. Prior attempts were scored against BumpMap_R16B16, whose golden
+# holds TWO colours: the #41 trap again.
+#
+# The 6.46M alpha signal is a separate, already-closed defect: zero
+# alpha-differing px in all 42 Bump_env_lum captures and alpha_only = 0 in all
+# 82. Bump_map's delta-64 alpha is the checker cell identity swapping behind a
+# displaced boundary (255 vs 191), arithmetically downstream of the colour
+# error.
+#
+# Two corrections to this issue's record: `_L` means LINEAR, not luminance, so
+# "R16B16_L works, therefore the swizzle is correct" does not follow -- and
+# linear and swizzled R16B16 fail identically (50,665 each) in Bump_env_lum,
+# which points at the luminance channel of a two-component 16-bit format.
+#
+# Caveats: both suites ran on a shared disc, single-run, so contamination is
+# not ruled out; and the offline oracle has 19.6% self-error (46.4% on _R90),
+# so it ranks rivals but is not a reference renderer.
+# docs/investigations/bump-rule-2026-09-12.md,
+# docs/testing/run-2026-09-12-bump-decomposition.tsv.
 [issue.10]
 title = "Bump mapping"
-disposition = "unclassified"
+disposition = "defect"
 suites = ["Bump map", "Bump env lum"]
 
 [issue.12]
