@@ -215,3 +215,22 @@ quoted until it is derived properly rather than estimated.
 `Y16` is not this defect. Its vertical shifts run -20 to -33 px and its
 horizontal edge counts do not even match the golden's, so it is a separate and
 much larger problem worth 44,832 px across its two captures.
+
+### Facts the derivation will need
+
+- **The plain captures read the bump channels unsigned.** `BumpMap_<format>`
+  and `_L` go through `Test()`, whose only `SetFilter` call is commented out,
+  so stage 0 keeps default filtering and no `BSIGNED`/`GSIGNED`. The signed
+  combinations live in a separate function that sweeps `rsigned`/`gsigned`/
+  `bsigned`/`asigned` over a 2x2 grid with tent filtering, and produces the
+  `_B` and `_R90` names. So the 0.083 px belongs to the **unsigned** path:
+  `bump_unsigned(x) = round(x * 255.0) / 255.0`.
+- Green `0x80` unsigned is therefore `128/255 = 0.501961`, and with
+  `bumpMat[1][1] = 0.5` the vertical displacement is `0.250980` of the
+  texture, or 64.25 texels of 256.
+- A hardware value of `128/256 = 0.5` exactly would put it at 64.0 texels,
+  a quarter-texel away — about 0.34 screen px at this magnification, which is
+  four times the 0.083 px actually measured. So that is not the rule either,
+  and the remaining error is smaller than any of the obvious /255, /256,
+  /127, /128 choices. That is the puzzle to solve, and it is why no
+  coefficient is quoted here.
