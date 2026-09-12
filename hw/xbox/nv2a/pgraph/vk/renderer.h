@@ -717,16 +717,6 @@ typedef struct TextureKey {
     uint32_t address;
     uint32_t border_color;
     uint32_t max_anisotropy;
-    /*
-     * VkComponentSwizzle for the alpha the texture unit reads back from an
-     * X-padded colour surface's pad bits, or IDENTITY (0) for everything
-     * else. In the key because the texture format does not determine it:
-     * five surface formats share one texture format at one address in Blend
-     * surface's DstAlpha tests, so without it they share a cache entry and
-     * the _O captures render with the _Z alpha. See surface_pad_alpha() in
-     * texture.c for the measurement.
-     */
-    uint32_t surface_pad_alpha;
 } TextureKey;
 
 #define IMAGE_POOL_MAX_SIZE 128

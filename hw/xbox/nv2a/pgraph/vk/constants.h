@@ -343,11 +343,23 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
      * reproduced exactly. There is no free component here.
      *
      * That matters because BUMPENVMAP_LUM takes its luminance from component
-     * 0, which this map feeds from the B16 field. "Take the luminance from
-     * the other channel" therefore cannot be done in this table: component 0
-     * is also the colour path's red, with 157 values pinned to it. Any fix
-     * for the R16B16 bump class has to be stage-aware, which this table is
-     * not -- it is indexed by texture format alone. */
+     * 0 (psh.c:2254), which this map feeds from the R16 field, while dS and
+     * dT both come from B16 -- R16G16_UNORM's R component is bytes 0-1, the
+     * B16 field, so {G,R,R,G} gives .r = R16, .g = .b = B16, .a = R16.
+     * "Take the luminance from the other channel" therefore cannot be done
+     * in this table: component 0 is also the colour path's red, with 157
+     * values pinned to it.
+     *
+     * And the shape of this map is measured NOT to be the defect. SZ_R8B8
+     * below carries the identical {G,R,R,G} degenerate shape from the same
+     * stored field, and it PASSES Bump_env_lum at the 1,576 px #38 floor
+     * while R16B16 fails at 50,665 -- on component values that are bit-equal,
+     * since the test's converter byte-replicates and 0x4545/65535 is exactly
+     * 0x45/255. A permutation of identical values cannot produce different
+     * pixels, so hardware is separating the two formats by channel bit width,
+     * which no VkComponentMapping can express. The residual is a 16->8 bit
+     * narrowing in psh.c's bump_signed/bump_unsigned and the byte
+     * reconstruction in dotmap_hilo_1, not a mapping question. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] = {
         VK_FORMAT_R16G16_UNORM,
         { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }
@@ -407,6 +419,36 @@ typedef struct SurfaceFormatInfo {
      * has some whose readback is not a constant and so cannot be expressed as
      * a swizzle -- X1A7R8G8B8 is the latter, see its entry. Only the four
      * formats whose whole alpha field is pad get an override here.
+     *
+     * NO CONSUMER YET, DELIBERATELY, and this is the part to read before
+     * wiring one up. The value is a measured hardware fact (each entry cites
+     * its measurement) but acting on it needs to know the colour format a
+     * given surface was RENDERED with, and today nothing reports that
+     * reliably:
+     *
+     *  - `surface->shape.color_format` goes stale. check_surface_compatibility
+     *    (vk/surface.c:2407) matches on host_fmt.vk_format, and A8R8G8B8,
+     *    X8R8G8B8_Z/O and X1A7R8G8B8_Z/O all map to B8G8R8A8_UNORM, so at
+     *    equal address, pitch and size should_create is false and the
+     *    is_compatible branch never reassigns shape. The binding keeps
+     *    whichever format first created it.
+     *  - `pg->surface_shape.color_format` is the wrong surface at the point a
+     *    texture is bound. The suites that exercise this render to a scratch
+     *    surface and then restore the framebuffer format before sampling it
+     *    (pbkitplusplus RenderToSurfaceEnd, nv2astate.cpp:1684), so the
+     *    register holds A8R8G8B8 by then. It is the right source for the
+     *    BLEND half of #48, where the surface in question IS the current one,
+     *    and the wrong one here.
+     *
+     * Both failure modes are silent and run-order dependent: Blend surface
+     * renders every swatch into ONE 128x128 surface at one address, so a
+     * consumer reading the binding would be right on the first capture of a
+     * run and wrong on the rest. That is worse than the defect it fixes,
+     * which is why the override is recorded and not yet applied. Unblocking
+     * it means making a reused binding refresh its shape, or recording the
+     * render format per binding -- vk/surface.c, and the same staleness is
+     * read by vk/renderer.c:1144 and a dozen gl/surface.c pack/unpack sites,
+     * so it wants untangling once rather than working around three times.
      */
     VkComponentSwizzle sampled_pad_alpha;
 } SurfaceFormatInfo;
@@ -469,8 +511,8 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * two-draw pairing defect, so substituting the factor alone moves no
          * number. See the issue before touching this.
          *
-         * The texture unit half IS settled: sampled as a texture this format's
-         * alpha reads 1.0. Measured, see sampled_pad_alpha below.
+         * The texture unit half is MEASURED: sampled as a texture this
+         * format's alpha reads 1.0. Measured, see sampled_pad_alpha below.
          */
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
@@ -520,8 +562,8 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * two-draw pairing defect, so substituting the factor alone moves no
          * number. See the issue before touching this.
          *
-         * The texture unit half IS settled: sampled as a texture this format's
-         * alpha reads 1.0. This is where the "S = 108" came from -- with a
+         * The texture unit half is MEASURED: sampled as a texture this
+         * format's alpha reads 1.0. This is where the "S = 108" came from -- with a
          * stored swatch alpha of 34, 255*(34/255) + 85*(221/255) = 108 where
          * hardware, reading the pad byte as ones, gets 255*1 = 255. Measured,
          * see sampled_pad_alpha below.
