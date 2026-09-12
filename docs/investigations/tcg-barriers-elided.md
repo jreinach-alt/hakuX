@@ -193,3 +193,73 @@ failing **0 of 10** runs against a ~46% base rate, and a perf arm to price it.
 Sequencing the narrow variant second was deliberate — measuring it first would
 have left two questions moving at once, whether store-store is sufficient for
 correctness and whether its cost is acceptable.
+
+---
+
+## RETRACTED: the guest's stores are not the problem
+
+Measured. The store-store variant (`exp-54-stst-only`) left `2D_BorderTex_SZ`
+at **6 failures in 10 runs** against a ~46% base rate — no improvement at all.
+
+And it restored more than its name suggests, which is what makes this
+conclusive rather than inconclusive. `tcg_gen_req_mo` (`tcg/tcg-op-ldst.c`)
+asks for its orderings as **sets**, one call per access:
+
+    guest store   tcg_gen_req_mo(TCG_MO_LD_ST | TCG_MO_ST_ST)   :312, :429
+    guest load    tcg_gen_req_mo(TCG_MO_LD_LD | TCG_MO_ST_LD)   :261, :369, :570
+
+so a test on `ST_ST` is true for **every** guest store, and the barrier is then
+emitted carrying the whole set. Both store-side orderings were restored. The
+corruption survived untouched.
+
+**So this file's original mechanism — "the guest's texel stores becoming
+visible out of order among themselves" — is false.** It was plausible, it
+explained the latching, and it is wrong.
+
+What survives from the original account, because it rests on source rather than
+on that mechanism: the `#elif defined(XBOX)` branch exists, `CF_PARALLEL` is
+never set for this machine, `tcg_gen_mb` therefore emits nothing, device
+threads read `vram_ptr` with bare loads, and the commit's justification about
+the memory API and BQL is false for the NV2A. All still true. Only the
+*explanation of how that produces #44* is retracted.
+
+## What the failure narrows it to
+
+`TCG_TARGET_DEFAULT_MO` is `0` on aarch64 (`tcg/aarch64/tcg-target-mo.h:10`)
+and `TCG_MO_ALL & ~TCG_MO_ST_LD` on x86 (`tcg/i386/tcg-target-mo.h:17`).
+
+Read that carefully against the request sets above. On x86, a guest **store**'s
+`LD_ST|ST_ST` is masked to nothing and no barrier is emitted — so x86 never
+had store ordering barriers here either, which is consistent with store
+ordering not being the defect. A guest **load**'s `LD_LD|ST_LD` masks down to
+`ST_LD`, which survives: **store-load is the one ordering x86 does not supply
+natively, and therefore the only barrier an x86 host actually emits.**
+
+That states the asymmetry exactly rather than approximately:
+
+| | store barriers emitted | store-load emitted | #44 |
+|---|---|---|---|
+| x86 desktop | no (masked) | **yes** | 0 of 20 runs |
+| aarch64, XBOX branch | no (elided) | **no** (elided) | ~46% of runs |
+| aarch64, store-store variant | yes | no | 6 of 10 runs |
+
+The only column that tracks the defect is store-load.
+
+## The third variant, and its falsifier
+
+`exp-54-x86-equivalent` emits when the requested set contains `TCG_MO_ST_LD`,
+making this host no weaker than the one where the defect does not reproduce.
+Predicted: **0 of 10**, at a cost below the full revert's +34.1% because it
+fires on one bit rather than all of them.
+
+**If this also fails**, then between them the two cheap variants have ruled out
+every ordering x86 supplies, the elision is not the cause of #44, and the
+desktop asymmetry needs a different explanation — different renderer paths,
+different timing, or something not about memory ordering at all. That would be
+a larger correction than this one and it should be taken seriously rather than
+patched around.
+
+Sequencing, stated because it is doing real work here: the full revert asks
+whether restoring everything is sufficient; store-store asked whether the store
+side alone is; this asks whether x86-equivalence is. Each answer narrows the
+next, and none of them would have been interpretable measured together.
