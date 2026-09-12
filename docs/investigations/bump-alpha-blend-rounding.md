@@ -50,37 +50,59 @@ minimum of that expression over every possible source alpha** — the vertex sit
 at exactly As = 0.498 — so no error in what we feed the blender can put the
 true result below 190.5. Whatever produces 190 is downstream of the inputs.
 
-## The host divides by 256, not 255
+## CORRECTION: my divide-by-256 mechanism was wrong
 
-Work the same blend in integers, as a rasteriser does:
+I first concluded the host divides by 256 rather than 255, because
+`48641/256 = 190.004` lands on 190 under either rounding rule and a /256 blend
+always undershoots, which also fit the one-sided RGB deltas. **That is not what
+is happening, and the test that kills it was available locally the whole time.**
 
-```
-  S*A + D*(255-A)  =  127*127 + 254*128  =  48641
+`blend_model.py` scores a capture directory against a model of silicon with a
+choice of quantiser at each store. Scoring *our own* captures:
 
-     48641 / 255  =  190.749020   ->  191     silicon
-     48641 / 256  =  190.003906   ->  190     us
-```
+| blend store | blit store | matches our captures |
+|---|---|---|
+| **round** | **round** | **16,625 / 18,000** |
+| floor | round | 15,479 |
+| /256 round | round | 11,301 |
+| /256 floor | round | 8,828 |
 
-A divide by 256 instead of 255 — the standard fixed-point blend shortcut,
-since a shift is free and a divide by 255 is not — lands on 190 under *either*
-rounding rule. It needs no appeal to tie-breaking or float error, and it
-explains the rest of the evidence: `x/256 <= x/255` always, so this renderer
-can only ever be low, which is exactly the **8.6:1 one-sided** RGB deltas in
-the same quad.
+If this renderer divided by 256 at the blend store, a /256 model would fit it.
+It fits far worse. **Our blend store rounds, to /255, like silicon.**
 
-This is not the near-tie explanation that fits elsewhere in the corpus.
-`blend-unit-model.md` found the host landing on 33.99999797 where silicon has
-34; that is float error at a boundary. 190.749 is nowhere near a boundary.
+Two further checks close off the obvious alternatives:
 
-## Two backends, one rasteriser — a check that does not count
+- **The combiner alpha is not the culprit.** Forcing blending off makes the
+  quad's alpha exactly **127** — TEX1's alpha, as expected. So the blend
+  framing was right: the inputs really are As = 127, Ad = 254, and the
+  arithmetic really does have 190.749 as its answer.
+- **float32 does not explain it.** Working the blend in float32 the way a host
+  would gives 190.749004, which still rounds to 191. The gap to 190.5 is 0.25;
+  no float32 rounding reaches it.
 
-Running the same disc through the OpenGL renderer gives 190 on all 111,496
-pixels, identical to Vulkan. I initially read that as two independent
-implementations agreeing, which would have been strong evidence. **It is not
-evidence at all**: lavapipe is a Vulkan front end built on llvmpipe, so both
-paths land in the same Mesa rasteriser and the same blend arithmetic. The
-agreement is what you would predict either way. Recorded so nobody spends a
-run re-confirming it.
+So the mechanism inside Mesa is **unidentified**. I am not going to offer a
+third theory. What is established is that the exact answer is 190.749, our own
+blend model says that rounds to 191, and this host produces 190.
+
+## Settled on hardware: it is the host
+
+The device lane ran it on Adreno: **`BumpEnvLum_A8R8G8B8`, `_A8` and `_Y16` all
+differ from the goldens on zero alpha pixels.** The same renderer on a real GPU
+gets 191 and these captures come out right.
+
+That makes the diagnosis conclusive without needing Mesa's internals: the
+6.46M px are a property of the desktop lane's software rasteriser, not of this
+emulator.
+
+## What that changes about target selection
+
+This is the part with consequences. **The desktop lane's corpus ranking counts
+6.46M px that do not exist on real hardware.** `Bump_env_lum` at 4.46M and
+`Bump_map`'s 2.0M alpha px are host artefacts of lavapipe, so both suites
+should drop a long way down any ranking built here, and any future ranking on
+this lane should exclude them rather than re-derive them as targets. That is
+the second time these two suites have been ranked as work that isn't there --
+they were also the queue I had to retract as "YUV plus a boundary floor".
 
 ## Where that leaves it, and a convergence worth acting on
 
@@ -91,14 +113,9 @@ equation is `src*sf + dst*df` with no free additive term, so there is no way
 to inject the missing fraction; a source-side bias of d moves the result by
 `As*d`, not by a fixed amount.
 
-The remedy that does reach it is **blending in the shader** — and that is the
-same remedy `signed-blend-equations.md` concluded #43 needs, for an unrelated
-reason (Vulkan cannot express a wrap, and fixed-point attachments clamp the
-source before blending). So one architectural change would cover #43's
-6,499,076 non-precision channels over 30 captures *and* this 6.46M px. That
-is the argument for doing it, and it is a decision for the user rather than
-something to start unasked.
-
-**One number settles the diagnosis first.** On a host whose blend divides by
-255, this quad's alpha reads 191. That is a single pixel on a single capture,
-and the device lane is already producing the capture set that answers it.
+Nor does it need to be reached. Adreno already renders these captures
+correctly, so there is nothing here for the emulator to fix. **The earlier
+claim in this document that a shader-side blend would recover 6.46M px
+alongside #43's is withdrawn** -- those px are not real outside this lane, and
+#43's case for shader-side blending has to stand on its own 6,499,076
+non-precision channels, which it may well do.
