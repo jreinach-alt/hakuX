@@ -260,9 +260,15 @@ void pgraph_gl_draw_begin(NV2AState *d)
                                     NV_PGRAPH_BLEND_SFACTOR);
         uint32_t dfactor = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND),
                                     NV_PGRAPH_BLEND_DFACTOR);
-        if (r->color_binding &&
-            surface_color_format_dst_alpha_is_one(
-                r->color_binding->shape.color_format)) {
+        /*
+         * The guest-declared format, not r->color_binding->shape.color_format:
+         * surface compatibility is decided on the host format, and the several
+         * guest formats that share one are matched across a colour-format
+         * change without the binding's shape being refreshed.  See the Vulkan
+         * renderer's pgraph_vk_effective_blend_reg() for what that cost.
+         */
+        if (surface_color_format_dst_alpha_is_one(
+                pg->surface_shape.color_format)) {
             sfactor = blend_factor_with_dst_alpha_one(sfactor);
             dfactor = blend_factor_with_dst_alpha_one(dfactor);
         }

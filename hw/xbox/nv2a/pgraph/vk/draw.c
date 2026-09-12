@@ -128,7 +128,7 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
 
 /*
  * The blend register with any destination-alpha factor already resolved against
- * the bound colour surface's format.
+ * the colour surface format the guest has declared.
  *
  * Returning a rewritten register rather than a pair of factors is what keeps
  * the dynamic path's cache honest: `dyn_state.blend` is keyed on this value, so
@@ -136,15 +136,51 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
  * itself. Keying on the raw register instead would carry the previous surface's
  * blend state across a format change, which is a bug this substitution would
  * otherwise have introduced.
+ *
+ * Keying on the effective value cannot alias two states that need different
+ * blend state, because everything programmed from it -- the equation here, the
+ * pipeline's blend attachment on the static path -- is a pure function of it.
+ * Two draws that agree on the effective register want identical blend state
+ * even when their surface formats differ, so sharing is correct rather than a
+ * collision.
+ *
+ * Anything else that must vary with the surface format, such as #36's
+ * smoothing routes forcing SRC_ALPHA on, belongs here too: this is the single
+ * point where the register is adjusted before it reaches a cache key.
  */
 static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
 {
-    PGRAPHVkState *r = pg->vk_renderer_state;
     uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
 
-    if (!r->color_binding ||
-        !surface_color_format_dst_alpha_is_one(
-            r->color_binding->shape.color_format)) {
+    /*
+     * The guest-declared format from NV097_SET_SURFACE_FORMAT, never
+     * r->color_binding->shape.color_format.
+     *
+     * A reused binding does not carry the current format.  Compatibility is
+     * decided on host_fmt.vk_format (check_surface_compatibility), and
+     * A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O}1A7R8G8B8 all map to
+     * B8G8R8A8_UNORM -- so a surface at the same address, pitch and size is
+     * matched across a colour-format change, `should_create` stays false and
+     * `surface->shape` is never refreshed.  Reading the format off the binding
+     * therefore returns whichever format first created that surface.
+     *
+     * That is not a theoretical hazard: it cost DstAlpha_ARGB8 its exactness,
+     * 0 -> 98,304 px.  Blend surface renders every swatch into one 128x128
+     * surface at GetTextureMemoryForStage(0), and its cases run in name order,
+     * so 1-DstAlpha_X_ZRGB8 leaves a 0x04 shape behind that ARGB8_Add_SrcA_DstA
+     * and DstAlpha_ARGB8 then inherit -- while 1-DstAlpha_ARGB8, which runs
+     * first of all 32, stayed exact.  Every X-format case was unaffected only
+     * because name order alternates the 8-bit and 1555 formats, whose host
+     * formats differ, so each got a fresh binding.
+     *
+     * The register is written eagerly by the SET_SURFACE_FORMAT method handler
+     * (pgraph.c), is what the hardware blend unit consults, and makes this
+     * substitution independent of binding reuse: the whole point of folding
+     * Ad = 1.0 into the factor is to stop reading the host alpha channel, so
+     * which physical image is being reused cannot matter.
+     */
+    if (!surface_color_format_dst_alpha_is_one(
+            pg->surface_shape.color_format)) {
         return blend_reg;
     }
 
