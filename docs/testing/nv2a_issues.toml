@@ -170,6 +170,19 @@ disposition = "unmodelled-hardware"
 # something; the 12 that fail do so only on tie-sensitive operators, which is
 # what a missing reference would also look like. The goldens are consistent with
 # both readings, so this needs a test that varies r under PROJECT2D on hardware.
+[issue.43]
+title = "Signed blend equations are treated as plain add and reverse-subtract"
+# SOLVED, not yet implemented. The source is read as a signed byte:
+# signed(S) = S - 256 if S >= 128; SADD = clamp(signed(S) + D, 0, 255),
+# SREVSUB = clamp(D - signed(S), 0, 255), both factors ignored. Fits 7,849 of
+# 7,849 across Blend tests and Texture signed component, four destination
+# values. Vulkan cannot express it -- a fixed-point attachment clamps the
+# source to [0,1] before blending, killing the negative half -- so it needs a
+# float intermediate or shader-side blending.
+# docs/investigations/signed-blend-equations.md.
+disposition = "defect"
+suites = ["Blend tests", "Texture signed component tests"]
+
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
 suites = ["Texture shadow comparator"]

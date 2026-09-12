@@ -3577,6 +3577,14 @@
    ],
    "title": "Render-to-texture diverges from silicon"
   },
+  "43": {
+   "disposition": "defect",
+   "suites": [
+    "Blend tests",
+    "Texture signed component tests"
+   ],
+   "title": "Signed blend equations are treated as plain add and reverse-subtract"
+  },
   "46": {
    "disposition": "unknown-semantics",
    "suites": [
@@ -4187,7 +4195,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "8f27b84d211ed7ced2daaa0a16661dde87a0d60c",
+  "emulator_commit": "e9ce0837363ac5f12642bbc5bf1e6867af46028b",
   "gaps": 501,
   "resolved_tables": 1,
   "sites": 2738,

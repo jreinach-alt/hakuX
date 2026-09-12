@@ -1,4 +1,4 @@
-# FUNC_ADD_SIGNED: half of the rule, and the half that does not fit
+# The signed blend equations: the source is a signed byte
 
 Scope: issue #43, the two signed blend equations. Measured against the 30
 `Blend tests` `#spot_*_SADD` / `#spot_*_SREVSUB` captures, which give 15 source
@@ -114,7 +114,58 @@ rejected against the full curve: clamp everywhere; clamp when the wrapped
 result would be below 128 (fits D = 255, contradicts D = 127); signed 8 bit
 operands; saturation in 9 bits; a 0.5 bias in any of the forms above.
 
-## Next
+## SOLVED: the source is read as a signed 8 bit value
+
+    signed(S) = S - 256 if S >= 128 else S
+
+    FUNC_ADD_SIGNED              result = clamp(signed(S) + D, 0, 255)
+    FUNC_REVERSE_SUBTRACT_SIGNED result = clamp(D - signed(S), 0, 255)
+
+Both blend factors are ignored. The destination stays unsigned. The clamp is an
+ordinary saturate, not a wrap -- the wrap seen earlier was the signed source
+being read as unsigned.
+
+| | fit |
+|---|---|
+| `Texture signed component` `SADD`, D = 127 and 255 | **324 / 324** consistent (S, D) pairs |
+| `Texture signed component` `SREVSUB` | **325 / 325** |
+| `Blend tests` `#spot_*_SADD`, D = 0 and 51, through the render target and blit | **3600 / 3600** sampled pixels |
+| `Blend tests` `#spot_*_SREVSUB` | **3600 / 3600** |
+
+Four destination values, the full source range, two suites that reach the
+framebuffer by different paths, and a plain-`ADD` control fitting
+`S*a + D*(1-a)` at 795/795 on the same harness.
+
+Every earlier anomaly falls out of it. At D = 0 every source gave 0 because a
+source of 221 or 255 is signed -35 or -1, and a negative sum clamps to zero. At
+D = 255 the saturation below S = 128 and the wrap above it are the positive and
+negative halves of the signed source: +4 + 255 saturates at 255, while
+-112 + 255 is 143. The transition sits exactly at S = 128, the sign bit. What
+looked like a wrap at mid-range destinations was `signed(221) + 51 = 16`, which
+is also `(221 + 51) mod 256` by coincidence whenever the sum stays in range.
+
+## Implementing it is the open question, not deriving it
+
+Vulkan cannot express this with a blend op. The natural form -- remap the
+source to its signed value in the fragment shader, then blend `ONE`/`ONE` with
+`VK_BLEND_OP_ADD` -- fails because a fixed-point colour attachment clamps the
+source to [0, 1] *before* blending, which destroys the negative half. That is
+exactly the half that distinguishes these equations from plain add.
+
+So it needs either a floating point intermediate target, or the blend moved
+into the shader with framebuffer fetch (an input attachment plus a subpass
+self-dependency, or `VK_EXT_rasterization_order_attachment_access`). Both are
+substantially larger than a table entry in `pgraph_blend_equation_vk_map`, and
+the choice should be made deliberately rather than discovered during
+implementation.
+
+The prize is 6,499,076 non-precision channels across 30 `Blend tests` captures
+plus the two `Texture signed component` cases -- the largest single item in the
+corpus.
+
+## Method notes worth keeping
+
+### The disc that was going to be needed, and was not
 
 The discriminating experiment is a destination sweep: the `#spot_` captures
 only ever offer two destination values, 51 and 0. `Blend tests`' non-`#spot_`
