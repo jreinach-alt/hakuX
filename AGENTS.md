@@ -49,6 +49,27 @@ pgraph suite exists precisely so that claims are checkable. Run it.
 once; one of them broke boot and all four looked suspect for an hour. Bisecting
 cost more than testing each would have.
 
+**Disposition an item, update its issue.** The issue log is the project's
+memory; a finding that lives only in a commit message, a doc or a PR thread is
+one nobody will find before re-deriving it. Whenever you land a fix, revert one,
+kill a hypothesis, or re-rank an entry, say so on the issue that owns it, and
+open one if none does.
+
+This is not bookkeeping. #41 recorded, four days before the fact, both the
+measurement for the radial fog cell and the argument against implementing it.
+I did not read it, spent an afternoon deriving a worse answer, shipped it and
+reverted it. The largest entry on the board -- the `Blend_tests` fifth quad, 6.5M
+structural channels and five dead mechanisms -- existed only as prose in a PR
+thread, which is why the same mechanisms were proposed twice from two lanes.
+
+Two habits follow from it:
+
+- **Read the issue before deriving a mechanism.** Search the log for the suite
+  and the register first. It costs a minute against an afternoon.
+- **Record negatives, not just fixes.** A mechanism that measured zero is worth
+  more than silence: it stops the next person spending a build on it. Say what
+  was tried, what it moved, and against which oracle.
+
 **Commit as you go.** Do not end a turn with a dirty working tree. Each commit
 should be one coherent change with a message explaining *why*, so that a
 bisect lands on something meaningful and a reviewer can follow the reasoning.
