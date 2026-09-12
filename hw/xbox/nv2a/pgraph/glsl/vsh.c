@@ -573,7 +573,16 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         values->surfaceSize[0][1] = height;
     }
 
-    if (state->is_fixed_function) {
+    /*
+     * The lighting registers, which the programmable path needs too: with
+     * LIGHTING_ENABLE set it emits the colour material constant term, and
+     * that reads ltctxa. Gated on is_fixed_function alone the vertex program's
+     * shader read zeros, which put a black source where silicon has grey 8 --
+     * visible on Specular's ControlFlagsNoLight_VS as the golden being exactly
+     * six higher than us everywhere, the blend of that 8 against the two
+     * background tones.
+     */
+    if (state->is_fixed_function || state->lighting) {
         if (locs[VshUniform_ltctxa] != -1) {
             QEMU_BUILD_BUG_MSG(sizeof(values->ltctxa) != sizeof(pg->ltctxa),
                                "Uniform value size inconsistency");
