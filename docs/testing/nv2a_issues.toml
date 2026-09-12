@@ -750,7 +750,40 @@ suites = ["Texture shadow comparator"]
 disposition = "unknown-semantics"
 
 [issue.48]
-title = "Blend surface: two draws land on the region and the wrong one survives; only the O format needs a forced alpha"
+# Retitled 2026-09-12: three premises in the old title and body are measured
+# FALSE. S is 255, not 108 (kSwatchColor = 0x22FFFFFF) -- 108 is DERIVED, from
+# 255*(34/255) + 85*(221/255) where hardware gets 255*1. "The wrong draw
+# survives" is not the mechanism: with dfactor = ZERO the blended draw wins
+# unconditionally, on hardware and for us. And "only the O format needs it" is
+# false -- Z needs Ad = 1.0 just as much; what is O-only is the texture pad
+# readback.
+#
+# BLEND HALF FIXED AND VERIFIED ON DEVICE. The blend unit now reads Ad = 1.0 on
+# a colour surface with no alpha bits (2f23dd9ce5, repaired in f4e029b1d3),
+# taking the format from NV097_SET_SURFACE_FORMAT rather than from a surface
+# binding whose shape is never refreshed (c6dd6fcdfb -- see #55).
+#
+# Cumulative A/B against the pre-fix baseline, 137 captures per arm:
+#   10 better, 0 worse, exact 4 -> 7, 6,511,182 -> 6,136,728 px.
+#   Three captures to exactly 0, five to exactly 65,536, and the two
+#   _Add_SrcA_DstA captures the oracle could not model improved rather than
+#   regressed. The predicted total was 6,136,728 -- hit to the pixel.
+#
+# The intermediate regression is kept on the record because the diagnosis was
+# wrong first: reading the format from the binding sent DstAlpha_ARGB8 from
+# exact to 98,304 px while its complement stayed exact. I read that as a
+# cache-key collision; it was killed four ways, most cleanly by RUN ORDER --
+# 1-DstAlpha_ARGB8 runs 1st with a fresh binding, DstAlpha_ARGB8 runs 11th and
+# inherits a stale X8R8G8B8_Z8 shape. A key collision has no notion of position
+# in a run.
+#
+# WHAT REMAINS is the texture-unit half, BLOCKED ON #55: the rule is measured
+# pixel-exact (sampled alpha 0 for Z and 255 for O at every stored alpha, sd
+# 0.00 over 16,371 px per quad; 0 of 65,536 per capture against 65,536 of
+# 65,536 for the opposite constant) and cannot be implemented because no
+# binding reports the format the surface was rendered as. Predicted when
+# unblocked: -229,376 px over six captures.
+title = "Blend surface: destination alpha on alpha-less surfaces (blend half fixed; texture pad readback blocked on #55)"
 suites = ["Blend surface", "Surface format"]
 
 # Added 2026-09-12 by auditing this file against the GitHub issue list, which
