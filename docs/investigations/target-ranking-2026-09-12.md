@@ -58,6 +58,16 @@ captures classified `one-step-sym`, which is a rounding rule; `Line width`'s
 number in two different classes is not the same amount of work. Rank by class
 first and size second.
 
+**`Line width` is not the open target it looks like here, and I had it wrong.**
+`4ed3a55ea6` landed the register on 2026-09-11 and the width now tracks
+silicon to within 4% at every width from 1.25 px up. What is left splits three
+ways, none of it a missing rule: the device's own minimum and granularity
+below 1.25 px (silicon draws a sub-pixel line as *dashes*, which no line
+rasteriser will do), a 3-4% shortfall at every width that is the line ends,
+and the colour interpolated along the line. I reached the opposite conclusion
+by measuring against a capture set four days older than the fix; the
+correction and what is genuinely left are in `line-width-residual.md`.
+
 ## The suites the channel order could also have been carrying: none
 
 The obvious next thought was that every suite sampling a render target through
