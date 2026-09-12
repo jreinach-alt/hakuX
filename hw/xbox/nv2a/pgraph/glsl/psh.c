@@ -1405,6 +1405,38 @@ static bool stage_consumed_raw(const struct PixelShader *ps, int i)
 static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
+
+    /*
+     * A texture coordinate that is mathematically on an exact texel boundary
+     * reaches the sampler a few ULP either side of it: it is fp32 interpolated
+     * across the primitive and then divided by w and by the texture size.
+     * Which side it lands on decides which texel `floor` picks, so a boundary
+     * the guest placed exactly on a pixel centre renders a texel over
+     * depending on nothing but host arithmetic.  Measured on one such
+     * boundary, the centre column of Texture_render_target: hardware,
+     * lavapipe and Adreno resolve these ties three different ways and in both
+     * directions, and three Adreno drivers from two vendors agree with each
+     * other, so this is our arithmetic meeting a different FP unit rather than
+     * driver variance.
+     *
+     * Bias the coordinate up by a fraction of a texel large enough to cover
+     * that noise (2^-18 of the texture, about fifteen times the fp32 error on
+     * an interpolated coordinate) and far below any subtexel position a guest
+     * can express: 0.001 texels on a 256 texture.  A coordinate exactly on a
+     * boundary then lands on it; one genuinely below stays below.
+     *
+     * u only, and v deliberately zero.  Hardware's u-ties resolve up in every
+     * quad measured, so biasing u moves us onto its answer.  Its v-ties do
+     * not: they go down at texels 40, 80 and 120 and up at 160, 200 and 240
+     * on one quad, and down at texel 128 on a quad whose u-tie at the same
+     * value goes up -- the signature of a rasteriser accumulating u along the
+     * scanline and v between scanlines.  There is no v rule to move onto, and
+     * biasing v anyway costs the checkerboard cell corners, where a u-tie and
+     * a v-tie coincide and the diagonal texel is the other colour.
+     * docs/investigations/edge-defect.md carries the measurements.
+     */
+    mstring_append(preflight,
+                   "const vec2 texelTieBias = vec2(1.0 / 262144.0, 1.0 / 262144.0);\n");
     pgraph_glsl_get_vtx_header(preflight, ps->opts.vulkan,
                              ps->state->smooth_shading,
                              ps->state->noperspective, true, false, false);
@@ -1997,10 +2029,14 @@ static MString* psh_convert(struct PixelShader *ps)
                                 "vec4 t%d = texture(texSamp%d, remap2DToCube(%s(pT%d.xyw)));\n",
                                 i, i, tex_remap, i);
                         } else {
+                            /* texelTieBias: see the note by its definition.
+                             * Scaled by w so that textureProj's own divide
+                             * leaves exactly the bias behind. */
                             mstring_append_fmt(
                                 vars,
-                                "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyw));\n",
-                                i, i, tex_remap, i);
+                                "vec4 t%d = textureProj(texSamp%d,\n"
+                                "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
+                                i, i, tex_remap, i, i, i);
                         }
                     } else if (ps->state->dim_tex[i] == 3) {
                         mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, vec4(pT%d.xy, 0.0, pT%d.w));\n",
