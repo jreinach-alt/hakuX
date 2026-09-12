@@ -40,3 +40,6 @@ hs_err_pid*.log
 replay_pid*.log
 *.aab
 *.txt
+
+# Release-signing sidecar, produced by the build; 256KB of derived bytes.
+*.apk.idsig
