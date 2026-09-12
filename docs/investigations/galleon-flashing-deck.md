@@ -192,6 +192,57 @@ texture-matrix enable and texgen mode per stage (431 frames, zero changes).
 So the next measurement is the matrix values for stages 2 and 3, logged on
 change, and ideally attributed to the draw rather than the frame.
 
+## The strongest lead: stage 1's tiling scale takes three values
+
+Logged the texture matrix *contents* per stage, on change, with the frame and
+bind index. 17,683 changes over 104 frames while the artifact was on screen.
+
+| stage | distinct matrices | changes | max in one frame | row 0 |
+|---|---|---|---|---|
+| 0 | 630 | 1,995 | 19 | `1 -0 0 0` — per-object, identity-like |
+| **1** | **3** | **14,431** | **138** | **`8 0 0 0`, `16 0 0 0`, `50 0 0 0`** |
+| 2 | 3 | 627 | 6 | `0 0 0.0005 -0.5` — projection-like |
+| 3 | 3 | 630 | 6 | `0 0 0.002 -0` — projection-like |
+
+**Stage 1 is a detail texture whose coordinate scale is only ever 8, 16 or 50,
+and it flips between them up to 138 times in a single frame.** A detail texture
+tiled 8, 16 or 50 times across a surface produces hatching at three different
+densities, which is what the ground cycles through. Nothing else measured so
+far has that shape.
+
+This is a lead and not yet a finding. Three tiling densities alternating is
+also exactly what a scene with three kinds of ground material legitimately
+looks like. The open question is whether the *ground* draw receives the scale
+that belongs to it, and that needs per-draw attribution against a frame where
+the artifact is visible.
+
+## Why this is the last thing to chase through logcat
+
+Two of these measurements have now destroyed the evidence sitting beside them.
+The per-bind geometry logger ran at 500 lines a second and evicted the
+frame-pacing lines; this matrix logger ran at 17,683 lines and evicted the
+startup lines, which is where the answer to "did the Vulkan validation layer
+load" would have been. So **the validation-layer and synchronization-hazard
+test is inconclusive, not negative** -- zero reported hazards with zero
+validation lines of any kind means the layer never spoke, and the layer binary
+ships in the package but was not found extracted on the device.
+
+The right channel was already in the tree. `nv2a_dbg_trigger_diag_frames`
+writes a per-draw JSON session to a file, with deduplicated shader sources and
+frame-to-frame fingerprint diffs, and a file cannot be evicted by its own
+volume. It already recorded blend, depth, stencil, cull, write masks, both
+surfaces, the combiner constants and every texture stage's format, size,
+levels, pitch, wrap modes and border colour; it now also records the
+matrix-enable bit, the four texgen modes and all sixteen matrix values per
+stage.
+
+One capture therefore holds every hypothesis this investigation has raised and
+every one it has eliminated. The remaining questions -- whether the ground
+draw gets the wrong tiling scale, whether a texture is re-uploaded on the
+flashing frame, whether the stage set differs for that draw -- are all
+answerable from a capture already taken, offline, without another build or
+another device trip.
+
 ## Next measurement, not yet done
 
 Log the texture matrix and the coordinate generation mode for each active
