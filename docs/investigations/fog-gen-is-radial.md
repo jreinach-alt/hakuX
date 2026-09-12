@@ -100,41 +100,24 @@ at a worst error of one. They are the same blend floor as everything else.
 
 I shipped `length(oPos.xyz * oPos.w)` as the `VS radial` fog distance on the
 strength of a 94.9% reduction in that cell, and posted the derivation to the
-coordination thread. **It is wrong and it is reverted.**
+coordination thread. It is reverted (`e90c3c80`).
 
-Issue #41 had the right answer before I started, and I did not read it. The
-`VS radial` goldens hold **exactly two colours** in the drawn region:
+The root cause is not a distance formula and not the stale state #41 proposes.
+It is that **these six captures cannot discriminate**: the golden holds one
+colour across the whole region we differ in, so every model that saturates the
+fog scores the same. Calibrated from `FOG_X`, the output clips at a coordinate
+of 200; all six radial captures are fully fogged on all 374 quads in all six
+mode functions, while the fixed function captures of the same gen mode carry
+250-258 distinct colours. And no unsaturated observation exists anywhere --
+`fog_tests.cpp:27` and `fog_exceptional_value_tests.cpp:98` both have RADIAL
+commented out of their gen mode lists, because the test author tracks these
+captures as unstable on hardware (`abaire/nxdk_pgraph_tests#214`).
 
-| golden | colour | pixels |
-|---|---|---:|
-| `FogGen_VS-linear-radial` | `(255,0,0)` — fog colour | 181,016 |
-| | `(35,38,35)` — background | 32,540 |
-
-Every quad is fully fogged regardless of its depth or screen position. That is
-not a function of any coordinate. #41 measured the same thing from the factors
--- a fog coordinate around [194, 222] for every quad -- and notes that the test
-author tracks these captures as **non-deterministic on hardware**
-(`abaire/nxdk_pgraph_tests#214`, "the radial generator tests change
-occasionally on HW"). Its proposed mechanism is the fog mux still honouring
-RADIAL in program mode and reading stale lighting intermediates that a vertex
-program never produces.
-
-So the 94.9% is the fraction of pixels a large enough number pushes past the
-fog range, not evidence about a distance. The giveaway was in my own residual
-analysis and I read past it: the change produced **255 distinct colours where
-the golden has two**, and I recorded the leftover as "a clamp at rows 70-91"
-rather than asking why a correct distance would need one. `length(oPos.xyz)`
-scored 27% for being smaller, not for being less correct -- two points on a
-saturation curve, which I presented as converging evidence.
-
-Reverted. Emulating "fully fogged" matches this one golden and nothing else,
-and it would put a bogus distance in front of any guest that did combine a
-vertex program with RADIAL -- where the old behaviour, the fog coordinate, is
-what every driver forces and what the other four modes do.
-
-**The rule this cost me: check the issue log before deriving a mechanism.**
-#41 is four days old, it is on the suite I was working, and it contains both
-the measurement and the reason not to implement it.
+So 94.9% was the fraction of pixels a large enough number pushes past the
+threshold, and `length(oPos.xyz)` scored 27% for being smaller rather than
+less correct. The full measurement, and a scan of the rest of the board for
+the same property, is in
+[`unfalsifiable-goldens.md`](unfalsifiable-goldens.md).
 
 ## What the board entry should say
 
