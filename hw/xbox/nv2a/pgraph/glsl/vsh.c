@@ -82,10 +82,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
         }
     }
 
-    if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE) {
-        state->foggen = (enum VshFoggen)GET_MASK(
-            pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
-    }
 }
 
 static void set_programmable_vsh_state(PGRAPHState *pg,
@@ -153,6 +149,10 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
 
     vsh->fog_enable =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;
+    if (vsh->fog_enable) {
+        vsh->foggen = (enum VshFoggen)GET_MASK(
+            pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
+    }
 
     vsh->is_fixed_function = fixed_function;
     if (fixed_function) {
@@ -377,7 +377,47 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *      state->vertex_program = true; state->foggen == FOGGEN_PLANAR
              *      but expects oFog.x as fogdistance?! Writes oFog.xyzw = v0.z
              */
-            mstring_append(body, "  float fogDistance = oFog.x;\n");
+            /*
+             * RADIAL is the one gen mode a vertex program does not override.
+             * Comparing the goldens against each other rather than against us
+             * shows silicon rendering SPEC_ALPHA, PLANAR, ABS_PLANAR and FOG_X
+             * identically under a program -- the only difference between those
+             * four Fog gen captures is the printed test name -- while RADIAL is
+             * a different image over the whole frame. So the fog coordinate is
+             * right for four modes and wrong for this one, which is where the
+             * suite's structural residue lives.
+             *
+             * The distance is the length of the position the program wrote,
+             * before the perspective divide. oPos.xyz arrives divided (the
+             * Xbox convention is for the program to do it and pass the clip w
+             * in oPos.w), so multiplying it back out recovers what the fog
+             * unit sees. Measured on all six VS radial captures:
+             *
+             *   distance            channels   structural
+             *   oFog.x (before)    2,172,192    2,172,192
+             *   length(oPos.xyz)   1,589,968    1,589,968
+             *   this                 788,528      110,764
+             *
+             * 94.9% of the structural error, and nothing outside this cell
+             * moves: the other seven fog suites are unchanged to the channel
+             * across 280 captures. What is left is two things. The linear and
+             * exp2 residue is one band, rows 70-91, where we produce no fog and
+             * hardware saturates -- a clamp, not a distance. The exp residue is
+             * 94.4% one-step, having been entirely structural before, which
+             * puts it on the mode function rather than here.
+             *
+             * The remaining modes stay on oFog.x, which is what the hardware
+             * does and what guests rely on: "RollerCoaster Tycoon" sets
+             * FOGGEN_PLANAR with a vertex program, writes oFog.xyzw = v0.z and
+             * expects oFog.x. Honouring SPEC_ALPHA here instead costs
+             * 7,449,481 channels across the fog suites, measured.
+             */
+            if (state->foggen == FOGGEN_RADIAL) {
+                mstring_append(
+                    body, "  float fogDistance = length(oPos.xyz * oPos.w);\n");
+            } else {
+                mstring_append(body, "  float fogDistance = oFog.x;\n");
+            }
         }
         mstring_append(body,
                        "  if (isinf(fogDistance) || isnan(fogDistance)) {\n"

@@ -1928,7 +1928,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:120",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:116",
    "symbols": [
     "NV_PGRAPH_CSV0_C",
     "NV_PGRAPH_CSV0_C_SPECULAR_ENABLE",
@@ -1951,7 +1951,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.h:55",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.h:54",
    "symbols": [],
    "text": "unsigned int surface_scale_factor;  // FIXME: Remove"
   },
@@ -4195,10 +4195,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "d7500d940a8afd8724aa2d0da249996a69686ff9",
+  "emulator_commit": "a49603cf1bac5d36ee76e9f306cf569a8e583ea3",
   "gaps": 501,
   "resolved_tables": 1,
-  "sites": 2738,
+  "sites": 2736,
   "suites": 102,
   "support_dirs": [
    "/home/user/pbkitplusplus"
@@ -12654,12 +12654,12 @@
     "text": "NV_PGRAPH_COMBINESPECFOG1, NV_PGRAPH_CONTROL_0,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:136",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:132",
     "role": "READ",
     "text": "vsh->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:138",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:134",
     "role": "READ",
     "text": "vsh->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &"
    },
@@ -13429,7 +13429,7 @@
     "text": "NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:139",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:135",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);"
    },
@@ -13676,7 +13676,7 @@
     "text": "NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:137",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:133",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;"
    },
@@ -14619,17 +14619,12 @@
     "text": "NV_PGRAPH_CONTROL_3,       NV_PGRAPH_CSV0_C,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:85",
-    "role": "READ",
-    "text": "if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE) {"
-   },
-   {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:150",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:146",
     "role": "READ",
     "text": "vsh->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:155",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:151",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;"
    },
@@ -14801,12 +14796,7 @@
     "text": "NV_PGRAPH_CONTROL_3_FOGENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:85",
-    "role": "REF",
-    "text": "if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE) {"
-   },
-   {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:155",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:151",
     "role": "REF",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;"
    },
@@ -14973,7 +14963,7 @@
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:151",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:147",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
@@ -15072,7 +15062,7 @@
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:152",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:148",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;"
    },
@@ -15134,27 +15124,27 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:94",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:90",
     "role": "READ",
     "text": "int program_start = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:126",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:122",
     "role": "READ",
     "text": "vsh->specular_enable = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:128",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:124",
     "role": "READ",
     "text": "vsh->separate_specular = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:131",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:127",
     "role": "READ",
     "text": "!GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:133",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:129",
     "role": "READ",
     "text": "vsh->two_side_light = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),"
    },
@@ -15241,7 +15231,7 @@
   ],
   "NV_PGRAPH_CSV0_C_ALPHA_FROM_MATERIAL_SPECULAR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:132",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:128",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_ALPHA_FROM_MATERIAL_SPECULAR);"
    },
@@ -15265,7 +15255,7 @@
   ],
   "NV_PGRAPH_CSV0_C_CHEOPS_PROGRAM_START": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:95",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:91",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_CHEOPS_PROGRAM_START);"
    },
@@ -15347,7 +15337,7 @@
   ],
   "NV_PGRAPH_CSV0_C_SEPARATE_SPECULAR": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:129",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:125",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_SEPARATE_SPECULAR);"
    },
@@ -15371,7 +15361,7 @@
   ],
   "NV_PGRAPH_CSV0_C_SPECULAR_ENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:127",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:123",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_SPECULAR_ENABLE);"
    },
@@ -15393,7 +15383,7 @@
     "text": "NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:134",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:130",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN);"
    },
@@ -15420,24 +15410,24 @@
     "text": "(enum VshLight)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:87",
-    "role": "READ",
-    "text": "pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);"
-   },
-   {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:112",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:108",
     "role": "READ",
     "text": "bool vertex_program = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:115",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:111",
     "role": "READ",
     "text": "bool fixed_function = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:141",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:137",
     "role": "READ",
     "text": "vsh->point_params_enable = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:154",
+    "role": "READ",
+    "text": "pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);"
    },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:113",
@@ -15509,7 +15499,7 @@
   ],
   "NV_PGRAPH_CSV0_D_FOGGENMODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:87",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:154",
     "role": "REF",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);"
    },
@@ -15582,12 +15572,12 @@
   ],
   "NV_PGRAPH_CSV0_D_MODE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:113",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:109",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_D_MODE) == 2;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:116",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:112",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_D_MODE) == 0;"
    },
@@ -15599,7 +15589,7 @@
   ],
   "NV_PGRAPH_CSV0_D_POINTPARAMSENABLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:142",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:138",
     "role": "REF",
     "text": "NV_PGRAPH_CSV0_D_POINTPARAMSENABLE);"
    },
@@ -16431,7 +16421,7 @@
     "text": "NV_PGRAPH_CSV1_B,          NV_PGRAPH_POINTSIZE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:143",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:139",
     "role": "READ",
     "text": "vsh->point_size = pgraph_reg_r(pg, NV_PGRAPH_POINTSIZE) / 8.0f;"
    },

@@ -71,14 +71,36 @@ them at the same 356,224 because the fixed function stage takes the fog
 coordinate there too. So five of the ten cells are one shared rounding
 question, and it has nothing to do with what this suite is named for.
 
-## What the board entry should say
+## Nine of the ten cells are a rounding floor
 
-| | channels | shape |
-|---|---:|---|
-| radial, vertex program | 2,172,192 | not implemented — we use the fog coordinate |
-| radial + planar, fixed function | 709,076 | implemented, wrong value |
-| fog coordinate, both paths | 1,781,120 | one-step blend floor, five cells, identical masks |
-| `FF spec_alpha` | 4,240 | 4 of 6 exact |
+Counting channels without their magnitude flattered the wrong cells. With the
+one-step share and the worst channel error:
+
+| path | gen | channels | one-step | max |
+|---|---|---:|---:|---:|
+| **VS** | **radial** | **2,172,192** | **0.0%** | 255 |
+| FF | fog_x | 356,224 | 99.2% | 2 |
+| VS | abs_planar | 356,224 | 99.2% | 2 |
+| VS | fog_x | 356,224 | 99.2% | 2 |
+| VS | planar | 356,224 | 99.2% | 2 |
+| VS | spec_alpha | 356,224 | 99.2% | 2 |
+| FF | radial | 309,324 | 100.0% | 2 |
+| FF | abs_planar | 199,876 | 100.0% | 1 |
+| FF | planar | 199,876 | 100.0% | 1 |
+| FF | spec_alpha | 4,240 | 100.0% | 1 |
+
+**`VS radial` holds 2,172,192 of the suite's 2,186,760 structural channels --
+99.3% of it -- and it is the only cell with any structural content worth the
+name.** Not one of its channels is one-step; every other cell in the suite is
+at least 99.2% one-step with a worst error of two.
+
+That corrects my own reading above: the fixed function radial and planar cells
+are not "implemented, wrong value". `FF-linear-radial` is 2,601 pixels at a
+worst error of one. They are the same blend floor as everything else.
+
+So the second-largest structural entry on the board is **one defect**: radial
+fog gen is not implemented for the programmable vertex path. Everything else
+in this suite is precision.
 
 ## One thing that looks like a bug and is not
 

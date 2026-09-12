@@ -640,7 +640,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
 
     if (state->fog_enable) {
         /* From: https://www.opengl.org/registry/specs/NV/fog_distance.txt */
-        switch(state->fixed_function.foggen) {
+        switch(state->foggen) {
         case FOGGEN_SPEC_ALPHA:
             /* FIXME: Do we have to clamp here? */
             mstring_append(body, "  float fogDistance = clamp(specular.a, 0.0, 1.0);\n");
@@ -651,7 +651,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
         case FOGGEN_PLANAR:
         case FOGGEN_ABS_PLANAR:
             mstring_append(body, "  float fogDistance = dot(fogPlane.xyz, tPosition.xyz) + fogPlane.w;\n");
-            if (state->fixed_function.foggen == FOGGEN_ABS_PLANAR) {
+            if (state->foggen == FOGGEN_ABS_PLANAR) {
                 mstring_append(body, "  fogDistance = abs(fogDistance);\n");
             }
             break;
