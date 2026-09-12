@@ -216,8 +216,12 @@ run_solo() {
 }
 
 worker() {
+    # Wait for the device *before* starting the clock, so a run armed while the
+    # Nova is unplugged spends the night measuring rather than counting down.
+    say "=== overnight #19 armed, APK $(apk_sha) ==="
+    DEVICE_WAIT="${DEVICE_WAIT:-43200}" wait_device || { say "never appeared"; return 1; }
     date +%s > "$STARTED"
-    say "=== overnight #19 start, APK $(apk_sha), batt $(battery)% ==="
+    say "=== start, batt $(battery)% ==="
     a install -r "$APK" >>"$LOG" 2>&1
     local i g
     for i in "${!GROUP_NAMES[@]}"; do
