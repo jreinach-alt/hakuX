@@ -202,9 +202,47 @@ title = "Bump mapping"
 disposition = "defect"
 suites = ["Bump map", "Bump env lum"]
 
+# MEASURED 2026-09-12: 98.05% of this is sub-perceptual gradient rounding, not
+# an attribute or primitive-assembly defect. Across 111 captures in four
+# suites, 29,334 of 1,502,150 px are structural -- 1.95%.
+#
+# Attrib_carryover's 0/96 is neither our defect NOR the suite's order
+# dependence. Maximum per-channel RGB delta over all 96 captures is 2/255 and
+# alpha is bit-exact everywhere (96.70% of channels exact, 2.77% off by one,
+# 0.54% off by two). Missing state renders a structurally wrong image and a
+# 2/255 ceiling leaves no room for one -- and stronger: every differing pixel
+# falls inside the bleed primitive, while the test primitive whose colour IS
+# the carried-over value is bit-exact, present and correctly sized in all 96.
+# The carryover semantics are correct. Corroborating: 11 of the 12 attributes
+# under test have BYTE-IDENTICAL differing-pixel sums (104,194) and identical
+# medians, which an attribute-specific defect cannot look like -- and the test
+# source says why ("the bleed buffer should always render its diffuse color,
+# regardless of the attribute under test").
+#
+# The quad-split lead was checked and INVERTED. On Attrib_float::0_1 the
+# gradient is purely vertical, so a v1-v3 seam would show as x-variation
+# within a row: ours is constant across x in 284 of 284 rows and the GOLDEN
+# varies in 258 of them. The seam is hardware's, and changing prim_rewrite.c's
+# diagonal cannot manufacture it. On a genuine 2D gradient our roughness
+# matches hardware to 0.4% (mean |dx| 1.7989 against 1.7922; 188 row
+# sign-reversals against 189), leaving a rounding phase offset.
+#
+# The only structural work is 2 NaN tests and it is NOT in the attribute path:
+# hardware's -NaNq_NaNq renders a 0->255 ramp under the passthrough shader but
+# flat 255 once the value passes through a mul by 1.0, so the clamp is in the
+# vertex ALU, not where the attribute value is captured. A clamp in
+# pgraph_update_inline_value would force both columns equal; hardware's are 255
+# apart. -INF_INF is the control -- there the two columns DO agree, so the
+# divergence is NaN-specific. Note nxdk's own source calls -NaNs_NaNs
+# nondeterministic on hardware, so that golden is not a trustworthy target.
+#
+# Free-standing: Degenerate_begin_end needs no owner -- 8,422 px, zero pixels
+# beyond 2/255. And run-2026-09-12-golden-discrimination.tsv has NO Attrib_*
+# rows, so it could not gate any of this.
+# docs/testing/run-2026-09-12-issue12-attribute-magnitude.tsv.
 [issue.12]
 title = "Vertex attributes and primitive assembly"
-disposition = "unclassified"
+disposition = "precision-floor"
 suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
 
 [issue.13]
