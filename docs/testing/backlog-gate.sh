@@ -33,6 +33,14 @@ REPO="jreinach-alt/hakuX"
 
 mkdir -p "$STATE_DIR"
 
+# Unconditional audit line, first thing, before any logic can exit early.
+# Added because the hook silently failed to fire and I could not tell whether
+# Claude Code was not invoking it or it was invoking it and ignoring the
+# result. Those need different fixes, and the state files could not
+# distinguish them: an early `allow` writes nothing.
+printf '%s pid=%s ppid=%s args=%s\n' "$(date '+%F %T')" "$$" "$PPID" "$*" \
+    >> "$STATE_DIR/invocations.log" 2>/dev/null || true
+
 # The hook's stdin carries the session JSON; we only need stop_hook_active.
 payload=$(cat 2>/dev/null || true)
 active=$(printf '%s' "$payload" | python3 -c "
@@ -40,9 +48,15 @@ import json,sys
 try: print('1' if json.load(sys.stdin).get('stop_hook_active') else '0')
 except Exception: print('0')" 2>/dev/null || echo 0)
 
-allow() { exit 0; }
+allow() {
+    printf '%s allowed\n' "$(date '+%F %T')" \
+        >> "$STATE_DIR/invocations.log" 2>/dev/null || true
+    exit 0
+}
 
 block() {
+    printf '%s BLOCKED n=%s\n' "$(date '+%F %T')" "${n:-?}" \
+        >> "$STATE_DIR/invocations.log" 2>/dev/null || true
     python3 -c "
 import json,sys
 print(json.dumps({'decision':'block','reason':sys.argv[1]}))" "$1"
