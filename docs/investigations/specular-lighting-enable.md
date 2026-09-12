@@ -201,3 +201,52 @@ and the matrix registers are uploaded now. What it also needs is the rest of
 the lighting header: the per-light colour defines, `specularFactor`, `ltMul`,
 `FLOAT_MAX`. That is a refactor of `vsh-ff.c`'s header emission into something
 both paths call rather than a few lines, which is why it stops here.
+
+## The light loop, measured and held back
+
+Built the rest of it: `vsh-ff.c`'s lighting header factored into a function
+both paths call, `local_eye` and `normalization` moved to the shared state
+beside `lighting`, and the programmable path emitting the full
+`append_lighting` -- constant term, light loop and all -- with the eye-space
+inputs the fixed function stage uses when skinning is off:
+
+```
+vec4 tPosition = position * modelViewMat0;
+vec3 tNormal = (vec4(normal, 0.0) * invModelViewMat0).xyz;
+```
+
+The reasoning is the same one that made the constant term work: the lighting
+unit does not read the program's outputs, it reads the vertex, so it should
+reach the position and normal attributes through the transform registers.
+
+Over all eleven lighting suites, 195 captures:
+
+| capture | before | after |
+|---|---:|---:|
+| `Specular ControlFlags_VS` | 258,861 | 229,197 |
+| `Specular_back ControlFlags_VS` | 228,407 | 203,041 |
+| everything else | | unchanged |
+| **total** | 5,191,457 | 5,136,427 |
+
+**−55,030 channels, no regressions, and only the two lit captures move** --
+which is the right shape. But it is 12% of the ~365,000 the lights are
+supposed to account for, and 12% is the wrong number for a model that is
+actually right.
+
+The test says why. `TestControlFlags` calls
+`SetXDKDefaultViewportAndFixedFunctionMatrices()` once, and then drives the
+**program's** model matrix per draw -- `shader->GetModelMatrix()`,
+`MatrixRotate`, `MatrixTranslate`. So the geometry rotates through constants
+the vertex program owns while `modelViewMat0` sits at the XDK default.
+Hardware's lighting follows the rotation; a normal built from the fixed
+function register cannot. Whatever the unit reads, it is not that.
+
+So this is held back rather than landed. It changes colour output for every
+vertex-program draw with lighting and a light enabled, and 12% on two
+captures is not enough to ship a model the test's own setup argues against.
+Reverted; the measurement is the result.
+
+What it does establish: the remaining lit residue is not the *presence* of a
+light term, which is now emitted, but where its geometry comes from. That is
+a question about what the lighting unit sees when a vertex program owns the
+transform, and it wants hardware evidence rather than another candidate.
