@@ -304,3 +304,28 @@ format-independent in its rows and format-dependent in its columns. Nothing
 about bump channel arithmetic explains a period, and the `bump_signed` /
 displacement work above, while correct as description, was aimed at the wrong
 question.
+
+### And the source is not uniform across the quad
+
+One more assumption of mine that the test source contradicts. I wrote above
+that "past the first two rows and columns the whole texture is one colour",
+which is true of the texture and irrelevant to what is sampled. The draw sets
+TEX0's coordinates to span **texels 1 to 3** in both axes (`1.0f / w` to
+`3.0f / w`, or 1.0 to 3.0 unnormalised for the linear formats), so the quad
+samples a 2x2 texel region and straddles the `(x >= 2)` boundary of
+`GenerateBumpMapSurface`.
+
+Across that boundary the bump colours are `0x007f4500` and `0x00804500`: blue
+is `0x45` throughout, and **green steps 0x7f -> 0x80** — the two sides of the
+two's-complement boundary. Through `bump_signed` that is +127/128 = +0.992 on
+one side and (128-256)/128 = -1.0 on the other, a full-scale sign flip at the
+quad's midline. Testing exactly that transition is evidently the purpose of
+the test, and the constant-source reasoning earlier in this document was built
+on sand.
+
+It does not by itself explain the period of 21 — the 0x7f/0x80 step is a single
+vertical boundary, and the defect is eight horizontal rows plus ten columns —
+so this sharpens the question rather than answering it. But any model of this
+suite has to start from a source that changes sign across the quad, not a
+constant one, and blue being constant at `0x45` while green flips is consistent
+with the horizontal axis being exact and the vertical not.
