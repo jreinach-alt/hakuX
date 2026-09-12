@@ -394,10 +394,62 @@ title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) 
 disposition = "defect"
 suites = ["Blend tests", "Texture signed component tests"]
 
+# MEASURED 2026-09-12: real, reproducible at ~46% of runs, and DISTINCT from
+# #39. The fix is not in the texture path.
+#
+# Run-to-run on an identical binary and disc, same goldens: 136 px, then 0 px,
+# then 0 px -- the two passes byte-identical to the golden. Across 24
+# border-suite runs, 11 fail and 13 pass byte-identically, all 11 failing
+# images distinct, failures interleaving with passes with no relation to any
+# commit. Far too frequent to be the single-run band MEMORY.md warns about, and
+# it straddles ad1caa07 unchanged (3 fails in the 9 runs before, 8 in the 15
+# after), so the staleness trap does not apply.
+#
+# Five things that together identify it as a mid-write UPLOAD race rather than
+# anything else:
+#   - the stale pixels hold only this texture's OWN pass-1 checker values,
+#     each correct for its own position, so not contamination (consistent
+#     with #19)
+#   - all 12 failure masks form a total order under set inclusion, 0
+#     violations of 39 unordered pairs, with no differing pixel beyond each
+#     capture's own frontier -- predicted before being measured
+#   - differencing consecutive nested masks shows the frontier advancing
+#     bottom-to-top and right-to-left in increments of 2-50 px
+#   - the stale set is a prefix/suffix in NONE of row-major, column-major or
+#     either Morton order, so it is not a missed page: a missed 4 KB page of a
+#     swizzled 64x64 A8R8G8B8 would be an aligned 32x32 Morton block, and five
+#     simultaneously-partial rows is not that. Rules out the dirty-bitmap class
+#     that 91742b407b / 3bb7628694 / 91e3da1d6e addressed.
+#   - TWO swatches are affected, not the one this issue records: band A at
+#     y 272-335 and band B at y 80-143, both in the rightmost column
+#     (x 512-575), and they occur INDEPENDENTLY at the rate independence
+#     predicts (1.1 expected "both", 1 observed). A deterministic defect in the
+#     bordered-texture path would hit both together; each upload racing
+#     separately explains it.
+#
+# Why not #39: same class (host/guest timing nondeterminism), different defect.
+# #39's symptom is a draw's result being LOST -- whole quads holding previous
+# content -- with the command stream provably identical between passing and
+# failing runs and no partial-content signature. Here the draw lands correctly
+# and a sub-region of the texture it sampled is stale, with a monotone frontier.
+# Merging them would discard the cleanest run-to-run fingerprint in the project.
+#
+# INFERRED, not measured: the frontier always lands in interior rows 6-10 of 64
+# and cols 6-50, a fixed-phase race with small jitter, and since the write runs
+# bottom-up the stale rows are the LAST written -- which reads as the guest's
+# most recent stores not yet visible to pfifo_thread on a weakly-ordered
+# aarch64 host. That puts the fix in the pfifo/DMA path, not in texture.c,
+# which cannot know the guest intends more writes.
+#
+# The decisive next test needs no device time: run the border disc ~20 times on
+# the DESKTOP x86 lane. Predicted 0 failures there against ~46% on the Nova,
+# which would confirm host store-visibility and exclude the Vulkan renderer
+# entirely. If desktop also fails at ~46%, the inference is wrong and it is
+# renderer-side.
 [issue.44]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
@@ -573,13 +625,13 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # confuse with the above: 2,565,441 differing px -> 320,535 across both
 # cubemap suites, with the "other 71" going 2,223,987 -> 4,644.
 #
-# One regression on the record: DotSTR3D_Bad2D was exact before ad1caa07 and
-# is 19,714 px off after it. The CAUSE IS NOT ESTABLISHED -- an earlier note
-# here explained it as the suite having sampled a stale texture and happening
-# to agree, and that premise was retracted: the pre-ad1caa07 numbers reproduce
-# to the channel on a current build, so they were never measured through a
-# stale texture. Recorded as a measured regression with no mechanism, not as
-# luck, and not as an argument against a commit worth 2.2M px.
+# RETRACTED: there is no DotSTR3D_Bad2D regression from ad1caa07. This entry
+# carried one on my authority and it was wrong twice over -- first with a
+# mechanism ("sampled a stale texture and happened to agree"), then as a
+# "measured regression with no mechanism". Bad2D came back BYTE-EXACT on a
+# later run of the same binary. It is run-to-run variance, and the reason is
+# the undefined behaviour recorded below: every single-run score on the seven
+# DotSTR3D_* captures is meaningless, including the one I filed this row from.
 #
 # What Bad2D actually shows, from the image rather than the histogram: we do
 # not land on a wrong corner, we DITHER BOTH CHECKER COLOURS at texel
@@ -649,6 +701,34 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # is an edge pair on all three. +X comes from the addressing argument and
 # GenerateCubemap's write order, not from the pixels, so a fix that picks a
 # different positive face is not thereby wrong.
+#
+# THE FETCH IS UNDEFINED BEHAVIOUR, and that explains every observation we
+# could not account for. The validation layer names it, eight instances on the
+# cube suite:
+#   VUID-vkCmdDrawIndexed-viewType-07752 -- descriptor (binding 3, index 0)
+#   ImageView type is VK_IMAGE_VIEW_TYPE_CUBE but the OpTypeImage has
+#   (Dim = 2D) and (Arrayed = 0)
+# Binding 3 is texture stage 3. get_sampler_type() routes
+# PS_TEXTUREMODES_DOT_STR_3D through the PROJECT3D case, which ends
+# `return dim == 2 ? sampler2D : sampler3D` and NEVER consults
+# tex_cubemap[i] -- unlike CUBEMAP, DOT_STR_CUBE and all three DOT_RFLCT_*,
+# which all check it. The texture is cubemap-flagged so its view is TYPE_CUBE;
+# the shader declares 2D. Spec violation, result undefined.
+#
+# Consequence for measurement, and it invalidates a lot: running the suite
+# twice on the SAME BINARY leaves 71 of 78 captures byte-identical and moves
+# exactly the seven DotSTR3D_* captures -- Bad2D 0 px on one run and 19,714 on
+# the next, 0to1 differing from ITSELF by 42,554 px across runs. So no
+# single-run score of ours on those seven means anything, and a candidate fix
+# must be scored over repeat runs until the variance is gone. It also voids the
+# recorded negative "samplerCube when tex_cubemap[i] moves zero captures":
+# that was noise against noise, and it was probably testing the right fix.
+#
+# What survives: the probe results (it replaced the fetch with an arithmetic
+# readout, so it never went through the UB -- the 0.003 magnitude and the flat
+# sign field are measurements of dotSTR3 itself, which is computed correctly),
+# and the hardware rule with its predicted counts, which come from the goldens
+# rather than from our renderer.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
 
