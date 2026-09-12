@@ -1698,18 +1698,70 @@ static void create_pipeline(PGRAPHState *pg)
     // if (pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0) &
     //         NV_PGRAPH_CONTROL_0_DITHERENABLE))
     // FIXME: point size
-    // FIXME: Edge Antialiasing
-    // bool anti_aliasing = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_ANTIALIASING),
-    // NV_PGRAPH_ANTIALIASING_ENABLE);
-    // if (!anti_aliasing && pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
-    //                           NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {
-    // FIXME: VK_EXT_line_rasterization
-    // }
 
-    // if (!anti_aliasing && pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
-    //                           NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {
-    // FIXME: No direct analog. Just do it with MSAA.
-    // }
+    /*
+     * Edge antialiasing -- NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE and
+     * POLYSMOOTHENABLE -- is deliberately not implemented here, and both bits
+     * are masked out of the pipeline key in init_pipeline_key() so that
+     * toggling them never recompiles a pipeline. What the hardware does with
+     * them is measured; what it would take to reproduce it is the problem.
+     * See docs/investigations/line-polygon-smoothing.md and #36.
+     *
+     * MEASURED, from the 3D_primitive goldens (hardware) against the
+     * 2026-09-12 sweep (fb4dfafc6d38, Retroid Pocket Nova):
+     *
+     *   Both bits produce per-pixel coverage alpha-blended against the
+     *   destination. Fitting one scalar coverage per pixel from the strongest
+     *   channel and predicting the other two leaves a mean error of 0.28-0.92
+     *   of 255, against 22-28 for the no-smoothing null -- so
+     *   golden = cov*unsmoothed + (1-cov)*dst, and nothing else.
+     *
+     *   Coverage is quantised to EIGHTHS. Snapping the fitted values to n/8
+     *   lands 93-97% of them within 0.01; 1/16 and 1/32 buy almost nothing.
+     *   The observed levels are 4/8..8/8, i.e. there is a floor at half
+     *   coverage and the line never fades below it.
+     *
+     *   LINESMOOTHENABLE roughly doubles the line footprint (1,258 -> 2,452 px
+     *   for Lines; +89..95% across the three line primitives), adding a ~1px
+     *   partial-coverage fringe on each side and dimming the original core by
+     *   a mean of 51/255 as coverage moves outward. It is a no-op on filled
+     *   primitives. POLYSMOOTHENABLE is the mirror: a thin silhouette fringe
+     *   only (+437..639 px on a ~52,000 px polygon, 98% of the interior at
+     *   coverage exactly 1.0), and a no-op on line primitives.
+     *
+     * Why it is not done here:
+     *
+     *   Lines would need VK_EXT_line_rasterization with smoothLines and
+     *   VK_LINE_RASTERIZATION_MODE_RECTANGULAR_SMOOTH_EXT. hakuX never asks
+     *   for that extension (see add_optional_device_extension_names() in
+     *   instance.c), so no run has ever reported whether this device has it --
+     *   the feature booleans are UNMEASURED. Do not read them off the Turnip
+     *   .so: its string table is Mesa's full generated registry and lists
+     *   every vendor extension in existence. Even granted the extension, the
+     *   spec leaves the coverage falloff implementation-defined, so matching
+     *   eighths-with-a-4/8-floor is not something enabling it guarantees.
+     *
+     *   Polygons have no Vulkan analog at all. The only route is MSAA, and
+     *   there is no multisampling anywhere in either backend -- every pipeline
+     *   and image in this renderer is hardwired to VK_SAMPLE_COUNT_1_BIT.
+     *   8x MSAA would give eighths, which is the right quantisation, but it
+     *   reaches the render pass, the framebuffers and surface.c. Note also
+     *   that surface_scale_factor supersampling cannot substitute: the
+     *   downscale on readback is a raw row-stride copy, not a filtered
+     *   resolve, so the extra samples are discarded rather than averaged.
+     *
+     *   Either route additionally has to force SRC_ALPHA/ONE_MINUS_SRC_ALPHA
+     *   blending on, because the coverage is worthless unblended -- and that
+     *   is a synthesised blend state that NV_PGRAPH_BLEND does not hold,
+     *   landing on top of pgraph_vk_effective_blend_reg()'s destination-alpha
+     *   substitution for #48. The two must be sequenced deliberately.
+     *
+     * Weight, so nobody over-buys this: the hardware effect these bits are
+     * responsible for is 43,926 px per submission path, ~175,704 px of
+     * 3D_primitive's 3,866,664 differing px, i.e. 4.5%. 94.9% of that suite
+     * is the |delta|<=2 interpolation wash of #12, which is present with both
+     * bits clear, and a further 0.6% is the triangle-fan/strip interior seam.
+     */
 
 
     VkPushConstantRange push_constant_ranges[2];

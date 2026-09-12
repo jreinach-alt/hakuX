@@ -383,7 +383,25 @@ void pgraph_gl_draw_begin(NV2AState *d)
 
     bool anti_aliasing = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_ANTIALIASING), NV_PGRAPH_ANTIALIASING_ENABLE);
 
-    /* Edge Antialiasing */
+    /*
+     * Edge Antialiasing.
+     *
+     * The GL_LINE_SMOOTH / GL_POLYGON_SMOOTH half below is desktop-GL only:
+     * GLES 3.x has neither enum, so on Android this compiles down to the line
+     * width alone and both smoothing bits are ignored, exactly as in the
+     * Vulkan backend. The device sweeps therefore measure nothing from it --
+     * see the measurement and the cost of doing this properly in vk/draw.c
+     * and docs/investigations/line-polygon-smoothing.md (#36).
+     *
+     * Worth a cheap check before anyone builds on the desktop path: both
+     * branches gate smoothing on !anti_aliasing, and the nxdk -ls/-ps tests
+     * are reported to redirect the colour surface with AA_CENTER_CORNER_2. If
+     * NV_PGRAPH_ANTIALIASING_ENABLE is in fact set while those tests draw,
+     * this gate suppresses smoothing on the very captures that are supposed
+     * to exercise it, and desktop GL would be silently unsmoothed too. That
+     * the hardware goldens plainly do carry coverage antialiasing says the
+     * gate and the register state cannot both be what they look like.
+     */
 #ifdef __ANDROID__
     glLineWidth(MIN(r->supported_aliased_line_width_range[1],
                     (pg->line_width / 8.0f) * pg->surface_scale_factor));
