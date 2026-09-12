@@ -931,3 +931,33 @@ title = "Depth buffer: four independent defects on eight cells, one fixed, and t
 # larger defect: same cell, error maxes at 9 units rather than 1.
 disposition = "defect"
 suites = ["Depth buffer"]
+
+# Added 2026-09-12. Cross-cutting root cause rather than a pgraph defect, and
+# filed separately because it is not about a suite: tcg/tcg-op.c's
+# tcg_gen_mb() has an `#elif defined(XBOX)` branch (1d8a51aff9) setting
+# parallel = cflags & CF_PARALLEL where upstream sets it unconditionally true
+# for system emulation. CF_PARALLEL is never set here -- rr passes false
+# outright, mttcg passes smp.max_cpus > 1 -- so every guest memory barrier is
+# elided, including the TCG_MO_LD_ST | TCG_MO_ST_ST each store requests to hold
+# x86 TSO on a weak host. Upstream's own comment in the bypassed branch warns
+# about exactly this hazard.
+#
+# Provable rather than statistical: on x86-64 TCG_TARGET_DEFAULT_MO already
+# contains store-store so the patch never fires, on aarch64 it is required and
+# dropped. That single fact predicts #44's measured 20/20 desktop
+# byte-identical against ~46% Nova failures.
+#
+# Suites are listed because these are the ones whose intermittency it would
+# explain, NOT because the defect is in them. The falsifier for the general
+# claim: if #44 goes green and #39's lost-draw symptom stays equally noisy,
+# the specific fix worked and the publication account is wrong.
+#
+# The cost is the decision -- about one dmb ish per guest memory operation,
+# plausibly tens of percent on memory-heavy code -- so it needs a measured
+# number before it lands. A store-store-only variant is recorded in the
+# write-up and deliberately not implemented.
+# docs/investigations/tcg-barriers-elided.md.
+[issue.54]
+title = "tcg: all guest memory barriers are elided under XBOX, and device threads read guest RAM with bare loads"
+disposition = "defect"
+suites = ["Texture border", "W buffering"]
