@@ -1209,6 +1209,42 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
 }
 
 /*
+ * What the texture unit reads for this colour surface's pad bits, as a
+ * component swizzle for the alpha channel, or VK_COMPONENT_SWIZZLE_IDENTITY
+ * when the format has no pad bits or has some whose readback is not a
+ * constant.
+ *
+ * Issue #48, texture-unit half. The Z/O suffix on a colour surface format
+ * names what the pad bits read back as when the surface is later SAMPLED --
+ * 0 for Z, 1.0 for O -- and that is a different question from what the blend
+ * unit substitutes for a missing destination alpha, which is the stored
+ * alpha for both suffixes and is fixed separately (2f23dd9ce5). We were
+ * returning the stored alpha to the texture unit as well: with the swatch
+ * alpha of 34 that Surface format stores, sampling an _O8 surface gave
+ * 255*(34/255) + 85*(221/255) = 108 where hardware, reading the pad byte as
+ * ones, gets 255*1 = 255.
+ *
+ * The value is read from host_fmt and not derived from a format enum here,
+ * on the accessor's own instruction (pgraph_vk_surface_drawn_format() in
+ * renderer.h): host_fmt.sampled_pad_alpha *is* the measurement, each entry in
+ * kelvin_surface_color_format_vk_map citing its own, and the compatible-reuse
+ * path refreshes it (b6239ccb87, issue #55). Before that fix a reused binding
+ * reported whichever format first created it, which is why this override was
+ * recorded for months without a consumer. Reading the register instead does
+ * not work: both affected suites render to a scratch surface and restore the
+ * framebuffer format before sampling it, so by texture-bind time
+ * NV097_SET_SURFACE_FORMAT says A8R8G8B8 and the override would be dead code.
+ */
+static VkComponentSwizzle surface_sampled_pad_alpha(
+    const SurfaceBinding *surface)
+{
+    if (!surface->color) {
+        return VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+    return surface->host_fmt.sampled_pad_alpha;
+}
+
+/*
  * Whether the surface's own image view decodes its memory the way the guest's
  * texture format says to.
  *
@@ -1237,6 +1273,16 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
 {
     if (!surface->color) {
         return true;
+    }
+
+    /*
+     * A pad-alpha format cannot borrow the surface's view either, for a
+     * reason that has nothing to do with channel order: the readback the
+     * texture unit owes us is not in the image at all. See
+     * surface_sampled_pad_alpha().
+     */
+    if (surface_sampled_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY) {
+        return false;
     }
 
     VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
@@ -1598,7 +1644,34 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         VkFormat bc = kelvin_format_to_native_bc(state.color_format);
         if (bc) expected_fmt = bc;
     }
-    if (binding_found && snode->image_config.format != expected_fmt) {
+    /*
+     * A pad-alpha surface (issue #48) carries its readback in the texture
+     * view's alpha swizzle, and that swizzle is baked in when the view is
+     * created. Nothing in TextureKey or TextureImageConfig records which
+     * variant it was baked for -- the key is guest texture state plus VRAM
+     * offsets, and X8R8G8B8_Z8/_O8 share one VkFormat, as do X1R5G5B5_Z/O --
+     * so a cache hit cannot be asked whether its view still matches. Rebuild
+     * unconditionally rather than compare: both affected suites render every
+     * swatch into ONE 128x128 surface at one address, so the Z and O variants
+     * land on the same TextureKey within a run and a kept view would be right
+     * on the first capture and wrong on the rest. That run-order-dependent
+     * failure is the one this whole override was withheld for.
+     *
+     * The cost is confined to four formats. On a miss the image and view are
+     * created anyway (both paths below reach vmaCreateImage / vkCreateImageView
+     * unconditionally), and the image comes from image_pool_acquire, so the
+     * recurring price is a pooled image plus one vkCreateImageView per
+     * create_texture call for a surface in one of these formats -- not per
+     * draw, since pgraph_vk_bind_textures skips create_texture for a clean
+     * slot. A cheaper conditional rebuild needs one field recording the baked
+     * swizzle, which lives in renderer.h; see the commit message.
+     */
+    bool pad_alpha_needs_rebuild =
+        surface_to_texture &&
+        surface_sampled_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY;
+
+    if (binding_found && (snode->image_config.format != expected_fmt ||
+                          pad_alpha_needs_rebuild)) {
         texture_cache_release_node_resources(r, snode);
         snode->image = VK_NULL_HANDLE;
         snode->image_view = VK_NULL_HANDLE;
@@ -1920,6 +1993,33 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         VK_LOG_ERROR("vmaCreateImage FATAL: result=%d", create_result);
     }
     assert(create_result == VK_SUCCESS && "vmaCreateImage failed");
+
+    /*
+     * Issue #48: the pad bits of the surface this texture was filled from do
+     * not read back as what is stored in them. vkCmdCopyImage moved the bytes
+     * verbatim, so the correction goes on the view that samples them.
+     *
+     * It goes HERE, on the texture's own view, and deliberately not on
+     * surface->image_view: that view is bound as the colour attachment
+     * (draw.c) as well as handed out for direct sampling, so a swizzle on it
+     * would alter what rendering writes, and it is created once per image and
+     * migrated across surface reuse, so it would also go stale. Verified,
+     * not assumed -- see pgraph_vk_surface_drawn_format() in renderer.h.
+     * surface_view_decodes_as_texture() returns false for these formats so
+     * the direct-bind path is not taken and this view is what gets sampled.
+     *
+     * Setting only .a is sound whatever the rest of the mapping is: a
+     * VkComponentMapping entry names the source the destination channel reads,
+     * so .a = ZERO/ONE yields a sampled alpha of 0.0/1.0 regardless of how
+     * the colour channels are permuted. native_bc cannot be in play here --
+     * it requires !surface_to_texture.
+     */
+    if (surface_to_texture) {
+        VkComponentSwizzle pad_alpha = surface_sampled_pad_alpha(surface);
+        if (pad_alpha != VK_COMPONENT_SWIZZLE_IDENTITY) {
+            vkf.component_map.a = pad_alpha;
+        }
+    }
 
     VkImageViewCreateInfo image_view_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,

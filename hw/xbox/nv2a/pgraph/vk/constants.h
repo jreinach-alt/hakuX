@@ -420,35 +420,40 @@ typedef struct SurfaceFormatInfo {
      * a swizzle -- X1A7R8G8B8 is the latter, see its entry. Only the four
      * formats whose whole alpha field is pad get an override here.
      *
-     * NO CONSUMER YET, DELIBERATELY, and this is the part to read before
-     * wiring one up. The value is a measured hardware fact (each entry cites
-     * its measurement) but acting on it needs to know the colour format a
-     * given surface was RENDERED with, and today nothing reports that
-     * reliably:
+     * THE VULKAN TEXTURE UNIT NOW CONSUMES THIS, via
+     * surface_sampled_pad_alpha() in vk/texture.c. Read the next two
+     * paragraphs before adding a second consumer; both were expensive.
      *
-     *  - `surface->shape.color_format` goes stale. check_surface_compatibility
-     *    (vk/surface.c:2407) matches on host_fmt.vk_format, and A8R8G8B8,
-     *    X8R8G8B8_Z/O and X1A7R8G8B8_Z/O all map to B8G8R8A8_UNORM, so at
-     *    equal address, pitch and size should_create is false and the
-     *    is_compatible branch never reassigns shape. The binding keeps
-     *    whichever format first created it.
-     *  - `pg->surface_shape.color_format` is the wrong surface at the point a
-     *    texture is bound. The suites that exercise this render to a scratch
-     *    surface and then restore the framebuffer format before sampling it
-     *    (pbkitplusplus RenderToSurfaceEnd, nv2astate.cpp:1684), so the
-     *    register holds A8R8G8B8 by then. It is the right source for the
-     *    BLEND half of #48, where the surface in question IS the current one,
-     *    and the wrong one here.
+     * Take the value from a binding's host_fmt, never from
+     * `surface->shape.color_format`. shape is creation-time state:
+     * check_surface_compatibility matches on host_fmt.vk_format, and
+     * A8R8G8B8, X8R8G8B8_Z/O and X1A7R8G8B8_Z/O all map to B8G8R8A8_UNORM, so
+     * at equal address, pitch and size the is_compatible branch reuses the
+     * binding and shape keeps whichever format first created it. host_fmt --
+     * and so this field -- IS refreshed on that path as of b6239ccb87
+     * (issue #55), which is what unblocked the consumer; shape deliberately
+     * is not. pgraph_vk_surface_drawn_format() answers the format-enum
+     * question when you need the enum rather than the readback.
      *
-     * Both failure modes are silent and run-order dependent: Blend surface
-     * renders every swatch into ONE 128x128 surface at one address, so a
-     * consumer reading the binding would be right on the first capture of a
-     * run and wrong on the rest. That is worse than the defect it fixes,
-     * which is why the override is recorded and not yet applied. Unblocking
-     * it means making a reused binding refresh its shape, or recording the
-     * render format per binding -- vk/surface.c, and the same staleness is
-     * read by vk/renderer.c:1144 and a dozen gl/surface.c pack/unpack sites,
-     * so it wants untangling once rather than working around three times.
+     * `pg->surface_shape.color_format` is also the wrong source at the point a
+     * texture is bound. The suites that exercise this render to a scratch
+     * surface and then restore the framebuffer format before sampling it
+     * (pbkitplusplus RenderToSurfaceEnd, nv2astate.cpp:1684), so the register
+     * holds A8R8G8B8 by then and an override keyed on it would be dead code.
+     * It is the right source for the BLEND half of #48, where the surface in
+     * question IS the current one, and the wrong one here.
+     *
+     * Both failure modes are silent and RUN-ORDER DEPENDENT, which is the
+     * thing to measure for rather than reason about: Blend surface and Surface
+     * format each render every swatch into ONE 128x128 surface at one address,
+     * so a consumer that caches this value keyed on anything that does not
+     * separate Z from O is right on the first capture of a run and wrong on
+     * the rest. vk/texture.c handles that by rebuilding the texture cache
+     * entry rather than comparing, because neither TextureKey nor
+     * TextureImageConfig records the swizzle a view was baked with.
+     *
+     * The GL backend has no consumer and still returns the stored alpha; it
+     * has its own SurfaceBinding with no equivalent refresh.
      */
     VkComponentSwizzle sampled_pad_alpha;
 } SurfaceFormatInfo;
