@@ -36,7 +36,9 @@ starting.
 
 ## The eight remaining cells hold four different defects
 
-`Cn` only, since `Cy` is proven identical. `+1` is ours above silicon.
+`Cn` only, since `Cy` is proven identical. `+1` is ours above silicon. The
+depth rows count PNG channels of a *packed* word, so a `max` of 255 there is a
+byte carry, not a large error -- see defect 2 for the decoded figures.
 
 | format | kind | caps | exact | channels | ours +1 | ours -1 | \|d\|>1 | max |
 |---|---|---:|---:|---:|---:|---:|---:|---:|
@@ -54,10 +56,23 @@ differing channels. The device lane reported 98/98 on Adreno; this is the same
 result on a second rasteriser, which makes it a property of the emulator rather
 than of either host.
 
-**2. Z24 fixed depth is one unit, and it is directional.** 153,804 of 155,906
-differing channels are one step, and 146,739 of those 153,804 are ours *above*
-silicon. Outside 24 pixels of label text the error never exceeds one unit. The
-device lane's "one unit high on 96/98" reproduces here with its sign.
+**2. Z24 fixed depth is one unit, and it is directional.** The table above
+counts PNG channels, which flatters and then libels this cell: the `_ZB` dumps
+are the raw zeta word saved as ARGB8888, so depth is `A<<16 | R<<8 | G` and
+stencil is `B`. A one-unit error that carries across a byte boundary shows up
+as a 255 in the channel view. Decoding the word instead:
+
+| | |
+|---|---:|
+| pixels differing, 49 captures | 154,855 |
+| **max \|error\|** | **1 depth unit** |
+| ours one *above* silicon | 147,790 (95.44%) |
+| ours one *below* | 7,065 (4.56%) |
+
+Never more than one, anywhere, and directional. The device lane's "one unit
+high on 96/98" reproduces here with its sign. (The decode checks out against
+the geometry: the big quad ramps 12,030,660 at row 100 to 14,826,862 at row
+300, and the frame runs 789 to 16,777,215.)
 
 It is also a clean function of the depth cutoff the test writes:
 
@@ -86,8 +101,24 @@ lead is, not the answer.
 channels are more than one step -- **not one of them is one-step** -- and the
 encoding is a different shape, not a nearby value: ours reads `[0,0,156]`,
 `[0,0,205]`, `[0,0,255]` where the golden reads `[16,0,16]`, `[16,0,32]`,
-`[16,0,65]`. F24 is the same defect a quarter the size. This has nothing to do
-with defect 2 and should not be worked as if it did.
+`[16,0,65]`. This has nothing to do with defect 2 and should not be worked as
+if it did.
+
+F24 decodes, and says the same thing more sharply. 49,380 pixels differ, only
+4.07% of them by one unit, and the rest cluster on a handful of magnitudes that
+appear in near-equal positive and negative counts:
+
+| error | pixels | | error | pixels |
+|---:|---:|---|---:|---:|
+| +12,584 | 10,368 | | -12,584 | 8,640 |
+| +787 | 4,913 | | -786 | 4,733 |
+| +2,360 | 2,090 | | -2,359 | 2,098 |
+
+Matched pairs of one magnitude are what a boundary in the wrong place looks
+like: on one side of it a pixel takes the neighbouring quad's depth and on the
+other side the reverse. The magnitudes are quad-to-quad depth steps, not
+arithmetic drift. This is a question about which fragment wins, not about how
+precisely its depth was computed.
 
 **4. The colour error is not caused by the depth error.** This is the
 result I did not expect. In the two fixed-point cells the channels wrong by
@@ -108,8 +139,8 @@ Not "`Depth_buffer`, 340,726 channels". Four entries:
 | | size | shape |
 |---|---:|---|
 | Z16 fixed depth | 0 | **done** |
-| Z24 fixed depth | 155,906 | one unit, directional, ~2^-24 relative |
-| Float Z depth | 566,663 | structural, wrong encoding |
+| Z24 fixed depth | 154,855 px | **exactly** one unit, 95% of it upward |
+| Float Z depth | 566,663 ch | structural: a boundary in the wrong place |
 | Colour, all cells | 3,903,293 | <=2 in fixed cells, format-independent |
 
 and the compression axis deleted.
