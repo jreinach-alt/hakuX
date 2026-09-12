@@ -34,12 +34,85 @@
 
 [issue.4]
 title = "Render-to-texture diverges from silicon"
+# MEASURED OUT 2026-09-12: there is no residual specific to rendering INTO a
+# texture, and the number that ranked this issue first on the structural board
+# was test contamination rather than a measurement.
+#
+# The 9,034,555-channel / 1-of-41 figure came from a capture set with
+# RenderTextureLoop INCLUDED. That test runs first alphabetically and disables
+# the texture stage, so the 40 format tests that never set it up render with no
+# stage: each differs by exactly 81,225 px -- the whole quad -- while the loop
+# test itself is pixel-exact. That is #27 verbatim. Reproduced to all seven
+# digits from such a set; a no-loop set of the same suite on the same build
+# gives 752,908 channels, 5 exact. The "2.8x disagreement between the lanes"
+# was not a disagreement either: 3,209,634 px against 9,034,555 channels on the
+# same captures, ratio 2.815.
+#
+# The YUV half is ALREADY FIXED by 52defa5b ("hardware rounds each YUV term
+# separately"): Texture_format's UYVY_L and YUY2_L are 0 of 388,150 --
+# pixel-exact. The 563,668 figure in the corpus TSV predates it.
+#
+# What remains is the SOURCE texture's decode surfaced through a render target
+# that is itself exact: ~102,758 channels, 97.1% of it DXT1 (99,769 channels,
+# which is #6) plus a 2,989-channel precision floor. That floor is one row:
+# row 240 only, band height exactly 1, ours equal to gold[row+1] on 285 of 285
+# columns and to gold[row-1] on none. It is the v-tie at v = 128.0 that
+# edge-defect.md left open deliberately, against a measured 2.2x ceiling for
+# the bias method.
+#
+# Predicted on a no-loop disc: ~102,758 channels, 13 of 40 exact. UYVY_L and
+# YUY2_L must go 230,455 -> 0, DXT1 must stay at 99,769, and the 26
+# boundary-shift captures must not move. A fresh isolated sweep is queued.
+#
+# Ruled out, all measured: the d42a8d79bc tile hazard cannot reach a 3D render
+# (nothing outside blit.c consults a tile); the render-then-sample dependency
+# is present and correct (bind_surface_as_texture hand-rolls the
+# GENERAL->GENERAL barrier that the equal-layout early return skips); the
+# swizzle compute shader's hardcoded 4-byte element is unreachable (both
+# callers gate on bytes_per_pixel == 4); no capture aligns to any block size;
+# and the bump suites are not a second YUV instrument (all four have
+# golden_colours = 2, so they score every model identically).
+# docs/investigations/render-to-texture-residual.md.
 # Column 320 in every capture is a texel tie at u = 128 (boundary-shift class,
 # 26 of 29 failing captures are otherwise exact); the rest is format decoding.
 # docs/investigations/edge-defect.md.
-disposition = "unclassified"
+disposition = "precision-floor"
 suites = ["Texture render target"]
 
+# The rounding half is ALREADY FIXED, in cd81648f5e ("decode the DXT colour
+# blocks the way the hardware does"), and that fix is now independently
+# confirmed: an agent re-derived it from the goldens without knowing it existed,
+# scored 450 candidate colour rules and 16 alpha rules, and landed on exactly
+# what the tree does -- (v<<3)|(v>>2) and (v<<2)|(v>>4) for the endpoints,
+# (2a+b+1)/3 for the interpolants, (k*a0+(7-k)*a1+3)/7 for DXT5 alpha. On the
+# four comparable captures that takes 4,828/12,288 colour channels to
+# 12,288/12,288 and 3,977/4,096 alpha to 4,096/4,096. Harness kept at
+# docs/testing/dxt_fit_rounding.py; one rival, (a*171+b*85+128)>>8, is NOT
+# separable -- it disagrees on 8.5% of endpoint pairs and no block in any
+# comparable capture reaches one of them.
+#
+# WHAT REMAINS IS NOT A ROUNDING BUG, and this issue's own diagnosis is wrong.
+# plasma_dxt1.dds and plasma_dxt3.dds have BYTE-IDENTICAL colour blocks.
+# Decoding those bytes with the fitted rule matches the DXT3 capture to the
+# channel, while the DXT1 capture of the same bytes holds SIXTEEN DISTINCT
+# COLOURS IN EVERY 4x4 BLOCK -- and a DXT block encodes four. So no decode rule
+# of any kind can produce the DXT1 captures.
+#
+# Ruled out individually, each measured: mis-indexing (every golden texel is
+# nearest its own index's palette entry, 1024/1024); 2x2 and 4x4 ordered dither
+# (cell means below 1.0, no separation); an A1R5G5B5 16-bit output path (only
+# 121 of 1024 R values sit on the 5-bit lattice); texture filtering (the
+# best-fit 5x5 kernel is the identity, centre 1.0072, residual 7.67 against
+# 8.00 for no filter); and all 450 rounding rules (best 542/3072 against
+# 3072/3072 on DXT3's identical bytes).
+#
+# Two scope notes. The software decoder is only reached when
+# textureCompressionBC is unavailable, and unconditionally for 3D textures --
+# so on the device today these rules are live only for Volume_texture/DXT1,
+# which compresses its texture on-console at runtime and could not be scored
+# offline. And the software rule now BEATS native BC for DXT3/DXT5 (0 px,
+# max 0, against native BC's 1,536 px / max 1 on DXT3_plasma), which inverts
+# this issue's "native BC is the better path" conclusion for those formats.
 [issue.6]
 title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
 disposition = "unknown-semantics"
@@ -47,7 +120,28 @@ suites = ["Texture DXT"]
 
 [issue.8]
 title = "Fog"
-disposition = "unclassified"
+# Ranked from the 2026-09-12 full-corpus sweep (binary fb4dfafc6d38, one disc
+# per suite, progress-log proof on every row). These are TOTAL differing px,
+# not structural, so a large figure may be mostly one-step rounding:
+#
+#   Fog_exceptional_value  12/96   3,664,740   the real weight of this issue
+#   Fog_gen                 4/60   2,333,312   but see below -- do NOT rank on this
+#   Fog_carryover           0/11     177,656
+#   Fog                     0/6       56,688
+#   Fog_coord_vec4          0/41      30,690   749 px per capture; cheap
+#
+# Fog_gen's figure is misleading and #41 is the reason: 2,172,192 of its
+# structural channels are ONE cell whose golden holds three colours in the
+# entire frame, against a real residue of 14,568. That cell is measured
+# unobservable, not untriaged. Exclude it from any ranking.
+#
+# Fog_inf_coord is NOT in this issue's suite list and should not be added:
+# measured as 18 px total over six captures, all of it three pixels of edge
+# COVERAGE at identical coordinates in every fog mode, with the fog arithmetic
+# demonstrably correct (the mode changes those pixels' colour and never which
+# pixels differ). On current evidence it is the same transform-precision floor
+# as #49. docs/investigations/fog-inf-coord-is-coverage.md.
+disposition = "defect"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
@@ -115,7 +209,15 @@ suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
 
 [issue.19]
 title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
-disposition = "unclassified"
+# harness, not defect, and that is the measurement rather than a guess. The
+# premise -- that a large number of tests render another test's image -- was
+# tested by running each accused test BOTH in company and solo across 1,540
+# captures. It came out 2 contamination against 82 missing-state: in 82 cases
+# the test renders differently alone because it DEPENDS on state an earlier
+# test left set, which is a property of the test suite and not of the emulator.
+# Same class as #15. The two real contamination cases are the actionable part
+# and are small. docs/investigations/issue-19-isolation-2026-09-12.md.
+disposition = "harness"
 suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "Blend surface", "Blend tests", "Depth buffer",
           "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
@@ -125,15 +227,125 @@ suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "ZMinMaxControl", "ZPass pixel count", "Bump map", "Image blit",
           "Texture cubemap"]
 
+# Largely fixed in bdc26fa5c8. What remains is MEASURED and is two lines of
+# wbufSlopeStep() in glsl/psh.c: we anchor the reference pair on a 2-pixel grid
+# (c = 2*floor(c*0.5), r likewise), and hardware anchors on a 2-pixel grid for
+# the quads but a 4-PIXEL grid for the small triangles and ClipF's large
+# triangle (rows 4*floor(y/4)+2, cols 4*floor(x/4)+4). That snap accounts for
+# every remaining wrong WBuf* pixel. TriH is the clean check: the snap reaches
+# hardware's row for two of four congruent triangles, so exactly two must be
+# exact, and the run reads 13,200 exact / 13,200 wrong of 26,400. TriV's snap
+# never reaches col 164 for any k, so all 26,400 must be wrong; measured 0
+# exact.
+#
+# unknown-semantics because the one-line fix is PRICED AND REFUSED, not
+# unwritten. Switching to the 4-grid everywhere recovers 620,349 px (TriH,
+# TriV, three ClipF) and regresses 4,172,280 px (all 19 WBuf* captures now
+# clean), a net 6.7x worse. The regime selector is load-bearing and is NOT
+# determined by the current goldens: three discriminators were tried and each
+# is killed by one row -- clip-edge vs geometry-derived anchor (Wall's second
+# triangle is geometry-derived and 2-grid), primitive area (Roof/Wall/Floor are
+# large and 2-grid while ClipF's large triangle is 4-grid), and ClipF's own two
+# triangles share a clip edge yet split across regimes. That last is the
+# degenerate-example signature.
+#
+# The experiment that would settle it: a disc with a single triangle translated
+# in x with everything else fixed, and the same triangle with its apex on-screen
+# versus clipped.
+#
+# Two rows in the residual are NOT this defect: WBuf24F_RoofQuad (23,380 px x2)
+# is wrong only in 24-bit FLOAT depth and right in fixed on identical geometry,
+# and ZBuf24D_FloorQuad_V0 (151,316 px x2) scores identically before and after
+# the W fix. Both are #52.
+#
+# Measured dead, each by reading the current tree or by measurement: a stale
+# offset uniform via the super-fast path (vk/draw.c:2832 also fails that path
+# on any_reg_gen, which every register write bumps); ZOFFSETBIAS/ZOFFSETFACTOR
+# dropped from the pipeline key under OPT_DYNAMIC_STATES (they feed uniforms
+# only and vk/shaders.c re-hashes the block); the flat-shading quad diagonal in
+# prim_rewrite.c (ruled out by measurement -- Wall and Floor reproduce on the
+# v0-v2 decomposition, so these tests are not flat-shaded); and LineStrip "not
+# drawn at all", already fixed at 770/770 exact.
+# docs/investigations/wbuffer-slope-offset.md.
 [issue.31]
 title = "Slope-scaled polygon offset is wrong under W buffering"
 suites = ["W buffering"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.33]
 title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
+# ROOT CAUSED and fixed in d42a8d79bc, awaiting its A/B on device.
+#
+# A GPU tile does not only bound a blit, it decides where the bytes land:
+# addresses inside a tiled region are remapped so a rectangle of the surface
+# is contiguous. Scanout, texture fetch and the CPU aperture all go through
+# the same remap, so the shuffle cancels and treating tiled memory as linear
+# -- what we do everywhere -- is correct. It stops cancelling in this test,
+# which blits a 1024x512 ramp into a tile of pitch 2560, DROPS the tile, then
+# blits the result out linearly from target_buffer + 4096.
+#
+# Measured, not argued: a linear model matches OUR capture at 0 differing px
+# across the whole frame bar the text overlay, and 284,958 of 307,200 golden
+# pixels satisfy the ramp's R + B == 255 invariant -- same bytes, permuted.
+# The layout was solved out of the golden by unique 64-word signature
+# matching. The line that differs is perform_blit's `dest += dest_pitch`, a
+# linear walk where hardware walks the tile.
+#
+# Ruled out: the row-width clamp (the obvious read of "BlitBeyondWidth" --
+# hardware writing 1024 pixels into a 640 pitch and overrunning -- is not it;
+# each overrun is overwritten by the next row and the last is clipped at the
+# tile limit, and modelling at 1024 and at 640 gives byte-identical results).
+# Also tile clipping being absent: #33's comment has it backwards,
+# nv_clip_gpu_tile_blit has clipped since 24087af22a and it is the ADDRESS MAP
+# that was missing. The matching colour-edge x positions cited in the comment
+# are degenerate -- they hold for any permutation preserving 16-pixel runs.
+#
+# Assumed and not testable from this corpus: that NV_PFB_TILE_PITCH holds
+# bytes, the `^ 1` constant in the unit column (could be a base-address bit;
+# only one test registers a valid tile), and generalisation to other pitches.
+#
+# WATCH: only the blit DESTINATION is remapped. 3D renders and scanout still
+# treat tiled memory as linear, so a title that blits into a tile it
+# registered as VALID and then scans it out would now scramble where before it
+# did not. Making that consistent means a remap at the memory controller on
+# every access. A blit READING out of a live tile is deliberately left
+# un-swizzled -- no capture exercises it, and an unverified inverse is a
+# second bug. Needs a game smoke test.
+# docs/investigations/gpu-tile-blit-swizzle.md.
+#
+# FIXED AND VERIFIED ON DEVICE 2026-09-12, f1a7703876. Per-capture A/B against
+# baseline b5ed87489c, 97 captures each, progress_log_proof true on both, same
+# disc, only the commit differing:
+#   BlitBeyondWidth  284,628 -> 0   BIT-IDENTICAL
+#   96 captures unchanged, 0 worse.  Image_blit 15/41 -> 16/41 exact.
+#
+# The first attempt (d42a8d79bc) swizzled every blit into a tiled region and
+# regressed Texture_Framebuffer_Blit::FBToZetaAsTex 14,383 -> 34,382 -- the
+# hazard the investigation had itself flagged, since that test blits the
+# framebuffer over the depth buffer and then SAMPLES it, so the write was
+# swizzled while the texture fetch stayed linear. Note the correction: the
+# framebuffer's COLOUR tile is registered VALID-clear, but the DEPTH tile is
+# valid.
+#
+# f1a7703876 gates the swizzle on a blit the tile actually clipped
+# (clipped_dest_size < dest_size), which separates the four blits by arithmetic
+# alone with no dependence on renderer state -- deliberately NOT gated on
+# whether a binding exists at the destination, because a stale binding left by
+# an earlier test would silently veto the swizzle and restore the 284,628 with
+# nothing in the code to explain it. The gate is a RESTRICTION, not a mechanism
+# claim: hardware remaps every write into a tiled region whether it clips or
+# not.
+#
+# FOLLOW-UP, specced and not implemented: swizzle on tile creation/teardown in
+# pfb.c instead, since that is the only moment the remap becomes observable.
+# It removes the gate heuristic and the standing hazard for real titles, which
+# set tiles up properly and currently depend on the clip gate never firing on
+# them. Two things to settle first: the inverse permutation on tile CREATION
+# (pre-existing bytes are reinterpreted, not moved), and a surface still live
+# in a VkImage and not yet downloaded when the tile is torn down. Needs
+# pfb.c + nv2a.c + nv2a_int.h.
 suites = ["Image blit"]
-disposition = "unclassified"
+disposition = "defect"
 
 [issue.35]
 title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
@@ -167,6 +379,47 @@ title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad o
 suites = ["Fog gen"]
 disposition = "unknown-semantics"
 
+# MEASURED 2026-09-12, so this is no longer unknown-semantics. Hardware's
+# oFog is an output register that is never cleared: a vertex program that does
+# not write it renders with the last value the PREVIOUS program left there. We
+# initialise `vec4 oFog = vec4(0.0,0.0,0.0,1.0)` per invocation in
+# glsl/vsh.c:213 and then read fogDistance = oFog.x, so a fog-silent program
+# fogs with coordinate 0 and the draw renders unfogged. The differing line is
+# that initialiser, and the value that belongs there is not a constant.
+#
+# Pinned two independent ways:
+#   Fog_coord_vec4 CoordNotSet -- combiner f*C0 + (1-f)*diffuse with
+#     C0 = (0.5,0,0.75) on white diffuse clips at neither end, so the 8-bit
+#     factor inverts out of the colour, and EXACTLY ONE factor in 0..255
+#     reproduces the golden (223,192,239) on all three channels: 63 =
+#     trunc(0.25 x 255), the oFog.x the two priming draws wrote from c[120].
+#     diffuse was taken from the suite's own X-0.00 golden so the inversion
+#     does not lean on our renderer.
+#   Fog_carryover FogCarryover -- in all six fog modes the no-coordinate
+#     triangle is BIT-IDENTICAL to the explicit-coordinate one in the same
+#     frame, 4,032 px per mode pair, at coordinates 0.6/0.1/0.2 whose biases
+#     keep the factor interior. Our explicit-coordinate triangles match gold
+#     in all six, which is what isolates the defect to the carried value.
+#
+# Ruled out: a fixed fallback coordinate (killed by monotonicity alone -- no
+# constant is 0.6, 0.1 and 0.2 at once); reading the FOG_COORD attribute when
+# the program is fog-silent (fits all eleven Fog_carryover captures, because
+# there the previous program copied that attribute into oFog, so the two
+# suites are DEGENERATE for that pair -- CoordNotSet separates them, since
+# fog_tests.cpp never calls SetFogCoord at all); honouring FOGGEN under a
+# program (already dead at +7,449,481 channels, and dead again here because
+# an unset program leaves oD1 as unwritten as oFog).
+#
+# The naive saturating fix is PRICED AND REFUSED: the 10 Carryover<Primitive>
+# captures are genuinely clipped so they bound rather than choose the value,
+# and such a fix sends them to zero while FogCarryover keeps 8,064 of 12,096 px
+# and CoordNotSet keeps all 30,568 with its error TRIPLED from (32,63,16) to
+# (96,192,48). The one capture that discriminates is the one it makes worse.
+#
+# No functional diff yet because the needed value is GPU-resident -- the last
+# oFog.x the previous draw's last vertex wrote, surviving a pipeline change --
+# which is descriptor-set work in vk/renderer.c, shaders.c and vsh.h. The
+# CONDITION is free: whether a program writes oFog is decidable from its text.
 [issue.42]
 title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
 # Mechanism known, value not obtainable from this corpus. Every failing pixel is
@@ -181,7 +434,7 @@ title = "nv2a: the fog output register keeps its last value when a vertex progra
 # the goldens here are saturated (one to three colours where we differ), so a
 # differing-pixel reduction proves nothing about the carried value.
 suites = ["Fog carryover", "Fog vsh"]
-disposition = "unknown-semantics"
+disposition = "defect"
 
 [issue.43]
 title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
@@ -216,10 +469,82 @@ title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) 
 disposition = "defect"
 suites = ["Blend tests", "Texture signed component tests"]
 
+# MEASURED 2026-09-12: real, reproducible at ~46% of runs, and DISTINCT from
+# #39. The fix is not in the texture path.
+#
+# Run-to-run on an identical binary and disc, same goldens: 136 px, then 0 px,
+# then 0 px -- the two passes byte-identical to the golden. Across 24
+# border-suite runs, 11 fail and 13 pass byte-identically, all 11 failing
+# images distinct, failures interleaving with passes with no relation to any
+# commit. Far too frequent to be the single-run band MEMORY.md warns about, and
+# it straddles ad1caa07 unchanged (3 fails in the 9 runs before, 8 in the 15
+# after), so the staleness trap does not apply.
+#
+# Five things that together identify it as a mid-write UPLOAD race rather than
+# anything else:
+#   - the stale pixels hold only this texture's OWN pass-1 checker values,
+#     each correct for its own position, so not contamination (consistent
+#     with #19)
+#   - all 12 failure masks form a total order under set inclusion, 0
+#     violations of 39 unordered pairs, with no differing pixel beyond each
+#     capture's own frontier -- predicted before being measured
+#   - differencing consecutive nested masks shows the frontier advancing
+#     bottom-to-top and right-to-left in increments of 2-50 px
+#   - the stale set is a prefix/suffix in NONE of row-major, column-major or
+#     either Morton order, so it is not a missed page: a missed 4 KB page of a
+#     swizzled 64x64 A8R8G8B8 would be an aligned 32x32 Morton block, and five
+#     simultaneously-partial rows is not that. Rules out the dirty-bitmap class
+#     that 91742b407b / 3bb7628694 / 91e3da1d6e addressed.
+#   - TWO swatches are affected, not the one this issue records: band A at
+#     y 272-335 and band B at y 80-143, both in the rightmost column
+#     (x 512-575), and they occur INDEPENDENTLY at the rate independence
+#     predicts (1.1 expected "both", 1 observed). A deterministic defect in the
+#     bordered-texture path would hit both together; each upload racing
+#     separately explains it.
+#
+# Why not #39: same class (host/guest timing nondeterminism), different defect.
+# #39's symptom is a draw's result being LOST -- whole quads holding previous
+# content -- with the command stream provably identical between passing and
+# failing runs and no partial-content signature. Here the draw lands correctly
+# and a sub-region of the texture it sampled is stale, with a monotone frontier.
+# Merging them would discard the cleanest run-to-run fingerprint in the project.
+#
+# INFERRED, not measured: the frontier always lands in interior rows 6-10 of 64
+# and cols 6-50, a fixed-phase race with small jitter, and since the write runs
+# bottom-up the stale rows are the LAST written -- which reads as the guest's
+# most recent stores not yet visible to pfifo_thread on a weakly-ordered
+# aarch64 host. That puts the fix in the pfifo/DMA path, not in texture.c,
+# which cannot know the guest intends more writes.
+#
+# CONFIRMED 2026-09-12 on the desktop x86 lane: 20 runs of the Texture_border
+# isolation disc, same binary, same ISO, fresh pristine HDD each run, cold
+# shader cache. All 20 captures BYTE-IDENTICAL TO ONE ANOTHER -- not "20
+# passes", zero variance. Intermittency 0% on desktop against ~46% on the
+# Nova. The prediction was 0 failures and it held.
+#
+# So the store-visibility reading survives and the Vulkan renderer is
+# excluded, as is the dirty-bitmap class (already dead on the Morton-order
+# check). The fix is a barrier in the pfifo/DMA path: the guest's most recent
+# stores are not yet visible to pfifo_thread on a weakly-ordered aarch64 host.
+# Not in texture.c, which cannot know the guest intends more writes.
+#
+# A CAVEAT THAT APPLIES BEYOND THIS ISSUE, and it nearly inverted the result.
+# Each of those 20 desktop runs differs from the GOLDEN by exactly 2,782 px,
+# with a uniform per-channel delta of (0, -1, -1) and max |delta| 1 -- red
+# exact, green and blue one step low, everywhere, every run, scattered over a
+# 188x171 region. Deterministic, nothing to do with #44: lavapipe rounds those
+# two channels down where Adreno does not.
+#
+# Under a pass/fail metric desktop therefore scores 0/20 while the Nova scores
+# 13/24, which reads as desktop being WORSE and is exactly the wrong
+# conclusion. A cross-host test needs TWO numbers -- intermittency and
+# residue-against-golden -- and collapsing them is how #51 spent two sessions
+# being inferred around. The desktop lane cannot be used as a byte-exact
+# oracle for this suite without first accounting for that one step on G and B.
 [issue.44]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
-disposition = "unclassified"
+disposition = "defect"
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
@@ -240,13 +565,52 @@ disposition = "unclassified"
 
 [issue.49]
 title = "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
+# MEASURED DEAD in the vertex-shader generators: no snap rule can fix this, and
+# that is proved rather than suspected. Both offsets are congruent to 9/16
+# mod 1, so the post-offset coordinate lands exactly ON a 1/16 grid line where
+# roundScreenCoords is the identity, and coverage is decided by the last bit of
+# the transform above it. Every rule expressible there -- truncate, floor,
+# round, any grid size, any pre- or post-snap bias, any sample point -- is
+# invariant under integer translation of its input, and hardware resolves
+# x = 120 + 9/16 and x = 320 + 9/16 in OPPOSITE directions, in the same quad at
+# identical y and w. Read as full 99-100 px edge runs, never point samples.
+#
+# Convention is otherwise identical to hardware everywhere visible, pinned by
+# the ten passing captures: truncate to 1/16, sample at pixel + 0.5, left/top
+# edge inclusive, VPOFF added in the fixed-function path and not the
+# programmable one.
+#
+# INFERRED cause, named but not modelled: vsh-ff.c:677 does `oPos.xy /= oPos.w`,
+# a correctly-rounded fp32 divide that returns the exact integer whenever the
+# true quotient is within half an ULP -- which is why we land at-or-above at
+# all five x. The NV2A vertex ALU has no divide, only a limited-precision
+# reciprocal followed by a multiply, whose ~2^-22 error is a few ULP of a
+# coordinate near 320.
+#
+# The best rule-shaped change was computed and DELIBERATELY NOT SHIPPED: a
+# pre-snap bias under 1/32, invisible in the ten passing captures, takes
+# 1,396 px -> 888 px by fixing three x vertices and breaking two. A 36%
+# reduction of the wrong shape is the wrong-mechanism signature.
+#
+# Also ruled out: a missing half-pixel term in either path; VPSCL (inert on
+# both sides -- the five scale-2.0 captures equal their scale-0 twins); a host
+# split (#11 has both lanes failing the same two); stale inputs (captures
+# 2026-09-12, goldens Sep 9, both newer than the last vertex-path change);
+# cross-test contamination (the two failures are the two offsets congruent to
+# 9/16 wherever they sit in disc order).
+#
+# The experiment that would restart it: a disc sweeping a fixed-function vertex
+# across n + 9/16 +/- 2^-k, to characterise the NV2A transform's rounding
+# instead of guessing it. The per-vertex table such a disc must reproduce is in
+# the write-up. docs/investigations/viewport-9-16-boundary.md,
+# docs/testing/probe_viewport_ff_extents.py.
 suites = ["Viewport"]
 
 # Restored 2026-09-12. These three were deleted by accident in f825d6a9ee --
 # a conflict resolution that sliced the file by string index and took more
 # than it meant to, committed under a message about something else. An audit
 # against the GitHub issue list is what caught it; nothing else would have.
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
@@ -356,13 +720,13 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # confuse with the above: 2,565,441 differing px -> 320,535 across both
 # cubemap suites, with the "other 71" going 2,223,987 -> 4,644.
 #
-# One regression on the record: DotSTR3D_Bad2D was exact before ad1caa07 and
-# is 19,714 px off after it. The CAUSE IS NOT ESTABLISHED -- an earlier note
-# here explained it as the suite having sampled a stale texture and happening
-# to agree, and that premise was retracted: the pre-ad1caa07 numbers reproduce
-# to the channel on a current build, so they were never measured through a
-# stale texture. Recorded as a measured regression with no mechanism, not as
-# luck, and not as an argument against a commit worth 2.2M px.
+# RETRACTED: there is no DotSTR3D_Bad2D regression from ad1caa07. This entry
+# carried one on my authority and it was wrong twice over -- first with a
+# mechanism ("sampled a stale texture and happened to agree"), then as a
+# "measured regression with no mechanism". Bad2D came back BYTE-EXACT on a
+# later run of the same binary. It is run-to-run variance, and the reason is
+# the undefined behaviour recorded below: every single-run score on the seven
+# DotSTR3D_* captures is meaningless, including the one I filed this row from.
 #
 # What Bad2D actually shows, from the image rather than the histogram: we do
 # not land on a wrong corner, we DITHER BOTH CHECKER COLOURS at texel
@@ -398,11 +762,68 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # exactly the structure the goldens show. Settling it needs one instrumented
 # run emitting vec4(clamp(abs(dotSTR3),0,1),1) in place of the fetch.
 #
+# That probe ran on Adreno (ec13c70e60). MEASURED: every cube pixel has |dot|
+# in [0.001, 0.01), confirming the 0.003 bound on device and killing the
+# saturation mechanism for good; no pixel is non-finite, so the projective
+# divide does not describe OUR shader (it may still describe silicon); and on
+# the unsigned captures only two sign pairs occur, confirming #FF0000 = 0 at
+# the mechanism level. Also MEASURED: the (sign1, sign2) field is FLAT --
+# 92.4% to 99.9% of interior cube pixels agree with all four neighbours,
+# within a couple of points of the golden's own output flatness -- while our
+# OUTPUT is dithered at 7.2% to 78.8%. So the dither enters between dotSTR3
+# and the sampled texel, not in the signs.
+#
+# RETRACTED from that same run: a claim that only the sign-to-corner
+# assignment remained. It rested on comparing four sign-pair populations to
+# four golden corner populations SORTED, and those four goldens are all within
+# 17% of each other, so any roughly-equal four-way partition matches. Tested
+# spatially it is at chance (24.2/25.9/26.5% against marginals 24.9/25.4/
+# 25.3%), there is no dominant permutation, and half our cube lands on the four
+# texels the corner rule FORBIDS (20,770 of 41,647 on -1to1D3D) -- which an
+# assignment error among four corners cannot do.
+#
+# The live candidate: |dot3| is bounded at 9.37e-7 against 0.00299 for the
+# other two, so its sign is numerical noise per pixel while theirs are stable.
+# If our fetch consumes three components where hardware consumes two, that
+# gives eight reachable corners instead of four, a flat field on the first two
+# axes and dither contributed entirely by the third -- which fits every
+# measured fact. The probe cannot settle it: R and G carried sign(dot1) and
+# sign(dot2) and nothing carried sign(dot3). Next probe puts the third sign in
+# B. docs/investigations/dot-str-3d-probe.md.
+#
 # Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
 # +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
 # is an edge pair on all three. +X comes from the addressing argument and
 # GenerateCubemap's write order, not from the pixels, so a fix that picks a
 # different positive face is not thereby wrong.
+#
+# THE FETCH IS UNDEFINED BEHAVIOUR, and that explains every observation we
+# could not account for. The validation layer names it, eight instances on the
+# cube suite:
+#   VUID-vkCmdDrawIndexed-viewType-07752 -- descriptor (binding 3, index 0)
+#   ImageView type is VK_IMAGE_VIEW_TYPE_CUBE but the OpTypeImage has
+#   (Dim = 2D) and (Arrayed = 0)
+# Binding 3 is texture stage 3. get_sampler_type() routes
+# PS_TEXTUREMODES_DOT_STR_3D through the PROJECT3D case, which ends
+# `return dim == 2 ? sampler2D : sampler3D` and NEVER consults
+# tex_cubemap[i] -- unlike CUBEMAP, DOT_STR_CUBE and all three DOT_RFLCT_*,
+# which all check it. The texture is cubemap-flagged so its view is TYPE_CUBE;
+# the shader declares 2D. Spec violation, result undefined.
+#
+# Consequence for measurement, and it invalidates a lot: running the suite
+# twice on the SAME BINARY leaves 71 of 78 captures byte-identical and moves
+# exactly the seven DotSTR3D_* captures -- Bad2D 0 px on one run and 19,714 on
+# the next, 0to1 differing from ITSELF by 42,554 px across runs. So no
+# single-run score of ours on those seven means anything, and a candidate fix
+# must be scored over repeat runs until the variance is gone. It also voids the
+# recorded negative "samplerCube when tex_cubemap[i] moves zero captures":
+# that was noise against noise, and it was probably testing the right fix.
+#
+# What survives: the probe results (it replaced the fetch with an arithmetic
+# readout, so it never went through the UB -- the 0.003 magnitude and the flat
+# sign field are measurements of dotSTR3 itself, which is computed correctly),
+# and the hardware rule with its predicted counts, which come from the goldens
+# rather than from our renderer.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
 

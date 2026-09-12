@@ -37,6 +37,25 @@ by reading source; start by reproducing the measurement.
 
 ## Non-negotiables
 
+**Never trigger CI to check your own work.** GitHub Actions minutes here are a
+finite monthly budget, and exhausting them means no CI when a release actually
+needs it. CI is for full build releases, run on demand when the user asks.
+Concretely: `android.yml`, `desktop.yml` and `nv2a-index.yml` fire on
+`push: branches: [master]` and on `pull_request:`, so a push costs runs only if
+the branch has an open PR. `claude/es-de-launcher-disc-error-ojnl14` has no PR
+-- **do not open one for it**. Put `[skip ci]` in the commit subject for
+anything that may reach a PR-backed branch, and never use `gh workflow run`.
+
+The obligation that replaces it is local: **build both Android and desktop.**
+The Android build cannot catch a desktop link error, because the same core
+sources compile for both and an Android-only symbol resolves on one and not the
+other. That is not hypothetical -- it broke the desktop gate on 2026-09-12 and
+cost the other lane a CI run. `docs/testing/check_android_guards.py` catches
+that specific class with no toolchain and no CI; run it before pushing. A local
+desktop build additionally needs one system package
+(`dependency('libcurl')` is unconditional in this fork and falls back to a
+subproject requiring openssl), so ask rather than assume it works.
+
 **Build before you claim.** The native build takes ~20s incremental once warm.
 An unbuilt change is a hypothesis. This has bitten repeatedly: a fix that looked
 obviously correct failed to compile, and another compiled but hung the emulator

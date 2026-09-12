@@ -15,7 +15,7 @@
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
-TITLE=""; SECONDS_HOLD=60
+TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -27,6 +27,7 @@ while [ $# -gt 0 ]; do
         --runs) RUNS="$2"; shift 2;;
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
+        --pull) PULL_GLOB="$2"; shift 2;;
         --wait) WAIT=1; shift;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
@@ -51,14 +52,16 @@ fi
 
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
-python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" <<'PY'
+python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" <<'PY'
 import json, sys
-p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds = sys.argv[1:12]
+(p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
+ pull_glob) = sys.argv[1:13]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
            "ref": ref, "arm": arm, "runs": int(runs),
-           "title": title, "seconds": int(seconds)},
+           "title": title, "seconds": int(seconds),
+           "pull_glob": pull_glob},
           open(p, "w"), indent=2)
 PY
 echo "queued $ID"

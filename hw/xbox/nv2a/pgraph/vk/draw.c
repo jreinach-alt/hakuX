@@ -1400,6 +1400,15 @@ static void create_pipeline(PGRAPHState *pg)
                  VK_FRONT_FACE_COUNTER_CLOCKWISE :
                  VK_FRONT_FACE_CLOCKWISE,
 #endif
+        /* Polygon offset stays off here.  Both halves of it -- the bias
+         * and the slope term -- are applied to the interpolated depth in
+         * the fragment shader (depthOffset/depthFactor and wbufSlopeStep
+         * in glsl/psh.c), because under w-buffering the hardware evaluates
+         * the slope once per primitive at a reference pixel, which
+         * VkPipelineRasterizationStateCreateInfo cannot express.  No
+         * vkCmdSetDepthBias* is issued either, so enabling it here would
+         * double-apply.  See docs/investigations/wbuffer-slope-offset.md
+         * and #31. */
         .depthBiasEnable = VK_FALSE,
         .pNext = rasterizer_next_struct,
     };

@@ -43,3 +43,6 @@ replay_pid*.log
 
 # Release-signing sidecar, produced by the build; 256KB of derived bytes.
 *.apk.idsig
+
+# Local desktop build tree, for the pre-fold-in link check.
+build-linux/

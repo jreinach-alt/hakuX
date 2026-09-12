@@ -408,22 +408,47 @@ void pgraph_vk_image_blit(NV2AState *d)
     hwaddr clipped_dest_size =
         nv_clip_gpu_tile_blit(d, dest_addr + dest_offset, dest_size);
 
+    /*
+     * Only a blit the tile actually clipped is written through the tile's
+     * address map.
+     *
+     * That is a restriction, not a mechanism. Hardware remaps every write into
+     * a tiled region whether or not it also clips one, but the remap is
+     * invisible while the tile is valid -- scanout, texture fetch and the CPU
+     * aperture all go through it, so it cancels -- and we model tiling nowhere
+     * else. Swizzling a write whose reader is one of our linear paths
+     * therefore corrupts it, which is what Texture_Framebuffer_Blit's
+     * FBToZetaAsTex measured: it blits the framebuffer over the zeta buffer,
+     * which pbkit does register as a valid tile (unlike the colour tile, whose
+     * VALID flag it leaves clear), and then samples zeta as a texture.
+     * Swizzling that write while the fetch stayed linear took it from 14,383
+     * to 34,382 differing pixels.
+     *
+     * A blit that overruns its tile is the one configuration hardware evidence
+     * covers, and the only one in the corpus where the guest drops the tile
+     * and reads the bytes back afterwards -- which is when the remap stops
+     * cancelling. Restricting to it keeps BlitBeyondWidth bit-exact and leaves
+     * every other blit, FBToZetaAsTex included, on the linear path.
+     *
+     * The mechanism-level fix is neither here nor in the texture path: keep
+     * storing tiled memory linearly, and permute it when a tile is created or
+     * torn down, which is where the remap actually becomes observable. That
+     * belongs with the tile registers in pfb.c. The derivation, this
+     * measurement and that design are in
+     * docs/investigations/gpu-tile-blit-swizzle.md.
+     */
+    BlitGpuTile dest_tile = { false, 0, 0, 0 };
+
     if (clipped_dest_size < dest_size) {
         adjusted_height = clipped_dest_size / context_surfaces->dest_pitch;
         size_t consumed_bytes = adjusted_height * context_surfaces->dest_pitch;
 
         leftover_bytes = clipped_dest_size - consumed_bytes;
+
+        dest_tile = find_blit_gpu_tile(d, dest_addr + dest_offset,
+                                       context_surfaces->dest_pitch);
     }
 
-    /*
-     * If the destination sits inside an active tile, the same bytes go to the
-     * same offsets, but those offsets are shuffled by the tile. Only a tile
-     * with the VALID flag set counts -- pbkit registers the framebuffer's tile
-     * with that flag clear, which is why nothing else in the Image blit suite
-     * takes this path.
-     */
-    BlitGpuTile dest_tile = find_blit_gpu_tile(d, dest_addr + dest_offset,
-                                               context_surfaces->dest_pitch);
     hwaddr dest_tile_offset =
         dest_tile.valid ? dest_addr + dest_offset - dest_tile.base : 0;
     uint8_t *dest_tile_base = d->vram_ptr + dest_tile.base;

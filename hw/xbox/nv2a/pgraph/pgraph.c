@@ -1080,15 +1080,19 @@ void pgraph_init(NV2AState *d)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE, 1);
     pg->primitive_mode = PRIM_TYPE_INVALID;
 
+#ifdef __ANDROID__
+    /* 32,768 vertices x 4 floats x 16 attributes is 8 MB; the desktop cap
+     * would be 134 MB of address space per context. Kept small deliberately,
+     * and grown on demand by pgraph_grow_inline_buffers() when a guest
+     * actually needs more -- see the overrun note on inline_buffer_cap. */
+    pg->inline_buffer_cap = 32768;
+#else
+    pg->inline_buffer_cap = NV2A_MAX_BATCH_LENGTH;
+#endif
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
         VertexAttribute *attribute = &pg->vertex_attributes[i];
-#ifdef __ANDROID__
-        size_t inline_batch_cap = 32768;
-#else
-        size_t inline_batch_cap = NV2A_MAX_BATCH_LENGTH;
-#endif
-        attribute->inline_buffer = (float*)g_malloc(inline_batch_cap
-                                              * sizeof(float) * 4);
+        attribute->inline_buffer = (float*)g_malloc(
+            (size_t)pg->inline_buffer_cap * sizeof(float) * 4);
         attribute->inline_buffer_populated = false;
     }
 

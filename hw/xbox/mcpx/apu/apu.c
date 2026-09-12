@@ -174,6 +174,104 @@ static void throttle(MCPXAPUState *d)
     d->sleep_acc_us += qemu_clock_get_us(QEMU_CLOCK_REALTIME) - start_us;
 }
 
+/*
+ * Audio capture harness -- see docs/investigations/audio-harness.md.
+ *
+ * Audio on this project has no golden reference, so the only falsifiable
+ * claim available about a gain change is a measured level. This writes the
+ * final APU output to a file so levels can be measured rather than judged by
+ * ear.
+ *
+ * The tap is the one funnel both output paths converge on:
+ * d->monitor.frame_buf, immediately before it is pushed to the FIFO that
+ * feeds SDL (and AAudio on Android). Everything downstream of that is
+ * platform plumbing that we do not want folded into the measurement.
+ *
+ * Format, read out of the source rather than assumed:
+ *   - int16_t frame_buf[256][2]           (apu_int.h:104) -- signed 16-bit,
+ *     two channels, channel is the minor index, so the file is interleaved
+ *     L,R,L,R. Host endian, to match AUDIO_S16SYS below.
+ *   - 48000 Hz, 2 channels, AUDIO_S16SYS  (apu.c:342-344)
+ *   - one complete buffer per 8 VP frames (vp.c:1885, dsp/gp_ep.c:465)
+ *     = 256 stereo frames = 1024 bytes = 5.333 ms (EP_FRAME_US, apu_regs.h:363)
+ *
+ * The 1-in-8 cadence is buffer geometry, not a sampling choice. Each VP frame
+ * fills a 32-sample slice at (ep_frame_div % 8) * 32, so the buffer is
+ * complete only on the 8th. Writing it every frame would emit the same block
+ * eight times, seven of them partly stale, and the file's sample rate -- not
+ * its content -- would then be wrong by 8x.
+ *
+ * This runs on the audio thread, which is why:
+ *   - the environment is read once, in apu_capture_init(), never per frame;
+ *   - the handle is opened once and held, not reopened per block;
+ *   - an I/O failure latches the capture off, and never asserts: a debug tap
+ *     must not be able to kill a run;
+ *   - the byte cap is enforced, so a flag left set cannot fill the device.
+ */
+
+#ifdef __ANDROID__
+#include <android/log.h>
+#define APU_CAP_LOG(fmt, ...)                                                 \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-audiocap", fmt, ##__VA_ARGS__)
+#else
+#define APU_CAP_LOG(fmt, ...)                                                 \
+    fprintf(stderr, "mcpx apu: audio capture: " fmt "\n", ##__VA_ARGS__)
+#endif
+
+/* ~1.3 s of audio, so the write() rate stays near 4/s instead of 187/s.
+ * /sdcard is FUSE-backed on Android and a stall there lands on the audio
+ * thread; see the "what it cannot measure" section of the write-up.
+ */
+#define APU_CAPTURE_BUF_BYTES (256 * 1024)
+#define APU_CAPTURE_DEFAULT_MB 64
+
+static struct {
+    FILE *fp;
+    char *buf;
+    uint64_t bytes_written;
+    uint64_t byte_limit;
+    uint64_t blocks;
+} apu_capture;
+
+static void apu_capture_close(const char *why)
+{
+    if (!apu_capture.fp) {
+        return;
+    }
+
+    FILE *fp = apu_capture.fp;
+    apu_capture.fp = NULL; /* latch off before the slow part */
+
+    fclose(fp);
+    g_free(apu_capture.buf);
+    apu_capture.buf = NULL;
+
+    APU_CAP_LOG("stopped (%s) after %" PRIu64 " blocks, %" PRIu64 " bytes, "
+                "%.3f s of audio",
+                why, apu_capture.blocks, apu_capture.bytes_written,
+                (double)apu_capture.blocks * 256.0 / 48000.0);
+}
+
+static void apu_capture_write(const void *buf, size_t len)
+{
+    if (apu_capture.bytes_written + len > apu_capture.byte_limit) {
+        apu_capture_close("byte cap reached");
+        return;
+    }
+
+    if (fwrite(buf, len, 1, apu_capture.fp) != 1) {
+        /* Deliberately not an assert. Losing the capture is a debug
+         * inconvenience; killing the guest's audio thread is a bug.
+         */
+        APU_CAP_LOG("write failed: %s", strerror(errno));
+        apu_capture_close("write error");
+        return;
+    }
+
+    apu_capture.bytes_written += len;
+    apu_capture.blocks++;
+}
+
 static void se_frame(MCPXAPUState *d)
 {
     mcpx_apu_update_dsp_preference(d);
@@ -207,19 +305,22 @@ static void se_frame(MCPXAPUState *d)
     mcpx_apu_dsp_frame(d, mixbins);
 
     if ((d->ep_frame_div + 1) % 8 == 0) {
-#if 0
-        FILE *fd = fopen("ep.pcm", "a+");
-        assert(fd != NULL);
-        fwrite(d->apu_fifo_output, sizeof(d->apu_fifo_output), 1, fd);
-        fclose(fd);
-#endif
-
         if (0 <= g_config.audio.volume_limit && g_config.audio.volume_limit < 1) {
             float f = pow(g_config.audio.volume_limit, M_E);
             for (int i = 0; i < 256; i++) {
                 d->monitor.frame_buf[i][0] *= f;
                 d->monitor.frame_buf[i][1] *= f;
             }
+        }
+
+        /* Capture after the limiter, so the file holds what is actually sent
+         * to the device. A limiter below unity scales both sides of an A/B
+         * equally and so cancels in a dB difference; its value is recorded in
+         * the sidecar either way. One pointer test when capture is off.
+         */
+        if (apu_capture.fp) {
+            apu_capture_write(d->monitor.frame_buf,
+                              sizeof(d->monitor.frame_buf));
         }
 
         qemu_spin_lock(&d->monitor.fifo_lock);
@@ -319,6 +420,161 @@ static void monitor_sink_cb(void *opaque, uint8_t *stream, int free_b)
     qemu_cond_broadcast(&s->cond);
 }
 
+/* Default capture name. The format is in the filename on purpose: a headerless
+ * PCM file whose rate and layout are folklore is not a measurement.
+ */
+#define APU_CAPTURE_BASENAME "apu_monitor.s16le48k2ch.pcm"
+
+/* Presence of this file arms the capture; see apu_capture_armed(). */
+#define APU_CAPTURE_MARKER "audio_capture.on"
+
+#ifdef __ANDROID__
+/* The app's external files dir: writable without root, reachable by adb pull,
+ * and the same place the pgraph harness already writes. The guest's cwd is not
+ * writable, which is why the dead tap's relative "ep.pcm" could never have
+ * worked here.
+ */
+#define APU_CAPTURE_DIR "/sdcard/Android/data/com.jreinach.hakux.debug/files/"
+#else
+#define APU_CAPTURE_DIR ""
+#endif
+
+/* Write a sidecar describing the capture, so the measurement script never has
+ * to guess the format, and the run's audio config is on the record next to the
+ * samples it produced.
+ */
+static void apu_capture_write_sidecar(const char *pcm_path, size_t block_bytes)
+{
+    char *json_path = g_strdup_printf("%s.json", pcm_path);
+    FILE *fp = fopen(json_path, "wb");
+
+    if (fp) {
+        fprintf(fp,
+                "{\n"
+                "  \"pcm_file\": \"%s\",\n"
+                "  \"sample_rate\": 48000,\n"
+                "  \"channels\": 2,\n"
+                "  \"sample_format\": \"s16\",\n"
+                "  \"interleaved\": true,\n"
+                "  \"host_endian\": \"%s\",\n"
+                "  \"bytes_per_block\": %zu,\n"
+                "  \"frames_per_block\": 256,\n"
+                "  \"block_ms\": 5.333,\n"
+                "  \"tap\": \"monitor.frame_buf before fifo8_push_all\",\n"
+                "  \"byte_limit\": %" PRIu64 ",\n"
+                "  \"audio_volume_limit\": %f,\n"
+                "  \"audio_use_dsp\": %s\n"
+                "}\n",
+                pcm_path,
+#if HOST_BIG_ENDIAN
+                "big",
+#else
+                "little",
+#endif
+                block_bytes, apu_capture.byte_limit,
+                (double)g_config.audio.volume_limit,
+                g_config.audio.use_dsp ? "true" : "false");
+        fclose(fp);
+    } else {
+        APU_CAP_LOG("could not write sidecar %s: %s", json_path,
+                    strerror(errno));
+    }
+
+    g_free(json_path);
+}
+
+/* Read the marker file that arms the capture on a device.
+ *
+ * The environment alone is not enough here. On Android the env is populated
+ * from Kotlin via SDLActivity.nativeSetenv, gated on a SharedPreference set
+ * through the settings UI -- that is how XEMU_TEXTURE_DUMP is wired
+ * (android/app/src/main/java/com/rfandango/haku_x/MainActivity.kt:100-112).
+ * So an env-only switch cannot be thrown over adb: it needs a UI toggle and a
+ * Java change. A marker file can:
+ *
+ *     adb shell touch <dir>/audio_capture.on
+ *
+ * Returns true if the capture should run. If the marker's first line parses as
+ * an integer it overrides the size cap in MB, so a run can be bounded from adb
+ * without rebuilding.
+ */
+static bool apu_capture_armed(const char *marker_path, int *cap_mb)
+{
+    if (getenv_int_clamped("XEMU_AUDIO_CAPTURE", 0, 1, 0) == 1) {
+        return true;
+    }
+
+    FILE *fp = fopen(marker_path, "rb");
+    if (!fp) {
+        return false;
+    }
+
+    char line[32] = { 0 };
+    if (fgets(line, sizeof(line), fp)) {
+        char *end = NULL;
+        long parsed = strtol(line, &end, 10);
+        if (end != line && parsed >= 1 && parsed <= 4096) {
+            *cap_mb = (int)parsed;
+        }
+    }
+    fclose(fp);
+
+    return true;
+}
+
+static void apu_capture_init(MCPXAPUState *d)
+{
+    const char *marker = getenv("XEMU_AUDIO_CAPTURE_MARKER");
+    char *owned_marker = NULL;
+    if (!marker || !marker[0]) {
+        owned_marker = g_strdup_printf("%s%s", APU_CAPTURE_DIR,
+                                       APU_CAPTURE_MARKER);
+        marker = owned_marker;
+    }
+
+    int cap_mb = getenv_int_clamped("XEMU_AUDIO_CAPTURE_MAX_MB", 1, 4096,
+                                    APU_CAPTURE_DEFAULT_MB);
+
+    bool armed = apu_capture_armed(marker, &cap_mb);
+    g_free(owned_marker);
+    if (!armed) {
+        return;
+    }
+
+    const char *path = getenv("XEMU_AUDIO_CAPTURE_PATH");
+    char *owned = NULL;
+    if (!path || !path[0]) {
+        owned = g_strdup_printf("%s%s", APU_CAPTURE_DIR, APU_CAPTURE_BASENAME);
+        path = owned;
+    }
+
+    /* "wb", not the dead tap's "a+": one capture is one run. Appending would
+     * silently splice several runs into a file whose timeline is a lie.
+     */
+    FILE *fp = fopen(path, "wb");
+    if (!fp) {
+        APU_CAP_LOG("could not open %s: %s -- capture disabled", path,
+                    strerror(errno));
+        g_free(owned);
+        return;
+    }
+
+    apu_capture.buf = g_malloc(APU_CAPTURE_BUF_BYTES);
+    setvbuf(fp, apu_capture.buf, _IOFBF, APU_CAPTURE_BUF_BYTES);
+
+    apu_capture.bytes_written = 0;
+    apu_capture.blocks = 0;
+    apu_capture.byte_limit = (uint64_t)cap_mb * 1024 * 1024;
+    apu_capture.fp = fp;
+
+    apu_capture_write_sidecar(path, sizeof(d->monitor.frame_buf));
+
+    APU_CAP_LOG("capturing s16/48000/2ch to %s (cap %d MB, %.0f s max)", path,
+                cap_mb, (double)apu_capture.byte_limit / (48000.0 * 2.0 * 2.0));
+
+    g_free(owned);
+}
+
 static void monitor_init(MCPXAPUState *d)
 {
     qemu_spin_init(&d->monitor.fifo_lock);
@@ -379,6 +635,8 @@ static void monitor_init(MCPXAPUState *d)
     d->monitor.queued_bytes_low = MIN(drain_bytes, d->monitor.queued_bytes_high);
 
     SDL_PauseAudioDevice(sdl_audio_dev, 0);
+
+    apu_capture_init(d);
 }
 
 static void mcpx_apu_realize(PCIDevice *dev, Error **errp)

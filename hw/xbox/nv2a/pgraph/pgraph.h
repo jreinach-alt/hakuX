@@ -262,6 +262,12 @@ typedef struct PGRAPHState {
     uint32_t inline_elements[NV2A_MAX_BATCH_LENGTH];
 
     unsigned int inline_buffer_length;
+    /* Capacity of every VertexAttribute::inline_buffer, in vertices. Held
+     * here rather than recomputed because the allocation is platform
+     * dependent and the bound check MUST use the same number: it used to
+     * check NV2A_MAX_BATCH_LENGTH (524,287) against a 32,768-vertex Android
+     * allocation, which is a 16x overrun. */
+    unsigned int inline_buffer_cap;
 
     unsigned int draw_arrays_length;
     unsigned int draw_arrays_min_start;

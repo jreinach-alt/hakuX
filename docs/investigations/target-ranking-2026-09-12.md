@@ -1,5 +1,26 @@
 # What to work on next, ranked on numbers rather than on pixel counts
 
+> **CORRECTION 2026-09-12 — the `Texture_render_target` figure in this file is
+> the #27 contamination, not a measurement of the suite.**
+>
+> The 9,034,555-channel / 1-of-41 reading was taken from a capture set with
+> `RenderTextureLoop` INCLUDED. That test runs first alphabetically and
+> disables the texture stage, so the 40 format tests that never set it up
+> render with no stage: each differs by exactly 81,225 px, the whole quad,
+> while the loop test itself is pixel-exact. The same figure reproduces to all
+> seven digits from such a set. A no-loop set of the same suite on the same
+> build gives **752,908 channels, 5 exact**.
+>
+> This file's own staleness check compared two loop-included sets against each
+> other, so they agreed by sharing the contamination.
+>
+> The "2.8x gap between the lanes" it records is also not a disagreement: one
+> lane counted pixels and the other channels on the same captures — 3,209,634
+> px and 9,034,555 channels, ratio 2.815.
+>
+> Do not rank on any number in this file for that suite. See
+> `render-to-texture-residual.md`.
+
 Written 2026-09-11 against the remote lane's reclassified corpus
 (`run-2026-09-12-corpus-classes.tsv`, 1,444 captures), which subtracts the ±1
 population and the boundary-shift band from each suite's differing channels.

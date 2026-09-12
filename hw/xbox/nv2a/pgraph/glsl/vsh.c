@@ -210,6 +210,9 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "vec4 oB0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oB1 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oPts = vec4(0.0,0.0,0.0,1.0);\n"
+        /* oFog does not start cleared on hardware.  A program that never
+         * writes it renders with the value the previous program left, which
+         * is measured rather than unknown -- see the fog block below (#42). */
         "vec4 oFog = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT1 = vec4(0.0,0.0,0.0,1.0);\n"
@@ -422,6 +425,75 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              * Reverted -- fitting one sample of stale state would match this
              * golden and nothing else, and it would put a bogus distance in
              * front of any guest that did combine the two.
+             */
+            /*
+             * #42 is the other half of that, and it is the opposite case:
+             * measured, not unknown.  oFog is initialised to (0,0,0,1)
+             * above, so a program that never writes it fogs with coordinate
+             * 0 and we render the draw unfogged; hardware renders it with
+             * whatever the previous program left in the register.  Two
+             * captures pin that value and ten only bound it, which is why
+             * the suite as a whole looked unfalsifiable.
+             *
+             * Fog_coord_vec4 CoordNotSet pins it.  Two draws write
+             * oFog = (0.25, 0.95, 0.5, 0.75) from c[120], then a program
+             * writing only oPos and oD0 draws the same quad.  Its final
+             * combiner is f*C0 + (1 - f)*diffuse, C0 = (0.5, 0, 0.75) and
+             * diffuse white -- a mix that clips at neither end, so the
+             * 8-bit factor inverts straight out of the colour.  Gold holds
+             * (223, 192, 239) over 30,568 px and exactly one factor in
+             * 0..255 reproduces it on all three channels: 63, which is
+             * trunc(0.25 * 255).  So the carried coordinate is the previous
+             * program's oFog.x.  A unique solution also refutes the rest of
+             * the vector and the saturating answer: oFog.y, .z and .w give
+             * (134, 13, 194), (191, 128, 223) and (159, 64, 207), and a
+             * coordinate large enough to clip gives (127, 0, 191).
+             *
+             * Fog_carryover FogCarryover pins it a second way.  Six fog
+             * modes each draw one triangle with the coordinate set and one
+             * without; the coordinate differs per mode (0.6 linear, 0.1
+             * exp, 0.2 exp2) and the bias is chosen so the factor lands
+             * inside the range, at 0.400, 0.369 and 0.412.  In all six the
+             * no-coordinate triangle is bit-identical to the explicit one
+             * in the same frame, 4,032 px per mode pair.  Each mode
+             * function is strictly monotonic in the coordinate there, so
+             * equality forces the carried coordinate to be the one the
+             * neighbour set, and no single constant can be three different
+             * values at once.  That kills a fixed fallback coordinate
+             * without appealing to the mode formulas at all.
+             *
+             * The ten Carryover<Primitive> captures are the saturated ones.
+             * They run exp at 0.6 for every draw, where the factor clips:
+             * the explicit-coordinate primitives render full fog in gold
+             * and in ours too, so the quad's full fog bounds the carried
+             * coordinate and cannot pin it.  Fitting those alone is the #41
+             * mistake in a new suit -- and it would regress CoordNotSet
+             * from a (32, 63, 16) channel error to (96, 192, 48).
+             *
+             * Ruled out separately: reading the FOG_COORD vertex attribute
+             * when the program is fog-silent.  It fits all eleven
+             * Fog_carryover captures, because there the previous program
+             * copied that attribute into oFog, but fog_tests.cpp never
+             * calls SetFogCoord at all, so it cannot produce CoordNotSet's
+             * 0.25.  Honouring FOGGEN here is dead by measurement already
+             * (+7,449,481 channels, above), and independently: the unset
+             * program does not write oD1 either, so a spec-alpha read would
+             * be exactly as unwritten as oFog.
+             *
+             * Not fixed here, because the value is GPU-resident -- the last
+             * oFog.x the previous draw's last vertex wrote, which has to
+             * survive a pipeline change.  That is a small buffer both
+             * renderers bind, i.e. descriptor-set work outside this file,
+             * and it is the whole cost of the issue; the condition it needs
+             * (does this program write oFog) is decidable from the program
+             * text.  Both tests prime with a doubled draw and say why --
+             * "one or more of the vertices in the unset draw case still
+             * have arbitrary values from previous operations" -- so the
+             * register file is per-vertex-slot and simply not cleared.  A
+             * single last-written scalar is a simplification that those two
+             * tests deliberately make safe, and a guest relying on more
+             * would be relying on hardware the test author calls
+             * non-hermetic.
              */
             mstring_append(body, "  float fogDistance = oFog.x;\n");
         }

@@ -120,16 +120,30 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
-    local title seconds
+    local title seconds pull_glob
     title=$(jq_get "$req" title "")
     seconds=$(jq_get "$req" seconds 60)
+    pull_glob=$(jq_get "$req" pull_glob "")
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
-    local apk; apk=$(build_ref "$ref") || {
-        echo "build failed for ref $ref (code $?)" > "$rdir/ERROR"
-        log "  BUILD FAILED"; mv "$req" "$rdir/request.json"; return 0
-    }
+    local apk rc
+    apk=$(build_ref "$ref"); rc=$?
+    if [ "$rc" = 3 ]; then
+        # A dirty tree is TRANSIENT -- someone is editing -- and must not
+        # destroy queued work. Requeueing rather than failing is the same
+        # lesson as the device-drop requeue and the orphan requeue: an
+        # uncommitted edit of mine failed 54 consecutive scoreboard-sweep
+        # requests in seconds, because each was answered with a hard ERROR
+        # instead of being put back.
+        log "  tree dirty; requeueing $id and waiting"
+        rmdir "$rdir" 2>/dev/null
+        mv "$req" "$D/queue/$id.req"; sleep 30; return 0
+    fi
+    if [ "$rc" != 0 ]; then
+        echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
+        log "  BUILD FAILED (code $rc)"; mv "$req" "$rdir/request.json"; return 0
+    fi
     if [ ! -f "$apk" ]; then
         echo "build_ref returned no usable apk: '$apk'" > "$rdir/ERROR"
         log "  BUILD RETURNED NO APK"; mv "$req" "$rdir/request.json"; return 0
@@ -162,15 +176,21 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W *:S}" \
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX-audiocap:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
+            PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'
 import json, os, sys
 rdir, sha, title, seconds, who, purpose, ref, lines = sys.argv[1:9]
+pulled = []
+pdir = os.path.join(rdir, "pulled")
+if os.path.isdir(pdir):
+    for f in sorted(os.listdir(pdir)):
+        pulled.append(dict(file=f, bytes=os.path.getsize(os.path.join(pdir, f))))
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                requester=who, purpose=purpose, ref=ref,
-               logcat_lines=int(lines)),
+               logcat_lines=int(lines), pulled=pulled),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
@@ -258,7 +278,8 @@ for lg in sorted(glob.glob(os.path.join(rdir, "logcat*.txt"))):
     n = sum(1 for _ in open(lg, errors="replace"))
     logs.append(dict(file=os.path.basename(lg), lines=n))
 meta["logcat"] = dict(spec=os.environ.get("LOGCAT_SPEC",
-                                          "hakuX-unhandled:W hakuX:W *:S"),
+                                          "hakuX-unhandled:W hakuX-audiocap:I hakuX:W VALIDATION:W "
+                                          "ValidationLayer:W vulkan:W VulkanLoader:W *:S"),
                       captured=bool(logs), files=logs)
 
 # coverage against the oracle we own: the tell for a partially retired suite
@@ -302,9 +323,34 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 
 case "${1:-status}" in
   serve)
+    # Anything left in running/ belongs to a loop that is gone -- killed,
+    # crashed, or restarted to pick up a change. Its request was accepted and
+    # never answered, so put it back rather than leaving it to be found by
+    # hand: restarting the loop between a build and a device run silently
+    # orphaned a queued A/B arm exactly once, which is once more than it
+    # should be possible to do.
+    for orphan in "$D"/running/*.req; do
+        [ -e "$orphan" ] || continue
+        log "requeueing orphan $(basename "$orphan" .req) from a previous loop"
+        mv "$orphan" "$D/queue/" 2>/dev/null || true
+    done
     log "=== dispatcher serving; queue=$D/queue ==="
     while :; do
         shopt -s nullglob
+        # Served in glob order, which is ASCII order, and that is the whole
+        # priority mechanism. Normal requests are named with an epoch prefix so
+        # they sort by arrival. Two conventions ride on top:
+        #
+        #   0-*   jumps the queue -- a 45-second probe that unblocks an agent
+        #         should not sit behind two 26-minute A/B arms.
+        #   z-*   idle priority -- the full-corpus scoreboard sweep enqueues
+        #         one request per suite as z-sweep-*, so every digit-prefixed
+        #         request from an agent sorts ahead of all of them. The sweep
+        #         then fills whatever gaps the session leaves without ever
+        #         blocking a fix from being verified.
+        #
+        # It yields between suites rather than mid-suite, so an agent waits at
+        # most one suite instead of the remaining hours.
         reqs=("$D"/queue/*.req)
         if [ "${#reqs[@]}" -eq 0 ]; then
             resume_sweep
