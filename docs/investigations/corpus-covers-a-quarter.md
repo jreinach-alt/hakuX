@@ -107,6 +107,35 @@ That is the concrete argument for rebuilding the corpus over the full golden
 set: this is not a hypothetical loss of fidelity, it is a top-three item that
 nobody could see.
 
+## And the second disc puts a suite straight into second place
+
+`iso_risk.iso`, 898 captures:
+
+| suite | captures | exact | channels | **not +-1** |
+|---|---:|---:|---:|---:|
+| **`W_buffering`** | 530 | 108 | 7,867,148 | **5,553,462** |
+| `Depth_buffer_fixed_function` | 80 | 6 | 981,228 | **340,726** |
+| `Texture_shadow_comparator` | 288 | 260 | 26,328 | 26,328 |
+
+**`W_buffering`'s 5,553,462 structural channels rank second on the board**,
+below only `Blend_tests` at 6,500,124 and more than double `Fog_gen`'s
+2,186,760. It was not on the board at all.
+
+So two discs, both already on disk, have now produced the **second and third**
+largest structural entries in the corpus:
+
+| suite | structural channels | previously |
+|---|---:|---|
+| `Blend_tests` | 6,500,124 | ranked first |
+| **`W_buffering`** | **5,553,462** | **invisible** |
+| **`3D_primitive`** | **1,127,533** | **invisible** |
+| `Bump_map` | 1,068,453 | ranked third |
+| `Line_width` | 1,009,664 | ranked fourth |
+
+`Texture_shadow_comparator` is the counter-example worth keeping: 260 of 288
+exact and 26,328 channels total. Measuring an absent suite does not always
+find work, which is exactly why it has to be measured rather than guessed at.
+
 ## A crash worth noting, and not over-claiming
 
 `iso_risk.iso` -- `Texture shadow comparator`, `W buffering` (530 goldens),
@@ -114,8 +143,14 @@ nobody could see.
 attempt, 108 log lines, core dumped, no captures. A run of the same disc on
 10 September produced 898 captures, so the obvious reading was a regression.
 
-**A second attempt ran past that point**, which makes the crash transient
-rather than a reproducible regression, and the obvious reading wrong. Recorded
-because a disc that intermittently dies at startup is worth knowing about when
-530 of its goldens are missing from the corpus -- but not as a regression
-claim, which is what one run would have supported and two did not.
+**A second attempt produced 898 captures -- the same count as 10 September.**
+The crash is transient, not a reproducible regression, and the obvious reading
+was wrong. Recorded because a disc that intermittently dies at startup is worth
+knowing about, but not as a regression claim, which is what one run would have
+supported and two did not.
+
+A related trap cost a moment here and is now in `AGENTS.md`: `pgrep -c
+qemu-system-i386` returns 0 during a live run, because Linux truncates `comm`
+to fifteen characters and the process is `qemu-system-i38`. That false negative
+reads as "the emulator is free" and invites starting a second one against the
+one-at-a-time rule. Use `ps -eo comm= | grep qemu`.
