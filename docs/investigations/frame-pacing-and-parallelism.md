@@ -351,12 +351,34 @@ less work is lost per store. QEMU already has machinery in this area, since it
 falls back to a single-instruction block when a store modifies the currently
 executing one. Both are core tuning with modest expected return.
 
-**So the practical conclusion for this project is to spend effort on the
-smaller pole, because it is the part we own.** The renderer is worth about a
-fifth of the frame and is our code; the audio voice lock at 5% of the
-critical-path thread is our code; the guest-side churn above is mostly not.
-That is the opposite of where the frame time points, and it is still the right
-call.
+**A correction on how to rank what is left.** An earlier draft of this
+section ranked the renderer above the translation work on the grounds that the
+renderer "is our code" and TCG is not. That reasoning is wrong: this is a fork
+that takes no downstream updates, so every file in it is equally ours and
+rebase cost is not a real constraint. The same mistake was behind calling the
+diagnostic counters in the TCG files a maintenance burden; there is no rebase
+for them to burden.
+
+The line that does exist is **blast radius and testability**, which is not
+about ownership. A change to code-write detection touches every guest
+instruction in every title, and a subtle fault there is catastrophic and hard
+to attribute to its cause. A change to texture binding touches textures, and
+the golden suites will tell you within minutes whether it broke. That argues
+for different verification, not for leaving the larger item alone.
+
+With ownership out of the way, the translation work is back in scope and
+plausibly worth more than the renderer:
+
+| lever | evidence | expected size |
+|---|---|---|
+| smaller blocks on thrashing pages | 9,500 blocks discarded for 3,440 generated, a 2.8:1 waste ratio | `tb_gen_code` is 19% of the thread; halving regeneration is ~4 ms of a 41.5 ms frame |
+| audio voice lock off the guest thread | 5% of the critical-path thread | ~2 ms, and it is a lock held across threads rather than real work |
+| renderer draw path | freeing it entirely bounds the frame at 41.5 ms | up to 8.7 ms, the part the guest spends blocked on it |
+
+The block-size lever is the interesting one precisely because the discard
+ratio is so lopsided. Discarding is correct, but discarding 79 blocks to
+rebuild 29 says the block granularity is poorly matched to this title's write
+pattern, and that granularity is a choice rather than a requirement.
 
 Note on the addresses: the guest virtual address is the reliable half. The
 page frame is a `ram_addr_t`, an offset across all memory blocks rather than a
