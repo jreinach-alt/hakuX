@@ -26,12 +26,6 @@ title = "Fog"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
-[issue.9]
-title = "Fixed-function lighting and specular"
-suites = ["Lighting spotlight", "Lighting accumulation", "Lighting range",
-          "Lighting control", "Lighting Two Sided", "Material color source",
-          "Specular", "Specular back"]
-
 [issue.10]
 title = "Bump mapping"
 suites = ["Bump map", "Bump env lum"]
@@ -149,3 +143,10 @@ suites = ["Texture render target", "W param", "ZMinMaxControl",
           "Blend surface", "Image blit", "Fog gen", "Fog exceptional value",
           "Bump map", "Specular", "Surface format",
           "Texture signed component tests"]
+
+# Split out of #9 when its closing measurement showed the lighting arithmetic
+# correct and this the bulk of what remained: 318,962 px over six captures,
+# 64.6% of #9's structural residual.
+[issue.53]
+title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
+suites = ["Specular", "Specular back", "Lighting control"]
