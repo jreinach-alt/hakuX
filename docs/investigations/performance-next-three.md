@@ -8,10 +8,31 @@ here is implemented.
 Ranked by expected return divided by blast radius, which is the only ranking
 that makes sense in a fork that takes no downstream updates.
 
-## 1. The audio voice lock is a spinlock held across a whole frame
+## 1. The audio voice lock — FIXED and validated (`01490afe3c`)
 
-**This is a bug, not a tuning question.** Worth about 5% of the thread that
-bounds the frame, roughly 2 ms.
+**This was a bug, not a tuning question.** Worth about 5% of the thread that
+bounds the frame.
+
+Each worker now releases a voice the moment `voice_process` returns for it,
+instead of every voice being held until the last worker finishes. Two
+independent measurements agree:
+
+| | before | after |
+|---|---|---|
+| `voice_lock` share of the guest CPU thread | 4.98% | **1.41%** |
+| Crimson Skies heavy-section frame time | 50.3 ms | **48.2 ms** |
+
+The frame-time arm is three runs each side, alternating to spread thermal and
+battery drift, filtered to samples where the title is missing its own 30 fps
+target and so is genuinely emulator-bound. **All three "after" runs came in
+faster than all three "before" runs** (48.2, 47.7, 49.3 against 49.5, 50.4,
+50.3), which is the statistic worth quoting: comparing medians to the
+within-arm spread of 1.6 ms alone would have been marginal.
+
+Still outstanding: nobody has *listened* to it. This changes audio locking and
+no measurement here substitutes for a person hearing a scene with many voices.
+
+The original finding follows.
 
 `voice_lock()` in `hw/xbox/mcpx/apu/vp/vp.c:133` is not a mutex. It takes
 `d->vp.voice_spinlocks[v]`, a `QemuSpin`, and `qemu_spin_lock` is a bare
