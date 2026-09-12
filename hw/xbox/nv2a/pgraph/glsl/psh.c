@@ -2012,8 +2012,49 @@ static MString* psh_convert(struct PixelShader *ps)
                  * channels and takes its worst error from 12,585 depth units
                  * to 6,727,533, against the 79,522 channels the split wins on
                  * D24. The split belongs to the floor, not to the value.
+                 *
+                 * What does move F24 is the other end of the range. zvalue is
+                 * only ever read by F16/F24, and `z24_to_float` of a small
+                 * depth word lands a few ULPs above float32's subnormal
+                 * boundary -- the Depth buffer suite's first quad row is
+                 * entirely made of such values, 2^-126 to 2^-120. There the
+                 * products bc*(z1-z0) are subnormal even though the vertex
+                 * depths are not, the GPU flushes them, and the interpolation
+                 * quantises onto the subnormal grid: the depth acquires a
+                 * variation along y that hardware does not have, growing with
+                 * the barycentric weight (measured spread per column of an
+                 * 8x8 quad: 1,1,1,1,1,2,4,6 where silicon is column-constant
+                 * throughout).
+                 *
+                 * So the interpolation is carried out scaled up by 2^100 and
+                 * scaled back by 2^-100. Both are exact in float32, and the
+                 * guard only fires below 2^-100, so for every depth a guest
+                 * can realistically produce this reduces to the expression it
+                 * replaces term for term and is bit-identical. The span is
+                 * required to be normal as well: where the span *itself* is
+                 * subnormal silicon collapses the triangle to a constant
+                 * rather than interpolating, and computing an exact ramp there
+                 * would be wrong in a new way -- that case is left alone.
+                 *
+                 * Measured on the 98 z24 FZy depth captures of the 392 test
+                 * oracle, decoding the zeta word: of 49,380 differing pixels
+                 * per compression half, 25,915 (52.5%) are this class.
+                 * Silicon there is column-constant, stepping by a constant
+                 * eighth of the span per pixel -- the pixel-centre linear
+                 * ramp -- so the prediction is that they go to zero, and any
+                 * residual left is a one-word endpoint disagreement rather
+                 * than a shape. The 20,736 (42.0%) with a subnormal span are
+                 * untouched by construction, as are the 705 in other quad
+                 * rows and 2,024 outside the quad bodies.
+                 * Issue #16, #52.
                  */
-                "precise float zlo = (vtxPos0.z - zhi) + (bc1*(vtxPos1.z - vtxPos0.z) + bc2*(vtxPos2.z - vtxPos0.z));\n"
+                "bool zsub = max(abs(zd1), abs(zd2)) >= uintBitsToFloat(0x00800000u)\n"
+                "         && abs(vtxPos0.z) < uintBitsToFloat(0x0D800000u);\n"
+                "precise float zsk = zsub ? uintBitsToFloat(0x71800000u) : 1.0;\n"
+                "precise float zsi = zsub ? uintBitsToFloat(0x0D800000u) : 1.0;\n"
+                "precise float zlo = (vtxPos0.z - zhi)\n"
+                "                  + zsi*(bc1*(vtxPos1.z*zsk - vtxPos0.z*zsk)\n"
+                "                       + bc2*(vtxPos2.z*zsk - vtxPos0.z*zsk));\n"
                 "zlo += depthOffset;\n"
                 "zlo += depthFactor*triMZ;\n"
                 "precise float zvalue = zhi + zlo;\n"
