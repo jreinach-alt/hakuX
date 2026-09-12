@@ -1604,6 +1604,25 @@ static void *voice_worker_thread(void *arg)
             for (int i = 0; i < self->queue_len; i++) {
                 voice_process(d, self->mixbins, self->sample_buf,
                               self->queue[i].voice, self->queue[i].list);
+                /*
+                 * Release this voice the moment it is processed, rather than
+                 * holding every voice in the frame until all workers finish.
+                 *
+                 * voice_lock() is a spinlock and the guest takes it on every
+                 * per-voice parameter update, which DirectSound does
+                 * constantly. While these were held for a whole VP frame the
+                 * guest CPU thread span on it uninterruptibly -- 5% of the
+                 * thread that bounds a video frame, measured, doing nothing.
+                 *
+                 * voice_process is the only thing that touches this voice's
+                 * state, and it has returned. What the worker does next is
+                 * accumulate its own private mixbins, which the voice is not
+                 * part of; multipass dependencies flow through those mixbins
+                 * rather than through a locked voice's registers. The
+                 * scheduler assigns every queued voice to exactly one worker,
+                 * so each lock is released exactly once.
+                 */
+                qemu_spin_unlock(&d->vp.voice_spinlocks[self->queue[i].voice]);
             }
 
             qemu_mutex_lock(&vwd->lock);
@@ -1661,15 +1680,6 @@ static void voice_work_enqueue(MCPXAPUState *d, int v, int list)
     };
 
     voice_work_acquire_voice_lock_for_processing(d, v);
-}
-
-static void voice_work_release_voice_locks(MCPXAPUState *d)
-{
-    VoiceWorkDispatch *vwd = &d->vp.voice_work_dispatch;
-
-    for (int i = 0; i < vwd->queue_len; i++) {
-        qemu_spin_unlock(&d->vp.voice_spinlocks[vwd->queue[i].voice]);
-    }
 }
 
 static void voice_work_schedule(MCPXAPUState *d)
@@ -1744,7 +1754,7 @@ voice_work_dispatch(MCPXAPUState *d,
         }
         qemu_cond_wait(&vwd->work_finished, &vwd->lock);
         assert(!vwd->workers_pending);
-        voice_work_release_voice_locks(d);
+        /* Each voice was released by the worker that processed it. */
         vwd->queue_len = 0;
 
         // Add voice contributions

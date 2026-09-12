@@ -1077,6 +1077,9 @@ static int SDLCALL QemuThreadMain(void* data) {
 #if XEMU_OPT_THREAD_AFFINITY
   xemu_pin_to_big_cores_cpp("qemu_cpu_thread");
 #endif
+  __android_log_print(ANDROID_LOG_INFO, "hakuX-threads",
+                      "tid=%d role=qemu-main (QEMU init, then main loop; the "
+                      "TCG vCPU thread is spawned from here)", (int)gettid());
   auto* ctx = static_cast<QemuLaunchContext*>(data);
   LogInfoInt("QemuThreadMain: show_welcome=%d", g_config.general.show_welcome ? 1 : 0);
   LogInfoFmt("QemuThreadMain: bootrom=%s", g_config.sys.files.bootrom_path ? g_config.sys.files.bootrom_path : "(null)");

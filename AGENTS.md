@@ -77,6 +77,16 @@ touching `/tmp/hakux-device-lease` at least once every 90s; the hook then
 defers and says so. The lease is deliberately short-lived, so a batch that dies
 stops suppressing the hook on its own.
 
+**This fires on a person's session too, and that is easy to miss.** The hook
+runs at the end of *every* turn, so replying to someone who is mid-game kills
+their game. It cost several Galleon sessions in one evening, each behind an
+unskippable two-minute intro, before anyone noticed the pattern -- from the
+outside it looks exactly like the emulator crashing, and the log line to look
+for is `Killing <pid>:<pkg>:xemu ... stop <pkg> due to from pid N`, which is a
+force-stop request and not a fault. Before handing the device to someone to
+drive, start `docs/testing/hold_device.sh <minutes>` in the background, and
+`hold_device.sh release` when they are done.
+
 Note this is not only a crash-path concern — because of issue #20 a *successful*
 run does not exit by itself either.
 
@@ -246,6 +256,7 @@ Hard-won operational facts, each of which cost real time:
 | `e:\nxdk_pgraph_tests` accumulates across runs | Use `extract_results.py --newer-than`, with a cutoff taken from the image's own newest timestamp — the guest clock is offset from host time. |
 | Neither `--newer-than` nor the FATX mtime proves a test ran | Files that were never rewritten come through the filter, **and their mtimes advance anyway** — an image whose tests provably never executed still showed fresh timestamps. Set `enable_progress_log: true` in the disc config and read `pgraph_progress_log.txt`: it names every test the suite started and finished. That is the only trustworthy record. |
 | A run cut off by your wait loop is not a completed run | The emulator does not exit on guest power-off (#20), so waiting for the process to die always hits your timeout. Confirm completion from the progress log's "Testing completed normally", never from the run's duration. |
+| A mashed skip sequence can end the run without crashing | Mashing A, B and Start through a title's intro once ended at the game library. B is **not** the cause and is not a crash: pressed alone it leaves the emulator running, same pid, nothing in the crash buffer. The likely path is the guest itself being powered off from its own menu, which the emulator handles by exiting the process (#20's fix). Treat "we are suddenly at the library" as the guest exiting, not as a fault, and confirm with `pidof <pkg>:xemu` before chasing it. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
 
 ## Sharing one device between a long sweep and active work

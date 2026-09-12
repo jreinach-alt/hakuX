@@ -148,6 +148,29 @@ typedef struct FramePacingStats {
     unsigned int defers_total;
     unsigned int defers_window;
     unsigned int vblank_fired;
+    /* How many VBLANKs elapse between the guest's flips. A title that asks
+     * for every second VBLANK sits at 2.0 whatever the load; one that asks
+     * for every VBLANK and misses drifts above 1.0 and wanders with the
+     * scene. That distinction is not visible in a frame rate. */
+    float vblanks_per_flip;
+    /* How long the pfifo thread had nothing to do, per guest frame. That
+     * thread decodes every method and builds every Vulkan draw, so the share
+     * of the frame it spends idle is the share the guest side owns. It is the
+     * one number that says whether making the renderer faster can help at
+     * all, and it costs nothing: the clock read at the top of the wait was
+     * already unconditional, only the accumulation was behind NV2A_PERF_LOG.
+     *
+     * Read it only on a title that wants more frames than it is getting. A
+     * title pacing itself to 30 leaves both sides idle and the ratio says
+     * nothing about the ceiling. */
+    int64_t renderer_idle_acc_ns;
+    float renderer_idle_ms;
+    /* Dirty-bitmap test-and-clear calls per guest frame, from the per-draw
+     * bound-texture poll. Each one that finds a bit forces a TLB dirty reset
+     * across every CPU, which is why this count matters more than its own
+     * cost. Sizes the prize for batching them through the snapshot API. */
+    uint32_t tex_dirty_query_acc;
+    float tex_dirty_queries;
     float vblank_jitter_ms;
     float vblank_delivery_ms;
     bool unlock_mode_active;
