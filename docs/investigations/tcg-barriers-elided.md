@@ -120,3 +120,68 @@ downloads, reports and notifies) stay exposed.
 Sequencing: full revert first to confirm the prediction, then measure the cost,
 then narrow only if the cost demands it. Narrowing before confirming would
 leave two variables moving at once.
+
+---
+
+## MEASURED: the full revert costs 44% of frame time
+
+A/B/A/B on the Nova, Galleon, 240 s per arm with the first quarter discarded,
+alternating so thermal drift cannot be confounded with arm order.
+
+| arm | gfps | game frame ms | renderer idle ms | Tq | `mb_emitted` |
+|---|---:|---:|---:|---:|---:|
+| A1 barriers elided | 18.0 | 53.00 | 26.90 | 212 | **0** |
+| A2 barriers elided | 18.0 | 52.00 | 27.30 | 224 | **0** |
+| B1 barriers restored | 12.5 | 75.60 | 47.55 | 200 | **346,418** |
+
+**+44% game frame time, −31% throughput.**
+
+Three checks that make the number trustworthy rather than suggestive:
+
+- **The arms are provably different binaries.** `mb_emitted` is exactly 0 on
+  both A arms and 346,418 on B. That counter exists precisely because the
+  worst failure mode here is measuring one binary twice — the change is a
+  header plus a codegen file in a shared tree, and a build that silently
+  missed it would produce a clean, plausible, meaningless result.
+- **Thermal drift is not the explanation.** The two A arms agree to 1 ms while
+  A↔B differs by 23 ms. Had the ordering effect dominated, A1 and A2 would
+  differ by something comparable to the A↔B delta.
+- **The workload is the same on both sides.** `Tq` — dirty-bitmap
+  test-and-clear calls per frame, a property of the workload rather than of
+  barriers — is 212/224 against 200.
+
+Two caveats stated rather than buried. The arms report `Ul:N`, so the frame
+limiter was not bypassed even though `unlock_framerate` defaults true; at 18
+fps the guest is far below any cap so the limiter is not the binding
+constraint and game-frame time remains a valid throughput measure, but the
+plan's unlock-mode condition was not actually met. And `Ri` shows the renderer
+idle for roughly half of every frame in **both** arms, so this title is
+guest-bound — which is exactly where a barrier-per-memory-operation bites
+hardest. One title is not a library, and a renderer-bound title would show
+less.
+
+## Consequence: the full revert does not land
+
+44% is far outside the ~3% threshold set in advance for "the claimed 30–50
+cycles per operation does not translate into user-visible cost, so just land
+it". So the decision moves to the narrow variant, which was written down before
+any of this was measured and deliberately not implemented until the full
+revert had answered the correctness question on its own:
+
+```c
+bool parallel = (mb_type & TCG_MO_ST_ST)
+                    ? true
+                    : (tcg_ctx->gen_tb->cflags & CF_PARALLEL);
+```
+
+Store-store only — about half the sites, and the half a device thread needs in
+order to see a coherent texture, vertex buffer or surface. It does **not**
+restore full TSO: guest loads racing device writes (surface downloads, reports,
+notifies) stay exposed, and if those matter the answer is a targeted fence at
+those sites rather than a blanket one in the code generator.
+
+Tagged `exp-54-stst-only`. Its two measurements are queued: `Texture_border`
+failing **0 of 10** runs against a ~46% base rate, and a perf arm to price it.
+Sequencing the narrow variant second was deliberate — measuring it first would
+have left two questions moving at once, whether store-store is sufficient for
+correctness and whether its cost is acceptable.
