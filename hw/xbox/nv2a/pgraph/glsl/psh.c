@@ -1436,7 +1436,7 @@ static MString* psh_convert(struct PixelShader *ps)
      * docs/investigations/edge-defect.md carries the measurements.
      */
     mstring_append(preflight,
-                   "const vec2 texelTieBias = vec2(1.0 / 262144.0, 0.0);\n");
+                   "const vec2 texelTieBias = vec2(1.0 / 262144.0, 1.0 / 262144.0);\n");
     pgraph_glsl_get_vtx_header(preflight, ps->opts.vulkan,
                              ps->state->smooth_shading,
                              ps->state->noperspective, true, false, false);

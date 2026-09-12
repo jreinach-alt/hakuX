@@ -427,6 +427,55 @@ up at 160, 200 and 240 -- so a one-directional v bias cannot be justified as
 modelling hardware. Its only case is host stability, and only their probe can
 establish that.
 
+## The v axis: landed, on the device lane's probe
+
+The v question was theirs to answer because hardware's v-ties resolve in both
+directions and there is no rule to move onto; the only case for biasing v was
+that the hosts disagree, and only a second host could establish that. It did.
+
+With `vec2(1.0 / 262144.0, 1.0 / 262144.0)` on Adreno 740 / Turnip T30, all
+three outlying checkerboard rows moved -- 226 to 225, 376 to 375, 451 to 450 --
+and the full list became `38 75 113 150 188 225 263 300 338 375 413 450`,
+**identical to this lane's, entry for entry**. Their `Texture_render_target`
+row-240 residual fell from 111 px to **71**, which is exactly this lane's
+number on the same row, so what is left there is shared and host-independent.
+Their suite totals: `Texture_render_target` 27 better 0 worse, lighting 100 of
+178 captures better by 50,608 px, 0 worse, every improvement a uniform
+per-family delta.
+
+### What it costs and buys here
+
+Swept at `3734463c` against a matched baseline, the same tree with only the v
+component zeroed, eight discs, 1,099 captures:
+
+| | u only | u and v |
+|---|---|---|
+| differing px | 14,028,857 | 14,017,115 (**−11,742**) |
+| exact | 515 | 515 |
+
+- **`Point_params` gains 12,027 px over three captures.**
+  `PointParamsOn_SmoothOn_001_FF` and `_128_FF` each fall 8,718 to 3,127,
+  `Detailed_FF` 6,600 to 5,755.
+- **179 lighting and material captures lose 1 to 3 px each, 285 px in total**,
+  every one of them an isolated pixel at a checkerboard *cell corner* --
+  (60, 80), (90, 120), (120, 160) and their like, where a u-tie and a v-tie
+  coincide and the diagonal texel is the other colour. Biasing both axes moves
+  the sample to that diagonal neighbour; hardware does not go there.
+- `Texture_render_target` is **unchanged** here. Its row 240 residual was
+  already 71 px with u only; v is what brings the device lane down to the same
+  number rather than moving this one.
+- No capture changes state in either direction.
+
+An earlier note on this page and a PR comment said v cost this lane 162 px
+"with nothing gained here". The cost figure was measured against the
+pre-bias baseline rather than against u-only, and the second clause was wrong:
+the `Point_params` gain was in the original sweep table and got summarised away.
+The numbers above are the ones to use.
+
+The corner cost does not appear on the device lane at all -- they report 0
+worse across both suites. So the one thing v costs anybody is 285 px on this
+host, against 50,608 gained on theirs and 12,027 here.
+
 ## What not to do
 
 `roundScreenCoords` is measured on both sides (`vsh.c:243`): 1/32 and 1/8
