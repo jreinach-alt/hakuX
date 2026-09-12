@@ -98,7 +98,7 @@ disposition = "harness"
 suites = ["Pixel shader"]
 
 [issue.16]
-title = "Depth surface readback converts incorrectly"
+title = "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point half is exact or one ULP"
 # Half of this is done and the framing needs revising. The *_ZB captures are the
 # raw zeta word as ARGB8888 (depth = A<<16|R<<8|G, stencil = B); decoded that way
 # the readback round-trips against known geometry, so the conversion is not the
@@ -193,6 +193,26 @@ title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) 
 # source to [0,1] before blending, killing the negative half -- so it needs a
 # float intermediate or shader-side blending.
 # docs/investigations/signed-blend-equations.md.
+#
+# VALIDATED 2026-09-12 on 15x the data, against the full 1,568-test oracle
+# rather than the 105 #spot_ grids the rule was fitted on: 448/448 signed
+# captures and 176,160,768 of 176,160,768 channels exact, with 0 of 224 factor
+# pairs deviating on either equation. There is no residual to characterise.
+# The control passed first -- 1,120/1,120 unsigned captures, 440,401,920
+# channels -- and seven rival rules were scored on the same goldens and
+# rejected (sign threshold 127 and 129, wrap rather than saturate, signed
+# destination, factors honoured, 0.5 bias, destination-only signing), nearest
+# at 135,697,408/176,160,768. The rule also holds on ALPHA, which the #spot_
+# fit could not reach, so it survives being composed with itself.
+#
+# Two things for whoever implements it. Fixing this will NOT make these
+# captures exact -- stack C stays wrong until #50 lands, so whole-capture
+# exactness will read as no progress; score stacks A and B, where the prize is
+# 91,557,488 channels. And the cost is entirely in the implementation shape,
+# not the rule: Vulkan cannot express it, so it needs a float intermediate or
+# shader-side blending, and the three candidate shapes are in
+# signed-blend-equations.md.
+# docs/investigations/blend-signed-full-oracle.md.
 disposition = "defect"
 suites = ["Blend tests", "Texture signed component tests"]
 
@@ -230,11 +250,29 @@ disposition = "unclassified"
 
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
+# Re-measured on the merged head with both f0829404 and fb9cf8c7 in: Specular
+# ControlFlags_VS is 102,240 px, so the figure this issue was filed with is the
+# POST-fix number and fb9cf8c7 does not close it. The missing light term is
+# real -- 220,892 channels on the front, 144,810 on the back.
+#
+# unknown-semantics rather than defect because the obvious fix is measured
+# dead, not unwritten. A light loop was built and deliberately held back:
+# -55,030 channels, no regressions, only the two lit captures moved, and 12%
+# of what the lights should account for is the wrong number for a correct
+# model. Cause: TestControlFlags drives the PROGRAM's model matrix per draw
+# while modelViewMat0 sits at the XDK default, so a normal built from the
+# fixed-function register cannot follow the rotation that hardware's lighting
+# follows.
+#
+# The experiment that would restart this: determine where the lighting unit
+# takes its geometry from when a vertex program owns the transform. That needs
+# hardware evidence -- a fourth candidate derived from here is what the held
+# negative already rules out.
 suites = ["Specular", "Specular back", "Lighting control"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.50]
-title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in reverse vertical order (not a blend defect)"
+title = "Blend tests: DrawColorAndAlphaStack's stack is wrong on 1,567 of 1,568 captures; mechanism unknown, not a reversal"
 # The largest structural entry on the board, 6,500,124 channels, and NOT a blend
 # defect. 1_ADD_0 is src=ONE dst=ZERO -- the blend unit contributes nothing --
 # and the stack still comes out with its four swatch colours in exact reverse
@@ -247,6 +285,26 @@ title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in revers
 # at centres). Two readings remain, reversed placement or reversed colour
 # assignment, and this capture cannot separate them -- a variant with unequal
 # swatch heights would.
+#
+# Retitled 2026-09-12: the reversal is NOT the mechanism, and two more are dead.
+# Render-target aliasing -- that stack C shows stack A's content, which would
+# explain the apparent order, since the two functions draw the same four
+# colours in OPPOSITE order -- matches neither our own stack A nor the
+# golden's, 0 of 1,568. Exact band reversal is false too: on 1,567 of 1,568
+# captures NO band matches ANY golden band bit-exactly in any position, so the
+# bands differ in value and not only in order. As a tendency reversal is mixed
+# rather than clean -- better on 949, tied on 376, WORSE on 243, median
+# band-mean L1 121.1 reversed against 194.4 in order, where a pure reversal
+# would sit near zero. The 376 ties are degenerate and support neither reading.
+#
+# Also measured: stack A (DrawColorStack, cols 16-79) is a CLEAN ORACLE for the
+# signed equations -- 0/224 differing on each of ADD/MAX/MIN/REVSUB/SUB and
+# 224/224 on both SADD and SREVSUB -- so #43 belongs there rather than on a
+# whole frame that also carries this defect. And a test-revision mismatch is
+# ruled out from source: upstream blend_tests.cpp is byte-identical in draw
+# order and all four colours from 283e2971 (the last revision before the
+# 2025-03-14 oracle release) through 2cfe6073.
+# docs/investigations/blend-stacks-are-two-defects.md.
 disposition = "defect"
 suites = ["Blend tests"]
 
@@ -286,11 +344,65 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # TRUE (texture_cubemap_tests.cpp calls SetCubemapEnable), and dim_tex[3] is
 # 2, not 3 (GetDimensionality returns 3 only for depth > 1 and the test sets
 # 64x64). So the stage is a cubemap-flagged 2D texture, not a volume, and we
-# already emit texture(texSamp3, dotSTR3.xy). The two probes recorded against
-# those readings stand as measured, but the remapCubeTo2D row's +59,142 on
-# Texture_2D_as_cubemap equals DotSTR3D_Bad2D's residue on the current build
-# with no probe applied, so it cannot be told apart from a baseline change.
+# already emit texture(texSamp3, dotSTR3.xy) -- structurally the same fetch
+# the rule attributes to hardware, so the defect is NARROWER than "wrong
+# mode". The two probes recorded against those readings stand as measured, but
+# the remapCubeTo2D row's +59,142 on Texture_2D_as_cubemap equals
+# DotSTR3D_Bad2D's residue on the current build with no probe applied, so it
+# cannot be told apart from a baseline change.
 # docs/investigations/cubemap-is-dot-str-3d.md.
+#
+# ad1caa07's own effect, measured separately because it is nearby and easy to
+# confuse with the above: 2,565,441 differing px -> 320,535 across both
+# cubemap suites, with the "other 71" going 2,223,987 -> 4,644.
+#
+# One regression on the record: DotSTR3D_Bad2D was exact before ad1caa07 and
+# is 19,714 px off after it. The CAUSE IS NOT ESTABLISHED -- an earlier note
+# here explained it as the suite having sampled a stale texture and happening
+# to agree, and that premise was retracted: the pre-ad1caa07 numbers reproduce
+# to the channel on a current build, so they were never measured through a
+# stale texture. Recorded as a measured regression with no mechanism, not as
+# luck, and not as an argument against a commit worth 2.2M px.
+#
+# What Bad2D actually shows, from the image rather than the histogram: we do
+# not land on a wrong corner, we DITHER BOTH CHECKER COLOURS at texel
+# frequency where silicon is one flat #FFFF44 across all 56,909 px. Same shape
+# as the cubemap captures. Note stage 3 is written once in Initialize() in that
+# suite, so a "sampled the wrong texture" reading does not follow; which part
+# of ad1caa07's window changed it is NOT established.
+#
+# THE SATURATION MECHANISM IS FALSIFIED, by arithmetic and before any run. The
+# claim was that the dot products run far outside [0,1] and saturate at
+# CLAMP_TO_EDGE. They do not: pT1..3 are rows of the INVERSE fixed-function
+# composite matrix (model_view x perspective x viewport, so the forward matrix
+# carries the 640x480 and 0x00FFFFFF scales and the inverse carries their
+# reciprocals), bounding |dot| at 0.00299, 0.00299 and 9.37e-7. dotSTR3 never
+# leaves a box of side 0.003 about the origin, and rotations are orthonormal so
+# no convention changes the lengths.
+#
+# That also leaves OUR output unexplained, which is the more useful half: at
+# (0.003, 0.003) with box filtering every fragment should land on texel (0,0)
+# and the cube should be flat, and ours is texel-frequency noise across all
+# eight corners. So the coordinate reaching our sampler is not dotSTR3.xy as
+# computed, and one of the texcoord / filter / binding assumptions is wrong.
+#
+# The observable rule and the predicted counts above are UNAFFECTED -- they
+# rest on the goldens, not on the explanation: the fetched texel is a corner
+# picked by sign(dot1), sign(dot2).
+#
+# Untested candidate, deliberately recorded as a candidate: the test sets
+# SetTexCoord1/2/3(..., 0.f), so w is ZERO, and the dot modes take pT.xyz raw
+# where every other pT consumer divides by pT.w. A projective divide in the
+# hardware address unit would send every component to +/-inf with the sign of
+# the numerator -- making magnitudes irrelevant by construction and producing
+# exactly the structure the goldens show. Settling it needs one instrumented
+# run emitting vec4(clamp(abs(dotSTR3),0,1),1) in place of the fetch.
+#
+# Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
+# +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
+# is an edge pair on all three. +X comes from the addressing argument and
+# GenerateCubemap's write order, not from the pixels, so a fix that picks a
+# different positive face is not thereby wrong.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
 

@@ -267,6 +267,21 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
          * them makes things worse. See docs/investigations/edge-defect.md
          * and issues #11 and #4.
          */
+        /*
+         * Do NOT add a bias here to chase #49's two captures, and this is now
+         * proved rather than advised. Both of its offsets are congruent to
+         * 9/16 mod 1, so the post-offset coordinate lands exactly ON a grid
+         * line, where this function is the identity and coverage is decided
+         * by the last bit of the transform above it. Every rule expressible
+         * here -- truncate, floor, round, any grid size, any pre- or post-snap
+         * bias, any sample point -- is invariant under integer translation of
+         * its input, and hardware resolves x = 120 + 9/16 and x = 320 + 9/16
+         * in OPPOSITE directions, in the same quad at identical y and w. So no
+         * rule on pos can match it. The best bias small enough to keep the ten
+         * passing captures exact still leaves 888 of 1,396 px, fixing three
+         * vertices and breaking two.
+         * docs/investigations/viewport-9-16-boundary.md
+         */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"
         "}\n");

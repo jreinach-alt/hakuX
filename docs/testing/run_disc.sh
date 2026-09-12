@@ -40,7 +40,26 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # because adb stopped answering -- the work was done and the job still looked
 # alive. A device that goes unresponsive must not be able to hold a slot.
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
+
+# Optional logcat capture, off unless CAPTURE_LOG names a file.
+#
+# It has to STREAM, not dump at the end. The core's own fprintf(stderr) never
+# reaches logcat on Android, so anything we want to see from pgraph is routed
+# through __android_log_print -- and the interesting lines are the startup set,
+# emitted in the first second. A run can take the full 1800s plus a ~1.5GB
+# pull, and the ring has long since turned over by then: a closing `logcat -d`
+# reliably returns everything except the lines we came for. That eviction is
+# already on record in galleon-flashing-deck.md.
+#
+# So the reader starts BEFORE `am start` and is killed by PID in release().
+# Killing by PID matters: a pattern kill here would match this script's own
+# command line.
+CAPTURE_LOG="${CAPTURE_LOG:-}"
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-unhandled:W hakuX:W *:S}"
+LOGCAT_PID=""
+
 release() {
+    [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     rm -f "$LEASE"
@@ -51,6 +70,15 @@ mkdir -p "$(dirname "$HDD")"
 a push "$ISO" "$DEVISO" >/dev/null 2>&1 || { echo "push failed"; exit 1; }
 a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+
+if [ -n "$CAPTURE_LOG" ]; then
+    a logcat -c >/dev/null 2>&1
+    # Unwrapped by design: `a` imposes a 120s deadline, and this outlives the run.
+    # shellcheck disable=SC2086
+    adb -s "$SERIAL" logcat -v time $LOGCAT_SPEC >"$CAPTURE_LOG" 2>/dev/null &
+    LOGCAT_PID=$!
+fi
+
 a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'" >/dev/null 2>&1
 
 # Wait for the guest in two stages, because the obvious single loop is wrong
