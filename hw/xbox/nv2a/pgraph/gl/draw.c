@@ -61,6 +61,10 @@ static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
     }
     if (r->zeta_binding && write_zeta) {
         r->zeta_binding->draw_time = pg->draw_time;
+    }
+}
+
+/*
  * True when the colour surface format stores no alpha bits at all, so the
  * blend unit has no destination alpha to read and substitutes 1.0.
  *
