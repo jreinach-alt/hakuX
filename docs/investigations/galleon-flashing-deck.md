@@ -287,7 +287,60 @@ not in any single field's value but in the relationship between two of them.**
 An invariant across fields was needed, and only a capture holding all of them
 at once could express it.
 
-### The cause, in the code
+### RETRACTED: the draw-queue mechanism cannot explain this
+
+Asked to confirm the diagnosis rather than act on it, and it does not survive.
+Three independent problems, plus one with the evidence I presented.
+
+**1. The mechanism is dead.** `nv2a_diag_log_draw_call` is called immediately
+after `vkCmdDrawIndexed` and `end_draw` on the `inline_elements` path
+(`draw.c:6050`). Draw 92 is `TRIANGLES`/`inline_elements`, so it went through
+**immediate submission and never entered the merge queue.** The queue's
+blindness to transform constants -- the whole code-level story below -- cannot
+account for it. That finding about the queue may still be a real latent bug,
+but it is not this one.
+
+**2. The invariant may be fitted rather than found.** 2048 rests on exactly two
+observed pairings, 8 with 256 and 16 with 128. Draw 92 is also structurally
+unique in the capture: the only large indexed-triangle draw with a stage-1
+matrix, where every other large one is a strip. A third legitimate pairing for
+a differently-submitted object cannot be excluded from 167 draws.
+
+**3. Frequency mismatch.** One violation across the seven captured frames that
+contain draws, against an artifact reported as cycling continuously. A cause
+should fire at roughly the rate of its effect.
+
+**4. My visual evidence did not show what I said it showed.** The before/after
+comparison put the framebuffer before draw 92 against the one after it. Draw 92
+painted a *different object* into that region, so the comparison shows two
+different walls, not one wall drawn wrongly. It never supported "draw 92
+rendered incorrectly", and presenting it that way was wrong.
+
+### What would actually settle it
+
+The common flaw in every measurement so far, including the good ones, is that
+they all read **emulator state**. If the defect is ours it is a divergence
+between emulator state and what reached the GPU, and no amount of state
+logging can see that divergence.
+
+1. **Rule the driver in or out first.** Galleon captured across Turnip T30, T26
+   and the Qualcomm driver, frames compared. If the artifact moves with the
+   driver, every emulator-state measurement has been looking at the wrong
+   layer. The swap harness exists and this needs no code change. The one
+   earlier attempt at the validation layer failed silently and proved nothing.
+2. **Then log what the GPU received, not what the state said** -- the image
+   view actually bound per stage and the matrix actually in the pushed uniform
+   buffer at submission. A disagreement between that and the state file is the
+   bug directly, with no invariant and no assumption about the game's intent.
+3. **Fix the frequency first.** Count artifact frames per hundred before
+   believing any candidate, and require the candidate to fire at a comparable
+   rate.
+
+What stands regardless: the capture now records every per-draw field at once,
+and `check_diag_invariants.py` exists. Both are useful whatever the cause turns
+out to be.
+
+### The queue finding, kept because it is probably a real bug elsewhere
 
 The draw queue merges consecutive draws and decides whether their uniforms
 changed with a single comparison (`draw.c`, `check_draw_mergeable` and the
