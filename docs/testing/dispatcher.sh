@@ -36,7 +36,12 @@ export JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}"
 export PATH="/home/justin/Android/Sdk/cmake/3.30.3/bin:$PATH"
 
 mkdir -p "$D"/{queue,running,results,logs}
-log() { echo "$(date '+%m-%d %H:%M:%S') $*" | tee -a "$D/logs/dispatcher.log"; }
+# Logs go to the file and to STDERR, never stdout. build_ref's stdout is
+# captured as the APK path, so a log line on stdout becomes the path: adding
+# one informational message to the success path made every build return the
+# log text instead of a file, and the run failed at install with an empty
+# binary. Anything that writes to stdout inside a $(...) here is a bug.
+log() { echo "$(date '+%m-%d %H:%M:%S') $*" | tee -a "$D/logs/dispatcher.log" >&2; }
 jq_get() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],sys.argv[3] if len(sys.argv)>3 else ''))" "$1" "$2" "${3:-}"; }
 
 device_present() {
@@ -122,6 +127,10 @@ serve_one() {
         echo "build failed for ref $ref (code $?)" > "$rdir/ERROR"
         log "  BUILD FAILED"; mv "$req" "$rdir/request.json"; return 0
     }
+    if [ ! -f "$apk" ]; then
+        echo "build_ref returned no usable apk: '$apk'" > "$rdir/ERROR"
+        log "  BUILD RETURNED NO APK"; mv "$req" "$rdir/request.json"; return 0
+    fi
     local sha; sha=$(sha256sum "$apk" | cut -c1-12)
     log "  binary $sha"
 
