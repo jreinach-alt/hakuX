@@ -1035,3 +1035,42 @@ suites = ["Depth buffer"]
 title = "tcg: all guest memory barriers are elided under XBOX, and device threads read guest RAM with bare loads"
 disposition = "defect"
 suites = ["Texture border", "W buffering"]
+
+# Added 2026-09-12. Blocks the other half of #48 and is read from ~15 sites, so
+# it is tracked rather than folded into any one issue.
+#
+# check_surface_compatibility matches on host_fmt.vk_format, and A8R8G8B8,
+# X8R8G8B8_Z/O and X1A7R8G8B8_Z/O all map to VK_FORMAT_B8G8R8A8_UNORM. With
+# address, pitch and size unchanged across a colour-format change,
+# vk/surface.c:3197-3208 takes the is_compatible branch, sets
+# should_create = false and NEVER reassigns shape -- target.shape is consumed
+# only on creation. The binding reports whichever format created it.
+#
+# Found by run order, not by reading: #48's blend fix read
+# r->color_binding->shape.color_format and regressed DstAlpha_ARGB8 from exact
+# to 98,304 px while its complement 1-DstAlpha_ARGB8, which runs FIRST with a
+# fresh binding, stayed exact. A cache-key collision -- the first hypothesis --
+# has no notion of position in a run and was killed four ways.
+#
+# NOT one fix. The blend half is fixed by reading pg->surface_shape.color_format
+# (c6dd6fcdfb) because the surface the blend unit asks about IS the current one.
+# The texture unit consults one that is NOT: both suites render to a scratch
+# surface and restore the framebuffer format before sampling it, so by
+# texture-bind time the register says A8R8G8B8 and reading it would make the
+# override dead code. Same register, different question.
+#
+# What it blocks, with the rule already measured pixel-exact: X8R8G8B8_Z8/_O8
+# sampled alpha is 0 and 255 at every stored alpha 0-255, sd 0.00 over 16,371
+# invertible px per quad, and predicting the alpha half from the opaque half
+# gives 0 of 65,536 per capture against 65,536 of 65,536 for the opposite
+# constant across 524,288 px. Predicted when unblocked: -229,376 px on six
+# captures, with both X_Z1RGB5, all four XA_*, and the four exact
+# ARGB8/R5G6B5 captures required not to move.
+#
+# Other consumers of the same stale field, none audited: vk/texture.c via
+# pgraph_vk_surface_get(), vk/renderer.c:1144 (a state-block KEY), and about a
+# dozen gl/surface.c pack/unpack sites.
+[issue.55]
+title = "Surface bindings never refresh their colour format on compatible reuse, and fifteen sites read it"
+disposition = "defect"
+suites = ["Blend surface", "Texture Framebuffer Blit"]
