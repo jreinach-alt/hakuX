@@ -62,10 +62,52 @@ Worth recording that Galleon leans on the retranslation loop far harder than
 Fuzion Frenzy did, roughly five times the slow-store rate, which is consistent
 with it running at 14 fps.
 
+## Revised: it is the stride, not the mip level
+
+The mip reading above is **wrong**, and two pieces of evidence killed it.
+
+First, the report from someone watching it live: the glitched patch cycles
+through several different patterns and lighting, then sweeps across to the
+right of the screen before the cycle restarts. A mip level cannot do that. A
+wrong level gives one consistently wrong appearance, not a sequence.
+
+Second, cropping the same deck patch out of all 40 frames and tiling them
+(`images/galleon-deck-cycle.png`) shows what the sequence is: **fine diagonal
+hatching, coarse diagonal hatching the other way, smooth plain wood, and a
+strong crosshatch weave, in rotation.** The pattern's *direction* changes
+between frames.
+
+That direction change is the diagnostic part. Mip selection cannot rotate a
+pattern. Reinterpreting the same texture memory with the wrong row stride can,
+and does: a stride mismatch shears the image diagonally, and the shear angle
+is set by how far wrong the stride is. A stride that differs frame to frame
+gives a rotating set of shear angles, and content that walks sideways, which is
+exactly the reported sweep to the right.
+
+So the working diagnosis is **the deck texture being sampled with an incorrect
+and varying row stride or tiling interpretation.** The candidates, in the order
+worth checking:
+
+1. Swizzled versus linear confusion. The NV2A stores most textures swizzled,
+   and un-swizzling with the wrong assumption produces precisely this kind of
+   diagonal shear.
+2. Pitch read from the wrong register, or from a surface's pitch rather than
+   the texture's.
+3. A colour surface sampled as a texture where the two disagree about pitch.
+   Related to, but distinct from, the channel-order case the desktop lane
+   fixed in `a8f2454a`; that one swaps colours, this one shears geometry.
+
+Recording the churn honestly: this defect has now had three readings from me.
+A dropped detail layer, from thumbnails. A wrong mip level, from luminance and
+contrast. And now a stride mismatch, from the pattern rotating. Each revision
+came from evidence the previous one could not explain, and the first two were
+stated too confidently for what they rested on.
+
 ## Next measurement, not yet done
 
-Log each texture's mip level count at upload and at bind, and correlate a
-level count of one against the flash frames. If a texture is being bound with
-a single level where it previously had a chain, that is the defect and the
-re-upload path is where to look. If mip counts are stable, the cause is level
-selection and the sampler's LOD state is where to look.
+Log, for each texture bound while this scene renders, its width, height,
+pitch, colour format and swizzled flag, once per frame. If the pitch or the
+swizzled flag changes between frames for the same texture memory, that is the
+defect and the disagreement is between whoever wrote those fields and whoever
+reads them. If all five are stable across a flash, the shear is coming from
+the coordinate side instead and the texture matrix is where to look.
