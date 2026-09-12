@@ -251,13 +251,24 @@ disposition = "defect"
 suites = ["Blend tests"]
 
 [issue.51]
-title = "Texture cubemap: DOT_STR_3D saturates to a corner texel on silicon and samples the interior here"
-# The rule: DOT_STR_3D addresses with the raw vec3(dot_{i-2}, dot_{i-1}, dot_i)
-# and no normalisation. Those dots are a constant matrix row against a normal,
-# far outside [0,1], so every axis saturates at CLAMP_TO_EDGE (TextureStage's
-# default, never changed here) and the fetch lands on a CORNER texel picked by
-# sign(dot_{i-2}), sign(dot_{i-1}); the third component selects nothing.
-# Evidence: the goldens hold NO colour outside the four +X-face corners
+title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked by two dot-product signs"
+# The rule, at the level of the observable and no further: under DOT_STR_3D the
+# fetched texel is a CORNER of the texture, picked by sign(dot_{i-2}) and
+# sign(dot_{i-1}); the third component selects nothing. WHY it saturates is
+# open. The first answer -- the dots run far outside [0,1] and clamp -- is
+# FALSIFIED: reconstructing the exact matrix chain gives |dot1|,|dot2| <=
+# 0.00299 and |dot3| <= 9.4e-7, because the composite includes the 640x480
+# viewport and a 0x00FFFFFF depth scale and it is the INVERSE that is used.
+# That also leaves our own output unexplained, which matters more: at 0.003
+# with box filtering every fragment should land on texel (0,0) and be flat,
+# and ours is texel-frequency noise, so the coordinate reaching our sampler is
+# not dotSTR3.xy either. Untested candidate, written up in the doc and
+# deliberately not asserted here: the test sets texcoord w = 0 on all three
+# stages and the dot modes never divide by w, so a projective divide in the
+# hardware address unit would send every component to +-inf with the sign of
+# the numerator. One instrumented run settles it.
+# Evidence for the observable rule: the goldens hold NO colour outside the
+# four +X-face corners
 # {#0000FF,#FF0000,#00FF00,#FFFFFF}; the three unsigned dotmaps cannot flip
 # sign(dot_{i-2}) and their #FF0000 count is exactly 0 over ~87k cube px; the
 # regions are flat with smooth boundaries, which is a sign field of M_i.f(N)
