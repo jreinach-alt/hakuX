@@ -578,247 +578,247 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:567",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:594",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:571",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:598",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:645",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:672",
    "symbols": [],
    "text": "/* TODO: these should instead be queueing up fe commands */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:654",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:681",
    "symbols": [],
    "text": "assert(0);"
-  },
-  {
-   "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:689",
-   "symbols": [],
-   "text": "voice_set_mask(d, v, lvl_reg, lvl_mask, 0x00); // FIXME: Confirm this?"
-  },
-  {
-   "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:709",
-   "symbols": [],
-   "text": "// FIXME: [division by zero]"
   },
   {
    "kind": "MARKED",
    "loc": "hw/xbox/mcpx/apu/vp/vp.c:716",
    "symbols": [],
+   "text": "voice_set_mask(d, v, lvl_reg, lvl_mask, 0x00); // FIXME: Confirm this?"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:736",
+   "symbols": [],
+   "text": "// FIXME: [division by zero]"
+  },
+  {
+   "kind": "MARKED",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:743",
+   "symbols": [],
    "text": "// FIXME: Overflow in hardware"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:717",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:744",
    "symbols": [],
    "text": "//       The actual value seems to overflow, but not sure how"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:722",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:749",
    "symbols": [],
    "text": "// FIXME: Comparison could also be the other way around?! Test please."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:728",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:755",
    "symbols": [],
    "text": "count = hold_time * 16; // FIXME: Skip next phase if count is 0?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:761",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:788",
    "symbols": [],
    "text": "// FIXME: Decay should return a value no less than sustain"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:766",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:793",
    "symbols": [],
    "text": "// FIXME: This formula and threshold is not accurate, but I can't"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:772",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:799",
    "symbols": [],
    "text": "// FIXME: Should we still update lvl?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:787",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:814",
    "symbols": [],
    "text": "0x00); // FIXME: is this only set to 0 once or forced to zero?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:804",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:831",
    "symbols": [],
    "text": "// FIXME: Appears to be an exponential but unsure about actual"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:807",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:834",
    "symbols": [],
    "text": "// FIXME: Based on sustain level or just decay of current level?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:808",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:835",
    "symbols": [],
    "text": "// FIXME: Update level? A very similar, alternative decay function"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:809",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:836",
    "symbols": [],
    "text": "// (probably what the hw actually does): y(t)=2^(-10t), which would"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:815",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:842",
    "symbols": [],
    "text": "count--; // FIXME: Should release count ascend or descend?"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:828",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:855",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:868",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:895",
    "symbols": [],
    "text": "NV_PAVS_VOICE_CFG_FMT_LINKED); /* FIXME? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:886",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:913",
    "symbols": [],
    "text": "int16_t adpcm_decoded[65*2]; // FIXME: Move out of here"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:888",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:915",
    "symbols": [],
    "text": "// FIXME: Only update if necessary"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:903",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:930",
    "symbols": [],
    "text": "// This is probably cleared when the first sample is played"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:904",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:931",
    "symbols": [],
    "text": "// FIXME: How will this behave if CBO > EBO on first play?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:905",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:932",
    "symbols": [],
    "text": "// FIXME: How will this behave if paused?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:915",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:942",
    "symbols": [],
    "text": "// FIXME: Confirm. Unsure if this should wait until end of SSL or"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:971",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:998",
    "symbols": [],
    "text": "ebo = seg_len - 1; // FIXME: Confirm seg_len-1 is last valid sample index"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1006",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1033",
    "symbols": [],
    "text": "// FIXME: Restructure this loop"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1020",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1047",
    "symbols": [],
    "text": "block_size); // FIXME: Use idiomatic DMA function"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1074",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1101",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1167",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1194",
    "symbols": [],
    "text": "// FIXME: Don't do 2ch resampling if this is a mono voice"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1172",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1199",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1409",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1436",
    "symbols": [],
    "text": "// FIXME: If phase negations means to flip the signal upside down"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1424",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1451",
    "symbols": [],
    "text": "// FIXME: Move to function"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1435",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1462",
    "symbols": [],
    "text": "// FIXME: Cutoff modulation via NV_PAVS_VOICE_CFG_ENV1_EF_FCSCALE"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1462",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1489",
    "symbols": [],
    "text": "// FIXME: ParaEQ"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1468",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1495",
    "symbols": [],
    "text": "// FIXME: Not sure if submix/voice headroom factor in for HRTF"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1488",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1515",
    "symbols": [],
    "text": "* TODO: Are the 2D, 3D and MP voice lists merely a DirectSound"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1696",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1723",
    "symbols": [],
    "text": "// TODO: To simplify submix scheduling, we make a few assumptions based"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1698",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1725",
    "symbols": [],
    "text": "// multipass sources suggests the hardware may not be so strict. We'll"
   },
@@ -1028,7 +1028,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/blit.c:100",
+   "loc": "hw/xbox/nv2a/pgraph/gl/blit.c:224",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -1939,13 +1939,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:374",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:389",
    "symbols": [],
    "text": "/* FIXME: Is the fog still calculated / passed somehow?! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:378",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh.c:393",
    "symbols": [],
    "text": "/* FIXME: Does foggen do something here? Let's do some tracking.."
   },
@@ -2492,7 +2492,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:196",
+   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:347",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -3601,7 +3601,7 @@
     "Texture cubemap",
     "Texture 2D as cubemap"
    ],
-   "title": "Texture cubemap: DOT_STR_3D saturates to a corner texel on silicon and samples the interior here"
+   "title": "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked by two dot-product signs"
   },
   "52": {
    "disposition": "defect",
@@ -4192,15 +4192,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "34c99d2f4d9d64e5bbbbff729fa62d89bbaedb08",
+  "emulator_commit": "1e50914d3041a1ab6a58af17f8eea561f2d30f4c",
   "gaps": 497,
-  "resolved_tables": 0,
+  "resolved_tables": 1,
   "sites": 2726,
   "suites": 102,
-  "support_dirs": [],
+  "support_dirs": [
+   "/home/user/pbkitplusplus"
+  ],
   "symbols": 944,
   "tests_commit": "33e7c6b0ebf4d6e1b67d0ca475adc336fb5fbaf8",
-  "tests_root": "/home/justin/nxdk_pgraph_tests",
+  "tests_root": "/home/user/nxdk_pgraph_tests",
   "unread": 143
  },
  "schema": 1,
@@ -19559,15 +19561,51 @@
     "src/tests/bump_env_lum_tests.h"
    ],
    "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
    ]
   },
   "Bump map": {
@@ -19578,15 +19616,51 @@
    ],
    "symbols": [
     "NV097_SET_DOT_RGBMAPPING",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
    ]
   },
   "Clear": {
@@ -21042,12 +21116,51 @@
     "src/tests/texture_format_tests.h"
    ],
    "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
    ]
   },
   "Texture palette": {
@@ -21103,13 +21216,51 @@
     "NV097_SET_SURFACE_PITCH",
     "NV097_SET_SURFACE_PITCH_COLOR",
     "NV097_SET_SURFACE_PITCH_ZETA",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8",
     "NV097_SET_TEXTURE_OFFSET",
     "NV097_WAIT_FOR_IDLE"
    ]
@@ -21255,12 +21406,51 @@
     "src/tests/volume_texture_tests.h"
    ],
    "symbols": [
+    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
    ]
   },
   "W buffering": {
