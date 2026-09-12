@@ -21,6 +21,20 @@
 #   allows the stop and says why. Without it, a genuinely blocked session (every
 #   remaining issue waiting on a human, or a device that has gone away) would
 #   spin. The user can always interrupt, but they should not have to.
+#
+#   ORCHESTRATOR ONLY. A Stop hook in .claude/settings.json fires for EVERY
+#   session in this project, and only the orchestrator is supposed to run until
+#   the backlog is clear. Without this check the hook gated an unrelated
+#   session -- one opened to add a second device -- through six blocks before
+#   it could end a turn, which is the opposite of useful. So the orchestrator
+#   claims the role by session id:
+#
+#       backlog-gate.sh claim          # from the orchestrator session
+#       backlog-gate.sh release
+#
+#   and the hook blocks only when the incoming session_id matches the claim.
+#   Any other session is allowed immediately. No claim file means no
+#   orchestrator, so nothing is gated.
 set -u
 
 STATE_DIR="${HAKUX_GATE_STATE:-/tmp/hakux-backlog-gate}"
@@ -30,8 +44,31 @@ CACHE_TTL=120
 MAX_BLOCKS=6
 WINDOW=1800
 REPO="jreinach-alt/hakuX"
+CLAIM="$STATE_DIR/orchestrator"
 
 mkdir -p "$STATE_DIR"
+
+case "${1:-}" in
+  claim)
+    # The session id is the basename of this project's most recently written
+    # transcript. Taking it from there rather than asking the caller means the
+    # orchestrator cannot claim the role on another session's behalf by typo.
+    sid=$(ls -t "$HOME/.claude/projects/-home-justin-hakuX"/*.jsonl 2>/dev/null \
+          | head -1 | xargs -r basename | sed 's/\.jsonl$//')
+    [ -n "$sid" ] || { echo "could not determine the session id" >&2; exit 1; }
+    printf '%s\n' "$sid" > "$CLAIM"
+    echo "orchestrator claimed by $sid"
+    exit 0
+    ;;
+  release)
+    rm -f "$CLAIM" "$BLOCKS"; echo "orchestrator released"; exit 0
+    ;;
+  status)
+    if [ -f "$CLAIM" ]; then echo "orchestrator: $(cat "$CLAIM")";
+    else echo "orchestrator: unclaimed -- the gate is inert for every session"; fi
+    exit 0
+    ;;
+esac
 
 # Unconditional audit line, first thing, before any logic can exit early.
 # Added because the hook silently failed to fire and I could not tell whether
@@ -48,6 +85,11 @@ import json,sys
 try: print('1' if json.load(sys.stdin).get('stop_hook_active') else '0')
 except Exception: print('0')" 2>/dev/null || echo 0)
 
+sid=$(printf '%s' "$payload" | python3 -c "
+import json,sys
+try: print(json.load(sys.stdin).get('session_id') or '')
+except Exception: print('')" 2>/dev/null || echo '')
+
 allow() {
     printf '%s allowed\n' "$(date '+%F %T')" \
         >> "$STATE_DIR/invocations.log" 2>/dev/null || true
@@ -62,6 +104,20 @@ import json,sys
 print(json.dumps({'decision':'block','reason':sys.argv[1]}))" "$1"
     exit 0
 }
+
+# --- is this the orchestrator? if not, this hook has no business here
+if [ ! -f "$CLAIM" ]; then
+    printf '%s allowed (no orchestrator claimed)\n' "$(date '+%F %T')" \
+        >> "$STATE_DIR/invocations.log" 2>/dev/null || true
+    exit 0
+fi
+claimed=$(cat "$CLAIM" 2>/dev/null || echo '')
+if [ -z "$sid" ] || [ "$sid" != "$claimed" ]; then
+    printf '%s allowed (session %s is not the orchestrator %s)\n' \
+        "$(date '+%F %T')" "${sid:-unknown}" "$claimed" \
+        >> "$STATE_DIR/invocations.log" 2>/dev/null || true
+    exit 0
+fi
 
 # --- backlog state, cached so a turn end is not an API round trip every time
 now=$(date +%s)
