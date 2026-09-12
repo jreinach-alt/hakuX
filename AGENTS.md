@@ -62,6 +62,14 @@ flattens the battery instead of merely wasting it. This is not hypothetical — 
 Nova was found looping the Crimson Skies intro long after the test that started
 it had been forgotten.
 
+**`pgrep qemu-system-i386` never matches, and the false negative is dangerous.**
+Linux truncates a process's `comm` to fifteen characters, so the desktop
+emulator appears as `qemu-system-i38`. `pgrep -c qemu-system-i386` therefore
+returns 0 while a run is in full flight, which reads as "the emulator is free"
+and invites starting a second one on top of the first. Match the truncated name,
+or check with `ps -eo comm= | grep qemu`. (This is a different trap from the
+`pgrep -f` one in `CLAUDE.md`, which matches your own shell; both bite.)
+
 ```bash
 trap 'adb -s "$SERIAL" shell am force-stop "$PKG"' EXIT   # in every script
 ```
