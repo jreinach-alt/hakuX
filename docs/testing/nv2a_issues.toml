@@ -63,43 +63,20 @@ title = "Line and point rasterisation"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 
-# Reclassified 2026-09-11. It is not precision: of 18,000 sampled #spot_
-# pixels, zero are off by one or two steps, and 6,353 of the 7,974 misses are R
-# and B the wrong way round -- a render target read in the surface's channel
-# order instead of the texture's. See issue 44 and
-# docs/investigations/blend-render-target-channel-order.md.
+# Confirmed independently on Adreno before the fix landed: of 18,000 sampled
+# #spot_ pixels, zero were off by one or two steps, and 6,353 of the 7,974
+# misses were R and B the wrong way round. docs/testing/blend_channel_order.py
+# is the check.
 [issue.14]
-title = "Blend: 4/5 of the residual is issue 44's channel order, not precision"
+title = "Blend precision (low priority)"
+# Most of this was never the blend unit. The 105 #spot_ captures blit a 512x512
+# A8R8G8B8 render target to screen through an A8B8G8R8 texture stage, and we
+# skipped that decode: 81.8% of the residual on the 75 non-signed captures, and
+# every MAX capture, which is byte-exact once the channel order is right.
+# 30 of the 105 (SADD/SREVSUB) belong to #43.
+# docs/investigations/surface-as-texture-decode.md.
+disposition = "defect"
 suites = ["Blend tests"]
-
-# The largest single non-precision population in the corpus (6,499,208
-# channels on the reclassified 2026-09-12 numbers), and host-dependent:
-# lavapipe scores 16,625 of 18,000 sampled pixels where Adreno scores 10,026.
-[issue.44]
-title = "A render target sampled as a texture is read in the surface's channel order"
-suites = ["Blend tests", "Texture render target", "Blend surface",
-          "Surface format", "Image blit"]
-
-[issue.15]
-title = "pgraph suite: some tests are order-dependent"
-suites = ["Pixel shader"]
-
-[issue.16]
-title = "Depth surface readback converts incorrectly"
-suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
-
-# #19 spans 24 suites. Listed here are the suites its classification pass names
-# explicitly: the two confirmed contamination cases plus the missing-state set.
-[issue.19]
-title = "328 of 864 failing tests render another test's image (two causes)"
-suites = ["Texture DXT", "Texture render target", "Attrib carryover",
-          "Blend surface", "Blend tests", "Depth buffer",
-          "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
-          "Line width", "Specular", "Stipple tests", "Surface format",
-          "Texture perspective", "Texture shadow comparator",
-          "Texture signed component tests", "W param", "Window clip",
-          "ZMinMaxControl", "ZPass pixel count", "Bump map", "Image blit",
-          "Texture cubemap"]
 
 [issue.21]
 title = "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"

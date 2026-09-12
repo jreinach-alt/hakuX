@@ -22,14 +22,35 @@ much smaller than they looked, and the order below is the one worth working.
 | Fog carryover | 11 | 0 | 356,144 | structural (11) |
 | Texture render target | 40 | 11 | 308,248 | boundary-shift (26) |
 
-## What the top row turned out to be
+## What the top row turned out to be, and what it is now
 
 `Blend tests` is not only first, it is first by a factor of three — and four
-fifths of its sampled residual is **one bug that has nothing to do with
-blending**: a render target sampled as a texture is read in the surface's
-channel order instead of the texture's, so R and B come back exchanged. Filed
-as issue 44, fix written, measurement pending. See
-`blend-render-target-channel-order.md`.
+fifths of its sampled residual was **one bug that has nothing to do with
+blending**: a render target sampled as a texture was read in the surface's
+channel order instead of the texture's, so R and B came back exchanged.
+
+**Fixed and measured** by the remote lane as `a8f2454a` while this table was
+being written: 5,893,287 differing pixels down to 3,562,479, exact 1/105 to
+16/105, 79 captures better and none worse, with all fifteen MAX captures
+byte-exact — VK_BLEND_OP_MAX was right all along and the channel order was
+hiding it. Both lanes reached the same diagnosis and very nearly the same
+function independently; theirs carries the measurement, so theirs is what
+landed. `surface-as-texture-decode.md`.
+
+**A correction to my own inference.** From 10,026/18,000 on Adreno against
+16,625 on lavapipe I read host dependence. That was wrong: the lavapipe number
+was taken on a branch that already had the fix, so the two numbers differ by
+branch state, not by host. The genuinely host-shaped part is what is left after
+the fix — every one of the desktop lane's remaining 1,375 misses is
+`|delta| = 1`, where nothing in the Adreno set was off by a single step.
+Re-measuring the Adreno arm on one binary is what closes that, and it is the
+first thing the fresh `Blend tests` arm is for; the prediction to test is
+10,026 + 6,353 = **16,379**, with the residue collapsing to one step.
+
+So this row's remaining 3.56M px is the real target, and 30 of the 105
+captures (`SADD`/`SREVSUB`) are #43, whose rule the remote lane has since
+closed: the source is read as a signed byte, `signed(S) = S − 256 if S ≥ 128`,
+both factors ignored, fitting 3600/3600.
 
 That matters for how this table is read. `Fog gen`'s 2.19M is 43 of 60
 captures classified `one-step-sym`, which is a rounding rule; `Line width`'s
@@ -37,14 +58,17 @@ captures classified `one-step-sym`, which is a rounding rule; `Line width`'s
 number in two different classes is not the same amount of work. Rank by class
 first and size second.
 
-## The suites issue 44 could also be carrying
+## The suites the channel order could also have been carrying: none
 
-Anything that samples a render target through a texture format of a different
-channel order is exposed to the same bug, and four of them are in this table:
-`Texture render target` (by definition), `Blend surface`, `Surface format`,
-`Image blit`. None of them is confirmed yet — the A/B of `apk-chanorder.apk`
-against `apk-night.apk` is what will say, and it costs one device run per
-suite. Do that before opening any of them as separate work.
+The obvious next thought was that every suite sampling a render target through
+a different format was exposed to the same fault — `Texture render target` by
+definition, plus `Blend surface`, `Surface format` and `Image blit`. It is not
+so: a disc of the fourteen surface- and texture-path suites, 236 captures, is
+byte-identical either side of the fix, as are the 91 lighting captures that
+share the blend disc. `Texture render target` cannot see the defect at all
+because its display quad resets the stage to A8R8G8B8, and `Texture format`
+cannot because SDL converts the source to whatever is declared. So this was one
+suite's bug, and the four rows above keep their own numbers.
 
 ## The ordering caveat that outranks all of this
 
