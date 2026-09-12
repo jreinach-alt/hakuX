@@ -252,7 +252,7 @@ suites = ["Specular", "Specular back", "Lighting control"]
 disposition = "unknown-semantics"
 
 [issue.50]
-title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in reverse vertical order (not a blend defect)"
+title = "Blend tests: DrawColorAndAlphaStack's stack is wrong on 1,567 of 1,568 captures; mechanism unknown, not a reversal"
 # The largest structural entry on the board, 6,500,124 channels, and NOT a blend
 # defect. 1_ADD_0 is src=ONE dst=ZERO -- the blend unit contributes nothing --
 # and the stack still comes out with its four swatch colours in exact reverse
@@ -265,6 +265,26 @@ title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in revers
 # at centres). Two readings remain, reversed placement or reversed colour
 # assignment, and this capture cannot separate them -- a variant with unequal
 # swatch heights would.
+#
+# Retitled 2026-09-12: the reversal is NOT the mechanism, and two more are dead.
+# Render-target aliasing -- that stack C shows stack A's content, which would
+# explain the apparent order, since the two functions draw the same four
+# colours in OPPOSITE order -- matches neither our own stack A nor the
+# golden's, 0 of 1,568. Exact band reversal is false too: on 1,567 of 1,568
+# captures NO band matches ANY golden band bit-exactly in any position, so the
+# bands differ in value and not only in order. As a tendency reversal is mixed
+# rather than clean -- better on 949, tied on 376, WORSE on 243, median
+# band-mean L1 121.1 reversed against 194.4 in order, where a pure reversal
+# would sit near zero. The 376 ties are degenerate and support neither reading.
+#
+# Also measured: stack A (DrawColorStack, cols 16-79) is a CLEAN ORACLE for the
+# signed equations -- 0/224 differing on each of ADD/MAX/MIN/REVSUB/SUB and
+# 224/224 on both SADD and SREVSUB -- so #43 belongs there rather than on a
+# whole frame that also carries this defect. And a test-revision mismatch is
+# ruled out from source: upstream blend_tests.cpp is byte-identical in draw
+# order and all four colours from 283e2971 (the last revision before the
+# 2025-03-14 oracle release) through 2cfe6073.
+# docs/investigations/blend-stacks-are-two-defects.md.
 disposition = "defect"
 suites = ["Blend tests"]
 
