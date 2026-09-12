@@ -516,15 +516,35 @@ suites = ["Blend tests", "Texture signed component tests"]
 # aarch64 host. That puts the fix in the pfifo/DMA path, not in texture.c,
 # which cannot know the guest intends more writes.
 #
-# The decisive next test needs no device time: run the border disc ~20 times on
-# the DESKTOP x86 lane. Predicted 0 failures there against ~46% on the Nova,
-# which would confirm host store-visibility and exclude the Vulkan renderer
-# entirely. If desktop also fails at ~46%, the inference is wrong and it is
-# renderer-side.
+# CONFIRMED 2026-09-12 on the desktop x86 lane: 20 runs of the Texture_border
+# isolation disc, same binary, same ISO, fresh pristine HDD each run, cold
+# shader cache. All 20 captures BYTE-IDENTICAL TO ONE ANOTHER -- not "20
+# passes", zero variance. Intermittency 0% on desktop against ~46% on the
+# Nova. The prediction was 0 failures and it held.
+#
+# So the store-visibility reading survives and the Vulkan renderer is
+# excluded, as is the dirty-bitmap class (already dead on the Morton-order
+# check). The fix is a barrier in the pfifo/DMA path: the guest's most recent
+# stores are not yet visible to pfifo_thread on a weakly-ordered aarch64 host.
+# Not in texture.c, which cannot know the guest intends more writes.
+#
+# A CAVEAT THAT APPLIES BEYOND THIS ISSUE, and it nearly inverted the result.
+# Each of those 20 desktop runs differs from the GOLDEN by exactly 2,782 px,
+# with a uniform per-channel delta of (0, -1, -1) and max |delta| 1 -- red
+# exact, green and blue one step low, everywhere, every run, scattered over a
+# 188x171 region. Deterministic, nothing to do with #44: lavapipe rounds those
+# two channels down where Adreno does not.
+#
+# Under a pass/fail metric desktop therefore scores 0/20 while the Nova scores
+# 13/24, which reads as desktop being WORSE and is exactly the wrong
+# conclusion. A cross-host test needs TWO numbers -- intermittency and
+# residue-against-golden -- and collapsing them is how #51 spent two sessions
+# being inferred around. The desktop lane cannot be used as a byte-exact
+# oracle for this suite without first accounting for that one step on G and B.
 [issue.44]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
-disposition = "unknown-semantics"
+disposition = "defect"
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
