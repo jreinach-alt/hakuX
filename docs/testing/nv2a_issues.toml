@@ -570,7 +570,34 @@ title = "nv2a: the fog output register keeps its last value when a vertex progra
 # Fog_coord_vec4 going from nine differing pixels per capture to 61,143. NOTE
 # the goldens here are saturated (one to three colours where we differ), so a
 # differing-pixel reduction proves nothing about the carried value.
-suites = ["Fog carryover", "Fog vsh"]
+#
+# FIXED AND VERIFIED ON DEVICE 2026-09-12, eac0f39b15. CPU-side shadow of the
+# last fog coordinate a program wrote, handed to fog-silent programs as a
+# `carriedFogCoord` uniform, classified from the program tokens as
+# constant-sourced or attribute-sourced -- which is what spans both priming
+# styles, and why the attribute-only shortcut could not work. Vulkan only.
+#
+# A/B over 68 captures, same disc, Alpha_func as the non-fog control:
+#   12 better, 0 WORSE, 56 same.  exact 1 -> 9.  643,378 -> 436,875 px.
+#   CoordNotSet   30,570 -> 3
+#   FogCarryover  12,096 -> 0
+#   all ten Carryover<Primitive> captures improved, SEVEN to exactly 0
+#   (Points, Poly, QuadStrip, Quads, TriFan, TriStrip, Tris).
+#
+# NOTE the saturated-goldens caveat above is now partly retracted by
+# measurement. Those captures were predicted NOT to improve, on the reasoning
+# that a saturated golden bounds the carried value rather than choosing it, and
+# that a single carried scalar cannot reproduce a per-vertex-slot register
+# file. Seven went to zero. The prediction undershot, and the reason it
+# undershot is the useful part: the single-scalar simplification is safe on
+# far more of this suite than was claimed for it.
+#
+# The classifier declines to classify eight encodings rather than guessing,
+# leaving the register alone: a masked-off write, a write muxed from a NOP
+# unit, a move from a temporary, c[A0+n] relative addressing, two oFog writes
+# in one program, a compressed or D3D-swizzled source attribute, tokens past
+# the FINAL flag, and fixed function.
+suites = ["Fog carryover", "Fog vsh", "Fog coord vec4"]
 disposition = "defect"
 
 [issue.43]
