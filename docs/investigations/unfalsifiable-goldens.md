@@ -211,3 +211,37 @@ The `Depth_buffer` row is worth passing on rather than filing: sixteen of the
 float-Z depth dumps are flat oracles, so a candidate Z rule cannot be *tuned*
 on them, only confirmed. That is a constraint on how that work is measured,
 not on whether it can be done.
+
+---
+
+## SECOND CORRECTION 2026-09-12 — the z24 float-depth entry is wrong too
+
+This file has now been found wrong twice, by two different agents, in two
+different ways. Both times it had excluded a capture that could in fact pin the
+value, and both times that exclusion was hiding an answer.
+
+**The z24 float-depth entry claims 28 captures / 270,650 channels are
+unfalsifiable. The F24 cell is fully falsifiable: 0 unfalsifiable pixels.** The
+golden holds **57 to 168 distinct depth words** wherever we differ, never one.
+
+The error is in how it was scored, not in the captures. The figure came from
+**RGB-only scoring**, which drops the alpha byte — and in a `*_ZB` capture the
+depth word is `A<<16 | R<<8 | G`, so dropping A drops the **top byte of the
+depth value**. What looked like a golden with almost no distinct values was a
+golden being read 8 bits short.
+
+The 16 genuinely flat float-Z goldens listed here are all **z16**. Those stand.
+
+Together with the correction above, the rule for this file is now:
+
+- colour count is a **proxy** with a false-negative mode — a single-colour
+  golden still pins a value exactly if that colour is a partial mix rather
+  than a clip (`Fog_coord_vec4 CoordNotSet`, which settled #42); and
+- a count is only as good as the channels it was computed over — a depth
+  capture scored without alpha understates its own discriminating power by a
+  whole byte.
+
+**Use this file to rank suspicion. Never to exclude a capture.** Before
+discarding one, check both that its transfer function does not clip at the
+value in question and that the count was taken over the channels the value
+actually lives in.
