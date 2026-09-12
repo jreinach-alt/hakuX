@@ -13,27 +13,13 @@
 # -- the underscored form is the results directory name, and the index carries
 # that separately as results_name).
 
-[issue.3]
-title = "Texture addressing: borders, wrap modes, cubemaps and perspective"
-suites = ["Texture border", "Texture border color", "TextureWrapMode",
-          "Texture cubemap", "Texture 2D as cubemap", "Texture perspective",
-          "Texture perspective enable", "Texture anisotropy", "Texture 3D as 2D"]
-
 [issue.4]
 title = "Render-to-texture diverges from silicon"
 suites = ["Texture render target"]
 
-[issue.5]
-title = "Texture CPU update, signed components and palettes"
-suites = ["Texture CPU Update", "Texture signed component tests", "Texture palette"]
-
 [issue.6]
-title = "DXT1 decode rounding differs from silicon"
+title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
 suites = ["Texture DXT"]
-
-[issue.7]
-title = "Image blit: overlapping source and destination"
-suites = ["Image blit"]
 
 [issue.8]
 title = "Fog"
@@ -49,10 +35,6 @@ suites = ["Lighting spotlight", "Lighting accumulation", "Lighting range",
 [issue.10]
 title = "Bump mapping"
 suites = ["Bump map", "Bump env lum"]
-
-[issue.11]
-title = "Clipping, viewport and stencil"
-suites = ["Window clip", "Viewport", "Stencil"]
 
 [issue.12]
 title = "Vertex attributes and primitive assembly"
@@ -78,15 +60,92 @@ title = "Blend precision (low priority)"
 disposition = "defect"
 suites = ["Blend tests"]
 
-[issue.21]
-title = "SZ_R6G5B5 decodes incorrectly: blue inverted, green unexplained"
-suites = ["Texture format", "Bump map", "Bump env lum"]
+[issue.48]
+title = "Blend surface: two draws land on the region and the wrong one survives; only the O format needs a forced alpha"
+suites = ["Blend surface", "Surface format"]
 
-# Split out of #19 once its isolation pass named the individual features.
-[issue.47]
-title = "Image blit: the clip rectangle object (class 0x19) is not implemented"
+# Added 2026-09-12 by auditing this file against the GitHub issue list, which
+# had drifted: six closed issues were still listed and eighteen open ones were
+# absent. Only issues that name a suite are mapped here -- #15, #17, #18, #34,
+# #38 and #39 are deliberately absent because they are cross-cutting or
+# process issues with no single suite, and inventing a mapping for them would
+# make `query` and `blast` answer confidently with a guess.
+
+[issue.31]
+title = "Slope-scaled polygon offset is wrong under W buffering"
+suites = ["W buffering"]
+
+[issue.33]
+title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
 suites = ["Image blit"]
 
-[issue.48]
-title = "Destination alpha read from stored bits on X-format surfaces, not the format's constant"
-suites = ["Blend surface", "Surface format"]
+[issue.35]
+title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
+suites = ["Texture shadow comparator"]
+
+[issue.36]
+title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
+suites = ["3D primitive"]
+
+[issue.40]
+title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
+suites = ["Texture cubemap"]
+
+# Measured not implementable: the goldens are non-deterministic by the test
+# author's account (upstream nxdk_pgraph_tests#214) and the value is stale
+# lighting-intermediate state rather than a function. Mapped so a Fog gen query
+# surfaces it before someone re-derives it.
+[issue.41]
+title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
+suites = ["Fog gen"]
+
+[issue.42]
+title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
+suites = ["Fog carryover", "Fog vsh"]
+
+[issue.43]
+title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
+suites = ["Blend tests", "Texture signed component tests"]
+
+[issue.44]
+title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
+suites = ["Texture border"]
+
+[issue.46]
+title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
+suites = ["Texture shadow comparator"]
+
+[issue.49]
+title = "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
+suites = ["Viewport"]
+
+# Restored 2026-09-12. These three were deleted by accident in f825d6a9ee --
+# a conflict resolution that sliced the file by string index and took more
+# than it meant to, committed under a message about something else. An audit
+# against the GitHub issue list is what caught it; nothing else would have.
+
+[issue.15]
+title = "pgraph suite: some tests are order-dependent"
+suites = ["Pixel shader"]
+
+# Measured 2026-09-12 on the recovered 392-test oracle: this is three defects,
+# not one. z16 fixed depth is 98/98 bit-identical, z24 fixed is one unit high
+# on 96/98 with a scale-divisor signature, float Z is structural with nothing
+# inside one step, and the colour path is wrong independently of depth.
+# docs/investigations/depth-full-oracle-2026-09-12.md
+[issue.16]
+title = "Depth surface readback converts incorrectly"
+suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
+
+# Measured 2026-09-12: 1,540 captures, 84 accused, 2 contamination and 82
+# missing-state -- not the 328 of 864 the title used to claim. The suites below
+# are the eleven that still accuse a test on the current build, not the
+# original 24. Groups with their own issue (#41, #48) stay listed so a query
+# for those suites surfaces both.
+# docs/investigations/issue-19-isolation-2026-09-12.md
+[issue.19]
+title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
+suites = ["Texture render target", "W param", "ZMinMaxControl",
+          "Blend surface", "Image blit", "Fog gen", "Fog exceptional value",
+          "Bump map", "Specular", "Surface format",
+          "Texture signed component tests"]
