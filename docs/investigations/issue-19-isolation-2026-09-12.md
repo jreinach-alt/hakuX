@@ -80,3 +80,35 @@ and that every solo run prove itself `[1/1]` in its own progress log. Of the 54
 solo runs, 0 failed and 0 came back on a different APK sha — which is only
 knowable because the harness records the sha per row and the report refuses
 rows that disagree.
+
+## A coverage gap the sweep exposed on the way
+
+Every suite ran every test it offered — all 23 progress logs read
+`[n/n]` and "Testing completed normally". But for four suites the goldens
+carry entries our run cannot reach, and one of them is large:
+
+| suite | tests run | golden entries | coverage |
+|---|---:|---:|---:|
+| `Depth_buffer` | 72 (144 captures) | 784 | **18%** |
+| `ZPass_pixel_count` | 36 | 78 | 92% |
+| `Image_blit` | 41 | 42 | 98% |
+| `Texture_cubemap` | 72 | 73 | 99% |
+
+`Depth_buffer` is not a disc-version gap. The disc's own inventory lists **392**
+`Depth buffer` tests and marks none of them skipped, and the 72 that ran are a
+perfectly symmetric subset: **9 mask values out of 49**, nine per each of the
+eight `z16/z24 × Cn/Cy × FZn/FZy` combinations, with the other 40 per
+combination never started. So the suite applies its own per-test default and
+runs a ninth of the depth masks unless each is named explicitly.
+
+That matters beyond this sweep. **Issue #16's depth conclusions rest on 18% of
+the available oracle**, and so does every depth number either lane has quoted.
+A config naming all 392 explicitly is built (`iso-depthfull.iso`, 29,533-byte
+config against the usual ~920) and is one disc run away from multiplying that
+oracle fivefold.
+
+The general lesson is the same one that cost a write-up tonight: a count from
+the goldens directory is not a count of tests we run. `1,291 captures from 23
+suites, every count matching its golden count` was true and was also the reason
+the four rows above went unnoticed until the progress logs were read side by
+side.
