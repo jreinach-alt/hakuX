@@ -2169,10 +2169,55 @@ static void log_texture_coord_state(PGRAPHState *pg)
         }
     }
 
+    /*
+     * The enable bit and texgen mode proved stable across 431 frames while the
+     * artifact was on screen, so what is left on the coordinate side is the
+     * matrix *contents*. Stages 2 and 3 run generated coordinates through a
+     * matrix, which is where a stale one shears the result without disturbing
+     * any flag. Hash each enabled stage's 16 words and report a change the
+     * moment it happens, with the frame and the bind index inside it, so a
+     * cycling matrix is visible and so is which draw saw it.
+     */
+    static uint32_t last_mat[NV2A_MAX_TEXTURES];
+    static unsigned int binds_this_frame;
+    static const unsigned int matbase[NV2A_MAX_TEXTURES] = {
+        NV_IGRAPH_XF_XFCTX_T0MAT, NV_IGRAPH_XF_XFCTX_T1MAT,
+        NV_IGRAPH_XF_XFCTX_T2MAT, NV_IGRAPH_XF_XFCTX_T3MAT,
+    };
+    binds_this_frame++;
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (!pgraph_is_texture_enabled(pg, i) || !pg->texture_matrix_enable[i]) {
+            continue;
+        }
+        uint32_t h = 2166136261u;
+        for (int row = 0; row < 4; row++) {
+            for (int c = 0; c < 4; c++) {
+                h = (h ^ pg->vsh_constants[matbase[i] + row][c]) * 16777619u;
+            }
+        }
+        if (h == last_mat[i]) {
+            continue;
+        }
+        last_mat[i] = h;
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-texmat",
+            "f%u bind%u stage%d matrix->%08x  [%.4f %.4f %.4f %.4f / "
+            "%.4f %.4f %.4f %.4f]", pg->frame_time, binds_this_frame, i, h,
+            *(float *)&pg->vsh_constants[matbase[i] + 0][0],
+            *(float *)&pg->vsh_constants[matbase[i] + 0][1],
+            *(float *)&pg->vsh_constants[matbase[i] + 0][2],
+            *(float *)&pg->vsh_constants[matbase[i] + 0][3],
+            *(float *)&pg->vsh_constants[matbase[i] + 1][0],
+            *(float *)&pg->vsh_constants[matbase[i] + 1][1],
+            *(float *)&pg->vsh_constants[matbase[i] + 1][2],
+            *(float *)&pg->vsh_constants[matbase[i] + 1][3]);
+    }
+
     if (pg->frame_time == frame) {
         return;
     }
     frame = pg->frame_time;
+    binds_this_frame = 0;
 
     if (n_combos) {
         char buf[512];

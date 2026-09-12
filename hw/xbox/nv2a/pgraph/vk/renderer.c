@@ -1233,6 +1233,32 @@ void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
     diag_json_append("          \"textures\": [");
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
         bool tex_en = pgraph_is_texture_enabled(pg, i);
+        /* Coordinate state for this stage: texgen modes from CSV1 and the
+         * texture matrix from the transform constant file. */
+        unsigned int tg[4] = { 0, 0, 0, 0 };
+        float mat[16] = { 0 };
+        {
+            static const unsigned int matbase[4] = {
+                NV_IGRAPH_XF_XFCTX_T0MAT, NV_IGRAPH_XF_XFCTX_T1MAT,
+                NV_IGRAPH_XF_XFCTX_T2MAT, NV_IGRAPH_XF_XFCTX_T3MAT,
+            };
+            unsigned int csv = (i < 2) ? NV_PGRAPH_CSV1_A : NV_PGRAPH_CSV1_B;
+            unsigned int msk[4] = {
+                (i % 2) ? NV_PGRAPH_CSV1_A_T1_S : NV_PGRAPH_CSV1_A_T0_S,
+                (i % 2) ? NV_PGRAPH_CSV1_A_T1_T : NV_PGRAPH_CSV1_A_T0_T,
+                (i % 2) ? NV_PGRAPH_CSV1_A_T1_R : NV_PGRAPH_CSV1_A_T0_R,
+                (i % 2) ? NV_PGRAPH_CSV1_A_T1_Q : NV_PGRAPH_CSV1_A_T0_Q,
+            };
+            for (int j = 0; j < 4; j++) {
+                tg[j] = GET_MASK(pgraph_reg_r(pg, csv), msk[j]);
+            }
+            for (int row = 0; row < 4; row++) {
+                for (int c = 0; c < 4; c++) {
+                    uint32_t w = pg->vsh_constants[matbase[i] + row][c];
+                    memcpy(&mat[row * 4 + c], &w, sizeof(float));
+                }
+            }
+        }
         uint32_t tex_fmt = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);
         unsigned int color_format = GET_MASK(tex_fmt, NV_PGRAPH_TEXFMT0_COLOR);
         unsigned int dimensionality = GET_MASK(tex_fmt,
@@ -1277,7 +1303,17 @@ void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
             "\"levels\": %u, "
             "\"vk_format\": \"%s\", \"native_bc\": %s, "
             "\"addru\": \"%s\", \"addrv\": \"%s\", "
-            "\"border_color\": \"0x%08x\"}",
+            "\"border_color\": \"0x%08x\", "
+            /* Coordinate state. Everything else about a draw was already
+             * here, which is why chasing Galleon's shearing ground one field
+             * at a time was wasted effort -- but the vertex side was not.
+             * A matrix left over from another material shears the sampling
+             * while every flag above stays put, so record the enable, the
+             * four texgen modes and the matrix itself. */
+            "\"matrix_enable\": %s, "
+            "\"texgen\": [%u, %u, %u, %u], "
+            "\"matrix\": [%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, "
+            "%.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f, %.6f]}",
             i > 0 ? ", " : "",
             i,
             tex_en ? "true" : "false",
@@ -1287,7 +1323,13 @@ void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
             mip_levels,
             vk_fmt_name, is_native_bc ? "true" : "false",
             addru_name, addrv_name,
-            border_color
+            border_color,
+            pg->texture_matrix_enable[i] ? "true" : "false",
+            tg[0], tg[1], tg[2], tg[3],
+            mat[0], mat[1], mat[2], mat[3],
+            mat[4], mat[5], mat[6], mat[7],
+            mat[8], mat[9], mat[10], mat[11],
+            mat[12], mat[13], mat[14], mat[15]
         );
     }
     diag_json_append("],\n");
