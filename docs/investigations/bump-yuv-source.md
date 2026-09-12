@@ -91,3 +91,35 @@ question, not a patch, and it belongs with the shader-side blending decision
 
 Worth roughly 223k px on this lane, and proportionally more of the 435,201 the
 device lane measures.
+
+## Tested, and the obvious channel assignment is wrong
+
+The hypothesis was implemented and measured rather than left as a guess. A
+`raw_yuv` flag was added to `TextureShape` — set when the stage after a YUV
+texture is `BUMPENVMAP` or `BUMPENVMAP_LUM`, so it keys the cache and the same
+texture read both ways gets both decodes — and the converter fed the stage
+`(Cr, Y, Cb)` in the R, G, B positions, skipping the matrix but keeping the
+channel correspondence.
+
+The flag fired (`CONVERT fmt=0x25 raw_yuv=1`) and the output moved by 52,462 px.
+**The error did not change at all: 111,496 px before, 111,496 px after.** Still
+entirely wrong, differently wrong. Reverted.
+
+The colours say why, and they are a better clue than anything above:
+
+| | two most common quad colours |
+|---|---|
+| ours, baseline | `(254, 0, 0)`, `(33, 32, 32)` |
+| ours, raw YUV | `(33, 32, 32)`, `(254, 0, 0)` |
+| **gold** | **`(16, 84, 16)`, `(72, 255, 18)`** |
+
+Ours is red-dominant under both decodes; hardware's is green-dominant. Both
+hypotheses moved the *distribution* between two reds without ever producing a
+green, so whatever the bump stage samples on hardware is not a cell our
+displacement can reach — the two cells we choose between are not the two cells
+hardware chooses between.
+
+So the direction of the hypothesis (the source is not colour-converted) is
+untouched by this result, but the channel assignment `(Cr, Y, Cb)` is
+eliminated. Five orderings remain, at a build and a run each; the green
+dominance is the thing to predict before spending them, not after.
