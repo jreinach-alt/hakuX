@@ -126,10 +126,23 @@ serve_one() {
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
-    local apk; apk=$(build_ref "$ref") || {
-        echo "build failed for ref $ref (code $?)" > "$rdir/ERROR"
-        log "  BUILD FAILED"; mv "$req" "$rdir/request.json"; return 0
-    }
+    local apk rc
+    apk=$(build_ref "$ref"); rc=$?
+    if [ "$rc" = 3 ]; then
+        # A dirty tree is TRANSIENT -- someone is editing -- and must not
+        # destroy queued work. Requeueing rather than failing is the same
+        # lesson as the device-drop requeue and the orphan requeue: an
+        # uncommitted edit of mine failed 54 consecutive scoreboard-sweep
+        # requests in seconds, because each was answered with a hard ERROR
+        # instead of being put back.
+        log "  tree dirty; requeueing $id and waiting"
+        rmdir "$rdir" 2>/dev/null
+        mv "$req" "$D/queue/$id.req"; sleep 30; return 0
+    fi
+    if [ "$rc" != 0 ]; then
+        echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
+        log "  BUILD FAILED (code $rc)"; mv "$req" "$rdir/request.json"; return 0
+    fi
     if [ ! -f "$apk" ]; then
         echo "build_ref returned no usable apk: '$apk'" > "$rdir/ERROR"
         log "  BUILD RETURNED NO APK"; mv "$req" "$rdir/request.json"; return 0
