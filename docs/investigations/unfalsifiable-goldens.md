@@ -114,3 +114,75 @@ And the check that would have saved the afternoon, which costs one line:
 **before fitting a model to a capture, count the distinct colours in the
 region it differs in.** If it is one, the capture cannot tell you whether you
 are right.
+
+## Making it machine-readable, and moving the threshold to one
+
+Added 2026-09-12. Everything above was a hand scan. `classify_residuals.py`
+now emits a `golden_colours` column per capture -- how many distinct colours
+the *golden* holds over the pixels where we differ -- and rolls up, per suite,
+the channels sitting in captures where that count is **one**. The join table
+for the 1,444-capture corpus is
+`docs/testing/run-2026-09-12-golden-discrimination.tsv`, so the existing
+ranking can be corrected without re-running anything.
+
+**The threshold is one, not four, and this note's own `<= 4` scan was too
+wide.** Two colours is a partition with a boundary in it, and a boundary is a
+great deal of information. The counter-example arrived the same day: #51's
+`DotSTR3D_0to1` golden holds **two** colours across the whole region we differ
+in, and those two colours pinned the hardware rule to four exact texels and a
+per-capture count prediction. Under a `<= 4` marker that capture would have
+been set aside as unfalsifiable on the morning it was at its most falsifiable.
+The line in this note that holds up is the narrow one: *if it is one, the
+capture cannot tell you whether you are right.*
+
+**And one colour does not mean stuck.** It means the capture is a **pass/fail
+oracle rather than a gradient**: every wrong model scores identically, so it
+can confirm a rule and cannot rank candidates. Where the rule comes from
+somewhere else, that is plenty. `Image_blit`'s six `ImgBlt_Clip_*` captures
+are flat where we differ -- 45,476 channels each of the background colour --
+and they are entirely actionable, because the model came from the
+unhandled-method log naming class `0x19` with its point and size, not from the
+pixels. The marker's instruction is "do not fit here, and do not rank by this
+number", never "give up".
+
+### What it is worth across the corpus
+
+On the same column the target ranking uses -- differing channels less the +-1
+population less the boundary-shift band -- **2,464,510 of 15,337,853
+non-precision channels, 16.1%**, sit in 76 captures whose golden is flat where
+we differ. Almost all of it is two suites, and both move a long way down the
+board:
+
+| suite | non-precision | flat | **ranked on** | captures | flat |
+|---|---:|---:|---:|---:|---:|
+| `Blend_tests` | 6,499,208 | 0 | **6,499,208** | 89 | 0 |
+| `Fog_gen` | 2,186,712 | 2,172,192 | **14,520** | 56 | **6** |
+| `Line_width` | 815,888 | 0 | **815,888** | 60 | 0 |
+| `Bump_map` | 780,558 | 0 | **780,558** | 38 | 0 |
+| `Texture_format` | 720,384 | 0 | **720,384** | 22 | 0 |
+| `Bump_env_lum` | 657,905 | 5,064 | **652,841** | 40 | 7 |
+| `Fog_carryover` | 356,144 | 262,144 | **94,000** | 11 | **8** |
+
+`Fog_gen` was the second-largest entry on the board and lands below every
+other suite in the top fourteen once its six flat captures are set aside --
+a 151-fold correction on one row. That is the distortion this marker exists
+to remove.
+
+### What it does to this note's own four families
+
+| family | under `<= 4` | under `== 1` | |
+|---|---:|---:|---|
+| `Fog_gen` `VS radial` | 6 / 2,172,192 | **6 / 2,172,192** | unchanged; the real case |
+| `Fog_carryover` | 11 / 357,032 | **8 / 262,384** | 2 captures hold 2 colours, 1 holds 3 |
+| `Depth_buffer` float Z | 28 / 270,650 | **16 / 139,504** | all `z16_*_FZy_*_ZB` |
+| `Fog_coord_vec4` `CoordNotSet` | 1 / 91,710 | **0** | holds **2** colours -- comes off the list |
+
+So one of the four families leaves entirely and two shrink. `CoordNotSet` in
+particular should be worked, not bounded: a two-colour golden over 91,710
+channels is a boundary, and #51 is the demonstration of how much a boundary
+can carry.
+
+The `Depth_buffer` row is worth passing on rather than filing: sixteen of the
+float-Z depth dumps are flat oracles, so a candidate Z rule cannot be *tuned*
+on them, only confirmed. That is a constraint on how that work is measured,
+not on whether it can be done.
