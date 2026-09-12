@@ -893,6 +893,18 @@ static bool stage_consistent(struct PixelShader *ps, MString *vars, int i,
     return false;
 }
 
+/*
+ * Whether DOT_STR_3D's stage resolves to a samplerCube. get_sampler_type()
+ * and the fetch have to agree on this or the shader will not compile, so both
+ * ask here rather than each spelling the condition out.
+ */
+static bool dot_str_3d_is_cube(const struct PixelShader *ps, int i)
+{
+    const struct PshState *state = ps->state;
+    return state->tex_cubemap[i] && !state->shadow_map[i] &&
+           !(state->tex_x8y24[i] && ps->opts.vulkan);
+}
+
 static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES mode, int i)
 {
     const char *sampler2D = "sampler2D";
@@ -950,8 +962,27 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
         ps->tex_unusable[i] = true;
         return NULL;
 
-    case PS_TEXTUREMODES_PROJECT3D:
     case PS_TEXTUREMODES_DOT_STR_3D:
+        /*
+         * A cubemap-flagged stage gets a VK_IMAGE_VIEW_TYPE_CUBE view, so
+         * declaring sampler2D here is VUID-vkCmdDrawIndexed-viewType-07752:
+         * the fetch is undefined, and undefined is what it looked like --
+         * Texture_cubemap's six DotSTR3D_* captures differed from themselves
+         * between two runs of one binary, one of them by 42,554 px, while the
+         * other 71 captures in the suite were byte-identical. Every other
+         * cube-capable mode below already checks this flag.
+         *
+         * PROJECT3D is deliberately NOT folded in here despite sharing the
+         * rest of this logic: it emits textureProj(), which has no cube form,
+         * so returning samplerCube for it would trade a wrong result for a
+         * shader that does not compile. It carries the same latent violation
+         * and wants its own fix.
+         */
+        if (dot_str_3d_is_cube(ps, i)) {
+            return samplerCube;
+        }
+        /* fallthrough */
+    case PS_TEXTUREMODES_PROJECT3D:
         if (state->tex_x8y24[i] && ps->opts.vulkan) {
             return "usampler2D";
         }
@@ -2323,9 +2354,17 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i-2, i-1, i);
 
             apply_border_adjustment(ps, vars, i, "dotSTR%d");
-            mstring_append_fmt(vars,
-                "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
-                i, i, tex_remap, i, ps->state->dim_tex[i] == 2 ? ".xy" : "");
+            if (dot_str_3d_is_cube(ps, i)) {
+                /* The whole direction goes in, as DOT_STR_CUBE does with its
+                 * own triple; a cubemap is never rect_tex, so no remap. */
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, dotSTR%d);\n", i, i, i);
+            } else {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
+                    i, i, tex_remap, i,
+                    ps->state->dim_tex[i] == 2 ? ".xy" : "");
+            }
             break;
         case PS_TEXTUREMODES_DOT_STR_CUBE:
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_CUBE")) break;
