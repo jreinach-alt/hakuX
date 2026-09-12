@@ -1209,6 +1209,47 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
 }
 
 /*
+ * What the texture unit reads back for a colour surface's pad bits.
+ *
+ * MEASURED 2026-09-12 (issue #48, the texture-unit half). The texture unit
+ * does not see a stored alpha where the surface format has none: an X-padded
+ * colour surface sampled as a texture returns 0 for the _Z variants and 1.0
+ * for the _O variants, whatever was rendered into those bits.
+ *
+ * Two independent suites, no exceptions in either:
+ *
+ *  - Surface format draws the surface twice, once with the sampled alpha and
+ *    once with alpha forced opaque, over a CPU-written checkerboard, so the
+ *    alpha inverts straight out of the golden. Over 16,371 invertible px per
+ *    quad, X8R8G8B8_Z8R8G8B8 recovers 0.00 and _O8R8G8B8 recovers 255.00 at
+ *    every stored alpha from 0 to 255, standard deviation 0.00.
+ *
+ *  - Blend surface's eight DstAlpha captures pair the two halves of every
+ *    swatch the same way. Predicting the sampled-alpha half from the opaque
+ *    half with this rule reproduces the goldens exactly: 0 of 65,536 px per
+ *    capture, against 65,536 of 65,536 for the opposite constant.
+ *
+ * This is a different question from what the blend unit substitutes for the
+ * missing destination alpha, which is the stored alpha for both suffixes --
+ * see the notes in constants.h. Two units, two answers, one suffix.
+ *
+ * X1A7R8G8B8 is deliberately not covered: its readback is
+ * (X << 7) | (stored >> 1), which is not a constant and so not a swizzle.
+ * constants.h records that measurement and why it is not implemented here.
+ */
+static VkComponentSwizzle surface_pad_alpha(const SurfaceBinding *surface)
+{
+    if (!surface->color) {
+        return VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+    unsigned int fmt = surface->shape.color_format;
+    if (fmt >= ARRAY_SIZE(kelvin_surface_color_format_vk_map)) {
+        return VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+    return kelvin_surface_color_format_vk_map[fmt].sampled_pad_alpha;
+}
+
+/*
  * Whether the surface's own image view decodes its memory the way the guest's
  * texture format says to.
  *
@@ -1241,6 +1282,28 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
 
     VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
     if (surface->host_fmt.vk_format != tex_vkf.vk_format) {
+        return false;
+    }
+
+    /*
+     * A pad-bit readback also has to be declined, for the same reason a
+     * component mapping is: the surface's own view is the one it renders
+     * through, so it carries an identity mapping and cannot force the alpha.
+     * copy_surface_to_texture() fills the texture's own image instead, and
+     * that image's view can. The formats are identical here, so the copy is a
+     * straight vkCmdCopyImage with no conversion.
+     *
+     * COST, stated because X8R8G8B8_Z8R8G8B8 is an ordinary backbuffer format
+     * and not a test curiosity: every render-to-texture through an X-padded
+     * surface now takes a copy where it used to borrow the view, so
+     * NV2A_PROF_SURF_TO_TEX will rise in titles that do it. The copy path is
+     * the same one the A8R8G8B8-sampled-as-A8B8G8R8 decode fix uses, so this
+     * is a known quantity rather than a new mechanism. The cheaper shape is a
+     * second image view on the SurfaceBinding carrying the pad swizzle, which
+     * keeps the direct bind -- that lives in surface.c and wants measuring on
+     * a title, not just on the corpus.
+     */
+    if (surface_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY) {
         return false;
     }
 
@@ -1562,6 +1625,22 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         key.scale = pg->surface_scale_factor;
     }
 
+    /*
+     * The pad-bit readback belongs in the key, not just at view creation,
+     * because the texture format does not determine it and the same key is
+     * reached from several surface formats. Blend surface's DstAlpha tests
+     * are the case that proves it: X8R8G8B8_Z8R8G8B8, _O8R8G8B8,
+     * X1A7R8G8B8_Z1A7R8G8B8, _O1A7R8G8B8 and A8R8G8B8 all map to one texture
+     * format (LU_IMAGE_A8R8G8B8, via pbkitplusplus' TextureFormatForSurface-
+     * Format), all at the same texture memory, all 128x128 -- five surface
+     * formats, one identical TextureKey. Left out of the key, the view built
+     * for the first of them is handed to the rest and the _O capture renders
+     * with the _Z alpha.
+     */
+    if (surface_to_texture) {
+        key.surface_pad_alpha = surface_pad_alpha(surface);
+    }
+
     uint64_t key_hash = fast_hash((void*)&key, sizeof(key));
     TextureBinding *snode;
     bool binding_found;
@@ -1793,6 +1872,26 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
             VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
             VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
         };
+    }
+
+    /*
+     * An X-padded colour surface has no stored alpha for the texture unit to
+     * return, so the view supplies the constant hardware reads back. Taken
+     * from the key rather than recomputed, so the view can never disagree
+     * with the cache entry it belongs to. surface_pad_alpha() carries the
+     * measurement; surface_view_decodes_as_texture() is what routes these
+     * through copy_surface_to_texture() so this view is the one sampled.
+     *
+     * Only where the texture format asks for the stored alpha. A texture
+     * format that already forces a constant -- the X variants, A8, Y8, G8B8 --
+     * has its own measured answer from Texture format, and those rows are
+     * bit-exact today; the surface's pad bits must not overrule one. That
+     * combination is unexercised by the corpus either way, so this takes the
+     * side that cannot regress a capture rather than guessing at a priority.
+     */
+    if (key.surface_pad_alpha != VK_COMPONENT_SWIZZLE_IDENTITY &&
+        vkf.component_map.a == VK_COMPONENT_SWIZZLE_IDENTITY) {
+        vkf.component_map.a = (VkComponentSwizzle)key.surface_pad_alpha;
     }
 
     assert(vkf.vk_format != 0);

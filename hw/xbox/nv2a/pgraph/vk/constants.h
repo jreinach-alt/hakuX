@@ -374,6 +374,18 @@ typedef struct SurfaceFormatInfo {
     VkFormat vk_format;
     VkImageUsageFlags usage;
     VkImageAspectFlags aspect;
+    /*
+     * What the texture unit reads back for this format's pad bits when the
+     * surface is sampled as a texture -- a *different* question from what the
+     * blend unit substitutes for the missing destination alpha, which is the
+     * stored alpha for both suffixes (see the _Z notes below and issue #48).
+     *
+     * VK_COMPONENT_SWIZZLE_IDENTITY (0) means the format has no pad bits, or
+     * has some whose readback is not a constant and so cannot be expressed as
+     * a swizzle -- X1A7R8G8B8 is the latter, see its entry. Only the four
+     * formats whose whole alpha field is pad get an override here.
+     */
+    VkComponentSwizzle sampled_pad_alpha;
 } SurfaceFormatInfo;
 
 /*
@@ -406,11 +418,16 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * golden is identical to A8R8G8B8's at a fixed coordinate, and we are
          * already exact there. Forcing it to zero makes those captures worse.
          * Only the O variant needs a forced one.
+         *
+         * The texture unit is the other half of #48 and it does read the pad
+         * bit: sampled as a texture this format's alpha is 0. Measured, see
+         * sampled_pad_alpha below.
          */
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_COMPONENT_SWIZZLE_ZERO,
     },
     /*
      * The Z and O variants differ only in what the unused bits read back as --
@@ -428,11 +445,15 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * ours is S. Not yet fixed: the same captures are dominated by a
          * two-draw pairing defect, so substituting the factor alone moves no
          * number. See the issue before touching this.
+         *
+         * The texture unit half IS settled: sampled as a texture this format's
+         * alpha reads 1.0. Measured, see sampled_pad_alpha below.
          */
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_COMPONENT_SWIZZLE_ONE,
     },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] =
     {
@@ -451,11 +472,16 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * golden is identical to A8R8G8B8's at a fixed coordinate, and we are
          * already exact there. Forcing it to zero makes those captures worse.
          * Only the O variant needs a forced one.
+         *
+         * The texture unit is the other half of #48 and it does read the pad
+         * byte: sampled as a texture this format's alpha is 0. Measured, see
+         * sampled_pad_alpha below.
          */
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_COMPONENT_SWIZZLE_ZERO,
     },
     /* The _O8 twin of X8R8G8B8_Z8R8G8B8: the X byte reads back as ones instead
      * of zeros. Was `unimplemented color surface format 0x5` and abort(), six
@@ -470,11 +496,18 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
          * ours is S. Not yet fixed: the same captures are dominated by a
          * two-draw pairing defect, so substituting the factor alone moves no
          * number. See the issue before touching this.
+         *
+         * The texture unit half IS settled: sampled as a texture this format's
+         * alpha reads 1.0. This is where the "S = 108" came from -- with a
+         * stored swatch alpha of 34, 255*(34/255) + 85*(221/255) = 108 where
+         * hardware, reading the pad byte as ones, gets 255*1 = 255. Measured,
+         * see sampled_pad_alpha below.
          */
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
         VK_IMAGE_ASPECT_COLOR_BIT,
+        VK_COMPONENT_SWIZZLE_ONE,
     },
     /*
      * X1A7R8G8B8: seven bits of alpha in 24..30 under a fixed X bit that reads
@@ -485,6 +518,34 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
      * here before was `unimplemented color surface format 0x7` and abort(),
      * which took Surface format and Blend surface out of every sweep and is
      * issue #24.
+     *
+     * MEASURED 2026-09-12 what the texture unit reads back here, because it is
+     * the one pad format whose readback is NOT a constant and so gets no
+     * sampled_pad_alpha override. Solving the alpha out of Surface format's
+     * goldens -- the suite draws the surface twice, once with the sampled
+     * alpha and once with alpha forced opaque, over a known checkerboard, so
+     * a = (blended - background) / (opaque - background) per pixel:
+     *
+     *     sampled alpha = (X << 7) | (stored_alpha >> 1)
+     *
+     * X = 0 for _Z and 1 for _O. Over 32,755 invertible px the _O recovery
+     * sits exactly 128 above the _Z recovery in all eight stored-alpha octiles
+     * (127.92..128.40), and quad A -- rendered into the surface with alpha
+     * forced opaque -- recovers 126.94 for _Z and 255.00 for _O.
+     *
+     * Scored against five rivals on the same region: truncation as above
+     * 2,097/2,157 differing of 32,755 at max|delta| 1, round-to-nearest
+     * 20,362/20,372, seven-bit bit-replication 32,570/16,368, mask-only
+     * 16,194/32,755, a Z/O constant 32,447/16,370, and no pad handling at all
+     * 32,581/16,370. So hardware truncates, and the alpha field really is
+     * seven bits under the X bit rather than an eight-bit field expanded.
+     * The residual is my own forward model's floor: Fmt_A8R8G8B8, which has no
+     * rule to fit, scores 464 on the same measurement.
+     *
+     * Not implemented: this needs the stored alpha requantised to 7 bits, not
+     * a component swizzle, and we store 8-bit alpha here. It is also only half
+     * the capture's residual -- the other half is that 7-bit quantisation on
+     * the way IN. Left as a measured negative rather than a guess.
      */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] =
     {
