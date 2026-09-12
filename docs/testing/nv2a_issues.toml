@@ -197,6 +197,40 @@ suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
 # so it ranks rivals but is not a reference renderer.
 # docs/investigations/bump-rule-2026-09-12.md,
 # docs/testing/run-2026-09-12-bump-decomposition.tsv.
+#
+# ALL THREE texture-input classes are now measured NOT to be in the decode --
+# they are in psh.c, so this issue belongs with whoever holds that file. All
+# six relevant Texture_format captures are bit-exact, 0 differing px of
+# 307,200 each.
+#
+#   YUV (445,984 px): there is only ONE YUV decode in the tree and
+#     convert_ycbcr_to_rgb() already rounds each term separately (52defa5b),
+#     so the "apply the same rounding here" hypothesis is dead by inspection --
+#     it is the same function. The goldens settle it independently: they hold
+#     greens (16,84,16)/(72,255,18) where TEX1, the only thing the final
+#     combiner selects, is a checkerboard of (255,0,0)/(127,32,33). No decode
+#     can produce that.
+#   R16B16 (169,184 px): the sharpest disproof on the board. SZ_R8B8 carries
+#     the IDENTICAL degenerate {G,R,R,G} swizzle shape and PASSES at the
+#     1,576 px floor where R16B16 fails at 50,665 -- on bit-equal component
+#     values (0x4545/65535 is exactly 0x45/255). A permutation of identical
+#     values cannot produce different pixels, so hardware separates them by
+#     CHANNEL BIT WIDTH, which no VkComponentMapping expresses. All four
+#     swizzle slots are pinned (157/64/64/50 distinct golden values).
+#   Y16 (44,748 px): pinned twice -- 188 G/B values against 2 in R, and
+#     BumpEnvLum_Y16 passes at the floor.
+#
+# Corrections to this entry's own record: BumpMap_R16B16 is NOT a BUMPENVMAP
+# test (it is Test16bit, DOT_PRODUCT/DOT_ST, different bump colours);
+# Bump_env_lum uses different colours again; the psh.c sites are 2217/2218/2254
+# and 1629, not 2065/1507; and the swizzle resolves to .r = R16 with
+# .g = .b = B16 -- luminance from R16 and both offsets from B16, the reverse of
+# a first reading.
+#
+# Retracted before it shipped: the swizzled/linear pairs' byte-identical
+# failure masks do NOT exonerate the decode. Those captures are the same image
+# apart from the printed test name (68 px, none inside the mask), so they are
+# not a probe of anything.
 [issue.10]
 title = "Bump mapping"
 disposition = "defect"
