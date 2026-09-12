@@ -290,6 +290,14 @@ typedef struct SurfaceBinding {
     hwaddr vram_addr;
 
     SurfaceShape shape;
+
+    /*
+     * The guest surface format this binding was last bound to draw with. Not
+     * the same thing as shape.color_format / shape.zeta_format -- see
+     * pgraph_vk_surface_drawn_format(), which is how you should read it.
+     */
+    unsigned int drawn_format;
+
     uintptr_t dma_addr;
     uintptr_t dma_len;
     bool color;
@@ -1579,6 +1587,51 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
                               bool zeta_write);
 SurfaceBinding *pgraph_vk_surface_get(NV2AState *d, hwaddr addr);
+
+/*
+ * "What guest format was this surface last rendered as" -- a colour format
+ * when binding->color, a zeta format otherwise; the caller knows which it
+ * asked for.
+ *
+ * This is a third question, distinct from the two that look like it:
+ *
+ *   pg->surface_shape.color_format  what SET_SURFACE_FORMAT says *now*
+ *   binding->shape.color_format     what created this binding
+ *   pgraph_vk_surface_drawn_format  what this binding last drew with
+ *
+ * Ask the register when the surface you mean is the current target: the blend
+ * unit does, correctly. Ask this one when you are consulting a surface that
+ * may no longer be current -- a scratch render target that is later sampled
+ * as a texture has had the framebuffer format restored over the register
+ * before you get there, so the register would answer about a different
+ * surface.
+ *
+ * Do not ask binding->shape for a format at all. shape is creation-time
+ * state, and a binding outlives the format that created it: several guest
+ * formats share one VkFormat (A8R8G8B8, X8R8G8B8_Z8R8G8B8,
+ * X8R8G8B8_O8R8G8B8 and X1A7R8G8B8_Z/O all map to B8G8R8A8_UNORM), and
+ * check_surface_compatibility() matches on the VkFormat, so a format change
+ * at an unchanged address, pitch and size reuses the binding without
+ * recreating it. shape is also not per-binding: a zeta target copies the
+ * colour binding's whole shape, geometry and formats together.
+ *
+ * If what you want is the pad-alpha readback rather than the format enum,
+ * take host_fmt.sampled_pad_alpha and not this: it is the measured value
+ * already, and the same reuse path now refreshes it. Come here for the four
+ * formats a swizzle cannot express -- X1A7R8G8B8_Z/O, whose pad readback is
+ * not a constant -- or when you need to tell two of them apart.
+ *
+ * One hazard for whoever wires up sampled_pad_alpha: do NOT put the swizzle
+ * on surface->image_view. That view is the colour attachment as well as the
+ * directly-sampled texture, and it is created once per image and migrated
+ * across reuse, so a swizzle there would both alter what rendering writes and
+ * go stale exactly the way this field used to. It needs its own sampled view.
+ */
+static inline unsigned int pgraph_vk_surface_drawn_format(
+    SurfaceBinding const *binding)
+{
+    return binding->drawn_format;
+}
 void pgraph_vk_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta);
 void pgraph_vk_surface_written_while_sampled(PGRAPHState *pg,
                                              SurfaceBinding *surface);

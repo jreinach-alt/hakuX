@@ -3018,6 +3018,13 @@ static void populate_surface_binding_target_sized(NV2AState *d, bool color,
 
     target->shape = (color || !r->color_binding) ? pg->surface_shape :
                                                    r->color_binding->shape;
+    /*
+     * Not from target->shape: a zeta target takes the colour binding's shape
+     * whole, so shape.zeta_format there is the colour binding's copy rather
+     * than this target's. The register is the only per-target source.
+     */
+    target->drawn_format = color ? pg->surface_shape.color_format :
+                                   pg->surface_shape.zeta_format;
     target->fmt = fmt;
     target->host_fmt = host_fmt;
     target->color = color;
@@ -3195,6 +3202,51 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             }
 
             if (is_compatible) {
+                /*
+                 * Refresh what the guest format decides, and only that.
+                 *
+                 * Compatibility here is a host-image question -- same
+                 * VkFormat, pitch and colour/zeta role, with the found
+                 * surface at least as large -- and several guest formats
+                 * answer it identically: A8R8G8B8, X8R8G8B8_Z8R8G8B8,
+                 * X8R8G8B8_O8R8G8B8 and X1A7R8G8B8_Z/O all map to
+                 * B8G8R8A8_UNORM, X1R5G5B5_Z/O both to A1R5G5B5. So a colour
+                 * format change at an unchanged address, pitch and size lands
+                 * here rather than on the create path below, and the create
+                 * path is the only place that ever assigned these fields.
+                 * Whatever the binding is asked afterwards, it answers for
+                 * the format that first created it -- silently, and for the
+                 * rest of the run, since the suites that do this render every
+                 * swatch into one surface at one address.
+                 *
+                 * host_fmt is safe to assign wholesale: within a group that
+                 * compares compatible, host_bytes_per_pixel, usage and aspect
+                 * are all functions of vk_format, and vk_format is the thing
+                 * check_surface_compatibility() just matched on. The one
+                 * field that can actually differ is sampled_pad_alpha (see
+                 * SurfaceFormatInfo in constants.h), which is exactly the
+                 * measured fact a reused binding was losing. fmt likewise
+                 * cannot differ -- every member of a group has the same guest
+                 * pixel width -- but assign it too rather than leave one of a
+                 * pair behind for a later table row to falsify.
+                 *
+                 * shape is deliberately NOT refreshed. Its other six fields
+                 * are geometry, and a binding's geometry is its image's, not
+                 * the target's: a non-strict match reuses a surface that is
+                 * *larger* than asked for, which is why surface_binding_dim
+                 * just below is filled from surface-> and not from target.
+                 * Refreshing shape wholesale would have the binding claim a
+                 * size its image does not have, and refreshing shape's format
+                 * fields alone has no single right source -- a zeta target
+                 * takes the colour binding's shape entire (see
+                 * populate_surface_binding_target_sized). The format question
+                 * belongs to drawn_format instead; see
+                 * pgraph_vk_surface_drawn_format().
+                 */
+                surface->drawn_format = target.drawn_format;
+                surface->fmt = target.fmt;
+                surface->host_fmt = target.host_fmt;
+
                 // FIXME: Refactor
                 pg->surface_binding_dim.width = surface->width;
                 pg->surface_binding_dim.clip_x = surface->shape.clip_x;
