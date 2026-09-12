@@ -318,13 +318,36 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
     /* Hardware forces red to 1.0 for Y16 and puts the luminance in green
      * and blue only -- unlike Y8/AY8/A8Y8, which replicate to all three.
      * Measured: TexFmt_Y16 golden has R=255 across the quad while G and B
-     * track the ramp exactly. */
+     * track the ramp exactly.
+     *
+     * PINNED, measured 2026-09-12, like SZ_R16B16 below: TexFmt_Y16 and
+     * _Y16_L are 0 differing px of 307,200, and inside the quad the golden
+     * holds 188 distinct green and blue values against 2 in red. #10's Y16
+     * bump class cannot be addressed from this row: one 16-bit channel has a
+     * single value to give a bump stage that wants two, and splitting it into
+     * hi/lo bytes means a different VkFormat, which would move the 188-value
+     * ramp this row is exact on. Stage-aware, or not here. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16] = {
         VK_FORMAT_R16_UNORM,
         { VK_COMPONENT_SWIZZLE_ONE, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ONE }
     },
     /* Two 16-bit channels holding R and B.  Component order mirrors SZ_R8B8,
-     * which is the same channel layout at 8 bits. */
+     * which is the same channel layout at 8 bits.
+     *
+     * PINNED, measured 2026-09-12 -- read this before retargeting issue #10's
+     * R16B16 class here. Texture_format renders these formats as a colour
+     * lookup and we are bit-exact: TexFmt_R16B16 and _R16B16_L are 0
+     * differing px of 307,200. Inside the drawn quad that golden holds 157
+     * distinct red values, 64 green, 64 blue and 50 alpha, so all four
+     * components are live ramps, not constants, and every one of them is
+     * reproduced exactly. There is no free component here.
+     *
+     * That matters because BUMPENVMAP_LUM takes its luminance from component
+     * 0, which this map feeds from the B16 field. "Take the luminance from
+     * the other channel" therefore cannot be done in this table: component 0
+     * is also the colour path's red, with 157 values pinned to it. Any fix
+     * for the R16B16 bump class has to be stage-aware, which this table is
+     * not -- it is indexed by texture format alone. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16] = {
         VK_FORMAT_R16G16_UNORM,
         { VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G }

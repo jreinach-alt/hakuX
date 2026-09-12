@@ -461,6 +461,25 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
          * a linear YUV format is not established -- its goldens are the way
          * to find out, and an abort produces none.
          */
+        /*
+         * MEASURED 2026-09-12, because issue #10 keeps being pointed here.
+         * This is the ONLY YUV decode in the tree -- there is no separate
+         * path for a bump consumer -- and convert_ycbcr_to_rgb() already
+         * rounds each term separately (52defa5b). It is bit-exact against
+         * hardware as a colour lookup: Texture_format's TexFmt_YUY2_L and
+         * TexFmt_UYVY_L are 0 differing px of 307,200 each.
+         *
+         * So the 445,984 px that #10 attributes to "YUV bump source" is NOT a
+         * rounding or precision gap in this function, and re-deriving the
+         * decode will not move it. The four bump captures' goldens hold
+         * (16,84,16) and (72,255,18) -- greens -- where TEX1, the only thing
+         * the final combiner selects, is an explicit A8R8G8B8 checkerboard of
+         * (255,0,0) and (127,32,33). Hardware is not returning a TEX1 cell at
+         * all for a YUV bump source, so no displacement and no channel
+         * assignment reachable from here can produce it. One raw-byte
+         * implementation was already built and measured: 111,496 px before,
+         * 111,496 after. See docs/investigations/bump-yuv-source.md.
+         */
         // FIXME: only valid if control0 register allows for colorspace
         // conversion
         size = width * height * depth * 4;
