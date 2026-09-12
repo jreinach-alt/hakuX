@@ -442,10 +442,57 @@ title = "Projective shadow comparison is off by a thin band in every 3* family, 
 suites = ["Texture shadow comparator"]
 disposition = "unmodelled-hardware"
 
+# MEASURED NEGATIVE 2026-09-12, and the framing on this issue is wrong. One
+# table settles it before any per-pixel work: 883,336 px of 3D_primitive differ
+# with BOTH smoothing bits clear, and setting them adds only ~110k each. Per
+# pixel on the 40 `arrays` captures, scaled x4 (the four submission paths are
+# identical but for label text):
+#   |delta| <= 2 interpolation wash (#12's floor)   ~3,670,576 px   94.93%
+#   structural, on a golden edge                      ~172,812      4.47%
+#   structural, interior                               ~23,188      0.60%
+# Of the structural interior 88.5% is TriFan + TriStrip alone -- the split
+# seam, a different defect. So the smoothing bits are responsible for about
+# 175,704 px, 4.5%, and that is the CEILING on any fix here.
+#
+# Root cause measured, not guessed: fitting one scalar coverage per pixel from
+# the strongest channel and predicting the other two leaves mean error
+# 0.28-0.92 of 255 against a null of 22-28, so
+# golden = cov*unsmoothed + (1-cov)*dst and nothing else. Coverage is
+# quantised to EIGHTHS (snap to 1/8 gives err 0.0040 with 93% within 0.01;
+# 1/16 and 1/32 buy nothing), levels 4/8 to 8/8, so there is a floor at half
+# coverage. LINESMOOTH doubles the line footprint (+89-95%) into a ~1px fringe
+# and is a no-op on filled primitives; POLYSMOOTH is silhouette-only (98% of
+# the interior at coverage exactly 1.0) and a no-op on lines.
+#
+# BLOCKED on capability, not on code: lines need VK_EXT_line_rasterization,
+# which hakuX never requests in vk/instance.c, so its six feature booleans are
+# UNMEASURED on this device; polygons have no Vulkan analog and there is no
+# multisampling in either backend. Both routes must force SRC_ALPHA blending
+# on, which lands directly on pgraph_vk_effective_blend_reg()'s #48
+# substitution -- sequence them, do not merge. Unmasking the bits from the
+# pipeline key alone is provably 0 better and 0 worse.
+#
+# RETRACTED from this issue: the 2x AA_CENTER_CORNER_2 supersample story is
+# falsified -- a 2-tap horizontal box of the unsmoothed golden is a WORSE model
+# of the smoothed one than no filter at all. POLYSMOOTH also cannot be the
+# TriFan/TriStrip seam.
+#
+# TRAP, and it would have cost someone a day: a `-ls` golden against its plain
+# golden differs by EXACTLY 150 px for every filled primitive, and `-ps` by
+# exactly 168 for every line primitive, always at y[27..40]. That is the test's
+# on-screen name label gaining the suffix. Fitting to it is fitting to a string.
+#
+# Neither neighbour suite is this issue. Antialiasing_tests is 99.8% three
+# captures at exactly 78,496 px, mode-independent and 70% interior. And
+# 2D_Lines is the 2D line SIMPLY NOT DRAWN -- differing count equals the line
+# length every time, background in every column within +/-5, and rolling
+# sideways only worsens it -- which corrects the discrimination index, where
+# ten of its thirteen are classed boundary-shift.
+# docs/investigations/line-polygon-smoothing.md.
 [issue.36]
 title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
 suites = ["3D primitive"]
-disposition = "unclassified"
+disposition = "unmodelled-hardware"
 
 [issue.40]
 title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
