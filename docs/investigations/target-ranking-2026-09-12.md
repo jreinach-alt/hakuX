@@ -68,6 +68,39 @@ and the colour interpolated along the line. I reached the opposite conclusion
 by measuring against a capture set four days older than the fix; the
 correction and what is genuinely left are in `line-width-residual.md`.
 
+## Two rows re-measured on Adreno, because this table is not from this lane
+
+Every figure above comes from the remote lane's corpus, which is lavapipe. That
+matters for the bump rows: their 6.46M px alpha block in those suites turned
+out to be lavapipe's own blend, with alpha byte-identical to silicon on Adreno
+across three formats and three capture sets. So the question is whether the
+`structural` figures here survive the change of host.
+
+`Bump map` does, measured on the #19 sweep's own fresh arm (APK
+`f9b5a5df2776`, 40 captures, correctly dated against the binary):
+
+| | |
+|---|---:|
+| captures exact | **0 of 40** |
+| RGB pixels differing | **435,201** |
+| of those, within one step | **0 (0%)** |
+| alpha pixels differing | 283,097 |
+
+Zero one-step pixels, so none of it is a precision floor, and for most formats
+the RGB and alpha counts are *identical* (35,106/35,106, 22,374/22,374,
+3,895/3,895) — the same pixels are wrong in both, which is a whole-texel
+disagreement rather than an alpha defect. This row is real work on the host
+that ships.
+
+Two of the forty are the YUV pair (`BumpMap_YUY2_L`, `BumpMap_UYVY_L`, 111,496
+px each) and predate the YUV decode fix in this tree, so they will move on
+their own.
+
+`Bump env lum` is **not yet re-measured here** — it was not in the sweep's
+group, and the Adreno captures I have for it are from 09-11, before two fixes
+landed. One disc settles it and it should be settled before the row is trusted
+in either direction.
+
 ## The suites the channel order could also have been carrying: none
 
 The obvious next thought was that every suite sampling a render target through
