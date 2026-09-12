@@ -303,6 +303,17 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 
 case "${1:-status}" in
   serve)
+    # Anything left in running/ belongs to a loop that is gone -- killed,
+    # crashed, or restarted to pick up a change. Its request was accepted and
+    # never answered, so put it back rather than leaving it to be found by
+    # hand: restarting the loop between a build and a device run silently
+    # orphaned a queued A/B arm exactly once, which is once more than it
+    # should be possible to do.
+    for orphan in "$D"/running/*.req; do
+        [ -e "$orphan" ] || continue
+        log "requeueing orphan $(basename "$orphan" .req) from a previous loop"
+        mv "$orphan" "$D/queue/" 2>/dev/null || true
+    done
     log "=== dispatcher serving; queue=$D/queue ==="
     while :; do
         shopt -s nullglob
