@@ -64,3 +64,29 @@ differences.
 
 The obvious next step is exactly that: one pass per suite, collecting the
 union. `Image blit` alone named fifteen dropped methods.
+
+## Second run: `Blend tests`, and a clean negative
+
+Ran the 2025 oracle disc with the log armed — roughly 450 of its 1,568 tests
+before the timeout, across every unsigned and signed equation.
+
+**Nothing new appeared.** The log holds exactly the startup set from the
+`Image blit` run — class 0x39's two methods and the five undefined `NV097`
+methods — and not one additional pair in ~450 blend tests.
+
+So **every method the blend tests use is one we handle**, and the fifth-quad
+defect is *not* a dropped method. That eliminates the whole class of
+"unimplemented register" explanations for it and narrows the search to our
+handling of methods we do accept: state tracking, draw batching, or the
+surface and blend pipeline. Given that three mechanisms for this region have
+already died, a negative that removes an entire class is worth more than
+another candidate.
+
+## A constraint on the 2025 disc worth knowing
+
+`skip_tests_by_default` with per-test `{"skipped": false}` entries **does not
+work on the 2025 XBE** — the config is newer than the binary. Naming four tests
+ran all 1,568. Suite-level selection (`--suite "Blend tests"`) is honoured;
+per-test selection is not. So on that disc the unit of work is a whole suite,
+which also means `make_isolation_discs.py`'s single-test discs cannot target
+it.
