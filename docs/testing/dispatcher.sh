@@ -69,16 +69,37 @@ build_ref() {  # $1 = ref ; echoes the apk path, or fails
     # Requests name a ref, never "what is in the tree": with several
     # implementers holding uncommitted work, "run my build" is ambiguous the
     # moment two of them ask.
-    local head; head=$(git -C "$TREE" rev-parse --short HEAD)
-    if [ "$sha" != "$head" ]; then
-        log "  ref $ref ($sha) is not HEAD ($head); refusing rather than building the wrong tree"
-        return 2
-    fi
     if [ -n "$(git -C "$TREE" status --porcelain | grep -v '^??')" ]; then
         log "  tree is dirty; the binary would not be $sha"
         return 3
     fi
-    (cd "$TREE/android" && ./gradlew assembleDebug) >>"$D/logs/build-$sha.log" 2>&1 || return 4
+    # A baseline arm is never HEAD, so refusing non-HEAD refs made the one
+    # comparison that matters impossible -- and comparing a fix against a
+    # differently-composed earlier run is exactly the mistake that got a
+    # working fix reverted. So build any committed ref by detaching onto it,
+    # and put the branch back on every exit path. The tree is verified clean
+    # above, and agents hold their own worktrees, so a detach here disturbs
+    # nobody.
+    local head restore=""
+    head=$(git -C "$TREE" rev-parse --short HEAD)
+    if [ "$sha" != "$head" ]; then
+        restore=$(git -C "$TREE" symbolic-ref --quiet --short HEAD \
+                  || git -C "$TREE" rev-parse HEAD)
+        log "  ref $ref ($sha) is not HEAD ($head); detaching to build, restoring $restore after"
+        git -C "$TREE" checkout --quiet --detach "$sha" || {
+            log "  checkout of $sha failed; not building"; return 2; }
+        # Visible while detached: anyone committing into this window would
+        # commit onto the wrong base. `dispatcher.sh status` surfaces it.
+        echo "detached at $sha to build a baseline; restoring $restore" > "$D/DETACHED"
+    fi
+    (cd "$TREE/android" && ./gradlew assembleDebug) >>"$D/logs/build-$sha.log" 2>&1
+    local rc=$?
+    if [ -n "$restore" ]; then
+        git -C "$TREE" checkout --quiet "$restore" \
+            || log "  WARNING: could not restore $restore -- tree is left detached at $sha"
+        rm -f "$D/DETACHED"
+    fi
+    [ "$rc" -eq 0 ] || return 4
     cp "$TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
     echo "$apk"
 }
@@ -243,6 +264,7 @@ case "${1:-status}" in
     echo "results: $(ls -d "$D/results"/*/ 2>/dev/null | wc -l)"
     device_present && echo "device:  present" || echo "device:  ABSENT"
     sweep_running && echo "sweep:   running" || echo "sweep:   not running"
+    [ -f "$D/DETACHED" ] && echo "TREE:    $(cat "$D/DETACHED") -- DO NOT COMMIT"
     tail -5 "$D/logs/dispatcher.log" 2>/dev/null
     ;;
   *) sed -n '3,12p' "$0" ;;
