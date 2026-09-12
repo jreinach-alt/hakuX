@@ -155,43 +155,85 @@ park() {
     say "device parked, panel out"
 }
 
-# ---- the company arm for one group: every suite in it, one disc ----------
+# ---- the company arm for one group ---------------------------------------
+# One disc per suite, but one image pull for the whole group.
+#
+# Both halves of that matter. Twenty-three suites on a single disc cost the
+# whole group when one test took the guest down -- the first suite stopped at
+# its test 32 and the other twenty-two never ran, with nothing in the output to
+# say so beyond a progress log that simply stopped. One suite per disc bounds
+# that to the suite. But pulling a 1.5GB disk image per suite would add half an
+# hour of nothing to the night, so each suite writes to its own guest
+# directory, the image is pulled once at the end of the group, and every
+# directory is extracted out of that one copy. sweep_queue.sh does the same
+# thing for the solo arm and for the same reason.
+#
+# Note for whoever compares this against the 328 in #19's title: crossmatch
+# only ever accuses a test of rendering another capture *from its own suite*,
+# so running suites on separate discs preserves exactly the condition it can
+# detect. What it does drop is contamination arriving from a previous suite,
+# which crossmatch could not see in the original sweep either.
 run_company() {
     local g="$1" suites="$2" tmo="$3"
-    local res="$STATE/company/$g" iso="$STATE/iso/$g.iso" args=() s
+    local res="$STATE/company/$g" s gdir iso
     [ -f "$res/.done" ] && return 0
     mkdir -p "$STATE/iso" "$res"
-    for s in $suites; do args+=(--suite "${s//_/ }"); done
-    # The guest's E: drive keeps whatever a previous run left in this
-    # directory, and the extractor pulls the directory, not the run. A retry
-    # therefore comes back with the old captures mixed in -- the probe asked
-    # for one 15-test suite and got 29 files, 14 of them from an earlier
-    # probe of two different suites. So every attempt gets its own directory.
-    local gdir="$g$(date +%s | tail -c 6)"
-    # --shutdown-on-completion is not optional here. Without it the suite
-    # *reboots* when it finishes, so the emulator process never exits, the
-    # wait loop runs to its full timeout, and the whole group is re-run from
-    # the top however many times fit inside it. The probe found this in ten
-    # minutes; a group would have lost an hour to it.
-    if ! python3 "$HERE/make_test_iso.py" "$BASE_ISO" -o "$iso" "${args[@]}" \
-            --progress-log --shutdown-on-completion --output-dir "e:/$gdir" \
-            >>"$LOG" 2>&1; then
-        say "A $g: disc build FAILED"; return 1
+
+    local stamp; stamp=$(date +%s | tail -c 6)
+    local -a dirs=() names=()
+    for s in $suites; do
+        gdir="$(printf '%s' "$s" | md5sum | cut -c1-6)$stamp"
+        iso="$STATE/iso/${g}_${s}.iso"
+        if ! python3 "$HERE/make_test_iso.py" "$BASE_ISO" -o "$iso" \
+                --suite "${s//_/ }" --progress-log --shutdown-on-completion \
+                --output-dir "e:/$gdir" >>"$LOG" 2>&1; then
+            say "A $g/$s: disc build FAILED"; continue
+        fi
+        may_continue || { rm -f "$iso"; break; }
+        say "A $g/$s: running into e:/$gdir (batt $(battery)%)"
+        SERIAL="$SERIAL" HAKUX_NO_PULL=1 bash "$HERE/run_one_disc.sh" \
+            "$iso" "$tmo" >>"$LOG" 2>&1
+        local rc=$?
+        rm -f "$iso"
+        if [ "$rc" != 0 ]; then
+            say "A $g/$s: run returned $rc, carrying on"
+        fi
+        dirs+=("$gdir"); names+=("$s")
+    done
+
+    [ "${#dirs[@]}" -gt 0 ] || { say "A $g: nothing ran"; return 1; }
+
+    # One pull, every directory out of it.
+    local img="$STATE/hdd.img" i
+    if ! timeout 900 adb -s "$SERIAL" pull \
+            "/sdcard/Android/data/$PKG/files/x1box/hdd.img" "$img" \
+            >>"$LOG" 2>&1 || [ ! -s "$img" ]; then
+        say "A $g: image pull failed -- $(( ${#dirs[@]} )) suite(s) unextracted"
+        rm -f "$img"; return 1
     fi
-    say "A $g: $(echo "$suites" | wc -w) suite(s) into e:/$gdir, timeout ${tmo}s, batt $(battery)%"
-    SERIAL="$SERIAL" bash "$HERE/run_disc.sh" "$iso" "$gdir" "$res" "$tmo" >>"$LOG" 2>&1
-    local n; n=$(ls "$res"/*.png 2>/dev/null | wc -l)
-    printf 'company\t%s\t%s\t%s\t%s\n' "$g" "$n" "$(apk_sha)" "$(date -Is)" >> "$ROWS"
-    if [ "$n" = 0 ]; then
-        say "A $g: NO IMAGES -- suite names or disc wrong, see the progress log"
-        return 1
-    fi
-    say "A $g: $n captures"
+    for i in "${!dirs[@]}"; do
+        python3 "$HERE/extract_results.py" "$img" -d "${dirs[$i]}" \
+            -o "$STATE/raw/$g/${names[$i]}" >>"$LOG" 2>&1
+        local n; n=$(ls "$STATE/raw/$g/${names[$i]}"/*.png 2>/dev/null | wc -l)
+        say "A $g/${names[$i]}: $n captures"
+        printf 'company\t%s/%s\t%s\t%s\t%s\n' "$g" "${names[$i]}" "$n" \
+            "$(apk_sha)" "$(date -Is)" >> "$ROWS"
+        cp -n "$STATE/raw/$g/${names[$i]}"/*.png "$res/" 2>/dev/null
+        # The progress log names the test a run stopped on, which is the one
+        # thing worth keeping when a suite comes back short.
+        cp -n "$STATE/raw/$g/${names[$i]}/pgraph_progress_log.txt" \
+            "$res/progress_${names[$i]}.txt" 2>/dev/null
+    done
+    rm -f "$img"
+    rm -f "$res"/pgraph_progress_log.txt
+
+    local total; total=$(ls "$res"/*.png 2>/dev/null | wc -l)
+    say "A $g: $total captures from ${#dirs[@]} suite(s)"
+    [ "$total" -gt 0 ] || return 1
     python3 "$HERE/score_sweep.py" --out "$res" --goldens "$GOLDENS" --flat \
         --tsv "$STATE/company/$g.tsv" >>"$LOG" 2>&1
     tail -12 "$STATE/company/$g.tsv" >>"$LOG" 2>&1
     touch "$res/.done"
-    rm -f "$iso"
 }
 
 # ---- accuse: which of this group's captures render another test's image ---

@@ -53,11 +53,41 @@ a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
 a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'" >/dev/null 2>&1
 
+# Wait for the guest in two stages, because the obvious single loop is wrong
+# in both directions.
+#
+# It watched for the process to *disappear* from the first second, with one ps
+# call deciding. But `am start` returns before the :xemu process exists, so an
+# early poll sees nothing and concludes the run is over; and any transient adb
+# failure returns no output at all, which reads the same way. That cost a
+# 1,300-test group: the loop declared the emulator gone after eleven seconds
+# while it was mid-test-32, the harness force-stopped a healthy run, and
+# twenty-two of the twenty-three suites on the disc never ran. The evidence was
+# a progress log that simply stopped, which looks exactly like a guest crash.
+#
+# So: wait for it to appear, then require several consecutive misses before
+# believing it has gone.
+alive() { a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; }
+
 s=0
+appeared=0
+while [ "$s" -lt "${APPEAR_TIMEOUT:-90}" ]; do
+    sleep 1; s=$((s+1))
+    touch "$LEASE"
+    if alive; then appeared=1; break; fi
+done
+if [ "$appeared" = 0 ]; then
+    echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s"
+    exit 1
+fi
+
+misses=0
 while [ "$s" -lt "$TIMEOUT" ]; do
     sleep 1; s=$((s+1))
     touch "$LEASE"          # hold off the Stop hook while we legitimately run
-    a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu" || break
+    if alive; then misses=0; continue; fi
+    misses=$((misses+1))
+    [ "$misses" -ge "${MISSES_TO_EXIT:-3}" ] && break
 done
 TIMED_OUT=0
 if [ "$s" -ge "$TIMEOUT" ]; then
