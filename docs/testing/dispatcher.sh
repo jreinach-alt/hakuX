@@ -120,6 +120,9 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
+    local title seconds
+    title=$(jq_get "$req" title "")
+    seconds=$(jq_get "$req" seconds 60)
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
@@ -143,6 +146,40 @@ serve_one() {
         echo "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED"
         mv "$req" "$rdir/request.json"; return 0
     }
+
+    # A soak request runs a real title and keeps its log, instead of running a
+    # test disc and scoring captures. It exists because some questions have no
+    # golden framebuffer: the audio path is silent on the pgraph discs, so
+    # "does any title actually program submix_headroom" can only be answered by
+    # booting a game and reading the log. Same queue, same lease, same
+    # preempt/resume, so it is scheduled against test work rather than racing
+    # it -- and no human has to hold the handheld.
+    if [ -n "$title" ]; then
+        log "  soak: $title for ${seconds}s"
+        local tpath="/storage/E6C6-D7AA/Games/XBox/$title"
+        if ! adb -s "$SERIAL" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
+            echo "title not on device: $tpath" > "$rdir/ERROR"
+            log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
+        fi
+        touch "$LEASE"
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W *:S}" \
+            bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
+        local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
+        python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'
+import json, os, sys
+rdir, sha, title, seconds, who, purpose, ref, lines = sys.argv[1:9]
+json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
+               requester=who, purpose=purpose, ref=ref,
+               logcat_lines=int(lines)),
+          open(os.path.join(rdir, "result.json"), "w"), indent=2)
+print("soak done:", title, lines, "log lines")
+PYEOF
+        log "  soak done, $lines log lines -> $rdir/logcat.txt"
+        mv "$req" "$rdir/request.json"
+        touch "$rdir/DONE"
+        resume_sweep
+        return 0
+    fi
 
     # disc identity is part of the result: two results are comparable only if
     # the ref differs and the disc composition matches.

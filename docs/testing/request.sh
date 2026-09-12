@@ -15,6 +15,7 @@
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
+TITLE=""; SECONDS_HOLD=60
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -24,11 +25,17 @@ while [ $# -gt 0 ]; do
         --ref) REF="$2"; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
+        --title) TITLE="$2"; shift 2;;
+        --seconds) SECONDS_HOLD="$2"; shift 2;;
         --wait) WAIT=1; shift;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
 done
-[ -n "$WHO" ] && [ -n "$SUITES" ] || { echo "need --who and --suites" >&2; exit 2; }
+# A soak request names a title instead of suites: it boots a real game and
+# keeps the log, for questions with no golden framebuffer (the test discs are
+# silent, so nothing about audio can be asked of them).
+[ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
+[ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
 
 # Resolve the ref to a concrete sha AT QUEUE TIME. "HEAD" in a queued request
 # is a moving target: the queue is served later, and any commit in between
@@ -44,13 +51,14 @@ fi
 
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
-python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" <<'PY'
+python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" <<'PY'
 import json, sys
-p, i, who, purpose, suites, ref, arm, runs, tests = sys.argv[1:10]
+p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds = sys.argv[1:12]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
-           "ref": ref, "arm": arm, "runs": int(runs)},
+           "ref": ref, "arm": arm, "runs": int(runs),
+           "title": title, "seconds": int(seconds)},
           open(p, "w"), indent=2)
 PY
 echo "queued $ID"
