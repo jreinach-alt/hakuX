@@ -2116,12 +2116,72 @@ bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg)
     return true;
 }
 
+#ifdef __ANDROID__
+/*
+ * Report a texture stage's geometry whenever it changes, not every frame.
+ *
+ * Galleon's deck cycles through diagonal hatchings at different angles, which
+ * is what reinterpreting the same memory at the wrong row stride looks like:
+ * the shear angle follows the size of the error. Mip selection cannot rotate
+ * a pattern, so the question is whether pitch, dimensions, level count or the
+ * swizzled/linear flag are stable for one piece of texture memory. Logging
+ * only transitions makes an unstable stage obvious and a stable one silent.
+ */
+static void log_texture_shape_changes(PGRAPHState *pg, int i)
+{
+    static struct {
+        bool valid;
+        unsigned int fmt, levels, w, h, d, pitch;
+        bool linear, cubemap;
+        hwaddr offset;
+    } last[NV2A_MAX_TEXTURES];
+
+    TextureShape sh = pgraph_get_texture_shape(pg, i);
+    BasicColorFormatInfo f = pgraph_get_color_format_info(sh.color_format);
+    hwaddr off = pgraph_get_texture_phys_addr(pg, i);
+
+    if (last[i].valid && last[i].fmt == sh.color_format &&
+        last[i].levels == sh.levels && last[i].w == sh.width &&
+        last[i].h == sh.height && last[i].d == sh.depth &&
+        last[i].pitch == sh.pitch && last[i].linear == f.linear &&
+        last[i].cubemap == sh.cubemap && last[i].offset == off) {
+        return;
+    }
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-texshape",
+        "stage%d off=%" HWADDR_PRIx " fmt=0x%x %ux%ux%u levels=%u pitch=%u "
+        "%s%s", i, off, sh.color_format, sh.width, sh.height, sh.depth,
+        sh.levels, sh.pitch, f.linear ? "linear" : "swizzled",
+        sh.cubemap ? " cube" : "");
+
+    last[i].valid = true;
+    last[i].fmt = sh.color_format;
+    last[i].levels = sh.levels;
+    last[i].w = sh.width;
+    last[i].h = sh.height;
+    last[i].d = sh.depth;
+    last[i].pitch = sh.pitch;
+    last[i].linear = f.linear;
+    last[i].cubemap = sh.cubemap;
+    last[i].offset = off;
+}
+#endif
+
 void pgraph_vk_bind_textures(NV2AState *d)
 {
     NV2A_VK_DGROUP_BEGIN("%s", __func__);
 
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+#ifdef __ANDROID__
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (pgraph_is_texture_enabled(pg, i)) {
+            log_texture_shape_changes(pg, i);
+        }
+    }
+#endif
 
     r->texture_bindings_changed = false;
 
