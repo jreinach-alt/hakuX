@@ -144,3 +144,34 @@ Not "`Depth_buffer`, 340,726 channels". Four entries:
 | Colour, all cells | 3,903,293 | <=2 in fixed cells, format-independent |
 
 and the compression axis deleted.
+
+## One hypothesis for the colour defect, tested and dead
+
+The colour error looked at first like a single rounding-mode difference. Along
+a gradient row our value is one above the golden's at the points where the ramp
+crosses a quantisation boundary, and conditioning on the differing pixels in
+one channel gives a mean signed error of +0.67 to +1.07 across every band of
+golden values. If that were one interpolation rounding up where silicon rounds
+down, it would be worth a great deal: 57.4% of the whole corpus is one-step,
+and a single rounding fix would move all of it at once.
+
+It is not. Conditioning on differing pixels is what made it look one-sided --
+unconditioned, this suite's colour cells split 677,049 up against 635,551 down,
+a bias of +0.03. And across other suites measured the same way the sign does
+not even agree:
+
+| capture set | suite | one-step px | ours +1 | ours -1 | bias |
+|---|---|---:|---:|---:|---:|
+| `score_cv_dbff` | `Depth_buffer_fixed_function` | 640,502 | 358,946 | 281,556 | +0.12 |
+| `score_cv_after` | `Depth_buffer` | 2,474,182 | 1,366,600 | 1,107,582 | +0.10 |
+| `score_cv_signed` | `Texture_signed_component_tests` | 190,488 | 143,887 | 46,601 | **+0.51** |
+| `score_cv_blit` | `Image_blit` | 515,562 | 76,423 | 439,139 | **-0.70** |
+
+`Image_blit` leans as hard the other way as `Texture_signed_component_tests`
+leans this way. There is no one rounding bug behind the corpus' one-step
+channels; there are several causes with different signs. Recorded so nobody
+else spends the afternoon on it.
+
+`Image_blit`'s -0.70 over half a million one-step pixels is itself a directional
+signal in a suite nobody has looked at, which is worth someone's time -- but as
+its own thing.
