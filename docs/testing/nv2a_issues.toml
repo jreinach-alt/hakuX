@@ -115,7 +115,15 @@ suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
 
 [issue.19]
 title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
-disposition = "unclassified"
+# harness, not defect, and that is the measurement rather than a guess. The
+# premise -- that a large number of tests render another test's image -- was
+# tested by running each accused test BOTH in company and solo across 1,540
+# captures. It came out 2 contamination against 82 missing-state: in 82 cases
+# the test renders differently alone because it DEPENDS on state an earlier
+# test left set, which is a property of the test suite and not of the emulator.
+# Same class as #15. The two real contamination cases are the actionable part
+# and are small. docs/investigations/issue-19-isolation-2026-09-12.md.
+disposition = "harness"
 suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "Blend surface", "Blend tests", "Depth buffer",
           "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
