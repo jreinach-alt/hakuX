@@ -85,3 +85,37 @@ full golden set.
 Most of the absent suites need only a disc and a run; `docs/testing` already
 has `make_test_iso.py` and the scoring harness. The expensive part is not
 measurement, it is that nobody knew it was missing.
+
+## Measuring one absent suite immediately produces a top-three entry
+
+Two discs already in this lane cover part of the gap, so the cheap half was
+done rather than described. `iso_attr.iso`, one run, 270 captures:
+
+| suite | captures | exact | channels | +-1 | **not +-1** |
+|---|---:|---:|---:|---:|---:|
+| **`3D_primitive`** | 160 | 4 | 7,287,835 | 6,160,302 | **1,127,533** |
+| `Attrib_carryover` | 96 | 0 | 2,923,650 | 2,449,120 | **474,530** |
+| `Attrib_float` | 12 | 3 | 610,719 | 523,023 | 87,696 |
+| `Attrib_setter` | 2 | 0 | 62,728 | 58,180 | 4,548 |
+
+**`3D_primitive`'s 1,127,533 structural channels would place it third on the
+re-ranked board** -- above `Bump_map` at 1,068,453 and `Line_width` at
+1,009,664 -- and it was not on the board at all. `Attrib_carryover`'s 474,530
+would sit around eighth. One run, no new disc, and the ordering changes.
+
+That is the concrete argument for rebuilding the corpus over the full golden
+set: this is not a hypothetical loss of fidelity, it is a top-three item that
+nobody could see.
+
+## A crash worth noting, and not over-claiming
+
+`iso_risk.iso` -- `Texture shadow comparator`, `W buffering` (530 goldens),
+`Depth buffer fixed function` (80) -- segfaulted at frame 0 on the first
+attempt, 108 log lines, core dumped, no captures. A run of the same disc on
+10 September produced 898 captures, so the obvious reading was a regression.
+
+**A second attempt ran past that point**, which makes the crash transient
+rather than a reproducible regression, and the obvious reading wrong. Recorded
+because a disc that intermittently dies at startup is worth knowing about when
+530 of its goldens are missing from the corpus -- but not as a regression
+claim, which is what one run would have supported and two did not.
