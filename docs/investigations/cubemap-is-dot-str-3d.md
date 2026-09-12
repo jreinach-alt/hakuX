@@ -370,3 +370,57 @@ green, `(-,-) -> (63,63)` white -- which already reproduces the golden's sets,
 `{blue, green}` for the unsigned captures included. **If that is also the
 golden's assignment then the assignment was never the defect**, and the dither
 is the whole of what is left.
+
+## The four "forbidden" colours are the `-Z` face, and the position dithers too
+
+The sign field turns out to be **flat** -- 92 to 99.9% of interior cube pixels
+share `(sign_1, sign_2)` with all four neighbours, within a couple of points of
+the golden's own output flatness. So `t0` does not dither, the dot products are
+clean, and the corruption is between `dotSTR3` and the sampled texel.
+
+Half of that is now explained from the colours alone. The four colours we
+produce outside the golden's set are not stray texels: they are exactly the
+four corner texels of the **`-Z` face**, seed `0xFFFF00`.
+
+| corner | `+X` (slice 0) | `-Z` (slice 5) |
+|---|---|---|
+| `(0,0)` | `#0000FF` blue | `#FFFF00` yellow |
+| `(63,0)` | `#FF0000` red | `#00FFFF` cyan |
+| `(0,63)` | `#00FF00` green | `#FF00FF` magenta |
+| `(63,63)` | `#FFFFFF` white | `#000000` black |
+
+The split between the two faces is 50.1/49.9, 50.3/49.7, 50.0/50.0 -- a coin
+flip, which is what the sign of a quantity bounded by `9.37e-7` does. A third
+component reaching slice 0 or slice 5 accounts for it exactly.
+
+**It does not account for the rest.** Strip the face out and map each colour to
+its corner *position*, which under a `.xy` fetch must be a function of the two
+flat signs:
+
+| capture | our position field flat | gold's | agrees with gold |
+|---|---:|---:|---:|
+| `-1to1D3D` | **8.4%** | 95.1% | 24.8% |
+| `0to1` | **41.6%** | 97.1% | 24.5% |
+
+Chance, with a flat confusion matrix and no permutation in it. With
+`|dot|` in `[0.001, 0.01)` and `REPEAT` on 64 texels the entire bucket maps to
+texel 0 for a positive sign and texel 63 for a negative one -- `0.0099 * 64 =
+0.63`, `(1 - 0.0099) * 64 = 63.4`. Two texels per axis, no room for anything
+else, so a flat sign field *must* give a flat position field. It does not.
+
+**So the coordinate reaching the sampler is not the `dotSTR3` the probe read.**
+The probe replaced the fetch with a readout of that value and therefore
+measured upstream of whatever changes it.
+
+`DotSTR3D_Bad2D` shows the same thing with no cubemap in it at all -- plain 2D
+texture, valid 2D view, no third component available to blame:
+
+| | gold | ours |
+|---|---:|---:|
+| flat | 98.1% | **51.1%** |
+| `#FFFF44` | 100% | 65.4% |
+
+The measurement that closes it is the resolved texel index, not another sign:
+emit `ivec2(fract(dotSTR3.xy) * textureSize(texSamp3, 0))` into R and G. Only
+0 and 63 are permitted per axis on the reading above, so anything else names
+the step that corrupts the address.
