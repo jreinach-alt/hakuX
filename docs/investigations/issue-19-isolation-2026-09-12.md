@@ -94,18 +94,30 @@ carry entries our run cannot reach, and one of them is large:
 | `Image_blit` | 41 | 42 | 98% |
 | `Texture_cubemap` | 72 | 73 | 99% |
 
-`Depth_buffer` is not a disc-version gap. The disc's own inventory lists **392**
-`Depth buffer` tests and marks none of them skipped, and the 72 that ran are a
-perfectly symmetric subset: **9 mask values out of 49**, nine per each of the
-eight `z16/z24 × Cn/Cy × FZn/FZy` combinations, with the other 40 per
-combination never started. So the suite applies its own per-test default and
-runs a ninth of the depth masks unless each is named explicitly.
+The 72 that ran are a perfectly symmetric subset: **9 mask values out of 49**,
+nine per each of the eight `z16/z24 × Cn/Cy × FZn/FZy` combinations, with the
+other 40 per combination never started.
 
-That matters beyond this sweep. **Issue #16's depth conclusions rest on 18% of
-the available oracle**, and so does every depth number either lane has quoted.
-A config naming all 392 explicitly is built (`iso-depthfull.iso`, 29,533-byte
-config against the usual ~920) and is one disc run away from multiplying that
-oracle fivefold.
+**It is a version gap, and I first said it was not.** The disc's
+`sample-config.json` lists all 392 `Depth buffer` tests and marks none skipped,
+which I read as "the XBE can run them and a config will unlock them". That file
+is not authoritative for the XBE's registry — `make_isolation_discs.py` already
+warns that suites present in the XBE are missing from it, and the disagreement
+runs the other way too. A config naming all 392 explicitly (`iso-depthfull.iso`,
+a 29,533-byte config against the usual ~920) ran **the same 72 tests**, the
+identical set, and reported "Testing completed normally". The remote lane ran
+the equivalent experiment on `Blend tests` — a config naming all 1,673 — and
+got the same 105. Two lanes, two suites, same answer: the tests are not in our
+XBE.
+
+So the goldens come from a newer `nxdk_pgraph_tests` than the ISO this project
+tests against, and **no configuration will close the gap**. Closing it means a
+newer disc — built from source, or a newer release — which is a
+project-level action rather than a harness change.
+
+What stands unchanged is the consequence: **issue #16's depth conclusions rest
+on 18% of the available oracle**, `Blend tests` on 6.7%, and so does every
+number either lane has quoted for those two suites.
 
 The general lesson is the same one that cost a write-up tonight: a count from
 the goldens directory is not a count of tests we run. `1,291 captures from 23
