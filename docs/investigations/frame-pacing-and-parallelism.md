@@ -320,10 +320,43 @@ translated block overlaps the bytes written. Finer-grained arming is the
 lever, and that is core work on code-write detection with real correctness
 risk, so it is flagged here and not started.
 
-One thing this measurement does not separate: how many of those calls actually
-invalidate a block versus merely reach the invalidator and find no overlap.
-The first is regeneration cost, the second is pure overhead, and they have
-different fixes. That needs one more counter.
+### It is real regeneration, which means it is largely not ours to fix
+
+The counter that separates the two cases, per 120-frame window in Fuzion
+Frenzy:
+
+| | per 120 frames | per frame |
+|---|---|---|
+| slow stores | ~8,000 | 66 |
+| reached the invalidator | ~6,300 | 53 |
+| **translated blocks discarded** | **~9,500** | **79** |
+| **translated blocks generated** | **~3,440** | **29** |
+
+So it is not entry overhead. Most calls find real overlap and throw real work
+away: about 79 blocks destroyed and 29 regenerated every frame. More are
+discarded than generated because one store can invalidate several blocks on a
+page and only the ones executed again get rebuilt. That matches `tb_gen_code`
+at 19% inclusive in the profile.
+
+**Which settles the strategic question, and not in our favour.** The stores
+genuinely overlap translated code, so the blocks are genuinely stale and
+discarding them is correct. There is no inefficiency to remove here: this is
+what emulating a title that writes across its own code pages costs a dynamic
+translator. Finer-grained arming would have avoided some *calls*, but it
+cannot avoid an invalidation that is warranted.
+
+The levers that remain are all about making the churn cheaper rather than
+rarer: faster code generation, or smaller blocks on pages known to thrash so
+less work is lost per store. QEMU already has machinery in this area, since it
+falls back to a single-instruction block when a store modifies the currently
+executing one. Both are core tuning with modest expected return.
+
+**So the practical conclusion for this project is to spend effort on the
+smaller pole, because it is the part we own.** The renderer is worth about a
+fifth of the frame and is our code; the audio voice lock at 5% of the
+critical-path thread is our code; the guest-side churn above is mostly not.
+That is the opposite of where the frame time points, and it is still the right
+call.
 
 Note on the addresses: the guest virtual address is the reliable half. The
 page frame is a `ram_addr_t`, an offset across all memory blocks rather than a

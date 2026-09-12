@@ -253,13 +253,21 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_notdirty_vaddr[8];
         extern uint32_t hakux_notdirty_off_lo[8];
         extern uint32_t hakux_notdirty_off_hi[8];
-        static uint64_t prev_total, prev_inval;
+        extern uint64_t hakux_tb_invalidated;
+        extern uint64_t hakux_tb_generated;
+        static uint64_t prev_total, prev_inval, prev_tbi, prev_tbg;
         char nd[768];
         int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
                          (unsigned long long)(hakux_notdirty_total - prev_total),
                          (unsigned long long)(hakux_notdirty_invalidate_calls - prev_inval));
         prev_total = hakux_notdirty_total;
         prev_inval = hakux_notdirty_invalidate_calls;
+        n += snprintf(nd + n, sizeof(nd) - n,
+                      " [blocks tossed %llu, generated %llu]",
+                      (unsigned long long)(hakux_tb_invalidated - prev_tbi),
+                      (unsigned long long)(hakux_tb_generated - prev_tbg));
+        prev_tbi = hakux_tb_invalidated;
+        prev_tbg = hakux_tb_generated;
         for (int i = 0; i < 8 && n < (int)sizeof(nd) - 80; i++) {
             if (!hakux_notdirty_hits[i]) {
                 continue;

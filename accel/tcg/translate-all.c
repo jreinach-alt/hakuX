@@ -305,8 +305,12 @@ static int setjmp_gen_code(CPUArchState *env, TranslationBlock *tb,
 }
 
 /* Called with mmap_lock held for user mode emulation.  */
+uint64_t hakux_tb_invalidated;
+uint64_t hakux_tb_generated;
+
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
+    hakux_tb_generated++;
     CPUArchState *env = cpu_env(cpu);
     TranslationBlock *tb, *existing_tb;
     tb_page_addr_t phys_pc, phys_p2;
