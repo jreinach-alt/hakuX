@@ -53,8 +53,20 @@ captures is 5.4× the evidence, and it splits three ways:
 | `z24` | float | depth | 2 / 98 | 0 |
 | `z24` | float | colour | 2 / 98 | 68 |
 
-Clearing the buffer first has **no effect whatever** — 54 exact either way, to
-the capture. So none of this is initialisation.
+The `C` flag makes **no difference whatever** — 54 exact either way, to the
+capture.
+
+**Correction: that flag is compression, not clear.** I read `Cn`/`Cy` as
+clear-first and said so without checking. The remote lane's reading is
+compression, and their measurement is much stronger than my equal-counts
+observation: over 196 `Cn`/`Cy` pairs the **depth dumps are bit-identical**,
+196/196, on silicon *and* here. The colour frames differ on exactly 36 px in a
+14×7 box at rows 52–65, cols 90–96 — the single glyph of the printed test name
+that spells `n` instead of `y`, in the goldens as much as in ours.
+
+So the sixteen cells are eight. That is worth more than the label fix: it
+halves the space before anyone starts, and it is the kind of equivalence my
+"no effect" phrasing hinted at without establishing.
 
 ### Three separable defects
 
