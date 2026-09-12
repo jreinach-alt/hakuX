@@ -154,10 +154,50 @@ suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "ZMinMaxControl", "ZPass pixel count", "Bump map", "Image blit",
           "Texture cubemap"]
 
+# Largely fixed in bdc26fa5c8. What remains is MEASURED and is two lines of
+# wbufSlopeStep() in glsl/psh.c: we anchor the reference pair on a 2-pixel grid
+# (c = 2*floor(c*0.5), r likewise), and hardware anchors on a 2-pixel grid for
+# the quads but a 4-PIXEL grid for the small triangles and ClipF's large
+# triangle (rows 4*floor(y/4)+2, cols 4*floor(x/4)+4). That snap accounts for
+# every remaining wrong WBuf* pixel. TriH is the clean check: the snap reaches
+# hardware's row for two of four congruent triangles, so exactly two must be
+# exact, and the run reads 13,200 exact / 13,200 wrong of 26,400. TriV's snap
+# never reaches col 164 for any k, so all 26,400 must be wrong; measured 0
+# exact.
+#
+# unknown-semantics because the one-line fix is PRICED AND REFUSED, not
+# unwritten. Switching to the 4-grid everywhere recovers 620,349 px (TriH,
+# TriV, three ClipF) and regresses 4,172,280 px (all 19 WBuf* captures now
+# clean), a net 6.7x worse. The regime selector is load-bearing and is NOT
+# determined by the current goldens: three discriminators were tried and each
+# is killed by one row -- clip-edge vs geometry-derived anchor (Wall's second
+# triangle is geometry-derived and 2-grid), primitive area (Roof/Wall/Floor are
+# large and 2-grid while ClipF's large triangle is 4-grid), and ClipF's own two
+# triangles share a clip edge yet split across regimes. That last is the
+# degenerate-example signature.
+#
+# The experiment that would settle it: a disc with a single triangle translated
+# in x with everything else fixed, and the same triangle with its apex on-screen
+# versus clipped.
+#
+# Two rows in the residual are NOT this defect: WBuf24F_RoofQuad (23,380 px x2)
+# is wrong only in 24-bit FLOAT depth and right in fixed on identical geometry,
+# and ZBuf24D_FloorQuad_V0 (151,316 px x2) scores identically before and after
+# the W fix. Both are #52.
+#
+# Measured dead, each by reading the current tree or by measurement: a stale
+# offset uniform via the super-fast path (vk/draw.c:2832 also fails that path
+# on any_reg_gen, which every register write bumps); ZOFFSETBIAS/ZOFFSETFACTOR
+# dropped from the pipeline key under OPT_DYNAMIC_STATES (they feed uniforms
+# only and vk/shaders.c re-hashes the block); the flat-shading quad diagonal in
+# prim_rewrite.c (ruled out by measurement -- Wall and Floor reproduce on the
+# v0-v2 decomposition, so these tests are not flat-shaded); and LineStrip "not
+# drawn at all", already fixed at 770/770 exact.
+# docs/investigations/wbuffer-slope-offset.md.
 [issue.31]
 title = "Slope-scaled polygon offset is wrong under W buffering"
 suites = ["W buffering"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.33]
 title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"

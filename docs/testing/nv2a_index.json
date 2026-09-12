@@ -578,247 +578,247 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:594",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:602",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:598",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:606",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:672",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:680",
    "symbols": [],
    "text": "/* TODO: these should instead be queueing up fe commands */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:681",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:689",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:716",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:724",
    "symbols": [],
    "text": "voice_set_mask(d, v, lvl_reg, lvl_mask, 0x00); // FIXME: Confirm this?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:736",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:744",
    "symbols": [],
    "text": "// FIXME: [division by zero]"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:743",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:751",
    "symbols": [],
    "text": "// FIXME: Overflow in hardware"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:744",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:752",
    "symbols": [],
    "text": "//       The actual value seems to overflow, but not sure how"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:749",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:757",
    "symbols": [],
    "text": "// FIXME: Comparison could also be the other way around?! Test please."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:755",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:763",
    "symbols": [],
    "text": "count = hold_time * 16; // FIXME: Skip next phase if count is 0?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:788",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:796",
    "symbols": [],
    "text": "// FIXME: Decay should return a value no less than sustain"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:793",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:801",
    "symbols": [],
    "text": "// FIXME: This formula and threshold is not accurate, but I can't"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:799",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:807",
    "symbols": [],
    "text": "// FIXME: Should we still update lvl?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:814",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:822",
    "symbols": [],
    "text": "0x00); // FIXME: is this only set to 0 once or forced to zero?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:831",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:839",
    "symbols": [],
    "text": "// FIXME: Appears to be an exponential but unsure about actual"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:834",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:842",
    "symbols": [],
    "text": "// FIXME: Based on sustain level or just decay of current level?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:835",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:843",
    "symbols": [],
    "text": "// FIXME: Update level? A very similar, alternative decay function"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:836",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:844",
    "symbols": [],
    "text": "// (probably what the hw actually does): y(t)=2^(-10t), which would"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:842",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:850",
    "symbols": [],
    "text": "count--; // FIXME: Should release count ascend or descend?"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:855",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:863",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:895",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:903",
    "symbols": [],
    "text": "NV_PAVS_VOICE_CFG_FMT_LINKED); /* FIXME? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:913",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:921",
    "symbols": [],
    "text": "int16_t adpcm_decoded[65*2]; // FIXME: Move out of here"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:915",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:923",
    "symbols": [],
    "text": "// FIXME: Only update if necessary"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:930",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:938",
    "symbols": [],
    "text": "// This is probably cleared when the first sample is played"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:931",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:939",
    "symbols": [],
    "text": "// FIXME: How will this behave if CBO > EBO on first play?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:932",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:940",
    "symbols": [],
    "text": "// FIXME: How will this behave if paused?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:942",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:950",
    "symbols": [],
    "text": "// FIXME: Confirm. Unsure if this should wait until end of SSL or"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:998",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1006",
    "symbols": [],
    "text": "ebo = seg_len - 1; // FIXME: Confirm seg_len-1 is last valid sample index"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1033",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1041",
    "symbols": [],
    "text": "// FIXME: Restructure this loop"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1047",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1055",
    "symbols": [],
    "text": "block_size); // FIXME: Use idiomatic DMA function"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1101",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1109",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1194",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1202",
    "symbols": [],
    "text": "// FIXME: Don't do 2ch resampling if this is a mono voice"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1199",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1207",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1436",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1461",
    "symbols": [],
    "text": "// FIXME: If phase negations means to flip the signal upside down"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1451",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1476",
    "symbols": [],
    "text": "// FIXME: Move to function"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1462",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1487",
    "symbols": [],
    "text": "// FIXME: Cutoff modulation via NV_PAVS_VOICE_CFG_ENV1_EF_FCSCALE"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1489",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1514",
    "symbols": [],
    "text": "// FIXME: ParaEQ"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1495",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1520",
    "symbols": [],
    "text": "// FIXME: Not sure if submix/voice headroom factor in for HRTF"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1515",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1540",
    "symbols": [],
    "text": "* TODO: Are the 2D, 3D and MP voice lists merely a DirectSound"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1723",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1764",
    "symbols": [],
    "text": "// TODO: To simplify submix scheduling, we make a few assumptions based"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1725",
+   "loc": "hw/xbox/mcpx/apu/vp/vp.c:1766",
    "symbols": [],
    "text": "// multipass sources suggests the hardware may not be so strict. We'll"
   },
@@ -2654,7 +2654,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1580",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1589",
    "symbols": [
     "NV_PGRAPH_ANTIALIASING",
     "NV_PGRAPH_ANTIALIASING_ENABLE",
@@ -2667,7 +2667,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1583",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1592",
    "symbols": [
     "NV_PGRAPH_ANTIALIASING",
     "NV_PGRAPH_ANTIALIASING_ENABLE",
@@ -2680,7 +2680,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1584",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1593",
    "symbols": [
     "NV_PGRAPH_ANTIALIASING",
     "NV_PGRAPH_ANTIALIASING_ENABLE",
@@ -2693,7 +2693,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1589",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1598",
    "symbols": [
     "NV_PGRAPH_ANTIALIASING",
     "NV_PGRAPH_ANTIALIASING_ENABLE",
@@ -2707,7 +2707,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1594",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1603",
    "symbols": [
     "NV_PGRAPH_ANTIALIASING_ENABLE",
     "NV_PGRAPH_SETUPRASTER",
@@ -2718,43 +2718,43 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1727",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1736",
    "symbols": [],
    "text": "// FIXME: Partial updates"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1818",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1827",
    "symbols": [],
    "text": "// FIXME: We should handle this. Make the query buffer bigger, but at least"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1880",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1889",
    "symbols": [],
    "text": "assert(0);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2689",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2698",
    "symbols": [],
    "text": "// FIXME: Refactor below"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2725",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:2734",
    "symbols": [],
    "text": "// FIXME: Add more metrics for determining command buffer 'fullness' and"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3227",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3236",
    "symbols": [],
    "text": "/* FIXME: Consider moving to PSH w/ window clip */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5339",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5348",
    "symbols": [
     "NV097_CLEAR_SURFACE_COLOR",
     "NV097_CLEAR_SURFACE_STENCIL",
@@ -2764,19 +2764,19 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5505",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5514",
    "symbols": [],
    "text": "// FIXME: What does hardware do when min >= max?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5506",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5515",
    "symbols": [],
    "text": "// FIXME: What does hardware do when min >= surface size?"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5609",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5618",
    "symbols": [
     "NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F"
    ],
@@ -2784,31 +2784,31 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5658",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5667",
    "symbols": [],
    "text": "/* FIXME: Does this apply to CLEARs too? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5811",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5820",
    "symbols": [],
    "text": "// FIXME: SIMD memcpy"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5812",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5821",
    "symbols": [],
    "text": "// FIXME: Caching"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5813",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5822",
    "symbols": [],
    "text": "// FIXME: Account for only what is drawn"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6173",
+   "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6182",
    "symbols": [],
    "text": "/* FIXME: Double check */"
   },
@@ -3465,7 +3465,7 @@
    "title": "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point half is exact or one ULP"
   },
   "19": {
-   "disposition": "unclassified",
+   "disposition": "harness",
    "suites": [
     "Texture DXT",
     "Texture render target",
@@ -3495,14 +3495,14 @@
    "title": "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
   },
   "31": {
-   "disposition": "unclassified",
+   "disposition": "unknown-semantics",
    "suites": [
     "W buffering"
    ],
    "title": "Slope-scaled polygon offset is wrong under W buffering"
   },
   "33": {
-   "disposition": "unclassified",
+   "disposition": "defect",
    "suites": [
     "Image blit"
    ],
@@ -3582,7 +3582,7 @@
    "title": "Blend surface: two draws land on the region and the wrong one survives; only the O format needs a forced alpha"
   },
   "49": {
-   "disposition": "unclassified",
+   "disposition": "unknown-semantics",
    "suites": [
     "Viewport"
    ],
@@ -3627,7 +3627,7 @@
    "title": "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
   },
   "8": {
-   "disposition": "unclassified",
+   "disposition": "defect",
    "suites": [
     "Fog",
     "Fog gen",
@@ -4192,17 +4192,15 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "1e50914d3041a1ab6a58af17f8eea561f2d30f4c",
+  "emulator_commit": "4e690c2e37d9af6f2bea55ee5a8e7ce1c6791a3a",
   "gaps": 497,
-  "resolved_tables": 1,
+  "resolved_tables": 0,
   "sites": 2726,
   "suites": 102,
-  "support_dirs": [
-   "/home/user/pbkitplusplus"
-  ],
+  "support_dirs": [],
   "symbols": 944,
   "tests_commit": "33e7c6b0ebf4d6e1b67d0ca475adc336fb5fbaf8",
-  "tests_root": "/home/user/nxdk_pgraph_tests",
+  "tests_root": "/home/justin/nxdk_pgraph_tests",
   "unread": 143
  },
  "schema": 1,
@@ -4299,12 +4297,12 @@
     "text": "if (r->clear_parameter & NV097_CLEAR_SURFACE_A)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5414",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5423",
     "role": "REF",
     "text": "NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5537",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5546",
     "role": "REF",
     "text": "NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);"
    }
@@ -4326,12 +4324,12 @@
     "text": "if (r->clear_parameter & NV097_CLEAR_SURFACE_B)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5414",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5423",
     "role": "REF",
     "text": "NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5537",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5546",
     "role": "REF",
     "text": "NV097_CLEAR_SURFACE_B | NV097_CLEAR_SURFACE_A);"
    }
@@ -4353,17 +4351,17 @@
     "text": "(r->clear_parameter & NV097_CLEAR_SURFACE_COLOR) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5333",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5342",
     "role": "REF",
     "text": "bool write_color = (parameter & NV097_CLEAR_SURFACE_COLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5412",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5421",
     "role": "REF",
     "text": "(parameter & NV097_CLEAR_SURFACE_COLOR) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5535",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5544",
     "role": "REF",
     "text": "(parameter & NV097_CLEAR_SURFACE_COLOR) =="
    }
@@ -4385,12 +4383,12 @@
     "text": "if (r->clear_parameter & NV097_CLEAR_SURFACE_G)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5413",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5422",
     "role": "REF",
     "text": "(NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5536",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5545",
     "role": "REF",
     "text": "(NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |"
    }
@@ -4412,12 +4410,12 @@
     "text": "if (r->clear_parameter & NV097_CLEAR_SURFACE_R)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5413",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5422",
     "role": "REF",
     "text": "(NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5536",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5545",
     "role": "REF",
     "text": "(NV097_CLEAR_SURFACE_R | NV097_CLEAR_SURFACE_G |"
    }
@@ -4439,17 +4437,17 @@
     "text": "if (r->clear_parameter & NV097_CLEAR_SURFACE_STENCIL) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5335",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5344",
     "role": "REF",
     "text": "(parameter & (NV097_CLEAR_SURFACE_Z | NV097_CLEAR_SURFACE_STENCIL));"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5470",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5479",
     "role": "REF",
     "text": "if ((parameter & NV097_CLEAR_SURFACE_STENCIL) &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5565",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5574",
     "role": "REF",
     "text": "if ((parameter & NV097_CLEAR_SURFACE_STENCIL) &&"
    }
@@ -4471,17 +4469,17 @@
     "text": "(r->clear_parameter & NV097_CLEAR_SURFACE_Z) ? VK_TRUE : VK_FALSE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5335",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5344",
     "role": "REF",
     "text": "(parameter & (NV097_CLEAR_SURFACE_Z | NV097_CLEAR_SURFACE_STENCIL));"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5467",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5476",
     "role": "REF",
     "text": "if (parameter & NV097_CLEAR_SURFACE_Z) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5562",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5571",
     "role": "REF",
     "text": "if (parameter & NV097_CLEAR_SURFACE_Z) {"
    }
@@ -4842,12 +4840,12 @@
     "text": "NV2A_VK_DPRINTF(\"NV097_SET_BEGIN_END: 0x%x\", d->pgraph.primitive_mode);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6237",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6246",
     "role": "REF",
     "text": "NV2A_VK_DPRINTF(\"EMPTY NV097_SET_BEGIN_END\");"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6238",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6247",
     "role": "REF",
     "text": "NV2A_UNCONFIRMED(\"EMPTY NV097_SET_BEGIN_END\");"
    }
@@ -10597,7 +10595,7 @@
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5604",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5613",
     "role": "DISPATCH",
     "text": "case NV097_SET_VERTEX_DATA_ARRAY_FORMAT_TYPE_F:"
    },
@@ -10966,7 +10964,7 @@
     "text": "PG_SET_MASK(NV_PGRAPH_ANTIALIASING, NV_PGRAPH_ANTIALIASING_ENABLE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1585",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1594",
     "role": "COMMENT",
     "text": "// bool anti_aliasing = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_ANTIALIASING),"
    }
@@ -10988,7 +10986,7 @@
     "text": "PG_SET_MASK(NV_PGRAPH_ANTIALIASING, NV_PGRAPH_ANTIALIASING_ENABLE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1586",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1595",
     "role": "COMMENT",
     "text": "// NV_PGRAPH_ANTIALIASING_ENABLE);"
    }
@@ -11105,77 +11103,77 @@
     "text": "NV_PGRAPH_BLEND,       NV_PGRAPH_CONTROL_0,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1494",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1503",
     "role": "REF",
     "text": "if (pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND) & NV_PGRAPH_BLEND_EN) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1498",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1507",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_SFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1500",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1509",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_DFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1513",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1522",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_EQN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3387",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3396",
     "role": "REF",
     "text": "uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3510",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3519",
     "role": "REF",
     "text": "uint32_t blend = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3645",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3654",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_BLEND) != q->dyn_blend ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3707",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3716",
     "role": "READ",
     "text": "q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3816",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3825",
     "role": "READ",
     "text": "q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3947",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3956",
     "role": "REF",
     "text": "uint32_t saved_reg_blend = pg->regs_[NV_PGRAPH_BLEND];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3954",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3963",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_BLEND] = q->dyn_blend;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4181",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4190",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_BLEND] = saved_reg_blend;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4221",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4230",
     "role": "REF",
     "text": "e->dyn_blend = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5029",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5038",
     "role": "READ",
     "text": "q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5085",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5094",
     "role": "READ",
     "text": "q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);"
    },
@@ -11212,57 +11210,57 @@
     "text": "NV_PGRAPH_BLENDCOLOR,  NV_PGRAPH_CONTROL_2,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1521",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1530",
     "role": "REF",
     "text": "uint32_t blend_color = pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3278",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3287",
     "role": "REF",
     "text": "uint32_t blend_color = pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3646",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3655",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR) != q->dyn_blendcolor) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3702",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3711",
     "role": "READ",
     "text": "q->dyn_blendcolor = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3811",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3820",
     "role": "READ",
     "text": "q->dyn_blendcolor = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3942",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3951",
     "role": "REF",
     "text": "uint32_t saved_reg_blendcolor = pg->regs_[NV_PGRAPH_BLENDCOLOR];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3949",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3958",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_BLENDCOLOR] = q->dyn_blendcolor;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4176",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4185",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_BLENDCOLOR] = saved_reg_blendcolor;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4216",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4225",
     "role": "REF",
     "text": "e->dyn_blendcolor = pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5024",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5033",
     "role": "READ",
     "text": "q->dyn_blendcolor = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5080",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5089",
     "role": "READ",
     "text": "q->dyn_blendcolor = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);"
    }
@@ -11284,22 +11282,22 @@
     "text": "PG_SET_MASK(NV_PGRAPH_BLEND, NV_PGRAPH_BLEND_DFACTOR, factor);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1500",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1509",
     "role": "REF",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_DFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3397",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3406",
     "role": "READ",
     "text": "uint32_t df = GET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3515",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3524",
     "role": "READ",
     "text": "uint32_t dst = GET_MASK(blend, NV_PGRAPH_BLEND_DFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4710",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4719",
     "role": "READ",
     "text": "uint32_t df = GET_MASK(e->dyn_blend, NV_PGRAPH_BLEND_DFACTOR);"
    },
@@ -11414,7 +11412,7 @@
     "text": "factor = NV_PGRAPH_BLEND_DFACTOR_ZERO; break;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3517",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3526",
     "role": "REF",
     "text": "dst != NV_PGRAPH_BLEND_DFACTOR_ZERO) {"
    }
@@ -11436,22 +11434,22 @@
     "text": "PG_SET_MASK(NV_PGRAPH_BLEND, NV_PGRAPH_BLEND_EN, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1494",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1503",
     "role": "REF",
     "text": "if (pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND) & NV_PGRAPH_BLEND_EN) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3393",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3402",
     "role": "REF",
     "text": "(blend_reg & NV_PGRAPH_BLEND_EN) ? VK_TRUE : VK_FALSE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3513",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3522",
     "role": "REF",
     "text": "if (blend & NV_PGRAPH_BLEND_EN) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4706",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4715",
     "role": "REF",
     "text": "(e->dyn_blend & NV_PGRAPH_BLEND_EN) ? VK_TRUE : VK_FALSE;"
    },
@@ -11478,17 +11476,17 @@
     "text": "PG_SET_MASK(NV_PGRAPH_BLEND, NV_PGRAPH_BLEND_EQN, equation);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1513",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1522",
     "role": "REF",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_EQN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3398",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3407",
     "role": "READ",
     "text": "uint32_t eq = GET_MASK(blend_reg, NV_PGRAPH_BLEND_EQN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4711",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4720",
     "role": "READ",
     "text": "uint32_t eq = GET_MASK(e->dyn_blend, NV_PGRAPH_BLEND_EQN);"
    },
@@ -11559,22 +11557,22 @@
     "text": "PG_SET_MASK(NV_PGRAPH_BLEND, NV_PGRAPH_BLEND_SFACTOR, factor);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1498",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1507",
     "role": "REF",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_SFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3396",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3405",
     "role": "READ",
     "text": "uint32_t sf = GET_MASK(blend_reg, NV_PGRAPH_BLEND_SFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3514",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3523",
     "role": "READ",
     "text": "uint32_t src = GET_MASK(blend, NV_PGRAPH_BLEND_SFACTOR);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4709",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4718",
     "role": "READ",
     "text": "uint32_t sf = GET_MASK(e->dyn_blend, NV_PGRAPH_BLEND_SFACTOR);"
    },
@@ -11619,7 +11617,7 @@
     "text": "factor = NV_PGRAPH_BLEND_SFACTOR_ONE; break;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3516",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3525",
     "role": "REF",
     "text": "if (src != NV_PGRAPH_BLEND_SFACTOR_ONE ||"
    }
@@ -11961,7 +11959,7 @@
     "text": "pgraph_reg_w(pg, NV_PGRAPH_CLEARRECTX, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5352",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5361",
     "role": "REF",
     "text": "uint32_t clearrectx = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTX);"
    }
@@ -11973,7 +11971,7 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CLEARRECTX), NV_PGRAPH_CLEARRECTX_XMAX);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5356",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5365",
     "role": "READ",
     "text": "unsigned int xmax = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMAX);"
    }
@@ -11985,7 +11983,7 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CLEARRECTX), NV_PGRAPH_CLEARRECTX_XMIN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5355",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5364",
     "role": "READ",
     "text": "unsigned int xmin = GET_MASK(clearrectx, NV_PGRAPH_CLEARRECTX_XMIN);"
    }
@@ -12012,7 +12010,7 @@
     "text": "pgraph_reg_w(pg, NV_PGRAPH_CLEARRECTY, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5353",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5362",
     "role": "REF",
     "text": "uint32_t clearrecty = pgraph_vk_reg_r(pg, NV_PGRAPH_CLEARRECTY);"
    }
@@ -12024,7 +12022,7 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CLEARRECTY), NV_PGRAPH_CLEARRECTY_YMAX);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5358",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5367",
     "role": "READ",
     "text": "unsigned int ymax = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMAX);"
    }
@@ -12036,7 +12034,7 @@
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CLEARRECTY), NV_PGRAPH_CLEARRECTY_YMIN);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5357",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5366",
     "role": "READ",
     "text": "unsigned int ymin = GET_MASK(clearrecty, NV_PGRAPH_CLEARRECTY_YMIN);"
    }
@@ -12831,97 +12829,97 @@
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1436",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1445",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0), NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1581",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1590",
     "role": "COMMENT",
     "text": "// if (pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3289",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3298",
     "role": "REF",
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3388",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3397",
     "role": "REF",
     "text": "uint32_t ctl0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3509",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3518",
     "role": "REF",
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3641",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3650",
     "role": "READ",
     "text": "if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) != q->dyn_control_0 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3703",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3712",
     "role": "READ",
     "text": "q->dyn_control_0 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3812",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3821",
     "role": "READ",
     "text": "q->dyn_control_0 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3943",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3952",
     "role": "REF",
     "text": "uint32_t saved_reg_control_0 = pg->regs_[NV_PGRAPH_CONTROL_0];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3950",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3959",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_0] = q->dyn_control_0;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4177",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4186",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_0] = saved_reg_control_0;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4217",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4226",
     "role": "REF",
     "text": "e->dyn_control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4437",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4446",
     "role": "REF",
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4551",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4560",
     "role": "REF",
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4909",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4918",
     "role": "REF",
     "text": "uint32_t control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5025",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5034",
     "role": "READ",
     "text": "q->dyn_control_0 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5081",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5090",
     "role": "READ",
     "text": "q->dyn_control_0 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6244",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6253",
     "role": "REF",
     "text": "assert(snapshot_reg_r(&snap, NV_PGRAPH_CONTROL_0) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6245",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6254",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0));"
    },
@@ -12948,7 +12946,7 @@
     "text": "NV_PGRAPH_CONTROL_0_ALPHAFUNC, parameter & 0xF);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3557",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3566",
     "role": "READ",
     "text": "uint32_t afunc = GET_MASK(control_0, NV_PGRAPH_CONTROL_0_ALPHAFUNC);"
    }
@@ -12980,7 +12978,7 @@
     "text": "key->regs[1] &= ~(NV_PGRAPH_CONTROL_0_ALPHAREF |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3558",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3567",
     "role": "READ",
     "text": "uint32_t aref  = GET_MASK(control_0, NV_PGRAPH_CONTROL_0_ALPHAREF);"
    }
@@ -13002,7 +13000,7 @@
     "text": "NV_PGRAPH_CONTROL_0_ALPHATESTENABLE, parameter);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3556",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3565",
     "role": "REF",
     "text": "if (control_0 & NV_PGRAPH_CONTROL_0_ALPHATESTENABLE) {"
    }
@@ -13044,42 +13042,42 @@
     "text": "NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1490",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1499",
     "role": "REF",
     "text": "if (control_0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3419",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3428",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3526",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3535",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE)) !="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3530",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3539",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE)) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4439",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4448",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4553",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4562",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4733",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4742",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4910",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4919",
     "role": "REF",
     "text": "bool mask_alpha = control_0 & NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE;"
    },
@@ -13126,42 +13124,42 @@
     "text": "NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1488",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1497",
     "role": "REF",
     "text": "if (control_0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3417",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3426",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3525",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3534",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3529",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3538",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4442",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4451",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4556",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4565",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4731",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4740",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4913",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4922",
     "role": "REF",
     "text": "bool mask_blue = control_0 & NV_PGRAPH_CONTROL_0_BLUE_WRITE_ENABLE;"
    },
@@ -13203,7 +13201,7 @@
     "text": "NV_PGRAPH_CONTROL_0_DITHERENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1582",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1591",
     "role": "COMMENT",
     "text": "//         NV_PGRAPH_CONTROL_0_DITHERENABLE))"
    }
@@ -13245,42 +13243,42 @@
     "text": "NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1486",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1495",
     "role": "REF",
     "text": "if (control_0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3415",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3424",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3524",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3533",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3528",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3537",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4441",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4450",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4555",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4564",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4729",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4738",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4912",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4921",
     "role": "REF",
     "text": "bool mask_green = control_0 & NV_PGRAPH_CONTROL_0_GREEN_WRITE_ENABLE;"
    },
@@ -13327,42 +13325,42 @@
     "text": "key->regs[1] &= ~(NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1484",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1493",
     "role": "REF",
     "text": "if (control_0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3413",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3422",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3523",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3532",
     "role": "REF",
     "text": "if ((control_0 & (NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3527",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3536",
     "role": "REF",
     "text": "(NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4440",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4449",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4554",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4563",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE) ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4727",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4736",
     "role": "REF",
     "text": "if (ctl0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4911",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4920",
     "role": "REF",
     "text": "bool mask_red = control_0 & NV_PGRAPH_CONTROL_0_RED_WRITE_ENABLE;"
    },
@@ -13394,22 +13392,22 @@
     "text": "NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3309",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3318",
     "role": "REF",
     "text": "if (!(control_0 & NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE))"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3337",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3346",
     "role": "REF",
     "text": "if (!(control_0 & NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE))"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4644",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4653",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE)) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4658",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4667",
     "role": "REF",
     "text": "if (!(e->dyn_control_0 & NV_PGRAPH_CONTROL_0_STENCIL_WRITE_ENABLE))"
    }
@@ -13488,32 +13486,32 @@
     "text": "depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3294",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3303",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_ZENABLE) ? VK_TRUE"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3535",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3544",
     "role": "REF",
     "text": "if (!(control_0 & NV_PGRAPH_CONTROL_0_ZENABLE)) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4443",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4452",
     "role": "REF",
     "text": "e->depth_test = !!(control_0 & NV_PGRAPH_CONTROL_0_ZENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4557",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4566",
     "role": "REF",
     "text": "e->depth_test = !!(control_0 & NV_PGRAPH_CONTROL_0_ZENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4628",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4637",
     "role": "REF",
     "text": "(e->dyn_control_0 & NV_PGRAPH_CONTROL_0_ZENABLE) ? VK_TRUE"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4915",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4924",
     "role": "REF",
     "text": "bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;"
    },
@@ -13550,22 +13548,22 @@
     "text": "NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1436",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1445",
     "role": "REF",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0), NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3301",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3310",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3544",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3553",
     "role": "READ",
     "text": "uint32_t zfunc = GET_MASK(control_0, NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4634",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4643",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_0_ZFUNC);"
    },
@@ -13577,19 +13575,19 @@
   ],
   "NV_PGRAPH_CONTROL_0_ZFUNC_LEQUAL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3546",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3555",
     "role": "REF",
     "text": "zfunc != NV_PGRAPH_CONTROL_0_ZFUNC_LEQUAL) {"
    }
   ],
   "NV_PGRAPH_CONTROL_0_ZFUNC_LESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3545",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3554",
     "role": "REF",
     "text": "if (zfunc != NV_PGRAPH_CONTROL_0_ZFUNC_LESS &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3577",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3586",
     "role": "REF",
     "text": "if (zfunc == NV_PGRAPH_CONTROL_0_ZFUNC_LESS) {"
    }
@@ -13641,17 +13639,17 @@
     "text": "depth_write = !!(control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3298",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3307",
     "role": "REF",
     "text": "(control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE) ? VK_TRUE"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3539",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3548",
     "role": "REF",
     "text": "if (!(control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE)) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4631",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4640",
     "role": "REF",
     "text": "(e->dyn_control_0 & NV_PGRAPH_CONTROL_0_ZWRITEENABLE)"
    },
@@ -13805,102 +13803,102 @@
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1443",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1452",
     "role": "READ",
     "text": "uint32_t stencil_func = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1445",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1454",
     "role": "READ",
     "text": "uint32_t stencil_ref = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1447",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1456",
     "role": "READ",
     "text": "uint32_t mask_read = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1449",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1458",
     "role": "READ",
     "text": "uint32_t mask_write = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3307",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3316",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3318",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3327",
     "role": "REF",
     "text": "uint32_t control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3366",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3375",
     "role": "REF",
     "text": "uint32_t control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3511",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3520",
     "role": "REF",
     "text": "uint32_t control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3642",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3651",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) != q->dyn_control_1 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3704",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3713",
     "role": "READ",
     "text": "q->dyn_control_1 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3813",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3822",
     "role": "READ",
     "text": "q->dyn_control_1 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3944",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3953",
     "role": "REF",
     "text": "uint32_t saved_reg_control_1 = pg->regs_[NV_PGRAPH_CONTROL_1];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3951",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3960",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_1] = q->dyn_control_1;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4178",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4187",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_1] = saved_reg_control_1;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4218",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4227",
     "role": "REF",
     "text": "e->dyn_control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4444",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4453",
     "role": "REF",
     "text": "e->stencil_test = !!(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4558",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4567",
     "role": "REF",
     "text": "e->stencil_test = !!(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4917",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4926",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5026",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5035",
     "role": "READ",
     "text": "q->dyn_control_1 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5082",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5091",
     "role": "READ",
     "text": "q->dyn_control_1 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1);"
    },
@@ -13937,17 +13935,17 @@
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_FUNC |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1444",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1453",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_FUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3329",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3338",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_FUNC);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4650",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4659",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_FUNC);"
    },
@@ -13994,27 +13992,27 @@
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1448",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1457",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3334",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3343",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3372",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3381",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4655",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4664",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4688",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4697",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_READ);"
    },
@@ -14061,32 +14059,32 @@
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1450",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1459",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3308",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3317",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3336",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3345",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3374",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3383",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4657",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4666",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4690",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4699",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_MASK_WRITE);"
    },
@@ -14133,27 +14131,27 @@
     "text": "key->regs[5] &= ~(NV_PGRAPH_CONTROL_1_STENCIL_REF |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1446",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1455",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_REF);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3332",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3341",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_REF);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3370",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3379",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_REF);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4653",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4662",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_REF);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4686",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4695",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_REF);"
    },
@@ -14205,32 +14203,32 @@
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3324",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3333",
     "role": "REF",
     "text": "control_1 & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3551",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3560",
     "role": "REF",
     "text": "if (control_1 & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4445",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4454",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4559",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4568",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4646",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4655",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4917",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4926",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;"
    },
@@ -14312,67 +14310,67 @@
     "text": "NV_PGRAPH_BLENDCOLOR,  NV_PGRAPH_CONTROL_2,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1451",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1460",
     "role": "READ",
     "text": "uint32_t op_fail = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1453",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1462",
     "role": "READ",
     "text": "uint32_t op_zfail = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1455",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1464",
     "role": "READ",
     "text": "uint32_t op_zpass = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3319",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3328",
     "role": "REF",
     "text": "uint32_t control_2 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3643",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3652",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2) != q->dyn_control_2 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3705",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3714",
     "role": "READ",
     "text": "q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3814",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3823",
     "role": "READ",
     "text": "q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3945",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3954",
     "role": "REF",
     "text": "uint32_t saved_reg_control_2 = pg->regs_[NV_PGRAPH_CONTROL_2];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3952",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3961",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_2] = q->dyn_control_2;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4179",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4188",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_2] = saved_reg_control_2;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4219",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4228",
     "role": "REF",
     "text": "e->dyn_control_2 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5027",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5036",
     "role": "READ",
     "text": "q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5083",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5092",
     "role": "READ",
     "text": "q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);"
    },
@@ -14409,17 +14407,17 @@
     "text": "key->regs[2] &= ~(NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1452",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1461",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3347",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3356",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4667",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4676",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_FAIL);"
    },
@@ -14512,17 +14510,17 @@
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1454",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1463",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3349",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3358",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4669",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4678",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZFAIL);"
    },
@@ -14559,17 +14557,17 @@
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1456",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1465",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3351",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3360",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4671",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4680",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_2_STENCIL_OP_ZPASS);"
    },
@@ -14701,87 +14699,87 @@
     "text": "NV_PGRAPH_CONTROL_3,   NV_PGRAPH_SETUPRASTER,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3706",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3715",
     "role": "READ",
     "text": "q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3734",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3743",
     "role": "READ",
     "text": ".last_provoking = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3737",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3746",
     "role": "READ",
     "text": ".flat_shading = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3815",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3824",
     "role": "READ",
     "text": "q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3946",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3955",
     "role": "REF",
     "text": "uint32_t saved_reg_control_3 = pg->regs_[NV_PGRAPH_CONTROL_3];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3953",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3962",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_3] = q->dyn_control_3;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4036",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4045",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4040",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4049",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4180",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4189",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_CONTROL_3] = saved_reg_control_3;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4341",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4350",
     "role": "READ",
     "text": ".last_provoking = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4344",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4353",
     "role": "READ",
     "text": ".flat_shading = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4466",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4475",
     "role": "READ",
     "text": ".last_provoking = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4469",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4478",
     "role": "READ",
     "text": ".flat_shading = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5028",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5037",
     "role": "READ",
     "text": "q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5084",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5093",
     "role": "READ",
     "text": "q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5887",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5896",
     "role": "READ",
     "text": ".last_provoking = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5890",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5899",
     "role": "READ",
     "text": ".flat_shading = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_3),"
    }
@@ -14886,27 +14884,27 @@
     "text": "PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3735",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3744",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4037",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4046",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4342",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4351",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4467",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4476",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5888",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5897",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX) =="
    }
@@ -14918,27 +14916,27 @@
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3736",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3745",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4038",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4047",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4343",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4352",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4468",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4477",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5889",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5898",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST,"
    }
@@ -14985,27 +14983,27 @@
     "text": "PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_SHADEMODE,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3738",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3747",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4041",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4050",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4345",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4354",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4470",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4479",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5891",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5900",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE) =="
    }
@@ -15022,27 +15020,27 @@
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3739",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3748",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4042",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4051",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4346",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4355",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4471",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4480",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5892",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5901",
     "role": "REF",
     "text": "NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,"
    }
@@ -16745,107 +16743,107 @@
     "text": "(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1408",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1417",
     "role": "REF",
     "text": "if (pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) & NV_PGRAPH_SETUPRASTER_CULLENABLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1409",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1418",
     "role": "READ",
     "text": "uint32_t cull_face = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1587",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1596",
     "role": "COMMENT",
     "text": "// if (!anti_aliasing && pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1592",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1601",
     "role": "COMMENT",
     "text": "// if (!anti_aliasing && pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3258",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3267",
     "role": "REF",
     "text": "uint32_t setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3644",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3653",
     "role": "READ",
     "text": "pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) != q->dyn_setupraster ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3701",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3710",
     "role": "READ",
     "text": "q->dyn_setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3732",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3741",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3810",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3819",
     "role": "READ",
     "text": "q->dyn_setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3941",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3950",
     "role": "REF",
     "text": "uint32_t saved_reg_setupraster = pg->regs_[NV_PGRAPH_SETUPRASTER];"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3948",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3957",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_SETUPRASTER] = q->dyn_setupraster;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4033",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4042",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4175",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4184",
     "role": "TABLE-ENTRY",
     "text": "pg->regs_[NV_PGRAPH_SETUPRASTER] = saved_reg_setupraster;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4215",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4224",
     "role": "REF",
     "text": "e->dyn_setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4339",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4348",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4464",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4473",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5023",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5032",
     "role": "READ",
     "text": "q->dyn_setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5079",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5088",
     "role": "READ",
     "text": "q->dyn_setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5885",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5894",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6246",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6255",
     "role": "REF",
     "text": "assert(snapshot_reg_r(&snap, NV_PGRAPH_SETUPRASTER) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6247",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:6256",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER));"
    },
@@ -16904,17 +16902,17 @@
     "text": "NV_PGRAPH_SETUPRASTER_CULLCTRL |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1410",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1419",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_CULLCTRL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3264",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3273",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_CULLCTRL);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4606",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4615",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_CULLCTRL);"
    },
@@ -16972,17 +16970,17 @@
     "text": "key->regs[4] &= ~(NV_PGRAPH_SETUPRASTER_CULLENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1408",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1417",
     "role": "REF",
     "text": "if (pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) & NV_PGRAPH_SETUPRASTER_CULLENABLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3262",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3271",
     "role": "REF",
     "text": "if (setupraster & NV_PGRAPH_SETUPRASTER_CULLENABLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4604",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4613",
     "role": "REF",
     "text": "if (e->dyn_setupraster & NV_PGRAPH_SETUPRASTER_CULLENABLE) {"
    },
@@ -17024,12 +17022,12 @@
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACE) ?"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3270",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3279",
     "role": "REF",
     "text": "(setupraster & NV_PGRAPH_SETUPRASTER_FRONTFACE)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4612",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4621",
     "role": "REF",
     "text": "(e->dyn_setupraster & NV_PGRAPH_SETUPRASTER_FRONTFACE)"
    },
@@ -17076,27 +17074,27 @@
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE) =="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3733",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:3742",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4034",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4043",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4340",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4349",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4465",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:4474",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5886",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:5895",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_FRONTFACEMODE),"
    }
@@ -17169,7 +17167,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE |"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1588",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1597",
     "role": "COMMENT",
     "text": "//                           NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {"
    }
@@ -17299,7 +17297,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1593",
+    "loc": "hw/xbox/nv2a/pgraph/vk/draw.c:1602",
     "role": "COMMENT",
     "text": "//                           NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {"
    }
@@ -19561,51 +19559,15 @@
     "src/tests/bump_env_lum_tests.h"
    ],
    "symbols": [
-    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8"
    ]
   },
   "Bump map": {
@@ -19616,51 +19578,15 @@
    ],
    "symbols": [
     "NV097_SET_DOT_RGBMAPPING",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16"
    ]
   },
   "Clear": {
@@ -21116,51 +21042,12 @@
     "src/tests/texture_format_tests.h"
    ],
    "symbols": [
-    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8"
    ]
   },
   "Texture palette": {
@@ -21216,51 +21103,13 @@
     "NV097_SET_SURFACE_PITCH",
     "NV097_SET_SURFACE_PITCH_COLOR",
     "NV097_SET_SURFACE_PITCH_ZETA",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8",
     "NV097_SET_TEXTURE_OFFSET",
     "NV097_WAIT_FOR_IDLE"
    ]
@@ -21406,51 +21255,12 @@
     "src/tests/volume_texture_tests.h"
    ],
    "symbols": [
-    "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LIN_F16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_X8_Y24_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FIXED",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_DEPTH_Y16_FLOAT",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8"
    ]
   },
   "W buffering": {
