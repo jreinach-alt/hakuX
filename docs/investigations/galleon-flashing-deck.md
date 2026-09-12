@@ -103,11 +103,54 @@ contrast. And now a stride mismatch, from the pattern rotating. Each revision
 came from evidence the previous one could not explain, and the first two were
 stated too confidently for what they rested on.
 
+## Stride is ruled out. It is the coordinate side.
+
+Measured 2026-09-11 on the live scene, build `865d829fe2`, logging each
+texture stage's format, dimensions, level count, pitch and swizzled flag
+whenever any of them changes. 22,493 transitions over about 45 seconds of
+deck gameplay.
+
+| | |
+|---|---|
+| distinct texture addresses | 115 |
+| **addresses whose geometry ever changed** | **0** |
+| pitch values seen | 0 (swizzled), 512 and 2560 (the 93 linear ones) |
+| swizzled vs linear | 22,400 vs 93, never flipping for one address |
+| stages in use | 0, 1 and 2, so this is multi-textured |
+
+**Not one of the 115 textures ever changed its format, size, level count,
+pitch or swizzled flag.** So the memory is not being reinterpreted at a
+varying stride, and the shear cannot be coming from the texture side. The
+stride reading is dead, on the same criterion this document set for it before
+the measurement: if all five are stable across a flash, the cause is the
+coordinate side.
+
+That fits the reported behaviour at least as well. A wrong texture matrix
+shears and rotates the sampled pattern, and a matrix left over from a
+different material would give a rotating set of wrong appearances as materials
+cycle -- "a few different patterns and lighting" -- with content walking
+sideways. Three active stages means a detail or light-map stage with its own
+generated coordinates is a candidate for carrying stale state.
+
+So the next measurement is the texture matrix and coordinate generation mode
+per stage, logged on change in the same way. Worth noting that the texture
+matrix data is one of the fields an audit of the threaded-draw snapshot flagged
+as uncaptured, which is at least a hint that this state is handled less
+carefully than the rest.
+
+### A note on the instrumentation itself
+
+Logging every transition produced about 500 lines a second, which flooded the
+logcat ring and **evicted the frame-pacing lines from the same capture** -- 1
+survived where a dozen were expected. The geometry answer was unaffected
+because it only needed the transitions, but a measurement that destroys the
+other measurements in the same window is a bad trade. The next version should
+emit a per-frame summary rather than a line per bind.
+
 ## Next measurement, not yet done
 
-Log, for each texture bound while this scene renders, its width, height,
-pitch, colour format and swizzled flag, once per frame. If the pitch or the
-swizzled flag changes between frames for the same texture memory, that is the
-defect and the disagreement is between whoever wrote those fields and whoever
-reads them. If all five are stable across a flash, the shear is coming from
-the coordinate side instead and the texture matrix is where to look.
+Log the texture matrix and the coordinate generation mode for each active
+stage, on change, and as a per-frame summary rather than a line per bind. If a
+stage's matrix or texgen mode differs between a clean frame and a flashing one
+for the same material, that is the defect. Three stages are active, so include
+which stage.
