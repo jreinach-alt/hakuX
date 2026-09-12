@@ -123,3 +123,53 @@ So the direction of the hypothesis (the source is not colour-converted) is
 untouched by this result, but the channel assignment `(Cr, Y, Cb)` is
 eliminated. Five orderings remain, at a build and a run each; the green
 dominance is the thing to predict before spending them, not after.
+
+## Sharper: hardware is not outputting TEX1 at all for a YUV bump source
+
+The displacement framing above is wrong, and the goldens say so plainly. The
+final combiner for this test is `SetFinalCombiner0Just(SRC_TEX1)`, and TEX1 is
+an explicit `A8R8G8B8` checkerboard, identical in every one of the forty
+captures — only TEX0's format varies.
+
+So every capture in the suite should show TEX1's two cells. Reading the
+goldens' most common colours:
+
+| golden | two quad colours |
+|---|---|
+| `BumpMap_A8R8G8B8_L` | `(254,0,0)`, `(33,32,32)` |
+| `BumpMap_A8Y8` | `(254,0,0)`, `(33,32,32)` |
+| `BumpMap_G8B8` | `(254,0,0)`, `(33,32,32)` |
+| **`BumpMap_YUY2_L`** | **`(16,84,16)`, `(72,255,18)`** |
+
+`(254,0,0)` and `(33,32,32)` are the TEX1 checkerboard — RGBA8888 `0xFF0000FE`
+and `0x7F202122` give cells `(255,0,0)` and `(127,32,33)` — and they are
+exactly what we produce, for every format including the YUV pair. Hardware
+produces them too, for every format **except** YUV, where it produces greens
+that appear nowhere in TEX1.
+
+A wrong displacement can only ever select a different *cell* of TEX1. It cannot
+produce a colour TEX1 does not contain. So no bump offset, from any channel
+assignment, explains this, which is why feeding the stage `(Cr, Y, Cb)` moved
+55,000 px around between the same two reds and improved nothing.
+
+Greens are the colour family of the bump *source* — RGBA8888 `0x007f4500` and
+`0x00804500` are `(0,127,69)` and `(0,128,69)` — which is suggestive, though
+neither golden colour matches one directly.
+
+**Contamination is ruled out.** Crossmatching this golden against all 1,444
+others, the nearest is its own UYVY sibling at 214 px and everything else is
+111,496 or more. It is genuine hardware output.
+
+## Revised recommendation
+
+This is two captures in which hardware does something categorically different
+from the other thirty-eight, not a rule we are getting slightly wrong. It is
+223k px on this lane, but it is peculiar behaviour on a format combination no
+title is likely to use, and the device lane reports its own bump RGB residual
+moving between builds, so there is nothing stable to fit against yet.
+
+The other thirty-six captures are the better half of this target: we already
+match TEX1's colours there, they are worth ~133k px on this lane, and the
+device lane measures 435,201 px on Adreno with 0% of it within one step. That
+is where the `Bump_map` work should go, and the YUV pair should be set aside
+rather than fitted.
