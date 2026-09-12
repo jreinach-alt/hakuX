@@ -58,3 +58,42 @@ hazard in this area: `foggen` lives in `FixedFunctionVshState` and is unioned
 with `ProgrammableVshState`, so the programmable path cannot see it (standing
 FIXME at `glsl/vsh.c:374`). Whether specular state has the same problem is the
 first thing to check.
+
+## Measured: our fixed-function output is closer to the VS golden than our VS is
+
+Two comparisons, both pointing the same way. Rather than guess what the
+programmable path does wrong, ask whether it lands anywhere near hardware's
+answer for the same test:
+
+| test | our VS vs gold VS | **our FF vs gold VS** |
+|---|---:|---:|
+| `ControlFlagsNoLight` | 94,819 px | **23,591 px** |
+| `ControlFlags` | 94,819 px | **92,793 px** |
+
+On `ControlFlagsNoLight` our **fixed-function** render is four times closer to
+the **programmable** golden than our own programmable render is. The colours in
+the disputed region say the same thing plainly:
+
+| | most common colours |
+|---|---|
+| our VS | `(0,0,191)`, `(0,0,192)`, `(0,0,190)` |
+| our FF | `(60,14,24)`, `(52,6,16)`, `(55,6,16)` |
+| **gold VS** | `(66,26,48)`, `(58,18,40)`, `(59,19,33)` |
+
+Our fixed-function output and hardware's programmable output are the same family
+of colours. Our programmable output is pure blue with red and green at zero.
+
+Two things follow, and both are measured rather than inferred:
+
+- **We do run the shader.** Our VS and FF outputs differ by 106,574 px, so the
+  programmable path is not being silently ignored.
+- **Hardware's two paths agree far more than ours do.** On
+  `ControlFlagsNoLight`, gold's VS and FF differ by 23,478 px where ours differ
+  by 106,517. Hardware's programmable result stays close to its fixed-function
+  result; ours diverges into a different colour entirely.
+
+So the defect is in what our programmable path produces, and its signature is
+the loss of red and green with blue left high. That is as far as the
+measurements reach. **No mechanism is offered here** -- four were offered and
+killed across this corpus tonight, and the next claim about this suite should
+arrive with a measurement that survives being looked at twice.
