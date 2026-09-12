@@ -30,6 +30,18 @@ while [ $# -gt 0 ]; do
 done
 [ -n "$WHO" ] && [ -n "$SUITES" ] || { echo "need --who and --suites" >&2; exit 2; }
 
+# Resolve the ref to a concrete sha AT QUEUE TIME. "HEAD" in a queued request
+# is a moving target: the queue is served later, and any commit in between
+# silently changes which tree gets built -- which is how a baseline arm came to
+# be queued against a HEAD that had gained two merges by the time it ran. A
+# request must name the tree the requester meant.
+if RESOLVED=$(git -C "$(dirname "$0")/../.." rev-parse --short "$REF" 2>/dev/null); then
+    [ "$RESOLVED" = "$REF" ] || echo "resolved --ref $REF to $RESOLVED" >&2
+    REF="$RESOLVED"
+else
+    echo "cannot resolve --ref $REF to a commit" >&2; exit 2
+fi
+
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
 python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" <<'PY'
