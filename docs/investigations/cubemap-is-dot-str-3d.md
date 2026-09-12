@@ -294,3 +294,79 @@ four board entries in a day: `Fog_gen` collapsed to one cell, `Specular` and
 `Line_width` refused to collapse at all. Counting differing channels without
 their magnitude ranks a precision floor next to a missing feature; adding the
 one-step share and the worst error separates them in one pass.
+
+## The probe, and what a sorted comparison cannot see
+
+Added 2026-09-12, from the device run at `ec13c70e60` (`dot-str-3d-probe.md`).
+Two results land, one does not.
+
+**Confirmed: the magnitude.** Every cube pixel comes back in the `[0.001,
+0.01)` bucket, so the 0.00299 bound derived from the inverse composite is what
+the shader actually computes. The saturation mechanism was correctly killed
+before a run was spent on it.
+
+**Confirmed, and stronger than predicted: the unsigned captures reach only two
+sign pairs.** `sign(dot_{i-2})` is uniformly non-negative under the unsigned
+dotmaps, so `#FF0000 = 0` holds at the mechanism level and not merely in the
+output. That one is spatial and it is real.
+
+**Not confirmed: "only the sign-to-corner assignment is left."** That came
+from comparing the four sign-pair populations against the golden's four corner
+populations **sorted**, which discards where they are. The golden's four are
+15,262 / 14,832 / 13,722 / 13,093 -- all within 17% of each other -- so any
+four-way partition of the same cube into roughly-equal parts matches the list
+to a couple of hundred pixels. Two exact hits is what near-equal areas do.
+
+Per pixel, on the same captures:
+
+| capture | ours on the 4 reachable corners | ours on the other four | agreement | chance | lift |
+|---|---:|---:|---:|---:|---:|
+| `-1to1D3D` | 50.1% | **49.9%** | 24.2% | 24.9% | **-0.7** |
+| `-1to1` | 50.3% | **49.7%** | 25.9% | 25.4% | **+0.5** |
+| `-1to1GL` | 50.1% | **49.9%** | 26.5% | 25.3% | **+1.2** |
+
+Chance grants us the right areas, since it is each corner's own marginal.
+**We are at chance**, the ours-to-gold confusion table has no dominant
+permutation, and **half our cube lands on the four texels the corner rule
+forbids** -- the even-parity set, which a wrong assignment among four corners
+cannot reach.
+
+The shape of the difference says the same thing. Fraction of cube pixels
+agreeing with all four neighbours:
+
+| capture | gold | ours |
+|---|---:|---:|
+| `-1to1D3D` | **95.1%** | **7.2%** |
+| `-1to1` | 90.8% | 9.9% |
+| `0to1` | 97.1% | 41.3% |
+| `HiLo_1` | 98.0% | 78.8% |
+
+7% is texel-frequency dither. With `REPEAT` addressing (`vk/texture.c:1308`)
+and a coordinate spanning 0.19 texels across the whole cube, the fetch cannot
+produce that: it would give one flat region per sign pair.
+
+### The fork this leaves, and the one number that decides it
+
+`pT1..3` are constant over the draw, so every bit of spatial variation in
+`dot_{i-2}` and `dot_{i-1}` comes from `t0`, the stage-0 normal map sample.
+So the probe's own sign channels decide where the defect is:
+
+- **sign map flat** -- stage 0 is sampled correctly and the defect is
+  downstream in the stage-3 fetch.
+- **sign map dithered** -- the dots flip sign per pixel, which with constant
+  `pT` can only mean `t0` is wrong, and **#51 is filed against the wrong
+  stage**. A magnitude that stays in one bucket is consistent with this: a bad
+  `t0` keeps `|dot|` in range while the sign flips.
+
+Everything above points at dithered, but that is inference from the output
+where the probe capture has it directly.
+
+### The assignment, pre-registered
+
+With `REPEAT` and nearest on 64x64: `dot > 0` gives `frac ~ 0.003` and
+addresses texel 0; `dot < 0` gives `frac ~ 0.997` and addresses texel 63. So
+ours should be `(+,+) -> (0,0)` blue, `(-,+) -> (63,0)` red, `(+,-) -> (0,63)`
+green, `(-,-) -> (63,63)` white -- which already reproduces the golden's sets,
+`{blue, green}` for the unsigned captures included. **If that is also the
+golden's assignment then the assignment was never the defect**, and the dither
+is the whole of what is left.
