@@ -77,3 +77,71 @@ has to be priced separately.
   has the same bounding box spanning the full width. Validating #43's rule
   against them needs the source and destination modelled per pixel, which is a
   second piece of work.
+
+## What the failing strip actually is
+
+"The fifth quad" is a position, and naming it from the test source makes it
+mean something. `TestDetailed` performs three render-to-texture blits at
+distinct screen positions:
+
+| stack | blitted at | screen columns |
+|---|---|---|
+| `DrawAlphaStack` | centred | 192-447 |
+| `DrawColorStack` | x = 16 | 16-79 |
+| **`DrawColorAndAlphaStack`** | x = 640 - (16 + 64) | **560-623** |
+
+The failing 256x64 strip is the **third blit** -- the "fully blended swatches",
+the only stack where colour *and* alpha are both blended.
+
+That matters because of how `DrawQuad` works. **Every swatch is drawn twice**,
+at identical coordinates and identical depth:
+
+```c
+  SetColorMask(RED | GREEN | BLUE);
+  if (blend_rgb) SetBlend(true, func, sfactor, dfactor); else SetBlend(false);
+  ... draw the quad ...
+  SetColorMask(ALPHA);
+  if (blend_alpha) SetBlend(true, func, sfactor, dfactor); else SetBlend(false);
+  ... draw the same quad again ...
+```
+
+So the three stacks differ in what changes *between* those two draws:
+
+| stack | draw 1 | draw 2 | what differs |
+|---|---|---|---|
+| alpha | no blend | blend | mask **and** blend enable |
+| colour | blend | no blend | mask **and** blend enable |
+| **colour+alpha** | blend | blend | **the write mask alone** |
+
+The stack that fails is the one where **only the colour write mask changes**
+between two otherwise identical draws. That is a sharper statement of the
+defect than "the fifth quad", and it is read off the test source rather than
+inferred from pixels.
+
+## Two more hypotheses tested and refuted
+
+**Draw-queue merging.** The obvious candidate: two draws differing only in the
+write mask get batched into one. It is already guarded --
+`try_enqueue_draw_arrays`'s eligibility check compares `NV_PGRAPH_CONTROL_0`,
+which carries the write enables, so a mask change breaks the batch. Checked in
+the code before spending a run on it.
+
+**Draw reordering with a destination-alpha hazard.** There is a reorder
+optimisation (`reorder_reject_no_color_write` among its counters). Reordering
+the RGB and alpha draws would be harmless for most factors, since they touch
+different channels -- but not for factors reading the destination alpha, which
+the second draw writes. If that were the mechanism, failures would concentrate
+on `dstA` and `1-dstA`. They do not:
+
+| | fifth-quad strip differs |
+|---|---|
+| every source factor | **75/75 (100%)** except `0` at 69/70 |
+| every destination factor | **75/75 (100%)** except `1` at 74/75 |
+
+**1,119 of 1,120 captures.** The failure is completely factor-independent, which
+rules out an ordering hazard mediated by a blend factor and agrees with the
+blend unit being exonerated. Whatever breaks this blit breaks it for every
+combination.
+
+That leaves the write-mask change itself, or the render-to-texture around it,
+and it is a much narrower target than the suite-sized number it started as.
