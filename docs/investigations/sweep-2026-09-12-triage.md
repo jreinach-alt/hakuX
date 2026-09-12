@@ -61,3 +61,24 @@ is what `classify_residuals.py` separates, and the `boundary-shift` class only
 exists from `d0114a49`. Rank on structural pixels from the scoreboard, and
 check `run-2026-09-12-golden-discrimination.tsv` before fitting anything: a
 saturated golden bounds the hardware value rather than determining it.
+
+## A crash was hiding a defect: High vertex count
+
+`HighVtxCount-inlinebuffers` SIGSEGV'd in `pgraph_finish_inline_buffer_vertex`
+and took its run down, which is why this suite had no measurement at all. The
+cause was a bound check naming `NV2A_MAX_BATCH_LENGTH` (524,287) against a
+32,768-vertex Android allocation -- a 16x overrun past a `g_malloc`, with the
+`assert` inert because this is a release build. Fixed in `878507db2f` by
+growing the buffers on demand from a single shared capacity.
+
+Verified on device, prediction met exactly: **4 of 4 captures, progress-log
+proof true, zero crashes in the logcat**, against 2 captures and a crash at
+test 3 of 4 before.
+
+And now that it runs, it fails: **0 of 4 exact, 581,620 differing px.** That is
+a real accuracy defect which no measurement could previously see, and like
+`Alpha_func`, `Context_switch`, `Color_mask_blend`, `Degenerate_begin_end` and
+`Fog_inf_coord` it belongs to **no tracker entry**. Six unowned suites now.
+
+Worth stating plainly because it justifies the sweep: this defect was invisible
+not because nobody had looked, but because looking crashed.
