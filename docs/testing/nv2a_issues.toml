@@ -79,6 +79,40 @@ title = "Render-to-texture diverges from silicon"
 disposition = "precision-floor"
 suites = ["Texture render target"]
 
+# The rounding half is ALREADY FIXED, in cd81648f5e ("decode the DXT colour
+# blocks the way the hardware does"), and that fix is now independently
+# confirmed: an agent re-derived it from the goldens without knowing it existed,
+# scored 450 candidate colour rules and 16 alpha rules, and landed on exactly
+# what the tree does -- (v<<3)|(v>>2) and (v<<2)|(v>>4) for the endpoints,
+# (2a+b+1)/3 for the interpolants, (k*a0+(7-k)*a1+3)/7 for DXT5 alpha. On the
+# four comparable captures that takes 4,828/12,288 colour channels to
+# 12,288/12,288 and 3,977/4,096 alpha to 4,096/4,096. Harness kept at
+# docs/testing/dxt_fit_rounding.py; one rival, (a*171+b*85+128)>>8, is NOT
+# separable -- it disagrees on 8.5% of endpoint pairs and no block in any
+# comparable capture reaches one of them.
+#
+# WHAT REMAINS IS NOT A ROUNDING BUG, and this issue's own diagnosis is wrong.
+# plasma_dxt1.dds and plasma_dxt3.dds have BYTE-IDENTICAL colour blocks.
+# Decoding those bytes with the fitted rule matches the DXT3 capture to the
+# channel, while the DXT1 capture of the same bytes holds SIXTEEN DISTINCT
+# COLOURS IN EVERY 4x4 BLOCK -- and a DXT block encodes four. So no decode rule
+# of any kind can produce the DXT1 captures.
+#
+# Ruled out individually, each measured: mis-indexing (every golden texel is
+# nearest its own index's palette entry, 1024/1024); 2x2 and 4x4 ordered dither
+# (cell means below 1.0, no separation); an A1R5G5B5 16-bit output path (only
+# 121 of 1024 R values sit on the 5-bit lattice); texture filtering (the
+# best-fit 5x5 kernel is the identity, centre 1.0072, residual 7.67 against
+# 8.00 for no filter); and all 450 rounding rules (best 542/3072 against
+# 3072/3072 on DXT3's identical bytes).
+#
+# Two scope notes. The software decoder is only reached when
+# textureCompressionBC is unavailable, and unconditionally for 3D textures --
+# so on the device today these rules are live only for Volume_texture/DXT1,
+# which compresses its texture on-console at runtime and could not be scored
+# offline. And the software rule now BEATS native BC for DXT3/DXT5 (0 px,
+# max 0, against native BC's 1,536 px / max 1 on DXT3_plasma), which inverts
+# this issue's "native BC is the better path" conclusion for those formats.
 [issue.6]
 title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
 disposition = "unknown-semantics"
