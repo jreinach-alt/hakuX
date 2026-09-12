@@ -4,50 +4,79 @@ Two board entries put through the same split -- per capture, with the one-step
 share and the worst channel error rather than channel counts alone. They come
 out opposite ways, which is the point of doing it.
 
-> **Retraction, 2026-09-12.** The first version of the `Texture_cubemap`
-> section below was measured on a build that predates `ad1caa07`, and every
-> number and mechanism in it was wrong for the same reason: the suite was
-> rendering a texture from a *different test*. What follows replaces it. The
-> `Line_width` section is unaffected and stands as written.
+> **Correction, 2026-09-12.** The `Texture_cubemap` section below has been
+> rewritten. Its headline table was sound -- its six per-capture channel counts
+> reproduce exactly on today's build -- but the mechanism it proposed, and the
+> two inferences it drew from a pair of probes, were not. The `Line_width`
+> section is unaffected and stands as written.
+>
+> **A correction to this correction, in the same sitting.** The first version
+> of this rewrite claimed the old numbers predated `ad1caa07` and were measured
+> through a stale texture. That was wrong and I should have checked before
+> pushing it: the old table's per-capture counts (88,392 / 86,055 / 84,550 /
+> 84,531 / 80,292 / 70,032) match the post-`ad1caa07` captures to the channel.
+> The old measurements were fine. What follows replaces the mechanism only.
 
-## The suite had two defects, and the first one hid the second
+## What `ad1caa07` did, since it is nearby and easy to confuse
 
 `ad1caa07` ("notice when the guest rewrites a bound texture") landed because
 the texture bind loop only runs when a texture register or `texture_vram_gen`
-changes, and a CPU rewrite of the texels changes neither. `Texture_cubemap`
-is the worst case for that: **every test in the suite writes a new cubemap to
-the same address with the same registers.** `Cubemap_q-0.0` sorts first and
-writes a checkerboard; the other 71 tests wrote noise or a radial gradient
-into the same bytes and got the checkerboard back.
+changes, and a CPU rewrite of the texels changes neither. `Texture_cubemap` is
+the worst case for that: **every test in the suite writes a new cubemap to the
+same address with the same registers.** `Cubemap_q-0.0` sorts first and writes
+a checkerboard; before the fix the other 71 tests wrote noise or a radial
+gradient into the same bytes and got the checkerboard back.
 
-That is measurable directly, because the three generators use disjoint
-palettes. Classifying every pixel of every capture in the two cubemap suites
-by which generator could have produced it:
+Measured across `Texture_cubemap` + `Texture 2D as cubemap`, since the three
+generators use disjoint palettes and the classification is unambiguous:
 
-| | captures | total differing px | `DotSTR3D_*` | the other 71 |
+| | captures | differing px | `DotSTR3D_*` | the other 71 |
 |---|---:|---:|---:|---:|
 | before `ad1caa07` | 78 | 2,565,441 | 341,454 | 2,223,987 |
 | after | 78 | **320,535** | 315,891 | **4,644** |
 
-Before the fix, **all 78 captures painted the cube from the checkerboard
-palette, 56,909 px each, in tests where silicon uses none of it.** After it,
-71 of 78 are within 178 px of the golden and six of the remaining seven are
-`DotSTR3D_*`. The suite went from 2.57M differing pixels to 320K, and 98.6% of
-what is left is one texture shader mode.
+Before the fix all 78 captures painted the cube from the checkerboard palette,
+56,909 px each, in tests where silicon uses none of it. This is context, not
+the subject: the numbers in this note are all from after it.
 
-The lesson is the one the tracker keeps relearning: a measurement taken
-through a known-broken stage measures the broken stage. Both negatives the
-earlier version of this note recorded ("`samplerCube` moves zero captures",
-"`remapCubeTo2D` moves zero captures") were taken through that stage and are
-**void** -- no probe to the sampler could have moved a suite that was not
-sampling the test's texture. The inferences drawn from them, that
-`tex_cubemap[3]` is false and `dim_tex[3]` is 3, are withdrawn;
-`texture_cubemap_tests.cpp` calls `stage.SetCubemapEnable()` on stage 3
-outright.
+## The two probes stay, the inferences do not
+
+The earlier version recorded two negatives -- returning `samplerCube` when
+`tex_cubemap[i]` moved zero captures, and mirroring `DOT_STR_CUBE`'s
+`remapCubeTo2D` fallback also moved zero -- and read two register facts out of
+them: that `tex_cubemap[3]` is false here, and that `dim_tex[3]` is 3, "a
+genuine volume texture".
+
+Both register facts are wrong, and neither needed a run to check:
+
+- `texture_cubemap_tests.cpp` calls `stage.SetCubemapEnable()` on stage 3
+  outright, so **`tex_cubemap[3]` is true**.
+- `TextureStage::GetDimensionality()` returns 3 only when `depth_ > 1`. The
+  test calls `SetTextureDimensions(64, 64)`, leaving depth 1, so
+  **`dim_tex[3]` is 2**, and the stage is a cubemap-flagged 2D texture rather
+  than a volume.
+
+The probes themselves stay on the record as measured, with one number worth
+noticing: the `remapCubeTo2D` row reported **+59,142** on
+`Texture_2D_as_cubemap`, and 59,142 channels is exactly what
+`DotSTR3D_Bad2D` differs by on the current build with no probe applied at all.
+So that row cannot be told apart from a change of baseline, and should not be
+cited as the cost of the probe.
+
+What the probes were taken to prove does not follow from them either, and a
+register value written down in the test source should never have been inferred
+from a pixel count.
+
+With `dim_tex[3] == 2`, `get_sampler_type()` sends `DOT_STR_3D` through the
+`PROJECT3D` case to `sampler2D`, and the emission is
+`texture(texSamp3, dotSTR3.xy)` -- a 2D fetch with the raw first two dot
+products, `tex_remap` empty because the stage is not `rect_tex`. That is
+structurally the same fetch the rule below attributes to hardware, which is
+why the defect is narrower than "wrong mode" and is worth stating precisely.
 
 ## What the texture actually is
 
-Also wrong in the first version: "the 3D texture here is the eight corners of
+Also wrong in the earlier note: "the 3D texture here is the eight corners of
 the colour cube, so the rendered colours name which texels were sampled."
 
 Stage 3 holds a **cubemap**: six 64x64 faces, each filled by
