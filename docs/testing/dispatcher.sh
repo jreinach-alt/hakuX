@@ -323,6 +323,20 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 
 case "${1:-status}" in
   serve)
+    # The loop parses this file once at startup, so an edit to it -- or to
+    # soak_title.sh, run_disc.sh, score_sweep.py -- does not reach a running
+    # server. That has now cost three measurements: a logcat capture that was
+    # never wired, a soak whose pull did not exist yet, and a perf run whose
+    # tags were not in the spec. Each time the symptom was an empty result
+    # rather than an error.
+    #
+    # So the loop re-execs itself whenever its own inputs change on disk. State
+    # lives in the queue and results directories, not in the process, so an
+    # exec between requests is free. Hash the scripts it actually depends on.
+    DISPATCH_SRC_HASH="$(cat "$HERE"/dispatcher.sh "$HERE"/soak_title.sh \
+                             "$HERE"/run_disc.sh "$HERE"/score_sweep.py \
+                             2>/dev/null | md5sum | cut -c1-12)"
+    export DISPATCH_SRC_HASH
     # Anything left in running/ belongs to a loop that is gone -- killed,
     # crashed, or restarted to pick up a change. Its request was accepted and
     # never answered, so put it back rather than leaving it to be found by
@@ -351,6 +365,14 @@ case "${1:-status}" in
         #
         # It yields between suites rather than mid-suite, so an agent waits at
         # most one suite instead of the remaining hours.
+        now_hash="$(cat "$HERE"/dispatcher.sh "$HERE"/soak_title.sh \
+                        "$HERE"/run_disc.sh "$HERE"/score_sweep.py \
+                        2>/dev/null | md5sum | cut -c1-12)"
+        if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
+            log "dispatcher scripts changed on disk; re-execing to pick them up"
+            exec bash "$HERE/dispatcher.sh" serve
+        fi
+
         reqs=("$D"/queue/*.req)
         if [ "${#reqs[@]}" -eq 0 ]; then
             resume_sweep
