@@ -3487,7 +3487,7 @@
    "title": "Line and point rasterisation"
   },
   "14": {
-   "disposition": "defect",
+   "disposition": "precision-floor",
    "suites": [
     "Blend tests"
    ],
@@ -4187,7 +4187,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "25d922946247c79c3cbabf758e5d476ed85f7b2f",
+  "emulator_commit": "a8f2454a47b7753efe7b81082c01df11cb5251a4",
   "gaps": 501,
   "resolved_tables": 1,
   "sites": 2718,

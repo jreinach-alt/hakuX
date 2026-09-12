@@ -115,7 +115,14 @@ title = "Blend precision (low priority)"
 # every MAX capture, which is byte-exact once the channel order is right.
 # 30 of the 105 (SADD/SREVSUB) belong to #43.
 # docs/investigations/surface-as-texture-decode.md.
-disposition = "defect"
+#
+# What is left is not a mapping. docs/testing/blend_model.py reproduces silicon
+# on 18,000 of 18,000 sampled pixels with the ordinary factor definitions and
+# round-to-nearest at each 8 bit store, so both blend tables are correct; the
+# residual is one step, led by the ONE_MINUS_* factors, and is float32 against
+# their fixed point. docs/investigations/blend-unit-model.md. Measured on
+# lavapipe -- an Adreno capture set could move this to host-dependent.
+disposition = "precision-floor"
 suites = ["Blend tests"]
 
 [issue.15]

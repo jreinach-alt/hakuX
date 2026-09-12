@@ -39,6 +39,7 @@ as a candidate until an isolation run says otherwise.
 | [`depth-readback-scale.md`](depth-readback-scale.md) | Why a 24 bit depth word could not round trip: four disagreeing scales, and a unorm grid half a unit out of phase with float32 |
 | [`edge-defect.md`](edge-defect.md) | The "one-pixel edge defect" across seven suites decomposed: texel and quantisation ties at boundaries, and two fixed-function vertices a few ULP from the snap grid. What to classify, what to build, what not to touch |
 | [`surface-as-texture-decode.md`](surface-as-texture-decode.md) | Why a colour surface sampled as a texture came back with red and blue swapped: the declared texture format decides the decode, and borrowing the surface's own view skips it. Includes the ABGR diffuse convention that inverts the conclusion if read wrong |
+| [`blend-unit-model.md`](blend-unit-model.md) | A closed-form model of the blend chain that reproduces silicon on every sampled pixel: the factor and equation tables are right, and what is left is the 8 bit store |
 | [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
