@@ -146,8 +146,26 @@ So the pipeline is:
    rather than editing. Disjointness is what makes the fold-in a
    fast-forward instead of a merge.
 3. **The orchestrator reviews the diff and folds it into the shared tree**,
-   then builds once. This is where compile errors surface -- the cost of
-   agents that cannot build -- and it is cheaper than four toolchains.
+   then builds **both targets**. This is where compile errors surface -- the
+   cost of agents that cannot build -- and it is cheaper than four toolchains.
+
+   Both targets, not one, and this is not optional: the Android build does not
+   catch a desktop link error. The audio instrumentation on 2026-09-12 called
+   `__android_log_print` through a local extern, which links only on Android;
+   the Android build passed, the APK was verified to contain the new string,
+   and the desktop CI gate went red on `undefined reference` at link. Every
+   `__android_log_print` in `pgraph.c` is wrapped in `#ifdef __ANDROID__` for
+   exactly this reason and the new one was not.
+
+   So keep a configured `build-linux/` and run it before pushing:
+
+       mkdir -p build-linux && cd build-linux
+       ../configure --target-list=i386-softmmu --extra-cflags="-DXBOX=1" \
+           --disable-werror --disable-docs --disable-guest-agent --disable-tools
+       ninja qemu-system-i386
+
+   Compiling is not sufficient -- the CI gate exists because of a missing
+   include and a missing symbol, and the second only appears at link.
 4. **One dispatcher run tests the folded tree.** Batching is the whole point:
    four fixes in one boot and one image pull, rather than four of each.
 5. **Land on measurement.** Better-per-capture with no regressions lands. A
