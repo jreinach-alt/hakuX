@@ -140,7 +140,8 @@ print(s[0] if len(s)==1 else '%d-suites:%s' % (len(s), ','.join(sorted(s))[:40])
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1
         touch "$LEASE"
-        SERIAL="$SERIAL" bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat$r.txt" \
+            bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
             "$rdir/captures$r" 1800 >>"$rdir/run$r.log" 2>&1
         rm -f "$rdir/disc$r.iso"
         python3 "$HERE/score_sweep.py" --out "$rdir/captures$r" --goldens "$GOLDENS" \
@@ -171,10 +172,20 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
                      px=sum(int(r["differing"] or 0) for r in rows),
                      progress_log_proof=proof))
 meta["runs"] = runs
+
+# Name the log explicitly, so "we captured nothing" and "the suite dropped
+# nothing" are different answers. They looked identical before, which is the
+# same failure the unhandled-method log exists to fix, one level up.
+logs = []
+for lg in sorted(glob.glob(os.path.join(rdir, "logcat*.txt"))):
+    n = sum(1 for _ in open(lg, errors="replace"))
+    logs.append(dict(file=os.path.basename(lg), lines=n))
+meta["logcat"] = dict(spec=os.environ.get("LOGCAT_SPEC",
+                                          "hakuX-unhandled:W hakuX:W *:S"),
+                      captured=bool(logs), files=logs)
+
 # coverage against the oracle we own: the tell for a partially retired suite
 cov = {}
-for r in runs:
-    pass
 suites = set()
 for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
     for row in csv.DictReader(open(t), delimiter="\t"):
