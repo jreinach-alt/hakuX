@@ -45,16 +45,28 @@ orderings agree with each other everywhere, in both ours and hardware.)
 whole texture is one colour. For `Bump_map` that is `0x00804500`, which in
 RGBA8888 is R = 0x00, G = 0x80, B = 0x45.
 
-The bump stage reads those channels as signed offsets, so the RGB formats feed
-it **(0, -128)**. The guest converts the same surface to YUY2 for the YUV
-tests; BT.601 puts that colour at roughly Y = 87, U = 121. Read as raw bytes
-those are **(+87, +121)**.
+**The offsets come from blue and green, not red and green.**
+`append_bump_channel()` is called with component 2 for dS and component 1 for
+dT, and its `chan[] = "rgba"` makes those blue and green. So the RGB formats
+feed the bump stage **(dS, dT) = (+69, -128)** — blue 0x45, green 0x80 read as
+a signed byte. (An earlier revision of this document said `(0, -128)`, reading
+red and green. That was wrong.)
 
-Through the test's bump matrix (`SetBumpEnv(0.3, 0.0, 0.0, 0.5, ...)`) the two
-give displacements of about `(0, -0.5)` and `(+0.21, +0.48)` in texture
-coordinates — opposite corners. A displacement that different samples a
-different part of the TEX1 checkerboard at every pixel, which is what a
-whole-quad difference looks like.
+The guest converts the same surface to YUY2 for the YUV tests, where BT.601
+puts that colour near Y = 87, Cb = 121. A raw two-bytes-per-texel read gives
+`(Y0, Cb)` for one texel and `(Y1, Cr)` for the next — values of a completely
+different character to `(+69, -128)`, and in particular not one sign-flipped
+channel and one small one. Through the test's bump matrix
+(`SetBumpEnv(0.3, 0.0, 0.0, 0.5, ...)`) that is the difference between a
+displacement of about `(+0.16, -0.5)` and something pointing into a different
+quadrant entirely, which samples a different part of the TEX1 checkerboard at
+every pixel. That is what a whole-quad difference looks like.
+
+**Which raw byte lands in which channel is not established**, and that is the
+gap between this and an implementable rule. Our converter writes R, G, B from
+the decode; a hardware path that skips the conversion has two bytes per texel
+to place in the channels the bump stage reads, and the goldens have not been
+made to say which. Guessing costs a build and a run per variant.
 
 We convert YUY2 to RGB at upload time, unconditionally, in
 `pgraph/texture.c:475`. The shader therefore never sees the source bytes. The
