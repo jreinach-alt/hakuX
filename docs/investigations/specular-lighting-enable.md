@@ -114,3 +114,67 @@ alongside.
 do nothing in our programmable path and provably do something on silicon, and
 a signature -- grey where the vertex colour should be -- specific enough to
 check any candidate against before building it.
+
+## Landed
+
+`f0829404`. The colour material selectors and light enables move out of the
+fixed function union into the shared vertex state, the constant term comes out
+of `append_lighting` into a helper both paths call, and the programmable path
+emits it when `LIGHTING_ENABLE` is set.
+
+Over all eleven lighting suites, 195 captures:
+
+| | before | after | |
+|---|---:|---:|---:|
+| `Specular` | 1,098,410 | 949,436 | |
+| `Specular_back` | 816,777 | 471,283 | |
+| nine other suites | | unchanged to the channel | |
+| **total channels** | 5,907,445 | 5,412,977 | **-494,468** |
+| **total structural** | 1,839,724 | 1,410,402 | **-429,322** |
+
+Per capture:
+
+| capture | before | after | one-step now | max |
+|---|---:|---:|---:|---:|
+| `Specular_back ControlFlagsNoLight_VS` | 329,049 | **83,597** | 3.9% | 254 |
+| `Specular_back ControlFlags_VS` | 328,449 | 228,407 | 1.4% | 254 |
+| `Specular ControlFlagsNoLight_VS` | 325,340 | 242,449 | 1.8% | 254 |
+| `Specular ControlFlags_VS` | 341,984 | 275,901 | 1.7% | 254 |
+| `ControlFlagsLightDisable_VS` (both) | 68,184 / 65,873 | **unchanged** | 95% / 98% | 3 |
+
+The lighting-off captures not moving at all is the check that the new code
+fires only where the register is set, and the nine untouched suites -- every
+fixed function capture among them -- is the check that the refactor left that
+path's shader text alone.
+
+## What the residue is
+
+Only the constant term is emitted. Each light's contribution needs an
+eye-space normal, which the fixed function stage builds from the transform
+registers and a vertex program does not hand back, so a lit program keeps what
+it wrote for the light's share. The four captures are still 1.4% to 3.9%
+one-step at a worst error of 254, so what is left is structural, and it is the
+lights.
+
+`ControlFlagsNoLight_VS` has no light enabled at all and still differs, which
+says the constant term is not the whole of it either. Looking at what is left
+there:
+
+| | ours | golden |
+|---|---|---|
+| `Specular`, RGB | `(0,0,0)` x47,696, `(8,8,8)` x34,288 | `(6,6,6)` x34,134, `(14,14,14)` x34,094 |
+| `Specular`, alpha | **207** | **207** |
+| `Specular_back`, RGB | `(21,21,21)`, `(0,0,0)`, `(97,97,97)` | `(15,15,15)`, `(14,14,14)`, `(16,16,16)` |
+| `Specular_back`, alpha | 199 | 255 |
+
+The front side's alpha is now right to the value, and its grey is the **source**
+colour unblended: we write `(8,8,8)`, and the golden's `(6,6,6)` and
+`(14,14,14)` are that same 8 composited over the two background tones, 0 and
+32, at the alpha we are now producing. So the constant term is correct and
+what remains on the front is that hardware blends the quad where we write it
+opaque -- a blend question, not a colour one -- plus 47,696 pixels where we
+write black outright.
+
+The back side is a different residue: brighter values than the golden
+(`(97,97,97)` against `(16,16,16)`) and an alpha of 199 where the golden has
+255. That one is not the same defect and should not be worked as if it were.
