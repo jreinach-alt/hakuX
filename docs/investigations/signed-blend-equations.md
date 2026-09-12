@@ -210,3 +210,42 @@ special" from something else again.
 Implementability is a separate question and should not be assumed: Vulkan's
 blend ops cannot express a wrap, so even a complete rule may need the blend
 moved into the shader, which is a much larger change than a table entry.
+
+---
+
+# Appendix: Fog gen radial under a programmable vertex shader
+
+Not the same defect, recorded here because it was the next item on the same
+ranking and the attempt is worth not repeating.
+
+**The measurement.** `Fog gen`'s six `FogGen_VS-*-radial` captures each differ
+by exactly **181,016 pixels**, the same count for all six fog modes, so the fog
+mode is irrelevant and the generation mode is the variable. Hardware renders the
+whole quad a single constant: four of the six goldens are exactly (255, 0, 0),
+which is `kFogColor` 0xDD0000FF decoded ABGR -- the fog colour at a fog factor
+of zero -- and the other two sit one step off at a factor of 1/255. We render a
+gradient of nine distinct values. The fixed-function counterparts of the same
+tests (`FogGen_FF-*-radial`) agree with hardware to within one step.
+
+So under a programmable vertex shader, `FOGGEN_RADIAL` fully fogs on hardware.
+
+**The hypothesis, and why it looked mechanistic.** Radial is the one generation
+mode the fixed-function path computes from the transformed position rather than
+from a value the program supplies -- `length(tPosition.xyz)` in `vsh-ff.c`. A
+program-supplied vertex never populates that, so the distance would read zero
+and every mode would saturate. The programmable path cannot even see the mode:
+`foggen` lives in `FixedFunctionVshState`, which is union'd with
+`ProgrammableVshState`, and `vsh.c` carries a standing FIXME asking exactly this
+question.
+
+**The result: inert.** Plumbing `foggen` into the shared `VshState` and forcing
+`fogDistance = 0.0` for `FOGGEN_RADIAL` on the programmable path changed
+**nothing** -- 280 captures, zero moved, 7,314,200 differing pixels before and
+after, with the shader caches cleared and the binary rebuilt.
+
+That is a contradiction worth stating rather than smoothing over. If the branch
+fired, forcing a constant distance should have flattened our gradient; if our
+`oFog.x` were already zero the gradient could not exist in the first place. One
+of those two is false and this document does not know which. Establishing it
+needs the generated GLSL for one of these captures dumped and read, which is
+where the next attempt should start -- not with another guess at the value.
