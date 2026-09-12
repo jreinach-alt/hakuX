@@ -33,16 +33,6 @@ typedef struct FixedFunctionVshState {
     enum VshTexgen texgen[4][4];
     enum VshFoggen foggen;
     enum VshSkinning skinning;
-    bool lighting;
-    enum VshLight light[NV2A_MAX_LIGHTS];
-    enum MaterialColorSource emission_src;
-    enum MaterialColorSource ambient_src;
-    enum MaterialColorSource diffuse_src;
-    enum MaterialColorSource specular_src;
-    enum MaterialColorSource back_emission_src;
-    enum MaterialColorSource back_ambient_src;
-    enum MaterialColorSource back_diffuse_src;
-    enum MaterialColorSource back_specular_src;
     bool local_eye;
 } FixedFunctionVshState;
 
@@ -59,6 +49,20 @@ typedef struct {
     uint16_t swizzle_attrs;
 
     bool fog_enable;
+    enum VshFoggen foggen;
+    /* The lighting unit's own state. Read from CSV0_C/CSV0_D for both vertex
+     * paths: LIGHTING_ENABLE gates which source feeds the colour outputs, and
+     * that gate is not bypassed by a vertex program. */
+    bool lighting;
+    enum VshLight light[NV2A_MAX_LIGHTS];
+    enum MaterialColorSource emission_src;
+    enum MaterialColorSource ambient_src;
+    enum MaterialColorSource diffuse_src;
+    enum MaterialColorSource specular_src;
+    enum MaterialColorSource back_emission_src;
+    enum MaterialColorSource back_ambient_src;
+    enum MaterialColorSource back_diffuse_src;
+    enum MaterialColorSource back_specular_src;
 
     bool specular_enable;
     bool separate_specular;
