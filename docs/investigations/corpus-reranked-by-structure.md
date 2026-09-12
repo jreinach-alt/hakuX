@@ -93,11 +93,23 @@ recovered the retired 1,568-test oracle and scored the 1,120 unsigned tests:
 source and destination factor. The blend arithmetic is exonerated by
 measurement rather than by argument.
 
-What fails is the **fifth quad**, which is issued with the first draw's source
-colour: our quad 5 equals our own quad 1 on 1,119 of 1,120 tests, and nothing
-else is wrong anywhere. Where a test happens to want the same colour twice the
-capture is exact. `MIN` and `MAX` ignore the factors and behave identically, so
-it sits upstream of blending — a draw-state or draw-queue defect.
+What fails is confined to the **fifth quad**. On pixel counts and bounding
+boxes rather than samples: 847 captures differ on exactly 16,384 px, the region
+measures 256 x 64 — one quad — and **no capture differs anywhere else in the
+frame**.
+
+The mechanism first offered for it, that the fifth draw carries the first
+draw's source colour, has been **retracted upstream** (`b4ed1aa4b3`). It was
+measured by sampling one pixel per quad at row 240; the quads are not flat, so
+that row never measured "the quad's colour". Compared as whole regions, our
+fifth quad matches our own first quad on **0 of 224**.
+
+What the colours suggest, labelled as the hypothesis it is: on `1_MAX_1`, where
+`MAX` ignores both factors and the answer should be `max(src, dst)`, silicon
+has 221 and 48 where we have 192 and 4, the two flat background colours are
+shared, and in both pairs we produce the lower value. That is the shape of the
+source contributing nothing to the fifth draw — one test's colour inventory,
+not yet checked across the suite.
 
 So the entry should read: **one draw-state bug plus #43**, not 6.5M px of blend
 work.
