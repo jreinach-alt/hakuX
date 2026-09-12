@@ -147,6 +147,51 @@ because it only needed the transitions, but a measurement that destroys the
 other measurements in the same window is a bad trade. The next version should
 emit a per-frame summary rather than a line per bind.
 
+## Matrix-enable and texgen modes are stable too
+
+Measured 2026-09-11 on the town save, build carrying the per-frame coordinate
+summary. 50 frames captured, 431 frames of coordinate state logged, no input
+injected.
+
+**The artifact is present in this capture** -- the ground cycles through
+smooth dirt, grass and a hatched crosshatch across the 50 frames
+(`images/galleon-town-cycle.png`), so a stable reading here is a real negative
+and not an absence of the defect.
+
+Every one of the 431 frames reported the **identical** set of five
+combinations:
+
+| stage | texture matrix | texgen s,t,r,q |
+|---|---|---|
+| 0 | off | 0,0,0,0 |
+| 0 | on | 0,0,0,0 |
+| 1 | on | 0,0,0,0 |
+| 2 | on | 1,1,1,0 |
+| 3 | on | 1,1,1,0 |
+
+Not one frame differed. So the matrix-enable flags and the texgen modes are
+not what is cycling.
+
+### What is now ruled out, and what is not
+
+Ruled out by measurement: texture format, dimensions, level count, pitch and
+the swizzled flag (115 textures, 22,493 binds, zero changes); and the
+texture-matrix enable and texgen mode per stage (431 frames, zero changes).
+
+**Not** ruled out, and the two candidates left:
+
+1. **The matrix contents.** Only the enable bit was logged, never the values.
+   Stages 2 and 3 use generated coordinates *through* a matrix, which is
+   exactly the arrangement where a stale or wrong matrix produces a sheared,
+   cycling result while every flag stays put.
+2. **Per-draw attribution.** The per-frame summary merges every draw in the
+   frame, so it cannot say whether the *ground* draw specifically received the
+   right stages. A stable frame-level set is consistent with one draw getting
+   the wrong one. This is a limitation of the measurement, not a finding.
+
+So the next measurement is the matrix values for stages 2 and 3, logged on
+change, and ideally attributed to the draw rather than the frame.
+
 ## Next measurement, not yet done
 
 Log the texture matrix and the coordinate generation mode for each active
