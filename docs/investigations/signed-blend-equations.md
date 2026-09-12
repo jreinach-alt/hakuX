@@ -159,6 +159,39 @@ substantially larger than a table entry in `pgraph_blend_equation_vk_map`, and
 the choice should be made deliberately rather than discovered during
 implementation.
 
+### Three ways it could be done, none of them a table entry
+
+**A float intermediate target.** A floating point colour attachment does not
+clamp the source, so the shader can emit `signed(S)/255` directly and an
+ordinary `ONE`/`ONE` `VK_BLEND_OP_ADD` produces the right value; the saturate
+then has to happen on conversion back. Correct, but it changes the format,
+bandwidth and download path of any surface a game might blend this way, which
+is most of them.
+
+**Shader-side blending.** Read the destination through an input attachment with
+a subpass self-dependency, or `VK_EXT_rasterization_order_attachment_access`,
+and do the whole thing in the shader. Exact, and it generalises to anything else
+fixed-function blending cannot express, but it is a structural change to the
+draw path and the extension is not universal.
+
+**Multi-pass with per-channel masks, which needs no extension.** The sign test
+is per channel, and `signed(S) + D` splits cleanly by it:
+
+- where `S < 128`:  `D + S`         -- `VK_BLEND_OP_ADD`, `ONE`/`ONE`, shader emits `S/255`
+- where `S >= 128`: `D - (256 - S)` -- `VK_BLEND_OP_REVERSE_SUBTRACT`, `ONE`/`ONE`, shader emits `(256 - S)/255`
+
+Both emitted values lie in [0, 1], so the attachment's clamp does not bite, and
+Vulkan's own result clamp gives the saturate for free. Because the sign bit
+differs per channel, this needs one pass per (channel, sign) with
+`colorWriteMask` set to that channel alone and a `discard` on the other sign:
+six passes for RGB, eight with alpha. Expensive per draw, but it is expressible
+today, on any driver, without touching surface formats.
+
+Which of the three is right depends on how often games actually use these
+equations, which nobody has measured. That measurement -- a counter on
+`FUNC_*_SIGNED` across a few titles -- is cheaper than any of the three and
+should come first.
+
 The prize is 6,499,076 non-precision channels across 30 `Blend tests` captures
 plus the two `Texture signed component` cases -- the largest single item in the
 corpus.
