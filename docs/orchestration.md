@@ -182,6 +182,21 @@ So the pipeline is:
    prediction goes back to that agent -- we push through to root cause rather
    than reverting a change that works but is unexplained.
 
+**Worktree agents can be branched from a STALE base — check it in the brief.**
+Three of 2026-09-12's agents were given worktrees based on `master` (Sep 10),
+234 to 240 commits behind the integration branch. One of them wrote a report
+correcting *my* line numbers before working out that its own checkout was
+behind; another's patch would not have applied at all. The isolation is
+per-agent but the base is not guaranteed to be current, so every brief must
+open with:
+
+    git fetch origin
+    git rebase origin/claude/es-de-launcher-disc-error-ojnl14
+
+and every brief that cites a `file:line` must tell the agent to re-read the
+file after rebasing rather than trust the number. Two of the three caught it
+themselves, which is the only reason it cost reports rather than wrong code.
+
 **Every agent states a falsifiable prediction before it measures anything**,
 naming which captures should move and which must not. This is the single most
 useful item in a brief: it is how the fold-in is judged, and it is what makes
