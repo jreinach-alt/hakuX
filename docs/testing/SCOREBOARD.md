@@ -4,7 +4,7 @@ Each cell is **exact/captures · structural px** — structural being differing 
 
 | run | binaries | discs | captures | rescored |
 |---|---|---|---:|---:|
-| `today-partial` | fb4dfafc6d38 | 49 | 1440 | — |
+| `today-partial` | fb4dfafc6d38 | 50 | 1448 | — |
 
 | category | goldens | `today-partial` |
 |---|---:|---|
@@ -17,7 +17,7 @@ Each cell is **exact/captures · structural px** — structural being differing 
 | Depth / stencil ⚠️16% | 1688 | 50/266 · 454,164 |
 | Rasterisation ⚠️53% | 514 | 16/274 · 1,392,840 |
 | Clipping / viewport ⚠️17% | 183 | 25/32 · 532,200 |
-| Vertex pipeline ⚠️54% | 226 | 8/122 · 305,650 |
+| Vertex pipeline ⚠️58% | 226 | 12/130 · 371,258 |
 | 2D / blit ⚠️98% | 46 | 18/45 · 198,029 |
 
 † that run did not record the one-step column, so its figure is *all* differing pixels and is not comparable with a structural count. The 2026-09-08 baseline predates it.
