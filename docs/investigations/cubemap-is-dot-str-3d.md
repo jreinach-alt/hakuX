@@ -46,6 +46,36 @@ components are not varying on hardware the way they vary here. That is a
 bounded question with a six-capture oracle, and it is the whole of this board
 entry.
 
+### What it is not: two measured negatives
+
+The test looks like a cubemap case. It calls
+`GenerateCubemap(host_.GetTextureMemoryForStage(3), ...)`, sets
+`STAGE_2D_PROJECTIVE, STAGE_DOT_PRODUCT, STAGE_DOT_PRODUCT, STAGE_DOT_STR_3D`,
+and its own comment says "the final value is a lookup from the cube map in
+t3". Meanwhile `psh.c` gives `DOT_STR_3D` a sampler from the same case as
+`PROJECT3D`, which never returns `samplerCube` however the stage is flagged,
+where every cube mode checks `tex_cubemap[i]`. And `DOT_STR_CUBE`, which
+passes in this suite, remaps the direction with `remapCubeTo2D` when the
+texture is not flagged as a cubemap, where `DOT_STR_3D` truncates it to `.xy`.
+
+Both readings are wrong, and the runs say so:
+
+| change | `Texture_cubemap` | `Texture_2D_as_cubemap` |
+|---|---:|---:|
+| return `samplerCube` when `tex_cubemap[i]` | **0 captures moved** | 0 |
+| `remapCubeTo2D` fallback, mirroring `DOT_STR_CUBE` | **0 captures moved** | **+59,142** |
+
+The first moving nothing means `tex_cubemap[3]` is false here. The second
+moving nothing in this suite means `dim_tex[3]` is **3** -- a genuine volume
+texture, so the `dim == 2` branch never fired -- and it broke `DotSTR3D_Bad2D`
+in the sibling suite, which was **exact** at zero differing channels before.
+That capture is the proof that truncating to `.xy` is correct against a real
+2D texture.
+
+So `DOT_STR_3D` here is a real `sampler3D` lookup with a real volume texture,
+and the question is narrower than it looked: what range does silicon's
+coordinate have, and what does it do outside `[0,1]`. Both probes reverted.
+
 ## `Line_width`: not concentrated, and not available
 
 61 captures, 2,516,604 channels, 1,009,664 structural -- and the structural
