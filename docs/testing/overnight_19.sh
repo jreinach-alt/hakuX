@@ -43,9 +43,15 @@ PKG="${PKG:-com.jreinach.hakux.debug}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 
 STATE="${STATE:-$HOME/hakux-work/night19}"
-# A symlink, not a build name: the baseline is "whichever build this sweep is
+# Named by role, not by build: the baseline is "whichever build this sweep is
 # measuring", and pointing a default at a dated scratch APK is how a later run
 # silently measures last night's binary.
+#
+# It must be a real file, not a symlink. adb here is Windows adb.exe reached
+# through WSL interop and it cannot stat a Linux symlink: `install` failed with
+# "No such file or directory", the run carried on against whatever was already
+# installed, and every row recorded the sha of the file the symlink pointed at.
+# A wrong number is recoverable; a wrong number wearing the right label is not.
 APK="${APK:-$HOME/hakux-work/apk-sweep-baseline.apk}"
 BASE_ISO="${BASE_ISO:-$HOME/nxdk_pgraph_tests_xiso.iso}"
 GOLDENS="${GOLDENS:-$HOME/goldens/results}"
@@ -126,6 +132,20 @@ may_continue() {
     done
     wait_device || return 1
     return 0
+}
+
+# Every row this sweep writes carries the sha of $APK, so the run is only
+# honest if $APK is genuinely what is on the device. An install that fails
+# leaves the previous build running and the rows claiming otherwise, which is
+# worse than no measurement at all -- so this is checked, not assumed.
+install_baseline() {
+    local out
+    out=$(a install -r "$APK" 2>&1)
+    echo "$out" >> "$LOG"
+    case "$out" in
+        *Success*) say "installed $(apk_sha)"; return 0 ;;
+        *) say "INSTALL FAILED: $(echo "$out" | tail -1)"; return 1 ;;
+    esac
 }
 
 park() {
@@ -225,7 +245,11 @@ worker() {
     DEVICE_WAIT="${DEVICE_WAIT:-43200}" wait_device || { say "never appeared"; return 1; }
     date +%s > "$STARTED"
     say "=== start, batt $(battery)% ==="
-    a install -r "$APK" >>"$LOG" 2>&1
+    if ! install_baseline; then
+        say "STOP: could not install $APK -- refusing to measure an unknown binary"
+        park
+        return 1
+    fi
     local i g
     for i in "${!GROUP_NAMES[@]}"; do
         g="${GROUP_NAMES[$i]}"

@@ -44,9 +44,20 @@ now() { date +%H:%M:%S; }
 
 apk_sha() { sha256sum "$BASELINE_APK" 2>/dev/null | cut -c1-12; }
 
+# This script's whole reason for reinstalling on every resume is that a mix-up
+# must be visible rather than inferred. Throwing away the install's output
+# defeated that: a failed install leaves the previous build running while the
+# log says "installed <sha of the file we meant>". Check it and say so.
+#
+# (The install that exposed this failed because the path was a Linux symlink and
+# adb here is Windows adb.exe, which cannot stat one.)
 install_baseline() {
-    a install -r "$BASELINE_APK" >/dev/null 2>&1
-    echo "$(now) installed baseline $(apk_sha)" >> "$LOG"
+    local out
+    out=$(a install -r "$BASELINE_APK" 2>&1)
+    case "$out" in
+        *Success*) echo "$(now) installed baseline $(apk_sha)" >> "$LOG" ;;
+        *) echo "$(now) BASELINE INSTALL FAILED, rows after this are suspect: $(echo "$out" | tail -1)" >> "$LOG" ;;
+    esac
 }
 
 # The Nova can leave the USB bus -- it did at 23:18 on 2026-09-11, mid-sweep.
