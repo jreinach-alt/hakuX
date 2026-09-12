@@ -51,13 +51,26 @@ Ruled out: chroma interpolation. The error has no column parity at all
 which a reconstruction difference between subsampled chroma pairs could not
 produce.
 
-Not derivable from these captures: `Texture format` draws the texture on a
-scaled, filtered quad, so our sampled values are filtered blends of converted
-texels rather than raw conversions, and an exact fit against a brute-forced
-(Y, Cb, Cr) space fails for that reason -- full-range BT.601, the 359/88/183/454
-integer form and a truncating variant all explain 0 of the top 400 observed
-pairs. **Deriving the coefficients needs an unfiltered 1:1 capture**, which is
-the next step and does not exist yet.
+**The geometry is exact, so this really is the conversion.** `TexFmt_R5G6B5`
+differs by **0 pixels** on the identical quad, and the draw is point sampled --
+run lengths of identical pixels along a row are 1 to 3 at the 370/256
+magnification, in both ours and the golden -- so each output pixel is one
+converted texel with no filter blend. An earlier note here said the quad was
+filtered and that the coefficients were therefore underivable; that was wrong.
+No whole-image shift helps either (every offset from -2 to +2 in both axes is
+worse or within 0.2%), so it is not a sampling offset.
+
+What does not fit, tested by brute force over the whole (Y, Cb, Cr) space
+against the 600 most common observed pairs: BT.601 limited with and without the
+rounding term, BT.601 full range, BT.709 limited, BT.709 full range, and the
+359/88/183/454 integer form. Each explains 0 or 1 of 600.
+
+**Why it did not fall out anyway.** Inverting our own formula to recover the
+source triple is ambiguous where a channel clips, and it clips constantly here:
+the most common pairs all have red at 0, leaving 18 to 22 candidate triples
+each, with Y spanning 30 values and Cr spanning 50. The next attempt should
+select pairs where **no channel clips** in either ours or the golden -- those
+invert to a handful of triples and pin the coefficients directly.
 
 ## `Fog gen`: radial under a programmable vertex shader
 
