@@ -336,6 +336,21 @@ title = "Texture cubemap: DOT_STR_3D saturates to a corner texel on silicon and 
 # HiLo_1 28385/0/28524/1170, HiLoHemi 28958/0/27951/1376, -1to1
 # 14446/14562/13723/15220, -1to1D3D 13093/13722/14832/16594, -1to1GL
 # 14527/14457/13849/15282. docs/investigations/cubemap-is-dot-str-3d.md.
+#
+# One regression on the record, from the commit that fixed the rest: the whole
+# of Texture_cubemap previously rendered the checkerboard the suite's FIRST
+# test had written (same address, same registers, rewritten texels), which
+# ad1caa07 fixed -- 2,565,441 px -> 320,535 across these two suites. But
+# DotSTR3D_Bad2D was EXACT before ad1caa07 and is 19,714 px off after it. That
+# exactness was luck, not correctness: it was sampling the wrong texture and
+# happening to agree. Not an argument against the commit, which is worth 2.2M
+# px; recorded so nobody reads that row as a fresh defect.
+#
+# Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
+# +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
+# is an edge pair on all three. +X comes from the depth-1 addressing argument
+# and GenerateCubemap's write order, not from the pixels, so a fix that picks
+# a different positive face is not thereby wrong.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
 
