@@ -132,8 +132,46 @@ disposition = "unclassified"
 
 [issue.33]
 title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
+# ROOT CAUSED and fixed in d42a8d79bc, awaiting its A/B on device.
+#
+# A GPU tile does not only bound a blit, it decides where the bytes land:
+# addresses inside a tiled region are remapped so a rectangle of the surface
+# is contiguous. Scanout, texture fetch and the CPU aperture all go through
+# the same remap, so the shuffle cancels and treating tiled memory as linear
+# -- what we do everywhere -- is correct. It stops cancelling in this test,
+# which blits a 1024x512 ramp into a tile of pitch 2560, DROPS the tile, then
+# blits the result out linearly from target_buffer + 4096.
+#
+# Measured, not argued: a linear model matches OUR capture at 0 differing px
+# across the whole frame bar the text overlay, and 284,958 of 307,200 golden
+# pixels satisfy the ramp's R + B == 255 invariant -- same bytes, permuted.
+# The layout was solved out of the golden by unique 64-word signature
+# matching. The line that differs is perform_blit's `dest += dest_pitch`, a
+# linear walk where hardware walks the tile.
+#
+# Ruled out: the row-width clamp (the obvious read of "BlitBeyondWidth" --
+# hardware writing 1024 pixels into a 640 pitch and overrunning -- is not it;
+# each overrun is overwritten by the next row and the last is clipped at the
+# tile limit, and modelling at 1024 and at 640 gives byte-identical results).
+# Also tile clipping being absent: #33's comment has it backwards,
+# nv_clip_gpu_tile_blit has clipped since 24087af22a and it is the ADDRESS MAP
+# that was missing. The matching colour-edge x positions cited in the comment
+# are degenerate -- they hold for any permutation preserving 16-pixel runs.
+#
+# Assumed and not testable from this corpus: that NV_PFB_TILE_PITCH holds
+# bytes, the `^ 1` constant in the unit column (could be a base-address bit;
+# only one test registers a valid tile), and generalisation to other pitches.
+#
+# WATCH: only the blit DESTINATION is remapped. 3D renders and scanout still
+# treat tiled memory as linear, so a title that blits into a tile it
+# registered as VALID and then scans it out would now scramble where before it
+# did not. Making that consistent means a remap at the memory controller on
+# every access. A blit READING out of a live tile is deliberately left
+# un-swizzled -- no capture exercises it, and an unverified inverse is a
+# second bug. Needs a game smoke test.
+# docs/investigations/gpu-tile-blit-swizzle.md.
 suites = ["Image blit"]
-disposition = "unclassified"
+disposition = "defect"
 
 [issue.35]
 title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
@@ -240,13 +278,52 @@ disposition = "unclassified"
 
 [issue.49]
 title = "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
+# MEASURED DEAD in the vertex-shader generators: no snap rule can fix this, and
+# that is proved rather than suspected. Both offsets are congruent to 9/16
+# mod 1, so the post-offset coordinate lands exactly ON a 1/16 grid line where
+# roundScreenCoords is the identity, and coverage is decided by the last bit of
+# the transform above it. Every rule expressible there -- truncate, floor,
+# round, any grid size, any pre- or post-snap bias, any sample point -- is
+# invariant under integer translation of its input, and hardware resolves
+# x = 120 + 9/16 and x = 320 + 9/16 in OPPOSITE directions, in the same quad at
+# identical y and w. Read as full 99-100 px edge runs, never point samples.
+#
+# Convention is otherwise identical to hardware everywhere visible, pinned by
+# the ten passing captures: truncate to 1/16, sample at pixel + 0.5, left/top
+# edge inclusive, VPOFF added in the fixed-function path and not the
+# programmable one.
+#
+# INFERRED cause, named but not modelled: vsh-ff.c:677 does `oPos.xy /= oPos.w`,
+# a correctly-rounded fp32 divide that returns the exact integer whenever the
+# true quotient is within half an ULP -- which is why we land at-or-above at
+# all five x. The NV2A vertex ALU has no divide, only a limited-precision
+# reciprocal followed by a multiply, whose ~2^-22 error is a few ULP of a
+# coordinate near 320.
+#
+# The best rule-shaped change was computed and DELIBERATELY NOT SHIPPED: a
+# pre-snap bias under 1/32, invisible in the ten passing captures, takes
+# 1,396 px -> 888 px by fixing three x vertices and breaking two. A 36%
+# reduction of the wrong shape is the wrong-mechanism signature.
+#
+# Also ruled out: a missing half-pixel term in either path; VPSCL (inert on
+# both sides -- the five scale-2.0 captures equal their scale-0 twins); a host
+# split (#11 has both lanes failing the same two); stale inputs (captures
+# 2026-09-12, goldens Sep 9, both newer than the last vertex-path change);
+# cross-test contamination (the two failures are the two offsets congruent to
+# 9/16 wherever they sit in disc order).
+#
+# The experiment that would restart it: a disc sweeping a fixed-function vertex
+# across n + 9/16 +/- 2^-k, to characterise the NV2A transform's rounding
+# instead of guessing it. The per-vertex table such a disc must reproduce is in
+# the write-up. docs/investigations/viewport-9-16-boundary.md,
+# docs/testing/probe_viewport_ff_extents.py.
 suites = ["Viewport"]
 
 # Restored 2026-09-12. These three were deleted by accident in f825d6a9ee --
 # a conflict resolution that sliced the file by string index and took more
 # than it meant to, committed under a message about something else. An audit
 # against the GitHub issue list is what caught it; nothing else would have.
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
