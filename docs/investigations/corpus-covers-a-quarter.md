@@ -154,3 +154,50 @@ qemu-system-i386` returns 0 during a live run, because Linux truncates `comm`
 to fifteen characters and the process is `qemu-system-i38`. That false negative
 reads as "the emulator is free" and invites starting a second one against the
 one-at-a-time rule. Use `ps -eo comm= | grep qemu`.
+
+## The sweep: previously-invisible suites hold more structural defect than the whole known corpus
+
+Seven more discs, all already on disk, no builds. Consolidated against the
+goldens, structural (non-one-step) channels:
+
+| suite | caps | exact | channels | **not +-1** |
+|---|---:|---:|---:|---:|
+| **`W_buffering`** | 530 | 108 | 7,867,148 | **5,553,462** |
+| **`Blend_surface`** | 32 | 3 | 3,660,115 | **2,951,816** |
+| `Clear` | 32 | 25 | 1,399,512 | **1,399,512** |
+| **`Texture_signed_component_tests`** | 19 | 9 | 1,475,507 | **1,285,019** |
+| `Texgen_with_texture_matrix` | 66 | 30 | 1,200,238 | **1,197,530** |
+| `3D_primitive` | 160 | 4 | 7,287,835 | **1,127,533** |
+| `Image_blit` | 41 | 12 | 1,413,902 | **898,340** |
+| `Depth_buffer_fixed_function` | 160 | 12 | 1,962,456 | **681,452** |
+| `Color_zeta_overlap` | 9 | 6 | 784,268 | **632,947** |
+| `Surface_format` | 10 | 0 | 520,297 | **475,458** |
+| `Attrib_carryover` | 96 | 0 | 2,923,650 | **474,530** |
+| `Depth_buffer` (144 of 784) | 144 | 28 | 2,846,110 | **371,928** |
+| `Attrib_float` | 12 | 3 | 610,719 | 87,696 |
+| `Attrib_setter` | 2 | 0 | 62,728 | 4,548 |
+| `Texture_border` | 1 | 0 | 5,564 | 0 |
+| **`Surface_clip`** | 47 | **47** | 0 | **0** |
+| **`Stencil_func`** | 16 | **16** | 0 | **0** |
+
+**17,141,771 structural channels, from suites that were not in the corpus at
+all.** The entire previously-known corpus held 16,621,450. **Measuring what was
+already on disk more than doubled the known structural defect population.**
+
+Two entries reorder the top of the board outright: `W_buffering` at 5,553,462
+sits second behind `Blend_tests`, and `Blend_surface` at 2,951,816 sits third,
+above `Fog_gen`'s 2,186,760. `Texture_signed_component_tests` at 1,285,019 is
+#43's own suite, and its 19 captures are a better oracle for the signed-byte
+rule than the grid cells it was fitted on.
+
+**And three suites are simply finished.** `Surface_clip` 47/47 exact and
+`Stencil_func` 16/16 exact -- both from the sixteen with no scored record
+anywhere -- plus `Window_clip` at 92/92. Those are not defects anyone needs to
+look at again, and nobody knew.
+
+`Texture_shadow_comparator` at 260/288 exact and 26,328 channels is the
+counter-example that keeps the rest honest: measuring an absent suite does not
+reliably find work. It has to be measured.
+
+`Depth_buffer` is partial -- this disc runs 144 of its 784 goldens, which is the
+subset problem the device lane found from the other direction.
