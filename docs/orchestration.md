@@ -157,7 +157,7 @@ So the pipeline is:
    `__android_log_print` in `pgraph.c` is wrapped in `#ifdef __ANDROID__` for
    exactly this reason and the new one was not.
 
-   So keep a configured `build-linux/` and run it before pushing:
+   The intended local gate is:
 
        mkdir -p build-linux && cd build-linux
        ../configure --target-list=i386-softmmu --extra-cflags="-DXBOX=1" \
@@ -166,6 +166,15 @@ So the pipeline is:
 
    Compiling is not sufficient -- the CI gate exists because of a missing
    include and a missing symbol, and the second only appears at link.
+
+   **It does not currently run on this machine**, and saying so is the point:
+   `configure` needs `ninja` (not on PATH; the Android SDK ships one at
+   `~/Android/Sdk/cmake/3.30.3/bin`) and then fails at
+   `subprojects/curl-8.12.1/meson.build:532` with `Dependency "openssl" not
+   found`, which needs a system package and therefore a human. Until that is
+   installed, **the desktop link is checked only by CI after a push**, so a
+   push is the gate and someone has to watch it. Do not record this as a local
+   gate that exists; it is a local gate that is one `apt-get` away.
 4. **One dispatcher run tests the folded tree.** Batching is the whole point:
    four fixes in one boot and one image pull, rather than four of each.
 5. **Land on measurement.** Better-per-capture with no regressions lands. A
