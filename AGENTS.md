@@ -77,6 +77,16 @@ touching `/tmp/hakux-device-lease` at least once every 90s; the hook then
 defers and says so. The lease is deliberately short-lived, so a batch that dies
 stops suppressing the hook on its own.
 
+**This fires on a person's session too, and that is easy to miss.** The hook
+runs at the end of *every* turn, so replying to someone who is mid-game kills
+their game. It cost several Galleon sessions in one evening, each behind an
+unskippable two-minute intro, before anyone noticed the pattern -- from the
+outside it looks exactly like the emulator crashing, and the log line to look
+for is `Killing <pid>:<pkg>:xemu ... stop <pkg> due to from pid N`, which is a
+force-stop request and not a fault. Before handing the device to someone to
+drive, start `docs/testing/hold_device.sh <minutes>` in the background, and
+`hold_device.sh release` when they are done.
+
 Note this is not only a crash-path concern — because of issue #20 a *successful*
 run does not exit by itself either.
 
