@@ -59,13 +59,44 @@ per-line constant: the ends. On a wide line the ends are a smaller fraction of
 the total, so the ratio improves. `4ed3a55ea6` names "the ends and joins" as
 remaining, and this is the shape of that.
 
+## The device's limits, measured
+
+`0a97b8f48e` logged them and one run of the suite settled it. Adreno 740 under
+Turnip (Mesa 26.3.0):
+
+    lineWidthRange [1.000, 127.500]   lineWidthGranularity 0.5   wideLines=1
+
+Which produces exactly this, over the 52 distinct widths the suite asks for:
+
+| register | asked | delivered |
+|---|---|---|
+| 0 – 9 | 0.000 – 1.125 px | **1.000** |
+| 10 – 13 | 1.250 – 1.625 px | **1.500** |
+| 14 – 15 | 1.750 – 1.875 px | **2.000** |
+| 24 and up | 3.000 px and up | **exact** |
+
+So the register is honoured exactly from 3 px up — every whole-pixel width
+lands on the device's half-pixel grid — and the device only interferes below
+2 px, where the 1.0 minimum and the 0.5 granularity between them flatten
+sixteen of the suite's sixty-one tests.
+
+**That splits the work cleanly, which is the point of having measured it:**
+
+* **16 tests** (widths 0.000 – 1.875) are unreachable without generating line
+  geometry ourselves. That is the architectural change, and it buys sixteen
+  tests.
+* **45 tests** (3 px and up) already receive the exact width they ask for, so
+  every pixel they still get wrong is **ours** — the ends and caps, and the
+  colour along the line. No rewrite required to work on them.
+
+The desktop lane measures granularity 1/128 on lavapipe, so the sixteen
+affected tests land much closer there. Line-width accuracy is therefore
+host-dependent today, and generating the geometry would remove that dependence
+as well as fixing the sixteen.
+
 ## What is worth doing, in order
 
-1. **The device's limits, which nothing logs.** `lineWidthRange`,
-   `lineWidthGranularity`, and whether `wideLines` was enabled. Committed as
-   `0a97b8f48e` and still the right measurement — it bounds how much of (1) is
-   reachable at all before any geometry work, and the numbers are currently
-   guesses. One run of the suite.
+1. ~~The device's limits~~ — done, above.
 2. **The ends**, which is (3), the only part that is ours rather than the
    device's, and it applies at *every* width rather than to a corner of the
    range.
