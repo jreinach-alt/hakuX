@@ -382,46 +382,33 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *      but expects oFog.x as fogdistance?! Writes oFog.xyzw = v0.z
              */
             /*
-             * RADIAL is the one gen mode a vertex program does not override.
-             * Comparing the goldens against each other rather than against us
-             * shows silicon rendering SPEC_ALPHA, PLANAR, ABS_PLANAR and FOG_X
-             * identically under a program -- the only difference between those
-             * four Fog gen captures is the printed test name -- while RADIAL is
-             * a different image over the whole frame. So the fog coordinate is
-             * right for four modes and wrong for this one, which is where the
-             * suite's structural residue lives.
+             * Every gen mode uses oFog.x here, RADIAL included, and RADIAL is
+             * the one that is not simply right. Silicon renders the other four
+             * identically under a vertex program -- the only difference between
+             * those Fog gen goldens is the printed test name -- and renders
+             * RADIAL differently, so there is a real divergence to account for.
              *
-             * The distance is the length of the position the program wrote,
-             * before the perspective divide. oPos.xyz arrives divided (the
-             * Xbox convention is for the program to do it and pass the clip w
-             * in oPos.w), so multiplying it back out recovers what the fog
-             * unit sees. Measured on all six VS radial captures:
+             * It is not accounted for by computing a distance, and #41 had this
+             * before I did. The RADIAL goldens hold exactly two colours in the
+             * drawn region: the fog colour on all 181,016 drawn pixels and the
+             * background on the rest. Every quad is fully fogged regardless of
+             * its depth or position, which is not a function of any coordinate,
+             * and the test author tracks those captures as non-deterministic on
+             * hardware (abaire/nxdk_pgraph_tests#214). The plausible mechanism
+             * in #41 is the fog mux still honouring RADIAL in program mode and
+             * reading stale lighting intermediates a program never produces.
              *
-             *   distance            channels   structural
-             *   oFog.x (before)    2,172,192    2,172,192
-             *   length(oPos.xyz)   1,589,968    1,589,968
-             *   this                 788,528      110,764
-             *
-             * 94.9% of the structural error, and nothing outside this cell
-             * moves: the other seven fog suites are unchanged to the channel
-             * across 280 captures. What is left is two things. The linear and
-             * exp2 residue is one band, rows 70-91, where we produce no fog and
-             * hardware saturates -- a clamp, not a distance. The exp residue is
-             * 94.4% one-step, having been entirely structural before, which
-             * puts it on the mode function rather than here.
-             *
-             * The remaining modes stay on oFog.x, which is what the hardware
-             * does and what guests rely on: "RollerCoaster Tycoon" sets
-             * FOGGEN_PLANAR with a vertex program, writes oFog.xyzw = v0.z and
-             * expects oFog.x. Honouring SPEC_ALPHA here instead costs
-             * 7,449,481 channels across the fog suites, measured.
+             * I briefly shipped length(oPos.xyz * oPos.w) here on the strength
+             * of a 94.9% reduction against that golden. That number is what
+             * fraction of pixels a large enough distance pushes past the fog
+             * range, not evidence of a distance: the change produced 255
+             * distinct colours where the golden has two. length(oPos.xyz)
+             * scored 27% for being smaller, not for being less correct.
+             * Reverted -- fitting one sample of stale state would match this
+             * golden and nothing else, and it would put a bogus distance in
+             * front of any guest that did combine the two.
              */
-            if (state->foggen == FOGGEN_RADIAL) {
-                mstring_append(
-                    body, "  float fogDistance = length(oPos.xyz * oPos.w);\n");
-            } else {
-                mstring_append(body, "  float fogDistance = oFog.x;\n");
-            }
+            mstring_append(body, "  float fogDistance = oFog.x;\n");
         }
         mstring_append(body,
                        "  if (isinf(fogDistance) || isnan(fogDistance)) {\n"
