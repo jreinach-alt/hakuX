@@ -56,10 +56,19 @@ desktop build additionally needs one system package
 (`dependency('libcurl')` is unconditional in this fork and falls back to a
 subproject requiring openssl), so ask rather than assume it works.
 
-**Build before you claim.** The native build takes ~20s incremental once warm.
-An unbuilt change is a hypothesis. This has bitten repeatedly: a fix that looked
-obviously correct failed to compile, and another compiled but hung the emulator
-on boot.
+**Build before you claim, and build the COMMITTED state.** The native build
+takes ~20s incremental once warm. An unbuilt change is a hypothesis. This has
+bitten repeatedly: a fix that looked obviously correct failed to compile, and
+another compiled but hung the emulator on boot.
+
+And a green build of a dirty tree proves nothing about any commit -- it is a
+worse signal than a red one, because it reads as verified. On 2026-09-12 a
+cherry-pick conflict was resolved badly, committed broken, then repaired in the
+working tree; the repair was never committed, the Android build said BUILD
+SUCCESSFUL, and a device A/B was queued against a commit with twelve compiler
+errors in it. The dispatcher caught it by refusing to build a dirty tree, which
+is the only reason it did not reach the device. Check `git status` is clean
+before you believe a build.
 
 **Measure before you claim.** "This should fix it" is worth nothing here. The
 pgraph suite exists precisely so that claims are checkable. Run it.
