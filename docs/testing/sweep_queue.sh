@@ -49,8 +49,17 @@ install_baseline() {
     echo "$(now) installed baseline $(apk_sha)" >> "$LOG"
 }
 
+# The Nova can leave the USB bus -- it did at 23:18 on 2026-09-11, mid-sweep.
+# Without this check the worker "ran" every remaining test in about a second,
+# recorded all of them FAILED, and emptied the queue, which loses the work
+# rather than pausing it. A queue is not the place to record a cable.
+device_present() {
+    adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
+}
+
 run_one() {  # $1 = Suite::Test ; echoes guest_dir on success
     local spec="$1" plan
+    device_present || return 2
     plan=$(python3 "$HERE/make_isolation_discs.py" x --results "$RESULTS" \
              --goldens "$GOLDENS" --base "$BASE_ISO" --out-dir "$STATE/disc" \
              --build-one "$spec" 2>>"$LOG") || return 1
@@ -119,9 +128,17 @@ worker() {
             paused=0
         fi
 
-        local spec gdir
+        local spec gdir rc
         spec=$(head -1 "$QUEUE")
-        if gdir=$(run_one "$spec"); then
+        gdir=$(run_one "$spec"); rc=$?
+        if [ "$rc" = 2 ]; then
+            # Device gone. Keep the row and wait for it: the queue survives a
+            # cable, and nothing here can tell a flat battery from a knock.
+            echo "$(now) device $SERIAL not present; waiting (queue intact)" >> "$LOG"
+            sleep 30
+            continue
+        fi
+        if [ "$rc" = 0 ]; then
             printf '%s\t%s\t%s\t%s\n' "$spec" "$gdir" "$(apk_sha)" "$(date -Is)" >> "$DONE"
             sed -i '1d' "$QUEUE"
         else

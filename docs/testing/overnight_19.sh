@@ -83,6 +83,26 @@ say() { echo "$(date '+%m-%d %H:%M:%S') $*" | tee -a "$LOG" >/dev/null; }
 apk_sha() { sha256sum "$APK" 2>/dev/null | cut -c1-12; }
 battery() { a shell 'cat /sys/class/power_supply/battery/capacity' 2>/dev/null | tr -d '\r'; }
 
+# The device can leave the USB bus -- it did once while this harness was being
+# built. Every step needs it, so wait rather than measure nothing: an absent
+# device produces an empty arm that looks exactly like a suite that renders
+# nothing, and that is the most expensive kind of wrong result here.
+wait_device() {
+    local waited=0
+    while ! adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"; do
+        if [ "$waited" = 0 ]; then
+            say "device $SERIAL is not on the bus; waiting for it"
+        fi
+        sleep 30; waited=$((waited+30))
+        if [ "$waited" -ge "${DEVICE_WAIT:-3600}" ]; then
+            say "STOP: device absent for ${waited}s"
+            return 1
+        fi
+    done
+    [ "$waited" -gt 0 ] && say "device back after ${waited}s"
+    return 0
+}
+
 # Checked between steps only: a step already running always finishes, so no row
 # is ever half-measured.
 may_continue() {
@@ -101,6 +121,7 @@ may_continue() {
         rm -f "$LEASE"; a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
         sleep 5
     done
+    wait_device || return 1
     return 0
 }
 
