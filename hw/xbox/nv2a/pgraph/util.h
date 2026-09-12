@@ -49,6 +49,39 @@ uint8_t cliptobyte(int x)
     return (uint8_t)((x < 0) ? 0 : ((x > 255) ? 255 : x));
 }
 
+/*
+ * YCbCr to RGB the way the NV2A does it, derived from hardware goldens.
+ *
+ * The BT.601 coefficients themselves are right, but the hardware datapath is
+ * not a single rounded dot product: each term is quantised to an integer on
+ * its own and only then summed. The goldens show this as strict separability
+ * -- at fixed Y the difference between two chroma columns is a constant with
+ * no +-1 wobble, which a single rounded sum cannot produce. Three of the four
+ * chroma terms also carry one bit less than the luma term and so move in
+ * steps of two; the blue difference term is the exception.
+ *
+ * Derived and checked against every unclipped (Y,Cb,Cr) -> RGB pair
+ * recoverable from the YUY2 and UYVY texture format goldens: 37497 distinct
+ * triples, all three channels exact. The sampled ranges are Y 42..209 and
+ * Cb, Cr 17..238; outside those the affine form is extrapolated.
+ *
+ * Rounding constants are one representative choice; each is free over a small
+ * range that a compensating change in the trailing constant absorbs.
+ *
+ * c = Y - 16, d = Cb - 128, e = Cr - 128.
+ */
+static inline
+void convert_ycbcr_to_rgb(int c, int d, int e,
+                          uint8_t *r, uint8_t *g, uint8_t *b)
+{
+    int luma = (298 * c - 96) >> 8;
+
+    *r = cliptobyte(luma + 2 * ((409 * e + 127) >> 9));
+    *g = cliptobyte(luma + 2 * ((-50 * d + 254) >> 8) +
+                    2 * ((-104 * e + 248) >> 8) + 1);
+    *b = cliptobyte(luma + ((516 * d) >> 8));
+}
+
 static inline 
 void convert_yuy2_to_rgb(const uint8_t *line, unsigned int ix,
                                 uint8_t *r, uint8_t *g, uint8_t* b) {
@@ -61,9 +94,7 @@ void convert_yuy2_to_rgb(const uint8_t *line, unsigned int ix,
         d = (int)line[ix * 2 + 1] - 128;
         e = (int)line[ix * 2 + 3] - 128;
     }
-    *r = cliptobyte((298 * c + 409 * e + 128) >> 8);
-    *g = cliptobyte((298 * c - 100 * d - 208 * e + 128) >> 8);
-    *b = cliptobyte((298 * c + 516 * d + 128) >> 8);
+    convert_ycbcr_to_rgb(c, d, e, r, g, b);
 }
 
 static inline 
@@ -78,9 +109,7 @@ void convert_uyvy_to_rgb(const uint8_t *line, unsigned int ix,
         d = (int)line[ix * 2 + 0] - 128;
         e = (int)line[ix * 2 + 2] - 128;
     }
-    *r = cliptobyte((298 * c + 409 * e + 128) >> 8);
-    *g = cliptobyte((298 * c - 100 * d - 208 * e + 128) >> 8);
-    *b = cliptobyte((298 * c + 516 * d + 128) >> 8);
+    convert_ycbcr_to_rgb(c, d, e, r, g, b);
 }
 
 #endif
