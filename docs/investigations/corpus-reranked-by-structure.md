@@ -64,3 +64,55 @@ see whether the difference is there at all.
 
 This does not claim any of them is host-specific. It says where the question is
 worth asking, ordered by what the answer is worth.
+
+
+## Answered, and mostly not the way I hoped
+
+The device lane priced the ask within minutes of it being posted. Same measure,
+different host, from the #19 sweep's fresh arm:
+
+| suite | this lane's +-1 share | Adreno's |
+|---|---:|---:|
+| `Fog_param` | 99.6% | **99.6%** |
+| `Fog_exceptional_value` | 91.6% | **92.6%** |
+| `Fog_gen` | 53.1% | **53.1%** |
+| `Bump_map` | 0% | **0%** |
+
+**Identical to a tenth of a percent on three of four.** These are not the
+bump-alpha case. Two independent hosts agreeing that closely is strong evidence
+of a shared precision floor rather than a software-rasteriser artefact, so the
+8.8M channels stay on the board: ours to fix or ours to accept, but ours.
+
+The hypothesis was worth testing and it was cheap to test. It was wrong.
+
+## And the top entry is not what it says either
+
+`Blend_tests`' 6,500,124 is not a blend investigation. The device lane
+recovered the retired 1,568-test oracle and scored the 1,120 unsigned tests:
+**4,480 of 4,480 quads match silicon at their centres** — every equation, every
+source and destination factor. The blend arithmetic is exonerated by
+measurement rather than by argument.
+
+What fails is the **fifth quad**, which is issued with the first draw's source
+colour: our quad 5 equals our own quad 1 on 1,119 of 1,120 tests, and nothing
+else is wrong anywhere. Where a test happens to want the same colour twice the
+capture is exact. `MIN` and `MAX` ignore the factors and behave identically, so
+it sits upstream of blending — a draw-state or draw-queue defect.
+
+So the entry should read: **one draw-state bug plus #43**, not 6.5M px of blend
+work.
+
+## Two suites this table does not rank
+
+Measured on Adreno, from the same sweep:
+
+| suite | captures | exact | differing | +-1 share |
+|---|---:|---:|---:|---:|
+| `W_param` | 110 | 32 | **5,136,387** | 45.2% |
+| `Texture_render_target` | 41 | 1 | **3,209,634** | **0.0%** |
+
+`Texture_render_target` at zero percent one-step and one capture exact in
+forty-one is a pure structural block larger than anything this table ranks
+except `Blend_tests`. This lane's corpus puts it at 563,668 differing channels,
+so the two lanes disagree by a factor of six and that gap needs explaining
+before either number is used.

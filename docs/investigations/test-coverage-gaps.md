@@ -81,3 +81,17 @@ but it is an upstream change, not a change here.
 - **`output_directory_path` must be a single level.** Working discs use
   `e:/blend`; a nested `e:/nxdk_pgraph_tests/blendall` extracts nothing. That
   cost one run here before the real cause was found.
+
+
+## Correction: a released binary does generate them
+
+This page concluded that unlocking the 1,568 needs an nxdk_pgraph_tests source
+change and a rebuilt ISO. That is wrong for blend. The tests were **retired
+upstream** when `#spot_` replaced them -- marking them interactive-only is how
+that retirement was implemented -- but the **2025-03-14 release still generates
+them**: the device lane ran it and got 1,568 captures in 934s, matching the
+golden count exactly.
+
+So the oracle is reachable today with an older released disc, no source change
+and no rebuild. The mechanism described above is still what the current binary
+does; the conclusion drawn from it was too strong.
