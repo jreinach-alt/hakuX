@@ -1208,6 +1208,51 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
            surface->host_fmt.host_bytes_per_pixel == vk_format_texel_size(tex_vkf.vk_format);
 }
 
+/*
+ * The direct path samples the *surface's* own image view, so it is correct
+ * only when that view is what the texture asked for. Silicon reinterprets the
+ * bytes of a render target through the texture's format: an A8R8G8B8 target
+ * sampled as A8B8G8R8 exchanges R and B. A view built for the surface does no
+ * such thing, and equal texel size -- all
+ * check_surface_to_texture_compatiblity() asks for -- is not equal layout.
+ *
+ * Measured cost of getting this wrong: of 18,000 sampled pixels in Blend
+ * tests' #spot_ captures, 6,353 were R and B the wrong way round, which is
+ * four fifths of that suite's whole residual. See
+ * docs/investigations/blend-render-target-channel-order.md.
+ *
+ * The component mapping matters for the same reason. X8R8G8B8 asks for alpha
+ * to read as one, and only the texture's own view carries that; the surface's
+ * view hands back the alpha the render target happens to hold.
+ *
+ * When either differs, copy_surface_to_texture() is right: vkCmdCopyImage
+ * between two formats of the same 32-bit compatibility class copies bits, so
+ * the reinterpretation happens in the copy and the texture's own view applies
+ * its mapping on top.
+ */
+static bool surface_view_matches_texture(const SurfaceBinding *surface,
+                                         const TextureShape *shape)
+{
+    if (!surface->color) {
+        return true;  /* zeta direct binding has its own, narrower check */
+    }
+
+    VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
+    if (tex_vkf.vk_format != surface->host_fmt.vk_format) {
+        return false;
+    }
+
+    const VkComponentMapping *m = &tex_vkf.component_map;
+    return (m->r == VK_COMPONENT_SWIZZLE_IDENTITY ||
+            m->r == VK_COMPONENT_SWIZZLE_R) &&
+           (m->g == VK_COMPONENT_SWIZZLE_IDENTITY ||
+            m->g == VK_COMPONENT_SWIZZLE_G) &&
+           (m->b == VK_COMPONENT_SWIZZLE_IDENTITY ||
+            m->b == VK_COMPONENT_SWIZZLE_B) &&
+           (m->a == VK_COMPONENT_SWIZZLE_IDENTITY ||
+            m->a == VK_COMPONENT_SWIZZLE_A);
+}
+
 static void create_dummy_texture(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -1643,8 +1688,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                     pgraph_vk_flush_all_frames(pg);
                 }
                 bool can_direct_bind =
-                    surface->color ||
-                    !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+                    (surface->color ||
+                     !(surface->host_fmt.aspect &
+                       VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+                    surface_view_matches_texture(surface, &snode->key.state);
 
                 if (can_direct_bind) {
                     VkImageLayout direct_layout;
@@ -1665,10 +1712,15 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                     copy_surface_to_texture(pg, surface, snode);
                 }
                 did_s2t_copy = true;
-            } else if (surface->color ||
-                       !(surface->host_fmt.aspect &
-                         VK_IMAGE_ASPECT_STENCIL_BIT)) {
-                // Same draw_time: surface hasn't changed, reuse direct view
+            } else if ((surface->color ||
+                        !(surface->host_fmt.aspect &
+                          VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+                       surface_view_matches_texture(surface,
+                                                    &snode->key.state)) {
+                // Same draw_time: surface hasn't changed, reuse direct view.
+                // Reusing it needs the same test as taking it in the first
+                // place, or a texture bound twice quietly reverts to the
+                // surface's own view on the second bind.
                 r->tex_surface_direct[texture_idx] = true;
                 r->tex_surface_direct_views[texture_idx] =
                     surface->image_view;
@@ -2050,8 +2102,9 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
 
     if (surface_to_texture) {
         bool can_direct_bind =
-            surface->color ||
-            !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+            (surface->color ||
+             !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+            surface_view_matches_texture(surface, &snode->key.state);
 
         if (can_direct_bind) {
             VkImageLayout direct_layout;
