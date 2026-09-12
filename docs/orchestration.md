@@ -154,3 +154,59 @@ nightly, and leave running to the dispatcher's queue.
   it looks like a day with no work.
 - Signing uses the fork's key from `android/key.properties`, which is
   gitignored and must never be echoed anywhere.
+
+## The full sweep is the idle-priority job
+
+Scoring the whole corpus is about **4.5 hours of device time**, which cannot
+sit in front of an implementer waiting on eight captures. So it is the
+dispatcher's lowest-priority work, and it yields:
+
+- `sweep_queue.sh pause` **blocks until the runner has genuinely parked**, then
+  frees the device. It does not merely set a flag and hope.
+- Every `resume` **reinstalls the baseline APK**, so a request that installed a
+  different binary mid-sweep cannot silently contaminate the rows that follow.
+- Each row records the APK sha that produced it, so a mix-up is visible after
+  the fact rather than inferred.
+- A device drop **re-queues** rather than failing the row. One drop once marked
+  every queued test FAILED and emptied the queue.
+
+Which gives the scheduling rule: **requests preempt the sweep; the sweep
+resumes when the queue is empty.** A 4.5-hour sweep interleaved with a working
+day will take several days of wall clock to finish, and that is the correct
+trade — a stale full-corpus number is worth less than an implementer's answer
+now.
+
+The one thing the dispatcher must not do is let a sweep and a request share
+the device. That is what the pause handshake is for.
+
+## The scoreboard
+
+`docs/testing/scoreboard.py` rolls the 101 suites into 13 categories and puts
+labelled runs side by side. `docs/testing/SCOREBOARD.md` is the output.
+
+Cells are **exact/captures · structural px**, structural being pixels that are
+not one step out — the part that is a rule rather than a rounding floor.
+
+Three things it refuses to do, each because the alternative reads as progress
+that did not happen:
+
+- **It marks partial coverage.** A category whose run scored fewer captures
+  than it has goldens shows `⚠️` and a percentage: that cell is a floor, not a
+  score. `Blend` at 7% and `Depth / stencil` at 39% are the two that matter.
+- **It marks a run that predates the one-step column** with `†` and reports
+  *all* differing pixels, because the structural share genuinely is not
+  knowable for the 2026-09-08 baseline. Passing its total off as structural
+  would make every later run look like an improvement.
+- **It reports rescored rows rather than absorbing them.** A run directory can
+  hold two scorings of one test — a suite on its own disc and again inside a
+  sweep — and counting both inflated one category to 82 captures against 46
+  goldens, which is how the bug was found. Later files win and the collision
+  count is printed.
+
+Categories are keyed on **suites, not issues**, deliberately: #9 closed and
+became #53 and #38 in an afternoon, and a scoreboard whose rows move when the
+tracker moves cannot show a trend.
+
+Columns fill in as the dispatcher runs them: `baseline` is the 2026-09-08
+sweep, `today` is this session's measurements, and `published` and `nightly`
+each need a full sweep scheduled as idle-priority work.
