@@ -243,6 +243,59 @@ flashing frame, whether the stage set differs for that draw -- are all
 answerable from a capture already taken, offline, without another build or
 another device trip.
 
+## Found it: the detail scale and the detail texture go out of step
+
+Four diagnostic captures, ten frames each, driven by hand from the Debug
+Capture button. 303 draws, 299 with textures. The per-draw record now carries
+each stage's matrix, so this was answerable offline with no further builds --
+which is the whole argument for capturing everything at once.
+
+**Stage 1 is a detail texture, and its matrix scale is paired with the texture
+size to hold the detail density constant.** Across the captures, scale 8 is
+always used with a 256-wide texture and scale 16 with a 128-wide one. Both
+give 2048 detail texels across the surface:
+
+| scale x texture width | draws |
+|---|---|
+| 2048 | **166** |
+| **1024** | **1** |
+
+**One draw in 167 breaks the invariant**: session 4122, frame 4122, draw 92,
+`TRIANGLES` count 162, shader `0xbf6ac861...` -- **scale 8 with a 128-wide
+texture**, half the intended density.
+
+And the capture saved that draw's framebuffer, so the artifact is visible in
+the act. Differencing the framebuffer after draw 91 against after draw 92
+isolates exactly the geometry it drew: a stone wall, which comes out
+**markedly brighter and with visibly coarser stone blocks** than the
+correctly-drawn wall beside it (`images/galleon-outlier-draw.png`). Brighter
+and coarser is what half the detail density looks like, and it is what was
+reported from the outside as "more brightly lit and out of place".
+
+### The mechanism
+
+Scale 8 belongs with a 256-wide texture. On the failing draw the matrix held
+the scale for the 256 texture while the 128 texture was bound. So the
+**texture binding advanced and the matrix did not**: the two are maintained in
+different dirty-tracking domains -- the texture through
+`texture_state_gen`/`texture_vram_gen` in the renderer, the matrix through the
+vertex shader constant file -- and a draw consuming both saw them out of step.
+
+That also explains every earlier negative result. Each field was individually
+stable, which is why logging them one at a time found nothing: **the defect is
+not in any single field's value but in the relationship between two of them.**
+An invariant across fields was needed, and only a capture holding all of them
+at once could express it.
+
+### Still to establish
+
+Which update is late, and why. The candidates are the matrix being written to
+the constant file after the draw that needed it, or the texture binding being
+taken from a cache entry that the matrix update did not invalidate. One draw in
+167 is a narrow window, which fits an ordering race rather than a systematic
+error, and no fix should be attempted until the ordering is read out of the
+code.
+
 ## Next measurement, not yet done
 
 Log the texture matrix and the coordinate generation mode for each active
