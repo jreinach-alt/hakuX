@@ -147,10 +147,20 @@ for s in json.load(open(sys.argv[1])).get('suites',[]): print(s)" "$req" > "$sui
     mapfile -t SUITE_LIST < "$suitefile"
     [ "${#SUITE_LIST[@]}" -gt 0 ] || { echo "no suites named" > "$rdir/ERROR"; log "  NO SUITES"; mv "$req" "$rdir/request.json"; return 0; }
     local disc_id
+    # disc_id must IDENTIFY the disc, because the dispatcher's rule is that two
+    # results are comparable only if the disc identity matches. Truncating the
+    # suite list to 40 characters broke exactly that: a four-suite disc read as
+    # "4-suites:Depth buffer,Depth buffer fixed function", dropping two names,
+    # so two different discs sharing a prefix were indistinguishable. Carry a
+    # hash of the full sorted list for identity and keep the prefix for reading.
     disc_id=$(python3 -c "
-import json,sys
-s=json.load(open(sys.argv[1])).get('suites',[])
-print(s[0] if len(s)==1 else '%d-suites:%s' % (len(s), ','.join(sorted(s))[:40]))" "$req")
+import hashlib,json,sys
+s=sorted(json.load(open(sys.argv[1])).get('suites',[]))
+if len(s)==1:
+    print(s[0])
+else:
+    h=hashlib.sha1(','.join(s).encode()).hexdigest()[:8]
+    print('%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))" "$req")
 
     local r
     for r in $(seq 1 "$runs"); do
