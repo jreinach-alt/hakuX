@@ -99,6 +99,12 @@ Frame geometry, for reference: `NUM_SAMPLES_PER_FRAME 32`, `NUM_MIXBINS 32`,
 
 ## 2. The low-volume symptom
 
+> **Note on the line numbers in this section.** They cite the tree as it was
+> when the diagnosis was made, before the fix in section 9. The divisor
+> described below at `vp.c:1509` no longer exists; the code that replaced it is
+> at `vp.c:1578`. Read this section against the parent of the fix commit, and
+> section 9 against the current tree.
+
 ### Candidate A — uncompensated submix headroom in the VP monitor mix
 
 **This is the strongest candidate and the only uncompensated gain loss I can
@@ -630,6 +636,10 @@ issue rather than folded into the loudness work.
 
 ## 7. Recommendation
 
+> **Superseded by section 9.** Candidate A was confirmed on hardware and the fix
+> has since landed. This section is kept as written, because the prediction it
+> makes is what section 9 is measured against.
+
 No code change is made in this commit. Candidate A is the best-supported
 explanation of the symptom, and the mechanism is measured, but it turns on one
 fact I do not have — the value titles write to `SET_SUBMIX_HEADROOM` — and if
@@ -698,3 +708,137 @@ point at files it does not own were deliberately left as reports:
 
 `ui/sdl2.c` was **not** implicated: the APU opens its own SDL audio device at
 `apu.c:355-359` and does not route through the UI's audio path at all.
+
+## 9. Resolution: candidate A confirmed and fixed
+
+### The measurement that closed the gap
+
+**MEASURED, on hardware, not by me.** The coordinator added the one-shot log
+proposed in section 4 at the `SET_SUBMIX_HEADROOM` write site and booted Galleon
+for 90 seconds on the Nova:
+
+```
+submix_headroom[0..30] = 1
+```
+
+All 31 slots written, every one of them 1, set once at startup, no slot left at
+zero. That is the fact section 2 was missing. The divisor at the monitor mix was
+live at exactly 2x, i.e. **−6.02 dB uniformly**, and the fix is not inert.
+
+The coordinator separately confirmed that `volume_limit` is 1.0 and that the
+`< 1` guard makes `apu.c:218` genuinely inert at maximum volume, so candidate E
+is excluded at max rather than merely unlikely. With the ten negatives of
+section 3 standing, there is no second uncompensated divisor competing for the
+explanation.
+
+### What changed, and what deliberately did not
+
+Two sites, both confined to the monitor path:
+
+1. **`voice_process`, the monitor mix** — the `/hr` divisor is **dropped**, so
+   the per-bin selection is now `g = fmax(g, attenuate(vol[b]))`.
+2. **`get_multipass_samples`** — the mixbin read is **compensated** by
+   `1 << submix_headroom[mp_bin]`, guarded on
+   `monitor.point == MCPX_APU_DEBUG_MON_VP`.
+
+**Why drop at site 1 rather than compensate after the mix.** The coordinator
+asked for the shape that stays correct if slots are ever set unequally, and
+these differ exactly there. The attenuation is applied per voice and per bin, so
+its inverse belongs in the same place. A single post-mix scale would have to
+pick one headroom value for a sum that may draw on bins carrying different ones,
+and there is no correct choice of scalar in that case — max, min and mean are
+all wrong for some voice. Galleon sets all slots equal, so this capture cannot
+distinguish the two shapes; dropping is the one that remains right when a title
+does not. Dropping also restores the intent of the `fmax`, which is to pick the
+loudest bin a voice actually uses: with the divisor in place, a quieter bin could
+win the selection merely by having less headroom.
+
+**Why site 2 was needed at all.** This is a residual that only appears once site
+1 changes, and it is the reason the fix is two lines rather than one. Multipass
+sub-voices are deliberately skipped in the monitor mix to avoid double-counting
+them; their audio reaches the output *only* by being read back out of
+`mixbins[mp_bin]` by the destination voice. That mixbin was filled by the
+mixbin loop, which still divides. So had site 1 changed alone, direct content
+would have risen 6.02 dB while multipass-routed content stayed put — a 6 dB
+shift in the balance between dry and submixed audio, which is a new defect, not
+a fix. Compensating at the read follows the hardware's own convention, that
+whoever reads a submix earns the headroom back, and it uses that bin's own
+value, so it too stays correct when slots differ.
+
+**`vp.c:1521` and `:1523` are deliberately unchanged, and should stay that way.**
+Asked explicitly: **only the monitor-path sites should change.** Those two lines
+feed `mixbins[]`, which is the sole input to the GP DSP, and on that path the
+scene the title uploaded earns the divisor back when it reads the bin. Removing
+them would double the level going into the 24-bit mixbuf and risk overflowing it
+— which is the exact failure headroom exists to prevent. `:1521` (the HRTF
+divisor) additionally carries an unresolved question of its own, recorded as
+candidate B, that this change does not touch and does not depend on.
+
+### Evidence that the change cannot reach the DSP path
+
+Asked for as evidence bar item 2. For site 1 this is a containment proof, not an
+argument:
+
+- The edited statement's only effect is the value of `g`, which is used only at
+  the two `sample_buf[i][...] +=` lines immediately below.
+- `d->vp.sample_buf` is written in exactly two places, both inside
+  `monitor.point == MCPX_APU_DEBUG_MON_VP` guards (the per-voice mix, and the
+  worker accumulation in `voice_worker_thread`), and **read in exactly one**:
+  `src_float_to_short_array` in `mcpx_apu_vp_frame`, also inside that guard.
+  `grep -n "sample_buf" hw/xbox/mcpx/apu/vp/vp.c` enumerates every reference.
+- The GP DSP's sole input is `mixbins[]`, written to DSP XRAM via
+  `float_to_24b` in `mcpx_apu_dsp_frame` (`gp_ep.c:446`).
+- `sample_buf` and `mixbins` are disjoint buffers, and the mixbin loop is not
+  touched.
+
+So no value the DSP consumes can change. Site 2 is different and needs the
+guard rather than a proof: `get_multipass_samples` writes `samples[][]`, which
+*does* feed the mixbin loop and therefore the DSP, so the compensation is
+explicitly conditioned on the monitor point. That guard is load-bearing, not
+cosmetic — without it this edit would alter the DSP path.
+
+Note that the correct gate is `monitor.point`, not `use_dsp`: the desktop debug
+UI can force a monitor point directly via `mcpx_apu_debug_set_monitor`
+(`ui/xui/debug.cc:206`, `debug.c:61-63`), so a build with `use_dsp` on can still
+be listening to the VP monitor mix. Both sites key off `monitor.point`, so both
+behave correctly in that configuration too.
+
+### Prediction
+
+Stated before any listening, as evidence bar item 1. With all 31 slots at 1:
+
+- The monitor mix comes out **2x louder, +6.02 dB**, uniformly across all
+  content — dry and multipass alike, since site 2 keeps them in step.
+- **No other level in the chain moves.** The DSP path, the GP and EP monitor
+  taps, and the AC'97 path are all untouched, per the containment proof above.
+- No change to frequency response, timing, stereo balance, or the relative
+  balance between voices.
+- Bit-identical output for any title that leaves every slot at 0.
+- Relative balance between bins changes only if a title sets slots unequally,
+  which Galleon does not.
+- Dense mixes may now clip at the `+/-1.0` clamp in
+  `src_float_to_short_array`, having previously carried 2x of margin. **If the
+  symptom becomes distortion rather than quietness, that is this change working
+  and needing a limiter, not this change being wrong** — and the right response
+  is a limiter or a headroom-aware master scale, not restoring the divisor.
+
+### Status: UNVERIFIED BY EAR
+
+**This has not been listened to, and I cannot listen to it.** It is not built,
+not run, and not heard; I have no device access and no audio oracle. What is
+verified is the source reasoning and the register capture. The only oracle
+available until the PCM-tap harness of section 5 exists is a human listening to
+the device, and that has not happened yet.
+
+Two further caveats worth holding onto:
+
+- Multipass (site 2) is the less-exercised path, and I do not know from the
+  capture whether Galleon uses multipass voices at all. If it does not, site 2
+  is inert for that title and untested by the listening check — it is there so
+  that titles which *do* use it are not left 6 dB out of balance.
+- The compensation at site 2 uses `submix_headroom[mp_bin]`. For a 3D voice
+  whose bins 0-3 are remapped to `hrtf_submix[]`, the mixbin loop attenuates by
+  `hrtf_headroom` instead (`vp.c:1521`), so if an HRTF submix bin were ever also
+  used as a multipass bin the two would disagree. DirectSound puts the multipass
+  bin at 31 and the HRTF submixes elsewhere, so this does not arise in practice,
+  but it is the seam to look at first if multipass audio comes out wrong.

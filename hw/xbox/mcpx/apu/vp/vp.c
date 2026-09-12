@@ -554,20 +554,26 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
         slot = (method-NV1BA0_PIO_SET_SUBMIX_HEADROOM)/4;
         d->vp.submix_headroom[slot] =
             argument & NV1BA0_PIO_SET_SUBMIX_HEADROOM_AMOUNT;
-        /* Every use of this field is a DIVISION -- here, and at the two sites
-         * in the monitor mix below -- with no compensating multiply anywhere
-         * under hw/xbox/mcpx. On the default path (use_dsp false) the mixbins
-         * are discarded, so unlike the DSP path there is no scene to earn the
-         * divisor back, and the field is three bits: 6.02 dB of loss per unit,
-         * up to 42 dB. That is a candidate cause of the reported "volume is
-         * low even at maximum", but only if titles actually program a
-         * non-zero value -- it resets to zero and nothing in this tree records
-         * what the XDK writes, which would make any gain change here inert.
+        /* This field is a per-bin pre-attenuation of 2^value, three bits wide,
+         * so 6.02 dB per unit up to 42 dB. It exists to reserve range in the
+         * 24-bit GP mixbuf, and on the DSP path the scene the title uploaded
+         * earns it back when it reads the bin.
          *
-         * So log it once per slot rather than guessing. One line, and it
-         * settles the question on the next run of any title that plays audio.
-         * Routed through __android_log_print because a core fprintf(stderr)
-         * never reaches logcat on Android. docs/investigations/audio-assessment.md. */
+         * The monitor mix used to divide by it too, with nothing anywhere
+         * under hw/xbox/mcpx multiplying it back -- that path discards the
+         * mixbins, so there was no reader to earn it. Galleon programs 1 into
+         * all 31 slots, measured with this log on the Nova, which made the
+         * default path uniformly 6.02 dB quiet and explains the reported
+         * "volume is low even at maximum". The monitor mix no longer divides
+         * (see voice_process) and multipass reads compensate at the read (see
+         * get_multipass_samples); this site is unchanged because it only
+         * records the value.
+         *
+         * The log stays: it is one line per slot, it is the evidence the fix
+         * rests on, and it is how a title programming something other than 1
+         * would be noticed. Routed through __android_log_print because a core
+         * fprintf(stderr) never reaches logcat on Android.
+         * docs/investigations/audio-assessment.md. */
 #ifdef __ANDROID__
         if (d->vp.submix_headroom[slot]) {
             static uint32_t logged_slots;
@@ -575,7 +581,7 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
                 logged_slots |= 1u << slot;
                 extern int __android_log_print(int, const char*, const char*, ...);
                 __android_log_print(4, "hakuX-audio",
-                    "submix_headroom[%d] = %d -- monitor mix divides by %d (-%d.%02d dB)",
+                    "submix_headroom[%d] = %d -- reserves x%d (%d.%02d dB), compensated on the monitor path",
                     slot, d->vp.submix_headroom[slot],
                     1 << d->vp.submix_headroom[slot],
                     (602 * d->vp.submix_headroom[slot]) / 100,
@@ -1293,9 +1299,26 @@ static void get_multipass_samples(MCPXAPUState *d,
                                 NV_PAVS_VOICE_CFG_FMT_MULTIPASS_BIN);
     dbg->multipass_bin = mp_bin;
 
+    /* On the monitor path, undo this bin's headroom as we read it. Multipass
+     * sub-voices reach the output only through here -- the monitor mix skips
+     * their direct contribution to avoid counting them twice -- and they were
+     * written into the bin with its divisor applied. Compensating at the read
+     * follows the hardware's own convention, that whoever reads a submix earns
+     * the headroom back, and it uses this bin's own value, so it stays correct
+     * if slots are ever set unequally. Without it, multipass content would sit
+     * 2^headroom below everything else now that the monitor mix no longer
+     * divides.
+     *
+     * The DSP path is deliberately untouched: there the GP scene is the reader
+     * and does this itself, so the guard is required, not cosmetic. */
+    float mp_gain = 1.0f;
+    if (d->monitor.point == MCPX_APU_DEBUG_MON_VP) {
+        mp_gain = 1 << d->vp.submix_headroom[mp_bin];
+    }
+
     for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
-        samples[i][0] = mixbins[mp_bin][i];
-        samples[i][1] = mixbins[mp_bin][i];
+        samples[i][0] = mp_gain * mixbins[mp_bin][i];
+        samples[i][1] = mp_gain * mixbins[mp_bin][i];
     }
 
     // DirectSound sets clear mix to true
@@ -1535,8 +1558,24 @@ static void voice_process(MCPXAPUState *d,
             if (bin[b] == mp_bin && !debug_isolation) {
                 continue;
             }
-            float hr = 1 << d->vp.submix_headroom[bin[b]];
-            g = fmax(g, attenuate(vol[b]) / hr);
+            /* No headroom divisor on this path. Submix headroom is a
+             * pre-attenuation that reserves range in the 24-bit GP mixbuf so
+             * that summing voices into one bin cannot overflow, and the scene
+             * the title uploaded to the GP earns it back when it reads the
+             * bin. The monitor mix has no such reader: it sums in float, and
+             * mcpx_apu_vp_frame discards the mixbins outright. So dividing
+             * here was a loss with no counterpart anywhere under
+             * hw/xbox/mcpx. Galleon programs 1 into all 31 slots, i.e.
+             * -6.02 dB uniformly -- see docs/investigations/audio-assessment.md.
+             *
+             * Dropping the divisor rather than compensating after the mix is
+             * deliberate. The attenuation is per voice and per bin, so its
+             * inverse belongs there too; a single post-mix scale would need
+             * one headroom value for a sum that may draw on bins carrying
+             * different ones. It also restores the intent of the fmax below,
+             * which is to pick the loudest bin this voice actually uses rather
+             * than whichever bin happened to have the least headroom. */
+            g = fmax(g, attenuate(vol[b]));
         }
         g *= ea_value;
         for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
