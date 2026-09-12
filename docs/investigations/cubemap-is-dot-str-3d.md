@@ -121,16 +121,17 @@ of a positive face. Ours contains all eight, at texel frequency.
 | `DotSTR3D_-1to1` | 4 colours, flat regions | 8 colours, noise |
 | `DotSTR3D_0to1` | **2** colours, flat regions | 8 colours, noise |
 
-The reading that survives every check below:
+The reading that survives every check below, stated at the level of the
+observable and no further:
 
-> `PS_TEXTUREMODES_DOT_STR_3D` addresses its texture **volumetrically**, with
-> the raw `(dot_{i-2}, dot_{i-1}, dot_i)` triple and no normalisation. Those
-> dot products are of a constant matrix row against a normal, far outside
-> `[0,1]`, so every axis saturates at its wrap mode -- `CLAMP_TO_EDGE` here,
-> which is `TextureStage`'s default on all three axes and the test never
-> changes it. The fetched texel is therefore a **corner**, chosen by
-> `sign(dot_{i-2})` and `sign(dot_{i-1})`, and `r` selects nothing because the
-> texture's declared depth is 1.
+> Under `PS_TEXTUREMODES_DOT_STR_3D` the fetched texel is a **corner** of the
+> texture, chosen by `sign(dot_{i-2})` and `sign(dot_{i-1})`. The third
+> component selects nothing.
+
+Four independent legs follow. **What is deliberately not in that statement is
+*why* the address saturates**, because the first answer I gave is falsified
+below and I would rather leave the mechanism open than write a second guess
+into the tracker.
 
 Four independent legs:
 
@@ -167,8 +168,54 @@ with a varying coordinate produces that.
 The one thing the goldens cannot settle is *which* positive face. `+X`, `+Y`
 and `+Z` share the corner set, and `{#0000FF, #00FF00}` is reachable as an
 edge pair on all three. Slice 0 is `+X` because that is the order
-`GenerateCubemap` writes, and depth-1 volumetric addressing lands there, but
-the pixels alone only say "a positive face, at its corners".
+`GenerateCubemap` writes, but the pixels alone only say "a positive face, at
+its corners".
+
+### My own mechanism, falsified by arithmetic
+
+The first version of this note said the dot products are "far outside `[0,1]`,
+so every axis saturates at `CLAMP_TO_EDGE`". **That is wrong, and the numbers
+are not close.** The three vectors are rows of
+`GetFixedFunctionInverseCompositeMatrix()`, and that composite is
+`model_view x (perspective x viewport)` -- the viewport included, with a
+640x480 scale and a depth scale of `0x00FFFFFF`. Its inverse is correspondingly
+tiny. Reconstructing the exact chain (`CreateD3DLookAtLH`,
+`CreateD3DPerspectiveFOVLH(pi/4, 4:3, 1, 200)`, `CreateD3DViewport(640, 480,
+0x00FFFFFF)`, then `MatrixInvert`) gives, for both draws:
+
+| row | value | bound on `|dot|` over any mapped normal |
+|---|---|---:|
+| `pT1.xyz` | `[+1.220e-3, +8.629e-4, +8.629e-4]` | **0.00299** |
+| `pT2.xyz` | `[0, -1.220e-3, +1.220e-3]` | **0.00299** |
+| `pT3.xyz` | `[-4.403e-7, +2.224e-7, +2.224e-7]` | **9.37e-7** |
+
+So `dotSTR3` never leaves a box of side 0.003 about the origin, and `dot3` is
+seven orders of magnitude smaller still. Nothing saturates a `[0, 1]` address
+from there. The rotation convention is the only part of that chain I assumed
+rather than read, and it cannot matter: rotations are orthonormal, so they
+turn the rows without changing their length.
+
+**It also leaves our own output unexplained**, which is the more useful half.
+At `(0.003, 0.003)` with box filtering on a 64x64 texture every fragment
+should land on texel `(0, 0)` and the cube should be one flat colour. Ours is
+high-frequency noise across all eight corners. So the coordinate reaching our
+sampler is *not* `dotSTR3.xy` as computed above either, and one of the
+assumptions in that sentence -- the texcoord that reaches `pT3`, the filter,
+or the sampler the cube view is bound to -- is wrong.
+
+**The candidate worth testing first, and it is only a candidate:** the test
+writes `SetTexCoord1/2/3(row.x, row.y, row.z, 0.f)` -- **`w` is zero**. Every
+other `pT` consumer in `psh.c` that divides does `pT.xy / pT.w`; the dot modes
+take `pT.xyz` raw and never divide. If the hardware's address unit applies its
+projective divide here, every component becomes `±inf` and saturates to an
+edge with the sign of the numerator -- which is exactly the structure the
+goldens show, and it would make the magnitudes irrelevant by construction.
+That is a hypothesis with a mechanism and no measurement behind it, so it is
+written here and not in the tracker.
+
+Settling it needs one instrumented run: emit
+`vec4(clamp(abs(dotSTR3), 0, 1), 1)` in place of the fetch and read the
+magnitudes off the capture. The run is what this lane currently cannot do.
 
 ### The prediction, in exact counts
 
