@@ -118,52 +118,51 @@ so the two lanes disagree by a factor of six and that gap needs explaining
 before either number is used.
 
 
-## The table's own data is wrong for one suite, and it is the biggest one
+## RETRACTED: the table's data was right and I ran the wrong disc
 
-`Texture_render_target` is not 563,668 channels. Measured directly on the
-current build, 41 captures from `iso_rtt.iso`:
+I claimed above that the corpus TSV understates `Texture_render_target` by
+sixteen times, and posted that as a data-integrity failure in a file both lanes
+rank from. **It is wrong. The TSV is correct and the error was mine.**
 
-| | |
-|---|---:|
-| captures exact | **1 of 41** |
-| differing channels | **9,034,555** |
-| of those +-1 | 14,255 (**0.2%**) |
+Two discs in this lane enable only "Texture render target":
 
-That is **sixteen times** what the corpus TSV records, and it puts the suite
-**first on the structural axis** -- above `Blend_tests`' 6,500,124, which is
-itself now known to be one draw-state bug plus #43 rather than blend work.
+| disc | captures | exact | channels | +-1 share |
+|---|---:|---:|---:|---:|
+| **`iso_rt4.iso`** | 40 | **11** | **563,668** | 45.2% |
+| `iso_rtt.iso` | 41 | 1 | 9,034,555 | 0.2% |
 
-The error is in the TSV, not in the run. Checking it row by row against direct
-reads of current captures:
+`iso_rt4.iso` is the suite's disc and reproduces the TSV **to the channel**.
+`iso_rtt.iso` is an isolation disc left over from the 10 September
+render-to-texture investigation. I picked it by name without checking which one
+the corpus run used, measured 9,034,555, and concluded the file was broken.
 
-| suite | TSV total | direct | rows differing |
-|---|---:|---:|---|
-| `Texture_DXT` | 1,566,774 | 1,566,774 | **none** |
-| `Volume_texture` | 655,209 | 655,209 | **none** |
-| `Bump_env_lum` | 2,268,382 | 2,268,410 | 2 of 40, 28 channels total |
-| `Line_width` | 2,516,604 | 2,516,892 | 54 of 61, 288 channels total |
-| `Texture_format` | 2,967,977 | 2,191,677 | 2 of 40 -- this session's YUV fix |
-| **`Texture_render_target`** | **563,668** | **9,034,555** | **40 of 40** |
+The ranking head stands as it was: `Blend_tests` first at 6,500,124 -- itself
+one draw-state bug plus #43 -- and `Texture_render_target` at 563,668, roughly
+where the table already had it. Nothing about the board changes.
 
-So the file is trustworthy everywhere else: two suites match to the channel,
-two differ only by run-to-run noise, and `Texture_format`'s gap is a fix landing
-after the file was written. `Texture_render_target` is wrong on every row --
-claiming `TexFmt_A1R5G5B5` and `TexFmt_A8` are exact where they differ by
-235,980 and 243,675 channels.
+This is the second time tonight I have taken capture directories by name
+without establishing their provenance, after doing it with two-day-old `rtt_*`
+dirs an hour earlier. Both times the numbers were confidently wrong and both
+times the fix was one command. **The rule that would have caught it: before
+quoting a capture set, check which disc and which build produced it.**
 
-It is not a stale-capture problem either, which was my first guess: captures
-from two days ago give 9,192,290, so this suite was never near-exact and the
-TSV never reflected a real measurement of it.
+## What is actually there: the suite renders black in isolation
 
-**Corrected ranking head:**
+The mistake did surface something worth keeping, though it is not a ranking
+entry. On `iso_rtt.iso` the render-to-texture result is **a solid 285x285 block
+of pure black** at rows 98-382, cols 178-462, in 40 of 41 captures, with every
+pixel outside it matching the golden exactly -- 225,975 of 225,975. On
+`iso_rt4.iso` the same block carries 65,025 distinct colours and matches gold on
+11 captures outright.
 
-| suite | structural channels |
-|---|---:|
-| `Texture_render_target` | **~9,020,000** |
-| `Blend_tests` | 6,500,124 (one draw-state bug plus #43) |
-| `Fog_gen` | 2,186,760 |
-| `Bump_map` | 1,068,453 |
+Same suite, same build, same goldens; one disc renders the texture and the other
+renders nothing. That is state dependence between tests, which is #19's subject,
+and it says our render-to-texture needs something an earlier test leaves behind.
+Worth a look by whoever owns #19 -- it is a sharper instance than a crossmatch
+can find, because the isolated run fails completely rather than rendering some
+other test's image.
 
-The device lane measures `Texture_render_target` at 3,209,634 on Adreno, also
-0.0% one-step. Both are direct measurements and they are 2.8x apart, which is
-its own question and has to be settled before either is used as a target size.
+The device lane measures the same suite at 3,209,634 on Adreno against this
+lane's 563,668. Both are now direct measurements of the right disc, so that gap
+is real and unexplained -- but it is a factor of six, not the sixteen I claimed,
+and it is a question about two hosts rather than about the file.
