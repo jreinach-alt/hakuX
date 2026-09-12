@@ -475,6 +475,35 @@ title = "Texture cubemap: DOT_STR_3D fetches a corner texel on silicon, picked b
 # exactly the structure the goldens show. Settling it needs one instrumented
 # run emitting vec4(clamp(abs(dotSTR3),0,1),1) in place of the fetch.
 #
+# That probe ran on Adreno (ec13c70e60). MEASURED: every cube pixel has |dot|
+# in [0.001, 0.01), confirming the 0.003 bound on device and killing the
+# saturation mechanism for good; no pixel is non-finite, so the projective
+# divide does not describe OUR shader (it may still describe silicon); and on
+# the unsigned captures only two sign pairs occur, confirming #FF0000 = 0 at
+# the mechanism level. Also MEASURED: the (sign1, sign2) field is FLAT --
+# 92.4% to 99.9% of interior cube pixels agree with all four neighbours,
+# within a couple of points of the golden's own output flatness -- while our
+# OUTPUT is dithered at 7.2% to 78.8%. So the dither enters between dotSTR3
+# and the sampled texel, not in the signs.
+#
+# RETRACTED from that same run: a claim that only the sign-to-corner
+# assignment remained. It rested on comparing four sign-pair populations to
+# four golden corner populations SORTED, and those four goldens are all within
+# 17% of each other, so any roughly-equal four-way partition matches. Tested
+# spatially it is at chance (24.2/25.9/26.5% against marginals 24.9/25.4/
+# 25.3%), there is no dominant permutation, and half our cube lands on the four
+# texels the corner rule FORBIDS (20,770 of 41,647 on -1to1D3D) -- which an
+# assignment error among four corners cannot do.
+#
+# The live candidate: |dot3| is bounded at 9.37e-7 against 0.00299 for the
+# other two, so its sign is numerical noise per pixel while theirs are stable.
+# If our fetch consumes three components where hardware consumes two, that
+# gives eight reachable corners instead of four, a flat field on the first two
+# axes and dither contributed entirely by the third -- which fits every
+# measured fact. The probe cannot settle it: R and G carried sign(dot1) and
+# sign(dot2) and nothing carried sign(dot3). Next probe puts the third sign in
+# B. docs/investigations/dot-str-3d-probe.md.
+#
 # Also note the goldens pin the face to A POSITIVE ONE AT ITS CORNERS, not to
 # +X specifically -- +X, +Y and +Z share the corner set and {#0000FF, #00FF00}
 # is an edge pair on all three. +X comes from the addressing argument and

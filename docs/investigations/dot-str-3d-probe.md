@@ -100,3 +100,70 @@ capture-by-capture rather than as sorted populations.
 Nothing about hardware's own route is settled by this. The projective divide
 remains a live description of *silicon*; it is only refuted as a description of
 what our shader computes.
+
+---
+
+## RETRACTION: "only the sign-to-corner assignment is left" was a degenerate comparison
+
+The population table above is real, and the conclusion I drew from it is not.
+I compared the four sign-pair populations against the four golden corner
+populations **sorted**, which discards where they are — and the golden's four
+populations are 15,262 / 14,832 / 13,722 / 13,093, all within 17% of each
+other. *Any* four-way partition of the same cube into roughly-equal parts
+matches that list to a couple of hundred pixels. The two exact hits on
+`-1to1D3D` are what near-equal areas do, not evidence of the same partition.
+
+That is precisely the degeneracy this project keeps warning about — an example
+that confirms two rival explanations at once — and I produced it while
+enforcing the rule on others.
+
+Tested spatially by the other lane, per pixel, agreement with the golden's
+corner map is **at chance** (24.2% / 25.9% / 26.5% against marginals of 24.9% /
+25.4% / 25.3%), the ours-to-gold confusion table has no dominant permutation,
+and **half our cube lands on the four texels the corner rule forbids** — the
+even-parity set, 20,770 of 41,647 on `-1to1D3D`. A wrong assignment among four
+corners cannot reach texels outside those four. So the defect is not an
+assignment, and the REPEAT-wrapping reading that motivated it is dead too: at
+0.19 texels across the whole cube it would give one flat region per sign pair,
+which is not what we render.
+
+## What the probe does establish, measured after the retraction
+
+The decisive fork was whether the **sign field itself** is flat or dithered.
+Since `pT1..3` are constant over the draw, all spatial variation in `dot₁` and
+`dot₂` comes from the stage-0 normal map sample. Measured on the probe
+captures — fraction of interior cube pixels whose `(sign₁, sign₂)` equals all
+four neighbours:
+
+| capture | sign map flat | golden output flat | our output flat |
+|---|---:|---:|---:|
+| `DotSTR3D_0to1` | **98.9%** | 97.1% | 41.3% |
+| `DotSTR3D_HiLo_1` | **99.9%** | 98.0% | 78.8% |
+| `DotSTR3D_HiLoHemi` | **97.3%** | — | — |
+| `DotSTR3D_-1to1` | **92.5%** | 90.8% | 9.9% |
+| `DotSTR3D_-1to1D3D` | **97.0%** | 95.1% | 7.2% |
+| `DotSTR3D_-1to1GL` | **92.4%** | — | — |
+
+**The sign field is flat, and flat to within a couple of points of the
+golden's own output.** So the dither is not in the signs and not in the
+coordinate's sign structure — it is introduced between `dotSTR3` and the
+sampled texel.
+
+## The candidate this leaves, and the measurement it needs
+
+`dotSTR3 = vec3(dot_{i-2}, dot_{i-1}, dot_i)`, and the three rows bound the
+components very differently: `|dot₁|` and `|dot₂|` at 0.00299, but **`|dot₃|`
+at 9.37e-7**. A quantity that small is at the edge of fp32 meaning for this
+computation, so its *sign* is numerical noise varying per pixel, while the
+first two signs are stable — which is exactly the pattern above.
+
+If our fetch consumes all three components where hardware consumes two, then:
+eight reachable corners rather than four (matching the forbidden-texel
+finding), a flat field on the first two axes, and texel-frequency dither
+contributed entirely by the third. Every measured fact fits.
+
+INFERRED, not measured — and the probe cannot settle it, because **R and G
+carried `sign(dot_{i-2})` and `sign(dot_{i-1})` and nothing carried
+`sign(dot_i)`.** That omission is the gap in this run. The next probe should
+put the third sign in B and drop the magnitude bucket, whose question is now
+answered.
