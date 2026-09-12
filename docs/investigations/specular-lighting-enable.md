@@ -147,34 +147,57 @@ fires only where the register is set, and the nine untouched suites -- every
 fixed function capture among them -- is the check that the refactor left that
 path's shader text alone.
 
-## What the residue is
+## The constant term was reading zeros
 
-Only the constant term is emitted. Each light's contribution needs an
-eye-space normal, which the fixed function stage builds from the transform
-registers and a vertex program does not hand back, so a lit program keeps what
-it wrote for the light's share. The four captures are still 1.4% to 3.9%
-one-step at a worst error of 254, so what is left is structural, and it is the
-lights.
+`f0829404` emitted the constant term and it evaluated to zero.
+`set_vsh_uniform_values` gates `ltctxa`, `ltctxb`, `ltc1` and the light vectors
+on `is_fixed_function` alone, so the registers the new code depends on were
+never uploaded for a vertex program.
 
-`ControlFlagsNoLight_VS` has no light enabled at all and still differs, which
-says the constant term is not the whole of it either. Looking at what is left
-there:
+The goldens pinned it without a build. On `ControlFlagsNoLight_VS` the golden
+was exactly **six higher than us on both tones** of the quad region, and six
+falls out of the blend: silicon composites a source grey of 8 at the alpha we
+were already producing, giving 6 over the background's 0 and 14 over its 32,
+while we composited a source of 0 and got 0 and 8. Not a blend difference and
+not a selector difference -- the constant itself was zero because the register
+never arrived. `fb9cf8c7`:
 
-| | ours | golden |
-|---|---|---|
-| `Specular`, RGB | `(0,0,0)` x47,696, `(8,8,8)` x34,288 | `(6,6,6)` x34,134, `(14,14,14)` x34,094 |
-| `Specular`, alpha | **207** | **207** |
-| `Specular_back`, RGB | `(21,21,21)`, `(0,0,0)`, `(97,97,97)` | `(15,15,15)`, `(14,14,14)`, `(16,16,16)` |
-| `Specular_back`, alpha | 199 | 255 |
+| capture | before | after |
+|---|---:|---:|
+| `Specular ControlFlagsNoLight_VS` | 242,449 | **37,969** |
+| `Specular ControlFlags_VS` | 275,901 | 258,861 |
+| everything else in the sweep | | unchanged |
+| **total channels** | 5,412,977 | 5,191,457 |
+| **total structural** | 1,410,402 | **1,188,882** |
 
-The front side's alpha is now right to the value, and its grey is the **source**
-colour unblended: we write `(8,8,8)`, and the golden's `(6,6,6)` and
-`(14,14,14)` are that same 8 composited over the two background tones, 0 and
-32, at the alpha we are now producing. So the constant term is correct and
-what remains on the front is that hardware blends the quad where we write it
-opaque -- a blend question, not a colour one -- plus 47,696 pixels where we
-write black outright.
+Every channel removed was structural.
 
-The back side is a different residue: brighter values than the golden
-(`(97,97,97)` against `(16,16,16)`) and an alpha of 199 where the golden has
-255. That one is not the same defect and should not be worked as if it were.
+## Where the two suites stand
+
+| | structural, start of day | now |
+|---|---:|---:|
+| `Specular` + `Specular_back` | 1,330,629 | **679,787** |
+
+## What the residue is, corrected
+
+`f0829404`'s commit message said what remains "is the lights". That is wrong
+for the front and right for the back, and the two are different defects:
+
+| | unlit capture | lit capture | attributable to the light |
+|---|---:|---:|---:|
+| `Specular` | 37,969 | 258,861 | **220,892** |
+| `Specular_back` | 83,597 | 228,407 | 144,810 |
+
+Now that the front's constant term is arriving, the light *is* the dominant
+front residue -- but it was not when I wrote that, and the back still carries
+83,597 with no light enabled at all. `Specular_back` did not move for the
+uniform fix either, so its constant term was already arriving and its unlit
+residue is something else again.
+
+The light contribution needs an eye-space normal. The fixed function stage
+builds it from the `normal` attribute and `invModelViewMat`, both of which a
+vertex program's shader can reach -- `v2` is declared like any other attribute
+and the matrix registers are uploaded now. What it also needs is the rest of
+the lighting header: the per-light colour defines, `specularFactor`, `ltMul`,
+`FLOAT_MAX`. That is a refactor of `vsh-ff.c`'s header emission into something
+both paths call rather than a few lines, which is why it stops here.
