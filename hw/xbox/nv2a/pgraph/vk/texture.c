@@ -2118,53 +2118,75 @@ bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg)
 
 #ifdef __ANDROID__
 /*
- * Report a texture stage's geometry whenever it changes, not every frame.
+ * Summarise the coordinate state of each active texture stage, once per guest
+ * frame.
  *
- * Galleon's deck cycles through diagonal hatchings at different angles, which
- * is what reinterpreting the same memory at the wrong row stride looks like:
- * the shear angle follows the size of the error. Mip selection cannot rotate
- * a pattern, so the question is whether pitch, dimensions, level count or the
- * swizzled/linear flag are stable for one piece of texture memory. Logging
- * only transitions makes an unstable stage obvious and a stable one silent.
+ * The first version of this logged every bind transition and ran at about 500
+ * lines a second, which flooded the logcat ring and evicted the frame-pacing
+ * lines from the same capture. A measurement that destroys the other
+ * measurements in its window is a bad trade, so this accumulates the distinct
+ * combinations seen during a frame and emits one line when the frame ends.
+ *
+ * Geometry is already ruled out as the cause of Galleon's shearing deck: 115
+ * textures over 22,493 binds never changed format, size, levels, pitch or the
+ * swizzled flag. What is left is the coordinate side, so this reports the
+ * texture-matrix enable and the four texgen modes per stage.
  */
-static void log_texture_shape_changes(PGRAPHState *pg, int i)
+#define HAKUX_TEXCOMBO_MAX 12
+
+static void log_texture_coord_state(PGRAPHState *pg)
 {
-    static struct {
-        bool valid;
-        unsigned int fmt, levels, w, h, d, pitch;
-        bool linear, cubemap;
-        hwaddr offset;
-    } last[NV2A_MAX_TEXTURES];
+    static unsigned int frame;
+    static uint32_t combos[HAKUX_TEXCOMBO_MAX];
+    static int n_combos;
 
-    TextureShape sh = pgraph_get_texture_shape(pg, i);
-    BasicColorFormatInfo f = pgraph_get_color_format_info(sh.color_format);
-    hwaddr off = pgraph_get_texture_phys_addr(pg, i);
-
-    if (last[i].valid && last[i].fmt == sh.color_format &&
-        last[i].levels == sh.levels && last[i].w == sh.width &&
-        last[i].h == sh.height && last[i].d == sh.depth &&
-        last[i].pitch == sh.pitch && last[i].linear == f.linear &&
-        last[i].cubemap == sh.cubemap && last[i].offset == off) {
-        return;
+    /* One 32-bit key per stage: matrix-enable bit plus four 3-bit texgens. */
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        if (!pgraph_is_texture_enabled(pg, i)) {
+            continue;
+        }
+        unsigned int reg = (i < 2) ? NV_PGRAPH_CSV1_A : NV_PGRAPH_CSV1_B;
+        uint32_t masks[4] = {
+            (i % 2) ? NV_PGRAPH_CSV1_A_T1_S : NV_PGRAPH_CSV1_A_T0_S,
+            (i % 2) ? NV_PGRAPH_CSV1_A_T1_T : NV_PGRAPH_CSV1_A_T0_T,
+            (i % 2) ? NV_PGRAPH_CSV1_A_T1_R : NV_PGRAPH_CSV1_A_T0_R,
+            (i % 2) ? NV_PGRAPH_CSV1_A_T1_Q : NV_PGRAPH_CSV1_A_T0_Q,
+        };
+        uint32_t key = (uint32_t)i << 24;
+        key |= pg->texture_matrix_enable[i] ? (1u << 20) : 0u;
+        for (int j = 0; j < 4; j++) {
+            key |= (GET_MASK(pgraph_reg_r(pg, reg), masks[j]) & 7u) << (j * 3);
+        }
+        bool seen = false;
+        for (int k = 0; k < n_combos; k++) {
+            if (combos[k] == key) {
+                seen = true;
+                break;
+            }
+        }
+        if (!seen && n_combos < HAKUX_TEXCOMBO_MAX) {
+            combos[n_combos++] = key;
+        }
     }
 
-    __android_log_print(
-        ANDROID_LOG_INFO, "hakuX-texshape",
-        "stage%d off=%" HWADDR_PRIx " fmt=0x%x %ux%ux%u levels=%u pitch=%u "
-        "%s%s", i, off, sh.color_format, sh.width, sh.height, sh.depth,
-        sh.levels, sh.pitch, f.linear ? "linear" : "swizzled",
-        sh.cubemap ? " cube" : "");
+    if (pg->frame_time == frame) {
+        return;
+    }
+    frame = pg->frame_time;
 
-    last[i].valid = true;
-    last[i].fmt = sh.color_format;
-    last[i].levels = sh.levels;
-    last[i].w = sh.width;
-    last[i].h = sh.height;
-    last[i].d = sh.depth;
-    last[i].pitch = sh.pitch;
-    last[i].linear = f.linear;
-    last[i].cubemap = sh.cubemap;
-    last[i].offset = off;
+    if (n_combos) {
+        char buf[512];
+        int off = snprintf(buf, sizeof(buf), "%d combos:", n_combos);
+        for (int k = 0; k < n_combos && off < (int)sizeof(buf) - 40; k++) {
+            uint32_t c = combos[k];
+            off += snprintf(buf + off, sizeof(buf) - off,
+                            " s%u/mtx%u/tg%u,%u,%u,%u", (c >> 24) & 7u,
+                            (c >> 20) & 1u, c & 7u, (c >> 3) & 7u,
+                            (c >> 6) & 7u, (c >> 9) & 7u);
+        }
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-texcoord", "%s", buf);
+    }
+    n_combos = 0;
 }
 #endif
 
@@ -2176,11 +2198,7 @@ void pgraph_vk_bind_textures(NV2AState *d)
     PGRAPHVkState *r = pg->vk_renderer_state;
 
 #ifdef __ANDROID__
-    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
-        if (pgraph_is_texture_enabled(pg, i)) {
-            log_texture_shape_changes(pg, i);
-        }
-    }
+    log_texture_coord_state(pg);
 #endif
 
     r->texture_bindings_changed = false;
