@@ -234,3 +234,35 @@ much larger problem worth 44,832 px across its two captures.
   and the remaining error is smaller than any of the obvious /255, /256,
   /127, /128 choices. That is the puzzle to solve, and it is why no
   coefficient is quoted here.
+
+### Correction: the texture is minified, and the mean-shift estimator is unsound
+
+Two errors in my own reasoning above, both found by measuring instead of
+assuming.
+
+**The quad minifies the texture.** Measuring the checkerboard period straight
+out of the golden — the cell is 8 texels (`GenerateCheckerboardSurface`'s
+default) — gives 6.07 px horizontally and 5.51 px vertically, so the
+magnification is **0.76 and 0.69**, not the 1.36 I assumed from dividing the
+quad's height by the texture size. The 0.083 px is therefore 0.12 texel, not
+0.061, and the implied dT error is 9.4e-4 rather than 4.8e-4.
+
+**The estimate is still not trustworthy, for a better reason.** Reading a
+sub-pixel offset out of a mean of per-edge shifts only works when the edges'
+sub-pixel phases are uniformly distributed. Here the pattern is periodic at
+5.5 px, so the phases take a handful of values and repeat; the mean of the
+0/1 shifts is not the offset. Any coefficient derived this way, including the
+9.4e-4, is an artefact of that distribution as much as of the defect.
+
+So the honest state is narrower than it looked: what is measured is that
+**horizontal edges match exactly and vertical edges are displaced in one
+direction on about 8% of crossings**. The size of the underlying offset is not
+established, and none of `/255`, `/256`, `/127`, `/128` sits at a plausible
+distance from it under either magnification.
+
+**Minification is itself a lead worth taking first.** At 0.69 the sampler is
+minifying, so filter choice and LOD selection apply, and a bias there would
+show up exactly like this — one-sided, sub-pixel, and larger on the axis with
+the smaller scale factor (0.69 vertical against 0.76 horizontal, and vertical
+is the axis that is wrong). That should be checked before any more effort goes
+into the bump channel arithmetic, which is where I had been looking.
