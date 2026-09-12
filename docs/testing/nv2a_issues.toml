@@ -13,36 +13,60 @@
 # -- the underscored form is the results directory name, and the index carries
 # that separately as results_name).
 
+# Each entry also carries a `disposition`: what blocks the REMAINING work, which
+# is not the same question as how bad the defect is. An issue keeps `defect` for
+# as long as any part of it is actionable; the other values mean stop writing
+# code, and say what would let it restart. `nv2a_index.py check` rejects a value
+# outside the set, the same way it rejects an unknown suite name.
+#
+#   defect               a rule is known or derivable; work it
+#   precision-floor      our float pipeline against their fixed point; no rule exists
+#   unmodelled-hardware  real and understood, but reproducing it is disproportionate
+#   unknown-semantics    we do not know what the hardware does; needs an experiment
+#   host-dependent       differs between host GPUs, so not a stable target to fit
+#   harness              about measurement rather than accuracy
+#   unclassified         not yet triaged against the goldens
+#
+# Only set something other than `unclassified` where there is a measurement
+# behind it. A guess here is worse than an admission of ignorance, because the
+# whole point of the field is to stop someone re-deriving what was already ruled
+# out.
+
 [issue.4]
 title = "Render-to-texture diverges from silicon"
+# Column 320 in every capture is a texel tie at u = 128 (boundary-shift class,
+# 26 of 29 failing captures are otherwise exact); the rest is format decoding.
+# docs/investigations/edge-defect.md.
+disposition = "unclassified"
 suites = ["Texture render target"]
 
 [issue.6]
 title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
+disposition = "unknown-semantics"
 suites = ["Texture DXT"]
 
 [issue.8]
 title = "Fog"
+disposition = "unclassified"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
 [issue.10]
 title = "Bump mapping"
+disposition = "unclassified"
 suites = ["Bump map", "Bump env lum"]
 
 [issue.12]
 title = "Vertex attributes and primitive assembly"
+disposition = "unclassified"
 suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
 
 [issue.13]
 title = "Line and point rasterisation"
+disposition = "unclassified"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 
-# Confirmed independently on Adreno before the fix landed: of 18,000 sampled
-# #spot_ pixels, zero were off by one or two steps, and 6,353 of the 7,974
-# misses were R and B the wrong way round. docs/testing/blend_channel_order.py
-# is the check.
 [issue.14]
 title = "Blend precision (low priority)"
 # Most of this was never the blend unit. The 105 #spot_ captures blit a 512x512
@@ -51,8 +75,95 @@ title = "Blend precision (low priority)"
 # every MAX capture, which is byte-exact once the channel order is right.
 # 30 of the 105 (SADD/SREVSUB) belong to #43.
 # docs/investigations/surface-as-texture-decode.md.
-disposition = "defect"
+#
+# What is left is not a mapping. docs/testing/blend_model.py reproduces silicon
+# on 18,000 of 18,000 sampled pixels with the ordinary factor definitions and
+# round-to-nearest at each 8 bit store, so both blend tables are correct; the
+# residual is one step, led by the ONE_MINUS_* factors, and is float32 against
+# their fixed point. docs/investigations/blend-unit-model.md. Measured on
+# lavapipe -- an Adreno capture set could move this to host-dependent.
+disposition = "precision-floor"
 suites = ["Blend tests"]
+
+[issue.15]
+title = "pgraph suite: some tests are order-dependent"
+disposition = "harness"
+suites = ["Pixel shader"]
+
+[issue.16]
+title = "Depth surface readback converts incorrectly"
+disposition = "unclassified"
+suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
+
+[issue.19]
+title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
+disposition = "unclassified"
+suites = ["Texture DXT", "Texture render target", "Attrib carryover",
+          "Blend surface", "Blend tests", "Depth buffer",
+          "Fog exceptional value", "Fog gen", "Fog param", "Lighting spotlight",
+          "Line width", "Specular", "Stipple tests", "Surface format",
+          "Texture perspective", "Texture shadow comparator",
+          "Texture signed component tests", "W param", "Window clip",
+          "ZMinMaxControl", "ZPass pixel count", "Bump map", "Image blit",
+          "Texture cubemap"]
+
+[issue.31]
+title = "Slope-scaled polygon offset is wrong under W buffering"
+suites = ["W buffering"]
+disposition = "unclassified"
+
+[issue.33]
+title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
+suites = ["Image blit"]
+disposition = "unclassified"
+
+[issue.35]
+title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
+suites = ["Texture shadow comparator"]
+disposition = "unmodelled-hardware"
+
+[issue.36]
+title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
+suites = ["3D primitive"]
+disposition = "unclassified"
+
+[issue.40]
+title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
+suites = ["Texture cubemap"]
+disposition = "unclassified"
+
+[issue.41]
+title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
+suites = ["Fog gen"]
+disposition = "unclassified"
+
+[issue.42]
+title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
+suites = ["Fog carryover", "Fog vsh"]
+disposition = "unclassified"
+
+[issue.43]
+title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
+# SOLVED, not yet implemented. The source is read as a signed byte:
+# signed(S) = S - 256 if S >= 128; SADD = clamp(signed(S) + D, 0, 255),
+# SREVSUB = clamp(D - signed(S), 0, 255), both factors ignored. Fits 7,849 of
+# 7,849 across Blend tests and Texture signed component, four destination
+# values. Vulkan cannot express it -- a fixed-point attachment clamps the
+# source to [0,1] before blending, killing the negative half -- so it needs a
+# float intermediate or shader-side blending.
+# docs/investigations/signed-blend-equations.md.
+disposition = "defect"
+suites = ["Blend tests", "Texture signed component tests"]
+
+[issue.44]
+title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
+suites = ["Texture border"]
+disposition = "unclassified"
+
+[issue.46]
+title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
+suites = ["Texture shadow comparator"]
+disposition = "unknown-semantics"
 
 [issue.48]
 title = "Blend surface: two draws land on the region and the wrong one survives; only the O format needs a forced alpha"
@@ -64,50 +175,7 @@ suites = ["Blend surface", "Surface format"]
 # #38 and #39 are deliberately absent because they are cross-cutting or
 # process issues with no single suite, and inventing a mapping for them would
 # make `query` and `blast` answer confidently with a guess.
-
-[issue.31]
-title = "Slope-scaled polygon offset is wrong under W buffering"
-suites = ["W buffering"]
-
-[issue.33]
-title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
-suites = ["Image blit"]
-
-[issue.35]
-title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
-suites = ["Texture shadow comparator"]
-
-[issue.36]
-title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
-suites = ["3D primitive"]
-
-[issue.40]
-title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
-suites = ["Texture cubemap"]
-
-# Measured not implementable: the goldens are non-deterministic by the test
-# author's account (upstream nxdk_pgraph_tests#214) and the value is stale
-# lighting-intermediate state rather than a function. Mapped so a Fog gen query
-# surfaces it before someone re-derives it.
-[issue.41]
-title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
-suites = ["Fog gen"]
-
-[issue.42]
-title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
-suites = ["Fog carryover", "Fog vsh"]
-
-[issue.43]
-title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
-suites = ["Blend tests", "Texture signed component tests"]
-
-[issue.44]
-title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
-suites = ["Texture border"]
-
-[issue.46]
-title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
-suites = ["Texture shadow comparator"]
+disposition = "unclassified"
 
 [issue.49]
 title = "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
@@ -117,36 +185,9 @@ suites = ["Viewport"]
 # a conflict resolution that sliced the file by string index and took more
 # than it meant to, committed under a message about something else. An audit
 # against the GitHub issue list is what caught it; nothing else would have.
+disposition = "unclassified"
 
-[issue.15]
-title = "pgraph suite: some tests are order-dependent"
-suites = ["Pixel shader"]
-
-# Measured 2026-09-12 on the recovered 392-test oracle: this is three defects,
-# not one. z16 fixed depth is 98/98 bit-identical, z24 fixed is one unit high
-# on 96/98 with a scale-divisor signature, float Z is structural with nothing
-# inside one step, and the colour path is wrong independently of depth.
-# docs/investigations/depth-full-oracle-2026-09-12.md
-[issue.16]
-title = "Depth surface readback converts incorrectly"
-suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
-
-# Measured 2026-09-12: 1,540 captures, 84 accused, 2 contamination and 82
-# missing-state -- not the 328 of 864 the title used to claim. The suites below
-# are the eleven that still accuse a test on the current build, not the
-# original 24. Groups with their own issue (#41, #48) stay listed so a query
-# for those suites surfaces both.
-# docs/investigations/issue-19-isolation-2026-09-12.md
-[issue.19]
-title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
-suites = ["Texture render target", "W param", "ZMinMaxControl",
-          "Blend surface", "Image blit", "Fog gen", "Fog exceptional value",
-          "Bump map", "Specular", "Surface format",
-          "Texture signed component tests"]
-
-# Split out of #9 when its closing measurement showed the lighting arithmetic
-# correct and this the bulk of what remained: 318,962 px over six captures,
-# 64.6% of #9's structural residual.
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
 suites = ["Specular", "Specular back", "Lighting control"]
+disposition = "unclassified"

@@ -57,10 +57,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
     }
 
 
-    if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE) {
-        state->foggen = (enum VshFoggen)GET_MASK(
-            pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
-    }
 }
 
 static void set_programmable_vsh_state(PGRAPHState *pg,
@@ -244,9 +240,33 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "  return mix(src, vec4(replacement), isnan(src));\n"
         "}\n"
         "\n"
-        // Xbox NV2A rasterizer appears to have 4 bit precision fixed-point
-        // fractional part and to convert floating-point coordinates by
-        // by truncating (not flooring).
+        /*
+         * The rasteriser carries 4 fractional bits and truncates. That was
+         * inherited as a guess ("appears to"); it is now measured, and three
+         * alternatives are worse:
+         *
+         *   1/32 truncation     Texture_render_target 356 -> 2,195 px on
+         *                       TexFmt_A8R8G8B8, spreading the residual from
+         *                       one column to four
+         *   1/8 truncation      predicts all twelve Viewport offsets and
+         *                       improves those two captures 500 -> 300 px, but
+         *                       costs Texture_render_target nine exact tests,
+         *                       11/40 -> 2/40
+         *   round half up       Blend_tests, Specular, Specular_back,
+         *   at 1/16             Material_color_source and Lighting_spotlight
+         *                       together 7,644,736 -> 8,464,262 px
+         *
+         * So the granularity is bracketed on both sides and the rounding mode
+         * is settled. The one-pixel differences that remain are not this
+         * constant: the checkerboard cell edges a row over in the lighting
+         * suites and the centre column of Texture_render_target are texel
+         * ties (an interpolated coordinate on an exact texel boundary, which
+         * hardware and host break differently), and the two Viewport offsets
+         * at exactly 9/16 are the fixed-function transform landing a few ULP
+         * either side of the snap boundary. Changing this constant to chase
+         * them makes things worse. See docs/investigations/edge-defect.md
+         * and issues #11 and #4.
+         */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"
         "}\n");
@@ -360,6 +380,33 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *   "RollerCoaster Tycoon" has
              *      state->vertex_program = true; state->foggen == FOGGEN_PLANAR
              *      but expects oFog.x as fogdistance?! Writes oFog.xyzw = v0.z
+             */
+            /*
+             * Every gen mode uses oFog.x here, RADIAL included, and RADIAL is
+             * the one that is not simply right. Silicon renders the other four
+             * identically under a vertex program -- the only difference between
+             * those Fog gen goldens is the printed test name -- and renders
+             * RADIAL differently, so there is a real divergence to account for.
+             *
+             * It is not accounted for by computing a distance, and #41 had this
+             * before I did. The RADIAL goldens hold exactly two colours in the
+             * drawn region: the fog colour on all 181,016 drawn pixels and the
+             * background on the rest. Every quad is fully fogged regardless of
+             * its depth or position, which is not a function of any coordinate,
+             * and the test author tracks those captures as non-deterministic on
+             * hardware (abaire/nxdk_pgraph_tests#214). The plausible mechanism
+             * in #41 is the fog mux still honouring RADIAL in program mode and
+             * reading stale lighting intermediates a program never produces.
+             *
+             * I briefly shipped length(oPos.xyz * oPos.w) here on the strength
+             * of a 94.9% reduction against that golden. That number is what
+             * fraction of pixels a large enough distance pushes past the fog
+             * range, not evidence of a distance: the change produced 255
+             * distinct colours where the golden has two. length(oPos.xyz)
+             * scored 27% for being smaller, not for being less correct.
+             * Reverted -- fitting one sample of stale state would match this
+             * golden and nothing else, and it would put a bogus distance in
+             * front of any guest that did combine the two.
              */
             mstring_append(body, "  float fogDistance = oFog.x;\n");
         }
@@ -513,7 +560,16 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         values->surfaceSize[0][1] = height;
     }
 
-    if (state->is_fixed_function) {
+    /*
+     * The lighting registers, which the programmable path needs too: with
+     * LIGHTING_ENABLE set it emits the colour material constant term, and
+     * that reads ltctxa. Gated on is_fixed_function alone the vertex program's
+     * shader read zeros, which put a black source where silicon has grey 8 --
+     * visible on Specular's ControlFlagsNoLight_VS as the golden being exactly
+     * six higher than us everywhere, the blend of that 8 against the two
+     * background tones.
+     */
+    if (state->is_fixed_function || state->lighting) {
         if (locs[VshUniform_ltctxa] != -1) {
             QEMU_BUILD_BUG_MSG(sizeof(values->ltctxa) != sizeof(pg->ltctxa),
                                "Uniform value size inconsistency");

@@ -31,7 +31,6 @@ typedef struct FixedFunctionVshState {
     bool normalization;
     bool texture_matrix_enable[4];
     enum VshTexgen texgen[4][4];
-    enum VshFoggen foggen;
     enum VshSkinning skinning;
     bool local_eye;
 } FixedFunctionVshState;

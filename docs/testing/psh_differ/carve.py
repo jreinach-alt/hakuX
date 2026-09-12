@@ -26,6 +26,7 @@ from pathlib import Path
 CARVE = {
     "psh.c": (
         "static uint32_t get_color_key_mask_for_texture(PGRAPHState *pg, int i)",
+        "bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg)",
         "int pgraph_glsl_window_clip_count(PGRAPHState *pg)",
         "void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)",
         "void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,",
