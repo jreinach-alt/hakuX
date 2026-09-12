@@ -79,6 +79,11 @@ fi
 ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
     a pull /storage/emulated/0/Android/data/"$PKG"/files/x1box/hdd.img "$HDD" \
     >/dev/null 2>&1 || { echo "pull failed or timed out"; exit 1; }
+# A pull can exit 0 and still leave nothing behind -- two runs sharing this one
+# fixed path is enough to do it, and the only symptom was a FileNotFoundError
+# from the extractor thirty lines further down, which reads as "the extractor is
+# broken". Check for the file instead of trusting the exit status.
+[ -s "$HDD" ] || { echo "pull reported success but $HDD is missing or empty"; exit 1; }
 rm -rf "$RESULTS"
 python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" | tail -1
 # The image is the whole point of the fixed path: take it back off the disk

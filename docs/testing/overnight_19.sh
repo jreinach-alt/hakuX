@@ -118,12 +118,24 @@ run_company() {
     [ -f "$res/.done" ] && return 0
     mkdir -p "$STATE/iso" "$res"
     for s in $suites; do args+=(--suite "${s//_/ }"); done
+    # The guest's E: drive keeps whatever a previous run left in this
+    # directory, and the extractor pulls the directory, not the run. A retry
+    # therefore comes back with the old captures mixed in -- the probe asked
+    # for one 15-test suite and got 29 files, 14 of them from an earlier
+    # probe of two different suites. So every attempt gets its own directory.
+    local gdir="$g$(date +%s | tail -c 6)"
+    # --shutdown-on-completion is not optional here. Without it the suite
+    # *reboots* when it finishes, so the emulator process never exits, the
+    # wait loop runs to its full timeout, and the whole group is re-run from
+    # the top however many times fit inside it. The probe found this in ten
+    # minutes; a group would have lost an hour to it.
     if ! python3 "$HERE/make_test_iso.py" "$BASE_ISO" -o "$iso" "${args[@]}" \
-            --progress-log --output-dir "e:/$g" >>"$LOG" 2>&1; then
+            --progress-log --shutdown-on-completion --output-dir "e:/$gdir" \
+            >>"$LOG" 2>&1; then
         say "A $g: disc build FAILED"; return 1
     fi
-    say "A $g: $(echo "$suites" | wc -w) suite(s), timeout ${tmo}s, batt $(battery)%"
-    SERIAL="$SERIAL" bash "$HERE/run_disc.sh" "$iso" "$g" "$res" "$tmo" >>"$LOG" 2>&1
+    say "A $g: $(echo "$suites" | wc -w) suite(s) into e:/$gdir, timeout ${tmo}s, batt $(battery)%"
+    SERIAL="$SERIAL" bash "$HERE/run_disc.sh" "$iso" "$gdir" "$res" "$tmo" >>"$LOG" 2>&1
     local n; n=$(ls "$res"/*.png 2>/dev/null | wc -l)
     printf 'company\t%s\t%s\t%s\t%s\n' "$g" "$n" "$(apk_sha)" "$(date -Is)" >> "$ROWS"
     if [ "$n" = 0 ]; then
