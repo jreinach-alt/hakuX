@@ -287,14 +287,63 @@ not in any single field's value but in the relationship between two of them.**
 An invariant across fields was needed, and only a capture holding all of them
 at once could express it.
 
+### The cause, in the code
+
+The draw queue merges consecutive draws and decides whether their uniforms
+changed with a single comparison (`draw.c`, `check_draw_mergeable` and the
+enqueue path):
+
+```c
+bool uniforms_changed = (q->count > 0 && pg->any_reg_gen != q->any_reg_gen);
+```
+
+**The texture matrix is not a register.** It is written by
+`SET_TRANSFORM_CONSTANT` (`pgraph.c:3130`), which lands in `pg->vsh_constants`
+and sets `vsh_constants_dirty[]` and `vsh_constants_any_dirty` -- and does
+**not** bump `any_reg_gen`. The draw queue never reads
+`vsh_constants_any_dirty` at all.
+
+So a transform-constant change between two mergeable draws is **invisible to
+the queue**: both draws are merged and both render with the uniform values
+captured for the first one, including its texture matrix.
+
+That predicts exactly the signature measured, down to which side was wrong.
+`texture_state_gen` *is* in the mergeability test, so the texture is always
+right; the constant file is not, so the matrix is inherited from the previous
+draw. The failing draw kept its correct 128-wide texture and took the
+preceding material's scale of 8. It also explains the rarity: it only bites
+when the guest changes a transform constant and no register between two draws
+the queue would otherwise merge.
+
+### The acceptance test, written before the fix
+
+`docs/testing/check_diag_invariants.py` checks the pairing over any capture
+and exits non-zero on a violation. Baseline over the four sessions:
+
+```
+167 stage-1 draws checked, 1 violating the pairing
+  frame 4122 draw 92: scale 8.0 with a 128-wide texture = 1024, expected 2048
+```
+
+So "did the fix work" is a script over a capture rather than a person watching
+for a flash, which is what made this defect so expensive to chase in the first
+place.
+
 ### Still to establish
 
-Which update is late, and why. The candidates are the matrix being written to
-the constant file after the draw that needed it, or the texture binding being
-taken from a cache entry that the matrix update did not invalidate. One draw in
-167 is a narrow window, which fits an ordering race rather than a systematic
-error, and no fix should be attempted until the ordering is read out of the
-code.
+The shape of the fix, and its cost. Making the queue aware of the constant
+file is the obvious move -- a constants generation counter captured on enqueue
+and compared in `check_draw_mergeable`, or bumping `any_reg_gen` on a
+transform-constant write. The second is a one-liner and the blunter of the
+two: every constant write would then break a merge, and this title writes
+constants constantly, so it could cost a large share of the merging the queue
+exists to do. The first is narrower but needs a new counter threaded through
+the queue and the snapshot.
+
+Which to take is a measurement, not a judgement: land the blunt version first,
+check the invariant passes, then read the merge rate off the existing
+`OPT_STAT` counters to see what it cost. If the cost is real, the narrow
+version earns its complexity; if it is not, the one-liner is the fix.
 
 ## Next measurement, not yet done
 
