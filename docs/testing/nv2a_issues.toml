@@ -109,7 +109,13 @@ suites = ["Line width", "Point size", "Point params", "Swath width",
 
 [issue.14]
 title = "Blend precision (low priority)"
-disposition = "unclassified"
+# Most of this was never the blend unit. The 105 #spot_ captures blit a 512x512
+# A8R8G8B8 render target to screen through an A8B8G8R8 texture stage, and we
+# skipped that decode: 81.8% of the residual on the 75 non-signed captures, and
+# every MAX capture, which is byte-exact once the channel order is right.
+# 30 of the 105 (SADD/SREVSUB) belong to #43.
+# docs/investigations/surface-as-texture-decode.md.
+disposition = "defect"
 suites = ["Blend tests"]
 
 [issue.15]
