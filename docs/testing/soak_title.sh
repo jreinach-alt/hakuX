@@ -22,7 +22,7 @@ PKG="${PKG:-com.jreinach.hakux.debug}"
 ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 CAPTURE_LOG="${CAPTURE_LOG:-}"
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W *:S}"
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 LOGCAT_PID=""
 
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }

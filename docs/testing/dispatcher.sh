@@ -162,7 +162,7 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W *:S}" \
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'
@@ -258,7 +258,8 @@ for lg in sorted(glob.glob(os.path.join(rdir, "logcat*.txt"))):
     n = sum(1 for _ in open(lg, errors="replace"))
     logs.append(dict(file=os.path.basename(lg), lines=n))
 meta["logcat"] = dict(spec=os.environ.get("LOGCAT_SPEC",
-                                          "hakuX-unhandled:W hakuX:W *:S"),
+                                          "hakuX-unhandled:W hakuX:W VALIDATION:W "
+                                          "ValidationLayer:W vulkan:W VulkanLoader:W *:S"),
                       captured=bool(logs), files=logs)
 
 # coverage against the oracle we own: the tell for a partially retired suite
