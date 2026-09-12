@@ -47,7 +47,28 @@ suites = ["Texture DXT"]
 
 [issue.8]
 title = "Fog"
-disposition = "unclassified"
+# Ranked from the 2026-09-12 full-corpus sweep (binary fb4dfafc6d38, one disc
+# per suite, progress-log proof on every row). These are TOTAL differing px,
+# not structural, so a large figure may be mostly one-step rounding:
+#
+#   Fog_exceptional_value  12/96   3,664,740   the real weight of this issue
+#   Fog_gen                 4/60   2,333,312   but see below -- do NOT rank on this
+#   Fog_carryover           0/11     177,656
+#   Fog                     0/6       56,688
+#   Fog_coord_vec4          0/41      30,690   749 px per capture; cheap
+#
+# Fog_gen's figure is misleading and #41 is the reason: 2,172,192 of its
+# structural channels are ONE cell whose golden holds three colours in the
+# entire frame, against a real residue of 14,568. That cell is measured
+# unobservable, not untriaged. Exclude it from any ranking.
+#
+# Fog_inf_coord is NOT in this issue's suite list and should not be added:
+# measured as 18 px total over six captures, all of it three pixels of edge
+# COVERAGE at identical coordinates in every fog mode, with the fog arithmetic
+# demonstrably correct (the mode changes those pixels' colour and never which
+# pixels differ). On current evidence it is the same transform-precision floor
+# as #49. docs/investigations/fog-inf-coord-is-coverage.md.
+disposition = "defect"
 suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
           "Fog exceptional value", "Fog coord vec4"]
 
