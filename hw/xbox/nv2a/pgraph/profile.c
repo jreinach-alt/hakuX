@@ -255,7 +255,8 @@ void nv2a_profile_flip_stall(void)
         extern uint32_t hakux_notdirty_off_hi[8];
         extern uint64_t hakux_tb_invalidated;
         extern uint64_t hakux_tb_generated;
-        static uint64_t prev_total, prev_inval, prev_tbi, prev_tbg;
+        extern uint64_t hakux_mb_emitted;
+        static uint64_t prev_total, prev_inval, prev_tbi, prev_tbg, prev_mb;
         char nd[768];
         int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
                          (unsigned long long)(hakux_notdirty_total - prev_total),
@@ -268,6 +269,13 @@ void nv2a_profile_flip_stall(void)
                       (unsigned long long)(hakux_tb_generated - prev_tbg));
         prev_tbi = hakux_tb_invalidated;
         prev_tbg = hakux_tb_generated;
+        /* Zero here means the build elides guest memory barriers (#54). This
+         * is the check that an A/B is comparing two different binaries rather
+         * than the same one twice. */
+        n += snprintf(nd + n, sizeof(nd) - n, " [mb emitted %llu, total %llu]",
+                      (unsigned long long)(hakux_mb_emitted - prev_mb),
+                      (unsigned long long)hakux_mb_emitted);
+        prev_mb = hakux_mb_emitted;
         for (int i = 0; i < 8 && n < (int)sizeof(nd) - 80; i++) {
             if (!hakux_notdirty_hits[i]) {
                 continue;

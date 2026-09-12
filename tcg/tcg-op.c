@@ -294,6 +294,10 @@ void tcg_gen_br(TCGLabel *l)
     add_as_label_use(l, tcg_gen_op1(INDEX_op_br, 0, label_arg(l)));
 }
 
+/* See the increment below. Defined here rather than in translate-all.c so the
+ * counter lives next to the branch whose effect it reports. */
+uint64_t hakux_mb_emitted;
+
 void tcg_gen_mb(TCGBar mb_type)
 {
 #ifdef CONFIG_USER_ONLY
@@ -318,6 +322,14 @@ void tcg_gen_mb(TCGBar mb_type)
 #endif
 
     if (parallel) {
+        /* Proves which barrier regime a binary was built with. Incremented at
+         * TRANSLATION time, once per generated op, so the cost is noise -- and
+         * it exists because the alternative is measuring two binaries that
+         * might be identical. Under the XBOX elision this stays at exactly
+         * zero; with barriers restored it must be non-zero and scale with
+         * hakux_tb_generated. Reported on the always-on hakuX-pages line.
+         * See #54 and docs/investigations/tcg-barriers-elided.md. */
+        hakux_mb_emitted++;
         tcg_gen_op1(INDEX_op_mb, 0, mb_type);
     }
 }
