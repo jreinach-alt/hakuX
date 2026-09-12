@@ -103,16 +103,14 @@ static const char *vertex_color_scale(enum MaterialColorSource src)
 }
 
 /* Emits the lighting of one face into its two colour outputs. */
-static void append_lighting(const VshState *state, MString *body,
-                            const struct LightingSide *side)
+/* oD0 and oD1 before any light is added: the constant term the colour
+ * material selectors build. Shared with the programmable path, which reaches
+ * the same registers by different names for the vertex colours. */
+static void append_lighting_constant(MString *body,
+                                     const struct LightingSide *side,
+                                     const char *diffuse_a,
+                                     const char *specular_a)
 {
-    const char *alpha_source = "diffuse.a";
-    if (side->diffuse_src == MATERIAL_COLOR_SRC_MATERIAL) {
-        alpha_source = side->material_alpha;
-    } else if (side->diffuse_src == MATERIAL_COLOR_SRC_SPECULAR) {
-        alpha_source = "specular.a";
-    }
-
     /* SET_SCENE_AMBIENT_COLOR is a constant term and SET_MATERIAL_EMISSION
      * a factor applied to one vertex colour; the emission and ambient
      * source selectors pick that colour and whether the constant term
@@ -133,6 +131,13 @@ static void append_lighting(const VshState *state, MString *body,
      * from. The previous code scaled the ambient source by the factor
      * unconditionally and then added the emission source, which only
      * matches the last two rows. */
+    const char *alpha_source = diffuse_a;
+    if (side->diffuse_src == MATERIAL_COLOR_SRC_MATERIAL) {
+        alpha_source = side->material_alpha;
+    } else if (side->diffuse_src == MATERIAL_COLOR_SRC_SPECULAR) {
+        alpha_source = specular_a;
+    }
+
     const char *constant = side->constant;
     const char *scaled = NULL;
     if (side->ambient_src != MATERIAL_COLOR_SRC_MATERIAL) {
@@ -149,8 +154,14 @@ static void append_lighting(const VshState *state, MString *body,
         mstring_append_fmt(body, "  %s.rgb += %s * %s;\n",
                            side->diffuse_out, scaled, side->factor);
     }
-    mstring_append_fmt(body, "  %s = vec4(0.0, 0.0, 0.0, specular.a);\n",
-                       side->specular_out);
+    mstring_append_fmt(body, "  %s = vec4(0.0, 0.0, 0.0, %s);\n",
+                       side->specular_out, specular_a);
+}
+
+static void append_lighting(const VshState *state, MString *body,
+                            const struct LightingSide *side)
+{
+    append_lighting_constant(body, side, "diffuse.a", "specular.a");
 
     mstring_append_fmt(body, "  {\n  vec3 N = %s;\n", side->normal);
     if (state->fixed_function.local_eye) {
@@ -160,14 +171,14 @@ static void append_lighting(const VshState *state, MString *body,
     }
 
     for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
-        if (state->fixed_function.light[i] == LIGHT_OFF) {
+        if (state->light[i] == LIGHT_OFF) {
             continue;
         }
 
         mstring_append_fmt(body, "  /* Light %d */ {\n", i);
 
-        if (state->fixed_function.light[i] == LIGHT_LOCAL
-                || state->fixed_function.light[i] == LIGHT_SPOT) {
+        if (state->light[i] == LIGHT_LOCAL
+                || state->light[i] == LIGHT_SPOT) {
 
             /* The lighting unit's reciprocal of zero is infinity, and
              * its multiply gives zero for zero times anything, so a light
@@ -196,7 +207,7 @@ static void append_lighting(const VshState *state, MString *body,
             );
         }
 
-        switch(state->fixed_function.light[i]) {
+        switch(state->light[i]) {
         case LIGHT_INFINITE:
 
             /* lightLocalRange will be 1e+30 here */
@@ -274,7 +285,7 @@ static void append_lighting(const VshState *state, MString *body,
          * the half vector per vertex and uses the second triple, fitted
          * for half the power, on x = (N.H)^2, which is what falls out of
          * the unnormalised sum without a square root. */
-        bool half_precomputed = state->fixed_function.light[i] == LIGHT_INFINITE &&
+        bool half_precomputed = state->light[i] == LIGHT_INFINITE &&
                                 !state->fixed_function.local_eye;
         mstring_append_fmt(body,
             "    float pf;\n"
@@ -305,6 +316,74 @@ static void append_lighting(const VshState *state, MString *body,
     mstring_append(body, "  }\n");
 }
 
+
+/*
+ * The colour outputs under a vertex program.
+ *
+ * LIGHTING_ENABLE does not only switch the lighting arithmetic on: it switches
+ * which source feeds oD0 and oD1, and that gate survives a programmable vertex
+ * shader. Measured on the Specular goldens, where the three ControlFlags_VS
+ * captures differ only in this register and whether a light is enabled:
+ * silicon renders three different images 85,922 pixels apart, and with
+ * lighting on and no light its output is the material constant term with the
+ * specular zeroed -- grey, with no dependence on the vertex colour the program
+ * wrote. Silicon's fixed function and programmable renders of that state agree
+ * on 83,512 of those 85,922 pixels, so the same block produces both.
+ *
+ * Only the constant term is emitted here. Each light's contribution needs an
+ * eye-space normal, which the fixed function stage builds from the transform
+ * registers and a vertex program does not hand back, so a lit vertex program
+ * keeps whatever the program wrote for the light's share.
+ */
+void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
+                                          MString *header, MString *body)
+{
+    mstring_append(header,
+        "uint ltBits(uint u) {\n"
+        "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
+        "  return u & 0xFFFFFC00u;\n"
+        "}\n"
+        "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
+        "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
+        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
+        "#define sceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz)\n"
+        "#define materialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz)\n"
+        "#define backSceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz)\n"
+        "#define backMaterialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz)\n");
+
+    mstring_append(body, "  {\n"
+                         "  vec4 ltDiffuse = lt(v3);\n"
+                         "  vec4 ltSpecular = lt(v4);\n");
+
+    struct LightingSide front = {
+        .diffuse_out = "oD0",
+        .specular_out = "oD1",
+        .constant = "sceneAmbientColor",
+        .factor = "materialEmissionColor",
+        .material_alpha = "material_alpha",
+        .emission_src = state->emission_src,
+        .ambient_src = state->ambient_src,
+        .diffuse_src = state->diffuse_src,
+        .specular_src = state->specular_src,
+    };
+    append_lighting_constant(body, &front, "v3.a", "v4.a");
+
+    if (state->two_side_light) {
+        struct LightingSide back = {
+            .diffuse_out = "oB0",
+            .specular_out = "oB1",
+            .constant = "backSceneAmbientColor",
+            .factor = "backMaterialEmissionColor",
+            .material_alpha = "material_alpha_back",
+            .emission_src = state->back_emission_src,
+            .ambient_src = state->back_ambient_src,
+            .diffuse_src = state->back_diffuse_src,
+            .specular_src = state->back_specular_src,
+        };
+        append_lighting_constant(body, &back, "v3.a", "v4.a");
+    }
+    mstring_append(body, "  }\n");
+}
 
 void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
                             MString *body)
@@ -541,7 +620,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
         }
     }
 
-    if (!state->fixed_function.lighting) {
+    if (!state->lighting) {
         mstring_append(body, "  oD0 = diffuse;\n");
         mstring_append(body, "  oD1 = specular;\n");
         /* The back colours are not the back vertex colours: with lighting
@@ -565,10 +644,10 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
             .factor = "materialEmissionColor",
             .material_alpha = "material_alpha",
             .specular_params = 0,
-            .emission_src = state->fixed_function.emission_src,
-            .ambient_src = state->fixed_function.ambient_src,
-            .diffuse_src = state->fixed_function.diffuse_src,
-            .specular_src = state->fixed_function.specular_src,
+            .emission_src = state->emission_src,
+            .ambient_src = state->ambient_src,
+            .diffuse_src = state->diffuse_src,
+            .specular_src = state->specular_src,
         };
         append_lighting(state, body, &front);
 
@@ -592,10 +671,10 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
                 .factor = "backMaterialEmissionColor",
                 .material_alpha = "material_alpha_back",
                 .specular_params = 2,
-                .emission_src = state->fixed_function.back_emission_src,
-                .ambient_src = state->fixed_function.back_ambient_src,
-                .diffuse_src = state->fixed_function.back_diffuse_src,
-                .specular_src = state->fixed_function.back_specular_src,
+                .emission_src = state->back_emission_src,
+                .ambient_src = state->back_ambient_src,
+                .diffuse_src = state->back_diffuse_src,
+                .specular_src = state->back_specular_src,
             };
             append_lighting(state, body, &back);
         }
@@ -615,7 +694,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
      * highlight is added to the diffuse, and on the sphere and cylinder,
      * whose normals are longer than one, the ambient disappears where the
      * highlight would be beyond the pole. */
-    if (state->fixed_function.lighting &&
+    if (state->lighting &&
         (!state->specular_enable || !state->separate_specular)) {
         mstring_append(body,
                        "  oD0.xyz += oD1.xyz;\n"
@@ -627,7 +706,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
     } else {
         if (!state->separate_specular) {
             mstring_append(body, "  oD1 = specular;\n");
-            if (state->fixed_function.lighting) {
+            if (state->lighting) {
                 mstring_append(body, "  oB1 = specular;\n");
             }
         }

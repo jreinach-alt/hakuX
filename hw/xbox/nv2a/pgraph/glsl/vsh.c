@@ -37,22 +37,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
     state->local_eye =
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LOCALEYE);
 
-    state->emission_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_EMISSION);
-    state->ambient_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_AMBIENT);
-    state->diffuse_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_DIFFUSE);
-    state->specular_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_SPECULAR);
-    state->back_emission_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 0) & 3);
-    state->back_ambient_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 2) & 3);
-    state->back_diffuse_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 4) & 3);
-    state->back_specular_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
 
     for (int i = 0; i < 4; i++) {
         state->texture_matrix_enable[i] = pg->texture_matrix_enable[i];
@@ -72,15 +56,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
         }
     }
 
-    state->lighting =
-        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);
-    if (state->lighting) {
-        for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
-            state->light[i] =
-                (enum VshLight)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
-                                        NV_PGRAPH_CSV0_D_LIGHT0 << (i * 2));
-        }
-    }
 
 }
 
@@ -149,6 +124,31 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
 
     vsh->fog_enable =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;
+    vsh->emission_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_EMISSION);
+    vsh->ambient_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_AMBIENT);
+    vsh->diffuse_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_DIFFUSE);
+    vsh->specular_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_SPECULAR);
+    vsh->back_emission_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 0) & 3);
+    vsh->back_ambient_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 2) & 3);
+    vsh->back_diffuse_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 4) & 3);
+    vsh->back_specular_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
+    vsh->lighting =
+        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);
+    if (vsh->lighting) {
+        for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
+            vsh->light[i] =
+                (enum VshLight)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
+                                        NV_PGRAPH_CSV0_D_LIGHT0 << (i * 2));
+        }
+    }
     if (vsh->fog_enable) {
         vsh->foggen = (enum VshFoggen)GET_MASK(
             pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
@@ -351,6 +351,10 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
                                state->point_size <= 0.f ? 1.f :
                                                           state->point_size,
                                state->surface_scale_factor);
+        }
+    
+        if (state->lighting) {
+            pgraph_glsl_append_vsh_prog_lighting(state, header, body);
         }
     }
 
