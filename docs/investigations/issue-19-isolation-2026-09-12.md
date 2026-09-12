@@ -112,3 +112,18 @@ the goldens directory is not a count of tests we run. `1,291 captures from 23
 suites, every count matching its golden count` was true and was also the reason
 the four rows above went unnoticed until the progress logs were read side by
 side.
+
+## One column in the scores that should not be read as substitution
+
+`run-2026-09-12-issue19-g0-scores.tsv` marks 234 of 1,291 rows
+`label-differs`. That is **not** 234 tests rendering another test's image.
+`score_sweep.py` computes it as the number of pixels where the near-white mask
+(`>= 250` on all three channels) disagrees with the golden's, and calls the row
+untrustworthy above eight. It is meant to catch a capture whose printed test
+name is not the expected one, but any near-white *content* difference trips it,
+and blend, fog and line suites draw plenty of near-white.
+
+The substitution numbers in this write-up come from `crossmatch.py`, which asks
+whether some other golden in the same suite fits our output better than its own
+does. That is the question worth answering, and it accused 54 where the white
+mask flagged 234.
