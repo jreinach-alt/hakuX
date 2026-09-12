@@ -3113,12 +3113,42 @@ static float clamp_line_width_to_device_limits(PGRAPHState *pg, float width)
     float min_width = r->device_props.limits.lineWidthRange[0];
     float max_width = r->device_props.limits.lineWidthRange[1];
     float granularity = r->device_props.limits.lineWidthGranularity;
+    float requested = width;
 
     if (granularity != 0.0f) {
         float steps = roundf((width - min_width) / granularity);
         width = min_width + steps * granularity;
     }
-    return fminf(fmaxf(min_width, width), max_width);
+    width = fminf(fmaxf(min_width, width), max_width);
+
+    /*
+     * Line width is measurably not arriving: our coverage is constant to
+     * within 1% for every width the register can hold, from 0.0 to 63.875,
+     * while silicon's grows thirtyfold
+     * (docs/investigations/line-width-never-reaches-the-rasteriser.md).
+     *
+     * Two mechanisms could do that and the captures cannot tell them apart,
+     * because both answer 1.0: the device refusing the width through its
+     * limits, or the width never being asked for. This says which, once per
+     * distinct register value, so one run of the suite decides it. It also
+     * prints the limits themselves, which nothing logs today -- wideLines
+     * reports available, and that alone implies a range reaching 8.0, so a
+     * 4.0 line coming out 1 pixel wide would have to be our own doing.
+     */
+    static uint32_t last_reported = 0xffffffff;
+    if (pg->line_width != last_reported) {
+        last_reported = pg->line_width;
+#ifdef __ANDROID__
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-linewidth",
+            "reg=%u (%.3f px) scale=%d requested=%.3f -> %.3f  "
+            "device range [%.3f, %.3f] granularity %.4f wideLines=%d",
+            pg->line_width, pg->line_width / 8.0f, pg->surface_scale_factor,
+            requested, width, min_width, max_width, granularity,
+            r->enabled_physical_device_features.wideLines == VK_TRUE);
+#endif
+    }
+    return width;
 }
 
 static void begin_draw(PGRAPHState *pg)
