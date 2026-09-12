@@ -43,7 +43,10 @@ PKG="${PKG:-com.jreinach.hakux.debug}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 
 STATE="${STATE:-$HOME/hakux-work/night19}"
-APK="${APK:-$HOME/hakux-work/apk-night.apk}"
+# A symlink, not a build name: the baseline is "whichever build this sweep is
+# measuring", and pointing a default at a dated scratch APK is how a later run
+# silently measures last night's binary.
+APK="${APK:-$HOME/hakux-work/apk-sweep-baseline.apk}"
 BASE_ISO="${BASE_ISO:-$HOME/nxdk_pgraph_tests_xiso.iso}"
 GOLDENS="${GOLDENS:-$HOME/goldens/results}"
 DEADLINE_H="${DEADLINE_H:-9}"
