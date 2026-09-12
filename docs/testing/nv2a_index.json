@@ -3429,7 +3429,7 @@
    "title": "Vertex attributes and primitive assembly"
   },
   "13": {
-   "disposition": "unclassified",
+   "disposition": "defect",
    "suites": [
     "Line width",
     "Point size",
@@ -3456,7 +3456,7 @@
    "title": "pgraph suite: some tests are order-dependent"
   },
   "16": {
-   "disposition": "unclassified",
+   "disposition": "defect",
    "suites": [
     "W buffering",
     "Depth buffer",
@@ -3537,14 +3537,14 @@
    "title": "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
   },
   "41": {
-   "disposition": "unclassified",
+   "disposition": "unknown-semantics",
    "suites": [
     "Fog gen"
    ],
    "title": "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
   },
   "42": {
-   "disposition": "unclassified",
+   "disposition": "unknown-semantics",
    "suites": [
     "Fog carryover",
     "Fog vsh"
@@ -3587,6 +3587,27 @@
     "Viewport"
    ],
    "title": "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
+  },
+  "50": {
+   "disposition": "defect",
+   "suites": [
+    "Blend tests"
+   ],
+   "title": "Blend tests: DrawColorAndAlphaStack renders its four swatches in reverse vertical order (not a blend defect)"
+  },
+  "51": {
+   "disposition": "defect",
+   "suites": [
+    "Texture cubemap"
+   ],
+   "title": "Texture cubemap: 98% of the suite is PS_TEXTUREMODES_DOT_STR_3D, and its coordinate range is wrong"
+  },
+  "52": {
+   "disposition": "defect",
+   "suites": [
+    "Depth buffer"
+   ],
+   "title": "Depth buffer: four independent defects on eight cells, one fixed, and the compression axis is inert"
   },
   "53": {
    "disposition": "unclassified",
@@ -4170,7 +4191,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "77a2c7a6bb85f2e33bc32e5fbd174b474913fab8",
+  "emulator_commit": "cb1619fa3d144e34b2117538b8887dc8de1a99ad",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2726,

@@ -63,7 +63,14 @@ suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
 
 [issue.13]
 title = "Line and point rasterisation"
-disposition = "unclassified"
+# Three separate causes and it refuses to collapse: 80% of the structural error
+# is spread across nineteen of sixty-one captures, every one about 55% one-step
+# at a worst error of 223, ordered monotonically by the register value. Wants
+# generated line geometry rather than a point fix. Test names encode the width
+# in EIGHTHS -- Line_0063.7 is 63.875, not 63.7; fitting the decimal produces
+# plausible nonsense. Scope warning: the fix runs through roundScreenCoords in
+# glsl/vsh.c, which is rasteriser-wide.
+disposition = "defect"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 
@@ -92,7 +99,18 @@ suites = ["Pixel shader"]
 
 [issue.16]
 title = "Depth surface readback converts incorrectly"
-disposition = "unclassified"
+# Half of this is done and the framing needs revising. The *_ZB captures are the
+# raw zeta word as ARGB8888 (depth = A<<16|R<<8|G, stencil = B); decoded that way
+# the readback round-trips against known geometry, so the conversion is not the
+# defect -- comparing PNG channels reports a one-unit error carrying across a
+# byte boundary as a 255. Z16 fixed depth is 49/49 bit-identical (98/98 on
+# Adreno independently). Z24 fixed is off by exactly one unit and never more,
+# partly fixed in 5dac36b2 (309,710 px -> 233,112). What remains is the FLOAT
+# formats, which are a real encoding defect: not one of F16's 469,927 channels
+# is one-step. 28 of those captures are scored against saturated goldens. The
+# "exclude depth captures from any accuracy figure" note now understates
+# accuracy rather than protecting it. See #52.
+disposition = "defect"
 suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
 
 [issue.19]
@@ -134,13 +152,36 @@ disposition = "unclassified"
 
 [issue.41]
 title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
+# MEASURED UNOBSERVABLE, not merely untriaged. The six VS radial goldens hold
+# three distinct colours in the entire frame -- background, fog colour, and the
+# printed test name -- so every quad is fully fogged in all six mode functions
+# and no variation survives anywhere. Calibrated from FOG_X, the output clips at
+# a coordinate of 200, so the captures bound the value and cannot determine it:
+# every model that saturates scores alike. I fitted one and had to revert it
+# (e90c3c80). No unsaturated observation exists -- fog_tests.cpp:27 and
+# fog_exceptional_value_tests.cpp:98 both comment RADIAL out of their gen-mode
+# lists, because upstream tracks these captures as unstable on hardware
+# (abaire/nxdk_pgraph_tests#214). Exclude from the structural ranking: this cell
+# is 2,172,192 of Fog gen's 2,186,760 structural channels, and the suite's real
+# residue is 14,568. docs/investigations/unfalsifiable-goldens.md.
 suites = ["Fog gen"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.42]
 title = "nv2a: the fog output register keeps its last value when a vertex program does not write it"
+# Mechanism known, value not obtainable from this corpus. Every failing pixel is
+# the draw that omits the fog coordinate -- seven tests fail on exactly 16,384
+# px, the quad the test draws without setting one -- and vsh.c:213 starts every
+# invocation at vec4(0,0,0,1) where the hardware vertex engine's output register
+# keeps its last contents. Whether a program writes oFog is decidable from its
+# text; the carried value lives on the GPU, so this is a design decision about
+# cross-draw state. FOGGEN_SPEC_ALPHA is NOT the explanation: honouring it in
+# the programmable path costs 7,449,481 channels across the fog suites, with
+# Fog_coord_vec4 going from nine differing pixels per capture to 61,143. NOTE
+# the goldens here are saturated (one to three colours where we differ), so a
+# differing-pixel reduction proves nothing about the carried value.
 suites = ["Fog carryover", "Fog vsh"]
-disposition = "unclassified"
+disposition = "unknown-semantics"
 
 [issue.43]
 title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
@@ -191,3 +232,50 @@ disposition = "unclassified"
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
 suites = ["Specular", "Specular back", "Lighting control"]
 disposition = "unclassified"
+
+[issue.50]
+title = "Blend tests: DrawColorAndAlphaStack renders its four swatches in reverse vertical order (not a blend defect)"
+# The largest structural entry on the board, 6,500,124 channels, and NOT a blend
+# defect. 1_ADD_0 is src=ONE dst=ZERO -- the blend unit contributes nothing --
+# and the stack still comes out with its four swatch colours in exact reverse
+# vertical order. 443 of the 1,568 oracle captures differ on exactly 16,384 px
+# in the identical box (rows 112-367, cols 560-623), one full stack of four
+# 64px swatches. Cols 16-76 are asymmetric too and match hardware exactly, so it
+# is not a global flip hidden by symmetry. Five mechanisms measured dead,
+# including draw-queue merging (check_draw_mergeable forced false over all 1,568
+# captures moved zero pixels) and the arithmetic itself (4,480/4,480 quads exact
+# at centres). Two readings remain, reversed placement or reversed colour
+# assignment, and this capture cannot separate them -- a variant with unequal
+# swatch heights would.
+disposition = "defect"
+suites = ["Blend tests"]
+
+[issue.51]
+title = "Texture cubemap: 98% of the suite is PS_TEXTUREMODES_DOT_STR_3D, and its coordinate range is wrong"
+# 494,852 of 504,163 structural channels in six DotSTR3D_* captures, every
+# dotmap variant, each 0% one-step at a worst error of 255. Not the dot mapping:
+# DotReflect* uses the same dotmap_funcs entries at 300-500 channels. The 3D
+# texture is the eight corners of the colour cube, so the colours name the
+# texels sampled -- on -1to1 we reach 8 and silicon reaches 4; on 0to1 we reach
+# 8 and silicon reaches 2, so its coordinate varies along one axis where ours
+# varies along three. Two negatives recorded: returning samplerCube when
+# tex_cubemap[i] moves zero captures (that flag is false here), and mirroring
+# DOT_STR_CUBE's remapCubeTo2D fallback also moves zero AND breaks
+# DotSTR3D_Bad2D, which was exact. dim_tex[3] is 3 -- a genuine volume lookup.
+disposition = "defect"
+suites = ["Texture cubemap"]
+
+[issue.52]
+title = "Depth buffer: four independent defects on eight cells, one fixed, and the compression axis is inert"
+# Compression is provably not a variable: the Cn/Cy depth dumps are bit-identical
+# on silicon AND here, 196/196, so the suite's 16 cells are 8. Those hold four
+# unrelated defects -- Z16 fixed depth already exact (49/49); Z24 fixed off by
+# exactly one unit, partly fixed in 5dac36b2 and still 87.7% one-sided upward;
+# float Z structural (not one of F16's 469,927 channels is one-step); and a
+# colour error that is NOT downstream of the depth error (the same 69,462
+# channels in the same places in both fixed-point formats, even where the depth
+# buffer beneath is bit-perfect). 28 captures, 270,650 channels, are scored
+# against saturated goldens. Depth_buffer_fixed_function is a different and
+# larger defect: same cell, error maxes at 9 units rather than 1.
+disposition = "defect"
+suites = ["Depth buffer"]
