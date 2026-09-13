@@ -104,8 +104,9 @@ lists and a dead block has no reason to overlap the current write. This
 measurement asks the question only of blocks without `CF_INVALID`, and the
 answer did not move.
 
-**Before citing a 1.000, what would a systematic error do?** Three checks, and
-they are why this one is citable where the earlier one was not:
+**Before citing a 1.000, what would a systematic error do?** Four checks, and
+they are why this one is citable where the earlier one was not — the last is
+the one that carries weight, because it does not use the predicate:
 
 - **The predicate is not stuck at false.** `ov` is 3 in the same window index
   of all six runs, and 2 or 10 in the boot window. It fires, deterministically,
@@ -117,7 +118,6 @@ they are why this one is citable where the earlier one was not:
   and `tb_overlaps_written_range` is upstream's arithmetic unmodified.
 - **The denominator is large.** ~1,000–1,900 live discards per window, not a
   handful. A 1.000 over three blocks would not be a premise check.
-
 - **A different instrument agrees.** The `off=LO..HI` fields on the same
   always-on line come from the notdirty write tracker, not from the overlap
   predicate, and they say the writes are confined to narrow windows of their
