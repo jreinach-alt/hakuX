@@ -2014,6 +2014,94 @@ static void voice_headroom_report(void)
 }
 #endif /* __ANDROID__ */
 
+#ifdef __ANDROID__
+/* Issue #73: does the monitor mix's int16 accumulator EVER accumulate?
+ *
+ * The tracker's instrument for #73 so far has been the level meter's
+ * wrap-suspect count -- adjacent output samples differing by more than full
+ * scale -- which is the signature of a wrap and not the event. It has read
+ * zero over about 490 s across four runs and three titles, including Crimson
+ * Skies at the rails on both channels with adjacent jumps of 21,866 and
+ * 22,628 of 65,535. A zero there is consistent with "never wrapped" and with
+ * "wrapped without leaving a full-scale sign flip".
+ *
+ * This counts the PRECONDITION instead, at the site, which is a much smaller
+ * and much more decisive quantity. The accumulator can only exceed int16
+ * range if two values land in the same element between two flushes, and the
+ * schedule says that normally cannot happen:
+ *
+ *   - monitor.frame_buf is int16_t[256][2] = eight 32-sample slices
+ *     (apu_int.h:104);
+ *   - a VP frame writes exactly the slice at (ep_frame_div % 8) * 32
+ *     (vp.c, below);
+ *   - apu.c:692 pushes all 256 samples to the FIFO and memsets the buffer when
+ *     (ep_frame_div + 1) % 8 == 0, and apu.c:726 is the only increment.
+ *
+ * So slice indices run 0..7 and the buffer is zeroed after the eighth: every
+ * `+=` lands on a zeroed element, is equivalent to `=`, and stores a value
+ * src_float_to_short_array has already clamped to +/-32767. No number of
+ * simultaneous voices can overflow it, because the voices are summed in FLOAT
+ * (vp.c:1582 into sample_buf, and vp.c:1706 across the worker threads) and
+ * converted once, with saturation. That is why the census's 3,424,618 voice
+ * frames across three titles found nothing: voice count is the wrong axis.
+ *
+ * The axis that is NOT ruled out is the slice schedule being rewound.
+ * gp_ep.c:424 sets ep_frame_div = 0 on any guest write to NV_PAPU_EPRST --
+ * with a `FIXME: Still unsure about frame sync` already on it -- and does not
+ * clear frame_buf. If that write arrives with ep_frame_div % 8 in 1..7, the
+ * slices already written this cycle are visited a SECOND time, and two
+ * near-full-scale samples of the same sign are then enough. That needs no
+ * density at all, which is the opposite of what the issue assumed.
+ *
+ * nonzero counts exactly that: the accumulator was not zero when we added to
+ * it. saturated counts the sums that left int16 range, i.e. the samples the
+ * clamp below actually changes. maxabs says how close the mix gets. Two
+ * comparisons per sample, 32 samples and two channels per 5.333 ms frame, so
+ * about 12,000 of them a second. */
+static uint64_t ma_samples, ma_nonzero, ma_saturated;
+static uint64_t ma_samples_w, ma_nonzero_w, ma_saturated_w;
+static int32_t ma_maxabs_w;
+static uint32_t ma_frames;
+
+static inline void mon_acc_observe(int32_t acc, int32_t sum)
+{
+    ma_samples_w++;
+    if (acc != 0) {
+        ma_nonzero_w++;
+    }
+    if (sum > 32767 || sum < -32768) {
+        ma_saturated_w++;
+    }
+    int32_t a = sum < 0 ? -sum : sum;
+    if (a > ma_maxabs_w) {
+        ma_maxabs_w = a;
+    }
+}
+
+static void mon_acc_report(void)
+{
+    if (++ma_frames < 7500) {
+        return;
+    }
+    ma_frames = 0;
+    ma_samples += ma_samples_w;
+    ma_nonzero += ma_nonzero_w;
+    ma_saturated += ma_saturated_w;
+    __android_log_print(4, "hakuX-audio",
+        "mon_acc: window %llu samples  nonzero %llu  saturated %llu  "
+        "maxabs %d of 32767  cumulative %llu samples nonzero %llu "
+        "saturated %llu",
+        (unsigned long long)ma_samples_w, (unsigned long long)ma_nonzero_w,
+        (unsigned long long)ma_saturated_w, ma_maxabs_w,
+        (unsigned long long)ma_samples, (unsigned long long)ma_nonzero,
+        (unsigned long long)ma_saturated);
+    ma_samples_w = 0;
+    ma_nonzero_w = 0;
+    ma_saturated_w = 0;
+    ma_maxabs_w = 0;
+}
+#endif /* __ANDROID__ */
+
 void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME])
 {
     memset(d->vp.sample_buf, 0, sizeof(d->vp.sample_buf));
@@ -2052,6 +2140,7 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
     }
 #ifdef __ANDROID__
     voice_headroom_report();
+    mon_acc_report();
 #endif
     voice_work_dispatch(d, mixbins);
 
@@ -2061,9 +2150,34 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
         src_float_to_short_array((float *)d->vp.sample_buf, isamp,
                                  NUM_SAMPLES_PER_FRAME * 2);
         int off = (d->ep_frame_div % 8) * NUM_SAMPLES_PER_FRAME;
+        /* Issue #73: saturate instead of wrapping. The accumulation was
+         * `frame_buf[...] += isamp[...]` straight into an int16_t, so a sum
+         * past full scale wrapped and flipped the sign of a loud sample --
+         * which a band-limited 48 kHz signal does not do, and which is
+         * therefore audible as a click rather than as distortion.
+         *
+         * This changes NOTHING that has ever been measured, and that is the
+         * claim being made for it: the clamp only fires on a sum outside
+         * +/-32767, the slice schedule above means every `+=` normally lands
+         * on a zeroed element holding an already-clamped value, and the
+         * saturated counter says so on device. No audible improvement is
+         * claimed -- one of those two things would be measured and the other
+         * would not. See mon_acc_observe for the reachability argument and
+         * for the one path (an NV_PAPU_EPRST write rewinding ep_frame_div
+         * mid-cycle, gp_ep.c:424) that is not ruled out.
+         *
+         * Cost is two compares and a store per sample, 64 per 5.333 ms frame.
+         */
         for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
-            d->monitor.frame_buf[off + i][0] += isamp[2*i];
-            d->monitor.frame_buf[off + i][1] += isamp[2*i+1];
+            for (int ch = 0; ch < 2; ch++) {
+                int32_t acc = d->monitor.frame_buf[off + i][ch];
+                int32_t sum = acc + isamp[2 * i + ch];
+#ifdef __ANDROID__
+                mon_acc_observe(acc, sum);
+#endif
+                d->monitor.frame_buf[off + i][ch] =
+                    (int16_t)MIN(MAX(sum, -32768), 32767);
+            }
         }
 
         memset(d->vp.sample_buf, 0, sizeof(d->vp.sample_buf));
