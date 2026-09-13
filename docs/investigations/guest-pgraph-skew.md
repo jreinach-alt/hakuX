@@ -640,6 +640,168 @@ that is a statement about *this* version's scope, not about the mechanism:
   bound plausibly buys the same accuracy at a fraction of the cost, and that
   is the next arm rather than a hope.
 
+## THE SELECTIVE BOUND: hold only where a draw is outstanding
+
+Written 2026-09-13 on `5cfc236d9b`, arms queued, results to be filled in.
+None of the mechanism above is re-derived; this is the sizing and the four
+places the obvious implementation is wrong.
+
+`HAKUX_FIFO_SKEW_BOUND` gains a third value: 0 off, 1 the every-submission
+bound measured above, 2 hold only where a draw is outstanding. Mainline stays
+at 0 and arm B is the side branch `arm/issue44-draw-only-on`, one hunk apart.
+
+### Why it can be this much cheaper, and it is arithmetic rather than hope
+
+The guarantee is *"no unprocessed draw sits in the FIFO while the guest
+runs"*. A submission carrying no draw adds no draw. **148,704 submissions for
+180 draws** — so mode 1 pays 826 holds for every one the invariant needs, and
+the price of those 826 is `gfps` p90 29 → 13 with the guest blocked 40.7% of
+wall clock.
+
+### The scan is a WORD FILTER, not a parse, and the asymmetry is the reason
+
+A **false positive costs one unnecessary hold. A false negative breaks the
+invariant silently**, which is the failure this lane exists to remove. So the
+test is deliberately loose in the safe direction: every word is treated as a
+possible method header, with no attempt to tell headers from parameters.
+
+- Both header forms — increasing `(w & 0xe0030003) == 0` and non-increasing
+  `== 0x40000000` — have bits 31, 29, 17, 16, 1 and 0 clear, so the filter
+  `(w & 0xa0030003) == 0` is a **superset** and rejects no real header.
+- JMP, old-JMP, CALL and RETURN each set one of those bits, so they are
+  rejected — and none of them can carry a method number anyway.
+- **An increasing run can reach `NV097_SET_BEGIN_END` with no header naming
+  it**, so the test is the run's whole span `[m, m + 4·count)` and not `m`.
+  Applying the increasing rule to a non-increasing header over-approximates
+  again, which is once more the safe direction.
+
+One load, one mask and two compares per word, against the pusher's own
+per-word method dispatch. `scan(ns=)` is what says whether that is true
+rather than this paragraph.
+
+### The scan's subject is `[DMA_GET, DMA_PUT)`, not the bytes just published
+
+That is the invariant restated verbatim, and it is what makes the argument
+local instead of an induction over previous segments. **With a selective
+bound DMA_GET genuinely lags**, because draw-free submissions are no longer
+drained, so "what I just published" and "what nobody has read" are different
+sets and only the second answers the question.
+
+### Which is why the word budget does two jobs, and the second is the load-bearing one
+
+`FIFO_SKEW_SCAN_MAX_WORDS` bounds the scan, obviously. It also bounds the
+**region** the scan must cover: a span that grows because nothing drains it,
+rescanned at every submission, is **quadratic**. Holding when the span
+exceeds the budget forces a drain, so the span is capped and the scan is
+O(budget) rather than O(run length).
+
+16,384 words = 64 KiB, against a measured steady-state un-consumed backlog of
+**3,396–13,352 bytes mean and 32,264 bytes max** on Galleon under mode 1
+(`1789303629-skew-bound-cost-1885779`) — 2× the largest backlog that run ever
+showed. **Budget exhaustion is a counted row (`big=`), separate from "no draw
+found" (`nodraw=`)**, because otherwise a hold rate rising under a heavy
+scene reads as the mechanism working when it is the budget running out.
+
+### A header can sit at a segment's end with its parameters in the next
+
+This is the hole a scan-the-new-bytes design cannot see, and it is not
+hypothetical arithmetic — it is what the pusher does when it runs out of
+data. It consumes up to DMA_PUT, parks with `METHOD_COUNT` still set and
+`DMA_GET == DMA_PUT`, **which satisfies a hold**, while the method has not
+executed. The next segment carries only parameter words, so a scan of it
+alone says "no draw" and releases the guest into exactly the race this
+closes.
+
+`fifo_skew_pending_method_is_draw()` reads the pusher's own DMA state, so
+this needs no carry flag and no guess about how many submissions a run
+spans.
+
+### Narrower than mode 1, and the narrowing has to travel with it
+
+The 2D class reads guest memory **outside a draw** — `pgraph_image_blit` and
+the surface-download paths. **Mode 1 covers those; mode 2 does not.** Scoped
+deliberately to the mechanism #44 measured texel-exact, and the method test
+is where a blit would be added if one is ever shown to race. A `stale_px`
+pass does not certify the blit path.
+
+### The precondition the whole bound rests on, verified rather than asserted
+
+"DMA_GET reached DMA_PUT" is a proxy for "every guest-memory read those
+methods perform has happened", and that proxy holds **only while the reads
+are synchronous on the PFIFO thread**. #54's lane checked the three ways it
+could be false: `RCMD_DRAW` appears only in the enum and is never enqueued;
+`g_xemu_draw_merge` and `g_xemu_draw_reorder` are both static `false` with
+the Android prefs defaulting both false; and the reorder path does not defer
+the read anyway, because `try_snapshot_*` calls `begin_pre_draw` at *enqueue*
+time on the PFIFO thread and `emit_reorder_entry` reads no guest memory at
+flush.
+
+**If `g_xemu_draw_merge` is ever enabled that stops holding**, and the
+failure mode is the bad kind. `flush_draw_queue_internal` defers the draw's
+guest read to flush and `RCMD_FLUSH`/`RCMD_PROCESS_PENDING` run it on the
+**render thread** — so the submission is consumed, DMA_GET reaches DMA_PUT,
+the guest is released, and the read has not happened. `held(n)/kicks` would
+still read 1.0000 and `gave` would still read low: **the instrument would
+report a guarantee that is intact while it is void.** Nothing in `pfifo.c`
+can detect it, which is why it is a comment in `pfifo_bound_skew` and not
+only a line here.
+
+### `gave` is split, because one counter over four reasons decides nothing
+
+S4 failed at 1,002 releases on the disc (0.674%) and 2,482 on Galleon
+(5.603%). `gaveby(flip= nop= ctxsw= noaccess= other=)` is
+`pfifo_puller_should_stall`'s four conditions plus a residual, read directly
+rather than through that predicate because `pfifo_stall_for_flip` **clears
+`pgraph.waiting_for_flip` as a side effect** and an instrument that mutates
+its subject is not an instrument.
+
+`flip`, `nop` and `ctxsw` **cannot be closed** — the alternative to releasing
+the guest there is a deadlock — so a hole made of those is inherent. `other`
+is the row that decides whether a read-side mitigation is ever needed: the
+pusher was merely behind and the 250 ms backstop expired, which is a
+performance problem rather than a protocol one. It is an **upper** bound on
+the timeout case, because the flags are read after both locks are reacquired
+and a pusher that unstalled in between lands there.
+
+### `Texture border` cannot exercise the hole AT ALL, and that changes the arm
+
+This is the sharpest thing #54's lane found and it is a structural blindness,
+not a power problem. **The disc's eighteen draws sit in one frame with no
+FLIP_STALL between them**, so the pusher never parks while stalled and the
+`gave` hole is unreachable by construction. `stale_px == 0` on that disc
+therefore **cannot distinguish "the hole is closed" from "the hole was never
+opened"** — which is this project's own recurring error, a negative result
+read from an instrument that could not see the mechanism.
+
+So `gave` is judged on the two flipping titles instead, and Crimson Skies
+gets a better falsifier than `stale_px`: **`Tr` from the #54 probe**, which
+counts `begin_pre_draw` windows where a bound texture's dirty bit was
+consumed by an upload and then set again before the window closed — #44's
+mechanism read from the other side. Baseline **0.5661 and 0.5672** across two
+runs of one binary, reproducible to better than 0.2%, with DOA3 (0/2455) and
+JSRF (0/5733) as negative controls and `Xd` an impossible row at 0 over
+5,630,702 windows.
+
+**The bar is `Tr == 0`, not `Tr` smaller.** "Tr fell" is satisfiable by any
+perturbation of timing; "Tr == 0" only by making the race impossible.
+
+### Arms
+
+| | ref | what |
+|---|---|---|
+| accuracy A | `2e4e8403d9` | mode 0, `Texture border` ×10, nova |
+| accuracy B | `78f3f5eec8` | mode 2, one hunk apart |
+| cost A / Crimson A | `5cfc236d9b` | mode 0, + the `gave` split |
+| cost B / Crimson B | `d879e6e03b` | mode 2, one hunk apart |
+
+Predictions committed before anything was queued:
+`issue44-draw-only-bound.json`, `issue44-draw-only-bound-cost.json`,
+`issue44-draw-only-crimson.json`. The accuracy pair keeps the older refs
+deliberately — it does not read the `gave` split, and moving it would have
+made its arms differ by two things.
+
+*Results to be filled in from the dispatcher.*
+
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
 #44 handed #39's lane a falsifier nobody had run: **does a lost quad's region
