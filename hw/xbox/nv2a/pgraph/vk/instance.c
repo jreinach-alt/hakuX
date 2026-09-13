@@ -503,6 +503,18 @@ static void add_optional_device_extension_names(
         available_extensions, enabled_extension_names,
         VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
 
+    /*
+     * Requested here, confirmed against the feature query in
+     * create_logical_device() below, which clears this again if bresenhamLines
+     * comes back false. Enabling the extension on its own changes nothing --
+     * the default line rasterisation mode is unchanged -- so a device that
+     * offers the extension without the feature ends up exactly where a device
+     * offering neither does.
+     */
+    r->bresenham_lines_supported = add_extension_if_available(
+        available_extensions, enabled_extension_names,
+        VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+
 #ifdef __ANDROID__
     /* Both are in the required list on Android, so the device would not have
      * been selected without them. */
@@ -867,61 +879,92 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
 #endif
 
     /*
-     * Report what this device offers for line rasterisation. Query only --
-     * nothing is enabled and no behaviour changes here.
+     * Wide lines the way the hardware draws them.
      *
-     * Two issues are blocked on this being unknown. #36 (line and polygon
-     * smoothing) closed measured-but-blocked because lines need
-     * VK_EXT_line_rasterization, which this file has never requested, so its
-     * feature booleans have never been read on this hardware. #13 then
-     * arrived at the same extension from the opposite direction: its arm
-     * delivered a half-pixel x bias exactly as predicted and still scored
-     * +394,027 px, which established that +0.5 in x holds on a steep edge,
-     * nothing holds in y on a shallow one, and no global translate is both.
-     * What is both is a minor-axis bias whose sign depends on the major axis
-     * -- the GL wide-line rule, which is bresenhamLines.
+     * #13's arm delivered a half-pixel x bias exactly as predicted -- the
+     * fitted centre landed in the golden's interval 18/18 on one edge and 7/7
+     * on another, with y untouched 16/16 -- and still scored +394,027 px.
+     * What that established is that +0.5 in x holds on a steep edge, nothing
+     * holds in y on a shallow one, and NO GLOBAL TRANSLATE IS BOTH. A rule
+     * that biases the MINOR axis by half a pixel, sign depending on which axis
+     * is major, is both: it looks like +0.5 in x on a y-major edge and like
+     * nothing on an x-major one. That is the GL wide-line rule, and Vulkan
+     * spells it VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT.
      *
-     * So the cost of answering is one log line and the payoff spans two
-     * issues. Whether we then ENABLE it is a separate decision with its own
-     * arm; measuring first is free and reversible, and guessing has already
-     * cost #13 a device run.
+     * The probe that replaced this block reported, from an Adreno 740 on
+     * Turnip T30:
+     *
+     *   ext=1 rect=1 bresenham=1 smooth=0 stipple(rect=0 bres=0 smooth=0)
+     *   width[1.000,127.500] gran=0.500 wide=1 strictLines=1
+     *
+     * so the rule is expressible here rather than needing generated line
+     * geometry. Two further consequences of that same line, both worth
+     * keeping: stippledBresenhamLines=0, so Bresenham mode on this device
+     * cannot also do stipple -- pipelines set stippledLineEnable=VK_FALSE and
+     * #33 gains nothing from this; and smoothLines=0, which is why #36 stays
+     * closed.
+     *
+     * Feature-gated, not extension-gated. A device may advertise the
+     * extension and not the feature, and lineRasterizationMode = BRESENHAM
+     * without bresenhamLines enabled is invalid usage, so the flag is cleared
+     * here and vk/draw.c chains nothing. The desktop lane (lavapipe) and any
+     * other host therefore keep today's behaviour rather than failing device
+     * creation.
      */
+    VkPhysicalDeviceLineRasterizationFeaturesEXT line_raster_features;
     {
-        bool have_ext = is_extension_available(
-            available_extensions, VK_EXT_LINE_RASTERIZATION_EXTENSION_NAME);
+        /* Set by add_optional_device_extension_names() above purely from
+         * extension availability; the feature query below is what decides. */
+        bool have_ext = r->bresenham_lines_supported;
         VkPhysicalDeviceLineRasterizationFeaturesEXT lr = {
             .sType =
                 VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT,
         };
-        if (have_ext) {
+        if (r->bresenham_lines_supported) {
             VkPhysicalDeviceFeatures2 f2 = {
                 .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2,
                 .pNext = &lr,
             };
             vkGetPhysicalDeviceFeatures2(r->physical_device, &f2);
+
+            if (lr.bresenhamLines) {
+                memset(&line_raster_features, 0, sizeof(line_raster_features));
+                line_raster_features.sType =
+                    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_EXT;
+                line_raster_features.bresenhamLines = VK_TRUE;
+                line_raster_features.pNext = next_struct;
+                next_struct = &line_raster_features;
+            } else {
+                r->bresenham_lines_supported = false;
+            }
         }
+
         const VkPhysicalDeviceLimits *lim = &r->device_props.limits;
 #ifdef __ANDROID__
         __android_log_print(
             4, "hakuX-build",
             "line raster: ext=%d rect=%d bresenham=%d smooth=%d "
             "stipple(rect=%d bres=%d smooth=%d) width[%.3f,%.3f] gran=%.3f "
-            "wide=%d strictLines=%d",
-            (int)have_ext, (int)lr.rectangularLines, (int)lr.bresenhamLines,
-            (int)lr.smoothLines, (int)lr.stippledRectangularLines,
-            (int)lr.stippledBresenhamLines, (int)lr.stippledSmoothLines,
-            lim->lineWidthRange[0], lim->lineWidthRange[1],
-            lim->lineWidthGranularity, (int)r->enabled_physical_device_features.wideLines,
-            (int)lim->strictLines);
+            "wide=%d strictLines=%d -> bresenham %s",
+            (int)have_ext, (int)lr.rectangularLines,
+            (int)lr.bresenhamLines, (int)lr.smoothLines,
+            (int)lr.stippledRectangularLines, (int)lr.stippledBresenhamLines,
+            (int)lr.stippledSmoothLines, lim->lineWidthRange[0],
+            lim->lineWidthRange[1], lim->lineWidthGranularity,
+            (int)r->enabled_physical_device_features.wideLines,
+            (int)lim->strictLines,
+            r->bresenham_lines_supported ? "ENABLED" : "off");
 #endif
         fprintf(stderr,
                 "line raster: ext=%d rect=%d bresenham=%d smooth=%d "
-                "width[%.3f,%.3f] gran=%.3f wide=%d strictLines=%d\n",
+                "width[%.3f,%.3f] gran=%.3f wide=%d strictLines=%d -> "
+                "bresenham %s\n",
                 (int)have_ext, (int)lr.rectangularLines, (int)lr.bresenhamLines,
                 (int)lr.smoothLines, lim->lineWidthRange[0],
                 lim->lineWidthRange[1], lim->lineWidthGranularity,
                 (int)r->enabled_physical_device_features.wideLines,
-                (int)lim->strictLines);
+                (int)lim->strictLines,
+                r->bresenham_lines_supported ? "ENABLED" : "off");
     }
 
     VkPhysicalDeviceCustomBorderColorFeaturesEXT custom_border_features;

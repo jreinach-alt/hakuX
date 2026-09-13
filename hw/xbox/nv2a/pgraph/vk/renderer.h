@@ -436,6 +436,12 @@ typedef struct PipelineCreateParams {
     VkPrimitiveTopology topology;
 
     VkPipelineRasterizationStateCreateInfo rasterizer;
+    /*
+     * The pNext body `rasterizer` may point at. Carried by value because the
+     * struct create_pipeline() builds is a stack local that dies before the
+     * compile worker runs; draw.c re-links rasterizer.pNext to this copy.
+     */
+    VkPipelineRasterizationLineStateCreateInfoEXT line_state;
     VkPipelineDepthStencilStateCreateInfo depth_stencil;
     bool has_zeta;
 
@@ -1089,6 +1095,15 @@ typedef struct PGRAPHVkState {
     bool eds3_blend_supported;
 #endif
     bool push_descriptors_supported;
+    /*
+     * VK_EXT_line_rasterization with bresenhamLines, both present. Gated the
+     * way eds3_blend_supported is: the extension is requested when available
+     * and this is cleared again if the feature query comes back false, so a
+     * device without either keeps Vulkan's default (rectangular) lines rather
+     * than failing device creation. See #13 and
+     * docs/investigations/line-width-residual.md.
+     */
+    bool bresenham_lines_supported;
     bool external_memory_fd_enabled;
     bool texture_compression_bc_supported;
     VkDescriptorSetLayout push_tex_set_layout;

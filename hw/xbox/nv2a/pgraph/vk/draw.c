@@ -1596,6 +1596,73 @@ static void create_pipeline(PGRAPHState *pg)
         polygon_mode = VK_POLYGON_MODE_FILL;
     }
 
+    /*
+     * Exactly the pipelines that rasterise line segments: a line topology, or
+     * a TRIANGLE topology drawn with polygonMode LINE.
+     *
+     * The polygon mode alone is not the test, and that is not a hypothetical.
+     * #13's first draft of the viewport gate read `POLY_MODE_LINE ||
+     * primitive_mode == LINES`, and the Line width test sets the fill mode
+     * once and then draws sixteen POINTS under it -- so that gate caught every
+     * point draw in all 61 captures, and Line_0000.0, where the lines are
+     * dropped at width 0 and the points are the whole draw, would have stopped
+     * being pixel-exact. A polygon mode only reaches the rasteriser for a
+     * triangle topology. Writing the must-not-move list is what caught it.
+     *
+     * polygon_mode is the post-clamp local, so a host without fillModeNonSolid
+     * -- which silently draws those triangles filled -- is correctly not
+     * counted as drawing lines.
+     *
+     * The whole ShaderState is in the pipeline key, so both fields are already
+     * keyed and this needs no key of its own: any draw crossing into or out of
+     * line rasterisation necessarily builds a different pipeline.
+     */
+    int prim_mode = r->shader_binding->state.geom.primitive_mode;
+    bool prim_is_lines = prim_mode == PRIM_TYPE_LINES ||
+                         prim_mode == PRIM_TYPE_LINE_LOOP ||
+                         prim_mode == PRIM_TYPE_LINE_STRIP;
+    bool prim_is_triangles = prim_mode == PRIM_TYPE_TRIANGLES ||
+                             prim_mode == PRIM_TYPE_TRIANGLE_STRIP ||
+                             prim_mode == PRIM_TYPE_TRIANGLE_FAN ||
+                             prim_mode == PRIM_TYPE_QUADS ||
+                             prim_mode == PRIM_TYPE_QUAD_STRIP ||
+                             prim_mode == PRIM_TYPE_POLYGON;
+    bool rasterises_lines =
+        prim_is_lines ||
+        (prim_is_triangles && polygon_mode == VK_POLYGON_MODE_LINE);
+
+    /*
+     * A wide line the way the hardware draws it: a column (or row) of
+     * fragments of the requested width along the MINOR axis, which biases the
+     * minor axis by half a pixel with the sign depending on which axis is
+     * major. #13's viewport arm proved no global translate can be that --
+     * delivered +0.5 in x exactly, fitted centre into the golden's interval
+     * 18/18 and 7/7, y untouched 16/16, and still +394,027 px -- because a
+     * viewport cannot see which axis is major. This can.
+     *
+     * Line pipelines only. The rasterisation state is shared machinery and
+     * this mode reaching triangle pipelines would be a corpus-wide change;
+     * the 112 fill-mode 3D_primitive captures are the tripwire for that.
+     *
+     * stippledLineEnable stays false: the device reports
+     * stippledBresenhamLines = 0, so Bresenham mode here cannot also stipple.
+     *
+     * Static pipeline state, not dynamic -- there is no
+     * VK_DYNAMIC_STATE_LINE_RASTERIZATION_MODE_EXT in this build's dynamic
+     * list, so unlike the blend state under eds3 this path is the one that
+     * runs. See #13 and docs/investigations/line-width-residual.md.
+     */
+    VkPipelineRasterizationLineStateCreateInfoEXT line_state = {
+        .sType =
+            VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_EXT,
+        .lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT,
+        .stippledLineEnable = VK_FALSE,
+    };
+    if (r->bresenham_lines_supported && rasterises_lines) {
+        line_state.pNext = rasterizer_next_struct;
+        rasterizer_next_struct = &line_state;
+    }
+
     VkPipelineRasterizationStateCreateInfo rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable =
@@ -1937,6 +2004,16 @@ static void create_pipeline(PGRAPHState *pg)
         p->num_attr_descs = r->num_active_vertex_attribute_descriptions;
         p->topology = input_assembly.topology;
         p->rasterizer = rasterizer;
+        /*
+         * rasterizer.pNext points at a stack local that dies when this
+         * function returns, while the job outlives it. Copy the pointee into
+         * the job and re-link. The job is heap-allocated and `p` points into
+         * it, so &p->line_state is stable for the worker.
+         */
+        p->line_state = line_state;
+        if (rasterizer.pNext == &line_state) {
+            p->rasterizer.pNext = &p->line_state;
+        }
         p->depth_stencil = depth_stencil;
         p->has_zeta = r->zeta_binding != NULL;
         p->color_blend_attachment = color_blend_attachment;
