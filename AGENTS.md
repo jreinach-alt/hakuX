@@ -1189,6 +1189,35 @@ orchestrator declaring a working systemd timer missing because it read
 `CronList` -- a tool that cannot see a systemd timer -- and then overwrote the
 unit files it had just declared absent.
 
+## Commit BEFORE the long test, not after -- an uncommitted edit blocks every build
+
+`dispatcher.sh` refuses to build any uncached ref while the shared tree carries
+a tracked modification, and it fails by requeueing every thirty seconds. So the
+window between editing a file and committing it is a window in which no arm can
+be built.
+
+The natural order -- edit, test, then commit once it passes -- holds that window
+open for the whole length of the test. On 2026-09-13 the orchestrator ran that
+way for an afternoon and the dirty-tree requeue count went from 123 to **197**:
+74 requeues, none of them a stall, all of them avoidable. Three of them hit one
+lane's arm B, which stalled at 15:00:45, 15:01:16 and 15:01:47 before
+recovering -- and that lane's first instinct was that shared infrastructure was
+broken, which would have been its third false report of the session.
+
+**So: commit first, test after, amend on failure.** The dirty window shrinks
+from minutes to seconds, and nothing untested escapes, because the push is
+gated on `preflight.sh` regardless -- an untested commit that fails the gate is
+amended and never reaches the remote.
+
+This also removes the `git reset --hard` hazard recorded elsewhere in this
+file: a change that is already committed cannot be destroyed by cleaning up a
+test commit.
+
+The requeue path is correct and did its job -- 90 seconds and three retries,
+not the 251-requeue class. But "the recovery works" is a poor reason to keep
+generating the failure, and an orchestrator committing every few minutes is
+the single largest source of it.
+
 ## A checker must have no side effects on the tree it checks
 
 `check_territory.py` was added on 2026-09-13 to catch a stale territory
