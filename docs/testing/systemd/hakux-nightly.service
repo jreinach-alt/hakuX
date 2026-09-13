@@ -1,0 +1,20 @@
+[Unit]
+Description=hakuX nightly build and publish
+Documentation=file:///home/justin/hakuX/docs/testing/nightly_build.sh
+# A build needs no device, so this never contends with the dispatcher's queue.
+# Deliberately NOT ordered against anything: if the dispatcher is mid-sweep at
+# 00:30 that is fine and intended.
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+# The script sets JAVA_HOME and the cmake PATH itself; HOME is what gh and git
+# need to find credentials, and a user unit already has it.
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/nightly_build.sh
+# Its own log file as well as the journal. A nightly that failed silently is
+# worse than no nightly, because a missing release looks like a day with no
+# work -- so make the failure readable two ways.
+StandardOutput=append:/home/justin/hakux-work/nightly/systemd.log
+StandardError=append:/home/justin/hakux-work/nightly/systemd.log
+# A build can be slow on a loaded box; do not let systemd kill it mid-link.
+TimeoutStartSec=3600
