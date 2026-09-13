@@ -1,5 +1,19 @@
 # Blend_tests is two defects in different regions, and #50's mechanism is not a reversal
 
+> **CORRECTION 2026-09-12, later the same day.** The "Render-target aliasing"
+> row below — that stack C shows stack A's content, reported here as tested and
+> **dead** on 0 matches of 1,568 — is withdrawn. It is the mechanism, measured
+> on 1,567 of 1,568. The comparison that returned 0 compared the two *screen*
+> regions, and the two blits composite over a stretched 24-texel checkerboard
+> whose phase differs between x=16 and x=560, so it compared their backgrounds.
+> Restricted to the pixels where the phases agree it is 1,567/1,568, and the
+> closed-form oracle puts stack C at stack A's render target on 1,119 of 1,120
+> unsigned captures. Everything else here stands, including stack A as #43's
+> clean oracle. See
+> [`blend-stack-c-is-render-target-aliasing.md`](blend-stack-c-is-render-target-aliasing.md)
+> and `docs/testing/blend_stack_c_aliasing.py --naive`, which reproduces the
+> invalid comparison.
+
 Measured 2026-09-12 on all 1,568 captures of the recovered oracle
 (`res_oldblend`) against the silicon goldens, region against region.
 Reproduce with:
