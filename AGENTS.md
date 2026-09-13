@@ -518,6 +518,33 @@ adjusting the arithmetic. Find the row that cannot happen and explain it
 first -- and if every row is plausible, that is not reassurance, it is the
 absence of a check.
 
+## A blocker is a claim, and it needs the same evidence as a fix
+
+"A failed arm is a diagnosis, not a revert" has a mirror image, and #41 cost
+three passes to learn it. Each of those passes declined to fix the issue on a
+*stated* blocker, and all three blockers were false:
+
+  - "a transformed vertex position is not something the CPU can read back" --
+    it does not have to be read back; the matrix is in `vsh_constants` and the
+    vertex in `inline_value`, which is what #42 already uses;
+  - "nothing in the corpus can run the experiment" -- the fixed-function
+    captures of the identical scene ARE the experiment, once the geometry is
+    validated against them, which it was, to 0.99 of one quantisation step;
+  - "writing the constant would be arbitrary for every other guest" -- the
+    orchestrator's own, and wrong because the value is computable rather than
+    a constant to be guessed.
+
+None of the three was measured before it was used to stop work, and the
+cheapest refutation took one offline script over captures already on disk.
+
+So: a sentence that ends an investigation carries the same burden as a change
+that closes one. Write the blocker down in the form of the measurement that
+would refute it -- "this is impossible because X" becomes "if X were false,
+Y would be observable" -- and if Y is cheap, run it before recording the
+blocker rather than after someone doubts it. A blocker nobody can refute
+cheaply is the most expensive kind of comment a tracker can hold: it stops
+work for as long as it stands, and it costs nothing to write.
+
 ## Conventions
 
 - Defects live in GitHub issues, grouped by likely shared cause, each carrying
