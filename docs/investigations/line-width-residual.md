@@ -1136,3 +1136,187 @@ pixel-to-clip scale in the geometry stage.
   been wrong about twice.
 * **Nothing about the sixteen sub-2px widths**, which `lineWidthRange[0] = 1.0`
   and `lineWidthGranularity = 0.5` decide on this device.
+
+---
+
+# 2026-09-13: the priority order is landed and measured, and it is exact on the arm
+
+The three `prim_rewrite.c` edits the section above priced have been written and
+measured. Arm A `720cb22e8f`, arm B `e1c21dd5cf`, APKs `88452c539d64` and
+`6947bb0eae42`, 221 captures over `Line width` and `3D primitive`, one disc
+(`2-suites:53e6af15`), progress-log proof on both. Prediction
+`docs/testing/predictions/line-edge-priority-prim-rewrite.json`, registered and
+content-hashed at queue time; the verdict reads **PRE-REGISTERED** with the
+bound sha matching.
+
+The change is the derived order and nothing else: `rewrite_quads_line` emits
+`(v1,v2)` before `(v0,v1)`; `rewrite_quad_strip_line` rotates so `(v2,v0)` is
+first; `rewrite_polygon_line` takes the fan order, which at `count == 3` is
+`(v1,v2)`, `(v2,v0)`, `(v0,v1)` and is therefore not a swap of the first two.
+Each of the three was re-derived from the one-sentence rule and checked
+edge-for-edge against `line_priority.py`'s own `order_for(..., 'opp_abc')` at
+every vertex count from 3 to 8 before it was written.
+
+## The falsifier had to be a label, and that is what made the result legible
+
+The emission **count** is identical on both arms, so a counter-based leg would
+have passed on both binaries and carried nothing -- the tautological falsifier
+this project bans. A pixel total is barely better, because the priority class
+and the extent class overlap and cannot be subtracted.
+
+`docs/testing/line_priority_arms.py` is the arm-side half of
+`line_priority.py`: at every pixel whose **golden** colour names exactly one
+covering edge, it asks which edge **our** capture names, and reports agreement
+per candidate class. Three answers rather than one number -- arm B naming the
+same edge as arm A (did not execute), a different edge that is not the
+golden's (executed, model wrong), or the golden's (executed, right).
+
+| class | n | arm A | arm B | moved |
+|---|---:|---:|---:|---:|
+| `Tri` | 45,760 | 58.22% | 58.22% | 0 |
+| **`QStrip`** | **35,560** | **75.80%** | **100.00%** | **8,606** |
+| `LLoop` | 31,548 | 99.53% | 99.53% | 0 |
+| `QStrip/TFan` | 22,897 | 77.17% | 77.17% | 0 |
+| **`Quad`** | **22,761** | **69.22%** | **100.00%** | **7,006** |
+| `Poly` | 15,235 | 100.00% | 100.00% | 0 |
+| `Poly/TFan` | 13,853 | 100.00% | 100.00% | 0 |
+| `TFan` | 9,731 | 47.57% | 47.57% | 0 |
+| `LLoop/Tri` | 1,305 | 100.00% | 100.00% | 0 |
+| `Poly/Tri` | 222 | 100.00% | 100.00% | 0 |
+| `LLoop/TFan` | 8 | 100.00% | 100.00% | 0 |
+| **ALL** | **198,880** | **77.27%** | **85.12%** | 15,612 |
+
+**100.00%, not 99.99%**, on both classes the derivation names as
+discriminating -- and the aggregate landed on 85.12% against a registered
+floor of 84.5% and a registered arithmetic prediction of 85.12%.
+
+Two corroborations worth more than the headline:
+
+* **The instrument was validated before the arm ran, and arm A then matched it
+  to two decimal places in all eleven classes.** The same script on
+  `z-after-044-Line_width` (ref `2501f35211`, `prim_rewrite.c` byte-identical
+  to the tip) gave 198,880 decisive pixels -- reproducing this file's own
+  published population count for the perpendicular footprint to the digit --
+  and every class figure above. That was registered as leg 0 precisely so a
+  drifting instrument would be caught before any conclusion rested on it.
+* **The code path was proven live by measurement, not assumed.** Arm A's
+  `QStrip` reads 75.80% where this file's model of *our* order predicts
+  75.44%, `Quad` 69.22% against 69.32%, `LLoop` 99.53% against 99.53%.
+
+## LINE_LOOP kept its residue, exactly as predicted rather than discovered
+
+`LLoop` is 99.53% of 31,548 on **both** arms -- 149 wrong pixels, unchanged to
+the pixel. That is the number this file attributes to the extent rule, which
+this arm deliberately does not land. It was registered as leg 4 before the arm
+ran, so `LINE_LOOP`'s residual is now predicted rather than rediscovered for a
+third time.
+
+## One leg passed vacuously, and saying so is the point
+
+**Leg 2 asked POLYGON to hold an exact 100.00% through a reorder that changes
+its answer, and it held -- with 0 decisive pixels moved.** So it could not have
+failed: the two edges the change reorders, `(v0,v1)` and `(v1,v2)`, share
+vertex `v1`, and their footprints overlap only near that shared vertex where
+both colours converge on `v1`'s -- below the 48/255 separation a decisive pixel
+requires. The leg is reported as **passing but carrying no information**, not
+as one of the wins.
+
+The POLYGON edit is not inert, though, and that needed its own measurement
+rather than an inference from a flat count. In the region covered by a `Poly`
+footprint and no `Quad` footprint, arm B differs from arm A on 20 px at w = 16,
+72 px at w = 32 and 98 px at w = 48, and those pixels move **towards** the
+golden on net (20/0, 72/0, 69/29 better/worse against the golden). At w = 63.875
+the region is empty because the quad's own footprint has swallowed it, which is
+a masking artefact and not inertness.
+
+## The guard list, all of it holding
+
+**164 of 164 registered must-not-move checks at exactly zero delta**: all 160
+`3D_primitive` captures, all three `Line_width/Fill_*`, and `Line_0000.0` still
+pixel-exact. And the script's own scope column -- pixels differing between the
+arms outside the dilated union of the reordered footprints -- is **0 on every
+one of the 28 captures**.
+
+`Fill_0001.0` and `Fill_0032.0` were on the list deliberately, and they are the
+entries that distinguish this change from the two arms before it:
+`LineWidthTests::Draw()` issues `PRIMITIVE_LINE_LOOP` unconditionally, so those
+two captures contain real lines and moved under both the viewport bias (+121,
++6,024 under Bresenham). A line loop is not a line-mode polygon, so they must
+not move here, and they did not.
+
+## Per capture, and no total offered as a criterion
+
+    better 40    worse 1    same 180    (221 compared)
+    differing   4,580,105 -> 4,550,658   (-29,447)     advisory only
+    structural  1,009,484 ->   959,553   (-49,931)     advisory only
+
+Monotone in width and every capture at w >= 16 better: `Line_0016.0` -182,
+`Line_0032.0` -655, `Line_0048.0` -1,346, `Line_0063.7` -1,698. The single
+worse capture is `Line_0000.6` at **+1 px**, a width-0.75 capture in the band
+the registration explicitly declined to predict a direction for -- the device's
+own `lineWidthRange[0] = 1.0` flattens it.
+
+Note the improvement is ~29k px and not the ~170k the reconstruction table's
+9.8-point gap might suggest. That gap is a model-against-golden figure, and
+most of the pixels it covers are **also** wrong because our footprint is the
+perpendicular rectangle. Same overlap caveat as always: the classes cannot be
+subtracted, and this is what it looks like from the other side.
+
+## The nine void captures were inert, and our renderer was already right there
+
+They moved **2 px each** and their differing count against the golden is
+identical on both arms. Better than that: our own ink mask for `Line_0064.0` -
+`.7` and `Line_FFFFFFFF` is **byte-identical to our own `Line_0001.0`**, 3,403
+lit pixels. So the claim above that "every model in this file draws them at 64"
+is true of the *models* and **not of this emulator** -- our register handling
+already reproduces hardware's nine-bit overflow. They remain correctly excluded
+from the offline derivation, and the exclusion costs nothing on an arm.
+
+## The finding that is not about this arm: TRIANGLES is ours to order after all
+
+Item 4 above says `TRIANGLES` / `STRIP` / `FAN` "are not ours to order at all
+today", because they keep `VK_POLYGON_MODE_LINE` and Turnip picks. **That is
+wrong, and the arm measured it.**
+
+`pgraph_glsl_need_geom` returns true for `PRIM_TYPE_TRIANGLES`, and
+`pgraph_glsl_gen_geom` generates, for `POLY_MODE_LINE`:
+
+    layout(line_strip, max_vertices = 6) out;
+      emit_line(0, 1, dz);
+      emit_line(1, 2, dz);
+      emit_line(2, 0, dz);
+
+with `emit_line` calling `EndPrimitive()` after each pair, so each is its own
+line primitive and **the order in `main()` is our submission order**. The
+rasteriser never sees a polygon, so `polygonMode` is moot for these draws.
+
+The evidence that this is the live path is the arm itself: `Tri` measures
+58.22% where this file's model of the hypothesis "`(a,b)`, `(b,c)`, `(c,a)`"
+scores 57.63%, and nowhere near `opp_abc` (100%) or `opp_acb` (88.83%). Our
+triangles are emitted in exactly the order `geom.c` says.
+
+Two consequences for whoever picks this up:
+
+* The `Tri` class (45,760 decisive px) may be reachable by **reordering three
+  lines of generated GLSL** in `glsl/geom.c` -- `emit_line(1,2)`,
+  `emit_line(2,0)`, `emit_line(0,1)` -- rather than by the rewrite-to-`LINES`
+  change this file priced. That is a much cheaper experiment than recorded.
+* `TFan` is **not** the same story and needs care. It measures 47.57% where the
+  model of our order predicts 73.20%, and the gap is `rewrite_triangle_fan`:
+  it rewrites to `TRIANGLES` through `emit_tri_pv`, which **rotates the
+  provoking vertex to index 0**, so which edge `geom.c` calls `(0,1)` depends
+  on `last_provoking`. The fan's edge order is therefore a product of
+  `prim_rewrite.c` and `geom.c` together and cannot be fixed in either alone.
+  `TRIANGLE_STRIP` has the same coupling plus the winding alternation this
+  file already flags as inferred rather than measured.
+
+`glsl/geom.c` is claimed by another stream, so this is reported and not
+written.
+
+## What is still open, unchanged by this arm
+
+The extent rule `w(1 + tan θ/2)`, which needs the generated line geometry --
+and which is why `LLoop` still carries 149 px and why the 100.00% above is on
+the perpendicular-footprint decisive set rather than on all the ink. The
+floor/ceil phase. The sixteen sub-2px widths. And the 0.69% of interior ink
+that neither rule explains.
