@@ -35,6 +35,15 @@
 #     comparison one-variable costs nothing and re-establishing equivalence
 #     after a driver change would cost a day.
 #
+# AND RE-RUN IT BEFORE ANY CROSS-DEVICE COMPARISON ON A CAPTURE CLASS IT DID
+# NOT COVER. This stopped being hypothetical on 2026-09-13: #50's pair was
+# split across the two handhelds by a scheduler fallthrough, five of 1,673
+# captures moved, and nothing here can say whether that is the disc or the
+# devices -- because the equivalence check has never run on render-to-texture
+# blits through one shared guest address, which is the mechanism under test.
+# If the same-device re-run holds, extending this check to that disc is a
+# PREREQUISITE for any cross-device Blend comparison, not a nicety.
+#
 # Re-run the check after any driver swap. The original wording follows, and
 # the reasoning in it is still why the check was worth running:
 # Both are kalama (Snapdragon 8 Gen 2, Adreno 740) on the same Turnip build,

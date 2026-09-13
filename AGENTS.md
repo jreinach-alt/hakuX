@@ -797,6 +797,43 @@ matter. The same discipline as the disc-ratio rule, one level up: a cost
 measured on one workload is a fact about that workload until a second one
 agrees.
 
+## A guard that FAILS tells you where to look -- diff the failure by region before calling it noise
+
+A `must_not_move` guard exists to void a measurement, so the reflex on a
+failure is to discard the arm and re-run. Sometimes the failure is the better
+measurement, and the way to find out costs one diff.
+
+Measured on 2026-09-13. #50's determinism guard failed: 5 of 1,673 captures
+moved between two runs of the same APK on the same disc, one by 58,183 px, and
+the pair was device-split so the failure was unattributable. Discarding it
+would have been defensible. Diffing the five **by region** instead:
+
+    capture               stack A   stack B   stack C   outside   labels
+    1-dstA_SUB_1-cRGB      11,264         0    11,264         0        0
+    1-dstRGB_MIN_1         11,264         0    11,264         0        0
+    1-srcRGB_SADD_0           304    22,272       304         0        0
+    cA_MIN_srcRGB           6,111    49,280     6,111         0        0
+    srcA_REVSUB_1-cA        7,168         0     7,168         0        0
+
+**Stack A and stack C change by exactly the same pixel count on every one**,
+with the aliasing relation holding 1,024/1,024 in both arms.
+
+That is a stronger result than the static measurement the issue was built on.
+The static figure -- our stack C equals our stack A on 1,567 of 1,568 -- shows
+the two are EQUAL. This shows they are **COUPLED**: perturb stack A by any
+means at all, including whatever caused the guard to fail, and stack C follows
+it pixel for pixel, because stack C's blit *is* stack A's image. **A clean pair
+with zero movers could not have shown it.**
+
+The `outside blits = 0` and `label rows = 0` columns are what make it a finding
+rather than a story: nothing moved in the background or the overlay, so none of
+the five is void and the movement is confined to the mechanism's own regions.
+
+So when a guard fails: before re-running, ask **where** it moved. Region, not
+total. A failure confined to exactly the structures the mechanism predicts is
+evidence for the mechanism; a failure smeared across the frame is noise; and
+the two are indistinguishable from a differing-pixel count.
+
 ## A two-column sweep diff is TWO SINGLE RUNS, and cannot tell a regression from variance
 
 The corpus sweep runs **one run per suite**. So a diff of two sweep columns is
