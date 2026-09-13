@@ -689,3 +689,45 @@ normal map, #51's a triple too small to represent.
   is not separated. Both routes end at the same texel.
 - **This is not a fix and has not been run.** It is a reading of goldens already
   on disk, and it constrains an implementation rather than being one.
+
+### Which two bits select the corner: measured, and not the two that were recorded
+
+The mechanism above leaves one thing open -- of the three dot signs, which
+select the corner. It is settled by the unsigned dotmaps, from the goldens,
+and the answer corrects the rule recorded in `nv2a_issues.toml`.
+
+On a face the projection is `(s,t) = (-z/x, -y/x)`. **Both coordinates carry
+`sign(x)`.** So flipping `sign(x)` alone flips `s` and `t` together and maps
+each corner to its *diagonal* opposite. The prediction of "the unsigned
+dotmaps cannot flip `sign(dot_{i-2})`" is therefore that they reach a
+**diagonal pair** of corners.
+
+They do not. The two corners those captures reach are an **edge pair sharing
+an `s` extreme**, and that holds on all three positive faces, so it does not
+depend on the face being unidentifiable from colour:
+
+| face | the two corners reached | shape |
+|---|---|---|
+| +X | (63,0), (63,63) | edge pair, `s` pinned, `t` free |
+| +Y | (0,0), (0,63) | edge pair, `s` pinned, `t` free |
+| +Z | (0,0), (0,63) | edge pair, `s` pinned, `t` free |
+
+The diagonal pairs, for contrast, would have been `{#00FF00,#FF0000}` or
+`{#0000FF,#FFFFFF}` -- and the goldens hold neither combination.
+
+So what is pinned is **`s` itself**, the product `sign(z)*sign(x)`, and what
+varies is **`t`**, the product `sign(y)*sign(x)`. The corner is selected by
+those two products, not by two of the three signs taken alone.
+
+This needs no separate addressing rule. It is the ordinary cube-face
+projection applied to a direction that has lost its magnitude and kept its
+signs -- which is the mechanism of the previous section, and the reason that
+mechanism is worth more than the rule it explains: the rule had to name two
+bits and named the wrong ones; the mechanism hands you the right ones for
+free.
+
+**Still not measured:** the threshold at which the magnitude underflows. Every
+pixel of every affected capture is below it, so a fix using an 8-bit quantum
+and one using a 6-bit quantum score identically on this corpus. The corpus can
+confirm the rule and cannot calibrate the threshold; that needs a capture whose
+dot magnitudes straddle it, and none exists here.

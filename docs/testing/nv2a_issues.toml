@@ -698,8 +698,17 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # trades a wrong result for one that does not build. It wants its own fix.
 #
 # THE RULE, still the target, derived from the goldens and so unaffected by any
-# of the above: the fetched texel is a CORNER of the texture, picked by
-# sign(dot_{i-2}) and sign(dot_{i-1}); the third component selects nothing.
+# of the above: the fetched texel is a CORNER of the texture. An earlier
+# revision said "picked by sign(dot_{i-2}) and sign(dot_{i-1}); the third
+# component selects nothing" -- the corner claim holds, the two bits named do
+# not. On a face, (s,t) = (-z/x, -y/x), so BOTH coordinates carry sign(x) and
+# the selectors are the two PRODUCTS sign(z)*sign(x) and sign(y)*sign(x). The
+# discriminator is the unsigned dotmaps: they reach exactly two corners, and
+# those two are an EDGE pair sharing an s extreme on all three positive faces,
+# never a diagonal pair -- and pinning sign(x) alone would flip s and t
+# together and so give the diagonal. What is pinned is s, i.e. the product.
+# No separate sign rule is needed: it is the ordinary cube-face projection of
+# a direction that has lost its magnitude but kept its signs.
 # Evidence: the goldens hold NO colour outside the four corners of a POSITIVE
 # face, {#0000FF,#FF0000,#00FF00,#FFFFFF} (all three positive faces share that
 # set, permuted, and the negatives share {#FF00FF,#000000,#FFFF00,#00FFFF}, so
