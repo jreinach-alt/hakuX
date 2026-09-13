@@ -3,7 +3,7 @@
 
     vblank_report.py <logcat.txt> [...]
 
-Reads the `vbl`, `vblmode` and `vblfp` lines that hw/xbox/nv2a/nv2a.c emits
+Reads the `vbl`, `vblmode`, `vblfp` and `vblpll` lines that hw/xbox/nv2a/nv2a.c emits
 under the
 hakuX-perf tag every two seconds and answers the four questions the corpus
 cannot: what period we deliver against what we intended, how that
@@ -48,6 +48,22 @@ FP = re.compile(
     r"hcrtc=(?P<hcrtc>\d+) vsync=(?P<vsync>\d+) vvalid=(?P<vvalid>\d+) "
     r"hvalid=(?P<hvalid>\d+) genctl=(?P<genctl>[0-9a-f]+) "
     r"sr01=(?P<sr01>[0-9a-f]+)")
+
+# The PLL decode calibrated against two clocks with known right answers. The
+# NV2A core runs at 233 MHz and its memory at 200 MHz, and NVPLL and MPLL use
+# the same crystal * N / M / 2^P that VPLL does. If those two land, the pixel
+# clock is what the guest asked for; if they are off by a constant factor, so
+# is the pixel clock, and every raster judged against it is off by that factor.
+PLL = re.compile(
+    r"vblpll xtal=(?P<xtal>\d+) nvpll=(?P<nvpll>[0-9a-f]+)"
+    r"\(m=(?P<nm>\d+) n=(?P<nn>\d+) p=(?P<np>\d+)\) "
+    r"core=(?P<core>\d+) stored=(?P<stored>\d+) "
+    r"mpll=(?P<mpll>[0-9a-f]+)\(m=(?P<mm>\d+) n=(?P<mn>\d+) "
+    r"p=(?P<mp>\d+)\) mem=(?P<mem>\d+) vpll=(?P<vpll>[0-9a-f]+) "
+    r"pix=(?P<pix>\d+)")
+
+NV2A_CORE_HZ = 233333333   # documented part speed, not a measurement of ours
+NV2A_MEM_HZ = 200000000
 
 NTSC_TRUE_NS = 16683333    # 60000/1001 fields per second
 PAL_TRUE_NS = 20000000
@@ -97,7 +113,7 @@ def describe(label, rows):
 
 
 def main():
-    vbl, mode, fp = [], [], []
+    vbl, mode, fp, pll = [], [], [], []
     for path in sys.argv[1:]:
         with open(path, errors="replace") as fh:
             for line in fh:
@@ -112,6 +128,10 @@ def main():
                 m = FP.search(line)
                 if m:
                     fp.append(m.groupdict())
+                    continue
+                m = PLL.search(line)
+                if m:
+                    pll.append(m.groupdict())
     if not vbl:
         sys.exit("no vbl lines found in %s" % ", ".join(sys.argv[1:]))
 
@@ -161,6 +181,27 @@ def main():
                    want,
                    "%+.4f%%" % ((derived - NTSC_TRUE_NS) * 100.0
                                 / NTSC_TRUE_NS)))
+
+    seen = set()
+    for m in pll:
+        key = tuple(sorted(m.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        core = int(m["core"])
+        mem = int(m["mem"])
+        print("  PLLs off a %d Hz crystal: core %d Hz (m=%s n=%s p=%s), "
+              "memory %d Hz (m=%s n=%s p=%s), pixel %s Hz" %
+              (int(m["xtal"]), core, m["nm"], m["nn"], m["np"],
+               mem, m["mm"], m["mn"], m["mp"], m["pix"]))
+        for what, got, want in (("core", core, NV2A_CORE_HZ),
+                                ("memory", mem, NV2A_MEM_HZ)):
+            if got == 0:
+                print("      %s PLL never programmed by the guest; it "
+                      "calibrates nothing" % what)
+            else:
+                print("      %s decodes %+.1f%% from the %d Hz the part "
+                      "runs at" % (what, (got - want) * 100.0 / want, want))
     print()
 
     src = {k: sum(int(r[k]) for r in vbl) for k in ("tmr", "smp", "gfx")}

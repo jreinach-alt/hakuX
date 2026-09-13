@@ -487,6 +487,48 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         d->pramdac.fp_hvalid_end, d->pramdac.general_control,
         d->vga.sr[VGA_SEQ_CLOCK_MODE]);
 
+    /*
+     * The PLL decode, checked against two clocks whose right answer is known
+     * from outside this tree.
+     *
+     * Everything derived above hangs on one formula -- crystal * N / M / 2^P
+     * with a 16.6667 MHz crystal -- applied to VPLL. If that formula or that
+     * crystal is wrong, the pixel clock is wrong by a fixed factor and every
+     * raster judged against it is wrong by the same factor, which is exactly
+     * the shape of what the FP raster showed: 525 lines x 776 px needs
+     * 24.42 MHz and we decode 31.09, a factor of 1.273.
+     *
+     * NVPLL and MPLL are the same formula on the same crystal, and the parts
+     * they clock have documented speeds: the NV2A core runs at 233 MHz and
+     * the memory at 200 MHz. So they are a calibration, not a diagnostic. If
+     * they decode to those, the formula is sound and the pixel clock is what
+     * the guest asked for, which puts the mismatch in the raster or in the
+     * premise. If they come out 1.27x high -- 297 MHz and 255 MHz -- the
+     * crystal is wrong by the very factor that would make the flat-panel
+     * raster derive the period exactly, and the derivation is back.
+     *
+     * Nothing here can choose between those: the guest programs both
+     * coefficients and this only reads them back.
+     */
+    uint32_t nco = d->pramdac.core_clock_coeff;
+    uint32_t mco = d->pramdac.memory_clock_coeff;
+    uint32_t nm  = nco & NV_PRAMDAC_NVPLL_COEFF_MDIV;
+    uint32_t nn  = (nco & NV_PRAMDAC_NVPLL_COEFF_NDIV) >> 8;
+    uint32_t np  = (nco & NV_PRAMDAC_NVPLL_COEFF_PDIV) >> 16;
+    uint32_t mm  = mco & NV_PRAMDAC_MPLL_COEFF_MDIV;
+    uint32_t mn  = (mco & NV_PRAMDAC_MPLL_COEFF_NDIV) >> 8;
+    uint32_t mp  = (mco & NV_PRAMDAC_MPLL_COEFF_PDIV) >> 16;
+    int64_t  nvclk = nm ? (int64_t)NV2A_CRYSTAL_FREQ * nn / (1 << np) / nm : 0;
+    int64_t  mclk  = mm ? (int64_t)NV2A_CRYSTAL_FREQ * mn / (1 << mp) / mm : 0;
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "vblpll xtal=%d nvpll=%08x(m=%u n=%u p=%u) core=%lld stored=%lld "
+        "mpll=%08x(m=%u n=%u p=%u) mem=%lld vpll=%08x pix=%lld",
+        NV2A_CRYSTAL_FREQ, nco, nm, nn, np, (long long)nvclk,
+        (long long)d->pramdac.core_clock_freq,
+        mco, mm, mn, mp, (long long)mclk, vco, (long long)pixclk);
+
     __android_log_print(
         ANDROID_LOG_INFO, "hakuX-perf",
         "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "
