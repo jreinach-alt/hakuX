@@ -42,6 +42,38 @@ re-run.
 * **The GL blit range download**: reported 8 better and 1 worse. It is
   **8 better, 0 worse**.
 
+## The instability is in the run, not in that capture
+
+Measured after the band was: a build instrumented to log every surface
+create, hit, upload, download and overlap-eviction, run three times
+unchanged. The three runs produced **376,336 / 372,485 / 375,927 events**,
+diverging first at event 25,867 — where one run carries a block of extra
+`UPLD ... pending=0 -> skip` and `DNLD` pairs the others do not.
+
+So the **surface event stream is non-deterministic run to run**, and it is
+non-deterministic even on runs whose captures all agree (all three scored
+`Surface_pitch::Swizzle` at 15,360). The extra events are no-ops — repeated
+update calls that find nothing dirty — so what varies is how many times the
+guest gets round the loop, i.e. the interleaving of the CPU thread and the
+pgraph thread. That is inherent to a free-running guest and is mostly
+harmless.
+
+It stops being harmless where the interleaving decides whether a real
+download lands before a read. That is what `Surface_pitch::Swizzle` is
+sensitive to: diffing two runs of one binary, 8,192 px differ across 80 rows
+of 256 columns, and the differences are whole blocks — one run shows
+`#FFFFFF` where the other shows `#7722FF`, the run with more real colour
+scoring closer to the golden. Data that sometimes arrives and sometimes does
+not, not a numeric race.
+
+**The corollary matters for every A/B on this disc.** "235 of 236
+bit-reproducible" is an observation over five runs, not a guarantee. The
+mechanism that flips one capture is present in every run; what makes the
+other 235 stable is that nothing they measure depends on the ordering, not
+that the ordering is fixed. A capture that starts moving after a change to
+the surface or texture paths should be re-run before it is believed, in
+either direction.
+
 ## How to use it
 
 Class a move on `Surface_pitch::Swizzle` of |512| or less as NOISE. Do not
