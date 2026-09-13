@@ -114,6 +114,26 @@ def read_log(path):
 
 def score_dir(args):
     run_dir, goldens = args
+    # A MISSING CAPTURE DIRECTORY IS AN EXPECTED OUTCOME, NOT A BUG HERE.
+    #
+    # It happens when the device disappears mid-run: on 2026-09-13 the thor
+    # dropped off adb 604 s into a 1,673-capture arm, the pull failed, and
+    # `captures1` was never created. `os.listdir` then raised
+    # FileNotFoundError out of a ProcessPoolExecutor worker, so the log got a
+    # two-frame `_RemoteTraceback` wrapping a one-line fact. The dispatcher
+    # handled the outcome correctly -- it wrote "ran but produced 0 captures"
+    # to ERROR -- but anyone reading the log met the traceback first and had to
+    # work out that the tool was fine and the cable was not.
+    #
+    # An instrument that cannot see its input should say so in one line. The
+    # empty list is the honest return: zero captures scored, which is what
+    # happened.
+    if not os.path.isdir(run_dir):
+        sys.stderr.write("score_sweep: no capture directory at %s -- nothing "
+                         "to score. The run produced no captures (a device "
+                         "that vanished mid-run does this); this is not a "
+                         "scoring failure.\n" % run_dir)
+        return []
     solo, _ = read_log(os.path.join(run_dir, "pgraph_progress_log.txt"))
     rows = []
     for name in sorted(os.listdir(run_dir)):

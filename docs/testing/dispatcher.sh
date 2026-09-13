@@ -469,9 +469,9 @@ else:
             --tsv "$rdir/scores$r.tsv" >>"$rdir/run$r.log" 2>&1
     done
 
-    python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" <<'PYEOF'
+    python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" "$SNAP" <<'PYEOF'
 import csv, glob, json, os, subprocess, sys
-rdir, sha, disc, who, purpose, ref = sys.argv[1:7]
+rdir, sha, disc, who, purpose, ref, snap = sys.argv[1:8]
 meta = dict(apk_sha=sha, disc_id=disc, requester=who, purpose=purpose, ref=ref)
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
@@ -499,6 +499,25 @@ def _rev(path):
         return "unknown"
 meta["classifier_rev"] = _rev("docs/testing/classify_residuals.py")
 meta["scorer_rev"] = _rev("docs/testing/score_sweep.py")
+# AND THE HASH OF THE FILE THAT ACTUALLY RAN, because `scorer_rev` above can
+# name a revision that scored nothing.
+#
+# It is `git log -1` on the TREE at result-writing time, while the scoring was
+# done by the SNAPSHOT under $DISPATCH_DIR/bin -- and the tree can move between
+# those two moments: a worker snapshots at re-exec, then a commit lands while
+# it is mid-run, and the result records the new revision against captures the
+# old one scored. I introduced that field this morning and it has this hole in
+# it, which is the same class of provenance bug it was added to close.
+#
+# A content hash of the snapshot cannot be wrong about which code ran. The git
+# revision stays because it is what a human can look up; when they disagree,
+# the hash is the fact and the revision is the guess.
+try:
+    import hashlib
+    with open(os.path.join(snap, "score_sweep.py"), "rb") as fh:
+        meta["scorer_sha256"] = hashlib.sha256(fh.read()).hexdigest()[:12]
+except Exception:
+    meta["scorer_sha256"] = "unknown"
 runs = []
 for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
     rows = [r for r in csv.DictReader(open(t), delimiter="\t") if r.get("suite")]
