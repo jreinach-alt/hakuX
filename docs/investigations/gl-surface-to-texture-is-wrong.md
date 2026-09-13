@@ -133,3 +133,51 @@ conversion choosing differently.
 
 **That is #59's subject**, pad bits written by the raster rather than
 masked, and #59's lane holds `glsl/psh.c` for exactly that fix.
+
+
+---
+
+## The second residual, localised: swizzled surfaces
+
+The filter-cache fix took eight of the nine captures. The ninth,
+`Surface_pitch::Swizzle`, did not follow — the refuse-the-whole-path arm put
+it at 12,224 and the filter fix leaves it at 15,360. Three arms behind a
+runtime switch, each refusing a narrower slice of the fast path:
+
+| arm | `Surface_pitch::Swizzle` | other captures moved |
+|---|---:|---:|
+| control | 15,360 | — |
+| refuse **swizzled** surfaces | **12,224** | **0 of 235** |
+| refuse swizzled **and** pitch-mismatched | 15,808 | 0 of 235 |
+
+Refusing swizzled surfaces recovers the entire remaining GL-only gap, 3,136
+px, and moves **nothing else on the disc**. So the second residual is the
+surface-to-texture path applied to a *swizzled* surface, and it is confined
+to the one capture that exercises it.
+
+**The obvious hypothesis is refuted.** `check_surface_to_texture_compatibility()`
+skips the pitch check for swizzled surfaces —
+`(!surface->swizzle && surface->pitch != shape->pitch)` — which reads like
+the defect in a test named `Surface_pitch`. Refusing exactly that subset
+made the capture **worse** than doing nothing, 15,808 against 15,360, so
+the mismatched pitch is not what is wrong; whatever the fast path does to a
+swizzled surface is wrong across the board and the pitch-matched cases were
+carrying the capture rather than breaking it.
+
+What is left standing, and is not yet measured: the fast path is a GPU blit
+(`render_surface_to()`), and a swizzled guest surface is held *unswizzled*
+in its GL texture — `pgraph_gl_upload_surface_data()` calls
+`unswizzle_rect()` on the way in. A blit cannot reapply a swizzle, while the
+slow path goes back through guest memory where the layout is handled. That
+is a reading, not an arm.
+
+**Not fixed, and deliberately.** Refusing the path for swizzled surfaces is
+the same curve fit as refusing it for `A8R8G8B8` was, with the same
+throughput bill, and the same objection applies: it does not say why the
+path is wrong. What the arms buy is that the remaining GL-only gap is one
+named slice of one function, with one hypothesis already eliminated.
+
+Note also that 12,224 is still 1,984 above Vulkan's 10,240 on this capture,
+so even the refusal does not close it — the rest is the swizzle
+address-mapping defect both renderers share, where whole blocks land in the
+wrong place and the two are wrong differently.
