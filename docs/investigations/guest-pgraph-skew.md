@@ -1457,6 +1457,232 @@ measuring:
   segfaults immediately at 2 — is a separate, deterministic defect and is
   recorded there, not here.
 
+## MEASURED, #54 lane: lever (a)'s premise is REFUTED and its ceiling is 38-47%
+
+The handover at `dce367ca62` put "release the guest when the draw's READS are
+done" first, on this reasoning: *"Measured hold mean is 2,316,996 ns against a
+PFIFO service time of ~160 µs per submission, so MOST OF THE HOLD IS QUEUEING
+behind work the guarantee does not care about."*
+
+**The ~160 µs is not Galleon's service time, and the error is this document's
+own 826:1 mistake in a second place.** It was derived at line 424 as the PFIFO
+thread's busy fraction divided by a submission rate:
+
+    160 µs  =  48%  /  3,000 submissions/s
+
+The **48% is Galleon's** PFIFO busy fraction (`frame-pacing-and-parallelism.md`,
+the gameplay-load column). The **3,000/s is the `Texture border` test disc's**
+steady-window submission rate — this document, line 236: *"148,667 (1,022/s
+pooled; 2,000-3,300/s in steady windows)"*. **Galleon submits at 257/s (arm A)
+and 181/s (arm B)**, which is the same table the hold mean was read from.
+
+So the figure divides a title's numerator by a test disc's denominator. Redone
+with both halves on Galleon:
+
+| | service time per submission | hold mean / service |
+|---|---|---|
+| as briefed (48% / 3,000·s⁻¹, disc rate) | 160 µs | **14.5x** |
+| **corrected, arm A rate (48% / 257·s⁻¹)** | **1,868 µs** | **1.24x** |
+| **corrected, arm B rate (48% / 181·s⁻¹)** | **2,652 µs** | **0.87x** |
+
+**The hold is approximately ONE submission's service time. There is no queueing
+term for lever (a) to remove**, and two independent confirmations sit inside
+this document already:
+
+- **The blocked fraction equals the busy fraction.** This document's own
+  pre-registered arithmetic (line 425) said the guest would spend "roughly the
+  PFIFO thread's busy fraction" blocked, predicted ~48%, and measured **40.7%**
+  — celebrated at line 587 as the cost being *understood rather than merely
+  observed*. If the hold were 14.5 service times, the blocked fraction would
+  have to exceed 100%. 40.7% against 48% is the signature of hold == service,
+  queueing == 0.
+- **The bound prevents the backlog it would queue behind.** Lines 412-413:
+  *"with the bound in force the backlog is never allowed to form"*, and
+  `held(n)/kicks = 1.0000`. A backlog that never forms cannot be queued behind.
+
+This refutes the *reason* given for (a), not (a) itself. The correct premise is
+different and narrower: the hold is one submission's service, and (a) recovers
+whatever share of that service happens **after** the draw's guest-memory reads.
+That share is measurable, and it had not been measured.
+
+### The ceiling, from an instrument that already existed
+
+No new device run was needed. `NV2A_PERF_LOG` builds already emit a
+`hakuX-phase` line carrying every sub-phase of the PFIFO thread's frame, and
+two **Crimson Skies** captures were already on disk at
+`/home/justin/hakux-work/perf/instr{1,2}.log` — the same title `Tr = 61.7%` was
+measured on. 46 samples over two runs, read by
+`docs/testing/phase_read_split.py`.
+
+The decomposition is taken from the source, not from the field names, and it
+closes exactly:
+
+    BUSY = Surf + Draw + Fin
+    Draw = Vtx + Syn + Prw + Pipe + Desc + Setup + Cmd + unclassified
+    Pipe = Tx + Sh + Lu + Shd
+
+    READ (the guarantee applies)   Surf, Syn, Tx  [+ Vtx, Prw conservatively]
+      Syn   sync_vertex_ram_buffer      reads guest vertex RAM
+      Tx    pipe_bind_tex               fast_hash(vram) AND get_texture_layout(vram)
+      Surf  surface_update              pgraph_vk_upload_surface_data reads guest mem
+    POST-READ (no guest read)      Sh, Lu, Shd, Desc, Setup, Cmd, Fin
+
+`READ + POST + unclassified == BUSY` holds with a worst residual of **0.20 ms**
+and a mean of **0.089 ms**, which is the one-decimal print rounding over eight
+terms. That identity is the check that the parse is right.
+
+| Crimson Skies, pooled 46 samples | ms/frame | share of BUSY |
+|---|---|---|
+| BUSY (nv2a.pfifo_thread) | 19.62 | 100% |
+| Idle (waiting for work) | 16.59 | — |
+| **READ, conservative** | **10.40** | **53.0%** |
+| READ, generous | 9.67 | 49.3% |
+| **POST-READ — lever (a)'s ceiling** | **7.36** | **37.5%** |
+| unclassified inside `draw_dispatch` | 1.78 | 9.1% |
+
+**So lever (a)'s ceiling is 38-47% of the PFIFO thread's busy time**, the
+bracket being whether the unclassified `draw_dispatch` remainder is read-side or
+not. Per run: instr1 `[34.6%, 44.4%]`, instr2 `[40.3%, 48.7%]` — reproducible
+to about ±3 points, which is smaller than the effect.
+
+**The other half is irreducible.** 49-53% of the hold is the guest-memory reads
+themselves, which is exactly what the guarantee is about; no release-point
+change can reach it. "Most of the hold is queueing" is refuted and replaced by
+"about half the hold is the reads".
+
+### And the read side is the DECISION, not the upload
+
+The single largest read-side term is `Tx` — `pipe_bind_tex`, which wraps
+`pgraph_vk_bind_textures` — at **5.85 ms/frame, 29.8% of the whole PFIFO busy
+time.** The actual texture upload, `Tex` (`texture_upload_ns`, set inside
+`upload_texture_image`), is **0.01 ms/frame**, with `TexU` at 1-2 cache fills a
+frame.
+
+So the emulator spends order **500x longer deciding whether to upload a texture
+than uploading one**, and that decision is on the #44 critical path because
+`create_texture` hashes guest VRAM to make it (`vk/texture.c:1953`,
+`fast_hash(texture_data, texture_length)`, gated on `possibly_dirty`).
+
+**Stated as strength: `Tx = 5.85 ms` is MEASURED; the hash's share of `Tx` is
+NOT.** `pipe_bind_tex` also covers `resolve_possibly_dirty_textures`, the
+eight-register comparison fast path and the LRU lookup. Attributing it to the
+hash is an inference inside a model nobody has measured, which is the failure
+this file records under "An inference can be valid and still wrong". The
+measurement that settles it is one timer pair around the two `fast_hash` calls
+in `create_texture`, in this lane's own file, needing no other lane.
+
+### Two defects in the phase instrument, found by running it against real data
+
+Both were found by asserting the emitter's own identities rather than trusting
+the field names, with `docs/testing/phase_read_split_check.py`:
+
+- **`Tot` double-counts its nested phases.** `profile.c:97` sums
+  `surface_update + texture_upload + shader_compile + draw_dispatch + finish +
+  flip_idle + fifo_idle`, but `texture_upload` is inside
+  `pipe_bind_tex ⊂ draw_pipeline ⊂ draw_dispatch`, and `shader_compile` is
+  inside `draw_pipeline` too. The proof is exact rather than argued: on the one
+  sample with `Shd:2.9`, `Pipe:7.3` against `Tx:3.2 + Sh:1.0 + Lu:0.2 = 4.4`
+  leaves **2.90**, matching `Shd` to the printed digit. Immaterial in
+  steady-state gameplay (`Tex` and `Shd` are ~0), and **not** immaterial on the
+  load screen `performance-next-three.md` flags, where 50-200 fills a frame
+  would inflate `Tot` by exactly the upload time. `BUSY` above is defined as
+  `Surf + Draw + Fin` to avoid it.
+- **Every field is an EWMA, not a frame.** `SMOOTH_MS` is
+  `dst = 0.8·dst + 0.2·src`, so a printed line is a ~5-frame smoothed estimate,
+  and the line is emitted once per 60 frames. Means and shares are unaffected
+  (smoothing is linear), but **min/max understate the true per-frame spread**,
+  and `Fin` vs `Sub + Fen` cannot be expected to close exactly because each is
+  smoothed separately — which is why that identity residual sits at a steady
+  0.2-0.3 ms and is not a parse fault.
+
+### What this makes of (a), given Crimson arm B
+
+Arm B lands while this was being written and it reorders the question rather
+than answering it. The selective bound already costs **`gfps` p90 −0, max −3 on
+Crimson Skies** while taking `Tr` to exactly zero. So on Crimson there is no
+cost for (a) to recover, and **the ceiling measured above is measured on the
+title where the lever has nothing to buy.**
+
+The cost exists on **Galleon** (p90 29 → 13), whose guest CPU thread is the
+critical path at 83% busy. **The post-read share on Galleon is unmeasured**, and
+this document's newest rule — *one title cannot establish a cost* — applies to
+my figure exactly as it applied to the one it corrects. Quoting 38-47% as
+Galleon's would repeat the error at the top of this section.
+
+So the cheapest measurement that decides (a) is: **one Galleon soak on a
+`-Pperflog=true` APK, and read `hakuX-phase` with
+`docs/testing/phase_read_split.py`.** No new instrument, no prediction to
+register (it is a survey, `--no-expect`), one device slot. The leg worth
+registering afterwards is an absolute, not a fall: *the post-read share of
+`BUSY` on Galleon is at most X%*, because that share caps (a) whatever the
+baseline does.
+
+Two things stand in the way of it being free, and both are recorded rather than
+worked around: `HAKUX_PERF_LOG` is reachable only as a Gradle property
+(`android/app/build.gradle.kts:52`, `-Pperflog=true`), and `dispatcher.sh:164`
+builds with a bare `./gradlew assembleDebug`, so **no request can ask for a
+perf build today**. And the profiler *"puts a clock read around every method in
+the puller and so changes the number it is measuring"* (`profile.c`'s own
+comment), so it perturbs absolutes — a share of `BUSY` is the right form to
+quote from it, and an absolute ms figure is not.
+
+### Lever (a) is NOT inside this lane's files, and the brief says it is
+
+Stated because the brief and the wave-19 territory note both assert *"entirely
+inside this lane's files"*, and that is checkable in one grep:
+
+| what (a) needs | where it lives | mine? |
+|---|---|---|
+| the wait to release early | `pfifo_bound_skew`, `pfifo.c:882-1000` | **no** — lane.pacing |
+| `sync_vertex_ram_buffer`, the vertex read | defined `vk/draw.c:5765`, 10 call sites in `vk/draw.c` | **no** |
+| `begin_pre_draw`, the texture read window | defined `vk/draw.c:3666`, 9 call sites in `vk/draw.c` | **no** |
+| `get_texture_layout` | `vk/texture.c:221` | yes |
+| `pgraph_vk_poll_bound_textures` | `vk/texture.c:591` | yes |
+
+The signal's *raise* point is reachable from `vk/texture.c`, because at every
+call site `sync_vertex_ram_buffer` precedes `begin_pre_draw`. Its *wait* is in
+`pfifo.c` and the conjunction "both reads done for this draw" can only be
+observed in `vk/draw.c`. So (a) is a three-territory change, not a one-file one.
+
+### What of lever (b), and the two claims in it that are true
+
+Both verified from source rather than taken on the handover's word:
+
+- `check_texture_dirty` (`vk/texture.c:534`) really is a test-and-clear:
+  `memory_region_test_and_clear_dirty(d->vram, ..., DIRTY_MEMORY_NV2A_TEX)`.
+  **So (b)'s "the detection already exists" is correct**, and no page
+  protection or store trapping is required.
+- The granularity is **whole 4 KiB pages** — `TARGET_PAGE_ALIGN(addr + size)`
+  and `addr &= TARGET_PAGE_MASK` — which this lane was told to establish for
+  itself rather than inherit from #68/#69/#73, and it holds. Every `Tr` count is
+  therefore an upper bound on byte-level overlap, as `vk/draw.c` already says.
+
+### A retraction of my own, before it was published as a finding
+
+Reading `create_texture` showed the content hash and the upload are **two
+separate reads of the same guest range**: `fast_hash(texture_data, ...)` at
+`vk/texture.c:1953`, then `get_texture_layout` re-deriving
+`vram_ptr + texture_vram_offset` and reading it again at line 651, with
+`snode->hash = content_hash` stamped at 2020 from the *first* read. Under a
+61.7% race that is a cache recording `hash(bytes at T1)` beside an image built
+from `bytes at T2`.
+
+**My first reading was that this makes a torn texture PERMANENT, and it is
+wrong.** Traced through: a tear means a guest store landed after the poll's
+test-and-clear, so the page bit is set again — which is precisely what `Tr`
+counts — so the next frame's `poll_bound_textures` re-marks the binding,
+`possibly_dirty` is true, the hash is recomputed over the settled content,
+compares unequal to the stored torn hash, and the texture is re-uploaded. It
+self-corrects on the following frame.
+
+What the double read actually produces is **spurious re-uploads** — the stored
+hash need not match the settled content even when the upload was clean — which
+is a cost, in the same direction as the measured +53% uploads, not a wrong
+pixel. Recorded because the wrong version would have read as a mechanism for
+#44's permanence, and because it explains why #54's race gives a one-frame tear
+on a flipping title and a captured defect on a disc whose eighteen draws sit in
+one frame: the observable, again, rather than the defect.
+
 ## UNRESOLVED
 
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
@@ -1491,9 +1717,31 @@ measuring:
   non-deferred lateness over a period, i.e. the host stall tail. Its max
   lateness is 725,561,719 ns, **43.5× a period**. That is exactly the residual
   #65's D9 reserves and no deferral cap can reach.
-- **Whether a cheaper sufficient bound exists outside this path.** The one
-  candidate is write-tracking: trap the guest's store to a range a queued draw
-  will read, rather than holding every submission. The machinery is partly
-  there — the vertex path already consults `DIRTY_MEMORY_NV2A` — but a dirty
-  *bit* records that a write happened, and this needs the write *stopped*,
-  which is a different mechanism and lives in the texture path.
+- ~~**Whether a cheaper sufficient bound exists outside this path.**~~
+  **Write-tracking is RETIRED as a candidate and needs no arm.** The handover
+  at `b56911f150` already withdrew store-trapping on the grounds that the
+  detection exists; the #54 lane then verified that from source —
+  `check_texture_dirty` is a `memory_region_test_and_clear_dirty` on
+  `DIRTY_MEMORY_NV2A_TEX` at whole-4 KiB-page granularity — so there was never
+  a write to stop, only a response to add.
+- **What lever (a) is worth on Galleon, and it is the only open cost
+  question.** Its ceiling is the post-read share of the PFIFO thread's busy
+  time. Measured on **Crimson Skies** at **38-47%** (46 samples, two runs,
+  reproducible to ±3 points), with the other 49-53% being the guest-memory
+  reads themselves and therefore irreducible. But Crimson arm B shows the
+  bound already costs `gfps` p90 −0 there, so that number is measured where
+  the lever has nothing to buy. **Galleon is where the cost is, and its
+  post-read share is unmeasured** — and *one title cannot establish a cost*
+  applies to this figure exactly as it applies to the `~160 µs` one it
+  corrects. Cheapest measurement: one Galleon soak on a `-Pperflog=true` APK,
+  read with `docs/testing/phase_read_split.py`. Blocked only by plumbing:
+  `dispatcher.sh:164` builds a bare `assembleDebug`, so no request can ask for
+  a perf build.
+- **What share of `pipe_bind_tex` is the guest-VRAM content hash.** `Tx` is
+  **5.85 ms/frame, 29.8% of all PFIFO busy time** on Crimson, against a
+  texture *upload* of **0.01 ms/frame** — so the guarantee's irreducible half
+  is dominated by the decision, not the copy. Whether the hash is the bulk of
+  that is an inference, not a measurement; one timer pair around the two
+  `fast_hash` calls in `create_texture` settles it, inside this lane's file
+  and needing no other lane. If it is, it is a cost reduction on the
+  irreducible half, which lever (a) cannot touch.
