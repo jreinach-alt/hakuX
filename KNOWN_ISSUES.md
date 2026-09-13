@@ -11,6 +11,13 @@ inherited from upstream or introduced by this fork. See
 [#18](https://github.com/jreinach-alt/hakuX/issues/18) for the re-confirmation
 pass over the older entries.
 
+That pass is done, and its results are in
+[`docs/investigations/known-issues-reverified-2026-09-12.md`](docs/investigations/known-issues-reverified-2026-09-12.md):
+six of the seven older entries no longer reproduce. The two that are not
+settled are the Vulkan texture-cache exhaustion path — the abort is gone, the
+handling is not safe — and the guest-kernel BugCheck freeze, whose disc is not
+on any machine here. The three entries below were re-checked and are accurate.
+
 ---
 
 ## Setup Wizard appears to freeze while copying the HDD image

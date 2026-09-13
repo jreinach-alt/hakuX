@@ -53,7 +53,8 @@ as a candidate until an isolation run says otherwise.
 | [`issue-9-lighting-final.md`](issue-9-lighting-final.md) | Why #9 closed: the lighting arithmetic is correct on eight landed commits, 72% of the residual is one step, and the structural remainder is six vertex-program captures (#53) plus the interpolator floor (#38) |
 | [`overnight-2026-09-12-log.md`](overnight-2026-09-12-log.md) | **Start here for the night of 2026-09-11/12.** What held, the three mechanisms that did not and why, the six harness defects fixed, and the one lesson |
 | [`issue-19-isolation-2026-09-12.md`](issue-19-isolation-2026-09-12.md) | #19 measured on one binary: 2 contamination against 82 missing-state, the ten features those name, and the test-coverage gap the progress logs exposed |
-| [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel |
+| [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel. **Its "freezes indefinitely" headline is superseded** — see `known-issues-reverified-2026-09-12.md` entry 2 |
+| [`known-issues-reverified-2026-09-12.md`](known-issues-reverified-2026-09-12.md) | #18's re-check over every inherited `KNOWN_ISSUES` entry. Six of seven are closable and none of them is in the accuracy gap; the two that survive are a texture-cache skip that marks the slot clean, and a guest-kernel freeze whose disc is not on this host and which no harness here could detect |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
 ## Missing, and referenced by open issues
