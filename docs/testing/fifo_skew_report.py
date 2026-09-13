@@ -58,6 +58,19 @@ SKEW = re.compile(
     r"bound=(?P<bound>\d+) "
     r"held\(n=(?P<hn>\d+) mean=(?P<hmean>\d+) max=(?P<hmax>\d+) "
     r"spun=(?P<spun>\d+) slept=(?P<slept>\d+) gave=(?P<gave>\d+)\) "
+    # The selective bound's pre-scan, and the `gave` split. BOTH OPTIONAL, and
+    # that is not laziness: three line shapes are in flight at once and all
+    # three have to be readable by one tool. The mode-1 arms
+    # (1789303629-skew-bound-cost-*) have neither group, the draw-only
+    # mechanism commit has `scan(` and not `gaveby(`, and the tip has both.
+    # A tool that could only read the newest shape would report the published
+    # comparison as a soak that emitted nothing.
+    r"(?:scan\(n=(?P<sn>\d+) words=(?P<swords>\d+) wmax=(?P<swmax>\d+) "
+    r"ns=(?P<sns>\d+) draw=(?P<sdraw>\d+) nodraw=(?P<snodraw>\d+) "
+    r"wrap=(?P<swrap>\d+) big=(?P<sbig>\d+)\) )?"
+    r"(?:gaveby\(flip=(?P<gflip>\d+) nop=(?P<gnop>\d+) "
+    r"ctxsw=(?P<gctxsw>\d+) noaccess=(?P<gnoaccess>\d+) "
+    r"other=(?P<gother>\d+)\) )?"
     r"lost=(?P<lost>\d+)")
 
 GFPS = re.compile(r"gfps=(\d+)")
@@ -195,17 +208,105 @@ def selftest():
     """
     m = SKEW.search(SELFTEST_LINE)
     if not m:
-        print("SELFTEST FAIL: the regex does not match pfifo.c's own line")
+        print("SELFTEST FAIL: the regex does not match the frozen sample")
         return 1
     want = {"kicks": 13402, "behind": 9911, "ring": 524288, "dn": 13399,
             "dmean": 412300, "dmax": 28194013, "bound": 0, "lost": 0}
-    got = {k: int(v) for k, v in m.groupdict().items()}
-    bad = {k: (v, got[k]) for k, v in want.items() if got[k] != v}
+    got = {k: int(v) for k, v in m.groupdict().items() if v is not None}
+    bad = {k: (v, got.get(k)) for k, v in want.items() if got.get(k) != v}
     if bad:
         print("SELFTEST FAIL: fields misread: %r" % bad)
         return 1
-    print("selftest ok: %d fields, all %d checked values correct"
-          % (len(got), len(want)))
+
+    rc = selftest_against_source()
+    if rc:
+        return rc
+    print("selftest ok: %d fields on the frozen sample, and every field the "
+          "live pfifo.c prints is accounted for" % len(got))
+    return 0
+
+
+def selftest_against_source():
+    """Check the regex against the format string `pfifo.c` ACTUALLY prints.
+
+    This function exists because the docstring above it was false. The
+    selftest checked a FROZEN SAMPLE LINE held in this file, so when the
+    `fifoskew` line gained `scan(...)` and `gaveby(...)` the regex stopped
+    matching the real thing and the selftest went on reporting ok. A reader
+    that silently matches nothing reports a soak full of numbers as a soak
+    that emitted none -- which is exactly what this tool's own comment warns
+    about, and it was one arm away from happening to the draw-only cost pair.
+
+    "The parser carries its own subject" has to mean the SOURCE, not a copy
+    of the source taken once. So: lift the format string out of pfifo.c,
+    synthesise a line from it, and require the regex to match that and to
+    account for every `name=` token in it.
+    """
+    import os
+    here = os.path.dirname(os.path.abspath(__file__))
+    src = os.path.join(here, "..", "..", "hw", "xbox", "nv2a", "pfifo.c")
+    try:
+        text = open(src, errors="replace").read()
+    except OSError as exc:
+        print("SELFTEST FAIL: cannot read pfifo.c: %s" % exc)
+        return 1
+
+    i = text.find('"fifoskew win=')
+    if i < 0:
+        print("SELFTEST FAIL: pfifo.c no longer prints a fifoskew line")
+        return 1
+
+    # Gather the adjacent string literals that make up the format string.
+    fmt, j = "", i
+    while True:
+        a = text.find('"', j)
+        if a < 0:
+            break
+        b = a + 1
+        while b < len(text) and (text[b] != '"' or text[b - 1] == "\\"):
+            b += 1
+        chunk = text[a + 1:b]
+        fmt += chunk
+        # Stop once the statement's argument list begins.
+        rest = text[b + 1:b + 40]
+        if "," in rest.split("\n")[0] and '"' not in rest.split(",")[0]:
+            break
+        j = b + 1
+        if text[j:].lstrip()[:1] != '"':
+            break
+
+    line = re.sub(r"%(?:ll|l)?[dux]", "7", fmt)
+    line = "09-13 15:00:00.000 1 2 I hakuX-perf: " + line
+
+    if not SKEW.search(line):
+        print("SELFTEST FAIL: the regex does NOT match the line pfifo.c "
+              "prints. Format string synthesised as:\n  %s" % line)
+        return 1
+
+    # Every `name=` token in the source line must be captured, or explicitly
+    # known to be ignored. This is the check that would have caught the
+    # scan(...) addition.
+    tokens = set(re.findall(r"([A-Za-z_][A-Za-z0-9_]*)=", fmt))
+    captured = set(SKEW.groupindex)
+    alias = {"win": "win", "mean": None, "max": None, "n": None,
+             "p50": None, "p90": None, "p99": None, "flip": "gflip",
+             "nop": "gnop", "ctxsw": "gctxsw", "noaccess": "gnoaccess",
+             "other": "gother", "words": "swords", "wmax": "swmax",
+             "ns": "sns", "draw": "sdraw", "nodraw": "snodraw",
+             "big": "sbig"}
+    missing = []
+    for t in sorted(tokens):
+        if t in captured:
+            continue
+        if t in alias:
+            a = alias[t]
+            if a is None or a in captured:
+                continue
+        missing.append(t)
+    if missing:
+        print("SELFTEST FAIL: pfifo.c prints fields this reader does not "
+              "account for: %s" % ", ".join(missing))
+        return 1
     return 0
 
 
