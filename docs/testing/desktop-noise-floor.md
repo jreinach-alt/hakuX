@@ -134,6 +134,42 @@ one of them no longer corroborates.
 The general rule this keeps re-teaching: on this capture, compare bytes.
 `docs/testing/sweep_agreement.py` exists for that and does not use scores.
 
+## A stable score over a moving image: measured on the full disc
+
+Re-measured on `ddcae99a`: three OpenGL runs of the **full** `iso_surf1`
+disc, 236 captures each, compared with
+[`sweep_agreement.py`](sweep_agreement.py), which compares bytes.
+
+```
+DISAGREE  Surface_pitch::Swizzle   SAME SCORE, different pixels (14848 every run)
+236 captures over 3 runs: 235 agree, 1 disagree, 0 absent
+```
+
+**All three runs scored 14,848. Up to 2,341 pixels differ between them.**
+
+| pair | px differing | what moves |
+|---|---:|---|
+| run 1 vs run 2 | 2,341 | `#7722FF` -> `#2222FF`, `#2222FF` -> `#FF2277` |
+| run 1 vs run 3 | 544 | `#2222FF` -> `#FF2277` |
+| run 2 vs run 3 | 1,797 | `#2222FF` -> `#7722FF`, `#FF2277` -> `#2222FF` |
+
+Those are arms 2, 3 and 4's colours permuting among themselves, in the band
+`y 76..106`. Same race, on the full disc.
+
+So on this disc the **score** band is zero and the **image** band is 2,341
+px. A score table would have reported this capture as perfectly
+reproducible. That is the exact failure `sweep_agreement.py` was built for,
+and this is it happening.
+
+**Consequence for how to compare runs.** The band is not one number. It
+depends on the disc (the two-test disc moved the score by 2,200 and the
+full disc did not move it at all), on the renderer, and on whether you are
+looking at scores or bytes. There is one rule that survives all of that:
+
+> On `Surface_pitch::Swizzle`, compare bytes, and compare at least two runs
+> of each side. A single run of this capture carries no number in either
+> direction.
+
 ## Answered: why this one capture is unstable
 
 Measured since, and written up in
