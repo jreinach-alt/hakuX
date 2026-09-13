@@ -408,6 +408,248 @@ static void apu_starve_report(MCPXAPUState *d, int64_t now_ms)
     }
 }
 
+/* ------------------------------------------------------------------------
+ * Output level meter: audio_measure.py's statistics, computed in the emulator
+ * and reported through logcat.
+ *
+ * WHY THIS EXISTS. The level of the audio output could be measured in exactly
+ * one way -- arm a PCM capture, hold a title, pull 18-24 MB off the device and
+ * run docs/testing/audio_measure.py over it. That route has now failed three
+ * times for three different reasons, and every failure was silent:
+ *
+ *   - a marker file left armed from an earlier experiment made eight unrelated
+ *     soaks write to the SD card for four minutes each;
+ *   - the same marker going missing made a soak that DID ask for a capture pull
+ *     a stale 24 MB file from four hours earlier, which measured beautifully
+ *     and was caught only because 126.976 s of audio cannot come out of a 95 s
+ *     app lifetime;
+ *   - and on 2026-09-12 the request-side arming was dropped by a stale
+ *     dispatcher snapshot, so the field was accepted, recorded, and ignored.
+ *
+ * A number that costs a 24 MB pull, a FUSE-backed write on the audio thread and
+ * three separate pieces of host tooling is a number nobody takes. This computes
+ * the same statistics from the same samples, at the same tap point, and prints
+ * them -- so a level costs a soak and a grep, and a second title costs nothing
+ * but device time.
+ *
+ * It is deliberately NOT a replacement for the capture. A capture can be
+ * re-analysed with a question nobody had thought of yet; this can only answer
+ * the questions compiled into it. It is the cheap instrument, not the
+ * authoritative one, and where both exist they must agree -- which is exactly
+ * the calibration this is first used for.
+ *
+ * CONVENTIONS, copied from audio_measure.py so the two are comparable:
+ *   - full scale is 32768, so a peak of 32767 reads -0.0003 dBFS;
+ *   - RMS dBFS is against a full-scale SQUARE wave, so a full-scale sine is
+ *     -3.01 dBFS;
+ *   - RMS is AC, i.e. DC removed, because a DC offset inflates raw RMS without
+ *     being audible;
+ *   - windows are 2400 frames = 50.0 ms, and a window whose AC variance is
+ *     exactly zero is excluded from the percentiles rather than counted as
+ *     -inf. That is what percentiles() in audio_measure.py does, and matching
+ *     it matters: the published Galleon baseline counted 1,677 of 1,857
+ *     windows, and a meter that counted all 1,857 would report a different p5;
+ *   - "clipped" is |s| >= 32767, not 32768, because the float-to-short
+ *     conversion scales by 32767 and negative saturation arrives as -32767;
+ *   - "wrap suspects" counts adjacent samples differing by more than full
+ *     scale, the signature of the int16_t mix accumulator wrapping (#73).
+ *
+ * Percentiles come from a 0.1 dB histogram rather than a sorted list, because
+ * a sorted list would mean storing every window of an unbounded run on the
+ * audio thread. 0.1 dB is two orders below the tolerance any of these
+ * measurements are judged at, and the bin CENTRE is reported so the error is
+ * symmetric.
+ *
+ * Runs on the APU thread only, at the same point the capture writes, so no
+ * atomics: se_frame is the only writer and the only reader.
+ * ------------------------------------------------------------------------ */
+
+#ifdef __ANDROID__
+#define APU_LVL_LOG(fmt, ...)                                                 \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-audio", fmt, ##__VA_ARGS__)
+#else
+#define APU_LVL_LOG(fmt, ...)                                                 \
+    fprintf(stderr, "mcpx apu: level: " fmt "\n", ##__VA_ARGS__)
+#endif
+
+#define APU_LVL_FULL_SCALE 32768.0
+#define APU_LVL_WINDOW_FRAMES 2400 /* 50.0 ms at 48 kHz */
+#define APU_LVL_BINS 1440          /* 0.1 dB steps */
+#define APU_LVL_BIN_DB 0.1
+#define APU_LVL_DB_FLOOR (-144.0)
+#define APU_LVL_REPORT_MS 5000
+
+static struct {
+    /* whole run, per channel */
+    int64_t sum[2];
+    uint64_t sumsq[2];
+    int32_t peak[2];
+    uint64_t clipped[2];
+    uint64_t zeros[2];
+    uint64_t wraps[2];
+    int32_t max_jump[2];
+    int32_t last[2];
+    bool have_last;
+    uint64_t frames;
+
+    /* window in progress */
+    int64_t wsum[2];
+    uint64_t wsumsq[2];
+    uint32_t wn;
+
+    /* closed windows */
+    uint64_t bins[2][APU_LVL_BINS];
+    uint64_t counted[2];
+    uint64_t silent[2];
+
+    int64_t last_ms;
+    int reports;
+} apu_level;
+
+static double apu_level_db(double amplitude)
+{
+    if (amplitude <= 0.0) {
+        return APU_LVL_DB_FLOOR;
+    }
+    return 20.0 * log10(amplitude / APU_LVL_FULL_SCALE);
+}
+
+static void apu_level_close_window(void)
+{
+    for (int c = 0; c < 2; c++) {
+        double n = (double)apu_level.wn;
+        double mean = (double)apu_level.wsum[c] / n;
+        double var = (double)apu_level.wsumsq[c] / n - mean * mean;
+        if (!(var > 0.0)) {
+            /* Exactly-constant window. audio_measure.py drops these from the
+             * percentiles rather than binning them at -inf; count them so the
+             * denominator can be checked against the file's window count. */
+            apu_level.silent[c]++;
+            continue;
+        }
+        double d = apu_level_db(sqrt(var));
+        int bin = (int)((d - APU_LVL_DB_FLOOR) / APU_LVL_BIN_DB);
+        if (bin < 0) {
+            bin = 0;
+        }
+        if (bin >= APU_LVL_BINS) {
+            bin = APU_LVL_BINS - 1;
+        }
+        apu_level.bins[c][bin]++;
+        apu_level.counted[c]++;
+    }
+    apu_level.wsum[0] = apu_level.wsum[1] = 0;
+    apu_level.wsumsq[0] = apu_level.wsumsq[1] = 0;
+    apu_level.wn = 0;
+}
+
+/* Nearest-rank, no interpolation, so the answer is an observed window --
+ * matching percentiles() in audio_measure.py. */
+static double apu_level_pct(int c, int p)
+{
+    uint64_t n = apu_level.counted[c];
+    if (!n) {
+        return APU_LVL_DB_FLOOR;
+    }
+    uint64_t target = (uint64_t)(((double)p / 100.0) * (double)(n - 1) + 0.5);
+    uint64_t cum = 0;
+    for (int b = 0; b < APU_LVL_BINS; b++) {
+        cum += apu_level.bins[c][b];
+        if (cum > target) {
+            return APU_LVL_DB_FLOOR + (b + 0.5) * APU_LVL_BIN_DB;
+        }
+    }
+    return APU_LVL_DB_FLOOR + (APU_LVL_BINS - 0.5) * APU_LVL_BIN_DB;
+}
+
+static void apu_level_observe(const int16_t buf[][2], int frames)
+{
+    for (int i = 0; i < frames; i++) {
+        for (int c = 0; c < 2; c++) {
+            int32_t v = buf[i][c];
+            apu_level.sum[c] += v;
+            apu_level.sumsq[c] += (uint64_t)((int64_t)v * v);
+            apu_level.wsum[c] += v;
+            apu_level.wsumsq[c] += (uint64_t)((int64_t)v * v);
+            int32_t a = v < 0 ? -v : v;
+            if (a > apu_level.peak[c]) {
+                apu_level.peak[c] = a;
+            }
+            if (a >= 32767) {
+                apu_level.clipped[c]++;
+            }
+            if (v == 0) {
+                apu_level.zeros[c]++;
+            }
+            if (apu_level.have_last) {
+                int32_t jump = v - apu_level.last[c];
+                if (jump < 0) {
+                    jump = -jump;
+                }
+                if (jump > apu_level.max_jump[c]) {
+                    apu_level.max_jump[c] = jump;
+                }
+                if (jump > 32768) {
+                    apu_level.wraps[c]++;
+                }
+            }
+            apu_level.last[c] = v;
+        }
+        apu_level.have_last = true;
+        apu_level.frames++;
+        apu_level.wn++;
+        if (apu_level.wn == APU_LVL_WINDOW_FRAMES) {
+            apu_level_close_window();
+        }
+    }
+}
+
+static void apu_level_report(int64_t now_ms)
+{
+    if (!apu_level.last_ms) {
+        apu_level.last_ms = now_ms;
+        return;
+    }
+    if (now_ms - apu_level.last_ms < APU_LVL_REPORT_MS) {
+        return;
+    }
+    apu_level.last_ms = now_ms;
+    if (!apu_level.frames) {
+        return;
+    }
+    apu_level.reports++;
+
+    for (int c = 0; c < 2; c++) {
+        double n = (double)apu_level.frames;
+        double mean = (double)apu_level.sum[c] / n;
+        double var = (double)apu_level.sumsq[c] / n - mean * mean;
+        if (var < 0.0) {
+            var = 0.0;
+        }
+        /* One line per channel rather than one wide line for both: the two
+         * channels are compared against each other constantly (a lost channel
+         * or a stuck one is the failure this would catch first), and a reader
+         * doing that by eye down a column beats one doing it across a line. */
+        APU_LVL_LOG(
+            "level %c: %.3f s  peak %d (%.2f dBFS)  acrms %.2f dBFS  "
+            "dc %.3f %%FS  p5/25/50/75/95 %.2f/%.2f/%.2f/%.2f/%.2f  "
+            "windows %llu counted %llu flat  clipped %llu  zeros %llu  "
+            "wrap %llu  maxjump %d",
+            c ? 'R' : 'L', n / 48000.0,
+            apu_level.peak[c], apu_level_db((double)apu_level.peak[c]),
+            apu_level_db(sqrt(var)),
+            100.0 * mean / APU_LVL_FULL_SCALE,
+            apu_level_pct(c, 5), apu_level_pct(c, 25), apu_level_pct(c, 50),
+            apu_level_pct(c, 75), apu_level_pct(c, 95),
+            (unsigned long long)apu_level.counted[c],
+            (unsigned long long)apu_level.silent[c],
+            (unsigned long long)apu_level.clipped[c],
+            (unsigned long long)apu_level.zeros[c],
+            (unsigned long long)apu_level.wraps[c],
+            apu_level.max_jump[c]);
+    }
+}
+
 static void se_frame(MCPXAPUState *d)
 {
     mcpx_apu_update_dsp_preference(d);
@@ -438,6 +680,7 @@ static void se_frame(MCPXAPUState *d)
      * 5.333 ms frame.
      */
     apu_starve_report(d, now);
+    apu_level_report(now);
     d->frame_count++;
 
     /* Buffer for all mixbins for this frame */
@@ -464,6 +707,12 @@ static void se_frame(MCPXAPUState *d)
             apu_capture_write(d->monitor.frame_buf,
                               sizeof(d->monitor.frame_buf));
         }
+
+        /* Same samples, same point, same conventions as the capture -- so the
+         * two can be checked against each other whenever both are available.
+         * See the level meter's comment for why a second instrument here is
+         * worth having. */
+        apu_level_observe(d->monitor.frame_buf, 256);
 
         qemu_spin_lock(&d->monitor.fifo_lock);
         int num_bytes_free = (int)fifo8_num_free(&d->monitor.fifo);
