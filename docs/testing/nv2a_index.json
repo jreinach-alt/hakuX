@@ -1538,7 +1538,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:124",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:157",
    "symbols": [
     "NV_PGRAPH_ZCLIPMAX",
     "NV_PGRAPH_ZCLIPMIN"
@@ -4192,7 +4192,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "8cb695ac69be7104a16eb68d171b062d550e182c",
+  "emulator_commit": "3cc227107eba237a8dc8904e8dcc1210e6dc821b",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2727,
@@ -7768,7 +7768,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:108",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:141",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z16:"
    },
@@ -7805,7 +7805,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:111",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:144",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_ZETA_Z24S8:"
    },
@@ -19203,7 +19203,7 @@
   ],
   "NV_PGRAPH_ZCLIPMAX": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:128",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:161",
     "role": "READ",
     "text": "uint32_t zclip_max = pgraph_reg_r(pg, NV_PGRAPH_ZCLIPMAX);"
    },
@@ -19220,7 +19220,7 @@
   ],
   "NV_PGRAPH_ZCLIPMIN": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:127",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/common.c:160",
     "role": "READ",
     "text": "uint32_t zclip_min = pgraph_reg_r(pg, NV_PGRAPH_ZCLIPMIN);"
    },
