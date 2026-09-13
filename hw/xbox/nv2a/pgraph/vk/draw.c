@@ -3576,6 +3576,20 @@ mfp_miss: (void)0;
  *
  * The scan runs only when the gen bumped, which is the rare path, so the
  * common path costs one 32-bit compare.
+ *
+ * ONE CONTAMINANT IN THE DENOMINATOR, checked arithmetically rather than
+ * assumed away, because it is the reading's weakest joint. texture_vram_gen
+ * is also bumped directly by render_thread.c on RCMD_FLUSH and
+ * RCMD_PROCESS_PENDING, with no read of guest memory behind it, so a bump
+ * landing inside a window would be counted as a consume that never happened.
+ * The measured series says how much of that there is. On Crimson Skies,
+ * tex_uploads runs at 2.8 per flip while check_texture_dirty runs at Tq = 2
+ * per flip in the FMV phase and 10-11 per flip later -- uploads/flip barely
+ * moves while Tq moves 5x, and sits just above the phase-1 query count. So
+ * the consume events dominate and the flush contribution is under about one
+ * bump per flip. It therefore INFLATES tex_uploads and DEFLATES the reported
+ * rate: the rate is conservative on this axis, while remaining an upper
+ * bound on byte-level overlap on the page-granularity axis.
  */
 static void begin_pre_draw(PGRAPHState *pg)
 {
