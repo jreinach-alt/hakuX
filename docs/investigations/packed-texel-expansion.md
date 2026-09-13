@@ -261,10 +261,53 @@ binding on every `create_texture` call.
 
 `surface_to_texture` had been supplying the extent filter for free. That is
 why gating on it looked sufficient, and why removing the gate had to restore
-the filter rather than drop it. `surface_is_texture_source()` states it now:
-same extent, one level, not a cubemap, colour, and **not compressed**. The
-last clause matters on its own — v1 excluded *native BC*, which does not
-cover DXT1, because #6 deliberately stopped claiming DXT1 for native BC.
+the filter rather than drop it.
+
+Adding the extent filter repaired `Texture_DXT` exactly — 384 and 448, status
+`ok` — and **did not touch `Surface_format`**, which stayed at 91,757. Because
+there the extents genuinely agree: `surface_format_tests.cpp` renders a
+128×128 scratch surface and then samples a 128×128 `LU_IMAGE_A8R8G8B8`
+pattern that `Initialize()` wrote with the CPU, through texture stage 3.
+**Same address, same size, different pixels.** "Do the extents agree" was the
+wrong question.
+
+`surface_is_texture_source()` asks three things now: same extent and one
+non-cubemap level; not a compressed format (whose bytes are blocks, not
+surface texels — and note that *native BC* does not cover this, because #6
+deliberately stopped claiming DXT1 for it); and **the texel stride, compared
+on the guest side**.
+
+The guest side is the point. The original host-format size test was already
+doing this job, and **#59 broke it by widening 5551 and 565 textures to a
+4-byte host format while their surfaces stayed at two**. Comparing host sizes
+again would work until the next conversion. A guest stride is the hardware's
+and is not ours to change.
+
+It separates all three cases: `Blend_surface` keeps the override (2-byte
+surface, 2-byte `A1R5G5B5` texture), `Surface_format` loses it (2-byte
+surface, 4-byte `A8R8G8B8` texture), `Texture_DXT` never had it.
+
+### Measured: PRE-REGISTERED PASS, all 171 checks
+
+`00dc9c68c5` → `a3eddc0214`, two runs each, prediction sha `855a67c59637`.
+
+| suite | caps | better | worse | differing A | differing B |
+|---|---:|---:|---:|---:|---:|
+| `Blend_surface` | 32 | 4 | 0 | 1,256,426 | 1,122,128 |
+| `Surface_clip` | 47 | 0 | 0 | 0 | 0 |
+| `Surface_format` | 10 | 0 | 0 | 202,982 | 202,982 |
+| `Texture_DXT` | 15 | 0 | 0 | 34,911 | 34,911 |
+| `Texture_format` | 40 | 0 | 0 | 139,389 | 139,389 |
+| `Texture_render_target` | 41 | 0 | 0 | 3,209,634 | 3,209,634 |
+
+**4 better, 0 worse, 0 regressed from exact**, −134,298 px. Both `X_O1RGB5`
+captures bit-exact, and `X_O1RGB5_Add_SrcA_DstA` and `X_Z1RGB5_Add_SrcA_DstA`
+gained 1,613 px each as well.
+
+Three rounds to scope one swizzle, and each round's mistake was the same
+shape: taking a cheap proxy for "is this surface the memory the texture
+reads" — first the address, then the address and size. The proxy that
+survives is the one the hardware defines.
 
 ## The throughput cost, honestly
 
