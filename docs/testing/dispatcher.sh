@@ -126,7 +126,20 @@ build_ref() {  # $1 = ref ; echoes the apk path, or fails
 serve_one() {
     local req="$1" id
     id=$(basename "$req" .req)
-    mv "$req" "$D/running/$id.req" 2>/dev/null || return 0
+    # Affinity before claiming. The two arms of an A/B share a prediction
+    # file, and running one on each handheld would change the binary AND the
+    # hardware while presenting the result as a one-commit delta. affinity.py
+    # pins a request to whichever device already ran its sibling.
+    local want
+    want=$(python3 "$HERE/affinity.py" "$D" "$req" 2>/dev/null)
+    if [ -n "$want" ] && [ "$want" != "$DEVICE_LABEL" ]; then
+        # Not ours. Non-zero so the caller tries the next request instead of
+        # concluding it served something and sleeping.
+        return 1
+    fi
+    # Losing this rename means the other worker claimed it first, which is the
+    # mutex working. Also non-zero: try the next one.
+    mv "$req" "$D/running/$id.req" 2>/dev/null || return 1
     printf '%s\n' "$DEVICE_LABEL" > "$D/running/$id.owner"
     req="$D/running/$id.req"
     local requester purpose ref arm runs
@@ -359,8 +372,46 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
     adb -s "$SERIAL" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
 }
 
+# Which device runs the idle sweep. One of them must, and both of them must
+# not: two workers driving one long sweep would fight over its disk image.
+SWEEP_DEVICE="${SWEEP_DEVICE:-nova}"
+
 case "${1:-status}" in
   serve)
+    # Supervisor. One process owns every attached handheld and forks a worker
+    # per device; the workers share the queue and claim by atomic rename.
+    #
+    # Two separate dispatcher processes would also have shared the queue, and
+    # that was the first design. It is wrong, for a reason that has nothing to
+    # do with throughput: nothing in it stops the two arms of an A/B landing
+    # on different handhelds. A comparison is only a comparison if one thing
+    # changed, and running `base` on the Nova and `fix` on the Thor changes
+    # the binary AND the hardware while presenting the result as a one-commit
+    # delta. Only a single scheduler can enforce that a pair stays together --
+    # see affinity.py -- and only a single scheduler can say "this soak needs
+    # a title only one device has", or keep two workers from entering
+    # build_ref for the same sha at once.
+    #
+    # It also removes a class of bug outright: with one process there is no
+    # question of whose orphan is whose.
+    workers=()
+    for s in $(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
+        if ! ( device_env "$s" ) 2>/dev/null; then
+            log "skipping unknown device $s; add it to devices.sh"
+            continue
+        fi
+        log "starting worker for $s"
+        SERIAL="$s" bash "$HERE/dispatcher.sh" worker "$s" &
+        workers+=($!)
+    done
+    if [ "${#workers[@]}" -eq 0 ]; then
+        echo "no known device attached" >&2; exit 2
+    fi
+    log "=== supervising ${#workers[@]} device worker(s) ==="
+    trap 'kill ${workers[@]} 2>/dev/null' INT TERM
+    wait
+    ;;
+  worker)
     # The loop parses this file once at startup, so an edit to it -- or to
     # soak_title.sh, run_disc.sh, score_sweep.py -- does not reach a running
     # server. That has now cost three measurements: a logcat capture that was
@@ -431,16 +482,25 @@ case "${1:-status}" in
                         2>/dev/null | md5sum | cut -c1-12)"
         if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
             log "dispatcher scripts changed on disk; re-execing to pick them up"
-            exec bash "$HERE/dispatcher.sh" serve
+            exec bash "$HERE/dispatcher.sh" worker "$SERIAL"
         fi
 
         reqs=("$D"/queue/*.req)
         if [ "${#reqs[@]}" -eq 0 ]; then
-            resume_sweep
+            # Only the sweep-owning device resumes it, or two workers would
+            # drive the same long sweep against one disk image.
+            [ "$DEVICE_LABEL" = "$SWEEP_DEVICE" ] && resume_sweep
             sleep 10
             continue
         fi
-        serve_one "${reqs[0]}"
+        # Walk the queue in priority order rather than taking [0] blindly:
+        # the first request may be pinned to the other handheld, and stopping
+        # there would idle this one behind work it is not allowed to do.
+        served=0
+        for r in "${reqs[@]}"; do
+            if serve_one "$r"; then served=1; break; fi
+        done
+        [ "$served" = 1 ] || sleep 5
     done
     ;;
   status)
