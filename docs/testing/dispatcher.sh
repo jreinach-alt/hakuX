@@ -80,6 +80,24 @@ resume_sweep() {
 }
 
 build_ref() {  # $1 = ref ; echoes the apk path, or fails
+    # Serialised across devices, because building detaches the SHARED
+    # checkout. Two workers here at once would each `git checkout --detach` a
+    # different sha in the same tree and both would build whatever the other
+    # left behind -- silently, since each would still produce an APK and call
+    # it by its own sha. The APK cache below makes the common case free, so
+    # the lock costs nothing when both devices want the same binary, which is
+    # most of the time: the two arms of an A/B share one of their two refs
+    # with whatever ran before them.
+    local lock="$D/.build.lock"
+    exec 9>"$lock"
+    flock 9
+    _build_ref_locked "$@"
+    local rc=$?
+    exec 9>&-
+    return $rc
+}
+
+_build_ref_locked() {
     local ref="$1" out="$D/builds"
     mkdir -p "$out"
     local sha; sha=$(git -C "$TREE" rev-parse --short "$ref" 2>/dev/null) || return 1
@@ -281,7 +299,7 @@ else:
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1
         touch "$LEASE"
-        SERIAL="$SERIAL" DEVICE_ISO_ROOT="$DEVICE_ISO_ROOT" \
+        SERIAL="$SERIAL" DEVICE_ISO_ROOT="$DEVICE_ISO_ROOT" DEVICE_LABEL="$DEVICE_LABEL" \
             HAKUX_DEVICE_LEASE="$LEASE" CAPTURE_LOG="$rdir/logcat$r.txt" \
             bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
             "$rdir/captures$r" 1800 >>"$rdir/run$r.log" 2>&1

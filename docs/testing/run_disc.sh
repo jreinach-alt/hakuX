@@ -38,7 +38,13 @@ ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
 # exports DEVICE_ISO_ROOT before calling here.
 DEVISO="${DEVISO:-${DEVICE_ISO_ROOT:-/storage/E6C6-D7AA/Games/XBox}/fast.iso}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
-HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd.img}"
+# Per-device. This is the guest's disk pulled back to the host for result
+# extraction, and it was one path for every run. With two handhelds running
+# concurrently the second pull overwrites the first, and the loser extracts
+# nothing: "ran but produced 0 captures", with a clean device log and a
+# successful run. Found the first time both devices ran at once, which is the
+# only way it could have been found.
+HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd-${DEVICE_LABEL:-${SERIAL:-x}}.img}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Every adb call gets a deadline. Without one this script finished a run,
