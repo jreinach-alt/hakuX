@@ -253,12 +253,15 @@ void nv2a_profile_flip_stall(void)
 #ifdef __ANDROID__
     if (g_nv2a_stats.frame_count == 1) {
         extern uint64_t hakux_mb_emitted;
-        extern uint64_t hakux_tb_generated;
+        extern uint64_t hakux_tb_gen_calls;
         extern int __android_log_print(int, const char *, const char *, ...);
+        /* tb_gen_calls, not generations: this is a build-identity fingerprint
+         * and any nonzero count serves, but it must not be read as a block
+         * count. See accel/tcg/translate-all.c. */
         __android_log_print(4, "hakuX-build",
-                            "mb_emitted=%llu tb_generated=%llu",
+                            "mb_emitted=%llu tb_gen_calls=%llu",
                             (unsigned long long)hakux_mb_emitted,
-                            (unsigned long long)hakux_tb_generated);
+                            (unsigned long long)hakux_tb_gen_calls);
     }
 #endif
 
@@ -272,22 +275,41 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_notdirty_vaddr[8];
         extern uint32_t hakux_notdirty_off_lo[8];
         extern uint32_t hakux_notdirty_off_hi[8];
-        extern uint64_t hakux_tb_invalidated;
-        extern uint64_t hakux_tb_generated;
+        extern uint64_t hakux_tb_visited;
+        extern uint64_t hakux_tb_discarded;
+        extern uint64_t hakux_tb_gen_calls;
+        extern uint64_t hakux_tb_codegen;
         extern uint64_t hakux_mb_emitted;
-        static uint64_t prev_total, prev_inval, prev_tbi, prev_tbg, prev_mb;
+        static uint64_t prev_total, prev_inval, prev_tbv, prev_tbd;
+        static uint64_t prev_calls, prev_cg, prev_mb;
         char nd[768];
         int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
                          (unsigned long long)(hakux_notdirty_total - prev_total),
                          (unsigned long long)(hakux_notdirty_invalidate_calls - prev_inval));
         prev_total = hakux_notdirty_total;
         prev_inval = hakux_notdirty_invalidate_calls;
+        /*
+         * Four numbers where there used to be two, and the two were the wrong
+         * events (#69). "tossed" was TBs VISITED by the invalidation loop and
+         * "generated" was CALLS to tb_gen_code; their quotient was published
+         * as the 2.8:1 retranslation waste ratio and ranked three levers. The
+         * field names now say which event each is, and both the real event and
+         * the loose one are printed so the recycle rate (calls/generated) and
+         * the page-list clog (visited/discarded) are readable off this line.
+         *
+         * The waste ratio is discarded/generated. Nothing else here is it.
+         */
         n += snprintf(nd + n, sizeof(nd) - n,
-                      " [blocks tossed %llu, generated %llu]",
-                      (unsigned long long)(hakux_tb_invalidated - prev_tbi),
-                      (unsigned long long)(hakux_tb_generated - prev_tbg));
-        prev_tbi = hakux_tb_invalidated;
-        prev_tbg = hakux_tb_generated;
+                      " [blocks discarded %llu of %llu visited,"
+                      " generated %llu of %llu calls]",
+                      (unsigned long long)(hakux_tb_discarded - prev_tbd),
+                      (unsigned long long)(hakux_tb_visited - prev_tbv),
+                      (unsigned long long)(hakux_tb_codegen - prev_cg),
+                      (unsigned long long)(hakux_tb_gen_calls - prev_calls));
+        prev_tbv = hakux_tb_visited;
+        prev_tbd = hakux_tb_discarded;
+        prev_cg = hakux_tb_codegen;
+        prev_calls = hakux_tb_gen_calls;
         /* Zero here means the build elides guest memory barriers (#54). This
          * is the check that an A/B is comparing two different binaries rather
          * than the same one twice. */
@@ -329,6 +351,8 @@ void nv2a_profile_flip_stall(void)
      *         TLB walk would not have happened. ws is the prize.
      *   pr    arming walks actually performed (tlb_protect_code, whose
      *         tlb_reset_dirty is 10.6% self of the bounding thread)
+     *   xx    THE IMPOSSIBLE ROW. Visits where live-ness and discard-ness
+     *         disagreed. Must be 0; anything else voids the whole line.
      *   ins   guest instructions translated, and blk their mean per block
      *
      * sp/ov is whether "smaller blocks on thrashing pages"
@@ -348,12 +372,13 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_inval_would_survive;
         extern uint64_t hakux_tlb_protect_calls;
         extern uint64_t hakux_inval_already;
+        extern uint64_t hakux_inval_impossible;
         extern uint64_t hakux_gen_insns;
         extern uint64_t hakux_gen_bytes;
         extern uint64_t hakux_tb_codegen;
         extern uint64_t hakux_tb_discarded;
         static uint64_t p_ev, p_ov, p_sp, p_em, p_ws, p_pr, p_in, p_by, p_cg;
-        static uint64_t p_ai, p_di;
+        static uint64_t p_ai, p_di, p_xx;
         uint64_t d_ev = hakux_inval_events        - p_ev;
         uint64_t d_ov = hakux_inval_tbs_overlap   - p_ov;
         uint64_t d_sp = hakux_inval_tbs_spared    - p_sp;
@@ -365,6 +390,7 @@ void nv2a_profile_flip_stall(void)
         uint64_t d_cg = hakux_tb_codegen          - p_cg;
         uint64_t d_ai = hakux_inval_already       - p_ai;
         uint64_t d_di = hakux_tb_discarded        - p_di;
+        uint64_t d_xx = hakux_inval_impossible    - p_xx;
         p_ev = hakux_inval_events;
         p_ov = hakux_inval_tbs_overlap;
         p_sp = hakux_inval_tbs_spared;
@@ -376,14 +402,19 @@ void nv2a_profile_flip_stall(void)
         p_cg = hakux_tb_codegen;
         p_ai = hakux_inval_already;
         p_di = hakux_tb_discarded;
+        p_xx = hakux_inval_impossible;
         __android_log_print(ANDROID_LOG_INFO, "hakuX-pages",
             "inval ev=%llu ov=%llu sp=%llu em=%llu ws=%llu pr=%llu ai=%llu "
-            "di=%llu cg=%llu ins=%llu bytes=%llu blk=%llu.%02llu",
+            "di=%llu cg=%llu xx=%llu ins=%llu bytes=%llu blk=%llu.%02llu",
             (unsigned long long)d_ev, (unsigned long long)d_ov,
             (unsigned long long)d_sp, (unsigned long long)d_em,
             (unsigned long long)d_ws, (unsigned long long)d_pr,
             (unsigned long long)d_ai,
             (unsigned long long)d_di, (unsigned long long)d_cg,
+            /* xx is the impossible row: a visit that was live and was not
+             * discarded, or was already invalid and was. Anything but 0 voids
+             * every ratio on this line. */
+            (unsigned long long)d_xx,
             (unsigned long long)d_in, (unsigned long long)d_by,
             /* Per block that really generated code, not per call. A value
              * below 1.00 is arithmetically impossible and means this figure
