@@ -812,7 +812,38 @@ disposition = "unknown-semantics"
 # inherits a stale X8R8G8B8_Z8 shape. A key collision has no notion of position
 # in a run.
 #
-# WHAT REMAINS is the texture-unit half, BLOCKED ON #55: the rule is measured
+# TEXTURE HALF ALSO FIXED AND VERIFIED, 4946433d87, once #55 unblocked it.
+# A/B on the same disc, both arms progress-log proven, one commit apart:
+#   5 better, 0 WORSE, 30 same.  exact 7 -> 12.  1,823,732 -> 1,496,052 px
+#   (-327,680).  FIVE captures to exactly 0: DstAlpha_X_ORGB8 and 1-,
+#   DstAlpha_X_O1RGB5 and 1-, and DstAlpha_X_ZRGB8.
+#
+# THE TWO HALVES COMPOSE. The blend fix took those captures to 65,536 (the
+# opaque half correct, the alpha half still wrong); the texture fix clears the
+# remainder. Neither alone makes any of them exact. That is also why the
+# predicted -196,608 undershot: it assumed each capture would retain its alpha
+# half, when in fact the opaque half was already fixed and the second change
+# cleared what was left.
+#
+# Every pre-registered falsifier HELD, which is what makes this landable
+# rather than merely positive: both X_Z1RGB5 at 0, all four XA_* at
+# 81,920/65,536, both X_Z1RGB5_Add_* and both XA_*_Add_* byte-identical. The
+# X_Z1RGB5 pair was the deliberate tripwire -- it moves to the copy path, so
+# two things changed at once on a capture already exact on its alpha half, and
+# it held at 0.
+#
+# Blend_surface is now 12 of 35 exact, from 4.
+#
+# WHAT REMAINS, and it is a separate item rather than this issue's tail:
+# X1A7R8G8B8's pad readback is (X<<7) | (stored>>1), TRUNCATING -- 2,097 of
+# 32,755 invertible px at max|delta| 1, against 20,362 for round-to-nearest and
+# 32,570 for bit-replication. So it needs 7-bit REQUANTISATION on the way in as
+# well as out, which is the surface write path, not the texture read. Worth up
+# to roughly -147,000 px (the XA_* residual is 294,912 today and the readback is
+# recorded as about half of it). INFERRED at capture level; the -44,697 px on
+# the measured region is measured.
+#
+# (superseded) The texture-unit half was BLOCKED ON #55: the rule is measured
 # pixel-exact (sampled alpha 0 for Z and 255 for O at every stored alpha, sd
 # 0.00 over 16,371 px per quad; 0 of 65,536 per capture against 65,536 of
 # 65,536 for the opposite constant) and cannot be implemented because no
