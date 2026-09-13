@@ -518,8 +518,8 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
      * The lit colour output mux, the same one the fixed function stage
      * applies (see the comment on it in pgraph_glsl_gen_vsh_ff): with
      * SEPARATE_SPECULAR clear, or SPECULAR_ENABLE clear, the lit specular is
-     * folded into the diffuse output, and the specular output carries the
-     * front vertex colour instead of the lighting unit's own.
+     * folded into the diffuse output, and the specular output carries a
+     * vertex colour instead of the lighting unit's own.
      *
      * That mux is not bypassed by a vertex program either, and the goldens
      * say so exactly. In Specular's ControlFlagsNoLight_VS the whole residual
@@ -527,16 +527,52 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
      * SEPARATE_SPECULAR-off columns: 8,560 of 8,560 and 8,480 of 8,480
      * pixels, where silicon's image is bit-identical to its own lighting-off
      * image (ControlFlagsLightDisable_VS agrees with it on every pixel of
-     * both quads) -- that is, the front vertex specular, which is what this
-     * substitution produces. The two SEPARATE_SPECULAR-on columns of the same
-     * row differ on 1,618 and 0 pixels, so nothing else in that row moves.
-     * Specular_back agrees, 8,560 and 8,480 in the same two quads.
+     * both quads). Emitting this took that capture to 10,510 px, the value
+     * predicted for it to the pixel.
+     *
+     * Which vertex colour is per side, and that is where the first attempt
+     * was wrong: the front takes the front specular, the back takes the
+     * *back* specular. The fixed function stage uses the front colour for
+     * both -- its comment in pgraph_glsl_gen_vsh_ff says so and the
+     * Specular_back ControlFlags_FF golden holds it up -- but a vertex
+     * program does not. Measured in Specular_back's ControlFlagsNoLight_VS,
+     * row y 285-364 column x 472-577, where the quad is one flat colour per
+     * corner and nothing else is in play:
+     *
+     *   silicon (golden)                   (247, 8, 0)  = the back specular
+     *   our lighting-off path, oB1 = v8    (247, 8, 0)  -- matches
+     *   oB1 = v4 (the fixed function rule) (  0, 0, 255)
+     *   silicon's own ControlFlagsNoLight_FF, and ours
+     *                                      (  0, 0, 255) -- so FF really
+     *                                                      does take v4
+     *
+     * Emitting v4 here moved all 17,040 px of those two quads and left every
+     * one of them wrong; v8 puts them on the lighting-off image the golden
+     * is bit-identical to.
+     *
+     * This cannot distinguish "the back specular attribute" from "whatever
+     * the program last wrote to oB1", because this program writes
+     * `mov oBackSpecular, iBackSpecular` and the two are the same value. The
+     * same ambiguity sits on the front. The per-side vertex colour is taken
+     * as the model because it is the shape the fixed function mux already
+     * has; a program that writes something other than the vertex specular to
+     * oD1/oB1 while LIGHTING_ENABLE and SEPARATE_SPECULAR-off are both set
+     * would separate them, and no capture in the corpus does that.
      *
      * SPECULAR_ENABLE clear and ALPHA_FROM_MATERIAL_SPECULAR are already
      * applied to both paths on the way out to the fragment stage (vsh.c), so
      * only the fold and the substitution belong here. The back outputs are
      * only touched when two-sided lighting put the lit values there;
      * otherwise they still hold what the program wrote.
+     *
+     * Not fixed here, and not to be confused with this: under lighting our
+     * back-face alpha in the ALPHA_FROM_MATERIAL_SPECULAR columns is a
+     * per-draw constant 199 (material_alpha_back) where silicon's varies per
+     * vertex, 191 upward, exactly as our own lighting-off output does. It is
+     * independent of oB1 -- it does not move when oB1 does -- so it is not
+     * this mux, and it is why Specular_back's ControlFlagsNoLight_VS keeps
+     * 8,480 px in the SEPARATE_SPECULAR-on column that never moved for
+     * either attempt.
      */
     if (!state->specular_enable || !state->separate_specular) {
         mstring_append(body, "  oD0.xyz += oD1.xyz;\n");
@@ -547,7 +583,7 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
     if (state->specular_enable && !state->separate_specular) {
         mstring_append(body, "  oD1 = v4;\n");
         if (state->two_side_light) {
-            mstring_append(body, "  oB1 = v4;\n");
+            mstring_append(body, "  oB1 = v8;\n");
         }
     }
 }
