@@ -27,6 +27,7 @@ TESTS=${TESTS:-$(find_repo nxdk_pgraph_tests)}
 SUPPORT=${SUPPORT:-$(find_repo pbkitplusplus)}
 while [ $# -gt 0 ]; do
     case "$1" in
+        --allow-ci) ALLOW_CI=1; shift ;;
         --tests) TESTS="$2"; shift 2 ;;
         --support) SUPPORT="$2"; shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -117,6 +118,42 @@ if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; the
 else
     bad
     sed 's/^/  /' /tmp/preflight-coverage.log
+fi
+
+# 6. THE COMMIT SUBJECT'S [skip ci], because nothing enforced it and the
+#    convention was doing less work than it looked like.
+#
+#    The rule here is that every commit subject ends with [skip ci], and CI is
+#    an on-demand resource. GitHub evaluates that marker on the HEAD commit,
+#    so the protection is only as good as the last subject -- and an audit on
+#    2026-09-13 found all FIVE merge commits of the day carried no marker at
+#    all, several of them HEAD at push time. Nothing was spent, because this
+#    branch has no pull request and a push to it fires nothing. THAT is the
+#    real protection, and it is not the one anyone believed they had: open a
+#    PR on this branch and each of those pushes becomes three hosted jobs. For
+#    scale, the single open PR in this repo consumed 21 runs in one day.
+#
+#    Found by a typo -- [skip ki] for [skip ci] -- caught while amending. A
+#    convention a typo can silently disable wants a check.
+#
+#    Refuses rather than warns, because the cost is the resource this script
+#    exists to protect. A deliberate CI run is still available and now has to
+#    be said out loud: --allow-ci.
+step "commit subject"
+subject=$(git log -1 --format=%s 2>/dev/null || echo "")
+if [ "${ALLOW_CI:-0}" = 1 ]; then
+    ok
+    echo "  --allow-ci given: HEAD may trigger CI, which is deliberate."
+elif printf '%s' "$subject" | grep -q '\[skip ci\]'; then
+    ok
+else
+    bad
+    echo "  HEAD's subject has no [skip ci]:"
+    echo "    $subject"
+    echo "  GitHub reads that marker on the HEAD commit, so pushing this can"
+    echo "  spend CI minutes. Merge commits are the usual culprit: git does not"
+    echo "  put the marker in a generated merge subject, so pass -m."
+    echo "  Amend the subject, or pass --allow-ci if a CI run is the point."
 fi
 
 echo
