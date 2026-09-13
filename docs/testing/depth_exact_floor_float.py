@@ -43,6 +43,87 @@ Reading the output. Three columns matter and they answer different questions:
 `ours == oracle` is the falsifier to state for a change here, never a
 differing-pixel total against the golden: a pixel can be wrong for our reason
 and silicon's at once and the total cannot tell them apart.
+
+WHERE #52's REMAINING z24 FLOAT RESIDUAL ACTUALLY IS
+----------------------------------------------------
+
+Measured over all 18 `DepthFmt_z24_C{n,y}_FZy_*_ZB` captures of
+`1789272013-depth52-fix2` (ref `91b0897e01`), decoding the zeta word rather
+than differencing channels. The 12,816 px are two families that want different
+explanations and must not be added together:
+
+    quad split (|d| > 1)   11,768 px   11,648 of them -- 99.0% -- in GRID
+                                       ROW 0, 112 in grid row 1, 8 elsewhere
+    +-1 floor               1,048 px   948 OUTSIDE the grid entirely, i.e. the
+                                       bottom, right and big quads; the family
+                                       cell 2 settled on
+
+The quad-split deltas are exactly `right_offset * (2k+1)/16` for
+`right_offset = 12,584` -- 786.5, 2,359.5, 3,932.5 and the full 12,584 -- in
+perfectly matched pairs, 3,456 above silicon against 3,456 below on `Mfeffff`.
+The half-integers are why both 12,584 and 12,585, and both 786 and 787, appear.
+
+Grid rows 2 to 31 are bit-exact on edges identical to row 0's, which is what
+rules out an edge rule. And the whole quad-split family sits in the **seven
+smallest binades**: the f24 exponent field of our word there is 1-7 on 11,760
+of 11,768 px (181 on the remaining 8). So this is not a general interpolation
+defect. It is the near-zero end of the encoding, where the test's
+`z24_to_float(n)` for small `n` gives values of order 1e-38, one or two
+binades above the subnormal boundary.
+
+Two readings were tested and killed here rather than in `psh.c`:
+
+  * *the F16 flush-to-zero rule, one format over.* The F24 path has no
+    exponent-field-zero guard where the F16 path does, so a subnormal `zvalue`
+    would encode as a non-zero mantissa the NV2A reads as zero. REFUTED: 0 of
+    the 876 differing pixels on `Mfeffff` has a zero exponent field, in ours
+    or in the golden.
+  * *silicon's edge walk, as in cell 2.* Absent from 30 of the 32 grid rows
+    whose edges are identical to the two that carry it.
+
+`psh.c` is therefore unchanged: there is no measured mechanism to change it
+for. Naming the binade range is the handover -- a value of 1e-38 carried as a
+fraction of `f24_max = 1e30` is 1e-68 and flushes to zero in float32 long
+before the fragment shader sees it, so the next step is the depth range in the
+vertex path, not the encode.
+
+WHAT THIS ORACLE CANNOT SEE, and both limits are load-bearing
+-------------------------------------------------------------
+
+**1. The big quad of the z24 float cell is not a well-posed question at all.**
+`CreateGeometry` uses `back_z = format.max_depth - 1` and passes
+`fixed_to_float(back_z)`, which for a float Z surface is `z24_to_float`, i.e.
+`bitcast(0xFFFFFE << 7)` = `bitcast(0x7FFFFF00)` -- exponent field all ones,
+mantissa non-zero, a **NaN**. So the guest hands the GPU a NaN vertex depth
+over 85,192 px per capture, and what any renderer writes there is a property of
+its NaN handling rather than of its depth arithmetic. Those pixels are reported
+in the `unmodell` column and excluded from every count; they are not an
+accuracy defect and cannot be fixed into agreement.
+
+(The guest's own `z24_to_float` and `float_to_z24` are not inverses --
+`float_to_z24` subtracts a 0x3000000 bias that `z24_to_float` does not add
+back, `src/pbkit_ext.cpp:24,34`. `z24_to_float` is the one the geometry uses,
+and the one the emulator's `convert_f24_to_float` matches.)
+
+**2. Its z24 float columns are WRONG and must not be used.** Measured on
+`1789272013-depth52-fix2`, `ours-oracle` and `gold-oracle` come back EQUAL TO
+THE DIGIT on every z24 float capture (1,384/1,384, 34,992/34,992,
+68,408/68,408) at a max deviation of 1,786,455 -- and per grid row the two
+renderers agree with each other on 1,984 of 1,984 px of grid rows 2 and 3
+while both differ from this oracle on all 1,984. Two independent renderers do
+not agree to the digit while both diverge from the truth by six figures: that
+convicts the **oracle**, not them.
+
+The likely missing piece is the float-Z depth range -- a value is carried
+through the vertex path as a fraction of `f24_max = 1e30` rather than in guest
+depth units, which this file models as a plain linear interpolation of decoded
+values. Until that is modelled, **trust the z16 columns only**; there the
+oracle bounds both sides within one lattice step (66 against 225 on
+`M00ffff`, max 1 either way), which is what a working oracle looks like.
+
+The self-check at the end of `main` prints all of this rather than letting the
+numbers read as a renderer defect -- which is how this cell got a "structural"
+label twice already.
 """
 
 import os
