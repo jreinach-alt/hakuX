@@ -1810,7 +1810,8 @@ suites = []
 # a 480-line title takes the NTSC branch as intended. The HD half is a source
 # reading and not an observation; no title on hand reaches those modes.
 #
-# LARGE HALF FIXED 2026-09-13, e5e91de344. The guard is bounded and scales for
+# LARGE HALF FIXED 2026-09-13, e5e91de344 as dispatched (pre-rebase sha, the
+# same convention #65's ed5df55ccc uses). The guard is bounded and scales for
 # interlace first: 50 Hz for 481..576 lines and nothing above, with the raster
 # doubled when cr[0x39] says interlaced, because the NV2A interlaces only for
 # 1080i (vk/display.c:1723 and gl/display.c:442 read that bit for exactly that

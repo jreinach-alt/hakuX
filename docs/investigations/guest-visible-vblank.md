@@ -25,8 +25,12 @@ is approximately right. *Approximately* is what follows.
 ## VERIFIED: what we generate
 
 `nv2a_calc_vblank_period_ns`, `hw/xbox/nv2a/nv2a.c:234-242`, derives nothing.
-As it stood when this was opened — the guard is **fixed** at `e5e91de344`, and
-the section below is why; the current one is quoted under MEASURED 2026-09-13:
+As it stood when this was opened — the guard is **fixed** by "nv2a: bound the
+50 Hz branch, so 720p and 1080i stop running at PAL rate", and the section
+below is why; the current one is quoted under MEASURED 2026-09-13. (Every sha
+in this file is the one the dispatcher built, before the branch was rebased,
+which is the same convention #65 uses: it names the tree a measurement was
+taken on, not a commit still reachable from the tip.)
 
 ```c
 uint32_t vdisplay = d->pramdac.fp_vdisplay_end;
