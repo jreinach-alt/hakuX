@@ -4,19 +4,20 @@ Each cell is **exact/captures · structural px** — structural being differing 
 
 | run | binaries | built | hw commits behind tip | discs | captures | rescored |
 |---|---|---|---:|---:|---:|---:|
-| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 22 ⚠️ | 60 | 1748 | — |
+| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 31 ⚠️ | 73 | 1915 | — |
 
 | category | goldens | `pre-fixes-fb4dfafc` |
 |---|---:|---|
-| Texture formats ⚠️15% | 119 | 10/18 · 1,936 |
-| Render to texture ⚠️16% | 67 | 8/11 · 399,197 |
+| Texture addressing ⚠️40% | 198 | 37/80 · 268,689 |
+| Texture formats ⚠️32% | 119 | 12/38 · 333,758 |
+| Render to texture ⚠️37% | 67 | 10/25 · 602,034 |
 | Lighting | 195 | 27/195 · 476,228 |
 | Bump mapping | 82 | 0/82 · 818,008 |
 | Fog | 280 | 23/280 · 1,574,992 |
 | Blend ⚠️9% | 1722 | 5/154 · 5,907,527 |
 | Depth / stencil ⚠️18% | 1688 | 80/298 · 504,164 |
-| Rasterisation ⚠️96% | 514 | 43/496 · 2,009,138 |
-| Clipping / viewport ⚠️17% | 183 | 25/32 · 532,200 |
+| Rasterisation ⚠️98% | 514 | 43/502 · 2,054,474 |
+| Clipping / viewport ⚠️43% | 183 | 65/79 · 532,200 |
 | Vertex pipeline ⚠️61% | 226 | 19/137 · 371,258 |
 | 2D / blit ⚠️98% | 46 | 18/45 · 198,029 |
 
