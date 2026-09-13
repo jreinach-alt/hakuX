@@ -124,6 +124,26 @@ while :; do
     # check_coverage.py already reads exactly that state and already fails open
     # without gh, so ask it rather than re-deriving. Its output replaces the
     # suggestion list when it has something specific to say.
+    # A DIRTY SHARED TREE OUTRANKS EVERYTHING ELSE THIS CAN SAY, because it
+    # stops the dispatcher building any ref that is not already cached -- and
+    # it fails by requeueing every 30s, silently. Twice today: a checker of
+    # mine that wrote a tracked stamp file (129 requeues) and a lane working in
+    # the shared tree instead of a worktree (122 more). Both were found by
+    # someone noticing their own arms bouncing, not by anything here, and the
+    # second was masked for an hour because the corpus sweep kept running from
+    # a cached binary.
+    #
+    # So check it first and say WHICH files, since that is the whole fix.
+    tree=$(cd "$HERE/../.." 2>/dev/null && git status --porcelain 2>/dev/null \
+             | grep -v '^??' | awk '{print $2}' | head -4 | tr '\n' ' ')
+    if [ -n "$tree" ]; then
+        recent=$(tail -400 "$DISPATCH/logs/dispatcher.log" 2>/dev/null \
+                   | grep -c "tree is dirty")
+        armed=0
+        echo "DIRTY SHARED TREE -- the dispatcher cannot build any uncached ref: ${tree}(${recent} dirty-tree requeues in the recent log). Commit or revert them. A lane working in /home/justin/hakuX instead of a worktree does this, and it fails by requeueing silently rather than erroring."
+        continue
+    fi
+
     cov=$(cd "$HERE/../.." 2>/dev/null && timeout 45 python3 \
               docs/testing/check_coverage.py 2>&1 | head -6)
     case "$cov" in
