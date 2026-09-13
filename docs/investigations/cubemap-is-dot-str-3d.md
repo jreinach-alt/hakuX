@@ -586,3 +586,106 @@ two non-major components to be driven to +-max. Per-axis saturation of the raw
 dots cannot do that at 0.003. Saturation *after* the cube divide could, and so
 could a face coordinate held at very low precision, but both are guesses and
 neither is going in until something measures one.
+
+## Why the coordinate reaches a corner: the magnitude underflows, the sign does not
+
+The section above ends on two guesses -- saturation after the cube divide, or a
+face coordinate held at very low precision -- and a refusal to pick between them
+without a measurement. Here is one, from the goldens already on disk, no device.
+
+### What the pattern can and cannot say
+
+`GenerateMaxContrastNoisePattern` has three binary channels, so the whole thing
+holds **eight colours across all six faces**. Face seeds are written
+`r | g<<8 | b<<16` into an A8B8G8R8 texture, so mask `0x0000FF` is the *red*
+channel -- not the obvious order; it is fixed here by #40's independent hardware
+reading, which has +X texel (0,0) of the radial gradient at `(191,0,0)`.
+
+The four corners of a 64x64 face, by sign group:
+
+| faces | their four corner colours |
+|---|---|
+| **+X, +Y, +Z** | `#FF0000` `#0000FF` `#FFFFFF` `#00FF00` |
+| **-X, -Y, -Z** | `#FF00FF` `#000000` `#FFFF00` `#00FFFF` |
+
+All three positive faces carry the *same* corner set, permuted; so do the
+negatives. **Colour therefore identifies the sign group and the corner, and
+cannot identify which face.** The entry in `nv2a_issues.toml` calls these "the
+four +X-face corners": right about the set, over-specified about the face, and
+corrected here. Nothing downstream depended on it being +X.
+
+### The measurement
+
+Colours the golden holds over the *entire* 640x480 image, not just where we
+differ:
+
+| capture | distinct colours, whole image | of the negative corner set |
+|---|---|---|
+| `-1to1`, `-1to1D3D`, `-1to1GL` | 5 | none but `#000000` |
+| `0to1`, `HiLoHemi`, `HiLo_1` | 4 | none but `#000000` |
+
+`#000000` is in the negative corner set but is also the background, so it
+discriminates nothing. `#FF00FF`, `#FFFF00` and `#00FFFF` are the three that
+would betray a negative face, and **they appear nowhere in any of the six**.
+
+Over the ~56,909 differing pixels the golden holds all four positive corners in
+near-equal quarters on the `-1to1*` captures (`#FF0000` 14,562, `#0000FF`
+14,446, `#FFFFFF` 14,178, `#00FF00` 13,723 on `-1to1`), and exactly two of them
+on the others. Those two, on any positive face, are the pair that **share one
+coordinate extreme and differ in the other** -- one sign pinned, one free. That
+is the recorded rule (`sign(dot_{i-2})`, `sign(dot_{i-1})`, third component
+selects nothing) arrived at independently, and it is why the unsigned dotmaps
+can only reach half the corners.
+
+Three things follow, none of them an inference:
+
+1. **The sign group is positive, throughout.** Not "rarely negative" -- absent.
+2. **Silicon is pinned to the corner block, not roaming.** One face holds 8
+   distinct colours over an 8x8 patch, and the pattern holds 8 in total; the
+   golden spends 57,000 pixels on 4 of them, all corners.
+3. **No interior colour appears at all.**
+
+### Which guess this kills
+
+Saturation after the cube divide would land on a corner of *whichever* face the
+major axis selects, negative faces included -- a divide does not care about
+sign. The negative faces are absent, so that is not the mechanism.
+
+### What would have to be true -- the question this note was left on
+
+**The magnitude would have to underflow while the sign survives.** That single
+condition produces every measured fact at once:
+
+- The dots are bounded by `|dot1|, |dot2| <= 0.00299` and `|dot3| <= 9.37e-7`.
+  An 8-bit fixed-point fraction has a half-quantum of 0.0039, *above* all three
+  bounds, so on any dot path of eight or fewer fractional bits the triple
+  arrives as **exactly zero**. Here the bound is the right instrument, because
+  it is an upper bound and the claim needs only that every value fall under one
+  threshold -- unlike the edge/corner prediction further up, where a shared
+  bound said nothing about a ratio. Same number, different question.
+- A zero-magnitude direction is exactly what #40 measured from the other end:
+  `f6609964` records silicon resolving a degenerate cube direction to a single
+  face at its `(0,0)` texel, confirmed on two textures at once. A degenerate
+  magnitude explains the *face* being fixed and positive.
+- But the corners vary per pixel in near-equal quarters, so something still
+  carries information. The two sign bits are what a magnitude underflow leaves
+  behind, and two bits select exactly four corners -- the recorded rule.
+
+So the corner rule, which was derived from goldens and had no mechanism, gets
+one: the addressing hardware receives a magnitude of zero and two surviving
+signs, and resolves that to the corner those signs name. #51 and #40 are then
+one phenomenon from two directions -- #40's input is a literal zero from a black
+normal map, #51's a triple too small to represent.
+
+### What this does *not* establish
+
+- **The bit width is not measured.** The bound is under an 8-bit half-quantum
+  and over a 10-bit one, so "eight or fewer fractional bits" is what the
+  evidence is consistent with, not a width read off silicon.
+- **Which positive face is selected is not determined by colour** -- see above.
+  A fix that picks the wrong positive face would score identically here, so the
+  face must be settled some other way before one is written.
+- **Whether the underflow happens to the direction or to the face coordinate**
+  is not separated. Both routes end at the same texel.
+- **This is not a fix and has not been run.** It is a reading of goldens already
+  on disk, and it constrains an implementation rather than being one.

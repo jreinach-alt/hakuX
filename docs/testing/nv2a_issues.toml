@@ -1429,8 +1429,12 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # THE RULE, still the target, derived from the goldens and so unaffected by any
 # of the above: the fetched texel is a CORNER of the texture, picked by
 # sign(dot_{i-2}) and sign(dot_{i-1}); the third component selects nothing.
-# Evidence: the goldens hold NO colour outside the four +X-face corners
-# {#0000FF,#FF0000,#00FF00,#FFFFFF}; the three unsigned dotmaps cannot flip
+# Evidence: the goldens hold NO colour outside the four corners of a POSITIVE
+# face, {#0000FF,#FF0000,#00FF00,#FFFFFF} (all three positive faces share that
+# set, permuted, and the negatives share {#FF00FF,#000000,#FFFF00,#00FFFF}, so
+# colour fixes the sign group and the corner but NOT which face -- an earlier
+# revision of this entry said "+X-face corners", right about the set and
+# over-specified about the face); the three unsigned dotmaps cannot flip
 # sign(dot_{i-2}) and their #FF0000 count is exactly 0 over ~87k cube px; the
 # regions are flat with smooth boundaries, a sign field of M_i.f(N) rather than
 # a varying fetch; DotSTRCube_*, same coordinate and same texture, is within
@@ -1448,6 +1452,20 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # "samplerCube moves zero captures" negative was noise against noise. There is
 # no Bad2D regression from ad1caa07; that was variance. Two register facts read
 # straight from the test source: tex_cubemap[3] is TRUE and dim_tex[3] is 2.
+#
+# WHY THE COORDINATE REACHES A CORNER, the question this was left on. One
+# condition produces every measured fact: THE MAGNITUDE UNDERFLOWS AND THE SIGN
+# SURVIVES. An 8-bit fixed-point fraction has a half-quantum of 0.0039, above
+# all three bounds above, so on a dot path of eight or fewer fractional bits the
+# triple arrives as exactly zero; #40 measured silicon resolving a degenerate
+# cube direction to one face's (0,0) texel (f6609964), which explains a fixed
+# positive face; and the two surviving sign bits select exactly the four corners
+# the rule already names. That makes #51 and #40 one phenomenon from two
+# directions. NOT established: the bit width (consistent with <=8 fractional
+# bits, not read off silicon), WHICH positive face (colour cannot say, so a fix
+# picking the wrong one would score identically), and whether the underflow hits
+# the direction or the face coordinate. Nothing has been run; this is a reading
+# of goldens on disk and it constrains a fix rather than being one.
 # docs/investigations/cubemap-is-dot-str-3d.md.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
