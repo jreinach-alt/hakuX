@@ -256,47 +256,70 @@ useful item in a brief: it is how the fold-in is judged, and it is what makes
 a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
 have been caught at the prediction stage.
 
-### Territories as allocated 2026-09-13 (fourth wave)
+### Territories as allocated 2026-09-13 (sixth wave, five local lanes)
 
 | stream | files owned |
 |---|---|
-| vk surface sync (#61, #50) | `vk/surface.c`, `vk/renderer.h`, `vk/draw.c`, `vk/command.c` |
-| audio state + volume law (#75, #71, #73) | `hw/xbox/mcpx/apu/**`, the ACI device, `android/**` |
-| RADIAL fog (#41, #42) | `glsl/vsh.c`, `vsh-ff.c`, `vsh-prog.c`, `geom.c`, fog paths in `pgraph.c` |
-| issue audit | `nv2a_issues.toml`, `docs/**` prose only -- claims no code |
-| RADIAL fog (#41, #42) | `glsl/psh.c` released to it -- #10's arm is JUDGED (PASS, 161 checks) |
-| texture flake (#44) | `vk/texture.c`, `pgraph/texture.c`, `vk/buffer.c`, `s3tc.c` |
-| remote lane (#34, #39, #51, #62) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/*.c`, desktop build |
-| nobody | `pgraph.c` outside the fog paths |
+| texture length + LRU (#56), **then #59's pad write-side** | `vk/texture.c`, `pgraph/texture.c`, `vk/buffer.c`, `s3tc.c`, **plus `glsl/psh.c` and `psh.h` granted for the pad fix** |
+| guest/pgraph skew (#44) + defer cap (#65) | `nv2a.c`, `nv2a_int.h`, `nv2a_regs.h`, `pfifo.c`, `pramdac.c`, `pgraph.c` |
+| light association (#53) + interpolator parity (#38) | `glsl/vsh.c`, `vsh.h`, `vsh-ff.c`, `vsh-prog.c`, `geom.c` |
+| barrier-skew instrument (#54) | `vk/surface.c`, `vk/draw.c`, `vk/command.c`, `vk/renderer.h` |
+| performance | `accel/**`, `include/exec/**` (assigned OUT of the remote lane's `accel/`) |
+| remote lane (#34, #39, #51, #60, #62, #66) | `gl/*.c`, `target/**`, `ui/**`, `audio/**`, `tests/**`, desktop build, **and the GL renderer as a capability** |
+| nobody | `prim_rewrite.c`, `vk/surface-compute.c`, `hw/xbox/mcpx/**` |
 
-**A STALE TABLE MISINFORMS A BRIEF.** The #43 lane's brief told it `glsl/psh.c`
-was free. It was -- the fog lane had finished -- but this table still read
-"released to the RADIAL fog lane", so the lane reasonably flagged the brief as
-wrong. Both were half right and the table was the older half. So: update this
-table in the same commit that frees a file, not in the next wave's edit. The
-briefs are generated from it by hand and a stale row is indistinguishable from
-a claim.
+**ROUTED, and the block is cleared.** #59's pad write-side fix is derived and
+its simulation scores both captures bit-exact. It needs the fragment shader's
+alpha output (`glsl/psh.c`) **and** removal of the read-side swizzle
+(`vk/texture.c`) **atomically** -- either half alone stacks a second
+correction on the rendered pixels -- so it was unlandable for as long as those
+sat in two territories. `psh.c` is now **granted to the texture lane**, which
+already holds the other half.
+
+The general rule, since this will recur: when a finished fix spans two
+territories, **grant one lane the other's file rather than waiting for both to
+free.** Waiting serialises on the slower lane for no benefit; the grant costs
+one message.
+
+**THIS TABLE IS REVERTED BY CHERRY-PICKING A LANE BRANCH, and that is how it
+goes stale.** A lane branches from the tip, works for an hour, and carries
+whatever `orchestration.md` said when it started. Folding its commits then
+silently restores that older table -- which is exactly what happened on
+2026-09-13: the fifth-wave table was written, two lane branches were folded,
+and the file went back to the fourth wave. The #43 lane read the reverted row,
+saw `glsl/psh.c` listed as another lane's, and correctly reported its brief as
+wrong -- both were half right and the table was the older half.
+
+So: **after folding any lane branch, re-check this section** before writing
+the next brief. The briefs are written from this table by hand, and a stale row
+is indistinguishable from a live claim. Better still, free a file in the same
+commit that frees it, and never let a wave's allocation live only in a
+paragraph that a fold can overwrite.
 
 A file whose stream's arm is **queued but not yet judged** is still claimed.
 The arm measures one delta and a second edit lands inside it. `psh.c` is the
-live example, and it has now run its course: its implementing agent finished
-and released it, the orchestrator claimed it immediately because #10's A/B was
-queued and an edit landing between the arms would have been measured as part
-of #10's delta, and it was released to the fog lane the moment the pair was
-judged. Claimed at 23:30, judged at 23:51, released at 23:55 -- the claim is
-as long as the arm, not as long as the issue.
+worked example of the whole life cycle: its implementing agent finished and
+released it; the orchestrator claimed it immediately because #10's A/B was
+queued and an edit between the arms would have been measured as part of #10's
+delta; it was released to the fog lane the moment the pair was judged (claimed
+23:30, judged 23:51, released 23:55); the fog lane finished and freed it; and
+it is now granted to the texture lane for a fix that cannot land without it.
+**The claim is as long as the arm, not as long as the issue.**
 
 Retired: first wave (depth #16, image blit #33, viewport #49, audio); second
 wave (cube face #40, RADIAL fog #41, swatch order #50); third wave (depth
-cells #52, packed texels #59, line width #13, byte-grid quantisation). Note
-that #41 and #50 are back in the table -- a retired wave means the files are
-free, not that the issue was finished, and re-reading the earlier wave's
-commits is the first instruction in both briefs.
+cells #52, packed texels #59, line width #13, byte-grid quantisation); fourth
+wave (vk surface sync #61/#50, audio state #75/#71/#73, RADIAL fog #41/#42,
+issue audit, border flake #44, z16 packing, line priority #13, VBLANK
+deferral #65); fifth wave (line edge order #13, blend region #43, pad
+polarity #59). A retired wave means the **files** are free, not that the issue
+was finished -- #41 and #50 both returned to the table after being retired
+once, and #41 was fixed by the wave that got it back.
 
 Every brief says *rebase first and read the current file, not your memory of
-it*: `psh.c` alone gained `texelTieBias`, a cube degenerate-direction
-constant, and now a 16-bit HILO field read plus a signed gather, across three
-waves.
+it*. `glsl/vsh.c` changed twice in one day; `psh.c` gained `texelTieBias`, a
+cube degenerate-direction constant, and a 16-bit HILO field read with a signed
+gather, across three waves.
 
 ### Why the remote lane is different
 
