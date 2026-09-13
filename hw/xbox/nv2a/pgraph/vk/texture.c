@@ -128,7 +128,32 @@ static VkFormat kelvin_format_to_native_bc(int color_format)
 {
     switch (color_format) {
     case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5:
-        return VK_FORMAT_BC1_RGBA_UNORM_BLOCK;
+        /*
+         * DXT1 is deliberately NOT claimed for native BC1, and it is the only
+         * one of the three.
+         *
+         * Its NV2A target is 16-bit -- the format name says A1R5G5B5, where
+         * DXT23 and DXT45 both target A8R8G8B8 -- so reaching 8 bits leaves a
+         * gap of 8 counts (4 for green), and the hardware fills it by emitting
+         * whichever value in the gap is congruent to a fixed 4x4 matrix entry.
+         * That is an ordered dither keyed on the texel's position within its
+         * block, and it is why a golden DXT1 block carries 16 distinct colours
+         * where the palette can only supply 4: 1,021 distinct colours in 1,024
+         * texels, and not one texel equal to any palette entry of any block.
+         *
+         * BC1 cannot express it. A hardware BC1 decoder returns the palette
+         * entry, so on this path s3tc.c's dither is never reached and DXT1
+         * decode stays 13.5% bit-exact against silicon. Routed to software it
+         * is 93.3% (19,112 of 20,480 texels over five captures).
+         *
+         * This trades decode throughput for accuracy on one format, which is
+         * the campaign's stated order of priority -- correctness first, with
+         * the speed recovered through the performance stream. DXT23 and DXT45
+         * keep the native path below: they target 8 bits per channel, have no
+         * gap to fill, and already score 3072 of 3072 channels.
+         * Issue #6.
+         */
+        return (VkFormat)0;
     case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8:
         return VK_FORMAT_BC2_UNORM_BLOCK;
     case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8:
