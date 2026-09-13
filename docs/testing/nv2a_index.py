@@ -442,9 +442,27 @@ def load_issues():
                                              for v in body.split(",") if v.strip()]
                 pending = None
                 continue
-            m = re.match(r"^\[issue\.(\d+)\]$", line)
+            # Keys may be numeric (== a GitHub issue number) or a semantic
+            # slug (a tracker-only entry). Numeric-only was the original rule
+            # and it produced a real collision: the audio entries were filed
+            # as [issue.70]..[issue.75] when GitHub had no such issues, and
+            # GitHub then caught up and passed them -- so [issue.73] was the
+            # int16 monitor accumulator while gh #73 was a tcg CF_INVALID
+            # defect. Two different things behind one id, which is the failure
+            # disc_id exists to prevent, one level up in the issue log.
+            m = re.match(r"^\[issue\.([A-Za-z0-9][A-Za-z0-9._-]*)\]$", line)
             if m:
                 current = m.group(1)
+            elif line.startswith("[issue"):
+                # LOUD, not skipped. The old digits-only pattern silently
+                # dropped any entry it could not parse -- an entry would
+                # vanish from the index with no error, which is the same
+                # silent-drop class as a guard satisfied by absence.
+                raise SystemExit(
+                    "nv2a_issues.toml: cannot parse header %r.\n"
+                    "  A key is either a GitHub issue number, or a slug of\n"
+                    "  [A-Za-z0-9._-] for a tracker-only entry." % line)
+            if m:
                 issues[current] = {"title": "", "suites": [],
                                    "disposition": "unclassified",
                                    "no_suites": "",
