@@ -335,6 +335,18 @@ person does not have to rediscover that the two agree; it is not written down as
 the repeat, because a capture that cannot be dated to the run that produced it
 is exactly the thing this project has already been burned by.
 
+### The two runs were not a total loss: their logcat is valid
+
+Worth separating, because the stale-PCM problem does not touch it. The logcat
+was streamed live during each run (`soak_title.sh` starts `adb logcat` before
+`am start`), so unlike the pulled file it cannot be a leftover — the PIDs and
+timestamps belong to those runs.
+
+Both runs print **`submix_headroom[0..30] = 1`, all 31 slots, in both**. That
+re-confirms at today's tip, on the Nova, what was measured once at 15:08: the
+divisor the headroom fix removes is live at exactly 2x, and the fix is not inert.
+It had previously been established from a single run; it is now three.
+
 ### The fix, so this cannot recur
 
 The marker being persistent device state is the whole problem, and it failed in
