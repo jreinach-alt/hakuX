@@ -256,14 +256,25 @@ useful item in a brief: it is how the fold-in is judged, and it is what makes
 a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
 have been caught at the prediction stage.
 
-### Territories as allocated 2026-09-12
+### Territories as allocated 2026-09-12 (second wave)
 
 | stream | files owned |
 |---|---|
-| depth (#16 float Z) | `vk/surface-compute.c`, `glsl/psh.c` |
-| image blit (#33) | `vk/blit.c`, `gl/blit.c` |
-| viewport (#49) | `glsl/vsh.c`, `glsl/vsh-ff.c`, `glsl/vsh-prog.c` |
-| audio (assessment) | `hw/xbox/mcpx/apu/**`, `hw/xbox/mcpx/aci.c` |
+| cube-face selection (#40) | `glsl/psh.c` |
+| RADIAL fog (#41) | `glsl/vsh.c`, `vsh.h`, `vsh-ff.c`, `vsh-prog.c` |
+| swatch order (#50) | `vk/surface.c`, `vk/blit.c`, `gl/blit.c` |
+| remote lane (#34, #51) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, desktop build |
+| nobody — in flight | `vk/draw.c`, `gl/draw.c` (#43's arm is on the device; moving them makes it unreadable) |
+
+A file whose stream's arm is **queued but not yet judged** is still claimed.
+The arm is a measurement of one delta, and a second edit lands inside it.
+
+Retired from the first wave: depth (#16 float Z), image blit (#33), viewport
+(#49), audio. `glsl/psh.c` and `glsl/vsh*.c` changed hands between waves, so
+every brief says *rebase first and read the current file, not your memory of
+it* -- the #53 stream moved `normalization` and `local_eye` out of a union
+they shared with program data, and the shadow stream added `texelTieBias` to
+the shadow fetch.
 
 Note `glsl/psh.c` and `glsl/vsh.c` are in the same directory and belong to
 different agents; the brief says so explicitly, because "the shader
@@ -287,6 +298,48 @@ comment and a monitor wakes the orchestrator. That is slower than a worktree
 handoff and the briefs should prefer work for it that needs no claim at all
 -- test-repo changes, analysis, docs -- keeping `hw/` claims for when there is
 no alternative.
+
+## A measurement needs its prediction bound before the device runs
+
+`request.sh` refuses a suites request that names neither `--expect FILE` (a
+prediction registered with `ab_compare.py --register`) nor `--no-expect
+REASON`. The prediction's sha256 is recorded in the request at queue time and
+checked when the arm is judged, so `ab_compare` reports one of
+`PRE-REGISTERED`, `TAMPERED`, `UNBOUND` or `POST-HOC`.
+
+This exists because two arms on 2026-09-12 -- the F24 subnormal flush and the
+NV04 solid line -- were dispatched with their predictions only in prose. Both
+changes passed on the numbers, and neither pass is citeable. Discipline was
+not the fix; discipline is what had just failed twice in an hour.
+
+The binding is a content hash rather than an mtime on purpose. An mtime
+catches a prediction written late. It does not catch one written on time and
+quietly widened once the numbers arrive -- the same failure with better
+paperwork, and the likelier one, because nobody has to intend it.
+
+## State a falsifier as a measurement, not a pixel count
+
+The F24 depth fix predicted "class B's 25,915 px per half goes to 0" and
+measured -3,598. Its author's stated falsifier said the change should then
+"come straight back out". That would have been wrong. Measured as the
+mechanism was actually described -- the spurious variation down each column --
+the fix is exactly right: golden has 0 columns with y-spread, the baseline had
+52, the fix has 0, and the summed spread goes 182,467 to 0.
+
+The pixels stayed differing because they were **wrong for two independent
+reasons at once**: the interpolation ramp the fix removed, and a known
++-12,585 quad-split floor it deliberately does not touch, whose per-capture
+counts are byte-identical before and after. A class count is a count of pixels
+a mechanism *touches*, not of pixels it is solely responsible for, and
+subtracting one from a differing total assumes an additivity the residual
+classes do not have. Same trap as one-step versus boundary-shift, which also
+overlap and cannot be added or subtracted.
+
+So name the quantity your mechanism changes, predict *that*, and carry a
+separate must-not-move list. Good examples from today: per-column y-spread for
+an interpolation fix; the selected cube face per pixel rather than differing
+pixels; a swatch's centre row for a reordering; the mean light term over a lit
+region rather than captures-gone-exact.
 
 ## The three new streams have no oracle, and that changes everything
 
