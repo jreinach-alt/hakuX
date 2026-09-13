@@ -10,6 +10,37 @@ reading progress logs side by side rather than from any planned work.
 The design below is shaped by those specific failures, not by a general theory
 of agents.
 
+## A coalescer must never merge requests that differ only in count
+
+This file names batching as the queue's first job -- "one requester cannot see
+that; a queue can coalesce" -- and that is right for the corpus sweep, where
+one disc image serves a hundred suites. It is **wrong, and destructively so,
+for repeats.**
+
+On 2026-09-13 the queue held 19 agent requests across 12 distinct
+`(kind, ref, suites-or-title)` keys, and six keys appeared two or three times.
+Those look exactly like duplicated work. They are not: `--runs N` does nothing
+on the soak path, so every lane was instructed to queue N separate soaks under
+one `--who`, and **the repeat IS the measurement.** The no-oracle streams judge
+on a per-run median with every run of one arm against every run of the other,
+and the performance lane's three soaks on ONE ref are its noise floor -- the
+thing this stream had been quoting numbers without.
+
+A coalescer that merged them would have deleted the noise floor while
+reporting a throughput win, and the deletion would be invisible: the surviving
+run still produces a number.
+
+So if request coalescing is ever implemented, the key must include the
+requester AND the request's ordinal, and two requests from one `--who` at one
+ref must be treated as **two measurements of one quantity**, never as one
+measurement asked for twice. The orchestrator nearly deduplicated this queue
+by hand before checking what the repeats were for.
+
+Queue depth is also not the number of requests. The 19 above were ~145
+device-minutes -- about 72 minutes across two handhelds -- because thirteen of
+them were 90-to-240-second soaks and only six were multi-suite discs. Estimate
+in device-minutes before concluding the queue is deep.
+
 ## The binding constraint is the device, not the agent count
 
 | resource | capacity | consequence |
