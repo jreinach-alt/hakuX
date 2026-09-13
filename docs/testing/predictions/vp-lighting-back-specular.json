@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-13T02:04:49Z",
+  "who": "vp-lighting-agent",
+  "issue": "53",
+  "prediction": "#53 follow-up: the programmable path's back specular output takes the BACK vertex colour (v8), not the front (v4). One line; the light loop and the whole front path are untouched.\n\nWHY THE FIRST ARM LEFT Specular_back UNMOVED. It was not that the mux failed to fire. All 17,040 px of the two SEPARATE_SPECULAR-off quads changed and every one stayed wrong: the substitution landed on the wrong register. Measured in ControlFlagsNoLight_VS row y 285-364 column x 472-577, where each corner is one flat colour and the alpha is forced to 255 so nothing else is in play -- golden (247,8,0); our lighting-off path, where the program's oB1 = v8 reaches the output untouched, (247,8,0), matching; oB1 = v4, (0,0,255); silicon's own ControlFlagsNoLight_FF, and ours, (0,0,255). So the fixed-function stage does drive the back specular from the front vertex colour and the programmable path does not. NOT the two_side_light gate: the gate fired correctly, which is why the pixels moved at all.\n\nTHE FALSIFIER, AS A MEASUREMENT. The quad at Specular_back::ControlFlagsNoLight_VS y 285-364, x 472-577 currently differs from the golden on 8,480 of 8,480 px. It must become 3,953 -- the figure our own ControlFlagsLightDisable_VS scores on that same quad, i.e. the one-step floor of the image the golden is bit-identical to. If that quad does not fall to about 3,953, the back specular is not the back vertex colour and this line comes out. Its neighbour at x 350-456 moves from 8,560 px / 33,808 channels to 8,432 px / 16,265 channels: the colour goes right, the pixel count barely moves, and the channel count halves, because that column also carries the separate alpha defect below.\n\nEXACT PREDICTED VALUES -- all four are arithmetic on the measured fix-arm captures, by substituting the actual pixel blocks, not estimates. There is no tolerance on any of them and none is a range dressed as a number:\n  Specular/ControlFlagsNoLight_VS        10,510 -> 10,510  (front path untouched)\n  Specular/ControlFlags_VS               78,222 -> 78,222  (front path untouched)\n  Specular_back/ControlFlagsNoLight_VS   25,446 -> 20,791\n  Specular_back/ControlFlags_VS          95,789 -> 91,134\nChannels, advisory: Specular_back/ControlFlagsNoLight_VS 92,345 -> 57,268 and Specular_back/ControlFlags_VS 203,652 -> 168,575.\n\nWHAT THIS DOES NOT FIX, so it is not mistaken for a failure. (1) The per-vertex association of the light values under a program is still unmodelled -- that is why Specular_back/ControlFlags_VS stays above 91,000 -- and nothing here touches the light loop, so that term is bit-for-bit unchanged. (2) Under lighting our back-face alpha in the ALPHA_FROM_MATERIAL_SPECULAR columns is a per-draw constant 199 (material_alpha_back) where silicon's varies per vertex from 191 up, matching our own lighting-off output. It is independent of oB1 -- it did not move when oB1 moved -- so it is a separate defect, it keeps the 8,480 px quad at x 107-212 of Specular_back's unlit capture exactly where it has been for both attempts, and changing the back constant term's alpha source is unmeasurable on this corpus, so I did not change it.",
+  "a_ref": "941b68af87",
+  "b_ref": "fe1a87a5b0",
+  "must_not_move": [
+    "Lighting_control/*",
+    "Lighting_accumulation/*",
+    "Lighting_range/*",
+    "Lighting_spotlight/*",
+    "Lighting_Two_Sided/*",
+    "Lighting_normals/*",
+    "Material_color_source/*",
+    "Material_alpha/*",
+    "Material_color/*",
+    "Specular/ControlFlagsLightDisable_VS",
+    "Specular/ControlFlags_FF",
+    "Specular/ControlFlagsNoLight_FF",
+    "Specular/ControlFlagsLightDisable_FF",
+    "Specular/SpecParams_*",
+    "Specular/NonUnitNormal_*",
+    "Specular_back/ControlFlagsLightDisable_VS",
+    "Specular_back/ControlFlags_FF",
+    "Specular_back/ControlFlagsNoLight_FF",
+    "Specular_back/ControlFlagsLightDisable_FF",
+    "Specular_back/SpecParams_*"
+  ],
+  "expect": {
+    "Specular/ControlFlagsNoLight_VS": 10510,
+    "Specular/ControlFlags_VS": 78222,
+    "Specular_back/ControlFlagsNoLight_VS": 20791,
+    "Specular_back/ControlFlags_VS": 91134
+  },
+  "expect_counts": {}
+}
