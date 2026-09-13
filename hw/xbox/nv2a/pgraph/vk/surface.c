@@ -2342,10 +2342,29 @@ static bool check_invalid_surface_is_compatibile(SurfaceBinding *surface,
            surface->host_fmt.usage == target->host_fmt.usage;
 }
 
+/*
+ * frame_submitted[] is written by two foreign threads -- the submit worker
+ * (vk/submit_worker.c) and the render thread (vk/render_thread.c) -- with
+ * qatomic_set, and read with qatomic_read at every other site. This read was
+ * plain, and it is inside a QTAILQ_FOREACH_SAFE loop over the invalid list,
+ * which is where a hoisted load costs the most: the answer gates
+ * get_any_compatible_invalid_surface(), which hands the image to a new draw
+ * as its render target, and prune_invalid_surfaces(), which destroys it. A
+ * stale `false` therefore buys either a draw whose target still holds the
+ * previous content or a use-after-free -- the same object lifetime and the
+ * same foreign thread as the shelved-view dereference recorded above
+ * DeferredSurfaceRelease (#29).
+ *
+ * qatomic_read is __atomic_load_n(..., __ATOMIC_RELAXED): enough to stop the
+ * compiler caching, hoisting or tearing it. On ARM, where the shipping
+ * renderer runs, the write side has no release pairing with this read either,
+ * so relaxed fixes only the compiler half of the exposure. Issue #61.
+ */
 static bool surface_in_flight(PGRAPHVkState *r, SurfaceBinding *surface)
 {
     int f = surface->invalidation_frame;
-    return f >= 0 && (f == r->current_frame || r->frame_submitted[f]);
+    return f >= 0 &&
+           (f == r->current_frame || qatomic_read(&r->frame_submitted[f]));
 }
 
 static SurfaceBinding *

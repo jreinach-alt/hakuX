@@ -2846,9 +2846,23 @@ void pgraph_vk_finish(PGRAPHState *pg, FinishReason finish_reason)
              * are safe to reuse. Check if any other frame slot is still
              * in flight; if not, we can reset indices to 0. */
             {
+                /*
+                 * qatomic_read, not a plain read: this loop deliberately
+                 * inspects the frames OTHER than next_frame, and only
+                 * next_frame's fence has been waited above, so the submit
+                 * worker and the render thread can both still be setting
+                 * these. There is no pgraph_vk_render_thread_wait_idle()
+                 * between the spin-wait and here -- unlike the two plain
+                 * reads at the top of this file, which are each immediately
+                 * preceded by one and are correct as they stand. A stale
+                 * `false` rewinds descriptor_set_index and push_ubo_set_index
+                 * while a submitted frame's command buffer still references
+                 * those sets, which is #34's finding 1. Issue #61.
+                 */
                 bool any_in_flight = false;
                 for (int i = 0; i < r->num_active_frames; i++) {
-                    if (i != next_frame && r->frame_submitted[i]) {
+                    if (i != next_frame &&
+                        qatomic_read(&r->frame_submitted[i])) {
                         any_in_flight = true;
                         break;
                     }
