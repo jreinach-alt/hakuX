@@ -413,20 +413,33 @@ def load_expect(path, a, b):
         except OSError:
             got = ""
         if got == want:
-            notes.append("PRE-REGISTERED: arm %s was queued at %s naming this "
-                         "file, and its content still hashes to the sha "
-                         "recorded then (%s). The prediction existed before "
-                         "the device ran and has not been edited since."
+            # Print the path and the full sha, not just the label. PRE-REGISTERED
+            # is the one line in this output that stops a reader looking
+            # further, so it has to carry enough for a reader to check it
+            # WITHOUT trusting the binding: `sha256sum <path>` against the
+            # value printed here, independently of anything in this script or
+            # in the request. The remote lane asked for this after the
+            # detached-checkout hashing bug, where the failure mode was a
+            # wrongly bound prediction reported under exactly this label.
+            notes.append("PRE-REGISTERED: arm %s was queued at %s naming %s, "
+                         "and its content still hashes to the sha recorded "
+                         "then. The prediction existed before the device ran "
+                         "and has not been edited since.\n"
+                         "  bound sha256 %s\n"
+                         "  verify with: sha256sum %s"
                          % (arm.name.upper(),
                             (arm.request or {}).get("queued_utc", "?"),
-                            want[:12]))
+                            named, want, path))
             return exp, notes
-        notes.append("TAMPERED: arm %s was queued naming this file with sha "
-                     "%s, but it now hashes to %s. The prediction has been "
+        notes.append("TAMPERED: arm %s was queued naming this file, but its "
+                     "content has changed since. The prediction has been "
                      "edited since the device work was asked for, so the "
                      "verdict below is worth nothing. Recover the queued "
-                     "version, or re-register and re-run."
-                     % (arm.name.upper(), want[:12], (got or "unreadable")[:12]))
+                     "version, or re-register and re-run.\n"
+                     "  bound at queue time  %s\n"
+                     "  hashes now           %s\n"
+                     "  file                 %s"
+                     % (arm.name.upper(), want, (got or "unreadable"), path))
         return exp, notes
 
     reason = (b.request or {}).get("no_expect") or (a.request or {}).get("no_expect")
