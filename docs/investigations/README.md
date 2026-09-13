@@ -55,6 +55,7 @@ as a candidate until an isolation run says otherwise.
 | [`issue-19-isolation-2026-09-12.md`](issue-19-isolation-2026-09-12.md) | #19 measured on one binary: 2 contamination against 82 missing-state, the ten features those name, and the test-coverage gap the progress logs exposed |
 | [`diag-capture-cost.md`](diag-capture-cost.md) | Why per-draw capture stalls the guest. Corrected reading; the cost is a GPU sync per draw and a three-byte `fwrite` per pixel. **Its "freezes indefinitely" headline is superseded** — see `known-issues-reverified-2026-09-12.md` entry 2 |
 | [`known-issues-reverified-2026-09-12.md`](known-issues-reverified-2026-09-12.md) | #18's re-check over every inherited `KNOWN_ISSUES` entry. Six of seven are closable and none of them is in the accuracy gap; the two that survive are a texture-cache skip that marks the slot clean, and a guest-kernel freeze whose disc is not on this host and which no harness here could detect |
+| [`packed-texel-expansion.md`](packed-texel-expansion.md) | #59: silicon expands a sub-8-bit colour field by replicating bits, the native Vulkan/GL packed formats by the exact ratio. One rule for the whole family, read out of the goldens by level set with no screen-to-texel fit, and why A4R4G4B4 is exempt. Includes the honest cost: render-to-texture in 565 loses its GPU-side bind |
 | [`sweeps/`](sweeps/) | Raw per-subsystem inventories. **Machine-generated, not verified** — read the header on each |
 
 ## Missing, and referenced by open issues
