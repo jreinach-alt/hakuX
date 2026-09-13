@@ -1308,4 +1308,107 @@ falsifier rather than a formality, and a failure by one or two windows is
 diagnosed in advance: that residual is the tail above, which no cap reaches,
 and **E2** (worst fully-unlocked window clamps ≤ 2) is the leg that bounds it.
 
-*Arm B results to be filled in from the dispatcher.*
+### VERDICT: cap 12 fixes D9. 6 of 8 registered legs hold, and both failures are instrument findings
+
+Four runs, **all thor**, `device_label` read out of each `result.json`. Arm A
+`9931f882bb` / apk `93c25670227f`, arm B `2e4e8403d9` / apk `bfb13fa5f097` —
+distinct binaries, one constant apart. DOA3, 240 s, two runs per arm, one
+`--who`. Prediction registered 15:11:44Z, before any arm was queued.
+
+| | A1 | A2 | B1 | B2 |
+|---|---|---|---|---|
+| fully-unlocked windows | 28 | 22 | 7 | 32 |
+| **worst window clamps** | **6** | **7** | **0** | **1** |
+| clamp/assertion (full) | 0.0253 | 0.0285 | 0.0000 | 0.0008 |
+| fully-unlocked rate | 58.397 Hz | 58.077 | **60.001** | **59.854** |
+| **guest time lost** | **+1.544 s/min** | **+1.864** | **−0.062** | **+0.085** |
+| deferred hold | 11,571,422 | 11,890,186 | 8,145,533 | 9,634,700 |
+| locked interval (control) | 16,683,894 | 16,690,407 | 16,695,711 | 16,686,094 |
+| **gfps p90 / max** | 59 / 60 | 59 / 59 | 59 / 60 | 59 / 59 |
+
+**D9 — the leg this change exists to fix — HOLDS.** The worst fully-unlocked
+window clamps **0 and 1** against a bar of 2, where cap 15 clamped **5**. And
+in these arms cap 15 itself clamped **6 and 7**, so the bar was being missed
+by more than the published run suggested.
+
+**Guest time lost goes 1.54–1.86 → −0.06 to +0.09 s/min, with no overlap** —
+about 20×, and B1 is very slightly *fast* rather than slow. **At no
+measurable frame-rate cost**: p90 59 → 59 and max 60 → 59. That is the
+**fourth arm running** in which the deferral's frame-rate defence has not
+appeared (#65's B4, its U6, D6, and now this) — and the first at a 25% cut
+rather than 6.25%, which is the one that had no precedent.
+
+| my leg | outcome |
+|---|---|
+| E0 gate, ≥5 fully-unlocked windows per arm | **HOLDS** — 28/22 and 7/32 |
+| **E1** arm B has zero exceedance windows at cap 12 | **FAILS** — 2 and 3 |
+| **E2** arm B worst window clamps ≤ 2 | **HOLDS** — 0 and 1 |
+| E3 arm B worst run ≤ 0.40 s/min | **HOLDS** — 0.085 |
+| **E4** hold falls 3,128,202 ns run-paired ±20% | **FAILS** — +9.5% and −27.9% |
+| E5 cost: gfps p90/max fall ≤ 2 | **HOLDS** — 0 and 1 |
+| E6 locked control within 50,000 ns | **HOLDS** — 11,817 ns (0.07%) |
+| E7 `neg == 0`, the impossible row | **HOLDS** — 0 of 58,780 assertions |
+
+### E1 FAILED, and it convicts MY OWN ESTIMATOR rather than the value
+
+Arm B keeps **2 and 3** exceedance windows against a registered bar of zero.
+But **D9's direct clamp counter reads 0 and 1 in the same runs.** The
+estimator predicted two to three clamping windows where the hardware counter
+saw zero to one.
+
+**So `def(max=) − max_defer > margin` over-predicts clamps by roughly two to
+three times**, and the reason is the one already written down two sections up
+when the cap-16 row was relabelled from "impossible" to "coverage": `def_max`
+can come from a **`remaining`-bound** deferral, whose hold was *shorter* than
+`max_defer`, so its true lateness never exceeded a period even though the
+estimator's difference exceeded the margin.
+
+This is the sharpest result of the pair, because **the exceedance table is
+what I used to choose 12 over 15.** Three consequences:
+
+- **The choice survives.** The table's *direction* is validated by the counter
+  it was standing in for: clamps went 6, 7 → 0, 1 exactly where the table said
+  35, 28 → 2, 3. A conservative proxy that tracks the truth is still a guide.
+- **Every exceedance number in this document is an over-estimate**, including
+  the nova's. "12 to 29 exceedance windows at cap 12" should be read as
+  perhaps 4 to 15 actually-clamping windows. That is still one to two orders
+  above the thor's 0 to 1, so **the nova conclusion survives — weakened, not
+  withdrawn.**
+- **A leg on a proxy failed while the leg on the counter passed.** E1 and E2
+  ask the same question; E2 asks it of `clamp=` and E2 is the one to carry
+  forward. This is the same lesson the `clamp=` counter was built for in the
+  first place — *it was found by building the counter rather than reasoning
+  again* — and I then registered a leg against the proxy anyway.
+
+### E4 FAILED on the hold's own occupancy, which is today's fourth instance
+
+Run-paired the fall is **+9.5%** and **−27.9%** against three poll intervals;
+my bar was ±20%, so it fails on run 2. Cross-paired it is 38.1%.
+
+The diagnosis is in the table: **arm B run 1 had 7 fully-unlocked windows and
+run 2 had 32**, with defers per window **37.9 against 84.8** — a 2.2× swing
+inside one binary. `def(mean=)` is a mean over a window mixing **cap-bound and
+`remaining`-bound** deferrals, and the mixture moves with occupancy, so **the
+hold mean is itself partly an occupancy measurement.** A ±20% bar on it is
+tighter than the quantity's own reproducibility.
+
+That is the **fourth** time today a statistic has turned out to measure
+occupancy: #64's median, #65's U5, D1/D5/D7 — and now my own E4, registered
+knowing all four. The remedy is the same one that keeps working: E2's *count
+of windows where a condition holds* survived, and every leg I registered as an
+absolute (E3, E6, E7) held.
+
+### The previous lane's legs, for comparison, and one of them makes the point
+
+Run through the same judge: **5 hold, 3 FAIL, 1 VOID.** D2 fails because arm
+A's fully-unlocked drift in *these* runs is 444,340 and 539,055 ns against the
+published 3,746,966 and 1,170,848 — so its registered floor of a 500,000 ns
+*fall* cannot be met when the control only had 444,340 ns to give. **My E3 is
+the absolute form of the same question and it holds.** D7 fails at 61.1% on
+the defers-per-window quantity whose spread inside one arm is 2.2×. D0 is VOID
+because at cap 15 no arm A window is cap-bound *by the mean* — which is itself
+the 16 → 15 change having worked.
+
+*The nova residual (E8) is recorded above as measured and not counted: this
+pair cannot test it, because the nova does not enter unlock mode on any title
+on hand.*
