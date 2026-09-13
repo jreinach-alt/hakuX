@@ -1014,7 +1014,46 @@ static void nv2a_vblank_timer_cb(void *opaque)
         int64_t cap      = period * 2 - period / 4;
         defer_window = MIN(MAX(adaptive, floor), cap);
     }
-    int defer_cap = unlocked ? 16 : 4;
+    /*
+     * The deferral hold, in poll intervals, and the one place where it has to
+     * answer to the grid rather than to the frame rate.
+     *
+     * `max_defer = poll_interval * defer_cap` below. In normal mode that is
+     * `(period/8) * 4 = period/2`, and a deferral alone can never push an
+     * assertion past its next grid slot -- which is exactly why the locked
+     * regime delivers 59.941 Hz at +0.005 s/min of drift. In unlock mode it
+     * was `(period/16) * 16 = period` to the nanosecond, and that is the one
+     * value the grid cannot absorb: the assertion lands at
+     * `slot + L + max_defer + L'` for a timer round trip L + L' > 0, the
+     * `<= now` clamp fires, and the grid is re-based on `now + period`
+     * instead of `slot + period` -- discarding the WHOLE lateness, not the
+     * excess over a period. Measured on #65's arm B (DOA3, thor): 843,164 ns
+     * of permanent drift per assertion in fully-unlocked windows, 3.03 s of
+     * guest-visible time lost per minute of play, on a mode that is on by
+     * default for every title above about 40 fps.
+     *
+     * The grid's own arithmetic picks the value, and it is not a tuning
+     * parameter. The next slot is one period away; the cap is quantised in
+     * poll intervals; a period is sixteen of them. So the largest cap that
+     * leaves the grid ANY room is fifteen, and the room it leaves is one poll
+     * interval = 1,042,734 ns, which is what the timer round trip has to fit
+     * inside. That round trip is measurable directly as
+     * `def(mean=) - max_defer` and reads 126,275 / 126,526 / 132,679 /
+     * 178,460 ns across the four cap-bound windows of that soak -- 5.8x to
+     * 8.3x inside the margin. Cost: the hold loses 6.25% of its length.
+     *
+     * Where this value is wrong: a host whose timer round trip exceeds
+     * 1,042,734 ns. The nova's non-deferred lateness is 3.4x the thor's
+     * (360,179 against 104,923 ns), which puts its round trip near 720,000 ns
+     * and the margin at only 1.4x. If the clamp still fires there, the
+     * reasoning is unchanged and the value is fourteen; nothing above needs
+     * revisiting. That is the failure world, stated before the arm ran.
+     *
+     * Deliberately NOT changed: `poll_interval`, so the retry granularity is
+     * the same and this is one constant; and the normal-mode pair, which the
+     * arithmetic already exonerates.
+     */
+    int defer_cap = unlocked ? 15 : 4;
     int64_t poll_interval = unlocked ? period / 16 : period / 8;
     bool in_deferral_window = effective_frame_ns > 0 &&
                               time_in_frame < defer_window;
