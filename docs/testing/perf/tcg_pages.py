@@ -120,7 +120,8 @@ import sys
 # "inval ev=N ov=N sp=N em=N ws=N pr=N ins=N bytes=N blk=N.NN"
 INVAL_RE = re.compile(
     r"inval ev=(\d+) ov=(\d+) sp=(\d+) em=(\d+) ws=(\d+) pr=(\d+) "
-    r"(?:ai=(\d+) )?ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
+    r"(?:ai=(\d+) )?(?:di=(\d+) cg=(\d+) )?"
+    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
 
 # "slow stores N (M reached the invalidator) ... [blocks tossed T, generated G]"
 STORES_RE = re.compile(
@@ -141,6 +142,8 @@ COUNTERS = [
     ("ws",    "...of those, a block would have survived a range test"),
     ("pr",    "arming TLB walks performed (tlb_protect_code)"),
     ("ai",    "visited blocks that already carried CF_INVALID"),
+    ("di",    "blocks really removed (past the early return)"),
+    ("cg",    "calls that really generated code"),
     ("ins",   "guest instructions translated"),
     ("blk",   "mean guest instructions per generated block"),
     ("tossed", "blocks invalidated (all callers)"),
@@ -202,14 +205,22 @@ def parse(path):
                 w.update({
                     "ev": int(g[0]), "ov": int(g[1]), "sp": int(g[2]),
                     "em": int(g[3]), "ws": int(g[4]), "pr": int(g[5]),
-                    "ins": int(g[7]), "bytes": int(g[8]),
-                    "blk": int(g[9]) + int(g[10]) / 100.0,
+                    "ins": int(g[9]), "bytes": int(g[10]),
                 })
-                # ai= is absent on a build from before it was added; a
-                # missing field is not a zero, so it stays absent and the
-                # report omits the row rather than claiming none happened.
+                # Absent fields stay absent: a build from before a counter
+                # existed reports no value, and a missing field is not a zero.
                 if g[6] is not None:
                     w["ai"] = int(g[6])
+                if g[7] is not None:
+                    w["di"] = int(g[7])
+                if g[8] is not None:
+                    w["cg"] = int(g[8])
+                # blk is instructions per block that really generated code.
+                # Divided by a CALL count instead -- which is what
+                # hakux_tb_generated is -- it comes out below 1, which a block
+                # cannot be. Such a row is void, not small, so it is dropped
+                # rather than reported. That is how the defect was found.
+                w["blk_raw"] = int(g[11]) + int(g[12]) / 100.0
                 windows.append(w)
                 pending = {}
                 continue
@@ -223,6 +234,21 @@ def parse(path):
                                "vpf": float(m.group(5))})
     if pending:
         windows.append(pending)
+    # blk is instructions per block that really generated code. Divided by a
+    # CALL count instead -- which is what hakux_tb_generated is -- it comes out
+    # below 1, and a block cannot hold less than one instruction. One such
+    # window voids the whole column: keeping only the windows that happened to
+    # land above 1.0 would be survivorship, not a measurement. That impossible
+    # row is how the defect was found in the first place.
+    raw = [w["blk_raw"] for w in windows if "blk_raw" in w]
+    if raw and min(raw) >= 1.0:
+        for w in windows:
+            if "blk_raw" in w:
+                w["blk"] = w["blk_raw"]
+    elif raw:
+        for w in windows:
+            if "blk_raw" in w:
+                w["blk_void"] = w["blk_raw"]
     return windows, pacing
 
 
@@ -308,9 +334,30 @@ def report(label, path, keep_first=False):
 
 
 def derive(windows):
-    """The two ratios the levers turn on."""
+    """The two ratios the levers turn on, plus the self-consistency check."""
     if not windows:
         return
+    void = [w["blk_void"] for w in windows if "blk_void" in w]
+    if void:
+        print("   -> VOID: mean block length came out at %.2f, and a block"
+              " cannot hold less than one instruction. This build divides"
+              " instructions by hakux_tb_generated, which counts CALLS to"
+              " tb_gen_code -- a call that recycles a TB from inv_htable"
+              " never generates code. Rebuild with the cg= counter before"
+              " reading any block-length figure, and treat the published"
+              " \"blocks generated\" numbers as call counts too."
+              % (sum(void) / len(void)))
+    vis = sum(series(windows, "tossed"))
+    di = sum(series(windows, "di")) if any("di" in w for w in windows) else None
+    ai = sum(series(windows, "ai")) if any("ai" in w for w in windows) else None
+    if di is not None and ai is not None and vis:
+        print("   -> visits %d = real discards %d + already-invalid %d"
+              " (residual %d)." % (vis, di, ai, vis - di - ai))
+        print("      A large already-invalid share means the page lists carry"
+              " dead TBs that do_tb_phys_invalidate's early return refuses to"
+              " unlink, every later store re-visits them, and BOTH the"
+              " discarded-blocks count and the sp/ov split are measured over"
+              " the wrong population.")
     ov = sum(series(windows, "ov"))
     sp = sum(series(windows, "sp"))
     em = sum(series(windows, "em"))
@@ -318,8 +365,16 @@ def derive(windows):
     if ov + sp:
         print("   -> %.1f%% of discarded blocks had no written byte in them"
               " (sp/(sp+ov) = %d/%d)." % (100.0 * sp / (ov + sp), sp, ov + sp))
+        if sp and ov * 100 < sp:
+            print("      CAUTION: that is at or near 100%, and a systematic"
+                  " instrument error would look exactly like this. An"
+                  " already-invalidated TB left on the page list has no"
+                  " reason to overlap the current write, so a list clogged"
+                  " with dead blocks reports 100% spared while saying"
+                  " nothing about live ones. Check the visits identity above"
+                  " before reading this as the premise check.")
         print("      This is the premise check for"
-              " performance-next-three.md section 2. Near 0%% means the"
+              " performance-next-three.md section 2. Near 0% means the"
               " invalidation is already effectively range-precise and the"
               " block-extent lever has its mechanism. Large means it does"
               " not: a smaller block cannot be missed by a store that"
@@ -353,7 +408,7 @@ def derive(windows):
         print("   -> %.1f%% of page-emptying events would NOT have emptied the"
               " page under a range test (ws/em = %d/%d)."
               % (100.0 * ws / em, ws, em))
-        print("      That is the arming TLB walk -- tlb_reset_dirty, 10.6%%"
+        print("      That is the arming TLB walk -- tlb_reset_dirty, 10.6%"
               " self of the bounding thread -- that the range test would"
               " remove. It is the prize, and it is not about discarded code.")
 

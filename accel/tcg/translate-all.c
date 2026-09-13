@@ -320,9 +320,28 @@ uint64_t hakux_tb_generated;
  */
 uint64_t hakux_gen_insns;
 uint64_t hakux_gen_bytes;
+/*
+ * Calls to tb_gen_code that actually generated code.
+ *
+ * This exists because `hakux_tb_generated`, which the always-on hakuX-pages
+ * line has reported as "blocks generated" all along, is incremented at the top
+ * of tb_gen_code and therefore counts **calls**, not generations. A call that
+ * finds a recycleable TB in inv_htable takes `goto recycle_tb` and never
+ * reaches code generation at all.
+ *
+ * A first device run made that unmistakable rather than arguable: mean
+ * instructions per "generated block" came back as 0.38, and a block cannot
+ * contain less than one instruction. The impossible row was the finding -- see
+ * the note in AGENTS.md about a measurement that disagrees with the
+ * arithmetic being the instrument until proven otherwise. The recycle rate is
+ * roughly five to one, so the published "3,440 generated per 120 frames" and
+ * the 2.8:1 waste ratio derived from it are both call counts.
+ */
+uint64_t hakux_tb_codegen;
 
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
+    /* Counts CALLS. hakux_tb_codegen counts generations; see above. */
     hakux_tb_generated++;
     CPUArchState *env = cpu_env(cpu);
     TranslationBlock *tb, *existing_tb;
@@ -623,6 +642,7 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
         goto buffer_overflow;
     }
     tb->tc.size = gen_code_size;
+    hakux_tb_codegen++;
     hakux_gen_insns += tb->icount;
     hakux_gen_bytes += tb->size;
 

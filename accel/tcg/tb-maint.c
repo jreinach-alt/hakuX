@@ -82,6 +82,24 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
  * cannot, and the whole point of the leg is to notice the difference.
  */
 uint64_t hakux_inval_already;
+/*
+ * TBs that were really removed, as opposed to visited.
+ *
+ * `hakux_tb_invalidated`, reported on the always-on line as "blocks tossed",
+ * is incremented per TB *visited* by the invalidation loop, before
+ * tb_phys_invalidate__locked -- which early-returns when qht_remove fails, so
+ * a visit is not a discard. The first device run showed about one visit per
+ * event and the page emptying in only 6% of events, which cannot both be true
+ * of live blocks: a page holding one block that is really removed empties.
+ * The consistent reading is that the page lists carry already-invalidated TBs
+ * the early return refuses to unlink, and every later store re-visits them.
+ *
+ * If that is right, "blocks tossed" has been counting re-visits of dead blocks
+ * and the discard side of the waste ratio is inflated too. This counter and
+ * hakux_inval_already settle it: visits should equal real discards plus
+ * already-invalid ones.
+ */
+uint64_t hakux_tb_discarded;
 #endif
 
 /* List iterators for lists of tagged pointers in TranslationBlock. */
@@ -1035,6 +1053,11 @@ static void do_tb_phys_invalidate(TranslationBlock *tb, bool rm_from_page_list)
 
     qht_insert(&tb_ctx.inv_htable, tb, h, &existing);
     g_assert(existing == NULL);
+
+#ifdef XBOX
+    /* Past the early return above, so this block really is being discarded. */
+    hakux_tb_discarded++;
+#endif
 
     /* remove the TB from the page list */
     if (rm_from_page_list) {

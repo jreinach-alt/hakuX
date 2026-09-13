@@ -350,9 +350,10 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_inval_already;
         extern uint64_t hakux_gen_insns;
         extern uint64_t hakux_gen_bytes;
-        extern uint64_t hakux_tb_generated;
-        static uint64_t p_ev, p_ov, p_sp, p_em, p_ws, p_pr, p_in, p_by, p_tg;
-        static uint64_t p_ai;
+        extern uint64_t hakux_tb_codegen;
+        extern uint64_t hakux_tb_discarded;
+        static uint64_t p_ev, p_ov, p_sp, p_em, p_ws, p_pr, p_in, p_by, p_cg;
+        static uint64_t p_ai, p_di;
         uint64_t d_ev = hakux_inval_events        - p_ev;
         uint64_t d_ov = hakux_inval_tbs_overlap   - p_ov;
         uint64_t d_sp = hakux_inval_tbs_spared    - p_sp;
@@ -361,8 +362,9 @@ void nv2a_profile_flip_stall(void)
         uint64_t d_pr = hakux_tlb_protect_calls   - p_pr;
         uint64_t d_in = hakux_gen_insns           - p_in;
         uint64_t d_by = hakux_gen_bytes           - p_by;
-        uint64_t d_tg = hakux_tb_generated        - p_tg;
+        uint64_t d_cg = hakux_tb_codegen          - p_cg;
         uint64_t d_ai = hakux_inval_already       - p_ai;
+        uint64_t d_di = hakux_tb_discarded        - p_di;
         p_ev = hakux_inval_events;
         p_ov = hakux_inval_tbs_overlap;
         p_sp = hakux_inval_tbs_spared;
@@ -371,18 +373,23 @@ void nv2a_profile_flip_stall(void)
         p_pr = hakux_tlb_protect_calls;
         p_in = hakux_gen_insns;
         p_by = hakux_gen_bytes;
-        p_tg = hakux_tb_generated;
+        p_cg = hakux_tb_codegen;
         p_ai = hakux_inval_already;
+        p_di = hakux_tb_discarded;
         __android_log_print(ANDROID_LOG_INFO, "hakuX-pages",
             "inval ev=%llu ov=%llu sp=%llu em=%llu ws=%llu pr=%llu ai=%llu "
-            "ins=%llu bytes=%llu blk=%llu.%02llu",
+            "di=%llu cg=%llu ins=%llu bytes=%llu blk=%llu.%02llu",
             (unsigned long long)d_ev, (unsigned long long)d_ov,
             (unsigned long long)d_sp, (unsigned long long)d_em,
             (unsigned long long)d_ws, (unsigned long long)d_pr,
             (unsigned long long)d_ai,
+            (unsigned long long)d_di, (unsigned long long)d_cg,
             (unsigned long long)d_in, (unsigned long long)d_by,
-            (unsigned long long)(d_tg ? d_in / d_tg : 0),
-            (unsigned long long)(d_tg ? (d_in * 100 / d_tg) % 100 : 0));
+            /* Per block that really generated code, not per call. A value
+             * below 1.00 is arithmetically impossible and means this figure
+             * is being divided by a call count again. */
+            (unsigned long long)(d_cg ? d_in / d_cg : 0),
+            (unsigned long long)(d_cg ? (d_in * 100 / d_cg) % 100 : 0));
     }
 #endif
 
