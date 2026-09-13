@@ -405,3 +405,228 @@ stage, on change, and as a per-frame summary rather than a line per bind. If a
 stage's matrix or texgen mode differs between a clean frame and a flashing one
 for the same material, that is the defect. Three stages are active, so include
 which stage.
+
+## The fourth retraction holds, and it holds for a better reason
+
+Measured 2026-09-13, entirely offline, from the four diagnostic sessions in
+`~/hakux-work/diag/` and the frame mosaics already in `images/`. No device
+time: Galleon lives only on the Nova and the Nova was held. All four
+objections above were re-examined. Two are confirmed, one is confirmed and
+generalised, one is **downgraded** -- and the document's central quantity, the
+artifact's rate, turns out to have been measuring the wrong event.
+
+### The rate was never measured, and the frame it was measured on is the wrong frame
+
+`docs/testing/galleon_flash_rate.py` counts flashing frames from frames on
+disk. It separates two things that mean luminance and local contrast cannot:
+
+| | |
+|---|---|
+| a **brightness** excursion | the surface reads lighter, at large scale |
+| a **stipple** excursion | a hard high-frequency hatch appears, with a direction |
+
+Over `images/galleon-deck-cycle.png`, the 40-frame left-deck mosaic this
+document is built on, **they are not the same frames.**
+
+| | mean lum | HF energy | d1/d2 |
+|---|---|---|---|
+| set median | 87.4 | 4.65 | ~1.07 |
+| **frame 38** (this doc's flash) | **110.2** | **4.94** | 1.14 |
+| frame 4 | 96.0 | **8.96** | 0.75 |
+| frame 8 | 89.0 | **7.86** | 0.50 |
+| frame 13 | 94.6 | **6.80** | 0.73 |
+| frame 32 | 91.8 | **8.25** | 0.92 |
+| frame 14 | 92.1 | 6.11 | **1.68** |
+
+Frame 38 is the brightest frame in the set and its high-frequency energy is
+**dead average**. The frame the whole document calls "the flash", and from
+which the 92.2 -> 112.9 / 24.2 -> 29.4 table is taken, is not the hatched one.
+Its std of 22.7 is the highest in the set and that is large-scale contrast, not
+stipple; std cannot tell the two apart and HF energy can. Looking at the tiles
+side by side agrees with the numbers: 4, 8 and 32 are visibly hatched and 38 is
+a bright, comparatively smooth plank.
+
+So the rates are:
+
+    deck, left-deck crop      stipple  4 / 40 = 10.0 per 100   (12.5 at k=2)
+                              bright   1 / 40 =  2.5 per 100
+    town, ground crop         stipple  7 / 50 = 14.0 per 100
+                              bright   0 / 50 =  0.0 per 100
+
+**Two independent scenes agree on roughly 10-14 stipple frames per hundred,
+four to six times the "one frame in forty" recorded above.** And the direction
+reversal is now a measurement rather than a report: the deck's four strong
+frames all hatch on the anti-diagonal (d1/d2 0.50-0.92) and frame 14 hatches on
+the main diagonal (1.68); the town set carries both directions above the bar.
+
+A note on the town capture, because it changes what an earlier negative means.
+Over the **whole** mosaic tile the town frames look static -- per-tile mean
+spans 55.2-59.1 and the largest consecutive-frame difference is 3.6 grey
+levels against the deck's 22.1. The artifact is there, but it occupies a small
+part of the tile, and only a region-restricted measurement finds it. Any
+future null from a whole-frame statistic on this defect should be assumed to be
+that effect until the region is named.
+
+### Objection 2 is CONFIRMED: 2048 is fitted, and the corpus refutes it
+
+Stage 0 carries `matrix_enable = false` with row 0 `[1, ...]` on all 167
+stage-1 draws, so stage-0 coordinates are the mesh's own UVs. `stage0_width`
+base texels and `scale * stage1_width` detail texels therefore span the same
+UV unit, and their ratio is detail texels per base texel:
+
+| rule | value | draws |
+|---|---|---|
+| `scale * stage1_width` | 2048 | 166 |
+| | **1024** | **1** |
+| `scale * stage1_width / stage0_width` | **8.000** | **167** |
+
+**Draw 92 is the only draw in the corpus whose stage-0 texture is 128 wide**
+rather than 256 -- 166 of 167 use a 256x256 BC1 base. It is therefore the only
+observation capable of separating the two rules, and it separates them against
+2048. The second rule has no exception at all, and it is the more natural
+reading of a *detail* texture: density fixed relative to the base map, which is
+what "detail" means. 2048 is that rule specialised to the base texture the
+other 166 draws happen to carry.
+
+`check_diag_invariants.py` now gates on the rule with no exception and reports
+the fitted one as an observation, because a gate must not fail on the single
+draw that distinguishes them. Baseline: **167 checked, 0 violating.**
+
+And the visual claim pointed at the wrong stage anyway. "Visibly coarser stone
+blocks" is the **base** texture's block size; stage 0 is 128 wide on that draw
+and 256 elsewhere, which is a legitimate property of the material -- 41 draws
+in the corpus bind a 128x128 BC1 at stage 0. Stage 1 at scale 8 over a 128
+texture puts 1024 detail texels across a UV unit, far finer than block scale,
+so it cannot make blocks coarser whatever value it holds.
+
+### Objection 1 is CONFIRMED and generalises to the whole corpus
+
+The line references above are stale -- `draw.c:6050` is the *clear* log, not
+the draw log, and `SET_TEXTURE_MATRIX` is nowhere near `pgraph.c:3130`. Cite
+the symbol rather than the line here; `vk/draw.c` moved by 53 lines between
+`b958a64146` and `5c52049f66` alone. The conclusion survives three times over,
+and each reason covers **every draw in every capture** rather than draw 92:
+
+1. **`g_xemu_draw_merge` is `false` by default**, in three places: the static
+   in `vk/draw.c` (`static bool g_xemu_draw_merge = false`), the Kotlin
+   default in `SettingsActivity.kt`, and the
+   `GetPrefBool(..., "draw_merge", false)` in `xemu_android.cpp`. The queue
+   is an opt-in setting. Unless it was on for Galleon on that device, no draw
+   in any capture went through the queue. `draw.c:4520` says the same about
+   both switches in a different context ("Both switches are off by default").
+2. **A merged draw is never logged.** `nv2a_diag_log_draw_call` is called from
+   inside `pgraph_vk_flush_draw`, and the enqueue path reaches `post_draw` by
+   `goto`, skipping it. So appearing in the JSON *means* the draw was submitted
+   on its own. No logged draw can be a merge victim, by construction.
+3. **A capture cannot merge anything anyway.** The per-draw surface dump in
+   `nv2a_diag_log_draw_call` calls
+   `pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_DOWN)` before downloading,
+   and `pgraph_vk_finish` flushes the queue and sets
+   `draw_queue.active = false`. Every draw during a capture therefore starts
+   with an inactive queue.
+
+Point 3 is the one worth keeping, because it is not about this candidate. **A
+diagnostic capture runs the renderer fully serialised, with a submit-and-wait
+after every draw.** Any defect whose mechanism is merging, deferred
+submission, a stale binding or a missing barrier is *suppressed while
+capturing*. So the claim above that "one capture therefore holds every
+hypothesis this investigation has raised" is false: it holds every
+**state-value** hypothesis and is blind to the whole submission-ordering class.
+That is the same shape as the validation-layer test -- an instrument that
+cannot see the mechanism reporting nothing.
+
+### Objection 4 is CONFIRMED, with the numbers
+
+Draw 92's footprint is the set of pixels differing between the framebuffers
+before and after it: **102,967 px, 16.8% of the 1280x480 surface**, one solid
+wall-shaped region, bbox x[161..684] y[0..244].
+
+    mean luminance inside that footprint, BEFORE draw 92    35.2
+    mean luminance inside that footprint, AFTER  draw 92   111.0
+
+The region was near-black. The "before" image contains no wall at all, so the
+comparison shows an object appearing, and could not have shown a wall drawn
+wrongly under any circumstances. Two neighbouring framebuffers are also
+byte-identical to it in both directions (`d90 == d91`, `d92 == d93`), so a
+single-draw before/after on this data has less resolution than it appears to.
+
+### Objection 3 is DOWNGRADED
+
+With the rate measured, the frequency argument weakens rather than holds. The
+four sessions contain **four guest frames**, not seven: the ten "frames" per
+session are capture ticks sharing one or two `frame_number` values, and only
+frame 4122 (191 draws, split across two records) looks complete. One anomalous
+draw in four frames is 25%, against a measured artifact rate of 10-14% -- those
+are compatible, not mismatched. Objection 3 no longer refutes anything. It is
+objection 2 that kills the candidate.
+
+And there is a prior question objection 3 skipped: **nothing establishes that
+the artifact was on screen during any of the four sessions.** The town capture
+earned that check explicitly and passed it; these did not. Nine of roughly 300
+per-draw framebuffers survive on disk, all from one frame of one session, so
+the rate tool cannot be run over them and no final frame exists to inspect.
+Combined with the serialisation in point 3 above -- a capture submits and waits
+after every draw, which is not how the artifact was observed -- the corpus
+should be treated as an unverified sample until a capture is scored for the
+artifact with the frames retained. That is a cheap fix to the capture, not a
+cheap fix to the corpus already taken.
+
+### The queue bug is real, and it is still not this
+
+Verified read-only. `SET_TEXTURE_MATRIX` in `pgraph.c` writes
+`pg->vsh_constants[NV_IGRAPH_XF_XFCTX_T0MAT + tex*8 + entry/4]` and sets
+`vsh_constants_dirty[row]` and `vsh_constants_any_dirty`. It never calls
+`pgraph_reg_w`, so it never reaches the `pg->any_reg_gen++` inside
+`pgraph_reg_w`, and `check_draw_mergeable`'s `uniforms_changed` compares only
+`any_reg_gen`. Nothing in the mergeability set (`shader_state_gen`,
+`pipeline_state_gen`, `texture_state_gen`, `vertex_attr_gen`,
+`texture_vram_gen`, `primitive_mode`, the dynamic registers) moves on a
+texture-matrix write either. **So a transform-constant change between two
+otherwise-mergeable draws is invisible to the queue.** Latent, because
+`draw_merge` defaults off; a real bug if it is ever defaulted on, and it should
+be fixed before that happens rather than after.
+
+One correction to the hint that motivated this line of enquiry: the
+threaded-draw snapshot **does** capture the texture matrix.
+`pgraph_vk_snapshot_state` in `vk/render_thread.c` copies `vsh_constants`,
+`vsh_constants_dirty`, `vsh_constants_any_dirty` and
+`texture_matrix_enable`. Whatever audit flagged that field as uncaptured is
+stale.
+
+### What is now the cheapest thing that settles it
+
+The driver A/B, unchanged in priority and cheaper than it looked -- with one
+correction about the harness. **`driver_ab.sh` cannot be used for Galleon**: it
+enumerates a suite's goldens and boots one test disc per test. The reusable
+pieces are `~/hakux-work/drv/swap_driver.sh` (three arms, `t30` / `t26` /
+`stock`, payloads present on disk for T30 and T26, and it restores T30 on
+exit) plus a title soak, which is workload-agnostic.
+
+What was missing was not the swap but the **observable**, because Galleon
+cannot be driven identically twice and frames will not compare between arms.
+It now exists: the rate above is a per-run figure over tens of frames with a
+median/MAD bar computed inside each run, so each arm scores itself and the
+comparison is between rates rather than between images.
+
+The registration this supports, with absolutes rather than falls:
+
+    V0 (validity)  arm T30 shows >= 3 stipple frames per 40 in the named
+                   region, or the pair is void -- the instrument must be
+                   pointing at something before a zero means anything
+    A1             arm T26 and arm stock each report their stipple rate; the
+                   claim under test is that all three arms land in 5-20 per
+                   100, i.e. the artifact does NOT move with the driver
+    A2             the brightness class stays at 0-3 per 100 in every arm,
+                   and never coincides with a stipple frame
+
+A1 failing -- one driver at zero, or one far above the others -- is the result
+that redirects the entire investigation, and it is the only leg here that any
+amount of emulator-state logging could not have produced.
+
+Second, and only if the driver is ruled out: log what the GPU received. Note
+that the diag file cannot answer this as built. It reads the matrix from
+`pg->vsh_constants`, which is the same array the uniform update reads, so the
+two agree by construction and a divergence between state and the pushed buffer
+is exactly what this instrument cannot see. That measurement needs a read-back
+of the descriptor's bound image view and of the uniform buffer contents at
+submission, which is a source change and a new territory grant.
