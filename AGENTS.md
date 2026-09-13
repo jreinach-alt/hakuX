@@ -350,6 +350,25 @@ A/B arm. The prediction's sha256 is recorded in the request at queue time and
 checked when the arm is judged, so a verdict reads `PRE-REGISTERED`,
 `TAMPERED`, `UNBOUND` or `POST-HOC`. Only the first is worth citing.
 
+**A SOAK needs the prediction bound too, and needs it more than a disc arm
+does.** `--expect` works on `--title` requests as of 2026-09-13; before that
+the binding block sat inside the suites branch, so a soak's `--expect` was
+accepted and its `expect_sha` silently never recorded. A soak writes no
+captures, so `runs: 0`, nothing computes a verdict, and **you read your legs
+off the logcat yourself** -- which is exactly why the sha matters: it is the
+only thing that makes a leg quietly widened after the numbers arrive
+detectable. `--no-expect REASON` stays correct for a genuine baseline, survey
+or noise-floor run. Say which.
+
+Two soak-path traps fixed with it, both of which had cost measurements:
+`--wait` died with `KeyError: 'disc_id'` because the reader assumed a disc
+result, and **`--runs N` was accepted and ignored** -- a requester asking for
+three runs got one, with a one-sample noise floor and no indication. Queue N
+separate soaks under one consistent `--who`: **the replicate for a no-oracle
+measurement is the RUN, not the window.** A rule computed over all windows
+tightens with every window a longer soak happens to produce, and absolute
+per-window counts have been measured varying 3-5x *within a single run*.
+
 Four rules, each of which cost a real verdict on 2026-09-12:
 
 - **State the falsifier as a measurement, not a pixel count.** Name the
