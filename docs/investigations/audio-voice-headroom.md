@@ -149,6 +149,47 @@ monitor mix applies no divisor, and the mixbins that do carry one are
 
 *Falsified* by exhibiting a path from `CFG_FMT_HEADROOM` to `monitor.frame_buf`.
 
+#### H3 as first written is too broad, and I falsified half of it myself
+
+Recorded as a correction rather than an edit, and timestamped by being committed
+while both soaks were still queued — **no number from either run existed when
+this was written**, so it is a source claim revised against source, not a
+prediction widened against results.
+
+The clause "there is no expression anywhere under `hw/xbox/mcpx/` that carries a
+headroom value into `monitor.frame_buf`" is **false**. There are exactly four
+`1 << <headroom>` expressions in the tree (`vp.c:586`, `:1316`, `:1521`,
+`:1523`), and the second of them is on the monitor path by construction:
+
+```c
+    float mp_gain = 1.0f;
+    if (d->monitor.point == MCPX_APU_DEBUG_MON_VP) {
+        mp_gain = 1 << d->vp.submix_headroom[mp_bin];
+    }
+```
+
+`get_multipass_samples`, `vp.c:1313-1316`. A multipass sub-voice reaches the
+output only through this read — the monitor mix skips its direct contribution to
+avoid double-counting — so its content is scaled by `2^submix_headroom[mp_bin]`
+on the way to `sample_buf` and then to `monitor.frame_buf`. That is a
+*compensation* for the divisor those samples were written into the bin with, not
+a loss, and it is the right thing; but it does mean headroom reaches the audible
+output, and I said it could not.
+
+**What survives, and it is the part H3 was actually for:** `CFG_FMT_HEADROOM`
+specifically is read by nothing — `grep -rn CFG_FMT_HEADROOM hw/` returns only
+its definition — so *that* field cannot reach `monitor.frame_buf` whatever a
+title writes into it. The narrowed claim is the one to judge the run against.
+
+**And the over-broad version was hiding something worth having.** If silicon
+applies per-voice headroom as a voice→mixbin attenuation, then implementing it
+means the multipass read above must earn back **both** headrooms, not just the
+submix one — otherwise multipass content alone would sit `2^voice_headroom`
+below everything else on the monitor path. That is the same class of defect as
+the one `54a00d28fb` fixed, and it would be introduced *by* the fix for #74.
+Written down now so that whoever implements the direction, once it is known,
+does not have to rediscover it.
+
 So a non-zero H2 does **not** license adding a gain to the monitor path. It
 licenses exactly one thing: the direction question in #74 becoming live for the
 DSP path, with a hardware capture as the only instrument that can settle it.
