@@ -760,6 +760,17 @@ Arm B's own two runs had 7 and 32 fully-unlocked windows, a 4.6x swing **inside
 one binary**, with defers per window 37.9 against 84.8. Any leg normalised by
 that is measuring the swing.
 
+**AND A REGISTERED SET OF OUTCOMES CAN BE INCOMPLETE.** #50's five movers were
+registered against a clean three-way split -- device difference, a race, or a
+coincidence of five samples -- and the answer was a fourth thing: **4 of the
+five are device, 1 is a race.** A same-device pair reproduced arm B on 1,672 of
+1,673 captures; four of the five movers came back bit-identical, and the fifth
+moved again on one device, to a value equal to the *other* device's. Nothing in
+the registration was wrong and no leg had to be voided -- the enumeration was
+simply not exhaustive, and a mixed population is what you should expect from a
+handful of captures nobody has yet shown to share a mechanism. When registering
+"either A or B", ask whether the sample could be a mixture.
+
 **AN ABSOLUTE CAN BE UNSATISFIABLE TOO, by the arm's own construction.** The
 rule above is about falls, and that is too narrow -- the orchestrator broke it
 the same day with an absolute. #52's L1 had failed at "784 captures,
