@@ -774,6 +774,28 @@ suites = ["Blend tests", "Texture signed component tests"]
 # residue-against-golden -- and collapsing them is how #51 spent two sessions
 # being inferred around. The desktop lane cannot be used as a byte-exact
 # oracle for this suite without first accounting for that one step on G and B.
+#
+# NOISE IS ONE CAPTURE WIDE, NOT ONE SUITE WIDE. Ten runs of a single unchanged
+# APK: 17 of the 18 Texture_border captures have a band of ZERO, and only
+# 2D_BorderTex_SZ varies. This is not a noisy suite and must not be treated as
+# one -- a suite-level nondeterminism flag would suppress 17 good signals to
+# catch one bad one, which is why docs/testing/ab_compare.py bands per capture.
+#
+# AND THE MAGNITUDES ARE FAR WIDER THAN THIS ISSUE WAS FILED WITH. Over those
+# ten runs the capture reads 0 0 0 0 0 146 181 1847 2352 2430 5640. The
+# recorded 136 px is not representative of anything, and a 5,640 px failure is
+# unlikely to be the same event as a 146 px one. A defect that either fires or
+# does not should not produce a 40x range in severity.
+#
+# That spread is now the most concrete open thread here -- more so than the
+# frontier geometry, which is well characterised but consistent with several
+# mechanisms. It suggests either a second variable or a mechanism whose
+# severity depends on timing.
+#
+# The barrier hypothesis this issue's desktop comparison was built to settle is
+# RETRACTED (#54): restoring every guest memory barrier leaves it at 6 failures
+# in 10. And desktop-versus-Nova cannot settle a renderer question anyway,
+# since those arms differ in renderer as well as in host memory model.
 [issue.44]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
