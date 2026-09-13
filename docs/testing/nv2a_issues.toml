@@ -2096,6 +2096,9 @@ suites = []
 # solving a problem that one title's transients produce, on a path where
 # another title never approaches full scale -- which is an argument for leaving
 # it alone until a hardware reference exists.
+status = "fixed-part"
+status_note = "DECIDED AND HALF-FIXED 2026-09-13: keep the curve, fix the label. The tracker's own reason for blaming the curve is falsified by its own argument -- e is 2.71828, INSIDE the 2-3 band it cites, and behaves like the textbook x^3 taper to within two percentage points of travel (-6 dB at 0.776 vs 0.794). And the curve change is not free: volume_limit is persisted, it is the slider POSITION, and config_spec.yml has no version key, so going linear would relouden every saved sub-max setting silently and only upward (+1.57 dB at 0.90 ... +41.38 dB at 0.0625). MIGRATION CONSEQUENCE of the chosen fix: none, not one sample changes. Android half DONE (a non-unity volume_limit now logs its gain in dB and %FS); the desktop label at ui/xui/main-menu.cc:841 is another lane's file and the patch is written out unapplied. NOT FIXED: 0 <= volume_limit means a NEGATIVE value yields FULL volume; Android clamps on load, desktop does not."
+
 [issue.72]
 title = "The monitor path reaches the rails on Galleon and not on DOA3; whether the clipping matches hardware is unknown"
 disposition = "unknown-semantics"
@@ -2366,6 +2369,9 @@ suites = []
 # same class of defect 54a00d28fb fixed, introduced BY the fix for this.
 #
 # Write-up: docs/investigations/audio-voice-headroom.md.
+status = "fixed-part"
+status_note = "The issue's premise was WRONG and measuring it inverted the reading. Voice count cannot overflow the accumulator: voices sum in float (vp.c:1582, :1706) and convert once through a clamping conversion, and the += accumulates SLICES -- eight 32-sample slices, flushed and memset every cycle -- so it normally adds to zero, which is why #74's census found nothing across 3,424,618 voice-frames. Then F1/F2 failed: gp_ep.c:424 is the only writer of ep_frame_div besides the increment, so every discontinuity is a guest NV_PAPU_EPRST write, and jumps=2 revisits=1 measured on Galleon/Nova AND Crimson Skies/Thor -- two rewinds per run at APU init, deterministically, one of them landing with slices still dirty. It has never overflowed only because it coincides with initialisation silence (nonzero 0). Saturating add landed; residual risk now exact: an EPRST write with ep_frame_div % 8 in 1..7 during near-full-scale content. NOT FIXED deliberately: the rewind itself -- whether a revisited slice should be summed, overwritten or dropped is not decidable here and gp_ep.c:424's own FIXME says so. Six of eleven legs failed, each moving the answer; R3 named the bug before it was found."
+
 [issue.74]
 title = "Per-voice CFG_FMT_HEADROOM is 7 on every Galleon voice and read by nothing: not the low-volume symptom (measured), a 36 dB DSP-path error if it is the voice-into-bin reserve"
 disposition = "unknown-semantics"
@@ -2489,6 +2495,8 @@ suites = []
 # docs/testing/vblank_report.py. Write-up in
 # docs/investigations/guest-visible-vblank.md.
 # ---------------------------------------------------------------------------
+status = "fixed-verified"
+status_note = "vmstate_mcpx_aci was VMSTATE_PCI_DEVICE plus a bare FIXME: 460 bytes of guest-visible state, 0 migrated -- mixer_data[256], glob_cnt, glob_sta, cas, and eight bus-master engines with their BD cache. Fixed as a nested VMSTATE_STRUCT plus ac97_link_post_load. Anchored by docs/testing/aci_vmstate, a host round-trip harness modelled on psh_differ, whose carve.py lifts the field list out of aci.c and the member list out of ac97_int.h so it tests the tree rather than a copy: reports 460 of 460 bytes and post_load ran once with &state->ac97. Three gates EXERCISED not asserted: a required control arm on the pre-fix PCI-only list (0 of 460, so it cannot pass a no-op), the drift gate verified by adding a dummy member and watching it fail, and non-GUEST members required to read as a fresh device after load. The issue's own falsifier is answered: civ/piv/picb/sr are OUR DMA position through the descriptor list, advanced by transfer_audio/write_bup and only READ by the guest, so no guest reprogramming reconstructs them. INCIDENTAL: ac97_post_load cast its opaque to AC97LinkState* while vmstate_ac97 is declared over AC97DeviceState -- correct until 7aa5985eba (2018) split the struct precisely so the ACI could embed the link state, and left the cast; every load since read PCIDevice bytes as codec state. Latent here, fixed anyway. minimum_version_id = 2, so old savestates are refused loudly rather than restored at reset values; cost falls on desktop only."
 
 [issue.64]
 # nv2a_calc_vblank_period_ns (hw/xbox/nv2a/nv2a.c:234-242) derives nothing: one
