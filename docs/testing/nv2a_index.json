@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:132",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:157",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4406,7 +4406,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "da1b67c1d657bb5dc63d21f1c0bbcbc9606d8202",
+  "emulator_commit": "41280ee48f6c9d71fad4a104d20a596684c154f6",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2782,
@@ -8590,7 +8590,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:147",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:172",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
