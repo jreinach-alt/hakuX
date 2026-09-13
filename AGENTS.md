@@ -585,6 +585,46 @@ model to 100%, ask what a SYSTEMATIC error in the instrument would do. Here a
 consistent sign error in our own dots would have RELABELLED the table rather
 than adding noise, and no purity figure can see that.
 
+## A correction is not evidence of accuracy
+
+Changing your conclusion without changing your instrument gets you a second
+wrong answer that feels safer than the first.
+
+#43 on 2026-09-13 is the worked example and it cost three readings. The
+before/after sweep showed all fifteen `#spot_*_SADD` captures disagreeing with
+their goldens over exactly 104,205 px, where before they had scattered from
+91,310 to 111,381.
+
+  READING 1: the blend factor has stopped being read. Published, with the
+  distinguishing check named in the same comment -- diff our fifteen captures
+  against each other.
+  READING 2: ran that check, got fifteen distinct sha256s on our side and
+  fifteen on the golden side, and published a retraction: the factor IS
+  applied, and what is constant is the disagreeing REGION.
+  READING 3, from the lane: `TestSpot` ends with `pb_printat(0, 0, name)`, so
+  every capture carries its own test name in rows 0-63. A whole-image hash
+  reports fifteen distinct images WHATEVER the renderer did, and fifteen
+  distinct goldens too. Crop the label and silicon renders ONE picture for all
+  fifteen source factors under the signed equations, our pre-fix arm gives 13,
+  and our post-fix arm gives 1. The collapse was the fix AGREEING with
+  silicon.
+
+Reading 2 was more confident than reading 1 and no better founded: both came
+from a whole-image hash, which cannot see the question. The retraction changed
+the answer and kept the instrument.
+
+So when you correct yourself, state what you changed about the MEASUREMENT,
+not only about the conclusion. If the answer moved and the instrument did not,
+you have a coin landing the other way up. And prefer an instrument with a
+control in it: `MIN`/`MAX` ignore blend factors by specification on both
+sides, so their reading of 1 is what proved a 1 here was silicon's answer
+rather than a broken renderer -- the same role the impossible row plays for a
+probe.
+
+The corollary is specific and reusable: **a capture that prints its own name
+into the frame cannot be compared by hashing the whole image.** Crop, or
+compare the region the test is about.
+
 ## Conventions
 
 - Defects live in GitHub issues, grouped by likely shared cause, each carrying
