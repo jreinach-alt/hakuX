@@ -106,6 +106,33 @@ impression: a slice the frame loop failed to write would leave a run of exactly
 actually here is one long silence at an arbitrary offset plus a scatter of
 single-frame zero crossings, which is what ordinary audio does.
 
+### The zero crossings confirm the 2x gain without using a decibel
+
+A side result, and a pleasing one, because it tests the same claim with a
+statistic that has nothing to do with levels. Counting single-frame zero runs in
+the two headroom arms:
+
+| | pre-fix (`8254d88ebc`) | post-fix (`51aa3f9d0e`) | ratio |
+|---|---:|---:|---:|
+| single-frame zero runs | 2,696 | 1,363 | **1.978** |
+| total runs after boot | 2,759 | 1,383 | 1.995 |
+
+A smooth signal quantised to int16 lands exactly on zero with a probability
+that scales as the inverse of its amplitude — double the amplitude and half as
+many samples round to 0. The measured ratio is **1.978**, against 2.000
+predicted.
+
+This matters beyond being a curiosity: it is an oracle for a gain change that
+**cannot be censored by clipping**, which is the failure that nearly turned the
+confirmed +6 dB into a reported miss. The peak saturates and the summary
+statistics get dragged down; a count of zero crossings is unaffected by what
+happens at the rails, because it is a measurement taken near zero. Anyone
+verifying a future gain change on this path should look at both.
+
+(The long silence differs between the arms — 278,528 frames pre-fix against
+276,480 post-fix — because they are two runs of a non-deterministic guest, not
+because the gain moved it.)
+
 **So there is no periodic APU-side dropout, and the frame-buffer slicing is not
 leaving holes.** This is a negative worth recording because "9.78% zeros" reads
 alarming and is the first thing anyone will point at. It is silence in the
