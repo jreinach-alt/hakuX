@@ -60,6 +60,28 @@ uint64_t hakux_inval_emptied;         /* events that emptied the page */
 uint64_t hakux_inval_would_survive;   /* events that would NOT have, with the
                                        * range test restored */
 uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
+/*
+ * TBs visited by the invalidation loop that already carried CF_INVALID.
+ *
+ * This exists to explain a row that otherwise cannot happen. Whole-page
+ * invalidation discards every block on the page, so `emptied` should equal
+ * `events` exactly -- that is registered as a leg precisely because a
+ * systematic misreading of this file would show up as plausible numbers
+ * everywhere else.
+ *
+ * But it has one benign failure mode, found by reading
+ * do_tb_phys_invalidate() rather than by being surprised on a device:
+ * `if (!qht_remove(&tb_ctx.htable, tb, h)) { return; }` fires **before**
+ * tb_remove(), so a TB that was already invalidated stays on the page list
+ * and the page does not empty. The fork's tier-1 soft invalidation sets
+ * CF_INVALID without unlinking (see c174c8bde8), so such TBs exist.
+ *
+ * Counting them turns "em < ev, probably that" into "em < ev, and exactly
+ * this many visits were already-invalid TBs, which accounts for it". An
+ * impossible row that can be explained is worth much less than one that
+ * cannot, and the whole point of the leg is to notice the difference.
+ */
+uint64_t hakux_inval_already;
 #endif
 
 /* List iterators for lists of tagged pointers in TranslationBlock. */
@@ -1306,6 +1328,9 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
             /* Counted, not acted on: the invalidation below is unchanged. */
             tbs_seen++;
             tbs_overlap += tb_overlaps_written_range(tb, n, start, last);
+            if (tb_cflags(tb) & CF_INVALID) {
+                hakux_inval_already++;
+            }
 #endif
             if (unlikely(current_tb == tb) &&
                 (tb_cflags(current_tb) & CF_COUNT_MASK) != 1) {

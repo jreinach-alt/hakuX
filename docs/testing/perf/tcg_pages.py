@@ -120,7 +120,7 @@ import sys
 # "inval ev=N ov=N sp=N em=N ws=N pr=N ins=N bytes=N blk=N.NN"
 INVAL_RE = re.compile(
     r"inval ev=(\d+) ov=(\d+) sp=(\d+) em=(\d+) ws=(\d+) pr=(\d+) "
-    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
+    r"(?:ai=(\d+) )?ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
 
 # "slow stores N (M reached the invalidator) ... [blocks tossed T, generated G]"
 STORES_RE = re.compile(
@@ -140,6 +140,7 @@ COUNTERS = [
     ("em",    "events that emptied the page (disarmed detection)"),
     ("ws",    "...of those, a block would have survived a range test"),
     ("pr",    "arming TLB walks performed (tlb_protect_code)"),
+    ("ai",    "visited blocks that already carried CF_INVALID"),
     ("ins",   "guest instructions translated"),
     ("blk",   "mean guest instructions per generated block"),
     ("tossed", "blocks invalidated (all callers)"),
@@ -201,9 +202,14 @@ def parse(path):
                 w.update({
                     "ev": int(g[0]), "ov": int(g[1]), "sp": int(g[2]),
                     "em": int(g[3]), "ws": int(g[4]), "pr": int(g[5]),
-                    "ins": int(g[6]), "bytes": int(g[7]),
-                    "blk": int(g[8]) + int(g[9]) / 100.0,
+                    "ins": int(g[7]), "bytes": int(g[8]),
+                    "blk": int(g[9]) + int(g[10]) / 100.0,
                 })
+                # ai= is absent on a build from before it was added; a
+                # missing field is not a zero, so it stays absent and the
+                # report omits the row rather than claiming none happened.
+                if g[6] is not None:
+                    w["ai"] = int(g[6])
                 windows.append(w)
                 pending = {}
                 continue
@@ -318,6 +324,31 @@ def derive(windows):
               " block-extent lever has its mechanism. Large means it does"
               " not: a smaller block cannot be missed by a store that"
               " discards the whole page.")
+    ev = sum(series(windows, "ev"))
+    if ev and em < ev:
+        ai = sum(series(windows, "ai")) if any("ai" in w for w in windows) \
+            else None
+        print("   -> em (%d) is BELOW ev (%d). Under whole-page invalidation"
+              " every block on the page is discarded, so the page should"
+              " always empty." % (em, ev))
+        if ai is None:
+            print("      This build has no ai= counter, so the shortfall is"
+                  " unexplained here. The known benign cause is"
+                  " do_tb_phys_invalidate returning early, before tb_remove,"
+                  " when a TB already carries CF_INVALID -- which the tier-1"
+                  " soft invalidation produces. Re-run on a build with ai= to"
+                  " tell that from a misreading of tb-maint.c.")
+        else:
+            print("      %d visited blocks already carried CF_INVALID."
+                  " do_tb_phys_invalidate returns before tb_remove for those,"
+                  " so they stay on the page list and it does not empty."
+                  " If that does not account for the %d-event shortfall, the"
+                  " whole-page reading of tb-maint.c is wrong and every"
+                  " number above inherits it." % (ai, ev - em))
+    elif ev and em > ev:
+        print("   -> em (%d) EXCEEDS ev (%d), which no path in tb-maint.c"
+              " allows. Treat every number above as void until this is"
+              " explained." % (em, ev))
     if em:
         print("   -> %.1f%% of page-emptying events would NOT have emptied the"
               " page under a range test (ws/em = %d/%d)."
