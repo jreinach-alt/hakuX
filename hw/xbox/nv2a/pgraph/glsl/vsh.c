@@ -1021,6 +1021,25 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
      * a rounding of the right one.  Such a draw leaves the register holding
      * what it held, which is what a draw whose coordinate we cannot
      * reproduce should do.
+     *
+     * Two limits of this hook, recorded because neither shows up in the
+     * suite that measures the fix and both would otherwise look like
+     * mysteries later:
+     *
+     * - For a draw fed from vertex ARRAYS, inline_value is refreshed by
+     *   pgraph_update_inline_value when the attributes are bound, which
+     *   happens after the uniforms are snapshotted -- so the coordinate
+     *   carried from such a draw is its predecessor's last vertex rather
+     *   than its own.  #42's attribute case has the same ordering.  Both
+     *   are measured on inline-vertex draws (host_.SetVertex, so
+     *   SET_VERTEX3F/4F), where inline_value is written while the methods
+     *   are processed and is therefore current.  Being one draw stale in
+     *   the value we carry to model a stale register is a small error
+     *   inside a large one, but it is an error.
+     * - pgraph_vk_update_shader_uniforms returns early while a shader is
+     *   still compiling asynchronously, so the first draws with a new
+     *   binding do not reach here.  It takes the LAST radial draw before a
+     *   program-mode radial one to be skipped for that to matter.
      */
     if (state->fog_enable && state->is_fixed_function &&
         state->foggen == FOGGEN_RADIAL &&
