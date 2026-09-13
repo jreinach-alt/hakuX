@@ -26,6 +26,10 @@
 #include "qemu/main-loop.h"
 #include "ui/xemu-settings.h"
 
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
+
 void nv2a_update_irq(NV2AState *d)
 {
     /* PFIFO */
@@ -238,6 +242,177 @@ static int64_t nv2a_calc_vblank_period_ns(NV2AState *d)
     return 16683750;
 }
 
+/*
+ * Guest-visible VBLANK timing instrument.
+ *
+ * A golden framebuffer comparison is blind to timing. A title that steps its
+ * simulation off VBLANK, double-buffers against it, or measures elapsed time
+ * by counting its interrupts draws the same pixels whether our period is
+ * right or a fifth out, so the corpus cannot see any of it. The only way to
+ * know is to measure what the guest actually sees, which is the moment
+ * NV_PCRTC_INTR_0_VBLANK is asserted -- not the moment the timer callback was
+ * scheduled, and not `pacing.vblank_fired`, which in simple-VBLANK mode
+ * counts only one of the two sources live in that mode.
+ *
+ * Three things are recorded at each assertion:
+ *
+ *  - the interval since the previous one, into a histogram, so the
+ *    distribution gets reported rather than an exponential mean. For jitter
+ *    the distribution is the whole question: a correct mean with a 10 ms tail
+ *    is a different defect from a wrong mean.
+ *  - which of the three assertion sites produced it, because in simple mode
+ *    the period timer and the host display refresh are both live and their
+ *    sum is what paces the guest.
+ *  - whether the guest had not yet acknowledged the previous one. PCRTC
+ *    coalesces: the bit is already set, the OR is a no-op, and the guest's
+ *    ISR sees one interrupt where hardware delivered two. A title counting
+ *    VBLANKs to measure time loses that tick outright.
+ *
+ * Cost is one clock read and one array increment per assertion at 60-180 Hz,
+ * plus a log line every two seconds. A line per VBLANK was the obvious
+ * alternative and was rejected: at 60 Hz it perturbs what it measures.
+ *
+ * All three call sites hold the BQL -- the timer callback runs from the main
+ * loop, and the gfx_update path in ui/xemu.c takes it explicitly -- so the
+ * accumulator needs no locking of its own.
+ */
+#ifdef __ANDROID__
+
+#define VBH_BUCKET_NS   50000    /* 50 us */
+#define VBH_BUCKETS     1024     /* 0 .. 51.2 ms, then one overflow bin */
+#define VBH_WINDOW_NS   2000000000LL
+
+enum { VBH_SRC_TIMER = 0, VBH_SRC_SIMPLE, VBH_SRC_GFX, VBH_SRC__COUNT };
+
+static struct {
+    int64_t  last_ns;
+    int64_t  window_start_ns;
+    uint32_t bucket[VBH_BUCKETS + 1];
+    uint32_t n;
+    uint32_t src[VBH_SRC__COUNT];
+    uint32_t coalesced;
+    uint32_t deferred;
+    int64_t  min_ns;
+    int64_t  max_ns;
+    uint64_t sum_ns;
+} s_vbh;
+
+/* Interval at or below which the given share of the window's samples fell,
+ * reported as the containing bucket's upper edge -- so an upper bound good
+ * to 50 us, which is 0.3% of a refresh period. */
+static int64_t vbh_percentile(uint32_t pct)
+{
+    uint32_t want = (s_vbh.n * pct + 99) / 100;
+    uint32_t acc = 0;
+
+    if (want == 0) {
+        want = 1;
+    }
+    for (int i = 0; i <= VBH_BUCKETS; i++) {
+        acc += s_vbh.bucket[i];
+        if (acc >= want) {
+            return (int64_t)(i + 1) * VBH_BUCKET_NS;
+        }
+    }
+    return (int64_t)(VBH_BUCKETS + 1) * VBH_BUCKET_NS;
+}
+
+static void vbh_dump_and_reset(NV2AState *d, int64_t now)
+{
+    int64_t period  = nv2a_calc_vblank_period_ns(d);
+    int64_t span_ns = now - s_vbh.window_start_ns;
+    /* What we intended is `period`. This is what was delivered, and the gap
+     * between them is the rate at which the guest's VBLANK clock loses or
+     * gains time against the wall. */
+    int64_t mean_ns = s_vbh.n ? (int64_t)(s_vbh.sum_ns / s_vbh.n) : 0;
+    /* Delivered rate over the window in millihertz, counting every assertion
+     * from every source -- which is the figure a title pacing off VBLANK is
+     * actually subject to. */
+    int64_t mhz = span_ns > 0
+                      ? (int64_t)s_vbh.n * 1000000000LL * 1000LL / span_ns
+                      : 0;
+    int w = 0, h = 0;
+
+    if (d->vga.get_resolution) {
+        d->vga.get_resolution(&d->vga, &w, &h);
+    }
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "
+        "p1=%lld p50=%lld p90=%lld p99=%lld min=%lld max=%lld "
+        "src(tmr=%u smp=%u gfx=%u) coal=%u def=%u vd=%u il=%02x res=%dx%d",
+        s_vbh.n, (long long)(span_ns / 1000000),
+        (long long)period, (long long)mean_ns,
+        (long long)(mean_ns - period),
+        (long long)(mhz / 1000), (long long)(mhz % 1000),
+        (long long)vbh_percentile(1), (long long)vbh_percentile(50),
+        (long long)vbh_percentile(90), (long long)vbh_percentile(99),
+        (long long)(s_vbh.n ? s_vbh.min_ns : 0), (long long)s_vbh.max_ns,
+        s_vbh.src[VBH_SRC_TIMER], s_vbh.src[VBH_SRC_SIMPLE],
+        s_vbh.src[VBH_SRC_GFX], s_vbh.coalesced, s_vbh.deferred,
+        d->pramdac.fp_vdisplay_end,
+        d->vga.cr[NV_PRMCIO_INTERLACE_MODE], w, h);
+
+    memset(s_vbh.bucket, 0, sizeof(s_vbh.bucket));
+    memset(s_vbh.src, 0, sizeof(s_vbh.src));
+    s_vbh.n = 0;
+    s_vbh.coalesced = 0;
+    s_vbh.deferred = 0;
+    s_vbh.min_ns = 0;
+    s_vbh.max_ns = 0;
+    s_vbh.sum_ns = 0;
+    s_vbh.window_start_ns = now;
+}
+
+/*
+ * Call immediately BEFORE the pending-interrupt OR, so the coalescing check
+ * still sees the state the guest left behind.
+ */
+static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred)
+{
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+
+    if (d->pcrtc.pending_interrupts & NV_PCRTC_INTR_0_VBLANK) {
+        s_vbh.coalesced++;
+    }
+    if (was_deferred) {
+        s_vbh.deferred++;
+    }
+    s_vbh.src[src]++;
+
+    if (s_vbh.last_ns) {
+        int64_t delta = now - s_vbh.last_ns;
+        int idx = (int)(delta / VBH_BUCKET_NS);
+
+        if (idx < 0) {
+            idx = 0;
+        } else if (idx > VBH_BUCKETS) {
+            idx = VBH_BUCKETS;
+        }
+        s_vbh.bucket[idx]++;
+        s_vbh.sum_ns += (uint64_t)delta;
+        if (!s_vbh.n || delta < s_vbh.min_ns) {
+            s_vbh.min_ns = delta;
+        }
+        if (delta > s_vbh.max_ns) {
+            s_vbh.max_ns = delta;
+        }
+        s_vbh.n++;
+    }
+    s_vbh.last_ns = now;
+
+    if (!s_vbh.window_start_ns) {
+        s_vbh.window_start_ns = now;
+    } else if (now - s_vbh.window_start_ns >= VBH_WINDOW_NS && s_vbh.n >= 8) {
+        vbh_dump_and_reset(d, now);
+    }
+}
+
+#else
+#define nv2a_vblank_record(d, src, was_deferred) ((void)0)
+#endif
+
 #ifdef __ANDROID__
 /* Simple VBLANK mode: matches x1_box behavior.  Just fires the PCRTC
  * interrupt at a fixed interval — no adaptive deferral, no flip assists,
@@ -261,6 +436,7 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
      * zero in simple mode -- exactly the mode you switch to when you want
      * pacing numbers with the deferral heuristics out of the way. */
     g_nv2a_stats.pacing.vblank_fired++;
+    nv2a_vblank_record(d, VBH_SRC_SIMPLE, false);
 
     /* Pure x1_box behavior: fire PCRTC interrupt, update IRQ.
      * No adaptive deferral, no flip auto-completion, no NOP assist.
@@ -423,6 +599,7 @@ static void nv2a_vblank_timer_cb(void *opaque)
     }
     s_last_vblank_fire_ns = now;
 
+    nv2a_vblank_record(d, VBH_SRC_TIMER, was_deferred);
     d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
     d->pcrtc.raster = 0;
 
@@ -481,6 +658,7 @@ static void nv2a_vga_gfx_update(void *opaque)
      * timing-dependent freezes. */
     if (g_simple_vblank_mode) {
         NV2AState *d = container_of(vga, NV2AState, vga);
+        nv2a_vblank_record(d, VBH_SRC_GFX, false);
         d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
         d->pcrtc.raster = 0;
         nv2a_update_irq(d);
