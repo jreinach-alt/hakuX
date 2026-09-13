@@ -37,229 +37,6 @@ static bool image_pool_acquire(PGRAPHVkState *r, const TextureImageConfig *confi
                                VkImage *out_image, VmaAllocation *out_allocation);
 static void image_pool_drain(PGRAPHVkState *r);
 
-/*
- * ---------------------------------------------------------------------------
- * Bordered-texture length probe.  TEMPORARY: instrumentation only.
- * ---------------------------------------------------------------------------
- *
- * create_texture() takes `pgraph_get_texture_length(pg, &state)` from the
- * UNADJUSTED shape, but a swizzled texture with a texture-supplied border is
- * decoded at max(16, 2n) per axis -- the doubling applied further down for the
- * VkImage extent, and by get_texture_layout() for the bytes it actually reads.
- * So for a bordered 32x32 A8R8G8B8 we track and hash 4,096 bytes of a region
- * we decode 16,384 bytes from: a quarter in 2D, an eighth in 3D.
- *
- * Four consumers take that length, and each is short by the same factor: the
- * per-draw dirty poll and the mark-possibly-dirty overlap test (via
- * key.texture_length), the content hash that gates vram_changed, and
- * download_surfaces_in_range_if_dirty.  The consequence is that a guest write
- * confined to the tail is invisible -- no poll sees it, no hash sees it, and
- * the texture keeps its previous texels.
- *
- * That is a mechanism by inspection.  Whether it is REACHED is a different
- * question, and the minimal fix moves a cache key, a dirty range and a
- * surface-overlap range for every bordered texture, which is not a thing to
- * change unmeasured.  So: count the event first.
- *
- *   bordered_binds   bordered create_texture calls -- the denominator, and the
- *                    proof the probe ran at all.  A zero `blind` is only
- *                    evidence if this is non-zero.
- *   bordered_skips   bordered binds that decided NOT to re-upload
- *   blind            ...of those, the ones where the DECODED range's content
- *                    had changed since the last upload under this key.  This
- *                    is the defect firing: a write we did not see.
- *   blind_via_poll   the skip was because possibly_dirty was false (the page
- *                    poll never covered the changed bytes)
- *   blind_via_hash   possibly_dirty was true but the truncated content hash
- *                    matched, so vram_changed came out false
- *   extra_upload     the mirror of `blind`, once the length is fixed: an
- *                    upload that the truncated hash would have suppressed.
- *                    This is how "the change fired" is read, rather than
- *                    inferred from a capture count that cannot distinguish a
- *                    path not taken from a different wrong answer.
- *   tail_surf        a draw-dirty surface overlaps the decoded tail and NOT
- *                    the tracked head, so the narrow range skips a download
- *   lru_exhausted    create_texture's LRU-exhausted early return was taken
- *                    (issue #56); _null is the subset where the slot's binding
- *                    was NULL, which is the case that issue's guard tests for
- *
- * Logged under tag "hakuX", not "hakuX-vk": the dispatcher's logcat spec ends
- * in `*:S` and does not list hakuX-vk, so a VK_LOG_ERROR line never reaches a
- * recorded result.
- */
-#ifdef __ANDROID__
-#include <android/log.h>
-#define TEXPROBE_LOG(fmt, ...) \
-    __android_log_print(ANDROID_LOG_INFO, "hakuX", fmt, ##__VA_ARGS__)
-#else
-#define TEXPROBE_LOG(fmt, ...) \
-    do { fprintf(stderr, "hakuX: " fmt "\n", ##__VA_ARGS__); } while (0)
-#endif
-
-#define TEXPROBE_SLOTS 1024
-
-typedef struct TexProbeSlot {
-    uint64_t key_hash;
-    uint64_t decoded_hash;
-    bool used;
-    bool have;
-} TexProbeSlot;
-
-static TexProbeSlot texprobe_slots[TEXPROBE_SLOTS];
-
-static struct {
-    uint64_t bordered_binds;
-    uint64_t bordered_skips;
-    uint64_t blind;
-    uint64_t blind_via_poll;
-    uint64_t blind_via_hash;
-    uint64_t extra_upload;
-    uint64_t tail_surf;
-    uint64_t lru_exhausted;
-    uint64_t lru_exhausted_null;
-    uint64_t slots_full;
-    size_t last_tracked;
-    size_t last_decoded;
-} texprobe;
-
-static void texprobe_report(const char *why)
-{
-    TEXPROBE_LOG("texprobe %s bordered_binds=%llu skips=%llu blind=%llu "
-                 "via_poll=%llu via_hash=%llu extra_upload=%llu tail_surf=%llu "
-                 "lru_exhausted=%llu lru_exhausted_null=%llu "
-                 "last_tracked=%llu last_decoded=%llu slots_full=%llu",
-                 why,
-                 (unsigned long long)texprobe.bordered_binds,
-                 (unsigned long long)texprobe.bordered_skips,
-                 (unsigned long long)texprobe.blind,
-                 (unsigned long long)texprobe.blind_via_poll,
-                 (unsigned long long)texprobe.blind_via_hash,
-                 (unsigned long long)texprobe.extra_upload,
-                 (unsigned long long)texprobe.tail_surf,
-                 (unsigned long long)texprobe.lru_exhausted,
-                 (unsigned long long)texprobe.lru_exhausted_null,
-                 (unsigned long long)texprobe.last_tracked,
-                 (unsigned long long)texprobe.last_decoded,
-                 (unsigned long long)texprobe.slots_full);
-}
-
-/*
- * One line per DISTINCT bordered shape, so the denominator above can be read
- * as "N binds over K shapes" rather than as a bare total, and so the ratio is
- * a measurement rather than something asserted in a commit message. Capped:
- * a title could have thousands of bordered textures and this is a probe.
- */
-static void texprobe_shape(const TextureShape *logical, const TextureShape *adj,
-                           size_t tracked, size_t decoded, uint64_t key_hash)
-{
-    static uint64_t seen[64];
-    static unsigned n_seen;
-
-    for (unsigned i = 0; i < n_seen; i++) {
-        if (seen[i] == key_hash) {
-            return;
-        }
-    }
-    if (n_seen >= ARRAY_SIZE(seen)) {
-        return;
-    }
-    seen[n_seen++] = key_hash;
-
-    /*
-     * For a cubemap the tracked length is what fraction of ONE face's decoded
-     * stride, times six -- so "how many faces does the tracked range reach"
-     * is the number that says whether faces 2..5 are visible at all.
-     */
-    double faces_covered = 0.0;
-    if (logical->cubemap && decoded > 0) {
-        faces_covered = 6.0 * (double)tracked / (double)decoded;
-    }
-
-    TEXPROBE_LOG("texprobe shape dim=%d cubemap=%d levels=%d "
-                 "logical=%dx%dx%d adjusted=%dx%dx%d fmt=0x%x "
-                 "tracked=%llu decoded=%llu ratio=%.1f faces_covered=%.2f",
-                 logical->dimensionality, logical->cubemap, logical->levels,
-                 logical->width, logical->height, logical->depth,
-                 adj->width, adj->height, adj->depth, logical->color_format,
-                 (unsigned long long)tracked, (unsigned long long)decoded,
-                 tracked ? (double)decoded / (double)tracked : 0.0,
-                 faces_covered);
-}
-
-static TexProbeSlot *texprobe_slot(uint64_t key_hash)
-{
-    unsigned base = (unsigned)(key_hash % TEXPROBE_SLOTS);
-
-    for (unsigned n = 0; n < TEXPROBE_SLOTS; n++) {
-        TexProbeSlot *s = &texprobe_slots[(base + n) % TEXPROBE_SLOTS];
-        if (s->used && s->key_hash == key_hash) {
-            return s;
-        }
-        if (!s->used) {
-            s->used = true;
-            s->key_hash = key_hash;
-            s->have = false;
-            return s;
-        }
-    }
-
-    texprobe.slots_full++;
-    return NULL;
-}
-
-/*
- * Called on every bordered bind that reads VRAM, with the length the OTHER
- * arm would have used -- the decoded length while create_texture still tracks
- * the logical one, the logical length once it tracks the decoded one. So one
- * function reports the divergence in whichever direction exists, and which
- * counter moves says which arm this is:
- *
- *   blind        we did NOT upload and the other length says we should have.
- *                Pre-fix only: a guest write behind the truncated hash.
- *   extra_upload we DID upload and the other length says we would not have.
- *                Post-fix only: the upload this change adds. It is the same
- *                population as `blind`, seen from the other side, and it is
- *                what makes "the change fired" a reading rather than an
- *                inference from a capture count.
- */
-static void texprobe_check(uint64_t key_hash, void *data, size_t other_len,
-                           bool uploaded, bool possibly_dirty)
-{
-    TexProbeSlot *s = texprobe_slot(key_hash);
-    uint64_t h = fast_hash(data, other_len);
-    bool had = s && s->have;
-    uint64_t prev = had ? s->decoded_hash : 0;
-
-    if (s) {
-        s->decoded_hash = h;
-        s->have = true;
-    }
-
-    if (!had) {
-        return;
-    }
-
-    if (uploaded) {
-        if (prev == h) {
-            texprobe.extra_upload++;
-            texprobe_report("EXTRA-UPLOAD");
-        }
-        return;
-    }
-
-    texprobe.bordered_skips++;
-    if (prev == h) {
-        return;
-    }
-
-    texprobe.blind++;
-    if (possibly_dirty) {
-        texprobe.blind_via_hash++;
-    } else {
-        texprobe.blind_via_poll++;
-    }
-    texprobe_report("BLIND-TAIL-WRITE");
-}
 
 static const VkImageType dimensionality_to_vk_image_type[] = {
     0,
@@ -1829,6 +1606,22 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
      *
      * key.texture_length is a pure function of key.state, so widening it
      * changes the hash value but cannot change which keys are equal.
+     *
+     * The arm PASSED -- 110 registered checks, 112 captures x 5 runs each,
+     * 0 better 0 worse, nothing outside its measured band (dispatch
+     * 1789301268-...-625437 against -625458). What it did NOT establish is
+     * the repair: its liveness leg asked for at least one upload that the old
+     * length would have suppressed, and got zero across all five runs,
+     * because no run happened to lose the pass-1 race on a small bordered
+     * size. So this change is measured inert and measured necessary, and the
+     * pixels it recovers are not yet counted. Whoever next runs Texture
+     * border more than a handful of times can close that by re-adding the
+     * counters from adfb65ca67: `blind` fires when the truncated hash
+     * suppresses a needed upload, `extra_upload` when this length causes one.
+     * Note also that the two `blind` events on one 5-run arm landed on 16x1
+     * and 8x2, swatches whose goldens cannot discriminate a wrong iteration
+     * at all -- which is #44's "any loss count is a lower bound", measured
+     * directly rather than argued.
      */
     TextureShape decoded_shape = state;
     if (!f_basic.linear && decoded_shape.border) {
@@ -1839,32 +1632,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         }
     }
     size_t texture_length = pgraph_get_texture_length(pg, &decoded_shape);
-
-    /*
-     * Probe: the length that WAS used, so the counters can report how many
-     * uploads this change adds -- a flat capture count cannot tell a change
-     * that fired from one that did not.
-     */
-    bool probe_bordered = !f_basic.linear && state.border;
-    size_t probe_other_length = texture_length;
-    if (probe_bordered) {
-        probe_other_length = pgraph_get_texture_length(pg, &state);
-        texprobe.bordered_binds++;
-        texprobe.last_tracked = probe_other_length;
-        texprobe.last_decoded = texture_length;
-        if ((texprobe.bordered_binds % 16) == 1) {
-            texprobe_report("alive");
-        }
-        /*
-         * Keyed on the SHAPE, not on the full TextureKey: the interesting
-         * thing is one line per distinct bordered geometry, not one per
-         * address or filter. pgraph_get_texture_shape memsets its result
-         * before filling it, so the struct is safe to hash.
-         */
-        texprobe_shape(&state, &decoded_shape, probe_other_length,
-                       texture_length,
-                       fast_hash((void *)&state, sizeof(state)));
-    }
     hwaddr texture_palette_vram_offset = 0;
     size_t texture_palette_data_size = 0;
 
@@ -1992,38 +1759,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
             r->tex_surf_range_cache[texture_idx].surface_draw_gen = r->surface_draw_gen;
         }
 
-        /*
-         * Probe only: is there a draw-dirty surface that overlaps the decoded
-         * tail and NOT the logical head?  Such a surface was skipped by the
-         * narrow range this code used to pass, so its GPU content never
-         * reached the VRAM the decoder reads; with the length fixed it is
-         * downloaded, and this counts how often that happens. Read-only in
-         * itself -- it issues no download.
-         */
-        if (probe_bordered && texture_length > probe_other_length) {
-            hwaddr head_end = texture_vram_offset + probe_other_length;
-            hwaddr tail_end = texture_vram_offset + texture_length;
-            SurfaceBinding *probe_s;
-            bool tail_only = false;
-            QTAILQ_FOREACH(probe_s, &r->surfaces, entry) {
-                if (!probe_s->draw_dirty) {
-                    continue;
-                }
-                hwaddr s_start = probe_s->vram_addr;
-                hwaddr s_end = probe_s->vram_addr + probe_s->size;
-                bool hits_tail = s_start < tail_end && s_end > head_end;
-                bool hits_head =
-                    s_start < head_end && s_end > texture_vram_offset;
-                if (hits_tail && !hits_head) {
-                    tail_only = true;
-                    break;
-                }
-            }
-            if (tail_only) {
-                texprobe.tail_surf++;
-                texprobe_report("TAIL-ONLY-SURFACE");
-            }
-        }
     }
 
     if (surface_to_texture && pg->surface_scale_factor > 1) {
@@ -2051,11 +1786,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
              * unconditionally by DGROUP_BEGIN at the top of this function,
              * so returning without it leaked a level per occurrence.
              */
-            texprobe.lru_exhausted++;
-            if (!r->texture_bindings[texture_idx]) {
-                texprobe.lru_exhausted_null++;
-            }
-            texprobe_report("LRU-EXHAUSTED");
             NV2A_VK_DGROUP_END();
             return false;
         }
@@ -2292,10 +2022,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
                 did_upload = true;
             }
             snode->possibly_dirty = false;
-            if (probe_bordered) {
-                texprobe_check(key_hash, texture_data, probe_other_length,
-                               did_upload, possibly_dirty);
-            }
         }
 
         NV2A_VK_DGROUP_END();
@@ -2701,10 +2427,6 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     } else {
         upload_texture_image(pg, texture_idx, snode);
         snode->draw_time = 0;
-        if (probe_bordered) {
-            texprobe_check(key_hash, texture_data, probe_other_length,
-                           true, possibly_dirty);
-        }
     }
 
     NV2A_VK_DGROUP_END();
@@ -3322,13 +3044,6 @@ void pgraph_vk_init_textures(PGRAPHState *pg)
 void pgraph_vk_finalize_textures(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
-
-    /*
-     * The final tally, so a zero is a reading and not the absence of a line.
-     * The periodic "alive" report only fires every sixteenth bordered bind,
-     * which bounds the denominator but does not give it.
-     */
-    texprobe_report("final");
 
     assert(!r->in_command_buffer);
 
