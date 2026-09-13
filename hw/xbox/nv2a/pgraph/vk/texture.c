@@ -1227,10 +1227,30 @@ static bool surface_is_texture_source(const SurfaceBinding *surface,
                                       const TextureShape *shape,
                                       bool texture_is_compressed)
 {
-    return surface && surface->color && !texture_is_compressed &&
-           !shape->cubemap && shape->levels == 1 &&
-           surface->width == shape->width &&
-           surface->height == shape->height;
+    if (!surface || !surface->color || texture_is_compressed ||
+        shape->cubemap || shape->levels != 1 ||
+        surface->width != shape->width ||
+        surface->height != shape->height) {
+        return false;
+    }
+
+    /*
+     * Extents are not enough, and this is where the second attempt went
+     * wrong. Surface_format renders a 128x128 scratch surface and then samples
+     * a 128x128 LU_IMAGE_A8R8G8B8 pattern the CPU wrote -- same address, same
+     * extent, different pixels -- so an extent-only test called that surface
+     * the texture's source and applied a pad readback it has no business
+     * applying (Fmt_X1R5G5B5_O1R5G5B5 16,096 -> 91,757).
+     *
+     * The texel stride has to agree as well, and it is compared on the GUEST
+     * side on purpose. The old host-side size test did this job and #59 broke
+     * it by widening 5551 and 565 textures to a 4-byte host format, which is
+     * exactly the failure to not repeat: a host format is ours to change, a
+     * guest stride is the hardware's. Colour surfaces are stored in their
+     * guest layout, so host_bytes_per_pixel is their guest stride too.
+     */
+    return surface->host_fmt.host_bytes_per_pixel ==
+           pgraph_get_color_format_info(shape->color_format).bytes_per_pixel;
 }
 
 static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
