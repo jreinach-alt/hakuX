@@ -235,6 +235,24 @@ def main():
                "than that category has goldens: the cell is a floor, not a "
                "score. ⚠️ on a run means its rows disagree about which binary "
                "produced them.\n")
+    out.append("\nA ⚠️ FLOOR IS NOT ALWAYS A LIMITATION OF THE EMULATOR, AND "
+               "BLEND'S IS NOT. Blend shows the worst coverage on this board "
+               "because 1,568 of its 1,722 goldens come from `TestDetailed`, "
+               "which upstream marked interactive-only when `#spot_` replaced "
+               "it -- so the stock disc does not run them and the sweep cannot "
+               "score them. That was recorded for a day as \"behind the "
+               "test-suite fork\", and it was false: on 2026-09-13 a run on a "
+               "one-byte-patched disc scored **1,673 of 1,673** with "
+               "`partial: false`. The 1,568 captures had also been on disk "
+               "since 2026-09-12.\n\nSo this row is liftable, not stuck. "
+               "`docs/testing/request.sh --base-iso "
+               "/home/justin/nxdk_pgraph_tests_xiso_interactive.iso` reaches "
+               "them; that disc's `disc_id` tags as `iso:85b525/...` so its "
+               "figures can never be silently compared with a stock column, "
+               "which is also why those 1,673 captures are NOT folded into the "
+               "columns above. Anyone reading this row as a permanent ceiling "
+               "should read `docs/investigations/xbe-interactive-patch.md` "
+               "first.\n")
     text = "\n".join(out)
     if args.md:
         open(args.md, "w").write(text + "\n")
