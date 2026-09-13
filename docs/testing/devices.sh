@@ -42,6 +42,38 @@ device_env() {
     return 0
 }
 
+device_default() {
+    # Resolve a serial when the caller gave none -- and REFUSE when the answer
+    # is ambiguous.
+    #
+    # Every script here used to say `adb devices | awk 'NR==2{print $1}'`,
+    # which means "whichever device adb happens to list first". With one
+    # handheld that is unambiguous. With two it is a coin flip decided by
+    # lexical order, and bdc158a5 (Thor) sorts before ee317437 (Nova) -- so
+    # the day a second device was attached, every one of those scripts
+    # silently changed which handheld it drives, with no error and no log
+    # line. A run against the wrong device does not fail; it produces a
+    # perfectly clean result from somewhere else.
+    #
+    # So: one device, use it. More than one, demand SERIAL. Guessing is the
+    # one thing not on offer.
+    local attached
+    attached=$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}')
+    local n; n=$(printf '%s\n' "$attached" | grep -c .)
+    if [ "$n" -eq 1 ]; then
+        printf '%s' "$attached"; return 0
+    fi
+    if [ "$n" -eq 0 ]; then
+        echo "no device attached" >&2; return 2
+    fi
+    {
+        echo "$n devices attached and SERIAL is not set; refusing to guess:"
+        printf '%s\n' "$attached" | sed 's/^/  /'
+        echo "re-run with SERIAL=<serial>, or see devices.sh list"
+    } >&2
+    return 2
+}
+
 device_list() {
     # tr -d '\r' is load-bearing: adb prints CRLF, so without it $2 is
     # "device\r", nothing ever matches, and the list comes back empty rather

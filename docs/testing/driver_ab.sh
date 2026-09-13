@@ -33,7 +33,10 @@ set -u
 SUITE="${1:?usage: driver_ab.sh <suite name> <turnip .adpkg.zip>}"
 PKG_ZIP="${2:?}"
 
-SERIAL="${SERIAL:-$(adb devices | awk 'NR==2{print $1}')}"
+# Refuses rather than guesses when two handhelds are attached; see devices.sh.
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/devices.sh"
+SERIAL="${SERIAL:-$(device_default)}"
+[ -n "$SERIAL" ] || exit 2
 PKG="${PKG:-com.jreinach.hakux.debug}"
 WORK="${HAKUX_WORK:-$HOME/hakux-work}"
 GOLDENS="${GOLDENS:-$HOME/goldens/results}"

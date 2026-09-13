@@ -5,7 +5,7 @@
 # the primitive suite (stock Qualcomm lacks shaderTessellationAndGeometryPointSize
 # and the emulator puts a geometry shader in front of every draw).
 set -u
-S=ee317437; PKG=com.jreinach.hakux.debug
+S=${SERIAL:-ee317437}; PKG=com.jreinach.hakux.debug
 W=/home/justin/hakux-work; R=/home/justin/hakuX/docs/testing; D=$W/drv
 
 trap 'echo "--- restoring T30 ---"; bash $D/swap_driver.sh restore' EXIT
