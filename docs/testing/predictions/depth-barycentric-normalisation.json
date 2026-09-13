@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-13T03:21:01Z",
+  "who": "depth52-agent",
+  "issue": "52",
+  "prediction": "The z24 fixed-point depth cell is the barycentric normalisation, not a scale divisor or a sampling position. The falsifier is a SHAPE, and the shape is: after this change our zeta word equals docs/testing/depth_exact_floor.py's oracle -- the test's own geometry floored in exact integer arithmetic, computed without reference to the goldens -- pixel for pixel on all eighteen z24 FZn _ZB captures. Equivalently, on Mffffff_ZB the big quad's (ours - floor(exact)) histogram collapses from -9,738/75,314/+140 to 0/85,192/0 and the one-sided ramp with the barycentric goes flat. The expect-values above are that shape expressed as counts: each is oracle-vs-golden, i.e. silicon's own +-1 edge walk, which is irreducible. Cell total 72,138 -> 43,690. THE MECHANISM IS FALSIFIED ONLY IF the residual is still one-sided: if on Mffffff_ZB the big quad still has |below - above| > 500 of 85,192 against floor(exact), the normalisation is not the cause and this comes out. Missing an expect-value by a small margin means the geometry model is imperfect somewhere -- read depth_exact_floor.py against the captures before concluding anything -- it does not falsify the mechanism. Not predicted, and expected to move: the four colour cells (a changed depth changes which fragment wins, so owner changes follow; bounded by the depth changes, <= 10,990 px per capture) and Depth_buffer_fixed_function (its vertex depths are not integers, the oracle does not apply, and the last change to this floor cost it 204 px in 307,648; a regression up to 2,000 px there is accepted, more than that is a finding).",
+  "a_ref": "5e612529b9",
+  "b_ref": "8620d88c17",
+  "must_not_move": [
+    "Depth_buffer/DepthFmt_z16_*_FZn_*_ZB",
+    "Depth_buffer/DepthFmt_z16_*_FZy_*_ZB",
+    "Depth_buffer/DepthFmt_z24_*_FZy_*_ZB"
+  ],
+  "expect": {
+    "Depth_buffer/DepthFmt_z24_*_FZn_M00000f_ZB": 0,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M055564_ZB": 5,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M0aaab9_ZB": 21,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M40000b_ZB": 227,
+    "Depth_buffer/DepthFmt_z24_*_FZn_M800007_ZB": 654,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mc00003_ZB": 1221,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mf55555_ZB": 6177,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mfaaaaa_ZB": 6770,
+    "Depth_buffer/DepthFmt_z24_*_FZn_Mffffff_ZB": 6770
+  },
+  "expect_counts": {}
+}
