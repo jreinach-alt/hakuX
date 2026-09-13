@@ -980,49 +980,49 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:761",
+   "loc": "hw/xbox/nv2a/pfifo.c:1057",
    "symbols": [],
    "text": "// TODO think more about locking"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:823",
+   "loc": "hw/xbox/nv2a/pfifo.c:1119",
    "symbols": [],
    "text": "* TODO: Check this range is correct for the nv2a */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:900",
+   "loc": "hw/xbox/nv2a/pfifo.c:1196",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:939",
+   "loc": "hw/xbox/nv2a/pfifo.c:1235",
    "symbols": [],
    "text": "// TODO: should we become busy here??"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:993",
+   "loc": "hw/xbox/nv2a/pfifo.c:1289",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1120",
+   "loc": "hw/xbox/nv2a/pfifo.c:1416",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1143",
+   "loc": "hw/xbox/nv2a/pfifo.c:1439",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1313",
+   "loc": "hw/xbox/nv2a/pfifo.c:1609",
    "symbols": [],
    "text": "/* XXX: Think this is different to what nouveau calculates... */"
   },
@@ -3806,6 +3806,34 @@
    ],
    "title": "Blend tests swatch over-extent is the guest's floorf: x87 FRNDINT ignores the guest rounding-control field on the Android FP JIT path"
   },
+  "68": {
+   "component": "tcg",
+   "disposition": "defect",
+   "no_suites": "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it",
+   "suites": [],
+   "title": "tcg: whole-page invalidation discards ~40,000 live blocks per run of which essentially none were written (ov median 0, max 3); the block-extent lever is dead on feasibility"
+  },
+  "69": {
+   "component": "tcg",
+   "disposition": "defect",
+   "no_suites": "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it",
+   "suites": [],
+   "title": "tcg counters measured the wrong events: hakux_tb_generated counted calls and hakux_tb_invalidated counted visits, and their quotient was the retracted 2.8:1 waste ratio"
+  },
+  "73": {
+   "component": "tcg",
+   "disposition": "defect",
+   "no_suites": "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it",
+   "suites": [],
+   "title": "tcg: CF_INVALID is an input to tb_hash_func so qht_remove misses and the block is stranded on the page list -- and tb_lookup_cmp masks it off, so the stranded block is still found and EXECUTED"
+  },
+  "74": {
+   "component": "tcg",
+   "disposition": "defect",
+   "no_suites": "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it",
+   "suites": [],
+   "title": "Android FP JIT: FIST/FISTP truncate where x86 rounds per the control word"
+  },
   "8": {
    "component": "pgraph",
    "disposition": "defect",
@@ -4416,10 +4444,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "6a9d88a3b254b540891d96a20558581fa205965e",
+  "emulator_commit": "1cc934470ce652fff3792d2718e00ee9adb28a2d",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2783,
+  "sites": 2788,
   "suites": 102,
   "support_dirs": [
    "/home/justin/pbkitplusplus"
@@ -4765,7 +4793,7 @@
   ],
   "NV097_FLIP_STALL": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:696",
+    "loc": "hw/xbox/nv2a/pfifo.c:992",
     "role": "COMMENT",
     "text": "/* If NV097_FLIP_STALL was executed, check if the flip has completed."
    },
@@ -5029,6 +5057,31 @@
     "loc": "hw/xbox/nv2a/pfifo.c:92",
     "role": "COMMENT",
     "text": "* segment for NV097_SET_BEGIN_END and an arm of its own."
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:750",
+    "role": "REF",
+    "text": "return m == NV097_SET_BEGIN_END;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:752",
+    "role": "REF",
+    "text": "return m <= NV097_SET_BEGIN_END &&"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:753",
+    "role": "REF",
+    "text": "NV097_SET_BEGIN_END < m + 4u * cnt;"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:816",
+    "role": "REF",
+    "text": "if (m <= NV097_SET_BEGIN_END &&"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:817",
+    "role": "REF",
+    "text": "NV097_SET_BEGIN_END < m + 4u * cnt) {"
    },
    {
     "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:249",
@@ -16640,7 +16693,7 @@
     "text": "* (NV_PGRAPH_INTR, NV_PGRAPH_INCREMENT, NV_PGRAPH_FIFO) additionally require"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:692",
+    "loc": "hw/xbox/nv2a/pfifo.c:988",
     "role": "REF",
     "text": "return qatomic_read(&d->pgraph.regs_[NV_PGRAPH_FIFO]) &"
    },
@@ -16657,7 +16710,7 @@
   ],
   "NV_PGRAPH_FIFO_ACCESS": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:693",
+    "loc": "hw/xbox/nv2a/pfifo.c:989",
     "role": "REF",
     "text": "NV_PGRAPH_FIFO_ACCESS;"
    }
@@ -18051,7 +18104,7 @@
   ],
   "NV_PGRAPH_SURFACE": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:703",
+    "loc": "hw/xbox/nv2a/pfifo.c:999",
     "role": "READ",
     "text": "uint32_t s = pgraph_reg_r(pg, NV_PGRAPH_SURFACE);"
    },
@@ -18128,7 +18181,7 @@
   ],
   "NV_PGRAPH_SURFACE_MODULO_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:708",
+    "loc": "hw/xbox/nv2a/pfifo.c:1004",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_MODULO_3D));"
    },
@@ -18155,12 +18208,12 @@
   ],
   "NV_PGRAPH_SURFACE_READ_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:706",
+    "loc": "hw/xbox/nv2a/pfifo.c:1002",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:710",
+    "loc": "hw/xbox/nv2a/pfifo.c:1006",
     "role": "READ",
     "text": "if (GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D)"
    },
@@ -18187,12 +18240,12 @@
   ],
   "NV_PGRAPH_SURFACE_WRITE_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:707",
+    "loc": "hw/xbox/nv2a/pfifo.c:1003",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:711",
+    "loc": "hw/xbox/nv2a/pfifo.c:1007",
     "role": "READ",
     "text": "!= GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D)) {"
    },
