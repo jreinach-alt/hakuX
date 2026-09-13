@@ -134,6 +134,30 @@ touching `/tmp/hakux-device-lease` at least once every 90s; the hook then
 defers and says so. The lease is deliberately short-lived, so a batch that dies
 stops suppressing the hook on its own.
 
+**THERE ARE TWO LEASES, AND CHECKING ONLY THE SHARED ONE IS MISLEADING.** That
+path is the shared lease, touched by `hold_device.sh` and the older
+single-device scripts. **`dispatcher.sh` holds one lease PER DEVICE instead** --
+`devices.sh` names it, e.g. `/tmp/hakux-device-lease.thor` -- so two
+dispatchers cannot mistake each other's run for their own. `stop-emulator.sh`
+resolves that per-device path through `devices.sh` exactly when the shared file
+is stale, which is why a stale shared lease does not mean the device is
+unclaimed.
+
+This paragraph used to describe only the shared lease, and on 2026-09-13 that
+cost a lane a false alarm: it found the shared file **18.7 hours stale** while
+a hundred-suite sweep was mid-run, correctly concluded the hook would not
+defer, and warned that its turn ending would kill the run. The per-device lease
+was 26 seconds old and the hook would have deferred on it. The lane read one
+input and concluded about a system with two, because this file only told it
+about one.
+
+**So before reporting that the device is unleased, resolve the per-device path**
+-- the hook's own `device_lease()` does it in three lines -- or better, simulate
+the decision rather than reasoning about it. And note what the lane got right:
+it refused to touch the lease, because faking one on another batch's behalf
+suppresses the interlock it exists to provide. Raising a suspected interlock
+failure is correct even when the suspicion is wrong; silencing one never is.
+
 **This fires on a person's session too, and that is easy to miss.** The hook
 runs at the end of *every* turn, so replying to someone who is mid-game kills
 their game. It cost several Galleon sessions in one evening, each behind an
