@@ -2150,9 +2150,12 @@ static MString* psh_convert(struct PixelShader *ps)
              * (the top-most row of the triangle clipped to the window, at
              * the column nearest the top vertex).  Wall/Roof/Floor in
              * W_buffering reproduce to the unit; applying the factor per
-             * pixel to w^2, as before, varied 30x across one quad.  Small
-             * unclipped triangles pick a reference on a 4-pixel grid instead;
-             * see docs/investigations/wbuffer-slope-offset.md.
+             * pixel to w^2, as before, varied 30x across one quad.  A
+             * primitive the window clip did not cut anchors its row on an
+             * absolute 4-pixel grid instead (phase 2), which is what all 24
+             * `TriH` triangles measure; the column stays on the 2-grid
+             * because no integer column reproduces `TriV`.  See
+             * docs/investigations/wbuffer-slope-offset.md.
              */
             mstring_append(preflight,
                 "float wbufSlopeStep(vec4 p0, vec4 p1, vec4 p2, vec4 clip) {\n"
@@ -2167,6 +2170,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    float xtop = (p0.y <= p1.y && p0.y <= p2.y) ? p0.x : (p1.y <= p2.y ? p1.x : p2.x);\n"
                 "    vec2 poly[8];\n"
                 "    int n = 3;\n"
+                "    bool cut = false;\n"
                 "    poly[0] = p0.xy; poly[1] = p1.xy; poly[2] = p2.xy;\n"
                 "    for (int side = 0; side < 4; side++) {\n"
                 "        vec2 kept[8];\n"
@@ -2175,8 +2179,11 @@ static MString* psh_convert(struct PixelShader *ps)
                 "            vec2 a = poly[i], b = poly[(i + 1) % n];\n"
                 "            float da = side == 0 ? a.x - clip.x : side == 1 ? clip.z - a.x : side == 2 ? a.y - clip.y : clip.w - a.y;\n"
                 "            float db = side == 0 ? b.x - clip.x : side == 1 ? clip.z - b.x : side == 2 ? b.y - clip.y : clip.w - b.y;\n"
-                "            if (da >= 0.0) kept[m++] = a;\n"
-                "            if ((da >= 0.0) != (db >= 0.0)) kept[m++] = mix(a, b, da / (da - db));\n"
+                "            if (da >= 0.0) kept[m++] = a; else cut = true;\n"
+                "            if ((da >= 0.0) != (db >= 0.0)) {\n"
+                "                kept[m++] = mix(a, b, da / (da - db));\n"
+                "                cut = true;\n"
+                "            }\n"
                 "        }\n"
                 "        n = m;\n"
                 "        if (n == 0) return 0.0;\n"
@@ -2209,9 +2216,35 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    if (!found) return 0.0;\n"
                 /* The pair is the 2x2 pixel quad holding the anchor: a clip
                  * edge at column 159 measures the pair (158,159), a vertex at
-                 * 637.31 the pair (636,637). */
+                 * 637.31 the pair (636,637).
+                 *
+                 * A primitive the clip did not cut anchors its ROW on an
+                 * absolute 4-pixel grid at phase 2 instead.  Recovered from the
+                 * goldens, exactly, on all 24 `TriH` triangles: their offsets
+                 * are 439380/459200/480392/503086 and the anchor row that
+                 * reproduces each is 4*floor(k/4)+2 for every one of them, to
+                 * under 2e-6 of the value.  The 2-grid snap is right for every
+                 * triangle the clip DID cut -- Wall, Roof, Floor and all three
+                 * ClipW -- so the regime is selected on that bit, not on size.
+                 *
+                 * Deliberately not done here, both measured:
+                 *   - the COLUMN stays on the 2-grid.  `TriV` is the only
+                 *     capture whose anchor is a column, and NO integer column
+                 *     reproduces its offsets: the best is 164, off by -122,
+                 *     +658, +1547 and +2555 units on the four residues, where
+                 *     this model is exact to under a unit everywhere else.  A
+                 *     4-grid column would replace a wrong answer with a wrong
+                 *     answer and move no pixel -- TriV has pb == 0 exactly.
+                 *   - `ClipF`s second triangle wants clip_top+2 and is left
+                 *     alone.  The clip cuts it, so this rule gives it clip_top,
+                 *     which is wrong -- but the same triangle at clip_top 0
+                 *     wants clip_top+0, and the OTHER triangle of the same quad
+                 *     at the same clip wants clip_top+0 too, so no rule over
+                 *     (plane, clip, first covered pixel, top vertex) separates
+                 *     them.  See docs/investigations/wbuffer-slope-offset.md. */
                 "    c = 2.0 * floor(c * 0.5);\n"
-                "    r = 2.0 * floor(r * 0.5);\n"
+                "    r = cut ? 2.0 * floor(r * 0.5)\n"
+                "        : 4.0 * floor(r * 0.25) + 2.0;\n"
                 "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"
                 "    float i1 = 1.0 / p0.w + pa * (c + 0.5 - p0.x) + pb * (r + 0.5 - p0.y);\n"
                 "    float i2 = i1 + step;\n"
