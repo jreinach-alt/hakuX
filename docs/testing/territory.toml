@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 17
-updated_utc = "2026-09-13T21:05:00Z"
+wave = 18
+updated_utc = "2026-09-13T21:40:00Z"
 
 
 
@@ -48,18 +48,21 @@ files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
 note = "LANE FINISHED AND FOLDED (merge e8f391846a). #31 now has the first pre-registered arm in its history: PASS on 693 checks, TriH structural 52,800 -> 0, and its blocker WITHDRAWN AS FALSE -- all 64 discriminating anchors were already determined to +/-0.002 px by data on disk, and the 619,349 px were three mechanisms under one label. #10 R16B16 re-judged as an already-passing arm the tracker had recorded as unjudged. FILES STILL HELD, deliberately: two #10 luminance arms are queued/running against psh.c refs and must be judged before anything else edits the emitter. DO NOT REMOVE /home/justin/hakuX-wt-31-10 -- the running arm binds its prediction through a path inside it."
 
 [lane.pacing]
-issues = ["44", "65", "54"]
+issues = ["44", "65"]
 files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 note = "#54 SUBSUMED INTO THIS LANE: its own lane verified that mode 2's hold covers the texture upload site (RCMD_DRAW never enqueued, both draw queues false, the reorder window reads at enqueue on the PFIFO thread) and that NO read-side fix exists -- the bytes the upload should read are those the guest had written when it PUBLISHED the draw, and the only observable of that is DMA_PUT in pfifo.c, so a read-side change narrows the window and never orders the read. Its Tr probe is a BETTER falsifier for mode 2 than stale_px: the Texture border disc is structurally blind to the gave hole (18 draws, one frame, no FLIP_STALL) while Crimson Skies flips every frame and Galleon measured gave at 5.603%. The two single-change follow-ons whose mechanism is already measured. #44's SELECTIVE draw-only bound: JUDGED, arm B in. The guarantee needs no unprocessed DRAW in the FIFO; holding at every submission is 27x stronger than required (NOT the 826x I briefed -- 5,286 submissions publish a draw, not 180, because the run boots and executes seventeen other tests, so any per-draw arithmetic from '180 draws' is thirty times out). Scan costs 0.0303% of wall clock, mean 306 ns over 252 words, against mode 1's 40.7% blocked -- the cost was removed, not moved. V2/V3/V4/V5/V6a hold; V6b fails per-window on two ADJACENT windows off by -1 then +1 that cancel exactly when pooled (fsk_note_scan runs before pfifo_bound_skew, so a window dump between them splits one submission), one-line repair deliberately NOT applied while arms are queued against the refs it would invalidate. WATCH: the 16,384-word budget ran to 16,038 (97.9%) and big fired 20 times, thinner than the 2x it was sized for. #65's defer_cap 15 -> 12: JUDGED AND IT LANDS. D9 -- the leg this change exists to fix -- HOLDS: worst-window clamps 6,7 -> 0,1 over four thor runs, guest time lost +1.544/+1.864 -> -0.062/+0.085 s/min (~20x, no overlap) at no measurable frame-rate cost (gfps p90 59 both arms). 6 of 8 legs hold and BOTH failures convict instruments, not the value: E1's exceedance proxy over-predicts clamps 2-3x (def_max can come from a remaining-bound deferral whose true lateness never exceeded a period), and E4 failed on the hold's own occupancy. Consequence to carry forward: EVERY exceedance figure quoted anywhere, including the nova's 12-29 at cap 12, is an over-estimate -- read it as perhaps 4-15 actually clamping. Still one to two orders above the thor's 0-1, so the nova conclusion survives WEAKENED, not withdrawn, and it rests on rt_p90 (~2x) and the clamp counter, never on the maximum: rt_max grew with n three times today, 3.08 ms at ~32 windows to 42.5 ms at ~660, so every 'observed maximum' here is a floor."
 
 
+[lane.writetrack]
+issues = ["54"]
+files = ["hw/xbox/nv2a/pgraph/texture.c", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+note = "HANDED OVER FROM lane.pacing, which measured #54 to a dead end on its own side and named the successor. What is established, with numbers, and must not be re-derived: 57% of texture uploads race on Crimson Skies and 0 on DOA3/JSRF over 2.8 M draws; re-measured at this tip the rate is 61.7% (Tr:11829/19167) with the vertex site clean at Vr=0/3040 and the impossible row Xd=0, so the race is LIVE and the vertex path is NOT the mechanism. NO READ-SIDE FIX EXISTS STRUCTURALLY: the bytes the upload should read are those the guest had written when it PUBLISHED the draw, and the only observable of that is DMA_PUT in pfifo.c, so a read-side change narrows the window and never orders the read. AND THE SUBMISSION-SIDE BOUND IS REFUTED ON COST, not on correctness: it works, and it costs the whole ceiling (gfps p90 29 -> 13) because 94.2% of a real title's submissions carry a draw against the test disc's 3.6%. THE LEVER: write-tracking -- trap the guest's store to a range a queued draw will read, rather than holding at the submission. Its distinguishing property, and the reason it is the only candidate left, is that its cost does NOT scale with draw density. READ AGENTS.md 'The test disc's ratios are properties of the disc, not of a workload' BEFORE SIZING ANYTHING: the orchestrator sized the last attempt at 826x off a test disc and it was a property of the disc. Measure any density on a real title. Related: #68/#69/#73 measured invalidation as whole-page under #ifndef XBOX, which is the machinery this would build on."
+
 [free]
 files = ["hw/xbox/nv2a/pgraph/vk/renderer.h",
          "hw/xbox/nv2a/pgraph/vk/command.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
-         "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/prim_rewrite.c",
          "hw/xbox/nv2a/pgraph/s3tc.c",
