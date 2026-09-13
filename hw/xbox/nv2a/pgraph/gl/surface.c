@@ -153,13 +153,20 @@ static void android_sanitize_surface_format(PGRAPHGLState *r,
     (void)fmt;
 }
 
+/*
+ * drawn_format, not shape.color_format: a binding reused across a colour
+ * format change keeps the shape it was created with, so shape would pick the
+ * conversion for whichever format first created this surface. Issue #60.
+ * Every reader of a surface's guest colour format in this file is on
+ * pgraph_gl_surface_drawn_format() for that reason.
+ */
 static bool android_surface_uses_rgba8_transfer(const SurfaceBinding *surface)
 {
     if (!surface || !surface->color) {
         return false;
     }
 
-    switch (surface->shape.color_format) {
+    switch (pgraph_gl_surface_drawn_format(surface)) {
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:
@@ -530,7 +537,7 @@ static void android_surface_guest_to_rgba8(const SurfaceBinding *surface,
 {
     unsigned int x, y;
 
-    switch (surface->shape.color_format) {
+    switch (pgraph_gl_surface_drawn_format(surface)) {
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
         for (y = 0; y < height; y++) {
             const uint8_t *src_row = src + y * src_stride;
@@ -547,7 +554,7 @@ static void android_surface_guest_to_rgba8(const SurfaceBinding *surface,
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:
     {
-        bool preserve_alpha = (surface->shape.color_format ==
+        bool preserve_alpha = (pgraph_gl_surface_drawn_format(surface) ==
                                NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8);
         for (y = 0; y < height; y++) {
             const uint8_t *src_row = src + y * src_stride;
@@ -599,7 +606,7 @@ static bool android_surface_to_texture_needs_guest_reinterpretation(
     const SurfaceBinding *surface,
     const TextureShape *shape)
 {
-    switch (surface->shape.color_format) {
+    switch (pgraph_gl_surface_drawn_format(surface)) {
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
         return shape->color_format !=
                NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5 &&
@@ -782,7 +789,7 @@ static void android_surface_rgba8_to_guest(const SurfaceBinding *surface,
 {
     unsigned int x, y;
 
-    switch (surface->shape.color_format) {
+    switch (pgraph_gl_surface_drawn_format(surface)) {
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
         for (y = 0; y < height; y++) {
             const uint8_t *src_row = src + y * src_stride;
@@ -806,7 +813,7 @@ static void android_surface_rgba8_to_guest(const SurfaceBinding *surface,
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:
     {
         bool force_opaque_alpha =
-            (surface->shape.color_format !=
+            (pgraph_gl_surface_drawn_format(surface) !=
              NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8);
         for (y = 0; y < height; y++) {
             const uint8_t *src_row = src + y * src_stride;
@@ -823,7 +830,7 @@ static void android_surface_rgba8_to_guest(const SurfaceBinding *surface,
                 out[1] = pixel[1];
                 out[2] = pixel[0];
                 out[3] =
-                    (surface->shape.color_format ==
+                    (pgraph_gl_surface_drawn_format(surface) ==
                      NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8)
                         ? pixel[3]
                         : 0xFF;
@@ -846,7 +853,7 @@ static bool android_surface_to_texture_rgba8_compatible(
         return false;
     }
 
-    switch (surface->shape.color_format) {
+    switch (pgraph_gl_surface_drawn_format(surface)) {
     case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
         switch (shape->color_format) {
         case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5:
@@ -1106,7 +1113,14 @@ static bool surface_to_texture_can_fastpath(SurfaceBinding *surface,
 {
     // FIXME: Better checks/handling on formats and surface-texture compat
 
-    int surface_fmt = surface->shape.color_format;
+    /*
+     * This is exactly the case pgraph_gl_surface_drawn_format() exists for: a
+     * surface consulted after it has stopped being the current target, so the
+     * SET_SURFACE_FORMAT register answers about something else, and
+     * shape.color_format answers about whichever format created the binding
+     * rather than the one it was last drawn as. Issue #60.
+     */
+    int surface_fmt = pgraph_gl_surface_drawn_format(surface);
     int texture_fmt = shape->color_format;
 
     if (!surface->color) {
@@ -1425,7 +1439,7 @@ bool pgraph_gl_check_surface_to_texture_compatibility(
         return false;
     }
 
-    int surface_fmt = surface->shape.color_format;
+    int surface_fmt = pgraph_gl_surface_drawn_format(surface);
     int texture_fmt = shape->color_format;
 
     if (!surface->color) {
