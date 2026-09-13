@@ -463,6 +463,15 @@ void pgraph_gl_draw_begin(NV2AState *d)
     unsigned int vp_width = pg->surface_binding_dim.width,
                  vp_height = pg->surface_binding_dim.height;
     pgraph_apply_scaling_factor(pg, &vp_width, &vp_height);
+    /*
+     * No line-centre bias here, unlike vk/draw.c. The NV2A puts a wide
+     * line's centre half a pixel further along +x than the vertex
+     * (measured; see pgraph_vk_line_centre_bias_x() and #13), and the
+     * Vulkan backend applies that through VkViewport.x, which is a float.
+     * glViewport takes integers, so this path cannot carry it, and GL's own
+     * wide-line rule is not the rectangle Vulkan's is anyway. The GL
+     * renderer is therefore still a column out on odd-width vertical lines.
+     */
     glViewport(0, 0, vp_width, vp_height);
 
     /* Surface clip */
