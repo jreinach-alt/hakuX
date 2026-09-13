@@ -962,8 +962,34 @@ static void append_hilo16_texel(struct PixelShader *ps, MString *vars, int k,
 }
 
 /*
+ * The modes that put a texel through a dot mapping.  Wider than
+ * mode_defines_dot(): DOT_RFLCT_SPEC_CONST reads one without leaving a
+ * named dot behind for anyone else.  NV097_SET_DOT_RGBMAPPING is sticky,
+ * so a bump stage can be left carrying a HILO mapping it never applies --
+ * this keeps the gather out of those shaders.
+ */
+static bool mode_reads_dotmap(enum PS_TEXTUREMODES mode)
+{
+    switch (mode) {
+    case PS_TEXTUREMODES_DOTPRODUCT:
+    case PS_TEXTUREMODES_DOT_ST:
+    case PS_TEXTUREMODES_DOT_ZW:
+    case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
+    case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
+    case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
+    case PS_TEXTUREMODES_DOT_STR_3D:
+    case PS_TEXTUREMODES_DOT_STR_CUBE:
+        return true;
+    default:
+        return false;
+    }
+}
+
+/*
  * The texel name a stage's dot mapping reads: the input texture's own
  * sample, or a rebuilt one when the 16-bit fields need a signed filter.
+ * Only called for a mapping that is actually applied, so the rebuild does
+ * not appear in shaders that merely carry a stale DOT_RGBMAPPING.
  * Caller frees.
  */
 static gchar *dotmap_src(struct PixelShader *ps, MString *vars, int i,
@@ -2589,7 +2615,10 @@ static MString* psh_convert(struct PixelShader *ps)
         /* The texel this stage's dot mapping reads.  Emitted here, before
          * the stage's own code, because it is built from the input stage's
          * sample and position. */
-        g_autofree gchar *dot_src = dotmap_src(ps, vars, i, hilo16_emitted);
+        g_autofree gchar *dot_src =
+            mode_reads_dotmap(ps->tex_modes[i])
+                ? dotmap_src(ps, vars, i, hilo16_emitted)
+                : g_strdup_printf("t%d", ps->input_tex[i]);
 
         switch (ps->tex_modes[i]) {
         case PS_TEXTUREMODES_NONE:
