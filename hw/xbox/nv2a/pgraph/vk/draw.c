@@ -295,12 +295,16 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
  * (255 and 127) give identical goldens under both signed equations while the
  * plain-ADD control on the same geometry varies strongly with alpha.
  *
- * WHAT IS IMPLEMENTED HERE, AND WHAT IS NOT.
+ * WHAT IS IMPLEMENTED HERE.
  *
- * Only the factor half. Forcing ONE/ONE makes us compute clamp(S + D) and
+ * Both halves now. Forcing ONE/ONE makes us compute clamp(S + D) and
  * clamp(D - S), which is the rule exactly wherever S < 128 -- half the source
- * range, and every channel of every source byte below the sign bit. The signed
- * fold of S is NOT done and cannot be done from here.
+ * range, and every channel of every source byte below the sign bit. The sign
+ * fold of S is done by splitting the source across TWO passes; see
+ * pgraph_vk_flush_draw() for the emission and psh.c's signed_blend_fold for the
+ * per-channel split. The argument below is why it cannot be done in ONE pass,
+ * and it is worth keeping because it is correct and it is also what misled two
+ * earlier passes at this issue into pricing framebuffer fetch.
  *
  * It is not an oversight and it is not a missing table entry. As a function of
  * the source colour at a fixed destination, silicon's output is discontinuous
@@ -367,15 +371,13 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
  *     a test that cannot reject pass 1's own output, stencil op KEEP, and no
  *     double-counting in occlusion queries.
  *
- * The state selecting which pass a shader is generating for does NOT fit in
- * this file: it belongs in PshState, i.e. glsl/psh.h, which this lane was not
- * granted. That file is unclaimed, so the grant is one file short rather than
- * blocked -- and vk/surface.c, granted for the float-surface shape, is not
- * needed by this one at all.
- *
- * So this is deliberately a half fix that closes the half it can prove, and
- * leaves the capture non-exact. Scoring it on whole-capture exactness will read
- * as no progress; score the S < 128 channels.
+ * Whether the shader masks at all is guest state and lives in PshState
+ * (psh.h's signed_blend_fold, set from NV_PGRAPH_BLEND), so it keys the shader
+ * cache. WHICH half a pass wants is not guest state -- a draw does not know
+ * which of its passes it is -- so it rides the `signedBlendPass` uniform
+ * instead, and one shader serves both passes. vk/surface.c is not involved:
+ * the float intermediate surface was only ever needed to carry a negative
+ * source, and splitting by sign means no pass ever has one.
  */
 static bool blend_equation_is_signed(uint32_t equation)
 {
@@ -415,11 +417,35 @@ static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
      * the factor fields can say, and the destination-alpha fold below becomes
      * a no-op -- neither ONE nor ONE reads Ad.
      */
-    if (blend_equation_is_signed(GET_MASK(blend_reg, NV_PGRAPH_BLEND_EQN))) {
+    uint32_t raw_eqn = GET_MASK(blend_reg, NV_PGRAPH_BLEND_EQN);
+    if (blend_equation_is_signed(raw_eqn)) {
         SET_MASK(blend_reg, NV_PGRAPH_BLEND_SFACTOR,
                  NV_PGRAPH_BLEND_SFACTOR_ONE);
         SET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR,
                  NV_PGRAPH_BLEND_DFACTOR_ONE);
+
+        /*
+         * The sign fold's second half: which real op this pass carries. The
+         * shader has already split the source by its sign bit (psh.c), so each
+         * pass hands the blend unit a non-negative value and needs the op that
+         * turns it back into the signed sum:
+         *
+         *     SADD     LOW  ADD(S)         HIGH  REVSUB(256 - S)
+         *     SREVSUB  LOW  REVSUB(S)      HIGH  ADD(256 - S)
+         *
+         * Doing it HERE rather than at the pipeline is the whole reason this is
+         * cheap: the effective register is what feeds the static pipeline, the
+         * eds3 dynamic path, the reorder snapshot and the pipeline cache key,
+         * so all four disagree about nothing and the two passes get two
+         * distinct pipelines out of the existing cache with no new plumbing.
+         */
+        bool high =
+            pgraph_glsl_get_signed_blend_pass() == SIGNED_BLEND_PASS_HIGH;
+        bool add_when_low = (raw_eqn == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED);
+        SET_MASK(blend_reg, NV_PGRAPH_BLEND_EQN,
+                 (add_when_low != high)
+                     ? NV_PGRAPH_BLEND_EQN_FUNC_ADD
+                     : NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT);
         return blend_reg;
     }
 
@@ -4163,6 +4189,20 @@ static bool classify_draw_safe(PGRAPHState *pg)
     uint32_t control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);
 
     if (blend & NV_PGRAPH_BLEND_EN) {
+        /*
+         * #43: a signed equation is emitted as TWO passes over the same
+         * geometry, so it must not be reordered or it would interleave with
+         * another draw's passes. The factor test below already rejects every
+         * signed draw the corpus contains (they are never ONE/ZERO), but a
+         * guest may legally program ONE/ZERO with a signed equation, and then
+         * the fold would silently take the reorder path and emit one pass.
+         * Rejecting on the equation makes that unreachable rather than
+         * unlikely.
+         */
+        if (blend_equation_is_signed(GET_MASK(blend, NV_PGRAPH_BLEND_EQN))) {
+            OPT_STAT_INC(reorder_reject_blend);
+            return false;
+        }
         uint32_t src = GET_MASK(blend, NV_PGRAPH_BLEND_SFACTOR);
         uint32_t dst = GET_MASK(blend, NV_PGRAPH_BLEND_DFACTOR);
         if (src != NV_PGRAPH_BLEND_SFACTOR_ONE ||
@@ -4274,6 +4314,25 @@ static bool upload_draw_uniforms(PGRAPHState *pg, size_t offsets_out[2])
 static bool check_draw_mergeable(PGRAPHState *pg, DrawQueue *q)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /*
+     * #43: never merge a signed-equation draw, and this one is load-bearing
+     * rather than defensive. Merging concatenates several draws' primitives
+     * into ONE draw call, and the fold emits two passes per call -- so a merged
+     * pair would blend as p1(q1), p1(q2), p2(q1), p2(q2) instead of
+     * p1(q1), p2(q1), p1(q2), p2(q2). Wherever those quads overlap the result
+     * is wrong, and DrawAlphaStack in blend_tests.cpp is exactly four nested
+     * overlapping quads drawn back to back with identical state, which is the
+     * most mergeable shape there is.
+     *
+     * Keeping them unmerged is also what leaves pgraph_vk_flush_draw the ONLY
+     * place that emits a signed draw, so the two-pass loop lives in one
+     * function instead of four.
+     */
+    if (blend_equation_is_signed(
+            GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_EQN))) {
+        return false;
+    }
 
     if (pg->shader_state_gen != q->shader_state_gen ||
         pg->pipeline_state_gen != q->pipeline_state_gen ||
@@ -6537,7 +6596,7 @@ static void copy_remapped_attributes_to_inline_buffer(PGRAPHState *pg,
     buffer->buffer_offset += remap.buffer_space_required;
 }
 
-void pgraph_vk_flush_draw(NV2AState *d)
+static void flush_draw_one_pass(NV2AState *d)
 {
     NV2A_PHASE_TIMER_BEGIN_EXCL(draw_dispatch);
     PGRAPHState *pg = &d->pgraph;
@@ -6946,4 +7005,66 @@ inline_array_done:
 #endif
 
     NV2A_PHASE_TIMER_END_EXCL(draw_dispatch);
+}
+
+/*
+ * #43: emit the draw once normally, or TWICE for a signed blend equation.
+ *
+ * This is the only place a signed draw is ever emitted, and that is arranged
+ * rather than lucky: classify_draw_safe() refuses to reorder one and
+ * check_draw_mergeable() refuses to merge one, so neither
+ * emit_reorder_entry() nor flush_draw_queue_internal() can see a signed draw.
+ * The alternative was the same loop in four places, which is precisely the
+ * subset that double-corrects.
+ *
+ * Between passes the pipeline and the uniforms are both forced stale:
+ * pgraph_vk_effective_blend_reg() now returns a different equation per pass, so
+ * the pipeline cache key moves and create_pipeline() picks up the other blend
+ * op; and the psh `signedBlendPass` uniform moves, so update_shader_uniforms()
+ * stages a fresh UBO region instead of both passes reading one value.
+ *
+ * WHAT THIS DOES NOT HANDLE, stated because the corpus cannot show it.
+ * Two passes over one draw call blend as p1(all prims), p2(all prims), so a
+ * draw whose own primitives OVERLAP resolves them out of order. Every quad in
+ * blend_tests.cpp is its own Begin/End, so the corpus contains no such draw,
+ * and merging -- which would manufacture one -- is refused above. A title that
+ * programs a signed equation on self-overlapping geometry would need
+ * framebuffer fetch with rasterization_order_attachment_access; nothing in the
+ * corpus measures it, so it is recorded rather than guessed at.
+ *
+ * Depth and stencil are likewise not re-armed for the second pass: where the
+ * guest has depth writes or stencil ops enabled with a signed equation, pass 2
+ * would re-apply them. The corpus draws these as 2D quads and does not
+ * exercise it. Both gaps are on #43.
+ */
+void pgraph_vk_flush_draw(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    uint32_t blend = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
+    bool fold = (blend & NV_PGRAPH_BLEND_EN) &&
+                blend_equation_is_signed(GET_MASK(blend, NV_PGRAPH_BLEND_EQN));
+
+    if (!fold) {
+        flush_draw_one_pass(d);
+        return;
+    }
+
+    static const int passes[] = { SIGNED_BLEND_PASS_LOW,
+                                  SIGNED_BLEND_PASS_HIGH };
+    for (int i = 0; i < ARRAY_SIZE(passes); i++) {
+        pgraph_glsl_set_signed_blend_pass(passes[i]);
+        r->pipeline_state_dirty = true;
+        r->uniforms_changed = true;
+        flush_draw_one_pass(d);
+    }
+
+    /*
+     * Leave the selector at LOW so an unfolded draw stages a stable value and
+     * cannot be given a spurious uniform change by whatever ran before it.
+     */
+    pgraph_glsl_set_signed_blend_pass(SIGNED_BLEND_PASS_LOW);
+    r->pipeline_state_dirty = true;
+    r->uniforms_changed = true;
 }
