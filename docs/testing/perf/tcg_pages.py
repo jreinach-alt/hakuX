@@ -550,6 +550,25 @@ def judge(arm_a, arm_b):
         print("   WARNING: no soak recorded a device_label, so nothing here"
               " records which handheld produced what.")
 
+    # Two arms whose always-on line has DIFFERENT FIELD NAMES is exactly the
+    # situation #69 created, and it is comparable -- `visited` and `calls` are
+    # the same two counters either side of the rename, read out of
+    # differently-labelled fields. It is still worth saying out loud, because
+    # "the arms agree on a quantity that is spelled differently in each" is
+    # the kind of thing that hides a real mismatch, and because an arm in the
+    # legacy form has no discard or generation count at all, so `waste` will
+    # silently be missing from the verdict rather than judged.
+    leg_a = any("legacy_line" in w for ws, _, _ in arm_a for w in ws)
+    leg_b = any("legacy_line" in w for ws, _, _ in arm_b for w in ws)
+    if leg_a != leg_b:
+        print("   NOTE: the arms use different always-on line formats (%s"
+              " pre-#69, %s post). `visited` and `calls` are the same"
+              " counters either side of the rename and are comparable; but"
+              " the pre-#69 arm carries no discard or generation count on"
+              " that line, so any quantity it lacks is ABSENT from the"
+              " verdict below rather than judged."
+              % ("A" if leg_a else "B", "B" if leg_a else "A"))
+
     refs_a = {(i or {}).get("ref") for _, _, i in arm_a} - {None}
     refs_b = {(i or {}).get("ref") for _, _, i in arm_b} - {None}
     if len(refs_a) > 1 or len(refs_b) > 1:
