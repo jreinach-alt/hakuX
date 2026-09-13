@@ -158,7 +158,7 @@ def split(rows, which):
     return rows
 
 
-def metrics(rows, gfps):
+def metrics(rows, gfps, cap=16):
     """Everything the legs need, from ONE run of one arm.
 
     Per run and not per window: the performance lane measured absolute
@@ -171,7 +171,15 @@ def metrics(rows, gfps):
     full = split(rows, "full")
     locked = split(rows, "locked")
     unlock = split(rows, "unlock")
-    capb = [r for r in full if r["def_n"] and r["def_mean"] > period]
+    # CAP-BOUND: a window whose deferrals ran to the cap. `max_defer` is
+    # `poll_interval * defer_cap`, so this test is a function of the cap the
+    # run was BUILT with -- it is `> period` only because the first arm ever
+    # judged here was cap 16, where `max_defer` IS a period to the nanosecond.
+    # Hardcoding that silently misclassifies every other cap: at 12 the
+    # threshold is 12,512,808 ns and a window meaning to be cap-bound reads as
+    # window-bound, which would make the mechanism leg pass by being empty.
+    max_defer = (period // 16) * cap
+    capb = [r for r in full if r["def_n"] and r["def_mean"] > max_defer]
     have_clamp = has_clamp(rows)
 
     m = dict(period=period, windows=len(rows),
@@ -234,6 +242,13 @@ def main():
     ap.add_argument("--b", required=True, action="append",
                     help="arm B logcat; repeat for each run of the arm")
     ap.add_argument("--expect")
+    # The caps the two arms were BUILT with. Defaults are the first step this
+    # judge was written for (16 -> 15) so every verdict it has already
+    # published reproduces unchanged; pass them for any other step.
+    ap.add_argument("--cap-a", type=int, default=16,
+                    help="defer_cap in arm A's binary (default 16)")
+    ap.add_argument("--cap-b", type=int, default=15,
+                    help="defer_cap in arm B's binary (default 15)")
     args = ap.parse_args()
 
     if args.expect:
@@ -244,14 +259,16 @@ def main():
               % (exp.get("a_ref"), exp.get("b_ref"), exp.get("title"),
                  exp.get("device")))
 
-    A = [metrics(*load(p)) for p in args.a]
-    B = [metrics(*load(p)) for p in args.b]
+    A = [metrics(*load(p), cap=args.cap_a) for p in args.a]
+    B = [metrics(*load(p), cap=args.cap_b) for p in args.b]
     period = A[0]["period"]
     poll = period // 16
 
     print("period %d ns   poll_interval (period/16) %d ns" % (period, poll))
-    print("old max_defer (cap 16) %d   new max_defer (cap 15) %d" %
-          (poll * 16, poll * 15))
+    print("arm A max_defer (cap %d) %d   arm B max_defer (cap %d) %d" %
+          (args.cap_a, poll * args.cap_a, args.cap_b, poll * args.cap_b))
+    print("expected deferred-hold fall = %d poll intervals = %d ns" %
+          (args.cap_a - args.cap_b, poll * (args.cap_a - args.cap_b)))
     print("runs: A=%d  B=%d   (the replicate is the RUN, not the window)\n"
           % (len(A), len(B)))
 
@@ -374,13 +391,28 @@ def main():
     ha = [r["hold"] for r in A if r["hold"]]
     hb = [r["hold"] for r in B if r["hold"]]
     if ha and hb:
+        steps = args.cap_a - args.cap_b
+        want = poll * steps
         falls = [x - y for x in ha for y in hb]
-        worst = max(abs(f - poll) for f in falls) / float(poll)
+        worst = max(abs(f - want) for f in falls) / float(want)
+        # Cross-paired (the worst of the product) is the registered form and
+        # it FAILED at 16 -> 15, because arm A's own hold moved 1,227,019 ns
+        # between two runs of one binary while the effect was 1,042,734. At a
+        # larger step the effect grows and the spread does not, so the
+        # run-paired figure is printed alongside rather than instead: a leg
+        # that fails cross-paired and holds run-paired is a statement about
+        # the control's spread, not about the change.
+        paired = [x - y for x, y in zip(ha, hb)] if len(ha) == len(hb) else []
+        pworst = (max(abs(f - want) for f in paired) / float(want)
+                  if paired else None)
         ok.append(leg("D5", worst <= 0.25,
-                      "deferred hold A %s -> B %s; worst pairwise fall vs one "
-                      "poll interval %d is %.1f%% off (tol 25%%)"
+                      "deferred hold A %s -> B %s; worst pairwise fall vs %d "
+                      "poll interval(s) = %d ns is %.1f%% off (tol 25%%)%s"
                       % ("/".join(str(x) for x in ha),
-                         "/".join(str(x) for x in hb), poll, worst * 100)))
+                         "/".join(str(x) for x in hb), steps, want,
+                         worst * 100,
+                         "" if pworst is None
+                         else "; RUN-PAIRED %.1f%% off" % (pworst * 100))))
     else:
         ok.append(leg("D5", None, "an arm has no deferral in unlock mode"))
 
