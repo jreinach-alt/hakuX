@@ -87,14 +87,24 @@ completely, and benignly:
 |---|---:|---:|
 | leading silence before the guest produces audio | 156,128 | 3.253 s |
 | one contiguous silent stretch | 276,480 | 5.760 s |
-| 1,383 isolated zero runs, 1,363 of them a single frame | ~1,400 | ~0.03 s |
+| 1,382 short runs, 1,363 of them a single frame, longest 11 | 1,424 | 0.030 s |
+| **total** | **434,032** | |
 
-That is the whole of it. The run-length distribution is p50 = 1, p95 = 1,
-p99 = 2, max = 276,480 — one long stretch and a scatter of zero crossings. Run
-starts are uniform modulo 32 and modulo 256, so nothing is aligned to the
-32-sample VP slice or the 256-frame output block; exactly one run of 1,383 has
-a length that is a multiple of 32, which is what chance gives. 1,079 blocks are
-wholly zero and they are contiguous.
+That adds up exactly — 156,128 + 276,480 + 1,424 = 434,032, which is the
+measured zero-frame count — so there is no fourth component hiding in it.
+
+The shape is what settles it. After the boot silence there are 1,383 runs; the
+run-length distribution is p50 = 1, p95 = 1, p99 = 2, max = 276,480. **Exactly
+one run has a length that is a multiple of the 32-frame VP slice, and it is the
+276,480-frame stretch itself** (8,640 slices). Not one of the 1,382 short runs
+is a slice multiple, and their starts are spread uniformly modulo 32 and modulo
+256 rather than piling onto one offset.
+
+That is the discriminator, and it is worth stating as a rule rather than an
+impression: a slice the frame loop failed to write would leave a run of exactly
+32 frames at a fixed offset within the 256-frame block, and repeatedly. What is
+actually here is one long silence at an arbitrary offset plus a scatter of
+single-frame zero crossings, which is what ordinary audio does.
 
 **So there is no periodic APU-side dropout, and the frame-buffer slicing is not
 leaving holes.** This is a negative worth recording because "9.78% zeros" reads
