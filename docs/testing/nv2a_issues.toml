@@ -2856,6 +2856,14 @@ status = "open"
 status_note = "Tier-1 promotion sets CF_INVALID in place without unlinking; do_tb_phys_invalidate reads orig_cflags including that bit and hashes with it, so qht_remove looks in the wrong bucket and the early return fires before tb_remove. 85-93% of invalidation-loop visits are already-invalid blocks: ~112 futile hash lookups plus spinlock acquisitions per frame. The correctness half is now established by reading three sites rather than inferred: tb_lookup misses on exact cflags, tb_htable_lookup_common hashes the insertion bucket, tb_lookup_cmp masks CF_INVALID off, and cpu_exec_loop suppresses only chaining."
 blocked_on = "belongs to the tier-1 owner; blast radius is every guest instruction"
 
+[issue.75]
+title = "Stencil: three ZERO captures regressed 0 -> 100,000 px between 2501f35211 and 0026f00534"
+disposition = "defect"
+suites = ["Stencil"]
+status = "open"
+status_note = "Found by the 0026f00534 corpus sweep and CONFIRMED AS A REAL PIXEL CHANGE before filing. Stencil_ZERO_DT 0 -> 40,000, Stencil_ZERO_ST_DT 0 -> 30,000, Stencil_ZERO_ST_DT_ZB 0 -> 30,000; all three were exact before, and the category total 5,907,122 -> 6,007,774 is these three and nothing else. NOT THE SCORER, which mattered because score_sweep.py gained a white-content status this session and one of the three changed status: re-scoring BOTH capture sets with today's scorer gives 0/0/0 on z-after-059-Stencil (2501f35211) and 40,000/30,000/30,000 on z-tip-059-Stencil (0026f00534). Same code, same goldens, different captures, so the pixels moved and not the judgement. The other five Stencil_ZERO* captures are 0 in both columns, making this narrow rather than broad. WINDOW: 28 hw/ commits. The name pattern -- DT in all three, ST in two, one _ZB -- points at the depth/stencil SURFACE path rather than the stencil op. Prime suspect d406aca77a ('retract the #50 attribution on the download flush', 52 insertions in vk/surface.c, the only commit in the window changing Vulkan surface download behaviour), second d00e9b22d1 (frame_submitted read atomically, vk/draw.c + vk/surface.c). THAT IS A SUSPECT, NOT AN ATTRIBUTION -- nothing is bisected, and a plausible commit in a 28-commit window is the kind of guess this campaign has been wrong about before."
+blocked_on = "Needs a bisect, and the FIRST build is at the tip rather than in the window: 0026f00534 is 31 hw/ commits behind the current tip and contains neither #31's W-buffering fix nor #10's luminance fix, so the regression may already be fixed or already worse. One build settles which, then three bisect the window. No lane owns vk/surface.c yet."
+
 [issue.74]
 title = "Android FP JIT: FIST/FISTP truncate where x86 rounds per the control word"
 component = "tcg"
