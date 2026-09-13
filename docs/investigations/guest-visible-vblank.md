@@ -1241,4 +1241,71 @@ committed before anything was queued in
 **intermediate value**: the hold must fall by exactly three poll intervals,
 3,128,202 ns, run-paired — the half a merely-helpful change would miss.
 
-*Results to be filled in from the dispatcher.*
+### ARM A (cap 15) MEASURED, and it corrects my own device comparison
+
+`9931f882bb` / apk `93c25670227f`, **thor** both runs (`device_label` read out
+of each `result.json`), DOA3, 240 s, two runs under one `--who`.
+
+| run | fully-unlocked windows | exceedance windows at c15 | at c12 | `rt_p90` | `rt_max` | clamps |
+|---|---|---|---|---|---|---|
+| A1 | 28 | **35** | 1 | 2,783,781 | 11,232,895 | 89 |
+| A2 | 22 | **28** | 2 | 2,921,898 | **42,453,521** | 84 |
+
+**E0's gate is met** (28 and 22 against a bar of 5), and all three controls
+hold on both runs: `neg == 0`, `def(max=) ≥ def(mean=)` everywhere, and
+`nodef_n + def_n == n` **exactly**.
+
+**The pre-registered table replicates.** 35 and 28 exceedance windows at cap
+15, squarely inside the published 37/25/28/28, and 1 and 2 at cap 12 against
+the published 0/0/0/1. So the statistic reproduces across six runs of two
+binaries on one device, which is what an occupancy-free statistic is supposed
+to do.
+
+### A2's `rt_max` is 42,453,521 ns, and it retracts a comparison I made above
+
+This document, three sections up, contrasts *"the nova's `rt_max` 6,225,835 –
+50,353,011"* against *"the thor's 3,691,090 – 6,534,801"* and reads the nova
+as roughly twice as bad. **With A2 in hand the thor's range is 3,691,090 –
+42,453,521 over six runs, and that contrast largely collapses on the
+maximum.**
+
+Two things follow and the second is the useful one.
+
+**My host-stall filter does not catch whatever produces these.** A2's window
+had `nodef(max=) ≤ period` — so no *non-deferred* assertion in it was more
+than 16.68 ms late — while a deferred one was 58.1 ms late. The nova showed
+the same shape at 50.4 ms. Whatever it is, it is **not** a plain host stall by
+the only evidence a window line carries, it appears on **both** devices, and
+`--keep-stall-windows` is not the difference. I do not know what it is. It is
+recorded as unexplained rather than filtered harder, because a filter tuned
+until the outliers vanish is a filter fitted to the answer.
+
+**So the maximum is not a usable statistic here at all, on either device**, and
+that is the same conclusion the "1.35×" refutation reached by a different
+route. Three times today this quantity has grown with n: 3.08 ms at ~32
+windows, 6.53 ms at ~440, 42.5 ms at ~660. Any figure quoted as "the observed
+maximum" is a floor, **including every one I quoted.**
+
+**The device comparison therefore rests on the two statistics that did not
+move**, and it survives on both:
+
+| | thor (6 runs) | nova (5 runs) |
+|---|---|---|
+| `rt_p90` | 2,423,885 – 2,921,898 | **4,776,972 – 5,768,336** |
+| exceedance windows at c12 | **0, 0, 0, 1, 1, 2** | **12 – 29** of ~120 |
+| `rt_max` | 3.69 – **42.5** ms | 6.2 – 50.4 ms — **no contrast** |
+
+The nova's `rt_p90` is about double the thor's and its cap-12 exceedance count
+is one to two orders of magnitude higher. Those are the grounds for "cap 12
+does not cover the nova"; the maximum never was.
+
+### What arm A predicts about E1, said before arm B is read
+
+Arm A's own data gives **1 and 2** exceedance windows at cap 12. E1's
+registered bar is **zero on both runs**. If the per-run residual rate is
+around 1 in 3, E1 passes with probability near 0.45 — so it is a genuine
+falsifier rather than a formality, and a failure by one or two windows is
+diagnosed in advance: that residual is the tail above, which no cap reaches,
+and **E2** (worst fully-unlocked window clamps ≤ 2) is the leg that bounds it.
+
+*Arm B results to be filled in from the dispatcher.*
