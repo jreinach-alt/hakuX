@@ -3,8 +3,8 @@
   "who": "fog-radial-agent",
   "issue": "41",
   "prediction": "#41: NO BEHAVIOURAL CHANGE IS PROPOSED. This arm carries a comment-only edit to glsl/vsh.c plus documentation; the generated GLSL is byte-identical, verified by diffing the non-comment lines (0 changed). Two things are pre-registered, and the second is the one worth the device time.\n\n(1) THE NULL. Every capture in all eight fog suites -- Fog, Fog_carryover, Fog_coord_vec4, Fog_exceptional_value, Fog_gen, Fog_inf_coord, Fog_param, Fog_vsh -- is unchanged between the arms. FALSIFIER (1): any fog capture moving outside its measured run-to-run band means the change is not comment-only and the build is not what this claims; the diff comes out and is re-examined before anything else in this report is believed.\n\n(2) THE CHAIN, judged on the recovered fog coefficient, NOT on a pixel count. The whole result of this issue rests on one inversion: that in FogGen_*-radial the 8-bit fog factor is readable per pixel as the blue channel, because the suite's final combiner is f*(0,0,1) + (1-f)*(1,0,0) and clips at neither end. That inversion is checkable against our own renderer, whose input coordinate is known exactly -- the program writes oFog = (fog_x, 0, 0, 0) with fog_x = 50 - 0.2*i over 374 quads.\n\nThe measured quantity is the MEAN 8-BIT FOG FACTOR over the 181,016-pixel drawn region of each of the six FogGen_VS-*-radial captures, recovered as the blue channel over the pixels where red + blue == 255 and green == 0 (exactly the 374 quads, 484 px each; no antialiasing, the count is exact). Driving psh.c's fog model with the coordinate the program writes predicts, for our arm:\n\n  FogGen_VS-linear-radial     233.29\n  FogGen_VS-exp-radial        181.61\n  FogGen_VS-exp2-radial       186.22\n  FogGen_VS-exp_abs-radial    160.25\n  FogGen_VS-exp2_abs-radial   186.22\n  FogGen_VS-linear_abs-radial 227.94\n\nThe goldens are 0, 1, 0, 1, 0, 0 respectively; the drawn colour is (255,0,0) in four and (254,0,1) in exp and exp_abs.\n\nFALSIFIER (2): if the mean recovered from our capture differs from the number above by more than 3.0 on any of the six, my model of the fog chain is wrong, and then so is every number derived through it -- including the coordinate band (204.06, 221.81), the refutation of 200, and the 8.7% variation figure. In that case the write-up is retracted and re-derived, not patched. A value within 3.0 on all six confirms the forward model end to end, which is what licenses running it backwards on the goldens.\n\nWHAT THIS ARM CANNOT DECIDE. Whether the hardware coordinate is scene state or a constant. That needs a second VS RADIAL scene preceded by a different fixed-function scene, and RADIAL under a vertex program exists in fog_gen_tests.cpp and nowhere else in the corpus (fog_tests.cpp:27 and fog_exceptional_value_tests.cpp:98 both comment it out, citing abaire/nxdk_pgraph_tests#214). No arm can produce it. Recorded as the specified experiment, not as a pending measurement.\n\nSCOPE. Nothing outside the fog suites is touched at all; docs/testing/nv2a_issues.toml and two investigation notes change text only. If a non-fog suite moves, it is another agent's diff on the integration branch and not this one.",
-  "a_ref": "da9ca9537e",
-  "b_ref": "25c6c462d1",
+  "a_ref": "0e66234042",
+  "b_ref": "0e66234042",
   "must_not_move": [
     "Fog/*",
     "Fog_gen/*",
@@ -16,5 +16,8 @@
     "Fog_vsh/*"
   ],
   "expect": {},
-  "expect_counts": {}
+  "expect_counts": {},
+  "notes": [
+    "Refs re-pointed by the orchestrator when the diff was folded onto the integration branch: the agent registered against its worktree's shas, and ab_compare refuses a prediction naming refs other than the arms'. ONLY a_ref and b_ref changed; the prediction text, must_not_move list and expected values are the agent's, byte for byte."
+  ]
 }
