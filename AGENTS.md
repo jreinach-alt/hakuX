@@ -967,6 +967,45 @@ the dispatcher had no reason to consider preflight. The interaction lived in
 neither. When adding a gate to a shared tree, the question is not only "does
 it pass" but "what else reads this tree, and what does it now see?"
 
+## An agent worktree is created on a STALE base -- rebase before doing anything
+
+Measured on 2026-09-13, across every worktree this campaign has created:
+
+    49 agent worktrees
+     1 within 5 commits of the branch tip
+       range: 4 to 764 commits behind
+
+**None of the stale ones contains `docs/testing/territory.toml`** -- which is
+where a lane's own brief lives -- and the older ones have no `request.sh`, no
+`ab_compare.py`, no `preflight.sh`. A lane that reads its instructions from its
+own checkout therefore reads a tree that predates the instructions.
+
+Two consequences, and the second is the dangerous one:
+
+**The tooling is missing, which is loud.** One lane worked around it by reading
+tooling out of a ref with `git show` and invoking the shared tree's
+`request.sh`, which is safe because that script writes only into the dispatch
+directory and never into the repo. Another rebased onto the campaign tip and
+proceeded normally. Both noticed immediately.
+
+**A commit on that base is silent.** An arm requested at a ref whose parent is
+400 commits old builds a tree missing every fix since -- and it will produce
+captures, score them, and report them with a perfectly consistent `apk_sha`.
+That is the stale-artifact failure with a fresh timestamp on it, and nothing
+downstream can see it.
+
+**So the first action in a worktree is to establish its base**, and the cheapest
+tell is whether `docs/testing/territory.toml` exists at all:
+
+    git -C <worktree> rev-list --count HEAD..<campaign-tip>
+    ls docs/testing/territory.toml
+
+If it is behind, rebase onto the campaign tip before committing anything. If a
+rebase is refused, the lane is restricted to measurement and analysis -- which
+is a complete kind of result here, but say so explicitly rather than committing
+on the stale base. A brief that asks for a fix must also say which tip to rebase
+onto.
+
 ## Shared state read inside a worktree is frozen at the branch point
 
 Every lane here works in its own worktree, and a worktree's `git log` walks
