@@ -1035,25 +1035,66 @@ static void nv2a_vblank_timer_cb(void *opaque)
      * The grid's own arithmetic picks the value, and it is not a tuning
      * parameter. The next slot is one period away; the cap is quantised in
      * poll intervals; a period is sixteen of them. So the largest cap that
-     * leaves the grid ANY room is fifteen, and the room it leaves is one poll
-     * interval = 1,042,734 ns, which is what the timer round trip has to fit
-     * inside. That round trip is measurable directly as
-     * `def(mean=) - max_defer` and reads 126,275 / 126,526 / 132,679 /
-     * 178,460 ns across the four cap-bound windows of that soak -- 5.8x to
-     * 8.3x inside the margin. Cost: the hold loses 6.25% of its length.
+     * leaves the grid ANY room is fifteen -- and fifteen is not enough.
      *
-     * Where this value is wrong: a host whose timer round trip exceeds
-     * 1,042,734 ns. The nova's non-deferred lateness is 3.4x the thor's
-     * (360,179 against 104,923 ns), which puts its round trip near 720,000 ns
-     * and the margin at only 1.4x. If the clamp still fires there, the
-     * reasoning is unchanged and the value is fourteen; nothing above needs
-     * revisiting. That is the failure world, stated before the arm ran.
+     * FIFTEEN SHIPPED AND ITS D9 LEG FAILED. Unlock-mode loss went 11.005 ->
+     * 0.798 s/min at zero measurable frame-rate cost (gfps p90 59 -> 59, max
+     * 59 -> 59) and cap-bound fully-unlocked windows went 6, 1 -> 0, 0. But
+     * the worst fully-unlocked window still clamped 5 times against a bar of
+     * 2, because one poll interval of margin -- 1,042,734 ns -- does not
+     * cover the timer's round trip.
+     *
+     * WHY TWELVE, AND NOT THE REASON FIRST GIVEN. The value was first argued
+     * as "4,170,938 ns, 1.35x the observed maximum of 3,083,365". That
+     * argument is WRONG and the correction matters more than the value:
+     * 3,083,365 ns was a maximum over the ~32 fully-unlocked windows two thor
+     * runs happened to contain, and the same estimator over the ~110 usable
+     * windows of each of those same runs reaches 3,691,090 to 6,534,801 ns.
+     * Twelve's margin is 0.64x that maximum, not 1.35x. A maximum read off a
+     * small sample is a lower bound on the tail, never the tail.
+     *
+     * What actually picks twelve is the occupancy-free statistic, counted
+     * with `docs/testing/vblank_roundtrip.py` over four thor soaks -- how
+     * many windows hold a deferral whose round trip exceeds the margin:
+     *
+     *     cap 15    37  25  28  28      <- what shipped
+     *     cap 14    17  14  18  16
+     *     cap 13     8   5   1   3
+     *     cap 12     0   0   0   1      <- eliminated
+     *     cap 11     0   0   0   1
+     *
+     * Twelve is the knee: it is where the mechanism goes to zero on the
+     * device that actually enters unlock mode, and eleven buys nothing more.
+     * The one residual window is the 6.53 ms event the maximum-based argument
+     * had mispriced. Cost: the hold loses 25% of its length, against 6.25%
+     * for the fifteen step that measured free.
+     *
+     * WHERE THIS VALUE IS WRONG, and it is now measured rather than named.
+     * The nova's round trip is roughly twice the thor's -- rt_max 6,225,835
+     * to 50,353,011 ns and rt_p90 4,776,972 to 5,768,336 across five soaks
+     * -- so at cap 12 the nova keeps 12 to 29 exceedance windows of ~120
+     * where the thor keeps 0 to 1. The nova would need cap 10 to reach the
+     * thor's post-change level and cap 9 to approach zero.
+     *
+     * That is NOT a reason to ship 10 today, and the reason is worth stating
+     * because it is the difference between a measurement and a decision. The
+     * nova has never entered unlock mode on any title on hand -- `unl == 0`
+     * on every window of all five of those soaks -- so this constant is dead
+     * code there, and the nova figures above are the HOST's round trip read
+     * out of locked-mode deferrals and transplanted into the unlock
+     * arithmetic. They predict what would happen if a title ever put the
+     * nova in unlock mode; they are not something the nova is doing. Spending
+     * two more steps of a real title's deferral headroom against a
+     * configuration that has never been observed is a trade, and it goes to
+     * the owner with both numbers rather than being resolved here.
      *
      * Deliberately NOT changed: `poll_interval`, so the retry granularity is
      * the same and this is one constant; and the normal-mode pair, which the
-     * arithmetic already exonerates.
+     * arithmetic already exonerates -- and which the same measurement now
+     * supports directly, since locked mode's margin is `period/2` = 8,341,872
+     * ns and covers even the nova's clean-run round trip at 1.24x.
      */
-    int defer_cap = unlocked ? 15 : 4;
+    int defer_cap = unlocked ? 12 : 4;
     int64_t poll_interval = unlocked ? period / 16 : period / 8;
     bool in_deferral_window = effective_frame_ns > 0 &&
                               time_in_frame < defer_window;
