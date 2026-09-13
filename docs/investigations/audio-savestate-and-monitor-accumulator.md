@@ -385,7 +385,96 @@ arm was queued, with all four outcomes written down in advance.
 `mon_acc`'s own numbers are unaffected either way: a starved sink callback drops
 output it has already been handed, downstream of the accumulator.
 
-<!-- FOLLOW-UP VERDICT -->
+### The follow-up: both legs failed, so it was a draw
+
+**MEASURED.** Both arms, Galleon on the Nova, 90 s each:
+
+| arm | ref | `mon_acc` | post-startup `starve:` |
+|---|---|---|---|
+| A1 `1789283508-monacc-starveA` | `91255df20f` (no counter) | — | **clean**, 3 lines, 0.0000% ×2 |
+| B1 `1789283508-monacc-starveB` | `62eaa2f7f6` (repeat) | nonzero 0, saturated 0 | **clean**, 3 lines, 0.0000% ×2 |
+
+**A1 FAILED and B1 FAILED**, which by the outcome table registered before
+either arm ran is the "one draw" cell: nothing implicated, nothing exonerated.
+One event in three counter-carrying runs against none in one run without it is
+not evidence either way.
+
+And the arm had a flaw worth recording: **arm A differs from arm B by the clamp
+as well as by the counter**, so it could never have separated them however many
+runs were spent. That is a design mistake in the experiment, not in the code
+under test.
+
+What it did produce is the first **run-to-run band for this title on this
+device**: three Galleon soaks in one session — one without the clamp, two with
+it — give p50 −28.95/−29.05, −29.05/−29.05, −29.15/−29.25. A **0.20 dB spread
+with the change inside it.** That is a better inertness result for the clamp
+than the cross-run comparison it replaces.
+
+### So the instrument became too cheap to be the cause
+
+Rather than buy three more soaks a side to price a diagnostic, the diagnostic
+was rewritten. The slice index is a pure function of `ep_frame_div`, and
+`apu.c:726` is the only increment and advances by one — so a rewind is exactly
+the frame counter *failing* to advance by one. **One integer comparison per VP
+frame**, with the per-sample detail collected only inside a flush cycle where a
+rewind left dirty slices.
+
+A VP frame is 32 samples, so at 48 kHz there are **1,500 of them a second**
+(187.5/s is the *EP* frame rate, the 256-sample buffer). The per-sample shape
+therefore did about **96,000** checks a second and this does **1,500** — a 64×
+reduction. An earlier commit message says 187/s and 130×; both were wrong and
+are corrected here rather than rewritten out of history.
+
+It is also a better instrument for a reason the first shape hid: **`nonzero`
+counts accumulators that were non-zero, so during silence a genuine revisit
+leaves it at zero.** Galleon's runs are 13–17% flat windows, so that zero was
+never as strong as it read. Counting the mechanism does not depend on content.
+
+### R2 and R3 failed, and R3's registered diagnosis was right
+
+**MEASURED**, `1789283930-monaccrev-galleon` (Nova) and `-crimson` (Thor):
+
+    mon_acc: window 7499 frames  revisits 1  cumulative 7499 ...  nonzero 0
+    mon_acc: window 7500 frames  revisits 0  cumulative 14999 ...  nonzero 0
+
+One revisit, in the **first** window, on **both** titles and **both**
+handhelds, and never again across 127,499 and 134,999 frames.
+
+- **R1** instrument alive — **PASSED**.
+- **R2** `revisits == 0` — **FAILED**, 1 on each run.
+- **R3** consistency with the previous shape — **FAILED**, and it is the leg
+  that earned its place. It was registered as: *"FAILS if revisits > 0 here
+  while the old shape read nonzero == 0 on the same titles — the two cannot
+  both be right, and the detector's off-comparison would be the suspect,
+  specifically the `ma_prev_off` reset on the last slice."* That is exactly
+  what it was.
+- **R4** starvation — **PASSED**, the reference three-line shape with 0.0000%
+  in both heartbeats on both runs.
+- **R5** level unmoved — **PASSED**: Galleon p50 −29.15/−29.15, Crimson Skies
+  −15.95/−15.75, both inside 2.0 dB, and Crimson's clipped counts (84/73) and
+  largest adjacent jumps (21,866/22,628) identical to the sample for the third
+  run running.
+
+Three things identify it as the detector rather than the guest, and none of
+them needed another run:
+
+1. `window 7499 frames` against the report's 7,500 — the monitor block was
+   skipped on exactly one startup frame, so the state it reset lived one frame
+   behind, and one skipped frame is one stale comparison.
+2. `detail nonzero 0` — the accumulator really was zero, so the buffer *had*
+   been flushed. R3 cross-checking R2.
+3. Two devices and two titles agreeing **to the frame**. A guest `NV_PAPU_EPRST`
+   write would not reproduce identically.
+
+The mistake is structural rather than an off-by-one: **the flush is `apu.c`'s
+and does not care about `monitor.point`**, so bookkeeping that lives inside the
+monitor block cannot track it. It now runs at the top of every VP frame and
+watches `ep_frame_div` directly, and `jumps` (every rewind) is reported
+separately from `revisits` (those landing on still-dirty slices) so a rewind
+onto a freshly flushed buffer cannot be read as an overflow risk.
+
+<!-- FINAL ARMS -->
+
 
 ### What M2's zero does and does not bound
 
