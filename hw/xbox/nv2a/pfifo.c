@@ -51,12 +51,13 @@
  * The skew bound: hold the guest at its own submission point until PGRAPH has
  * consumed what it published.
  *
- * Off in this commit. It is turned on by its own one-line change so the
- * instrument above can measure the unbounded baseline first, and so the A/B
- * that prices it differs by exactly one constant.
+ * On. It was added off, in its own commit, so the instrument above could
+ * measure the unbounded baseline first and so the A/B that prices it differs
+ * by exactly one constant -- this one. `HAKUX_FIFO_SKEW_BOUND=0` turns it off
+ * at runtime for a local bisect.
  */
 #ifndef XEMU_OPT_FIFO_SKEW_BOUND
-#define XEMU_OPT_FIFO_SKEW_BOUND 0
+#define XEMU_OPT_FIFO_SKEW_BOUND 1
 #endif
 
 /* Poll DMA_GET without sleeping for this long first. The pusher spins for
