@@ -720,6 +720,38 @@ been added precisely because the reasoning had been wrong once before, and the
 proxy was registered against anyway. Every exceedance figure quoted from that
 estimator, on either device, is an over-estimate.
 
+## A falling rate on a WEAK observable is not evidence the defect closed
+
+The corollary to the stale-floor rule, and it was measured the same day rather
+than reasoned to.
+
+`Texture border`'s `stale_px` flake fell from 6-of-10 at an old floor to
+**2-of-10** at the tip, and the orchestrator floated the obvious hypothesis in
+a write-up: the race must have been closed by `cdd8dc4c89`, #56's
+stale-binding fix. **It has not been.** At the *same ref* those disc runs
+used, Crimson Skies reports `Tr:11829/19167` -- **61.7% of texture uploads
+raced**, higher than the published 0.566 baseline. The race is live.
+
+Both readings are true, and the resolution is the observable, not the defect: a
+disc whose eighteen draws sit inside one frame with no flip between them is
+simply a **poor detector** of a race that a flipping title shows on three
+fifths of its uploads. The disc's 2-in-10 measures the detector.
+
+**So before reading a falling rate as a fix, ask what the observable's power
+is on the workload that produced it.** The two instruments here differ by
+everything that matters:
+
+    stale_px on the disc    a per-run coin flip; 20-30 replicates for power
+    Tr on a real title      19,167 uploads in ONE 240 s run, reproducible to
+                            0.2%, with its own impossible row (Xd) and a
+                            negative control (Vr = 0/3,040)
+
+A rate over tens of thousands of events, carrying its own contradiction check,
+is not the same kind of number as a count of runs that did or did not flake --
+even when both are "the measurement we have". When a defect has a weak
+observable and a strong one, the weak one's movement is a fact about the weak
+one.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
