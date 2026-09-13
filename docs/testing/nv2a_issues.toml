@@ -638,6 +638,21 @@ title = "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point
 # is one-step. 28 of those captures are scored against saturated goldens. The
 # "exclude depth captures from any accuracy figure" note now understates
 # accuracy rather than protecting it. See #52.
+#
+# 2026-09-13: the "float formats are a real encoding defect" half of the above
+# is RETRACTED, and it was the instrument. The z16 *_ZB captures are NOT the
+# ARGB word -- SaveZBuffer picks SDL_PIXELFORMAT_RGB565 for a Z16 zeta and
+# ARGB8888 for Z24S8, on surface width alone, so the float flag selects no
+# packing of its own. Decoded as R5<<11|G6<<5|B5, all 1,436 px of the z16
+# float cell are exactly ONE ULP out and not one of the 1,484 differing
+# channels is one-step -- one unit in a 5/6/5 word moves B by 8 or 9 and
+# carries +4/-255 into G, so a channel delta of 1 is unreachable. Same shape
+# as the z24 "+1 reads as -255", one packing further in. The encoding itself
+# is refuted as the cause: the 992-quad grid writes 63,488 px covering every
+# F16 exponent 0-15 and is bit-identical on all 18 captures, as are the big
+# and right quads; every differing pixel is in the bottom quad, where ours is
+# trunc(exact) and silicon is one ULP under it. This issue stays closed.
+# docs/investigations/zb-packing-float-depth.md.
 disposition = "defect"
 suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
 status = "fixed-verified"
@@ -1546,7 +1561,7 @@ title = "Depth buffer: four independent defects on eight cells, one fixed, and t
 disposition = "defect"
 suites = ["Depth buffer"]
 status = "fixed-part"
-status_note = "Two of the four cells are done. Cell 1 (z16 fixed) was already exact and is now explained rather than lucky -- worst normalisation error 0.0059 units against a 0.00625 margin on the same code path. Cell 2 (z24 fixed) is finished by arm 5e612529b9 -> 91b0897e01, PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px, with ours - floor(exact) collapsing to {0: 85192} on the big quad and oracle - ours = 0 on all 18 captures. Remaining: z16 float 1,436 px (a defect, but its _ZB packing is not the z24 ARGB one and has to be established first), z24 float 12,816 px (a measured floor -- the +-12,584/12,585 quad-split family, priced and deliberately left), and 1,479,886 px of colour whose histograms are byte-identical between the bit-exact z16 cell and the one-unit-out z24 one, so it is #38's Gouraud interpolator and not depth at all."
+status_note = "Two of the four cells are done. Cell 1 (z16 fixed) was already exact and is now explained rather than lucky -- worst normalisation error 0.0059 units against a 0.00625 margin on the same code path. Cell 2 (z24 fixed) is finished by arm 5e612529b9 -> 91b0897e01, PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px, with ours - floor(exact) collapsing to {0: 85192} on the big quad and oracle - ours = 0 on all 18 captures. Remaining: z16 float 1,436 px -- packing now ESTABLISHED as RGB565 (R5<<11|G6<<5|B5; ARGB8888 is z24 only, and the float flag selects neither), verified on 199,065,600 channel samples with 0 lattice violations and modal decoded word == the name mask on 432 of 432 depth _ZB goldens, so score_sweep.py's decode is right and the cell is real rather than an artefact -- but it is NOT a float-encoding defect and not structural: all 1,436 px are one ULP, 0 px differ in the 63,488-px grid that covers every F16 exponent 0-15, and the whole residual is the bottom quad's sub-ULP interpolation shortfall, i.e. cell 2's barycentric-normalisation +-1 family at 1/30th the size. z24 float 12,816 px (a measured floor -- the +-12,584/12,585 quad-split family, priced and deliberately left), and 1,479,886 px of colour whose histograms are byte-identical between the bit-exact z16 cell and the one-unit-out z24 one, so it is #38's Gouraud interpolator and not depth at all. The \"float Z structural -- not one of F16's 469,927 channels is one-step\" line in the comment above is RETRACTED as a channel-counting artefact of the RGB565 packing; classify_residuals.py still has no _ZB branch and so calls every one-ULP depth pixel structural. docs/investigations/zb-packing-float-depth.md."
 
 # Added 2026-09-12. Cross-cutting root cause rather than a pgraph defect, and
 # filed separately because it is not about a suite: tcg/tcg-op.c's
