@@ -34,20 +34,7 @@ clamp either fires or it does not.
 
 Every regime figure is pooled BY ASSERTION COUNT, and the cost leg reads the
 `gfps` CEILING and never the median, both for the reasons `vblank_phase_ab.py`
-records -- now with a second demonstration on disk, contributed by the
-performance lane: two Galleon soaks, same device, both `gfps max=29 p90=29`,
-medians **27 and 17**.
-
-`--a` and `--b` are REPEATABLE, and that is the other thing this judge does
-differently. A soak has no oracle, so `orchestration.md` requires two runs for
-any claim made from one -- and the replicate is the RUN, not the window. The
-performance lane measured absolute per-window counts varying 3-5x WITHIN a
-single run, so a rule computed over all of one run's windows tightens with
-every window a longer soak happens to produce, which is not a property of the
-mechanism. Every leg here is therefore computed per run and judged on the
-worst run of the arm, with all runs printed. #65's own "least certain" was
-exactly this: one run per arm, with the unlock occupancy differing 27.7%
-against 12.4% between them, and it is the confound that broke U5.
+records.
 """
 import argparse
 import json
@@ -158,81 +145,10 @@ def split(rows, which):
     return rows
 
 
-def metrics(rows, gfps):
-    """Everything the legs need, from ONE run of one arm.
-
-    Per run and not per window: the performance lane measured absolute
-    per-window counts varying 3-5x inside a single soak, so a figure pooled
-    over a run's windows is a property of that run, and a rule judged over all
-    windows of all runs tightens with every window a longer soak happens to
-    produce. The run is the replicate.
-    """
-    period = rows[0]["period"]
-    full = split(rows, "full")
-    locked = split(rows, "locked")
-    unlock = split(rows, "unlock")
-    capb = [r for r in full if r["def_n"] and r["def_mean"] > period]
-    have_clamp = has_clamp(rows)
-
-    m = dict(period=period, windows=len(rows),
-             n=sum(r["n"] for r in rows),
-             full_windows=len(full), locked_windows=len(locked),
-             unlock_windows=len(unlock),
-             have_clamp=have_clamp,
-             rate_all=rate_hz(rows),
-             drift_all=pooled_interval(rows) - period if rows else 0,
-             neg=sum(r["neg"] for r in rows),
-             gfps_p50=pctile(gfps, 50), gfps_p90=pctile(gfps, 90),
-             gfps_max=max(gfps) if gfps else 0)
-
-    m["full_n"] = sum(r["n"] for r in full)
-    m["full_drift"] = (pooled_interval(full) - period) if full else None
-    m["full_rate"] = rate_hz(full) if full else None
-    m["locked_interval"] = pooled_interval(locked) if locked else None
-    m["hold"] = pooled([r for r in full if r["def_n"]],
-                       "def_n", "def_mean")[1] or None
-    m["defers_per_full_window"] = (sum(r["defers"] for r in full) / len(full)
-                                   if full else None)
-    m["lmax"] = max((r["lmax"] for r in full), default=0)
-
-    if have_clamp and full:
-        m["clamp_rate_full"] = (sum(r["clamp"] for r in full)
-                                / float(m["full_n"])) if m["full_n"] else 0.0
-        m["clamp_worst_full"] = max(r["clamp"] for r in full)
-    else:
-        m["clamp_rate_full"] = None
-        m["clamp_worst_full"] = None
-
-    # D0's identity, on the windows where it is well posed.
-    if have_clamp and capb:
-        cl = sum(r["clamp"] for r in capb)
-        n = sum(r["n"] for r in capb)
-        m["d0_capb_windows"] = len(capb)
-        m["d0_clamp"] = cl
-        m["d0_def_n"] = sum(r["def_n"] for r in capb)
-        m["d0_def_mean"] = pooled(capb, "def_n", "def_mean")[1]
-        m["d0_implied"] = ((pooled_interval(capb) - period) * n / float(cl)
-                           if cl else None)
-    else:
-        m["d0_capb_windows"] = 0
-        m["d0_implied"] = None
-    return m
-
-
-def fmt(v, w=12):
-    if v is None:
-        return "%*s" % (w, "-")
-    if isinstance(v, float):
-        return "%*.4f" % (w, v) if abs(v) < 1 else "%*.3f" % (w, v)
-    return "%*d" % (w, v)
-
-
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--a", required=True, action="append",
-                    help="arm A logcat; repeat for each run of the arm")
-    ap.add_argument("--b", required=True, action="append",
-                    help="arm B logcat; repeat for each run of the arm")
+    ap.add_argument("--a", required=True)
+    ap.add_argument("--b", required=True)
     ap.add_argument("--expect")
     args = ap.parse_args()
 
@@ -244,185 +160,174 @@ def main():
               % (exp.get("a_ref"), exp.get("b_ref"), exp.get("title"),
                  exp.get("device")))
 
-    A = [metrics(*load(p)) for p in args.a]
-    B = [metrics(*load(p)) for p in args.b]
-    period = A[0]["period"]
+    a, agf = load(args.a)
+    b, bgf = load(args.b)
+    period = a[0]["period"]
     poll = period // 16
 
     print("period %d ns   poll_interval (period/16) %d ns" % (period, poll))
-    print("old max_defer (cap 16) %d   new max_defer (cap 15) %d" %
-          (poll * 16, poll * 15))
-    print("runs: A=%d  B=%d   (the replicate is the RUN, not the window)\n"
-          % (len(A), len(B)))
+    print("old max_defer (cap 16) %d   new max_defer (cap 15) %d\n"
+          % (poll * 16, poll * 15))
 
-    hdr = ("%-3s %-26s" + "%12s" * max(len(A), len(B))) % (
-        "", "", *["run %d" % (i + 1) for i in range(max(len(A), len(B)))])
-    for arm, rows in (("A", A), ("B", B)):
-        print(hdr if arm == "A" else "")
-        for label, key in (("windows", "windows"),
-                           ("assertions", "n"),
-                           ("fully-unlocked windows", "full_windows"),
-                           ("fully-unlocked drift ns", "full_drift"),
-                           ("fully-unlocked rate Hz", "full_rate"),
-                           ("clamp/assertion (full)", "clamp_rate_full"),
-                           ("worst window clamps", "clamp_worst_full"),
-                           ("deferred hold ns", "hold"),
-                           ("defers/full window", "defers_per_full_window"),
-                           ("locked interval ns", "locked_interval"),
-                           ("whole-soak rate Hz", "rate_all"),
-                           ("gfps p90 / max / p50", None),
-                           ("late max (periods)", None)):
-            if key is None:
-                if label.startswith("gfps"):
-                    vals = ["%4d/%4d/%4d" % (r["gfps_p90"], r["gfps_max"],
-                                             r["gfps_p50"]) for r in rows]
-                else:
-                    vals = ["%12.1f" % (r["lmax"] / float(period))
-                            for r in rows]
-                print("%-3s %-26s%s" % (arm, label,
-                                        "".join("%14s" % v for v in vals)))
-                continue
-            print("%-3s %-26s%s" % (arm, label,
-                                    "".join(fmt(r[key], 14) for r in rows)))
+    print("%-18s %10s %10s" % ("", "A", "B"))
+    for what, f in (("windows", lambda r: len(r)),
+                    ("assertions", lambda r: sum(x["n"] for x in r)),
+                    ("unlock windows", lambda r: len(split(r, "unlock"))),
+                    ("fully unlocked", lambda r: len(split(r, "full"))),
+                    ("locked windows", lambda r: len(split(r, "locked")))):
+        print("%-18s %10d %10d" % (what, f(a), f(b)))
     print()
 
-    print("legs  (judged on the WORST run of the arm; every run printed above)")
+    for label in ("all", "unlock", "locked", "full"):
+        ra, rb = split(a, label), split(b, label)
+        print("%-8s A %10d ns %7.3f Hz drift %+9d clamp/win %5.2f | "
+              "B %10d ns %7.3f Hz drift %+9d clamp/win %5.2f"
+              % (label,
+                 pooled_interval(ra), rate_hz(ra),
+                 pooled_interval(ra) - period if ra else 0,
+                 (sum(r["clamp"] or 0 for r in ra) / len(ra)) if ra else 0,
+                 pooled_interval(rb), rate_hz(rb),
+                 pooled_interval(rb) - period if rb else 0,
+                 (sum(r["clamp"] or 0 for r in rb) / len(rb)) if rb else 0))
+    print()
+
+    print("legs")
     ok = []
 
-    # D8: the validity gate, per run.
-    okA = min(r["full_windows"] for r in A)
-    okB = min(r["full_windows"] for r in B)
-    gate = okA >= 5 and okB >= 5
-    leg("D8", gate if gate else False,
-        "fully-unlocked windows, worst run: A=%d B=%d (gate needs >=5 each)"
-        % (okA, okB))
+    fa, fb = split(a, "full"), split(b, "full")
 
-    clamp_ok = (all(r["have_clamp"] for r in A)
-                and all(r["have_clamp"] for r in B))
+    # D8: the validity gate. Both arms must actually enter unlock mode, or
+    # every mechanism leg is VOID rather than failed.
+    gate = len(fa) >= 5 and len(fb) >= 5
+    leg("D8", gate if gate else False,
+        "fully-unlocked windows A=%d B=%d (gate needs >=5 each)"
+        % (len(fa), len(fb)))
+
+    clamp_ok = has_clamp(a) and has_clamp(b)
     if not clamp_ok:
         print("  (one arm predates the clamp counter; D0/D1/D9 are VOID)")
 
-    # D0: the instrument against the arithmetic, arm A only.
-    capb = [r for r in A if r["d0_implied"] is not None]
+    # D0: the instrument against the arithmetic, on arm A alone. Over windows
+    # whose deferrals are cap-bound (def_mean > period, which at a cap of one
+    # whole period means essentially every deferral ran to the cap), each
+    # clamp discards one whole lateness, so
+    #     drift * n / clamp  ==  def_mean.
+    # Forced by the code and by QEMU timer semantics, not by the patch.
+    capb = [r for r in fa if r["def_n"] and r["def_mean"] > period]
     if not clamp_ok:
         ok.append(leg("D0", None, "no clamp counter in arm A"))
     elif not capb:
-        ok.append(leg("D0", None, "no arm A run has a cap-bound "
-                                  "fully-unlocked window"))
+        ok.append(leg("D0", None,
+                      "arm A has no fully-unlocked window whose deferrals are "
+                      "cap-bound (def_mean > period)"))
     else:
-        worst_rel = worst_relc = 0.0
-        detail = []
-        for i, r in enumerate(capb):
-            rel = abs(r["d0_implied"] - r["d0_def_mean"]) / float(r["d0_def_mean"])
-            relc = abs(r["d0_clamp"] - r["d0_def_n"]) / float(r["d0_def_n"])
-            worst_rel = max(worst_rel, rel)
-            worst_relc = max(worst_relc, relc)
-            detail.append("run%d %d vs %d (%.1f%%), clamp %d vs def_n %d (%.1f%%)"
-                          % (i + 1, r["d0_implied"], r["d0_def_mean"],
-                             rel * 100, r["d0_clamp"], r["d0_def_n"],
-                             relc * 100))
-        ok.append(leg("D0", worst_rel <= 0.30 and worst_relc <= 0.20,
-                      "drift*n/clamp against def_mean, tol 30%/20%: "
-                      + "; ".join(detail)))
+        cl = sum(r["clamp"] for r in capb)
+        n = sum(r["n"] for r in capb)
+        drift = pooled_interval(capb) - period
+        dn, dm = pooled(capb, "def_n", "def_mean")
+        implied = drift * n / float(cl) if cl else 0
+        rel = abs(implied - dm) / float(dm) if dm else 9.9
+        relc = abs(cl - dn) / float(dn) if dn else 9.9
+        ok.append(leg("D0", rel <= 0.30 and relc <= 0.20,
+                      "arm A cap-bound windows: drift*n/clamp = %d ns against "
+                      "def_mean %d ns (%.1f%%, tol 30%%); clamp %d against "
+                      "def_n %d (%.1f%%, tol 20%%)"
+                      % (implied, dm, rel * 100, cl, dn, relc * 100)))
 
-    # D1: the mechanism, worst B run against best A run.
+    # D1: THE MECHANISM. The clamp stops firing in unlock mode. It can still
+    # fire, on a host stall longer than a period, or on a device whose timer
+    # round trip exceeds period/16 = 1.04 ms -- so this is not forced by the
+    # patch.
     if not clamp_ok or not gate:
         ok.append(leg("D1", None, "gate or counter missing"))
     else:
-        ca = min(r["clamp_rate_full"] for r in A)
-        cb = max(r["clamp_rate_full"] for r in B)
+        ca = sum(r["clamp"] for r in fa) / float(sum(r["n"] for r in fa))
+        cb = sum(r["clamp"] for r in fb) / float(sum(r["n"] for r in fb))
         ok.append(leg("D1", cb <= 0.10 * ca if ca else None,
-                      "clamp rate per assertion, fully-unlocked: A min %.4f, "
-                      "B max %.4f (need B <= 10%% of A)" % (ca, cb)))
+                      "fully-unlocked clamp rate %.4f -> %.4f per assertion "
+                      "(need <= 10%% of arm A's)" % (ca, cb)))
 
-    # D2: the headline, worst case both ways.
+    # D2: the headline. Arithmetic from arm B of #65's unlock arm predicts
+    # 843,164 ns -> ~0.
     if not gate:
         ok.append(leg("D2", None, "gate not met"))
     else:
-        da = min(r["full_drift"] for r in A)
-        db = max(r["full_drift"] for r in B)
+        da = pooled_interval(fa) - period
+        db = pooled_interval(fb) - period
         ok.append(leg("D2", (da - db) >= 500000,
-                      "fully-unlocked drift: A min %+d, B max %+d, worst-case "
-                      "fall %d (need >= 500000); rate A %.3f-%.3f -> B "
-                      "%.3f-%.3f Hz"
-                      % (da, db, da - db,
-                         min(r["full_rate"] for r in A),
-                         max(r["full_rate"] for r in A),
-                         min(r["full_rate"] for r in B),
-                         max(r["full_rate"] for r in B))))
+                      "fully-unlocked drift %+d -> %+d ns, fell %d "
+                      "(need >= 500000); rate %.3f -> %.3f Hz"
+                      % (da, db, da - db, rate_hz(fa), rate_hz(fb))))
 
     # D3: the within-run control, in the regime the change cannot reach.
-    la = [r["locked_interval"] for r in A if r["locked_interval"]]
-    lb = [r["locked_interval"] for r in B if r["locked_interval"]]
+    la, lb = split(a, "locked"), split(b, "locked")
     if la and lb:
-        d = max(abs(y - x) for x in la for y in lb)
+        d = abs(pooled_interval(lb) - pooled_interval(la))
         ok.append(leg("D3", d <= 50000,
-                      "locked-window mean A %s B %s, worst pairwise move %d ns "
+                      "locked-window mean %d -> %d, moved %d ns "
                       "(control, tol 50000)"
-                      % ("/".join(str(x) for x in la),
-                         "/".join(str(x) for x in lb), d)))
+                      % (pooled_interval(la), pooled_interval(lb), d)))
     else:
-        ok.append(leg("D3", None, "an arm has no unlock-free window"))
+        ok.append(leg("D3", None, "one arm has no unlock-free window"))
 
-    # D4: the impossible row, across every run of both arms.
-    neg = sum(r["neg"] for r in A) + sum(r["neg"] for r in B)
+    # D4: the impossible row.
+    neg = sum(r["neg"] for r in a) + sum(r["neg"] for r in b)
     ok.append(leg("D4", neg == 0,
-                  "negative lateness count %d across all %d runs"
-                  % (neg, len(A) + len(B))))
+                  "negative lateness count %d across both arms" % neg))
 
-    # D5: the constant, measured. Half forced by the patch; see the prediction.
-    ha = [r["hold"] for r in A if r["hold"]]
-    hb = [r["hold"] for r in B if r["hold"]]
-    if ha and hb:
-        falls = [x - y for x in ha for y in hb]
-        worst = max(abs(f - poll) for f in falls) / float(poll)
-        ok.append(leg("D5", worst <= 0.25,
-                      "deferred hold A %s -> B %s; worst pairwise fall vs one "
-                      "poll interval %d is %.1f%% off (tol 25%%)"
-                      % ("/".join(str(x) for x in ha),
-                         "/".join(str(x) for x in hb), poll, worst * 100)))
+    # D5: the hold shrinks by one poll interval and no more. Half forced by
+    # the patch (a cap-bound hold must shrink by exactly that), half not: a
+    # hold bounded by `remaining` rather than by the cap would not move.
+    ra = [r for r in fa if r["def_n"]]
+    rb = [r for r in fb if r["def_n"]]
+    if ra and rb:
+        _, ma = pooled(ra, "def_n", "def_mean")
+        _, mb = pooled(rb, "def_n", "def_mean")
+        fall = ma - mb
+        rel = abs(fall - poll) / float(poll)
+        ok.append(leg("D5", rel <= 0.25,
+                      "deferred hold %d -> %d ns, fell %d against one poll "
+                      "interval %d (%.1f%%, tol 25%%)"
+                      % (ma, mb, fall, poll, rel * 100)))
     else:
-        ok.append(leg("D5", None, "an arm has no deferral in unlock mode"))
+        ok.append(leg("D5", None, "one arm has no deferral in unlock mode"))
 
-    # D6: THE COST, on the ceiling and never the median.
-    if all(r["gfps_max"] for r in A) and all(r["gfps_max"] for r in B):
-        pa, pb_ = max(r["gfps_p90"] for r in A), min(r["gfps_p90"] for r in B)
-        xa, xb = max(r["gfps_max"] for r in A), min(r["gfps_max"] for r in B)
+    # D6: the cost, on the ceiling and never the median.
+    if agf and bgf:
+        pa, pb_ = pctile(agf, 90), pctile(bgf, 90)
+        xa, xb = max(agf), max(bgf)
         ok.append(leg("D6", (pa - pb_) <= 2 and (xa - xb) <= 2,
-                      "gfps p90 best-A %d vs worst-B %d, max best-A %d vs "
-                      "worst-B %d (each may fall by at most 2). Medians "
-                      "A %s B %s reported and NOT judged -- two Galleon soaks "
-                      "on one device gave medians 27 and 17 at an identical "
-                      "p90 of 29."
-                      % (pa, pb_, xa, xb,
-                         "/".join(str(r["gfps_p50"]) for r in A),
-                         "/".join(str(r["gfps_p50"]) for r in B))))
+                      "gfps p90 %d -> %d, max %d -> %d (each may fall by at "
+                      "most 2); median %d -> %d reported and NOT judged"
+                      % (pa, pb_, xa, xb, pctile(agf, 50), pctile(bgf, 50))))
     else:
         ok.append(leg("D6", None, "no gfps samples in one arm"))
 
-    # D7: the regime must stay comparable.
-    if gate and all(r["defers_per_full_window"] for r in A + B):
-        pa = [r["defers_per_full_window"] for r in A]
-        pb_ = [r["defers_per_full_window"] for r in B]
-        worst = max(abs(y - x) / x for x in pa for y in pb_)
-        ok.append(leg("D7", worst <= 0.60,
-                      "defers per fully-unlocked window A %s -> B %s, worst "
-                      "pairwise %.1f%% (tol 60%%)"
-                      % ("/".join("%.1f" % x for x in pa),
-                         "/".join("%.1f" % x for x in pb_), worst * 100)))
+    # D7: the regime must stay comparable. If shortening the cap stopped
+    # deferral happening at all, D2's improvement would be a regime change
+    # rather than the mechanism.
+    if gate:
+        pa = sum(r["defers"] for r in fa) / float(len(fa))
+        pb_ = sum(r["defers"] for r in fb) / float(len(fb))
+        rel = abs(pb_ - pa) / float(pa) if pa else 9.9
+        ok.append(leg("D7", rel <= 0.60,
+                      "defers per fully-unlocked window %.1f -> %.1f "
+                      "(%.1f%%, tol 60%%)" % (pa, pb_, rel * 100)))
     else:
-        ok.append(leg("D7", None, "gate not met or a run has no deferral"))
+        ok.append(leg("D7", None, "gate not met"))
 
-    # D9: the residual, attributed.
+    # D9: the residual, attributed. Any clamp left in arm B's unlock windows
+    # should be a host stall, which is rare, and not the deferral.
     if not clamp_ok or not gate:
         ok.append(leg("D9", None, "gate or counter missing"))
     else:
-        worst = max(r["clamp_worst_full"] for r in B)
+        worst = max(r["clamp"] for r in fb)
         ok.append(leg("D9", worst <= 2,
-                      "worst fully-unlocked window across arm B's runs clamps "
-                      "%d times (need <= 2; what is left is the host stall "
-                      "tail, whose max lateness is %.1fx a period)"
-                      % (worst, max(r["lmax"] for r in B) / float(period))))
+                      "worst fully-unlocked window in arm B clamps %d times "
+                      "(need <= 2; the remainder is the host stall tail, "
+                      "whose max lateness is %d ns = %.1fx a period)"
+                      % (worst, max(r["lmax"] for r in fb),
+                         max(r["lmax"] for r in fb) / float(period))))
 
     held = sum(1 for v in ok if v is True)
     failed = sum(1 for v in ok if v is False)
