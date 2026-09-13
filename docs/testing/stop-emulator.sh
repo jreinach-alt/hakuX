@@ -31,22 +31,40 @@
 # every LEASE_TTL seconds. The lease is deliberately short-lived: if the batch
 # dies, protection resumes on its own rather than staying disabled forever.
 
+#
+# There are two kinds of lease. The shared file below covers every device and
+# is what hold_device.sh and the older single-device scripts touch. The
+# dispatcher instead holds one lease PER DEVICE (devices.sh names it), so that
+# two dispatchers do not each mistake the other's run for their own. This hook
+# runs without that environment, so it has to look the per-device lease up
+# itself: checking only the shared file meant that once nothing touched it,
+# every turn end in any session force-stopped both handhelds mid-run.
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 LEASE_TTL="${HAKUX_LEASE_TTL:-90}"
-PKGS="com.jreinach.hakux.debug com.jreinach.hakux"
+PKGS="com.jreinach.hakux.debug com.jreinach.hakux.debug2 com.jreinach.hakux"
 
 command -v adb >/dev/null 2>&1 || exit 0
 
-if [ -f "$LEASE" ]; then
-    now=$(date +%s)
-    then_=$(stat -c %Y "$LEASE" 2>/dev/null || echo 0)
-    age=$((now - then_))
-    if [ "$age" -lt "$LEASE_TTL" ]; then
-        echo "hakuX: device lease renewed ${age}s ago — leaving the emulator running."
-        echo "hakuX: if that is wrong, rm $LEASE"
-        exit 0
-    fi
+lease_age() {   # seconds since the file was touched, or nothing if absent
+    [ -f "$1" ] || return 1
+    echo $(( $(date +%s) - $(stat -c %Y "$1" 2>/dev/null || echo 0) ))
+}
+
+if age=$(lease_age "$LEASE") && [ "$age" -lt "$LEASE_TTL" ]; then
+    echo "hakuX: device lease renewed ${age}s ago — leaving the emulator running."
+    echo "hakuX: if that is wrong, rm $LEASE"
+    exit 0
 fi
+
+# The per-device lease path for a serial, from the device table. A subshell,
+# because device_env exports into whatever sources it. Sourcing devices.sh
+# returns non-zero (its last line is a false test), so do not chain on it.
+device_lease() {
+    ( . "$HERE/devices.sh" >/dev/null 2>&1
+      device_env "$1" >/dev/null 2>&1 && printf '%s' "$HAKUX_DEVICE_LEASE" )
+}
 
 # Match ANY process belonging to the package, not just "<pkg>:xemu".  The
 # launcher activity runs as bare "<pkg>" and the emulator child may not have
@@ -60,6 +78,13 @@ stopped=""
 # success.  This bit once; keep the tr.
 for serial in $(adb devices 2>/dev/null | tr -d '\r' |
                 awk 'NR>1 && $2=="device" {print $1}'); do
+    # Leave a device alone -- emulator and screen both -- while its own lease
+    # is fresh. Putting the panel to sleep mid-run minimises the app.
+    dlease=$(device_lease "$serial")
+    if [ -n "$dlease" ] && age=$(lease_age "$dlease") && [ "$age" -lt "$LEASE_TTL" ]; then
+        echo "hakuX: $serial lease ($dlease) renewed ${age}s ago — leaving it running."
+        continue
+    fi
     procs=$(adb -s "$serial" shell 'ps -A -o NAME' 2>/dev/null | tr -d '\r')
     for pkg in $PKGS; do
         if printf '%s\n' "$procs" | grep -qE "^${pkg}(:.*)?$"; then
