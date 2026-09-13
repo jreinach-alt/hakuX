@@ -83,6 +83,19 @@ on every filtered fetch, so it belongs in the upload, not the shader.
 Hence: six texture formats now convert to RGBA8 on the way in, alongside
 `SZ_R6G5B5` which already did.
 
+Two places in the tree already agreed with this rule and are worth naming,
+because they were each derived independently and neither was read across to
+the others:
+
+- `s3tc.c`'s `expand5()`/`expand6()` — DXT1's palette endpoints are 565
+  words, and #6 expanded them by replication.
+- `gl/texture.c`'s Android `android_expand_5_to_8()` — the GLES upload path
+  had a hand-written 5551 expansion, also by replication.
+
+Three independent derivations of the same rule, on three different paths,
+while the Vulkan texture path used the other one. The Android GL copy is
+removed by this change; keeping it would have decoded the decoded buffer.
+
 ## What the goldens say is *not* wrong
 
 The non-`rt_` `Surface_clip` R5G6B5 captures — a 565 *backbuffer*, captured
@@ -143,6 +156,15 @@ surface's own `VkImageView`, entirely on the GPU. It now cannot be, because
 the surface's image holds 565 words and the texture's image is RGBA8: it
 becomes a surface download to VRAM plus a software decode. `Surface_clip`'s
 `rt_*` row is exactly that shape, seven times.
+
+**And the host image is now twice the size.** A 565 texture's `VkImage` is
+RGBA8, so its device memory doubles. The cache's own accounting does not
+change — `estimate_texture_image_bytes()` already assumed 4 bytes per pixel
+for every non-BC format, so it was over-counting these before and is exact
+now — which means the eviction threshold will be reached *later* in real
+bytes than it used to be, not sooner. That is a pre-existing inaccuracy this
+change happens to correct rather than one it introduces, but it is a second
+place where the trade is real.
 
 **Nobody has counted how much of a real title's texture working set is 565,
 and this document does not pretend to know.** What would settle it is a soak
