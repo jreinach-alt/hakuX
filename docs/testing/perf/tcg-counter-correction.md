@@ -175,11 +175,26 @@ reading, so it can be *ranked*.
 
 `blk` is **5.6 to 6.3 guest instructions per generated block**, floor 1.12.
 The void row of rounds one and two (0.34–0.86, arithmetically impossible) is
-gone. But the registered leg was `blk` median ≥ 16, on the reasoning that an
-8-instruction cap is a no-op below it, and **that leg failed.** Blocks here
-are already shorter than the clamp `HAKUX_SMALL_BLOCK_INSNS = 8` would impose,
-so the small-block arm cannot pay on this title whatever happens to the range
-test. §2's lever is dead on this workload for a second, independent reason.
+gone, which is the first thing this instrument has said about block length
+that is arithmetically possible at all.
+
+The registered leg was `blk` median ≥ 16, on the reasoning that an
+8-instruction cap is a no-op below it, and **that leg failed.** But the leg
+was the wrong test, and saying so is worth more than recording the failure:
+**`blk` mixes two populations.** `hakux_gen_insns` and `hakux_tb_codegen`
+count every generation, including the forced one-shot blocks — the
+`cflags_next_tb = 1 | CF_NOIRQ` after a `current_tb_modified` store, the
+`phys_pc == -1` single-insn TB, `cpu_io_recompile`'s n of 1 or 2, the
+breakpoint and precise-SMC paths. Those are short by construction. A mean of
+6 over the mixture does not say what a *permissive* block's length is, and it
+is only the permissive path that `HAKUX_SMALL_BLOCK_INSNS` narrows.
+
+So the honest state of §2's lever is: it is dead because no store can miss a
+block (#68), which is established; whether an 8-instruction cap would also be
+a no-op is **not** established, and `blk` cannot settle it. The measurement
+that would is one more counter pair — instructions and generations restricted
+to calls whose request was `CF_COUNT_MASK == 0` — which is two lines in
+`tb_gen_code` beside the narrowing branch that already tests exactly that.
 
 ## How to read a run
 
