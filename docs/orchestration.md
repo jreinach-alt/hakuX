@@ -229,6 +229,27 @@ and every brief that cites a `file:line` must tell the agent to re-read the
 file after rebasing rather than trust the number. Two of the three caught it
 themselves, which is the only reason it cost reports rather than wrong code.
 
+**Do not hand-roll the comparison. Use the tool, or check what the tool
+checks.** The dispatcher records `disc_id`, `apk_sha`, `classifier_rev` and
+`progress_log_proof` on every result precisely so an invalid comparison is
+refused rather than reported. On 2026-09-12 I wrote an ad-hoc comparison script
+for a quick inertness check, it checked none of those, and it told me a fix
+predicted to be pixel-inert had moved two captures — so I was one step from
+reporting a false falsification of someone's correct work.
+
+Both arms were wrong in two independent ways at once: they ran **different
+discs** (`Blend surface + Blend tests` against `Blend surface + Texture
+Framebuffer Blit`) and they were **two commits apart** rather than one, so the
+two "moved" captures were a different fix's verified improvement. Re-run
+against an arm with a matching `disc_id`, the same check gave 0 moved and
+byte-identical totals.
+
+The guard existed. I built it. I then bypassed it by writing my own loop, which
+is the whole failure: a guard is only a guard on the path that actually
+exercises it. This is the fourth instance of that shape in one session, and it
+is the reason #17 — automating the A/B comparison, with those refusals built in
+— is worth a lane of its own rather than being left to discipline.
+
 **Every agent states a falsifiable prediction before it measures anything**,
 naming which captures should move and which must not. This is the single most
 useful item in a brief: it is how the fold-in is judged, and it is what makes
