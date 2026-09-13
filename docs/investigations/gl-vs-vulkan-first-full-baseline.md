@@ -8,43 +8,48 @@ hardware goldens: `docs/testing/gl-vs-vulkan-surf1-2026-09-13.tsv`.
 | | OpenGL | Vulkan |
 |---|---:|---:|
 | captures | 236 | 236 |
-| bit-exact against golden | **100** | **108** |
-| differing pixels (advisory total) | 5,271,728 | 4,443,147 |
+| bit-exact against golden | **102** | **108** |
+| differing pixels (advisory total) | 4,528,896 | 4,443,147 |
 
-**209 of 236 captures score identically between the two renderers.** That
+The table and the TSV are as of `ec1c1309`. The first reading of this
+baseline, at `fada1d89`, had OpenGL at 100 bit-exact and 5,271,728 px; #70
+came straight out of it and closed 742,832 of that gap the same afternoon,
+which is the argument for keeping the column.
+
+**211 of 236 captures score identically between the two renderers.** That
 is the headline. The renderers are not two independent guesses that happen
 to land nearby — they agree exactly almost everywhere, which means each of
 the 27 disagreements is a specific nameable defect in one of them rather
 than noise, and which of the two is wrong is decided by the golden, not by
 majority.
 
-Vulkan is better on 25, OpenGL on 2.
+Vulkan is better on 23, OpenGL on 2.
 
 ## Where OpenGL is worse
 
 | suite | n | exact GL | exact VK | px GL | px VK | delta |
 |---|---:|---:|---:|---:|---:|---:|
-| `Surface_clip` | 47 | 39 | **47** | 743,746 | **0** | +743,746 |
 | `Texture_perspective` | 8 | 0 | 0 | 883,115 | 733,098 | +150,017 |
 | `Image_blit` | 41 | 19 | 19 | 251,028 | 201,885 | +49,143 |
 | `Blend_surface` | 32 | 3 | 3 | 1,347,043 | 1,325,236 | +21,807 |
 | `Texture_perspective_enable` | 2 | 0 | 0 | 38,058 | 27,989 | +10,069 |
-| `Surface_pitch` | 1 | 0 | 0 | 15,360 | 10,240 | +5,120 |
+| `Surface_pitch` | 1 | 0 | 0 | 14,848 | 10,240 | +4,608 |
+| `Surface_clip` | 47 | 41 | **47** | 1,426 | **0** | +1,426 |
 
-`Surface_clip` is the one to take first, and it is unusually clean:
-**Vulkan is bit-exact on all 47 captures in the suite and OpenGL fails 8 of
-them.** Seven are render-target variants and one is the clipped debug text:
-
-```
-rt_x320y240_w320h240   228,796      rt_x0y0_w0h384       61,546
-rt_x0y240_w640h240     152,172      rt_x0y0_w512h0       61,444
-rt_x0y0_w512h384       110,976      rt_x8y16_w632h464    13,952
-rt_x16y8_w512h384      110,706      DebugTextShouldClip   4,154
-```
+`Surface_clip` is what this baseline was worth on its first reading. Vulkan
+was bit-exact on all 47 and OpenGL failed 8 for 743,746 px — seven
+render-target variants and the clipped debug text. That became #70, and it
+turned out to be a straight port: `pgraph_gl_clear_surface()` scissored a
+clear with the clear rect alone and never intersected the surface clip,
+which `vk/draw.c` had done for some time with a comment naming these very
+captures. Nine captures better, none worse, 742,832 px, and what is left in
+the suite is 1,426 px of an R5G6B5 expansion difference.
 
 A defect with a working implementation of the same thing sitting next to it
 in the tree is the cheapest kind to fix: the question is not *what should
-this do* but *what does the other renderer do differently*.
+this do* but *what does the other renderer do differently*. That question
+is the whole reason to keep this column, and the five suites still above
+are each an instance of it.
 
 `Image_blit`'s 49,143 is almost entirely one capture,
 `DirtyOverlappedDestSurf` (GL 49,142, Vulkan 6); the seven `Overlap_*`
