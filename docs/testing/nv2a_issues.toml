@@ -277,7 +277,17 @@ suites = ["Bump map", "Bump env lum"]
 [issue.12]
 title = "Vertex attributes and primitive assembly"
 disposition = "precision-floor"
-suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
+suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive",
+          "Degenerate begin end"]
+
+# `Degenerate begin end` joins this 2026-09-12 (#58 triage), and the point is
+# that its SEMANTICS ARE ALREADY RIGHT. The test omits NV097_SET_BEGIN_END_OP_END
+# on two triangles so the final quad must be drawn as a triangle; getting that
+# wrong would gain or lose a whole primitive. Instead all 17,502 differing
+# channels are within TWO counts, 95.1% within one, alpha exact, and our modal
+# colours track the golden one-for-one ((0,10,245,255) x61 against
+# (0,9,246,255) x61). What is left is the shading interpolation band, which is
+# this issue. docs/investigations/issue-19-58-at-tip-2026-09-12.md.
 
 # MEASURED 2026-09-12: the 2D_Lines half is an UNIMPLEMENTED GRAPHICS CLASS,
 # not a rasterisation defect, and the point half is already clean.
@@ -405,8 +415,55 @@ title = "Blend precision (low priority)"
 # residual is one step, led by the ONE_MINUS_* factors, and is float32 against
 # their fixed point. docs/investigations/blend-unit-model.md. Measured on
 # lavapipe -- an Adreno capture set could move this to host-dependent.
+#
+# `Color mask blend` joins this 2026-09-12 (#58 triage). Its one test is colour
+# mask RGB-enabled with ALPHA WRITE DISABLED, FUNC_ADD, sfactor DST_ALPHA
+# (0x304), dfactor ZERO. Alpha comes back PIXEL-EXACT, which is what a disabled
+# alpha write predicts, and every one of the 17,633 px / 24,963 differing
+# channels is within TWO counts with 95.3% within one -- R reads +1 on 89% of
+# its differing channels, B reads -1 on 88%. A wrong mask or a wrong factor
+# zeroes or scales a channel; it does not produce a band. So mask and factor are
+# both right and this is the one-step residual above, on a DST_ALPHA factor. It
+# is NOT the write-mask/blend interaction #43 and #48 moved.
+# docs/investigations/issue-19-58-at-tip-2026-09-12.md.
 disposition = "precision-floor"
-suites = ["Blend tests"]
+suites = ["Blend tests", "Color mask blend"]
+
+[issue.63]
+title = "NV_PGRAPH_CTX_SWITCH1 GRCLASS=0 is never observed: two method fast paths test a stale cached class"
+# MEASURED 2026-09-12 at 0f708c8d33, 171,820 px, 2 runs byte-identical, RGBA
+# (max delta A is 64, so an RGB comparison reads this as a colour residual).
+#
+# Split out of #58 and explicitly NOT #19: #19's population is tests rendering a
+# SIBLING's image, and this suite has exactly one test, so no substitution is
+# available to it.
+#
+# The test writes NV_PGRAPH_CTX_SWITCH1 GRCLASS=0 mid-POLYGON and restores it.
+# Hardware stops accepting methods; we do not. Three independent predictions,
+# all confirmed in the one capture: the polygon's lower half is UNDRAWN on
+# silicon (golden is checkerboard on 100.00% of 98,304 px = 192x512 exactly,
+# ours on 0.00%), and the following triangle takes the last diffuse set BEFORE
+# the disable on silicon against the last set overall for us (3,072 px, gold
+# modal (73,90,140,198) x1560 and (67,85,135,198) x1512 against ours
+# (208,189,93,207) x1560 and (204,184,89,207) x1512 -- identical counts, so the
+# same geometry with a different vertex colour).
+#
+# Located: pgraph_write()'s default case DOES write the register (~line 987).
+# But pgraph_method()'s two fast paths -- the XEMU_OPT_METHOD_FAST_TABLE block
+# (~1777) and the Kelvin fast entry (~1843) -- both gate on
+# pg->cached_graphics_class == NV_KELVIN_PRIMITIVE and return before line ~1895,
+# which is the only place that value is refreshed from CTX_SWITCH1. Subchannel
+# unchanged means no reload from CTX_CACHE1 either, so the guest's write is
+# never seen.
+#
+# Fix shape: have pgraph_write() update pg->cached_graphics_class when addr ==
+# NV_PGRAPH_CTX_SWITCH1; both fast paths then drop through to the slow path,
+# which reads GRCLASS 0 and falls to `default: goto unhandled`. Do NOT use
+# pg->last_subchannel = UINT_MAX instead -- that reloads from CTX_CACHE1 and
+# overwrites the guest's 0 with 0x97, undoing the write being emulated.
+# docs/investigations/issue-19-58-at-tip-2026-09-12.md.
+disposition = "defect"
+suites = ["Context switch"]
 
 [issue.15]
 title = "pgraph suite: some tests are order-dependent"
@@ -439,6 +496,27 @@ title = "Tests that render another test's image: 2 contamination, 82 missing-sta
 # test left set, which is a property of the test suite and not of the emulator.
 # Same class as #15. The two real contamination cases are the actionable part
 # and are small. docs/investigations/issue-19-isolation-2026-09-12.md.
+#
+# RE-MEASURED 2026-09-12 (late) once a disc could isolate a test (8da779610b):
+# CONTAMINATION IS NOW ZERO. The two cases were Texture_render_target::TexFmt_A8
+# and TexFmt_A8_L, and both are RenderTextureLoop poisoning the suite, so both
+# are resolved by ONE skip_tests line and by no code. crossmatch on the same
+# goldens: loop-included accuses 2 of 41; loop-skipped at tip accuses 0 of 40,
+# with 0 captures failing worse than mean 2.0. The suite itself is 4,235 px at
+# tip against the 3,209,634 px headline -- 99.87% of that was the disc.
+#
+# The other 82 cannot be touched by a skip list, and that is definitional rather
+# than unmeasured: contamination means exact ALONE, so removing the company
+# fixes it; missing-state means as wrong alone, so no disc composition changes
+# what the test renders. skip_tests can only ever resolve contamination.
+#
+# Scanned for a SECOND poisoning test two independent ways and found none:
+# poison_scan.py over 88 suites / 2,071 captures (nothing else matches the
+# shared-mask + flat-content + exact-suspect signature), and an audit of all 100
+# suite .cpp files for a test mutating state only Initialize() establishes (the
+# two other single-mutator candidates, ZPass's TestPointSizeProgrammable and
+# vertex_shader_independence's TestMultiOutput, both restore it).
+# docs/investigations/issue-19-58-at-tip-2026-09-12.md.
 disposition = "harness"
 suites = ["Texture DXT", "Texture render target", "Attrib carryover",
           "Blend surface", "Blend tests", "Depth buffer",
