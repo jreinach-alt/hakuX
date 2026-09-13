@@ -883,10 +883,58 @@ def cmd_check(repo, tests_root, support_dirs=None):
             c, f = committed.get(part, {}), fresh.get(part, {})
             added = sorted(set(f) - set(c))[:10]
             removed = sorted(set(c) - set(f))[:10]
-            problems.append("%s differ (committed %d, tree %d)%s%s" % (
-                part, len(c), len(f),
+            # REPORT THE ENTRIES WHOSE VALUES MOVED, not just the keys that
+            # appeared or vanished.
+            #
+            # The comparison above is on full CONTENT, but this message used to
+            # print only counts and added/removed keys -- so the commonest
+            # staleness of all, a source line number shifting, produced
+            # "sites differ (committed 763, tree 763)" with no further detail.
+            # Two identical numbers described as different, and nothing to act
+            # on. It reads like a false positive, and on 2026-09-13 a lane read
+            # it exactly that way: it had added 53 lines to vk/draw.c, which is
+            # precisely what this index records sites from, and concluded from
+            # this message that the staleness was somebody else's and that its
+            # push was blocked by shared infrastructure.
+            #
+            # The index exists to catch a moved line number. Saying WHICH line
+            # moved is the difference between a gate that directs the fix and
+            # one that looks broken.
+            def locs(v):
+                """The file:line strings in an entry, whatever its shape."""
+                if isinstance(v, dict):
+                    v = [v]
+                if isinstance(v, list):
+                    return [e.get("loc", "") for e in v
+                            if isinstance(e, dict) and e.get("loc")]
+                return []
+
+            moved_keys = sorted(k for k in set(c) & set(f) if c[k] != f[k])
+            changed = []
+            for k in moved_keys[:6]:
+                a, b = locs(c[k]), locs(f[k])
+                gone = [x for x in a if x not in b]
+                came = [x for x in b if x not in a]
+                # ONE LINE PER SYMBOL, and only the locations. The first
+                # version of this printed each entry whole -- every site's
+                # role and source text, both sides -- which ran to thousands
+                # of characters for a 71-symbol shift and buried the "71
+                # moved" headline it exists to deliver. Same failure as an
+                # instrument whose volume evicts the evidence beside it.
+                pair = ""
+                if gone and came:
+                    pair = "  %s -> %s" % (gone[0], came[0])
+                    if len(gone) > 1:
+                        pair += " (+%d more)" % (len(gone) - 1)
+                changed.append("%s:%s" % (k, pair or "  entry changed"))
+            extra = ("\n           ... and %d more symbol(s)"
+                     % (len(moved_keys) - 6)) if len(moved_keys) > 6 else ""
+            problems.append("%s differ (committed %d, tree %d; %d MOVED)%s%s%s" % (
+                part, len(c), len(f), len(moved_keys),
                 "\n    new: " + ", ".join(added) if added else "",
-                "\n    gone: " + ", ".join(removed) if removed else ""))
+                "\n    gone: " + ", ".join(removed) if removed else "",
+                ("\n    moved: " + "\n           ".join(changed) + extra)
+                if changed else ""))
     if tests_root and committed.get("suites") != fresh.get("suites"):
         problems.append("suites differ (committed %d, tests tree %d)"
                         % (len(committed.get("suites", {})), len(fresh.get("suites", {}))))
