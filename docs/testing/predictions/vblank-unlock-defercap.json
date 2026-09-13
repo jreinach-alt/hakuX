@@ -1,0 +1,42 @@
+{
+  "registered_utc": "2026-09-13T14:40:00Z",
+  "who": "skew-bound",
+  "issue": "65",
+  "title": "Dead or Alive 3 (USA) (En,Ja).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "a_ref": "79f6c620de",
+  "b_ref": "c520e95b39",
+  "judge": "docs/testing/vblank_defercap_ab.py",
+  "prediction": "#65 closed with one constant named and deliberately unchanged: in unlock mode `max_defer = poll_interval * defer_cap = (period/16)*16 = period` to six nanoseconds, which is the one value that trips the grid's `target += period; if (target <= now) target = now + period` clamp. Arm B here is `defer_cap` 16 -> 15 and nothing else. Arm A is the same tree with only the new `clamp=` counter, so both arms carry the instrument and the mechanism is a before/after rather than an inference. CORRECTION TO THE INSTRUMENT, not just to a conclusion, and it is why the counter exists: the clamp does not discard the EXCESS over a period, it discards the WHOLE lateness, because it replaces the slot `t + period` with `now + period` = `t + late + period`. Mean drift per assertion is therefore E[late * 1(late > period)], not E[max(0, late - period)]. Reasoning from the excess bounded the available gain at 72,522 ns per assertion, 8.6% of the measured residual, and would have registered a leg calling a working fix inert; the correct model reproduces the measured drift on #65's own arm B logcat to 0.03% (one window: 109 assertions, 11 deferred at a mean lateness of 16,810,019 ns, 11*16,810,019/109 = 1,696,382 against a measured 1,695,881). ARITHMETIC, all of it from #65's arm B logcat before this arm was queued: the fully-unlocked windows measure 843,164 ns of drift per assertion, a 17,526,914 ns interval and 57.055 Hz; of the seven, five have `def(mean=)` at 16,810,019 / 16,816,423 / 16,810,270 / 16,862,204 ns, i.e. within 126,275 to 178,460 ns of the 16,683,744 ns cap, so essentially every deferral in them ran to the cap and tripped the clamp. With the cap at 15,641,010 ns those same deferrals land at 15,767,285 to 15,819,470 ns, under the 16,683,750 ns period, and the clamp cannot fire from them at all. Predicted fully-unlocked drift after: ~0 ns per assertion, 59.939 Hz, 0.001 s/min against true NTSC, from 2.888 s/min. IMPOSSIBILITY, not rarity: a deferral trips the clamp only if its hold exceeds period - (L + L'), and the hold is now at most period*15/16, so the clamp cannot fire from a deferral unless the timer round trip ALONE exceeds period/16 = 1,042,734 ns. What this does NOT bound is a host stall; 686,863,907 ns of lateness, 41x a period, was measured on the nova, and no cap can reach it, which is why D1 and D9 register a residual rather than zero. WHERE THE VALUE IS WRONG, named before the arm: a host whose timer round trip exceeds 1,042,734 ns. The nova's non-deferred lateness is 3.4x the thor's (360,179 against 104,923 ns), putting its round trip near 720,000 ns and the margin at 1.4x; if the clamp still fires there, the reasoning is unchanged and the value is fourteen. GATE D8 (validity, not a falsifier): at least 5 fully-unlocked windows in BOTH arms. DOA3 gave 32 and 7 across #65's two soaks, so this can fail on occupancy alone, and then D0/D1/D2/D7/D9 are VOID rather than failed. D0 (the instrument against the arithmetic, arm A alone): over arm A's fully-unlocked windows whose deferrals are cap-bound (def_mean > period), drift * n / clamp lands within +/-30% of the same windows' def_mean, AND clamp lands within +/-20% of def_n. Forced by the clamp's own algebra and by QEMU timer semantics, not by the patch, since arm A does not contain the patch. FAILS if they disagree, and then the clamp is not where the drift comes from and every leg below it is void. D1 (THE MECHANISM): the clamp rate per assertion over fully-unlocked windows falls to at most 10% of arm A's. Not forced by the patch -- it fails on a host stall longer than a period, or on a device whose timer round trip exceeds period/16 -- which is the world named above. D2 (the headline): fully-unlocked drift per assertion falls by at least 500,000 ns. Predicted 843,164 -> ~0. Registered as a DELTA because DOA3's unlock occupancy varies between soaks and arm A's own figure has to be re-measured on this ref. D3 (must-not-move, the within-run control): windows with unl == 0, the regime this change cannot reach, keep a mean interval within +/-50,000 ns between arms. #65's two arms moved 5,507 ns, 0.03%, on this control against a 33% effect. FAILS if it moves more, and then something other than the unlock deferral cap changed. D4 (the impossible row): neg == 0 on every window of both arms. Zero over 33,840 assertions across two devices, two titles and three binaries so far. FAILS at any negative lateness, and then a writer this stream has not inventoried moves the grid under an armed timer. D5 (the constant, measured): the pooled deferred hold over fully-unlocked windows falls by one poll interval, 1,042,734 ns, within +/-25%. Half of this is forced by the patch -- a cap-bound hold must shrink by exactly the cap's change -- and half is not: a hold bounded by `remaining` rather than by the cap would not move at all, and #65's own arm B has one fully-unlocked window (def_mean 9,317,831 ns) where that is the case. Reported as an assertion about the guest rather than counted as a falsifier of the mechanism. D6 (THE COST, on the ceiling and never the median): gfps p90 and gfps max each fall by no more than 2. This is the leg the change is most likely to fail, because it removes 1,042,734 ns -- 6.25% of a period -- from the headroom the deferral exists to provide, and DOA3 runs at a gfps ceiling of 59-60 with a frame time near one period. FAILS at a fall of 3 or more on either, and then the trade is real and the right answer is not this constant but making the clamp give the time back. The median is printed and explicitly NOT judged: #64 measured it on this queue to be a measurement of device occupancy, bimodal with a 29-31 ceiling and a 5-20 floor, moving 80% -> 16-32% across one evening while p90 stayed 29/29/27/29 and max 31/29/30/29 over four runs, two refs, both orders; #65's U6 went median 33 -> 29 on a change that did not move the ceiling at all. D7 (the regime must stay comparable): deferrals per fully-unlocked window stay within +/-60% between arms. If shortening the cap stopped deferral happening, D2's improvement would be a regime change rather than the mechanism. Two-sided deliberately: #65's B5 predicted a rise and got one. D9 (the residual, attributed): no fully-unlocked window of arm B clamps more than twice. Arm A's cap-bound windows clamp on the order of ten times each; what is left after the fix should be the host stall tail, and its size is reported alongside as max lateness in periods. FAILS above two, and then something other than the deferral is still reaching the clamp in unlock mode and the +3.03 s/min was never only this constant.",
+  "must_not_move": [
+    "unl == 0 windows: mean interval within +/-50000 ns between arms",
+    "neg == 0 on every window of both arms",
+    "gfps p90 falls by at most 2",
+    "gfps max falls by at most 2",
+    "device_label == thor on both results"
+  ],
+  "expect": {
+    "D0/armA_drift_per_clamp_vs_def_mean_tolerance_frac": 0.3,
+    "D0/armA_clamp_vs_def_n_tolerance_frac": 0.2,
+    "D1/clamp_rate_max_frac_of_armA": 0.1,
+    "D2/fully_unlocked_drift_fall_min_ns": 500000,
+    "D3/unl_zero_mean_interval_tolerance_ns": 50000,
+    "D4/late_neg_max": 0,
+    "D5/hold_fall_vs_poll_interval_tolerance_frac": 0.25,
+    "D6/gfps_p90_drop_max": 2,
+    "D6/gfps_max_drop_max": 2,
+    "D7/defers_per_window_tolerance_frac": 0.6,
+    "D8/fully_unlocked_windows_min_per_arm": 5,
+    "D9/armB_worst_window_clamps_max": 2
+  },
+  "expect_counts": {
+    "armA_fully_unlocked_drift_ns_expected": 843164,
+    "armB_fully_unlocked_drift_ns_expected": 0,
+    "poll_interval_ns": 1042734,
+    "old_max_defer_ns": 16683744,
+    "new_max_defer_ns": 15641010,
+    "period_ns": 16683750
+  },
+  "note_refs": "a_ref 79f6c620de adds only the clamp counter and this judge; b_ref c520e95b39 is that plus `defer_cap` 16 -> 15 in unlock mode and nothing else. Both arms DOA3, 240 s, --device thor, one requester, and device_label is to be read out of each result.json rather than assumed -- #64's cost leg lost a control to four soaks across two handhelds with nothing recording which. A soak writes no captures, so ab_compare cannot score it and this file is bound by being committed before either arm was queued."
+}
