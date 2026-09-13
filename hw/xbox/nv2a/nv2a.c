@@ -402,6 +402,27 @@ static struct {
     uint32_t unlocked_n;
 
     /*
+     * Assertions on which the grid's `<= now` clamp fired, counted at the
+     * clamp itself rather than inferred from the lateness figures.
+     *
+     * This is the one event that turns a late VBLANK into permanent drift,
+     * and it is worth its own counter because the clamp does not discard the
+     * EXCESS over a period -- it discards the WHOLE lateness. `target +=
+     * period` puts the next slot at `t + period`; the clamp replaces that
+     * with `now + period` = `t + late + period`, so the grid moves forward by
+     * `late`, not by `late - period`. Mean drift per assertion is therefore
+     * `E[late * 1(late > period)]`, which is why a 10.8 ms mean deferral hold
+     * on a 16.68 ms period can cost 1.7 ms per assertion on the eleven
+     * deferrals in a window of 109: 11 * 16,810,019 / 109 = 1,696,382 ns
+     * against a measured 1,695,881.
+     *
+     * Counted so a change to the deferral cap can be judged on whether the
+     * clamp still fires, which is the mechanism, rather than on a drift
+     * figure, which is the mechanism mixed with the host's stall tail.
+     */
+    uint32_t clamped;
+
+    /*
      * COALESCING, attributed rather than counted.
      *
      * `coalesced` alone cannot say whether the guest lost anything. Three
@@ -638,7 +659,7 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         "vblphase n=%u period=%lld mean=%lld p50=%lld p90=%lld p99=%lld "
         "max=%lld neg=%u nodef(n=%u mean=%lld max=%lld) "
         "def(n=%u mean=%lld max=%lld) unl=%u "
-        "coal=%u coal_en=%u coal_short=%u coal_gap=%lld en=%u",
+        "coal=%u coal_en=%u coal_short=%u coal_gap=%lld en=%u clamp=%u",
         s_vbh.late_n, (long long)period, (long long)late_mean,
         (long long)vbh_pct_of(s_vbh.late_bucket, s_vbh.late_n, 50),
         (long long)vbh_pct_of(s_vbh.late_bucket, s_vbh.late_n, 90),
@@ -652,7 +673,8 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         s_vbh.coalesced, s_vbh.coal_enabled, s_vbh.coal_short,
         (long long)coal_gap_mean,
         (unsigned)((d->pcrtc.enabled_interrupts &
-                    NV_PCRTC_INTR_EN_0_VBLANK) ? 1 : 0));
+                    NV_PCRTC_INTR_EN_0_VBLANK) ? 1 : 0),
+        s_vbh.clamped);
 
     __android_log_print(
         ANDROID_LOG_INFO, "hakuX-perf",
@@ -685,6 +707,7 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
     s_vbh.late_def_sum = 0;
     s_vbh.late_def_max = 0;
     s_vbh.unlocked_n = 0;
+    s_vbh.clamped = 0;
     s_vbh.coal_enabled = 0;
     s_vbh.coal_short = 0;
     s_vbh.coal_gap_sum = 0;
@@ -806,8 +829,14 @@ static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred,
     }
 }
 
+static void nv2a_vblank_note_clamp(void)
+{
+    s_vbh.clamped++;
+}
+
 #else
 #define nv2a_vblank_record(d, src, was_deferred, grid) ((void)0)
+#define nv2a_vblank_note_clamp() ((void)0)
 #endif
 
 static int64_t s_last_vblank_fire_ns;
@@ -888,6 +917,7 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
     d->vblank_next_target_ns += period;
     if (d->vblank_next_target_ns <= now) {
         d->vblank_next_target_ns = now + period;
+        nv2a_vblank_note_clamp();
     }
     timer_mod(d->vblank_timer, d->vblank_next_target_ns);
 }
@@ -1099,6 +1129,7 @@ static void nv2a_vblank_timer_cb(void *opaque)
     d->vblank_next_target_ns += period;
     if (d->vblank_next_target_ns <= now) {
         d->vblank_next_target_ns = now + period;
+        nv2a_vblank_note_clamp();
     }
     timer_mod(d->vblank_timer, d->vblank_next_target_ns);
 
