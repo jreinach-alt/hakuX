@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 19
-updated_utc = "2026-09-13T21:40:00Z"
+wave = 20
+updated_utc = "2026-09-13T22:20:00Z"
 
 
 
@@ -42,10 +42,10 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 
 
 
-[lane.psh]
-issues = ["31", "10"]
+[lane.blendstack]
+issues = ["50", "52"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
-note = "LANE FINISHED AND FOLDED (merge e8f391846a). #31 now has the first pre-registered arm in its history: PASS on 693 checks, TriH structural 52,800 -> 0, and its blocker WITHDRAWN AS FALSE -- all 64 discriminating anchors were already determined to +/-0.002 px by data on disk, and the 619,349 px were three mechanisms under one label. #10 R16B16 re-judged as an already-passing arm the tracker had recorded as unjudged. FILES STILL HELD, deliberately: two #10 luminance arms are queued/running against psh.c refs and must be judged before anything else edits the emitter. DO NOT REMOVE /home/justin/hakuX-wt-31-10 -- the running arm binds its prediction through a path inside it."
+note = "TWO DISPATCHABLE ITEMS, both of which were sitting behind a blocker that has since become false. #50: the blocker said the TestDetailed falsifier was unreachable -- 'interactive-only and absent from the release disc ... behind the test-suite fork'. That was the orchestrator's and it is FALSE three times over: the 1,568 captures have been on disk since 2026-09-12 at ~/hakux-work/res_oldblend/ (verified, exact name match to the Blend_tests goldens) because the 2025-03-14 RELEASE still generates them; /home/justin/nxdk_pgraph_tests_xiso_interactive.iso exists, built by the committed one-byte XBE patch; and the only genuine gap was PLUMBING, now landed as a per-request base_iso. So: register the BENEFIT half of #50's prediction (the must-not-move half already passed, 424 captures byte-identical) and run it with --base-iso /home/justin/nxdk_pgraph_tests_xiso_interactive.iso. That disc's disc_id tags as iso:85b525/... so it can never be silently compared with a stock column -- do not compare its absolutes against any stock-disc figure. Note ab_compare correctly FAILED nine globs that matched no capture last time: a guard that matches nothing is not a guard. #52: the z24 float quad-split needs psh.c, which was held by the psh lane purely because #10's arms were still in flight against its refs; those have landed and PASSED, so the file is released here. #52's own recorded quad-split of 12,816 px was independently reproduced by classify_residuals.py, so the target is measured, not inferred. TERRITORY: #43 must NOT be given to another lane while this one holds #50 -- they are a recorded split pair."
 
 [lane.pacing]
 issues = ["44", "65"]
