@@ -538,6 +538,51 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## The test disc's ratios are properties of the disc, not of a workload
+
+The goldens come from `nxdk_pgraph_tests`, so almost every ratio in this
+campaign is measured on it. That is right for accuracy -- the disc is the
+oracle. It is **wrong for anything about cost**, because a test disc sets state
+exhaustively and draws rarely, which is the opposite shape from a game.
+
+Measured on 2026-09-13, and the refuted premise was the orchestrator's own. #44
+was briefed as: "the guarantee only needs to hold where a draw is outstanding,
+and the disc makes 148,704 submissions for 180 draws, so a draw-only bound is
+**826x** cheaper than holding at every submission." A lane built it, and it
+works exactly as designed.
+
+    submissions carrying a draw
+      Texture border disc     3.6%     <- what the sizing was computed on
+      Galleon                94.2%, 93.2%
+
+The disc submits 27x more often than it draws. Galleon submits **1.05x per
+draw**. So the selective bound held at 94.8% of submissions and cost precisely
+what the unselective one cost -- `gfps` p90 29 -> 13, identical to mode 1 --
+and the conclusion is about the guarantee rather than the patch: *no
+unprocessed draw while the guest runs* is intrinsically as expensive as
+holding always, on draw-dense content, because there is nothing to skip.
+
+**Before sizing any cost or coverage claim, ask which disc the ratio came from
+and whether that ratio is a property of the workload or of the test.** An
+accuracy figure transfers from the disc; a *density*, a *rate per draw*, a
+*fraction of submissions* does not. The tell in hindsight is that 826:1 was a
+suspiciously large factor for a mechanism nobody had tuned -- a factor that big
+usually means the denominator is an artefact.
+
+Two corollaries earned the same day:
+
+**A cheap mechanism can still be worthless, and say which it is.** The scan
+here costs 0.0173% of wall clock and is provably correct; mode 0 pays literally
+nothing for it. Reporting "the selective bound failed" would libel the
+implementation. The implementation does what it was designed to do -- the thing
+it was designed to exploit is not there.
+
+**The surviving lever is the one whose cost does not scale with the thing that
+defeated the others.** Every submission-time mechanism scales with draw
+density and therefore dies on a real title. Write-tracking -- trapping the
+guest's store to a range a queued draw will read -- does not, which is why it
+is the candidate, and it lives in a different file from every attempt so far.
+
 ## A rate or a mean over a busy window measures the BUSYNESS
 
 Three registered legs on 2026-09-13 turned out to measure device occupancy
