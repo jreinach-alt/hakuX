@@ -21,6 +21,9 @@
 
 #include "qemu/osdep.h"
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#endif
 #include "vsh.h"
 #include "vsh-ff.h"
 #include "vsh-prog.h"
@@ -316,6 +319,69 @@ VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state)
     }
 
     return w;
+}
+
+/*
+ * #41: does this draw fog from the carried fixed-function RADIAL coordinate?
+ *
+ * Under a vertex program the nv2a ignores FOG_GEN_MODE and fogs from oFog.x
+ * -- measured, not assumed: silicon renders SPEC_ALPHA, PLANAR, ABS_PLANAR
+ * and FOG_X identically under a program, the only difference between those
+ * four goldens being the printed test name.  RADIAL is the exception, and it
+ * is not a distance: the coordinate silicon uses is CONSTANT across a scene
+ * whose own radial distance runs 1.7 to 219.7, which is why shipping
+ * length(oPos.xyz * oPos.w) here produced 255 distinct colours where the
+ * golden has one (e90c3c80).
+ *
+ * What it is instead is the last coordinate the fixed-function radial
+ * generator produced -- the same not-cleared-between-draws shape as #42, one
+ * register along.  See the fog block in pgraph_glsl_gen_vsh for the
+ * measurement that pins it.
+ */
+bool pgraph_glsl_vsh_carries_ff_radial_fog(const VshState *state)
+{
+    return state->fog_enable && !state->is_fixed_function &&
+           state->foggen == FOGGEN_RADIAL;
+}
+
+/*
+ * The coordinate the fixed-function radial generator produces for the last
+ * vertex of this draw, which is the one still in the register when the next
+ * draw reads it.
+ *
+ * vsh-ff.c computes it as length(tPosition.xyz) with
+ * tPosition = v0 * modelViewMat0, so this is the same arithmetic on the CPU:
+ * both ingredients are CPU-visible state.  That is the gap in the earlier
+ * reading of #41, which refused the faithful fix on the grounds that "a
+ * transformed vertex position is not something the CPU can read back" -- true,
+ * and beside the point, because the CPU does not have to read the transform
+ * back.  It has the matrix (vsh_constants, loaded by the guest) and the
+ * vertex (inline_value, which tracks the draw's last vertex, the same
+ * property #42's attribute case relies on), so it can do the transform
+ * itself.
+ *
+ * GLSL_C_MAT4 builds the matrix from four consecutive constant registers as
+ * mat4's COLUMNS, and v0 * M is a row-vector product, so component j is
+ * dot(v0, c[MMAT0 + j]).
+ */
+static float ff_radial_fog_coord(PGRAPHState *pg)
+{
+    const float *v0 =
+        pg->vertex_attributes[NV2A_VERTEX_ATTR_POSITION].inline_value;
+
+    float eye[3];
+    for (int j = 0; j < 3; j++) {
+        float acc = 0.0f;
+        for (int k = 0; k < 4; k++) {
+            uint32_t bits = pg->vsh_constants[NV_IGRAPH_XF_XFCTX_MMAT0 + j][k];
+            float m;
+            memcpy(&m, &bits, sizeof(m));
+            acc += v0[k] * m;
+        }
+        eye[j] = acc;
+    }
+
+    return sqrtf(eye[0] * eye[0] + eye[1] * eye[1] + eye[2] * eye[2]);
 }
 
 MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
@@ -634,28 +700,73 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              * tests (name order) over an identical grid, so one stale value
              * explains one constant across all six captures.
              *
-             * Still not implemented, and now for a sharper reason than
-             * "unknowable": if that is the mechanism the constant is a
-             * property of the TEST SCENE, not of the silicon. Writing 212.0
-             * here zeroes the cell and is arbitrary for every guest that is
-             * not this test -- a110957a with a better-measured constant.
-             * Reproducing it faithfully is #42's carried-value problem one
-             * level harder: |modelview . v| of the last vertex of the last
-             * fixed-function draw, which the CPU cannot read back the way it
-             * reads back a `mov oFog, c[n]`.
+             * That reading has since been sharpened from "only 5 of 374
+             * quads sit in the window" to the vertex, by reconstructing the
+             * scene and checking the reconstruction against silicon's own
+             * fixed-function captures: FogGen_FF-linear-radial inverts to a
+             * radial distance per quad, and the model of the scene agrees
+             * with it to +0.359 +/- 0.169 over the 183 quads whose interior
+             * is uniform, worst 0.780 -- 0.99 of one quantisation step.  On
+             * that validated geometry
              *
-             * The experiment that settles it is one capture -- a second VS
-             * RADIAL scene after a different fixed-function scene, fog params
-             * kept interior. Nothing in the corpus can run it: RADIAL under a
-             * program appears in fog_gen_tests.cpp and nowhere else, and the
-             * two suites that would give a second observation comment it out
-             * (fog_tests.cpp:27, fog_exceptional_value_tests.cpp:98) because
-             * upstream tracks these captures as unstable on hardware
-             * (abaire/nxdk_pgraph_tests#214) -- which is itself what a value
-             * carried from the preceding draw would look like.
+             *   the last vertex the fixed-function scene draws -- quad 373's
+             *   fourth, at screen (368, 465) and world z 180.5 -- sits at
+             *   215.93,
+             *
+             * inside the (204.06, 221.81) the goldens demand, and so does
+             * every vertex of the final four quads (210.35 .. 219.67).  The
+             * mechanism does not have to name the exact slot to predict the
+             * band.
+             *
+             * It also excludes the other stale-value candidate.  The label
+             * overlay is the last thing each test draws, so "the last
+             * fixed-function vertex" could have been a text vertex rather
+             * than a quad one.  It could not: the label's extent is measured
+             * per capture, and the two tests that pin the coordinate are
+             * preceded by labels whose right edges are 40 px apart --
+             * FogGen_VS-exp-planar ends at column 216, FogGen_VS-exp_abs-
+             * planar at 256.  For a text vertex to land in the band at all
+             * its position vector has to be about 210 long with x dominating,
+             * so 40 px of x is about 40 units of coordinate, against a band
+             * 17.74 wide.  Whatever transform the overlay uses, it cannot put
+             * both pinning captures in one window; the quad grid's tail does,
+             * because all six VS tests draw the identical grid.
+             *
+             * So it is implemented, as the carried coordinate above.  Not as
+             * a constant: writing 212.0 here would zero the cell and be
+             * arbitrary for every guest that is not this test (a110957a with
+             * a better-measured number).  The earlier refusal said the
+             * faithful version needs |modelview . v| of the last vertex of
+             * the last fixed-function draw, "which the CPU cannot read back
+             * the way it reads back a mov oFog, c[n]".  The CPU does not have
+             * to read it back: it has the matrix in vsh_constants and the
+             * vertex in inline_value, so it can do the transform itself.
+             * That is ff_radial_fog_coord, mirroring vsh-ff.c's
+             * length(tPosition.xyz) -- and our own FF radial is worth
+             * mirroring, at 2,603 px and a worst error of one against
+             * FogGen_FF-linear-radial.
+             *
+             * Two consequences worth stating rather than discovering:
+             *
+             * - This makes us order-dependent here in the way hardware is.
+             *   On an isolation disc holding one VS RADIAL test there is no
+             *   preceding fixed-function RADIAL draw, the carried coordinate
+             *   is 0, and the draw renders unfogged -- further from the
+             *   golden than today's oFog.x.  The golden was captured with
+             *   all 30 FF tests running first, so it is only reproducible on
+             *   a disc with the same composition.  That is the same property
+             *   upstream reports as "the radial generator tests change
+             *   occasionally on HW" (abaire/nxdk_pgraph_tests#214).
+             * - A guest that sets FOGGEN = RADIAL under a program and never
+             *   draws fixed-function RADIAL now fogs with 0 rather than with
+             *   oFog.x.  Hardware gives it whatever the register holds, so
+             *   neither is the value; 0 is the register we model it as
+             *   starting from.  RollerCoaster Tycoon, the guest the FIXME
+             *   above names, sets FOGGEN_PLANAR and is untouched.
              *
              * docs/investigations/fog-vs-radial-band.md, reproduced by
-             * docs/testing/fog_radial_band.py.
+             * docs/testing/fog_radial_band.py; the geometry and the two
+             * eliminations by docs/testing/fog_radial_stale_vertex.py.
              */
             /*
              * #42 is the other half of that, and it is the opposite case:
@@ -755,8 +866,23 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              * uniform is not supplied it reads 0.0, which is exactly the
              * unfogged behaviour GL has today.
              */
-            if (opts.vulkan &&
-                pgraph_glsl_vsh_fog_write(state).kind == VSH_FOG_WRITE_NONE) {
+            /*
+             * #41 is the third case, and it takes precedence over both: with
+             * FOGGEN == RADIAL the fog unit does not read oFog at all, it
+             * reads the fixed-function radial generator's register -- which a
+             * vertex program never drives.  So the coordinate is the last one
+             * a fixed-function RADIAL draw generated, and it is carried in
+             * the same uniform because the two cases cannot both apply to one
+             * draw: either the mux is on the generator (RADIAL) or it is on
+             * oFog (everything else).  Resolved on the CPU in
+             * pgraph_glsl_set_vsh_uniform_values, so unlike #42 this half
+             * works on both renderers.
+             */
+            if (pgraph_glsl_vsh_carries_ff_radial_fog(state)) {
+                mstring_append(body,
+                               "  float fogDistance = carriedFogCoord;\n");
+            } else if (opts.vulkan && pgraph_glsl_vsh_fog_write(state).kind ==
+                                          VSH_FOG_WRITE_NONE) {
                 mstring_append(body,
                                "  float fogDistance = carriedFogCoord;\n");
             } else {
@@ -881,16 +1007,58 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         memcpy(values->c, pg->vsh_constants, sizeof(pg->vsh_constants));
     }
 
+    /*
+     * #41: a fixed-function draw with FOGGEN == RADIAL leaves its last
+     * vertex's coordinate in the generator's register, where the next
+     * program-mode RADIAL draw reads it.  Updated here because this is the
+     * one hook both renderers take per draw, and at this point
+     * inline_value already holds the draw's last vertex -- the same
+     * ordering #42's attribute case is measured to rely on.
+     *
+     * Skinning is excluded rather than approximated: with weights the
+     * fixed-function stage blends modelViewMat0..3 by the weight attribute,
+     * so the single-matrix transform below would be a different value, not
+     * a rounding of the right one.  Such a draw leaves the register holding
+     * what it held, which is what a draw whose coordinate we cannot
+     * reproduce should do.
+     */
+    if (state->fog_enable && state->is_fixed_function &&
+        state->foggen == FOGGEN_RADIAL &&
+        state->fixed_function.skinning == SKINNING_OFF) {
+        pg->last_ff_radial_fog_coord = ff_radial_fog_coord(pg);
+    }
+
     if (locs[VshUniform_carriedFogCoord] != -1) {
-        /*
-         * #42's carried fog coordinate is cross-draw state a renderer has
-         * to keep, so it is resolved per draw by the renderer rather than
-         * read out of pg here (see pgraph_vk_update_shader_uniforms).  Set
-         * a defined value regardless: a renderer that does not carry it
-         * gets today's unfogged behaviour, and the uniform never holds
-         * stack garbage that would churn the upload hash.
-         */
-        values->carriedFogCoord[0] = 0.0f;
+        if (pgraph_glsl_vsh_carries_ff_radial_fog(state)) {
+            values->carriedFogCoord[0] = pg->last_ff_radial_fog_coord;
+#ifdef __ANDROID__
+            /*
+             * One line per distinct carried coordinate, not per draw: this
+             * fires on 374 draws a test and instrumentation that costs the
+             * pushbuffer loop has presented as a renderer deadlock here
+             * before.  It is the direct measurement of #41's mechanism --
+             * the goldens pin silicon's coordinate to (204.06, 221.81), and
+             * this says what ours resolves to from the same draw stream.
+             */
+            static float last_logged = -1.0f;
+            if (pg->last_ff_radial_fog_coord != last_logged) {
+                last_logged = pg->last_ff_radial_fog_coord;
+                __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                                    "fog41: program-mode RADIAL carries "
+                                    "coord=%.4f", (double)last_logged);
+            }
+#endif
+        } else {
+            /*
+             * #42's carried fog coordinate is cross-draw state a renderer has
+             * to keep, so it is resolved per draw by the renderer rather than
+             * read out of pg here (see pgraph_vk_update_shader_uniforms).  Set
+             * a defined value regardless: a renderer that does not carry it
+             * gets today's unfogged behaviour, and the uniform never holds
+             * stack garbage that would churn the upload hash.
+             */
+            values->carriedFogCoord[0] = 0.0f;
+        }
     }
 
     if (locs[VshUniform_clipRange] != -1) {

@@ -343,6 +343,19 @@ typedef struct PGRAPHState {
      */
     bool zeta_stored_as_float;
 
+    /*
+     * #41: the last fog coordinate the fixed-function RADIAL generator
+     * produced, in eye-space units. Hardware's fog unit under
+     * FOGGEN == RADIAL reads the generator's register, and a vertex program
+     * does not drive that generator -- so a program-mode RADIAL draw fogs
+     * with whatever the last fixed-function RADIAL draw left there, which is
+     * why silicon fully fogs a scene whose oFog says otherwise. Renderer
+     * independent because both paths resolve it in glsl/vsh.c; zero until a
+     * fixed-function RADIAL draw generates one, which is the unfogged
+     * behaviour of a machine that has generated no radial coordinate yet.
+     */
+    float last_ff_radial_fog_coord;
+
     const PGRAPHRenderer *renderer;
     union {
         PGRAPHNullState *null_renderer_state;

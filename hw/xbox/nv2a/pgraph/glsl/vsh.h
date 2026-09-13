@@ -151,6 +151,17 @@ typedef struct VshFogWrite {
 
 VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state);
 
+/*
+ * #41: true when this draw's fog coordinate comes from the carried
+ * fixed-function RADIAL coordinate rather than from oFog.  Under a vertex
+ * program the nv2a fogs from oFog.x for every gen mode but RADIAL, where the
+ * fog unit reads the fixed-function radial generator's register instead -- and
+ * a program does not drive that generator, so the draw fogs with whatever the
+ * last fixed-function RADIAL draw left there.  The same not-cleared shape as
+ * the fog output register above, one register along.
+ */
+bool pgraph_glsl_vsh_carries_ff_radial_fog(const VshState *state);
+
 void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
                                         const VshUniformLocs locs,
                                         VshUniformValues *values);

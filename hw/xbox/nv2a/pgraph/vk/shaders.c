@@ -1222,7 +1222,16 @@ static void update_carried_fog_coord(PGRAPHState *pg, PGRAPHVkState *r,
         break;
     }
 
-    values->carriedFogCoord[0] = r->last_fog_coord;
+    /*
+     * #41 shares this uniform, and when FOGGEN is RADIAL it owns it: the fog
+     * unit is reading the fixed-function radial generator's register, not
+     * oFog, so the value glsl/vsh.c resolved must stand.  The shadow above is
+     * still updated on such a draw, because the program does write oFog and a
+     * later fog-silent draw inherits it.
+     */
+    if (!pgraph_glsl_vsh_carries_ff_radial_fog(vsh_state)) {
+        values->carriedFogCoord[0] = r->last_fog_coord;
+    }
 }
 
 void pgraph_vk_update_shader_uniforms(PGRAPHState *pg)
