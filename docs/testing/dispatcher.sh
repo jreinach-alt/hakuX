@@ -322,18 +322,51 @@ for t in json.load(open(sys.argv[1])).get('skip_tests',[]): print(t)" "$req" > "
     # one: the same suite with and without a poisoning test differs by 9.9x on
     # an unchanged build, so letting the two share a disc_id would present a
     # disc swap as a code regression.
+    #
+    # AND THE BASE ISO IS PART OF IT TOO, which it was not until 2026-09-13.
+    # This hashed only `suites` and `skip_tests`, so nothing about the TEST
+    # BINARY entered the identity -- and a single-suite request short-circuits
+    # to the bare suite name. So a disc built from a different
+    # DISPATCH_BASE_ISO and the stock one both got `disc_id == "Blend_tests"`,
+    # and ab_compare -- which refuses only when disc_id DIFFERS -- would have
+    # compared them as the same disc. That is exactly the silent two-disc
+    # mixing this identity exists to prevent, one level below where it was
+    # looking.
+    #
+    # It was latent until now and is about to be reachable: the owner has
+    # decided on a maintained fork of the test suite to reach the 1,568
+    # `TestDetailed` goldens, which means a rebuilt XBE and a second base ISO
+    # on this machine. Fixed BEFORE the first scored run from it, not
+    # documented afterwards.
+    #
+    # Keyed on the ISO's size and mtime rather than a full content hash: the
+    # file is 5.7 MB and this runs per request, and size+mtime changes on any
+    # rebuild. A stale mtime with identical content costs a spurious
+    # incomparability, which is the safe direction.
+    local base_iso="${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}"
     disc_id=$(python3 -c "
-import hashlib,json,sys
+import hashlib,json,os,sys
 r=json.load(open(sys.argv[1]))
+iso=sys.argv[2]
 s=sorted(r.get('suites',[]))
 k=sorted(r.get('skip_tests',[]))
+try:
+    st=os.stat(iso)
+    tag=hashlib.sha1(('%s|%d|%d' % (os.path.basename(iso), st.st_size,
+                                    int(st.st_mtime))).encode()).hexdigest()[:6]
+except OSError:
+    tag='noiso'
+# The stock disc keeps its bare, readable ids so every result already on disk
+# stays comparable with new ones. Any OTHER base iso is tagged, loudly.
+STOCK = '/home/justin/nxdk_pgraph_tests_xiso.iso'
+pre = '' if os.path.abspath(iso) == STOCK else 'iso:%s/' % tag
 if len(s)==1 and not k:
-    print(s[0])
+    print(pre + s[0])
 elif len(s)==1:
-    print('%s-no:%s' % (s[0], ','.join(t.split('::')[-1] for t in k)[:30]))
+    print(pre + '%s-no:%s' % (s[0], ','.join(t.split('::')[-1] for t in k)[:30]))
 else:
     h=hashlib.sha1((','.join(s)+'|'+','.join(k)).encode()).hexdigest()[:8]
-    print('%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))" "$req")
+    print(pre + '%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))" "$req" "$base_iso")
 
     local r
     for r in $(seq 1 "$runs"); do
