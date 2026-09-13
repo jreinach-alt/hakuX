@@ -3,8 +3,8 @@
   "who": "claude-issue6",
   "issue": "6",
   "prediction": "DXT1 decode is an ordered dither, not unmodellable rounding. Falsifier stated as decoded values, not pixel counts: with DXT1 routed to the software decoder, plasma_dxt1.dds block 0 (c0=0x7e8f c1=0x5e66, indices 0x0a8b2d2d) must decode to exactly these 16 RGB triples, in texel (ty,tx) order (0,0)..(3,3): (91,208,50) (103,206,70) (108,211,97) (120,209,125) (93,207,48) (97,209,76) (110,210,95) (122,212,123) (104,206,77) (108,208,97) (119,209,126) (115,211,98) (114,209,99) (110,211,95) (121,212,124) (125,210,120). Those are 16 distinct colours out of a 4-entry palette, which is the fact this residual was parked on. If any one triple is wrong the rule is wrong, whatever the pixel totals do. Mechanically: DXT1_plasma_dxt1 goes 65536 -> 384 differing px and DXT1_plasma_alpha_dxt1 65280 -> 448 (6 and 7 level-0 texels x 64 px, all of them code-1 cases left unfitted); DXT3/DXT5 must not move at all, since the goldens show no dither there. Requires an arm where kelvin_format_to_native_bc does not claim DXT1: native BC1 cannot express a dither, so on the stock Adreno path this change is inert and the A/B would show NOISE everywhere.",
-  "a_ref": "2e42a7da8e",
-  "b_ref": "f1ad8ce152",
+  "a_ref": "a8bf9137fb",
+  "b_ref": "9b8f1915e8",
   "must_not_move": [
     "Texture_DXT/DXT3_*",
     "Texture_DXT/DXT5_*",
@@ -15,5 +15,8 @@
     "Texture_DXT/DXT1_plasma_dxt1": 384,
     "Texture_DXT/DXT1_plasma_alpha_dxt1": 448
   },
-  "expect_counts": {}
+  "expect_counts": {},
+  "notes": [
+    "Refs re-pointed by the orchestrator when the diff was folded onto the integration branch: the agent registered against its worktree's shas, and ab_compare refuses a prediction naming refs other than the arms'. ONLY a_ref and b_ref changed; the prediction text, must_not_move list and expected values are the agent's, byte for byte."
+  ]
 }
