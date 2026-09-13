@@ -28,15 +28,14 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 8
-updated_utc = "2026-09-13T14:20:00Z"
+wave = 9
+updated_utc = "2026-09-13T14:50:00Z"
 
-[lane.texture]
-issues = ["56", "59"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pgraph/s3tc.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
-note = "FINISHED. #56 closed as (c) -- the guard tested the unreachable half while the reachable one fell through and stamped tex_reg_cache with registers the bind had failed to honour. Bordered-length fix PASS on 110 checks. The psh.c GRANT IS WITHDRAWN and the pad fix is NOT landed: the lane established from goldens that the atomic set is FOUR files -- psh.c, vk/draw.c, vk/surface.c, vk/texture.c -- because fragColor.a is also the blend source alpha (eight Blend_surface O-vs-Z pairs differ by 38 px, the label, so silicon is suffix-INSENSITIVE) and eight {DstAlpha,1-DstAlpha}_X_* captures are bit-exact THROUGH the read-side swizzle. Two of four files would regress them."
+[lane.interp]
+issues = ["57", "38"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
+note = "#57's misplaced comparison boundary and #38 mech 2's interpolator parity are both \"where does the renderer think this pixel is\", so one lane holds both. First act is to recover interpolator_phase.py and interpolator-sample-position.md out of worktree-agent-a461720f7c39f5548 -- the census #38 cites is not an ancestor of the integration branch."
+
 
 [lane.skew]
 issues = ["44", "65"]
@@ -57,10 +56,11 @@ files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/draw.c",
 
 # The performance lane FINISHED. Its arms are queued and unjudged, so its
 # files stay claimed until they are judged -- the claim is as long as the arm.
-[lane.performance]
-issues = ["68"]
-files = ["accel/**", "include/exec/**", "hw/xbox/nv2a/pgraph/profile.c"]
-note = "FINISHED, arms queued and unjudged. Retracted performance-next-three.md section 2's premise: the range test in tb_invalidate_phys_page_range is #ifndef XBOX, so one guest store discards every block on the page (#68). Registered L1 (sp_share >= 0.30) as the leg that would refute its own retraction. HAKUX_SMALL_BLOCK_INSNS ships at 0, so the folded branch is inert."
+[lane.counters]
+issues = ["69", "68"]
+files = ["accel/**", "include/exec/**", "hw/xbox/nv2a/pgraph/profile.c", "docs/testing/perf/**"]
+note = "#69: hakux_tb_generated counts CALLS (5:1 recycle) and hakux_tb_invalidated counts VISITS, and their quotient is the retracted 2.8:1 waste ratio that ranked the whole performance plan. Must produce the CORRECTED number. Also re-checks #68's cost, which is unestablished because the confirming measurement used the broken counters. accel/ assigned out of the remote lane."
+
 
 [lane.remote]
 issues = ["34", "39", "51", "60", "62", "66"]
