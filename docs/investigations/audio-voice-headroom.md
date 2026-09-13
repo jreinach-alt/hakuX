@@ -241,9 +241,164 @@ reported as in-between. It is not folded into whichever leg it is closest to.
 **Not forced true by my change.** The census does not touch the mix, the level,
 or the pacing; it reads one register and counts.
 
-## 4. Results
+## 4. Results: every active voice carries headroom = 7, and that settles it
 
-Filled in when the runs land.
+**MEASURED.** Galleon, Retroid Pocket Nova, 90 s held, ref `8d96196c71`, binary
+`2413de7c33ad`, result `1789278817-audio74-galleon-1188071`. App lifetime
+22:55:29.661 → 22:57:01.456 device time = 91.8 s; eighteen census windows of
+5 s = 90 s of censused frames, which is the run.
+
+    voice_headroom: FIRST active voice with headroom=7 -- voice 64.
+    ...
+    voice_headroom: window 107467 active voice-frames  hr0..7 =
+        0 0 0 0 0 0 0 107467   cumulative 1288746 nonzero of 1288746
+
+| headroom value | active voice-frames | share |
+|---|---:|---:|
+| 0 | 0 | 0.00% |
+| 1 | 0 | 0.00% |
+| 2-6 | 0 | 0.00% |
+| **7** | **1,288,746** | **100.00%** |
+
+Eighteen windows, every one of them 100% at 7, from the first active voice to
+the last. Window totals run 28,171 → 37,500 → 117,073 as the title's voice count
+grows (a window is 7,500 frames, so that is about 4 active voices at the start
+and 15 by the end). **Not one voice-frame of 1,288,746 carried any other
+value.**
+
+The same run re-confirms `submix_headroom[0..30] = 1`, all 31 slots — a fourth
+independent observation, and the first on the Nova at today's tip.
+
+### Verdict against the predictions
+
+- **H1 — the instrument is alive. PASSED.** Eighteen report lines plus one
+  first-sighting line, on clean 5 s intervals.
+- **H2 — non-zero. PASSED. Modal value 1. FAILED.** I predicted 1, by analogy
+  with the sibling register. It is **7**, the maximum the three-bit field can
+  hold, on every voice. Recording the failed leg rather than restating the
+  prediction: the reasoning that produced "1" — *the sibling is 1, the fields
+  are the same width, so they will hold the same value* — was an analogy, and
+  the measurement says the two registers hold different quantities, which is
+  more interesting than if I had been right.
+- **H3 (narrowed) — `CFG_FMT_HEADROOM` reaches nothing. PASSED**, by grep, and
+  the correction to its over-broad first wording is recorded above.
+
+### Why 7 closes the owner's symptom, by arithmetic rather than by assumption
+
+**This is the load-bearing result of this document.** The direction of the field
+is still not known from source. It does not need to be, because one of the two
+directions is now excluded by the level we already measured.
+
+Suppose `CFG_FMT_HEADROOM` were a **gain** we are failing to apply — the only
+direction that could make us too quiet. It is 7 on 100% of voice-frames, so the
+whole mix would move together, by `2^7` = **+42.14 dB**. Against the measured
+baseline (`audio-baseline.md` section 1):
+
+| statistic | measured today | + 42.14 dB |
+|---|---:|---:|
+| peak | −0.00 dBFS | +42.1 dBFS |
+| AC RMS, whole file | −23.43 / −23.50 dBFS | **+18.7 dBFS** |
+| median active 50 ms window | −29.37 / −29.45 dBFS | **+12.8 dBFS** |
+| p5 active window | −38.00 dBFS | +4.1 dBFS |
+
+Every one of those is above full scale. A correct level in which the *fifth
+percentile* of active windows sits 4 dB into the rails and the median sits 12.8
+dB into them is not a mix any title ships; it is permanent gross clipping. **So
+the field is not an unapplied gain, and #74 cannot be "volume seems unusually
+low".**
+
+The other direction survives and points the opposite way: as an *attenuation*
+we would be too loud, not too quiet — and on the audible path we apply it
+nowhere, which is the same reasoning `54a00d28fb` already settled for the
+submix headroom.
+
+**MEASURED OUT: #74 is not the owner's symptom.** That is the third and last of
+the three candidates the baseline left standing — a uniform missing gain, output
+starvation, and a per-voice missing gain — and all three are now measured out.
+
+### What 7 and 1 together say, which is new
+
+The two registers hold **different** values on the same title: `submix_headroom`
+is 1 everywhere, `CFG_FMT_HEADROOM` is 7 everywhere. That is evidence they are
+two different quantities rather than two names for one reserve, and it makes a
+coherent model available for the first time:
+
+- **Per-voice headroom 7 = 42 dB = seven bits** is the reserve for *summing*.
+  The GP mixbuf is 24-bit and a voice is 16-bit, so shifting each voice down by
+  7 leaves room to sum on the order of 128-256 voices into one bin without
+  overflowing — and the Xbox APU sums up to 256. Seven is not an arbitrary
+  value; it is the number of bits the arithmetic needs.
+- **Submix headroom 1 = 6 dB** is a much smaller reserve at the bin *output*,
+  which is the stage the uploaded GP scene reads.
+
+**INFERRED, and it is the live part of #74 now.** If that model is right, then
+`vp.c:1521-1523` divides the voice by the wrong register: it uses
+`2^submix_headroom[bin[b]]` = 2 where the hardware would use
+`2^voice_headroom` = 128. Our mixbins would then be **64x = 36.1 dB hotter**
+than silicon's, which on a 24-bit saturating mixbuf is a real overflow hazard —
+on the **DSP path only**.
+
+That is worth stating precisely, because it is the part that is *not* closed:
+
+- On the **monitor path** (`use_dsp = false`, the handheld's default and the
+  owner's configuration) this is **inert**. The mixbins are discarded; the
+  monitor mix applies no headroom; the one place headroom reaches the audible
+  output, the multipass read at `vp.c:1316`, divides and multiplies by the
+  *same* `submix_headroom[mp_bin]` and is therefore self-consistent whatever
+  the true convention is.
+- On the **DSP path** (`use_dsp = true`, off by default, labelled experimental)
+  it would be a 36 dB error into a saturating fixed-point buffer.
+
+**No fix is being made, and that is deliberate.** Changing the divisor from 2 to
+128 on a guess would move the DSP path by 36 dB in a direction nothing has
+measured, on a path this harness cannot capture: the PCM tap reads
+`monitor.frame_buf`, and `use_dsp` is a config toggle no soak can set. That is
+precisely how a measured chain acquires an unmeasured stage. #74 stays open with
+its value now known and its blast radius now bounded.
+
+### The capture did not arm, and the reason is a harness bug worth more than the capture
+
+**The run pulled no PCM.** `run.log` reads `PULL: nothing matched`, and every
+`starve:` line reads `capture off`, so this is an honest empty result and not a
+stale file — the failure mode the previous pass engineered for.
+
+The request asked for it: `"audio_capture": "30"` is in `request.json`, and
+`request.sh`'s guard passed because it checks
+`${DISPATCH_TREE}/docs/testing/dispatcher.sh`, which does support the field.
+**But that is not the script that serves the request.** The worker execs a
+snapshot in `$DISPATCH_DIR/bin`, and that snapshot is from 22:16 and has neither
+`audio_capture` in `dispatcher.sh` nor `AUDIO_CAPTURE_MB` in `soak_title.sh`.
+So the field was accepted, recorded, and dropped.
+
+The snapshot cannot refresh itself, and that is the actual defect:
+
+```sh
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"          # dispatcher.sh:36
+...
+now_hash="$(cat "$HERE"/dispatcher.sh "$HERE"/soak_title.sh ...)"   # :537
+if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then ... exec bash "$SNAP/dispatcher.sh"
+```
+
+Once a worker has re-execed into `$SNAP`, `$HERE` **is** `$SNAP`, so it hashes
+the snapshot against itself. The hash can never change again and the re-exec can
+never fire a second time. The mechanism added at `689a1a29b9` to pick up script
+changes works exactly once per worker lifetime.
+
+This blocks every audio capture on the project, not just this one, and it will
+silently swallow any future change to `dispatcher.sh`, `soak_title.sh`,
+`run_disc.sh`, `score_sweep.py`, `affinity.py`, `captures.py`,
+`make_test_iso.py` or `extract_results.py`. **The serving dispatcher needs
+restarting**; that is the orchestrator's to do, and no agent may do it from
+here.
+
+I have not touched `dispatcher.sh`. Hashing the source tree instead of `$HERE`
+is the obvious repair and it is *not* safe to apply blind: `build_ref` detaches
+that same tree for the length of every build, so a source-tree hash would flap
+mid-build and re-exec a worker into whatever dispatcher a foreign ref carries —
+which is the failure the comment at `:540-559` was written about, and which
+killed the Nova worker for twenty-five minutes on 2026-09-12. What I have done
+instead is make the refusal honest: `request.sh` now checks the snapshot that
+will actually run.
 
 ## 5. What this cannot do
 

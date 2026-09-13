@@ -167,23 +167,56 @@ if [ -n "$AUDIO_CAPTURE" ]; then
         ''|*[!0-9]*) echo "--audio-capture takes a size cap in MB, got '$AUDIO_CAPTURE'" >&2; exit 2;;
     esac
     [ -n "$TITLE" ] || { echo "--audio-capture only means anything on a soak (--title)" >&2; exit 2; }
+    # Check the SNAPSHOT, not the source tree. The worker does not run
+    # docs/testing/dispatcher.sh: it copies the scripts to $DISPATCH_DIR/bin at
+    # startup and `exec`s that copy, deliberately, so that build_ref detaching
+    # the source tree cannot exec a foreign ref's dispatcher mid-build.
+    #
+    # The consequence is that the source tree supporting a field says nothing
+    # about whether the running worker does, and the snapshot has no way to
+    # notice it is stale -- once a worker has re-execed into the snapshot,
+    # $HERE IS the snapshot, so the re-exec hash at dispatcher.sh:537 compares
+    # the copy against itself and can never fire again.
+    #
+    # This guard checked the source tree and therefore passed on 2026-09-12
+    # while the 22:16 snapshot silently dropped audio_capture: the request
+    # recorded "audio_capture": "30", the soak ran with the capture off, and
+    # the pull came back empty. That empty pull is the good outcome and only
+    # because the previous pass made soak_title delete the old capture first --
+    # with a stale PCM on the device it would have been filed as the
+    # measurement. Check both, and name whichever one is behind.
     SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
-    if ! grep -q audio_capture "$SERVER/dispatcher.sh" 2>/dev/null \
-       || ! grep -q AUDIO_CAPTURE_MB "$SERVER/soak_title.sh" 2>/dev/null; then
+    SNAP="${DISPATCH_DIR:-$D}/bin"
+    STALE=""
+    for where in "$SERVER" "$SNAP"; do
+        [ -f "$where/dispatcher.sh" ] || continue
+        if ! grep -q audio_capture "$where/dispatcher.sh" 2>/dev/null \
+           || ! grep -q AUDIO_CAPTURE_MB "$where/soak_title.sh" 2>/dev/null; then
+            STALE="$STALE $where"
+        fi
+    done
+    if [ -n "$STALE" ]; then
         cat >&2 <<MSG
 refusing to queue: --audio-capture was asked for, but the dispatcher that will
 serve this request does not arm the capture:
+$(printf '\n  %s' $STALE)
 
-  $SERVER
+It would run the soak with the capture off. The pull then returns nothing, or
+-- worse -- whatever PCM an earlier experiment left on the device, which
+measures as a clean, plausible baseline. That is exactly what a 24 MB file from
+a soak four hours earlier did on 2026-09-12; it was caught only because
+126.976 s of audio cannot come out of a 95 s app lifetime.
 
-It would run the soak with the capture off and pull whatever PCM was left on
-the device by an earlier run, then file that as your measurement. Merge the
-AUDIO_CAPTURE_MB support into dispatcher.sh and soak_title.sh and restart the
-serving dispatcher first.
+If the path above ends in /bin it is the SNAPSHOT the worker execs, not the
+source tree. Merging is not enough: the serving dispatcher must be RESTARTED,
+because a worker that has already re-execed into the snapshot hashes it against
+itself and will never pick the change up on its own.
 
 Until then the capture can be armed by hand, once, on the device:
   adb -s <serial> shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/audio_capture.on'
-and a capture taken that way MUST be dated against the run that produced it.
+and a capture taken that way MUST be dated against the run that produced it --
+captured seconds cannot exceed the app's lifetime -- because an unarmed
+soak_title also does not delete the previous capture.
 MSG
         exit 2
     fi
