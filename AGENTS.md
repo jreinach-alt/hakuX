@@ -366,6 +366,14 @@ Four rules, each of which cost a real verdict on 2026-09-12:
   hand. Two falsifiers were bitten on 2026-09-12; one reported all three of
   its captures MISSING on an arm that contained them, which reads exactly like
   a failed render and would have been taken as refuting a change that passed.
+- **A falsifier your own change guarantees is not a falsifier.** Before
+  registering a leg, ask what would have to be true for it to FAIL. If the
+  change you are about to make forces it true, it is a description of your
+  own output, not a test of it. On 2026-09-12 an arm registered four legs and
+  two of them -- "every differing pixel lands on a positive-face corner" and
+  "no interior texel" -- were tautologies of a fix that substitutes a
+  positive-face corner direction. They read exactly like measurements. Predict
+  something the *goldens* constrain, not something your patch constrains.
 - **A failed arm is a diagnosis, not a revert.** Push through to the root
   cause before reverting, and check whether the reasoning that motivated the
   change still applies -- usually the entry point is right and only a value is

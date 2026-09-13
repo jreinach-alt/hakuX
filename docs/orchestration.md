@@ -336,6 +336,30 @@ an interpolation fix; the selected cube face per pixel rather than differing
 pixels; a swatch's centre row for a reordering; the mean light term over a lit
 region rather than captures-gone-exact.
 
+## A falsifier your own change guarantees is not a falsifier
+
+Before registering a leg of a prediction, ask what would have to be true for
+it to **fail**. If the change you are about to make forces it true, it is a
+description of your own output rather than a test of it.
+
+The worked example is #51 on 2026-09-12. Four legs were registered before the
+arm ran, which is the right process, and the arm came back FAIL -- but two of
+the four could not have come back any other way. "Every differing pixel lands
+on a positive-face corner" and "no interior texel" are both guaranteed by a
+fix that substitutes a positive-face corner direction. They were forced by the
+patch, they read exactly like measurements, and they carried no information.
+
+This is the same shape as scoring against a target contaminated by the thing
+you are drawing: the instrument and the subject are not independent.
+
+The test is mechanical. For each leg, name the world in which it fails. If you
+cannot describe one without also describing a different patch, the leg is
+about your code and not about silicon. Predict what the **goldens** constrain.
+
+Note this does not make such a statement useless -- "the fix does what I think
+it does" is worth asserting. It is just not a falsifier, and must not be
+counted as one when the verdict is totted up.
+
 ## A failed arm is a diagnosis, not a revert
 
 **Do not revert a change because its arm failed. Push through to the root
