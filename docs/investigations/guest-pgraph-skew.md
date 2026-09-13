@@ -1272,10 +1272,52 @@ falsifier this document already answered from #39's hashes and now has a
 second, independent measurement for: `Vr = 0/3,040`. Vertex data is read from
 guest RAM at the same point by the same thread, and it does not race here.
 
-*Crimson arm B and the second runs to follow. Given mode 2 holds 94.9% of
-submissions on Galleon, the expectation is that **X1 holds and X5 fails** —
-the bound closes the race and costs the ceiling, exactly as mode 1 did, which
-would complete the picture rather than change it.*
+### Arm A on two runs: `Tr` reproduces to 0.26%, and #56's fix INCREASED the exposure
+
+| | run 1 | run 2 | spread |
+|---|---|---|---|
+| `Tr` raced | 11,829 | 11,866 | 0.31% |
+| `tex_uploads` | 19,167 | 19,176 | **0.05%** |
+| **rate** | **0.6172** | **0.6188** | **0.26%** |
+| `Xd` | 0 | 0 | — |
+
+**That is the best-behaved device measurement in this investigation.** A rate
+reproducible to 0.26% and a denominator to 0.05%, from two 240 s runs — against
+a `stale_px` observable that needs 20–30 runs per arm to separate 0.2 from 0.6.
+L5 passes 2 of 2.
+
+And against the published baseline at `e353735028`:
+
+| | `Tr` | `tex_uploads` | rate |
+|---|---|---|---|
+| `e353735028` (published) | 7,061 / 7,113 | 12,474 / 12,540 | 0.5661 / 0.5672 |
+| **`5cfc236d9b` (here)** | **11,829 / 11,866** | **19,167 / 19,176** | **0.6172 / 0.6188** |
+
+Both pairs are internally reproducible to ~0.3%, and the two refs differ by
+**9% in the rate and 53% in the uploads** — far outside either pair's spread.
+So this is a real difference between refs, not noise.
+
+**The likely mechanism runs opposite to the guess my n=6 write-up made, and it
+is a cross-lane finding rather than a curiosity.** `e353735028` lacks
+`cdd8dc4c89`, #56's stale-binding fix. That fix stops `create_texture` from
+stamping `tex_reg_cache[i]` with registers a *failed* bind never honoured
+while clearing `texture_dirty[i]` — so textures that were previously left
+wrongly marked clean **now get re-uploaded**. More uploads happen: **+53%**.
+And an upload is precisely what is exposed to the skew, so races rise **+67%**
+in absolute terms and the *rate* rises 9%.
+
+Stated as strength: the direction and the magnitudes are consistent with that
+mechanism and I have not isolated it — two refs 128 commits apart is not a
+bisection. But it inverts the intuition worth carrying: **fixing the
+missed-re-upload half of #44 does not hide the skew half, it exposes more of
+it**, because the skew can only lose a race on an upload that actually
+happens. The two mechanisms were never additive, and they are not
+independent in this direction either.
+
+*Crimson arm B to follow. Given mode 2 holds 94.9% of submissions on Galleon,
+the expectation is **X1 holds and X5 fails** — the bound closes the race and
+costs the ceiling exactly as mode 1 did, which would complete the picture
+rather than change it.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
