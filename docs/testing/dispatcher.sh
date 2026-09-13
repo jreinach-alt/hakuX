@@ -271,8 +271,17 @@ pdir = os.path.join(rdir, "pulled")
 if os.path.isdir(pdir):
     for f in sorted(os.listdir(pdir)):
         pulled.append(dict(file=f, bytes=os.path.getsize(os.path.join(pdir, f))))
+# Which handheld produced this, on the soak path too. Only the disc path
+# recorded it, and the omission is worse here than there: a soak has no
+# golden to disagree with, so an audio level or a frame rate from the wrong
+# device is not merely unlabelled, it is indistinguishable from the right
+# one. Three audio titles live on the Thor and Galleon on the Nova, and the
+# volume comparisons across them are exactly the measurement this silently
+# mixes. devices.sh exists to stop that; it cannot stop what is never written.
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                requester=who, purpose=purpose, ref=ref,
+               device_serial=os.environ.get("SERIAL", ""),
+               device_label=os.environ.get("DEVICE_LABEL", ""),
                logcat_lines=int(lines), pulled=pulled),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")

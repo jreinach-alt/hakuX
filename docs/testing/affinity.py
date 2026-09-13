@@ -25,8 +25,9 @@ Three rules, in order:
    without anyone having to say so, and it pins it to wherever the first arm
    happened to land rather than to a device chosen in advance.
 
-3. Otherwise, a request naming a prediction is pinned by HASHING the
-   prediction's filename over the serving devices. Same prediction, same
+3. Otherwise, a request naming a prediction -- or a SOAK, which has none, and
+   is then keyed on its requester -- is pinned by HASHING that key over the
+   live devices. Same prediction, same
    device, computed from nothing but the name.
 
    Rule 2 alone has a race, and it fired: the two arms of a pair are queued
@@ -105,10 +106,29 @@ def main():
         return
 
     expect = (req.get("expect") or "").strip()
-    if not expect:
+    key = os.path.basename(expect) if expect else ""
+    if not key and (req.get("title") or "").strip():
+        # A SOAK has no prediction to pin on, by design: the audio and timing
+        # streams have no golden to disagree with, so they queue with
+        # --no-expect. That left exactly the streams that most need one device
+        # as the only ones affinity ignored, and it cost a real measurement --
+        # #64's four vblank soaks ran free, so its cost leg (median gfps 16 vs
+        # 29, control 21) has the device as an uncontrolled variable and cannot
+        # now exclude it. A soak comparison is between soaks by the same
+        # requester, so pin on the requester instead. Still hash, still no
+        # state.
+        #
+        # Deliberately NOT applied to disc requests: their requester is
+        # "full-sweep" for a hundred suites, and pinning those to one lane
+        # would halve the corpus sweep to buy a comparability nobody asked
+        # for -- a sweep column is scored per capture against a golden, which
+        # is a per-capture comparison, not a cross-run one.
+        who = (req.get("requester") or "").strip()
+        if who:
+            key = "who:" + who
+    if not key:
         print("")
         return
-    key = os.path.basename(expect)
 
     # A sibling that is RUNNING pins just as hard as one that has finished,
     # and this is the common case rather than the rare one: both arms of a
