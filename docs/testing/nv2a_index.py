@@ -60,7 +60,13 @@ DISPOSITIONS = {
 # any tracker presence at all and cannot name a pgraph suite -- the test discs
 # play no sound, so there is no suite that exercises the APU and inventing one
 # would put a false name in the one hand-maintained table here.
-COMPONENTS = {"pgraph", "apu"}
+# `tcg` added 2026-09-13. Four issues arrived that are neither -- whole-page TB
+# invalidation, two miscounting TB counters, a stranded CF_INVALID block, and
+# FIST/FISTP truncating where x86 rounds per the control word. Forcing them
+# into `pgraph` would have made the suite requirement meaningless for them, and
+# the alternative (leaving them out of the tracker) is what let four issues sit
+# with no entry at all until an audit found them.
+COMPONENTS = {"pgraph", "apu", "tcg"}
 
 SCAN_ROOTS = ["hw/xbox"]
 SCAN_EXTS = (".c", ".h", ".inc", ".cpp")

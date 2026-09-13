@@ -675,6 +675,7 @@ suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 status = "fixed-part"
 status_note = "The mode knob is exhausted and that half is finished (bresenhamLines=1 enabled and measured at +793,470 px, 41 of 41 Line_width captures worse, reverted 64b1e2a054; smoothLines=0 and stippledBresenhamLines=0 close the other two values; rectangularLines is what we draw and is the closest of the three). BOTH remaining rules are now DERIVED offline from the goldens with no device: edge priority is last-drawn wins with silicon triangulating as for fill and emitting each triangle's edges opposite a, then b, then c -- 98.97% of 203,023 decisive pixels against 77.85% for the order we emit today, which is refuted rather than beaten, and every geometric rival at chance; and the minor-axis extent is w*(1+tan(theta)/2), the alpha-max-plus-beta-min hypot approximation, 100% in-band over 9,611 clean cuts at 33 angles against 76.94% for a perpendicular rectangle and 51.25% for the COVERAGE hypothesis this issue had registered, which is dead. What is left to decide is not a rule but a measurement: three small prim_rewrite.c edits for QUADS, QUAD_STRIP and POLYGON need an arm, TRIANGLES/STRIP/FAN need rewriting to explicit LINES before their order is ours to set at all, and the extent rule still needs generated geometry -- now with a formula rather than a hypothesis. About 0.4% of interior ink stays unexplained by either rule."
+blocked_on = "the extent rule needs geom.c + vk/shaders.c + vk/draw.c + gl/shaders.c together, and the floor/ceil phase is undetermined so a correct widening lands in-band without being pixel-exact"
 
 [issue.14]
 title = "Blend precision (low priority)"
@@ -1337,12 +1338,15 @@ status_note = "The factor half landed (ab4a829316, through pgraph_vk_effective_b
 # RETRACTED (#54): restoring every guest memory barrier leaves it at 6 failures
 # in 10. And desktop-versus-Nova cannot settle a renderer question anyway,
 # since those arms differ in renderer as well as in host memory model.
+blocked_on = "the fold needs framebuffer fetch (input attachment + subpass self-dependency) or a float intermediate surface: psh.c AND vk/draw.c AND vk/surface.c, and any subset double-corrects"
+
 [issue.44]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
 disposition = "defect"
 status = "open"
 status_note = "No fix attempted; what landed is containment. Re-measured from the arm rather than from the comment: dispatch/results/1789255594-exp54-stst-correct, 10 runs of one unchanged binary over Texture border, 2D_BorderTex_SZ band 5,640 with 4 runs bit-exact and 6 not, and 17 of 18 captures at band 0. ab_compare names it in KNOWN_UNSTABLE and the measured per-capture band classes it NOISE. The 40x magnitude spread across the non-zero runs is unexplained and a single upload racing a two-pass generator cannot produce it. (The issue's comment says five exact and five not, and lists eleven values for ten runs; the arm holds four and six.)"
+blocked_on = "root cause proven and the bound closes it, but it halves a real title; the shippable form is a selective draw-only bound (148,704 submissions for 180 draws) and that needs its own arm"
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
@@ -1533,6 +1537,7 @@ suites = ["Specular", "Specular back", "Lighting control"]
 disposition = "unknown-semantics"
 status = "fixed-part"
 status_note = "Two arms landed, both PRE-REGISTERED and both FAIL on overshoots rather than on mechanism. The light-loop mux (63be3ebf75) took Specular/ControlFlagsNoLight_VS 18,658 -> 10,510 against a predicted 10,510, exactly, with all seven must-not-move lighting and material suites byte-identical; the back-specular source (7a650a98a9, oB1 = v8 rather than v4) took both Specular_back captures down by exactly 7,730, overshooting its prediction by 3,075 in the favourable direction. What remains is a defect with no model: silicon assigns the light term's two values to the four quad corners differently under a program than under fixed function, and in four of the eight lit quads the assignment is not a permutation of the vertex stream at all, so no skew of the normal queue produces it. Specular_back/ControlFlags_VS at 88,059 px is dominated by it. The v8-versus-last-written-oB1 ambiguity cannot be settled from the corpus: no capture writes anything but the vertex specular to oB1."
+blocked_on = "the corpus supplies only two distinct N.L values per lit quad, so no 3-1 code can name its source vertex; the three settling observations all need captures we cannot produce"
 
 [issue.50]
 title = "Blend tests: DrawColorAndAlphaStack's stack is wrong on 1,567 of 1,568 captures; mechanism unknown, not a reversal"
@@ -1572,6 +1577,7 @@ disposition = "defect"
 suites = ["Blend tests"]
 status = "open"
 status_note = "The aliasing is measured -- our stack C equals a model of stack A blitted at C on 1,119 of 1,120 oracle captures against 0 of 1,568 for the goldens under the same test, and the recovered texel alpha 221 is stack A's unblended rule rather than stack C's clamp(221+51) -- and the flush landed as 771c8eb4f1. The benefit is unverifiable rather than unverified: TestDetailed is interactive-only and absent from the release disc, so no dispatcher arm can reach the captures the falsifier is written on. The arm that ran is the must-not-move half only, 424 captures across all 17 suites byte-identical; ab_compare reported FAIL on nine globs that matched no capture, correctly refusing to count a guard that was never applied."
+blocked_on = "needs a TestDetailed capture, which is interactive-only upstream -- behind the test-suite fork"
 
 [issue.51]
 title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic, and the corner rule is still unimplemented"
@@ -1715,6 +1721,8 @@ status_note = "Two of the four cells are done. Cell 1 (z16 fixed) was already ex
 # number before it lands. A store-store-only variant is recorded in the
 # write-up and deliberately not implemented.
 # docs/investigations/tcg-barriers-elided.md.
+blocked_on = "the z24 float quad-split needs psh.c, held by the psh lane for #31/#10"
+
 [issue.54]
 # RETRACTED 2026-09-12: this does NOT cause #44. With every barrier restored,
 # 2D_BorderTex_SZ still fails 6 of 10 runs -- indistinguishable from the ~46%
@@ -1822,6 +1830,8 @@ status_note = "Benefit measured zero: with ALL guest barriers restored 2D_Border
 # and migrated across reuse, so a swizzle there would alter what rendering
 # writes and go stale exactly the way host_fmt just did. It needs its own
 # sampled view.
+blocked_on = "answered (57% on Crimson Skies, 0 on DOA3/JSRF, vertex site never races); the fix is one site in the texture upload path and wants its own arm"
+
 [issue.55]
 title = "Surface bindings never refresh their colour format on compatible reuse, and fifteen sites read it"
 disposition = "defect"
@@ -2731,6 +2741,7 @@ status_note = "The rate half landed (0edf4f2f0d, one token at nv2a.c:845) and al
 # live issue list for state and title, which cannot see an issue that has no
 # entry to compare.
 # ---------------------------------------------------------------------------
+blocked_on = "defer_cap = 15 landed; D9 says the value is 12, and the observed timer round trip names it -- one constant, wants an arm"
 
 [issue.34]
 title = "Vulkan validation layer: four open findings from the desktop lane"
@@ -2745,6 +2756,7 @@ suites = ["3D primitive", "Alpha func", "Attrib carryover", "Attrib float", "Att
 disposition = "defect"
 status = "fixed-part"
 status_note = "Mechanism 1 is decided, implemented and confirmed by slope rather than by position: silicon quantises the vertex colour to its byte BEFORE the interpolator (colorPrecision in glsl/vsh.c plus dca3c94b98), and arm ff1604d457 -> dca3c94b98 is PRE-REGISTERED with the green band's slope moving 2.53 -> 3.01 against a hardware 3.00, 169 better 10 worse, -489,757 px. It reads FAIL because three must-not-move captures moved, all three BETTER and two of them to zero. Mechanism 2 is measured and NOT implemented: hardware holds the fragment colour constant across an even-aligned pixel pair and evaluates it at the pair's right edge, s = 2*floor(x/2)+2, 0 wrong of 512 on both Alpha_func bands with two out-of-sample confirmations, but only 3 of 1,162 measurable captures are paired and what selects those draws is unestablished -- the conjunction that fits is fitted to two positives. Mechanism 3 (Image_blit, -0.70 bias over 515,562 one-step px) is untouched and is its own lead; mechanism 4 is #16's. The 201 one-step-symmetric captures are a measured precision floor: two independent hosts agree to a tenth of a percent on the one-step share."
+blocked_on = "mechanism 2 needs five new captures (one property varied at a time off the Alpha_func band) that do not exist upstream -- behind the test-suite fork"
 
 [issue.39]
 title = "Vulkan: a draw's result is intermittently lost, same disc and binary, run to run"
@@ -2780,6 +2792,7 @@ suites = ["Surface clip", "Texture format", "Blend surface", "Surface format"]
 disposition = "defect"
 status = "fixed-verified"
 status_note = "Both arms are PRE-REGISTERED PASS. 5e612529b9 -> 0b7e5de8dd, all 106 checks: Surface_clip 1,175,741 -> 0 with every rt_* capture bit-exact, Texture_format 309,333 -> 139,389, all fifteen predicted captures byte-exact, 27 better 4 worse, -1,542,162 px. 00dc9c68c5 -> a3eddc0214, all 171 checks, closes the two X_O1RGB5 regressions the first arm cost by scoping #48's pad readback on the guest texel stride rather than on the fill path, 4 better 0 worse. The rule was decided mapping-free by level set, not by fit: 21 channels across 7 gradient goldens hold every replicate-only 8-bit level and not one ratio-only level, and 4-bit and 1-bit fields differ nowhere so A4R4G4B4 needed nothing and was already exact -- a check on the derivation rather than a lucky control. Throughput is the owed item, not accuracy: a 565 surface sampled as a texture loses its GPU-side view bind, and nobody has counted a real title's 565 working set."
+blocked_on = "the pad write-side fix needs psh.c + vk/draw.c + vk/surface.c + vk/texture.c ATOMICALLY -- two of four would regress eight bit-exact captures"
 
 [issue.60]
 title = "GL renderer: a reused surface binding keeps its creation-time guest format (the defect #55 fixed in Vulkan)"
@@ -2808,3 +2821,40 @@ suites = ["Blend tests", "Point size"]
 disposition = "defect"
 status = "open"
 status_note = "Not a rasterisation defect and not in the graphics pipeline at all. blend_tests.cpp computes its whole TestSpot layout from three floorf calls, and exactly one of them moves: color_swatch_size = floorf(test_width / 4) = floorf(24.75) is 24 on silicon and 25 in our render, while test_width = floorf(99.2) = 99 and test_height = floorf(136.0) = 136 are unchanged in both -- the two calls where floor and round-to-nearest agree, which is what makes it a rule and not a fitted constant. Building one cell's primitive-ownership map from blend_tests.cpp alone under swatch 24 and swatch 25 gives an ownership-change set of exactly 1,276 px, which is the per-cell seam count the #43 lane measured from the captures before anyone knew what it was; over all 75 unsigned #spot_* captures the union of every differing pixel EQUALS that set as a set (union 1,276, intersection 1,276) with 1,168,902 px inside and 0 outside. Re-decided on a suite sharing no code: Point_size's increment = floorf(85.714) is 85 on silicon and 86 in ours -- and the 14 px that displaces is the entire residual of SmallestPointSize_FF and _VS -- while cy = floorf(138.667) is 138 against our 139, read off LargestPointSize's green rows at (102,307) against our (103,309). Three arguments, three fractional parts, three suites, no free parameter. Cause is target/i386/tcg/fpu_helper.c:266, `#define floatx80_round_to_int(a, s) ((void)(s), rint(a))` in the #if XBOX && __aarch64__ USE_HARD_FPU block: helper_frndint passes env->fp_status and the macro discards it, so FRNDINT rounds per the HOST environment (nearest-even) and nxdk's floorf -- save CW, RC=down, FRNDINT, restore -- becomes rint. The mode itself is fine; update_fp_status is compiled once outside the hard block and env->fp_status.float_rounding_mode is correct when FRNDINT runs. Android FP JIT only (g_config.perf.fp_jit, default on); the x86_64 hard path leaves the macro as softfloat, so this class is invisible on the desktop lane and with fp_jit off. NOTHING EDITED: target/** is lane.remote's in territory.toml wave 10. Diff, legs and a same-disc Viewport/Stencil guard are in docs/investigations/guest-frndint-ignores-rounding-mode.md; docs/testing/guest_frndint_rounding.py reproduces both legs offline with no device. Two corrections to the filing: 1.44M px is the union bound (19,140 = 1,276 x 15) and the measured total over the 75 unsigned captures is 1,168,902, range 6,154 to 19,140; and the thirty signed captures are not all 104,205 -- #spot_1-cA_SREVSUB is 103,440. Adjacent and deliberately not bundled: the same block's floatx80_to_int32/int64 are C casts, so FIST/FISTP truncate where x86 rounds per RC."
+blocked_on = "routed to the remote lane: the fix is in target/i386/tcg/fpu_helper.c, and the diff plus four legs are written out"
+
+[issue.68]
+title = "tcg: whole-page invalidation discards ~40,000 live blocks per run of which essentially none were written (ov median 0, max 3); the block-extent lever is dead on feasibility"
+component = "tcg"
+no_suites = "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it"
+disposition = "defect"
+status = "fixed-part"
+status_note = "Measured over six Crimson Skies soaks. sp_share over LIVE blocks is 1.000 with four independent checks on what a systematic error would do, the last not using the predicate at all: the notdirty tracker puts the stores in 1,168- and 540-byte windows of 4,096-byte pages -- two hot data structures sharing a page with code. New cost symbol tcg_flush_jmp_cache 8.77% self, scaling with discards not visits. The block-extent lever is dead separately: blk is already 5.97-6.49 guest instructions, below the 8 the clamp was written at, so it could never bind."
+blocked_on = "ranked and costed; restoring the range test is a five-year-old SMC correctness decision on every guest instruction, not a lane call"
+
+[issue.69]
+title = "tcg counters measured the wrong events: hakux_tb_generated counted calls and hakux_tb_invalidated counted visits, and their quotient was the retracted 2.8:1 waste ratio"
+component = "tcg"
+no_suites = "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it"
+disposition = "defect"
+status = "fixed-verified"
+status_note = "Renamed rather than moved, because both quotients are worth reading: calls/generations IS the recycle rate and visits/discards IS the page-list clog. Corrected ratio 4.9-11.7 discards per generation, and BIMODAL BY RUN rather than noisy within a mode -- three runs of one ref agree to 2% while three of another give 6.14-11.68. Recycle rate is 5.5-12.3 not 5:1; clog 85-93%; the 2.8:1 figure was Fuzion Frenzy. Generation is roughly fixed (cg varies 1.24) while churn moves (di/calls vary 1.94/1.87 together)."
+blocked_on = "corrected ratio published; moving the two counters past their early returns is upstream-shaped"
+
+[issue.73]
+title = "tcg: CF_INVALID is an input to tb_hash_func so qht_remove misses and the block is stranded on the page list -- and tb_lookup_cmp masks it off, so the stranded block is still found and EXECUTED"
+component = "tcg"
+no_suites = "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it"
+disposition = "defect"
+status = "open"
+status_note = "Tier-1 promotion sets CF_INVALID in place without unlinking; do_tb_phys_invalidate reads orig_cflags including that bit and hashes with it, so qht_remove looks in the wrong bucket and the early return fires before tb_remove. 85-93% of invalidation-loop visits are already-invalid blocks: ~112 futile hash lookups plus spinlock acquisitions per frame. The correctness half is now established by reading three sites rather than inferred: tb_lookup misses on exact cflags, tb_htable_lookup_common hashes the insertion bucket, tb_lookup_cmp masks CF_INVALID off, and cpu_exec_loop suppresses only chaining."
+blocked_on = "belongs to the tier-1 owner; blast radius is every guest instruction"
+
+[issue.74]
+title = "Android FP JIT: FIST/FISTP truncate where x86 rounds per the control word"
+component = "tcg"
+no_suites = "not a pgraph suite defect: this is TCG/FPU behaviour, so no golden suite scores it"
+disposition = "defect"
+status = "open"
+status_note = "floatx80_to_int32/int64 are plain C casts under USE_HARD_FPU, so they truncate. Unmeasured and labelled so -- filed alongside #67 rather than bundled into it."
+blocked_on = "depends on #67 landing first, or it needs its own RC switch"

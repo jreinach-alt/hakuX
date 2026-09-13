@@ -106,6 +106,19 @@ else
     sed 's/^/  /' /tmp/preflight-territory.log
 fi
 
+# 4. Issue coverage. Like the territory check this is not a CI gate -- CI does
+#    not know what a lane is -- but it belongs here for the same reason: the
+#    state it guards changes at exactly the moment someone folds work and
+#    pushes. It FAILS OPEN without `gh`, so an offline preflight still passes.
+step "coverage"
+if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; then
+    ok
+    sed -n 1p /tmp/preflight-coverage.log | sed 's/^/  /'
+else
+    bad
+    sed 's/^/  /' /tmp/preflight-coverage.log
+fi
+
 echo
 if [ $fail -eq 0 ]; then
     echo "preflight passed - safe to push"
