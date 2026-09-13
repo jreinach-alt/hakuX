@@ -519,6 +519,19 @@ case "${1:-status}" in
             if serve_one "$r"; then served=1; break; fi
         done
         [ "$served" = 1 ] || sleep 5
+
+        # Drop my own owner files whose request has left running/. serve_one
+        # has seven post-claim exits -- build failed, no APK, title missing,
+        # no suites -- and none of them clears the marker, so running/ slowly
+        # filled with owners for finished work and stopped answering the one
+        # question it exists to answer: whose is this. Self-healing here
+        # rather than eight edits, so a new exit path cannot reintroduce it.
+        for o in "$D"/running/*.owner; do
+            [ -e "$o" ] || continue
+            oid=$(basename "$o" .owner)
+            [ -f "$D/running/$oid.req" ] && continue
+            [ "$(cat "$o" 2>/dev/null)" = "$DEVICE_LABEL" ] && rm -f "$o"
+        done
     done
     ;;
   status)
