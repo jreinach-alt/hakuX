@@ -264,16 +264,19 @@ have been caught at the prediction stage.
 | audio state + volume law (#75, #71, #73) | `hw/xbox/mcpx/apu/**`, the ACI device, `android/**` |
 | RADIAL fog (#41, #42) | `glsl/vsh.c`, `vsh-ff.c`, `vsh-prog.c`, `geom.c`, fog paths in `pgraph.c` |
 | issue audit | `nv2a_issues.toml`, `docs/**` prose only -- claims no code |
-| orchestrator | `glsl/psh.c` (#10's HILO arm is queued and unjudged) |
+| RADIAL fog (#41, #42) | `glsl/psh.c` released to it -- #10's arm is JUDGED (PASS, 161 checks) |
+| texture flake (#44) | `vk/texture.c`, `pgraph/texture.c`, `vk/buffer.c`, `s3tc.c` |
 | remote lane (#34, #39, #51, #62) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/*.c`, desktop build |
 | nobody | `pgraph.c` outside the fog paths |
 
 A file whose stream's arm is **queued but not yet judged** is still claimed.
 The arm measures one delta and a second edit lands inside it. `psh.c` is the
-live example: its implementing agent finished and released it, and it is
-claimed again immediately by the orchestrator, because #10's A/B is in the
-queue and an edit landing between the two arms would be measured as part of
-#10's delta.
+live example, and it has now run its course: its implementing agent finished
+and released it, the orchestrator claimed it immediately because #10's A/B was
+queued and an edit landing between the arms would have been measured as part
+of #10's delta, and it was released to the fog lane the moment the pair was
+judged. Claimed at 23:30, judged at 23:51, released at 23:55 -- the claim is
+as long as the arm, not as long as the issue.
 
 Retired: first wave (depth #16, image blit #33, viewport #49, audio); second
 wave (cube face #40, RADIAL fog #41, swatch order #50); third wave (depth
