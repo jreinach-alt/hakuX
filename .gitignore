@@ -58,3 +58,17 @@ docs/testing/aci_vmstate/build/
 # tree, so a guard stalled 129 builds. The high-water mark is derived from git
 # history now; this line is belt-and-braces.
 docs/testing/.territory_wave
+
+# The OWNER'S OWN ES-DE configuration, pulled from the device for reference
+# when this branch's launcher bug was worked. 25 systems and 37 emulators --
+# their real library layout and emulator set, which is personal data and must
+# not be committed. It is NOT the same file as docs/es-de/es_systems.xml, which
+# is our minimal single-system version for distribution (1 system, 1 emulator).
+#
+# Kept locally rather than deleted, because they are the owner's files and they
+# document what ES-DE actually expects of us. Ignored because a `git add -A`
+# here would publish them: this session ran one, and only caught it because it
+# also swept in 44 agent worktrees and produced a wall of warnings. These two
+# would have gone in silently.
+es_find_rules.xml
+es_systems.xml
