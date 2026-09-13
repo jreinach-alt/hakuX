@@ -182,9 +182,50 @@ def default_config(args):
         # Naming a suite switches the disc to opt-in: skip_tests_by_default
         # above flips, and only these run. The value must be {"skipped": False}
         # -- a per-test dict looks reasonable and silently runs nothing, which
-        # cost a device round trip to notice.
-        "test_suites": {name: {"skipped": False} for name in args.suite},
+        # cost a device round trip to notice. A per-test skip is therefore
+        # {"skipped": False, "<Test>": {"skipped": True}}: the suite-level
+        # False must stay, or the whole suite goes quiet.
+        "test_suites": _suites_with_skips(args),
     }
+
+
+def _suites_with_skips(args):
+    """Build ``test_suites``, honouring ``--skip-test "Suite::Test"``.
+
+    One test in a suite can poison every test that runs after it, so a disc
+    that cannot express "this suite, without that test" cannot measure such a
+    suite at all. `Texture render target` is the standing case: its
+    `RenderTextureLoop` ends with ``texture_stage.SetEnabled(false)`` and
+    ``SetShaderStageProgram(STAGE_NONE)``, the 40 `TexFmt_*` tests rely on the
+    suite's `Initialize()` rather than setting the stage themselves, and
+    `RunAll` walks a `std::map` alphabetically so the loop goes first. Every
+    later test then renders its quad with no texture stage -- flat black over
+    the whole 285x285 quad, 81,225 px each.
+
+    That is not a rendering defect and it is not run-to-run noise; it is the
+    disc composition. Measured 2026-09-12 against the same goldens and the
+    same build, the gap between the two discs is 9.9x:
+
+        loop included   41 captures, 1 exact, 3,209,634 px
+        loop skipped    40 captures, 5 exact,   324,349 px
+
+    so a suite request that cannot skip the loop reports an order of magnitude
+    that is entirely an artefact of its own disc.
+    """
+    suites = {name: {"skipped": False} for name in args.suite}
+    for spec in args.skip_test:
+        suite, _, test = spec.partition("::")
+        if not test:
+            raise SystemExit("--skip-test wants \"Suite::Test\", got %r" % spec)
+        # Underscores are the results-directory spelling; the disc wants
+        # spaces, the same rule --suite documents.
+        suite = suite.replace("_", " ")
+        if suite not in suites:
+            raise SystemExit(
+                "--skip-test names %r, which is not among the --suite names: %s"
+                % (suite, ", ".join(sorted(suites)) or "(none)"))
+        suites[suite][test] = {"skipped": True}
+    return suites
 
 
 def main(argv=None):
@@ -214,6 +255,14 @@ def main(argv=None):
                           "not underscores (\"Bump map\", not \"Bump_map\") -- "
                           "the underscored form is the results directory. "
                           "Without this the disc runs everything.")
+    run.add_argument("--skip-test", action="append", default=[],
+                     metavar="SUITE::TEST",
+                     help="skip one test within a --suite, repeatable. Needed "
+                          "when a test leaves state that poisons the tests "
+                          "after it: \"Texture render target::RenderTextureLoop\" "
+                          "disables the texture stage, and without this the "
+                          "other 40 tests render flat black and the suite "
+                          "measures 9.9x its real residual.")
     run.add_argument("--output-dir", default="e:/nxdk_pgraph_tests",
                      help="where the suite writes results on the guest "
                           "(default: %(default)s). Must be on a writable drive.")

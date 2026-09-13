@@ -31,6 +31,43 @@
 # carry `no_expect` for the same reason request.sh demands it: a sweep is a
 # survey, not an A/B arm, and nothing should later read it as a confirmation
 # of anything.
+#
+# Tests dropped from the sweep
+# ----------------------------
+#
+# A test that leaves state behind poisons every test the framework runs after
+# it, and the sweep is exactly where that does the most damage: it is the
+# number the scoreboard reports and the number issues get ranked by.
+#
+# `Texture render target::RenderTextureLoop` is the measured case. It ends with
+# `texture_stage.SetEnabled(false)` and `SetShaderStageProgram(STAGE_NONE)`;
+# the suite's other 40 tests rely on the suite `Initialize()` rather than
+# setting the stage up themselves, and `RunAll` walks a `std::map`
+# alphabetically, so the loop runs first and the other 40 then render with no
+# texture stage. Measured 2026-09-12 on one build, one set of goldens, two
+# runs, RGBA:
+#
+#   loop included   41 captures, 1 exact, 3,209,634 px   <- the sweep's figure
+#   loop skipped    40 captures, 5 exact,   324,349 px
+#
+# In the loop-included captures the whole 285x285 quad is a single colour,
+# opaque black, in all 40 -- and every pixel outside the quad matches the
+# golden exactly. That is a disabled texture stage, not a render-to-texture
+# defect, and it made this suite the largest single residual in the corpus for
+# eleven issue comments.
+#
+# Add a row here only with that kind of measurement behind it: the cost of
+# dropping a test wrongly is a silently unmeasured test.
+# Keyed by the results-directory spelling. A lookup function, not an indirect
+# variable expansion: two golden directories are `2D_Lines` and `3D_primitive`,
+# which are not valid shell identifiers, so `${!var}` would abort the sweep.
+skip_tests_for() {
+    case "$1" in
+        Texture_render_target) echo "Texture render target::RenderTextureLoop";;
+        *) echo "";;
+    esac
+}
+
 set -u
 
 REF="${1:?usage: queue_full_sweep.sh <ref> [label]}"
@@ -55,12 +92,16 @@ for dir in "$GOLDENS"/*/; do
     suite=${suite_fs//_/ }
     n=$((n+1))
     id=$(printf 'z-%s-%03d-%s' "$LABEL" "$n" "$suite_fs")
-    python3 - "$D/queue/$id.req" "$id" "$suite" "$SHA" "$LABEL" <<'PY'
+    skip=$(skip_tests_for "$suite_fs")
+    [ -z "$skip" ] || echo "  $suite_fs: skipping $skip" >&2
+    python3 - "$D/queue/$id.req" "$id" "$suite" "$SHA" "$LABEL" "$skip" <<'PY'
 import datetime, json, sys
-p, i, suite, ref, label = sys.argv[1:6]
+p, i, suite, ref, label, skip = sys.argv[1:7]
 json.dump({"id": i, "requester": "full-sweep", "arm": label,
            "purpose": "full-corpus sweep of %s at %s" % (suite, ref),
-           "suites": [suite], "tests": [], "ref": ref, "runs": 1,
+           "suites": [suite], "tests": [],
+           "skip_tests": [t for t in skip.split(",") if t.strip()],
+           "ref": ref, "runs": 1,
            "title": "", "seconds": 0, "pull_glob": "",
            "expect": "", "expect_sha": "", "no_expect":
            "full-corpus survey at one pinned binary, not an A/B arm",

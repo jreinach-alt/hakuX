@@ -22,7 +22,15 @@
 # Request format, one JSON object per file in queue/:
 #   {"id","requester","purpose","ref","suites":["Specular"],"arm":"company|solo",
 #    "tests":["Suite::Test"]            optional, solo arm only
+#    "skip_tests":["Suite::Test"]       optional, drop one test from the disc
 #    "runs":1}                          >1 for no-oracle measurements
+#
+# skip_tests exists because a test can poison the tests that run after it.
+# "Texture render target::RenderTextureLoop" disables the texture stage on its
+# way out and the other 40 tests never set it up, so a disc that cannot drop it
+# measures that suite at 3,209,634 px where the same build on a no-loop disc
+# measures 324,349. It is part of the disc identity below: a loop-included and
+# a loop-skipped result are not comparable and must not share a disc_id.
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -220,6 +228,11 @@ PYEOF
 for s in json.load(open(sys.argv[1])).get('suites',[]): print(s)" "$req" > "$suitefile"
     mapfile -t SUITE_LIST < "$suitefile"
     [ "${#SUITE_LIST[@]}" -gt 0 ] || { echo "no suites named" > "$rdir/ERROR"; log "  NO SUITES"; mv "$req" "$rdir/request.json"; return 0; }
+    local skipfile="$rdir/skip_tests.txt"
+    python3 -c "import json,sys
+for t in json.load(open(sys.argv[1])).get('skip_tests',[]): print(t)" "$req" > "$skipfile"
+    mapfile -t SKIP_LIST < "$skipfile"
+
     local disc_id
     # disc_id must IDENTIFY the disc, because the dispatcher's rule is that two
     # results are comparable only if the disc identity matches. Truncating the
@@ -227,13 +240,22 @@ for s in json.load(open(sys.argv[1])).get('suites',[]): print(s)" "$req" > "$sui
     # "4-suites:Depth buffer,Depth buffer fixed function", dropping two names,
     # so two different discs sharing a prefix were indistinguishable. Carry a
     # hash of the full sorted list for identity and keep the prefix for reading.
+    #
+    # skip_tests is part of that identity for the same reason and a sharper
+    # one: the same suite with and without a poisoning test differs by 9.9x on
+    # an unchanged build, so letting the two share a disc_id would present a
+    # disc swap as a code regression.
     disc_id=$(python3 -c "
 import hashlib,json,sys
-s=sorted(json.load(open(sys.argv[1])).get('suites',[]))
-if len(s)==1:
+r=json.load(open(sys.argv[1]))
+s=sorted(r.get('suites',[]))
+k=sorted(r.get('skip_tests',[]))
+if len(s)==1 and not k:
     print(s[0])
+elif len(s)==1:
+    print('%s-no:%s' % (s[0], ','.join(t.split('::')[-1] for t in k)[:30]))
 else:
-    h=hashlib.sha1(','.join(s).encode()).hexdigest()[:8]
+    h=hashlib.sha1((','.join(s)+'|'+','.join(k)).encode()).hexdigest()[:8]
     print('%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))" "$req")
 
     local r
@@ -241,6 +263,7 @@ else:
         local args=() gdir="d$(echo "$id$r" | md5sum | cut -c1-6)"
         local s
         for s in "${SUITE_LIST[@]}"; do args+=(--suite "${s//_/ }"); done
+        for s in "${SKIP_LIST[@]:-}"; do [ -n "$s" ] && args+=(--skip-test "$s"); done
         python3 "$HERE/make_test_iso.py" "${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}" \
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1

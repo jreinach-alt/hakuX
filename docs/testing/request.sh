@@ -4,7 +4,13 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
+#              [--skip-tests "Suite::Test,..."] \
 #              (--expect predictions/x.json | --no-expect "why not")
+#
+# --skip-tests drops named tests from the disc. Needed when a test poisons the
+# tests after it: "Texture render target::RenderTextureLoop" leaves the texture
+# stage disabled, and the 40 TexFmt_* tests after it then render flat black --
+# 3,209,634 px against 324,349 for the same build on a no-loop disc.
 #
 # Agents never touch the device. This is the only way in, and it is deliberately
 # narrow: a request names a *ref*, not "what is in my tree", because with
@@ -16,6 +22,7 @@
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
+SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""
 while [ $# -gt 0 ]; do
     case "$1" in
@@ -23,6 +30,7 @@ while [ $# -gt 0 ]; do
         --purpose) PURPOSE="$2"; shift 2;;
         --suites) SUITES="$2"; shift 2;;
         --tests) TESTS="$2"; shift 2;;
+        --skip-tests) SKIP_TESTS="$2"; shift 2;;
         --ref) REF="$2"; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
@@ -93,13 +101,14 @@ fi
 
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
-python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" <<'PY'
+python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
- pull_glob, expect, expect_sha, no_expect) = sys.argv[1:16]
+ pull_glob, expect, expect_sha, no_expect, skip_tests) = sys.argv[1:17]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
+           "skip_tests": [t.strip() for t in skip_tests.split(",") if t.strip()],
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
            "pull_glob": pull_glob,
