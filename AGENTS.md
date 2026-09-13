@@ -776,6 +776,46 @@ matter. The same discipline as the disc-ratio rule, one level up: a cost
 measured on one workload is a fact about that workload until a second one
 agrees.
 
+## A two-column sweep diff is TWO SINGLE RUNS, and cannot tell a regression from variance
+
+The corpus sweep runs **one run per suite**. So a diff of two sweep columns is
+one run before against one run after, and on any suite with a nondeterministic
+failure that difference is indistinguishable from noise. I filed a regression
+off exactly that on 2026-09-13 and it was not one.
+
+The claim was: three `Stencil_ZERO*` captures went from exact to
+40,000/30,000/30,000 px between two columns, the category's whole +100,652.
+Thirteen runs at matched disc composition on one device across four refs
+refuted it twice over, and neither fact needs the other column:
+
+    0026f00534  (the "after")   4 runs    0 ... 180,000 px   <- one binary
+    2501f35211  (the "before")  4 runs    0 ... 140,000 px   <- called CLEAN
+    8191d97296  (the tip)       4 runs    0 ...  60,000 px
+
+The "before" column reaches 140,000 px on `ZERO_ST_DT` and `ZERO_ST_DT_ZB` at
+exactly 30,000 each -- **two of the three captures the regression was attributed
+to.** Its zero was one lucky run. The rate is 7 of 13, reproducing the known
+5-in-10 for that suite. Two commits were named as suspects and both were
+exonerated without either diff being read.
+
+**What makes this worth a rule is which check I did and which I skipped.** I
+ruled out the scorer, correctly and with a real control: re-scoring *both*
+capture sets with the *same* code gave 0/0/0 and 40,000/30,000/30,000. But that
+establishes only that the **pixels differed between those two runs** -- never
+that a change caused them to differ. The cheap control I skipped is a **repeat
+run at the same ref**, and the project memory already said to rerun twice before
+debugging a lone score change. Having the rule is not applying it.
+
+**So: before attributing any sweep-column delta to a commit, re-run the suite at
+one of the two refs.** If the delta is inside one ref's own spread, there is
+nothing to bisect. And the ordering that caught this is worth copying: the first
+build went to the **tip** rather than into the window, and it returned the three
+named captures exact with a *different* capture broken at the same total -- a
+failure that relocates at constant total is nondeterminism, not a fix.
+
+The sweep's own gap is recorded as #76: a two-run disagreement guard was
+recommended in writing when this was predicted, and never built.
+
 ## A falling rate on a WEAK observable is not evidence the defect closed
 
 The corollary to the stale-floor rule, and it was measured the same day rather
