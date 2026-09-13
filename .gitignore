@@ -52,3 +52,9 @@ build-linux/
 .claude/worktrees/
 
 docs/testing/aci_vmstate/build/
+
+# A checker must not write into the tree it checks: a tracked stamp file here
+# dirtied the shared checkout and dispatcher.sh refuses to build on a dirty
+# tree, so a guard stalled 129 builds. The high-water mark is derived from git
+# history now; this line is belt-and-braces.
+docs/testing/.territory_wave

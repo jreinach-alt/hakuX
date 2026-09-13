@@ -18,12 +18,41 @@ NO TWO LANES HOLD ONE FILE. An overlap is the bug the table exists to prevent,
 so it is worth one loop rather than one more paragraph asking people to check.
 """
 import os
+import re
+import subprocess
 import sys
 import tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOML = os.path.join(HERE, "territory.toml")
-STAMP = os.path.join(HERE, ".territory_wave")
+
+
+def committed_high_water():
+    """The highest `wave` ever committed, read from git history.
+
+    THIS USED TO BE A STAMP FILE AND THAT WAS A REAL BUG, not a style
+    preference. `.territory_wave` was tracked, so writing it dirtied the shared
+    working tree -- and `dispatcher.sh` refuses to build any ref while the tree
+    has a tracked modification, because with several implementers holding
+    uncommitted work "run my build" is ambiguous. So a CHECKER stalled the
+    build path: 129 requeues, every queued arm needing a new binary bouncing
+    every 30 seconds, and it was a loop -- each preflight run rewrote the stamp
+    and re-dirtied the tree. Reported by a lane that noticed its own arms
+    requeueing.
+
+    A checker must have no side effects on the tree it checks. The high-water
+    mark is derivable from the history of the file it is about, so derive it:
+    every committed value of `wave` is in `git log -p`, the maximum cannot be
+    forged by a fold, and nothing is written anywhere.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "-C", HERE, "log", "-p", "--", "territory.toml"],
+            capture_output=True, text=True, timeout=30).stdout
+    except Exception:
+        return 0
+    waves = [int(m) for m in re.findall(r"^\+wave\s*=\s*(\d+)", out, re.M)]
+    return max(waves) if waves else 0
 
 
 def main():
@@ -35,12 +64,7 @@ def main():
         print("FAIL: territory.toml has no integer `wave`", file=sys.stderr)
         return 2
 
-    high = 0
-    if os.path.exists(STAMP):
-        try:
-            high = int(open(STAMP).read().strip())
-        except ValueError:
-            high = 0
+    high = committed_high_water()
     if wave < high:
         print("FAIL: territory.toml is at wave %d but wave %d was already "
               "recorded.\n"
@@ -51,10 +75,6 @@ def main():
               "  a stale row is indistinguishable from a live claim."
               % (wave, high), file=sys.stderr)
         return 1
-    if wave > high:
-        with open(STAMP, "w") as fh:
-            fh.write("%d\n" % wave)
-
     # No file claimed twice. `free` is checked against the lanes too: a file
     # cannot be both free and held, and that is exactly the state a partial
     # revert leaves behind.
