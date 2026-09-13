@@ -55,9 +55,39 @@ def main():
         return
     key = os.path.basename(expect)
 
-    # Look for a sibling arm: any completed result whose request named the
-    # same prediction. Newest first, so a re-run of a pair follows its most
-    # recent arm rather than one from hours ago.
+    # A sibling that is RUNNING pins just as hard as one that has finished,
+    # and this is the common case rather than the rare one: both arms of a
+    # pair are usually queued seconds apart, so the second is claimed while
+    # the first is still on a device and has written no result.json yet.
+    #
+    # Missing this split a pair across two handhelds within an hour of the
+    # second device arriving -- base on the Nova, fix on the Thor -- which is
+    # precisely the comparison-with-two-variables this file exists to stop.
+    running = os.path.join(d, "running")
+    me = os.path.basename(reqpath)
+    try:
+        for name in os.listdir(running):
+            if not name.endswith(".req") or name == me:
+                continue  # a request does not pin to itself
+            sib = load(os.path.join(running, name))
+            if os.path.basename((sib.get("expect") or "").strip()) != key:
+                continue
+            owner = ""
+            opath = os.path.join(running, name[:-4] + ".owner")
+            try:
+                with open(opath) as f:
+                    owner = f.read().strip()
+            except OSError:
+                pass
+            if owner:
+                print(owner)
+                return
+    except OSError:
+        pass
+
+    # Then any completed result whose request named the same prediction.
+    # Newest first, so a re-run of a pair follows its most recent arm rather
+    # than one from hours ago.
     results = os.path.join(d, "results")
     try:
         entries = sorted(os.scandir(results), key=lambda e: e.stat().st_mtime,
