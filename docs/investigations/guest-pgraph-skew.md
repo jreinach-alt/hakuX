@@ -1691,6 +1691,85 @@ pixel. Recorded because the wrong version would have read as a mechanism for
 on a flipping title and a captured defect on a disc whose eighteen draws sit in
 one frame: the observable, again, rather than the defect.
 
+### WHAT THIS SURVEY'S INSTRUMENT CANNOT SEE, written before the run
+
+`--perflog` landed at `c1300aa3fa`, so the binary side is solved and the cache
+key carries the variant. **The capture side is not**, and the failure mode is
+the same empty read from a different cause — which matters because the obvious
+diagnosis would be the cache key that was just fixed.
+
+    run_perf.sh:84     logcat -d -s hakuX-perf hakuX-phase xemu-gpu xemu-work hakuX-cpu
+                       ^ the spec that produced instr1/instr2, and it NAMES the tag
+
+    soak_title.sh:32   LOGCAT_SPEC="... hakuX-perf:I hakuX-pages:I hakuX:W ... *:S"
+                       ^ the dispatcher's soak spec. hakuX-phase is ABSENT, and
+                         `*:S` silences every tag not listed.
+
+    dispatcher.sh:294  passes SERIAL, CAPTURE_LOG, PULL_GLOB, PULL_DEST,
+                       AUDIO_CAPTURE_MB -- and NOT LOGCAT_SPEC, so the default
+                       above applies.
+
+So the prediction for this survey, stated so it is falsifiable rather than
+argued: **`grep -c hakuX-phase` on the result's `logcat.txt` will be 0, while
+`grep -c hakuX-perf` will be non-zero.** If instead the phase lines are there,
+this blocker is refuted and the measurement is in hand — which is the only
+reason to spend the slot rather than merely filing the claim. Three blockers in
+this campaign were false, and the cheap refutation is to run it.
+
+**The three-way discriminator, because an empty read is otherwise ambiguous.**
+`hakuX-perf` (the `gfps=` pacing line) is `#ifdef __ANDROID__` only, while
+`hakuX-phase` is `#if defined(__ANDROID__) && NV2A_PERF_LOG` — so the pacing
+line is present in *every* build and is the control:
+
+| `hakuX-perf` | `hakuX-phase` | what it means |
+|---|---|---|
+| present | present | a real measurement |
+| **present** | **absent** | **the capture FILTER dropped it, or the APK was not the perflog variant** |
+| absent | absent | the soak produced nothing — boot failure, guest never rendered |
+
+The middle row is further split by the APK's own identity, which the dispatcher
+now records: the build log is `build-$sha-perflog.log` and the served path ends
+`-perflog.apk`, and `apk_sha` is a sha256 of the file, so a perflog APK cannot
+be confused with a normal one of the same ref. **Filter fault and wrong-binary
+fault are therefore distinguishable, and neither is a finding about lever (a).**
+
+An all-zero phase read is a fourth mode and is not expected: `nv2a_clock_ns` is
+a `cntvct_el0` read on aarch64 and cannot fail, so `Tot:0.0` alongside a
+non-zero `gfps` would be an instrument fault, not a title that did no work.
+
+### Validity gates on the survey, registered before it runs
+
+Not legs about lever (a) — legs about whether the instrument is pointing at
+anything, which is what caught #44's voided accuracy pair.
+
+- **G1** at least 20 `hakuX-phase` lines in the capture. Below that the EWMA
+  samples are too few to separate the runs, and my Crimson figure rests on 46.
+- **G2** `READ + POST + UNCLASSIFIED == BUSY` on every sample, residual
+  ≤ 0.35 ms (one-decimal printing over eight terms). This is the check that the
+  parse is right, and it is not tautological: it broke once already for me, on
+  `Fin == Sub + Fen`, because those are smoothed independently.
+- **G3 — the workload control, and the one most likely to bite.**
+  `soak_title.sh` injects **no input**, so a Galleon soak can sit in an intro or
+  a menu for its whole duration and still produce frames. The phase split of a
+  menu is not the phase split of gameplay, and nothing in the numbers says
+  which you got. So: the capture's `gfps` band must be consistent with the
+  published Galleon arm-A ceiling of **p90 29**. A band far below that means
+  the soak measured something other than the workload whose cost this is
+  supposed to bound, and the run is void rather than informative.
+- **G4** two runs, not one. The replicate for a no-oracle measurement is the
+  RUN, and my own Crimson pair moved the ceiling 34.6% → 40.3% between two runs
+  of one binary. A single Galleon run cannot establish this share any more than
+  one title could establish a cost.
+
+### And the number this survey feeds
+
+The leg to register afterwards is the ABSOLUTE, never a fall: **Galleon's
+post-read share of BUSY is at most X%**, because that share caps lever (a)
+whatever the baseline does. It must be read as an **upper bound** on (a) rather
+than an estimate, for two reasons already established here: `Syn` covers 4 of
+the 9 `sync_vertex_ram_buffer` call sites so READ under-counts, and `Tot`
+double-counts `texture_upload` and `shader_compile`.
+
 ## UNRESOLVED
 
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
