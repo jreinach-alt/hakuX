@@ -826,20 +826,23 @@ void pgraph_gl_bind_textures(NV2AState *d)
         if (!surf_to_tex) {
             // FIXME: Restructure to support rendering surfaces to cubemap faces
 
-            // Writeback any surfaces which this texture may index
-            hwaddr tex_vram_end = texture_vram_offset + length - 1;
-            QTAILQ_FOREACH(surface, &r->surfaces, entry) {
-                hwaddr surf_vram_end = surface->vram_addr + surface->size - 1;
-                bool overlapping = !(surface->vram_addr >= tex_vram_end
-                                     || texture_vram_offset >= surf_vram_end);
-                if (overlapping) {
-                    pgraph_gl_surface_download_if_dirty(d, surface);
+            /*
+             * Writeback any surfaces which this texture may index. This used
+             * to hand-roll the overlap test with INCLUSIVE ends -- both
+             * `+ size - 1` -- and the exclusive-end comparison form, `>=` on
+             * both sides. For inclusive ends that must be `>`, so two ranges
+             * overlapping in exactly one byte at either boundary reported as
+             * not overlapping and the surface was not written back.
+             * pgraph_gl_download_surfaces_in_range_if_dirty() is the same loop
+             * over the same list with check_surface_overlaps_range()'s
+             * exclusive ends, which is the form that is right.
+             */
+            pgraph_gl_download_surfaces_in_range_if_dirty(
+                pg, texture_vram_offset, length);
 #ifdef __ANDROID__
-                    android_log_texture_stage_errors(i, "download_overlap",
-                                                     &state, GL_TEXTURE_2D);
+            android_log_texture_stage_errors(i, "download_overlap", &state,
+                                             GL_TEXTURE_2D);
 #endif
-                }
-            }
         }
 
         TextureKey key;

@@ -1277,127 +1277,127 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:998",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:989",
    "symbols": [],
    "text": "// FIXME: Move to common"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1017",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1008",
    "symbols": [],
    "text": "/* FIXME: Does this apply to CLEARs too? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1136",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1127",
    "symbols": [],
    "text": "// FIXME: Better checks/handling on formats and surface-texture compat"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1142",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1133",
    "symbols": [],
    "text": "// FIXME: Support zeta to color"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1472",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1463",
    "symbols": [],
    "text": "// FIXME: Better checks/handling on formats and surface-texture compat"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1484",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1475",
    "symbols": [],
    "text": "// FIXME: Support zeta to color"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1489",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1480",
    "symbols": [],
    "text": "// FIXME: Support rendering surface to cubemap face"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1494",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1485",
    "symbols": [],
    "text": "// FIXME: Support rendering surface to mip levels"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2379",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2370",
    "symbols": [],
    "text": "/* FIXME: Allocate big buffer up front and re-alloc if necessary."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2380",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2371",
    "symbols": [],
    "text": "* FIXME: Consider swizzle in shader"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2406",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2397",
    "symbols": [],
    "text": "/* FIXME: Replace this with a hw accelerated version */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2455",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2446",
    "symbols": [],
    "text": "/* FIXME: Respect write enable at last TOU? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2576",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2567",
    "symbols": [],
    "text": "// FIXME: Don't query GL for texture binding"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2580",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2571",
    "symbols": [],
    "text": "// FIXME: Replace with FBO to not disturb current state"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2600",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2591",
    "symbols": [],
    "text": "/* FIXME: Replace this scaling */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2858",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2854",
    "symbols": [],
    "text": "/* FIXME: Support same color/zeta surface target? One GL texture"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2874",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2870",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2949",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2945",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3002",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2998",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3057",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3053",
    "symbols": [],
    "text": "/* FIXME: Cannot monitor for reads/writes; flush now */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3176",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3172",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE"
    ],
@@ -1405,7 +1405,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3231",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3227",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -1488,37 +1488,37 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:974",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:977",
    "symbols": [],
    "text": "assert(!\"Invalid format\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1008",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1011",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1086",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1089",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1133",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1136",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1273",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1276",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1313",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1316",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4192,7 +4192,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "a3aecc4d3588bb1ae5449d90d5e27f3e06384deb",
+  "emulator_commit": "c455a72358d2bfa3f324976ae9c09780a9fc613c",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2727,
@@ -7293,57 +7293,57 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:165",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:156",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:577",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:568",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:580",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:571",
     "role": "REF",
     "text": "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:644",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:635",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:835",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:826",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:839",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:830",
     "role": "REF",
     "text": "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:856",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:847",
     "role": "REF",
     "text": "NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8)"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:905",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:896",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1170",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1161",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1522",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1513",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2748",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2739",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    },
@@ -7429,27 +7429,27 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:554",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:545",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:637",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:628",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:889",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:880",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1158",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1149",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1510",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1501",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5: switch (texture_fmt) {"
    },
@@ -7557,37 +7557,37 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:163",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:154",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:541",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:532",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:632",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:623",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:815",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:806",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:879",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:870",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1153",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1144",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1505",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1496",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5: switch (texture_fmt) {"
    },
@@ -7636,37 +7636,37 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:164",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:155",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:576",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:567",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:639",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:630",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:834",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:825",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:897",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:888",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1164",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1155",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8: switch(texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1516",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1507",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8: switch(texture_fmt) {"
    },
@@ -7702,22 +7702,22 @@
   ],
   "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2782",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2778",
     "role": "REF",
     "text": "(pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2813",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2809",
     "role": "REF",
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3147",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3143",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3180",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3176",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
@@ -8482,12 +8482,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:665",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:656",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:883",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:874",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:"
    },
@@ -8578,22 +8578,22 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:751",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:742",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:909",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:900",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1171",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1162",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1523",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1514",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8B8G8R8: return true;"
    },
@@ -8630,27 +8630,27 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:646",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:637",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8 &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:722",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:713",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:907",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:898",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1173",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1164",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1525",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1516",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8: return true;"
    },
@@ -8756,12 +8756,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:757",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:748",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:911",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:902",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_B8G8R8A8:"
    },
@@ -8940,22 +8940,22 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:703",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:694",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:891",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:882",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1159",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1150",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1511",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1502",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5: return true;"
    },
@@ -8977,22 +8977,22 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:778",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:769",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:913",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:904",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1172",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1163",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1524",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1515",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R8G8B8A8: return true;"
    },
@@ -9029,27 +9029,27 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:634",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:625",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5 &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:684",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:675",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:881",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:872",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1154",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1145",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1506",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1497",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5: return true;"
    },
@@ -9086,32 +9086,32 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:641",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:632",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8 &&"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:724",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:715",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:728",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:719",
     "role": "REF",
     "text": "(shape->color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8 ||"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:899",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:890",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1165",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1156",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1517",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1508",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8: return true;"
    },
@@ -9338,12 +9338,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:666",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:657",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:884",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:875",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:"
    },
@@ -9434,12 +9434,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:752",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:743",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:910",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:901",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8:"
    },
@@ -9476,27 +9476,27 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:648",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:639",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:723",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:714",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:908",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:899",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1174",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1165",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1526",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1517",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8: return true;"
    },
@@ -9602,12 +9602,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:758",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:749",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:912",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:903",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_B8G8R8A8:"
    },
@@ -9762,22 +9762,22 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:704",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:695",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:892",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:883",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1160",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1151",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1512",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1503",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5: return true;"
    },
@@ -9863,12 +9863,12 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:779",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:770",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:914",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:905",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R8G8B8A8:"
    },
@@ -9905,17 +9905,17 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:636",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:627",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:685",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:676",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:882",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:873",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5:"
    },
@@ -9952,32 +9952,32 @@
     "text": "[NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:643",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:634",
     "role": "REF",
     "text": "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:725",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:716",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:729",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:720",
     "role": "REF",
     "text": "shape->color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:900",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:891",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1166",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1157",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8: return true;"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1518",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:1509",
     "role": "DISPATCH",
     "text": "case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8: return true;"
    },
@@ -16535,7 +16535,7 @@
     "text": "pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3101",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3097",
     "role": "READ",
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
@@ -17340,7 +17340,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_Z_FORMAT": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3102",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3098",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    },

@@ -144,15 +144,6 @@ static void android_glo_readpixels(PGRAPHGLState *r, GLenum gl_format,
     glPixelStorei(GL_PACK_ALIGNMENT, pa);
 }
 
-static void android_sanitize_surface_format(PGRAPHGLState *r,
-                                            SurfaceFormatInfo *fmt)
-{
-    /* Android keeps the guest surface format metadata intact and converts
-     * unsupported BGRA guest layouts at upload/readback time instead. */
-    (void)r;
-    (void)fmt;
-}
-
 static bool android_surface_uses_rgba8_transfer(const SurfaceBinding *surface)
 {
     if (!surface || !surface->color) {
@@ -2751,11 +2742,19 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
         surface = &pg->surface_zeta;
         dma_address = pg->dma_zeta;
         assert(pg->surface_shape.zeta_format != 0);
-        assert(pg->surface_shape.zeta_format <
-               ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map));
-        const SurfaceFormatInfo *map =
-            pg->surface_shape.z_format ? kelvin_surface_zeta_float_format_gl_map :
-                                         kelvin_surface_zeta_fixed_format_gl_map;
+        /* Bound against the map actually indexed, not the other one. The two
+         * have the same extent today, so this is a shape complaint rather
+         * than a live bug -- but the assert should name what it guards. */
+        const SurfaceFormatInfo *map;
+        size_t map_len;
+        if (pg->surface_shape.z_format) {
+            map = kelvin_surface_zeta_float_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map);
+        } else {
+            map = kelvin_surface_zeta_fixed_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_fixed_format_gl_map);
+        }
+        assert(pg->surface_shape.zeta_format < map_len);
         fmt = map[pg->surface_shape.zeta_format];
     }
 
@@ -2774,9 +2773,6 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
                                                     r->color_binding->shape;
     entry->gl_buffer = 0;
     entry->fmt = fmt;
-#ifdef __ANDROID__
-    android_sanitize_surface_format(r, &entry->fmt);
-#endif
     entry->color = color;
     entry->swizzle =
         (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);
