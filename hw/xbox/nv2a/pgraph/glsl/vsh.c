@@ -786,7 +786,15 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *
              *   all six FogGen_VS-*-radial went 181,016 differing px -> 0,
              *   6 better, 0 worse, 122 same, exact 13 -> 19, and Fog gen's
-             *   structural residue 1,097,015 -> 10,919.
+             *   own structural residue 1,093,380 px -> 7,284.
+             *
+             * That last figure lands where fog-gen-is-radial.md said it
+             * would.  It had the suite at 2,186,760 structural CHANNELS,
+             * which is these 1,093,380 px, and concluded "the honest entry
+             * is 14,568 channels of real residue plus a large
+             * non-deterministic cell".  7,284 px is 14,568 channels.  The
+             * cell was not non-deterministic; the rest of the arithmetic
+             * was right.
              *
              * Fog_carryover, Fog_coord_vec4 and Alpha_func were byte-
              * identical, which is what says #42 still works through the
