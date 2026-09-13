@@ -5,7 +5,27 @@
 #   . devices.sh && device_env <serial>     # exports SERIAL, DEVICE_*, LEASE
 #   devices.sh list                         # what is attached and known
 #
-# There are two handhelds and they are NOT interchangeable until proven so.
+# MEASURED 2026-09-12: the two handhelds ARE interchangeable.
+#
+# One identical disc -- `Texture DXT` + `Surface clip`, same ref, same hour,
+# one request pinned to each device -- produced **62 of 62 captures
+# byte-identical, zero differing**. Same kalama/Adreno 740, same Turnip build,
+# same output to the byte.
+#
+# So a result from either device may be compared with a result from the other,
+# and the pairing machinery below is now an efficiency measure rather than a
+# correctness one. Two things nonetheless stay exactly as they were:
+#
+#   - every result still records device_label, because the claim is about
+#     these two devices on this driver today, and the cheapest way to discover
+#     that it has stopped being true is to have recorded which device produced
+#     what;
+#   - affinity.py still pins an A/B pair to one device, because keeping a
+#     comparison one-variable costs nothing and re-establishing equivalence
+#     after a driver change would cost a day.
+#
+# Re-run the check after any driver swap. The original wording follows, and
+# the reasoning in it is still why the check was worth running:
 # Both are kalama (Snapdragon 8 Gen 2, Adreno 740) on the same Turnip build,
 # which is why sharing a queue is plausible at all -- but "plausible" is not
 # "measured", and a scoreboard column that silently mixes two devices is the
