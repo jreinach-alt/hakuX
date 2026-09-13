@@ -258,7 +258,7 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
@@ -391,9 +391,10 @@ logs = []
 for lg in sorted(glob.glob(os.path.join(rdir, "logcat*.txt"))):
     n = sum(1 for _ in open(lg, errors="replace"))
     logs.append(dict(file=os.path.basename(lg), lines=n))
-meta["logcat"] = dict(spec=os.environ.get("LOGCAT_SPEC",
-                                          "hakuX-unhandled:W hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W "
-                                          "ValidationLayer:W vulkan:W VulkanLoader:W *:S"),
+# No fallback literal. If LOGCAT_SPEC is somehow unset, record that it was
+# unset rather than inventing the string it probably was -- an invented spec
+# is the provenance bug this field exists to prevent.
+meta["logcat"] = dict(spec=os.environ.get("LOGCAT_SPEC", "(LOGCAT_SPEC UNSET -- spec unknown)"),
                       captured=bool(logs), files=logs)
 
 # coverage against the oracle we own: the tell for a partially retired suite
@@ -435,6 +436,21 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
     log "  done -> $rdir"
     adb -s "$SERIAL" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
 }
+
+# The logcat spec, defined ONCE and exported, because it was previously defined
+# in three places that could disagree: the soak path passed one explicitly,
+# the disc path fell through to run_disc.sh's own default, and the metadata
+# writer recorded a third literal as "what was captured". A result claiming a
+# spec that was never used is worse than one claiming none -- someone reads
+# `logcat.spec`, sees the tag they need, finds no lines, and concludes the
+# code does not log rather than that the filter dropped it.
+#
+# hakuX:I and hakuX-rw:I are here rather than at :W because two lines that
+# answer "were the draw-reorder prefs on for this run?" are logged at I, and
+# the #50 investigation could not answer that question from any of the
+# dispatcher's own logcats.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+export LOGCAT_SPEC
 
 # Which device runs the idle sweep. One of them must, and both of them must
 # not: two workers driving one long sweep would fight over its disk image.

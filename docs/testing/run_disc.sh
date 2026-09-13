@@ -67,7 +67,12 @@ a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 # Killing by PID matters: a pattern kill here would match this script's own
 # command line.
 CAPTURE_LOG="${CAPTURE_LOG:-}"
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-unhandled:W hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+# The dispatcher exports this, and when it does that value wins -- one spec
+# per run, and the one recorded in result.json. This default is for a direct
+# invocation only. hakuX:I rather than :W because the draw-reorder pref lines
+# are logged at I; see the #50 investigation, which could not establish from
+# any dispatcher logcat whether those prefs were on.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 LOGCAT_PID=""
 
 release() {
