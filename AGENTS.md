@@ -579,6 +579,27 @@ code -- and here it says that 3,872 of one capture's 16,384 differing pixels
 are not that capture's defect at all. Any issue quoting a full-disc absolute
 should expect that question.
 
+**AND THE ANSWER IS USUALLY ZERO, so do not discount a residual until you have
+asked.** The instrument was turned on the worst suite on the scoreboard --
+`W param`, 2,261,810 px structural -- and its two largest captures came back
+with **no leakage at all**:
+
+    capture                            alone (3 runs)   in company (3 runs)
+    prog_w_zero_inf__bitri_w-0.00            271,518              271,518
+    ff_w_zero_inf__bitri_w-7.52e-37          146,504              146,504
+
+Identical to the digit, three runs each, in both compositions, on one binary.
+So those 418,022 px are that suite's own defect, `W param` is not a flaky
+suite, and the scoreboard's largest single numbers are not measurement
+artefacts. Tally so far: **1 of 7 captures across two suites shows any
+composition dependence at all.**
+
+That negative result is worth as much as the positive one. A rule that cited
+only the Blend case would license discounting every full-disc absolute, which
+would be wrong in six of seven cases measured -- and "some of this might be
+leakage" is exactly the kind of unmeasured caveat that makes a number
+unusable without making it more accurate.
+
 ## Before measuring an effect on a class, check the class is non-empty
 
 The cheap structural check and the expensive exhaustive one often answer the
