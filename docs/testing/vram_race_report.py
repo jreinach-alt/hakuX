@@ -22,11 +22,17 @@ mean: a rate wants one denominator, and a soak's early lines are all boot.
 
 Two things this deliberately refuses to do.
 
-**It reports p90 and p10, not a median, for the cost leg.** On this queue a
-median gfps is a measurement of how busy the device is rather than of how
-fast the build is: the series is bimodal (ceiling 29-31, floor 5-20) and the
-median tracks occupancy, which moved 80% -> 16-32% across one evening. The
-median is printed, labelled as occupancy, and is not part of any verdict.
+**The cost statistic is the gfps LINE COUNT, not a percentile.** The pacing
+line fires once per 60 guest frames, so its count over a fixed-duration soak
+is guest frames rendered in fixed wall time -- one monotone scalar, and
+exactly the throughput the cost question asks about. Percentiles are printed
+and are not part of any verdict, for two separate reasons. A median gfps
+measures how busy the device is: the series is bimodal (ceiling 29-31, floor
+5-20) and the median tracks occupancy, which moved 80% -> 16-32% across one
+evening. And a p90 is no better on a real title, because the series is not
+stationary -- DOA3 over one 150 s soak runs through logos, attract, an FMV
+and a collapse (21, 39, .., 59, 59, .., 8, .., 3), so the 59s that set p90
+are the logo and a percentile picks whichever phase sits at that rank.
 
 **It refuses a cost comparison whose arms ran on different handhelds or
 different titles.** #64's cost leg lost its control because four soaks ran
@@ -44,7 +50,10 @@ PERF = re.compile(
 TQ = re.compile(r"\bTq:(?P<tq>[\d.]+)")
 PROBE = re.compile(
     r"\bVr:(?P<vr>\d+)/(?P<vc>\d+)\s+"
-    r"Tr:(?P<tr>\d+)/(?P<tu>\d+)/(?P<tb>\d+)\s+Xd:(?P<xd>\d+)")
+    r"Tr:(?P<tr>\d+)/(?P<tu>\d+)/(?P<tb>\d+)\s+"
+    # Tl existed only in the first, mis-placed bracket (ref ae0283fe2d) and is
+    # accepted so those runs still read as the negative control for it.
+    r"(?:Tl:(?P<tl>\d+)\s+)?Xd:(?P<xd>\d+)")
 MB = re.compile(r"mb_emitted=(?P<mb>\d+)")
 
 
@@ -88,7 +97,8 @@ def read_result(d):
             p = PROBE.search(line)
             if p:
                 # Cumulative: the last line seen wins.
-                probe = {k: int(v) for k, v in p.groupdict().items()}
+                probe = {k: (int(v) if v is not None else None)
+                         for k, v in p.groupdict().items()}
     return {
         "dir": os.path.basename(d), "meta": meta, "perf_lines": lines,
         "gfps": gfps, "gms": gms, "tq": tqs, "probe": probe, "mb": mb,
@@ -140,11 +150,20 @@ def legs(bs):
 
     zb = sum(1 for p in probes if p["tb"] == 0)
     zv = sum(1 for p in probes if p["vc"] == 0)
+    # tex_uploads is the denominator leg 3 divides by, and a thin one is the
+    # tell for the window being in the wrong place rather than for a quiet
+    # device: the mis-placed bracket at ref ae0283fe2d gave 950 of 487,013
+    # windows and reported a rate of zero over it, which reads exactly like
+    # leg 3's decisive "closes on evidence" outcome.
+    thin = sum(1 for p in probes if p["tu"] < 5000)
     print(f"L2 path live: runs with tex_windows==0 = {zb}, "
-          f"runs with vtx_copies==0 = {zv} "
-          f"-> {'PASS' if zb == 0 and zv == 0 else 'FAIL -- not measured, '
-              'which is not the same as zero races'}")
-    ok &= zb == 0 and zv == 0
+          f"runs with vtx_copies==0 = {zv}, "
+          f"runs with tex_uploads<5000 = {thin} "
+          f"-> {'PASS' if zb == 0 and zv == 0 and thin == 0 else 'FAIL -- not '
+              'measured, which is not the same as zero races'}")
+    ok &= zb == 0 and zv == 0 and thin == 0
+    if thin:
+        print("   L3/L4/L5 below are NOT MEASURED while L2 fails.")
 
     tr = sum(p["tr"] for p in probes)
     tu = sum(p["tu"] for p in probes)
@@ -182,9 +201,15 @@ def cost(a_runs, b_runs):
               "A cost read across two handhelds is what #64 lost.")
         return
     print(f"device={devs.pop()} title={titles.pop()!r}")
-    for stat, key, p in (("p90 gfps", "gfps", 90), ("p10 G ms", "gms", 10)):
-        av = [pct(r[key], p) for r in a_runs if r[key]]
-        bv = [pct(r[key], p) for r in b_runs if r[key]]
+    stats = (("guest frames (gfps lines x 60)", None, None),
+             ("p90 gfps", "gfps", 90), ("p10 G ms", "gms", 10))
+    for stat, key, p in stats:
+        if key is None:
+            av = [r["perf_lines"] * 60 for r in a_runs if r["perf_lines"]]
+            bv = [r["perf_lines"] * 60 for r in b_runs if r["perf_lines"]]
+        else:
+            av = [pct(r[key], p) for r in a_runs if r[key]]
+            bv = [pct(r[key], p) for r in b_runs if r[key]]
         if not av or not bv:
             print(f"{stat}: missing an arm")
             continue
@@ -196,8 +221,9 @@ def cost(a_runs, b_runs):
         det = "below the noise floor" if abs(d) <= floor else "ABOVE the floor"
         print(f"{stat}: A={[round(x,2) for x in av]} (spread {sa:.2f})  "
               f"B={[round(x,2) for x in bv]} (spread {sb:.2f})")
+        tag = "" if key is None else "   [advisory: see module docstring]"
         print(f"          delta {d:+.2f} ({100*d/ma:+.1f}%), floor {floor:.2f} "
-              f"-> {det}")
+              f"-> {det}{tag}")
 
 
 def main():
