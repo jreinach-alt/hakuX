@@ -790,6 +790,37 @@ why a RATE over many events inside one run (0.5661 and 0.5672 across two runs,
 reproducible to 0.2%) is a strictly better instrument than a count of clean
 runs, and why its bar can be an identity rather than a tally.
 
+## A residual attribution is a MODEL, and a correct fix can fail a leg derived from a stale one
+
+A leg that predicts "this residual falls to X" usually rests on an attribution:
+a belief about which pixels belong to which defect. That belief is a model, it
+was formed before the fix, and a fix that works can move pixels the model
+assigned elsewhere -- so the leg fails while the change is right.
+
+Measured on 2026-09-13. #43's F6 predicted the `#spot_` residual landing in
+`[7,350, 19,140]`; it measured **80,007 and 76,897**, wrong by four times. The
+floor came from a pre-fix attribution that assigned every ink pixel to the sign
+fold. With the fold independently proven bit-exact on another suite, 54,015 px
+remain attributable to it alone and 8,280 sit in neither class -- **the
+104,205-px region was never all sign fold.** The same run shows **32,478 px
+that the old model required to be wrong are now exact.**
+
+So the leg was measuring the attribution, not the fix. Two consequences:
+
+**A failing leg of this shape is evidence about the model.** Read it that way
+before reading it as a failed change -- particularly when the direct legs pass,
+as they did here on a bit-exact absolute with a counter behind it.
+
+**Derive a bound from something the fix cannot move.** #43's surviving legs did:
+an exhaustive `(S,D)` table, a control equation that is bit-exact on the same
+path, and a pass counter. None of those depends on which pixels belong to which
+defect.
+
+It also cuts the other way, which is why this is worth a rule rather than a
+footnote: had the fix been wrong, the same stale attribution could have
+produced a leg it *passed*. An attribution-derived bound is weak evidence in
+both directions, and its failure and its success are equally uninformative.
+
 ## A predicted FALL is also a claim about the baseline, and it can become unsatisfiable
 
 Registering "this quantity falls by at least X" looks like a claim about the
