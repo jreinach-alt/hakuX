@@ -58,6 +58,21 @@ if [ $fail -eq 0 ]; then
     fi
 fi
 
+# 1b. aci_vmstate, the save/load round trip for the MCPX ACI (issue #75). No
+#     configured QEMU build, no device, three seconds -- and it carves its
+#     field list out of hw/xbox/mcpx/aci.c and its member list out of
+#     hw/audio/ac97_int.h, so a field added to AC97LinkState without a
+#     decision about whether it is guest state stops here.
+step "aci_vmstate"
+if make -C docs/testing/aci_vmstate run >/tmp/preflight-aci.log 2>&1; then
+    ok
+    grep -E 'guest state reproduced' /tmp/preflight-aci.log | sed 's/^/  /'
+else
+    bad
+    grep -E 'FAIL|error:' /tmp/preflight-aci.log | head -8 | sed 's/^/  /'
+    echo "  full output: /tmp/preflight-aci.log"
+fi
+
 # 2. The nv2a index, as .github/workflows/nv2a-index.yml runs it. It records
 #    site line numbers, so ANY commit touching hw/xbox has to carry a
 #    regenerated index or this goes red on the next push.
