@@ -375,3 +375,113 @@ sub-2px widths, which the device's own `lineWidthRange[0] = 1.0` and
 for silicon's dashes. And `LINE_LOOP` still carries 9,696 structural channels
 at width 63 with an order we already match, so `Line_0016.0`'s `LineLoop`
 cluster remains the clean probe for whatever is left after both.
+
+---
+
+# The arm, and the result: the fix works and is wrong
+
+Measured the same day. Arm A `ea879bd647`, arm B `c85391e29d`, 221 captures
+over `Line width` and `3D primitive`, Retroid Pocket Nova, APKs `cade6d3c9b13`
+and `4a7a0f4f7c6d`. Prediction `docs/testing/predictions/line-centre-half-pixel-x.json`,
+registered and bound at queue time.
+
+    differing   4,580,105 -> 4,974,132   (+394,027)
+    structural  1,009,484 -> 1,391,382   (+381,898)
+
+| band | n | delta | better / worse |
+|---|---:|---:|---|
+| `Line_width` odd widths ≥ 3 | 25 | **+214,451** | 0 / 25 |
+| `Line_width` even widths ≥ 3 | 16 | **+146,727** | 0 / 16 |
+| `Line_width` widths < 2 | 15 | +26,576 | 0 / 15 |
+| `3D primitive` line primitives | 48 | +2,572 | 28 / 12 |
+| `3D primitive` fill primitives | 112 | **0** | 0 / 0 |
+
+**Nothing improved.** Not one band, and not the odd widths the change was
+aimed at.
+
+## And every falsifier passed
+
+This is the part worth keeping. All three registered fitted-centre checks land
+exactly:
+
+* quad strip's left edge: ours moves from `(159.500, 160.000]` to
+  `(160.000, 160.500]`, matching the golden **18/18**;
+* the fan's half-integer edge: ours moves from `(318.000, 318.500]` to
+  `(318.500, 319.000]`, **7/7**;
+* the near-horizontal edge: unchanged, **16/16**.
+
+The seven odd widths each moved one column right onto the golden's run and the
+eleven even ones held, as registered. The bias reached the rasteriser, at the
+right magnitude, on the right axis, on exactly the pipelines intended.
+
+**So the arm did not fail to deliver a change; it refuted a model.** That
+distinction is the whole value of having written the falsifier as a fitted
+centre rather than a pixel total. A pixel total would have said "worse" and
+left it ambiguous whether the code was inert, mis-scoped, or wrong-headed.
+The centre fit says: delivered exactly, and wrong anyway.
+
+## What is actually true, then
+
+**The +0.5 in x is real on a steep edge and is not a global translate.** Three
+independent vertical edges say golden = ours + 0.5 in x; the near-horizontal
+edge says golden = ours in y; and moving everything by +0.5 in x makes the
+whole suite worse, because most of the ink is on edges that are neither.
+
+That combination has a name. A rule that biases the **minor** axis by half a
+pixel, with the sign depending on which axis is major, looks like +0.5 in x on
+a y-major edge and like nothing on an x-major one — and it is precisely the
+asymmetry in the GL wide-line rule, where an even-width column runs from
+−(w/2 − 1) to +w/2 on one major axis and the mirror of that on the other.
+Vulkan exposes it as `VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT`. **No viewport
+offset can express it**, because a viewport does not know which axis is major.
+
+Two further measurements bear on that, and they do not agree with each other,
+so neither is a conclusion:
+
+* **Width 1 says we are already right.** In `3D primitive`, whose lines are all
+  at the default 1.0, our ink matches the golden at IoU 0.958 while shifting it
+  a column drops that to 0.605. `Line_0001.0` is 1,899 differing of ~6,500 ink,
+  most of it off-by-one. Yet on the quad strip's vertical edge at width 1.0 the
+  golden lights column 160 and we light 159. Both are true if width 1 differs
+  only at an exact tie, which is what a Bresenham-style nearest-pixel rule
+  gives and a +0.5 translate does not.
+* **Diagonals say the golden is *wider*, not foreshortened.** On the isolated
+  QUADS edge from local (58.5, 425.4) to (12.75, 407.5) — x-major, cos θ =
+  0.9313 — the golden's column height runs 10, 14, 19, 29 for widths 8, 12, 16,
+  24 where ours runs 9, 13, 17, 26 and a perpendicular rectangle predicts 8.6,
+  12.9, 17.2, 25.8. Bresenham predicts exactly 8, 12, 16, 24, so it predicts the
+  wrong direction. The quad is only 60 × 85, so at those widths its four edges
+  overlap and the measurement may not be of one edge; it is recorded as an
+  open question, not as a refutation.
+
+## What not to do next
+
+Not another viewport constant, in either axis or any sign: the axis-dependence
+is the whole problem and the viewport cannot see it. Whoever picks this up
+should settle the Bresenham question first, and it is settleable cheaply —
+`VK_EXT_line_rasterization`'s `bresenhamLines` boolean is one device-log line
+on the Nova, and one arm with `lineRasterizationMode` set says the rest. If
+Turnip does not offer it, the answer is generated line geometry, which is the
+same conclusion this file reached before, reached now for a reason that has
+been tested.
+
+## The guard list, including the one that was wrong
+
+114 of 116 registered must-not-move checks held: all 112 fill-mode captures in
+`3D primitive` at exactly zero delta, and `Line_0000.0` still pixel-exact. The
+gate — bias only a pipeline whose rewritten primitive is `LINES`, or whose
+primitive is `TRIANGLES` under `POLY_MODE_LINE` — leaked nothing.
+
+Two failed, and both were the guard's fault rather than the code's:
+`Fill_0001.0` and `Fill_0032.0`. `Fill` in this suite only means
+`NV097_SET_FRONT_POLYGON_MODE` is `FILL`; `LineWidthTests::Draw()` issues
+`PRIMITIVE_LINE_LOOP` unconditionally, and the polygon mode does not reach a
+line primitive. Those captures contain real lines and had no business on the
+list. `Fill_0000.0`, where width 0 drops the loop, is the one that held — and
+is the only one of the three that was ever a fill-only capture.
+
+Writing the list is still what caught the serious bug. `Line_0000.0` was on it
+because at width 0 the lines are dropped and the test's sixteen points are the
+whole draw; checking the gate against that entry is what revealed that the
+first draft biased points as well, since the test sets the fill mode before
+drawing them. That build never reached the device.
