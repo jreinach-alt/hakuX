@@ -1214,6 +1214,25 @@ static unsigned int vk_format_texel_size(VkFormat format)
     }
 }
 
+/*
+ * Whether this colour surface is the memory the texture actually reads: same
+ * extent, one level, not a cubemap, and not a format whose guest bytes are
+ * compressed blocks rather than surface texels.
+ *
+ * Deliberately says nothing about host formats, because it answers a question
+ * that is prior to them -- "is this surface the source" -- which the pad-alpha
+ * readback needs and which the size test below cannot express.
+ */
+static bool surface_is_texture_source(const SurfaceBinding *surface,
+                                      const TextureShape *shape,
+                                      bool texture_is_compressed)
+{
+    return surface && surface->color && !texture_is_compressed &&
+           !shape->cubemap && shape->levels == 1 &&
+           surface->width == shape->width &&
+           surface->height == shape->height;
+}
+
 static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
                                                   const TextureShape *shape)
 {
@@ -1688,14 +1707,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         VkFormat sn = kelvin_format_to_snorm(expected_fmt);
         if (sn) expected_fmt = sn;
     }
-    bool image_is_native_bc = false;
     if (!surface_to_texture && r->texture_compression_bc_supported &&
         state.dimensionality != 3) {
         VkFormat bc = kelvin_format_to_native_bc(state.color_format);
-        if (bc) {
-            expected_fmt = bc;
-            image_is_native_bc = true;
-        }
+        if (bc) expected_fmt = bc;
     }
 
     /*
@@ -1719,11 +1734,25 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * broken it; the swizzle says ZERO for Z and ONE for O, from
      * host_fmt.sampled_pad_alpha, which is the measurement.
      *
-     * Native BC is excluded because the surface interpretation is not in play
-     * at all there: those blocks are decompressed, not read as surface texels.
+     * IT IS NOT KEYED ON THE ADDRESS ALONE, and the first attempt at this was.
+     * pgraph_vk_surface_get() answers "is a surface registered here", which is
+     * a weaker claim than "is this the memory the texture reads": surfaces
+     * outlive the test that created them, and several tests share a disc. Keyed
+     * on address, a 128x128 X1R5G5B5_O1R5G5B5 surface left behind by Surface
+     * format reached Texture DXT's 256x256 DXT1 texture and flattened both
+     * plasma captures to a single colour (448 -> 65,536 px, status ok ->
+     * blank), and reached Surface format's own full-screen swatches
+     * (16,096 -> 91,757). surface_to_texture had been supplying that filter
+     * for free, which is why gating on it looked sufficient.
+     *
+     * Compressed formats are excluded outright: their bytes are blocks to be
+     * decompressed, not surface texels, so the surface reading does not apply
+     * however well the extents happen to line up.
      */
+    bool texture_is_compressed =
+        pgraph_is_texture_format_compressed(pg, state.color_format);
     VkComponentSwizzle pad_alpha_override =
-        (surface && !image_is_native_bc) ?
+        surface_is_texture_source(surface, &state, texture_is_compressed) ?
             surface_sampled_pad_alpha(surface) :
             VK_COMPONENT_SWIZZLE_IDENTITY;
     /*
@@ -2092,8 +2121,8 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * Setting only .a is sound whatever the rest of the mapping is: a
      * VkComponentMapping entry names the source the destination channel reads,
      * so .a = ZERO/ONE yields a sampled alpha of 0.0/1.0 regardless of how
-     * the colour channels are permuted. Native BC is already excluded where
-     * pad_alpha_override is computed.
+     * the colour channels are permuted. Compressed formats, native BC among
+     * them, are already excluded where pad_alpha_override is computed.
      *
      * It applies whether the image was filled from the surface or uploaded
      * from VRAM, because the readback is a property of the surface's format
