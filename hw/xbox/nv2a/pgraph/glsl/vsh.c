@@ -20,6 +20,13 @@
  */
 
 #include "qemu/osdep.h"
+/*
+ * sqrtf, for ff_radial_fog_coord.  osdep.h does not reach math.h for this
+ * translation unit -- pgraph.c includes it explicitly for the same reason --
+ * and clang's -Wimplicit-function-declaration is an error in the Android
+ * build, so leaving it out fails there and not on a host compiler.
+ */
+#include <math.h>
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
 #ifdef __ANDROID__
 #include <android/log.h>
