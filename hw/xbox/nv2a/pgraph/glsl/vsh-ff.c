@@ -65,6 +65,99 @@ static void append_skinning_code(MString *str, bool mix, unsigned int count,
 }
 
 
+/*
+ * Everything the light loop reads, whichever vertex path runs it.
+ *
+ * LIGHTING_ENABLE, the light enables, the light and material registers and
+ * the transform registers the lighting unit takes its eye-space geometry
+ * from are all the same registers under a vertex program as under fixed
+ * function, so both paths emit this once and share the loop below.
+ */
+static void append_lighting_header(MString *header)
+{
+    mstring_append(header,
+"\n"
+GLSL_DEFINE(modelViewMat0, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT0))
+GLSL_DEFINE(modelViewMat1, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT1))
+GLSL_DEFINE(modelViewMat2, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT2))
+GLSL_DEFINE(modelViewMat3, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT3))
+"\n"
+GLSL_DEFINE(invModelViewMat0, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT0))
+GLSL_DEFINE(invModelViewMat1, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT1))
+GLSL_DEFINE(invModelViewMat2, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT2))
+GLSL_DEFINE(invModelViewMat3, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT3))
+"\n"
+GLSL_DEFINE(eyePosition, GLSL_C(NV_IGRAPH_XF_XFCTX_EYEP))
+"\n"
+"#define lightAmbientColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_AMB) " + (i)*6].xyz)\n"
+"#define lightDiffuseColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_DIF) " + (i)*6].xyz)\n"
+"#define lightSpecularColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_SPC) " + (i)*6].xyz)\n"
+"#define lightBackAmbientColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BAMB) " + (i)*6].xyz)\n"
+"#define lightBackDiffuseColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BDIF) " + (i)*6].xyz)\n"
+"#define lightBackSpecularColor(i) "
+    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BSPC) " + (i)*6].xyz)\n"
+"\n"
+"#define lightSpotFalloff(i) "
+    "ltctxa[" stringify(NV_IGRAPH_XF_LTCTXA_L0_K) " + (i)*2].xyz\n"
+"#define lightSpotDirection(i) "
+    "ltctxa[" stringify(NV_IGRAPH_XF_LTCTXA_L0_SPT) " + (i)*2]\n"
+"\n"
+"#define lightLocalRange(i) "
+    "ltc1[" stringify(NV_IGRAPH_XF_LTC1_r0) " + (i)].x\n"
+"\n"
+GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
+"#define sceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz)\n"
+"#define materialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz)\n"
+"#define backSceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz)\n"
+"#define backMaterialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz)\n"
+"\n"
+);
+
+    /* See the light loop below for what these model. The lighting unit's
+     * multiply gives zero for zero times anything, its reciprocal of zero
+     * is infinity, and nothing is clamped before the colour sum. FLOAT_MAX
+     * stands in for that infinity so that a zero factor stays zero in GLSL
+     * instead of becoming NaN, and every product is held to it so that two
+     * of them multiplied together cannot overflow past it. */
+    /* The lighting unit works on floats with a 13-bit fraction: the
+     * Celsius transform model (envytools, xf_s2lt) rounds every value it
+     * takes in to the nearest such float, adding half a unit at bit 9
+     * before dropping the low ten bits, except that a value whose bits 10
+     * to 17 are all set is dropped without the half unit; its multiply
+     * and add then truncate towards zero. lt() brings the registers and
+     * the vertex colours to that precision on their way in; the
+     * arithmetic that follows is still float32, so the last count can
+     * still differ. Five lights with an ambient of 0.1 sum to 127 on the
+     * hardware, not 128 (Lighting accumulation Directional-5), which no
+     * rounding of the float32 sum produces. */
+    mstring_append(header,
+        "uint ltBits(uint u) {\n"
+        "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
+        "  return u & 0xFFFFFC00u;\n"
+        "}\n"
+        "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
+        "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
+        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
+        "float specularFactor(float x, vec3 k) {\n"
+        "  float n = x + k.x;\n"
+        "  float d = x * k.y + k.z;\n"
+        "  if (n <= 0.0) return 0.0;\n"
+        "  return d == 0.0 ? FLOAT_MAX : n / d;\n"
+        "}\n"
+        "float ltMul(float a, float b) {\n"
+        "  return (a == 0.0 || b == 0.0) ? 0.0 : clamp(a * b, -FLOAT_MAX, FLOAT_MAX);\n"
+        "}\n"
+        "vec3 ltMul(vec3 c, float s) {\n"
+        "  return mix(clamp(c * s, vec3(-FLOAT_MAX), vec3(FLOAT_MAX)), vec3(0.0),\n"
+        "             equal(c, vec3(0.0)));\n"
+        "}\n");
+}
+
 struct LightingSide {
     const char *normal;
     const char *diffuse_out;
@@ -159,12 +252,13 @@ static void append_lighting_constant(MString *body,
 }
 
 static void append_lighting(const VshState *state, MString *body,
-                            const struct LightingSide *side)
+                            const struct LightingSide *side,
+                            const char *diffuse_a, const char *specular_a)
 {
-    append_lighting_constant(body, side, "diffuse.a", "specular.a");
+    append_lighting_constant(body, side, diffuse_a, specular_a);
 
     mstring_append_fmt(body, "  {\n  vec3 N = %s;\n", side->normal);
-    if (state->fixed_function.local_eye) {
+    if (state->local_eye) {
         mstring_append(body,
             "  vec3 VPeye = normalize(eyePosition.xyz / eyePosition.w - tPosition.xyz / tPosition.w);\n"
         );
@@ -203,7 +297,7 @@ static void append_lighting(const VshState *state, MString *body,
                 "    float nDotVP = max(0.0, dot(N, VP));\n"
                 "    float nDotHV = max(0.0, dot(N, halfVector));\n",
                 i, i, i, i, i,
-                state->fixed_function.local_eye ? "VPeye" : "eyeDirection"
+                state->local_eye ? "VPeye" : "eyeDirection"
             );
         }
 
@@ -224,7 +318,7 @@ static void append_lighting(const VshState *state, MString *body,
                 "    vec3 lightDirection = lightInfiniteDirection[%d];\n"
                 "    float nDotVP = max(0.0, dot(N, lightDirection));\n",
                 i);
-            if (state->fixed_function.local_eye) {
+            if (state->local_eye) {
                 mstring_append(body,
                     "    float nDotHV = max(0.0, dot(N, normalize(lightDirection + VPeye)));\n"
                 );
@@ -286,7 +380,7 @@ static void append_lighting(const VshState *state, MString *body,
          * for half the power, on x = (N.H)^2, which is what falls out of
          * the unnormalised sum without a square root. */
         bool half_precomputed = state->light[i] == LIGHT_INFINITE &&
-                                !state->fixed_function.local_eye;
+                                !state->local_eye;
         mstring_append_fmt(body,
             "    float pf;\n"
             "    if (nDotVP == 0.0 || nDotHV == 0.0) {\n"
@@ -330,59 +424,132 @@ static void append_lighting(const VshState *state, MString *body,
  * wrote. Silicon's fixed function and programmable renders of that state agree
  * on 83,512 of those 85,922 pixels, so the same block produces both.
  *
- * Only the constant term is emitted here. Each light's contribution needs an
- * eye-space normal, which the fixed function stage builds from the transform
- * registers and a vertex program does not hand back, so a lit vertex program
- * keeps whatever the program wrote for the light's share.
+ * The whole block runs, not just its constant term, and it runs on the fixed
+ * function transform registers. The lit Specular ControlFlags_VS golden pins
+ * the arithmetic: over the lit quads its per-light term (the capture minus the
+ * no-light capture, which cancels the background blend) takes exactly the two
+ * values the ControlFlags_FF golden's does -- 51.7 and 42.6 in red, against
+ * our own fixed function path's 51.67 and 42.61 -- and its mean over that
+ * region is (31.18, 4.55, 15.82) against our fixed function's (31.43, 4.84,
+ * 16.07). So the light colours, the material selectors, the specular
+ * evaluator and the eye-space normal the transform registers give are all the
+ * same ones. A vertex program does not hand its own transform to this unit
+ * and silicon does not ask it to.
+ *
+ * What is *not* modelled is which vertex each of those values lands on.
+ * Fitting the four corner values of every lit quad, the fixed function golden
+ * assigns them by the normal's x sign in every quad, while the programmable
+ * golden assigns them differently in every quad -- and in four of the eight
+ * lit quads the assignment is not a permutation of the vertex stream at all
+ * (three corners take one value and one takes the other, where the four
+ * normals can only give two of each). A skew of the normal stream cannot
+ * produce that, and the per-vertex colours land on the same corners in both
+ * goldens, so it is the lighting unit's own per-vertex input that is skewed.
+ * The skew varies between quads that differ only in SET_LIGHT_CONTROL and
+ * screen position, which no register state explains, so it is left alone
+ * here deliberately: the values are right and the assignment is not.
+ *
+ * (An earlier note here said the test drives the program's own model matrix
+ * per draw while modelViewMat0 sits at the XDK default. That is wrong:
+ * specular_tests.cpp calls neither MatrixRotate nor GetModelMatrix, and its
+ * SetupVertexShader calls LookAt once for the whole capture.)
  */
 void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
                                           MString *header, MString *body)
 {
-    mstring_append(header,
-        "uint ltBits(uint u) {\n"
-        "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
-        "  return u & 0xFFFFFC00u;\n"
-        "}\n"
-        "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
-        "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
-        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
-        "#define sceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz)\n"
-        "#define materialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz)\n"
-        "#define backSceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz)\n"
-        "#define backMaterialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz)\n");
+    append_lighting_header(header);
 
     mstring_append(body, "  {\n"
                          "  vec4 ltDiffuse = lt(v3);\n"
                          "  vec4 ltSpecular = lt(v4);\n");
 
+    /* The eye-space geometry the lighting unit works in, built from the
+     * fixed function transform registers with no skinning: a vertex program
+     * owns the weights attribute, so there is no weighted transform for this
+     * unit to follow. This is what the fixed function stage emits for
+     * SKINNING_OFF. */
+    mstring_append(
+        body, "  vec4 tPosition = v0 * modelViewMat0;\n"
+              "  vec3 tNormal = (vec4(v2.xyz, 0.0) * invModelViewMat0).xyz;\n");
+    if (state->normalization) {
+        mstring_append(body, "  tNormal = normalize(tNormal);\n");
+    }
+
     struct LightingSide front = {
+        .normal = "tNormal",
         .diffuse_out = "oD0",
         .specular_out = "oD1",
+        .ambient_color = "lightAmbientColor",
+        .diffuse_color = "lightDiffuseColor",
+        .specular_color = "lightSpecularColor",
         .constant = "sceneAmbientColor",
         .factor = "materialEmissionColor",
         .material_alpha = "material_alpha",
+        .specular_params = 0,
         .emission_src = state->emission_src,
         .ambient_src = state->ambient_src,
         .diffuse_src = state->diffuse_src,
         .specular_src = state->specular_src,
     };
-    append_lighting_constant(body, &front, "v3.a", "v4.a");
+    append_lighting(state, body, &front, "v3.a", "v4.a");
 
     if (state->two_side_light) {
         struct LightingSide back = {
+            .normal = "-tNormal",
             .diffuse_out = "oB0",
             .specular_out = "oB1",
+            .ambient_color = "lightBackAmbientColor",
+            .diffuse_color = "lightBackDiffuseColor",
+            .specular_color = "lightBackSpecularColor",
             .constant = "backSceneAmbientColor",
             .factor = "backMaterialEmissionColor",
             .material_alpha = "material_alpha_back",
+            .specular_params = 2,
             .emission_src = state->back_emission_src,
             .ambient_src = state->back_ambient_src,
             .diffuse_src = state->back_diffuse_src,
             .specular_src = state->back_specular_src,
         };
-        append_lighting_constant(body, &back, "v3.a", "v4.a");
+        append_lighting(state, body, &back, "v3.a", "v4.a");
     }
     mstring_append(body, "  }\n");
+
+    /*
+     * The lit colour output mux, the same one the fixed function stage
+     * applies (see the comment on it in pgraph_glsl_gen_vsh_ff): with
+     * SEPARATE_SPECULAR clear, or SPECULAR_ENABLE clear, the lit specular is
+     * folded into the diffuse output, and the specular output carries the
+     * front vertex colour instead of the lighting unit's own.
+     *
+     * That mux is not bypassed by a vertex program either, and the goldens
+     * say so exactly. In Specular's ControlFlagsNoLight_VS the whole residual
+     * sits in the SPECULAR_ENABLE-on specular row, and all of it in the two
+     * SEPARATE_SPECULAR-off columns: 8,560 of 8,560 and 8,480 of 8,480
+     * pixels, where silicon's image is bit-identical to its own lighting-off
+     * image (ControlFlagsLightDisable_VS agrees with it on every pixel of
+     * both quads) -- that is, the front vertex specular, which is what this
+     * substitution produces. The two SEPARATE_SPECULAR-on columns of the same
+     * row differ on 1,618 and 0 pixels, so nothing else in that row moves.
+     * Specular_back agrees, 8,560 and 8,480 in the same two quads.
+     *
+     * SPECULAR_ENABLE clear and ALPHA_FROM_MATERIAL_SPECULAR are already
+     * applied to both paths on the way out to the fragment stage (vsh.c), so
+     * only the fold and the substitution belong here. The back outputs are
+     * only touched when two-sided lighting put the lit values there;
+     * otherwise they still hold what the program wrote.
+     */
+    if (!state->specular_enable || !state->separate_specular) {
+        mstring_append(body, "  oD0.xyz += oD1.xyz;\n");
+        if (state->two_side_light) {
+            mstring_append(body, "  oB0.xyz += oB1.xyz;\n");
+        }
+    }
+    if (state->specular_enable && !state->separate_specular) {
+        mstring_append(body, "  oD1 = v4;\n");
+        if (state->two_side_light) {
+            mstring_append(body, "  oB1 = v4;\n");
+        }
+    }
 }
 
 void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
@@ -432,86 +599,9 @@ GLSL_DEFINE(texPlaneS3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 0))
 GLSL_DEFINE(texPlaneT3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 1))
 GLSL_DEFINE(texPlaneR3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 2))
 GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
-"\n"
-GLSL_DEFINE(modelViewMat0, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT0))
-GLSL_DEFINE(modelViewMat1, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT1))
-GLSL_DEFINE(modelViewMat2, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT2))
-GLSL_DEFINE(modelViewMat3, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_MMAT3))
-"\n"
-GLSL_DEFINE(invModelViewMat0, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT0))
-GLSL_DEFINE(invModelViewMat1, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT1))
-GLSL_DEFINE(invModelViewMat2, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT2))
-GLSL_DEFINE(invModelViewMat3, GLSL_C_MAT4(NV_IGRAPH_XF_XFCTX_IMMAT3))
-"\n"
-GLSL_DEFINE(eyePosition, GLSL_C(NV_IGRAPH_XF_XFCTX_EYEP))
-"\n"
-"#define lightAmbientColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_AMB) " + (i)*6].xyz)\n"
-"#define lightDiffuseColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_DIF) " + (i)*6].xyz)\n"
-"#define lightSpecularColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_SPC) " + (i)*6].xyz)\n"
-"#define lightBackAmbientColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BAMB) " + (i)*6].xyz)\n"
-"#define lightBackDiffuseColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BDIF) " + (i)*6].xyz)\n"
-"#define lightBackSpecularColor(i) "
-    "lt(ltctxb[" stringify(NV_IGRAPH_XF_LTCTXB_L0_BSPC) " + (i)*6].xyz)\n"
-"\n"
-"#define lightSpotFalloff(i) "
-    "ltctxa[" stringify(NV_IGRAPH_XF_LTCTXA_L0_K) " + (i)*2].xyz\n"
-"#define lightSpotDirection(i) "
-    "ltctxa[" stringify(NV_IGRAPH_XF_LTCTXA_L0_SPT) " + (i)*2]\n"
-"\n"
-"#define lightLocalRange(i) "
-    "ltc1[" stringify(NV_IGRAPH_XF_LTC1_r0) " + (i)].x\n"
-"\n"
-GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
-"#define sceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_FR_AMB) ".xyz)\n"
-"#define materialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_CM_COL) ".xyz)\n"
-"#define backSceneAmbientColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BR_AMB) ".xyz)\n"
-"#define backMaterialEmissionColor lt(" GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_BCM_COL) ".xyz)\n"
-"\n"
 );
 
-    /* See the light loop below for what these model. The lighting unit's
-     * multiply gives zero for zero times anything, its reciprocal of zero
-     * is infinity, and nothing is clamped before the colour sum. FLOAT_MAX
-     * stands in for that infinity so that a zero factor stays zero in GLSL
-     * instead of becoming NaN, and every product is held to it so that two
-     * of them multiplied together cannot overflow past it. */
-    /* The lighting unit works on floats with a 13-bit fraction: the
-     * Celsius transform model (envytools, xf_s2lt) rounds every value it
-     * takes in to the nearest such float, adding half a unit at bit 9
-     * before dropping the low ten bits, except that a value whose bits 10
-     * to 17 are all set is dropped without the half unit; its multiply
-     * and add then truncate towards zero. lt() brings the registers and
-     * the vertex colours to that precision on their way in; the
-     * arithmetic that follows is still float32, so the last count can
-     * still differ. Five lights with an ambient of 0.1 sum to 127 on the
-     * hardware, not 128 (Lighting accumulation Directional-5), which no
-     * rounding of the float32 sum produces. */
-    mstring_append(header,
-        "uint ltBits(uint u) {\n"
-        "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
-        "  return u & 0xFFFFFC00u;\n"
-        "}\n"
-        "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
-        "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
-        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
-        "float specularFactor(float x, vec3 k) {\n"
-        "  float n = x + k.x;\n"
-        "  float d = x * k.y + k.z;\n"
-        "  if (n <= 0.0) return 0.0;\n"
-        "  return d == 0.0 ? FLOAT_MAX : n / d;\n"
-        "}\n"
-        "float ltMul(float a, float b) {\n"
-        "  return (a == 0.0 || b == 0.0) ? 0.0 : clamp(a * b, -FLOAT_MAX, FLOAT_MAX);\n"
-        "}\n"
-        "vec3 ltMul(vec3 c, float s) {\n"
-        "  return mix(clamp(c * s, vec3(-FLOAT_MAX), vec3(FLOAT_MAX)), vec3(0.0),\n"
-        "             equal(c, vec3(0.0)));\n"
-        "}\n");
+    append_lighting_header(header);
 
     unsigned int count;
     bool mix;
@@ -544,7 +634,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
                          "tNormal", "vec4(normal, 0.0)",
                          "invModelViewMat", "xyz");
 
-    if (state->fixed_function.normalization) {
+    if (state->normalization) {
         mstring_append(body, "tNormal = normalize(tNormal);\n");
     }
 
@@ -649,7 +739,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
             .diffuse_src = state->diffuse_src,
             .specular_src = state->specular_src,
         };
-        append_lighting(state, body, &front);
+        append_lighting(state, body, &front, "diffuse.a", "specular.a");
 
         /* Two-sided lighting lights the back face the same way with the
          * normal turned around and every register swapped for its back
@@ -676,7 +766,7 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
                 .diffuse_src = state->back_diffuse_src,
                 .specular_src = state->back_specular_src,
             };
-            append_lighting(state, body, &back);
+            append_lighting(state, body, &back, "diffuse.a", "specular.a");
         }
     }
 

@@ -32,11 +32,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
 {
     state->skinning = (enum VshSkinning)GET_MASK(
         pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_SKIN);
-    state->normalization = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
-                           NV_PGRAPH_CSV0_C_NORMALIZATION_ENABLE;
-    state->local_eye =
-        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LOCALEYE);
-
 
     for (int i = 0; i < 4; i++) {
         state->texture_matrix_enable[i] = pg->texture_matrix_enable[i];
@@ -142,6 +137,10 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
         (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
     vsh->lighting =
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);
+    vsh->normalization = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
+                         NV_PGRAPH_CSV0_C_NORMALIZATION_ENABLE;
+    vsh->local_eye =
+        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LOCALEYE);
     if (vsh->lighting) {
         for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
             vsh->light[i] =

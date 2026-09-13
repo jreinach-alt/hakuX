@@ -28,11 +28,9 @@
 typedef struct PGRAPHState PGRAPHState;
 
 typedef struct FixedFunctionVshState {
-    bool normalization;
     bool texture_matrix_enable[4];
     enum VshTexgen texgen[4][4];
     enum VshSkinning skinning;
-    bool local_eye;
 } FixedFunctionVshState;
 
 typedef struct ProgrammableVshState {
@@ -54,6 +52,12 @@ typedef struct {
      * that gate is not bypassed by a vertex program. */
     bool lighting;
     enum VshLight light[NV2A_MAX_LIGHTS];
+    /* NORMALIZATION_ENABLE and LOCALEYE sit in the same register and belong
+     * to the same unit, so they are read for both paths too. They used to
+     * live in fixed_function, which is in a union with the program data: a
+     * programmable draw reading them there read program bytes. */
+    bool normalization;
+    bool local_eye;
     enum MaterialColorSource emission_src;
     enum MaterialColorSource ambient_src;
     enum MaterialColorSource diffuse_src;
