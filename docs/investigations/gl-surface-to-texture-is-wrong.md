@@ -254,3 +254,43 @@ One more fact from the same run, recorded because it bounds a candidate:
 `if (surf_to_tex && surface->upload_pending)` refresh in `gl/texture.c` never
 fires. Whatever the surface's GL texture holds when the render runs, it was
 not refreshed from guest memory there.
+
+
+### The slow path is never reached, and I nearly reported the opposite
+
+Instrumented at the branch in `pgraph_gl_render_surface_to_texture()` that
+chooses between the GPU blit and `render_surface_to_texture_slow()`, over a
+full run:
+
+```
+412 surface-to-texture calls, every one FAST, none SLOW
+  229  03628000 swz=0     46  02e06000 swz=1     40  026a4000 swz=1
+   48  026eb000 swz=0     46  02c06000 swz=1      3  others
+```
+
+So `render_surface_to_texture_slow()` is dead on this disc, and the swizzled
+surfaces go through the blit like everything else.
+
+**I nearly recorded the opposite**, and the near-miss is worth more than the
+fact. A probe placed inside the fast path printed 109 lines; summarised with
+`sort | uniq -c | sort -rn | head -8` it showed one address only, because
+that address's lines were *identical to each other* and repeated while the
+others' histograms all differed and sorted below the cut. Counting the same
+log by address instead gives five addresses: 40, 34, 33, 1, 1. The conclusion
+drawn from the first view -- *the swizzled case does not take the fast path,
+so the defect is in the slow path* -- was wrong in both halves.
+
+That is the second instance in one day of reading a **summarised view as if
+it were the whole set**; the first turned a flat warning count into a
+four-warning improvement. `uniq -c | sort -rn | head` answers "which line
+repeats most", and a line that carries a varying field can never repeat. When
+the question is "which things appear", cut the varying fields out *before*
+counting, or count the key directly.
+
+What is left standing is unchanged and now better bounded: every call takes
+the blit, the blit runs every time, and the result is still the fill rather
+than the drawn content. The next probe is the one already named -- read back
+the source surface's own GL texture for the surface that backs
+`Surface_pitch::Swizzle` specifically, which first requires identifying that
+surface's address rather than assuming it is one of the swizzled ones seen
+here.
