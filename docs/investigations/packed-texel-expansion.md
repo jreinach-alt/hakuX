@@ -174,6 +174,98 @@ is coincidence: an 8-bit value of 25 is in the map whatever produced it. **A
 matching value is not evidence on its own** — the rows above are named
 because their *formats* are 16-bit, not because the numbers matched.
 
+## Measured on the device: PRE-REGISTERED PASS
+
+`5e612529b9` → `0b7e5de8dd`, two runs each, prediction sha `fad0e0c0f117`
+bound at queue time. All 106 registered checks held.
+
+| suite | caps | better | worse | differing A | differing B |
+|---|---:|---:|---:|---:|---:|
+| `Surface_clip` | 47 | 7 | 0 | 1,175,741 | **0** |
+| `Texture_format` | 40 | 6 | 0 | 309,333 | 139,389 |
+| `Blend_surface` | 32 | 14 | 4 | 1,452,903 | 1,256,426 |
+| `Texture_DXT` | 15 | 0 | 0 | 34,911 | 34,911 |
+| `Texture_render_target` | 41 | 0 | 0 | 3,209,634 | 3,209,634 |
+| **total** | 175 | 27 | 4 | 6,182,522 | **4,640,360** |
+
+All fifteen predicted captures went byte-exact. The offline level-set
+derivation was exact: the baseline reproduced every figure taken from the
+31-commit-old sweep column, so nothing landed that day had touched them.
+
+Two things worth keeping:
+
+**The converted-format guard was measured inert.** It was this document's
+least-certain point, argued from the tables with no capture behind it.
+`Texture_render_target` is 41 captures, 0 better and 0 worse, byte-identical
+totals — including `TexFmt_R5G6B5`, an `A8R8G8B8` surface sampled through a
+565 stage, which is precisely the case the guard exists to reject. It held.
+
+**`Texture_DXT` did not move**, which is the check that #6's DXT1 routing and
+this change do not interact.
+
+### And the regression it cost, which is #48's, not the expansion's
+
+`Blend_surface/DstAlpha_X_O1RGB5` and `1-DstAlpha_X_O1RGB5` went from
+bit-exact to 65,536 differing pixels — eight half-swatches, every pixel.
+
+The diagnosis came from the captures, not from reading. Those tests draw each
+swatch in two halves: the top half with **the sampled TEX0 alpha as its
+coverage**, the bottom with alpha forced by the combiner.
+
+| capture | half | golden | before | after |
+|---|---|---|---|---|
+| `DstAlpha_X_O1RGB5` | **top** | 255,255,255,255 | 255,255,255,255 | **85,85,85,255** |
+| `DstAlpha_X_O1RGB5` | bottom | 255,255,255,255 | same | same |
+| `DstAlpha_X_Z1RGB5` | top | 85,85,85,255 | same | same |
+
+85 is the test's own `PrepareDraw(0xFF555555)` clear showing through an alpha
+of 0 where it must be 1.0. **The bottom half — the blend result — is
+unchanged on both suffixes**, so the blend still substitutes `Ad = 1.0` and
+the blend unit is not involved; `vk/draw.c` was never touched.
+
+The cause is #48's *other* half, the texture-unit pad readback, applied as an
+alpha swizzle in `create_texture()` and gated on `surface_to_texture`.
+Widening 565/5551 to RGBA8 makes a 2-byte surface size-incompatible with its
+4-byte texture image, which pushes those binds onto the VRAM path — and the
+override went with them. **The gate was always wrong**: what the texture unit
+reads for a surface's pad bits is a property of the surface format, not of
+how the host image got filled.
+
+**The Z variant was not broken, and that was luck.** Its pad bits happen to be
+stored as 0, so reading them raw gives the 0.0 its format promises. A fix that
+hardcoded 1.0, or that wrote alpha in the decode, passes O and breaks Z. Both
+are registered as expect-0 so that failure would be visible.
+
+### The scope mistake that cost a second round
+
+The first attempt at that fix keyed the override on
+`pgraph_vk_surface_get(addr) != NULL`, which answers *"is a surface
+registered here"* — a weaker claim than *"is this the memory the texture
+reads"*. Surfaces outlive the test that created them and these suites share a
+disc, so a 128×128 `X1R5G5B5_O1R5G5B5` surface left behind by `Surface
+format` was still registered when `Texture DXT` bound its 256×256 DXT1
+texture at the same address:
+
+| capture | before | after v1 |
+|---|---:|---:|
+| `Texture_DXT/DXT1_plasma_dxt1` | 384 | 65,536 `[ok → blank]` |
+| `Texture_DXT/DXT1_plasma_alpha_dxt1` | 448 | 65,536 `[ok → blank]` |
+| `Surface_format/Fmt_X1R5G5B5_O1R5G5B5` | 16,096 | 91,757 |
+| `Surface_format/Fmt_X1R5G5B5_Z1R5G5B5` | 29,881 | 31,331 |
+
+Both plasma captures went to a single flat `(16,16,16,254)` over the whole
+256×256 region where the golden and the baseline agree to within 384 px —
+a texture that never decoded, not one decoded wrong, because the override
+also sets `pad_alpha_needs_rebuild`, which releases and re-uploads the
+binding on every `create_texture` call.
+
+`surface_to_texture` had been supplying the extent filter for free. That is
+why gating on it looked sufficient, and why removing the gate had to restore
+the filter rather than drop it. `surface_is_texture_source()` states it now:
+same extent, one level, not a cubemap, colour, and **not compressed**. The
+last clause matters on its own — v1 excluded *native BC*, which does not
+cover DXT1, because #6 deliberately stopped claiming DXT1 for native BC.
+
 ## The throughput cost, honestly
 
 Two different costs, and only one of them is small.
@@ -188,6 +280,16 @@ surface's own `VkImageView`, entirely on the GPU. It now cannot be, because
 the surface's image holds 565 words and the texture's image is RGBA8: it
 becomes a surface download to VRAM plus a software decode. `Surface_clip`'s
 `rt_*` row is exactly that shape, seven times.
+
+**A third cost, added by the pad-alpha fix.** `pad_alpha_needs_rebuild`
+releases and re-uploads a binding on every `create_texture` call, because
+`TextureKey` records no baked swizzle and the Z and O variants share a
+`VkFormat`. It now applies on the VRAM path too, where a rebuild means a
+re-upload and not just a new view. It is confined to textures that really
+are a pad-alpha surface's memory at matching extents — four surface formats —
+but it is a per-call cost where the surface-to-texture path paid only for a
+pooled image and a `vkCreateImageView`. One field recording the baked swizzle
+would remove it; that field lives in `renderer.h`.
 
 **And the host image is now twice the size.** A 565 texture's `VkImage` is
 RGBA8, so its device memory doubles. The cache's own accounting does not
