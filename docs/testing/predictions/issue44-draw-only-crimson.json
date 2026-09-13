@@ -1,0 +1,29 @@
+{
+  "registered_utc": "2026-09-13T15:16:51Z",
+  "who": "draw-only-crimson",
+  "issue": "44",
+  "title": "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "runs_per_arm": 2,
+  "a_ref": "5cfc236d9b",
+  "b_ref": "d879e6e03b",
+  "judge": "docs/testing/vram_race_report.py --arm-a A1,A2 --arm-b B1,B2, plus docs/testing/fifo_skew_report.py for gaveby",
+  "prediction": "CRIMSON SKIES, and this is a BETTER falsifier for the draw-only bound than stale_px is. Arm A 5cfc236d9b (mode 0), arm B d879e6e03b (mode 2), one hunk apart. Crimson Skies - High Road to Revenge, 240 s, TWO runs per arm as separate soaks under one --who, device_label read out of each result.json. Judge docs/testing/vram_race_report.py.\n\nWHY THIS EXISTS, and it is a structural blindness in the arm I already queued. THE `Texture border` DISC CANNOT EXERCISE THE `gave` HOLE AT ALL. Its eighteen draws sit in ONE FRAME with no FLIP_STALL between them, so the pusher never parks while stalled and the hole mode 1's S4 leg failed on is unreachable BY CONSTRUCTION. `stale_px == 0` on that disc therefore cannot distinguish \"the hole is closed\" from \"the hole was never opened\" -- which is this project's own recurring error: a negative result read from an instrument that could not see the mechanism. Crimson Skies flips every frame (Vpf 2.00) and Galleon measured gave at 5.603% on a flipping title, so this is where the hole is real.\n\nX1 (THE BAR, and it is ZERO rather than SMALLER): arm B's Tr == 0 on both runs. Tr counts begin_pre_draw windows in which a bound texture's dirty bit was consumed by an upload and then SET AGAIN before the window closed -- the guest writing the texture while the upload read it, which is #44's mechanism read from the other side. Baseline is 0.5661 and 0.5672 across two runs of one binary, so the quantity is reproducible to better than 0.2% and a change that merely shifts timing moves the distribution without zeroing it. THE BAR IS EXACTLY ZERO for that reason: \"Tr fell\" is satisfiable by any perturbation, \"Tr == 0\" is only satisfiable by making the race impossible. FAILS on any non-zero, and a small non-zero is the most informative outcome of this whole lane -- it would locate the residual on a flipping title and hand it straight to the gaveby split below.\n\nX2 (NEGATIVE CONTROLS, which must STAY at zero): DOA3 and JSRF read Tr = 0/2455 and 0/5733 on the baseline binary. If either becomes non-zero in arm B the instrument has changed rather than the mechanism, and X1 is void. These are cited from the existing #54 probe runs rather than re-queued, because a control that has never been non-zero does not need re-measuring on every arm -- said explicitly so that the citation is visible rather than implied.\n\nX3 (THE IMPOSSIBLE ROW): Xd == 0. It read 0 over 5,630,702 windows on the #54 probe. Non-zero voids the run rather than being a finding.\n\nX4 (THE HOLE, on the title where it is largest and with the attribution mode 1 could not make): report gave / held(n), gave / kicks, and the full gaveby(flip= nop= ctxsw= noaccess= other=) split. This is the number #54's lane named as its own least-certain point: whether `gave` swallows a large share of Crimson Skies' FMV draws. The subsumption argument rests entirely on the COVERED submissions, and if the FMV's texture-publishing submissions CORRELATE with FLIP_STALL rather than being independent of it, the residual sits well above 5.603% of 0.567. PREDICTION: gave / held(n) > 0.05603, the same concentration argument as the Galleon leg -- a draw-publishing submission is precisely the one a flip follows. FAILS below it, and that failure is good news. Nothing in the patch forces either direction.\n\nX5 (THE COST, ceiling only): gfps p90 and max each fall by at most 2, worst run of each arm, read off the UNCAPPED lines per vram_race_report.py's own rule -- a frame the display limited is not measuring the build, and a bare ceiling at the cap is insensitive by construction rather than robust.\n\nX6 (CONSISTENCY WITH X1's SIBLING): if X1 passes and the Texture border arm's V1 also passes, the two instruments agree on two different titles through two different mechanisms -- a dirty-bit re-set counter and a texel-origin classifier. If X1 fails while V1 passes, V1's five structurally-blind swatches are the first thing to suspect and not the last.",
+  "must_not_move": [
+    "Xd == 0 on every run",
+    "gfps p90 falls by at most 2 (uncapped ceiling, worst run of each arm)",
+    "gfps max falls by at most 2 (uncapped ceiling, worst run of each arm)",
+    "the two refs differ by exactly one hunk in one file",
+    "device_label identical across all four results"
+  ],
+  "expect": {
+    "X1/arm_b_Tr_max": 0,
+    "X3/Xd_max": 0,
+    "X4/gave_over_held_n_min": 0.05603,
+    "X5/gfps_p90_drop_max": 2,
+    "X5/gfps_max_drop_max": 2
+  },
+  "expect_counts": {},
+  "note_refs": "Same refs as the cost pair, so one build serves both. X2's negative controls (DOA3 0/2455, JSRF 0/5733) and X1's baseline (Tr 0.5661, 0.5672) are cited from the existing #54 probe runs rather than re-queued."
+}
