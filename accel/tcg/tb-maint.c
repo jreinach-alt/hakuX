@@ -1318,7 +1318,7 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
     bool current_tb_modified = false;
     TranslationBlock *current_tb = NULL;
 #ifdef XBOX
-    unsigned tbs_seen = 0, tbs_overlap = 0;
+    unsigned tbs_seen = 0, tbs_live = 0, tbs_overlap = 0;
 #endif
 
     /* Range may not cross a page. */
@@ -1348,11 +1348,27 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
         if (!(tb_last < start || tb_start > last)) {
 #else
         {
-            /* Counted, not acted on: the invalidation below is unchanged. */
+            /*
+             * Counted, not acted on: the invalidation below is unchanged.
+             *
+             * The overlap question is asked only of blocks that are still
+             * live. A TB that already carries CF_INVALID is one
+             * do_tb_phys_invalidate refused to unlink (its qht_remove fails,
+             * and the early return fires before tb_remove), so it sits on the
+             * page list and every later store walks over it again. Such a
+             * block has no reason to overlap the current write, so counting it
+             * would report "a range test would have spared this" for a block
+             * that is already dead -- which is how the first run produced
+             * sp_share = 1.000 in every window. That figure was measured over
+             * the wrong population, and the premise check is worthless unless
+             * this split is made here.
+             */
             tbs_seen++;
-            tbs_overlap += tb_overlaps_written_range(tb, n, start, last);
             if (tb_cflags(tb) & CF_INVALID) {
                 hakux_inval_already++;
+            } else {
+                tbs_live++;
+                tbs_overlap += tb_overlaps_written_range(tb, n, start, last);
             }
 #endif
             if (unlikely(current_tb == tb) &&
@@ -1383,7 +1399,7 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
     if (tbs_seen) {
         hakux_inval_events++;
         hakux_inval_tbs_overlap += tbs_overlap;
-        hakux_inval_tbs_spared += tbs_seen - tbs_overlap;
+        hakux_inval_tbs_spared += tbs_live - tbs_overlap;
         /*
          * p->first_tb is read after the loop, so `emptied` is what this build
          * actually did. `would_survive` is the counterfactual: with the range

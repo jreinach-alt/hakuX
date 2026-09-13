@@ -136,8 +136,8 @@ PERF_RE = re.compile(
 # field name, the value is what it means when it moves.
 COUNTERS = [
     ("ev",    "invalidation events that found a block"),
-    ("ov",    "blocks discarded whose bytes the guest wrote"),
-    ("sp",    "blocks discarded that a range test would have SPARED"),
+    ("ov",    "LIVE blocks discarded whose bytes the guest wrote"),
+    ("sp",    "LIVE blocks discarded that a range test would have SPARED"),
     ("em",    "events that emptied the page (disarmed detection)"),
     ("ws",    "...of those, a block would have survived a range test"),
     ("pr",    "arming TLB walks performed (tlb_protect_code)"),
@@ -261,7 +261,7 @@ RATIOS = [
     ("reach_share", "reached", "stores",
      "share of slow stores that reached the invalidator"),
     ("sp_share", "sp", "ovsp",
-     "share of discarded blocks with no written byte in them"),
+     "share of LIVE discarded blocks with no written byte in them"),
     ("ws_share", "ws", "em",
      "share of page-emptying events a range test would prevent"),
     ("pr_per_em", "pr", "em",
@@ -353,6 +353,13 @@ def derive(windows):
     if di is not None and ai is not None and vis:
         print("   -> visits %d = real discards %d + already-invalid %d"
               " (residual %d)." % (vis, di, ai, vis - di - ai))
+        if ai > vis * 0.5:
+            print("      MOST VISITS ARE DEAD BLOCKS (%.0f%%). The page lists"
+                  " are carrying already-invalidated TBs, so \"blocks"
+                  " tossed\" is largely a re-visit count. sp/ov below are"
+                  " live-only as of 02f04060e8 and are unaffected, but any"
+                  " figure derived from `tossed` is not."
+                  % (100.0 * ai / vis))
         print("      A large already-invalid share means the page lists carry"
               " dead TBs that do_tb_phys_invalidate's early return refuses to"
               " unlink, every later store re-visits them, and BOTH the"
