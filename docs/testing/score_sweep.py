@@ -163,9 +163,28 @@ def score_dir(args):
         # The overlay text is drawn pure white by the guest. Pixels that are
         # white on exactly one side mean the two runs printed different text,
         # so the goldens and the disc are different builds of the suite.
+        #
+        # SCOPED TO THE LABEL BAND, and that scoping is load-bearing. The test
+        # harness prints via `pb_printat(0, 0, name)`, so the overlay occupies
+        # the top rows and nothing else. Counting white mismatches over the
+        # WHOLE image makes this a content test for any suite whose palette
+        # contains white -- and `2D_BorderTex_SZ`'s `kColors` does. Measured:
+        # when one of its swatches went stale, all 281 white-mismatch pixels
+        # were INSIDE a swatch and ZERO were in the label, and the row was
+        # flagged `label-differs` anyway. AGENTS.md says to void such a row,
+        # which would have discarded the one capture #44 is about -- the
+        # flakiest and most-studied capture in the corpus.
+        #
+        # So the band decides the status, and white mismatches outside it are
+        # counted separately as what they are: content. A suite that really
+        # does print different text differs in the band, because that is where
+        # the text is.
+        LABEL_ROWS = 64
         gw = (g[..., :3] >= 250).all(axis=2)
         ow = (o[..., :3] >= 250).all(axis=2)
-        label_delta = int((gw ^ ow).sum())
+        white_mismatch = gw ^ ow
+        label_delta = int(white_mismatch[:LABEL_ROWS].sum())
+        content_white_delta = int(white_mismatch[LABEL_ROWS:].sum())
 
         flat = o[..., :3].reshape(-1, 3)
         _, counts = np.unique(flat, axis=0, return_counts=True)
@@ -178,6 +197,13 @@ def score_dir(args):
         # the pixel comparison untrustworthy, not automatically wrong.
         if label_delta > 8:
             status = "label-differs"
+        elif content_white_delta > 8:
+            # White pixels differ in the image BODY. That is a real
+            # disagreement about content and the row stays scoreable -- it is
+            # what a stale swatch looks like on a suite whose palette holds
+            # white. Named rather than silently folded into `differing`, so
+            # nobody re-derives the false positive above.
+            status = "white-content"
         rows.append((suite, test, solo, status, differing,
                      int(rgb.max()), int(alpha.max()), g.shape[0] * g.shape[1],
                      off_by_one))
@@ -256,7 +282,8 @@ def main():
                                              args.disc_id or "unknown",
                                              args.label or "unlabelled"))
 
-    scored = [r for r in rows if r[3] in ("ok", "blank", "label-differs")]
+    scored = [r for r in rows if r[3] in ("ok", "blank", "label-differs",
+                                          "white-content")]
     blanks = [r for r in rows if r[3] == "blank"]
     stale = [r for r in rows if r[3] == "label-differs"]
     exact = [r for r in scored if r[4] == 0]
