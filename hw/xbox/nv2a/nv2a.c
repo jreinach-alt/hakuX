@@ -321,6 +321,12 @@ static int64_t nv2a_calc_vblank_period_ns(NV2AState *d)
 #define VBH_BUCKETS     1024     /* 0 .. 51.2 ms, then one overflow bin */
 #define VBH_WINDOW_NS   2000000000LL
 
+/* VBH_SRC_GFX was the host-refresh source in simple-VBLANK mode, removed in
+ * nv2a_vga_gfx_update below. The slot is kept so the `src(tmr= smp= gfx=)`
+ * field of the `vbl` line keeps its shape -- vblank_report.py and
+ * vblank_ab.py parse it with an exact regex, and a narrowed line stops
+ * matching rather than failing. It now reads zero on every window, and
+ * `smp>0 gfx=0` is how a log says the second source is gone. */
 enum { VBH_SRC_TIMER = 0, VBH_SRC_SIMPLE, VBH_SRC_GFX, VBH_SRC__COUNT };
 
 static struct {
@@ -804,6 +810,40 @@ static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred,
 #define nv2a_vblank_record(d, src, was_deferred, grid) ((void)0)
 #endif
 
+static int64_t s_last_vblank_fire_ns;
+
+/*
+ * The `J` figure in the pacing line, updated from wherever a VBLANK was
+ * actually asserted.
+ *
+ * This used to live inline in the adaptive callback only, so in simple-VBLANK
+ * mode `s_last_vblank_fire_ns` was never written and the EWMA never updated:
+ * `J` read its initial 0.0 and the "0.0 ms jitter" row for `simple_vblank` in
+ * docs/investigations/frame-pacing-and-parallelism.md was that artefact rather
+ * than a clean VBLANK. A number that is zero because nothing wrote it is worse
+ * than an absent one -- it reads as the best result in the table.
+ *
+ * `J` remains a poor summary of jitter and the histogram above is the reason:
+ * an exponential mean of |delta - period| cannot tell a 0.25 ms symmetric
+ * jitter from a mode accurate to 0.1% with a 28 ms tail. What it can now do is
+ * mean the same thing in both modes.
+ */
+static void nv2a_vblank_note_fire(int64_t period, int64_t now)
+{
+    if (s_last_vblank_fire_ns) {
+        float delta_ms = (float)(now - s_last_vblank_fire_ns) / 1e6f;
+        float expected_ms = (float)period / 1e6f;
+        float jitter = delta_ms - expected_ms;
+
+        if (jitter < 0) {
+            jitter = -jitter;
+        }
+        g_nv2a_stats.pacing.vblank_jitter_ms =
+            g_nv2a_stats.pacing.vblank_jitter_ms * 0.9f + jitter * 0.1f;
+    }
+    s_last_vblank_fire_ns = now;
+}
+
 #ifdef __ANDROID__
 /* Simple VBLANK mode: matches x1_box behavior.  Just fires the PCRTC
  * interrupt at a fixed interval — no adaptive deferral, no flip assists,
@@ -822,23 +862,30 @@ bool nv2a_get_simple_vblank(void)
 
 static void nv2a_simple_vblank_cb(NV2AState *d)
 {
+    int64_t period = nv2a_calc_vblank_period_ns(d);
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+
     /* Count here too. The adaptive path owns the stats and this one did not
      * touch them, so every pacing figure derived from the VBLANK count read
      * zero in simple mode -- exactly the mode you switch to when you want
      * pacing numbers with the deferral heuristics out of the way. */
     g_nv2a_stats.pacing.vblank_fired++;
+    nv2a_vblank_note_fire(period, now);
     nv2a_vblank_record(d, VBH_SRC_SIMPLE, false, d->vblank_next_target_ns);
 
     /* Pure x1_box behavior: fire PCRTC interrupt, update IRQ.
      * No adaptive deferral, no flip auto-completion, no NOP assist.
-     * The guest kernel handles everything itself. */
+     * The guest kernel handles everything itself.
+     *
+     * This is the ONLY source of a VBLANK in this mode, and it was not. See
+     * nv2a_vga_gfx_update below for what else used to assert one and why that
+     * made this mode useless as the baseline it exists to be.
+     */
     d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
     d->pcrtc.raster = 0;
     nv2a_update_irq(d);
 
-    int64_t period = nv2a_calc_vblank_period_ns(d);
     d->vblank_next_target_ns += period;
-    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
     if (d->vblank_next_target_ns <= now) {
         d->vblank_next_target_ns = now + period;
     }
@@ -846,7 +893,6 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
 }
 #endif
 
-static int64_t s_last_vblank_fire_ns;
 
 static void nv2a_vblank_timer_cb(void *opaque)
 {
@@ -980,15 +1026,7 @@ static void nv2a_vblank_timer_cb(void *opaque)
             d->vblank_defer_request_ns = 0;
         }
     }
-    if (s_last_vblank_fire_ns) {
-        float delta_ms = (float)(now - s_last_vblank_fire_ns) / 1e6f;
-        float expected_ms = (float)period / 1e6f;
-        float jitter = delta_ms - expected_ms;
-        if (jitter < 0) jitter = -jitter;
-        g_nv2a_stats.pacing.vblank_jitter_ms =
-            g_nv2a_stats.pacing.vblank_jitter_ms * 0.9f + jitter * 0.1f;
-    }
-    s_last_vblank_fire_ns = now;
+    nv2a_vblank_note_fire(period, now);
 
     nv2a_vblank_record(d, VBH_SRC_TIMER, was_deferred,
                        d->vblank_next_target_ns);
@@ -1085,20 +1123,27 @@ static void nv2a_vga_gfx_update(void *opaque)
     VGACommonState *vga = opaque;
     vga->hw_ops->gfx_update(vga);
 
-#ifdef __ANDROID__
-    /* In simple VBLANK mode, fire the PCRTC interrupt from gfx_update
-     * like x1_box does.  This fires at the display refresh rate (90-120Hz
-     * on modern phones), which makes games run too fast but avoids
-     * timing-dependent freezes. */
-    if (g_simple_vblank_mode) {
-        NV2AState *d = container_of(vga, NV2AState, vga);
-        /* No grid target: the host panel's refresh is not on it. */
-        nv2a_vblank_record(d, VBH_SRC_GFX, false, 0);
-        d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
-        d->pcrtc.raster = 0;
-        nv2a_update_irq(d);
-    }
-#endif
+    /*
+     * This also asserted NV_PCRTC_INTR_0_VBLANK whenever
+     * g_simple_vblank_mode was set, so that mode had TWO sources for one
+     * event: the period timer at 59.94 Hz and this one at the host panel's
+     * refresh, for 150-180 assertions a second on a 90-120 Hz handheld. Both
+     * landed in 4b70acfb85, whose message calls the mode "60Hz" and describes
+     * this half as a `graphic_hw_update` CALL -- so the second interrupt
+     * source is incidental, and its own comment conceded that it "makes games
+     * run too fast".
+     *
+     * The host panel is not on any grid this file can see and is not a fixed
+     * multiple of the period, so a title stepping off VBLANK was stepping off
+     * the sum of a 59.94 Hz clock and the viewer's display. It also made the
+     * mode useless as the instrument it exists to be; see
+     * docs/investigations/guest-visible-vblank.md.
+     *
+     * The `graphic_hw_update` call in ui/xemu.c that drives this function
+     * every host refresh in simple mode stays: it is what keeps the display
+     * updating, and it is the half of that commit the message describes. Only
+     * the interrupt is gone.
+     */
 }
 
 static void nv2a_init_memory(NV2AState *d, MemoryRegion *ram)
