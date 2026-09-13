@@ -98,7 +98,7 @@ while :; do
 
     queued=$(ls "$DISPATCH"/queue/*.req 2>/dev/null | wc -l | tr -d ' ')
     running=$(ls "$DISPATCH"/running/*.req 2>/dev/null | wc -l | tr -d ' ')
-    sweep=$(ls "$DISPATCH"/queue/z-sweep-*.req 2>/dev/null | wc -l | tr -d ' ')
+    sweep=$(ls "$DISPATCH"/queue/z-*.req 2>/dev/null | wc -l | tr -d ' ')
     agentwork=$(( queued - sweep )); [ "$agentwork" -lt 0 ] && agentwork=0
 
     armed=0

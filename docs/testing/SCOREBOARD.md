@@ -4,23 +4,24 @@ Each cell is **exact/captures · structural px** — structural being differing 
 
 | run | binaries | built | hw commits behind tip | discs | captures | rescored |
 |---|---|---|---:|---:|---:|---:|
-| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 57 ⚠️ | 98 | 3303 | — |
+| `after` | 553cfffc73d3 | 2026-09-12 | 0 | 2 | 29 | — |
+| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 57 ⚠️ | 99 | 3375 | — |
 
-| category | goldens | `pre-fixes-fb4dfafc` |
-|---|---:|---|
-| Texture addressing ⚠️99% | 198 | 65/197 · 789,528 |
-| Texture formats | 119 | 61/119 · 1,182,369 |
-| Render to texture ⚠️99% | 67 | 16/66 · 638,222 |
-| Shadow / projective | 288 | 176/288 · 17,388 |
-| Lighting | 195 | 27/195 · 476,228 |
-| Bump mapping | 82 | 0/82 · 818,008 |
-| Fog | 280 | 23/280 · 1,574,992 |
-| Blend ⚠️9% | 1722 | 5/154 · 5,907,527 |
-| Depth / stencil ⚠️57% | 1688 | 220/970 · 5,993,899 |
-| Rasterisation ⚠️98% | 514 | 43/502 · 2,054,474 |
-| Clipping / viewport | 183 | 167/183 · 533,596 |
-| Vertex pipeline ⚠️98% | 226 | 101/222 · 405,100 |
-| 2D / blit ⚠️98% | 46 | 18/45 · 198,029 |
+| category | goldens | `after` | `pre-fixes-fb4dfafc` |
+|---|---:|---|---|
+| Texture addressing ⚠️99% | 198 | — | 65/197 · 789,528 |
+| Texture formats | 119 | — | 61/119 · 1,182,369 |
+| Render to texture ⚠️99% | 67 | — | 16/66 · 638,222 |
+| Shadow / projective | 288 | — | 176/288 · 17,388 |
+| Lighting | 195 | — | 27/195 · 476,228 |
+| Bump mapping | 82 | — | 0/82 · 818,008 |
+| Fog | 280 | — | 23/280 · 1,574,992 |
+| Blend ⚠️1% | 1722 | 1/16 · 1,792 | 5/154 · 5,907,527 |
+| Depth / stencil ⚠️62% | 1688 | — | 246/1042 · 6,006,689 |
+| Rasterisation ⚠️3% | 514 | 1/13 · 3,257 | 43/502 · 2,054,474 |
+| Clipping / viewport | 183 | — | 167/183 · 533,596 |
+| Vertex pipeline ⚠️98% | 226 | — | 101/222 · 405,100 |
+| 2D / blit ⚠️98% | 46 | — | 18/45 · 198,029 |
 
 † that run did not record the one-step column, so its figure is *all* differing pixels and is not comparable with a structural count. The 2026-09-08 baseline predates it.
 

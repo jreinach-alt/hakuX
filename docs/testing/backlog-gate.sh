@@ -160,7 +160,7 @@ fi
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 queued=$(ls "$D"/queue/*.req 2>/dev/null | wc -l | tr -d ' ')
 running=$(ls "$D"/running/*.req 2>/dev/null | wc -l | tr -d ' ')
-sweep=$(ls "$D"/queue/z-sweep-*.req 2>/dev/null | wc -l | tr -d ' ')
+sweep=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l | tr -d ' ')
 agentwork=$(( queued - sweep ))
 [ "$agentwork" -lt 0 ] && agentwork=0
 

@@ -23,13 +23,32 @@ HERE_PROV="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABEL="${1:?usage: collect_sweep.sh <label> [dispatch-dir]}"
 D="${2:-/home/justin/hakux-work/dispatch}"
 OUT="/home/justin/hakux-work/scoreboard/$LABEL"
+# The request prefix, which is not always the column name: the first
+# full-corpus sweep was queued as `z-sweep-*` before queue_full_sweep.sh
+# existed, and its column is named for the binary it measured.
+SWEEP_LABEL="${SWEEP_LABEL:-$LABEL}"
+case "$LABEL" in pre-fixes-*) SWEEP_LABEL=sweep ;; esac
 
 mkdir -p "$OUT"
 rm -f "$OUT"/*.tsv "$OUT/.refs"
 
 taken=0 skipped_noproof=0 skipped_empty=0
-for rdir in "$D"/results/z-sweep-*/; do
+seen_dirs=""
+# Collect the label that was asked for. This globbed `z-sweep-*` regardless of
+# the LABEL argument, which worked only while every sweep was called "sweep" --
+# queue_full_sweep.sh names its requests `z-<label>-NNN-<Suite>`, so an
+# after-sweep queued as `after` produced 100 results this could not see and
+# would have reported an empty column rather than an error.
+# Strictly this label's requests. The first version of this fix also globbed
+# `z-sweep-*` as a fallback, which would have pulled the BEFORE column's 100
+# results into the AFTER column -- the exact silent mixing this file's
+# provenance record exists to catch, reintroduced while fixing something else.
+# A label with no results is an empty column and says so; that is the right
+# failure.
+for rdir in "$D"/results/z-"$SWEEP_LABEL"-*/; do
     [ -d "$rdir" ] || continue
+    case " $seen_dirs " in *" $rdir "*) continue;; esac
+    seen_dirs="$seen_dirs $rdir"
     tsv="$rdir/scores1.tsv"
     [ -s "$tsv" ] || { skipped_empty=$((skipped_empty+1)); continue; }
 
