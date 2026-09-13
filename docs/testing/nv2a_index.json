@@ -3796,47 +3796,15 @@
    "suites": [],
    "title": "Guest-visible VBLANK: the period is right to 0.17%, the deferral machinery takes the delivered rate 5.6% below it and never gives it back"
   },
-  "70": {
-   "component": "apu",
-   "disposition": "harness",
-   "no_suites": "",
-   "suites": [],
-   "title": "APU sink zero-fills a short read and counts nothing (MEASURED OUT: 0.0000% in steady state, instrument now permanent)"
-  },
-  "71": {
-   "component": "apu",
+  "67": {
+   "component": "pgraph",
    "disposition": "defect",
    "no_suites": "",
-   "suites": [],
-   "title": "The volume slider applies x^e while the UI labels it a percentage, so 50% is -16.4 dB"
-  },
-  "72": {
-   "component": "apu",
-   "disposition": "unknown-semantics",
-   "no_suites": "",
-   "suites": [],
-   "title": "The monitor path reaches the rails on Galleon and not on DOA3; whether the clipping matches hardware is unknown"
-  },
-  "73": {
-   "component": "apu",
-   "disposition": "defect",
-   "no_suites": "",
-   "suites": [],
-   "title": "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
-  },
-  "74": {
-   "component": "apu",
-   "disposition": "unknown-semantics",
-   "no_suites": "",
-   "suites": [],
-   "title": "Per-voice CFG_FMT_HEADROOM is 7 on every Galleon voice and read by nothing: not the low-volume symptom (measured), a 36 dB DSP-path error if it is the voice-into-bin reserve"
-  },
-  "75": {
-   "component": "apu",
-   "disposition": "defect",
-   "no_suites": "",
-   "suites": [],
-   "title": "ACI migrates only its PCI device, so save/load silently drops all AC'97 codec state"
+   "suites": [
+    "Blend tests",
+    "Point size"
+   ],
+   "title": "Blend tests swatch over-extent is the guest's floorf: x87 FRNDINT ignores the guest rounding-control field on the Android FP JIT path"
   },
   "8": {
    "component": "pgraph",
@@ -3852,6 +3820,48 @@
     "Fog coord vec4"
    ],
    "title": "Fog"
+  },
+  "aci-vmstate": {
+   "component": "apu",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [],
+   "title": "ACI migrates only its PCI device, so save/load silently drops all AC'97 codec state"
+  },
+  "apu-monitor-accumulator": {
+   "component": "apu",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [],
+   "title": "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
+  },
+  "apu-monitor-rails": {
+   "component": "apu",
+   "disposition": "unknown-semantics",
+   "no_suites": "",
+   "suites": [],
+   "title": "The monitor path reaches the rails on Galleon and not on DOA3; whether the clipping matches hardware is unknown"
+  },
+  "apu-sink-short-read": {
+   "component": "apu",
+   "disposition": "harness",
+   "no_suites": "",
+   "suites": [],
+   "title": "APU sink zero-fills a short read and counts nothing (MEASURED OUT: 0.0000% in steady state, instrument now permanent)"
+  },
+  "apu-voice-headroom": {
+   "component": "apu",
+   "disposition": "unknown-semantics",
+   "no_suites": "",
+   "suites": [],
+   "title": "Per-voice CFG_FMT_HEADROOM is 7 on every Galleon voice and read by nothing: not the low-volume symptom (measured), a 36 dB DSP-path error if it is the voice-into-bin reserve"
+  },
+  "apu-volume-taper": {
+   "component": "apu",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [],
+   "title": "The volume slider applies x^e while the UI labels it a percentage, so 50% is -16.4 dB"
   }
  },
  "method_regs": {
@@ -4406,7 +4416,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "06fecf02d33566b9ad473048173271385e06049e",
+  "emulator_commit": "674fc4b61762716ca90eb34f23cc2f66df7746a9",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2783,
