@@ -307,6 +307,19 @@ static int setjmp_gen_code(CPUArchState *env, TranslationBlock *tb,
 /* Called with mmap_lock held for user mode emulation.  */
 uint64_t hakux_tb_invalidated;
 uint64_t hakux_tb_generated;
+/*
+ * Guest instructions and guest bytes actually translated. hakux_tb_generated
+ * on its own cannot price a change to block extent, because most of the cost
+ * of generating a block is per-block and not per-instruction: on the bounding
+ * thread tb_gen_code is 19.1% inclusive and tb_link_page alone is 11.6% of
+ * it, nearly all of that the arming TLB walk, which happens once per block
+ * whatever its length. So halving the mean block length roughly doubles the
+ * fixed half of the cost while leaving the variable half alone. These two make
+ * mean block length readable off a run, which is the falsifier any
+ * smaller-blocks arm has to move -- and the thing that says whether it paid.
+ */
+uint64_t hakux_gen_insns;
+uint64_t hakux_gen_bytes;
 
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
@@ -586,6 +599,8 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
         goto buffer_overflow;
     }
     tb->tc.size = gen_code_size;
+    hakux_gen_insns += tb->icount;
+    hakux_gen_bytes += tb->size;
 
     /*
      * For CF_PCREL, attribute all executions of the generated code

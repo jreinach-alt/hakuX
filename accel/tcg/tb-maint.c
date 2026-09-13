@@ -46,6 +46,22 @@
 #endif
 #include "trace.h"
 
+#ifdef XBOX
+/*
+ * Sizing counters for the whole-page invalidation this fork does instead of
+ * upstream's range-precise one. Defined here rather than beside their uses
+ * because tb_page_add() needs one and it comes first in the file. The comment
+ * that explains what they mean sits with tb_overlaps_written_range() below.
+ */
+uint64_t hakux_inval_events;          /* range invalidations that found a TB */
+uint64_t hakux_inval_tbs_overlap;     /* ... of those TBs, bytes were written */
+uint64_t hakux_inval_tbs_spared;      /* ... of those TBs, none were */
+uint64_t hakux_inval_emptied;         /* events that emptied the page */
+uint64_t hakux_inval_would_survive;   /* events that would NOT have, with the
+                                       * range test restored */
+uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
+#endif
+
 /* List iterators for lists of tagged pointers in TranslationBlock. */
 #define TB_FOR_EACH_TAGGED(head, tb, n, field)                          \
     for (n = (head) & 1, tb = (TranslationBlock *)((head) & ~1);        \
@@ -722,6 +738,15 @@ static void tb_page_add(PageDesc *p, TranslationBlock *tb, unsigned int n)
      * allocated in a physical page.
      */
     if (!page_already_protected) {
+        /*
+         * Arming walks every TLB entry on every CPU (tlb_reset_dirty, 10.6%
+         * self of the bounding thread). It happens only here, on a page going
+         * empty -> non-empty, so this counter is the call count of that walk
+         * and the thing any change in this area has to move.
+         */
+#ifdef XBOX
+        hakux_tlb_protect_calls++;
+#endif
         tlb_protect_code(tb->page_addr[n] & TARGET_PAGE_MASK);
     }
 }
@@ -1156,6 +1181,70 @@ bool tb_invalidate_phys_page_unwind(CPUState *cpu, tb_page_addr_t addr,
     return false;
 }
 #else
+#ifdef XBOX
+/*
+ * Would upstream's range test have spared this TB?
+ *
+ * This fork does not ask. xemu commit 703566ce33 ("tcg: Invalidate all TBs on
+ * target page", 2021-10-04) wrapped the range test in `#ifndef XBOX` with no
+ * recorded reason, so a guest store to a page holding translated code discards
+ * *every* block on that page rather than the blocks whose bytes were written.
+ * PAGE_FOR_EACH_TB in the softmmu build ignores its @start/@last arguments
+ * (see the macro at the top of the !CONFIG_USER_ONLY section), so that test
+ * was the only thing making the invalidation range-precise.
+ *
+ * That matters to the performance stream because
+ * docs/investigations/performance-next-three.md section 2 scopes "smaller
+ * translation blocks on thrashing pages" on the stated premise that "the
+ * invalidation is already range-precise". It is not, here -- and the whole
+ * mechanism by which smaller blocks would help depends on it: a smaller block
+ * is only worth less work when a store can miss it. Under whole-page
+ * invalidation every block on the page dies whatever its size.
+ *
+ * So before changing either thing, count what the range test would have done.
+ * This computes it and throws the answer away; the invalidation below is
+ * unchanged. The arithmetic is upstream's, kept identical on purpose so the
+ * count means "what restoring the test would spare" and not "what some other
+ * predicate would spare".
+ */
+static bool tb_overlaps_written_range(const TranslationBlock *tb, int n,
+                                      tb_page_addr_t start,
+                                      tb_page_addr_t last)
+{
+    tb_page_addr_t tb_start, tb_last;
+
+    /* NOTE: this is subtle as a TB may span two physical pages */
+    tb_start = tb_page_addr0(tb);
+    tb_last = tb_start + tb->size - 1;
+    if (n == 0) {
+        tb_last = MIN(tb_last, tb_start | ~TARGET_PAGE_MASK);
+    } else {
+        tb_start = tb_page_addr1(tb);
+        tb_last = tb_start + (tb_last & ~TARGET_PAGE_MASK);
+    }
+    return !(tb_last < start || tb_start > last);
+}
+
+/*
+ * Where whole-page invalidation actually costs something, which is not the
+ * discarded code itself.
+ *
+ * tb_page_add() arms code-write detection only on the empty -> non-empty
+ * transition of a page, and tb_invalidate_phys_page_range__locked() disarms it
+ * when the page empties. Arming is tlb_protect_code(), which is
+ * physical_memory_test_and_clear_dirty() -> tlb_reset_dirty_range_all() ->
+ * tlb_reset_dirty(), a walk of every TLB entry on every CPU -- and
+ * tlb_reset_dirty is 10.6% self of the thread that bounds the frame, the
+ * largest single symbol on it, reached from code generation at 99.7%
+ * attribution. See docs/investigations/frame-pacing-and-parallelism.md.
+ *
+ * A store that empties a page therefore buys a full TLB walk on the next
+ * generation there. A store that leaves one block behind buys none. That is
+ * the quantity these counters exist to size, and it is the one the range test
+ * changes: `emptied` is what happens now, `would_survive` is what would
+ * happen with the test restored.
+ */
+#endif
 /*
  * @p must be non-NULL.
  * Call with all @pages locked.
@@ -1173,6 +1262,9 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
     PageForEachNext n;
     bool current_tb_modified = false;
     TranslationBlock *current_tb = NULL;
+#ifdef XBOX
+    unsigned tbs_seen = 0, tbs_overlap = 0;
+#endif
 
     /* Range may not cross a page. */
     tcg_debug_assert(((start ^ last) & TARGET_PAGE_MASK) == 0);
@@ -1201,6 +1293,9 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
         if (!(tb_last < start || tb_start > last)) {
 #else
         {
+            /* Counted, not acted on: the invalidation below is unchanged. */
+            tbs_seen++;
+            tbs_overlap += tb_overlaps_written_range(tb, n, start, last);
 #endif
             if (unlikely(current_tb == tb) &&
                 (tb_cflags(current_tb) & CF_COUNT_MASK) != 1) {
@@ -1225,6 +1320,28 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
             tb_phys_invalidate__locked(tb);
         }
     }
+
+#ifdef XBOX
+    if (tbs_seen) {
+        hakux_inval_events++;
+        hakux_inval_tbs_overlap += tbs_overlap;
+        hakux_inval_tbs_spared += tbs_seen - tbs_overlap;
+        /*
+         * p->first_tb is read after the loop, so `emptied` is what this build
+         * actually did. `would_survive` is the counterfactual: with the range
+         * test restored, at least one block had no written byte in it, so the
+         * page would still hold code and would not be disarmed -- and the next
+         * generation there would skip the arming TLB walk. The two are the
+         * before and after of restoring the test, measured on the same run.
+         */
+        if (!p->first_tb) {
+            hakux_inval_emptied++;
+            if (tbs_overlap < tbs_seen) {
+                hakux_inval_would_survive++;
+            }
+        }
+    }
+#endif
 
     /* if no code remaining, no need to continue to use slow writes */
     if (!p->first_tb) {

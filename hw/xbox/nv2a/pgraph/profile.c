@@ -311,6 +311,76 @@ void nv2a_profile_flip_stall(void)
     }
 #endif
 
+    /*
+     * How much of the whole-page invalidation above was warranted, and what it
+     * costs. A separate line under the same tag rather than more fields on the
+     * one above: that buffer is 768 bytes and already truncates its page list
+     * at `n < sizeof(nd) - 80`, so appending here would silently drop the
+     * pfn rows that another lane reads.
+     *
+     * The fields, per 120-frame window:
+     *   ev    invalidation events that found at least one block
+     *   ov    blocks discarded whose bytes the guest actually wrote
+     *   sp    blocks discarded that upstream's range test would have SPARED
+     *   em    events that emptied the page, so code-write detection was
+     *         disarmed and the next generation there must re-arm it
+     *   ws    of those, events where a block would have survived the range
+     *         test -- so the page would have stayed armed and the re-arming
+     *         TLB walk would not have happened. ws is the prize.
+     *   pr    arming walks actually performed (tlb_protect_code, whose
+     *         tlb_reset_dirty is 10.6% self of the bounding thread)
+     *   ins   guest instructions translated, and blk their mean per block
+     *
+     * sp/ov is whether "smaller blocks on thrashing pages"
+     * (docs/investigations/performance-next-three.md section 2) has a
+     * mechanism at all: that lever works by letting a store miss a block, and
+     * under whole-page invalidation no store can miss one. If sp is ~0 the
+     * range test is already effectively precise here and the premise holds;
+     * if sp dominates, the block-extent lever is gated on restoring the test
+     * and cannot pay on its own.
+     */
+#ifdef __ANDROID__
+    if ((g_nv2a_stats.frame_count % 120) == 0) {
+        extern uint64_t hakux_inval_events;
+        extern uint64_t hakux_inval_tbs_overlap;
+        extern uint64_t hakux_inval_tbs_spared;
+        extern uint64_t hakux_inval_emptied;
+        extern uint64_t hakux_inval_would_survive;
+        extern uint64_t hakux_tlb_protect_calls;
+        extern uint64_t hakux_gen_insns;
+        extern uint64_t hakux_gen_bytes;
+        extern uint64_t hakux_tb_generated;
+        static uint64_t p_ev, p_ov, p_sp, p_em, p_ws, p_pr, p_in, p_by, p_tg;
+        uint64_t d_ev = hakux_inval_events        - p_ev;
+        uint64_t d_ov = hakux_inval_tbs_overlap   - p_ov;
+        uint64_t d_sp = hakux_inval_tbs_spared    - p_sp;
+        uint64_t d_em = hakux_inval_emptied       - p_em;
+        uint64_t d_ws = hakux_inval_would_survive - p_ws;
+        uint64_t d_pr = hakux_tlb_protect_calls   - p_pr;
+        uint64_t d_in = hakux_gen_insns           - p_in;
+        uint64_t d_by = hakux_gen_bytes           - p_by;
+        uint64_t d_tg = hakux_tb_generated        - p_tg;
+        p_ev = hakux_inval_events;
+        p_ov = hakux_inval_tbs_overlap;
+        p_sp = hakux_inval_tbs_spared;
+        p_em = hakux_inval_emptied;
+        p_ws = hakux_inval_would_survive;
+        p_pr = hakux_tlb_protect_calls;
+        p_in = hakux_gen_insns;
+        p_by = hakux_gen_bytes;
+        p_tg = hakux_tb_generated;
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-pages",
+            "inval ev=%llu ov=%llu sp=%llu em=%llu ws=%llu pr=%llu "
+            "ins=%llu bytes=%llu blk=%llu.%02llu",
+            (unsigned long long)d_ev, (unsigned long long)d_ov,
+            (unsigned long long)d_sp, (unsigned long long)d_em,
+            (unsigned long long)d_ws, (unsigned long long)d_pr,
+            (unsigned long long)d_in, (unsigned long long)d_by,
+            (unsigned long long)(d_tg ? d_in / d_tg : 0),
+            (unsigned long long)(d_tg ? (d_in * 100 / d_tg) % 100 : 0));
+    }
+#endif
+
     /* Dirty-bitmap queries for the frame that just ended. */
     {
         FramePacingStats *p = &g_nv2a_stats.pacing;
@@ -554,7 +624,7 @@ void nv2a_profile_get_workload_str(char *buf, int bufsize)
              "BE:%d DA:%d IE:%d IB:%d IA:%d Clr:%d "
              "QS:%d/%d PGen:%d PBnd:%d PNd:%d RP:%d "
              "SGen:%d SBnd:%d SNd:%d UBOd:%d UBOn:%d "
-             "TexU:%d GBU:%d/%d/%d/%d/%d "
+             "TexU:%d S2T:%d/%d GBU:%d/%d/%d/%d/%d "
              "Fin:Vbd%d Sc%d Sd%d Bs%d Fbd%d Pr%d Fl%d Flu%d St%d",
              c[NV2A_PROF_BEGIN_ENDS],
              c[NV2A_PROF_DRAW_ARRAYS],
@@ -574,6 +644,22 @@ void nv2a_profile_get_workload_str(char *buf, int bufsize)
              c[NV2A_PROF_SHADER_UBO_DIRTY],
              c[NV2A_PROF_SHADER_UBO_NOTDIRTY],
              c[NV2A_PROF_TEX_UPLOAD],
+             /*
+              * S2T is surface-to-texture: the direct path taken, over the
+              * fallback that gives up and round-trips through VRAM. Both
+              * counters have been incremented at four sites in
+              * pgraph/vk/texture.c all along and printed nowhere, so the
+              * quantity #59 says would settle its deferred throughput cost
+              * -- how often a title actually samples a surface whose format
+              * we stopped claiming -- was being collected and discarded.
+              * Printing it costs two ints on a line that already carries
+              * thirty. Note the counter is only incremented in an
+              * NV2A_PERF_LOG build, so a plain soak still reads 0/0; making
+              * it always-on needs an edit in vk/texture.c, which is the
+              * renderer lane's file.
+              */
+             c[NV2A_PROF_SURF_TO_TEX],
+             c[NV2A_PROF_SURF_TO_TEX_FALLBACK],
              c[NV2A_PROF_GEOM_BUFFER_UPDATE_1],
              c[NV2A_PROF_GEOM_BUFFER_UPDATE_2],
              c[NV2A_PROF_GEOM_BUFFER_UPDATE_3],
