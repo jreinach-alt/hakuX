@@ -70,6 +70,14 @@ display refresh, 90-120 Hz on these handhelds, and `pacing.vblank_fired` does
 not count those either. So `simple_vblank` is not "equal or better on every
 measure"; two of the measures could not see it.
 
+**Both causes are fixed as of 2026-09-13** ("nv2a: one VBLANK source in simple
+mode, and a jitter figure that is written"): the host-refresh assertion is gone,
+so the mode has one source, and the jitter EWMA is updated from both paths, so
+`J` means the same thing in either. This row therefore cannot be reproduced on
+a current binary and must be re-measured rather than compared against -- and
+re-measuring it needs a way to set the `simple_vblank` pref from a soak, which
+`docs/testing/request.sh` does not have.
+
 The conclusion about deferral below survives, and is now a number rather than
 an impression: on Galleon the deferral machinery took the guest's VBLANK clock
 5.6% slow, losing 3.83 s per minute of play. The cause was one token and the
