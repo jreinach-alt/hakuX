@@ -356,3 +356,56 @@ of them on `WBuf24D` ZB0 alone, which the simulation reproduces), and it is a
 separate, smaller and better-posed question than the anchor: **what format does silicon round the
 slope offset to?**  The 66 exact intervals in this document are the data for
 it, and no device run is needed to answer it.
+
+### The off-by-one floor is silicon's PLANE SOLVE, not our anchor (#31, 2026-09-13)
+
+Measured on #31 arm A (`1789312070-wslope-anchor-agent-645937`, ref
+`a00910d346`) with `wbuf_anchor_recover.py --ours`, which bounds the offset from
+our own capture exactly the way it bounds hardware's from a golden.  This is the
+larger half of the residual -- 941,308 off-by-one pixels across the `WBuf*`
+captures against 669,293 structural -- and it is a different question from the
+anchor.
+
+**Two triangles of one planar quad, same plane and same anchor row, get
+different offsets on hardware.**
+
+| triangle | hardware | ours |
+|---|---|---|
+| `FloorQuad` t0 (v0,v1,v2) | [113137.2866, 113137.2991] | [113137.3964, 113137.4026] |
+| `FloorQuad` t1 (v0,v2,v3) | [113136.7720, 113136.7745] | [113137.4180, 113137.4180] |
+
+`FloorQuad` is planar, so the two triangles share the 1/w plane exactly, and
+both anchor on row 0.  Our two offsets therefore agree to 0.02.  Hardware's
+differ by **0.52**, and each of its intervals is 0.002 wide, so that is not
+measurement slack.  In anchor terms 0.52 units is 1.7e-4 of a pixel row -- the
+anchors are the same row and the difference is elsewhere.
+
+The reproducibility is not in doubt: `WallQuad` t0 and all three `ClipW` t0
+give the byte-identical interval [199541.0145, 199541.0277], and `RoofQuad` t0
+and `WallQuad` t1 give the identical [6466.1445, 6466.1467] from two different
+quads that happen to share w endpoints and anchor at the same end.
+
+**CANDIDATE, not a finding: the setup engine's plane coefficients are rounded
+per triangle.** The two triangles are solved from different vertex triples with
+different determinants, so a fixed-point plane solve gives each its own
+rounding. The arithmetic is consistent with it: `FloorQuad`'s d(1/w)/dx is
+exactly 0 in real arithmetic (v0 and v1 share y and w), the two triangles'
+anchor COLUMNS are 179 and 150, and d(offset)/di here is -5.6e7, so a residual
+|d(1/w)/dx| of order 1e-9 in hardware's solve moves the offset by order 1 unit
+across 29 columns. That is the right size. It is arithmetic consistent with the
+measurement, not a measurement of the solve.
+
+What follows either way, and this is the part that is not a candidate:
+
+- **The off-by-one class is per-triangle and is not reachable from the plane**,
+  so no anchor rule can remove it.  It is the floor on what #31 can reach, and
+  the issue's "structural 0 at both ZS settings" for `WallQuad` and `LargeZ`
+  hides it -- `WBuf24D_WallQuad` is 263 differing with 263 off-by-one, and
+  `LargeZ` 118,240 with 118,240.
+- **The 66 exact intervals in this document are the whole dataset for it**, on
+  both sides, and it needs no device run.  The question to ask of them is what
+  fixed-point format reproduces all 66 hardware values from the vertex triples,
+  which is a fit over 66 constraints rather than a guess.
+- The discriminating test is cheap and already in the corpus: a planar quad's
+  two triangles must come out EQUAL under any model that reads only the plane,
+  and hardware says they are 0.52 apart.
