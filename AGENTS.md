@@ -538,6 +538,53 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## A checker must have no side effects on the tree it checks
+
+`check_territory.py` was added on 2026-09-13 to catch a stale territory
+allocation, and it recorded its high-water mark by writing a **tracked** stamp
+file. `dispatcher.sh` refuses to build any ref while the shared tree carries a
+tracked modification -- correctly, because with several implementers holding
+uncommitted work "run my build" is ambiguous. So the guard stalled the build
+path: **129 requeues**, every queued arm needing a new binary bouncing every
+thirty seconds.
+
+And it was a loop. Each `preflight.sh` run rewrote the stamp and re-dirtied the
+tree, so reverting the file by hand fixed it only until the next check. The
+orchestrator ran preflight repeatedly and read `preflight passed` every time.
+It was found by a lane that noticed **its own arms requeueing**.
+
+Two rules follow, and the second is the general one:
+
+**A checker writes nothing.** If it needs state, derive it. The wave
+high-water mark is in `git log -p` on the file it is about: every committed
+value is there, the maximum cannot be forged by a fold, and nothing is written
+anywhere. A `.gitignore` line would have hidden the symptom and left a checker
+with a side effect.
+
+**Ask what your tool does to the things downstream of it.** `preflight.sh`
+exists to protect a CI run; it had no reason to consider the *dispatcher*, and
+the dispatcher had no reason to consider preflight. The interaction lived in
+neither. When adding a gate to a shared tree, the question is not only "does
+it pass" but "what else reads this tree, and what does it now see?"
+
+## Two masks of equal cardinality can be disjoint
+
+A residual carried between captures -- "this one is at the floor, so that one
+should be too" -- is being compared by **cardinality**, which says nothing
+about whether it is the same defect.
+
+Measured on #38: nine `Bump_map` captures sit at exactly 1,576 differing
+pixels, and their masks are **byte-identical** -- the same 1,576 coordinates
+across seven texture formats. So 1,576 is a MASK, not a count. And the capture
+that appeared to go "below the floor" at 668 px overlaps that mask in **19
+pixels**: the sets are nearly disjoint, so the fix **replaced** the residual
+rather than partly clearing a shared one.
+
+`intersection == union` is the two-line check, and it is the difference
+between "the same floor" and "a coincidence of size". Run it before
+transferring a floor, a residual class or a noise band from one capture to
+another.
+
 ## A wrong zero stops work; a wrong ratio redirects it
 
 Both are measurement defects and the second is more expensive, which is not
