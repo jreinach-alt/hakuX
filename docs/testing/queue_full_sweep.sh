@@ -71,12 +71,40 @@ skip_tests_for() {
 set -u
 
 REF="${1:?usage: queue_full_sweep.sh <ref> [label]}"
-LABEL="${2:-sweep}"
+LABEL="${2:-}"
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
 
 SHA=$(git rev-parse --short "$REF") || { echo "cannot resolve $REF" >&2; exit 2; }
 [ "$SHA" = "$REF" ] || echo "resolved $REF to $SHA" >&2
+
+# A LABEL MUST DESCRIBE THE CONTENT, NOT THE INTENT. An aspirational label is
+# guaranteed to become false: a corpus sweep takes hours, the branch moves
+# under it, and a column called `tip` is a column that WAS the tip. This has
+# now happened twice -- the `after` column was collected 28 hw/ commits behind
+# what it was named for, and a column queued as `tip` was 27 behind before its
+# last suite had even run. Both were flagged stale by collect_sweep.sh, which
+# is correct and also too late: the name is what the next reader sees first.
+#
+# So the label DEFAULTS to the sha, and the words that describe a moving target
+# are refused. `before`/`after` stay allowed -- they name a position in a
+# sequence, which does not rot.
+case "$LABEL" in
+    tip|latest|current|now|head|HEAD|today|new|newest)
+        cat >&2 <<MSG
+refusing: "$LABEL" describes a moving target, and a corpus sweep takes hours.
+
+A column labelled "$LABEL" is a column that WAS $LABEL. It has happened twice:
+the 'after' column was collected 28 hw/ commits behind, and a 'tip' column was
+27 behind before its last suite ran.
+
+Use the sha (the default), or a name that will still be true tomorrow --
+'before'/'after' name a position in a sequence and do not rot.
+MSG
+        exit 2 ;;
+    "") LABEL="$SHA"
+        echo "no label given; using the sha: $LABEL" >&2 ;;
+esac
 
 BEHIND=$(git rev-list --count "$SHA..HEAD" -- hw/ 2>/dev/null || echo '?')
 if [ "$BEHIND" != "0" ]; then
