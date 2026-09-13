@@ -117,16 +117,32 @@ import re
 import statistics
 import sys
 
-# "inval ev=N ov=N sp=N em=N ws=N pr=N ins=N bytes=N blk=N.NN"
+# "inval ev=N ov=N sp=N em=N ws=N pr=N ai=N di=N cg=N xx=N ins=N bytes=N
+#  blk=N.NN".  ai/di/cg/xx are each optional, because a build from before the
+# counter existed emits no field for it and a missing field is not a zero.
 INVAL_RE = re.compile(
     r"inval ev=(\d+) ov=(\d+) sp=(\d+) em=(\d+) ws=(\d+) pr=(\d+) "
-    r"(?:ai=(\d+) )?(?:di=(\d+) cg=(\d+) )?"
+    r"(?:ai=(\d+) )?(?:di=(\d+) cg=(\d+) )?(?:xx=(\d+) )?"
     r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
 
-# "slow stores N (M reached the invalidator) ... [blocks tossed T, generated G]"
+# "slow stores N (M reached the invalidator) ... [blocks ...]"
 STORES_RE = re.compile(
     r"slow stores (\d+) \((\d+) reached the invalidator\)")
-TOSSED_RE = re.compile(r"blocks tossed (\d+), generated (\d+)")
+
+# The current form, as of the #69 rename. Every field names its own event.
+BLOCKS_RE = re.compile(
+    r"blocks discarded (\d+) of (\d+) visited, generated (\d+) of (\d+) calls")
+
+# The form before it, which printed a VISIT count labelled "tossed" and a CALL
+# count labelled "generated" -- the numerator and denominator of the retracted
+# 2.8:1 waste ratio. It is read, but into `visited` and `calls`, because that
+# is what those two numbers are. The mapping is safe because it is a statement
+# about the code at those refs and not an inference from the values: the
+# increments sat at the top of tb_gen_code and before
+# tb_phys_invalidate__locked respectively. A log in this form is NOT a source
+# of a discard count or a generation count; those come from di=/cg= on the
+# inval line, and if that line is absent so is the waste ratio.
+LEGACY_RE = re.compile(r"blocks tossed (\d+), generated (\d+)")
 
 # The always-on pacing line.
 PERF_RE = re.compile(
@@ -142,12 +158,13 @@ COUNTERS = [
     ("ws",    "...of those, a block would have survived a range test"),
     ("pr",    "arming TLB walks performed (tlb_protect_code)"),
     ("ai",    "visited blocks that already carried CF_INVALID"),
-    ("di",    "blocks really removed (past the early return)"),
-    ("cg",    "calls that really generated code"),
+    ("di",    "DISCARDS: blocks really unlinked, past the early return"),
+    ("cg",    "GENERATIONS: calls that really generated code"),
+    ("xx",    "THE IMPOSSIBLE ROW -- must be 0, see derive()"),
     ("ins",   "guest instructions translated"),
     ("blk",   "mean guest instructions per generated block"),
-    ("tossed", "blocks invalidated (all callers)"),
-    ("gen",   "blocks generated"),
+    ("visited", "VISITS: TBs the invalidation loop walked over"),
+    ("calls",  "CALLS to tb_gen_code, recycles included"),
     ("stores", "slow stores into code pages"),
 ]
 
@@ -193,10 +210,20 @@ def parse(path):
                     windows.append(pending)
                 pending = {"stores": int(m.group(1)),
                            "reached": int(m.group(2))}
-                t = TOSSED_RE.search(line)
-                if t:
-                    pending["tossed"] = int(t.group(1))
-                    pending["gen"] = int(t.group(2))
+                b = BLOCKS_RE.search(line)
+                if b:
+                    pending["discarded"] = int(b.group(1))
+                    pending["visited"] = int(b.group(2))
+                    pending["generated"] = int(b.group(3))
+                    pending["calls"] = int(b.group(4))
+                else:
+                    t = LEGACY_RE.search(line)
+                    if t:
+                        # See LEGACY_RE: "tossed" was visits, "generated" was
+                        # calls. Read into the names of the events they are.
+                        pending["visited"] = int(t.group(1))
+                        pending["calls"] = int(t.group(2))
+                        pending["legacy_line"] = 1
                 continue
             m = INVAL_RE.search(line)
             if m:
@@ -205,7 +232,7 @@ def parse(path):
                 w.update({
                     "ev": int(g[0]), "ov": int(g[1]), "sp": int(g[2]),
                     "em": int(g[3]), "ws": int(g[4]), "pr": int(g[5]),
-                    "ins": int(g[9]), "bytes": int(g[10]),
+                    "ins": int(g[10]), "bytes": int(g[11]),
                 })
                 # Absent fields stay absent: a build from before a counter
                 # existed reports no value, and a missing field is not a zero.
@@ -215,12 +242,14 @@ def parse(path):
                     w["di"] = int(g[7])
                 if g[8] is not None:
                     w["cg"] = int(g[8])
+                if g[9] is not None:
+                    w["xx"] = int(g[9])
                 # blk is instructions per block that really generated code.
                 # Divided by a CALL count instead -- which is what
                 # hakux_tb_generated is -- it comes out below 1, which a block
                 # cannot be. Such a row is void, not small, so it is dropped
                 # rather than reported. That is how the defect was found.
-                w["blk_raw"] = int(g[11]) + int(g[12]) / 100.0
+                w["blk_raw"] = int(g[12]) + int(g[13]) / 100.0
                 windows.append(w)
                 pending = {}
                 continue
@@ -256,8 +285,14 @@ def parse(path):
 # (name, numerator, denominator, what it means). A window missing either field
 # is skipped rather than counted as zero.
 RATIOS = [
-    ("toss_per_gen", "tossed", "gen",
-     "blocks discarded per block generated (the waste ratio)"),
+    ("waste", "di", "cg",
+     "THE WASTE RATIO: real discards per real generation"),
+    ("waste_legacy", "visited", "calls",
+     "what 2.8:1 was: visits over calls, kept only to show the gap"),
+    ("recycle", "calls", "cg",
+     "calls per generation, i.e. the inv_htable recycle rate"),
+    ("clog", "ai", "visited",
+     "share of visits that were already-dead blocks on the page list"),
     ("reach_share", "reached", "stores",
      "share of slow stores that reached the invalidator"),
     ("sp_share", "sp", "ovsp",
@@ -337,29 +372,82 @@ def derive(windows):
     """The two ratios the levers turn on, plus the self-consistency check."""
     if not windows:
         return
+    # THE IMPOSSIBLE ROW, and it is checked before anything is printed about
+    # the numbers. A visit is live XOR discarded; xx counts the violations and
+    # is zero by the model, not by construction of the patch. A nonzero value
+    # means "visits = discards + already-invalid" is wrong, and then every
+    # ratio below is a quotient of two quantities whose populations are not
+    # known -- which is exactly the defect #69 is about.
+    xx = series(windows, "xx")
+    if xx and sum(xx) == 0:
+        print("   -> CONTROL xx = 0 over %d windows: every visited block was"
+              " live and discarded, or already invalid and not. The counters"
+              " below are quotients of known populations." % len(xx))
+    elif xx:
+        print("   -> VOID: the impossible row fired. xx = %d over %d windows,"
+              " and it cannot be nonzero if a live TB is findable in"
+              " tb_ctx.htable and an already-CF_INVALID one is not. Read"
+              " NOTHING below as a measurement until it is explained: the"
+              " populations behind di, ai and visited are not what their"
+              " comments in tb-maint.c say." % (sum(xx), len(xx)))
+    else:
+        print("   -> NO xx= FIELD. This build predates the control, so the"
+              " visits/discards/already-invalid split below is asserted by a"
+              " code reading rather than checked on the run.")
     void = [w["blk_void"] for w in windows if "blk_void" in w]
     if void:
         print("   -> VOID: mean block length came out at %.2f, and a block"
               " cannot hold less than one instruction. This build divides"
-              " instructions by hakux_tb_generated, which counts CALLS to"
-              " tb_gen_code -- a call that recycles a TB from inv_htable"
-              " never generates code. Rebuild with the cg= counter before"
-              " reading any block-length figure, and treat the published"
-              " \"blocks generated\" numbers as call counts too."
-              % (sum(void) / len(void)))
-    vis = sum(series(windows, "tossed"))
+              " instructions by a CALL count to tb_gen_code -- a call that"
+              " recycles a TB from inv_htable never generates code. Rebuild"
+              " with the cg= counter before reading any block-length figure,"
+              " and treat the published \"blocks generated\" numbers as call"
+              " counts too." % (sum(void) / len(void)))
+    if any("legacy_line" in w for w in windows):
+        print("   -> This log's always-on line is the pre-#69 form, which"
+              " printed visits labelled \"tossed\" and calls labelled"
+              " \"generated\". They have been read into `visited` and"
+              " `calls`. There is no discard or generation count on that"
+              " line; di=/cg= on the inval line are the only source, and"
+              " `waste` is absent if they are.")
+    cg = sum(series(windows, "cg")) if any("cg" in w for w in windows) else None
+    dis = sum(series(windows, "di")) if any("di" in w for w in windows) else None
+    calls = sum(series(windows, "calls"))
+    if cg and dis is not None:
+        print("   -> WASTE RATIO %.2f discards per generation (%d / %d)."
+              " This is the corrected figure. The retracted 2.8:1 was"
+              " visits over calls." % (dis / float(cg), dis, cg))
+        if calls:
+            print("      Same run, the retracted pair: %.2f visits per call"
+                  " (%d / %d), recycle rate %.2f calls per generation."
+                  % (sum(series(windows, "visited")) / float(calls),
+                     sum(series(windows, "visited")), calls,
+                     calls / float(cg)))
+        print("      And a discard is not a retranslation. A discarded block"
+              " goes into inv_htable and can be recycled from it without"
+              " codegen, which is what the recycle rate measures, so the"
+              " cost of a discard is bounded by tb_link_page and the arming"
+              " walk rather than by tb_gen_code.")
+    vis = sum(series(windows, "visited"))
     di = sum(series(windows, "di")) if any("di" in w for w in windows) else None
     ai = sum(series(windows, "ai")) if any("ai" in w for w in windows) else None
     if di is not None and ai is not None and vis:
         print("   -> visits %d = real discards %d + already-invalid %d"
               " (residual %d)." % (vis, di, ai, vis - di - ai))
+        print("      The residual is expected to be small and NEGATIVE-side"
+              " only by accident: di counts every caller of"
+              " do_tb_phys_invalidate, while visits are counted in the"
+              " whole-page loop alone, so a positive di surplus is"
+              " tb_check_watchpoint traffic. The exact per-visit identity is"
+              " the xx control above; this line is the aggregate view of it.")
         if ai > vis * 0.5:
             print("      MOST VISITS ARE DEAD BLOCKS (%.0f%%). The page lists"
-                  " are carrying already-invalidated TBs, so \"blocks"
-                  " tossed\" is largely a re-visit count. sp/ov below are"
-                  " live-only as of 02f04060e8 and are unaffected, but any"
-                  " figure derived from `tossed` is not."
-                  % (100.0 * ai / vis))
+                  " are carrying already-invalidated TBs, so the visit count"
+                  " is largely a re-visit count. sp/ov below are live-only as"
+                  " of 02f04060e8 and are unaffected, but any figure derived"
+                  " from `visited` is not -- including waste_legacy, which is"
+                  " why it is printed beside `waste` rather than instead of"
+                  " it." % (100.0 * ai / vis))
         print("      A large already-invalid share means the page lists carry"
               " dead TBs that do_tb_phys_invalidate's early return refuses to"
               " unlink, every later store re-visits them, and BOTH the"
