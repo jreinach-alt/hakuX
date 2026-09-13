@@ -44,6 +44,28 @@ hardware golden, so a DISAGREE row shows the band in the units every other
 tool on this lane speaks. Without it the check is pure byte equality, which
 needs no goldens and is the cheaper gate.
 
+WHY IT COMPARES THE CAPTURES AND NOT TWO SCORE TABLES
+
+Because a score table carries the scorer that produced it, and that is a
+second thing that can differ. On 2026-09-13 a sweep of 100 suites ran for
+five hours with a ``score_sweep.py`` change landing mid-run, so 21 suites
+were scored by one version and 79 by another; re-scoring the 21 through one
+scorer moved 138 of 141 rows out of the "void this row" class. Nothing in
+the scoreboard moved, because the cells counted both classes alike -- a
+provenance bug with no visible symptom, found only because someone compared
+two results that carried the same revision stamp and disagreed.
+
+This tool cannot be fooled that way, by construction rather than by care: it
+reads the captures themselves, and where ``--goldens`` is given it scores
+every run it compares with one scorer in one process. There is no second
+version to drift into.
+
+The same afternoon, the desktop gate was found to have been quoting two
+different warning counters as one series, which turned a flat fold into a
+four-warning improvement that never happened. Three instances in one day of
+one mistake: **a number is only a series if it was produced the same way
+every time.**
+
 EXIT STATUS
 
 0 if every capture agrees, 1 if any disagrees or is absent, 2 if the runs are
