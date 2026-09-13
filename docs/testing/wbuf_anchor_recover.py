@@ -264,6 +264,13 @@ def main(argv=None):
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--goldens", default="/home/justin/goldens/results",
                     help="golden results root (holds W_buffering/)")
+    ap.add_argument("--ours", metavar="RESULTDIR", action="append",
+                    help="also bound the offset from OUR capture in this "
+                         "dispatcher result directory, and print it beside "
+                         "hardware's.  This is how #31's mechanism leg is "
+                         "checked on an arm: the recovered offset is a "
+                         "property of the arm's own render, so it needs no "
+                         "baseline and no golden arithmetic.")
     ap.add_argument("--simulate", action="store_true",
                     help="also emulate the shader in float32 and print the "
                          "exact/+-1/wrong split each anchoring rule predicts")
@@ -342,6 +349,34 @@ def main(argv=None):
     # offset is 136 at every anchor and the inversion runs off the bracket.
     # Counting it as agreement or as disagreement would both be wrong.
     disc = [r for r in rows if not r[0].startswith("LargeZ")]
+    if args.ours:
+        print()
+        print("=" * 78)
+        print("RECOVERED OFFSET FROM OUR OWN CAPTURES (the mechanism leg)")
+        print("=" * 78)
+        for rd in args.ours:
+            print(rd)
+            for cap in PRIMS:
+                tris, cl, ct, _ = PRIMS[cap]
+                p1 = _ours_path(rd, "WBuf24D_%s_V1_ZB0_ZS1_ZB" % cap)
+                if p1 is None:
+                    continue
+                z1 = decode24(np, Image, p1)
+                for ti, tri in enumerate(tris):
+                    m = coverage(np, tri, cl, ct) & (z1 != CLEAR24)
+                    if m.sum() < 40:
+                        continue
+                    w = plane_w(np, tri)
+                    lo = float(np.max(z1[m] - w[m]))
+                    hi = float(np.min(z1[m] + 1 - w[m]))
+                    if hi < lo:
+                        print("  %-16s t%-2d NO SINGLE CONSTANT fits this "
+                              "triangle (interval empty): the offset is not "
+                              "one value per primitive here" % (cap, ti))
+                        continue
+                    print("  %-16s t%-2d ours in [%15.4f,%15.4f]"
+                          % (cap, ti, lo, hi))
+
     agree_s = [r for r in disc if abs(r[6] - r[7]) < 0.01]
     agree_4 = [r for r in disc if abs(r[6] - r[8]) < 0.01]
     noint = [r for r in disc if abs(r[6] - round(r[6])) > 0.05]
@@ -426,6 +461,30 @@ interaction stops being free.""")
         print("  (compare against run-2026-09-10-wbuffer-adreno.tsv, which is"
               " bdc26fa5c8 on the Nova)")
     return 0
+
+
+def _ours_path(rd, test):
+    """Our capture for one test inside a dispatcher result directory.
+
+    captures.py owns the two directory shapes the dispatcher produces; joining
+    paths by hand here is the mistake that reported three captures MISSING on
+    an arm that contained them (AGENTS.md).
+    """
+    import os as _os
+    import sys as _sys
+    _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+    try:
+        import captures as capmod
+        got = capmod.resolve(rd, "W_buffering", test)
+        if got and _os.path.exists(got):
+            return got
+    except Exception:
+        pass
+    for root, _, files in _os.walk(rd):
+        for f in files:
+            if f == "W_buffering::%s.png" % test:
+                return _os.path.join(root, f)
+    return None
 
 
 def _invert(tri, target, axis):
