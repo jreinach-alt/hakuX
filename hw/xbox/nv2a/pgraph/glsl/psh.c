@@ -338,6 +338,17 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         state->tex_hilo16[i] =
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16 ||
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16;
+        /* Formats whose view swizzle drives component 0 from the literal ONE
+         * rather than from stored data.  These four are the whole set in both
+         * vk/constants.h and gl/constants.h, and the two tables agree:
+         * SZ_A8/LU_IMAGE_A8 are {ONE,ONE,ONE,R} and SZ_Y16/LU_IMAGE_Y16 are
+         * {ONE,R,R,ONE}.  A TEXFILTER sign flag on such a component has
+         * nothing to sign; see append_bump_channel. */
+        state->tex_comp0_const[i] =
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16;
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
@@ -1566,6 +1577,47 @@ static void append_bump_channel(const struct PixelShader *ps, MString *vars,
     bool flagged = ps->state->tex_signed[k] & flag_bit;
     bool snorm = ps->state->snorm_tex[k];
     const char *c = &chan[comp];
+
+    /*
+     * A sign flag on a component the view swizzle drives from a literal has
+     * nothing to sign, and neither the image format nor the sampler can reach
+     * it, so read it the way an unflagged channel is read.
+     *
+     * #10, measured on the goldens rather than argued.  The luminance channel
+     * is component 0, which SZ_A8 and SZ_Y16 both take from the constant ONE.
+     * RSIGNED then turned bump_unsigned(1.0) = 1.0 into
+     * sign3_to_0_to_1(bump_snorm(1.0)) = 0.496, and `BumpEnvLum` ties
+     * rsigned to bsigned, so exactly the two quads with BSIGNED set were low.
+     * Per-quad differing pixels against the goldens, quads in
+     * (gsigned, bsigned) order:
+     *
+     *   BumpEnvLum_A8    310 / 14,241 /  422 / 14,187   (29,160 total)
+     *   BumpEnvLum_Y16   310 / 13,755 /  422 / 13,645   (28,132 total)
+     *
+     * and 13,819 / 13,765 and 13,333 / 13,223 of those are ONE STEP LOW, every
+     * one of them negative, leaving exactly 422 per quad.  Three controls
+     * inside the corpus, none of them borrowed from another capture:
+     *
+     *   - quad 2 has GSIGNED set on a real data channel and sits at 422, so a
+     *     sign flag on stored data is already right;
+     *   - quads 0 and 2 already use this branch and sit at 310 and 422, which
+     *     is what makes 1.0 the MEASURED luminance rather than an assumption;
+     *   - `BumpMap_A8` is 1,576 with per-quad 310/422/422/422 under the same
+     *     swizzle and the same flags, differing only in having no luminance
+     *     stage, which localises the defect to this channel.
+     *
+     * Hardware's own four quads differ by 0/586/312/612 on every A8, Y16 and
+     * R16B16 capture in both suites -- its positional floor -- while on
+     * `BumpMap_G8B8`, a byte texel, they differ by 0/586/8,212/8,431.  So the
+     * instrument can see a live flag and reports these as inert.
+     *
+     * Components 1 and 2 are deliberately NOT included: `BumpMap_A8` takes
+     * them from the same literal, under flags, and is already at the floor.
+     */
+    if (comp == 0 && ps->state->tex_comp0_const[k]) {
+        flagged = false;
+        snorm = false;
+    }
 
     if (flagged && snorm) {
         /* The sampler signed and filtered it. */

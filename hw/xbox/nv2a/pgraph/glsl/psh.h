@@ -51,6 +51,9 @@ typedef struct PshState {
     /* The texel holds two real 16-bit fields, so a HILO dot mapping reads
      * each field whole instead of rebuilding it from two bytes. */
     bool tex_hilo16[4];
+    /* The view swizzle drives component 0 from a literal rather than from
+     * stored data, so a TEXFILTER sign flag on it has nothing to sign. */
+    bool tex_comp0_const[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];
