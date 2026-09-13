@@ -7139,22 +7139,37 @@ void pgraph_vk_flush_draw(NV2AState *d)
 
     if ((folds % 64) == 0) {
         /*
-         * Tag "hakuX", not "hakuX-signfold". Core-QEMU fprintf(stderr) never
-         * reaches logcat, and the dispatcher's capture spec ends in `*:S`, so
-         * a tag it does not name is silenced outright -- the 0b8956e7c3 arm
-         * printed this counter and the logcat contains not one line of it,
-         * which is indistinguishable from the mechanism never firing. `hakuX:I`
-         * is in the spec; `hakuX-signfold` never was.
+         * Tag "hakuX-lane", which LOGCAT_SPEC now reserves for exactly this.
+         * Core-QEMU fprintf(stderr) never reaches logcat, and the capture spec
+         * ends in `*:S`, so a tag it does not name is silenced outright -- an
+         * earlier revision of this counter logged to "hakuX-signfold", the arm
+         * ran, and the logcat held not one line of it, which is
+         * indistinguishable from the mechanism never firing.
+         *
+         * `staged_low`/`staged_high` count uniform STAGINGS, not pass
+         * requests. Requesting pass 2 and pass 2's uniform reaching the GPU
+         * are different events, and ring 0's regression -- alpha 226 -> 255
+         * against a golden of 226, which is clamp(D + 127 + 127) saturating,
+         * the low half applied TWICE -- is what a pass 2 running with the LOW
+         * mask would produce. staged_high == 0 names that outright;
+         * staged_high == folds says the uniform arrived and the fault is
+         * elsewhere.
          */
+        unsigned long slo, shi;
+        pgraph_glsl_get_signed_blend_staged(&slo, &shi);
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
                             "[signfold] folds=%lu emitted=%lu empty=%lu "
-                            "(want emitted==2*folds, empty==0)",
-                            folds, emitted, empty);
+                            "staged_low=%lu staged_high=%lu "
+                            "(want emitted==2*folds, empty==0, "
+                            "staged_high==folds)",
+                            folds, emitted, empty, slo, shi);
 #else
         fprintf(stderr,
                 "[signfold] folds=%lu emitted=%lu empty=%lu "
-                "(want emitted==2*folds, empty==0)\n", folds, emitted, empty);
+                "staged_low=%lu staged_high=%lu "
+                "(want emitted==2*folds, empty==0, staged_high==folds)\n",
+                folds, emitted, empty, slo, shi);
 #endif
     }
 

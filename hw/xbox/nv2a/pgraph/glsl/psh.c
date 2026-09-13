@@ -142,6 +142,17 @@ int pgraph_glsl_window_clip_count(PGRAPHState *pg)
  */
 static int g_signed_blend_pass = SIGNED_BLEND_PASS_LOW;
 
+/*
+ * How many times each half was actually STAGED into a uniform buffer, which is
+ * a different event from how many times a pass was requested. #43's ring-0
+ * regression looks exactly like pass 2 running with the LOW mask -- its largest
+ * class is alpha 226 -> 255 against a golden of 226, i.e. clamp(D + 127 + 127)
+ * saturating, the low-half source applied twice -- and nothing measured so far
+ * can tell that from the arithmetic being wrong. These count the staging
+ * itself, so `staged_high == 0` names the cause outright.
+ */
+static unsigned long g_signed_blend_staged[2];
+
 void pgraph_glsl_set_signed_blend_pass(int pass)
 {
     assert(pass == SIGNED_BLEND_PASS_LOW || pass == SIGNED_BLEND_PASS_HIGH);
@@ -151,6 +162,13 @@ void pgraph_glsl_set_signed_blend_pass(int pass)
 int pgraph_glsl_get_signed_blend_pass(void)
 {
     return g_signed_blend_pass;
+}
+
+void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
+                                         unsigned long *high)
+{
+    *low = g_signed_blend_staged[SIGNED_BLEND_PASS_LOW];
+    *high = g_signed_blend_staged[SIGNED_BLEND_PASS_HIGH];
 }
 
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
@@ -3543,7 +3561,12 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
      * unrelated draw's uniform hash change.
      */
     if (locs[PshUniform_signedBlendPass] != -1) {
-        values->signedBlendPass[0] = pgraph_glsl_get_signed_blend_pass();
+        int p = pgraph_glsl_get_signed_blend_pass();
+        values->signedBlendPass[0] = p;
+        /* Count the STAGING, not the request: see g_signed_blend_staged. */
+        if (p == SIGNED_BLEND_PASS_LOW || p == SIGNED_BLEND_PASS_HIGH) {
+            g_signed_blend_staged[p]++;
+        }
     }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {

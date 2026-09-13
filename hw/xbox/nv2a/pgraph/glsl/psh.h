@@ -191,4 +191,13 @@ enum {
 void pgraph_glsl_set_signed_blend_pass(int pass);
 int pgraph_glsl_get_signed_blend_pass(void);
 
+/*
+ * How many times each half was STAGED into a uniform buffer. A pass being
+ * requested and a pass's uniform reaching the GPU are different events, and
+ * #43's ring-0 regression cannot be told from an arithmetic error without
+ * separating them.
+ */
+void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
+                                         unsigned long *high);
+
 #endif
