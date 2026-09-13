@@ -460,7 +460,165 @@ killed the Nova worker for twenty-five minutes on 2026-09-12. What I have done
 instead is make the refusal honest: `request.sh` now checks the snapshot that
 will actually run.
 
-## 5. What this cannot do
+### The field is 7 on a second title too
+
+**MEASURED.** Dead or Alive 3, Thor, 90 s, ref `f136df730e`, binary
+`b0f5b50d191e`, result `1789279792-audio-level-doa3-1542469`: **174,608 active
+voice-frames, 100% at headroom 7, none at any other value**, and
+`submix_headroom[0..30] = 1` again. Two titles, two developers, two mixes,
+the same pair of values.
+
+That matters for the reading in the section above: 7 is not one studio's
+choice, it is what the runtime programs. If it were a DirectSound default it
+would be the same everywhere, which is what two titles agreeing looks like.
+
+## 5. The level meter, and the second title
+
+The capture route is blocked (previous section), so the level comes from the
+in-emulator meter, calibrated offline against `audio_measure.py` on the
+published baseline capture: **26 of 26 statistics agree**, every integer count
+exactly, every percentile within 0.05 dB — half of its 0.1 dB bin. Re-runnable
+with `docs/testing/audio_level_check.py CAPTURE.pcm`.
+
+### C1-C4: the baseline repeats, and R1 is finally discharged
+
+**MEASURED.** Galleon, Nova, 90 s (84.555 s of output), ref `3e15e49f4d`,
+result `1789279659-audio-level-galleon-1503189`, against the pulled-capture
+baseline of 92.843 s taken about eight hours earlier from a different build.
+
+| statistic | baseline L / R | meter L / R | Δ | tolerance |
+|---|---:|---:|---:|---:|
+| p25 | −32.01 / −32.05 | −31.65 / −31.85 | +0.36 / +0.20 | ±2.5 |
+| **p50** | **−29.37 / −29.45** | **−29.15 / −29.25** | **+0.22 / +0.20** | **±2.0** |
+| p75 | −25.66 / −25.64 | −25.55 / −25.45 | +0.11 / +0.19 | ±2.5 |
+| p5 | −38.00 / −38.23 | −38.05 / −38.15 | −0.05 / +0.08 | — |
+| p95 | −16.46 / −16.58 | −17.55 / −17.05 | −1.09 / −0.47 | — |
+| AC RMS | −23.43 / −23.50 | −23.57 / −23.25 | −0.14 / +0.25 | — |
+| peak | 32,767 / 32,767 | 32,767 / 32,767 | — | — |
+| wrap suspects | 0 / 0 | 0 / 0 | — | — |
+| DC %FS | −0.029 / +0.002 | −0.010 / +0.003 | — | ±0.1 |
+
+- **C1 — level repeats. PASSED, and not narrowly.** The median active window
+  agrees to **0.22 dB** against a registered tolerance of 2.0 dB, p25 to 0.36
+  and p75 to 0.19 against 2.5. Two unscripted playthroughs of a
+  non-deterministic guest, different builds, eight hours apart, on the same
+  device.
+  **This is R1 from `audio-baseline.md` section 2, which has been outstanding
+  since it was written**, and its consequence is the important part: a single
+  soak *is* a measurement of the emulator, so the +6.118 dB headroom result and
+  every other audio A/B on this project rest on something now checked rather
+  than assumed.
+- **C2 — the rails are a property of the level. PASSED on its first clause,
+  FAILED on its second.** Peak reaches 32,767 on both channels, so the rails
+  are not a one-off transient. But I registered "clipped count below 0.01% of
+  samples" and it is **0.0138% (562) and 0.0176% (714)** — 1.4 to 1.8 times the
+  threshold, and 16 to 45 times the baseline playthrough's 36 and 16 samples.
+  The prediction is wrong, not the emulator: clipping is a count of transients,
+  and two playthroughs of a title that peaks at the rails will not produce the
+  same number of them. `maxjump` moved the same way, 8,970 → 13,096. **The
+  honest correction is that a clipped-sample *count* is not a property of the
+  level at all** — only "reaches the rails at all" is — and #72 should be read
+  with that in mind.
+- **C3 — no accumulator wrap. PASSED.** Zero wrap suspects, both channels,
+  despite the louder transients.
+- **C4 — DC negligible. PASSED.** 0.010% and 0.003% of full scale.
+- **F1 — the meter does not starve the thread it sits on. PASSED.** Every
+  steady-state `starve:` line in every run reads **0.0000%** — Galleon on the
+  Nova (0/704 and 0/704 callbacks short) and DOA3 on the Thor (0/704, 0/703).
+  The startup windows read 17.1% and 15.0%, all of it *empty* callbacks, which
+  is the guest not having produced a sample yet and is excluded by the
+  corrected predicate.
+
+### T2: Dead or Alive 3, and one leg fails in the opposite direction
+
+**MEASURED.** Dead or Alive 3, Thor, 89.643 s of output, same ref as the
+Galleon meter run.
+
+| | Galleon (baseline) | Galleon (meter) | **DOA3** |
+|---|---:|---:|---:|
+| peak | 32,767 (−0.00 dBFS) | 32,767 (−0.00) | **12,795 / 12,803 (−8.17 / −8.16)** |
+| clipped | 36 / 16 | 562 / 714 | **0 / 0** |
+| p5 | −38.00 / −38.23 | −38.05 / −38.15 | −60.05 / −58.65 |
+| p25 | −32.01 / −32.05 | −31.65 / −31.85 | −39.25 / −30.35 |
+| **p50** | −29.37 / −29.45 | −29.15 / −29.25 | **−23.45 / −23.65** |
+| p75 | −25.66 / −25.64 | −25.55 / −25.45 | −21.25 / −21.25 |
+| p95 | −16.46 / −16.58 | −17.55 / −17.05 | −19.25 / −18.55 |
+| p95 − p50 | 12.91 / 12.87 | 11.60 / 12.20 | **4.20 / 5.10** |
+| p95 − p5 | 21.54 / 21.65 | 20.50 / 21.10 | 40.80 / 40.10 |
+| peak − p50 | 29.37 / 29.45 | 29.15 / 29.25 | **15.28 / 15.49** |
+| windows counted / flat | 1677 / 179 | 1533 / 158 | **526 / 1266** |
+
+- **T2a — DOA3's p50 more than 4 dB hotter. PASSED**, at **+5.92 / +5.80 dB**
+  against the baseline and +4.30 / +4.40 against the same-ref Galleon meter run.
+- **T2b — DOA3's p95 − p5 spread more than 4 dB narrower. FAILED, and in the
+  opposite direction**: it is **19.26 / 18.45 dB WIDER**.
+
+**The failed leg is my statistic's fault, and the diagnosis is in the window
+counts.** DOA3's run is **1,266 flat windows against 526 counted** — 71% of the
+run is exact silence, and 95% of its individual samples are zero. Ninety
+seconds of DOA3 from a cold force-start is boot, load and menu, not a fight. So
+its p5 of −60 dB is near-silent menu ambience, and `p95 − p5` was measuring
+*how much near-silence a run contains* as much as *how wide the mix's dynamics
+are*. Those are different questions and I registered a statistic that mixes
+them.
+
+**The statistic that does answer the question is `peak − p50`, and it is the one
+that is not censored here.** Both Galleon figures sit against a peak pinned at
+32,767, so they are lower bounds. DOA3's peak is **8.17 dB below full scale**,
+so its crest is exact — and it is **13.9 dB narrower** than Galleon's censored
+*lower bound*. `p95 − p50` says the same with no reference to the peak at all:
+**4.2 / 5.1 dB for DOA3 against 11.6 / 12.9 for Galleon.**
+
+### So: is the −23 dBFS, wide-crest shape ours or Galleon's?
+
+**Galleon's.** That is the question this section existed to answer and the
+answer is not close:
+
+- The same emulator, the same build, the same hour, two titles: one pins both
+  channels at full scale and clips 1,276 samples; the other **never gets within
+  8 dB of full scale and clips nothing at all**.
+- Their medians differ by 5.9 dB and their loud-half spread (`p95 − p50`) by a
+  factor of nearly three.
+- A shape imposed by our mix could not do that. A gain error common to both
+  would move both together and leave the shapes alike; what is actually here is
+  two different shapes from one binary.
+
+**For the owner's symptom this is the reassuring direction and it is worth
+stating plainly: the emulator reaches digital full scale on one title and leaves
+8 dB of headroom unused on another, which is what per-title content does and is
+not what a missing gain does.** Combined with #74 being measured out by
+arithmetic, the uniform-gain hypothesis closed by the peak, and starvation at
+0.0000% on both handhelds, **there is no measured defect left that makes the
+output quiet.** Galleon, the title the complaint was made against, is a
+wide-dynamic mix whose median active window sits 29 dB below full scale — quiet
+most of the time even with its gain exactly right, which is exactly what a
+listener with no meter cannot tell from a gain error.
+
+### JSRF did not boot, which is recorded rather than retried away
+
+`JSRF - Jet Set Radio Future (USA).xiso.iso`, Thor, 90 s, result
+`1789279799-audio-level-jsrf-1542565`: `guest never appeared in 90s -- title did
+not boot`. Forty-seven log lines, no level report at all (the APU frame loop did
+not reach 7,500 frames), and one `voice_headroom: FIRST ... headroom=7` line
+from whatever ran before the guest failed. No level from it, and it is not
+evidence about audio. It is a title-compatibility data point for whoever owns
+that, and the reason the third title below is Crimson Skies instead.
+
+### Finding an exact title name cost five device claims, and now costs none
+
+Worth recording because it was pure waste. A soak names a title by exact
+filename and **nothing in this repository could tell you one**; the libraries
+are the owner's, and the naming follows from nothing checked in. Five guesses
+missed in a row — `Dead or Alive 3 (USA).xiso.iso`, the same with `.iso`, the
+same bare, JSRF, Psychonauts, Panzer Dragoon Orta — each costing a queue claim,
+an install and an ERROR. The real name is `Dead or Alive 3 (USA) (En,Ja).xiso.iso`,
+which no amount of guessing reaches.
+
+`devices.sh titles [label]` now lists them. It is `ls` and nothing else: no
+lease, no install, no `am start`, no input injection, so it cannot disturb a run
+in progress.
+
+## 6. What this cannot do
 
 Carried forward, because each still binds:
 
