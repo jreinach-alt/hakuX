@@ -55,6 +55,25 @@ FUNCS = ["Never", "LessThan", "Equal", "LessThanOrEqual",
          "GreaterThan", "NotEqual", "GreaterThanOrEqual", "Always"]
 
 
+def resolve_captures(d):
+    """Accept a dispatcher result directory or a captures directory.
+
+    The dispatcher puts PNGs in captures<N>/, not at the top of a result
+    directory. This is the second tool to have been handed a result directory
+    and crashed on a missing file -- signed_blend_source_halves.py reported
+    all three of its captures MISSING on an arm that contained them, which
+    reads exactly like a run that failed to render. A falsifier that cannot
+    find its own evidence is worse than no falsifier.
+    """
+    import glob as _glob
+    if _glob.glob(os.path.join(d, "Alpha_func::*.png")):
+        return d
+    for sub in sorted(_glob.glob(os.path.join(d, "captures*"))):
+        if _glob.glob(os.path.join(sub, "Alpha_func::*.png")):
+            return sub
+    return d
+
+
 def load(path):
     return np.array(Image.open(path)).astype(np.int16)
 
@@ -135,7 +154,7 @@ def bracket_green_slope(path):
 
 
 def main():
-    caps = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CAPTURES
+    caps = resolve_captures(sys.argv[1] if len(sys.argv) > 1 else DEFAULT_CAPTURES)
     have_caps = os.path.isdir(caps)
 
     print("goldens :", GOLDENS)
