@@ -771,9 +771,31 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *   starting from.  RollerCoaster Tycoon, the guest the FIXME
              *   above names, sets FOGGEN_PLANAR and is untouched.
              *
+             * MEASURED, and the mechanism was measured directly rather than
+             * inferred from the captures it explains.  Arms
+             * 1789283660-fog-radial-agent-639738 (fe9ce32075) and -639758
+             * (2566df69b6), same disc, same handheld, prediction
+             * PRE-REGISTERED as
+             * docs/testing/predictions/vs-radial-fog-stale-generator-rebuilt.json:
+             *
+             *   the carried coordinate logged exactly once, at 215.9286,
+             *   against 215.93 +/- 1.0 predicted from the geometry before
+             *   the device ran -- so the stale value really is the quad
+             *   grid's last vertex and not the 288.9 a text vertex would
+             *   have given;
+             *
+             *   all six FogGen_VS-*-radial went 181,016 differing px -> 0,
+             *   6 better, 0 worse, 122 same, exact 13 -> 19, and Fog gen's
+             *   structural residue 1,097,015 -> 10,919.
+             *
+             * Fog_carryover, Fog_coord_vec4 and Alpha_func were byte-
+             * identical, which is what says #42 still works through the
+             * shared uniform.
+             *
              * docs/investigations/fog-vs-radial-band.md, reproduced by
              * docs/testing/fog_radial_band.py; the geometry and the two
-             * eliminations by docs/testing/fog_radial_stale_vertex.py.
+             * eliminations by docs/testing/fog_radial_stale_vertex.py, which
+             * also judges an arm with --results.
              */
             /*
              * #42 is the other half of that, and it is the opposite case:
