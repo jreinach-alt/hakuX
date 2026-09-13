@@ -439,6 +439,45 @@ thing to widen; if `spun` dominates and the cost is still there, the cost is
 the serialisation itself and no spin tuning reaches it. That is registered as
 C3.
 
+### What arm A's own numbers predict about the cost, stated before the cost arm runs
+
+A p50 skew of 8.65 ms does **not** mean the bound makes every submission wait
+8.65 ms. That figure is a queue-depth effect: it is how long a backlog takes
+to clear, and with the bound in force the backlog is never allowed to form.
+The quantity that survives is the **service time of one submission**, and the
+arithmetic goes the other way:
+
+- 3,000 submissions/s × 8.65 ms would be 26 seconds of waiting per second of
+  wall clock. The bound is not merely expensive at that rate, it is
+  impossible — so the p50 cannot be the per-submission cost, and reading it as
+  one would have been the "a bound is not a value" mistake.
+- What it should cost instead is the PFIFO thread's own busy time per
+  submission, plus a thread round trip. `frame-pacing-and-parallelism.md`
+  measures `nv2a.pfifo_thread` at **48%** busy in steady state; at 3,000
+  submissions/s that is **~160 µs of service per submission**.
+- Serialised, the guest then spends roughly the PFIFO thread's busy fraction
+  blocked where it previously spent approximately none. The same document has
+  the guest CPU thread **83%** busy with the renderer idle 21.2 ms of a 50.2 ms
+  frame waiting on it, so the two halves overlap substantially and it is that
+  overlap the bound removes.
+
+**So the honest expectation is that C1 fails.** A cost of order the PFIFO
+thread's busy fraction is well past "the `gfps` ceiling falls by at most 2",
+and `orchestration.md` says what to do with that rather than leaving it to
+judgement: measure the accuracy, then the cost, then hand the trade over with
+both numbers. It also says which way the default should lean while that
+happens — *if a change improves accuracy, keep it, and recover the throughput
+through the performance work stream* — which is why the bound is committed on
+by default with `HAKUX_FIFO_SKEW_BOUND=0` as the escape, rather than committed
+off pending a decision nobody asked for.
+
+Two things would make it cheaper without weakening the guarantee, and both are
+measurements this arm produces rather than guesses: if `slept` dominates
+`spun`, the cost is scheduler round trips and the 60 µs spin window is the
+thing to widen; if `spun` dominates and the cost is still there, the cost is
+the serialisation itself and no spin tuning reaches it. That is registered as
+C3.
+
 Noise floor to beat, ten runs of one unchanged APK:
 
 ```
