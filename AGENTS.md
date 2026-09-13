@@ -572,6 +572,26 @@ floor before the arm runs**, then check the noise floor is smaller than the
 effect. #64's median moved 8 against a tolerance of 2 and the reverse-order
 control moved 8 too. The ceiling's floor is +-1 against an effect of 15.
 
+**A within-ref floor is a lower bound on the floor, never the floor.** The
+replicate being the RUN is necessary and not sufficient, because a run can be
+bimodal. Measured on #69's corrected waste ratio: three runs of one ref agreed
+to **2%**, which would have licensed quoting "4.96 +- 2%" -- and three runs of
+another ref, which cannot differ in the quantities feeding it, gave
+**6.14 to 11.68**. The ratio is bimodal BY RUN, not noisy within a mode, and a
+floor taken from the tight ref would have passed a leg that the loose ref
+fails. So take the floor across every ref you have, and if two refs disagree
+about the spread, the spread is the finding.
+
+The same lane supplied the sharpest version of why an exact agreement is not
+reassurance: its stronger identity `sp + ov == di` held **exactly in every
+window of all six runs**, while the weaker one (visits = discards +
+already-invalid) held only to +-1 -- because `visited` prints on one log line
+and `ai`/`di` on the next, with the guest running in between. **Three exact
+zeros in the first round were luck, and believing them made two successive
+versions of its check wrong.** An identity that holds exactly tells you the
+two sides are read at the same instant; one that holds to +-1 tells you they
+are not, which is information about the instrument rather than noise.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
