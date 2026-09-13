@@ -341,6 +341,37 @@ an interpolation fix; the selected cube face per pixel rather than differing
 pixels; a swatch's centre row for a reordering; the mean light term over a lit
 region rather than captures-gone-exact.
 
+## A flat count does not mean the change was inert
+
+When an arm shows no movement, diff arm A's captures against arm B's before
+concluding the change did nothing. A differing-pixel count cannot distinguish
+*"the code path was not taken"* from *"it was taken and produced a different
+wrong answer"*, and those need opposite follow-ups.
+
+#40 on 2026-09-12 is the worked example. Its guard was reverted on the reading
+that it "did not fire", evidenced by an arm that moved 3 px where it predicted
+1,400. Comparing the captures instead: the guard fired on **71 px in exactly
+the 20 predicted captures and in none of the other 63**. The counts were flat
+because a wrong answer replaced a wrong answer -- the substituted direction
+`vec3(1.0)` is itself a three-way major-axis tie, and this stack resolves ties
+to +Z rather than +X, so it landed on the same wrong face at a different
+texel.
+
+Worse, the small movement that *did* show up was the one pixel that was **not**
+part of the mechanism: a coincidental zero on the other cube, whose golden
+happened to match the substituted texel on three captures. Reasoning from the
+count inverted the truth twice -- "the guard never fired" and "at most one of
+the 70 pixels is degenerate", where in fact it fired on all of them and 70 of
+71 are the mechanism.
+
+The revert itself was still defensible: the code fixed nothing and code that
+fixes nothing comes out. But a false *reason* sends the next attempt to the
+wrong place, and here it would have sent it to re-examine the premise rather
+than the tie rule.
+
+Ask the two questions separately, and answer the first with an image
+comparison: **did it execute**, and **did it produce the right value**.
+
 ## The three new streams have no oracle, and that changes everything
 
 Audio, timing and performance have **no goldens**. "Verified" cannot mean
