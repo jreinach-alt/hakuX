@@ -962,6 +962,35 @@ suites = ["Blend surface", "Surface format"]
 # #38 and #39 are deliberately absent because they are cross-cutting or
 # process issues with no single suite, and inventing a mapping for them would
 # make `query` and `blast` answer confidently with a guess.
+#
+# #38 STAYS UNMAPPED, and the 2026-09-12 measurement is why rather than an
+# omission. Its mechanism 1 ("vertex colour quantisation") is DECIDED AND
+# CLOSED -- docs/investigations/vertex-colour-quantiser.md, reproducible with
+# docs/testing/vertex_colour_quantiser.py. Nineteen distinct float components
+# read off flat golden regions in six suites kill all five candidate rules the
+# issue named: hardware gives 0.5 -> 128 (not 127, so neither truncation nor
+# round-half-down), 0.25f -> 64 (not truncation), 0.1f -> 25 and the
+# accumulated 0.3/0.7/0.9 -> 76/178/229 (not round-half-up, -down or -even),
+# 0.75f -> 191 and 0.95f -> 242 (not the x256 family). What reproduces all
+# nineteen is truncating the float's low mantissa bits and THEN rounding
+# 255*x to nearest, which is what glsl/vsh.c colorPrecision() has done since
+# 5c2b26db2f. There is no patch to write and no suite left carrying it: every
+# flat float-specified vertex colour in the 1,915-capture sweep is exact.
+#
+# The rest of #38 belongs to three different causes with three different
+# signs (24 one-step-hi captures against 70 one-step-lo and 201 one-step-sym),
+# so a mapping would point at suites whose residue is #16, the interpolator,
+# or the blender. Two corrections to the issue body, both measured:
+#   * Surface_clip's remaining 7 captures (2,351,482 ch, the largest
+#     one-step-hi residue in the corpus) are the R5G6B5 texel expansion, not
+#     the vertex colour -- silicon expands a 5-bit component by bit
+#     replication (v=3 -> 24), the Vulkan-native format by exact ratio (25).
+#     Its A8R8G8B8/B8/G8B8 variants, which ARE the vertex-colour instrument,
+#     are 27 of 27 exact.
+#   * W_buffering cannot exhibit mechanism 1 at all: wbuf_tests.cpp submits
+#     only 0.0 and 1.0 components. Its 66 one-step captures are every one of
+#     them a *_ZB depth capture, i.e. #16, and 0 of its colour captures are
+#     one-step.
 disposition = "unclassified"
 
 [issue.49]
