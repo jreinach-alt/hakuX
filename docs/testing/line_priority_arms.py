@@ -57,11 +57,21 @@ import line_priority as lp
 # overflowed, hardware drew width 1, we draw 64.  Not measurements.
 VOID = tuple("Line_0064.%d" % i for i in range(8)) + ("Line_FFFFFFFF",)
 
-# The blocks whose emission order `prim_rewrite.c` chooses.  TRIANGLES and
-# TRIANGLE_FAN keep VK_POLYGON_MODE_LINE, so Turnip orders their edges and no
-# edit to prim_rewrite.c can move them; LINE_LOOP is submission order, which we
-# already match.
-OURS_TO_ORDER = ("Quad", "QStrip", "Poly")
+# The blocks whose emission order THIS EMULATOR chooses, as opposed to the
+# driver.  The original list here was ("Quad", "QStrip", "Poly") on the reading
+# that "TRIANGLES and TRIANGLE_FAN keep VK_POLYGON_MODE_LINE, so Turnip orders
+# their edges".  That is wrong and this tool's own arm refuted it: a TRIANGLES
+# or TRIANGLE_FAN draw under POLY_MODE_LINE keeps PRIM_TYPE_TRIANGLES through
+# `pgraph_prim_rewrite_get_output_mode()` and is decomposed by OUR geometry
+# shader, `pgraph_glsl_gen_geom()`, which emits three `emit_line` calls.  So
+# Tri and TFan are ours to order too -- Tri in `glsl/geom.c` alone, TFan in
+# `geom.c` composed with `rewrite_triangle_fan()`'s provoking-vertex rotation.
+#
+# This matters beyond the `*` marker: `changed_region()` uses this set to say
+# which pixels an order change is allowed to touch, so leaving Tri and TFan out
+# reported every pixel a geom.c reorder moved as "outside", i.e. as a scoping
+# bug.  LINE_LOOP is still submission order and already matched.
+OURS_TO_ORDER = ("Quad", "QStrip", "Poly", "Tri", "TFan")
 
 
 def decisive_xy(g, w, extent_rule=False):
@@ -239,10 +249,13 @@ def main():
     n, aok, bok, ua, ub, mv = tot
     print("%-18s%9d%10s%10s%9s%9s%10d"
           % ("ALL", n, pct(aok, n), pct(bok, n), pct(ua, n), pct(ub, n), mv))
-    print("\n* the class involves at least one block whose emission order "
-          "prim_rewrite.c picks\n  (%s).  Tri and TFan keep "
-          "VK_POLYGON_MODE_LINE, so Turnip orders them;\n  LLoop is submission "
-          "order and already matched." % ", ".join(OURS_TO_ORDER))
+    print("\n* the class involves at least one block whose emission order this "
+          "emulator picks\n  (%s).  Quad, QStrip and Poly are ordered in "
+          "prim_rewrite.c, which rewrites them\n  straight to LINES; Tri and "
+          "TFan reach glsl/geom.c as PRIM_TYPE_TRIANGLES and are\n  ordered "
+          "by its three emit_line calls, with TFan additionally rotated by\n  "
+          "rewrite_triangle_fan().  LLoop is submission order and already "
+          "matched." % ", ".join(OURS_TO_ORDER))
 
     print("\n" + "=" * 78)
     print("per capture")

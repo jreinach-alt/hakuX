@@ -112,10 +112,35 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         } else if (polygon_mode == POLY_MODE_LINE) {
             need_linez = true;
             layout_out = "layout(line_strip, max_vertices = 6) out;\n";
+            /* Silicon's edge order for a triangle rasterised in
+             * POLY_MODE_LINE, derived from the Line_width goldens on
+             * 225,558 decisive pixels (#13, docs/investigations/
+             * line-width-residual.md): for a triangle (a, b, c) it paints
+             * the edge OPPOSITE a, then opposite b, then opposite c --
+             * (b,c), (c,a), (a,b).  The last one painted wins where two
+             * wide edges overlap, and that is what the goldens measure.
+             *
+             * This block, not the driver, is what decides the order: a
+             * TRIANGLES draw under POLY_MODE_LINE keeps PRIM_TYPE_TRIANGLES
+             * through pgraph_prim_rewrite_get_output_mode() and is
+             * decomposed here.  #13's derivation assumed Turnip ordered it
+             * and therefore priced the fix as a rewrite-to-LINES change;
+             * measuring our own emitted order refuted that.
+             *
+             * Note this also reorders TRIANGLE_STRIP and TRIANGLE_FAN,
+             * because GeomState::primitive_mode is the REWRITTEN mode and
+             * cannot tell a fan triangle from a list triangle.  The fan
+             * arrives here already rotated by emit_tri_pv() placing the
+             * provoking vertex at index 0, so this takes the Tri class to
+             * 100.00% of its decisive pixels and TFan only to 70.36%; the
+             * rest of TFan is rewrite_triangle_fan()'s rotation to undo,
+             * and undoing it there collides with flat shading's need for
+             * the provoking vertex at index 0.
+             */
             body = "  float dz = calc_triz(0, 1, 2)[3].x;\n"
-                   "  emit_line(0, 1, dz);\n"
                    "  emit_line(1, 2, dz);\n"
-                   "  emit_line(2, 0, dz);\n";
+                   "  emit_line(2, 0, dz);\n"
+                   "  emit_line(0, 1, dz);\n";
         } else {
             assert(polygon_mode == POLY_MODE_POINT);
             layout_out = "layout(points, max_vertices = 3) out;\n";
