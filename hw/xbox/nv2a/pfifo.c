@@ -141,6 +141,21 @@ typedef enum {
 } FskSegVerdict;
 
 /*
+ * Why a hold was released with pushbuffer still outstanding. These are
+ * `pfifo_puller_should_stall`'s four conditions, read DIRECTLY rather than
+ * through that predicate: `pfifo_stall_for_flip` clears
+ * `pgraph.waiting_for_flip` as a side effect, so calling it from an
+ * instrument would change the thing being instrumented.
+ */
+#define FSK_GAVE_OTHER    0
+#define FSK_GAVE_FLIP     1
+#define FSK_GAVE_NOP      2
+#define FSK_GAVE_CTXSW    3
+#define FSK_GAVE_NOACCESS 4
+
+static bool can_fifo_access(NV2AState *d);
+
+/*
  * Clock reads that exist only for the `fifoskew` line. Elided off Android for
  * the same reason the histogram is: there is nothing there for it to print
  * into, and `nv2a_clock_ns()` in a per-submission path is not free.
@@ -250,6 +265,29 @@ static struct {
     uint32_t gave;
 
     /*
+     * `gave` SPLIT BY WHY, because one counter over four stall reasons cannot
+     * say whether the residual is reachable at all.
+     *
+     * #44's S4 leg failed at 1,002 releases on the test disc (0.674%) and
+     * 2,482 on Galleon (5.603%), and the investigation's own next step was
+     * this split: 2,482 releases against ~14,000 flips in 240 s does not
+     * obviously decompose, and whether the hole is the flip handshake (which
+     * cannot be closed -- the alternative to releasing the guest is a
+     * deadlock) or a context switch or merely the 250 ms backstop expiring
+     * decides whether a read-side mitigation is ever needed.
+     *
+     * The four reasons are `pfifo_puller_should_stall`'s four conditions.
+     * `other` is the interesting row: none of the four held, so the pusher
+     * was merely behind and the wait timed out, which is the only one of the
+     * five that is a performance problem rather than a protocol one.
+     */
+    uint32_t gave_flip;
+    uint32_t gave_nop;
+    uint32_t gave_ctxsw;
+    uint32_t gave_noaccess;
+    uint32_t gave_other;
+
+    /*
      * The selective bound's pre-scan, counted because the whole claim is that
      * it is cheaper than the hold it replaces and that is not self-evident:
      * the scan walks the same bytes, on the same thread, that the hold was
@@ -334,6 +372,7 @@ static void fsk_dump_and_reset(int64_t now)
         "drain(n=%u mean=%lld p50=%lld p90=%lld p99=%lld max=%lld) "
         "bound=%d held(n=%u mean=%lld max=%lld spun=%u slept=%u gave=%u) "
         "scan(n=%u words=%llu wmax=%u ns=%llu draw=%u nodraw=%u wrap=%u big=%u) "
+        "gaveby(flip=%u nop=%u ctxsw=%u noaccess=%u other=%u) "
         "lost=%u",
         (long long)(span / 1000000), s_fsk.kicks, s_fsk.kicks_behind,
         s_fsk.wrap, s_fsk.ring_len,
@@ -346,6 +385,8 @@ static void fsk_dump_and_reset(int64_t now)
         s_fsk.scan_n, (unsigned long long)s_fsk.scan_words,
         s_fsk.scan_words_max, (unsigned long long)s_fsk.scan_ns,
         s_fsk.scan_draw, s_fsk.scan_nodraw, s_fsk.scan_wrap, s_fsk.scan_big,
+        s_fsk.gave_flip, s_fsk.gave_nop, s_fsk.gave_ctxsw,
+        s_fsk.gave_noaccess, s_fsk.gave_other,
         s_fsk.pend_lost);
 
     memset(s_fsk.drain_bucket, 0, sizeof(s_fsk.drain_bucket));
@@ -371,6 +412,11 @@ static void fsk_dump_and_reset(int64_t now)
     s_fsk.scan_wrap = 0;
     s_fsk.scan_big = 0;
     s_fsk.scan_words_max = 0;
+    s_fsk.gave_flip = 0;
+    s_fsk.gave_nop = 0;
+    s_fsk.gave_ctxsw = 0;
+    s_fsk.gave_noaccess = 0;
+    s_fsk.gave_other = 0;
     s_fsk.pend_lost = 0;
     s_fsk.window_start_ns = now;
 }
@@ -452,6 +498,17 @@ static void fsk_note_scan(int verdict, uint32_t words, int64_t ns)
     }
 }
 
+static void fsk_note_gave_reason(int reason)
+{
+    switch (reason) {
+    case FSK_GAVE_FLIP:     s_fsk.gave_flip++;     break;
+    case FSK_GAVE_NOP:      s_fsk.gave_nop++;      break;
+    case FSK_GAVE_CTXSW:    s_fsk.gave_ctxsw++;    break;
+    case FSK_GAVE_NOACCESS: s_fsk.gave_noaccess++; break;
+    default:                s_fsk.gave_other++;    break;
+    }
+}
+
 static void fsk_note_held(int64_t held_ns, bool spun, bool gave)
 {
     s_fsk.held_n++;
@@ -491,6 +548,7 @@ static void fsk_maybe_dump(int64_t now)
 #define fsk_note_caught_up(now)               ((void)0)
 #define fsk_note_held(ns, spun, gave)         ((void)(spun), (void)(gave))
 #define fsk_note_scan(v, words, ns)           ((void)(v), (void)(words))
+#define fsk_note_gave_reason(r)               ((void)(r))
 #define fsk_maybe_dump(now)                   ((void)0)
 #endif
 
@@ -856,6 +914,27 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
      * can, so it is taken before the FIFO lock on every path out -- outer to
      * inner, the order nv2a_lock_fifo() uses and the order pgraph.c's IRQ
      * paths use.
+     *
+     * THE PRECONDITION THIS WHOLE BOUND RESTS ON, and the one that would
+     * break it silently. "DMA_GET reached DMA_PUT" is a proxy for "every
+     * guest-memory read those methods perform has happened", and that proxy
+     * is only true while the reads are SYNCHRONOUS ON THIS THREAD. It was
+     * checked rather than assumed (#54's lane, 2026-09-13): `RCMD_DRAW`
+     * appears only in the enum and is never enqueued; `g_xemu_draw_merge` and
+     * `g_xemu_draw_reorder` are both static false with the Android prefs
+     * defaulting both false; and the reorder path does not defer the read
+     * anyway, because `try_snapshot_*` calls `begin_pre_draw` at ENQUEUE time
+     * on this thread and `emit_reorder_entry` reads no guest memory at flush.
+     *
+     * If `g_xemu_draw_merge` is ever enabled that stops holding.
+     * `flush_draw_queue_internal` defers the draw's guest read to flush, and
+     * `RCMD_FLUSH` / `RCMD_PROCESS_PENDING` run it on the RENDER thread -- so
+     * the submission is consumed, DMA_GET reaches DMA_PUT, the guest is
+     * released, and the read has not happened. The failure mode is the bad
+     * kind: `held(n)/kicks` would still read 1.0000 and `gave` would still
+     * read low, so the instrument would report a guarantee that is intact
+     * while it is void. Nothing here can detect that; enabling draw merging
+     * requires moving the wait to the flush, not tuning this.
      */
     qemu_mutex_unlock(&d->pfifo.lock);
     bql_unlock();
@@ -895,6 +974,28 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
 
     bql_lock();
     qemu_mutex_lock(&d->pfifo.lock);
+
+    if (!caught) {
+        /*
+         * Read under both locks, immediately after reacquiring them, which is
+         * the closest this thread can get to the moment the pusher parked.
+         * Not exact -- the pusher could have unstalled in between -- and that
+         * inexactness lands in `other`, so `other` is an upper bound on the
+         * timeout case rather than an exact count of it.
+         */
+        int reason = FSK_GAVE_OTHER;
+
+        if (qatomic_read(&d->pgraph.waiting_for_flip)) {
+            reason = FSK_GAVE_FLIP;
+        } else if (qatomic_read(&d->pgraph.waiting_for_nop)) {
+            reason = FSK_GAVE_NOP;
+        } else if (qatomic_read(&d->pgraph.waiting_for_context_switch)) {
+            reason = FSK_GAVE_CTXSW;
+        } else if (!can_fifo_access(d)) {
+            reason = FSK_GAVE_NOACCESS;
+        }
+        fsk_note_gave_reason(reason);
+    }
 
     fsk_note_held(nv2a_clock_ns() - t0, spun, !caught);
 }
