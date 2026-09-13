@@ -2054,52 +2054,69 @@ static void voice_headroom_report(void)
  * near-full-scale samples of the same sign are then enough. That needs no
  * density at all, which is the opposite of what the issue assumed.
  *
- * Because the slice index is a pure function of ep_frame_div, a revisit is
- * exactly a non-increasing index with no flush in between -- one comparison,
- * once per frame, about 187 a second. The per-sample detail (how many
- * accumulators were already non-zero, how many sums left int16 range) is
- * collected ONLY in a flush cycle where a rewind was seen, so in the common
- * case it costs nothing and the clamp loop below stays a straight
- * vectorisable pass.
+ * Because the slice index is a pure function of ep_frame_div, a rewind is
+ * exactly the frame counter failing to advance by one -- apu.c:726 is the only
+ * increment and it advances by one, so anything else is gp_ep.c:424. One
+ * comparison, once per VP frame, and a VP frame is 32 samples so that is
+ * 1,500 a second at 48 kHz. The per-sample detail (how many accumulators were
+ * already non-zero, how many sums left int16 range) is collected ONLY in a
+ * flush cycle where a rewind left dirty slices behind, so in the common case
+ * it costs nothing and the clamp loop below stays a straight vectorisable
+ * pass.
  *
- * The first shape of this counter ran per output sample, about 12,000 times a
- * second, and one Galleon soak out of three carrying it reported a late
- * starvation event that neither the arm without it nor its own repeat
- * reproduced (results 1789282793, 1789283508-monacc-starveA/B). Registered
- * legs A1 and B1 both failed, so that was a single-run draw which neither
- * implicated the counter nor cleared it -- and the two arms differed by the
- * clamp as well as by the counter, so they could not have separated them
- * anyway. Rather than spend three more soaks a side on a diagnostic's cost,
- * the diagnostic became 130x cheaper and structurally unable to be the cause.
+ * THE BOOKKEEPING RUNS EVERY FRAME, NOT INSIDE THE MONITOR BLOCK, and that is
+ * a correction rather than a preference. The flush is apu.c's and does not
+ * care about monitor.point, so the first shape of this detector -- which
+ * tracked the slice offset and reset its state inside the monitor block --
+ * reported a false revisit on the one startup frame where that block did not
+ * run. Measured: results 1789283930-monaccrev-galleon and -crimson both report
+ * `window 7499 frames revisits 1` in their FIRST window and 0 in every window
+ * after, on two titles and two handhelds, with `detail nonzero 0` saying the
+ * accumulator really was zero. 7,499 counted frames against the report's
+ * 7,500 is the skipped frame, and one skipped frame is one stale comparison.
+ * Two devices agreeing to the frame is a startup artefact, not a guest event.
+ *
+ * `jumps` counts every rewind; `revisits` counts only those that landed with
+ * slices still dirty, which is the hazard. They are reported separately so a
+ * rewind onto a freshly flushed buffer cannot be read as an overflow risk.
+ *
+ * A note on what `nonzero` cannot see, since it was the whole instrument
+ * before: it counts accumulators that were non-zero, so during silence a
+ * genuine revisit leaves it at zero. That is why the mechanism is counted
+ * directly now instead.
  */
-static int ma_prev_off = -1;
-static bool ma_rewound;
+static int64_t ma_prev_div = -1;
+static bool ma_dirty_rewind;
 static uint64_t ma_frames_total, ma_frames_w;
-static uint64_t ma_revisits, ma_revisits_w;
+static uint64_t ma_revisits, ma_revisits_w, ma_jumps;
 static uint64_t ma_nonzero, ma_saturated;
 static uint32_t ma_report_frames;
 
-/* True when this frame writes a slice that has already been written since the
- * last flush. */
-static bool mon_acc_frame(int off)
+/* Runs at the top of every VP frame, before the monitor block, so it sees the
+ * frame counter whatever monitor.point is. */
+static void mon_acc_begin(MCPXAPUState *d)
 {
+    int64_t div = d->ep_frame_div;
+
     ma_frames_total++;
     ma_frames_w++;
-    if (off <= ma_prev_off) {
-        ma_revisits++;
-        ma_revisits_w++;
-        ma_rewound = true;
+
+    if (ma_prev_div >= 0) {
+        if ((ma_prev_div % 8) == 7) {
+            /* apu.c:692 pushed frame_buf to the FIFO and memset it at the end
+             * of that frame, so this cycle starts on a clean buffer. */
+            ma_dirty_rewind = false;
+        }
+        if (div != ma_prev_div + 1) {
+            ma_jumps++;
+            if ((ma_prev_div % 8) != 7) {
+                ma_revisits++;
+                ma_revisits_w++;
+                ma_dirty_rewind = true;
+            }
+        }
     }
-    bool detail = ma_rewound;
-    if (off == (8 - 1) * NUM_SAMPLES_PER_FRAME) {
-        /* apu.c is about to flush and memset, so the next cycle starts clean
-         * whatever index it uses. */
-        ma_prev_off = -1;
-        ma_rewound = false;
-    } else {
-        ma_prev_off = off;
-    }
-    return detail;
+    ma_prev_div = div;
 }
 
 static inline void mon_acc_sample(int32_t acc, int32_t add)
@@ -2122,10 +2139,11 @@ static void mon_acc_report(void)
     ma_report_frames = 0;
     __android_log_print(4, "hakuX-audio",
         "mon_acc: window %llu frames  revisits %llu  cumulative %llu frames "
-        "revisits %llu  detail nonzero %llu saturated %llu",
+        "jumps %llu revisits %llu  detail nonzero %llu saturated %llu",
         (unsigned long long)ma_frames_w, (unsigned long long)ma_revisits_w,
-        (unsigned long long)ma_frames_total, (unsigned long long)ma_revisits,
-        (unsigned long long)ma_nonzero, (unsigned long long)ma_saturated);
+        (unsigned long long)ma_frames_total, (unsigned long long)ma_jumps,
+        (unsigned long long)ma_revisits, (unsigned long long)ma_nonzero,
+        (unsigned long long)ma_saturated);
     ma_frames_w = 0;
     ma_revisits_w = 0;
 }
@@ -2133,6 +2151,9 @@ static void mon_acc_report(void)
 
 void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME])
 {
+#ifdef __ANDROID__
+    mon_acc_begin(d);
+#endif
     memset(d->vp.sample_buf, 0, sizeof(d->vp.sample_buf));
 
     /* Process all voices, mixing each into the affected MIXBINs */
@@ -2180,11 +2201,10 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
                                  NUM_SAMPLES_PER_FRAME * 2);
         int off = (d->ep_frame_div % 8) * NUM_SAMPLES_PER_FRAME;
 #ifdef __ANDROID__
-        /* One comparison. True only in a flush cycle whose slice schedule was
-         * rewound, which is the only way the accumulation below can add to
-         * anything but zero -- see mon_acc_frame. */
-        bool mon_acc_detail = mon_acc_frame(off);
-        if (mon_acc_detail) {
+        /* Set only in a flush cycle whose slice schedule was rewound with
+         * slices still dirty, which is the only way the accumulation below can
+         * add to anything but zero -- see mon_acc_begin. */
+        if (ma_dirty_rewind) {
             for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
                 mon_acc_sample(d->monitor.frame_buf[off + i][0], isamp[2 * i]);
                 mon_acc_sample(d->monitor.frame_buf[off + i][1],
@@ -2200,7 +2220,7 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
          *
          * NO AUDIBLE IMPROVEMENT IS CLAIMED, and the clamp is expected to fire
          * never: the accumulator normally holds zero when we add to it (the
-         * slice schedule in mon_acc_frame's comment) and the value added has
+         * slice schedule in mon_acc_begin's comment) and the value added has
          * already been clamped by src_float_to_short_array. Measured inert --
          * three Galleon soaks on one device spread 0.20 dB in median active
          * window across the arm with this clamp and the arm without it.
