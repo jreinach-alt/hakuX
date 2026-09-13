@@ -156,23 +156,66 @@ while :; do
             # the nag this file's own comment warns about, now aimed at a
             # reader who can only wait. Say so, with the number that makes
             # waiting a decision rather than a guess.
+            # DIVIDE BY THE DEVICES THAT ARE ACTUALLY SERVING, not by two.
+            # This said "across two handhelds" and halved the total, which was
+            # true while both were up and wrong the moment one was not -- and
+            # a device can now be taken out of service with
+            # $DISPATCH_DIR/hold/<label>, so "not up" is a normal state rather
+            # than a fault. Halving a queue that only one device can drain
+            # tells the reader to keep holding for half as long as it will
+            # actually take, which is the one number this message exists to
+            # supply.
+            #
+            # Live lanes are the same pid files affinity.py uses, and a held
+            # worker removes its own, so the count is right without this
+            # script knowing anything about holds.
             mins=$(cd "$HERE/../.." 2>/dev/null && python3 - <<'PYEOF' 2>/dev/null
 import json, glob, os
+D = '/home/justin/hakux-work/dispatch'
+live = 0
+for name in (os.listdir(os.path.join(D, 'lanes')) if os.path.isdir(os.path.join(D, 'lanes')) else []):
+    try:
+        os.kill(int(open(os.path.join(D, 'lanes', name)).read().strip()), 0)
+        live += 1
+    except Exception:
+        pass
 tot = 0
-for f in glob.glob('/home/justin/hakux-work/dispatch/queue/*.req'):
+for f in glob.glob(os.path.join(D, 'queue', '*.req')):
     if os.path.basename(f).startswith('z-'):
         continue
     try:
         r = json.load(open(f))
     except Exception:
         continue
-    tot += (int(r.get('seconds', 60)) + 120) if r.get('title') \
-        else 180 + len(r.get('suites') or []) * 160
-print(tot // 120)
+    if r.get('title'):
+        tot += int(r.get('seconds', 60)) + 120
+    else:
+        # PER-SUITE COST DEPENDS ON THE DISC, and only one non-stock disc
+        # here has been timed. The interactive Blend image carries 1,673
+        # captures against a normal suite's tens and measured 1,033 s of
+        # device time plus ~120 s of scoring, so estimating it as one ordinary
+        # suite understated a twenty-minute run as six.
+        #
+        # Every OTHER base_iso is a different disc with a different capture
+        # count -- the 2025 depth image is ~338 s/run -- so keying on "base_iso
+        # is set" would apply the Blend disc's cost to discs it was never
+        # measured on. That is the same mistake as sizing a change off the test
+        # disc's ratios, one level down, so it is keyed on the image that was
+        # actually timed and everything else keeps the ordinary estimate.
+        iso = os.path.basename(r.get('base_iso') or '')
+        per = 1150 if iso == 'nxdk_pgraph_tests_xiso_interactive.iso' else 160
+        tot += 180 + len(r.get('suites') or []) * per
+print('%d %d' % (tot // 60 // max(live, 1), live))
 PYEOF
 )
+            devs=${mins##* }; mins=${mins%% *}
             if [ "${agentwork:-0}" -gt 0 ] && [ -n "$mins" ]; then
-                hint="$(printf '%s' "$cov" | sed -n 1p). DEVICE-BOUND: ~${mins} min of arms queued across two handhelds and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
+                case "${devs:-0}" in
+                    1) fleet="on the ONE handheld still serving (the other is held or down)" ;;
+                    0) fleet="but NO device lane is alive -- nothing will drain this queue" ;;
+                    *) fleet="across ${devs} handhelds" ;;
+                esac
+                hint="$(printf '%s' "$cov" | sed -n 1p). DEVICE-BOUND: ~${mins} min of arms queued ${fleet}, and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
             else
                 hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered and no arms are queued, so the next move is a FINISHED lane to fold, a free file in territory.toml to claim, or collect_sweep.sh."
             fi ;;
