@@ -774,6 +774,39 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
         return;
     }
 
+    /*
+     * Record the queued draws before copying, for the reason
+     * download_surface_record_deferred() states at length: draws are held in
+     * the reorder window and the draw queue and recorded later, so a copy
+     * issued now captures the surface from *before* them.  The deferred path
+     * has flushed here since the Depth buffer fixed function readbacks came
+     * back as the clear with no quad; this synchronous path carries the same
+     * hazard and did not.
+     *
+     * The finish below cannot stand in for it.  It fires on
+     * `r->in_command_buffer && surface->draw_time >= command_buffer_start_time`
+     * -- a draw still sitting in the queue has been recorded into no command
+     * buffer at all, so there is nothing for a finish to wait on and the stale
+     * copy is taken without any of the guards noticing.
+     *
+     * Measured consequence, issue #50: `Blend tests`' TestDetailed renders its
+     * third swatch stack into the same 64x256 address as its second, then
+     * binds that address as a texture.  The texture bind takes this path
+     * (pgraph_vk_surface_download_if_dirty, vk/texture.c), the four queued
+     * draws are not yet recorded, and the copy returns the *second* stack's
+     * image.  Our third stack is bit-exact the second stack's render target on
+     * 1,119 of 1,120 unsigned captures of the 1,568-test oracle, which is what
+     * made it look like a reversed draw order: the two stacks draw the same
+     * four colours in opposite order.
+     * See docs/investigations/blend-stack-c-is-render-target-aliasing.md.
+     */
+    if (r->reorder_window.count > 0) {
+        pgraph_vk_flush_reorder_window(d);
+    }
+    if (r->draw_queue.count > 0) {
+        pgraph_vk_flush_draw_queue(d);
+    }
+
     nv2a_profile_inc_counter(NV2A_PROF_SURF_DOWNLOAD);
 
     bool use_compute_to_convert_depth_stencil_format =
