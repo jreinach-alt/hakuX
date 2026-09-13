@@ -878,7 +878,88 @@ N → FAIL" — so the judge carries the gate the prediction should have. The
 prediction is registered and sha-bound, so it is not being edited; the gap is
 written down here instead.
 
-*Remaining results to be filled in from the dispatcher.*
+### V0 FAILED at 2 of 10. THE ACCURACY PAIR IS VOID, by its own registered gate
+
+Arm A complete: `2e4e8403d9` / apk `bfb13fa5f097`, **nova**,
+`disc_id = Texture border`, 10 runs, `progress_log_proof` on every one, 18
+captures each.
+
+```
+stale_px      0, 0, 0, 0, 0, 286, 0, 481, 0, 0      2 of 10 non-zero
+races_lost    0, 0, 0, 0, 0,   1, 0,   1, 0, 0
+successor_px  0, 0, 0, 0, 0, 286, 0, 481, 0, 0      successor explains 100%
+unexplained_px  0 on all ten runs
+```
+
+**The registered bar was at least 3 of 10. It is 2.** So V0 fails and no
+`stale_px` figure from arm B can be cited — which is precisely what the gate
+was registered to do, and it did it before an arm B result was read as a
+pass.
+
+**And the sharpest way to say why is the bar's own false-pass rate.** V1 asks
+for `stale_px == 0` on 10 of 10 in arm B. At the floor's rate of 6 in 10 a
+binary with no fix passes that by luck with probability 0.4¹⁰ ≈ **0.01%**. At
+this arm's 2 in 10 it passes with probability 0.8¹⁰ ≈ **10.7%**. The bar did
+not change; the disc did, and a one-in-nine coin flip is not a falsifier.
+
+### The rate DID NOT fall by any standard I am entitled to apply
+
+This is the second correction to this section and it goes the other way from
+the first. Having retracted "the control stopped flaking" at n=6, the
+temptation at n=10 is to claim the weaker "the rate fell". **It is not
+established either:**
+
+| | non-zero runs | vs this arm, Fisher two-sided |
+|---|---|---|
+| published floor `7b63484c69` | 6 of 10 | **p = 0.160** |
+| mode-1 arm A `d97d506514` | 5 of 10 | **p = 0.350** |
+| **this arm A `2e4e8403d9`** | **2 of 10** | — |
+
+Ten runs per arm cannot separate 0.2 from 0.6. Calling that difference at
+p < 0.05 needs **about 20 runs per arm**, and 15 is still only p = 0.057. The
+summed magnitudes moved in the same direction — 767 px here against 12,596 in
+the floor and 5,961 in the mode-1 control — but a sum over a combinatorial
+flake is a sum over whichever subset lost and is not a second, independent
+statistic.
+
+So the honest position: **V0 fails on a registered count, which is a verdict.
+"The defect is receding" is a hypothesis at p = 0.16, which is not.** The
+named suspect from the n=6 write-up (`cdd8dc4c89`, #56's stale-binding fix,
+the texture lane's half of #44) remains a suspect with no measurement behind
+it.
+
+### What arm B is still worth, and it is most of what this change needed
+
+Only **V1** depends on the flake. Arm B alone still delivers the legs that
+are actually about the selective bound, and they are the ones mode 1 could
+not distinguish:
+
+- **V2** — `held(n)/kicks ≤ 0.05` against mode 1's 1.0000. Did it select at
+  all?
+- **V3** — `scan(ns=)` under 2% of the window span. **Did the pre-scan move
+  the cost instead of removing it?**
+- **V5** — `(wrap + big)/held(n) < 0.20`. Are the conservative fallbacks
+  doing the work?
+- **V6** — the two counter identities, exactly.
+
+None of those needs a flaky capture; they read the bound directly. So the arm
+stays queued rather than being cancelled, and its verdict is reported as
+**V1 VOID, V2/V3/V5/V6 judged.**
+
+### Two things this costs the lane, stated as work rather than as regret
+
+1. **The floor must be re-taken at the tip.** `7b63484c69` is 128 commits
+   behind, and a stale floor overstates the defect, which flatters every
+   later arm. Any future `stale_px` verdict on this disc needs a
+   contemporaneous control.
+2. **At 2 in 10 this disc needs ~20-30 runs per arm to be an instrument**, or
+   a different instrument. Crimson Skies' `Tr` is the better one on both
+   counts: it is a *rate over draws* rather than a per-run coin flip
+   (0.5661 and 0.5672 across two runs, reproducible to 0.2%), so it does not
+   need replicates to have power, and its bar is `Tr == 0` rather than a
+   count of clean runs.
+
+*Cost, Crimson and defer_cap results to be filled in from the dispatcher.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
