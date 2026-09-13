@@ -40,13 +40,24 @@ What is usable as fit data
                                    constraint on the colour rule.
   DXT3_plasma_alpha                colour rule + the DXT3 4-bit alpha rule.
   DXT5_plasma_alpha                colour rule + the DXT5 alpha palette.
-  DXT1_plasma, DXT1_plasma_alpha   NOT USABLE.  Their colour blocks are
-                                   byte-identical to DXT3's, yet the capture
-                                   holds 16 distinct colours in every 4x4
-                                   block.  A DXT block encodes 4 colours, so
-                                   no rounding rule of any kind can produce
-                                   this.  --dxt1-anomaly records what was
-                                   ruled out.
+  DXT1_plasma, DXT1_plasma_alpha   Not usable *here*.  Their colour blocks
+                                   are byte-identical to DXT3's, yet the
+                                   capture holds 16 distinct colours in every
+                                   4x4 block, so no rounding rule -- the only
+                                   thing this script fits -- can produce them.
+                                   That is a limit on this script, not on
+                                   DXT1: the NV2A applies an ordered dither on
+                                   the way out of the DXT1 path, indexed by
+                                   the texel's position inside the block,
+                                   which no candidate here can express.  The
+                                   palette this script fits turns out to be
+                                   the right one for DXT1 too.  See
+                                   dxt_dither_fit.py and issue #6.
+
+                                   --dxt1-anomaly records what was ruled out,
+                                   and one thing it ruled out wrongly: read
+                                   its note on the dither test before reusing
+                                   the method.
 
 Usage:
     dxt_fit_rounding.py --check-geometry   prove/refute the assumptions above
@@ -565,7 +576,7 @@ def cmd_verify_c(args):
             print("%-26s %5d/3072 max %d      %5d/1024 max %d%s"
                   % (stem, (r == 0).sum(), np.abs(r).max(),
                      (ra == 0).sum(), np.abs(ra).max(),
-                     "   (excluded: see --dxt1-anomaly)" if fmt == 1 else ""))
+                     "   (not in the fit set; dxt_dither_fit.py)" if fmt == 1 else ""))
             if fmt != 1:
                 t_rgb += int((r == 0).sum()); n_rgb += r.size
                 t_a += int((ra == 0).sum()); n_a += ra.size
@@ -626,9 +637,9 @@ def cmd_dxt1_anomaly(args):
                     for c in range(3):
                         cells[(x & mask, y & mask)].append(
                             int(g[y, x, c]) - pal[i][c])
-        print("  %s ordered dither: largest cell mean %+.3f (a real ordered"
+        print("  %s ordered dither: largest cell mean %+.3f -- and this test"
               % (nm, max(abs(np.mean(v)) for v in cells.values())))
-        print("                   dither would separate the cells; it does not)")
+        print("                   IS WRONG.  See the note below.")
 
     lat_hits = []
     for mode in ("trunc", "repl", "round"):
@@ -672,8 +683,22 @@ def cmd_dxt1_anomaly(args):
     print("                       (%s)" % best[1])
     print("                       against 3072/3072 on DXT3's identical bytes.")
     print("\nConclusion: the DXT1 captures are not the output of any DXT1")
-    print("palette decode, so the residual issue #6 tabulates for DXT1 is not")
-    print("a decode rounding rule and cannot be fixed by changing one.")
+    print("palette decode.  That much held up.  What was wrong was the next")
+    print("step -- concluding they are therefore not a decode rule at all.")
+    print("They are: an ordered dither, fitted in dxt_dither_fit.py, which")
+    print("takes the DXT1 captures from 13.5% of texels bit-exact to 93.3%.")
+    print("")
+    print("The dither test above is why it was missed.  It scores the *mean*")
+    print("residual per dither cell, and this dither emits whichever value")
+    print("in the 5/6-bit gap is congruent to the cell's matrix entry -- so")
+    print("the offset is positive for some texels in a cell and negative for")
+    print("others, and the cell mean is near zero by construction.  It also")
+    print("pools R, G and B into one list, and the three channels have")
+    print("different matrices and different moduli.  The statistic that does")
+    print("separate the cells is the output *residue*, out % 8 (out % 4 for")
+    print("green), taken per channel: it is a perfect constant of the cell.")
+    print("A mean was the wrong summary here for the same reason it was the")
+    print("wrong summary for this issue's headline numbers.")
     return 0
 
 
