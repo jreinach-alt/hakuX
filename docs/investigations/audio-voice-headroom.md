@@ -462,15 +462,22 @@ will actually run.
 
 ### The field is 7 on a second title too
 
-**MEASURED.** Dead or Alive 3, Thor, 90 s, ref `f136df730e`, binary
-`b0f5b50d191e`, result `1789279792-audio-level-doa3-1542469`: **174,608 active
-voice-frames, 100% at headroom 7, none at any other value**, and
-`submix_headroom[0..30] = 1` again. Two titles, two developers, two mixes,
-the same pair of values.
+**MEASURED, on three titles now.**
+
+| title | device | active voice-frames | at headroom 7 | at anything else | submix_headroom |
+|---|---|---:|---:|---:|---|
+| Galleon | Nova | 1,288,746 | **100.00%** | 0 | 1 on all 31 slots |
+| Galleon (2nd run) | Nova | 1,237,181 | **100.00%** | 0 | 1 on all 31 slots |
+| Dead or Alive 3 | Thor | 174,608 | **100.00%** | 0 | 1 on all 31 slots |
+| Crimson Skies | Thor | 724,083 | **100.00%** | 0 | 1 on all 31 slots |
+
+Three titles, three developers, three completely different mixes — measured
+above to span 13.8 dB of median output level — and **not one voice-frame of
+3,424,618 at any value but 7**, with the sibling register at 1 every time.
 
 That matters for the reading in the section above: 7 is not one studio's
-choice, it is what the runtime programs. If it were a DirectSound default it
-would be the same everywhere, which is what two titles agreeing looks like.
+choice, it is what the runtime programs, and 1 is what it programs into the
+other register. Two constants, two registers, no exceptions.
 
 ## 5. The level meter, and the second title
 
@@ -523,11 +530,13 @@ baseline of 92.843 s taken about eight hours earlier from a different build.
   despite the louder transients.
 - **C4 — DC negligible. PASSED.** 0.010% and 0.003% of full scale.
 - **F1 — the meter does not starve the thread it sits on. PASSED.** Every
-  steady-state `starve:` line in every run reads **0.0000%** — Galleon on the
-  Nova (0/704 and 0/704 callbacks short) and DOA3 on the Thor (0/704, 0/703).
-  The startup windows read 17.1% and 15.0%, all of it *empty* callbacks, which
-  is the guest not having produced a sample yet and is excluded by the
-  corrected predicate.
+  steady-state `starve:` line in every run reads **0.0000%** — six windows
+  across three soaks and both handhelds: Galleon on the Nova (0/704, 0/704),
+  DOA3 on the Thor (0/704, 0/703), Crimson Skies on the Thor (0/703, 0/704).
+  Not one callback short by a byte, on the densest title of the three.
+  The startup windows read 17.1%, 15.0% and 55.3%, all of them *empty*
+  callbacks — the guest not having produced a sample yet — which the corrected
+  predicate in `audio-baseline.md` 4a excludes.
 
 ### T2: Dead or Alive 3, and one leg fails in the opposite direction
 
@@ -569,30 +578,96 @@ so its crest is exact — and it is **13.9 dB narrower** than Galleon's censored
 *lower bound*. `p95 − p50` says the same with no reference to the peak at all:
 **4.2 / 5.1 dB for DOA3 against 11.6 / 12.9 for Galleon.**
 
+### Crimson Skies is the dense, loud title the question actually needed
+
+**MEASURED.** `Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso`,
+Thor, 87.451 s of output, ref `25e5192856`, binary `b0f5b50d191e`, result
+`1789280122-audio-level-crimson-1590751`. Queued after JSRF failed to boot, and
+chosen because it is the one other title any document records as running on a
+handheld (`crimson-skies-performance.md`), so it was known to boot rather than
+hoped to.
+
+It is also the case the baseline asked for and neither of the first two titles
+provided: **1,665 counted windows against 84 flat** — continuously scored, 5% of
+the run silent, against DOA3's 71%.
+
+| title | ch | AC RMS | p50 | Δp50 | p95−p5 | p95−p50 | peak−p50 |
+|---|---|---:|---:|---:|---:|---:|---:|
+| Galleon (capture) | L | −23.43 | −29.37 | — | 21.54 | 12.91 | 29.37 |
+| Galleon (capture) | R | −23.50 | −29.45 | — | 21.65 | 12.87 | 29.45 |
+| Galleon (meter) | L | −23.57 | −29.15 | +0.22 | 20.50 | 11.60 | 29.15 |
+| Galleon (meter) | R | −23.25 | −29.25 | +0.20 | 21.10 | 12.20 | 29.25 |
+| DOA3 | L | −28.45 | −23.45 | +5.92 | 40.80 | 4.20 | 15.28 |
+| DOA3 | R | −28.22 | −23.65 | +5.80 | 40.10 | 5.10 | 15.49 |
+| **Crimson Skies** | L | **−14.00** | **−15.95** | **+13.42** | 22.30 | 6.50 | 15.95 |
+| **Crimson Skies** | R | **−13.98** | **−15.65** | **+13.80** | 22.20 | 6.20 | 15.65 |
+
+- **T2a — p50 more than 4 dB hotter. PASSED, by 13.4 / 13.8 dB.** Whole-file AC
+  RMS is **9.4 dB hotter** than Galleon's, on a run that is 95% non-silent.
+  Peak reaches 32,767 on both channels with 84 and 73 clipped samples —
+  0.0020%, a tenth of what the louder Galleon playthrough produced.
+- **T2b — p95 − p5 spread more than 4 dB narrower. FAILED again**, at 0.76 /
+  0.55 dB *wider*. **That leg has now failed on both titles, in opposite
+  directions, and the statistic is the reason.**
+
+### T2b failed twice, and the fault is the statistic I registered
+
+DOA3 came in 19 dB wider, Crimson Skies 0.6 dB wider, and I predicted both to
+be 4 dB narrower. The prediction was not unlucky; `p95 − p5` cannot answer the
+question I asked it. It spans from a run's quietest non-silent window to its
+loudest, so it measures **how much quiet passage a playthrough happens to
+contain** at least as much as how wide the mix's dynamics are. DOA3's run is
+71% exact silence with near-silent menu ambience either side of it; Crimson
+Skies is continuously scored but still has a quiet moment somewhere in 87 s.
+Neither fact is about gain.
+
+**Two statistics do discriminate, and both are in the table above.**
+
+| | Galleon | DOA3 | Crimson Skies |
+|---|---:|---:|---:|
+| loud-half spread `p95 − p50` | 12.9 / 12.9 | 4.2 / 5.1 | 6.5 / 6.2 |
+| crest `peak − p50` | 29.4 / 29.5 | 15.3 / 15.5 | 16.0 / 15.7 |
+
+Both other titles sit at roughly **half** Galleon's loud-half spread and
+**14 dB** below its crest — DOA3 −14.1/−14.0, Crimson Skies −13.4/−13.8, which
+is close agreement between two unrelated titles. And DOA3's crest is **not
+censored**: its peak is 8.17 dB below full scale, so that figure is exact where
+Galleon's 29.4 dB is a lower bound. Censoring was the trap that nearly sank the
++6 dB headroom result, and it is the reason `peak − 23.4 dB` was never quoted as
+the headline here.
+
 ### So: is the −23 dBFS, wide-crest shape ours or Galleon's?
 
-**Galleon's.** That is the question this section existed to answer and the
-answer is not close:
+**Galleon's, and the third title makes it emphatic.** That is the question this
+section existed to answer:
 
-- The same emulator, the same build, the same hour, two titles: one pins both
-  channels at full scale and clips 1,276 samples; the other **never gets within
-  8 dB of full scale and clips nothing at all**.
-- Their medians differ by 5.9 dB and their loud-half spread (`p95 − p50`) by a
-  factor of nearly three.
-- A shape imposed by our mix could not do that. A gain error common to both
-  would move both together and leave the shapes alike; what is actually here is
-  two different shapes from one binary.
+- One binary, one hour, three titles. **Crimson Skies runs at −14.00 / −13.98
+  dBFS AC RMS with its median active window at −15.95 / −15.65 — 9.4 dB and
+  13.4 dB hotter than Galleon** — and reaches full scale with a tenth of
+  Galleon's clipping. DOA3 sits between them in median and **never gets within
+  8 dB of full scale, clipping nothing at all**.
+- Their loud-half spreads differ by a factor of two to three and their crests by
+  14 dB.
+- A shape imposed by our mix could not do that. A gain error common to all three
+  would move them together and leave the shapes alike; what is here is three
+  different shapes from one binary, spanning 13.8 dB of median level.
 
 **For the owner's symptom this is the reassuring direction and it is worth
-stating plainly: the emulator reaches digital full scale on one title and leaves
-8 dB of headroom unused on another, which is what per-title content does and is
-not what a missing gain does.** Combined with #74 being measured out by
-arithmetic, the uniform-gain hypothesis closed by the peak, and starvation at
-0.0000% on both handhelds, **there is no measured defect left that makes the
-output quiet.** Galleon, the title the complaint was made against, is a
-wide-dynamic mix whose median active window sits 29 dB below full scale — quiet
-most of the time even with its gain exactly right, which is exactly what a
-listener with no meter cannot tell from a gain error.
+stating plainly: the same build that puts Galleon's median active window 29 dB
+below full scale puts Crimson Skies' at 16 dB below, and leaves 8 dB of headroom
+entirely unused on Dead or Alive 3. That is what per-title content does. It is
+not what a missing gain does — a missing gain cannot be missing from one title
+and not another.** Combined with #74 measured out by arithmetic, the
+uniform-gain hypothesis closed by the peak, and starvation at 0.0000% on both
+handhelds, **there is no measured defect left that makes the output quiet, and
+there is now a positive demonstration that the output can be loud.**
+
+Galleon — the title the complaint was made against — is a wide-dynamic mix whose
+median active window sits 29 dB below full scale while its peaks hit the rails.
+A mix shaped like that is quiet most of the time even with its gain exactly
+right, and a listener with no meter cannot tell that from a gain error. That is
+the answer to "volume seems unusually low, even at max": **on this title, at
+this configuration, the level is correct, and here are the measurements.**
 
 ### JSRF did not boot, which is recorded rather than retried away
 
@@ -618,15 +693,53 @@ which no amount of guessing reaches.
 lease, no install, no `am start`, no input injection, so it cannot disturb a run
 in progress.
 
-## 6. What this cannot do
+## 6. What this cannot do, and the least certain thing in it
 
 Carried forward, because each still binds:
 
-- **Not an accuracy oracle.** No golden PCM from real silicon exists, so neither
-  title's level can be called correct — only compared.
+- **Not an accuracy oracle.** No golden PCM from real silicon exists, so no
+  title's level can be called correct — only compared with another title's.
 - **A desktop capture is not comparable**: the Android build substitutes a stub
   libsamplerate that resamples linearly rather than `SRC_SINC_FASTEST`.
-- **A capture cannot see underrun**, because the tap is on the producing side of
-  the FIFO. That mechanism was measured separately and reads 0.0000% in steady
-  state.
+- **The tap cannot see underrun**, because it is on the producing side of the
+  FIFO. That mechanism is measured separately and reads 0.0000% in steady state
+  on both handhelds.
 - **It cannot hear anything.** No perceptual claim follows from any of it.
+
+### The least certain point
+
+**That `CFG_FMT_HEADROOM` is a headroom field at all.**
+
+Everything above survives either way, because the loudness argument runs on the
+measured level rather than on the field's meaning: a 42 dB gain is excluded by
+arithmetic whatever the bits are called. But the *forward-looking* half of #74 —
+that this is the voice-into-bin reserve and our mixbins are consequently 36 dB
+hot on the DSP path — rests on `apu_regs.h:231` being right about bits 13-15,
+and the census gives a reason to hold that loosely.
+
+A three-bit field that reads **0b111 on every voice of every title** is equally
+consistent with two readings:
+
+1. every voice reserves the maximum 42 dB — which is arithmetically sensible,
+   since 16-bit voices summed 256-deep into a 24-bit mixbuf need about seven
+   bits of room, so 7 is the number the hardware would want; or
+2. bits 13-15 are not this field. They could be reserved-and-set, or the low end
+   of a wider field. The header leaves **bits 10-12 undefined** immediately
+   below them, which is exactly the shape of a bit assignment that was guessed
+   once and never checked, and `NV_PAVS_VOICE_CFG_FMT_SAMPLES_PER_BLOCK` and
+   `_MULTIPASS_BIN` are already aliased onto the same `0x1F << 16` in that
+   header, so it is not a document that has been audited.
+
+Nothing in this tree separates those, and I did not try to: the experiment that
+would is a hardware capture of one voice with the field written and cleared, and
+that does not exist here. The consequence for anyone acting on #74 is concrete —
+**do not change the mixbin divisor on the strength of this number alone.** The
+value 7 is measured; that it means 42 dB of voice headroom is inferred, and the
+inference is the weakest link in this document.
+
+A cheaper partial check, now that a level costs a grep rather than a pull: log
+the whole `CFG_FMT` word for one voice and read the *other* fields against what
+the title must be doing — sample size, container, stereo, loop. If those decode
+sensibly the header is broadly trustworthy in that region; if any of them is
+nonsense the bit map is suspect and 7 means nothing. That is one log line and
+one soak, and it is the next thing I would do.

@@ -1706,7 +1706,9 @@ suites = []
 #    Clipping counts transients, and two playthroughs of a title that peaks at
 #    the rails do not contain the same transients. So "52 samples in 92.843 s"
 #    above is one draw, not a figure; the only stable statement is that the mix
-#    REACHES the rails, which it does in both runs on both channels. A
+#    REACHES the rails, which it does in both runs on both channels -- and
+#    Crimson Skies, a far denser mix, reaches them with only 84 and 73 samples
+#    clipped (0.0020%), a TENTH of the quieter title's louder playthrough. A
 #    prediction registered as "clipped below 0.01%" failed on exactly this and
 #    the prediction was the thing that was wrong.
 #
@@ -1717,7 +1719,12 @@ suites = []
 #    peak is 8 dB below full scale -- loud-half spread (p95-p50) 4.2/5.1 dB
 #    against Galleon's 11.6/12.9. One binary, two shapes. So the monitor path
 #    is not systematically at the rails; one wide-dynamic title gets there and
-#    another leaves 8 dB unused.
+#    another leaves 8 dB unused. A third, Crimson Skies (result
+#    1789280122-audio-level-crimson-1590751), is 9.4 dB hotter than Galleon in
+#    whole-file AC RMS (-14.00/-13.98 dBFS) and 13.4 dB hotter in median active
+#    window, on a run that is 95% non-silent -- and clips a tenth as much.
+#    Three titles, three shapes, one binary, 13.8 dB of median level between
+#    them.
 #
 # What survives unchanged is the real question: nobody knows what silicon does
 # at the rails, and there is still no golden PCM. But a limiter would now be
@@ -1761,9 +1768,12 @@ suites = []
 # whether it was asked to be or not. Three more runs, zero wrap suspects: a
 # second Galleon playthrough on the Nova (largest adjacent jump 13,096 of
 # 65,535, up from the captures' 11,537, with 562/714 clipped samples against 36
-# /16 -- so a louder-transient run than any previous one and still no wrap), and
+# /16 -- so a louder-transient run than any previous one and still no wrap),
 # Dead or Alive 3 on the Thor (largest jump 10,085, and its peak never exceeds
-# 12,803, so it is not even close). The hazard is unchanged in the code; the
+# 12,803, so it is not even close), and Crimson Skies on the Thor -- which is
+# the real test: largest adjacent jump 21,866 and 22,628 of 65,535, nearly
+# DOUBLE anything a capture had ever shown, at the rails on both channels, and
+# still zero wrap suspects. The hazard is unchanged in the code; the
 # evidence against it firing has gone from 312 s to about 490 s, and the cost of
 # adding to it is now zero.
 [issue.73]
@@ -1808,6 +1818,13 @@ suites = []
 #   headroom = 7 : 1,288,746   (100.00%)
 #   headroom = 0..6 : 0        (  0.00%)
 #
+# FOUR RUNS, THREE TITLES, and not one voice-frame of 3,424,618 at any other
+# value -- Galleon twice on the Nova (1,288,746 and 1,237,181), Dead or Alive 3
+# on the Thor (174,608) and Crimson Skies on the Thor (724,083). Every run also
+# reads submix_headroom[0..30] = 1. Those three titles span 13.8 dB of median
+# output level between them, so this is not one studio's convention: 7 and 1 are
+# what the runtime programs, in two different registers, with no exceptions.
+#
 # Every voice, every window, at 7 -- the MAXIMUM the three-bit field holds, x128,
 # 42.14 dB. The prediction registered before the run said non-zero (right) with
 # a modal value of 1 by analogy with submix_headroom (wrong). The same run
@@ -1851,6 +1868,20 @@ suites = []
 # tap and the level meter both read monitor.frame_buf, and use_dsp is a config
 # toggle no soak can set. Doing it on a guess is how a measured chain acquires
 # an unmeasured stage.
+#
+# LEAST CERTAIN, and it bounds what may be acted on: that bits 13-15 ARE this
+# field. A three-bit value reading 0b111 on every voice of every title is
+# equally consistent with "every voice reserves the maximum" and with "the bit
+# assignment is wrong". apu_regs.h leaves bits 10-12 undefined immediately below
+# them, and already aliases SAMPLES_PER_BLOCK and MULTIPASS_BIN onto the same
+# 0x1F << 16, so that header has not been audited. The loudness verdict above
+# does not depend on this -- a 42 dB gain is excluded by arithmetic whatever the
+# bits are called -- but the 36 dB DSP-path claim does. DO NOT change the mixbin
+# divisor on the strength of the value alone. The cheap partial check is to log
+# the whole CFG_FMT word for one voice and decode its OTHER fields (sample size,
+# container, stereo, loop) against what the title must be doing: sensible
+# neighbours mean the header is trustworthy in that region, nonsense means 7
+# means nothing. One log line, one soak.
 #
 # FALSIFIED / RESOLVED BY: a capture of the DSP path (needs use_dsp reachable
 # from a soak), or a hardware capture of one voice with the field set and
