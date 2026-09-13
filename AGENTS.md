@@ -538,6 +538,40 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## A rate or a mean over a busy window measures the BUSYNESS
+
+Three registered legs on 2026-09-13 turned out to measure device occupancy
+rather than the mechanism they were aimed at. Each was fixed the same way, and
+the replacement was cleaner than the leg it replaced every time.
+
+| leg | what it measured | occupancy-free form |
+|---|---|---|
+| #64's cost: median `gfps` | how busy the device was -- series is bimodal, ceiling 29-31, floor 5-20, and the median tracks which one it sits in | **the ceiling**: p90/max. Noise floor then +-1, measured inside the experiment |
+| #65's U5: deferred lateness, POOLED across regimes | how much of the run was in each regime -- unlock occupancy halved between soaks and the regimes have different caps | **per regime**: +0.6% and +2.0%, both inside tolerance |
+| #65's D1: clamp rate as a ratio to arm A | arm A's own occupancy, which moved **3.2x between two runs of one binary** (0.2212 -> 0.0681, tracking 34 -> 6 fully-unlocked windows) | **count the windows where the condition holds**: arm A had 6 then 1 cap-bound windows, arm B had **0**. Eliminated, not reduced |
+
+The pattern: **a rate, a mean or a median over a window whose occupancy varies
+is a measurement of that occupancy.** It will reproduce on a repeat -- both of
+#64's runs agreed -- and still be measuring the wrong thing, which is why
+repeating it is not the check.
+
+Two remedies, in order of preference:
+
+**Count events of a condition instead of averaging over time.** "How many
+windows were cap-bound" cannot be diluted by idle windows; "the mean clamp
+rate" can. This is what turned #65's D1 from undiscriminating into decisive.
+
+**Condition on the state, then compare within it.** If the quantity only
+exists in one regime, pool nothing across regimes. #65's U5 failed on a pooled
+figure while holding in both regimes separately -- and the judge had been
+written to pool by assertion count specifically to avoid that trap, then the
+leg was registered on the pooled number anyway.
+
+And the corollary that makes this cheap: **state the statistic and its noise
+floor before the arm runs**, then check the noise floor is smaller than the
+effect. #64's median moved 8 against a tolerance of 2 and the reverse-order
+control moved 8 too. The ceiling's floor is +-1 against an effect of 15.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
