@@ -41,10 +41,21 @@ reports:
     successor_px   screen pixels carrying the SUCCESSOR surface's content
     other_px       screen pixels matching neither own nor successor
 
+    cut            index into the successor's row-major source write at which
+                   our upload read it -- None for a write already complete
+    prefix_ok      whether the stale set really is a prefix of that write
+
 `successor_px` is the mechanism. `races_lost` is the coarse version, for a
 bar. Both go to zero if and only if every upload read the bytes the guest had
 written for that draw; neither can be moved by a change that merely shifts the
 timing, which is exactly what a differing-pixel count cannot tell you.
+
+`cut` is the random variable. On the ten-run noise floor it is 116, 175, 207,
+229, 405, 432, 506 and twice `complete`, with `prefix_ok` true on 9 of 9
+measurable frontiers -- one cut point per lost swatch, in the successor's own
+write order, landing somewhere different every run. A mid-write read is the
+only thing that produces that; a missed page would be an aligned Morton block
+and a stale allocation would have no frontier at all.
 
 Usage:
     border_swatch_origin.py RESULTDIR [RESULTDIR ...] [--goldens DIR] [--json]
@@ -270,14 +281,50 @@ def classify(img, golden):
                     mixed += 1
                     stale += 1
             best = max(counts, key=lambda c: counts[c]) if counts else None
+            cut, prefix_ok, discrim = (None, None, 0)
+            if succ is not None and counts.get(succ, 0):
+                cut, prefix_ok, discrim = frontier(img, index, which_pass, succ,
+                                                   own, tables[succ])
             rows.append(dict(
                 pass_=which_pass + 1, index=index, size="%dx%d" % SIZES[index],
                 wrong=len(wrong),
                 successor=counts.get(succ, 0) if succ is not None else 0,
                 stale=stale, mixed=mixed, unexplained=len(wrong) - stale,
                 best="%dx%d" % SIZES[best] if best is not None else None,
-                best_px=counts.get(best, 0) if best is not None else 0))
+                best_px=counts.get(best, 0) if best is not None else 0,
+                cut=cut, prefix_ok=prefix_ok, discriminating=discrim))
     return rows
+
+
+def frontier(img, index, which_pass, succ, own, table):
+    """Where inside the successor's own write did our upload read?
+
+    The successor is generated into a scratch buffer and then `swizzle_rect`
+    copies it to the texture address, walking its SOURCE row-major. So if we
+    read mid-copy, the stale texels are exactly a row-major prefix of the
+    successor's surface -- and the cut index is the whole random variable
+    behind #44. Returns (cut, prefix_ok, discriminating_texels), cut being
+    None for a write that had completed.
+
+    Only texels where own and successor DISAGREE can testify; the grey
+    padding checkerboard is identical in every surface, which is why the
+    frontier read as "five simultaneously-partial rows" when it was measured
+    against the current texture's order instead of the successor's.
+    """
+    sw, _ = bordered_dims(*SIZES[succ])
+    verdict = {}
+    for sx, sy, bx, by in swatch_taps(index, which_pass):
+        if (bx, by) not in table:
+            continue
+        mine = blend(int(own[by, bx]))
+        theirs = blend(table[(bx, by)])
+        if mine == theirs:
+            continue
+        verdict[by * sw + bx] = tuple(int(v) for v in img[sy, sx]) == theirs
+    stale = [k for k, v in verdict.items() if v]
+    fresh = [k for k, v in verdict.items() if not v]
+    ok = (not stale or not fresh or max(stale) < min(fresh))
+    return (min(fresh) if fresh else None), ok, len(verdict)
 
 
 def self_check(golden):
@@ -345,11 +392,13 @@ def main():
                           rec["stale_px"], rec["successor_px"],
                           rec["mixed_px"], rec["unexplained_px"]))
                 for r in lost:
+                    cut = ("complete" if r["cut"] is None and r["prefix_ok"]
+                           else str(r["cut"]))
                     print("    pass%d %-7s wrong=%-5d stale=%-5d successor=%-5d "
-                          "mixed=%-3d best_match=%-7s best_px=%d" % (
+                          "mixed=%-3d cut=%-9s prefix_ok=%s best_match=%s" % (
                               r["pass_"], r["size"], r["wrong"], r["stale"],
-                              r["successor"], r["mixed"], r["best"],
-                              r["best_px"]))
+                              r["successor"], r["mixed"], cut,
+                              r["prefix_ok"], r["best"]))
     if args.json:
         json.dump(out, sys.stdout, indent=2)
         print()
