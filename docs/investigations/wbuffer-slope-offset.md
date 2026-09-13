@@ -188,3 +188,290 @@ and all four are reads of the current tree rather than inference.
   instead of hardware's v0-v2, which would relocate both triangles' reference
   pixels.  Ruled out by measurement, not by reading: Wall and Floor reproduce
   to the unit on the v0-v2 decomposition, so these tests are not flat shaded.
+
+## The anchors are all recoverable EXACTLY, and that changes the blocker (#31, 2026-09-13)
+
+The section above ends with "the rule that selects between the two regimes is
+not determined by the goldens available", and the tracker carries that as
+*"619,349 structural px remain ... under the 4-pixel anchoring regime the
+available goldens cannot select between."*  A blocker is a claim and needs the
+same evidence as a fix, so it was measured.  `docs/testing/wbuf_anchor_recover.py`
+does it, offline, with no device run.
+
+**The instrument.** The offset is one constant per triangle and the depth
+stored is `floor(w + offset)`, so over a triangle's pixels
+
+    offset in [ max(z - w), min(z + 1 - w) ]
+
+is an **exact interval**, typically 0.002 wide on a value of 10^5.  Moving the
+anchor one pixel moves the offset by 0.5%-5%, so that interval pins the anchor
+to a few thousandths of a pixel.  The earlier work read the offset off the
+*fraction* of pixels sitting on the higher of two adjacent integers, which is
+biased by up to 0.1 of a unit because `frac(w)` is not uniform over a triangle;
+the interval has no such assumption.
+
+Two controls, because a negative from a blind instrument is the trap this
+campaign keeps hitting:
+
+  - `floor(w)` from the recovered plane equals hardware's own `ZS0` depth on
+    **100.00%** of the pixels of `FloorQuad` (221,970), `RoofQuad` (234,955),
+    `WallQuad` (233,760) and `TriH` (26,400), and on 99.45% of `TriV` (144 of
+    26,400, six per triangle, all on exact edges).  An oracle that could not
+    reproduce the unbiased capture has no business arbitrating the biased one.
+  - the same file emulates `wbufSlopeStep` in float32 and reproduces the
+    **device's** exact/±1/wrong split for `bdc26fa5c8` *to the pixel* on six of
+    the eight nonzero `WBuf24D` rows of `run-2026-09-10-wbuffer-adreno.tsv`:
+    `ClipF` 281/16,520/189,489 and 0/0/159,250 and 0/0/112,210, `ClipW`
+    227,737/1,703/0 and 167,539/12,941/0 and 124,410/7,110/0.  `TriH` and `TriV`
+    match on `wrong` and `TriH` splits 84 px differently between exact and ±1,
+    which is one float32 ULP of the offset -- see "what the ±1 floor is" below.
+
+**66 anchors recovered, 64 of them discriminating** (`LargeZ` is excluded and
+must be: `w ~ 1.7e7` changing by 1 over the whole surface, so its offset is 136
+at *every* anchor.  Counting it as agreement would be as wrong as counting it
+as disagreement).
+
+| class | n | measured anchor | shipped 2-snap |
+|---|---|---|---|
+| `TriH`, all 24 triangles | 24 | row `4*floor(y_top/4)+2` | wrong on 12 |
+| Floor, Roof, Wall, `ClipW` x3, `ClipF` t0 | 13 | first covered px, 2-snap | **right** |
+| `ClipF` t1, three clip tops | 3 | row `clip_top + 2` | wrong |
+| `TriV`, all 24 triangles | 24 | **no integer column at all** | wrong |
+
+So the first correction: **"the goldens cannot select the regime" is false about
+the anchors.**  Every anchor in the suite is determined, to a fraction of a
+pixel, by data already on disk.  What is underdetermined is narrower and is
+stated below.
+
+### `TriV`'s 4-pixel grid is REFUTED, not merely unselected
+
+The section above records `TriV cols = 4*floor(x_left/4)+4`, i.e. column 164 for
+the first four triangles.  Column 164 predicts offsets 403,404.8 / 420,816.6 /
+439,380.5 / 459,200.5.  Hardware's intervals are
+[403,283.1552, 403,283.1566] / [421,475.6559, 421,475.6689] /
+[440,927.2732, 440,927.2878] / [461,755.6224, 461,755.6255].  The errors are
+**-122, +658, +1,547 and +2,555 units** -- 0.03% to 0.55% -- where this same
+model lands *inside* hardware's interval on all 24 `TriH` triangles and on all
+thirteen clipped ones -- thirteen of the sixteen the clip cut, the three
+exceptions being `ClipF` t1.  An earlier draft of the psh.c comment and the
+commit that landed the fix both said "eleven for eleven", which miscounted the
+`ClipW` pairs and dropped the three exceptions from the denominator; the table
+above is right and that sentence was not.  No other integer column is closer: the recovered anchors
+are 164.007, 163.963, 163.920, 163.876, drifting **-0.0435 px per triangle**
+while the triangles translate by exactly 1 px, and the pattern repeats with
+period 4 across all 24 (so it is a function of the anchor's position relative
+to the triangle, not of precision degrading down the screen).
+
+A two-parameter fit over absolute anchor and step length does not rescue it
+(best A=162.02, s=0.917, residuals up to 28 units where the interval is 0.002
+wide).  **`TriV` is a third, unmodelled mechanism, and 105,600 of the 619,349
+residual pixels belong to it rather than to the 4-grid class.**  That is the
+one number in the tracker's sentence that is wrong: the 4-grid class is
+`TriH` 52,800 plus `ClipF` 460,949, and `TriV` is something else.
+
+Consequence for the fix: the **column stays on the 2-grid.**  Setting it to 164
+would move no pixel -- `TriV` has `pb == 0` exactly, so its captures cannot see
+a row change either -- and would replace a wrong answer with a wrong answer,
+which a differing-pixel count cannot distinguish from inertness.
+
+### What IS underdetermined, stated as the measurement that would refute it
+
+Two capture pairs, and they are jointly fatal to every selector expressible in
+the suite's own variables.
+
+**PAIR A -- `ClipF-150-032` t0 vs t1.**  One planar quad, so both triangles have
+the *same* 1/w plane; the same window clip; the same topmost vertex (`v0`, since
+the split is on the v0-v2 diagonal); and the same first covered row, 32 --
+hardware's coverage is byte-identical to the geometric prediction on all 206,290
+pixels, checked row by row.  Measured anchors: **row 32 and row 34.**  So no
+function of (plane, clip rect, first covered pixel, top vertex) can reproduce
+the table.  *If one existed, these two anchors would be equal.*  They differ by
+exactly 2 rows, recovered to ±0.001 px.
+
+**PAIR B -- `FloorQuad` t1 vs `ClipF-150-032` t1.**  Identical vertices,
+identical plane, identical shape and orientation; only `clip_top` differs, 0
+against 32.  Measured anchors: **row 0 and row 34**, i.e. `clip_top+0` against
+`clip_top+2`.  So the selector cannot be a function of the triangle alone
+either.
+
+Together the four cells read
+
+    (shape t0, ct=0)  -> 2-snap     (shape t1, ct=0)  -> 2-snap
+    (shape t0, ct=32) -> 2-snap     (shape t1, ct=32) -> 4-grid
+
+which is a single interaction term pinned by exactly one data point.  Any rule
+that reproduces it is fitted to that cell, and "one reason per exception is a
+curve fit".  Discriminators that die on Pair A or Pair B, each killed by one
+row rather than by taste: clip-edge-bounded vs geometry-bounded first pixel
+(Pair B); the clip's top edge truncating the primitive (Pair A -- it truncates
+t0 too); first covered column (`FloorQuad` t1 and `ClipF` t1 both start at
+column 150 and split); triangle area, height, or top-row width (no ordering
+separates the two sets).
+
+**The measurement that would refute this**, and it needs new geometry rather
+than more fitting: a second data point in the (shape, clip) table.  Either a
+single triangle translated in y across the 4-grid phase with the clip held
+fixed -- which separates "absolute grid" from "grid relative to the clip" --
+or a quad at `clip_top > 0` whose *both* triangles are truncated at the top,
+which fills the empty cell directly.  `nxdk_pgraph_tests` can produce both; the
+existing suite conflates translation, clipping and apex visibility, which is
+what the first pass of this document already said and is now quantified rather
+than asserted.
+
+### What the fix does, and why it is the measured half
+
+`psh.c` now snaps the anchor **ROW** to `4*floor(r/4)+2` when the
+Sutherland-Hodgman clip did not cut the triangle, and keeps the 2x2-quad snap
+otherwise.  The `cut` flag is recorded during the clip rather than re-derived.
+
+This reproduces 37 of the 64 discriminating anchors against the shipped rule's
+25, and every one of the 25 the shipped rule already had is kept -- the gate is
+false for all of them, because every quad in the suite has its topmost vertex
+off-window (`FloorQuad`/`ClipF` at y=-34.3, `WallQuad`/`ClipW` at y=-26.8 and
+y=-1248.7, `RoofQuad` at x=-1168.7, `LargeZ` at x=0 against a clip at 150).
+Simulated in float32 against the goldens, `TriH` goes 13,116/84/13,200 to
+25,854/546/0 per capture and **nothing else moves at all**.
+
+Not done, both deliberate and both recorded above: the column grid (refuted by
+`TriV`) and `ClipF` t1's `clip_top+2` (unselectable per Pair A/Pair B).  So
+52,800 px of the 619,349 are addressed and 566,549 are explicitly left, of which
+460,949 need new geometry and 105,600 need a new mechanism.
+
+**Blast radius, measured not argued.**  288 shaders were emitted through the
+shipped `psh.c` and this one over `z_perspective` x `depth_needed` x
+`window_clip_count` x exclusive x stipple x zeta format x three renderers.
+**216 are byte-identical** -- every shader with `z_perspective` false or
+`depth_needed` false, which is every shader in the corpus outside `W buffering`
+and `Depth Clamp` -- and the 72 that change do so by exactly one of three
+texts, differing only in line numbering between the three renderers: the `bool
+cut` declaration, the two assignments to it, and the row snap.  No other
+emitted statement differs anywhere.
+
+### What the ±1 floor actually is, and why it is not the anchor
+
+Worth recording because the issue's "structural 0" for Wall and LargeZ hides
+it.  With the anchor right, our offset still differs from hardware's by up to
+**one unit** -- e.g. `FloorQuad` t1: hardware [113,136.7720, 113,136.7745],
+ours 113,137.398.  Hardware's own interval is 0.002 wide, so that gap is real
+and is hardware rounding the offset in a fixed-point format, not our anchor
+being off (an anchor error is thousands of units).  It accounts for the
+941,308 off-by-one pixels the `WBuf*` half of the device sweep carries (294,842
+of them on `WBuf24D` ZB0 alone, which the simulation reproduces), and it is a
+separate, smaller and better-posed question than the anchor: **what format does silicon round the
+slope offset to?**  The 66 exact intervals in this document are the data for
+it, and no device run is needed to answer it.
+
+### The off-by-one floor is silicon's PLANE SOLVE, not our anchor (#31, 2026-09-13)
+
+Measured on #31 arm A (`1789312070-wslope-anchor-agent-645937`, ref
+`a00910d346`) with `wbuf_anchor_recover.py --ours`, which bounds the offset from
+our own capture exactly the way it bounds hardware's from a golden.  This is the
+larger half of the residual -- 941,308 off-by-one pixels across the `WBuf*`
+captures against 669,293 structural -- and it is a different question from the
+anchor.
+
+**Two triangles of one planar quad, same plane and same anchor row, get
+different offsets on hardware.**
+
+| triangle | hardware | ours |
+|---|---|---|
+| `FloorQuad` t0 (v0,v1,v2) | [113137.2866, 113137.2991] | [113137.3964, 113137.4026] |
+| `FloorQuad` t1 (v0,v2,v3) | [113136.7720, 113136.7745] | [113137.4180, 113137.4180] |
+
+`FloorQuad` is planar, so the two triangles share the 1/w plane exactly, and
+both anchor on row 0.  Our two offsets therefore agree to 0.02.  Hardware's
+differ by **0.52**, and each of its intervals is 0.002 wide, so that is not
+measurement slack.  In anchor terms 0.52 units is 1.7e-4 of a pixel row -- the
+anchors are the same row and the difference is elsewhere.
+
+The reproducibility is not in doubt: `WallQuad` t0 and all three `ClipW` t0
+give the byte-identical interval [199541.0145, 199541.0277], and `RoofQuad` t0
+and `WallQuad` t1 give the identical [6466.1445, 6466.1467] from two different
+quads that happen to share w endpoints and anchor at the same end.
+
+**CANDIDATE, not a finding: the setup engine's plane coefficients are rounded
+per triangle.** The two triangles are solved from different vertex triples with
+different determinants, so a fixed-point plane solve gives each its own
+rounding. The arithmetic is consistent with it: `FloorQuad`'s d(1/w)/dx is
+exactly 0 in real arithmetic (v0 and v1 share y and w), the two triangles'
+anchor COLUMNS are 179 and 150, and d(offset)/di here is -5.6e7, so a residual
+|d(1/w)/dx| of order 1e-9 in hardware's solve moves the offset by order 1 unit
+across 29 columns. That is the right size. It is arithmetic consistent with the
+measurement, not a measurement of the solve.
+
+What follows either way, and this is the part that is not a candidate:
+
+- **The off-by-one class is per-triangle and is not reachable from the plane**,
+  so no anchor rule can remove it.  It is the floor on what #31 can reach, and
+  the issue's "structural 0 at both ZS settings" for `WallQuad` and `LargeZ`
+  hides it -- `WBuf24D_WallQuad` is 263 differing with 263 off-by-one, and
+  `LargeZ` 118,240 with 118,240.
+- **The 66 exact intervals in this document are the whole dataset for it**, on
+  both sides, and it needs no device run.  The question to ask of them is what
+  fixed-point format reproduces all 66 hardware values from the vertex triples,
+  which is a fit over 66 constraints rather than a guess.
+- The discriminating test is cheap and already in the corpus: a planar quad's
+  two triangles must come out EQUAL under any model that reads only the plane,
+  and hardware says they are 0.52 apart.
+
+### The arm: #31's first ever, and what it measured (2026-09-13)
+
+Arms `1789312070-wslope-anchor-agent-645937` (ref `a00910d346`) and
+`1789312071-wslope-anchor-agent-645955` (ref `320d4dda03`), one disc carrying
+`W buffering` + `Depth Clamp`, 571 captures each, prediction
+`predictions/issue31-wslope-unclipped-row-grid.json` bound at queue time.
+
+`ab_compare`: **PRE-REGISTERED PASS on all 693 registered checks**, 8 better /
+0 worse / 562 same across 570 compared, differing 4,829,912 -> 4,773,444
+(-56,468) and structural 2,525,369 -> 2,468,241 (-57,128). This is the first
+judged verdict #31 has ever had; `bdc26fa5c8` predates `ab_compare` entirely.
+
+**Exactly 8 of the 571 captures differ between the arms**, and they are the four
+`WBuf24{D,F}_TriH_V1_ZB{0,1}_ZS1_ZB` depth captures plus their four colour
+siblings. The other 563 are BYTE-IDENTICAL, which covers every `ZBuf*` capture,
+every `ZS0` capture, all four `TriV`, all three `ClipF`, all three `ClipW`,
+`FloorQuad`, `RoofQuad`, `WallQuad`, `LargeZ`, `LineStrip` and all 40
+`Depth_Clamp`.
+
+| capture | arm A | arm B | off-by-one B | structural B |
+|---|---|---|---|---|
+| `WBuf24D_TriH_V1_ZB0_ZS1_ZB` | 13,200 | **204** | 204 | **0** |
+| `WBuf24D_TriH_V1_ZB1_ZS1_ZB` | 13,200 | **204** | 204 | **0** |
+| `WBuf24F_TriH_V1_ZB0_ZS1_ZB` | 13,200 | **126** | 126 | **0** |
+| `WBuf24F_TriH_V1_ZB1_ZS1_ZB` | 13,200 | **126** | 126 | **0** |
+
+Structural 52,800 -> 0. Total differing 52,800 -> 660, and the registered prose
+band was [0, 1400] per capture with 546 predicted across the four, so the band
+holds and was not vacuous: a wrong grid phase would have left ~13,200.
+
+13,200 px moved in each depth capture, which answers the "did it execute"
+question by image comparison rather than by a total.
+
+**The mechanism leg, which is the one that decides it.** Recovered offsets from
+each arm's OWN captures, `wbuf_anchor_recover.py --ours`, against hardware's
+interval from the golden:
+
+| `TriH` residue | arm A | arm B | hardware |
+|---|---|---|---|
+| k = 0 mod 4 | [480392.4963, 480392.5161] | **[439380.4190, 439380.4325]** | [439380.4325, 439380.4454] |
+| k = 1 mod 4 | [503086.2170, 503086.2389] | **[459200.4454, 459200.4626]** | [459200.4059, 459200.4077] |
+| k = 2 mod 4 | [480392.4963, 480392.5161] | [480392.4963, 480392.5161] | [480392.4963, 480392.5161] |
+| k = 3 mod 4 | [503086.2170, 503086.2389] | [503086.2170, 503086.2389] | [503086.2170, 503086.2389] |
+
+Residues 0 and 1 moved a whole ladder rung, to the rung hardware is on;
+residues 2 and 3 stood still and are still *exactly* hardware's interval. That
+is the 4-grid phase 2 confirmed on the device, and it is what the registration
+asked for -- the patch chose the anchor row, the goldens chose which rung that
+had to be.
+
+**And the leg that did not fully land.** Arm B's recovered offsets are adjacent
+to hardware's intervals but not inside them: residue 0 is 0 to 0.013 BELOW,
+residue 1 is 0.038 to 0.055 ABOVE. That is the whole of the 660 remaining
+pixels, it is the same per-triangle plane-solve term the section above measures
+on `FloorQuad`, and it is why residues 2 and 3 land exactly while 0 and 1 do
+not: our float32 offset happens to fall inside hardware's interval on two rungs
+of this ladder and just outside on the other two.
+
+So the residual after this arm is 566,549 structural px: `ClipF` 460,949, which
+is unselectable from this corpus, and `TriV` 105,600, which is a third
+mechanism. Both are named above with the measurement each needs.

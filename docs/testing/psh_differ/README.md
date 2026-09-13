@@ -138,3 +138,30 @@ killed it and starts a fresh child on the next one.
   8 through 15, texture stage modes above `0x12`, one-dimensional textures.
   The emulator asserts where it could draw something wrong and say so. Whether
   that asymmetry is worth closing is issue territory, not a per-site decision.
+
+## An incremental build here can hand you a stale generator
+
+`make` regenerates `build/psh.c` from `hw/xbox/nv2a/pgraph/glsl/psh.c` by
+mtime, which is the normal thing and is wrong for the way this tool actually
+gets used. Comparing two versions of the generator means restoring the other
+version of `psh.c` — and `git stash pop`, `git checkout --` and `git show >`
+can all leave the source with an mtime OLDER than `build/psh.o`. `make` then
+says nothing, relinks the previous object, and the run measures the binary you
+thought you had replaced.
+
+It cost a false alarm on 2026-09-13. A one-line change to `append_bump_channel`
+appeared to move **52 probes from `changed` to `same`** — fields as unrelated
+as `fog_mode`, `conv_tex[0]` and `alphakill[]`, which no edit to a bump channel
+can reach. `make clean && make` gave the identical report on both versions. The
+52 were one stale `psh.o`.
+
+The tell is exactly the one `AGENTS.md` names for a probe: a row that cannot
+happen. `fog_mode` going 0-changed/7-same to 7-changed/0-same is not a
+regression, it is an *inversion*, and nothing in a bump-channel edit can invert
+a fog probe. Chase the impossible row before believing the plausible ones.
+
+So: **`rm -rf build` between the two versions**, or `touch` the source after
+restoring it. And this is the same failure orchestration.md warns about one
+level up — "the worst failure here is measuring one binary twice" — which is
+why the two blast-radius sweeps for #31 and #10 were both re-run from clean and
+reproduced to the shader before either was reported.

@@ -338,6 +338,17 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         state->tex_hilo16[i] =
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16 ||
             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16;
+        /* Formats whose view swizzle drives component 0 from the literal ONE
+         * rather than from stored data.  These four are the whole set in both
+         * vk/constants.h and gl/constants.h, and the two tables agree:
+         * SZ_A8/LU_IMAGE_A8 are {ONE,ONE,ONE,R} and SZ_Y16/LU_IMAGE_Y16 are
+         * {ONE,R,R,ONE}.  A TEXFILTER sign flag on such a component has
+         * nothing to sign; see append_bump_channel. */
+        state->tex_comp0_const[i] =
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16;
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
@@ -1567,6 +1578,47 @@ static void append_bump_channel(const struct PixelShader *ps, MString *vars,
     bool snorm = ps->state->snorm_tex[k];
     const char *c = &chan[comp];
 
+    /*
+     * A sign flag on a component the view swizzle drives from a literal has
+     * nothing to sign, and neither the image format nor the sampler can reach
+     * it, so read it the way an unflagged channel is read.
+     *
+     * #10, measured on the goldens rather than argued.  The luminance channel
+     * is component 0, which SZ_A8 and SZ_Y16 both take from the constant ONE.
+     * RSIGNED then turned bump_unsigned(1.0) = 1.0 into
+     * sign3_to_0_to_1(bump_snorm(1.0)) = 0.496, and `BumpEnvLum` ties
+     * rsigned to bsigned, so exactly the two quads with BSIGNED set were low.
+     * Per-quad differing pixels against the goldens, quads in
+     * (gsigned, bsigned) order:
+     *
+     *   BumpEnvLum_A8    310 / 14,241 /  422 / 14,187   (29,160 total)
+     *   BumpEnvLum_Y16   310 / 13,755 /  422 / 13,645   (28,132 total)
+     *
+     * and 13,819 / 13,765 and 13,333 / 13,223 of those are ONE STEP LOW, every
+     * one of them negative, leaving exactly 422 per quad.  Three controls
+     * inside the corpus, none of them borrowed from another capture:
+     *
+     *   - quad 2 has GSIGNED set on a real data channel and sits at 422, so a
+     *     sign flag on stored data is already right;
+     *   - quads 0 and 2 already use this branch and sit at 310 and 422, which
+     *     is what makes 1.0 the MEASURED luminance rather than an assumption;
+     *   - `BumpMap_A8` is 1,576 with per-quad 310/422/422/422 under the same
+     *     swizzle and the same flags, differing only in having no luminance
+     *     stage, which localises the defect to this channel.
+     *
+     * Hardware's own four quads differ by 0/586/312/612 on every A8, Y16 and
+     * R16B16 capture in both suites -- its positional floor -- while on
+     * `BumpMap_G8B8`, a byte texel, they differ by 0/586/8,212/8,431.  So the
+     * instrument can see a live flag and reports these as inert.
+     *
+     * Components 1 and 2 are deliberately NOT included: `BumpMap_A8` takes
+     * them from the same literal, under flags, and is already at the floor.
+     */
+    if (comp == 0 && ps->state->tex_comp0_const[k]) {
+        flagged = false;
+        snorm = false;
+    }
+
     if (flagged && snorm) {
         /* The sampler signed and filtered it. */
         if (luminance) {
@@ -2150,9 +2202,12 @@ static MString* psh_convert(struct PixelShader *ps)
              * (the top-most row of the triangle clipped to the window, at
              * the column nearest the top vertex).  Wall/Roof/Floor in
              * W_buffering reproduce to the unit; applying the factor per
-             * pixel to w^2, as before, varied 30x across one quad.  Small
-             * unclipped triangles pick a reference on a 4-pixel grid instead;
-             * see docs/investigations/wbuffer-slope-offset.md.
+             * pixel to w^2, as before, varied 30x across one quad.  A
+             * primitive the window clip did not cut anchors its row on an
+             * absolute 4-pixel grid instead (phase 2), which is what all 24
+             * `TriH` triangles measure; the column stays on the 2-grid
+             * because no integer column reproduces `TriV`.  See
+             * docs/investigations/wbuffer-slope-offset.md.
              */
             mstring_append(preflight,
                 "float wbufSlopeStep(vec4 p0, vec4 p1, vec4 p2, vec4 clip) {\n"
@@ -2167,6 +2222,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    float xtop = (p0.y <= p1.y && p0.y <= p2.y) ? p0.x : (p1.y <= p2.y ? p1.x : p2.x);\n"
                 "    vec2 poly[8];\n"
                 "    int n = 3;\n"
+                "    bool cut = false;\n"
                 "    poly[0] = p0.xy; poly[1] = p1.xy; poly[2] = p2.xy;\n"
                 "    for (int side = 0; side < 4; side++) {\n"
                 "        vec2 kept[8];\n"
@@ -2175,8 +2231,11 @@ static MString* psh_convert(struct PixelShader *ps)
                 "            vec2 a = poly[i], b = poly[(i + 1) % n];\n"
                 "            float da = side == 0 ? a.x - clip.x : side == 1 ? clip.z - a.x : side == 2 ? a.y - clip.y : clip.w - a.y;\n"
                 "            float db = side == 0 ? b.x - clip.x : side == 1 ? clip.z - b.x : side == 2 ? b.y - clip.y : clip.w - b.y;\n"
-                "            if (da >= 0.0) kept[m++] = a;\n"
-                "            if ((da >= 0.0) != (db >= 0.0)) kept[m++] = mix(a, b, da / (da - db));\n"
+                "            if (da >= 0.0) kept[m++] = a; else cut = true;\n"
+                "            if ((da >= 0.0) != (db >= 0.0)) {\n"
+                "                kept[m++] = mix(a, b, da / (da - db));\n"
+                "                cut = true;\n"
+                "            }\n"
                 "        }\n"
                 "        n = m;\n"
                 "        if (n == 0) return 0.0;\n"
@@ -2209,9 +2268,39 @@ static MString* psh_convert(struct PixelShader *ps)
                 "    if (!found) return 0.0;\n"
                 /* The pair is the 2x2 pixel quad holding the anchor: a clip
                  * edge at column 159 measures the pair (158,159), a vertex at
-                 * 637.31 the pair (636,637). */
+                 * 637.31 the pair (636,637).
+                 *
+                 * A primitive the clip did not cut anchors its ROW on an
+                 * absolute 4-pixel grid at phase 2 instead.  Recovered from the
+                 * goldens, exactly, on all 24 `TriH` triangles: their offsets
+                 * are 439380/459200/480392/503086 and the anchor row that
+                 * reproduces each is 4*floor(k/4)+2 for every one of them, to
+                 * under 2e-6 of the value.  The 2-grid snap is right for
+                 * THIRTEEN of the sixteen triangles the clip DID cut -- Wall,
+                 * Roof and Floor both ways, all three ClipW both ways, and
+                 * ClipFs first triangle -- so the regime is selected on that
+                 * bit rather than on size.  The three exceptions are ClipFs
+                 * SECOND triangle at each clip top, below; do not read the
+                 * thirteen as sixteen.
+                 *
+                 * Deliberately not done here, both measured:
+                 *   - the COLUMN stays on the 2-grid.  `TriV` is the only
+                 *     capture whose anchor is a column, and NO integer column
+                 *     reproduces its offsets: the best is 164, off by -122,
+                 *     +658, +1547 and +2555 units on the four residues, where
+                 *     this model is exact to under a unit everywhere else.  A
+                 *     4-grid column would replace a wrong answer with a wrong
+                 *     answer and move no pixel -- TriV has pb == 0 exactly.
+                 *   - `ClipF`s second triangle wants clip_top+2 and is left
+                 *     alone.  The clip cuts it, so this rule gives it clip_top,
+                 *     which is wrong -- but the same triangle at clip_top 0
+                 *     wants clip_top+0, and the OTHER triangle of the same quad
+                 *     at the same clip wants clip_top+0 too, so no rule over
+                 *     (plane, clip, first covered pixel, top vertex) separates
+                 *     them.  See docs/investigations/wbuffer-slope-offset.md. */
                 "    c = 2.0 * floor(c * 0.5);\n"
-                "    r = 2.0 * floor(r * 0.5);\n"
+                "    r = cut ? 2.0 * floor(r * 0.5)\n"
+                "        : 4.0 * floor(r * 0.25) + 2.0;\n"
                 "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"
                 "    float i1 = 1.0 / p0.w + pa * (c + 0.5 - p0.x) + pb * (r + 0.5 - p0.y);\n"
                 "    float i2 = i1 + step;\n"
