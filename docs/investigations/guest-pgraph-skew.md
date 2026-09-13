@@ -1752,10 +1752,28 @@ anything, which is what caught #44's voided accuracy pair.
   `soak_title.sh` injects **no input**, so a Galleon soak can sit in an intro or
   a menu for its whole duration and still produce frames. The phase split of a
   menu is not the phase split of gameplay, and nothing in the numbers says
-  which you got. So: the capture's `gfps` band must be consistent with the
-  published Galleon arm-A ceiling of **p90 29**. A band far below that means
-  the soak measured something other than the workload whose cost this is
-  supposed to bound, and the run is void rather than informative.
+  which you got. So: the capture's `gfps` band must be consistent with
+  gameplay rather than a menu.
+
+  **WEAKENED BEFORE THE RUN, not after it.** I first wrote this gate as
+  "`gfps` p90 must be within ±4 of the published Galleon arm-A ceiling of 29",
+  and that is not a sound comparison: the published 29 came from a **normal**
+  build, this arm is a **perflog** build, and `profile.c`'s own comment says
+  the profiler *"puts a clock read around every method in the puller and so
+  changes the number it is measuring."* So a lower `gfps` here is expected from
+  the instrumentation and would be indistinguishable from a lighter workload —
+  the gate would fail for the wrong reason, or pass while hiding a menu.
+
+  The instrumentation-independent workload control is a **draw count**, not a
+  frame rate: `BE:` (`NV2A_PROF_BEGIN_ENDS`) and `TexU:` on the `xemu-work`
+  line. Those cannot be perturbed into existence by a clock read. But
+  `xemu-work` is **also absent from `LOGCAT_SPEC`**, so that control is
+  unavailable for the same reason the measurement is — which makes the one-line
+  filter fix worth more than it looks: it is what makes the survey
+  *interpretable*, not merely non-empty. Until then G3 can only say "a `gfps`
+  band far below anything Galleon shows in gameplay voids the run", which is a
+  much weaker statement than the one I registered, and it is recorded as weaker
+  rather than quietly reinterpreted once the numbers are in.
 - **G4** two runs, not one. The replicate for a no-oracle measurement is the
   RUN, and my own Crimson pair moved the ceiling 34.6% → 40.3% between two runs
   of one binary. A single Galleon run cannot establish this share any more than
@@ -1769,6 +1787,146 @@ whatever the baseline does. It must be read as an **upper bound** on (a) rather
 than an estimate, for two reasons already established here: `Syn` covers 4 of
 the 9 `sync_vertex_ram_buffer` call sites so READ under-counts, and `Tot`
 double-counts `texture_upload` and `shader_compile`.
+
+### MEASURED: the filter claim holds, and the binary fault is eliminated OFFLINE
+
+Survey `1789318797-wt54-phase-56718`, **nova**, Galleon 240 s, ref
+`49afee8889`, `--perflog`, `--no-expect` (a survey). Dispatcher log confirms
+`diagnostic build requested: -Pperflog=true` and built
+`49afee8889-perflog.apk` with its own `build-49afee8889-perflog.log`, apk_sha
+`f77298243d53`.
+
+    hakuX-phase lines in the capture      0
+    hakuX-perf  tag lines                 216   (25 of them the gfps pacing line)
+
+**The claim registered before the run is confirmed.** And the middle row of the
+three-way discriminator — *filter fault or wrong binary* — is resolved by a
+check that needed no device at all, run on the APK files themselves:
+
+| `libxemu.so` from | `hakuX-phase` string | `hakuX-perf` string |
+|---|---|---|
+| `49afee8889-perflog.apk` | **1** | 1 |
+| `8191d97296.apk` (normal) | **0** | **1** |
+
+The perflog binary also carries the full format string
+`Surf:%.1f Tex:%.1f Shd:%.1f Draw:%.1f [Vtx:…`, and the normal one does not.
+So `-Pperflog=true` compiles `NV2A_PERF_LOG` in correctly and **the
+dispatcher's plumbing works end to end**; `hakuX-perf` being present in *both*
+is what makes it a valid control rather than a coincidence.
+
+That leaves exactly one cause, and it is no longer an argument: **the capture
+filter drops the line.**
+
+**And I first named the wrong file, which is worth recording because the right
+one is the only one that works.** I wrote this up as `soak_title.sh:32`. That
+default is **dead while the dispatcher runs**: `dispatcher.sh:548` sets
+`LOGCAT_SPEC` and **exports** it, at top-level scope above the `case` at 556,
+so it wins over both `soak_title.sh:32` and `run_disc.sh:75`. Patching
+`soak_title.sh` would have changed nothing and read as a fix.
+
+The effective spec is therefore
+`hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W … *:S`
+— no `hakuX-phase`, and `*:S` silences it.
+
+**The fix is one token at `dispatcher.sh:548`**, additive, and provably inert
+for every other measurement: adding a tag to a logcat filter can only *add*
+lines, and only for a tag that exists solely in perflog builds, which nothing
+else currently requests.
+
+```diff
+-… hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W …
++… hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W …
+```
+
+`xemu-work` belongs in the same edit rather than later, because it carries
+`BE:` and `TexU:` — the **instrumentation-independent workload control** G3
+needs, and without it the survey can be non-empty and still uninterpretable.
+
+**The comment directly above line 548 already describes this failure**, in
+these words: *"A result claiming a spec that was never used is worse than one
+claiming none — someone reads `logcat.spec`, sees the tag they need, finds no
+lines, and concludes the code does not log rather than that the filter dropped
+it."* That is exactly the wrong conclusion the APK-strings control was run to
+prevent, and the same paragraph records the disc path having fallen through to
+a third literal once already.
+
+**Not applied here, and the reason is the rule this campaign already paid for.**
+`dispatcher.sh` is shared infrastructure, the dispatcher re-execs when its own
+script hashes change, and a request was in flight
+(`1789318886-stencilregress-60547`, claimed 10:01:33) whose work a re-exec
+would requeue. Editing shared infra with arms running is the failure that cost
+251 requeues. It is one line in the dispatcher owner's file — the same file
+`--perflog` landed in — and it should go in when the queue drains.
+
+### Independent corroboration, and a THIRD gap: the soak records no spec
+
+`dispatcher.sh:490-493` writes the spec it used into the result, deliberately
+with no fallback literal, so a result can record its own blindness. **It does —
+but only on the disc path.** Checked rather than assumed, in both directions:
+
+    disc  z-tip-100-Zero_stride  result.json .logcat.spec =
+      "hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I
+       hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I
+       VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S"
+      hakuX-phase in it?  NO        xemu-work in it?  NO
+
+    soak  1789318797-wt54-phase-56718  result.json keys =
+      apk_sha kind title seconds requester purpose ref device_serial
+      device_label logcat_lines pulled
+      -- no `logcat` field at all
+
+So the disc path's record is **independent confirmation of the effective
+spec**, written by the dispatcher itself on an unrelated run, and it agrees
+exactly with `dispatcher.sh:548`. That closes the loop without taking my own
+grep on trust.
+
+And the asymmetry is the third gap, smaller than the tag but the same shape:
+**a soak's `result.json` carries `logcat_lines` but not the spec that produced
+them.** A soak is exactly where it is needed — a disc has a golden to disagree
+with, a soak has nothing, so "the filter dropped it" and "the code does not log
+it" are indistinguishable from a soak result alone. That is the failure the
+comment at 538-542 was written about, still open on the path with the weaker
+oracle. Worth one line in the same edit as the tag.
+
+**I had this wrong in my first draft**, and it is the same error twice in one
+finding: I credited the soak result with recording its own spec, having read
+the disc path's writer and assumed it was shared. Both halves of this section
+are now read off the files rather than off the code.
+
+**Run 2 was NOT queued.** G4 asks for two runs, but a second run of an
+identically-filtered capture is a second guaranteed zero; the replicate becomes
+worth spending only once the tag is in the spec.
+
+### One thing the survey did establish, and it retires my own G3 caveat
+
+`gfps` over the full 240 s, 65 pacing samples:
+
+    n=65   min 2   p50 16   p90 29   max 29
+    published Galleon arm A (normal build):  p50 16   p90 29   max 30
+
+**The perflog build reproduces arm A's pacing almost exactly** — p50 16 against
+16, p90 29 against 29, max 29 against 30.
+
+I had weakened G3 before the run on the grounds that the profiler *"puts a
+clock read around every method in the puller and so changes the number it is
+measuring"*, so a lower ceiling would be expected and indistinguishable from a
+lighter workload. **It did not lower it, and the median did not move either.**
+So the weakening was right to register and is now retired by data rather than
+by argument, and two things follow:
+
+- **G3 is satisfied in its strong form.** The soak reached a Galleon workload
+  pacing-identical to the one the cost arms measured, despite `soak_title.sh`
+  injecting no input. That was the risk most likely to void this survey and it
+  did not materialise.
+- **The eventual Galleon phase figure needs no build-variant correction.** It
+  can be set beside `gfps` p90 29 → 13 directly, because the instrumentation
+  does not move the statistic those arms are judged on.
+
+One limit, stated rather than left implicit: this is one run, and `#64`
+established that `gfps` here is bimodal with a floor of 5-20 — `min 2` is below
+even that, so the *series* is not identical, only its ceiling and median. The
+ceiling is the statistic that matters, and that was fixed by `#64` before this
+arm ran rather than chosen now because it agreed.
 
 ## UNRESOLVED
 
@@ -1820,10 +1978,20 @@ double-counts `texture_upload` and `shader_compile`.
   the lever has nothing to buy. **Galleon is where the cost is, and its
   post-read share is unmeasured** — and *one title cannot establish a cost*
   applies to this figure exactly as it applies to the `~160 µs` one it
-  corrects. Cheapest measurement: one Galleon soak on a `-Pperflog=true` APK,
-  read with `docs/testing/phase_read_split.py`. Blocked only by plumbing:
-  `dispatcher.sh:164` builds a bare `assembleDebug`, so no request can ask for
-  a perf build.
+  corrects.
+
+  **The build half of the plumbing is fixed (`c1300aa3fa`, `--perflog`) and
+  VERIFIED: the APK really does compile in `NV2A_PERF_LOG`** — the tag string
+  and the phase format string are present in `49afee8889-perflog.apk`'s
+  `libxemu.so` and absent from a normal APK's, with `hakuX-perf` in both as
+  the control. **The capture half is not.** `dispatcher.sh:548` exports a
+  `LOGCAT_SPEC` that omits `hakuX-phase` and ends `*:S`, so survey
+  `1789318797-wt54-phase-56718` (Galleon 240 s, nova, perflog) captured
+  **0 phase lines against 65 `gfps` samples**. Measured, not argued, and the
+  binary explanation was eliminated offline before the run finished. One token
+  at `dispatcher.sh:548` unblocks it — plus `xemu-work:I` for the workload
+  control, and the soak path's missing `logcat` provenance field. Not applied
+  from this lane: it is shared infrastructure and a request was in flight.
 - **What share of `pipe_bind_tex` is the guest-VRAM content hash.** `Tx` is
   **5.85 ms/frame, 29.8% of all PFIFO busy time** on Crimson, against a
   texture *upload* of **0.01 ms/frame** — so the guarantee's irreducible half
