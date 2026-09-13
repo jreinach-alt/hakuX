@@ -19,3 +19,11 @@ Claude Code specifics:
 - Do not put a scratch script in the working directory with a stdlib module's
   name. A file called `bisect.py` or `dis.py` next to your work will shadow the
   standard library and be executed by unrelated imports.
+
+- **Never use the AskUserQuestion tool in this project.** It blocks the Stop
+  hook from firing and stalls the whole workstream -- an orchestrator session
+  holding a question open holds every agent waiting on it. Ask in plain text
+  at the end of a message instead, and keep working in the meantime: a
+  question that does not block costs nothing, and a decision the user has not
+  answered yet is rarely the only thing left to do. If a decision is genuinely
+  blocking, say so in one line and pick up something else.
