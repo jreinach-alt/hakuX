@@ -980,49 +980,49 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:729",
+   "loc": "hw/xbox/nv2a/pfifo.c:761",
    "symbols": [],
    "text": "// TODO think more about locking"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:791",
+   "loc": "hw/xbox/nv2a/pfifo.c:823",
    "symbols": [],
    "text": "* TODO: Check this range is correct for the nv2a */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:868",
+   "loc": "hw/xbox/nv2a/pfifo.c:900",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:907",
+   "loc": "hw/xbox/nv2a/pfifo.c:939",
    "symbols": [],
    "text": "// TODO: should we become busy here??"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:961",
+   "loc": "hw/xbox/nv2a/pfifo.c:993",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1088",
+   "loc": "hw/xbox/nv2a/pfifo.c:1120",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pfifo.c:1111",
+   "loc": "hw/xbox/nv2a/pfifo.c:1143",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pfifo.c:1281",
+   "loc": "hw/xbox/nv2a/pfifo.c:1313",
    "symbols": [],
    "text": "/* XXX: Think this is different to what nouveau calculates... */"
   },
@@ -4406,10 +4406,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "bb1f62d32d2f7ca9982ccf4cb7978fbc0e45aaee",
+  "emulator_commit": "06fecf02d33566b9ad473048173271385e06049e",
   "gaps": 497,
   "resolved_tables": 1,
-  "sites": 2782,
+  "sites": 2783,
   "suites": 102,
   "support_dirs": [
    "/home/justin/pbkitplusplus"
@@ -4755,7 +4755,7 @@
   ],
   "NV097_FLIP_STALL": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:664",
+    "loc": "hw/xbox/nv2a/pfifo.c:696",
     "role": "COMMENT",
     "text": "/* If NV097_FLIP_STALL was executed, check if the flip has completed."
    },
@@ -5015,6 +5015,11 @@
    }
   ],
   "NV097_SET_BEGIN_END": [
+   {
+    "loc": "hw/xbox/nv2a/pfifo.c:92",
+    "role": "COMMENT",
+    "text": "* segment for NV097_SET_BEGIN_END and an arm of its own."
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/gl/draw.c:249",
     "role": "REF",
@@ -16625,7 +16630,7 @@
     "text": "* (NV_PGRAPH_INTR, NV_PGRAPH_INCREMENT, NV_PGRAPH_FIFO) additionally require"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:660",
+    "loc": "hw/xbox/nv2a/pfifo.c:692",
     "role": "REF",
     "text": "return qatomic_read(&d->pgraph.regs_[NV_PGRAPH_FIFO]) &"
    },
@@ -16642,7 +16647,7 @@
   ],
   "NV_PGRAPH_FIFO_ACCESS": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:661",
+    "loc": "hw/xbox/nv2a/pfifo.c:693",
     "role": "REF",
     "text": "NV_PGRAPH_FIFO_ACCESS;"
    }
@@ -18036,7 +18041,7 @@
   ],
   "NV_PGRAPH_SURFACE": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:671",
+    "loc": "hw/xbox/nv2a/pfifo.c:703",
     "role": "READ",
     "text": "uint32_t s = pgraph_reg_r(pg, NV_PGRAPH_SURFACE);"
    },
@@ -18113,7 +18118,7 @@
   ],
   "NV_PGRAPH_SURFACE_MODULO_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:676",
+    "loc": "hw/xbox/nv2a/pfifo.c:708",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_MODULO_3D));"
    },
@@ -18140,12 +18145,12 @@
   ],
   "NV_PGRAPH_SURFACE_READ_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:674",
+    "loc": "hw/xbox/nv2a/pfifo.c:706",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:678",
+    "loc": "hw/xbox/nv2a/pfifo.c:710",
     "role": "READ",
     "text": "if (GET_MASK(s, NV_PGRAPH_SURFACE_READ_3D)"
    },
@@ -18172,12 +18177,12 @@
   ],
   "NV_PGRAPH_SURFACE_WRITE_3D": [
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:675",
+    "loc": "hw/xbox/nv2a/pfifo.c:707",
     "role": "READ",
     "text": "GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D),"
    },
    {
-    "loc": "hw/xbox/nv2a/pfifo.c:679",
+    "loc": "hw/xbox/nv2a/pfifo.c:711",
     "role": "READ",
     "text": "!= GET_MASK(s, NV_PGRAPH_SURFACE_WRITE_3D)) {"
    },
