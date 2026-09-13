@@ -1099,4 +1099,146 @@ Arms: A `3de282e006` (counter only), B `e62907fa03` (`defer_cap` 15), DOA3,
 240 s, `--device thor`, one requester, prediction committed at `c8548b6fae`
 before either was queued.
 
+**Results: see the `defer_cap 15` comment on #65 — it landed, and D9 failed.**
+Unlock-mode loss 11.005 → 0.798 s/min, cap-bound fully-unlocked windows
+6, 1 → 0, 0, `gfps` p90 59 → 59 and max 59 → 59. D1, D5 and D7 all failed as
+ratios to an arm whose own spread exceeded their tolerance, and D9 failed on
+the real residual: arm B's worst fully-unlocked window still clamps 5 times
+against a bar of 2.
+
+## MEASURED 2026-09-13: the round trip's tail, and "1.35× the maximum" is refuted
+
+D9's diagnosis named `defer_cap = 12` because `def(max=) − max_defer` reached
+**3,083,365 ns**, so twelve's 4,170,938 ns of margin is "1.35× the observed
+maximum". **That argument does not survive more data**, and the correction is
+worth more than the value it defends. Tool:
+`docs/testing/vblank_roundtrip.py`, which writes nothing and carries its own
+controls.
+
+### The estimator, and what it can and cannot see
+
+For a **non-deferred** assertion the recorded lateness *is* the timer's own
+lateness `L`, because the callback fires at the grid slot and asserts
+immediately. For a **deferred** one it is `L + hold + L'` with
+`hold = MIN(max_defer, remaining) ≤ max_defer`. So
+
+    def(max=) − max_defer  ≤  max(L + L')
+
+is a **lower bound** on the round trip — and it is the estimator twelve was
+derived from, so applying it to more windows is like for like.
+
+Three things it conditions on rather than pools, and the first is what the
+original figure got wrong:
+
+- **Mixed-regime windows are excluded.** `max_defer` is `period/2` locked and
+  `poll_interval · cap` unlocked, so a window holding both regimes has two
+  different holds inside one aggregate and `def(max=)` could belong to either.
+  This is exactly the trap U5 failed on. Not conditioning changes the thor's
+  `rt_max` from 11.4–13.8 ms to 3.7–6.5 ms, which is the whole difference
+  between "no cap can help" and "twelve is the knee".
+- **Host-stall windows are dropped** (`nodef(max=) > period`, the only stall
+  evidence a window line carries). 1–10 windows per run; no conclusion turns
+  on it, so it is reported rather than relied on.
+- **The statistic is a window count**, never a rate or a mean, because D1, D5
+  and D7 all failed by measuring occupancy instead of the mechanism.
+
+### The correction
+
+**3,083,365 ns is a maximum over the ~32 fully-unlocked windows two thor runs
+happened to contain.** The same estimator, on the same device, regime-
+conditioned over the **~110 usable windows of each of those same runs**:
+
+| run | `rt_max` | `rt_p90` |
+|---|---|---|
+| A1 `3de282e006` | 4,075,604 | 2,844,532 |
+| A2 `3de282e006` | 3,691,090 | 2,423,885 |
+| B1 `e62907fa03` | 3,718,116 | 2,539,321 |
+| B2 `e62907fa03` | **6,534,801** | 2,440,989 |
+
+So twelve's margin is **0.64× the observed maximum, not 1.35×**. The tail was
+not covered; it was sampled too few times to see itself. That is this
+document's own *"a within-ref floor is a lower bound on the floor, never the
+floor"*, and *"a bound is not a value"*.
+
+### The value survives, on the statistic that does not move with occupancy
+
+| cap | margin | windows that would clamp (4 thor runs) |
+|---|---|---|
+| 15 | 1,042,740 | 37, 25, 28, 28 ← what shipped |
+| 14 | 2,085,474 | 17, 14, 18, 16 |
+| 13 | 3,128,208 | 8, 5, 1, 3 |
+| **12** | **4,170,942** | **0, 0, 0, 1** ← eliminated |
+| 11 | 5,213,676 | 0, 0, 0, 1 |
+
+**Twelve is the knee**, eleven buys nothing, and the single residual window is
+the 6.53 ms event the maximum-based argument had mispriced. The right claim is
+*"the exceedance count reaches zero"*, not *"the margin covers the maximum"*.
+
+Cost: the hold loses **25%** of its length against 6.25% for the fifteen step.
+So this step is **not free by precedent** and its cost leg is the one to
+watch — three arms in a row have failed to show the deferral's frame-rate
+defence (B4, U6, D6), but a 4× larger cut has none.
+
+### THE NOVA, measured at last — and it does not support twelve
+
+This was the previous lane's own least-certain point: *"3,083,365 ns is two
+runs on one device, and the nova's latency is 3.4× the thor's."* It is now
+measured, from **five nova soaks already on disk at zero device cost**.
+
+| | thor (4 runs) | nova (5 runs) |
+|---|---|---|
+| `rt_max` | 3,691,090 – 6,534,801 | **6,225,835 – 50,353,011** |
+| `rt_p90` | 2,423,885 – 2,844,532 | **4,776,972 – 5,768,336** |
+| exceedance windows at cap 12 | **0 – 1** | **12 – 29** of ~120 |
+| exceedance windows at cap 10 | 0 – 1 | 0 – 8 |
+| exceedance windows at cap 9 | 0 – 1 | 0 – 5 |
+
+**The nova's `rt_p90` alone exceeds cap 12's margin on four of five runs.** It
+would need **cap 10** to reach the thor's post-change level and **9** to
+approach zero.
+
+**And that is still not a reason to ship 10, for a reason that has to be said
+rather than assumed.** The nova has never entered unlock mode on any title on
+hand — `unl == 0` on every window of all five soaks — so `defer_cap`'s unlock
+branch is **dead code there**. Those figures are the **host's** round trip,
+read out of *locked-mode* deferrals and transplanted into the unlock
+arithmetic. They predict what would happen *if* a title ever put the nova in
+unlock mode; they are not something the nova is doing. Spending two further
+steps of a real title's deferral headroom against a configuration never
+observed is a trade, and it goes to the owner with both numbers rather than
+being resolved by whoever writes the constant.
+
+The falsifier, for whoever finds such a title: **if a title is ever found that
+puts the nova in unlock mode, this predicts its cap-bound window count will
+NOT reach zero at 12.**
+
+One thing the same measurement settles in passing: **the normal-mode pair is
+exonerated by measurement and not only by arithmetic.** Locked mode's margin
+is `period/2` = 8,341,872 ns and covers even the nova's clean-run round trip
+at **1.24×** — which is also why the locked regime delivers 59.941 Hz at
++0.005 s/min on both devices.
+
+### A leg that failed and was relabelled rather than dropped
+
+The cap-16 column was registered as an **impossible row**: cap 16 leaves 6 ns,
+so surely *every* window with a deferral exceeds it. It read 91–120 of
+110–120. The shortfall is real and is **`remaining`-bound deferrals**, whose
+hold is shorter than the cap and which therefore under-read the round trip.
+So the column is **coverage, not a control** — it counts windows holding at
+least one *cap-bound* deferral. A leg that fails because the world is bigger
+than the leg is worth keeping, relabelled. The impossible row is now `neg ==
+0` — a QEMU timer cannot fire early — which holds on all nine runs, alongside
+`def(max=) ≥ def(mean=)` everywhere and `nodef_n + def_n == n` **exactly**,
+which says the three counters are read at one instant rather than across a
+gap.
+
+### Arms
+
+A `9931f882bb` (cap 15), B `2e4e8403d9` (cap 12) — one constant apart. DOA3,
+240 s, **two runs per arm**, `--device thor`, one `--who`. Prediction
+committed before anything was queued in
+`docs/testing/predictions/issue65-defercap-12.json`, with E4 registered as an
+**intermediate value**: the hold must fall by exactly three poll intervals,
+3,128,202 ns, run-paired — the half a merely-helpful change would miss.
+
 *Results to be filled in from the dispatcher.*
