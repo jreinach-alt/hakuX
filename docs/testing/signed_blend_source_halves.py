@@ -60,6 +60,7 @@ captures. The recovered destinations come out as exactly {127, 255} and the
 recovered sources cover all 256 values, which is what the suite draws.
 """
 import argparse
+import glob
 import os
 import sys
 
@@ -115,13 +116,26 @@ def recover(goldens):
 
 
 def find_capture(resultdir, test):
-    for name in ("%s::%s.png" % (SUITE, test), "%s.png" % test):
-        p = os.path.join(resultdir, name)
-        if os.path.exists(p):
-            return p
+    """Locate one capture inside a dispatcher result directory.
+
+    The dispatcher does not put PNGs at the top of a result directory: it puts
+    them in captures<N>/, one per run, named "<Suite>::<test>.png". Searching
+    only the top level made this tool report all three captures MISSING on a
+    result that in fact contained them, which reads exactly like an arm that
+    failed to render -- the most alarming possible false negative for a tool
+    whose entire job is to decide whether a prediction held.
+    """
+    names = ("%s::%s.png" % (SUITE, test), "%s.png" % test)
+    roots = [resultdir]
+    roots += sorted(glob.glob(os.path.join(resultdir, "captures*")))
     sub = os.path.join(resultdir, SUITE)
     if os.path.isdir(sub):
-        return find_capture(sub, test)
+        roots.append(sub)
+    for root in roots:
+        for name in names:
+            p = os.path.join(root, name)
+            if os.path.exists(p):
+                return p
     return None
 
 
