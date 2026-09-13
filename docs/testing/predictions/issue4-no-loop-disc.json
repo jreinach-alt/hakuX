@@ -1,0 +1,20 @@
+{
+  "registered_utc": "2026-09-13T03:55:27Z",
+  "who": "issue4-agent",
+  "issue": "4",
+  "prediction": "A is a loop-INCLUDED Texture render target disc (the issue59 base arm, 41 captures); B is the same suite on a loop-SKIPPED disc at tip, built by the new --skip-test path, 3 runs. The variable is the disc, not the renderer: the two issue59 arms are byte-identical on this suite. STRUCTURAL FALSIFIER, the one that settles #4: in A the 285x285 quad (rows 98-382, cols 178-462) holds exactly ONE colour, opaque black [0,0,0,255], in all 40 TexFmt_* captures, while every pixel outside the quad matches the golden. If that quad is still uniformly black in B, the diagnosis is wrong and this IS a render-to-texture defect. If it is not, the 3,209,634 px headline was a disabled texture stage and #4's size is an artefact of its own disc. Expect B to score 40 captures not 41, total well under 200,000 px, and the two YUV captures to be pixel-exact because 52defa5b already takes Texture_format's UYVY_L and YUY2_L to 0 at this tip. Expect all 3 runs byte-identical: this residual is deterministic, so it is not #39.",
+  "a_ref": "5e612529b9",
+  "b_ref": "3a364fa0e6",
+  "must_not_move": [
+    "Texture_render_target/TexFmt_SZ_Index8_*"
+  ],
+  "expect": {
+    "Texture_render_target/TexFmt_UYVY_L": 0,
+    "Texture_render_target/TexFmt_YUY2_L": 0,
+    "Texture_render_target/TexFmt_A8R8G8B8": 71,
+    "Texture_render_target/TexFmt_A8": 0,
+    "Texture_render_target/TexFmt_A4R4G4B4": 0,
+    "Texture_render_target/TexFmt_R6G5B5": 0
+  },
+  "expect_counts": {}
+}
