@@ -254,6 +254,9 @@ void pgraph_gl_image_blit(NV2AState *d)
         bytes_per_pixel;
     size_t row_pixels = MIN(max_row_pixels, image_blit->width);
 
+    hwaddr source_size =
+        (image_blit->height - 1) * context_surfaces->source_pitch +
+        image_blit->width * bytes_per_pixel;
     hwaddr dest_size = (image_blit->height - 1) * context_surfaces->dest_pitch +
                        image_blit->width * bytes_per_pixel;
 
@@ -287,6 +290,21 @@ void pgraph_gl_image_blit(NV2AState *d)
     hwaddr dest_tile_offset =
         dest_tile.valid ? dest_addr + dest_offset - dest_tile.base : 0;
     uint8_t *dest_tile_base = d->vram_ptr + dest_tile.base;
+
+    /*
+     * Bring VRAM up to date under both ranges before the copy touches it.
+     * The surface lookups here match on the exact base address, so a blit
+     * into the middle of a surface -- which is what Image blit's
+     * DirtyOverlappedDestSurf and Overlap_* do -- found nothing and read or
+     * wrote stale VRAM. Hardware sees one VRAM; this is what makes ours
+     * behave like it. The Vulkan renderer has done this since #7; measured
+     * on GL at DirtyOverlappedDestSurf 49,142 px against Vulkan's 6, the
+     * whole blit result absent.
+     */
+    pgraph_gl_download_surfaces_in_range_if_dirty(
+        pg, source_addr + source_offset, source_size);
+    pgraph_gl_download_surfaces_in_range_if_dirty(
+        pg, dest_addr + dest_offset, dest_size);
 
     SurfaceBinding *surf_dest = pgraph_gl_surface_get(d, dest_addr);
     if (surf_dest) {

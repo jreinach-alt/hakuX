@@ -1622,6 +1622,24 @@ static void invalidate_overlapping_surfaces(NV2AState *d, SurfaceBinding *surfac
     }
 }
 
+bool pgraph_gl_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
+                                                   hwaddr start, hwaddr size)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHGLState *r = pg->gl_renderer_state;
+    SurfaceBinding *surface, *next;
+    bool found_overlap = false;
+
+    QTAILQ_FOREACH_SAFE(surface, &r->surfaces, entry, next) {
+        if (check_surface_overlaps_range(surface, start, size)) {
+            found_overlap = true;
+            pgraph_gl_surface_download_if_dirty(d, surface);
+        }
+    }
+
+    return found_overlap;
+}
+
 static SurfaceBinding *surface_put(NV2AState *d, hwaddr addr,
                                    SurfaceBinding *surface_in)
 {
