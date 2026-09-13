@@ -1,0 +1,35 @@
+{
+  "registered_utc": "2026-09-13T08:05:00Z",
+  "who": "vblank-defer",
+  "issue": "65",
+  "title": "Dead or Alive 3 (USA) (En,Ja).xiso.iso",
+  "device": "thor",
+  "seconds": 240,
+  "a_ref": "fc59b50726",
+  "b_ref": "595d258a02",
+  "prediction": "Holding the VBLANK phase grid in UNLOCK mode as well as across a deferral: `if (unlocked) target = now + period; else { target += period; ... }` becomes the else branch unconditionally. #65 fixed the deferral half and left this one because Galleon reports Ul:N on every window of both its arms. Dead or Alive 3 does enter unlock mode -- Ul:Y on 15 of 47 windows of an existing soak, gfps ceiling 59 -- so this half is now measurable, on the thor, which is the only device that has the title. Judged on the soak logcat by docs/testing/vblank_report.py: a soak writes no captures, so runs=0 and ab_compare cannot score it. Both arms 240 s, DOA3, --device thor, one requester (vblank-defer) so affinity cannot split them, and device_label is checked in each result.json rather than assumed. Statistic declared in advance for every leg; for the cost leg it is the CEILING (p90 and max of gfps), never the median, because #64 measured the median on this queue to be a measurement of device occupancy -- bimodal series, ceiling 29-31 and floor 5-20, median moving 80%->16-32% occupancy across one evening with the ceiling unmoved (p90 29/29/27/29, max 31/29/30/29 over four runs, two refs, both orders). GATE U8 (validity, not a falsifier): unl>0 on at least 5 windows of BOTH arms. If DOA3 does not enter unlock mode in these soaks then U0/U1/U2 are VOID rather than failed, and the arm has to be re-run on a title that does. U0 (arm A alone, the instrument against the arithmetic): in arm A's fully-unlocked windows (unl == n), (mean interval - period) lands within +/-20% of the same windows' `vblphase mean=`. This is forced by the code and by QEMU timer semantics, not by the patch: in unlock mode arm A sets target_{n+1} = now_n + period, so now_{n+1} = now_n + period + late_{n+1} and the mean interval is exactly period + mean(late). FAILS if the two disagree, and then the instrument is wrong and every leg below is void -- a measurement that disagrees with the arithmetic is the instrument until proven otherwise. U1 (the mechanism, with its magnitude predicted from an independently measured quantity): the FALL in mean interval over unlock-active windows, arm A minus arm B, lands within +/-50% of arm A's `vblphase mean=` over those windows. The arithmetic: arm B has target_{n+1} = target_n + period, so its interval is period + late_{n+1} - late_n and its mean is the period; arm A's mean is period + mean(late); so the fall IS arm A's mean lateness. FAILS if the fall is under 30000 ns, which is the world where the unlock deferral (max_defer = poll_interval*defer_cap = period/16*16 = one whole period) routinely exceeds a period, so `target += period` lands at or below now, the `<= now` clamp discards the grid anyway and the fix cannot bite. That is a diagnosis and not a revert: the entry point would still be right and the deferral cap would be the wrong value. U2 (the headline): whole-soak delivered rate rises by at least 0.20 Hz from arm A to arm B. FAILS if it falls. Registered as a DELTA, not an absolute, because arm A's rate on DOA3 has never been measured on a ref carrying #65's deferral fix -- the only DOA3 soak on record predates it and read 58.617 Hz. U3 (must-not-move, the within-run control): windows with unl == 0 -- unlock mode never active, the regime this change cannot reach -- keep a mean interval within +/-50000 ns between the arms. DOA3's scene varies between soaks and one run per arm cannot rule that out; a control in the untouched regime can. FAILS if it moves more, and then something other than the unlock branch changed. U4 (the impossible row): neg == 0 on every window of BOTH arms. A QEMU timer fires at or after its deadline and never before, and every path that rearms this timer early -- the deferral retry, FLIP_STALL's timer_mod(now), the pause/resume unstick in ui/xemu.c -- can only fire a VBLANK already at or past its slot, because none of them writes vblank_next_target_ns. FAILS at any negative lateness, and then a writer this stream has not inventoried moves the grid under an armed timer, which voids the deferred/non-deferred split rather than adding to it. U5 (phase must NOT improve -- the leg that can embarrass the mechanism story): arm B's `def(mean=)` lateness stays within +/-15% of arm A's, and the interval p99 within +/-10%. This change alters the RATE by leaving the grid alone; it does not touch the deferral hold, which is what distorts an individual VBLANK's phase. FAILS if either moves more, and then the grid reset was also the phase mechanism and the claim that rate and phase are separate properties is wrong. U6 (the cost, on the ceiling): gfps p90 and gfps max each fall by no more than 2 from arm A to arm B. The noise floor is stated in advance from #64's four-run series: +/-2 on p90 and +/-2 on max. FAILS at a fall of 3 or more on either, and then holding the grid in unlock mode costs frame rate and it is the deferral that needs reworking rather than the grid restoring -- the same shape as #65's B4, which held. U7 (the coalescing survey, arm A, two-sided and not about the patch): of the coalesced assertions, more than 50% arrive with the VBLANK bit UNMASKED in INTR_EN_0 (coal_en/coal > 0.50), AND more than 50% arrive at the end of an interval shorter than the period (coal_short/coal > 0.50). If the first fails, the 1.56% figure #65 published is measuring windows in which the guest is not taking VBLANK interrupts at all and should be retracted. If the second fails, coalescing is the guest's own ISR latency -- which silicon has too, PCRTC_INTR_0 being a sticky latch there as well -- and there is nothing in it for this stream to fix.",
+  "must_not_move": [
+    "unl == 0 windows: mean interval within +/-50000 ns between arms",
+    "neg == 0 on every window of both arms",
+    "def(mean=) lateness within +/-15% between arms",
+    "interval p99 within +/-10% between arms",
+    "device_label == thor on both results"
+  ],
+  "expect": {
+    "U1/interval_fall_vs_armA_lateness_tolerance_frac": 0.5,
+    "U1/interval_fall_floor_ns": 30000,
+    "U2/delivered_rate_rise_min_millihertz": 200,
+    "U3/unl_zero_mean_interval_tolerance_ns": 50000,
+    "U4/late_neg_max": 0,
+    "U5/def_lateness_tolerance_frac": 0.15,
+    "U5/p99_tolerance_frac": 0.1,
+    "U6/gfps_p90_drop_max": 2,
+    "U6/gfps_max_drop_max": 2,
+    "U7/coal_enabled_frac_min": 0.5,
+    "U7/coal_short_frac_min": 0.5,
+    "U0/armA_lateness_vs_interval_tolerance_frac": 0.2,
+    "U8/unlock_windows_min_per_arm": 5
+  },
+  "expect_counts": {},
+  "note_refs": "Registered at 0e476cd115/67f6bea8d7 and rebased onto fcb7547cdb before either arm was queued; the rebased shas carry identical trees for hw/xbox/nv2a/nv2a.c. Nothing had run at the time of the rewrite."
+}
