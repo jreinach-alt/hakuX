@@ -162,8 +162,30 @@ def main(argv=None):
             gold_path = os.path.join(args.goldens, suite, test + ".png")
             if not os.path.exists(gold_path):
                 continue
-            a = np.asarray(Image.open(os.path.join(d, name)).convert("RGB"))
-            b = np.asarray(Image.open(gold_path).convert("RGB"))
+            # RGBA, not RGB. A *_ZB capture stores the zeta word as
+            # A<<16 | R<<8 | G with stencil in B, so dropping alpha drops the
+            # TOP BYTE of every depth value -- the classes below would then be
+            # computed on two thirds of the number they claim to describe.
+            # That is not hypothetical: the same omission in an earlier
+            # analysis is what put a "28 captures, 270,650 channels
+            # unfalsifiable" row into unfalsifiable-goldens.md for a cell whose
+            # goldens actually hold 57 to 168 distinct depth words.
+            #
+            # score_sweep.py has always used RGBA, so this also makes the two
+            # tools agree about what a differing pixel is.
+            #
+            # MEASURED IMPACT: none on the classification. Rerunning both the
+            # 144-capture current-disc set and the full 784-capture oracle with
+            # and without alpha gives byte-identical class counts -- 34/24/86
+            # and 108/148/528 respectively -- and moves the differing-pixel
+            # total by 96 of 2,608,760. A capture that differs in alpha
+            # essentially always differs in RGB too, so the class was already
+            # decided by the RGB difference. The change is right on the
+            # semantics and does not invalidate any classification taken
+            # before it; recorded so nobody re-derives that conclusion from
+            # the reasoning alone.
+            a = np.asarray(Image.open(os.path.join(d, name)).convert("RGBA"))
+            b = np.asarray(Image.open(gold_path).convert("RGBA"))
             if a.shape != b.shape:
                 continue
             seen.add((suite, test))
