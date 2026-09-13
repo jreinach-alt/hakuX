@@ -1343,10 +1343,76 @@ it**, because the skew can only lose a race on an upload that actually
 happens. The two mechanisms were never additive, and they are not
 independent in this direction either.
 
-*Crimson arm B to follow. Given mode 2 holds 94.9% of submissions on Galleon,
-the expectation is **X1 holds and X5 fails** — the bound closes the race and
-costs the ceiling exactly as mode 1 did, which would complete the picture
-rather than change it.*
+### CRIMSON ARM B: `Tr` goes to EXACTLY ZERO, and the cost is not there
+
+`d879e6e03b` / apk `b87d7d112dc7`, **nova**, mode 2, run 1 of 2.
+
+```
+arm A   Tr = 11,829 / 19,167    rate 0.6172
+arm A   Tr = 11,866 / 19,176    rate 0.6188
+arm B   Tr =      0 / 13,751    rate 0.0000        Xd = 0
+```
+
+**X1 HOLDS, and the bar was exactly zero rather than "smaller".** That
+distinction is the whole reason the leg was written that way: `Tr` fell is
+satisfiable by any perturbation of timing, and against a baseline reproducible
+to **0.26%** a perturbation would have moved the rate, not annihilated it.
+**Zero over 13,751 uploads is the race being made impossible on the covered
+path, measured on a title that flips every frame.**
+
+So the selective bound **does close #44 on a real title.** The disc pair could
+not show that — V0 voided it — and this is the instrument that could.
+
+### And the cost is title-dependent, which contradicts what I expected
+
+| | arm A r1 | arm A r2 | **arm B r1** |
+|---|---|---|---|
+| `gfps` p90 / max | 34 / 37 | 31 / 37 | **31 / 34** |
+| `held(n)/kicks` | 0 | 0 | **0.7026** |
+| guest blocked | ~0% | ~0% | **~30.7% of wall clock** |
+| hold mean | — | — | **4,031,642 ns** |
+
+**p90 falls by 0 and max by 3** — against Galleon's falls of **16 and 14** in
+the same mode. I predicted X5 would fail as W1 did; on this title it very
+nearly holds. (The judge correctly refuses to render leg 6 with one run per
+arm: *"noise floor not measured"*. Run 2 decides it.)
+
+The guest is blocked **30.7%** of wall clock here at a hold mean **74% larger**
+than Galleon's, and the ceiling barely moves. **So the cost of this bound is
+not a property of the bound — it is a property of whether the guest CPU thread
+is the title's critical path.** Galleon's is (83% busy, per
+`frame-pacing-and-parallelism.md`); Crimson's evidently is not. That is a
+materially different conclusion from "mode 2 costs what mode 1 costs", which
+was drawn from one title.
+
+### `gave` OVER-COUNTS THE HOLE, and `Tr` is what proves it
+
+`gave/held(n) = 0.4144` on this arm — **41.4% of covered submissions were
+released with pushbuffer still outstanding**, against Galleon's 5.9%.
+`gaveby(flip=462 nop=7,100 ctxsw=1 noaccess=0 other=1)` — the NOP handshake
+again, at 93.9%.
+
+**And `Tr` is nevertheless zero.** Those two facts are only compatible one
+way: **`gave` counts "released with PUSHBUFFER outstanding", not "released
+with a DRAW outstanding".** The pusher parks on `waiting_for_nop` at a NOP
+method, which in a normal command stream comes *after* the draw it follows —
+so the draw has already been consumed, its texture already read, and the
+guarantee already satisfied, at the moment `gave` fires.
+
+So `gave` is a **conservative upper bound on the hole, and a loose one**: 41.4%
+of holds were incomplete by its definition and 0% of uploads lost a race.
+Every leg I built on it — V4, W5, X4 — is therefore measuring a proxy that
+over-reads, and all three "held" in the direction of *more* hole than exists.
+
+**That is the third time today a proxy leg has been contradicted by a direct
+counter**, after #65's E1 (exceedance windows) against E2 (`clamp=`), and
+`fifo_skew_report`'s frozen sample against the live line. The pattern is now
+explicit enough to state as a rule: **when a direct counter for the mechanism
+exists, register the leg on the counter and use the proxy only for
+direction.** `Tr` is the counter here; `gave` is the proxy.
+
+*Crimson arm B run 2 to follow; it decides X5 and gives leg 6 its noise
+floor.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
