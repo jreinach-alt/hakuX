@@ -292,6 +292,17 @@ static struct {
     uint32_t src[VBH_SRC__COUNT];
     uint32_t coalesced;
     uint32_t deferred;
+    /* NV_PCRTC_RASTER reads the guest made during the period that just
+     * ended. On silicon that register is the scanline the beam is on, so it
+     * advances at the horizontal rate -- 15.734 kHz for 480i, some 262 counts
+     * across a field -- and a title can poll it to find where in the frame it
+     * is, or to wait for a particular line. Ours advances by one PER READ
+     * (pcrtc.c: `r = d->pcrtc.raster++`) and is reset to 0 at VBLANK, so the
+     * value a title gets back is a function of how often it has asked, not of
+     * how much of the frame has elapsed. Whether that matters depends on
+     * whether anything reads it, which nothing has ever counted. */
+    uint32_t raster_reads;
+    uint32_t raster_reads_max;
     int64_t  min_ns;
     int64_t  max_ns;
     uint64_t sum_ns;
@@ -341,7 +352,8 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         ANDROID_LOG_INFO, "hakuX-perf",
         "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "
         "p1=%lld p50=%lld p90=%lld p99=%lld min=%lld max=%lld "
-        "src(tmr=%u smp=%u gfx=%u) coal=%u def=%u vd=%u il=%02x res=%dx%d",
+        "src(tmr=%u smp=%u gfx=%u) coal=%u def=%u rast=%u/%u "
+        "vd=%u il=%02x res=%dx%d",
         s_vbh.n, (long long)(span_ns / 1000000),
         (long long)period, (long long)mean_ns,
         (long long)(mean_ns - period),
@@ -351,6 +363,7 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         (long long)(s_vbh.n ? s_vbh.min_ns : 0), (long long)s_vbh.max_ns,
         s_vbh.src[VBH_SRC_TIMER], s_vbh.src[VBH_SRC_SIMPLE],
         s_vbh.src[VBH_SRC_GFX], s_vbh.coalesced, s_vbh.deferred,
+        s_vbh.raster_reads, s_vbh.raster_reads_max,
         d->pramdac.fp_vdisplay_end,
         d->vga.cr[NV_PRMCIO_INTERLACE_MODE], w, h);
 
@@ -359,6 +372,8 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
     s_vbh.n = 0;
     s_vbh.coalesced = 0;
     s_vbh.deferred = 0;
+    s_vbh.raster_reads = 0;
+    s_vbh.raster_reads_max = 0;
     s_vbh.min_ns = 0;
     s_vbh.max_ns = 0;
     s_vbh.sum_ns = 0;
@@ -380,6 +395,12 @@ static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred)
         s_vbh.deferred++;
     }
     s_vbh.src[src]++;
+    /* Read before the caller zeroes it, so this is the count for the period
+     * that just ended rather than the one starting. */
+    s_vbh.raster_reads += d->pcrtc.raster;
+    if (d->pcrtc.raster > s_vbh.raster_reads_max) {
+        s_vbh.raster_reads_max = d->pcrtc.raster;
+    }
 
     if (s_vbh.last_ns) {
         int64_t delta = now - s_vbh.last_ns;
