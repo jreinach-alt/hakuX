@@ -279,6 +279,41 @@ title = "Vertex attributes and primitive assembly"
 disposition = "precision-floor"
 suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive"]
 
+# MEASURED 2026-09-12: the 2D_Lines half is an UNIMPLEMENTED GRAPHICS CLASS,
+# not a rasterisation defect, and the point half is already clean.
+#
+# The suite drives NV04_SOLID_LINE (class 0x5C) and NV04_CONTEXT_SURFACES_2D
+# (class 0x42). Neither is defined in nv2a_regs.h, so pgraph_method drops every
+# line at `default: goto unhandled`. Confirmed three independent ways: from the
+# test source (two_d_line_tests.cpp calls pb_create_gr_ctx for both, then
+# SetVertexShaderProgram(nullptr) -- there is no NV097_SET_BEGIN_END, no
+# vertices and no SET_LINE_WIDTH, the whole draw is six pushbuffer writes and
+# writing END performs it); from the logcat, where hakuX-unhandled reports
+# class 0x0042 and class 0x005c; and from the captures, where all 3,257
+# differing px are MISSING rather than displaced -- background present in every
+# column within +/-5, and rolling the image sideways only worsens the match.
+#
+# Method offsets, measured from the logcat then confirmed against the source
+# order: 0x02FC OPERATION, 0x0304 COLOR_VALUE, 0x0198 SURFACE, 0x0300
+# COLOR_FORMAT, 0x0400 START, 0x0404 END.
+#
+# Two semantics, each corroborated twice: the LAST VERTEX IS EXCLUSIVE (from
+# golden pixel counts, then from the test's own doxygen -- 222_222-222_222
+# "should display nothing", and 400_300-401_300 is a single dot); and
+# COLOR_FORMAT selects how to EXPAND COLOR_VALUE, not the surface depth. The
+# destination surface is always A8R8G8B8 at back-buffer pitch, and expansion is
+# bit replication -- 0x3E0 (555 green) and 0x7E0 (565 green) must both land on
+# exactly [0,255,0], which is what the goldens hold. An earlier reading of that
+# field as the surface bit depth was corrected.
+#
+# The boundary-shift label on ten of the thirteen captures is VACUOUSLY FALSE
+# -- nothing is shifted because nothing is drawn -- and should be a `missing`
+# class. And the label-differs status on some rows is a harness naming quirk in
+# the test itself (the registry key uses MakeTestName(test, false) while the
+# saved artifact uses MakeTestName(test, true)), not golden drift.
+#
+# The source table has 14 entries and the suite runs 13: one row is listed
+# twice and dedups by name.
 [issue.13]
 title = "Line and point rasterisation"
 # Three separate causes and it refuses to collapse: 80% of the structural error
