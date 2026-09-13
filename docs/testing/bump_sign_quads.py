@@ -38,6 +38,7 @@ Writes nothing.
 """
 
 import argparse
+import glob
 import os
 import sys
 
@@ -69,10 +70,11 @@ def main(argv=None):
         print("needs numpy and pillow: %s" % e, file=sys.stderr)
         return 2
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-    try:
-        import captures as capmod
-    except ImportError:
-        capmod = None
+    # captures.py owns the two directory shapes the dispatcher produces, and it
+    # is imported without a fallback on purpose: a hand-rolled walk beside it is
+    # how a wrong call goes unnoticed, which is what happened to the first
+    # version of this file.
+    import captures as capmod
 
     def load(p):
         return np.asarray(Image.open(p).convert("RGBA")).astype(np.int64)
@@ -84,16 +86,9 @@ def main(argv=None):
         print("=" * 78)
         # captures.py owns the two directory shapes; do not join paths by hand.
         found = []
-        if capmod is not None and hasattr(capmod, "find"):
-            try:
-                found = list(capmod.find(rd))
-            except Exception:
-                found = []
-        if not found:
-            for root, _, files in os.walk(rd):
-                for f in sorted(files):
-                    if f.endswith(".png") and "::" in f:
-                        found.append(os.path.join(root, f))
+        for suite in (args.suite,) if args.suite else ("Bump_map", "Bump_env_lum"):
+            root = capmod.resolve(rd, "%s::*.png" % suite)
+            found += sorted(glob.glob(os.path.join(root, "%s::*.png" % suite)))
         rows = 0
         for path in sorted(found):
             base = os.path.basename(path)[:-4]

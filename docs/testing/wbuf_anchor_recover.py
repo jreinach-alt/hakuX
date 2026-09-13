@@ -466,25 +466,18 @@ interaction stops being free.""")
 def _ours_path(rd, test):
     """Our capture for one test inside a dispatcher result directory.
 
-    captures.py owns the two directory shapes the dispatcher produces; joining
-    paths by hand here is the mistake that reported three captures MISSING on
-    an arm that contained them (AGENTS.md).
+    captures.find() owns the two directory shapes the dispatcher produces, and
+    it is called WITHOUT a fallback on purpose.  A fallback that walks the tree
+    by hand is how a wrong call to this API goes unnoticed: the first version of
+    this function passed resolve() three arguments, the TypeError was swallowed,
+    the hand-rolled walk answered, and the guard AGENTS.md asks for was dead
+    code that looked live.  Let it raise.
     """
     import os as _os
     import sys as _sys
     _sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
-    try:
-        import captures as capmod
-        got = capmod.resolve(rd, "W_buffering", test)
-        if got and _os.path.exists(got):
-            return got
-    except Exception:
-        pass
-    for root, _, files in _os.walk(rd):
-        for f in files:
-            if f == "W_buffering::%s.png" % test:
-                return _os.path.join(root, f)
-    return None
+    import captures as capmod
+    return capmod.find(rd, "W_buffering", test)
 
 
 def _invert(tri, target, axis):
