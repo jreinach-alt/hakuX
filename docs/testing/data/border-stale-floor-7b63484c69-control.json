@@ -1,0 +1,288 @@
+[
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures1",
+    "races_lost": 1,
+    "successor_px": 146,
+    "stale_px": 146,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 146,
+    "swatches": [
+      {
+        "pass_": 2,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 146,
+        "successor": 146,
+        "stale": 146,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 146,
+        "cut": 207,
+        "prefix_ok": true,
+        "discriminating": 320
+      }
+    ]
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures10",
+    "races_lost": 1,
+    "successor_px": 177,
+    "stale_px": 181,
+    "mixed_px": 4,
+    "unexplained_px": 0,
+    "wrong_px": 181,
+    "swatches": [
+      {
+        "pass_": 2,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 181,
+        "successor": 177,
+        "stale": 181,
+        "mixed": 4,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 177,
+        "cut": 229,
+        "prefix_ok": true,
+        "discriminating": 320
+      }
+    ]
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures2",
+    "races_lost": 0,
+    "successor_px": 0,
+    "stale_px": 0,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 0,
+    "swatches": []
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures3",
+    "races_lost": 2,
+    "successor_px": 2352,
+    "stale_px": 2352,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 2352,
+    "swatches": [
+      {
+        "pass_": 1,
+        "index": 7,
+        "size": "8x2",
+        "wrong": 2048,
+        "successor": 2048,
+        "stale": 2048,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "1x1",
+        "best_px": 2048,
+        "cut": null,
+        "prefix_ok": true,
+        "discriminating": 8
+      },
+      {
+        "pass_": 2,
+        "index": 7,
+        "size": "8x2",
+        "wrong": 304,
+        "successor": 304,
+        "stale": 304,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "4x4",
+        "best_px": 304,
+        "cut": 116,
+        "prefix_ok": true,
+        "discriminating": 24
+      }
+    ]
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures4",
+    "races_lost": 0,
+    "successor_px": 0,
+    "stale_px": 0,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 0,
+    "swatches": []
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures5",
+    "races_lost": 0,
+    "successor_px": 0,
+    "stale_px": 0,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 0,
+    "swatches": []
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures6",
+    "races_lost": 3,
+    "successor_px": 2426,
+    "stale_px": 2430,
+    "mixed_px": 4,
+    "unexplained_px": 0,
+    "wrong_px": 2430,
+    "swatches": [
+      {
+        "pass_": 1,
+        "index": 7,
+        "size": "8x2",
+        "wrong": 2048,
+        "successor": 2048,
+        "stale": 2048,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "1x1",
+        "best_px": 2048,
+        "cut": null,
+        "prefix_ok": true,
+        "discriminating": 8
+      },
+      {
+        "pass_": 2,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 78,
+        "successor": 74,
+        "stale": 78,
+        "mixed": 4,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 74,
+        "cut": 175,
+        "prefix_ok": true,
+        "discriminating": 320
+      },
+      {
+        "pass_": 2,
+        "index": 7,
+        "size": "8x2",
+        "wrong": 304,
+        "successor": 304,
+        "stale": 304,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "4x4",
+        "best_px": 304,
+        "cut": 116,
+        "prefix_ok": true,
+        "discriminating": 24
+      }
+    ]
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures7",
+    "races_lost": 0,
+    "successor_px": 0,
+    "stale_px": 0,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 0,
+    "swatches": []
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures8",
+    "races_lost": 2,
+    "successor_px": 1845,
+    "stale_px": 1847,
+    "mixed_px": 2,
+    "unexplained_px": 0,
+    "wrong_px": 1847,
+    "swatches": [
+      {
+        "pass_": 1,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 1256,
+        "successor": 1256,
+        "stale": 1256,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 1256,
+        "cut": 506,
+        "prefix_ok": true,
+        "discriminating": 320
+      },
+      {
+        "pass_": 2,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 591,
+        "successor": 589,
+        "stale": 591,
+        "mixed": 2,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 589,
+        "cut": 405,
+        "prefix_ok": true,
+        "discriminating": 320
+      }
+    ]
+  },
+  {
+    "run": "../hakux-work/dispatch/results/1789255594-exp54-stst-correct-3660183/captures9",
+    "races_lost": 3,
+    "successor_px": 4960,
+    "stale_px": 5640,
+    "mixed_px": 0,
+    "unexplained_px": 0,
+    "wrong_px": 5640,
+    "swatches": [
+      {
+        "pass_": 1,
+        "index": 5,
+        "size": "32x32",
+        "wrong": 992,
+        "successor": 992,
+        "stale": 992,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "16x1",
+        "best_px": 992,
+        "cut": 432,
+        "prefix_ok": true,
+        "discriminating": 320
+      },
+      {
+        "pass_": 1,
+        "index": 8,
+        "size": "4x8",
+        "wrong": 3968,
+        "successor": 3968,
+        "stale": 3968,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "1x1",
+        "best_px": 3968,
+        "cut": null,
+        "prefix_ok": true,
+        "discriminating": 31
+      },
+      {
+        "pass_": 2,
+        "index": 8,
+        "size": "4x8",
+        "wrong": 680,
+        "successor": 0,
+        "stale": 680,
+        "mixed": 0,
+        "unexplained": 0,
+        "best": "1x1",
+        "best_px": 680,
+        "cut": null,
+        "prefix_ok": null,
+        "discriminating": 0
+      }
+    ]
+  }
+]

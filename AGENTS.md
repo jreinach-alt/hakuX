@@ -720,6 +720,62 @@ been added precisely because the reasoning had been wrong once before, and the
 proxy was registered against anyway. Every exceedance figure quoted from that
 estimator, on either device, is an over-estimate.
 
+## When a direct counter for the mechanism exists, register the leg on the COUNTER
+
+Three times in one day a leg built on a proxy was contradicted by a direct
+counter, and every time the counter was right:
+
+    #65   E1 counted windows where an estimator exceeded a margin: FAILED at
+          2 and 3 windows. E2 read the `clamp=` counter in the same runs: 0
+          and 1. The estimator over-predicts by 2-3x, because `def_max` can
+          come from a `remaining`-bound deferral whose true lateness never
+          exceeded a period.
+
+    #44   V4/W5/X4 were built on `gave`, which "held" at 0.4144 -- 41.4% of
+          covered submissions released with work outstanding -- while `Tr`,
+          the direct race counter, read ZERO on the same arm. `gave` counts
+          "released with PUSHBUFFER outstanding", not "released with a DRAW
+          outstanding": the pusher parks on `waiting_for_nop` at a NOP method
+          that comes AFTER the draw it follows, so the draw is already
+          consumed and its texture already read when `gave` fires.
+
+    tools The `fifoskew` reader's `--selftest` compared against a frozen
+          sample and printed ok while its regex matched nothing on the live
+          line. Found by running it against a real logcat.
+
+Note the direction: in all three the proxy read **more defect than existed**,
+and in all three a leg "held" on it. A proxy that over-reads makes a fix look
+necessary and its verification look successful, which is the comfortable
+failure rather than the loud one.
+
+**So: if a counter for the mechanism exists, the leg goes on the counter.** Use
+the proxy for direction only, and say in the registration which quantity is
+which. And when a proxy and a counter disagree, do not average them or pick the
+plausible one -- the disagreement is a fact about the proxy's definition, and
+chasing it is how `gave`'s real meaning was finally established.
+
+## A cost is often a property of the workload, not of the mechanism
+
+Corollary to the test-disc rule, and it corrects an over-generalisation of the
+orchestrator's own, made from one title.
+
+The #44 bound was recorded as "mode 2 costs what mode 1 costs" on the strength
+of Galleon: `gfps` p90 29 -> 13, max 29 -> 15. On Crimson Skies, in the **same
+mode**, p90 falls by **0** and max by **3** -- while the guest is blocked 30.7%
+of wall clock at a hold mean 74% LARGER than Galleon's.
+
+A bigger hold, no frame-rate cost. The resolution is that the cost is not a
+property of the bound at all: it is a property of **whether the guest CPU
+thread is that title's critical path.** Galleon's is (83% busy); Crimson's is
+not, so blocking it for a third of wall clock costs nothing observable.
+
+**One title cannot establish a cost, and two titles that disagree are the
+finding rather than a problem.** Before writing "this change costs X", say
+which title X was measured on and what about that title makes the guest thread
+matter. The same discipline as the disc-ratio rule, one level up: a cost
+measured on one workload is a fact about that workload until a second one
+agrees.
+
 ## A falling rate on a WEAK observable is not evidence the defect closed
 
 The corollary to the stale-floor rule, and it was measured the same day rather
