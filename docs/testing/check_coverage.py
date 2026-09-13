@@ -78,6 +78,17 @@ def main():
     mislabelled = sorted(k for k, v in blocked.items()
                          if any(p in v.lower() for p in NOT_A_BLOCKER))
 
+    # DRIFT between the tracker's status and GitHub's state. Found twice on
+    # 2026-09-13: an audit found six open issues whose fix had landed and been
+    # judged while the tracker still read untouched, and later three issues
+    # (#56, #57, #61) CLOSED on GitHub that the tracker still called `open` --
+    # closed by the orchestrator itself, in the same session, hours earlier.
+    #
+    # The direction that matters is `gh CLOSED, tracker open`: it makes
+    # finished work look available, which is how an issue gets re-dispatched.
+    # The reverse (gh OPEN, tracker fixed-verified) matters only when there is
+    # no blocker to explain it -- a fixed-part issue with a written blocker is
+    # a perfectly ordinary state.
     issues, err = open_issues()
     if issues is None:
         print("coverage NOT CHECKED: %s" % err)
@@ -91,7 +102,27 @@ def main():
             continue
         gaps.append((n, r["title"]))
 
+    # `issues` is the OPEN set, so anything numeric in the tracker that is not
+    # in it is either closed or never existed. Ask gh for the closed ones only
+    # if the tracker disagrees, to keep this to one extra call at most.
     live = {str(r["number"]) for r in issues}
+    claims_open = sorted(k for k, v in tracker.items()
+                         if k.isdigit() and v.get("status") == "open"
+                         and k not in live)
+    if claims_open:
+        print("FAIL: %d tracker entr%s `status = \"open\"` for an issue that "
+              "is NOT open on GitHub:" % (len(claims_open),
+                                          "y says" if len(claims_open) == 1
+                                          else "ies say"),
+              file=sys.stderr)
+        for k in claims_open:
+            print("  #%s  %s" % (k, (tracker[k].get("title") or "")[:66]),
+                  file=sys.stderr)
+        print("\n  Finished work reading as available is how an issue gets\n"
+              "  re-dispatched. Set the real status and the evidence it rests on.",
+              file=sys.stderr)
+        return 1
+
     bad = [k for k in mislabelled if k in live and k not in owned]
     if bad:
         print("FAIL: %d issue(s) whose `blocked_on` describes AVAILABLE work:"

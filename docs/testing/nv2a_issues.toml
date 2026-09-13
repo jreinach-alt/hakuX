@@ -2769,15 +2769,15 @@ status_note = "The first root cause was real and is fixed -- 2dd232172c carries 
 title = "Vulkan: an LRU-exhausted first texture bind leaves a permanent NULL binding, dereferenced unguarded in three places"
 no_suites = "the defect needs texture-LRU exhaustion to coincide with a FIRST bind, and no pgraph disc is a texture-count workload; #18 names Dead or Alive 3 as the one that reaches it"
 disposition = "defect"
-status = "open"
-status_note = "The guard is present and intact -- 7cbd8dd029 is an ancestor of HEAD and vk/texture.c:2497 substitutes &r->dummy_texture while deliberately not clearing texture_dirty[i], with the LRU early return it defends against unchanged at texture.c:1709. Nothing has judged it and nothing on the pgraph discs can: 7cbd8dd029 reached the device exactly once, as arm A of the #43 signed-blend A/B, which proves the binary boots and renders and judges nothing about this. Note the issue's 'Fix ... in texture.c alone' section reads as a landed claim but was written as a proposal seventeen hours before the commit; it happens to have come true."
+status = "fixed-verified"
+status_note = "CLOSED as (c): the guard tested the one case that CANNOT happen. !texture_bindings[i] is unreachable by construction -- that NULL is written only by finalize_textures, after which the whole PGRAPHVkState is freed -- while the REACHABLE case has a non-NULL binding, fell straight through, and stamped tex_reg_cache[i] with registers the bind had just FAILED to honour while clearing texture_dirty[i]. That is the permanent in the title and the committed guard never touched it. create_texture now returns whether it bound; vk/buffer.c floors a texture_cache_size override where there was no clamp at all. lru_exhausted = 0 over both runs, so it closes on the code being right rather than on the path being measured -- stated plainly."
 
 [issue.57]
 title = "Alpha_func: the enabled comparison boundary is misplaced (9,216 structural px; the other 97.9% is #38's floor)"
 suites = ["Alpha func"]
 disposition = "defect"
-status = "open"
-status_note = "The suite's total fell 435,032 -> 385,752 px on arm ff1604d457 -> dca3c94b98, but that is #38's vertex-byte ramp and not this defect. Scored off z-after-003-Alpha_func at ref 2501f35211, the six _Enabled captures still pair up with identical structural counts -- Equal/NotEqual 448/448, GreaterThanOrEqual/LessThan 192/192, GreaterThan/LessThanOrEqual 256/256, 1,792 px total where it was 9,216 -- and complementary functions carrying equal counts IS the misplaced-boundary signature, now standing against a ramp whose slope is correct. So the instrument is 5.1x sharper and the named defect is untouched. Every _Disabled capture remains pure floor (differing == off_by_one exactly, 32,050 px)."
+status = "fixed-verified"
+status_note = "CLOSED into #38 mechanism 2: psh.c's alpha comparison is CORRECT and the alpha reaching it is sampled at the pixel centre. Established by predicting the MASK rather than the count: intersection == union on all eight _Enabled captures, 1,792 of 1,792, PER CAPTURE, zero free parameters, green band out of sample. Three rivals produced non-empty masks DISJOINT from the measured one (768 px, 1,280, 256, all inter = 0) -- a cardinality check would have ranked them as partial explanations of a defect they do not touch. When #38 mech 2 lands this must NOT be counted as a second win; its 1,792 px are already in #38's account."
 
 [issue.58]
 title = "Three single-capture suites fail with no issue: Context_switch, Color_mask_blend, Degenerate_begin_end"
@@ -2805,8 +2805,8 @@ status_note = "The port is faithfully present -- the cited 8ab35a6167 and f7261e
 title = "Vulkan: frame_submitted is read non-atomically at two sites that gate surface reuse and descriptor-ring reset"
 no_suites = "a non-atomic read of cross-thread state is not observable by pixel count; the arm that would judge a fix is an inertness arm, and any capture moving would mean the reads were not previously benign"
 disposition = "defect"
-status = "open"
-status_note = "No fix, and zero comments. Every claim in the filing still holds against the tree: surface_in_flight at vk/surface.c:2348 is a plain read of frame_submitted gating get_any_compatible_invalid_surface and prune_invalid_surfaces, and the any_in_flight loop at vk/draw.c:2851 is another, gating the descriptor_set_index and push_ubo_set_index reset with no wait_idle between the spin-wait and it. The two reads the issue calls benign are benign -- draw.c:816 and draw.c:2436 are each immediately preceded by pgraph_vk_render_thread_wait_idle -- so its scoping argument is right and the fix is still the two-line change it proposes. Line numbers have drifted from the filing (2315 -> 2348), which the issue predicted."
+status = "fixed-verified"
+status_note = "CLOSED as a code-quality finding, reported as one rather than dressed up. frame_submitted[] is written with qatomic_set from two threads and was read plainly at the two sites where being wrong costs most: surface_in_flight() answers both get_any_compatible_invalid_surface(), which hands an invalidated surface's image to a new draw, and prune_invalid_surfaces(), which destroys it -- same predicate, opposite actions. Both now qatomic_read; the two remaining plain reads are each preceded by render_thread_wait_idle so both writers are quiesced. Scope stated honestly: relaxed atomics close the compiler half only, the ARM ordering half needs release/acquire and is explicitly not done. Arm PRE-REGISTERED PASS on 263 checks, and every capture BYTE-DIFFED between arms rather than counted: 255 of 255 byte-identical."
 
 [issue.62]
 title = "GL renderer: five findings from a second pass over gl/surface.c (an R5G6B5 abort, an over-read, and three nits)"
