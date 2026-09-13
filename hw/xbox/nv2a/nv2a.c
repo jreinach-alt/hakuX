@@ -672,18 +672,41 @@ static void nv2a_vblank_timer_cb(void *opaque)
     /*
      * Advance the VBLANK target.
      *
-     * When the VBLANK was deferred (game missed the deadline), reset
-     * the grid from now so the game gets a full period for the next
-     * frame.  Without this, the grid advances from the *scheduled*
-     * position, leaving less than a full period and causing a cascade
-     * where every subsequent frame also misses -- locking the game to
-     * 30fps.
+     * The grid is fixed: advance by exactly one period from where the last
+     * one was SCHEDULED, not from where it fired. That is what keeps the
+     * guest's VBLANK clock keeping time. A callback that runs late leaves the
+     * next target closer than a period away, and the short interval that
+     * follows is the grid correcting itself -- 7.1 ms intervals against a
+     * 16.68 ms period show up in a real soak and are this working, not a
+     * fault. The clamp below is the only escape, for a callback more than a
+     * whole period late, where there is nothing left to correct into.
      *
-     * When the game is on time (no deferral), advance the grid by
-     * exactly one period to maintain a strict 60Hz cadence for games
-     * that count VBLANKs for timing.
+     * A deferred VBLANK used to be excluded from this and restarted the grid
+     * from `now`, so every deferral shifted the phase forward permanently and
+     * nothing ever gave it back. The comment that stood here defended it: the
+     * fixed grid leaves a deferred frame less than a period to finish in, and
+     * "caus[es] a cascade where every subsequent frame also misses -- locking
+     * the game to 30fps". That is a real cost and it is a frame-rate cost.
+     * What it bought was paid for in the guest's timebase, and nobody had
+     * priced that side until it was measured:
+     *
+     *   Galleon, 240 s, Thor, 19f52510d9 -- 14,653 VBLANK assertions
+     *     windows with no deferral   16,712,711 ns mean, 59.844 Hz
+     *     windows with 1-20 defers   17,198,838 ns mean, 58.186 Hz
+     *     windows with >20 defers    19,159,610 ns mean, 52.285 Hz
+     *     whole soak                 17,747,165 ns mean, 56.587 Hz
+     *
+     * So the period itself is right to 0.17% and its p99 to 1%, and the
+     * deferral machinery takes the delivered rate 5.6% below the rate we
+     * intend -- 3.8 seconds lost per minute of play for anything that counts
+     * VBLANKs to measure time, and 8.9 s/min in heavy scenes.
+     *
+     * `unlocked` still resets the grid. It is the same defect and it is left
+     * alone deliberately: Galleon never enters unlock mode (`Ul:N` on all 129
+     * windows), so this arm cannot measure that half, and changing two things
+     * at once would make the one it can measure unreadable.
      */
-    if (was_deferred || unlocked) {
+    if (unlocked) {
         d->vblank_next_target_ns = now + period;
     } else {
         d->vblank_next_target_ns += period;
