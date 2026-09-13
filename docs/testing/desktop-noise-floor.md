@@ -76,14 +76,63 @@ either direction.
 
 ## How to use it
 
-Class a move on `Surface_pitch::Swizzle` of |512| or less as NOISE. Do not
+Class a move on `Surface_pitch::Swizzle` of **|2,200| or less** as NOISE
+under OpenGL -- the 512 in the first table was five samples, and a later
+three produced 2,200. Under Vulkan this capture was byte-stable over five
+runs, so treat any move there as signal until it is re-measured. Do not
 class a move on any other capture as noise without re-measuring: the band
-is per capture, and on this lane every other capture's band is zero.
+is per capture and per renderer, and on this lane every other capture's
+band is zero.
 
 The right fix is to find out why that one capture is unstable, which is
 worth doing -- a non-deterministic capture is a defect in its own right, and
 this one is in `Surface_pitch`, a suite of one. Until then this file is the
 band.
+
+## The band is wider than 512, and it is GL-only
+
+Re-measured 2026-09-13, later the same day, on the two-test disc
+(`Surface_pitch::Swizzle` + `Pixel_shader::Passthru`) with an unmodified
+binary:
+
+| renderer | runs | scores | capture digests |
+|---|---:|---|---|
+| OpenGL | 3 | 15,360 / 14,848 / **13,160** | three distinct |
+| Vulkan | 5 | 10,240 x5 | **one digest, `15845fa9e1e40032`** |
+
+Two things change.
+
+**The GL band is at least 13,160-15,360, spread 2,200** -- over four times
+the 512 recorded above. The 512 in the table was five samples of a
+distribution with a long tail, not the tail. Treat 512 as the *observed
+minimum* move, not the maximum.
+
+**Vulkan was byte-stable across five runs of the same disc** while GL was
+three-way distinct across three. The hazard is the same in both renderers
+(both read `d->vram_ptr + texture_vram_offset` when pgraph reaches the draw,
+not when the guest submitted it), so this is not "Vulkan is correct" --
+Vulkan scores 10,240, so it loses the same race, just *reproducibly*. It is
+"the band is a property of the renderer's pacing, and must be measured per
+renderer."
+
+### What this corrects, again
+
+The #71 filter-cache fix was reported with two arms at **12,224 and 10,176**
+called "outside the band". Against a 2,200-wide band with a floor of 13,160:
+
+* **10,176 is still outside** it, by 2,984.
+* **12,224 is not safely outside** it any more -- 936 below the observed
+  floor, well inside a 2,200 spread. That arm should not be cited as
+  evidence on its own.
+
+The fix itself is unaffected, because its evidence was never the scores: it
+was **8 captures going byte-identical to the golden** and GL's bit-exact
+count moving 102 -> 108 to match Vulkan's. Byte counts are not samples from
+this distribution. But the two score arms were quoted as corroboration and
+one of them no longer corroborates.
+
+The general rule this keeps re-teaching: on this capture, compare bytes.
+`docs/testing/sweep_agreement.py` exists for that and does not use scores.
 
 ## Answered: why this one capture is unstable
 

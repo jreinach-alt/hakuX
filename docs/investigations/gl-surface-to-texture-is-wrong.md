@@ -471,3 +471,53 @@ got written. Recorded, not patched.
 
 The standing condition holds and is not violated by any of this: nothing
 here proposes "fixing" the capture by refusing a path.
+
+## The renderer split, and what it means for #39
+
+Same disc, same unmodified binary, same host, immediately after the above:
+
+| renderer | runs | scores | capture digests |
+|---|---:|---|---|
+| OpenGL | 3 | 15,360 / 14,848 / 13,160 | three distinct |
+| Vulkan | 5 | 10,240 x5 | one digest, `15845fa9e1e40032` |
+
+Vulkan is byte-stable here and GL is not. That is **not** "Vulkan is
+correct": Vulkan scores 10,240, so it loses the same race — it just loses it
+the same way every time. Both renderers read
+`d->vram_ptr + texture_vram_offset` when pgraph reaches the draw
+(`gl/texture.c:875`, `vk/texture.c:1668`), so the hazard is in the shared
+shape of the texture path, and what differs is the pacing that decides how
+far pgraph lags the guest.
+
+[#39](https://github.com/jreinach-alt/hakuX/issues/39) is "a draw's result is
+intermittently lost, same disc and binary, run to run" on Vulkan, and its
+suspect list is surface eviction/shelving/migration, deferred
+download/upload ordering, and command-buffer/fence reuse. This hazard is not
+on that list and should be, on three matches:
+
+* it produces run-to-run differences on one binary and one disc;
+* it is sensitive to tracing — #39 records "never lost a test in 3 runs with
+  stderr tracing on, and lost one in 6 without", and the probe here moved
+  which arm tore when an `fprintf` was added between two hashes;
+* it is downstream of nothing in the draw-submission path, which is where
+  #39 has already ruled out every early return.
+
+**It is not established that this is #39's cause**, and the byte-stability
+above is evidence against it being the whole story on Vulkan. The cheap test
+is the same one used here: hash the texture data twice, a few lines apart,
+inside `pgraph_vk_bind_textures()`, and see whether the runs that lose a
+draw are the runs where the two hashes disagree. One 50-second run per
+sample.
+
+### Harness hazard found on the way
+
+One of the six Vulkan runs died with `QEMU_EXIT=139` and produced **zero**
+captures. The backtrace is entirely inside Mesa — `draw_find_shader_output`
+← `compute_vertex_info` ← `llvmpipe_draw_vbo` ← `lvp_queue_submit`, on
+lavapipe's own submit thread — not in xemu. It did not recur in five further
+runs.
+
+It matters because a sweep that scores "captures present" would read a
+zero-capture disc as a mass regression rather than a crashed run. `runx.sh`
+prints `QEMU_EXIT=` and the capture count; read both before believing a
+sweep.
