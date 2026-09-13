@@ -172,11 +172,22 @@ def legs(bs):
         verdict = ("#54 GAINS A TARGET" if rate >= 1e-4
                    else "#54 CLOSES on evidence")
         print(f"L3 rate Tr/tex_uploads = {tr}/{tu} = {rate:.3e} -> {verdict}")
+        if tr == 0:
+            # A zero is not a rate until it carries what it rules out. 3/N is
+            # the one-sided 95% Poisson bound for zero events in N trials, and
+            # it is the difference between "never happens" and "not seen in
+            # this many chances" -- which is the whole of #54's dispute.
+            print(f"   zero over {tu} windows bounds the rate at <= "
+                  f"{3.0/tu:.2e} (one-sided 95%), not at 0")
     else:
         print("L3 rate: no uploads observed -- not measured")
 
     vr = sum(p["vr"] for p in probes)
     vc = sum(p["vc"] for p in probes)
+    if vc:
+        if vr == 0:
+            print(f"   vertex site: zero over {vc} copies bounds that rate at "
+                  f"<= {3.0/vc:.2e} (one-sided 95%)")
     if vc and tu:
         vrate, trate = vr / vc, tr / tu
         print(f"L4 vertex {vrate:.3e} < texture {trate:.3e} -> "
