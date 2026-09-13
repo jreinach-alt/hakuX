@@ -127,6 +127,63 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
 }
 
 /*
+ * The two signed blend equations, FUNC_ADD_SIGNED and
+ * FUNC_REVERSE_SUBTRACT_SIGNED (issue #43).
+ *
+ * What silicon does, measured (docs/investigations/signed-blend-equations.md,
+ * blend-signed-full-oracle.md):
+ *
+ *     signed(S) = S - 256 if S >= 128 else S
+ *
+ *     FUNC_ADD_SIGNED               = clamp(signed(S) + D, 0, 255)
+ *     FUNC_REVERSE_SUBTRACT_SIGNED  = clamp(D - signed(S), 0, 255)
+ *
+ * The destination stays unsigned, the clamp is an ordinary saturate, and BOTH
+ * BLEND FACTORS ARE IGNORED. That last part is a measurement, not a reading of
+ * the equation's name: the rule fits 176,160,768 of 176,160,768 channels over
+ * the 448 signed captures of the retired `BlendTests::TestDetailed` oracle, on
+ * a harness whose unsigned control is exact on 440,401,920 channels, and the
+ * rival "factors honoured, source still signed" is rejected there at
+ * 67,935,760. Independently, `Texture signed component`'s two source alphas
+ * (255 and 127) give identical goldens under both signed equations while the
+ * plain-ADD control on the same geometry varies strongly with alpha.
+ *
+ * WHAT IS IMPLEMENTED HERE, AND WHAT IS NOT.
+ *
+ * Only the factor half. Forcing ONE/ONE makes us compute clamp(S + D) and
+ * clamp(D - S), which is the rule exactly wherever S < 128 -- half the source
+ * range, and every channel of every source byte below the sign bit. The signed
+ * fold of S is NOT done and cannot be done from here.
+ *
+ * It is not an oversight and it is not a missing table entry. As a function of
+ * the source colour at a fixed destination, silicon's output is discontinuous
+ * at S = 128: it steps from clamp(127 + D) down to clamp(D - 128). Every
+ * fixed-function blend operation Vulkan offers -- the factors, ADD, SUBTRACT,
+ * REVERSE_SUBTRACT, MIN, MAX, the saturate, and any sequence of passes built
+ * out of them -- is a *continuous* map of the source colour. No composition of
+ * continuous maps is discontinuous, so no blend state, and no multi-pass
+ * arrangement of blend states driving the same fragment output, can express
+ * this. The sign test has to happen somewhere that can branch per channel.
+ *
+ * The three shapes that can, all of them outside this file and all of them far
+ * larger than this change, are set out in signed-blend-equations.md: a float
+ * intermediate colour target (a fixed-point attachment clamps the source to
+ * [0,1] *before* blending, which is what destroys the negative half); the
+ * blend moved into the fragment shader behind framebuffer fetch; or one pass
+ * per (channel, sign) with a colorWriteMask and a discard, which needs no
+ * extension but costs six to eight passes per draw.
+ *
+ * So this is deliberately a half fix that closes the half it can prove, and
+ * leaves the capture non-exact. Scoring it on whole-capture exactness will read
+ * as no progress; score the S < 128 channels.
+ */
+static bool blend_equation_is_signed(uint32_t equation)
+{
+    return equation == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||
+           equation == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED;
+}
+
+/*
  * The blend register with any destination-alpha factor already resolved against
  * the colour surface format the guest has declared.
  *
@@ -151,6 +208,20 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
 static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
 {
     uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
+
+    /*
+     * Signed equations first, and they return: silicon ignores both factors
+     * (see blend_equation_is_signed above), so ONE/ONE is the whole of what
+     * the factor fields can say, and the destination-alpha fold below becomes
+     * a no-op -- neither ONE nor ONE reads Ad.
+     */
+    if (blend_equation_is_signed(GET_MASK(blend_reg, NV_PGRAPH_BLEND_EQN))) {
+        SET_MASK(blend_reg, NV_PGRAPH_BLEND_SFACTOR,
+                 NV_PGRAPH_BLEND_SFACTOR_ONE);
+        SET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR,
+                 NV_PGRAPH_BLEND_DFACTOR_ONE);
+        return blend_reg;
+    }
 
     /*
      * The guest-declared format from NV097_SET_SURFACE_FORMAT, never
@@ -1662,8 +1733,13 @@ static void create_pipeline(PGRAPHState *pg)
             color_blend_attachment.dstAlphaBlendFactor =
                 pgraph_blend_factor_vk_map[dfactor];
 
+            /* Effective, like the factors above and like both dynamic paths.
+             * It carries the same NV_PGRAPH_BLEND_EQN today; reading the raw
+             * register here would silently desynchronise the static pipeline
+             * the moment anything in pgraph_vk_effective_blend_reg touches the
+             * equation field. */
             uint32_t equation =
-                GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND), NV_PGRAPH_BLEND_EQN);
+                GET_MASK(effective_blend, NV_PGRAPH_BLEND_EQN);
             assert(equation < ARRAY_SIZE(pgraph_blend_equation_vk_map));
 
             color_blend_attachment.colorBlendOp =

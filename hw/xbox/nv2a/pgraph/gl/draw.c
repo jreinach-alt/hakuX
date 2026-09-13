@@ -112,6 +112,27 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
     }
 }
 
+/*
+ * The two signed blend equations (issue #43). Silicon computes
+ *
+ *     signed(S) = S - 256 if S >= 128 else S
+ *     FUNC_ADD_SIGNED              = clamp(signed(S) + D, 0, 255)
+ *     FUNC_REVERSE_SUBTRACT_SIGNED = clamp(D - signed(S), 0, 255)
+ *
+ * with BOTH FACTORS IGNORED -- a measurement, at 176,160,768 of 176,160,768
+ * channels over the 448 signed captures of the retired `BlendTests::
+ * TestDetailed` oracle. Only the factor half is implemented, here and in the
+ * Vulkan renderer; see that copy for why the signed fold of S cannot be
+ * expressed in fixed-function blend state at all (silicon's output is
+ * discontinuous in the source at S = 128, and every blend op is continuous),
+ * and for the three places it could go instead.
+ */
+static bool blend_equation_is_signed(uint32_t equation)
+{
+    return equation == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||
+           equation == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED;
+}
+
 void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -272,13 +293,22 @@ void pgraph_gl_draw_begin(NV2AState *d)
             sfactor = blend_factor_with_dst_alpha_one(sfactor);
             dfactor = blend_factor_with_dst_alpha_one(dfactor);
         }
+
+        uint32_t equation = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND),
+                                     NV_PGRAPH_BLEND_EQN);
+        /* The signed equations consult neither factor; this overrides the
+         * destination-alpha fold above on purpose, since ONE/ONE reads no Ad
+         * either way. */
+        if (blend_equation_is_signed(equation)) {
+            sfactor = NV_PGRAPH_BLEND_SFACTOR_ONE;
+            dfactor = NV_PGRAPH_BLEND_DFACTOR_ONE;
+        }
+
         assert(sfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         assert(dfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         glBlendFunc(pgraph_blend_factor_gl_map[sfactor],
                     pgraph_blend_factor_gl_map[dfactor]);
 
-        uint32_t equation = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_BLEND),
-                                     NV_PGRAPH_BLEND_EQN);
         assert(equation < ARRAY_SIZE(pgraph_blend_equation_gl_map));
         glBlendEquation(pgraph_blend_equation_gl_map[equation]);
 

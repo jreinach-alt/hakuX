@@ -362,6 +362,21 @@
 #   define NV_PGRAPH_ANTIALIASING_ENABLE                        (1 << 0)
 #define NV_PGRAPH_BLEND                                  0x00001804
 #   define NV_PGRAPH_BLEND_EQN                                  0x00000007
+        /*
+         * These are not the NV097_SET_BLEND_EQUATION_V_* encodings; they are
+         * the small indices the SET_BLEND_EQUATION method handler assigns, and
+         * the order of pgraph_blend_equation_{vk,gl}_map[] in each renderer's
+         * constants.h. Named here because the two signed equations need to be
+         * recognised by the blend state code, and `equation == 6` in a
+         * renderer is a number nobody can check against the handler.
+         */
+#       define NV_PGRAPH_BLEND_EQN_FUNC_SUBTRACT                    0
+#       define NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT            1
+#       define NV_PGRAPH_BLEND_EQN_FUNC_ADD                         2
+#       define NV_PGRAPH_BLEND_EQN_MIN                              3
+#       define NV_PGRAPH_BLEND_EQN_MAX                              4
+#       define NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED     5
+#       define NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED                  6
 #   define NV_PGRAPH_BLEND_EN                                   (1 << 3)
 #   define NV_PGRAPH_BLEND_SFACTOR                              0x000000F0
 #       define NV_PGRAPH_BLEND_SFACTOR_ZERO                         0
