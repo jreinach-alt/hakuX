@@ -44,10 +44,32 @@ def committed_high_water():
     mark is derivable from the history of the file it is about, so derive it:
     every committed value of `wave` is in `git log -p`, the maximum cannot be
     forged by a fold, and nothing is written anywhere.
+
+    `--all`, AND IT IS THE WHOLE POINT OF THIS FUNCTION IN A WORKTREE. Without
+    it `git log` walks only the history of the branch it is standing on, so a
+    LANE WORKTREE derives its own branch point as the high-water mark and every
+    wave committed after it branched is invisible. That is not a corner case:
+    it is the normal state of every lane, because a lane branches once and the
+    allocation moves on without it.
+
+    Measured, on 2026-09-13: the #31/#10 lane branched at wave 12 and ran for
+    its whole life against a table where `glsl/psh.c` sat in `[free]` with no
+    owner at all. The live table had claimed it for that very lane at wave 13.
+    The lane's preflight printed "territory ok" every time, and the checker was
+    right about the file it was given -- it was given a file four waves stale.
+    Nothing collided only because the file the lane saw as free happened to be
+    allocated TO IT; a lane in that position can take a file another lane
+    claimed after it branched, and its preflight will pass.
+
+    The lane reported this as an overlap in wave 13 ("psh.c is in both
+    [lane.psh] and [free]"). No committed wave ever contained that overlap.
+    The two halves of that sentence came from two different files: `[lane.psh]`
+    from the live table it had been briefed from, `[free]` from its own frozen
+    copy. A stale read and a live read, indistinguishable once quoted.
     """
     try:
         out = subprocess.run(
-            ["git", "-C", HERE, "log", "-p", "--", "territory.toml"],
+            ["git", "-C", HERE, "log", "-p", "--all", "--", "territory.toml"],
             capture_output=True, text=True, timeout=30).stdout
     except Exception:
         return 0
