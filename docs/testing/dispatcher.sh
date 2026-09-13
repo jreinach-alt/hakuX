@@ -50,6 +50,19 @@ export JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}"
 export PATH="/home/justin/Android/Sdk/cmake/3.30.3/bin:$PATH"
 
 mkdir -p "$D"/{queue,running,results,logs}
+
+# Where the workers actually run from. Copied out of the tree so that a
+# detached checkout during a build cannot change the code a worker re-execs
+# into. Refreshed deliberately, at the moment a worker chooses to pick changes
+# up, rather than continuously.
+SNAP="$D/bin"
+snapshot_scripts() {
+    mkdir -p "$SNAP"
+    for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
+             affinity.py captures.py make_test_iso.py extract_results.py; do
+        [ -f "$HERE/$f" ] && cp -f "$HERE/$f" "$SNAP/$f" 2>/dev/null
+    done
+}
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
 # captured as the APK path, so a log line on stdout becomes the path: adding
 # one informational message to the success path made every build return the
@@ -412,6 +425,7 @@ case "${1:-status}" in
     #
     # It also removes a class of bug outright: with one process there is no
     # question of whose orphan is whose.
+    snapshot_scripts
     workers=()
     serials=()
     for s in $(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
@@ -420,7 +434,7 @@ case "${1:-status}" in
             continue
         fi
         log "starting worker for $s"
-        SERIAL="$s" bash "$HERE/dispatcher.sh" worker "$s" &
+        SERIAL="$s" bash "$SNAP/dispatcher.sh" worker "$s" &
         workers+=($!)
         serials+=("$s")
     done
@@ -443,7 +457,7 @@ case "${1:-status}" in
         for i in "${!workers[@]}"; do
             if ! kill -0 "${workers[$i]}" 2>/dev/null; then
                 log "worker for ${serials[$i]} (pid ${workers[$i]}) is gone; restarting"
-                SERIAL="${serials[$i]}" bash "$HERE/dispatcher.sh" worker "${serials[$i]}" &
+                SERIAL="${serials[$i]}" bash "$SNAP/dispatcher.sh" worker "${serials[$i]}" &
                 workers[$i]=$!
             fi
         done
@@ -520,23 +534,24 @@ case "${1:-status}" in
                         2>/dev/null | md5sum | cut -c1-12)"
         if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
             log "dispatcher scripts changed on disk; re-execing to pick them up"
-            # Take the build lock FIRST. The re-exec reads the script out of
-            # the working tree, and build_ref detaches that tree to an
-            # arbitrary commit -- so a re-exec landing inside another worker's
-            # build would exec a dispatcher.sh from whenever that ref is. An
-            # older one has no `worker` subcommand at all, falls through the
-            # case to `status`, prints and exits. That is exactly how the Nova
-            # worker died silently at 21:46 while the Thor was building,
-            # leaving a supervisor with one child and a lane that accepted no
-            # work for twenty-five minutes.
+            # Exec the SNAPSHOT, never the working tree. build_ref detaches
+            # that tree to an arbitrary commit for the length of a build, so a
+            # re-exec landing inside another worker's build would exec
+            # whatever dispatcher.sh that ref carries -- and an older one has
+            # no `worker` subcommand at all, falls through the case to
+            # `status`, prints and exits. That is how the Nova worker died
+            # silently at 21:46 while the Thor was building, leaving a lane
+            # that accepted no work for twenty-five minutes.
             #
-            # build_ref holds this lock across detach, build and restore, so
-            # holding it here means the tree is on its branch.
-            (
-                flock 9
-                exec bash "$HERE/dispatcher.sh" worker "$SERIAL"
-            ) 9>"$D/.build.lock"
-            exit 0
+            # Taking the build lock instead does not work and is worth saying
+            # so: fd 9 survives exec, so the re-execed worker would hold the
+            # lock for its whole life and every later build would block on it
+            # forever. Tried, and it wedged the queue within a minute.
+            #
+            # A snapshot has neither problem -- it does not move when the tree
+            # does, and it needs no lock.
+            snapshot_scripts
+            exec bash "$SNAP/dispatcher.sh" worker "$SERIAL"
         fi
 
         reqs=("$D"/queue/*.req)
