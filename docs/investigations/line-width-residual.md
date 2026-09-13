@@ -664,11 +664,25 @@ edges the golden's colour **names the edge silicon drew last**. That turns the
 76.3% edge-priority class from a device question into a pixel-reading exercise,
 and the same scene supplies a proper cos θ sweep for the extent hypothesis.
 
-Tool: `docs/testing/line_priority.py` (`--order`, `--rules`, `--extent`,
-`--reconstruct`). Predictions registered and content-hashed before the
-held-out numbers were computed:
+Tool: `docs/testing/line_priority.py`. Predictions registered and
+content-hashed before the held-out numbers were computed:
 `docs/testing/predictions/line-edge-priority-order.json` and
-`line-edge-priority-reconstruct.json`.
+`line-edge-priority-reconstruct.json`. The four numbers this section turns on,
+with the invocation that produces each:
+
+```bash
+# the priority rule: 100.00% of 225,558 decisive pixels  (~35 min)
+docs/testing/line_priority.py --min-width 8 --max-width 63.875 --rules --extent-rule
+# the emission order itself, read off as a partial order per primitive
+docs/testing/line_priority.py --min-width 8 --max-width 63.875 --order
+# the extent rule: 100.00% in-band of 9,611 clean cuts at 33 angles  (~5 min)
+docs/testing/line_priority.py --min-width 6 --extent
+# the selection-free score: 99.31% of 1,741,370 interior ink pixels  (~40 min)
+docs/testing/line_priority.py --min-width 3 --max-width 63.875 --reconstruct
+```
+
+`--max-width 63.875` is not cosmetic: it drops the nine void captures, and
+without it the first command reads 98.97% and the last 72.07%. See below.
 
 ## Two conventions had to be measured first, and one of them was a trap
 
