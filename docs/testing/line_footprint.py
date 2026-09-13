@@ -10,12 +10,15 @@ issue is which of several overlapping wide edges ends up on top.
 
 Three measurements, all on the `Line width` suite:
 
-  --edge        The one axis-aligned segment in the test (the quad strip's left
-                edge, vertical at screen x=160) gives the coverage rule exactly:
-                which columns light up for each requested width.  Silicon lights
-                exactly W columns centred on the pixel CENTRE nearest the line;
-                we light exactly W centred on the vertex itself.  They coincide
-                at even widths and sit one pixel apart at odd ones.
+  --edge        Where each renderer puts a line's centre, fitted from the
+                columns (or rows) a line of each width lights, on three
+                segments whose geometry is known exactly.  Reported as an
+                INTERVAL per renderer per segment, because one width pins the
+                centre only to within a pixel and the widths together pin it
+                to within half of one.  Silicon puts the centre half a pixel
+                further along +x than the vertex, and leaves y alone.  Not a
+                snap: the fan edge sits on a half-integer x, already a pixel
+                centre, and silicon moves it anyway.
 
   --footprint   Fits a footprint model to the isolated QUADS primitive at the
                 bottom left, where nothing else is drawn.  Candidates: a
@@ -38,6 +41,9 @@ import argparse
 import os
 import re
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import captures as capture_dirs
 
 try:
     import numpy as np
@@ -63,6 +69,26 @@ QUAD_BOX = (366, 480, 90, 300)  # y0, y1, x0, x1
 # crosses it far from either end.
 EDGE_ROW = 230
 EDGE_X = 160
+
+# The triangle fan's hub-to-v4 edge: vertical at screen x = 318.5, from
+# (318.5, 253) to (318.5, 176.5).  A half-integer x is already a pixel centre,
+# so a centre that SNAPPED to the nearest one would not move here while a
+# constant +0.5 would -- and the parity flips with it, even widths differing
+# instead of odd.  Other fan edges merge into the run from the right, so only
+# its left boundary is usable, and only at widths where the run has not yet
+# grown back into the hub.
+FAN_X = 318.5
+FAN_ROWS = range(185, 246)
+FAN_CLEAR_LEFT = 310
+FAN_WIDTHS = (3.0, 9.0)
+
+# The polygon's closing edge, near horizontal: screen (477, 278.5) to
+# (378, 280).  Column 399 crosses it far from either end, at y = 279.674.
+# This is the y half of the rule, which nothing had measured before: both a
+# +0.5 in y and a snap to the nearest pixel centre predict a visible move
+# here, and the goldens show none.
+YEDGE_COL = 399
+YEDGE_Y = 279.674
 
 NAME = re.compile(r"Line_(\d+)\.(\d)$")
 
@@ -111,6 +137,50 @@ def lit_run(mask, row, through):
     return None
 
 
+def model(cx, w):
+    """The columns a line of width w centred at cx lights.
+
+    It lights the ones whose centre falls in [cx - w/2, cx + w/2).
+    """
+    lo = int(np.ceil(cx - w / 2 - 0.5))
+    hi = int(np.ceil(cx + w / 2 - 0.5)) - 1
+    return lo, hi
+
+
+def centre_from_lo(lo, w):
+    """The half-open interval of centres consistent with a run starting at lo.
+
+    lo = ceil(cx - w/2 - 0.5), so cx - w/2 - 0.5 lands in (lo - 1, lo] and the
+    centre in (lo + w/2 - 0.5, lo + w/2 + 0.5].  One width therefore pins the
+    centre only to within a whole pixel, which is why every fit below takes the
+    INTERSECTION over widths: that is what separates 160.0 from 160.5.
+    """
+    return (lo + w / 2 - 0.5, lo + w / 2 + 0.5)
+
+
+def intersect(intervals):
+    """Tightest (lo, hi] consistent with all of them, or None if they disagree."""
+    lo = max(a for a, _ in intervals)
+    hi = min(b for _, b in intervals)
+    return (lo, hi) if lo < hi else None
+
+
+def show_fit(label, intervals, vertex):
+    """Print the fitted centre.  This is the falsifier for #13's centre bias."""
+    if not intervals:
+        print("    %-8s no usable widths" % label)
+        return None
+    got = intersect(intervals)
+    if got is None:
+        print("    %-8s no single centre fits every width -- not a translate"
+              % label)
+        return None
+    print("    %-8s centre in (%.3f, %.3f]   offset from the vertex %.3f: "
+          "(%+.3f, %+.3f]"
+          % (label, got[0], got[1], vertex, got[0] - vertex, got[1] - vertex))
+    return got
+
+
 def report_edge(rows):
     """Which columns a vertical line of each width lights, measured and modelled.
 
@@ -118,14 +188,11 @@ def report_edge(rows):
     [cx - W/2, cx + W/2).  cx = 160.0 is the vertex; cx = 160.5 is the centre of
     the pixel the vertex falls in.
     """
-    def model(cx, w):
-        lo = int(np.ceil(cx - w / 2 - 0.5))
-        hi = int(np.ceil(cx + w / 2 - 0.5)) - 1
-        return lo, hi
 
     print(f"{'test':<14}{'width':>8} | {'golden':>12}{'px':>4} | {'ours':>12}{'px':>4}"
           f" | {'cx=160.0':>12}{'cx=160.5':>12}")
     gv = gc = ov = oc = total = 0
+    gfit, ofit = [], []
     for w, t, g, o in rows:
         # Below 2 the device's own limits decide the width, not the register
         # (lineWidthRange[0] = 1.0, lineWidthGranularity = 0.5 on Adreno 740);
@@ -142,6 +209,8 @@ def report_edge(rows):
         gc += rg == mc
         ov += ro == mv
         oc += ro == mc
+        gfit.append(centre_from_lo(rg[0], w))
+        ofit.append(centre_from_lo(ro[0], w))
         print(f"{t:<14}{w:8.3f} | {rg[0]:5d}..{rg[1]:<5d}{rg[1]-rg[0]+1:4d}"
               f" | {ro[0]:5d}..{ro[1]:<5d}{ro[1]-ro[0]+1:4d}"
               f" | {mv[0]:5d}..{mv[1]:<6d}{mc[0]:5d}..{mc[1]:<6d}")
@@ -151,6 +220,97 @@ def report_edge(rows):
         print(f"    golden matches cx=160.5, the pixel centre  {gc}/{total}")
         print(f"    ours   matches cx=160.0, the vertex        {ov}/{total}")
         print(f"    ours   matches cx=160.5, the pixel centre  {oc}/{total}")
+        print("\n  fitted centre, the intersection over those widths:")
+        show_fit("golden", gfit, 160.0)
+        show_fit("ours", ofit, 160.0)
+
+
+def report_fan_edge(rows):
+    """The same fit on a vertical edge whose x is a HALF-integer.
+
+    x = 318.5 is already a pixel centre.  A centre that snapped to the nearest
+    one would stay put; a constant +0.5 moves it to 319.0.  Only the run's left
+    boundary is usable here -- other fan edges merge into it from the right --
+    and only while the run has not grown back into the hub, so this is a narrow
+    probe, but it is the one that says translate rather than snap.
+    """
+    print("== the same rule on a half-integer edge: the fan's x = 318.5 ==")
+    print(f"{'test':<14}{'width':>8} | {'golden lo':>10}{'ours lo':>10}"
+          f" | {'cx=318.5':>10}{'cx=319.0':>10}")
+    gfit, ofit = [], []
+    g5 = g9 = o5 = o9 = total = 0
+    for w, t, g, o in rows:
+        if not (FAN_WIDTHS[0] <= w <= FAN_WIDTHS[1]):
+            continue
+        gm, om = ink(g), ink(o)
+        glos, olos = {}, {}
+        for y in FAN_ROWS:
+            rg = lit_run(gm, y, int(FAN_X))
+            ro = lit_run(om, y, int(FAN_X))
+            if not rg or not ro:
+                continue
+            if rg[0] < FAN_CLEAR_LEFT or ro[0] < FAN_CLEAR_LEFT:
+                continue
+            glos[rg[0]] = glos.get(rg[0], 0) + 1
+            olos[ro[0]] = olos.get(ro[0], 0) + 1
+        if not glos or not olos:
+            continue
+        gl = max(glos, key=glos.get)
+        ol = max(olos, key=olos.get)
+        m5, m9 = model(318.5, w)[0], model(319.0, w)[0]
+        total += 1
+        g5 += gl == m5; g9 += gl == m9
+        o5 += ol == m5; o9 += ol == m9
+        gfit.append(centre_from_lo(gl, w))
+        ofit.append(centre_from_lo(ol, w))
+        print(f"{t:<14}{w:8.3f} | {gl:10d}{ol:10d} | {m5:10d}{m9:10d}"
+              f"{'   <- discriminating' if m5 != m9 else ''}")
+    if total:
+        print(f"\n  over {total} widths:")
+        print(f"    golden matches cx=318.5, unmoved (a snap)  {g5}/{total}")
+        print(f"    golden matches cx=319.0, +0.5              {g9}/{total}")
+        print(f"    ours   matches cx=318.5, the vertex        {o5}/{total}")
+        print(f"    ours   matches cx=319.0                    {o9}/{total}")
+        print("\n  fitted centre, the intersection over those widths:")
+        show_fit("golden", gfit, 318.5)
+        show_fit("ours", ofit, 318.5)
+
+
+def report_y_edge(rows):
+    """The y half of the rule, on the polygon's near-horizontal closing edge.
+
+    Column 399 crosses it at y = 279.674.  A +0.5 in y would move every odd
+    width by a row; a snap to the nearest pixel centre would move width 4.  The
+    goldens do neither, so this is a tripwire as much as a measurement: it must
+    read the same before and after any change to the centre.
+    """
+    print("== the y half: the polygon's closing edge, column 399 ==")
+    print(f"{'test':<14}{'width':>8} | {'golden':>12} | {'ours':>12} | {'same':>5}")
+    gfit, ofit = [], []
+    same = total = 0
+    for w, t, g, o in rows:
+        if w < 3 or w > 32:
+            continue
+        iw = int(round(w))
+        gcol = ink(g)[:, YEDGE_COL].reshape(1, -1)
+        ocol = ink(o)[:, YEDGE_COL].reshape(1, -1)
+        rg = lit_run(gcol, 0, int(YEDGE_Y))
+        ro = lit_run(ocol, 0, int(YEDGE_Y))
+        if not rg or not ro:
+            continue
+        if rg[1] - rg[0] + 1 != iw or ro[1] - ro[0] + 1 != iw:
+            continue
+        total += 1
+        same += rg == ro
+        gfit.append(centre_from_lo(rg[0], w))
+        ofit.append(centre_from_lo(ro[0], w))
+        print(f"{t:<14}{w:8.3f} | {rg[0]:5d}..{rg[1]:<5d} | {ro[0]:5d}..{ro[1]:<5d}"
+              f" | {'yes' if rg == ro else 'NO':>5}")
+    if total:
+        print(f"\n  golden and ours light the same rows on {same}/{total} widths.")
+        print("  fitted centre, the intersection over those widths:")
+        show_fit("golden", gfit, YEDGE_Y)
+        show_fit("ours", ofit, YEDGE_Y)
 
 
 def _quad_fields():
@@ -304,13 +464,22 @@ def main():
     if not (args.edge or args.footprint or args.classify):
         args.edge = args.footprint = args.classify = True
 
-    rows = list(captures(args.captures, args.goldens))
+    # A dispatcher result directory keeps its PNGs one level down in
+    # captures<N>/.  Reporting MISSING on an arm that holds the capture reads
+    # exactly like a run that failed to render, which is the worst thing a
+    # falsifier can do -- see docs/testing/captures.py.
+    capture_dir = capture_dirs.resolve(args.captures, "%s::*.png" % SUITE)
+    rows = list(captures(capture_dir, args.goldens))
     if not rows:
-        sys.exit(f"no {SUITE} Line_* captures matched in {args.captures}")
+        sys.exit(f"no {SUITE} Line_* captures matched in {capture_dir}")
 
     if args.edge:
         print("== coverage rule, from the vertical quad-strip edge ==")
         report_edge(rows)
+        print()
+        report_fan_edge(rows)
+        print()
+        report_y_edge(rows)
         print()
     if args.footprint:
         print("== footprint model, on the isolated QUADS primitive ==")
