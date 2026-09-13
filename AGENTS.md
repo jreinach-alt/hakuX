@@ -374,6 +374,16 @@ Four rules, each of which cost a real verdict on 2026-09-12:
   and is really one rationalisation per data point. If your rule needs a fresh
   reason for each exception, you are fitting, and the giveaway is that no
   single statement of the precondition predicts the whole set.
+- **A mechanism-shaped falsifier separates "it did not happen" from "it
+  happened and the model is wrong". A pixel count cannot.** #13's arm on
+  2026-09-12 delivered its predicted bias *exactly* -- the fitted line centre
+  moved to the golden's interval on 18 of 18 widths on one edge and 7 of 7 on
+  another, and y was untouched 16 of 16 -- and the same arm scored **+394,027
+  differing pixels**. The change was applied correctly, on the right axis, at
+  the right magnitude, on the right pipelines, and the model behind it was
+  still wrong. A total would have said only "worse" and left the two
+  possibilities indistinguishable, which decides whether you fix a constant or
+  abandon an entry point.
 - **A falsifier your own change guarantees is not a falsifier.** Before
   registering a leg, ask what would have to be true for it to FAIL. If the
   change you are about to make forces it true, it is a description of your
