@@ -161,14 +161,24 @@ def main():
         bases = sorted({os.path.basename(q) for q in paths})
         if len(bases) >= 2 and not (set(bases) & heldb):
             grantable.append((k, bases))
+    # PRINTED AFTER THE SUMMARY, NOT BEFORE IT, and that ordering is not
+    # cosmetic. `idle-watchdog.sh` takes `sed -n 1p` of this output as its
+    # one-line coverage summary, so emitting the note first replaced
+    # "coverage ok (27 open: ...)" with a sentence truncated mid-clause --
+    # "NOTE: 2 blocker(s) name only files NOBODY HOLDS, so the obstacle".
+    #
+    # Fourth time in this campaign that adding a capability changed what a
+    # CONSUMER of its output computes, after the watchdog's device count, its
+    # per-suite cost with --base-iso, and again with --only-tests. The first
+    # line of a checker's stdout is an interface.
+    note_lines = []
     if grantable:
-        print("NOTE: %d blocker(s) name only files NOBODY HOLDS, so the "
-              "obstacle" % len(grantable))
-        print("      they describe does not currently exist -- they are grant")
-        print("      requests rather than walls:")
+        note_lines.append(
+            "NOTE: %d blocker(s) name only files NOBODY HOLDS, so the obstacle "
+            "they describe does not currently exist -- they are grant requests "
+            "rather than walls:" % len(grantable))
         for k, bases in grantable:
-            print("  #%-4s names %s" % (k, ", ".join(bases)))
-        print()
+            note_lines.append("  #%-4s names %s" % (k, ", ".join(bases)))
 
     bad = [k for k in mislabelled if k in live and k not in owned]
     if bad:
@@ -197,6 +207,8 @@ def main():
              sum(1 for r in issues if str(r["number"]) in owned),
              sum(1 for r in issues if str(r["number"]) in blocked
                  and str(r["number"]) not in owned)))
+    for line in note_lines:
+        print(line)
     return 0
 
 
