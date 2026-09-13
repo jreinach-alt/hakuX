@@ -1746,5 +1746,6 @@ void pgraph_vk_end_nondraw_commands(PGRAPHState *pg, VkCommandBuffer cmd);
 
 // blit.c
 void pgraph_vk_image_blit(NV2AState *d);
+void pgraph_vk_solid_line(NV2AState *d);
 
 #endif

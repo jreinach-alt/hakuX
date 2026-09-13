@@ -594,3 +594,170 @@ void pgraph_vk_image_blit(NV2AState *d)
     memory_region_set_client_dirty(d->vram, dest_addr, clipped_dest_size,
                                    DIRTY_MEMORY_NV2A);
 }
+
+/*
+ * Rasterise a solid line (class 0x5C) into the 2D destination surface.
+ *
+ * This stays on the LINEAR path and never consults the GPU tile map, and that
+ * is a decision with evidence behind it rather than an omission. The blit
+ * above swizzles only a copy that *overruns* its tile, because a remap is
+ * invisible while the tile is valid -- scanout, texture fetch and the CPU
+ * aperture all go through it, so it cancels -- and we model tiling nowhere
+ * else. Swizzling a write whose reader is one of our linear paths corrupts it,
+ * which is what Texture_Framebuffer_Blit's FBToZetaAsTex measured when it went
+ * from 14,383 to 34,382 differing pixels. A solid line's reader is the linear
+ * surface download, and pbkit leaves the colour tile's VALID flag clear
+ * anyway, so there is no configuration here where the remap stops cancelling.
+ *
+ * So gpu_tile_swizzle() was neither copied nor called: the line needs it in no
+ * case the corpus contains. That it sits in this file is why the question
+ * could be answered rather than guessed at.
+ *
+ * The surface bookkeeping is the part that cannot live in shared code, and is
+ * the reason this is a renderer op at all. The direct upload_pending write
+ * below has no renderer-agnostic equivalent: marking DIRTY_MEMORY_NV2A looks
+ * like one, and both renderers do read that bit, but their scans
+ * test-and-clear it *before* the guard that consumes it, and with
+ * upload == false on a live binding the bit is cleared and discarded -- and
+ * upload == false is what every surface_update call in shared code passes. A
+ * dirty-bit-only route can therefore lose the write with no symptom.
+ */
+void pgraph_vk_solid_line(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    ContextSurfaces2DState *context_surfaces = &pg->context_surfaces_2d;
+    SolidLineState *solid_line = &pg->solid_line;
+
+    {
+        extern bool xemu_get_frame_skip(void);
+        if (r->frame_skip_active && xemu_get_frame_skip()) {
+            return;
+        }
+    }
+
+    if (solid_line->operation != NV09F_SET_OPERATION_SRCCOPY) {
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            fprintf(stderr,
+                    "nv2a: solid line operation 0x%x is not implemented; "
+                    "only SRCCOPY is\n",
+                    solid_line->operation);
+        }
+        return;
+    }
+
+    /*
+     * The destination depth comes from the surfaces object, not from the
+     * line's COLOR_FORMAT -- that field decodes the source colour. Every
+     * corpus case is A8R8G8B8, and what a 5-5-5 colour becomes in a 1- or
+     * 2-byte destination is unmeasured, so the narrow cases say so rather
+     * than inventing an answer.
+     */
+    unsigned int bytes_per_pixel;
+    switch (context_surfaces->color_format) {
+    case NV062_SET_COLOR_FORMAT_LE_Y8:
+        bytes_per_pixel = 1;
+        break;
+    case NV062_SET_COLOR_FORMAT_LE_R5G6B5:
+        bytes_per_pixel = 2;
+        break;
+    case NV062_SET_COLOR_FORMAT_LE_A8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_X8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_X8R8G8B8_Z8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_Y32:
+        bytes_per_pixel = 4;
+        break;
+    default:
+        bytes_per_pixel = 0;
+        break;
+    }
+
+    if (bytes_per_pixel != 4) {
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            fprintf(stderr,
+                    "nv2a: solid line into a %u-byte destination (surface "
+                    "format 0x%x) is not implemented\n",
+                    bytes_per_pixel, context_surfaces->color_format);
+        }
+        return;
+    }
+
+    /*
+     * Soft guards, not asserts. Unlike a blit, a solid line can be triggered
+     * without any surfaces object ever having been bound -- the class carries
+     * its own SURFACE method -- so an unset destination is a reachable guest
+     * state rather than an internal invariant.
+     */
+    if (!context_surfaces->dest_pitch || !context_surfaces->dma_image_dest) {
+        return;
+    }
+
+    pgraph_vk_surface_update(d, false, true, true);
+
+    hwaddr dest_dma_len;
+    uint8_t *dest = (uint8_t *)nv_dma_map(d, context_surfaces->dma_image_dest,
+                                          &dest_dma_len);
+    if (context_surfaces->dest_offset >= dest_dma_len) {
+        return;
+    }
+    dest += context_surfaces->dest_offset;
+    hwaddr dest_addr = dest - d->vram_ptr;
+
+    hwaddr dest_avail = dest_dma_len - context_surfaces->dest_offset;
+    unsigned int max_x = context_surfaces->dest_pitch / bytes_per_pixel;
+    unsigned int max_y = dest_avail / context_surfaces->dest_pitch;
+    if (!max_x || !max_y) {
+        return;
+    }
+
+    /* The row span the line can touch, for the sync and the dirty mark. */
+    unsigned int y_lo = MIN(solid_line->start_y, solid_line->end_y);
+    unsigned int y_hi = MAX(solid_line->start_y, solid_line->end_y);
+    if (y_lo >= max_y) {
+        return;
+    }
+    if (y_hi >= max_y) {
+        y_hi = max_y - 1;
+    }
+
+    hwaddr touched_offset = (hwaddr)y_lo * context_surfaces->dest_pitch;
+    hwaddr touched_size =
+        (hwaddr)(y_hi - y_lo + 1) * context_surfaces->dest_pitch;
+
+    /*
+     * Bring any surface overlapping the touched rows down into VRAM first.
+     * The lookup below matches on an exact base address, so a line drawn into
+     * the middle of a surface would otherwise write VRAM and then have it
+     * overwritten when that surface was downloaded -- the same hazard the
+     * blit hit in issue #7.
+     */
+    pgraph_vk_download_surfaces_in_range_if_dirty(
+        pg, dest_addr + touched_offset, touched_size);
+
+    SurfaceBinding *surf_dest = pgraph_vk_surface_get(d, dest_addr);
+    if (surf_dest) {
+        /*
+         * Always download first. A line never covers a whole surface, so the
+         * blit's "the copy replaces everything, discard the download"
+         * shortcut has no analogue here -- taking it would throw away the
+         * background the line is drawn over.
+         */
+        pgraph_vk_surface_download_if_dirty(d, surf_dest);
+        surf_dest->upload_pending = true;
+        pg->draw_time++;
+    }
+
+    pgraph_solid_line_rasterize(pg, dest, context_surfaces->dest_pitch, max_x,
+                                max_y);
+
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_VGA);
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_NV2A_TEX);
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_NV2A);
+}

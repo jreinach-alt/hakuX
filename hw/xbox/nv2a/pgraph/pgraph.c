@@ -1489,6 +1489,135 @@ static const struct {
  * Clip_320_240_0_10 are exactly the second case, and were the two tests still
  * failing after the first version of this. Issue #47.
  */
+/*
+ * Expand a solid line's COLOR_VALUE to the destination's 8-bit channels.
+ *
+ * COLOR_FORMAT selects how to *read* COLOR_VALUE, not how deep the
+ * destination is. 2D_Lines sets its surface to A8R8G8B8 for all thirteen of
+ * its cases and varies only this field, so the destination stays 32-bit
+ * throughout and this is purely a source decode.
+ *
+ * The expansion is bit replication, so a channel at full scale stays at full
+ * scale: 5-bit 0x1F and 6-bit 0x3F both become 0xFF. That is what makes 0x3E0
+ * read as 5-5-5 and 0x7E0 read as 5-6-5 land on the same pure green, which is
+ * what the goldens are reported to hold. A plain left shift would give 0xF8
+ * and 0xFC instead, and the two would not agree.
+ *
+ * INFERRED, not measured here. The two rows that would discriminate
+ * replication from a shift differ from the 0xFF440011 background in all three
+ * channels either way, so the sweep's channel counts cannot tell them apart,
+ * and there are no goldens on the build host to inspect. Replication is what
+ * the hardware does and what the handoff reports the goldens holding; if those
+ * two rows come back non-exact while the rest go exact, this is the line to
+ * suspect.
+ */
+static uint32_t solid_line_expand_color(unsigned int color_format,
+                                        uint32_t value)
+{
+    unsigned int r, g, b;
+
+    switch (color_format) {
+    case NV05C_SET_COLOR_FORMAT_LE_X17R5G5B5:
+        r = (value >> 10) & 0x1F;
+        g = (value >> 5) & 0x1F;
+        b = value & 0x1F;
+        r = (r << 3) | (r >> 2);
+        g = (g << 3) | (g >> 2);
+        b = (b << 3) | (b >> 2);
+        break;
+    case NV05C_SET_COLOR_FORMAT_LE_X16R5G6B5:
+        r = (value >> 11) & 0x1F;
+        g = (value >> 5) & 0x3F;
+        b = value & 0x1F;
+        r = (r << 3) | (r >> 2);
+        g = (g << 2) | (g >> 4);
+        b = (b << 3) | (b >> 2);
+        break;
+    case NV05C_SET_COLOR_FORMAT_LE_X8R8G8B8:
+    default:
+        r = (value >> 16) & 0xFF;
+        g = (value >> 8) & 0xFF;
+        b = value & 0xFF;
+        break;
+    }
+
+    /*
+     * Opaque, and the source colour's alpha is dropped. The suite's
+     * 0xFFFFFFFF case is documented to come out the same white as its
+     * 0xFFFFFF case -- "alpha is ignored" -- and the blit path already patches
+     * an X8R8G8B8 destination's alpha to 0xFF, so this leaves the surface
+     * looking like a blit would have left it.
+     */
+    return 0xFF000000u | (r << 16) | (g << 8) | b;
+}
+
+void pgraph_solid_line_rasterize(PGRAPHState *pg, uint8_t *dest,
+                                 unsigned int pitch, unsigned int max_x,
+                                 unsigned int max_y)
+{
+    SolidLineState *solid_line = &pg->solid_line;
+
+    uint32_t color = solid_line_expand_color(solid_line->color_format,
+                                             solid_line->color_value);
+
+    int x0 = (int)solid_line->start_x;
+    int y0 = (int)solid_line->start_y;
+    int x1 = (int)solid_line->end_x;
+    int y1 = (int)solid_line->end_y;
+
+    int dx = abs(x1 - x0);
+    int dy = -abs(y1 - y0);
+    int sx = x0 < x1 ? 1 : -1;
+    int sy = y0 < y1 ? 1 : -1;
+    int err = dx + dy;
+
+    int x = x0;
+    int y = y0;
+
+    /*
+     * The last vertex is EXCLUSIVE, so the end point is tested before the
+     * pixel is written rather than after. This is the semantic the goldens
+     * measure and it is confirmed three ways: the suite's own doxygen calls
+     * 222,222-222,222 "should display nothing, the line has no length" and
+     * calls both 400,300-401,300 and 400,300-400,301 a single dot at
+     * 400,300; and dividing each row of the sweep by its channels-per-pixel
+     * gives a differing count equal to the line length for all thirteen,
+     * summing to exactly the 3,257 the suite reports.
+     *
+     * A zero-length line therefore writes nothing at all, which is the one
+     * case that was already passing before this class was implemented -- and
+     * so is the one case that is not evidence the class works.
+     *
+     * The diagonals are the rows this cannot promise bit-exactly. Hardware's
+     * tie-breaking on a 639x479 slope is unmeasured; the pixel *count* is
+     * right by construction, the choice of minor-axis step on each row is
+     * INFERRED from ordinary integer Bresenham.
+     */
+    unsigned int budget = (unsigned int)(dx > -dy ? dx : -dy) + 2;
+
+    while (budget--) {
+        if (x == x1 && y == y1) {
+            break;
+        }
+
+        if (x >= 0 && y >= 0 && (unsigned int)x < max_x &&
+            (unsigned int)y < max_y) {
+            stl_le_p(dest + (unsigned int)y * pitch + (unsigned int)x * 4,
+                     color);
+        }
+
+        int e2 = 2 * err;
+        if (e2 >= dy) {
+            err += dy;
+            x += sx;
+        }
+        if (e2 <= dx) {
+            err += dx;
+            y += sy;
+        }
+    }
+}
+
 static void pgraph_apply_clip_rectangle(PGRAPHState *pg)
 {
     const ClipRectangleState *clip = &pg->clip_rectangle;
@@ -1723,6 +1852,7 @@ slow_path:
 
     ContextSurfaces2DState *context_surfaces_2d = &pg->context_surfaces_2d;
     ImageBlitState *image_blit = &pg->image_blit;
+    SolidLineState *solid_line = &pg->solid_line;
     ClipRectangleState *clip_rectangle = &pg->clip_rectangle;
     BetaState *beta = &pg->beta;
 
@@ -1863,6 +1993,53 @@ slow_path:
             context_surfaces_2d->dest_offset = parameter & 0x07FFFFFF;
             break;
         default:
+            goto unhandled;
+        }
+        break;
+    }
+    case NV_SOLID_LINE: {
+        switch (method) {
+        case NV05C_SET_OBJECT:
+            solid_line->object_instance = parameter;
+            break;
+        case NV05C_SET_SURFACE:
+            solid_line->context_surfaces = parameter;
+            break;
+        case NV05C_SET_OPERATION:
+            solid_line->operation = parameter;
+            break;
+        case NV05C_SET_COLOR_FORMAT:
+            solid_line->color_format = parameter;
+            break;
+        case NV05C_SET_COLOR_VALUE:
+            solid_line->color_value = parameter;
+            break;
+        case NV05C_SET_LINE_START:
+            solid_line->start_x = parameter & 0xFFFF;
+            solid_line->start_y = parameter >> 16;
+            break;
+        case NV05C_SET_LINE_END:
+            solid_line->end_x = parameter & 0xFFFF;
+            solid_line->end_y = parameter >> 16;
+
+            /*
+             * Writing the end point IS the draw. There is no BEGIN_END, no
+             * vertex data and no line width anywhere in the suite -- the whole
+             * draw is these six methods plus three to the surfaces object.
+             */
+            d->pgraph.renderer->ops.solid_line(d);
+            break;
+        default:
+            /*
+             * Only point-pair slot 0 is handled. The class has sixteen, each
+             * eight bytes on from SET_LINE_START, and each is an independent
+             * start/end register pair on hardware -- so serving them all from
+             * one shared start point would be wrong for a guest that
+             * interleaved them, and no test in the corpus writes any slot but
+             * the first. Letting the rest fall through means the unhandled log
+             * says so if one ever does, rather than us drawing the wrong line
+             * or silently drawing nothing.
+             */
             goto unhandled;
         }
         break;

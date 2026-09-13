@@ -420,3 +420,146 @@ void pgraph_gl_image_blit(NV2AState *d)
     memory_region_set_client_dirty(d->vram, dest_addr, clipped_dest_size,
                                    DIRTY_MEMORY_NV2A_TEX);
 }
+
+/*
+ * Rasterise a solid line (class 0x5C) into the 2D destination surface.
+ *
+ * The Vulkan twin in vk/blit.c carries the full reasoning; the short version
+ * is that this deliberately stays on the LINEAR path and never touches
+ * gpu_tile_swizzle(), because the blit above swizzles only a copy that
+ * overruns its tile -- a remap is invisible while the tile is valid, and
+ * swizzling a write whose reader is one of our linear paths corrupts it. A
+ * solid line's reader is the linear surface download.
+ *
+ * Two deliberate differences from the Vulkan version, both matching what this
+ * renderer's own blit does rather than inventing a GL-only behaviour:
+ *
+ *   - No overlapping-surface pre-download. GL has no
+ *     pgraph_gl_download_surfaces_in_range_if_dirty; issue #7's range fix was
+ *     made on the Vulkan side only, and GL's blit has the same gap.
+ *   - DIRTY_MEMORY_NV2A is marked here even though GL's blit marks only VGA
+ *     and NV2A_TEX. GL does read that bit in its surface scan, so marking it
+ *     costs nothing and gives the write a second route; correctness still
+ *     rests on the upload_pending write below, not on the bit.
+ */
+void pgraph_gl_solid_line(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    ContextSurfaces2DState *context_surfaces = &pg->context_surfaces_2d;
+    SolidLineState *solid_line = &pg->solid_line;
+
+    if (solid_line->operation != NV09F_SET_OPERATION_SRCCOPY) {
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            fprintf(stderr,
+                    "nv2a: solid line operation 0x%x is not implemented; "
+                    "only SRCCOPY is\n",
+                    solid_line->operation);
+        }
+        return;
+    }
+
+    /*
+     * The destination depth comes from the surfaces object, not from the
+     * line's COLOR_FORMAT -- that field decodes the source colour. Every
+     * corpus case is A8R8G8B8, and what a 5-5-5 colour becomes in a 1- or
+     * 2-byte destination is unmeasured, so the narrow cases say so rather
+     * than inventing an answer.
+     */
+    unsigned int bytes_per_pixel;
+    switch (context_surfaces->color_format) {
+    case NV062_SET_COLOR_FORMAT_LE_Y8:
+        bytes_per_pixel = 1;
+        break;
+    case NV062_SET_COLOR_FORMAT_LE_R5G6B5:
+        bytes_per_pixel = 2;
+        break;
+    case NV062_SET_COLOR_FORMAT_LE_A8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_X8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_X8R8G8B8_Z8R8G8B8:
+    case NV062_SET_COLOR_FORMAT_LE_Y32:
+        bytes_per_pixel = 4;
+        break;
+    default:
+        bytes_per_pixel = 0;
+        break;
+    }
+
+    if (bytes_per_pixel != 4) {
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            fprintf(stderr,
+                    "nv2a: solid line into a %u-byte destination (surface "
+                    "format 0x%x) is not implemented\n",
+                    bytes_per_pixel, context_surfaces->color_format);
+        }
+        return;
+    }
+
+    /*
+     * Soft guards, not asserts. Unlike a blit, a solid line can be triggered
+     * without any surfaces object ever having been bound -- the class carries
+     * its own SURFACE method -- so an unset destination is a reachable guest
+     * state rather than an internal invariant.
+     */
+    if (!context_surfaces->dest_pitch || !context_surfaces->dma_image_dest) {
+        return;
+    }
+
+    pgraph_gl_surface_update(d, false, true, true);
+
+    hwaddr dest_dma_len;
+    uint8_t *dest = (uint8_t *)nv_dma_map(d, context_surfaces->dma_image_dest,
+                                          &dest_dma_len);
+    if (context_surfaces->dest_offset >= dest_dma_len) {
+        return;
+    }
+    dest += context_surfaces->dest_offset;
+    hwaddr dest_addr = dest - d->vram_ptr;
+
+    hwaddr dest_avail = dest_dma_len - context_surfaces->dest_offset;
+    unsigned int max_x = context_surfaces->dest_pitch / bytes_per_pixel;
+    unsigned int max_y = dest_avail / context_surfaces->dest_pitch;
+    if (!max_x || !max_y) {
+        return;
+    }
+
+    /* The row span the line can touch, for the dirty mark. */
+    unsigned int y_lo = MIN(solid_line->start_y, solid_line->end_y);
+    unsigned int y_hi = MAX(solid_line->start_y, solid_line->end_y);
+    if (y_lo >= max_y) {
+        return;
+    }
+    if (y_hi >= max_y) {
+        y_hi = max_y - 1;
+    }
+
+    hwaddr touched_offset = (hwaddr)y_lo * context_surfaces->dest_pitch;
+    hwaddr touched_size =
+        (hwaddr)(y_hi - y_lo + 1) * context_surfaces->dest_pitch;
+
+    SurfaceBinding *surf_dest = pgraph_gl_surface_get(d, dest_addr);
+    if (surf_dest) {
+        /*
+         * Always download first. A line never covers a whole surface, so the
+         * blit's "the copy replaces everything, discard the download"
+         * shortcut has no analogue here -- taking it would throw away the
+         * background the line is drawn over.
+         */
+        pgraph_gl_surface_download_if_dirty(d, surf_dest);
+        surf_dest->upload_pending = true;
+        pg->draw_time++;
+    }
+
+    pgraph_solid_line_rasterize(pg, dest, context_surfaces->dest_pitch, max_x,
+                                max_y);
+
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_VGA);
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_NV2A_TEX);
+    memory_region_set_client_dirty(d->vram, dest_addr + touched_offset,
+                                   touched_size, DIRTY_MEMORY_NV2A);
+}

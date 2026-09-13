@@ -106,6 +106,10 @@ static void pgraph_null_process_pending_reports(NV2AState *d)
 {
 }
 
+static void pgraph_null_solid_line(NV2AState *d)
+{
+}
+
 static void pgraph_null_surface_update(NV2AState *d, bool upload,
                                        bool color_write, bool zeta_write)
 {
@@ -130,6 +134,7 @@ static PGRAPHRenderer pgraph_null_renderer = {
         .flush_draw = pgraph_null_flush_draw,
         .get_report = pgraph_null_get_report,
         .image_blit = pgraph_null_image_blit,
+        .solid_line = pgraph_null_solid_line,
         .pre_savevm_trigger = pgraph_null_pre_savevm_trigger,
         .pre_savevm_wait = pgraph_null_pre_savevm_wait,
         .pre_shutdown_trigger = pgraph_null_pre_shutdown_trigger,

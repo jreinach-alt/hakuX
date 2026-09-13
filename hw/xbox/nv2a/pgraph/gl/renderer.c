@@ -327,6 +327,7 @@ static PGRAPHRenderer pgraph_gl_renderer = {
         .flush_draw = pgraph_gl_flush_draw,
         .get_report = pgraph_gl_get_report,
         .image_blit = pgraph_gl_image_blit,
+        .solid_line = pgraph_gl_solid_line,
         .pre_savevm_trigger = pgraph_gl_pre_savevm_trigger,
         .pre_savevm_wait = pgraph_gl_pre_savevm_wait,
         .pre_shutdown_trigger = pgraph_gl_pre_shutdown_trigger,

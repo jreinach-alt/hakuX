@@ -1755,6 +1755,7 @@ static PGRAPHRenderer pgraph_vk_renderer = {
         .flush_draw = pgraph_vk_flush_draw,
         .get_report = pgraph_vk_get_report,
         .image_blit = pgraph_vk_image_blit,
+        .solid_line = pgraph_vk_solid_line,
         .pre_savevm_trigger = pgraph_vk_pre_savevm_trigger,
         .pre_savevm_wait = pgraph_vk_pre_savevm_wait,
         .pre_shutdown_trigger = pgraph_vk_pre_shutdown_trigger,

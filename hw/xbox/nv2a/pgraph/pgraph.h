@@ -93,6 +93,27 @@ typedef struct ImageBlitState {
 } ImageBlitState;
 
 /*
+ * The NV04 solid-line object (class 0x5C). Writing the end point is the draw,
+ * so everything else here is state the guest accumulates first.
+ *
+ * Not in the savevm description, deliberately. Every other 2D class's state is
+ * saved, but those are all bindings that persist across draws; this is the one
+ * that is live only between a start point and the end point that consumes it,
+ * inside a single pushbuffer batch. Adding fields would change the migration
+ * format, which wants a version bump and is a separate decision from making
+ * the class draw.
+ */
+typedef struct SolidLineState {
+    hwaddr object_instance;
+    hwaddr context_surfaces;
+    unsigned int operation;
+    unsigned int color_format;
+    uint32_t color_value;
+    unsigned int start_x, start_y;
+    unsigned int end_x, end_y;
+} SolidLineState;
+
+/*
  * The destination clip rectangle the 2D classes blit through (class 0x19).
  * Zero width or height means the guest has not set one; hardware treats an
  * unset rectangle as unbounded, not as empty, so the blit path must not read
@@ -131,6 +152,7 @@ typedef struct PGRAPHRenderer {
         void (*flush_draw)(NV2AState *d);
         void (*get_report)(NV2AState *d, uint32_t parameter);
         void (*image_blit)(NV2AState *d);
+        void (*solid_line)(NV2AState *d);
         void (*pre_savevm_trigger)(NV2AState *d);
         void (*pre_savevm_wait)(NV2AState *d);
         void (*pre_shutdown_trigger)(NV2AState *d);
@@ -158,6 +180,7 @@ typedef struct PGRAPHState {
     /* subchannels state we're not sure the location of... */
     ContextSurfaces2DState context_surfaces_2d;
     ImageBlitState image_blit;
+    SolidLineState solid_line;
     ClipRectangleState clip_rectangle;
     KelvinState kelvin;
     BetaState beta;
@@ -348,6 +371,21 @@ int pgraph_method_try_fast(NV2AState *d, unsigned int subchannel,
                            uint32_t *parameters, size_t num_words_available,
                            size_t max_lookahead_words);
 void pgraph_check_within_begin_end_block(PGRAPHState *pg);
+
+/*
+ * Rasterise the pending solid line into a linear 32-bit destination. Shared so
+ * that the semantics the goldens actually measure -- the exclusive last vertex
+ * and the colour expansion -- exist in exactly one place; only the surface
+ * bookkeeping around it differs per renderer, and that stays in each blit.c.
+ *
+ * max_x and max_y bound the destination in pixels and rows. Pixels outside are
+ * dropped rather than clamped: on hardware a solid line out of bounds is a
+ * crash, every corpus case is in bounds, and dropping keeps a malformed one
+ * from scribbling over unrelated VRAM.
+ */
+void pgraph_solid_line_rasterize(PGRAPHState *pg, uint8_t *dest,
+                                 unsigned int pitch, unsigned int max_x,
+                                 unsigned int max_y);
 
 void *pfifo_thread(void *arg);
 void pfifo_kick(NV2AState *d);
