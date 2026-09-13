@@ -111,7 +111,7 @@ resume_sweep() {
     SWEEP_STATE="$SWEEP_STATE" bash "$HERE/sweep_queue.sh" resume >>"$D/logs/dispatcher.log" 2>&1
 }
 
-build_ref() {  # $1 = ref ; echoes the apk path, or fails
+build_ref() {  # $1 = ref ; $2 = "perflog" for a diagnostic build ; echoes the apk path
     # Serialised across devices, because building detaches the SHARED
     # checkout. Two workers here at once would each `git checkout --detach` a
     # different sha in the same tree and both would build whatever the other
@@ -130,10 +130,34 @@ build_ref() {  # $1 = ref ; echoes the apk path, or fails
 }
 
 _build_ref_locked() {
-    local ref="$1" out="$D/builds"
+    local ref="$1" variant="${2:-}" out="$D/builds"
     mkdir -p "$out"
     local sha; sha=$(git -C "$TREE" rev-parse --short "$ref" 2>/dev/null) || return 1
-    local apk="$out/$sha.apk"
+    # THE CACHE KEY MUST CARRY THE VARIANT, and this is the whole reason the
+    # perflog build needed a change here rather than an env var.
+    #
+    # The cache is what makes an A/B cheap: both arms usually share a ref with
+    # something built before them. Keyed on the sha ALONE, a `-Pperflog=true`
+    # build of a sha already built normally would be served the normal APK --
+    # which emits no `hakuX-phase` lines at all, so the measurement comes back
+    # EMPTY and reads exactly like a soak that produced nothing. And the
+    # reverse is worse: a normal arm served a perflog APK is measured with the
+    # extra instrumentation's cost folded into its frame rate, silently, with
+    # its apk_sha agreeing with every other row.
+    #
+    # So the variant is part of the identity of the BINARY, not a flag on the
+    # run. Downstream needs no change for this: `apk_sha` is a sha256 of the
+    # APK file itself (see below), not of the ref, so the two variants of one
+    # sha already carry different apk_shas and a column cannot mix them
+    # unnoticed. That was luck rather than foresight, and it is worth knowing
+    # which -- had apk_sha been derived from the ref, this cache-key fix alone
+    # would have left the two builds indistinguishable in every result.
+    local suffix="" gradle_args=""
+    if [ "$variant" = "perflog" ]; then
+        suffix="-perflog"
+        gradle_args="-Pperflog=true"
+    fi
+    local apk="$out/$sha$suffix.apk"
     if [ -f "$apk" ]; then echo "$apk"; return 0; fi
     # Requests name a ref, never "what is in the tree": with several
     # implementers holding uncommitted work, "run my build" is ambiguous the
@@ -161,7 +185,8 @@ _build_ref_locked() {
         # commit onto the wrong base. `dispatcher.sh status` surfaces it.
         echo "detached at $sha to build a baseline; restoring $restore" > "$D/DETACHED"
     fi
-    (cd "$TREE/android" && ./gradlew assembleDebug) >>"$D/logs/build-$sha.log" 2>&1
+    (cd "$TREE/android" && ./gradlew assembleDebug ${gradle_args:+$gradle_args}) \
+        >>"$D/logs/build-$sha$suffix.log" 2>&1
     local rc=$?
     if [ -n "$restore" ]; then
         git -C "$TREE" checkout --quiet "$restore" \
@@ -210,7 +235,15 @@ serve_one() {
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
     local apk rc
-    apk=$(build_ref "$ref"); rc=$?
+    # `a || b && c || d` is a precedence trap in shell and this value decides
+    # which binary runs, so spell it out.
+    local perflog_req perflog=""
+    perflog_req=$(jq_get "$req" perflog "")
+    case "$perflog_req" in
+        true|True|1|yes) perflog=perflog ;;
+    esac
+    [ -z "$perflog" ] || log "  diagnostic build requested: -Pperflog=true"
+    apk=$(build_ref "$ref" "$perflog"); rc=$?
     if [ "$rc" = 3 ]; then
         # A dirty tree is TRANSIENT -- someone is editing -- and must not
         # destroy queued work. Requeueing rather than failing is the same

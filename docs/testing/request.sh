@@ -45,7 +45,7 @@ D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
-AUDIO_CAPTURE=""; BASE_ISO=""
+AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -63,6 +63,7 @@ while [ $# -gt 0 ]; do
         --device) DEVICE="$2"; shift 2;;
         --audio-capture) AUDIO_CAPTURE="$2"; shift 2;;
         --base-iso) BASE_ISO="$2"; shift 2;;
+        --perflog) PERFLOG=true; shift;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -390,11 +391,11 @@ if [ -n "$BASE_ISO" ]; then
     fi
 fi
 
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" <<'PY'
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
  pull_glob, expect, expect_sha, no_expect, skip_tests, device,
- arm_audio, base_iso) = sys.argv[1:20]
+ arm_audio, base_iso, perflog) = sys.argv[1:21]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -406,6 +407,7 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "device": device,
            "audio_capture": arm_audio,
            "base_iso": base_iso,
+           "perflog": perflog,
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(
