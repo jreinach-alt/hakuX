@@ -1587,6 +1587,14 @@ the field names, with `docs/testing/phase_read_split_check.py`:
   load screen `performance-next-three.md` flags, where 50-200 fills a frame
   would inflate `Tot` by exactly the upload time. `BUSY` above is defined as
   `Surf + Draw + Fin` to avoid it.
+- **`Syn` covers 4 of the 9 `sync_vertex_ram_buffer` call sites.** The
+  `draw_vtx_sync` timer is opened at only two places (`vk/draw.c:6560` and
+  `:6686`), bracketing the calls at 6567/6571 and 6693/6697; the five at 4604,
+  4674, 4992, 5138 and 5142 are untimed. So the measured READ side is an
+  **under**-estimate and `POST / BUSY` is an **upper bound** — which is the
+  safe direction for the conclusion here, since the claim is that (a) can buy
+  *at most* 38-47%. A Galleon measurement should either widen the timer or
+  quote the ceiling as a bound, and say which.
 - **Every field is an EWMA, not a frame.** `SMOOTH_MS` is
   `dst = 0.8·dst + 0.2·src`, so a printed line is a ~5-frame smoothed estimate,
   and the line is emitted once per 60 frames. Means and shares are unaffected
