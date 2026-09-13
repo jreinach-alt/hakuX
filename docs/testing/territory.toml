@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 26
+wave = 27
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -42,37 +42,34 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 
 
 
-[lane.signfold]
-issues = ["43"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h",
-         "hw/xbox/nv2a/pgraph/vk/draw.c"]
-note = "GRANTED ATOMICALLY, and the grant is the point: #43's blocker was 'the fold needs psh.c AND vk/draw.c AND vk/surface.c, and any subset double-corrects'. That was a TERRITORY obstacle, not an impossibility, and it dissolved when lane.pacing/writetrack/blendstack were retired -- the third blocker today retired by a capability or a grant rather than by a measurement, after #50's 'behind the test-suite fork' and #54's perflog gap. ALREADY LANDED: the FACTOR half (ab4a829316, routed through pgraph_vk_effective_blend_reg so the static pipeline, the eds3 path, the reorder snapshot and the cache key all agree), PRE-REGISTERED PASS on 124 checks -- every one of 856,098 channels whose source byte is below 128 is exact in both captures, against 594,738 and 592,409 wrong before. WHAT REMAINS is the SIGN FOLD: 365,491 channels per capture. IT PROVABLY CANNOT BE BLEND STATE -- silicon's output steps 254 -> 0 between adjacent source bytes at D=127, and every Vulkan blend op is a continuous map of the source, so no choice of blend equation reproduces a discontinuity. Hence framebuffer fetch (input attachment plus a subpass self-dependency) or a float intermediate surface, and hence a subset double-corrects. READ THE MEASUREMENT HISTORY BEFORE TRUSTING ANY SCORE HERE: this issue has produced one false alarm AND one false retraction, both from whole-image sha256 -- TestSpot prints its own test name into rows 0-63, so a whole-image hash reports 15 distinct images regardless of the factor. Silicon renders ONE picture for all 15 factors under signed equations; the pre-fix arm gave 13 and the post-fix arm gave 1, and THE COLLAPSE WAS THE FIX AGREEING WITH SILICON. Use score_sweep's label-band scoping (LABEL_ROWS = 64) and per-capture counts, never a whole-image hash. TERRITORY: #43 and #50 are a recorded SPLIT PAIR in check_territory.py; #50 has no lane and must not be given one while this lane holds #43."
-
 [free]
 # RELEASED by retiring lane.pacing, lane.writetrack and lane.blendstack, whose
 # agents have all reported final results. Their issues (#44, #65, #54, #50,
 # #52) now carry written blockers instead of a lane -- which is the honest
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c",
-         "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c",
+files = ["accel/**",
+         "hw/xbox/mcpx/**",
          "hw/xbox/nv2a/nv2a.c",
          "hw/xbox/nv2a/nv2a_int.h",
          "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pfifo.c",
-         "hw/xbox/nv2a/pramdac.c",
-         "hw/xbox/nv2a/pgraph/pgraph.c",
-         "hw/xbox/nv2a/pgraph/vk/renderer.h",
-         "hw/xbox/nv2a/pgraph/vk/command.c",
-         "hw/xbox/nv2a/pgraph/vk/buffer.c",
-         "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-         "hw/xbox/nv2a/pgraph/prim_rewrite.c",
-         "hw/xbox/nv2a/pgraph/s3tc.c",
-         "accel/**",
-         "include/exec/**",
-         "hw/xbox/mcpx/**",
-         "hw/xbox/nv2a/pgraph/glsl/vsh.c",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c",
+         "hw/xbox/nv2a/pgraph/glsl/psh.c",
+         "hw/xbox/nv2a/pgraph/glsl/psh.h",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
+         "hw/xbox/nv2a/pgraph/glsl/vsh.c",
+         "hw/xbox/nv2a/pgraph/pgraph.c",
+         "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+         "hw/xbox/nv2a/pgraph/s3tc.c",
+         "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/buffer.c",
+         "hw/xbox/nv2a/pgraph/vk/command.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/vk/renderer.h",
+         "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+         "hw/xbox/nv2a/pgraph/vk/surface.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
+         "hw/xbox/nv2a/pramdac.c",
+         "include/exec/**"]
