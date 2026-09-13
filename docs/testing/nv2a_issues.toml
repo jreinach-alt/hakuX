@@ -1480,6 +1480,21 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # picking the wrong one would score identically), and whether the underflow hits
 # the direction or the face coordinate. Nothing has been run; this is a reading
 # of goldens on disk and it constrains a fix rather than being one.
+#
+# ARM RUN, PREDICTION FAILED. dot-str-3d-underflow-corner.json, registered
+# 04:07Z before the arm existed, judged against it: the unsigned dotmaps reach
+# FOUR corners where two were predicted, 0to1's counts are 3394/25471/8002/20042
+# against 28114/0/28795/0, and the arm is better on 2 captures and worse on 4.
+# Two of the four legs were tautologies -- "lands on a positive-face corner"
+# and "no interior texel" are forced by the fix itself and could not fail; a
+# falsifier your own change guarantees is not one. What the arm bought is a
+# sharper defect: the corner confusion matrix is 80% recoverable by a FIXED
+# PERMUTATION (chance is 25%), so the mechanism carries real information and
+# the mapping is wrong. Each golden corner maps to a pair of ours differing in
+# exactly one coordinate, so one bit tracks and one is spurious, and it is
+# inverted; the golden pins s and varies t while we vary both. So: one product
+# inverted, and the pinned coordinate driven from a sign that is noise here.
+# The next attempt needs its own registration; this one is spent.
 # docs/investigations/cubemap-is-dot-str-3d.md.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]

@@ -770,3 +770,72 @@ Two things worth keeping from this:
   Re-deriving it over the whole image was the right instinct and produced a
   contradiction -- and the contradiction was in the instrument, not the claim.
   A count of a colour is not a count of a texel.
+
+## The prediction was registered, the arm was run, and it FAILED
+
+`docs/testing/predictions/dot-str-3d-underflow-corner.json`, registered
+04:07Z against `2f14403e`, before the arm existed. The arm: the diff applied
+to the peer tip `0f708c8d`, built (`NINJA_EXIT=0`, 63 compile steps, links,
+no new warnings), GLSL compiled clean at runtime, `iso_cube.iso` run, 78
+captures.
+
+**Verdict: FAIL on both substantive legs.**
+
+| leg | predicted | measured |
+|---|---|---|
+| 1. positive-face corners only | no negative-face colour | holds, `neg=0` — but see below |
+| 2. no interior texel | none | holds — but see below |
+| 3. unsigned reach exactly 2, edge pair | 2 | **4, on all three** |
+| 4. corner counts over `y>=45` | `0to1` B/R/G/W 28114/0/28795/0 | **3394/25471/8002/20042** |
+| `expect_counts` | better 6, worse 0 | **better 2, worse 4** |
+
+`-1to1` 49k -> 38,290 and `-1to1GL` -> 38,511 improved; `0to1`, `HiLo_1`,
+`HiLoHemi` went to 56,908-56,909, which is essentially every cube pixel wrong,
+and `-1to1D3D` to 54,558.
+
+### Legs 1 and 2 were not falsifiers and I should not have written them
+
+Both describe what *our own output* does after a change that forces exactly
+that. A fix that substitutes a positive-face corner direction cannot produce a
+negative face or an interior texel, so neither leg could ever have failed. They
+read like measurements and are tautologies. **A falsifier your own change
+guarantees is not a falsifier** -- the same shape as scoring a fix against
+targets contaminated by the thing it draws.
+
+### What the failure says, which is more than "wrong"
+
+The corner confusion matrix, ours against the golden's, over the 56,909 cube
+pixels:
+
+`0to1` -- golden reaches only B and G:
+
+| golden | our R | our B | our W | our G |
+|---|---:|---:|---:|---:|
+| B (28,114) | 0 | 70 | **20,042** | **8,002** |
+| G (28,795) | **25,471** | **3,324** | 0 | 0 |
+
+Exact agreement 0.1%, but the best permutation would give **80%** against 25%
+for chance. So the mechanism carries real information and the *mapping* is
+wrong -- it is not noise.
+
+Read the rows. Each golden corner maps onto a pair of ours differing in
+exactly **one** coordinate: golden B goes to our W and G, which share `t` and
+differ in `s`; golden G goes to our R and B, likewise. So **one of our two
+bits tracks the golden and the other varies spuriously**. And the direction is
+inverted: golden B lands on our `t=63`, golden G on our `t=0`.
+
+Meanwhile the golden for these captures pins `s=63` and varies `t`. We pin
+nothing and vary both.
+
+So two separate errors, not one: **one product is inverted, and the coordinate
+the golden pins is being driven from a sign that is noise here.** That is a
+sharper statement of what is wrong than the mechanism had before the arm ran,
+and it is what the arm bought.
+
+### What survives
+
+The underflow-and-signs mechanism is not refuted by this: 80% recoverable by a
+fixed permutation is not what a wrong mechanism looks like. What is refuted is
+the specific claim that the corner is `(-z/x, -y/x)` of the sign-only
+direction with `x` forced positive. The next attempt needs its own registered
+prediction; this one is spent.
