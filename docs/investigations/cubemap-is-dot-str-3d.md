@@ -543,3 +543,46 @@ which would make a negative face unreachable by construction and sits well
 with "lands on a corner". That is a hypothesis and is written here rather than
 in the tracker; what is established is the face distribution above and the
 goldens' parity, both of which are direct measurements.
+
+## And within the face we land in the interior, where silicon lands on corners
+
+Second probe, same shape: `G = mid/max`, `B = min/max` over `abs(dotSTR3)`,
+so a corner reads 255/255, an edge midpoint 255/0, a face centre 0/0.
+
+| capture | mid/max median | min/max median | corner | edge mid | face centre | interior |
+|---|---:|---:|---:|---:|---:|---:|
+| `HiLo_1` | 63 | 3 | **0.0%** | 0.0% | 3.7% | **96.3%** |
+| `0to1` | 125 | 7 | **0.0%** | 0.6% | 1.5% | **97.9%** |
+| `-1to1D3D` | 107 | 14 | **0.0%** | 0.3% | 0.8% | **99.0%** |
+| `-1to1` | 99 | 9 | **0.0%** | 0.3% | 1.4% | **98.3%** |
+
+**Not one pixel of any capture lands on a corner.** 96-99% land in the face
+interior at a mid/max ratio around 0.25 to 0.5, and the third component is
+nearly always negligible (min/max median 3 to 14 of 255).
+
+So the gap is now characterised end to end, entirely in measurements:
+
+| | silicon | ours |
+|---|---|---|
+| face | positive only, never negative | negative on up to 49% of px |
+| position in face | corner | interior, 96-99% |
+
+### A prediction of mine this falsified
+
+I expected `mid/max` to come back near 255 -- an edge -- reasoning that the
+first two dot products are "both about 0.003" and therefore near-equal. That
+was wrong, and the error is worth naming because it is the same shape as
+others in this note: **0.00299 is the *bound* on each dot, not its value.**
+Both rows of the inverse composite happen to have the same norm, so they share
+a bound; the actual per-pixel dots vary with the normal and their ratio sits
+around a quarter to a half, not one.
+
+The bound was the right tool for killing the saturation mechanism, where only
+the maximum mattered. It is the wrong tool for anything about the *shape* of
+the coordinate, and I used it for both.
+
+What it would take to land on a corner from an interior coordinate is for the
+two non-major components to be driven to +-max. Per-axis saturation of the raw
+dots cannot do that at 0.003. Saturation *after* the cube divide could, and so
+could a face coordinate held at very low precision, but both are guesses and
+neither is going in until something measures one.
