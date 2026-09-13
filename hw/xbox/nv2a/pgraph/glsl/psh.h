@@ -75,6 +75,23 @@ typedef struct PshState {
     bool alpha_test;
     enum PshAlphaFunc alpha_func;
 
+    /*
+     * #43: the guest programmed FUNC_ADD_SIGNED or
+     * FUNC_REVERSE_SUBTRACT_SIGNED, whose source byte silicon reads as SIGNED.
+     * Set from NV_PGRAPH_BLEND, so it is a pure function of guest state and
+     * keys the shader cache like every other field here.
+     *
+     * When set, the generated shader masks fragColor by the sign of each
+     * channel's source byte, selecting which half with the `signedBlendPass`
+     * uniform, and the renderer emits the draw TWICE. Which half is which, and
+     * why two passes of ordinary blend state reproduce a discontinuous map, is
+     * in pgraph_vk_effective_blend_reg() in vk/draw.c.
+     *
+     * This flag only says "generate the masking code". It is the PASS that
+     * picks a half, and a pass is not guest state -- hence the uniform.
+     */
+    bool signed_blend_fold;
+
     bool window_clip_exclusive;
     int window_clip_count;
 
@@ -112,6 +129,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
     DECL(S, eyeVec, vec4, 1)        \
     DECL(S, fogColor, vec4, 1)      \
     DECL(S, fogParam, vec2, 1)      \
+    DECL(S, signedBlendPass, int, 1) \
     DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceScale, ivec2, 1) \
     DECL(S, texScale, float, 4)
@@ -151,5 +169,26 @@ MString *pgraph_glsl_gen_psh(const PshState *state, GenPshGlslOptions opts);
 void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
                                         const PshUniformLocs locs,
                                         PshUniformValues *values);
+
+/*
+ * #43's signed-blend pass selector: SIGNED_BLEND_PASS_LOW keeps the channels
+ * whose source byte is below 128 and zeroes the rest, SIGNED_BLEND_PASS_HIGH
+ * keeps 256 - S on the others and zeroes the low ones. Zero is an exact
+ * identity for the blend op each pass carries, which is what lets the two
+ * passes compose into a discontinuous map, and lets all four channels ride one
+ * pass with no write mask and no discard.
+ *
+ * This is renderer state, not guest state -- a draw does not know which of its
+ * two passes it is -- so it is deliberately NOT in PshState, where it would
+ * split the shader cache for no reason. The renderer sets it immediately
+ * before staging uniforms for each pass, on the thread that owns the draw.
+ */
+enum {
+    SIGNED_BLEND_PASS_LOW = 0,
+    SIGNED_BLEND_PASS_HIGH = 1,
+};
+
+void pgraph_glsl_set_signed_blend_pass(int pass);
+int pgraph_glsl_get_signed_blend_pass(void);
 
 #endif
