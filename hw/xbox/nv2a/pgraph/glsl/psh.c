@@ -1292,6 +1292,38 @@ static void apply_border_adjustment(const struct PixelShader *ps, MString *vars,
         var_name, var_name, i, ps->state->border_inv_real_size[i][0], ps->state->border_inv_real_size[i][1], ps->state->border_inv_real_size[i][2]);
 }
 
+/*
+ * rv_i, the eye vector reflected about the interpolated normal n_i, for the
+ * two DOT_RFLCT_SPEC modes.
+ *
+ * n_i is exactly zero wherever the stage-0 normal map is black and the dot
+ * mapping carries zero to zero, so the 1/dot(n,n) is a real 0/0 rather than
+ * a rounding hazard.  Against a samplerCube the resulting NaN is a
+ * degenerate direction; give it the one silicon resolves to instead of
+ * relying on NaN comparing false downstream, which a driver is free to
+ * assume away.  See kCubeDegenerateDir.
+ *
+ * The non-cube path keeps the unguarded expression: there the fetch goes
+ * through remapCubeTo2D, whose behaviour on a degenerate direction has not
+ * been measured against silicon, and Texture_2D_as_cubemap's DotReflectSpec
+ * captures already agree with the goldens on that column.
+ */
+static void psh_append_reflection(const struct PixelShader *ps, MString *vars,
+                                  int i)
+{
+    if (ps->state->tex_cubemap[i]) {
+        mstring_append_fmt(vars,
+            "vec3 rv_%d = dot(n_%d,n_%d) > 0.0 ?\n"
+            "    2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d :\n"
+            "    kCubeDegenerateDir;\n",
+            i, i, i, i, i, i, i, i, i);
+    } else {
+        mstring_append_fmt(vars,
+            "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
+            i, i, i, i, i, i, i);
+    }
+}
+
 static void apply_convolution_filter(const struct PixelShader *ps, MString *vars, int tex)
 {
     assert(ps->state->dim_tex[tex] == 2);
@@ -1839,6 +1871,39 @@ static MString* psh_convert(struct PixelShader *ps)
         "vec3 remap2DToCube(vec3 texCoord2DProjective) {\n"
         "    vec2 st = (texCoord2DProjective.xy / texCoord2DProjective.z);"
         "    return normalize(vec3(1.0, st.y, -st.x));"
+        "}\n"
+        /* A cube lookup needs a direction, and the dot-product texture modes
+         * hand it an exactly zero one on the left cube's left silhouette
+         * column in Texture_cubemap -- 70 px per capture, x 117..146,
+         * y 197..287.  The stage-0 normal map is a cross on a black
+         * background and that column samples the background; a black texel
+         * maps to (0,0,0) under DOTMAP_ZERO_TO_ONE (identity) and under
+         * DOTMAP_MINUS1_TO_1 (sign3(0) == 0), and under no other mapping.
+         * Measured, not inferred: the #51 probe build reports |dot_1|
+         * EXACTLY ZERO on all 70 of those pixels under exactly those two
+         * mappings, and >= 0.001 or "tiny but nonzero" under the other four.
+         *
+         * GLSL leaves a zero cube direction undefined.  Silicon resolves it
+         * to the +X face at that face's (0,0) texel; our stack resolves it
+         * to +Z.  The face is measured on two cube textures with disjoint
+         * per-face palettes: the radial gradient, where the golden is
+         * (0xBF,0,0) and a one-channel red names +X, and the stage-2
+         * checkerboard, where it is 0xFF7777FF, the +X face's first square.
+         *
+         * The substituted direction must NOT itself be a major-axis tie.
+         * The first attempt here was vec3(1.0), derived from the Vulkan rule
+         * that X wins a tie -- but a three-way tie is precisely what this
+         * stack does not resolve that way.  It fired on all 70 pixels of all
+         * 20 captures and landed on +Z at (s,t) = (+1,-1), i.e. texel (63,0):
+         * 0xFB on the gradient and 0xFF222222 on the checkerboard, both
+         * wrong, both self-consistent, and both leaving the pixel counts
+         * flat.  See ff9dec40cb.  So skew y and z below x: the skew is 2^-13
+         * so that (s,t) still falls inside texel (0,0) for any face up to
+         * 16384 wide, the face size not being carried in PshState. */
+        "const vec3 kCubeDegenerateDir = vec3(1.0, 1.0 - 1.0/8192.0,\n"
+        "                                          1.0 - 1.0/8192.0);\n"
+        "vec3 cubeDirOrDefault(vec3 d) {\n"
+        "    return dot(d, d) > 0.0 ? d : kCubeDegenerateDir;\n"
         "}\n"
         );
 
@@ -2470,9 +2535,14 @@ static MString* psh_convert(struct PixelShader *ps)
                 mstring_append_fmt(vars,
                     "n_%d.xy = remapCubeTo2D(n_%d);\n", i, i);
             }
-            mstring_append_fmt(vars,
-                "vec4 t%d = texture(texSamp%d, n_%d%s);\n",
-                i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
+            if (ps->state->tex_cubemap[i]) {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, cubeDirOrDefault(n_%d));\n",
+                    i, i, i);
+            } else {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, n_%d.xy);\n", i, i, i);
+            }
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_RFLCT_SPEC")) break;
@@ -2483,8 +2553,7 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i-2, i-1, i);
             mstring_append_fmt(vars, "vec3 e_%d = vec3(pT%d.w, pT%d.w, pT%d.w);\n",
                 i, i-2, i-1, i);
-            mstring_append_fmt(vars, "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
-                               i, i, i, i, i, i, i);
+            psh_append_reflection(ps, vars, i);
             apply_border_adjustment(ps, vars, i, "rv_%d");
             if (!ps->state->tex_cubemap[i]) {
                 mstring_append_fmt(vars,
@@ -2529,9 +2598,15 @@ static MString* psh_convert(struct PixelShader *ps)
                     "dotSTR%dCube.xy = remapCubeTo2D(dotSTR%dCube);\n",
                     i, i);
             }
-            mstring_append_fmt(vars,
-                "vec4 t%d = texture(texSamp%d, dotSTR%dCube%s);\n",
-                i, i, i, ps->state->tex_cubemap[i] ? "" : ".xy");
+            if (ps->state->tex_cubemap[i]) {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, "
+                    "cubeDirOrDefault(dotSTR%dCube));\n", i, i, i);
+            } else {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, dotSTR%dCube.xy);\n",
+                    i, i, i);
+            }
             break;
         case PS_TEXTUREMODES_DPNDNT_AR:
             if (!stage_consistent(ps, vars, i, 1, 3, 0, "PS_TEXTUREMODES_DPNDNT_AR")) break;
@@ -2580,8 +2655,7 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d);\n",
                 i, i-2, i-1, i);
             mstring_append_fmt(vars, "vec3 e_%d = eyeVec.xyz;\n", i);
-            mstring_append_fmt(vars, "vec3 rv_%d = 2.0*n_%d*dot(n_%d,e_%d)/dot(n_%d,n_%d) - e_%d;\n",
-                               i, i, i, i, i, i, i);
+            psh_append_reflection(ps, vars, i);
             apply_border_adjustment(ps, vars, i, "rv_%d");
             if (!ps->state->tex_cubemap[i]) {
                 mstring_append_fmt(vars,
