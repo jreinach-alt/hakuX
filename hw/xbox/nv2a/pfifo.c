@@ -534,11 +534,34 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
     }
 
     /*
-     * Phase 1, no sleeping. Drop only the FIFO lock -- the pusher needs it to
-     * run at all -- and watch DMA_GET. Reading it unlocked is a benign race:
-     * the pusher is the only writer and we are looking for one value.
+     * BOTH locks go before waiting, including for the spin, and the BQL is
+     * the one that matters here.
+     *
+     * The FIFO lock has to go because the pusher needs it to run at all. The
+     * BQL has to go for two reasons, and the second is why it is released
+     * around the SPIN and not only around the sleep:
+     *
+     *   - the PFIFO thread takes the BQL to raise a PGRAPH interrupt, and a
+     *     FLIP_STALL in the segment being waited on clears only when a VBLANK
+     *     fires from a main-loop timer. Holding it would stop both, and the
+     *     wait would then be satisfiable by nothing but its own timeout.
+     *   - a 60 us spin with the BQL held would be 60 us of main loop stalled
+     *     PER SUBMISSION. That is harmless at a few hundred submissions a
+     *     second and starves the main loop at ten thousand, and the whole
+     *     point of `kicks=` is that nobody knows yet which of those this is.
+     *     Paying one uncontended mutex pair instead is not a trade worth
+     *     thinking about.
+     *
+     * Releasing the BQL cannot block, so it inverts nothing. REACQUIRING it
+     * can, so it is taken before the FIFO lock on every path out -- outer to
+     * inner, the order nv2a_lock_fifo() uses and the order pgraph.c's IRQ
+     * paths use.
      */
     qemu_mutex_unlock(&d->pfifo.lock);
+    bql_unlock();
+
+    /* Phase 1, no sleeping. Reading DMA_GET unlocked is a benign race: the
+     * pusher is its only writer and we are looking for one value. */
     for (unsigned i = 0; ; i++) {
         if (qatomic_read(&d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET]) == put) {
             spun = true;
@@ -551,39 +574,27 @@ static void pfifo_bound_skew(NV2AState *d, uint32_t put)
         __asm__ volatile("yield" ::: "memory");
 #endif
     }
-    qemu_mutex_lock(&d->pfifo.lock);
-
-    caught = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] == put;
 
     /*
      * Phase 2, sleep until the pusher says it has caught up or has parked.
-     * The re-check above is what makes a lost wakeup harmless: the signal is
-     * sent under pfifo.lock, which we now hold, so either DMA_GET already
-     * reads `put` and there is nothing to wait for, or the signal cannot have
-     * been sent yet.
+     * Re-checking DMA_GET under the lock before waiting is what makes a lost
+     * wakeup harmless: the signal is sent under this lock, so either DMA_GET
+     * already reads `put` and there is nothing to wait for, or the signal
+     * cannot have been sent yet. One wait and no loop -- the broadcast means
+     * "the pusher stopped", which is caught-up OR parked-stalled, and a
+     * stalled pusher can only be unstalled by the guest running on.
      */
-    if (!caught && !qatomic_read(&d->pfifo.halt)) {
-        /*
-         * The BQL must go before sleeping, and this is the deadlock it
-         * avoids rather than a tidiness measure. The PFIFO thread takes the
-         * BQL to raise a PGRAPH interrupt, and a FLIP_STALL in the segment we
-         * are waiting on can only clear when a VBLANK fires from a main-loop
-         * timer. Sleeping with the BQL held would stop both, and the wait
-         * would then never be satisfiable by anything but its own timeout.
-         *
-         * Releasing it does not invert the order: bql_unlock() cannot block.
-         * REACQUIRING it does, so pfifo.lock is dropped first and the two are
-         * taken outer-to-inner -- the order nv2a_lock_fifo() uses, and the
-         * order pgraph.c's IRQ paths use.
-         */
-        bql_unlock();
+    qemu_mutex_lock(&d->pfifo.lock);
+    caught = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] == put;
+    if (!spun && !caught && !qatomic_read(&d->pfifo.halt)) {
         qemu_cond_timedwait(&d->pfifo.fifo_drained_cond, &d->pfifo.lock,
                             FIFO_SKEW_WAIT_MS);
-        qemu_mutex_unlock(&d->pfifo.lock);
-        bql_lock();
-        qemu_mutex_lock(&d->pfifo.lock);
         caught = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET] == put;
     }
+    qemu_mutex_unlock(&d->pfifo.lock);
+
+    bql_lock();
+    qemu_mutex_lock(&d->pfifo.lock);
 
     fsk_note_held(nv2a_clock_ns() - t0, spun, !caught);
 }
