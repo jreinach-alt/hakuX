@@ -563,25 +563,70 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              * those Fog gen goldens is the printed test name -- and renders
              * RADIAL differently, so there is a real divergence to account for.
              *
-             * It is not accounted for by computing a distance, and #41 had this
-             * before I did. The RADIAL goldens hold exactly two colours in the
-             * drawn region: the fog colour on all 181,016 drawn pixels and the
-             * background on the rest. Every quad is fully fogged regardless of
-             * its depth or position, which is not a function of any coordinate,
-             * and the test author tracks those captures as non-deterministic on
-             * hardware (abaire/nxdk_pgraph_tests#214). The plausible mechanism
-             * in #41 is the fog mux still honouring RADIAL in program mode and
-             * reading stale lighting intermediates a program never produces.
+             * It is not accounted for by computing a distance. I briefly
+             * shipped length(oPos.xyz * oPos.w) here on the strength of a
+             * 94.9% reduction against that golden and reverted it (e90c3c80):
+             * the number was what fraction of pixels a large enough distance
+             * pushes past the fog range, and the change produced 255 distinct
+             * colours where the golden has one.
              *
-             * I briefly shipped length(oPos.xyz * oPos.w) here on the strength
-             * of a 94.9% reduction against that golden. That number is what
-             * fraction of pixels a large enough distance pushes past the fog
-             * range, not evidence of a distance: the change produced 255
-             * distinct colours where the golden has two. length(oPos.xyz)
-             * scored 27% for being smaller, not for being less correct.
-             * Reverted -- fitting one sample of stale state would match this
-             * golden and nothing else, and it would put a bogus distance in
-             * front of any guest that did combine the two.
+             * That revert was written up as "the captures are saturated, so
+             * every model that saturates scores alike and the corpus cannot
+             * choose". THAT PART IS WRONG, and it hid the measurement. Two of
+             * the six are not saturated. The suite's combiner is
+             * f*(0,0,1) + (1-f)*(1,0,0), which clips at neither end, so every
+             * drawn pixel carries the 8-bit fog factor -- and
+             * FogGen_VS-exp-radial and FogGen_VS-exp_abs-radial hold
+             * (254, 0, 1) on all 181,016 of theirs. f8 = 1, one step short of
+             * the fog colour, which inverts. (A saturating fix therefore does
+             * not match either: it leaves 724,064 channels of the cell's
+             * 2,172,192.)
+             *
+             * Inverted through silicon's own exp response -- calibrated from
+             * the Fog param sweeps at three multipliers, since psh.c's 2^x
+             * caveat bites exactly here -- f8 = 1 means fogX in
+             * (-0.5000, -0.4600), so:
+             *
+             *   the coordinate is in (204.06, 221.81), identical on every one
+             *   of the 374 quads.
+             *
+             * Which kills the two obvious answers. It is NOT 200 (kFogEnd and
+             * the projection far plane both are; at 200 silicon reads f8 = 2).
+             * And it is not geometry: the coordinate varies by under 17.74
+             * across the scene where the fixed-function radial distance over
+             * the same vertices runs ~19 to ~222, so under 8.7% of it.
+             *
+             * #41's mechanism -- the fog mux still honouring RADIAL in program
+             * mode and reading lighting intermediates a program never writes --
+             * now has a measurement behind it rather than plausibility. In
+             * FogGen_FF-exp-radial only 5 of 374 quads sit in that same
+             * 17.74-wide window, the corners of the final row, and the last
+             * quad drawn is one of them. All 30 FF tests run before all 30 VS
+             * tests (name order) over an identical grid, so one stale value
+             * explains one constant across all six captures.
+             *
+             * Still not implemented, and now for a sharper reason than
+             * "unknowable": if that is the mechanism the constant is a
+             * property of the TEST SCENE, not of the silicon. Writing 212.0
+             * here zeroes the cell and is arbitrary for every guest that is
+             * not this test -- a110957a with a better-measured constant.
+             * Reproducing it faithfully is #42's carried-value problem one
+             * level harder: |modelview . v| of the last vertex of the last
+             * fixed-function draw, which the CPU cannot read back the way it
+             * reads back a `mov oFog, c[n]`.
+             *
+             * The experiment that settles it is one capture -- a second VS
+             * RADIAL scene after a different fixed-function scene, fog params
+             * kept interior. Nothing in the corpus can run it: RADIAL under a
+             * program appears in fog_gen_tests.cpp and nowhere else, and the
+             * two suites that would give a second observation comment it out
+             * (fog_tests.cpp:27, fog_exceptional_value_tests.cpp:98) because
+             * upstream tracks these captures as unstable on hardware
+             * (abaire/nxdk_pgraph_tests#214) -- which is itself what a value
+             * carried from the preceding draw would look like.
+             *
+             * docs/investigations/fog-vs-radial-band.md, reproduced by
+             * docs/testing/fog_radial_band.py.
              */
             /*
              * #42 is the other half of that, and it is the opposite case:

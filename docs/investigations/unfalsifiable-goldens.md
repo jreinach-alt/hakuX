@@ -1,5 +1,35 @@
 # Where the corpus bounds the hardware value but cannot determine it
 
+> **THIRD CORRECTION 2026-09-12 — the headline case is wrong too, by this
+> file's own rule. `Fog_gen VS radial` is PINNED, not saturated.**
+>
+> Everything below treats the six `FogGen_VS-*-radial` goldens as one cell of
+> clipped output. They are not the same capture six times. **Four are clipped
+> and two are not**: `FogGen_VS-exp-radial` and `FogGen_VS-exp_abs-radial`
+> hold **(254, 0, 1)** on all 181,016 drawn pixels, f8 = 1, one step short of
+> the fog colour. The suite's combiner is `f*(0,0,1) + (1-f)*(1,0,0)`, which
+> clips at neither end, so that is a partial mix and it inverts — which is
+> the exact test the first correction added, applied to the case that
+> produced it.
+>
+> Calibrated against silicon's own exp response (measured from the `Fog_param`
+> sweeps at three multipliers, not assumed), **the coordinate is in
+> (204.06, 221.81)** and is identical on every one of the 374 quads. So it is
+> not 200, and it is not geometry-derived: it varies by under 17.74 where the
+> fixed-function radial distance over the same vertices runs ~19 to ~222.
+> A saturating model does not score "the same as every other" either — it
+> leaves 724,064 of the cell's 2,172,192 channels.
+>
+> The disposition does not change, but the reason does, and the reason is the
+> part that transfers. See `fog-vs-radial-band.md` and
+> `docs/testing/fog_radial_band.py`.
+>
+> **The rule gains a third clause: a cell is only as unfalsifiable as its
+> LEAST-saturated capture.** Scoring six transfer functions over one unknown
+> as a single cell averaged the two captures doing the measuring into the four
+> that were not. Look for the mode whose output is interior; it does not need
+> company.
+
 > **CORRECTION 2026-09-12 — colour count is a PROXY for saturation, and it has
 > a false-negative mode. Two fog entries below are wrongly listed.**
 >
@@ -75,6 +105,11 @@ change produced 255 distinct colours where the golden has two.
 
 ### No unsaturated observation exists
 
+> **Superseded — see the third correction at the top of this file. One
+> exists, in this very cell: `FogGen_VS-exp-radial` reads f8 = 1, not 0.**
+> The paragraph below is right that no *second scene* exists, which is still
+> what would settle the mechanism, and wrong that the value is undetermined.
+
 The two suites that would provide one both exclude the mode deliberately.
 `fog_tests.cpp:27` has `// FogTests::FOG_GEN_RADIAL,` commented out of its gen
 mode list, and `fog_exceptional_value_tests.cpp:98` the same. The test author
@@ -130,8 +165,10 @@ Not "ignore them". Bound them and say so:
 - rank them separately, or exclude them from a ranking that drives effort, so
   2.17M channels of clipped output do not outrank a real defect a tenth its
   size;
-- state the bound where it is known -- for `VS radial`, coordinate >= 200 on
-  every quad, calibrated from `FOG_X` rather than derived;
+- state the bound where it is known -- for `VS radial`, coordinate in
+  (204.06, 221.81) on every quad, inverted out of the two exp captures
+  against a calibrated exp response (this said ">= 200 from `FOG_X`", which
+  was a saturation threshold, not the value; see the third correction);
 - record what observation would settle each one, so that if hardware access
   ever appears the experiment is already specified.
 

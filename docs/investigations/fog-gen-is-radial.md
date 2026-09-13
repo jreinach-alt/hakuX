@@ -98,6 +98,17 @@ at a worst error of one. They are the same blend floor as everything else.
 
 ## RETRACTED: I fitted saturation and called it a distance
 
+> **PARTLY SUPERSEDED 2026-09-12.** The retraction stands -- the distance was
+> a fit and the 94.9% was a saturation fraction. The *reason* given below does
+> not: "these six captures cannot discriminate" is false. Two of them are not
+> saturated (`exp` and `exp_abs` hold (254, 0, 1), f8 = 1, on all 181,016
+> drawn px), and inverting them against a calibrated exp response pins the
+> coordinate to **(204.06, 221.81)** -- which rules out 200, rules out every
+> geometry-derived candidate quantitatively, and shows a saturating model
+> would still leave 724,064 channels. Still not implemented, for a different
+> reason: the value looks like the preceding fixed-function draw's radial
+> distance, i.e. a property of the test scene. `fog-vs-radial-band.md`.
+
 I shipped `length(oPos.xyz * oPos.w)` as the `VS radial` fog distance on the
 strength of a 94.9% reduction in that cell, and posted the derivation to the
 coordination thread. It is reverted (`e90c3c80`).

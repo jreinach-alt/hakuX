@@ -614,18 +614,56 @@ disposition = "unclassified"
 
 [issue.41]
 title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
-# MEASURED UNOBSERVABLE, not merely untriaged. The six VS radial goldens hold
-# three distinct colours in the entire frame -- background, fog colour, and the
-# printed test name -- so every quad is fully fogged in all six mode functions
-# and no variation survives anywhere. Calibrated from FOG_X, the output clips at
-# a coordinate of 200, so the captures bound the value and cannot determine it:
-# every model that saturates scores alike. I fitted one and had to revert it
-# (e90c3c80). No unsaturated observation exists -- fog_tests.cpp:27 and
-# fog_exceptional_value_tests.cpp:98 both comment RADIAL out of their gen-mode
-# lists, because upstream tracks these captures as unstable on hardware
-# (abaire/nxdk_pgraph_tests#214). Exclude from the structural ranking: this cell
-# is 2,172,192 of Fog gen's 2,186,760 structural channels, and the suite's real
-# residue is 14,568. docs/investigations/unfalsifiable-goldens.md.
+# VALUE MEASURED 2026-09-12; the FUNCTION is what is unknown, which is not the
+# same thing and was previously recorded as the same thing.
+#
+# The earlier entry here said the six VS radial goldens are saturated, so every
+# model that clears the threshold scores alike and the corpus cannot determine
+# the value. WRONG, and it hid a measurement. Four of the six are clipped; two
+# are not. FogGen_VS-exp-radial and FogGen_VS-exp_abs-radial hold (254, 0, 1)
+# on all 181,016 drawn px -- f8 = 1, one step short of the fog colour. The
+# suite's combiner is f*(0,0,1) + (1-f)*(1,0,0) and clips at neither end, so
+# that is a partial mix and it inverts.
+#
+# Inverted against silicon's own exp response -- measured from the Fog param
+# sweeps at multipliers -2, -1 and -0.5, which agree, rather than assuming
+# truncation or rounding (psh.c's 2^x caveat bites exactly in this region) --
+# f8 = 1 means fogX in (-0.5000, -0.4600), so:
+#
+#     the program-mode RADIAL coordinate is in (204.06, 221.81),
+#     identical on all 374 quads.
+#
+# Which settles more than a bound. NOT 200 (kFogEnd and the projection far
+# plane both are; at 200 silicon reads f8 = 2). Not geometry-derived: it
+# varies by under 17.74 where the fixed-function radial distance over the same
+# vertices runs ~19 to ~222, under 8.7% of it. And a saturating "just fully fog
+# it" fix does NOT score the same as a correct one -- it leaves 724,064 of the
+# cell's 2,172,192 channels.
+#
+# #41's stale-intermediate mechanism now has a measurement rather than
+# plausibility behind it: in FogGen_FF-exp-radial only 5 of 374 quads lie in
+# that same 17.74-wide window -- the corners of the final row -- and the last
+# quad drawn is one of them. All 30 FF tests run before all 30 VS tests over an
+# identical grid, so one stale value explains one constant across all six.
+#
+# STILL NOT IMPLEMENTED, for a sharper reason than "unknowable": if that is the
+# mechanism, the constant is a property of the TEST SCENE. Writing 212.0 into
+# vsh.c zeroes the cell and is arbitrary for every other guest -- a110957a with
+# a better-measured constant. The faithful version is #42's carried value one
+# level harder (|modelview . v| of the last FF vertex, which the CPU cannot
+# read back) and is refused at a smaller payoff.
+#
+# THE EXPERIMENT: one capture, a second VS RADIAL scene after a DIFFERENT
+# fixed-function scene, fog params kept interior. Coordinate moves -> scene
+# state, permanently unmodellable. Coordinate stays -> hardware constant, and
+# the fix is one line. Nothing in the corpus can run it: RADIAL under a program
+# appears in fog_gen_tests.cpp and nowhere else, and fog_tests.cpp:27 /
+# fog_exceptional_value_tests.cpp:98 both comment it out citing
+# abaire/nxdk_pgraph_tests#214.
+#
+# Ranking unchanged: exclude this cell. It is 2,172,192 of Fog gen's 2,186,760
+# structural channels and the suite's real residue is 14,568.
+# docs/investigations/fog-vs-radial-band.md, docs/testing/fog_radial_band.py.
 suites = ["Fog gen"]
 disposition = "unknown-semantics"
 
