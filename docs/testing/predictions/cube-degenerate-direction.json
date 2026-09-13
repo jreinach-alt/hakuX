@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-09-13T01:52:32Z",
+  "who": "cubemap-face-agent",
+  "issue": "40",
+  "prediction": "MECHANISM (judge this, not the pixel total): the 70-pixel column on the left cube's left silhouette (x 117..146, y 197..287, the same 70 coordinates in every capture) is NOT a near-tie between two cube faces. The direction handed to the cube lookup there is EXACTLY the zero vector. Texture_cubemap's stage-0 normal map (cube_normals_object_space.png) is a cross on a black background -- 41,024 black texels of 65,536 -- and the silhouette column samples that background. A black texel maps to (0,0,0) under DOTMAP_ZERO_TO_ONE (identity) and under DOTMAP_MINUS1_TO_1 (sign3(0) == 0), and only under those two; for the two DOT_RFLCT_SPEC modes the reflection of a zero normal is then a literal 0/0. THE MEASURED QUANTITY IS THE SELECTED FACE, recovered per pixel from the colour, which names a face uniquely here because both cube textures are masked one face at a time (kColorMasks / kCheckboxColors, written r|g<<8|b<<16 into an A8B8G8R8 texture, so mask 0x0000FF is the RED channel: +X red, -X magenta, +Y green, -Y yellow, +Z blue, -Z cyan). On the silhouette set we render the +Z face and silicon renders the +X face, both at that face's (0,0) texel -- confirmed on two different cube textures at once, the radial gradient where texel (0,0) is intensity 191 (gold 191,0,0 = +X; ours 0,0,191 = +Z) and the stage-2 checkerboard where texel (0,0) is the first square (gold 255,119,119 = +X 0xFF7777FF; ours 85,85,255 = +Z 0xFFFF5555). FALSIFIER, AS A MEASUREMENT OF FACE: after the fix every one of those 70 pixels must carry the +X face's (0,0) texel in all 20 captures below -- exactly (191,0,0) on the 14 radial-gradient captures (DotReflectSpec*, DotReflectSpecConst*, DotSTRCube*) and exactly (255,119,119) on the 6 checkerboard captures (DotReflectDiffuse_-1to1, DotReflectDiffuse_0to1, DotReflectConst_*). A capture whose count falls by 70 but whose silhouette colour is not that texel has NOT confirmed the mechanism; a capture that reaches the right colour at a different intensity has the face right and the saturated coordinate wrong. The per-capture expect-values below are that same claim in the scorer's units (each is the arm-A count minus exactly 70) and are secondary to the colour. Residual classes overlap: the remainder on each capture (5..67 px) is a separate intensity-rounding class scattered over the cube interior, is NOT predicted to move, and its survival is not evidence against the face claim. SHARPEST MUST-NOT-MOVE: Texture_cubemap/DotReflectDiffuse_-1to1GL, 90 px, also differs on all 70 silhouette pixels -- but sign2 carries a black texel to +0.0039, not zero, so dot(d,d) > 0.0 holds and the guard cannot fire. If it moves, the mechanism is an ordinary major-axis tie bias rather than a degenerate-input guard, and this fix is wrong however the totals read. The other D3D / GL / HiLo_1 / HiLoHemi captures are the same tripwire in bulk. Texture_2D_as_cubemap cannot move at all: it calls SetCubemapEnable(false) on stages 2 and 3, so tex_cubemap[i] is false and the guarded form is never emitted -- its DotSTRCube_Bad2D shows the same 70-pixel column (ours #FFFF44, gold #3399AA) and is deliberately left unfixed, because the non-cube remapCubeTo2D fallback's behaviour on a degenerate direction has not been measured against silicon. DOT_STR_3D is untouched (#51's lane; its stage resolves to sampler2D here), as is PS_TEXTUREMODES_CUBEMAP, whose six Cubemap_q* captures are exact. Baseline read on apk 9d55f33eae96 / ref ec13c70e60, whose Texture_cubemap output is pixel-identical to the night19 g0 run; if arm A lands on different counts the per-capture deltas, not the absolute values, are the claim.",
+  "a_ref": "da9ca9537e",
+  "b_ref": "770b73364e",
+  "must_not_move": [
+    "Texture_2D_as_cubemap/*",
+    "Texture_cubemap/Cubemap_q*",
+    "Texture_cubemap/DotSTR3D_*",
+    "Texture_cubemap/*_-1to1D3D",
+    "Texture_cubemap/*_-1to1GL",
+    "Texture_cubemap/*_HiLo_1",
+    "Texture_cubemap/*_HiLoHemi",
+    "Texgen/*"
+  ],
+  "expect": {
+    "Texture_cubemap/DotReflectConst_0_-1to1": 32,
+    "Texture_cubemap/DotReflectConst_0_0to1": 8,
+    "Texture_cubemap/DotReflectConst_1_-1to1": 41,
+    "Texture_cubemap/DotReflectConst_1_0to1": 20,
+    "Texture_cubemap/DotReflectConst_2_-1to1": 19,
+    "Texture_cubemap/DotReflectConst_2_0to1": 11,
+    "Texture_cubemap/DotReflectDiffuse_-1to1": 22,
+    "Texture_cubemap/DotReflectDiffuse_0to1": 12,
+    "Texture_cubemap/DotReflectSpecConst_-1to1": 22,
+    "Texture_cubemap/DotReflectSpecConst_0to1": 5,
+    "Texture_cubemap/DotReflectSpec_-1to1": 63,
+    "Texture_cubemap/DotReflectSpec_0to1": 52,
+    "Texture_cubemap/DotReflectSpec_0_-1to1": 64,
+    "Texture_cubemap/DotReflectSpec_0_0to1": 46,
+    "Texture_cubemap/DotReflectSpec_1_-1to1": 67,
+    "Texture_cubemap/DotReflectSpec_1_0to1": 48,
+    "Texture_cubemap/DotReflectSpec_2_-1to1": 22,
+    "Texture_cubemap/DotReflectSpec_2_0to1": 5,
+    "Texture_cubemap/DotSTRCube_-1to1": 58,
+    "Texture_cubemap/DotSTRCube_0to1": 29
+  },
+  "expect_counts": {}
+}
