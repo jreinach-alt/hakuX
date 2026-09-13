@@ -28,22 +28,10 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 12
-updated_utc = "2026-09-13T16:40:00Z"
+wave = 13
+updated_utc = "2026-09-13T17:30:00Z"
 
 
-
-[lane.skew_instrument]
-issues = ["54"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/renderer.h"]
-
-# The performance lane FINISHED. Its arms are queued and unjudged, so its
-# files stay claimed until they are judged -- the claim is as long as the arm.
-[lane.counters]
-issues = ["69", "68"]
-files = ["accel/**", "include/exec/**", "hw/xbox/nv2a/pgraph/profile.c", "docs/testing/perf/**"]
-note = "#69: hakux_tb_generated counts CALLS (5:1 recycle) and hakux_tb_invalidated counts VISITS, and their quotient is the retracted 2.8:1 waste ratio that ranked the whole performance plan. Must produce the CORRECTED number. Also re-checks #68's cost, which is unestablished because the confirming measurement used the broken counters. accel/ assigned out of the remote lane."
 
 
 [lane.remote]
@@ -52,22 +40,27 @@ files = ["hw/xbox/nv2a/pgraph/gl/*.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
          "target/**", "ui/**", "audio/**", "tests/**"]
 note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
 
-[lane.dxt1]
-issues = ["6"]
-files = ["hw/xbox/nv2a/pgraph/s3tc.c", "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/buffer.c"]
-note = "#6's ordered dither landed (402,999 -> 34,911 px). What remains is a stated defect: a code of exactly 1 decodes to 0 where the model says 8, and only 637 of 1,342 residual texels are code-1 -- so the other ~705 are a second thing and both halves are in scope."
 
-[lane.overextent]
-issues = ["67"]
-files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
-note = "SCOPE-FIRST lane. #67's fix file is NOT known -- the over-extent could be in the viewport/scissor transform, the vertex pipeline, or vk/draw.c which the #54 lane holds. Briefed to establish the origin and REPORT before editing, and to stop if it lands in a claimed file. The question worth more than the fix: does the fill path have this generally? If so it is far larger than #67's 1.44M px."
+
+[lane.psh]
+issues = ["31", "10"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
+note = "#31 has never had an arm -- it predates ab_compare. Briefed to test its own blocker (\"the goldens cannot select the 4-px anchoring regime\") as a claim, because #41 was closed on three such blockers and all three were false."
 
 [free]
 files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+         "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+         "hw/xbox/nv2a/pgraph/s3tc.c",
+         "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/buffer.c",
+         "hw/xbox/nv2a/pgraph/vk/surface.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/vk/command.c",
+         "hw/xbox/nv2a/pgraph/vk/renderer.h",
+         "accel/**",
+         "include/exec/**",
          "hw/xbox/mcpx/**",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.h",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
