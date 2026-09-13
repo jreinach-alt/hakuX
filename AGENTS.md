@@ -511,6 +511,35 @@ afternoon that no capture showed (#34), so run it on any change to the Vulkan
 backend before calling the change verified. Count distinct VUIDs, not lines:
 one root cause cascades into thousands of messages.
 
+## Before measuring an effect on a class, check the class is non-empty
+
+The cheap structural check and the expensive exhaustive one often answer the
+same question, and reaching for the second first is a habit worth breaking.
+
+On 2026-09-13 a scorer change gated on `test.endswith("_ZB")` landed between
+two arms of a pair, so the pair straddled two `score_sweep.py` revisions and
+`ab_compare` warned about it. The question was whether that change could have
+touched the suite in question. I started re-scoring all 1,673 of one arm's
+captures with the new scorer and diffing -- the exhaustive answer, twelve
+minutes in and still running, competing with the dispatcher for CPU.
+
+The decisive check was one command:
+
+    ls captures1 | grep -c '_ZB\.png$'     ->  0
+    ls goldens/Blend_tests | grep -c '_ZB'  ->  0
+
+**Zero `_ZB` captures in that suite, in the captures and in the goldens.** The
+gate is never true there, so the change provably cannot alter a single row --
+a structural proof, not an inference from reading the code, and it took a
+second.
+
+**So: before measuring an effect on a class of input, ask whether this data
+contains that class at all.** An empty class settles the question outright and
+costs nothing; a non-empty one tells you the exhaustive check is worth
+running. Note this is not an argument for reasoning instead of measuring --
+the `ls` IS a measurement, of the input rather than the output, and that is
+usually the cheaper end.
+
 ## Establish what your instrument cannot see, before you believe a zero from it
 
 The four sections that follow were all added on one day, all from real errors,
