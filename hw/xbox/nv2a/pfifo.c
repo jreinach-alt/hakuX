@@ -20,9 +20,12 @@
  */
 
 #include "nv2a_int.h"
+/* For `current_cpu`, which is how the submission-detection below tells the
+ * guest CPU thread from the main loop and from the PFIFO thread itself. It
+ * was included only under __ANDROID__, for the EIP in pfifo_read's poll log. */
+#include "hw/core/cpu.h"
 #ifdef __ANDROID__
 #include <android/log.h>
-#include "hw/core/cpu.h"
 #include "target/i386/cpu.h"
 #endif
 
@@ -610,19 +613,35 @@ void pfifo_kick(NV2AState *d)
      * Which of this function's many callers is a SUBMISSION.
      *
      * pfifo_kick() is called from the guest's DMA_PUT store, from other guest
-     * MMIO writes, from the VBLANK callback on the main loop, and from PGRAPH
-     * on the PFIFO thread itself. Only the first publishes new pushbuffer,
-     * and only the first may be held. Telling them apart on DMA_PUT having
-     * ADVANCED is what keeps this inside one file: the caller does not have
-     * to be changed to say so, and the test is exact because the guest CPU is
-     * the only writer of that register.
+     * MMIO writes, from the VBLANK callback on the main loop, from PGRAPH on
+     * the PFIFO thread and from the renderer. Only the first publishes new
+     * pushbuffer, and only the first may be held. Two tests, and both are
+     * load-bearing:
      *
-     * It also keeps the dangerous callers out by construction. `pgraph_write`
-     * reaches here holding pgraph.lock as well as pfifo.lock, and holding
-     * pgraph.lock while waiting for the PFIFO thread -- which needs it to
-     * process a method -- is a deadlock. DMA_PUT cannot have advanced on that
-     * path, so it never enters the wait.
+     *   `current_cpu` is non-NULL only on a vCPU thread. That is what makes
+     *   the reads below SAFE rather than merely correct: not every caller
+     *   holds pfifo.lock -- the VBLANK callback's diag-capture kick does not
+     *   (nv2a.c, gated on a diag frame being pending) -- and reading DMA_PUT
+     *   or writing skew_last_put unlocked would race the guest's own store.
+     *   The consequence of losing that race is the quiet one: skew_last_put
+     *   lands on the value the guest is about to publish, the next submission
+     *   looks like a repeat, and the bound silently skips it. A hole in the
+     *   guarantee that shows up as nothing at all is exactly the failure this
+     *   lane exists to remove, so it is excluded by construction rather than
+     *   by the diag path happening to be off.
+     *
+     *   DMA_PUT having ADVANCED is what keeps the change inside this file:
+     *   the caller does not have to be modified to declare itself, and the
+     *   test is exact because the guest CPU is the register's only writer.
+     *   It also excludes the deadlocking caller -- `pgraph_write` reaches
+     *   here holding pgraph.lock as well as pfifo.lock, and waiting there for
+     *   a thread that needs pgraph.lock to process a method would hang, and
+     *   DMA_PUT cannot have advanced on that path.
      */
+    if (!current_cpu) {
+        return;
+    }
+
     uint32_t put = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_PUT];
 
     if (put == d->pfifo.skew_last_put) {

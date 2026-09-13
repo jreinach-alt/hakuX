@@ -2,7 +2,15 @@
 """Read the `fifoskew` line: how far ahead of PGRAPH the guest is allowed to get.
 
     fifo_skew_report.py RESULT_DIR_OR_LOGCAT [...]
-    fifo_skew_report.py --a A/logcat.txt --b B/logcat.txt
+    fifo_skew_report.py --a A1/logcat.txt --a A2/logcat.txt \
+                        --b B1/logcat.txt --b B2/logcat.txt
+
+`--a` and `--b` are repeatable, one per RUN of the arm. A soak has no oracle,
+so a claim from a single run is a one-sample noise floor, and the replicate is
+the run rather than the window: the performance lane measured absolute
+per-window counts varying 3-5x inside one soak, so a figure pooled over a
+run's windows is a property of that run. Every figure below is printed per
+run, and the cost comparison is worst-case across the cross product.
 
 #44 resolved to a mechanism that is a timing property of the pushbuffer path:
 the texture upload for draw N reads guest memory after the guest has begun
@@ -188,8 +196,8 @@ def selftest():
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("paths", nargs="*")
-    ap.add_argument("--a")
-    ap.add_argument("--b")
+    ap.add_argument("--a", action="append", help="arm A logcat; repeatable")
+    ap.add_argument("--b", action="append", help="arm B logcat; repeatable")
     ap.add_argument("--selftest", action="store_true",
                     help="check the parser against the emitter's own format")
     args = ap.parse_args()
@@ -198,34 +206,54 @@ def main():
         return selftest()
 
     if args.a and args.b:
-        ra, ga = load(args.a)
-        rb, gb = load(args.b)
-        sa = summarise("A  %s" % args.a, ra, ga)
-        sb = summarise("B  %s" % args.b, rb, gb)
-        if not (sa and sb):
+        SA = [summarise("A  %s" % p, *load(p)) for p in args.a]
+        SB = [summarise("B  %s" % p, *load(p)) for p in args.b]
+        if not all(SA) or not all(SB):
             return 2
-        print("%-28s %14s %14s" % ("", "A", "B"))
-        print("%-28s %14d %14d" % ("skew mean (ns)", sa["dmean"], sb["dmean"]))
-        print("%-28s %14d %14d" % ("skew max (ns)", sa["dmax"], sb["dmax"]))
-        print("%-28s %13.1f%% %13.1f%%"
-              % ("submissions with PGRAPH behind",
-                 100.0 * sa["behind"] / sa["kicks"] if sa["kicks"] else 0,
-                 100.0 * sb["behind"] / sb["kicks"] if sb["kicks"] else 0))
-        print("%-28s %14d %14d" % ("guest held mean (ns)",
-                                   sa["hmean"], sb["hmean"]))
-        print("%-28s %14d %14d" % ("bound gave up (count)",
-                                   sa["gave"], sb["gave"]))
-        # The cost, on the ceiling and never the median: #64 measured the
-        # median on this queue to be a measurement of device occupancy.
-        print("%-28s %14d %14d" % ("gfps p90 (the cost leg)",
-                                   pctile(sa["gfps"], 90),
-                                   pctile(sb["gfps"], 90)))
-        print("%-28s %14d %14d" % ("gfps max",
-                                   max(sa["gfps"]) if sa["gfps"] else 0,
-                                   max(sb["gfps"]) if sb["gfps"] else 0))
-        print("%-28s %14d %14d" % ("gfps median (NOT judged)",
-                                   pctile(sa["gfps"], 50),
-                                   pctile(sb["gfps"], 50)))
+
+        def col(rows, f):
+            return "".join("%14s" % f(r) for r in rows)
+
+        w = max(len(SA), len(SB))
+        print("%-3s %-30s%s" % ("", "", "".join("%14s" % ("run %d" % (i + 1))
+                                                for i in range(w))))
+        for arm, rows in (("A", SA), ("B", SB)):
+            for label, f in (
+                ("submissions/s", lambda r: "%d" % (r["kicks"] * 1000
+                                                     // max(r["span_ms"], 1))),
+                ("PGRAPH behind (%)", lambda r: "%.1f" % (
+                    100.0 * r["behind"] / r["kicks"] if r["kicks"] else 0)),
+                ("SKEW mean (ns)", lambda r: "%d" % r["dmean"]),
+                ("SKEW max (ns)", lambda r: "%d" % r["dmax"]),
+                ("guest held mean (ns)", lambda r: "%d" % r["hmean"]),
+                ("guest held (n)", lambda r: "%d" % r["hn"]),
+                ("bound gave up (n)", lambda r: "%d" % r["gave"]),
+                ("gfps p90 / max / p50", lambda r: "%d/%d/%d" % (
+                    pctile(r["gfps"], 90), max(r["gfps"]) if r["gfps"] else 0,
+                    pctile(r["gfps"], 50))),
+            ):
+                print("%-3s %-30s%s" % (arm, label, col(rows, f)))
+            print()
+
+        # C1, the cost leg: the CEILING and never the median, worst case across
+        # the cross product. #64 measured the median on this queue to be a
+        # measurement of device occupancy, and the performance lane has since
+        # shown two Galleon soaks on one device at medians 27 and 17 with an
+        # identical p90 of 29 and max of 29.
+        pa = max(pctile(r["gfps"], 90) for r in SA)
+        pb_ = min(pctile(r["gfps"], 90) for r in SB)
+        xa = max(max(r["gfps"]) if r["gfps"] else 0 for r in SA)
+        xb = min(max(r["gfps"]) if r["gfps"] else 0 for r in SB)
+        print("C1  gfps p90 best-A %d vs worst-B %d (fall %d, max allowed 2)"
+              % (pa, pb_, pa - pb_))
+        print("C1  gfps max best-A %d vs worst-B %d (fall %d, max allowed 2)"
+              % (xa, xb, xa - xb))
+        print("C1  %s" % ("HOLDS" if (pa - pb_) <= 2 and (xa - xb) <= 2
+                          else "FAILS"))
+        # C2, did it execute.
+        fr = min(r["hn"] / float(r["kicks"]) if r["kicks"] else 0 for r in SB)
+        print("C2  arm B held(n)/kicks, worst run %.3f (need >= 0.90)  %s"
+              % (fr, "HOLDS" if fr >= 0.90 else "FAILS"))
         return 0
 
     if not args.paths:
