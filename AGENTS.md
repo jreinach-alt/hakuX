@@ -988,6 +988,49 @@ the dispatcher had no reason to consider preflight. The interaction lived in
 neither. When adding a gate to a shared tree, the question is not only "does
 it pass" but "what else reads this tree, and what does it now see?"
 
+## An availability fix can silently change what a queued measurement MEASURES
+
+Infrastructure changes have measurement semantics, and the scheduler is where
+they hide. A fix that keeps the fleet busy can quietly convert a registered
+comparison into a different comparison, and nothing errors.
+
+Measured on 2026-09-13, and the change was the orchestrator's. The nova was
+taken out of service for four hours with #50's arm A already run on it. Arm B
+was queued, `affinity.py` rule 2 pinned it to the nova from arm A's owner file,
+and the thor -- idle -- would have skipped it for the whole outage. So the rule
+was changed: **a pin to a device that is not serving is not a pin.** Right call
+for availability; arm B ran immediately.
+
+What it did to the measurement: arm A on the nova, arm B on the thor. The
+registered determinism legs -- `must_not_move` over a suite, and
+`better=0 / worse=0` -- were written to ask *"is this 1,673-capture disc
+deterministic run-to-run?"* They now answer **"run-to-run AND device-to-device
+together"**, with no way to separate the two from that pair. No leg said that,
+nothing failed, and the lane noticed only because arm B's device run was 20%
+faster than arm A's and it thought to check `device_label`.
+
+Two things follow.
+
+**Do not reach for the equivalence check to rescue it.** The two handhelds
+measured 62 of 62 captures byte-identical, same SoC, same Turnip -- a real
+result, and it was measured on `Texture DXT` + `Surface clip` on the STOCK
+disc. It has never been run on the interactive disc, nor on 1,673 captures.
+Citing it for a different disc is the same transfer this file warns about one
+level up.
+
+**A fallthrough that changes a comparison must say so.** The scheduler is the
+only actor that knows a pin was dropped, and it was the only one not
+recording it. `affinity.py` now writes a note under `$DISPATCH_DIR/splits/`
+naming the prediction and the device it declined to pin to, so the decision is
+discoverable rather than reconstructed from a pace difference. The note is not
+the strong mechanism -- `device_label` in the result is -- it exists so nobody
+has to infer that a choice was made.
+
+The general form: **when changing scheduling, availability, or retry
+behaviour, ask which queued measurements the change re-defines.** Requests
+already in the queue were registered against the old behaviour, and a
+prediction bound by content hash does not notice that the world moved under it.
+
 ## An agent worktree is created on a STALE base -- rebase before doing anything
 
 Measured on 2026-09-13, across every worktree this campaign has created:

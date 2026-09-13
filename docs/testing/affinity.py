@@ -88,6 +88,39 @@ def serving(d):
     return sorted(live)
 
 
+def _note_split(d, reqname, key, dead):
+    """Record that a pair was deliberately un-pinned, where a reader will see it.
+
+    THE FALLTHROUGH IS CORRECT AND ITS SILENCE IS NOT. Freeing a request whose
+    sibling ran on a device that has gone away is the right call -- the
+    alternative is an arm nobody claims for the length of the outage. But it
+    CHANGES WHAT THE PAIR MEASURES: two arms on two devices answer "is this
+    deterministic run-to-run AND device-to-device", and no leg registered
+    before the outage said that.
+
+    That happened on 2026-09-13. #50's arm A ran on the nova, the nova was
+    held for four hours, this rule freed arm B, and the thor took it. The
+    registered determinism legs -- must_not_move over a suite and
+    better=0/worse=0 -- silently became a confounded claim. The lane noticed
+    only because arm B's device run was 20% faster than arm A's and it thought
+    to check `device_label`.
+
+    A note in the dispatch directory is not a strong mechanism, and it is not
+    meant to be: the strong one is that a judged result records device_label
+    already. This exists so the DECISION is discoverable rather than
+    reconstructed from a pace difference -- the fallthrough is the only actor
+    that knows a pin was dropped, and it was the only one not saying so.
+    """
+    try:
+        os.makedirs(os.path.join(d, "splits"), exist_ok=True)
+        with open(os.path.join(d, "splits", reqname + ".txt"), "w") as f:
+            f.write("prediction %s was pinned to %s, which is not serving; "
+                    "freed this request, so the pair may span two devices and "
+                    "cannot isolate run-to-run variation\n" % (key, dead))
+    except OSError:
+        pass  # never fail a claim over a note
+
+
 def _live(d, label):
     """Is that device serving RIGHT NOW?
 
@@ -180,9 +213,11 @@ def main():
                     owner = f.read().strip()
             except OSError:
                 pass
-            if owner and _live(d, owner):
-                print(owner)
-                return
+            if owner:
+                if _live(d, owner):
+                    print(owner)
+                    return
+                _note_split(d, me, key, owner)
     except OSError:
         pass
 
@@ -205,9 +240,11 @@ def main():
             continue
         meta = load(os.path.join(e.path, "result.json"))
         label = (meta.get("device_label") or "").strip()
-        if label and _live(d, label):
-            print(label)
-            return
+        if label:
+            if _live(d, label):
+                print(label)
+                return
+            _note_split(d, me, key, label)
         # A result from before device labels existed cannot pin anything, and
         # guessing would be worse than leaving the pair free.
 
