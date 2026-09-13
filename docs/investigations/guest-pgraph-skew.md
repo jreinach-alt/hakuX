@@ -255,14 +255,14 @@ field that separates them is `cut`:
 |---|---|---|---|---|
 | **torn** | 8 | 3,852 | 30.6% | a finite `cut` with `prefix_ok` — the stale set is a row-major prefix of the successor's write, cut at 116/175/207/229/405/432/506, a different offset every run |
 | **complete** | 3 | 8,064 | 64.0% | no `cut`, successor explains every wrong pixel — the successor's write had *finished* when the read happened |
-| **no-successor** | 1 | 680 | 5.4% | `successor == 0` with pixels still wrong |
+| **unmodelled-successor** | 1 | 680 | 5.4% | `successor == 0` with pixels still wrong — the one swatch whose successor the tool does not model |
 
 ```
 captures1   146   torn=146
 captures3  2352   torn=304  complete=2048
 captures6  2430   torn=382  complete=2048
 captures8  1847   torn=1847
-captures9  5640   torn=992  complete=3968  no-successor=680
+captures9  5640   torn=992  complete=3968  unmodelled-successor=680
 captures10  181   torn=181
 ```
 
@@ -275,9 +275,9 @@ texture lane has a decoded-length hash gate that declines to re-upload at all
 has the skew. `AGENTS.md`'s rule is exactly on point: a class count is a count
 of pixels a mechanism *touches*, not of pixels it is solely responsible for,
 and subtracting one from a differing total assumes an additivity these classes
-do not have. So the mechanism leg is registered separately: **torn and
-complete must both go to zero in arm B**, and `no-successor` is declared in
-advance as not this bound's to close.
+do not have. So the mechanism leg is registered separately: **all three
+classes must go to zero in arm B**, with the first two carrying the mechanism
+argument and the third resting on a cross-test successor.
 
 **The `complete` class is what separates the two mechanisms, directionally.**
 A texture that was never re-uploaded holds content from an *earlier* upload,
@@ -291,14 +291,29 @@ two mechanisms are not separable this way. (#44 already records that on 2 of
 all match 2,048 of 2,048 — so the leg is about predecessor versus successor,
 not about which successor.)
 
-**And #44's "the immediate successor explains 100% of wrong pixels" is 94.6%
-on the same data.** 11,916 of 12,596, with the 680-pixel remainder in the
-class that has no successor to be explained by: pass-2 4x8 is the **last**
-swatch of the test. `border_swatch_origin.py` reporting `unexplained_px = 0`
-is correct on its own terms — every wrong pixel is matched by *some* candidate
-surface — but that is a weaker statement than the headline, and the two were
-being read as the same one. Recorded here because it changes what arm B can be
-expected to show, not as a criticism of the finding it qualifies.
+**RETRACTED, before any arm ran: this section first claimed #44's "the
+immediate successor explains 100% of wrong pixels" was really 94.6%.** It is
+not. `border_swatch_origin.py:255` sets `succ = None` for the **final** swatch
+of the test, and its own comment says why — *"the last swatch's successor is a
+write by the NEXT TEST, whose content this tool does not model"* — so
+`successor == 0` on pass-2 4x8 is **definitional, not measured**. The headline
+is a claim about the eleven swatches with a modelled successor and it stands.
+
+The failure is the one `AGENTS.md` records as *an inference can be valid and
+still wrong, because the model it is valid inside was never checked*: the
+arithmetic was right, inside a reading of the `successor` field taken from its
+name rather than from the code that produces it. And the companion rule says
+what to report alongside a correction — **what changed about the
+measurement**. Here: the surviving split keys on `cut`, whose semantics the
+tool's docstring does state, which is exactly why torn-versus-complete
+survives and the 94.6% figure does not.
+
+It also made the prediction **weaker** than it should have been. The final
+swatch's successor is the next test's first write; a cross-test successor is
+still a skew; and the bound holds the guest at **every** submission, including
+that one. So the registered leg is now that this class goes to zero in arm B
+too — and if it survives while torn and complete go to zero, that points at a
+submission the bound does not reach rather than at a class it cannot.
 
 ### The caveat that has to travel with any verdict
 

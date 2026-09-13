@@ -33,19 +33,36 @@ THREE CLASSES, and the field that separates them is `cut`:
               written after the draw that is missing it. A missed re-upload
               therefore does not reach this class; a skew bound should.
 
-  NO-SUCCESSOR `successor == 0` while pixels are still wrong. The successor
-              model explains none of it. On the ten-run floor this is pass-2
-              4x8 -- the LAST swatch of the test, which has no successor at
-              all -- so no "reads its successor" story can produce it, and a
-              bound on the guest's run-ahead within the test cannot be
-              expected to. It is what remains to be explained.
+  UNMODELLED-SUCCESSOR
+              `successor == 0` while pixels are still wrong. This is NOT
+              "the successor model failed"; it is the one swatch the model
+              does not cover. `border_swatch_origin.py:255` sets
+              `succ = None` for the final swatch of the test, with its own
+              comment saying why -- "the last swatch's successor is a write by
+              the NEXT TEST, whose content this tool does not model" -- so the
+              zero there is DEFINITIONAL, not measured. On the ten-run floor
+              it is pass-2 4x8, the final swatch, 680 px, matched by the `1x1`
+              candidate, which is consistent with the next test's first write
+              being that successor across the test boundary. A cross-test
+              successor is still a skew, so a bound on the guest's run-ahead
+              should close this class too -- it is just not the tool that can
+              say which surface it came from.
 
-`border_swatch_origin.py` reports `unexplained_px = 0` for the whole floor,
-and that is right on its own terms: every wrong pixel is matched by SOME
-candidate surface. It is not the same statement as "the immediate successor
-explains 100% of wrong pixels", which is the headline on #44. Split this way
-the second claim reads 11,916 of 12,596 -- 94.6% -- with the 680-pixel
-remainder in the class that has no successor to be explained by.
+A RETRACTION, kept rather than deleted. This file first reported that #44's
+"the immediate successor explains 100% of wrong pixels" was really 94.6%,
+11,916 of 12,596, on the grounds that the 680-pixel class was unexplained by
+the successor. That was wrong, and wrong in the specific way AGENTS.md records
+under "an inference can be valid and still wrong": the arithmetic was right
+inside a model of the `successor` field that had never been checked against
+the code that produces it. `successor = 0` on the final swatch is what the
+tool is written to report. The headline is a claim about the eleven swatches
+with a modelled successor, and it stands.
+
+What DID change about the measurement, which is the other half of the same
+rule: the split below keys on `cut`, whose semantics the tool's own docstring
+states ("index into the successor's row-major source write ... None for a
+write already complete"), and that is why the torn/complete distinction
+survives the retraction and the 94.6% figure does not.
 """
 import argparse
 import json
@@ -57,13 +74,14 @@ def classify(sw):
     if isinstance(cut, int):
         return "torn"
     if sw.get("successor", 0) == 0 and sw.get("wrong", 0) > 0:
-        return "no-successor"
+        return "unmodelled-successor"
     if sw.get("successor", 0) == sw.get("wrong", 0):
         return "complete"
     return "partial-successor"
 
 
-CLASSES = ("torn", "complete", "partial-successor", "no-successor")
+CLASSES = ("torn", "complete", "partial-successor",
+           "unmodelled-successor")
 
 
 def load(path):
@@ -123,10 +141,13 @@ def main():
         for c in CLASSES:
             if not (pa[c] or pb[c]):
                 continue
-            if c in ("torn", "complete"):
-                v = "CLOSED" if pb[c] == 0 else "STILL OPEN"
+            if c == "partial-successor":
+                v = "neither class cleanly; inspect"
             else:
-                v = "not this bound's to close"
+                # unmodelled-successor included: a cross-test successor is
+                # still a skew, so the bound should close it. The tool cannot
+                # name the surface; it can still say whether it is gone.
+                v = "CLOSED" if pb[c] == 0 else "STILL OPEN"
             print("%-18s %10d %10d   %s" % (c, pa[c], pb[c], v))
         za = sum(1 for _, s, _, _ in rowsa if s == 0)
         zb = sum(1 for _, s, _, _ in rowsb if s == 0)
