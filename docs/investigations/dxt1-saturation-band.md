@@ -223,23 +223,34 @@ the rule belongs in the upload and not in a shader.
 `MIPDXT1_plasma`'s four quads are all magnifications of its 32x32 level 0, so
 they are all point-sampled and all go to 0.
 
-### The L1 residual is a separate defect, and not the DXT3/DXT5 floor
+### Measured: the L1 residual was the simulation's artefact, not a defect
 
-Tempting to transfer, and wrong. Per `AGENTS.md`'s rule, `intersection ==
-union` first:
+**The arm settled this and the simulation had it wrong, in the direction the
+simulation said it might.** Measured on `886fbd11ea -> 9ef86d78b7`,
+`MIPDXT1_64x256_bands` came back at **279 px, max |Δ| 1, 279 of 279
+off-by-one, structural 0** — against the ~2,355 the simulation projected and
+the ~2,600 ceiling registered. Per quad: **L0 = 0**, L1 = 220, L2 = 43,
+L3 = 11, L4 = 4, L5 = 1.
 
-- `MIPDXT3_64x256_bands` and `MIPDXT5_64x256_bands` are **3,086 px each and
-  byte-identical masks** (intersection == union == 3,086), max |Δ| **1** —
-  a pure rounding floor.
-- The DXT1 remapped mask is 2,355 px and intersects that mask in **71 px**.
-  |A|=2,355, |B|=3,086, union 5,370. Nearly **disjoint**, and DXT1's max |Δ|
-  there is **10**.
+So the minified quads did not keep a structural residual at all: changing the
+texels the tent filter blends moved the blends onto the golden, to within a
+rounding step. What the offline simulation reported there — L1 getting
+*worse* — was the artefact of remapping an already-filtered pixel, which the
+prediction named in advance as the reason no value was registered for this
+capture. **The instrument changed, not the conclusion**: the simulation is
+invalid on filtered pixels and the device arm is the measurement.
 
-So the bands mip residual is not one floor shared by three formats. DXT3/DXT5
-have a rounding floor in those quads; DXT1 has something structural, and it is
-a minification/LOD question on a non-square compressed texture rather than a
-colour-decode question. It is out of scope here and is the natural next entry
-if `Texture DXT` is pushed further.
+And it is **not** the DXT3/DXT5 floor, `intersection == union` first:
+
+- `MIPDXT3_64x256_bands` and `MIPDXT5_64x256_bands` are **3,086 px each with
+  byte-identical masks** (intersection == union == 3,086), max |Δ| 1.
+- DXT1's post-fix mask is 279 px and intersects that mask in **24 px**;
+  |A| = 279, |B| = 3,086, union 3,341, and A is **not** a subset of B.
+
+Same *shape* — a ±1 rounding floor with zero structural error — and a
+different *set*, which is what one expects of three formats with three
+palettes in the same quads. Nothing is transferred between them, and #6 has
+no structural error left anywhere in `Texture DXT`.
 
 ## Cost
 
@@ -282,15 +293,50 @@ not address either.**
 - **The `Texture_render_target` DXT1 path is untouched and unmeasured.** No
   golden binds a DXT texture over a surface.
 
+## Measured on the device: PRE-REGISTERED PASS
+
+`886fbd11ea` -> `9ef86d78b7`, two runs each, disc
+`2-suites:e85fa791:Texture DXT,Texture format`, prediction sha
+`3c499af59290` bound at queue time. **All 16 registered checks hold.**
+
+```
+better 6     worse 0     same 49    noise 0      (55 compared)
+exact  38 -> 43   repaired to exact 5   regressed from exact 0
+
+better Texture_DXT     DXT1_plasma_dxt1              384 ->     0   now exact
+better Texture_DXT     DXT1_plasma_alpha_dxt1        448 ->     0   now exact
+better Texture_DXT     MIPDXT1_plasma_dxt1           510 ->     0   now exact
+better Texture_DXT     MIPDXT1_plasma_alpha_dxt1     595 ->     0   now exact
+better Texture_DXT     MIPDXT1_64x256_bands_dxt1   7,594 ->   279
+better Texture_format  TexFmt_DXT1                 4,487 ->     0   now exact
+
+Texture_DXT      15   5  0   10  0    34,911 ->  25,659
+Texture_format   40   1  0   39  0   139,389 -> 134,902
+```
+
+Arm A reproduced every baseline figure exactly on a **fourth binary and a
+third disc composition** (3-suite, 8-suite and now 2-suite discs, four APK
+hashes), which is what makes the absolutes legitimate rather than deltas.
+
+`Texture DXT`'s DXT1 half now carries **zero structural error**: five of six
+captures bit-exact and the sixth 279 px of pure off-by-one. Across the whole
+issue the dither plus this rule is 402,999 -> 25,659 px on the suite.
+
 ## Least certain point
 
-That `MIPDXT1_64x256_bands` improves at all. Its level-0 quad is 5,336 of its
-7,594 px and goes to 0 by the same arithmetic that takes five other captures
-to bit-exact, so the capture should improve by roughly 5,300 px. But its L1
-and L2 quads (2,148 px) are a tent-filtered minification of a non-square
-texture whose decoded texels this change also moves, and the offline
-simulation is invalid exactly there — it reports them getting slightly
-*worse*. If the real arm comes back with bands above about 2,600 px, the
-level-0 half of the prediction should be checked in isolation before anything
-about the rule is doubted: the five point-sampled captures are the evidence,
-and this one capture mixes the rule with a filtering question.
+Not the rule — the corpus pins all four of its constants from both sides in
+three suites, and the arm passed every leg including the one derived from
+data the rule never saw. What is least certain is **that this is the whole
+story for DXT1 at other precisions of the same pipeline.** Every capture here
+decodes into an `A8R8G8B8` host image and is read back through an 8-bit
+framebuffer. The band is a statement about what the texture unit emits into
+an 8-bit consumer; nothing here says what it emits into a 16-bit render
+target, and `Texture_render_target` binds no DXT texture so the corpus cannot
+ask. If a title samples DXT1 into a 565 surface and shows a black speckle
+where a near-black gradient should be, this rule's low limb is the first
+place to look and the second place to doubt.
+
+Runner-up: whether the dither matrix is keyed on `z` for a 3D DXT1 texture.
+`Volume_texture/DXT1`'s golden obeys the band, but it is 6,129 px at max
+delta 255 on our side for an unrelated reason, so it cannot answer the
+question and it is not on any leg.
