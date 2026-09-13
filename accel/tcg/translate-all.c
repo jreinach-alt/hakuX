@@ -346,8 +346,32 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
     max_insns = s.cflags & CF_COUNT_MASK;
     if (max_insns == 0) {
         max_insns = TCG_MAX_INSNS;
+        /*
+         * A permissive request -- "up to TCG_MAX_INSNS" -- on a page the guest
+         * keeps writing. Translate it in smaller pieces so a store throws less
+         * work away. See HAKUX_SMALL_BLOCK_INSNS in internal-common.h for why
+         * this narrows the local and not s.cflags: cflags is part of the TB
+         * hash key and both lookup sites derive it from curr_cflags() without
+         * knowing the page, so a page-derived count in the key would make every
+         * lookup on a latched page miss.
+         *
+         * Only the permissive case. Every caller that needs an exact count
+         * sets a nonzero one, and those fall past this branch untouched.
+         */
+        if (HAKUX_SMALL_BLOCK_INSNS && phys_pc != -1 &&
+            tb_page_wants_small_blocks(phys_pc)) {
+            max_insns = HAKUX_SMALL_BLOCK_INSNS;
+        }
     }
     QEMU_BUILD_BUG_ON(CF_COUNT_MASK + 1 != TCG_MAX_INSNS);
+    /*
+     * The code-too-large path asserts max_insns > 1 before halving, so an
+     * extent of 1 would be an assertion failure waiting for a block that
+     * overflows 64k of host code -- which one guest instruction cannot do, but
+     * the assert is the contract and not the reasoning.
+     */
+    QEMU_BUILD_BUG_ON(HAKUX_SMALL_BLOCK_INSNS == 1);
+    QEMU_BUILD_BUG_ON(HAKUX_SMALL_BLOCK_INSNS > CF_COUNT_MASK);
 
     tb = inv_tb_htable_lookup(cpu, s);
     if (tb) {

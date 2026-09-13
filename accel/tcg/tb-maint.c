@@ -217,6 +217,16 @@ struct PageDesc {
     QemuSpin lock;
     /* list of TBs intersecting this ram page */
     uintptr_t first_tb;
+#if HAKUX_SMALL_BLOCK_INSNS
+    /*
+     * How many times this page has been emptied of translated code, saturating
+     * at the latch threshold, and the latch itself. Upstream's PageDesc has no
+     * counters at all; these are the fork's. Written only under @lock, from
+     * the invalidation path that already holds it.
+     */
+    uint16_t empties;
+    bool small_blocks;
+#endif
 };
 
 void page_table_config_init(void)
@@ -1339,6 +1349,17 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
             if (tbs_overlap < tbs_seen) {
                 hakux_inval_would_survive++;
             }
+#if HAKUX_SMALL_BLOCK_INSNS
+            /*
+             * Count and latch here rather than on the guest store: this is the
+             * event that costs, because an emptied page is disarmed and the
+             * next generation on it pays the arming TLB walk. Monotonic, so
+             * the mark is one-way by construction as well as by the flag.
+             */
+            if (!p->small_blocks && ++p->empties >= HAKUX_THRASH_LATCH) {
+                p->small_blocks = true;
+            }
+#endif
         }
     }
 #endif
@@ -1355,6 +1376,23 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
         cpu_loop_exit_noexc(cpu);
     }
 }
+
+#if HAKUX_SMALL_BLOCK_INSNS
+bool tb_page_wants_small_blocks(tb_page_addr_t phys_pc)
+{
+    /*
+     * page_find() is file-local and takes no lock; the flag is a single byte
+     * that only ever goes false -> true and is never cleared, so a torn or
+     * stale read can only mean "generate this one block at the old extent",
+     * which is what would have happened anyway. It is not part of the TB hash
+     * key, so disagreeing readers cannot make a lookup miss -- that is the
+     * whole reason the extent lives in max_insns and not in cflags.
+     */
+    PageDesc *pd = page_find(phys_pc >> TARGET_PAGE_BITS);
+
+    return pd && qatomic_read(&pd->small_blocks);
+}
+#endif
 
 /*
  * Invalidate all TBs which intersect with the target physical address range

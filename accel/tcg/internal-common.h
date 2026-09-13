@@ -53,6 +53,66 @@ void tb_htable_init(void);
 TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s);
 void tb_reset_jump(TranslationBlock *tb, int n);
 TranslationBlock *tb_link_page(TranslationBlock *tb);
+
+/*
+ * Smaller translation blocks on pages the guest keeps writing.
+ *
+ * HAKUX_SMALL_BLOCK_INSNS is the block extent, in guest instructions, used on
+ * a latched page. **Zero disables the mechanism entirely**, which is the
+ * default: tb_page_wants_small_blocks() compiles to `false`, nothing is
+ * latched, and no page lookup is added to code generation. The arm that turns
+ * it on is one commit changing this line, so folding this branch in is inert
+ * and the two refs differ in exactly one constant.
+ *
+ * HAKUX_THRASH_LATCH is how many times a page must be emptied of translated
+ * code before it is marked. It latches: once marked, a page stays marked for
+ * the life of the PageDesc and is never unmarked.
+ *
+ * Latching is not a tuning choice, it is the correctness constraint. cflags is
+ * part of the TB hash key -- tb_hash_func() takes it, and tb_lookup_cmp()
+ * compares it -- and a TB must be findable by both lookup sites,
+ * cpu_exec_loop() and helper_lookup_tb_ptr(), which each compute cflags from
+ * curr_cflags() with no idea which page the PC lands on. Any policy visible in
+ * cflags and varying with a counter would make those lookups miss and turn the
+ * thrash into a total retranslation loop.
+ *
+ * This implementation sidesteps that rather than satisfying it: the block
+ * extent is applied to tb_gen_code()'s local `max_insns` and never written
+ * into cflags at all, so the hash key is bit-identical to what it is today and
+ * both lookup sites find the block they would have found. What varies is only
+ * how much code is inside it, which is already free to vary -- the
+ * code-too-large path halves max_insns and retranslates without touching
+ * cflags, and translator_loop stops early on page crossings and I/O regardless
+ * of the requested maximum. It is only applied when the incoming request is
+ * the permissive default (CF_COUNT_MASK == 0, meaning "up to TCG_MAX_INSNS");
+ * every site that needs an exact count -- icount at cpu-exec.c, breakpoints,
+ * precise SMC at tb-maint.c and watchpoint.c, cpu_io_recompile, and the
+ * untranslatable-page one-shot -- sets a nonzero count, and those are passed
+ * through untouched.
+ *
+ * The latch is kept anyway, because a policy that can flip a page back would
+ * leave long blocks in the table until something invalidated them and make a
+ * run's block-length profile depend on history rather than on the build.
+ */
+#define HAKUX_SMALL_BLOCK_INSNS 0
+#define HAKUX_THRASH_LATCH      16
+
+#if HAKUX_SMALL_BLOCK_INSNS
+/*
+ * Has this physical page been emptied of translated code often enough to be
+ * worth translating in smaller pieces? Reads a latched flag on the PageDesc.
+ * Called once per code generation -- about 29 times a guest frame on the
+ * measured workload -- and not on the guest store path, which is deliberate:
+ * the shape of instrumentation that cost +34.1% here and presented as a
+ * renderer deadlock was per-guest-write work.
+ */
+bool tb_page_wants_small_blocks(tb_page_addr_t phys_pc);
+#else
+static inline bool tb_page_wants_small_blocks(tb_page_addr_t phys_pc)
+{
+    return false;
+}
+#endif
 void cpu_restore_state_from_tb(CPUState *cpu, TranslationBlock *tb,
                                uintptr_t host_pc);
 
