@@ -731,3 +731,42 @@ pixel of every affected capture is below it, so a fix using an 8-bit quantum
 and one using a 6-bit quantum score identically on this corpus. The corpus can
 confirm the rule and cannot calibrate the threshold; that needs a capture whose
 dot magnitudes straddle it, and none exists here.
+
+#### The white column was text, and checking it nearly cost the right answer
+
+The corner counts recorded in `nv2a_issues.toml` carried a `W` column that was
+non-zero on the three *unsigned* dotmaps -- 1042, 1170, 1376 -- which flatly
+contradicts the two-corner reading above. Taken at face value it says those
+captures reach three corners, and three corners cannot come from two sign bits
+at all: two bits give four, or two if one is pinned, never three. That would
+have falsified not just the edge-pair argument but the whole mechanism.
+
+It is white **title text**. Each capture draws its own name across the top of
+the frame, and those pixels are exactly `#FFFFFF`:
+
+| capture | W as recorded | W over `y >= 45` | white in the `y < 45` banner |
+|---|---:|---:|---:|
+| `0to1` | 1042 | **0** | 1042 |
+| `HiLo_1` | 1170 | **0** | 1170 |
+| `HiLoHemi` | 1376 | **0** | 1376 |
+| `-1to1` | 15220 | 14178 | 1042 |
+| `-1to1D3D` | 16594 | 15262 | 1332 |
+| `-1to1GL` | 15282 | 14076 | 1206 |
+
+The give-away was shape, not count: on the unsigned captures the white pixels
+occupy `x[20..146] y[25..40]` and are only 43% interior -- a thin strip of
+glyph strokes. On `-1to1` white spans `x[20..506] y[25..318]` at 87% interior,
+which is a solid region of cube. `R`, `B` and `G` are unaffected, since white
+text on a black banner cannot contribute to them.
+
+Two things worth keeping from this:
+
+- **Every `W` in the old table was wrong, including the signed ones**, each by
+  its own capture's glyph count. A fix scored against those targets would have
+  been tuned to reproduce text.
+- The near-miss is the same failure as everywhere else in this note. The
+  two-corner reading was taken from the *differing* pixels, which is a biased
+  sample: it silently drops every pixel where we already agree with the golden.
+  Re-deriving it over the whole image was the right instinct and produced a
+  contradiction -- and the contradiction was in the instrument, not the claim.
+  A count of a colour is not a count of a texel.
