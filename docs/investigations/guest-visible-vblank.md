@@ -599,21 +599,35 @@ The repeat, `1789279639-vblank-period-1501184`, same ref at arm 1's full
 that ref — which is exactly why the reverse-order control matters: every run
 in this series decays *within itself*, and later runs decay sooner.
 
-| run | ref | seconds | gfps series | median |
-|---|---|---|---|---|
-| arm 1, 22:56 | `cdc3a4b4d8` | 240 | 3 29 29 … 29 29 (holds) | **29** |
-| arm 2, 23:03 | `6eddbdbff5` | 90 | 14 29 29 28 29 29 29 20 28 18 15 15 15 22 14 12 6 9 14 16 9 15 | **16** |
-| repeat, 23:10 | `6eddbdbff5` | 240 | 14 25 29 29 29 29 29 21 23 12 17 15 17 18 14 5 13 8 6 6 9 9 9 14 12 11 11 … | **16** |
-| control | `cdc3a4b4d8` | 240 | *(dispatched `1789279912-vblank-period-1583420`)* | |
+The control came back at **21** on arm 1's own ref, 25 minutes after the same
+binary read 29. So the leg as registered cannot discriminate: its tolerance is
+2 and its control moved 8.
 
-All three start near 29 and the later two fall away inside the run, on a
-handheld that had just served a 240 s soak underneath a running suite sweep
-and charges at about 2 W over the adb cable (`docs/testing/device-power.md`).
-The control re-runs arm 1's ref *after* all of that: if it now reads ~16 the
-leg was the device's hour, and if it reads 29 the `vblpll` line is implicated,
-which would be extraordinary. Recorded as failed until the control reads it
-back, because a cost leg that is explained rather than measured is not a cost
-leg.
+| run | ref | s | p50 | p90 | max | at ceiling (≥25) | floor (≤15) |
+|---|---|---|---|---|---|---|---|
+| arm 1, 22:56 | `cdc3a4b4d8` | 240 | **29** | 29 | 31 | 80% | 7% |
+| arm 2, 23:03 | `6eddbdbff5` | 90 | **16** | 29 | 29 | 32% | 50% |
+| repeat, 23:10 | `6eddbdbff5` | 240 | **16** | 27 | 30 | 16% | 50% |
+| control, 23:13 | `cdc3a4b4d8` | 240 | **21** | 29 | 29 | 29% | 33% |
+
+**The median was the wrong statistic, and the distribution says so.** Galleon's
+`gfps` over a soak is bimodal — a mode at the 29-31 ceiling and a mode in the
+5-20 range — so the median tracks how much of the run fell in each and flips
+with the scene. The ceiling itself is what a per-frame cost would move, and it
+does not move: p90 is 29, 29, 27, 29 and the maximum is 31, 29, 30, 29 across
+all four runs, on both refs, in both orders. What varies is the *occupancy* of
+the ceiling, 80% in the first run of the evening and 16-32% in the three that
+followed it on a handheld already serving a full-corpus suite sweep and
+charging at about 2 W over the adb cable (`docs/testing/device-power.md`).
+
+That is the same lesson as `J` versus the interval histogram, one layer up: a
+mean or a median over two regimes measures the mixture, not either regime. The
+leg is recorded as **inconclusive with the noise floor measured at 8 points**,
+which is the honest outcome — not "it was thermal", which would be an
+explanation standing in for a measurement. The mechanism bound is what carries
+the weight instead: the difference between the two refs is 43 lines in
+`nv2a.c`, all of them inside a block that runs twice a second, and a cost of
+13 fps out of that would have to lower the ceiling. It does not.
 
 
 ## UNRESOLVED

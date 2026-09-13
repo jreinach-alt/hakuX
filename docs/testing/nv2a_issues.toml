@@ -1865,6 +1865,17 @@ suites = []
 # the interlace scaling with it. It is still a table, which is why it was not
 # worth a second unmeasured mechanism in the same function today.
 #
+# THE COST LEG IS INCONCLUSIVE, AND ITS NOISE FLOOR IS NOW MEASURED AT 8
+# POINTS. Median gfps over a Galleon soak read 29 / 16 / 16 / 21 across four
+# 240 s runs alternating the two refs (1789278960, 1789279332, 1789279639,
+# 1789279912), including 29 -> 21 on the SAME binary 25 minutes apart. The
+# median is the wrong statistic: the series is bimodal, a ceiling at 29-31 and
+# a floor at 5-20, so the median tracks the occupancy of the two modes. The
+# ceiling, which is what a per-frame cost would move, does not move -- p90 is
+# 29/29/27/29 and the max 31/29/30/29 on both refs in both orders. What moved
+# is how much of each run sat at the ceiling: 80% in the evening's first run
+# and 16-32% in the three after it, on a handheld serving a corpus sweep.
+#
 # STILL OPEN: the +25 ppm. One character, deliberately not changed in the same
 # arm as the guard, because it would have made the must-not-move leg (the NTSC
 # path returning the same constant) unreadable.
