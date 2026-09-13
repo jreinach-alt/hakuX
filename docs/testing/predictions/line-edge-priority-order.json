@@ -1,0 +1,122 @@
+{
+  "registered_utc": "2026-09-13T07:36:32Z",
+  "who": "line-edge-priority-agent",
+  "issue": "13",
+  "kind": "offline-derivation-heldout",
+  "device": false,
+  "tool": "docs/testing/line_priority.py",
+  "goldens": "goldens/results/Line_width",
+  "fit_set": {
+    "priority": "Line_* captures with width >= 8 (45 captures)",
+    "extent": "Line_* captures with width >= 6"
+  },
+  "held_out": {
+    "priority": [
+      "Line_0003.0",
+      "Line_0004.0",
+      "Line_0005.0",
+      "Line_0006.0",
+      "Line_0007.0"
+    ],
+    "extent": [
+      "Line_0003.0",
+      "Line_0004.0",
+      "Line_0005.0"
+    ]
+  },
+  "prediction": "#13, edge priority and extent for wide lines. This is an OFFLINE derivation\nfrom the goldens: no device, no build, no arm. What is being registered is a\nHELD-OUT prediction, because the rule was derived on one set of captures and is\nabout to be scored on a set it has never seen.\n\nTHE SPLIT, and it is a real one rather than paperwork. The order was derived\nfrom the decisive pixels of the forty-five Line_* captures at width >= 8\n(docs/testing/line_priority.py --min-width 8), and the extent sweep from the\ncaptures at width >= 6. The five captures Line_0003.0, Line_0004.0,\nLine_0005.0, Line_0006.0 and Line_0007.0 have NEVER been looked at: the\ncollector skipped them by the --min-width cut, and no number from them appears\nanywhere in the derivation. Line_0003.0 - Line_0005.0 are held out from the\nextent sweep as well. Those are the held-out set.\n\n=== THE PRIORITY RULE, AS DERIVED ===\n\nLast-drawn wins outright -- the suite pushes SET_DEPTH_TEST_ENABLE false and\nevery palette entry is opaque -- so \"which edge is on top\" is \"which edge did\nsilicon submit last\", and the goldens name it directly.\n\nSilicon's emission order for a polygon rasterised in POLY_MODE_LINE is:\n\n  TRIANGULATE EXACTLY AS THE FILL PATH DOES, DROP THE TESSELLATION'S INTERNAL\n  EDGES, AND FOR EACH TRIANGLE (a, b, c) EMIT THE EDGE OPPOSITE a, THEN THE\n  EDGE OPPOSITE b, THEN THE EDGE OPPOSITE c -- that is (b,c), then (c,a),\n  then (a,b).\n\nLine primitives (LINES / LINE_STRIP / LINE_LOOP) are submission order, which we\nalready match; the rule above is only about the polygon-mode-LINE path.\n\nOne statement, and it generates four DIFFERENT per-primitive orders because the\ntessellations differ, all four of which the goldens confirm:\n\n  TRIANGLES / STRIP / FAN  per triangle:  (b,c), (c,a), (a,b)\n  QUADS      v0-v2 diagonal:  (v1,v2), (v0,v1), (v2,v3), (v3,v0)\n  QUAD_STRIP v1-v2 diagonal:  (v2,v0), (v0,v1), (v1,v3), (v3,v2)\n  POLYGON    fan from v0:     (v1,v2), (v0,v1), (v2,v3), ... (vn-1,v0)\n\nThat the same sentence yields a rotation for the quad strip, a swap of the\nfirst two for QUADS and POLYGON, and a full reversal-of-sorts for a triangle is\nthe reason to believe it is a mechanism rather than four fitted permutations.\n\nWHAT IS DECISIVE, and what each rival predicts instead. The discriminating\npixels are in Tri and QStrip; Quad, Poly, TFan and LLoop are satisfied by\nseveral schemes and so decide nothing on their own.\n\n  * Within a triangle there are six possible orders of its three edges. The\n    goldens pin it to one, twice, independently: triangle (v0,v1,v2) gives\n    (v0,v1) beats (v2,v0) beats (v1,v2), and triangle (v3,v4,v5) gives\n    (v3,v4) beats (v5,v3) beats (v4,v5). Both readings are the same\n    permutation and exclude the other five.\n  * The quad strip separates \"opposite a, b, c\" from \"opposite a, c, b\",\n    which agree everywhere else: 98.77% against 79.09% on its 36,546\n    decisive pixels.\n  * Our current order is refuted, not merely beaten: it predicts (v1,v2)\n    beats (v0,v1) in a triangle, (v1,v2) beats (v0,v1) in QUADS, and\n    (v2,v0) beats (v0,v1) in the quad strip. The goldens say the opposite in\n    all three, each on thousands of pixels with under 2.1% minority.\n  * Geometric rules are excluded a priori as well as by score. The decisive\n    pixels are FULLY INSIDE every candidate rectangle, so \"the edge with the\n    greater coverage at that pixel\" has no quantity to compare -- coverage is\n    1 for all of them. Nearest-centre, farthest-centre, longest-edge,\n    shortest-edge and nearest-vertex all sit between 40% and 48% on the fit\n    set, which is roughly chance for two-to-four candidates.\n  * A cycle in the observed relation would have killed EVERY ordering rule and\n    forced a geometric one. There is none: all sixty reliable relations are\n    acyclic, in all six primitives.\n\n=== THE EXTENT RULE, AS DERIVED, AND THE COVERAGE HYPOTHESIS IS DEAD ===\n\nThe open hypothesis on this issue was that silicon uses a COVERAGE rule rather\nthan a centre rule on a diagonal's minor-axis boundary, resting on three edges\nat three angles with the 21-degree one contaminated. Swept properly -- 9,611\nclean cuts over 33 edges, cos(theta) from 0.7119 to 1.0000, every width 6 to 48\n-- it dies, and something parameter-free replaces it:\n\n  MINOR-AXIS EXTENT = w * (1 + tan(theta) / 2)\n                    = w * (max + min/2) / max,  max/min of |dx|, |dy|\n\nwhich is the perpendicular rectangle with its half-width scaled by\n(max + min/2) / hypot(max, min): silicon computes the segment length with the\nclassic alpha-max-plus-beta-min approximation, beta = 1/2, and that\nOVER-estimates it by up to 6.07% at 45 degrees. Hence \"silicon is wider than a\nperpendicular rectangle\" -- by exactly that, at every angle.\n\n  in-band ({floor, ceil}) over all 9,611 samples:\n    w(1 + tan/2)   100.00%        <- one formula, no free parameter\n    w/cos (perp)    76.94%\n    coverage        51.25%\n    Bresenham w     40.60%\n  on the 92 samples where the first two differ by >= 2px:\n    w(1 + tan/2)   100.00%   perp 0.00%   coverage 56.52%   Bresenham 0.00%\n\nCoverage is refuted where it is cheapest to check, not on a curve fit: at\ncos(theta) = 1.0000 exactly -- the quad strip's two vertical rails, 1,447\nsamples over fifteen widths with ZERO variance -- the extent is exactly w. Any\n\"the rectangle touches the pixel square\" rule gives w+1 for at least one\nparity. And this reproduces the recorded QUADS column heights 10/14/19/28-29 at\nwidths 8/12/16/24 (predicted 9.57/14.35/19.13/28.70) where the perpendicular\nrectangle predicts 8.6/12.9/17.2/25.8, which is our own 9/13/17/26.\n\n=== LEGS. Each is a number I do not have yet. ===\n\nLEG 1 -- PRIORITY, HELD OUT. Run\n  docs/testing/line_priority.py --goldens <goldens> \\\n      --min-width 3 --max-width 7 --rules\non Line_0003.0 - Line_0007.0, five captures never used in the derivation.\nPREDICTED: opp_abc is the top-scoring rule and scores at least 95%; `ours`\nscores at most 90%; every geometric rule scores at most 75%; opp_abc scores\nstrictly higher than opp_acb.\n  FAILS IF: opp_abc drops below 95%, or any rival matches or beats it. A width\n  of 3-7 is where the primitive's edges only just begin to overlap, so the\n  overlap geometry is quite unlike the fit set's -- if the order were an\n  artefact of wide-overlap geometry rather than an emission order, this is\n  where it shows. If the capture yields too few decisive pixels to separate the\n  rules (fewer than 200), the leg is VOID rather than passed, and I am saying\n  so before seeing the count.\n\nLEG 2 -- EXTENT, HELD OUT. Run --min-width 3 --max-width 5 --extent.\nPREDICTED: w(1 + tan/2) is in-band on at least 98% of the clean samples and is\nthe best of the six models.\n  FAILS IF: it drops below 98%, or w/cos matches it. Honest caveat registered\n  in advance: at w = 3-5 the two differ by well under a pixel on every edge in\n  the corpus, so this leg can only CATCH A BLUNDER -- it cannot discriminate,\n  and I am not going to claim it did. The discrimination is the >= 2px subset\n  on the fit set, already reported above.\n\nLEG 3 -- THE TWO RULES MUST EXPLAIN EACH OTHER'S RESIDUAL. On the fit set the\nderived order scores 98.73%, not 100%, and the misses are scattered thinly over\nevery pair rather than concentrated -- which is the signature of candidate sets\nbuilt with the WRONG footprint. The decisive-pixel collector used the\nperpendicular rectangle; silicon's is wider, so some pixels have a third\ncovering edge the collector never offered as a candidate, and that edge wins.\nPREDICTED: rebuilding the candidate footprints with the derived extent rule\n  (--min-width 8 --rules --extent-rule) raises opp_abc to at least 99.3% and\n  raises it on every one of Tri, QStrip, LLoop, Quad and Poly.\n  FAILS IF: it does not rise, or falls. That would mean the 1.27% is a real\n  second mechanism in the priority rule rather than an artefact of my\n  footprint, and it would also weaken the extent rule, since the two are then\n  not describing the same silicon. This is the leg most able to embarrass both\n  halves at once, which is why it is here.\n\nLEG 4 -- WHAT I AM NOT PREDICTING, stated so it cannot be claimed later.\n  * I do not predict a pixel total for any renderer change. The priority class\n    and the extent class OVERLAP -- an overlap pixel can be wrong because the\n    wrong edge won and because that edge's rectangle is the wrong size -- so\n    they cannot be added or subtracted, and 76.3% of the residual is not 76.3%\n    of the achievable improvement.\n  * I do not claim the CAP shape. The minor-axis extent of a perpendicular\n    rectangle of scaled width and of a minor-axis-extruded band of the same\n    height are identical for an infinite line; they differ only at the ends.\n    This sweep deliberately samples at least w from either cap and therefore\n    says nothing about them.\n  * I do not claim the PHASE. w(1+tan/2) is in-band on 100% of samples, but\n    which of floor and ceil silicon takes at a given sub-pixel offset is the\n    half-pixel centre question this issue has already been wrong about twice,\n    and 82.6% of samples are within 0.5 of the formula rather than 100%.\n  * I do not claim anything about the sixteen sub-2px widths, which the\n    device's own lineWidthRange[0] = 1.0 and lineWidthGranularity = 0.5 decide.\n  * TRIANGLES / STRIP / FAN under POLY_MODE_LINE keep VK_POLYGON_MODE_LINE, so\n    TURNIP picks their edge order and we do not. The rule says what silicon\n    does; it does not say that we can currently express it for those three\n    primitives without rewriting them to explicit LINES.\n",
+  "derived_rule": {
+    "priority": "last-drawn wins; silicon triangulates as for fill, drops the tessellation's internal edges, and per triangle (a,b,c) emits opposite-a (b,c), then opposite-b (c,a), then opposite-c (a,b)",
+    "orders": {
+      "TRIANGLES/STRIP/FAN": "(b,c), (c,a), (a,b) per triangle",
+      "QUADS": "(v1,v2), (v0,v1), (v2,v3), (v3,v0)",
+      "QUAD_STRIP": "(v2,v0), (v0,v1), (v1,v3), (v3,v2) per quad",
+      "POLYGON": "(v1,v2), (v0,v1), (v2,v3), ..., (vn-1,v0)",
+      "LINES/LINE_STRIP/LINE_LOOP": "submission order -- already matched"
+    },
+    "extent": "minor-axis extent = w * (1 + tan(theta)/2) = w * (max+min/2)/max; equivalently the perpendicular half-width is (w/2) * (max+min/2)/hypot(max,min)"
+  },
+  "fit_set_results": {
+    "priority_decisive_pixels": 203023,
+    "opp_abc_pct": 98.73,
+    "opp_acb_pct": 93.27,
+    "ours_pct": 77.65,
+    "reverse_pct": 32.76,
+    "nearest_centre_pct": 45.11,
+    "farthest_centre_pct": 46.12,
+    "longest_edge_pct": 46.34,
+    "shortest_edge_pct": 40.75,
+    "nearest_vertex_pct": 47.38,
+    "acyclic": true,
+    "reliable_relations": 61,
+    "extent_samples": 9611,
+    "extent_edges": 33,
+    "extent_cos_range": [
+      0.7119,
+      1.0
+    ],
+    "extent_inband_pct": {
+      "hypot_approx": 100.0,
+      "perp_rect": 76.94,
+      "coverage": 51.25,
+      "bresenham": 40.6,
+      "w_over_cos2": 73.02,
+      "w_1_plus_tan": 55.17
+    },
+    "tri_rev_pct": 80.89,
+    "tri_id_pct": 78.37,
+    "tri_rot_pct": 63.99,
+    "tri_acb_pct": 60.56,
+    "lowest_index_pct": 13.92,
+    "per_block_opp_abc_pct": {
+      "Tri": 98.05,
+      "QStrip": 98.78,
+      "LLoop": 98.61,
+      "Quad": 99.66,
+      "Poly": 99.34,
+      "TFan": 100.0
+    },
+    "per_block_opp_acb_pct": {
+      "Tri": 89.28,
+      "QStrip": 79.49,
+      "LLoop": 98.61,
+      "Quad": 99.66,
+      "Poly": 99.34,
+      "TFan": 100.0
+    },
+    "per_block_ours_pct": {
+      "Tri": 57.3,
+      "QStrip": 75.44,
+      "LLoop": 98.61,
+      "Quad": 69.32,
+      "Poly": 99.34,
+      "TFan": 69.8
+    },
+    "extent_inband_pct_gap1px": {
+      "n": 2547,
+      "hypot_approx": 100.0,
+      "perp_rect": 27.01,
+      "coverage": 91.52,
+      "bresenham": 0.0,
+      "w_over_cos2": 35.73,
+      "w_1_plus_tan": 5.38
+    },
+    "extent_inband_pct_gap2px": {
+      "n": 92,
+      "hypot_approx": 100.0,
+      "perp_rect": 0.0,
+      "coverage": 56.52,
+      "bresenham": 0.0
+    }
+  },
+  "expect": {
+    "leg1_heldout_opp_abc_pct_min": 95.0,
+    "leg1_heldout_ours_pct_max": 90.0,
+    "leg1_heldout_geometric_pct_max": 75.0,
+    "leg1_min_decisive_pixels_for_validity": 200,
+    "leg2_heldout_extent_inband_pct_min": 98.0,
+    "leg3_extent_footprint_opp_abc_pct_min": 99.3
+  },
+  "must_not_move": [],
+  "expect_counts": {}
+}
