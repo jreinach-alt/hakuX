@@ -118,6 +118,15 @@ they are why this one is citable where the earlier one was not:
 - **The denominator is large.** ~1,000–1,900 live discards per window, not a
   handful. A 1.000 over three blocks would not be a premise check.
 
+- **A different instrument agrees.** The `off=LO..HI` fields on the same
+  always-on line come from the notdirty write tracker, not from the overlap
+  predicate, and they say the writes are confined to narrow windows of their
+  pages: `pfn42c1` at `off=554..9e4` (1,168 bytes of 4,096) takes ~113,000 of
+  the hits and `pfn43bd` at `off=1f8..414` (540 bytes) another ~41,000. Two
+  hot data structures sharing a page with code. Any block outside those
+  windows is spared, and that conclusion does not pass through
+  `tb_overlaps_written_range` at all.
+
 The stores are ≤ 8 bytes: every event arrives through
 `tb_invalidate_phys_range_fast`, and `ev` equals the notdirty invalidator call
 count exactly. So the finding is that Crimson Skies' stores into code pages
