@@ -24,7 +24,9 @@ is approximately right. *Approximately* is what follows.
 
 ## VERIFIED: what we generate
 
-`nv2a_calc_vblank_period_ns`, `hw/xbox/nv2a/nv2a.c:234-242`, derives nothing:
+`nv2a_calc_vblank_period_ns`, `hw/xbox/nv2a/nv2a.c:234-242`, derives nothing.
+As it stood when this was opened — the guard is **fixed** at `e5e91de344`, and
+the section below is why; the current one is quoted under MEASURED 2026-09-13:
 
 ```c
 uint32_t vdisplay = d->pramdac.fp_vdisplay_end;
@@ -77,7 +79,12 @@ Small, and a one-character fix. Worth recording because the *suspicion* this
 stream was opened on — that we might be running a round 60.00 Hz, a 0.1% error
 — is 40× larger than what is actually there. That specific worry is retired.
 
-### The fix that subsumes both
+### The fix that subsumes both — proposed here, and MEASURED OUT below
+
+**This does not work, and the whole of MEASURED 2026-09-13 is the reason.**
+The proposal is left standing because it is what P7 tested and what two
+further arms closed: the reader who arrives with the same idea should see it
+arrived at honestly and then measured out, rather than never mentioned.
 
 Derive it the way the NV2A does: `vtotal * htotal / pixel clock`. Every
 ingredient is programmed by the guest into registers this tree already models
@@ -388,6 +395,227 @@ Two things deliberately did *not* improve, and should not have:
 The honest limits: one run per arm, one title, one device (Thor), and the
 locked grid only — unlock mode was never entered in either arm.
 
+## MEASURED 2026-09-13: the guard, and whether the period can be derived at all
+
+Two soaks, Galleon, 240 s and 90 s, refs `cdc3a4b4d8` and `6eddbdbff5`,
+dispatch results `1789278960-vblank-period-1231801` and
+`1789279332-vblank-period-1362112`. Both read with `vblank_report.py`, which
+now parses two more lines: `vblfp` (the flat-panel raster) and `vblpll` (the
+PLL decode against clocks whose right answers are known from outside this
+tree).
+
+### The guard: bounded, and interlace-scaled first
+
+`vdisplay > 480` is wrong for the reason #64 states, and the fix is the bound
+the comment already implies — PAL is 576 lines and never more, so the 50 Hz
+branch is 481..576 and nothing above it. The one thing that needed settling
+before trusting that bound was **which register convention the modes report
+in**, because 1080i is the mode the bound has to exclude and a 1080i raster
+can be described either per frame (1079) or per field (539) — and 539 lands
+*inside* the PAL window, so a plain bound would have re-created the bug at a
+different value.
+
+The measurement settles the convention on the register itself: `vd=479` with
+`res=640x480` on every window of both soaks, so `fp_vdisplay_end` is the last
+active LINE and a mode's line count is `vd + 1`. And this tree's own answer
+for which modes interlace is unambiguous: `vk/display.c:1723` and
+`gl/display.c:442` read `cr[0x39]` for exactly one purpose, "used only in
+1080i", doubling the viewport height. So the guard scales for interlace before
+it bounds:
+
+```c
+if (d->vga.cr[NV_PRMCIO_INTERLACE_MODE] != NV_PRMCIO_INTERLACE_MODE_DISABLED) {
+    vdisplay = vdisplay * 2 + 1;   /* per-field raster -> per-frame */
+}
+if (vdisplay > 480 && vdisplay <= 576) {
+    return NANOSECONDS_PER_SECOND / 50;
+}
+return 16683750;
+```
+
+| mode | register | before | after |
+|---|---|---|---|
+| 480i / 480p | 479, il=ff | 16,683,750 ns | 16,683,750 ns *(measured, unmoved)* |
+| 576i / 576p | 575, il=ff | 20,000,000 ns | 20,000,000 ns |
+| **720p** | 719, il=ff | **20,000,000 ns** | 16,683,750 ns |
+| **1080i, per frame** | 1079, il set | **20,000,000 ns** | 16,683,750 ns |
+| **1080i, per field** | 539, il set | **20,000,000 ns** | 16,683,750 ns |
+| 576i via NV2A interlace | 287, il set | 16,683,750 ns | 20,000,000 ns |
+
+The last two rows are why the scaling is there rather than a bare bound: it is
+right whichever convention 1080i turns out to use, and it *also* fixes the
+mirror-image error on an interlaced PAL raster, which a bare bound would have
+sent to 59.94. Both are still source readings — no title on hand reaches any
+mode but 480 — and the 480-line path real titles do take is untouched by
+construction and measured unmoved.
+
+### P7 did not fail by a decode bug, and the arithmetic says so before any device does
+
+With `vtotal=525` fixed and the VPLL decoded at 31,089,742 Hz, a 59.94 Hz
+frame needs a horizontal total of **987.96 pixels**. The VGA register counts
+whole 8-dot characters, so it would have to hold 123.5 of them — not a value
+it can express, and no undecoded extension bit helps, because extension bits
+add whole characters. No character width helps either (9 dots → 109.8, 4 dots
+→ 247.0 at a clock that is then wrong by two), and no PDIV shift helps,
+because halving or doubling the clock preserves the fractional part:
+
+| PDIV | pixel clock | htotal needed at 525 lines |
+|---|---|---|
+| 3 *(as decoded)* | 31,089,742 Hz | 987.96 px = **123.495 chars** |
+| 2 | 62,179,485 Hz | 1975.93 px = 246.99 chars |
+| 4 | 15,544,871 Hz | 493.98 px = 61.75 chars |
+
+Repairing the clock instead of the raster fails symmetrically: at the CRTC's
+728 pixels the period wants **22,909,091 Hz**, which is this VCO over 10.86 —
+not a power of two, so not a PDIV misread — and it would need a 12.28 MHz
+crystal, which is not one of the parts.
+
+So P7 was not a misdecode of the CRTC. **The VGA CRTC raster and the VPLL
+describe different things**, and the question became which other raster the
+chip holds.
+
+### The flat-panel raster is real, and it is exactly half an answer
+
+The NV2A's other timing generator is the PRAMDAC flat-panel block, and it
+counts in **pixels** rather than characters, so it can hold 988 where the CRTC
+cannot. This tree has always chosen the VBLANK period off `FP_VDISPLAY_END`,
+so it already believed the guest programs that block — but `FP_VTOTAL`
+(0x804) and `FP_HTOTAL` (0x824) fell through `pramdac.c`'s switch and were
+never stored. They are stored now, and the whole block goes out as `vblfp`:
+
+```
+vblfp want=16683750 derived_fp=13104000 (fp_vtotal=524 fp_htotal=775
+       lines=525 px=776) vde=479 hde=639 vcrtc=479 hcrtc=599 vsync=493
+       vvalid=479 hvalid=639 genctl=00101030 sr01=01
+```
+
+Byte-identical on every window of both soaks. Two things in it are worth more
+than the derivation it fails to support:
+
+- **The guest does program the flat-panel timing generator.** It was not a
+  partial write, which was the other outcome this arm was registered to
+  detect.
+- **`fp_vtotal + 1 = 525`, with 480 active and 45 blanking lines.** That is
+  the NTSC frame raster exactly as the standard prescribes it, and it is the
+  first register in this chip to say "525" without being asked. The
+  convention is `total - 1`, confirmed in band: `hde` and `hvalid` both read
+  639 for a 640-wide mode, so the horizontal total is 776 and not 780.
+
+And `525 × 776` at 31,089,742 Hz is **13,104,000 ns, −21.46%**. So the FP
+raster fails too, differently from the CRTC's −26.3%, and each failure reads
+two ways: either the raster is not the output one, or the pixel clock is too
+fast by a constant factor. The factors are 1.273 and 1.357; the clocks the two
+rasters would need are 24.42 MHz and 22.91 MHz.
+
+### The calibration that closes it: the core clock
+
+VPLL cannot be checked against itself — its right answer is the thing in
+dispute. NVPLL and MPLL can: same formula, same crystal, and the parts they
+clock have speeds known from outside this tree. So they were logged decoded,
+with a prediction registered first, and the answer is unambiguous:
+
+```
+vblpll xtal=16666666 nvpll=00011c01(m=1 n=28 p=1) core=233333324
+       stored=233333324 mpll=00000000(m=0 n=0 p=0) mem=0
+       vpll=0003c20d pix=31089742
+```
+
+`crystal × 28 / 2 / 1 = 233,333,324 Hz`. The NV2A core runs at **233 MHz**.
+The formula and the 16.6667 MHz crystal are right to seven digits, on a
+register whose answer nothing in this stream could have tuned. MPLL reads
+zero — the guest never programs the memory PLL in our model — so it
+calibrates nothing, which is the void outcome the prediction reserved for it
+rather than a failure.
+
+**Therefore 31,089,742 Hz is the pixel clock the guest asked for, and neither
+raster the chip holds runs at 59.94 Hz on it:**
+
+| raster | source | refresh at the programmed pixel clock |
+|---|---|---|
+| 728 × 525 | VGA CRTC (`cr00`, `cr06/cr07`) | 81.34 Hz |
+| 776 × 525 | PRAMDAC flat-panel (`FP_HTOTAL`, `FP_VTOTAL`) | 76.31 Hz |
+| — | what the display actually runs at | **59.94 Hz** |
+
+### Verdict: the period cannot be derived from the NV2A, and that is the result
+
+Not "not yet" — the three ways out are all closed by measurement rather than
+by argument. The clock is not misdecoded (233 MHz, seven digits). The rasters
+are not misdecoded (both self-consistent, both with standard active and
+blanking counts, the conventions confirmed in band). And the required clocks,
+22.91 and 24.42 MHz, are not this VCO over any power of two, so no undecoded
+divider bridges the gap.
+
+What is left is the premise: **the NV2A is not the timing master of the analog
+output.** The Xbox drives an external video encoder, and the rate the guest
+sees is the encoder's. This tree models the encoder as
+`hw/xbox/smbus_cx25871.c` — 256 bytes of registers that the guest writes and
+**nothing has ever read**. That is where the video standard is, and reaching
+it from `nv2a.c` is cross-device plumbing rather than a decode.
+
+So the constants stay, and the guard is what there is. The +25 ppm on the NTSC
+constant was deliberately left alone: it is one character, it is 40× smaller
+than the suspicion this stream opened on, and changing it in the same arm as
+the guard would have made the must-not-move leg unreadable.
+
+**The one thing the register file does say authoritatively is the standard's
+own name.** `fp_vtotal + 1` is 525 for NTSC and would be 625 for PAL, 750 for
+720p, 1125 for 1080i — the total raster *is* the standard, where an active-line
+count needs a bound and an interlace correction to become one. If PAL or HD
+material ever arrives, keying the table on the total rather than the bound is
+the shape of the fix, and it drops the interlace scaling with it. It remains a
+table either way, so it was not worth a second unmeasured mechanism in the
+same function today.
+
+### Falsifiers, as registered before each run
+
+Arm 1, `docs/testing/predictions/vblank-period-fp-raster.json`:
+
+| | prediction | outcome |
+|---|---|---|
+| F1 | FP totals non-zero and `derived_fp` within 1% of 16,683,333 ns | **FALSIFIED** — 13,104,000 ns, −21.46%. The totals *are* non-zero, so the guest does program the block |
+| F2 | `fp_vtotal+1` == 525 lines; `fp_htotal+1` in 980..996 px | **half** — 525 exactly; 776 px, outside the window |
+| F3 | must-not-move: `want=16683750`, `vd=479 il=ff`, def==0 mean within ±50,000 ns of 16,718,178 | **holds** — 16,736,746 ns, moved +18,568 ns (0.11%) |
+| F4 | cost: median `gfps` does not fall by more than 2 from 29.0 | **holds** — 29.0, unchanged |
+| F5 | whole-soak rate above 58.000 Hz, confirming the ref carries the grid fix | **holds** — 59.814 Hz |
+
+Arm 2, `docs/testing/predictions/vblank-period-pll-calibration.json`:
+
+| | prediction | outcome |
+|---|---|---|
+| G1 | core clock within 5% of 233,333,333 Hz | **holds** — 233,333,324 Hz, −0.000% |
+| G2 | memory clock within 10% of 200,000,000 Hz | **void** — MPLL coefficient is 0, never programmed |
+| G4 | must-not-move: the whole mode line byte-identical to arm 1 | **holds** — `fp_vtotal=524 fp_htotal=775 pixclk=31089742 vd=479 il=ff` |
+| G5 | cost: median `gfps` within 2 of 29.0 | **FAILED on the 90 s run** — 16.0, and see below |
+
+**G5 failed, it reproduced, and it is a property of the device's hour rather
+than of the change.** One log line every two seconds cannot halve a frame
+rate, and the same run's def==0 VBLANK mean was 16,683,623 ns — 127 ns from
+the intended period, the most accurate figure in this whole investigation. The
+frame rate fell while the VBLANK clock stayed exact, which is a slow
+*renderer*, not a slow timer.
+
+The repeat, `1789279639-vblank-period-1501184`, same ref at arm 1's full
+240 s, read a median of **16** again. So the drop is real and repeatable on
+that ref — which is exactly why the reverse-order control matters: every run
+in this series decays *within itself*, and later runs decay sooner.
+
+| run | ref | seconds | gfps series | median |
+|---|---|---|---|---|
+| arm 1, 22:56 | `cdc3a4b4d8` | 240 | 3 29 29 … 29 29 (holds) | **29** |
+| arm 2, 23:03 | `6eddbdbff5` | 90 | 14 29 29 28 29 29 29 20 28 18 15 15 15 22 14 12 6 9 14 16 9 15 | **16** |
+| repeat, 23:10 | `6eddbdbff5` | 240 | 14 25 29 29 29 29 29 21 23 12 17 15 17 18 14 5 13 8 6 6 9 9 9 14 12 11 11 … | **16** |
+| control | `cdc3a4b4d8` | 240 | *(dispatched `1789279912-vblank-period-1583420`)* | |
+
+All three start near 29 and the later two fall away inside the run, on a
+handheld that had just served a 240 s soak underneath a running suite sweep
+and charges at about 2 W over the adb cable (`docs/testing/device-power.md`).
+The control re-runs arm 1's ref *after* all of that: if it now reads ~16 the
+leg was the device's hour, and if it reads 29 the `vblpll` line is implicated,
+which would be extraordinary. Recorded as failed until the control reads it
+back, because a cost leg that is explained rather than measured is not a cost
+leg.
+
+
 ## UNRESOLVED
 
 - **Phase.** The fix restores the *rate*; p99 says nothing about phase moved.
@@ -398,12 +626,15 @@ locked grid only — unlock mode was never entered in either arm.
   the flip can pull the VBLANK to itself. Measuring that needs the flip
   timestamp in the same histogram, which is a `pgraph.c` change and `pgraph.c`
   belongs to nobody.
-- **What the period should be derived from.** P7 killed the CRTC/VPLL
-  derivation at −26.3%. Three candidates remain and the measurement has not
-  been designed: the NV2A extension bits we do not decode, a VPLL reference
-  other than the 16.6667 MHz crystal, or the premise itself — that the CRTC
-  carries encoder-independent digital timings and the video standard has to
-  come from somewhere else entirely (the kernel's AV pack / video region).
+- ~~**What the period should be derived from.**~~ **CLOSED 2026-09-13, and
+  the answer is that it cannot be.** All three candidates are measured out:
+  the extension bits cannot help because the character-quantised CRTC cannot
+  express the 987.96-pixel total the clock demands; the crystal is right to
+  seven digits against the 233 MHz core clock; and the flat-panel raster,
+  whose two total registers were never modelled until now, gives −21.5%. The
+  premise is what fails — the NV2A is not the timing master. What remains is
+  the encoder, `hw/xbox/smbus_cx25871.c`, whose 256 registers the guest writes
+  and nothing reads; reaching them from `nv2a.c` is cross-device plumbing.
 - **The unlock-mode grid**, which is on by default and unmeasured here.
 - **Whether 1.56% coalesced VBLANKs matter to any title.** The count is real;
   no title is yet known to count VBLANKs for timing on this corpus.

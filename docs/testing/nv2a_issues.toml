@@ -1810,7 +1810,66 @@ suites = []
 # a 480-line title takes the NTSC branch as intended. The HD half is a source
 # reading and not an observation; no title on hand reaches those modes.
 #
-# THE FIX THAT WOULD SUBSUME BOTH IS NOT AVAILABLE. Deriving the period as
+# LARGE HALF FIXED 2026-09-13, e5e91de344. The guard is bounded and scales for
+# interlace first: 50 Hz for 481..576 lines and nothing above, with the raster
+# doubled when cr[0x39] says interlaced, because the NV2A interlaces only for
+# 1080i (vk/display.c:1723 and gl/display.c:442 read that bit for exactly that
+# purpose) and the raster is then one field. The scaling is what makes the
+# bound safe: a bare bound would send a per-field 1080i raster of 539 lines to
+# 50 Hz, re-creating the bug at a different value, and it also fixes the
+# mirror-image error on an interlaced PAL raster. 480i/480p/576i/576p are
+# unchanged; the measured NTSC path (vd=479 il=ff) returns the same
+# 16,683,750 ns by the same arithmetic, which is the control.
+#
+# THE DERIVATION IS CLOSED 2026-09-13, AND THE ANSWER IS THAT THERE ISN'T ONE.
+# Two arms, Galleon, refs cdc3a4b4d8 and 6eddbdbff5, dispatch results
+# 1789278960-vblank-period-1231801 and 1789279332-vblank-period-1362112.
+# Predictions registered first at docs/testing/predictions/
+# vblank-period-fp-raster.json and vblank-period-pll-calibration.json.
+#
+#  1. THE FLAT-PANEL RASTER, the other timing generator in the chip and the
+#     only one that counts in pixels rather than 8-dot characters. FP_VTOTAL
+#     (0x804) and FP_HTOTAL (0x824) were never modelled -- the writes fell
+#     through pramdac.c's switch -- and are now. The guest DOES program them:
+#     fp_vtotal=524 fp_htotal=775, so 525 lines x 776 px, with 480 active and
+#     45 blanking lines, which is the NTSC frame raster exactly. The
+#     convention is total-1, confirmed in band (hde=hvalid=639 for a 640-wide
+#     mode). derived_fp = 13,104,000 ns, -21.5%. Fails too.
+#  2. THE PLL DECODE IS NOT THE PROBLEM. NVPLL is the same formula on the same
+#     crystal and its right answer comes from outside this tree: nvpll=
+#     00011c01 (m=1 n=28 p=1) decodes to 233,333,324 Hz and the NV2A core runs
+#     at 233 MHz. Seven digits, on a register nothing in this stream could
+#     have tuned. So 31,089,742 Hz is the pixel clock the guest asked for.
+#     (MPLL reads 0 -- never programmed -- so it calibrates nothing.)
+#  3. AND THE ARITHMETIC WAS ALREADY DECISIVE. At that clock a 59.94 Hz frame
+#     of 525 lines needs a horizontal total of 987.96 px = 123.495 characters,
+#     which the VGA register cannot hold whatever extension bits we have not
+#     decoded, since extension bits add whole characters and halving the clock
+#     preserves the fractional part. Repairing the clock instead needs
+#     22,909,091 Hz (CRTC raster) or 24,419,600 Hz (FP raster) -- this VCO over
+#     10.86 and 10.19, neither a power of two, so neither a PDIV misread.
+#
+# So both rasters the chip holds run at the wrong rate on the clock the guest
+# programmed: 728x525 gives 81.34 Hz and 776x525 gives 76.31 Hz against the
+# 59.94 the display runs at. THE NV2A IS NOT THE TIMING MASTER. The Xbox drives
+# an external video encoder and the rate is the encoder's; this tree models it
+# as hw/xbox/smbus_cx25871.c, 256 bytes of registers the guest writes and
+# nothing has ever read. That is where the video standard is, and reaching it
+# from nv2a.c is cross-device plumbing rather than a decode.
+#
+# WHAT THE REGISTER FILE DOES SAY AUTHORITATIVELY is the standard's own name:
+# fp_vtotal+1 is 525 for NTSC and would be 625 for PAL, 750 for 720p, 1125 for
+# 1080i. The total raster IS the standard, where an active-line count needs a
+# bound and an interlace correction to become one. If PAL or HD material ever
+# arrives, keying the table on the total is the shape of the fix and it drops
+# the interlace scaling with it. It is still a table, which is why it was not
+# worth a second unmeasured mechanism in the same function today.
+#
+# STILL OPEN: the +25 ppm. One character, deliberately not changed in the same
+# arm as the guard, because it would have made the must-not-move leg (the NTSC
+# path returning the same constant) unreadable.
+#
+# THE ORIGINAL PROPOSAL, MEASURED OUT. Deriving the period as
 # vtotal * htotal / pixel clock, the way the NV2A does, was registered as a
 # falsifier before the soak -- "within 1% of 16683333 ns" -- and FAILED:
 #
@@ -1819,13 +1878,9 @@ suites = []
 #     cr00=56 cr06=0b cr07=3e cr25=10 cr2d=00 msr=e3
 #
 # -26.3%. vtotal=525 is right and cr25 carries no vertical extension bit, so
-# that half is sound; the gap is htotal, the VPLL decode, or the fact that the
-# Xbox drives an external video encoder and need not program the NV2A CRTC
-# with the analog timing at all. So the fix is a table keyed on something
-# authoritative about the video standard, and finding what that is, is the
-# open measurement. NV_PRAMDAC_VPLL_COEFF is stored at pramdac.c:108 and has
-# never been decoded, unlike NVPLL beside it at pramdac.c:92-100.
-title = "VBLANK period is two constants and a guard that contradicts its own comment: 720p and 1080i get 50 Hz, and the NTSC constant is 25 ppm long"
+# that half is sound. The three candidates it left -- htotal, the VPLL decode,
+# and the premise -- are all settled above: it is the premise.
+title = "VBLANK period is two constants and a guard that contradicted its own comment: the guard is fixed, the derivation that would have retired both constants is measured out, and 25 ppm is left"
 disposition = "defect"
 suites = []
 no_suites = "A wrong VBLANK period changes when a title steps its simulation and nothing else. Every golden in the corpus is bit-identical either way, so naming a suite would put this on a scoreboard column that can never move -- and the next reader would take a clean column for a fix."
