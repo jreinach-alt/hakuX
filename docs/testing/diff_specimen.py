@@ -30,6 +30,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import captures as captures_mod
+
 try:
     import numpy as np
     from PIL import Image
@@ -201,20 +204,33 @@ def main():
     ap.add_argument("--title", default="Framebuffer comparisons")
     args = ap.parse_args()
 
+    # A dispatcher result directory keeps its PNGs in captures<N>/, and
+    # callers pass both shapes. Joining --results by hand made every capture
+    # in a result directory read "missing image", and the run then ended
+    # "nothing to show -- every test compared is bit-identical", which is the
+    # dangerous half: a tool that cannot find its evidence answered as though
+    # the comparison had passed. AGENTS.md carries the rule and captures.py
+    # exists for it; this was the one reader still not using it.
+    results = captures_mod.resolve(args.results)
+
     names = list(args.tests)
     if args.all_differing:
-        names = sorted(n[:-4] for n in os.listdir(args.results)
+        names = sorted(n[:-4] for n in os.listdir(results)
                        if n.endswith(".png") and "::" in n)
     if not names:
         sys.exit("give tests as Suite::Test, or pass --all-differing")
 
     specs = []
+    missing = []
     for name in names:
         suite, test = name.split("::", 1)
         gp = os.path.join(args.goldens, suite, f"{test}.png")
-        op = os.path.join(args.results, f"{suite}::{test}.png")
-        if not (os.path.exists(gp) and os.path.exists(op)):
-            print(f"  skip {name}: missing image", file=sys.stderr); continue
+        op = captures_mod.find(results, suite, test)
+        if op is None or not os.path.exists(gp):
+            which = "golden" if op else "capture"
+            print(f"  skip {name}: missing {which}", file=sys.stderr)
+            missing.append(name)
+            continue
         g, o = load(gp), load(op)
         if g.shape != o.shape:
             print(f"  skip {name}: size mismatch", file=sys.stderr); continue
@@ -228,6 +244,13 @@ def main():
                       "dn": png_uri(diff_map(g, o, gain))})
 
     if not specs:
+        if missing:
+            # Never say "bit-identical" about a capture that was not read.
+            # That sentence is what made the path bug above read as a pass.
+            print("nothing to show, and %d of %d were SKIPPED rather than "
+                  "compared: %s" % (len(missing), len(names),
+                                    ", ".join(missing)), file=sys.stderr)
+            return 2
         print("nothing to show — every test compared is bit-identical")
         return 0
     sha, identity = build_identity(args.results)
