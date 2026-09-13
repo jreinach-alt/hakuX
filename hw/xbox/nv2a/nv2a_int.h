@@ -127,8 +127,31 @@ typedef struct NV2AState {
         QemuThread thread;
         QemuCond fifo_cond;
         QemuCond fifo_idle_cond;
+        /*
+         * Signalled by the PFIFO thread the moment the pusher has no more
+         * pushbuffer to consume, which is before it starts its idle spin and
+         * therefore well before it parks and signals `fifo_idle_cond`.
+         *
+         * A separate condition rather than a second waiter on the idle one:
+         * `fifo_idle_cond` means "the PFIFO thread has stopped", which is what
+         * nv2a_lock_fifo() needs before it touches PGRAPH state, and it only
+         * becomes true after FIFO_SPIN_ACTIVE_NS of spinning. The skew bound
+         * needs "PGRAPH has caught up", which is a different and much earlier
+         * event -- waiting for the idle signal instead would add a 100 us
+         * spin window to every submission the guest makes.
+         */
+        QemuCond fifo_drained_cond;
         bool fifo_kick;
         bool halt;
+        /*
+         * The last DMA_PUT the guest was seen to publish. pfifo_kick() is
+         * called from several places on several threads; this is how the one
+         * call that is a SUBMISSION -- the guest advancing DMA_PUT -- is told
+         * apart from a kick that merely re-wakes the thread. Only the guest
+         * CPU writes DMA_PUT, and it does so with pfifo.lock held, so this
+         * needs no atomics of its own.
+         */
+        uint32_t skew_last_put;
     } pfifo;
 
     struct {
