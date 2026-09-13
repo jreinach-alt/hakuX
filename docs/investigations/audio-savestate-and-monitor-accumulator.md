@@ -282,27 +282,31 @@ rather than a promise.
 
 ### Results
 
-**MEASURED.** Crimson Skies, Thor, 87.941 s of output, ref `62eaa2f7f6`, binary
-`64b0a6b4789e`, result `1789282799-monacc-crimson-68501`. Device-matched to the
-reference run `1789280122` on purpose, because a level compared across
-handhelds is not a repeat.
+**MEASURED, two titles on two handhelds, both at ref `62eaa2f7f6`, binary
+`64b0a6b4789e`.** Each was device-matched to its own reference run on purpose,
+because a level compared across handhelds is not a repeat.
+
+| run | device | output | reference | samples | `nonzero` | `saturated` |
+|---|---|---:|---|---:|---:|---:|
+| Crimson Skies `1789282799` | Thor | 87.941 s | `1789280122` | 8,639,936 | **0** | **0** |
+| Galleon `1789282793` | Nova | 84.101 s | `1789279659` | 8,159,936 | **0** | **0** |
 
     mon_acc: window 480000 samples  nonzero 0  saturated 0  maxabs 30997 of 32767
              cumulative 8639936 samples nonzero 0 saturated 0
 
-Eighteen windows of exactly 480,000 samples — 48,000 × 2 channels × 5 s, so the
-monitor path is running at real time — and **8,639,936 samples with `nonzero`
-and `saturated` both zero**. `maxabs` touches 32,767 in one window and never
-exceeds it, which is the arithmetic above showing up directly: the accumulator
-holds one already-clamped value.
+Every window is exactly 480,000 samples — 48,000 × 2 channels × 5 s, so the
+monitor path is running at real time — and **16,799,872 samples across the two
+runs with `nonzero` and `saturated` both zero**. `maxabs` touches 32,767 in
+three windows and never exceeds it, which is the arithmetic above showing up
+directly: the accumulator holds one already-clamped value.
 
 | leg | verdict |
 |---|---|
-| **M1** instrument alive (control) | **PASSED** — 18 lines, non-zero windows |
-| **M2** `nonzero == 0` | **PASSED** — 0 of 8,639,936 samples |
-| **M3** `saturated == 0` | **PASSED** — 0 |
+| **M1** instrument alive (control) | **PASSED** — 18 lines each, all windows non-zero |
+| **M2** `nonzero == 0` | **PASSED** — 0 of 16,799,872 samples, both titles |
+| **M3** `saturated == 0` | **PASSED** — 0, both titles |
 | **M4** level unmoved, ±2.0 dB | **PASSED**, and far inside it (below) |
-| **M5** steady-state starvation 0.0000% | **PASSED** — 0/704 and 0/703 callbacks, 0 of 11,526,144 bytes |
+| **M5** steady-state starvation 0.0000% | **PASSED** on Crimson Skies; **FAILED** on Galleon |
 
 **M4 is stronger than the tolerance it was registered at.** Against result
 `1789280122` on the same device:
@@ -324,9 +328,64 @@ evidently is not a playthrough but a fixed attract sequence, which makes this
 a far tighter inertness check than the registered 2 dB. The clamp is inert to
 the sample on this title.
 
-The startup starvation window reads 45.4545% (55 of 121 callbacks, all of them
-*empty*), which is the guest not having produced a sample yet and is excluded
-per the corrected predicate in `audio-baseline.md` 4a.
+Galleon's p50 moved +0.10 / +0.20 dB against `1789279659` (−29.05 / −29.05
+against −29.15 / −29.25), peak at 32,767 on both channels, `maxjump`
+11,405 / 10,264 inside the 8,970–13,096 range two earlier playthroughs
+established, `wrap 0`. Its clipped counts (872 / 55) are wildly asymmetric and
+far above the earlier 562/714 and 36/16 — which is #72's already-recorded
+correction, not a new finding: a clipped count counts transients and two
+playthroughs of a title that peaks at the rails do not contain the same ones.
+
+The startup starvation windows read 45.4545% (Crimson, 55 of 121 callbacks) and
+23.1405% (Galleon, 28 of 121), all of them *empty* callbacks — the guest not
+having produced a sample yet — which is excluded per the corrected predicate in
+`audio-baseline.md` 4a.
+
+### M5 failed on Galleon, and the failure is an event rather than a shape
+
+**MEASURED.** Galleon printed a **fourth** `starve:` line: 3 of 303 callbacks
+short, 2 of them empty, 23,552 of 2,482,176 bytes zero-filled — **0.9488% of
+that window and 0.1682% of the run's post-startup output**. M5 was registered
+as "every steady-state `starve:` line reads 0.0000%", so this is a fail. It is
+recorded as one rather than reclassified, because "a different exclusion reason
+per case, chosen after seeing the result, is a curve fit".
+
+And it cannot be dismissed as the shape of a run being torn down.
+`apu_starve_report` prints **either** on a 30 s heartbeat **or** the moment
+`d_short` becomes non-zero (`apu.c`, `if (d_short || heartbeat)`), so the three
+reference runs' three lines each — `1789279659` Galleon, `1789280122` Crimson,
+`1789279792` DOA3 — mean those runs had **zero** post-startup short callbacks.
+The fourth line is an event report, not a partial window.
+
+Two things argue the counter is not the cause, and both are arguments rather
+than measurements, which is why they did not settle it:
+
+- Crimson Skies carried the same counter on the same binary and printed the
+  reference three-line shape with 0.0000% in both heartbeats.
+- The counter's cost is **title-independent by construction**:
+  `mon_acc_observe` runs once per *output sample*, not per voice — exactly
+  480,000 per 5 s window in both runs, as both logs show. So the run that
+  starved is the *sparser* title at identical instrument load, which is the
+  wrong way round for an instrument cost.
+
+The registered consequence of an M5 failure was that the counter comes out, so
+the follow-up is the arm that decides it rather than an argument:
+`docs/testing/predictions/monacc-starve-followup.json`, committed before either
+arm was queued, with all four outcomes written down in advance.
+
+- **A1** — Galleon on the Nova at `91255df20f`, which contains no `mon_acc`,
+  shows at least one post-startup short callback. That exonerates the counter.
+  *Fails* if arm A comes back with the clean three-line shape, in which case
+  `mon_acc_observe` leaves the per-sample path.
+- **B1** — the same Galleon soak at `62eaa2f7f6` again shows one. *Fails* if the
+  repeat is clean, which would make the first observation a single-run draw —
+  the failure mode this project already records as "a lone score change on one
+  Nova run can be a one-off band".
+
+`mon_acc`'s own numbers are unaffected either way: a starved sink callback drops
+output it has already been handed, downstream of the accumulator.
+
+<!-- FOLLOW-UP VERDICT -->
 
 ### What M2's zero does and does not bound
 
