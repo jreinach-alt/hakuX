@@ -430,6 +430,26 @@ r=json.load(open(sys.argv[1]))
 iso=sys.argv[2]
 s=sorted(r.get('suites',[]))
 k=sorted(r.get('skip_tests',[]))
+# ONLY_TESTS BELONGS IN THE KEY, and leaving it out was a live hole.
+#
+# disc_id is the comparability key: ab_compare REFUSES a pair whose disc_ids
+# differ, and `suites` and `skip_tests` are in it precisely because they change
+# what the disc contains. `only_tests` changes it far more drastically -- a
+# 1,673-capture disc becomes a 1-capture disc -- and I added the field this
+# morning without adding it here, so all three compositions came back as the
+# bare `iso:85b525/Blend tests`.
+#
+# That is not theoretical. Within hours I pooled 13 observations of one capture
+# across a 1,673-test disc, a 5-test disc and a 1-test disc and reported a rate
+# from them, because nothing said they were different discs. And the discs
+# really do differ: 1-dstA_SUB_1-cRGB reads 16,384 on the full disc and 12,512
+# on the 5-test one, which is the documented RenderTextureLoop class of
+# poisoning -- state an earlier test leaves behind.
+#
+# Tagged rather than spelled out because 196 names do not belong in an id, and
+# the COUNT is included so a human can see at a glance that the disc was
+# narrowed.
+o=sorted(r.get('only_tests',[]))
 try:
     st=os.stat(iso)
     tag=hashlib.sha1(('%s|%d|%d' % (os.path.basename(iso), st.st_size,
@@ -440,6 +460,8 @@ except OSError:
 # stays comparable with new ones. Any OTHER base iso is tagged, loudly.
 STOCK = '/home/justin/nxdk_pgraph_tests_xiso.iso'
 pre = '' if os.path.abspath(iso) == STOCK else 'iso:%s/' % tag
+if o:
+    pre += 'only%d:%s/' % (len(o), hashlib.sha1(','.join(o).encode()).hexdigest()[:6])
 if len(s)==1 and not k:
     print(pre + s[0])
 elif len(s)==1:
