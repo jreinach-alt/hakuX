@@ -2123,6 +2123,13 @@ static MString* psh_convert(struct PixelShader *ps)
                 "precise float bc0 = area(unscaled_xy, vtxPos1.xy, vtxPos2.xy);\n"
                 "precise float bc1 = area(unscaled_xy, vtxPos2.xy, vtxPos0.xy);\n"
                 "precise float bc2 = area(unscaled_xy, vtxPos0.xy, vtxPos1.xy);\n"
+                /* The unnormalised areas and their sum, kept for the fixed
+                 * point floor below.  inv_bcsum is left spelled exactly as it
+                 * was so that bc1 and bc2 -- which zvalue reads -- cannot
+                 * change value under a compiler free to reassociate it. */
+                "precise float bcsum = (bc0 + bc1) + bc2;\n"
+                "precise float bu1 = bc1;\n"
+                "precise float bu2 = bc2;\n"
                 "float inv_bcsum = 1.0 / (bc0 + bc1 + bc2);\n"
                 "if (isinf(inv_bcsum)) {\n"
                 "  inv_bcsum = 0.0;\n"
@@ -2151,28 +2158,56 @@ static MString* psh_convert(struct PixelShader *ps)
                  * once it is set aside with zhi, what remains is order 1 and
                  * a float32 holds its fraction exactly.
                  *
-                 * Modelled over the four quad geometries this suite draws,
-                 * against the same interpolation in double, that is exact on
-                 * 100% of samples where the old form managed 56-99%. Measured
-                 * on all 784 Depth buffer goldens it is worth rather less:
-                 * D24's differing pixels go 309,710 to 233,112, a quarter of
-                 * them. So this removes the float32 error and something else
-                 * accounts for the remaining three quarters -- most likely
-                 * where the depth is sampled rather than how it is summed,
-                 * since what is left is still capped at exactly one unit.
-                 * Issue #16, #32.
+                 * That made the *summation* exact and left the barycentrics
+                 * inexact, which is where the rest of #16's one-unit residual
+                 * lives. `bc *= inv_bcsum` costs up to two roundings, and the
+                 * reciprocal's share of that is a constant for the primitive:
+                 * a relative error of order 2^-24 on a delta of 5,592,405 is
+                 * two thirds of a depth unit, one-signed, ramping with the
+                 * barycentric. Measured on `DepthFmt_z24_Cn_FZn_Mffffff_ZB`,
+                 * against the test's own geometry evaluated in exact
+                 * rationals: of the big quad's 85,192 pixels silicon sits on
+                 * floor(exact) for 79,160 and one either side symmetrically
+                 * (3,060 low, 2,972 high -- its own edge walk), while we sat
+                 * 9,738 low against 140 high. The other two large quads carry
+                 * the same shape with the *opposite* sign (the right quad:
+                 * ours 610 high / 16 low, silicon 170 / 218), which no
+                 * hardware-interpolator story predicts and a per-primitive
+                 * normalisation constant does.
+                 *
+                 * The same arithmetic says why z16 was always exact and z24
+                 * never was: the margin from an exact depth to the nearest
+                 * integer is fixed by the geometry (>= 1/160 of a unit for
+                 * every pixel this suite draws), and the error is fixed by the
+                 * *span*. At 0xFFFF the worst error is 0.006 units against a
+                 * 0.00625 margin and nothing can cross; at 0xFFFFFF the same
+                 * code errs by up to 1.5 units. It was never a scale divisor.
+                 *
+                 * So divide once, at the end, and keep the division's own
+                 * residual: form the numerator from the *unnormalised* areas
+                 * as an exact head+tail pair, quotient the head, and recover
+                 * what the quotient dropped with an fma. `fma(-q, S, N)` is
+                 * exact whatever the hardware's divide does, so this is
+                 * immune to a reciprocal that is not correctly rounded as well
+                 * as to the rounding that is. bc1 and bc2 keep their scaled
+                 * values because zvalue -- the F16/F24 path, verified by
+                 * a1fe59400e -- reads them and must not move.
+                 * Issue #16, #32, #52.
                  */
                 "precise float zhi = floor(vtxPos0.z);\n"
                 "precise float zd1 = vtxPos1.z - vtxPos0.z;\n"
                 "precise float zd2 = vtxPos2.z - vtxPos0.z;\n"
-                "precise float zp1 = bc1*zd1;\n"
-                "precise float zp2 = bc2*zd2;\n"
-                "precise float zt1 = fma(bc1, zd1, -zp1);\n"
-                "precise float zt2 = fma(bc2, zd2, -zp2);\n"
-                "precise float zdh = zp1 + zp2;\n"
-                "precise float zbv = zdh - zp1;\n"
-                "precise float zav = zdh - zbv;\n"
-                "precise float zdt = ((zp1 - zav) + (zp2 - zbv)) + (zt1 + zt2);\n"
+                "precise float zp1 = bu1*zd1;\n"
+                "precise float zp2 = bu2*zd2;\n"
+                "precise float zt1 = fma(bu1, zd1, -zp1);\n"
+                "precise float zt2 = fma(bu2, zd2, -zp2);\n"
+                "precise float znh = zp1 + zp2;\n"
+                "precise float zbv = znh - zp1;\n"
+                "precise float zav = znh - zbv;\n"
+                "precise float znt = ((zp1 - zav) + (zp2 - zbv)) + (zt1 + zt2);\n"
+                "precise float zdh = inv_bcsum == 0.0 ? 0.0 : znh / bcsum;\n"
+                "precise float zdt = inv_bcsum == 0.0 ? 0.0\n"
+                "                  : (fma(-zdh, bcsum, znh) + znt) / bcsum;\n"
                 "precise float zdn = floor(zdh);\n"
                 "precise float zbase = zhi + zdn;\n"
                 "precise float zrem = ((vtxPos0.z - zhi) + (zdh - zdn)) + zdt;\n"
