@@ -197,6 +197,51 @@ def section1(caps):
                   "ours %s band == exact ramp at the pixel centre, 512/512" % name)
         print()
 
+    # --- the out-of-sample check: predict the green band's coverage ---------
+    #
+    # The sample position was fixed on red and blue, whose endpoints are 0 and
+    # 255 and whose ramp is 255 units wide.  The green band is a different
+    # animal -- 0.495f -> 0.505f, three byte units across the same 512 px --
+    # and the alpha test's own coverage mask reads it with no model of the
+    # blend at all.  Nothing below was fitted to it.
+    #
+    # #57 landed the byte-quantised endpoints (126 -> 129) and got the slope
+    # right, but left the coverage on x 149..319 where hardware has 148..317,
+    # and recorded that 1-2 px displacement as #38 mechanism 2's to finish.
+    # This is it: the pair-right sample position lands both bounds exactly.
+    print("   out of sample: the green band, 0.495f -> 0.505f, read by the")
+    print("   alpha test's own coverage mask (AlphaFuncEqual_Enabled).")
+    vL, vR = 126.0, 129.0          # #38's landed byte-quantised endpoints
+    for label, pos in (("ours       pixel centre", SAMPLE_POSITIONS[0][1]),
+                       ("prediction pair right  ", SAMPLE_POSITIONS[4][1])):
+        xs = [x for x in range(X0, X1)
+              if rnd(vL + (vR - vL) * ((pos(x) - X0) / 512.0)) == 127]
+        print("      %s  a8 == 127 on x %d..%d" % (label, xs[0], xs[-1]))
+    eq = load(os.path.join(GOLDENS, "Alpha_func", "AlphaFuncEqual_Enabled.png"))
+    sp = [s for s in band_spans(eq, 128) if s[1] - s[0] > 8]
+    print("      hardware   measured   a8 == 127 on x %d..%d" % sp[0])
+    pred = [x for x in range(X0, X1)
+            if rnd(vL + (vR - vL) * ((SAMPLE_POSITIONS[4][1](x) - X0) / 512.0)) == 127]
+    check(sp and (pred[0], pred[-1]) == sp[0],
+          "pair-right predicts the green band's coverage out of sample "
+          "(predicted %d..%d, hardware %d..%d)"
+          % (pred[0], pred[-1], sp[0][0], sp[0][1]))
+
+    # AlphaFuncLessThan_Enabled holds the low crossing alone -- one boundary,
+    # no second edge to average against, no clamping.  It is the capture that
+    # would expose a wrong sample position first, so it is asserted separately.
+    lt = load(os.path.join(GOLDENS, "Alpha_func", "AlphaFuncLessThan_Enabled.png"))
+    lsp = [s for s in band_spans(lt, 128) if s[1] - s[0] > 8]
+    lpred = [x for x in range(X0, X1)
+             if rnd(vL + (vR - vL) * ((SAMPLE_POSITIONS[4][1](x) - X0) / 512.0)) < 127]
+    print("      LessThan_Enabled green: predicted x %d..%d, hardware x %d..%d"
+          % (lpred[0], lpred[-1], lsp[0][0], lsp[0][1]))
+    check(lsp and (lpred[0], lpred[-1]) == lsp[0],
+          "pair-right predicts AlphaFuncLessThan_Enabled's low crossing "
+          "(predicted %d..%d, hardware %d..%d)"
+          % (lpred[0], lpred[-1], lsp[0][0], lsp[0][1]))
+    print()
+
 
 # ---------------------------------------------------------------- section 2
 
