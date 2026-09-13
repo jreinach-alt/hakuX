@@ -190,6 +190,14 @@ static uint8_t android_expand_5_to_8(uint8_t value)
     return (value << 3) | (value >> 2);
 }
 
+/* Silicon expands a 6-bit field by replication too, not by the ratio; the
+ * two differ at v = 11..15 and 48..52. See issue #59 and
+ * docs/investigations/packed-texel-expansion.md. */
+static uint8_t android_expand_6_to_8(uint8_t value)
+{
+    return (value << 2) | (value >> 4);
+}
+
 #ifdef __aarch64__
 static const uint8_t android_neon_bgra_to_rgba_perm[16] =
     {2,1,0,3, 6,5,4,7, 10,9,8,11, 14,13,12,15};
@@ -307,7 +315,7 @@ static inline void android_neon_r5g6b5_to_rgba8_row(const uint8_t *src_row,
     while (remaining-- > 0) {
         uint16_t pixel = *src++;
         dst[0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
-        dst[1] = (uint8_t)(((pixel >> 5) & 0x3F) * 255 / 63);
+        dst[1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
         dst[2] = android_expand_5_to_8(pixel & 0x1F);
         dst[3] = 0xFF;
         dst += 4;
@@ -675,7 +683,7 @@ static void android_surface_guest_to_texture_rgba8(
                 uint16_t pixel = lduw_le_p(src_row + x * 2);
                 uint8_t *out = dst_row + x * 4;
                 out[0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
-                out[1] = (uint8_t)(((pixel >> 5) & 0x3F) * 255 / 63);
+                out[1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
                 out[2] = android_expand_5_to_8(pixel & 0x1F);
                 out[3] = 0xFF;
             }
@@ -1103,6 +1111,14 @@ static bool surface_to_texture_can_fastpath(SurfaceBinding *surface,
 
     if (!surface->color) {
         // FIXME: Support zeta to color
+        return false;
+    }
+
+    /* The same rule as in pgraph_gl_check_surface_to_texture_compatibility():
+     * a format the renderer converts on the way in cannot be filled from the
+     * surface, because what lands in it is the surface's decode and not
+     * silicon's. Issue #59. */
+    if (pgraph_texture_format_is_converted(texture_fmt)) {
         return false;
     }
 
