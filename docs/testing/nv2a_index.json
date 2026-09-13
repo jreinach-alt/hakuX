@@ -3862,6 +3862,15 @@
    "suites": [],
    "title": "Galleon: deck and ground textures intermittently stipple and cycle hatching direction (10-14 frames per 100)"
   },
+  "78": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Blend tests"
+   ],
+   "title": "Blend tests: 24x24 swatch quads rasterise 25x25 -- a 1,276 px/cell seam that is now the ENTIRE #spot_ residual"
+  },
   "8": {
    "component": "pgraph",
    "disposition": "defect",
@@ -4472,7 +4481,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "3cd74182588e23675d9e36eaf4b9c060f72a4e3b",
+  "emulator_commit": "2fdef463af6b6b86d24641d6808202fe0d1e25ab",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2813,
