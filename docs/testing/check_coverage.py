@@ -62,6 +62,22 @@ def main():
     blocked = {k: v["blocked_on"] for k, v in tracker.items()
                if (v.get("blocked_on") or "").strip()}
 
+    # A `blocked_on` that describes AVAILABLE WORK is not a blocker, and this
+    # gate accepted any non-empty string until it let two through. #54's read
+    # "the fix is one site in the texture upload path and wants its own arm"
+    # and #65's "one constant, wants an arm" -- both of which say the work is
+    # ready, in a field whose whole purpose is to say it is not. The board then
+    # showed them as covered and they sat.
+    #
+    # So reject the phrases that mean "dispatchable". This cannot catch a
+    # blocker that is merely wrong, but it catches the one shape that has
+    # actually occurred: a next step written into the blocker field.
+    NOT_A_BLOCKER = ("wants an arm", "wants its own arm", "needs an arm",
+                     "wants a lane", "needs a lane", "ready to dispatch",
+                     "just needs", "simply needs")
+    mislabelled = sorted(k for k, v in blocked.items()
+                         if any(p in v.lower() for p in NOT_A_BLOCKER))
+
     issues, err = open_issues()
     if issues is None:
         print("coverage NOT CHECKED: %s" % err)
@@ -74,6 +90,18 @@ def main():
         if n in owned or n in blocked:
             continue
         gaps.append((n, r["title"]))
+
+    live = {str(r["number"]) for r in issues}
+    bad = [k for k in mislabelled if k in live and k not in owned]
+    if bad:
+        print("FAIL: %d issue(s) whose `blocked_on` describes AVAILABLE work:"
+              % len(bad), file=sys.stderr)
+        for k in bad:
+            print("  #%s  %s" % (k, blocked[k][:96]), file=sys.stderr)
+        print("\n  \"wants an arm\" is a next step, not a blocker. Either give\n"
+              "  it a lane, or write what it is actually waiting for.",
+              file=sys.stderr)
+        return 1
 
     if gaps:
         print("FAIL: %d open issue(s) with neither a lane nor a blocker:"

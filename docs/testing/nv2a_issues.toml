@@ -1830,7 +1830,7 @@ status_note = "Benefit measured zero: with ALL guest barriers restored 2D_Border
 # and migrated across reuse, so a swizzle there would alter what rendering
 # writes and go stale exactly the way host_fmt just did. It needs its own
 # sampled view.
-blocked_on = "answered (57% on Crimson Skies, 0 on DOA3/JSRF, vertex site never races); the fix is one site in the texture upload path and wants its own arm"
+
 
 [issue.55]
 title = "Surface bindings never refresh their colour format on compatible reuse, and fifteen sites read it"

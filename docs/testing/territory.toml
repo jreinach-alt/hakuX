@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 14
-updated_utc = "2026-09-13T18:10:00Z"
+wave = 15
+updated_utc = "2026-09-13T18:45:00Z"
 
 
 
@@ -53,17 +53,18 @@ files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_re
          "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 note = "The two single-change follow-ons whose mechanism is already measured. #44's SELECTIVE draw-only bound: the guarantee needs no unprocessed DRAW in the FIFO, and the disc makes 148,704 submissions for 180 draws, so holding at every submission is 826x stronger than required and costs half a real title's ceiling. #65's defer_cap 15 -> 12: D9 failed and the observed timer round trip (3,083,365 ns) names 12 at 1.35x margin -- but that is two runs on one device and the nova's latency is 3.4x the thor's, so it must be measured there first."
 
+[lane.texupload]
+issues = ["54"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/renderer.h"]
+note = "#54's fix, which the instrument pointed at: ONE site, the texture upload path. 57% of uploads on Crimson Skies read guest memory the guest is concurrently writing (two runs agreeing to 0.2%), 0 on DOA3 and JSRF over 2.8M draws, and the vertex site never races -- 0 over 156,592 copies, a >10,000x separation. Briefed to price at least two options before choosing, and to STOP and say so if an ordering bound in the pfifo path would subsume it, because the pacing lane is landing #44's selective bound next door."
+
 [free]
 files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/prim_rewrite.c",
          "hw/xbox/nv2a/pgraph/s3tc.c",
-         "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/buffer.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/command.c",
-         "hw/xbox/nv2a/pgraph/vk/renderer.h",
          "accel/**",
          "include/exec/**",
          "hw/xbox/mcpx/**",
