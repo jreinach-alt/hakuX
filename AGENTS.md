@@ -701,6 +701,27 @@ Arm B's own two runs had 7 and 32 fully-unlocked windows, a 4.6x swing **inside
 one binary**, with defers per window 37.9 against 84.8. Any leg normalised by
 that is measuring the swing.
 
+**AN ABSOLUTE CAN BE UNSATISFIABLE TOO, by the arm's own construction.** The
+rule above is about falls, and that is too narrow -- the orchestrator broke it
+the same day with an absolute. #52's L1 had failed at "784 captures,
+`partial: false`" on a run-budget timeout, and the retry was to be the `Cn`
+half of the disc, which is redundant because `Cn`/`Cy` are bit-identical on
+196/196. I asked for L1 to be re-registered unchanged: *784 captures with
+`partial: false`*.
+
+That is arithmetically impossible on a half disc. 196 of 392 tests is 392 of
+784 goldens, so **`partial: true` is the CORRECT outcome**, and registering the
+old number would have manufactured a failed leg on a run that did exactly what
+was asked. The lane caught it and registered 392 with `partial: true`, plus a
+better guard than the total: **exactly 49 `_ZB` rows in each of the four
+cells**, because a per-cell count proves every retired cutoff arrived where a
+bare total cannot.
+
+So the check before registering any leg, fall or absolute, is the same one:
+**is there a world in which this arm, working perfectly, still fails this
+leg?** If the answer is yes and that world is the one you are in, the leg is
+measuring your arithmetic rather than the change.
+
 **So: register the absolute, not the fall.** "The worst window clamps at most
 2" survived every one of these regime changes; "the hold falls by three poll
 intervals" failed twice on arithmetic that had nothing to do with the constant
