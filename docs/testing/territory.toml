@@ -42,12 +42,6 @@ issues = ["44", "65"]
 files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 
-[lane.vertex]
-issues = ["53", "38", "13-geom"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.h",
-         "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
-note = "geom.c also carries #13's TRIANGLES edge order: our geometry shader decomposes POLY_MODE_LINE triangles, not Turnip, so 45,760 decisive px may be three lines of GLSL."
 
 [lane.skew_instrument]
 issues = ["54"]
@@ -79,6 +73,5 @@ files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
 note = "SCOPE-FIRST lane. #67's fix file is NOT known -- the over-extent could be in the viewport/scissor transform, the vertex pipeline, or vk/draw.c which the #54 lane holds. Briefed to establish the origin and REPORT before editing, and to stop if it lands in a claimed file. The question worth more than the fix: does the fill path have this generally? If so it is far larger than #67's 1.44M px."
 
 [free]
-files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c",
-         "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/mcpx/**"]
