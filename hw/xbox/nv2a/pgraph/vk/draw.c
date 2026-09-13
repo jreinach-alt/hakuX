@@ -3420,10 +3420,22 @@ static float pgraph_vk_line_width(PGRAPHState *pg)
  *   snap to the nearest pixel centre would move width 4 by one row; the
  *   goldens do neither.
  *
- * Applied through the viewport rather than the vertex position, because the
- * vertex path is shared with fills and is already correct: Fill_0000.0, in
- * this same suite, is coverage exact. The viewport is dynamic state here, so
- * this reaches the device whatever the pipeline was compiled with.
+ * Applied through the viewport rather than the vertex position, and gated on
+ * the pipeline rasterising lines, so that nothing but a line can move. Note
+ * what that gate is NOT evidence of: Fill_0000.0 in this same suite is
+ * coverage exact, but an axis-aligned fill on an integer boundary lights the
+ * same columns whether its edge is at 160.0 or 160.5 -- the fill rule takes
+ * centres in [left, right) and both boundaries move from lying between
+ * centres to lying on one without enclosing a different set. So the corpus
+ * cannot say whether the line rasteriser biases x or the whole pipeline is
+ * half a pixel out in x and only lines are sharp enough to show it. This is
+ * written for the first reading; if the second ever gets its own evidence,
+ * the bias belongs in the vertex path and this goes away.
+ *
+ * The viewport is dynamic state here, so this reaches the device whatever the
+ * pipeline was compiled with -- which matters, because
+ * VK_EXT_extended_dynamic_state3 leaves the static rasteriser state dead on
+ * Turnip.
  *
  * Half a native pixel, so it scales with the surface, the way the line width
  * does. See docs/investigations/line-width-residual.md and #13.
