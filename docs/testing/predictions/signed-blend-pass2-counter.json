@@ -1,0 +1,13 @@
+{
+  "registered_utc": "2026-09-13T22:15:23Z",
+  "who": "signfold",
+  "issue": "43",
+  "prediction": "#43 COUNTER ARM. Instrumentation only, on top of 322adc3a01's two-pass fold.\n\nC1 THE MECHANISM COUNTER, which is the whole point of this run. logcat tag\n   hakuX-signfold prints `folds=N emitted=M empty=E` every 64 folds. The\n   identity that must hold is  M == 2*N.\n     M == 2*N  -> both passes reached a draw, so the second pass IS emitted and\n                  the ARITHMETIC is what is wrong. The next edit is a value.\n     M <  2*N  -> the second pass is being DROPPED, the arithmetic was never\n                  under test, and the next edit is in the emission path.\n     E > 0     -> a pass found no vertex data at all, which names the cause\n                  outright (pass 1 consumed it).\n   The previous arm could not separate those two worlds, because a pixel total\n   cannot. That is why this run exists.\n\nC2 EVERY ONE OF THE 156 CAPTURES MUST NOT MOVE. A counter that changes a pixel\n   is not a counter. This is the leg that makes the instrument trustworthy\n   rather than merely present -- the campaign has already had a\n   `syscall(SYS_gettid)` in an inner loop present as a renderer deadlock, so\n   \"instrumentation is free\" is not assumed here, it is registered.\n   FAILS IF the added counter or its logging perturbs the render in any way,\n   including by slowing a draw enough to change a race.\n\n   Note both arms carry the two-pass fold, so the SIGNED captures are expected\n   to stay at their arm-B values -- 186,724 / 64,475 on the two\n   Texture_signed_component captures and 96,869 / 100,980 on the #spot pairs --\n   NOT at their pre-fix values. This is a no-op arm by construction, and if\n   anything moves, the counter is the suspect.\n\nNOT CLAIMED HERE: nothing about whether the fold is correct. That was judged in\nthe pre-registered pair 5c52049f66 -> 322adc3a01, which FAILED L1/L2 with every\nguard holding. This arm decides only WHERE the defect is.",
+  "a_ref": "322adc3a01",
+  "b_ref": "0b8956e7c3",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {}
+}
