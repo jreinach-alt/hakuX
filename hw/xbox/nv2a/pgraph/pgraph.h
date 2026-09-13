@@ -92,6 +92,25 @@ typedef struct ImageBlitState {
     unsigned int width, height;
 } ImageBlitState;
 
+/*
+ * The destination clip rectangle the 2D classes blit through (class 0x19).
+ * Zero width or height means the guest has not set one; hardware treats an
+ * unset rectangle as unbounded, not as empty, so the blit path must not read
+ * a zero size as "clip everything away". Issue #47.
+ */
+typedef struct ClipRectangleState {
+    hwaddr object_instance;
+    unsigned int x, y;
+    unsigned int width, height;
+    /*
+     * Whether the guest has written a size. "Never set" and "set to zero" are
+     * different states and the blit must not confuse them: unset is unbounded,
+     * a written zero clips everything away. Image blit's Clip_320_240_0_0 and
+     * Clip_320_240_0_10 are the two tests that tell them apart.
+     */
+    bool size_written;
+} ClipRectangleState;
+
 typedef struct BetaState {
   hwaddr object_instance;
   uint32_t beta;
@@ -139,6 +158,7 @@ typedef struct PGRAPHState {
     /* subchannels state we're not sure the location of... */
     ContextSurfaces2DState context_surfaces_2d;
     ImageBlitState image_blit;
+    ClipRectangleState clip_rectangle;
     KelvinState kelvin;
     BetaState beta;
 
@@ -224,6 +244,12 @@ typedef struct PGRAPHState {
 
     float point_params[8];
 
+    /* SET_LINE_WIDTH, in eighths of a pixel. */
+    uint32_t line_width;
+
+    /* SET_STIPPLE_PATTERN, a 32x32 bitmap of screen pixels. */
+    uint32_t stipple_pattern[NV097_SET_STIPPLE_PATTERN_COUNT];
+
     VertexAttribute vertex_attributes[NV2A_VERTEXSHADER_ATTRIBUTES];
     uint16_t compressed_attrs;
     uint16_t uniform_attrs;
@@ -236,6 +262,12 @@ typedef struct PGRAPHState {
     uint32_t inline_elements[NV2A_MAX_BATCH_LENGTH];
 
     unsigned int inline_buffer_length;
+    /* Capacity of every VertexAttribute::inline_buffer, in vertices. Held
+     * here rather than recomputed because the allocation is platform
+     * dependent and the bound check MUST use the same number: it used to
+     * check NV2A_MAX_BATCH_LENGTH (524,287) against a 32,768-vertex Android
+     * allocation, which is a 16x overrun. */
+    unsigned int inline_buffer_cap;
 
     unsigned int draw_arrays_length;
     unsigned int draw_arrays_min_start;
@@ -339,6 +371,38 @@ static inline uint32_t pgraph_reg_r(PGRAPHState *pg, unsigned int r)
 {
     assert(r % 4 == 0);
     return pg->regs_[r];
+}
+
+/* Whether this draw puts anything on screen through the line rasteriser,
+ * either because the primitive is made of lines or because the polygon
+ * mode asks for its edges. */
+static inline bool pgraph_draw_rasterises_lines(PGRAPHState *pg)
+{
+    switch (pg->primitive_mode) {
+    case PRIM_TYPE_LINES:
+    case PRIM_TYPE_LINE_LOOP:
+    case PRIM_TYPE_LINE_STRIP:
+        return true;
+    case PRIM_TYPE_TRIANGLES:
+    case PRIM_TYPE_TRIANGLE_STRIP:
+    case PRIM_TYPE_TRIANGLE_FAN:
+    case PRIM_TYPE_QUADS:
+    case PRIM_TYPE_QUAD_STRIP:
+    case PRIM_TYPE_POLYGON:
+        return GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),
+                        NV_PGRAPH_SETUPRASTER_FRONTFACEMODE) ==
+               NV_PGRAPH_SETUPRASTER_FRONTFACEMODE_LINE;
+    default:
+        return false;
+    }
+}
+
+/* A line width of zero covers no pixel centres, so the line rasteriser
+ * puts nothing on screen: the Line width golden for 0.0 keeps the points
+ * the test draws alongside its lines and loses every line. */
+static inline bool pgraph_draw_is_empty_line(PGRAPHState *pg)
+{
+    return pg->line_width == 0 && pgraph_draw_rasterises_lines(pg);
 }
 
 static inline void pgraph_reg_w(PGRAPHState *pg, unsigned int r, uint32_t v)

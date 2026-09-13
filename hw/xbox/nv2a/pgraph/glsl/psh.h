@@ -74,6 +74,7 @@ typedef struct PshState {
 
     bool smooth_shading;
     bool two_side_light;
+    bool stipple;
     bool fog_enable;
     enum VshFogMode fog_mode;
     bool depth_clipping;
@@ -86,6 +87,7 @@ typedef struct PshState {
 } PshState;
 
 int pgraph_glsl_window_clip_count(PGRAPHState *pg);
+bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
 
 #define PSH_UNIFORM_DECL_X(S, DECL) \
@@ -104,6 +106,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
     DECL(S, eyeVec, vec4, 1)        \
     DECL(S, fogColor, vec4, 1)      \
     DECL(S, fogParam, vec2, 1)      \
+    DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceScale, ivec2, 1) \
     DECL(S, texScale, float, 4)
 

@@ -19,6 +19,10 @@
 
 #include "qemu/osdep.h"
 #include "renderer.h"
+#ifdef __ANDROID__
+#include <android/log.h>
+#include <unistd.h>
+#endif
 
 void pgraph_vk_snapshot_state(PGRAPHState *pg, RenderCommandSnapshot *snap)
 {
@@ -193,6 +197,11 @@ static void process_vertex_ram_update(PGRAPHVkState *r, RenderCommand *cmd)
 
 static void *render_thread_func(void *opaque)
 {
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-threads",
+                        "tid=%d role=render (submit, fence wait, downloads, "
+                        "display sync)", (int)gettid());
+#endif
     PGRAPHVkState *r = opaque;
     RenderThread *rt = &r->render_thread;
 

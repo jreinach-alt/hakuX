@@ -101,3 +101,90 @@ modelled.
 (w ≈ 16.7 M, +1 over the height) gets 136 everywhere — consistent with the
 pair model but not discriminating. The fixed-function `_V0_` ZS1 captures are
 empty (nothing drawn) on hardware; not investigated.
+
+## The residual is the anchor snap, and it is arithmetic (#31, 2026-09-12)
+
+Read off `docs/testing/run-2026-09-10-wbuffer-adreno.tsv`, i.e. the device
+numbers for the code as shipped in `bdc26fa5c8`.  The shipped snap is
+
+    c = 2*floor(c/2);   r = 2*floor(r/2);
+
+and that one pair of lines accounts for every remaining wrong `WBuf*` pixel.
+`x_left`/`y_top` below are the small triangles' own geometry; the quads'
+anchors are the first covered pixel as derived above.
+
+| capture | ours | hardware | after_wrong |
+|---|---|---|---:|
+| `TriH` k=0,1 (y_top = k+0.5) | row 0 | row 2 | wrong |
+| `TriH` k=2,3 | row 2 | row 2 | **exact** |
+| `TriV` k=0,1 (x_left = 160.5+k) | col 160 | col 164 | wrong |
+| `TriV` k=2,3 | col 162 | col 164 | wrong |
+| `ClipF-150-032` large tri | row 32 | row 34 | wrong |
+| `ClipF-150-128` large tri | row 128 | row 130 | wrong |
+| `ClipF-150-224` large tri | row 224 | row 226 | wrong |
+
+`TriH` is the check: `2*floor(r/2)` lands on hardware's row 2 for k = 2,3 and
+on row 0 for k = 0,1, so two of the four congruent triangles must be exact and
+two wrong.  Measured `WBuf24{D,F}_TriH_V1_ZB{0,1}_ZS1_ZB`: 13,200 exact and
+13,200 wrong of 26,400, i.e. exactly two triangles each.  `TriV`'s snap never
+reaches col 164 for any k, so it must be all wrong; measured 0 of 26,400
+exact.  The offline row above ("TriH 6600/26400, only k = 2 mod 4 coincide")
+predates the quad snap and no longer describes the shipped code.
+
+Two rows in the residual are *not* the anchor: `WBuf24F_RoofQuad_V1_ZB{0,1}`
+(23,380 px each) is Roof's second triangle, which `WBuf24D_RoofQuad` gets to
+within hardware's own rounding on the same geometry -- the difference is the
+24-bit *float* depth encoding, so it belongs to #52's float-Z defect, not
+here.  `ZBuf24D_FloorQuad_V0_ZB{0,1}` (151,316 px each) is Z-mode, scores
+identically before and after the W fix, and is likewise #52.
+
+### Why the 4-grid rule is not shippable on its own
+
+Applying the small-triangle rule everywhere -- `r = 4*floor(r/4)+2`,
+`c = 4*floor(c/4)+4` -- moves the anchors that currently agree with hardware:
+
+    Wall   col 150 -> 152,  col 636 -> 640
+    Roof   row 0   -> 2,    row 366 -> 366  (survives)
+    Floor  row 0   -> 2
+    ClipW  col 158 -> 160,  260 -> 264,  362 -> 364
+
+So the trade is measured, not guessed: **620,349 px** recoverable (`TriH`
+52,800 + `TriV` 105,600 + `ClipF` 461,949) against **4,172,280 px** across the
+19 `WBuf*` captures that currently score zero wrong, all of whose anchors move
+except Roof's second triangle.  6.7x worse.  The regime selector is load
+bearing; a blanket switch is the wrong shape and is not worth shipping.
+
+Discriminators tried against the table above and rejected, each because one
+row contradicts it: clip-edge-derived vs geometry-derived anchor (Wall's
+second triangle is geometry-derived and 2-grid); primitive area (Roof, Wall
+and Floor are large and 2-grid, `ClipF`'s large triangle is large and 4-grid);
+`ClipF`'s own two triangles share a clip edge and split across the regimes.
+The suite still conflates translation, clipping and apex visibility, so this
+stays where the previous section left it: needs new geometry, not more fitting.
+
+### Measured dead in the renderers
+
+Checked while looking for a renderer-side contribution; all four are negative,
+and all four are reads of the current tree rather than inference.
+
+- `vk/draw.c` and `gl/draw.c` only *disable* polygon offset
+  (`depthBiasEnable = VK_FALSE`, `glDisable(GL_POLYGON_OFFSET_*)`), and no
+  `vkCmdSetDepthBias*` is issued anywhere, so the static `VK_FALSE` is live
+  rather than shadowed by dynamic state.  Neither renderer holds any part of
+  the offset arithmetic; it is all `glsl/psh.c`.
+- `NV_PGRAPH_SETUPRASTER`'s `POFFSET{POINT,LINE,FILL}ENABLE` bits are in
+  `pgraph_reg_dynamic_mask_table`, so changing only them bumps neither
+  `shader_state_gen` nor `non_dynamic_reg_gen`, and the dynamic apply reads
+  SETUPRASTER only for cull mode and front face -- yet those bits decide
+  whether `depthOffset`/`depthFactor` carry the ZOFFSET registers or zero.
+  The super-fast path looks like it would draw with the previous draw's
+  offset, but it also fails on `any_reg_gen`, which *every* register write
+  bumps, so the stale-uniform window does not exist.
+- Dropping `NV_PGRAPH_ZOFFSETBIAS`/`ZOFFSETFACTOR` from the pipeline key under
+  `OPT_DYNAMIC_STATES` is safe for the same reason plus one more: they feed
+  uniforms only, and `vk/shaders.c` re-hashes the uniform block and sets
+  `uniforms_changed` when a value moves.
+- `prim_rewrite.c` splits a quad on the v1-v3 diagonal under flat shading
+  instead of hardware's v0-v2, which would relocate both triangles' reference
+  pixels.  Ruled out by measurement, not by reading: Wall and Floor reproduce
+  to the unit on the v0-v2 decomposition, so these tests are not flat shaded.

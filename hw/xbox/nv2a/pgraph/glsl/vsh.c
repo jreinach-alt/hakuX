@@ -37,22 +37,6 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
     state->local_eye =
         GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LOCALEYE);
 
-    state->emission_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_EMISSION);
-    state->ambient_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_AMBIENT);
-    state->diffuse_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_DIFFUSE);
-    state->specular_src = (enum MaterialColorSource)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_SPECULAR);
-    state->back_emission_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 0) & 3);
-    state->back_ambient_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 2) & 3);
-    state->back_diffuse_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 4) & 3);
-    state->back_specular_src =
-        (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
 
     for (int i = 0; i < 4; i++) {
         state->texture_matrix_enable[i] = pg->texture_matrix_enable[i];
@@ -72,20 +56,7 @@ static void set_fixed_function_vsh_state(PGRAPHState *pg,
         }
     }
 
-    state->lighting =
-        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);
-    if (state->lighting) {
-        for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
-            state->light[i] =
-                (enum VshLight)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
-                                        NV_PGRAPH_CSV0_D_LIGHT0 << (i * 2));
-        }
-    }
 
-    if (pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE) {
-        state->foggen = (enum VshFoggen)GET_MASK(
-            pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
-    }
 }
 
 static void set_programmable_vsh_state(PGRAPHState *pg,
@@ -153,6 +124,35 @@ void pgraph_glsl_set_vsh_state(PGRAPHState *pg, VshState *vsh)
 
     vsh->fog_enable =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) & NV_PGRAPH_CONTROL_3_FOGENABLE;
+    vsh->emission_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_EMISSION);
+    vsh->ambient_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_AMBIENT);
+    vsh->diffuse_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_DIFFUSE);
+    vsh->specular_src = (enum MaterialColorSource)GET_MASK(
+        pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_SPECULAR);
+    vsh->back_emission_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 0) & 3);
+    vsh->back_ambient_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 2) & 3);
+    vsh->back_diffuse_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 4) & 3);
+    vsh->back_specular_src =
+        (enum MaterialColorSource)((pg->color_material_back >> 6) & 3);
+    vsh->lighting =
+        GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C), NV_PGRAPH_CSV0_C_LIGHTING);
+    if (vsh->lighting) {
+        for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
+            vsh->light[i] =
+                (enum VshLight)GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D),
+                                        NV_PGRAPH_CSV0_D_LIGHT0 << (i * 2));
+        }
+    }
+    if (vsh->fog_enable) {
+        vsh->foggen = (enum VshFoggen)GET_MASK(
+            pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_FOGGENMODE);
+    }
 
     vsh->is_fixed_function = fixed_function;
     if (fixed_function) {
@@ -193,12 +193,26 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "\n"
         "#define FLOAT_MAX uintBitsToFloat(0x7F7FFFFFu)\n"
         "\n"
+        /* A vertex colour is carried with a 13-bit fraction, the low ten
+         * bits of the float dropped rather than rounded. The Point size
+         * goldens pin it: the test walks a channel up in steps of 0.1,
+         * and where the accumulated float lands a hair above a half count
+         * the hardware still gives the lower byte -- 0.7 comes out 178 and
+         * 0.9 comes out 229, which rounding the float cannot produce and
+         * truncating its fraction first does, for all ten steps. */
+        "vec4 colorPrecision(vec4 c) {\n"
+        "  return uintBitsToFloat(floatBitsToUint(c) & 0xFFFFFC00u);\n"
+        "}\n"
+        "\n"
         "vec4 oPos = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oD0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oD1 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oB0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oB1 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oPts = vec4(0.0,0.0,0.0,1.0);\n"
+        /* oFog does not start cleared on hardware.  A program that never
+         * writes it renders with the value the previous program left, which
+         * is measured rather than unknown -- see the fog block below (#42). */
         "vec4 oFog = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT0 = vec4(0.0,0.0,0.0,1.0);\n"
         "vec4 oT1 = vec4(0.0,0.0,0.0,1.0);\n"
@@ -229,9 +243,48 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
         "  return mix(src, vec4(replacement), isnan(src));\n"
         "}\n"
         "\n"
-        // Xbox NV2A rasterizer appears to have 4 bit precision fixed-point
-        // fractional part and to convert floating-point coordinates by
-        // by truncating (not flooring).
+        /*
+         * The rasteriser carries 4 fractional bits and truncates. That was
+         * inherited as a guess ("appears to"); it is now measured, and three
+         * alternatives are worse:
+         *
+         *   1/32 truncation     Texture_render_target 356 -> 2,195 px on
+         *                       TexFmt_A8R8G8B8, spreading the residual from
+         *                       one column to four
+         *   1/8 truncation      predicts all twelve Viewport offsets and
+         *                       improves those two captures 500 -> 300 px, but
+         *                       costs Texture_render_target nine exact tests,
+         *                       11/40 -> 2/40
+         *   round half up       Blend_tests, Specular, Specular_back,
+         *   at 1/16             Material_color_source and Lighting_spotlight
+         *                       together 7,644,736 -> 8,464,262 px
+         *
+         * So the granularity is bracketed on both sides and the rounding mode
+         * is settled. The one-pixel differences that remain are not this
+         * constant: the checkerboard cell edges a row over in the lighting
+         * suites and the centre column of Texture_render_target are texel
+         * ties (an interpolated coordinate on an exact texel boundary, which
+         * hardware and host break differently), and the two Viewport offsets
+         * at exactly 9/16 are the fixed-function transform landing a few ULP
+         * either side of the snap boundary. Changing this constant to chase
+         * them makes things worse. See docs/investigations/edge-defect.md
+         * and issues #11 and #4.
+         */
+        /*
+         * Do NOT add a bias here to chase #49's two captures, and this is now
+         * proved rather than advised. Both of its offsets are congruent to
+         * 9/16 mod 1, so the post-offset coordinate lands exactly ON a grid
+         * line, where this function is the identity and coverage is decided
+         * by the last bit of the transform above it. Every rule expressible
+         * here -- truncate, floor, round, any grid size, any pre- or post-snap
+         * bias, any sample point -- is invariant under integer translation of
+         * its input, and hardware resolves x = 120 + 9/16 and x = 320 + 9/16
+         * in OPPOSITE directions, in the same quad at identical y and w. So no
+         * rule on pos can match it. The best bias small enough to keep the ten
+         * passing captures exact still leaves 888 of 1,396 px, fixing three
+         * vertices and breaking two.
+         * docs/investigations/viewport-9-16-boundary.md
+         */
         "vec2 roundScreenCoords(vec2 pos) {\n"
         "  return trunc(pos * 16.0) / 16.0;\n"
         "}\n");
@@ -317,6 +370,10 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
                                                           state->point_size,
                                state->surface_scale_factor);
         }
+    
+        if (state->lighting) {
+            pgraph_glsl_append_vsh_prog_lighting(state, header, body);
+        }
     }
 
     /*
@@ -342,6 +399,102 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
              *      state->vertex_program = true; state->foggen == FOGGEN_PLANAR
              *      but expects oFog.x as fogdistance?! Writes oFog.xyzw = v0.z
              */
+            /*
+             * Every gen mode uses oFog.x here, RADIAL included, and RADIAL is
+             * the one that is not simply right. Silicon renders the other four
+             * identically under a vertex program -- the only difference between
+             * those Fog gen goldens is the printed test name -- and renders
+             * RADIAL differently, so there is a real divergence to account for.
+             *
+             * It is not accounted for by computing a distance, and #41 had this
+             * before I did. The RADIAL goldens hold exactly two colours in the
+             * drawn region: the fog colour on all 181,016 drawn pixels and the
+             * background on the rest. Every quad is fully fogged regardless of
+             * its depth or position, which is not a function of any coordinate,
+             * and the test author tracks those captures as non-deterministic on
+             * hardware (abaire/nxdk_pgraph_tests#214). The plausible mechanism
+             * in #41 is the fog mux still honouring RADIAL in program mode and
+             * reading stale lighting intermediates a program never produces.
+             *
+             * I briefly shipped length(oPos.xyz * oPos.w) here on the strength
+             * of a 94.9% reduction against that golden. That number is what
+             * fraction of pixels a large enough distance pushes past the fog
+             * range, not evidence of a distance: the change produced 255
+             * distinct colours where the golden has two. length(oPos.xyz)
+             * scored 27% for being smaller, not for being less correct.
+             * Reverted -- fitting one sample of stale state would match this
+             * golden and nothing else, and it would put a bogus distance in
+             * front of any guest that did combine the two.
+             */
+            /*
+             * #42 is the other half of that, and it is the opposite case:
+             * measured, not unknown.  oFog is initialised to (0,0,0,1)
+             * above, so a program that never writes it fogs with coordinate
+             * 0 and we render the draw unfogged; hardware renders it with
+             * whatever the previous program left in the register.  Two
+             * captures pin that value and ten only bound it, which is why
+             * the suite as a whole looked unfalsifiable.
+             *
+             * Fog_coord_vec4 CoordNotSet pins it.  Two draws write
+             * oFog = (0.25, 0.95, 0.5, 0.75) from c[120], then a program
+             * writing only oPos and oD0 draws the same quad.  Its final
+             * combiner is f*C0 + (1 - f)*diffuse, C0 = (0.5, 0, 0.75) and
+             * diffuse white -- a mix that clips at neither end, so the
+             * 8-bit factor inverts straight out of the colour.  Gold holds
+             * (223, 192, 239) over 30,568 px and exactly one factor in
+             * 0..255 reproduces it on all three channels: 63, which is
+             * trunc(0.25 * 255).  So the carried coordinate is the previous
+             * program's oFog.x.  A unique solution also refutes the rest of
+             * the vector and the saturating answer: oFog.y, .z and .w give
+             * (134, 13, 194), (191, 128, 223) and (159, 64, 207), and a
+             * coordinate large enough to clip gives (127, 0, 191).
+             *
+             * Fog_carryover FogCarryover pins it a second way.  Six fog
+             * modes each draw one triangle with the coordinate set and one
+             * without; the coordinate differs per mode (0.6 linear, 0.1
+             * exp, 0.2 exp2) and the bias is chosen so the factor lands
+             * inside the range, at 0.400, 0.369 and 0.412.  In all six the
+             * no-coordinate triangle is bit-identical to the explicit one
+             * in the same frame, 4,032 px per mode pair.  Each mode
+             * function is strictly monotonic in the coordinate there, so
+             * equality forces the carried coordinate to be the one the
+             * neighbour set, and no single constant can be three different
+             * values at once.  That kills a fixed fallback coordinate
+             * without appealing to the mode formulas at all.
+             *
+             * The ten Carryover<Primitive> captures are the saturated ones.
+             * They run exp at 0.6 for every draw, where the factor clips:
+             * the explicit-coordinate primitives render full fog in gold
+             * and in ours too, so the quad's full fog bounds the carried
+             * coordinate and cannot pin it.  Fitting those alone is the #41
+             * mistake in a new suit -- and it would regress CoordNotSet
+             * from a (32, 63, 16) channel error to (96, 192, 48).
+             *
+             * Ruled out separately: reading the FOG_COORD vertex attribute
+             * when the program is fog-silent.  It fits all eleven
+             * Fog_carryover captures, because there the previous program
+             * copied that attribute into oFog, but fog_tests.cpp never
+             * calls SetFogCoord at all, so it cannot produce CoordNotSet's
+             * 0.25.  Honouring FOGGEN here is dead by measurement already
+             * (+7,449,481 channels, above), and independently: the unset
+             * program does not write oD1 either, so a spec-alpha read would
+             * be exactly as unwritten as oFog.
+             *
+             * Not fixed here, because the value is GPU-resident -- the last
+             * oFog.x the previous draw's last vertex wrote, which has to
+             * survive a pipeline change.  That is a small buffer both
+             * renderers bind, i.e. descriptor-set work outside this file,
+             * and it is the whole cost of the issue; the condition it needs
+             * (does this program write oFog) is decidable from the program
+             * text.  Both tests prime with a doubled draw and say why --
+             * "one or more of the vertices in the unset draw case still
+             * have arbitrary values from previous operations" -- so the
+             * register file is per-vertex-slot and simply not cleared.  A
+             * single last-written scalar is a simplification that those two
+             * tests deliberately make safe, and a guest relying on more
+             * would be relying on hardware the test author calls
+             * non-hermetic.
+             */
             mstring_append(body, "  float fogDistance = oFog.x;\n");
         }
         mstring_append(body,
@@ -354,8 +507,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
     }
 
     mstring_append(body, "\n"
-                   "  vtxD0 = clamp(NaNToOne(oD0), 0.0, 1.0);\n"
-                   "  vtxB0 = clamp(NaNToOne(oB0), 0.0, 1.0);\n"
+                   "  vtxD0 = colorPrecision(clamp(NaNToOne(oD0), 0.0, 1.0));\n"
+                   "  vtxB0 = colorPrecision(clamp(NaNToOne(oB0), 0.0, 1.0));\n"
                    "  vtxFog = oFog.x;\n"
                    "  vtxFogSpecial = fogSpecial;\n"
                    "  vtxT0 = oT0;\n"
@@ -372,8 +525,8 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
 
     if (state->specular_enable) {
         mstring_append(body,
-                       "  vtxD1 = clamp(NaNToOne(oD1), 0.0, 1.0);\n"
-                       "  vtxB1 = clamp(NaNToOne(oB1), 0.0, 1.0);\n"
+                       "  vtxD1 = colorPrecision(clamp(NaNToOne(oD1), 0.0, 1.0));\n"
+                       "  vtxB1 = colorPrecision(clamp(NaNToOne(oB1), 0.0, 1.0));\n"
         );
 
         if (state->ignore_specular_alpha) {
@@ -494,7 +647,16 @@ void pgraph_glsl_set_vsh_uniform_values(PGRAPHState *pg, const VshState *state,
         values->surfaceSize[0][1] = height;
     }
 
-    if (state->is_fixed_function) {
+    /*
+     * The lighting registers, which the programmable path needs too: with
+     * LIGHTING_ENABLE set it emits the colour material constant term, and
+     * that reads ltctxa. Gated on is_fixed_function alone the vertex program's
+     * shader read zeros, which put a black source where silicon has grey 8 --
+     * visible on Specular's ControlFlagsNoLight_VS as the golden being exactly
+     * six higher than us everywhere, the blend of that 8 against the two
+     * background tones.
+     */
+    if (state->is_fixed_function || state->lighting) {
         if (locs[VshUniform_ltctxa] != -1) {
             QEMU_BUILD_BUG_MSG(sizeof(values->ltctxa) != sizeof(pg->ltctxa),
                                "Uniform value size inconsistency");

@@ -30,6 +30,7 @@
 #include "hw/xbox/nv2a/debug.h"
 #include "hw/xbox/nv2a/pgraph/pgraph.h"
 #include "ui/xemu-settings.h"
+#include "../prim_rewrite.h"
 #include "psh.h"
 
 DEF_UNIFORM_INFO_ARR(PshUniform, PSH_UNIFORM_DECL_X)
@@ -69,6 +70,39 @@ static uint32_t get_color_key_mask_for_texture(PGRAPHState *pg, int i)
  * registers: a guest that set its rectangles and nothing else used to draw
  * with the previous shader, unclipped -- every inclusive Window clip test.
  */
+/*
+ * Whether the 32x32 stipple pattern masks this draw. It only ever reaches
+ * filled polygons: with the pattern set to all zeroes the Stipple tests
+ * golden loses every triangle, quad and polygon and keeps its points and
+ * its line loop untouched, the way OpenGL's polygon stipple behaves.
+ *
+ * The primitive is taken through the same rewrite the geometry stage uses
+ * rather than read raw. Both renderers reuse a shader state whose only
+ * refreshed primitive field is that rewritten mode, so anything derived
+ * from the raw mode goes stale: two raw modes that rewrite alike have to
+ * answer alike, and this way they do. The enable and the polygon mode are
+ * both SETUPRASTER bits outside the dynamic mask, so a change to either
+ * brings the state back here.
+ */
+bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg)
+{
+    uint32_t setupraster = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+
+    if (!GET_MASK(setupraster, NV_PGRAPH_SETUPRASTER_STIPPLEENABLE)) {
+        return false;
+    }
+
+    enum ShaderPolygonMode front_mode = (enum ShaderPolygonMode)GET_MASK(
+        setupraster, NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);
+    if (front_mode != POLY_MODE_FILL) {
+        return false;
+    }
+
+    return pgraph_prim_rewrite_get_output_mode(
+               (enum ShaderPrimitiveMode)pg->primitive_mode, front_mode) ==
+           PRIM_TYPE_TRIANGLES;
+}
+
 int pgraph_glsl_window_clip_count(PGRAPHState *pg)
 {
     if (g_config.display.renderer == CONFIG_DISPLAY_RENDERER_OPENGL) {
@@ -126,6 +160,7 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
     state->two_side_light = pgraph_reg_r(pg, NV_PGRAPH_CSV0_C) &
                             NV_PGRAPH_CSV0_C_TWO_SIDE_LIGHT_EN;
+    state->stipple = pgraph_glsl_polygon_stipple_enabled(pg);
     state->fog_enable = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3) &
                         NV_PGRAPH_CONTROL_3_FOGENABLE;
     state->fog_mode = (enum VshFogMode)GET_MASK(
@@ -858,6 +893,18 @@ static bool stage_consistent(struct PixelShader *ps, MString *vars, int i,
     return false;
 }
 
+/*
+ * Whether DOT_STR_3D's stage resolves to a samplerCube. get_sampler_type()
+ * and the fetch have to agree on this or the shader will not compile, so both
+ * ask here rather than each spelling the condition out.
+ */
+static bool dot_str_3d_is_cube(const struct PixelShader *ps, int i)
+{
+    const struct PshState *state = ps->state;
+    return state->tex_cubemap[i] && !state->shadow_map[i] &&
+           !(state->tex_x8y24[i] && ps->opts.vulkan);
+}
+
 static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES mode, int i)
 {
     const char *sampler2D = "sampler2D";
@@ -915,8 +962,27 @@ static const char *get_sampler_type(struct PixelShader *ps, enum PS_TEXTUREMODES
         ps->tex_unusable[i] = true;
         return NULL;
 
-    case PS_TEXTUREMODES_PROJECT3D:
     case PS_TEXTUREMODES_DOT_STR_3D:
+        /*
+         * A cubemap-flagged stage gets a VK_IMAGE_VIEW_TYPE_CUBE view, so
+         * declaring sampler2D here is VUID-vkCmdDrawIndexed-viewType-07752:
+         * the fetch is undefined, and undefined is what it looked like --
+         * Texture_cubemap's six DotSTR3D_* captures differed from themselves
+         * between two runs of one binary, one of them by 42,554 px, while the
+         * other 71 captures in the suite were byte-identical. Every other
+         * cube-capable mode below already checks this flag.
+         *
+         * PROJECT3D is deliberately NOT folded in here despite sharing the
+         * rest of this logic: it emits textureProj(), which has no cube form,
+         * so returning samplerCube for it would trade a wrong result for a
+         * shader that does not compile. It carries the same latent violation
+         * and wants its own fix.
+         */
+        if (dot_str_3d_is_cube(ps, i)) {
+            return samplerCube;
+        }
+        /* fallthrough */
+    case PS_TEXTUREMODES_PROJECT3D:
         if (state->tex_x8y24[i] && ps->opts.vulkan) {
             return "usampler2D";
         }
@@ -1033,15 +1099,28 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
             mstring_append_fmt(
                 vars,
                 "float t%d_z = uintBitsToFloat(t%d_enc << 7);\n"
-                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n", /* f24_max */
-                i, i, i, i, i);
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 1e30);\n" /* f24_max */
+                "pT%d.z = uintBitsToFloat(floatBitsToUint(pT%d.z) & 0xFFFFFF80u);\n",
+                i, i, i, i, i, i, i);
         } else {
+            /* NOTE: the reference is quantised onto the F16 grid below with a
+             * flush-to-zero threshold of 2^-7, where the depth *write* in
+             * psh_convert now uses 2^-6 -- an F16 exponent field of zero means
+             * zero, so the lowest binade has no representation. The two want
+             * the same grid. Left alone deliberately: this is the
+             * `Texture shadow comparator` cell (#30) with its own goldens, and
+             * only the lowest binade of a reference depth can differ, so it is
+             * a separate measurement rather than a free ride on this one. */
             mstring_append_fmt(
                 vars,
                 "float t%d_z = t%d_enc == 0u ? 0.0\n"
                 "           : uintBitsToFloat((t%d_enc << 11) + 0x3C000000u);\n"
-                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n", /* f16_max */
-                i, i, i, i, i, i);
+                "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n" /* f16_max */
+                "pT%d.z = floatBitsToUint(pT%d.z) < 0x3C000000u ? 0.0\n"
+                "       : uintBitsToFloat(((floatBitsToUint(pT%d.z)\n"
+                "                           - 0x3C000000u) & 0xFFFFF800u)\n"
+                "                         + 0x3C000000u);\n",
+                i, i, i, i, i, i, i, i, i);
         }
         mstring_append_fmt(vars, "vec4 t%d = vec4(t%d_z %s pT%d.z ? 1.0 : 0.0);\n",
                            i, i, comparison, i);
@@ -1060,9 +1139,11 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
             "}\n"
             "t%d_depth.x *= t%d_max_depth;\n"
             "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, t%d_max_depth);\n"
+            "pT%d.z = t%d_max_depth > 512.0 ? floor(pT%d.z) : pT%d.z;\n"
             "vec4 t%d = vec4(t%d_depth.x %s pT%d.z ? 1.0 : 0.0);\n",
             i, i, i, i, i,
             i, i, i, i, i, i,
+            i, i, i, i,
             i, i, comparison, i);
     } else {
         mstring_append_fmt(
@@ -1363,6 +1444,47 @@ static bool stage_consumed_raw(const struct PixelShader *ps, int i)
 static MString* psh_convert(struct PixelShader *ps)
 {
     MString *preflight = mstring_new();
+
+    /*
+     * A texture coordinate that is mathematically on an exact texel boundary
+     * reaches the sampler a few ULP either side of it: it is fp32 interpolated
+     * across the primitive and then divided by w and by the texture size.
+     * Which side it lands on decides which texel `floor` picks, so a boundary
+     * the guest placed exactly on a pixel centre renders a texel over
+     * depending on nothing but host arithmetic.  Measured on one such
+     * boundary, the centre column of Texture_render_target: hardware,
+     * lavapipe and Adreno resolve these ties three different ways and in both
+     * directions, and three Adreno drivers from two vendors agree with each
+     * other, so this is our arithmetic meeting a different FP unit rather than
+     * driver variance.
+     *
+     * Bias the coordinate up by a fraction of a texel large enough to cover
+     * that noise (2^-18 of the texture, about fifteen times the fp32 error on
+     * an interpolated coordinate) and far below any subtexel position a guest
+     * can express: 0.001 texels on a 256 texture.  A coordinate exactly on a
+     * boundary then lands on it; one genuinely below stays below.
+     *
+     * Both axes are biased, but they rest on different arguments and the v
+     * half is the weaker one.  Hardware's u-ties resolve up in every quad
+     * measured, so biasing u moves us onto its answer.  Its v-ties do not:
+     * they go down at texels 40, 80 and 120 and up at 160, 200 and 240 on one
+     * quad, and down at texel 128 on a quad whose u-tie at the same value
+     * goes up -- the signature of a rasteriser accumulating u along the
+     * scanline and v between scanlines.  There is no v rule to move onto, so
+     * v was shipped at b844a486 on a narrower case: the hosts disagree in v
+     * and a bias at least makes them agree, which the device lane confirmed.
+     *
+     * v is not free, and its cost is larger than that commit recorded.  It
+     * charged 285 px across 179 lighting and material captures, isolated
+     * pixels at checkerboard cell corners where a u-tie and a v-tie coincide
+     * and the diagonal texel is the other colour.  Measured since against the
+     * bump disc, which was not in that sweep, v also costs Bump_env_lum
+     * 3,910 px.  The change is still net positive -- Point_params gains
+     * 12,027 px -- but by roughly 7,800 rather than 11,700.
+     * docs/investigations/edge-defect.md carries the measurements.
+     */
+    mstring_append(preflight,
+                   "const vec2 texelTieBias = vec2(1.0 / 262144.0, 1.0 / 262144.0);\n");
     pgraph_glsl_get_vtx_header(preflight, ps->opts.vulkan,
                              ps->state->smooth_shading,
                              ps->state->noperspective, true, false, false);
@@ -1703,6 +1825,28 @@ static MString* psh_convert(struct PixelShader *ps)
     }
 
     MString *clip = mstring_new();
+
+    if (ps->state->stipple) {
+        /*
+         * The pattern is a 32x32 bitmap of screen pixels, in unscaled
+         * surface coordinates. Each word holds one row as four bytes,
+         * leftmost byte first and most significant bit leftmost within a
+         * byte, so the pixel at x takes bit (x & 31) ^ 7. The rows run
+         * bottom up: the top row of the Stipple tests square, which sits
+         * at a multiple of 32, shows the last word of the pattern.
+         */
+        mstring_append(clip,
+            "/*  Polygon stipple */\n"
+            "{\n"
+            "  ivec2 sxy = ivec2(gl_FragCoord.xy) / surfaceScale;\n"
+            "  int srow = 31 - (sxy.y & 31);\n"
+            "  int sword = stipplePattern[srow >> 2][srow & 3];\n"
+            "  if (((sword >> ((sxy.x & 31) ^ 7)) & 1) == 0) {\n"
+            "    discard;\n"
+            "  }\n"
+            "}\n");
+    }
+
     int wc_count = ps->state->window_clip_count;
 
     if (wc_count > 0) {
@@ -1812,23 +1956,68 @@ static MString* psh_convert(struct PixelShader *ps)
                 "bc1 *= inv_bcsum;\n"
                 "bc2 *= inv_bcsum;\n"
                 /*
-                 * The interpolated delta is small; the vertex depth it is
-                 * added to can be up to 2^24, where a float32 has a ULP of a
-                 * whole unit. Summing them first rounds the fraction away --
-                 * ties-to-even at 2^20 turns .9375 into 1.0 -- and floor()
-                 * then lands one above hardware, which keeps the fraction in
-                 * fixed point. So the base's integer part is kept aside and
-                 * only its fraction rides along with the delta; zfloor is
-                 * exact wherever the delta itself is. Modelled against the
-                 * Depth buffer goldens: 0 of 126,796 pixels differ, from
-                 * 38,235 before. Issue #32.
+                 * Hardware keeps the depth fraction in fixed point; a float32
+                 * cannot, because a guest depth word runs to 2^24 where the
+                 * ULP is a whole unit. Keeping the base vertex's integer part
+                 * aside (#32) fixed the half of that which came from adding
+                 * the base in, but not the half that comes from the
+                 * interpolated delta: on the Depth buffer big quad the delta
+                 * itself reaches 5.6M, where the ULP is already 0.5, so the
+                 * products bc*(dz) have no room for a fraction either. floor()
+                 * then lands one *above* hardware -- never below, because the
+                 * base fraction being added in is positive -- and no amount of
+                 * splitting afterwards recovers it, the bits are gone at the
+                 * multiply.
+                 *
+                 * So the delta is carried as an unevaluated sum: each product
+                 * keeps the bits it dropped (fma against the rounded product,
+                 * the kahan_det trick above), the two are added with a
+                 * two-sum, and the floor is taken on the pair rather than on
+                 * the rounded head. Only the head's integer part is large;
+                 * once it is set aside with zhi, what remains is order 1 and
+                 * a float32 holds its fraction exactly.
+                 *
+                 * Modelled over the four quad geometries this suite draws,
+                 * against the same interpolation in double, that is exact on
+                 * 100% of samples where the old form managed 56-99%. Measured
+                 * on all 784 Depth buffer goldens it is worth rather less:
+                 * D24's differing pixels go 309,710 to 233,112, a quarter of
+                 * them. So this removes the float32 error and something else
+                 * accounts for the remaining three quarters -- most likely
+                 * where the depth is sampled rather than how it is summed,
+                 * since what is left is still capped at exactly one unit.
+                 * Issue #16, #32.
                  */
                 "precise float zhi = floor(vtxPos0.z);\n"
+                "precise float zd1 = vtxPos1.z - vtxPos0.z;\n"
+                "precise float zd2 = vtxPos2.z - vtxPos0.z;\n"
+                "precise float zp1 = bc1*zd1;\n"
+                "precise float zp2 = bc2*zd2;\n"
+                "precise float zt1 = fma(bc1, zd1, -zp1);\n"
+                "precise float zt2 = fma(bc2, zd2, -zp2);\n"
+                "precise float zdh = zp1 + zp2;\n"
+                "precise float zbv = zdh - zp1;\n"
+                "precise float zav = zdh - zbv;\n"
+                "precise float zdt = ((zp1 - zav) + (zp2 - zbv)) + (zt1 + zt2);\n"
+                "precise float zdn = floor(zdh);\n"
+                "precise float zbase = zhi + zdn;\n"
+                "precise float zrem = ((vtxPos0.z - zhi) + (zdh - zdn)) + zdt;\n"
+                "zrem += depthOffset;\n"
+                "zrem += depthFactor*triMZ;\n"
+                /*
+                 * zvalue keeps its original association. Only the fixed point
+                 * formats read zfloor; F16 and F24 take the *bit pattern* of
+                 * zvalue, and rebuilding it through the split above moves its
+                 * low bits. Measured: splitting zvalue too costs F24 3,686,518
+                 * channels and takes its worst error from 12,585 depth units
+                 * to 6,727,533, against the 79,522 channels the split wins on
+                 * D24. The split belongs to the floor, not to the value.
+                 */
                 "precise float zlo = (vtxPos0.z - zhi) + (bc1*(vtxPos1.z - vtxPos0.z) + bc2*(vtxPos2.z - vtxPos0.z));\n"
                 "zlo += depthOffset;\n"
                 "zlo += depthFactor*triMZ;\n"
                 "precise float zvalue = zhi + zlo;\n"
-                "precise float zfloor = zhi + floor(zlo);\n");
+                "precise float zfloor = zbase + floor(zrem);\n");
         }
 
         if (ps->state->depth_clipping) {
@@ -1933,10 +2122,14 @@ static MString* psh_convert(struct PixelShader *ps)
                                 "vec4 t%d = texture(texSamp%d, remap2DToCube(%s(pT%d.xyw)));\n",
                                 i, i, tex_remap, i);
                         } else {
+                            /* texelTieBias: see the note by its definition.
+                             * Scaled by w so that textureProj's own divide
+                             * leaves exactly the bias behind. */
                             mstring_append_fmt(
                                 vars,
-                                "vec4 t%d = textureProj(texSamp%d, %s(pT%d.xyw));\n",
-                                i, i, tex_remap, i);
+                                "vec4 t%d = textureProj(texSamp%d,\n"
+                                "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
+                                i, i, tex_remap, i, i, i);
                         }
                     } else if (ps->state->dim_tex[i] == 3) {
                         mstring_append_fmt(vars, "vec4 t%d = textureProj(texSamp%d, vec4(pT%d.xy, 0.0, pT%d.w));\n",
@@ -2161,9 +2354,17 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i-2, i-1, i);
 
             apply_border_adjustment(ps, vars, i, "dotSTR%d");
-            mstring_append_fmt(vars,
-                "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
-                i, i, tex_remap, i, ps->state->dim_tex[i] == 2 ? ".xy" : "");
+            if (dot_str_3d_is_cube(ps, i)) {
+                /* The whole direction goes in, as DOT_STR_CUBE does with its
+                 * own triple; a cubemap is never rect_tex, so no remap. */
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, dotSTR%d);\n", i, i, i);
+            } else {
+                mstring_append_fmt(vars,
+                    "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
+                    i, i, tex_remap, i,
+                    ps->state->dim_tex[i] == 2 ? ".xy" : "");
+            }
             break;
         case PS_TEXTUREMODES_DOT_STR_CUBE:
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_CUBE")) break;
@@ -2461,13 +2662,32 @@ static MString* psh_convert(struct PixelShader *ps)
             break;
         case DEPTH_FORMAT_F16:
             /* convert_f16_to_float, inverted: f16 is (f16 << 11) + 0x3C000000.
-             * Below that bias the encoding has nothing to say. F16 lives on a
-             * Z16 surface, which is D16_UNORM on every host, so it needs none
-             * of the Z24S8 scale dance -- 65535.0 is the format's own scale. */
+             * F16 lives on a Z16 surface, which is D16_UNORM on every host, so
+             * it needs none of the Z24S8 scale dance -- 65535.0 is the
+             * format's own scale.
+             *
+             * The flush-to-zero threshold is 2^-6, not the 2^-7 the bias
+             * suggests. Read the encoding as a float: the top four bits of the
+             * 16 are an exponent field added to 0x3C000000's exponent, and the
+             * low twelve are the mantissa. Exponent field zero -- every
+             * encoding below 0x1000 -- means *zero*, which is what
+             * convert_f16_to_float already says in its `f16 == 0` case, so the
+             * whole lowest binade [2^-7, 2^-6) has no representation. Encoding
+             * it as 1..4095 writes values hardware never produces.
+             *
+             * Bracketed on the 392 test Depth buffer oracle rather than
+             * reasoned from the bias: over the 49 `z16 FZy` depth captures
+             * silicon's smallest rasterised encoding is 4098, across 1,897,792
+             * pixels, with none below 4096; and at the 192,864 pixels where
+             * silicon writes 0 our encodings run 15 to 4094. 4094 below, 4098
+             * above, and 4096 is a binade boundary and not a fitted constant.
+             * Those 192,864 pixels are 97.9% of this cell's error; the rest of
+             * the surface, big quad included, is already bit-identical, which
+             * is what says the encoding itself is right. Issue #16, #52. */
             mstring_append(
                 ps->code,
                 "uint zbits = floatBitsToUint(max(zvalue, 0.0));\n"
-                "uint zf16 = zbits < 0x3C000000u ? 0u\n"
+                "uint zf16 = zbits < 0x3C800000u ? 0u\n"
                 "          : min((zbits - 0x3C000000u) >> 11, 0xFFFFu);\n"
                 "gl_FragDepth = float(zf16) / 65535.0;\n");
             break;
@@ -2735,6 +2955,14 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         }
 
         values->depthFactor[0] = zfactor;
+    }
+
+    if (locs[PshUniform_stipplePattern] != -1) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 4; j++) {
+                values->stipplePattern[i][j] = pg->stipple_pattern[i * 4 + j];
+            }
+        }
     }
 
     if (locs[PshUniform_surfaceScale] != -1) {

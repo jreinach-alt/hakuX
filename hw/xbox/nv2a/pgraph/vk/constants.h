@@ -398,7 +398,15 @@ static const BasicSurfaceFormatInfo kelvin_surface_color_format_map[] = {
 static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5] =
     {
-        // FIXME: Force alpha to zero
+        /*
+         * Measured 2026-09-12 (issue #48): the Z/O suffix describes the pad
+         * bits when the surface is sampled or displayed, NOT what the blend
+         * unit substitutes for the missing alpha. For blending, a Z variant's
+         * destination alpha behaves like a stored alpha -- its Blend surface
+         * golden is identical to A8R8G8B8's at a fixed coordinate, and we are
+         * already exact there. Forcing it to zero makes those captures worse.
+         * Only the O variant needs a forced one.
+         */
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -413,7 +421,14 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
      */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5] =
     {
-        // FIXME: Force alpha to one
+        /*
+         * Issue #48: this one is real. The blend unit reads this format's
+         * destination alpha as 1.0 -- solved from the goldens, where the
+         * result is S * Ad with df=ZERO and hardware's output is 255 where
+         * ours is S. Not yet fixed: the same captures are dominated by a
+         * two-draw pairing defect, so substituting the factor alone moves no
+         * number. See the issue before touching this.
+         */
         2,
         VK_FORMAT_A1R5G5B5_UNORM_PACK16,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -428,7 +443,15 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
     },
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8] =
     {
-        // FIXME: Force alpha to zero
+        /*
+         * Measured 2026-09-12 (issue #48): the Z/O suffix describes the pad
+         * bits when the surface is sampled or displayed, NOT what the blend
+         * unit substitutes for the missing alpha. For blending, a Z variant's
+         * destination alpha behaves like a stored alpha -- its Blend surface
+         * golden is identical to A8R8G8B8's at a fixed coordinate, and we are
+         * already exact there. Forcing it to zero makes those captures worse.
+         * Only the O variant needs a forced one.
+         */
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -440,7 +463,14 @@ static const SurfaceFormatInfo kelvin_surface_color_format_vk_map[] = {
      * format the hardware defines, 0x1 to 0xA, has an entry. */
     [NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8] =
     {
-        // FIXME: Force alpha to one
+        /*
+         * Issue #48: this one is real. The blend unit reads this format's
+         * destination alpha as 1.0 -- solved from the goldens, where the
+         * result is S * Ad with df=ZERO and hardware's output is 255 where
+         * ours is S. Not yet fixed: the same captures are dominated by a
+         * two-draw pairing defect, so substituting the factor alone moves no
+         * number. See the issue before touching this.
+         */
         4,
         VK_FORMAT_B8G8R8A8_UNORM,
         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,

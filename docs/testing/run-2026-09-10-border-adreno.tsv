@@ -1,3 +1,4 @@
+# NOTE 2026-09-12: the 2D_BorderTex_SZ after_px = 132 row below is a FAILING run of a ~46%-failure race (#44), not the post-fix residual. The true value is 0 px on the majority of runs, byte-identical to the golden. Measured over 24 runs; see nv2a_issues.toml #44.
 # Texture_border on the Nova. after = VkImage created at the bordered extent (max(16,2n)); before = logical extent (3439aaab75 + #31).
 # test	after_px	before_px
 2D	50772	61678

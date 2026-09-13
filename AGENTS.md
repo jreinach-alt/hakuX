@@ -37,6 +37,25 @@ by reading source; start by reproducing the measurement.
 
 ## Non-negotiables
 
+**Never trigger CI to check your own work.** GitHub Actions minutes here are a
+finite monthly budget, and exhausting them means no CI when a release actually
+needs it. CI is for full build releases, run on demand when the user asks.
+Concretely: `android.yml`, `desktop.yml` and `nv2a-index.yml` fire on
+`push: branches: [master]` and on `pull_request:`, so a push costs runs only if
+the branch has an open PR. `claude/es-de-launcher-disc-error-ojnl14` has no PR
+-- **do not open one for it**. Put `[skip ci]` in the commit subject for
+anything that may reach a PR-backed branch, and never use `gh workflow run`.
+
+The obligation that replaces it is local: **build both Android and desktop.**
+The Android build cannot catch a desktop link error, because the same core
+sources compile for both and an Android-only symbol resolves on one and not the
+other. That is not hypothetical -- it broke the desktop gate on 2026-09-12 and
+cost the other lane a CI run. `docs/testing/check_android_guards.py` catches
+that specific class with no toolchain and no CI; run it before pushing. A local
+desktop build additionally needs one system package
+(`dependency('libcurl')` is unconditional in this fork and falls back to a
+subproject requiring openssl), so ask rather than assume it works.
+
 **Build before you claim.** The native build takes ~20s incremental once warm.
 An unbuilt change is a hypothesis. This has bitten repeatedly: a fix that looked
 obviously correct failed to compile, and another compiled but hung the emulator
@@ -48,6 +67,27 @@ pgraph suite exists precisely so that claims are checkable. Run it.
 **Change one thing at a time.** A batch of four plausible changes landed together
 once; one of them broke boot and all four looked suspect for an hour. Bisecting
 cost more than testing each would have.
+
+**Disposition an item, update its issue.** The issue log is the project's
+memory; a finding that lives only in a commit message, a doc or a PR thread is
+one nobody will find before re-deriving it. Whenever you land a fix, revert one,
+kill a hypothesis, or re-rank an entry, say so on the issue that owns it, and
+open one if none does.
+
+This is not bookkeeping. #41 recorded, four days before the fact, both the
+measurement for the radial fog cell and the argument against implementing it.
+I did not read it, spent an afternoon deriving a worse answer, shipped it and
+reverted it. The largest entry on the board -- the `Blend_tests` fifth quad, 6.5M
+structural channels and five dead mechanisms -- existed only as prose in a PR
+thread, which is why the same mechanisms were proposed twice from two lanes.
+
+Two habits follow from it:
+
+- **Read the issue before deriving a mechanism.** Search the log for the suite
+  and the register first. It costs a minute against an afternoon.
+- **Record negatives, not just fixes.** A mechanism that measured zero is worth
+  more than silence: it stops the next person spending a build on it. Say what
+  was tried, what it moved, and against which oracle.
 
 **Commit as you go.** Do not end a turn with a dirty working tree. Each commit
 should be one coherent change with a message explaining *why*, so that a
@@ -61,6 +101,14 @@ load; a handheld will not trickle-charge against that draw, so an abandoned run
 flattens the battery instead of merely wasting it. This is not hypothetical — a
 Nova was found looping the Crimson Skies intro long after the test that started
 it had been forgotten.
+
+**`pgrep qemu-system-i386` never matches, and the false negative is dangerous.**
+Linux truncates a process's `comm` to fifteen characters, so the desktop
+emulator appears as `qemu-system-i38`. `pgrep -c qemu-system-i386` therefore
+returns 0 while a run is in full flight, which reads as "the emulator is free"
+and invites starting a second one on top of the first. Match the truncated name,
+or check with `ps -eo comm= | grep qemu`. (This is a different trap from the
+`pgrep -f` one in `CLAUDE.md`, which matches your own shell; both bite.)
 
 ```bash
 trap 'adb -s "$SERIAL" shell am force-stop "$PKG"' EXIT   # in every script
@@ -76,6 +124,16 @@ A long-running batch that legitimately owns the device holds a lease by
 touching `/tmp/hakux-device-lease` at least once every 90s; the hook then
 defers and says so. The lease is deliberately short-lived, so a batch that dies
 stops suppressing the hook on its own.
+
+**This fires on a person's session too, and that is easy to miss.** The hook
+runs at the end of *every* turn, so replying to someone who is mid-game kills
+their game. It cost several Galleon sessions in one evening, each behind an
+unskippable two-minute intro, before anyone noticed the pattern -- from the
+outside it looks exactly like the emulator crashing, and the log line to look
+for is `Killing <pid>:<pkg>:xemu ... stop <pkg> due to from pid N`, which is a
+force-stop request and not a fault. Before handing the device to someone to
+drive, start `docs/testing/hold_device.sh <minutes>` in the background, and
+`hold_device.sh release` when they are done.
 
 Note this is not only a crash-path concern — because of issue #20 a *successful*
 run does not exit by itself either.
@@ -246,6 +304,7 @@ Hard-won operational facts, each of which cost real time:
 | `e:\nxdk_pgraph_tests` accumulates across runs | Use `extract_results.py --newer-than`, with a cutoff taken from the image's own newest timestamp — the guest clock is offset from host time. |
 | Neither `--newer-than` nor the FATX mtime proves a test ran | Files that were never rewritten come through the filter, **and their mtimes advance anyway** — an image whose tests provably never executed still showed fresh timestamps. Set `enable_progress_log: true` in the disc config and read `pgraph_progress_log.txt`: it names every test the suite started and finished. That is the only trustworthy record. |
 | A run cut off by your wait loop is not a completed run | The emulator does not exit on guest power-off (#20), so waiting for the process to die always hits your timeout. Confirm completion from the progress log's "Testing completed normally", never from the run's duration. |
+| A mashed skip sequence can end the run without crashing | Mashing A, B and Start through a title's intro once ended at the game library. B is **not** the cause and is not a crash: pressed alone it leaves the emulator running, same pid, nothing in the crash buffer. The likely path is the guest itself being powered off from its own menu, which the emulator handles by exiting the process (#20's fix). Treat "we are suddenly at the library" as the guest exiting, not as a fault, and confirm with `pidof <pkg>:xemu` before chasing it. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
 
 ## Sharing one device between a long sweep and active work

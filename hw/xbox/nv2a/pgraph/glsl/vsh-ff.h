@@ -28,4 +28,7 @@
 void pgraph_glsl_gen_vsh_ff(const VshState *state, MString *header,
                             MString *body);
 
+void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
+                                          MString *header, MString *body);
+
 #endif

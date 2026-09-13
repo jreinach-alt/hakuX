@@ -1276,6 +1276,8 @@ void pgraph_vk_bind_shaders(PGRAPHState *pg)
                 pgraph_prim_rewrite_get_output_mode(
                     (enum ShaderPrimitiveMode)pg->primitive_mode,
                     new_state.geom.polygon_front_mode);
+            /* Follows the primitive, so it has to be refreshed with it. */
+            new_state.psh.stipple = pgraph_glsl_polygon_stipple_enabled(pg);
             new_state.vsh.compressed_attrs = pg->compressed_attrs;
             new_state.vsh.uniform_attrs = pg->uniform_attrs;
             new_state.vsh.swizzle_attrs = pg->swizzle_attrs;
