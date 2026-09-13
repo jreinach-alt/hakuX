@@ -127,8 +127,51 @@ int pgraph_glsl_window_clip_count(PGRAPHState *pg)
     return count;
 }
 
+/*
+ * #43's pass selector. Renderer state rather than guest state: a draw does not
+ * know which of its two passes it is, so this cannot come off a register and
+ * has no business in PshState, where it would split the shader cache.
+ *
+ * A file static is sound here and the reason is worth writing down rather than
+ * assumed: only one renderer is live in a process, and the value is set and
+ * consumed within one draw's uniform staging on the thread that owns the draw
+ * (the render thread when OPT_ASYNC_COMPILE defers compilation, the vCPU
+ * thread otherwise). It is never read across a draw boundary -- every reader
+ * is reached from pgraph_glsl_set_psh_uniform_values, which the renderer calls
+ * once per pass immediately after setting it.
+ */
+static int g_signed_blend_pass = SIGNED_BLEND_PASS_LOW;
+
+void pgraph_glsl_set_signed_blend_pass(int pass)
+{
+    assert(pass == SIGNED_BLEND_PASS_LOW || pass == SIGNED_BLEND_PASS_HIGH);
+    g_signed_blend_pass = pass;
+}
+
+int pgraph_glsl_get_signed_blend_pass(void)
+{
+    return g_signed_blend_pass;
+}
+
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
+    /*
+     * #43. Gated on BLEND_EN as well as the equation: with blending disabled
+     * the blend unit contributes nothing, the source reaches the framebuffer
+     * unmodified whatever the equation field happens to say, and masking it
+     * would corrupt a draw that is currently correct. DrawColorStack in
+     * blend_tests.cpp writes its alpha with blending off and the equation
+     * still programmed, so this is a case the corpus actually contains.
+     */
+    {
+        uint32_t blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        uint32_t eqn = GET_MASK(blend, NV_PGRAPH_BLEND_EQN);
+        state->signed_blend_fold =
+            (blend & NV_PGRAPH_BLEND_EN) &&
+            (eqn == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||
+             eqn == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED);
+    }
+
     state->window_clip_exclusive = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                                    NV_PGRAPH_SETUPRASTER_WINDOWCLIPTYPE;
     state->window_clip_count = pgraph_glsl_window_clip_count(pg);
@@ -3219,6 +3262,55 @@ static MString* psh_convert(struct PixelShader *ps)
         }
     }
 
+    /*
+     * #43: the signed blend fold.
+     *
+     * MUST come after the alpha test above, which reads fragColor.a. The test
+     * is a property of the fragment, not of the pass, so both passes have to
+     * evaluate it on the same unmasked alpha -- mask first and the two passes
+     * kill different fragments, which would be a defect with no pixel-count
+     * signature distinguishable from this fix simply not working.
+     *
+     * Silicon reads the source byte as SIGNED under FUNC_ADD_SIGNED and
+     * FUNC_REVERSE_SUBTRACT_SIGNED:
+     *
+     *     signed(S) = S - 256 if S >= 128 else S
+     *     FUNC_ADD_SIGNED              = clamp(signed(S) + D, 0, 255)
+     *     FUNC_REVERSE_SUBTRACT_SIGNED = clamp(D - signed(S), 0, 255)
+     *
+     * A UNORM colour attachment clamps the fragment output to [0,1] BEFORE
+     * blending, so the negative half cannot be handed to the blend unit at
+     * all. Splitting the source by sign across two passes moves the
+     * discontinuity here, into a place that can branch per channel, and leaves
+     * each pass a continuous map the blend unit can express:
+     *
+     *     LOW  pass   f1 = S       if S < 128 else 0
+     *     HIGH pass   f2 = 256 - S if S >= 128 else 0
+     *
+     * Exactly one of f1, f2 is non-zero for any S, so the other pass adds or
+     * subtracts zero -- an exact identity. That is what makes the intermediate
+     * clamp harmless, makes the passes commute, and lets all four channels
+     * ride a single pass instead of one pass per (channel, sign).
+     *
+     * Rounding is not incidental: the byte is recovered with round(), and f2 is
+     * built as 256 - S in INTEGER units before normalising, so both halves land
+     * exactly on the byte silicon used. Computing 1.0 - fragColor would be off
+     * by one step for every channel.
+     */
+    if (ps->state->signed_blend_fold) {
+        mstring_append(
+            ps->code,
+            "// #43 signed blend fold: split the source by its sign bit\n"
+            "{\n"
+            "    ivec4 sb = ivec4(round(clamp(fragColor, 0.0, 1.0) * 255.0));\n"
+            "    ivec4 sbHigh = ivec4(greaterThanEqual(sb, ivec4(128)));\n"
+            "    ivec4 sbSel = (signedBlendPass == 0)\n"
+            "                      ? sb * (ivec4(1) - sbHigh)\n"
+            "                      : (ivec4(256) - sb) * sbHigh;\n"
+            "    fragColor = vec4(sbSel) / 255.0;\n"
+            "}\n");
+    }
+
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
         if (strcmp(ps->var_refs[i], "r0") == 0) {
@@ -3442,6 +3534,17 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
                                         const PshUniformLocs locs,
                                         PshUniformValues *values)
 {
+    /*
+     * #43. The uniform block is emitted from PshUniformInfo unconditionally, so
+     * this is declared in every shader and the loc is -1 only where reflection
+     * dropped it as unused. Staging it costs one int and is harmless for
+     * unfolded draws: the renderer leaves the selector at LOW except across a
+     * signed draw's HIGH pass, so the value is stable and cannot make an
+     * unrelated draw's uniform hash change.
+     */
+    if (locs[PshUniform_signedBlendPass] != -1) {
+        values->signedBlendPass[0] = pgraph_glsl_get_signed_blend_pass();
+    }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {
             uint32_t constant[2];
