@@ -7051,20 +7051,154 @@ void pgraph_vk_flush_draw(NV2AState *d)
         return;
     }
 
+    /*
+     * A DIRECT COUNTER FOR THE MECHANISM, because the first arm could not tell
+     * "pass 2 never emitted" from "pass 2 emitted and the arithmetic is wrong".
+     *
+     * That arm (5c52049f66 -> 322adc3a01) came back with every number fitting
+     * ONE model: arm B behaves as a single pass carrying the LOW mask.
+     * source < 128 went exact for BOTH equations, which proves the shader mask
+     * and its placement after the alpha test are right; source >= 128 stayed
+     * 365,491/365,491 wrong under SADD, and under SREVSUB fell to exactly
+     * 125,704 -- which is the D=127 subset, the D=255 channels being
+     * ACCIDENTALLY right because clamp(255 + anything) saturates to 255. An
+     * independent closed-form recovery counted 125,360 high channels at D=127
+     * from the goldens alone, agreeing to 0.27%.
+     *
+     * A pixel total cannot separate those two worlds and this can: `emitted`
+     * counts passes that actually reached a vkCmdDraw, so `folds` * 2 ==
+     * emitted is the identity that must hold. If it does and the pixels are
+     * still wrong, the arithmetic is wrong; if it does not, the second pass is
+     * being dropped and the arithmetic was never under test.
+     */
+    static unsigned long folds, emitted, empty;
+    folds++;
+
+    /*
+     * PASS 1 CONSUMES THE INLINE VERTEX STATE, so pass 2 has to have it back.
+     *
+     * The inline_buffer branch below calls
+     * pgraph_vk_bind_vertex_attributes_inline(), which builds the active
+     * attribute list from every attribute whose `inline_buffer_populated` is
+     * set, and then CLEARS that flag on each one it consumed. Run a second
+     * time, the bind therefore finds zero populated attributes, binds no
+     * vertex data and draws nothing -- which is precisely what the first arm
+     * measured: on txt_A8R8G8B8 the two equations' captures were identical on
+     * 125,360 of 125,360 source>=128 channels and equal to the DESTINATION on
+     * all of them, i.e. pass 1 alone with f1 = 0.
+     *
+     * (That also made SREVSUB look 121,989 px better while nothing worked: at
+     * D = 255 the correct answer saturates to 255 and so does a bare
+     * destination, so those channels were accidentally right.)
+     *
+     * Saving and restoring the flags is enough because it is the only draw
+     * state this file consumes -- pg->inline_buffer_length and the other
+     * lengths are reset by the method handler in pgraph.c, after the whole
+     * draw, not here.
+     */
+    bool saved_populated[NV2A_VERTEXSHADER_ATTRIBUTES];
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        saved_populated[i] = pg->vertex_attributes[i].inline_buffer_populated;
+    }
+
     static const int passes[] = { SIGNED_BLEND_PASS_LOW,
                                   SIGNED_BLEND_PASS_HIGH };
     for (int i = 0; i < ARRAY_SIZE(passes); i++) {
         pgraph_glsl_set_signed_blend_pass(passes[i]);
         r->pipeline_state_dirty = true;
         r->uniforms_changed = true;
+        for (int j = 0; j < NV2A_VERTEXSHADER_ATTRIBUTES; j++) {
+            pg->vertex_attributes[j].inline_buffer_populated =
+                saved_populated[j];
+        }
+
+        /*
+         * COUNT THE STATE THE DRAW ACTUALLY GATES ON, not a proxy for it.
+         * The first version of this counter tested the inline/draw-array
+         * LENGTHS, which survive both passes untouched -- so it would have
+         * reported emitted == 2*folds on a run where pass 2 drew nothing, and
+         * sent the next edit after the arithmetic. `populated` is the quantity
+         * pgraph_vk_bind_vertex_attributes_inline consumes, so it is the one
+         * that can be zero while a length is not.
+         */
+        int populated = 0;
+        for (int j = 0; j < NV2A_VERTEXSHADER_ATTRIBUTES; j++) {
+            populated += pg->vertex_attributes[j].inline_buffer_populated;
+        }
+        bool have_work = populated || pg->draw_arrays_length ||
+                         pg->inline_elements_length || pg->inline_array_length;
+
         flush_draw_one_pass(d);
+
+        if (have_work) {
+            emitted++;
+        } else {
+            empty++;
+        }
+    }
+
+    if ((folds % 64) == 0) {
+        /*
+         * Tag "hakuX", NOT "hakuX-lane", and the reason is measured rather
+         * than preferred.
+         *
+         * `hakuX-lane` is reserved in dispatcher.sh's LOGCAT_SPEC for exactly
+         * this purpose, and the reservation is real: the snapshot under
+         * $DISPATCH_DIR/bin carries it. But the dispatcher is a long-lived
+         * process that re-execs from that snapshot, and the instance serving
+         * the queue was started BEFORE the reservation landed -- so the spec it
+         * actually applied to arm 1789339282 was
+         *
+         *   ... hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I ... *:S
+         *
+         * with no hakuX-lane in it, and that arm's logcat holds zero
+         * [signfold] lines. Reserved on disk, silenced in practice, until the
+         * dispatcher restarts. `hakuX:I` is in both the old and new spec, and
+         * an earlier arm printed this counter under it successfully, so it is
+         * the tag with evidence behind it rather than the tag with intent.
+         *
+         * Keep the [signfold] prefix either way: it is what makes the line
+         * greppable out of a shared tag.
+         *
+         * Core-QEMU fprintf(stderr) never reaches logcat at all, and a tag the
+         * spec does not name is dropped by `*:S` -- an earlier revision logged
+         * to "hakuX-signfold" and produced the same silence, which is
+         * indistinguishable from the mechanism never firing.
+         *
+         * `staged_low`/`staged_high` count uniform STAGINGS, not pass
+         * requests. Requesting pass 2 and pass 2's uniform reaching the GPU
+         * are different events, and ring 0's regression -- alpha 226 -> 255
+         * against a golden of 226, which is clamp(D + 127 + 127) saturating,
+         * the low half applied TWICE -- is what a pass 2 running with the LOW
+         * mask would produce. staged_high == 0 names that outright;
+         * staged_high == folds says the uniform arrived and the fault is
+         * elsewhere.
+         */
+        unsigned long slo, shi;
+        pgraph_glsl_get_signed_blend_staged(&slo, &shi);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[signfold] folds=%lu emitted=%lu empty=%lu "
+                            "staged_low=%lu staged_high=%lu "
+                            "(want emitted==2*folds, empty==0, "
+                            "staged_high==folds)",
+                            folds, emitted, empty, slo, shi);
+#else
+        fprintf(stderr,
+                "[signfold] folds=%lu emitted=%lu empty=%lu "
+                "staged_low=%lu staged_high=%lu "
+                "(want emitted==2*folds, empty==0, staged_high==folds)\n",
+                folds, emitted, empty, slo, shi);
+#endif
     }
 
     /*
-     * Leave the selector at LOW so an unfolded draw stages a stable value and
-     * cannot be given a spurious uniform change by whatever ran before it.
+     * Back to NONE, which is what every unfolded draw must stage. Leaving it at
+     * LOW was survivable only because set_psh_uniform_values now recomputes
+     * foldability from the live register anyway -- but a selector that says
+     * "low half" outside a fold is a lie waiting to be believed.
      */
-    pgraph_glsl_set_signed_blend_pass(SIGNED_BLEND_PASS_LOW);
+    pgraph_glsl_set_signed_blend_pass(SIGNED_BLEND_PASS_NONE);
     r->pipeline_state_dirty = true;
     r->uniforms_changed = true;
 }

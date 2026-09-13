@@ -173,9 +173,10 @@ static const Field fields[] = {
     F(alpha_test,        K_BOOL, 0, 1),
     F(alpha_func,        K_INT, ALPHA_FUNC_NEVER, ALPHA_FUNC_ALWAYS),
 
-    /* #43's signed blend fold. Must change the GLSL, or the two-pass
-     * construction never reaches the GPU and the arm measures nothing. */
-    F(signed_blend_fold, K_BOOL, 0, 1),
+    /* #43's fold is NOT a PshState field any more -- it rides the
+     * signedBlendPass uniform, because keying it on cached shader state meant
+     * keying it on NV_PGRAPH_BLEND, which the shader-dirty check does not
+     * watch. There is deliberately nothing to vary here. */
 
     F(window_clip_exclusive, K_BOOL, 0, 1),
     F(window_clip_count,     K_INT, 0, 8),

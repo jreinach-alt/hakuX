@@ -76,21 +76,26 @@ typedef struct PshState {
     enum PshAlphaFunc alpha_func;
 
     /*
-     * #43: the guest programmed FUNC_ADD_SIGNED or
-     * FUNC_REVERSE_SUBTRACT_SIGNED, whose source byte silicon reads as SIGNED.
-     * Set from NV_PGRAPH_BLEND, so it is a pure function of guest state and
-     * keys the shader cache like every other field here.
+     * #43's signed fold is deliberately NOT a field here, and the reason is a
+     * defect this file caused once already.
      *
-     * When set, the generated shader masks fragColor by the sign of each
-     * channel's source byte, selecting which half with the `signedBlendPass`
-     * uniform, and the renderer emits the draw TWICE. Which half is which, and
-     * why two passes of ordinary blend state reproduce a discontinuous map, is
-     * in pgraph_vk_effective_blend_reg() in vk/draw.c.
+     * It was `bool signed_blend_fold`, set from NV_PGRAPH_BLEND. But
+     * pgraph_glsl_check_shader_state_dirty() decides whether to rebuild
+     * ShaderState from a FIXED register list, and NV_PGRAPH_BLEND is not in
+     * it. So a guest that changes blending without touching any watched
+     * register keeps the cached shader -- and blend_tests.cpp's DrawQuad does
+     * exactly that, calling SetBlend(false) for its RGB half between two
+     * blended alpha draws. The folded shader was then reused on a draw with
+     * blending OFF, where green 0xCC = 204 sits above the sign bit, got masked
+     * to f1 = 0, and went to the framebuffer unblended: DrawAlphaStack's ring
+     * 0 measured G 204 -> 0 against a golden of 204 on all 11,280 px.
      *
-     * This flag only says "generate the masking code". It is the PASS that
-     * picks a half, and a pass is not guest state -- hence the uniform.
+     * A cache key must not depend on an input the invalidation does not watch.
+     * Adding NV_PGRAPH_BLEND to that list would fix this instance and leave the
+     * class open for the next field, so the fold rides the `signedBlendPass`
+     * uniform ALONE -- computed from the live register every time uniforms are
+     * staged, where nothing can be stale.
      */
-    bool signed_blend_fold;
 
     bool window_clip_exclusive;
     int window_clip_count;
@@ -184,11 +189,25 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
  * before staging uniforms for each pass, on the thread that owns the draw.
  */
 enum {
-    SIGNED_BLEND_PASS_LOW = 0,
-    SIGNED_BLEND_PASS_HIGH = 1,
+    /*
+     * NONE is the value every ordinary draw stages, and it must be 0 so that a
+     * shader whose uniform was never written behaves as an unfolded draw.
+     */
+    SIGNED_BLEND_PASS_NONE = 0,
+    SIGNED_BLEND_PASS_LOW = 1,
+    SIGNED_BLEND_PASS_HIGH = 2,
 };
 
 void pgraph_glsl_set_signed_blend_pass(int pass);
 int pgraph_glsl_get_signed_blend_pass(void);
+
+/*
+ * How many times each half was STAGED into a uniform buffer. A pass being
+ * requested and a pass's uniform reaching the GPU are different events, and
+ * #43's ring-0 regression cannot be told from an arithmetic error without
+ * separating them.
+ */
+void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
+                                         unsigned long *high);
 
 #endif
