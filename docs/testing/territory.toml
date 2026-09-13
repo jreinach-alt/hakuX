@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 9
-updated_utc = "2026-09-13T14:50:00Z"
+wave = 10
+updated_utc = "2026-09-13T15:05:00Z"
 
 [lane.interp]
 issues = ["57", "38"]
@@ -66,6 +66,17 @@ note = "#69: hakux_tb_generated counts CALLS (5:1 recycle) and hakux_tb_invalida
 issues = ["34", "39", "51", "60", "62", "66"]
 files = ["hw/xbox/nv2a/pgraph/gl/*.c", "target/**", "ui/**", "audio/**", "tests/**"]
 note = "Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
+
+[lane.dxt1]
+issues = ["6"]
+files = ["hw/xbox/nv2a/pgraph/s3tc.c", "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/buffer.c"]
+note = "#6's ordered dither landed (402,999 -> 34,911 px). What remains is a stated defect: a code of exactly 1 decodes to 0 where the model says 8, and only 637 of 1,342 residual texels are code-1 -- so the other ~705 are a second thing and both halves are in scope."
+
+[lane.overextent]
+issues = ["67"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
+note = "SCOPE-FIRST lane. #67's fix file is NOT known -- the over-extent could be in the viewport/scissor transform, the vertex pipeline, or vk/draw.c which the #54 lane holds. Briefed to establish the origin and REPORT before editing, and to stop if it lands in a claimed file. The question worth more than the fix: does the fill path have this generally? If so it is far larger than #67's 1.44M px."
 
 [free]
 files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c",
