@@ -538,6 +538,31 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## Let the gate's exit code decide something
+
+Running a check and then not letting its result change what you do is worse
+than not running it: you have paid for the information and then produced a
+commit that looks checked.
+
+Twice on 2026-09-13 the orchestrator chained `git add && git commit &&
+git push` past a gate that had just printed FAIL -- once on a stale nv2a
+index, once on a territory file listing one path as both claimed and free.
+Both times the gate was correct, both times the push went out, and both times
+the output *said so* two lines above the push. The `&&` chain made the gate's
+verdict decorative.
+
+So: put the gate in the condition, not in the transcript.
+
+    if python3 docs/testing/check_territory.py; then
+        git commit ... && git push ...
+    else
+        echo "GATE FAILED -- not pushing"
+    fi
+
+And when reading a multi-gate script like `preflight.sh`, read the VERDICT
+line, not the last `ok` you happen to see -- its per-gate lines print in order
+and a passing gate can be the last thing above a failing summary.
+
 ## A checker must have no side effects on the tree it checks
 
 `check_territory.py` was added on 2026-09-13 to catch a stale territory
