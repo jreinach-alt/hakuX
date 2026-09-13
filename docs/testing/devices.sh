@@ -12,9 +12,20 @@
 # byte-identical, zero differing**. Same kalama/Adreno 740, same Turnip build,
 # same output to the byte.
 #
+# THE SCOPE OF THAT CLAIM, because it has since been cited past its evidence.
+# The check ran `Texture DXT` + `Surface clip` on the STOCK disc. It has never
+# been run on the interactive disc, nor on 1,673 captures, nor -- and this is
+# the sharper limit, named by the lane that wanted to lean on it -- on any
+# capture class involving `_ZB` zeta READBACKS or 64x256 render-to-texture
+# blits. `Blend tests`'s TestDetailed does three RT blits per capture through
+# one guest address, so equivalence on colour-buffer suites says nothing about
+# readback timing, which is precisely the mechanism #50 is about.
+#
 # So a result from either device may be compared with a result from the other,
 # and the pairing machinery below is now an efficiency measure rather than a
-# correctness one. Two things nonetheless stay exactly as they were:
+# correctness one -- FOR THE CAPTURE CLASSES THE CHECK COVERED. Outside them,
+# "the devices are equivalent" is a plausible assumption and not a measured
+# one, which is the distinction this file exists to keep. Two things nonetheless stay exactly as they were:
 #
 #   - every result still records device_label, because the claim is about
 #     these two devices on this driver today, and the cheapest way to discover

@@ -1031,6 +1031,28 @@ behaviour, ask which queued measurements the change re-defines.** Requests
 already in the queue were registered against the old behaviour, and a
 prediction bound by content hash does not notice that the world moved under it.
 
+**And the FAIL case is worse than unattributable.** A lane sharpened this
+better than the entry above did: its registration named the world in which the
+leg fails -- *"FAILS IF the disc is non-deterministic on TestDetailed"* -- and
+with a split pair a failure is **no longer evidence for that named world**,
+because a device difference produces the same signature. So the change did not
+merely confound the measurement, it **retroactively reduced a bound
+prediction's diagnosticity.**
+
+That is a failure class the registration machinery was never built for. Every
+guard in `request.sh` and `ab_compare.py` protects against **the prediction
+changing** -- TAMPERED, POST-HOC, UNBOUND, the content hash taken at queue
+time. Nothing binds **the execution environment the prediction assumed**. An
+infrastructure change landing between queue and claim leaves the hash intact,
+the leg unedited, and its diagnostic power quietly lower, and no check
+anywhere notices.
+
+Two partial answers now exist and neither is complete: `ab_compare` warns when
+the arms' `device_label` or `scorer_rev` differ, and `affinity.py` records a
+note when it declines a pin. Both are detection after the fact. The discipline
+is the durable part -- before changing anything the scheduler does, read the
+queue.
+
 ## An agent worktree is created on a STALE base -- rebase before doing anything
 
 Measured on 2026-09-13, across every worktree this campaign has created:
