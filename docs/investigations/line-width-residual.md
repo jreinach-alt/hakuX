@@ -270,3 +270,108 @@ which is a primitive-decomposition question and partly the driver's to answer,
 not ours. The remaining quarter needs generated line geometry, for the centre
 snap and the sub-pixel dashes both — the change `line-width.md` already priced
 and declined.
+
+> Superseded on 2026-09-13 for the centre, which turns out to be a constant and
+> to need no geometry at all. The sub-pixel dashes still do. See below.
+
+---
+
+# 2026-09-13: it is not a snap, and it costs one line
+
+Everything above about the *width* and the *footprint* stands. The section on
+the centre does not, and the way it went wrong is the same shape as the stale
+capture set at the top of this file: **a model was fitted where it could not be
+falsified, and then relied on.**
+
+## The mistake
+
+The centre was read off one segment: the quad strip's left edge, vertical at
+screen x = 160.0. Golden lights the columns of a line centred at 160.5 there
+and we light those of one centred at 160.0, 18/18 widths each. That is solid.
+
+The conclusion drawn from it — *silicon snaps the line's centre to the nearest
+pixel centre* — is not, because **160.0 is an integer**. A snap to the nearest
+pixel centre and a constant shift of +0.5 along x both land on 160.5 there.
+The two models are indistinguishable on that segment at every width, and the
+segment was the only evidence. The write-up went further and said no constant
+translate could reproduce it, illustrating with 160.3 → 160.5 and 160.7 →
+160.5 — numbers that appear nowhere in the test. **The illustration was of the
+model, not of a measurement**, and it carried the load of a measurement: it is
+what put "needs generated line geometry" on the recommendation.
+
+## Two segments that do falsify it
+
+**A vertical edge on a half-integer x.** The triangle fan's hub-to-v4 edge runs
+from screen (318.5, 253) to (318.5, 176.5). A half-integer is *already a pixel
+centre*, so a snap leaves it exactly where it is while a constant +0.5 moves it
+to 319.0 — and the parity of the disagreeing widths flips with it, even widths
+differing instead of odd. Only the run's left boundary is usable (other fan
+edges merge into it from the right) and only up to width 9 (past that the run
+grows back into the hub), which is enough:
+
+| width | golden lo | ours lo | cx=318.5 | cx=319.0 | |
+|---:|---:|---:|---:|---:|---|
+| 3 | 317 | 317 | 317 | 317 | |
+| 4 | 317 | 316 | 316 | 317 | discriminating |
+| 5 | 316 | 316 | 316 | 316 | |
+| 6 | 316 | 315 | 315 | 316 | discriminating |
+| 7 | 315 | 315 | 315 | 315 | |
+| 8 | 315 | 314 | 314 | 315 | discriminating |
+| 9 | 314 | 314 | 314 | 314 | |
+
+Golden fits a centre in **(318.500, 319.000]**, 7/7. Ours fits **(318.000,
+318.500]**, 7/7. Silicon moved a line that was already on a pixel centre.
+**It is a translate, and the snap is dead.**
+
+**A near-horizontal edge.** The polygon's closing edge runs from screen
+(477, 278.5) to (378, 280); column 399 crosses it at y = 279.674, far from
+either end. Over sixteen widths golden and our own output light **exactly the
+same rows, 16/16**, both fitting a centre in (279.500, 280.000]. A +0.5 in y
+would move every odd width by a row. A snap to the nearest pixel centre would
+move width 4 by one — the snapped centre 279.5 lights rows 277–280 where the
+goldens light 278–281. The goldens do neither.
+
+So the rule is **+0.5 in x, nothing in y**, and both halves are measured rather
+than assumed by symmetry. `docs/testing/line_footprint.py --edge` now reports
+all three segments and fits the centre as an *interval intersected over
+widths*, because a single width pins the centre only to within a whole pixel
+— which is the resolution at which the original mistake becomes invisible.
+
+## Why the asymmetry is not suspicious
+
+It reads oddly until you notice that `Fill_0000.0` cannot see it either. A
+filled quad whose boundary sits on an integer x lights the same columns whether
+its edge is at 160.0 or 160.5: the fill rule takes pixel centres in `[left,
+right)`, and both boundaries move from lying *between* centres to lying *on*
+one of them without changing which centres are enclosed. So a half-pixel
+convention difference in x is invisible to every axis-aligned fill in the
+corpus, and the coverage-exact `Fill_0000.0` is evidence about the fill rule,
+not about the vertex path's x convention. Which of "the line rasteriser biases
+x" and "the whole pipeline is half a pixel out in x and only lines can tell"
+is true is **not decided by this suite**, and the fix is written for the
+former: gated on the pipeline rasterising lines, so nothing else can move.
+
+## The fix
+
+`VkViewport.x = 0.5 * surface_scale_factor` on pipelines that rasterise lines,
+in `pgraph_vk_line_centre_bias_x()` in `vk/draw.c`. Not the vertex position:
+the vertex path is shared with fills, `glsl/vsh.c` would move every draw, and
+the viewport is *dynamic* state, which matters because
+`VK_EXT_extended_dynamic_state3` makes the static rasteriser state dead on
+Turnip. The bias reads `geom.polygon_front_mode` and `geom.primitive_mode` —
+the same two fields the pipeline's `polygonMode` and topology come from — so it
+is a pure function of the pipeline key, needs no key of its own, and cannot go
+stale: any draw crossing into or out of line rasterisation necessarily changes
+the pipeline, and both places that program a viewport re-issue it on a bind.
+
+The GL renderer cannot carry it. `glViewport` takes integers.
+
+## What this does not touch
+
+The 76.3% edge-priority class sits **on top of** this one and will not move
+with it — the classes overlap and cannot be subtracted. Nor do the sixteen
+sub-2px widths, which the device's own `lineWidthRange[0] = 1.0` and
+`lineWidthGranularity = 0.5` decide, and which still need generated geometry
+for silicon's dashes. And `LINE_LOOP` still carries 9,696 structural channels
+at width 63 with an order we already match, so `Line_0016.0`'s `LineLoop`
+cluster remains the clean probe for whatever is left after both.
