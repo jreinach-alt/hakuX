@@ -180,14 +180,32 @@ the monitor path. So candidate B of the assessment — HRTF headroom disagreeing
 between the paths — cannot reach the audible output on this configuration.
 
 **What the number does say, and it is the more interesting half:** the crest
-factor is 23.4 dB (peak 0 dBFS against −23.43 AC RMS), and the median 50 ms
-window sits 29.4 dB below full scale. A mix that peaks at 0 dBFS while
-averaging −29 dB *is* quiet most of the time, and that is a faithful rendering
-of wide-dynamic-range content, not a bug. If the owner still reports low volume
-after the headroom fix, the two remaining explanations are perceptual (the mix
-is genuinely wide and the handheld's speaker has no headroom to spare) or
-**downstream of the tap** — and there is exactly one unmeasured mechanism
-downstream, filed as an issue below.
+factor is 23.4 dB (peak 0 dBFS against −23.43 AC RMS) and the median 50 ms
+window sits 29.4 dB below full scale, so the output peaks at the rails while
+averaging some 26 dB below a full-scale sine. **A mix shaped like that is quiet
+most of the time even when its gain is exactly right**, and a listener with no
+meter cannot tell that apart from a gain error — which is the whole reason this
+document exists.
+
+Whether 23.4 dB of crest is *correct* for Galleon is **not** established here,
+and I am not going to assert it from experience. It is plausible for
+wide-dynamic-range game content and it is also exactly what a partly-missing
+per-voice gain would look like, since that would pull the quiet material down
+while leaving the peaks at the rails. What would settle it is one of:
+
+- the same title's output captured off real silicon (S/PDIF), which is the
+  reference that does not exist; or
+- **a second title, which costs one soak.** If a dense, consistently loud title
+  — Dead or Alive 3 or JSRF, both on the Thor — also lands near −23 dBFS AC RMS
+  with a 23 dB crest, then the shape is a property of *our* mix rather than of
+  Galleon's content, and that is a finding. If it lands 8 dB hotter with a 12 dB
+  crest, Galleon is simply a quiet game and the level is fine. **This is the
+  cheapest remaining measurement in this whole document.**
+
+So if the owner still reports low volume after the headroom fix, three
+explanations remain, and only the first is closed: a uniform missing gain (ruled
+out above), a per-voice missing gain (#74, open), and something **downstream of
+the tap** — where there is exactly one unmeasured mechanism, filed below as #70.
 
 ### The tap cannot see the last stage, and that is where the remaining risk is
 
