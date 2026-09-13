@@ -985,6 +985,37 @@ void pgraph_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
 
         break;
     }
+    case NV_PGRAPH_CTX_SWITCH1:
+        /*
+         * Keep the cached graphics class in step with the register the guest
+         * just wrote, because two method fast paths test the cache and return
+         * before the code that refreshes it.
+         *
+         * pgraph_method() refreshes pg->cached_graphics_class from
+         * NV_PGRAPH_CTX_SWITCH1 only after the subchannel reload -- and both
+         * the XEMU_OPT_METHOD_FAST_TABLE block and the Kelvin fast entry test
+         * `cached_graphics_class == NV_KELVIN_PRIMITIVE` and then return or
+         * goto, skipping it. With the subchannel unchanged the register is
+         * never reloaded from CTX_CACHE1 either. So once a guest sets GRCLASS
+         * to 0 to stop pgraph accepting methods, every following Kelvin method
+         * takes a fast path keyed on the stale class and the write is never
+         * observed. Upstream re-reads the class per method; this is specific
+         * to the fast-path work.
+         *
+         * With the cache updated here, both fast paths fall through to the
+         * slow path, which reads GRCLASS 0 and lands on `default: goto
+         * unhandled` -- the hardware behaviour Context_switch asserts -- and
+         * the guest's restore write returns through the same route.
+         *
+         * NOT `pg->last_subchannel = UINT_MAX`, which would look equivalent
+         * and is not: that forces a reload from CTX_CACHE1, overwriting the
+         * guest's 0 with 0x97 and silently undoing the write being emulated.
+         * Issue #63.
+         */
+        pgraph_reg_w(pg, addr, val);
+        pg->cached_graphics_class =
+            PG_GET_MASK(NV_PGRAPH_CTX_SWITCH1, NV_PGRAPH_CTX_SWITCH1_GRCLASS);
+        break;
     default:
         pgraph_reg_w(pg, addr, val);
         break;
