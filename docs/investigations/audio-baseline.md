@@ -120,7 +120,27 @@ place in a chain whose last stage is a clamp to ±1.0.
 
 That is not the same as saying the level is *correct* — accuracy needs a
 hardware reference and none exists — but it does close the specific hypothesis
-that the symptom is a missing gain stage in the emulated APU.
+that the symptom is a missing **uniform** gain stage in the emulated APU.
+
+**And "uniform" is doing real work in that sentence, so read the limit of the
+argument carefully.** A peak pinned at full scale excludes a gain that would
+multiply the whole mix. It does **not** exclude a gain that applies to *some*
+voices, because the sum can reach the rails on the loud ones while the quiet
+ones sit further below hardware than they should. There is a concrete candidate
+for exactly that shape and it is filed as issue #74: `NV_PAVS_VOICE_CFG_FMT_HEADROOM`
+is a **per-voice** 3-bit field, decoded at `apu_regs.h:231` and read nowhere, in
+the same register file as the two headroom controls whose natural unit is 6 dB —
+one of which turned out to be the live −6.02 dB this whole investigation started
+from. If the hardware treats it as a gain, some voices are quiet and the peak
+argument says nothing about them.
+
+What the argument *does* firmly exclude, as of the tip, is a second headroom
+divisor on this path: the monitor mix no longer divides at all
+(`vp.c:1578`, `g = fmax(g, attenuate(vol[b]))`), the multipass read compensates
+(`vp.c:1316`), and the two remaining `1 << headroom` divisions at `vp.c:1521`
+and `:1523` feed `mixbins[]`, which is the DSP path's input and is discarded on
+the monitor path. So candidate B of the assessment — HRTF headroom disagreeing
+between the paths — cannot reach the audible output on this configuration.
 
 **What the number does say, and it is the more interesting half:** the crest
 factor is 23.4 dB (peak 0 dBFS against −23.43 AC RMS), and the median 50 ms
