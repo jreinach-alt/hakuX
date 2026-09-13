@@ -134,6 +134,25 @@ one of them no longer corroborates.
 The general rule this keeps re-teaching: on this capture, compare bytes.
 `docs/testing/sweep_agreement.py` exists for that and does not use scores.
 
+## Vulkan has no unstable capture on this disc
+
+Same measurement, same commit, three runs of the full 236-capture
+`iso_surf1` disc under `renderer = 'VULKAN'`:
+
+```
+236 captures over 3 runs: 236 agree, 0 disagree, 0 absent
+```
+
+Every capture byte-identical. So the band on this lane is **one capture
+wide and one renderer wide**: `Surface_pitch::Swizzle` under OpenGL, and
+nothing else under either renderer.
+
+That does not make a Vulkan number free. The guard's own caveat stands --
+three runs miss a defect that fires half the time about a quarter of the
+time -- and the race behind the GL instability is present in the Vulkan
+texture path too (`vk/texture.c:1668`), where it is currently losing
+reproducibly rather than not losing.
+
 ## A stable score over a moving image: measured on the full disc
 
 Re-measured on `ddcae99a`: three OpenGL runs of the **full** `iso_surf1`

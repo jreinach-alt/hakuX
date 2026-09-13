@@ -41,6 +41,24 @@ image moves, which is the trap `docs/testing/sweep_agreement.py` exists for.
 On the 40-test disc, **OpenGL and Vulkan are 40/40 byte-identical.** The two
 renderers fully agree there.
 
+## And a 236-capture search found no Vulkan capture that varies
+
+The four reproducers are the issue's own. Widening the search to the whole
+`iso_surf1` disc, three runs per renderer, compared byte for byte with
+[`../testing/sweep_agreement.py`](../testing/sweep_agreement.py):
+
+| renderer | captures | runs | agree | disagree |
+|---|---:|---:|---:|---:|
+| Vulkan | 236 | 3 | **236** | **0** |
+| OpenGL | 236 | 3 | 235 | 1 (`Surface_pitch::Swizzle`) |
+
+Adding the reproducer runs above, that is **1,402 + 1,416 captures compared
+across 31 runs, with exactly one unstable capture, and it is under OpenGL.**
+
+The guard prints its own caveat and it applies here: three runs miss a
+defect that fires half the time about a quarter of the time. This is
+evidence of stability, not proof of it.
+
 ## What this does and does not establish
 
 It establishes that the four reproducers written into #39 are stale: nobody
