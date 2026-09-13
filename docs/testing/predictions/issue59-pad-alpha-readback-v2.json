@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-13T04:13:45Z",
+  "who": "issue59-agent",
+  "issue": "59",
+  "prediction": "Same falsifier as v1, still a SAMPLED ALPHA VALUE and not a pixel count: the texture unit returns alpha 1.0 for an X1R5G5B5_O1R5G5B5 surface and 0.0 for an X1R5G5B5_Z1R5G5B5 one, on whichever path filled the host image, out of host_fmt.sampled_pad_alpha. Blend_surface's DstAlpha tests display that quantity directly -- the top half of each swatch is drawn with the sampled alpha as its coverage, so 1.0 writes the swatch colour and 0.0 leaves the test's 0xFF555555 clear showing through as (85,85,85,255). v1 proved the rule: DstAlpha_X_O1RGB5 and 1-DstAlpha_X_O1RGB5 both went 65,536 -> 0 bit-exact and the Z pair held at 0. What v1 got wrong was the SCOPE of the override, not the rule. It keyed on 'a surface is registered at this address', which is a weaker claim than 'this is the memory the texture reads': a 128x128 X1R5G5B5_O1R5G5B5 surface outliving Surface format reached Texture DXT's 256x256 DXT1 texture and flattened both plasma captures to one colour (status ok -> blank), and reached Surface format's own full-screen swatches. surface_is_texture_source() restores the extent filter surface_to_texture had been supplying and excludes compressed formats outright. So this arm predicts v1's repair WITH v1's collateral gone: the four captures v1 broke return to their arm-A values exactly, and the two it fixed stay at 0. Texture_DXT/DXT1_plasma_dxt1 back to 384 and DXT1_plasma_alpha_dxt1 back to 448 are the sharpest checks here, because those are the ones that went blank. The four X1A7R8G8B8 captures still must not move: that format's sampled_pad_alpha is deliberately IDENTITY in constants.h, so nothing here can reach them. Surface_clip must stay at 0 across all 47 -- that is #59's 1,175,741 px win.",
+  "a_ref": "00dc9c68c5",
+  "b_ref": "72c83aa568",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Texture_DXT/*",
+    "Texture_format/*",
+    "Texture_render_target/*",
+    "Surface_format/Fmt_X8R8G8B8*",
+    "Surface_format/Fmt_X1A7R8G8B8*",
+    "Surface_format/Fmt_B8",
+    "Surface_format/Fmt_G8B8",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/DstAlpha_XA_O1A7RGB8",
+    "Blend_surface/DstAlpha_XA_Z1A7RGB8"
+  ],
+  "expect": {
+    "Blend_surface/DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/DstAlpha_ARGB8": 0,
+    "Blend_surface/DstAlpha_X_ORGB8": 0,
+    "Blend_surface/DstAlpha_X_ZRGB8": 0,
+    "Texture_DXT/DXT1_plasma_dxt1": 384,
+    "Texture_DXT/DXT1_plasma_alpha_dxt1": 448,
+    "Surface_format/Fmt_X1R5G5B5_O1R5G5B5": 16096,
+    "Surface_format/Fmt_X1R5G5B5_Z1R5G5B5": 29881,
+    "Surface_format/Fmt_R5G6B5": 0,
+    "Surface_format/Fmt_A8R8G8B8": 0
+  },
+  "expect_counts": {}
+}
