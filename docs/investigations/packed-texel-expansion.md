@@ -136,6 +136,38 @@ stage, so they should improve but not to zero:
 | `Blend_surface/R5G6B5_Add_SrcA_DstA` | 206,429 | 113,029 (54.8 %) |
 | `Blend_surface/R5G6B5_Add_SrcA_1-SrcA` | 257,000 | 110,841 (43.1 %) |
 
+### Predicted, but not registered: what `Blend_surface` should do
+
+Written before the arms landed, and deliberately kept out of the registered
+prediction because these captures carry blend residual as well and a
+must-not-move on them would fail on the improvement.
+
+Simulated offline by applying the ratio→replicate remap to our own captures
+and re-scoring against the goldens — the most conservative model, since it
+only moves a channel where ours is a ratio-only level *and* the golden is the
+matching replicate level:
+
+| capture | now | predicted | delta |
+|---|---:|---:|---:|
+| `X_O1RGB5_Add_SrcA_DstA` | 98,705 | 43,756 | −54,949 |
+| `X_Z1RGB5_Add_SrcA_DstA` | 98,705 | 43,756 | −54,949 |
+| `R5G6B5_Add_SrcA_DstA` | 99,178 | 44,239 | −54,939 |
+| `X_O1RGB5_Add_SrcA_1-SrcA` | 110,709 | 56,414 | −54,295 |
+| `X_Z1RGB5_Add_SrcA_1-SrcA` | 110,709 | 56,414 | −54,295 |
+| `R5G6B5_Add_SrcA_1-SrcA` | 111,098 | 56,840 | −54,258 |
+| five `*_Add_SrcA_1-SrcA` 8-bit surfaces | 57,535 ea | 56,979 | −556 ea |
+| `XA_{O,Z}1A7RGB8_Add_SrcA_DstA` | 51,892 | 51,839 | −53 |
+| `ARGB8_Add_SrcA_DstA` | 47,272 | 47,268 | −4 |
+
+The **8-bit surface** rows moving at all is not coincidence and was nearly
+mis-read as one: `blend_surface_tests.cpp:448` composites every surface
+format through a fixed list of texture stages that includes `SZ_R5G6B5`,
+`SZ_R6G5B5`, `SZ_X1R5G5B5` and `SZ_A1R5G5B5`. So an `ARGB8` capture contains
+a small 565-sampled region regardless of its own surface format. That is why
+this suite is carried for visibility and constrained nowhere.
+
+### The rest of the corpus is coincidence, and says so
+
 A corpus-wide scan for the same signature finds 828 captures with at least
 one matching pixel, but outside the rows above the fraction is under 10 % and
 is coincidence: an 8-bit value of 25 is in the map whatever produced it. **A
