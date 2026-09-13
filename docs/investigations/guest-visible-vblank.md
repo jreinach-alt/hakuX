@@ -829,26 +829,31 @@ shipping it unmeasured.
 `coal` on its own cannot say whether the guest lost anything, so the instrument
 now splits it three ways.
 
-| | arm A | arm B |
-|---|---|---|
-| whole soak | 205 of 13,785 (**1.49%**) | 52 of 14,663 (0.35%) |
-| unlock windows | 114 of 3,818 (**2.99%**) | 31 of 1,812 (1.71%) |
-| locked windows | 91 of 9,967 (**0.91%**) | 21 of 12,851 (0.16%) |
-| VBLANK bit unmasked in `INTR_EN_0` | **98%** | 90% |
-| after a shorter-than-period interval | **37%** | 52% |
-| mean preceding interval | 16,536,644 ns = **0.991 periods** | 1.000 periods |
+| | arm A, DOA3/thor | arm B, DOA3/thor | gate run, Galleon/**nova** |
+|---|---|---|---|
+| whole soak | 205 of 13,785 (**1.49%**) | 52 of 14,663 (0.35%) | 124 of 5,391 (2.30%) |
+| unlock windows | 114 of 3,818 (**2.99%**) | 31 of 1,812 (1.71%) | — (`Ul:N` throughout) |
+| locked windows | 91 of 9,967 (**0.91%**) | 21 of 12,851 (0.16%) | 124 of 5,391 (2.30%) |
+| VBLANK bit unmasked in `INTR_EN_0` | **98%** | 90% | 96% |
+| after a shorter-than-period interval | **37%** | 52% | 52% |
+| mean preceding interval | **0.991 periods** | 1.000 periods | 0.992 periods |
 
 Four readings, and the second is the one that was registered and failed:
 
 1. **1.49% reproduces #65's 1.56% on a different title.** The figure is real
    and not Galleon-specific.
-2. **U7 FAILED on its second half.** 37% of coalescing follows a short
-   interval, against a registered `> 50%`, and the mean preceding interval is
-   0.991 periods. So coalescing is **predominantly the guest's own ISR failing
-   to acknowledge within a full period** — which silicon has too, the latch
-   being sticky there as well. The conclusion inverts: it is mostly faithful,
-   not mostly ours. That is worth more than the leg holding would have been,
-   because it takes a fix off the board.
+2. **U7 FAILED on its second half, and a third run says the split is close to
+   even rather than one-sided.** The leg predicted that `> 50%` of coalescing
+   would follow a *short* interval — our own bunching. Arm A gives **37%**, so
+   the leg is failed as registered. But arm B gives 52% and the nova gate run
+   gives 52%, so the honest statement is not "mostly theirs" either: **roughly
+   half of the coalescing follows a full-length interval and half follows a
+   short one, and the split moves with title and device.** The half that
+   follows a full period is the guest's own ISR failing to acknowledge inside
+   one refresh, which silicon has too on the same sticky latch, and is not
+   ours to fix. Registering the leg one-sided at 50% put the threshold exactly
+   where the data sits, which is the least informative place for it — a
+   tolerance should not straddle the answer.
 3. **98% of it is with the interrupt unmasked**, on all 123 windows of both
    arms, so the population #65 counted is the right one and its figure needs no
    retraction: these are ticks a title taking VBLANK interrupts does lose.
@@ -901,11 +906,41 @@ within-regime deferral holds at +0.6% and +2.0%, and U0's 0.01% agreement
 between the instrument and the arithmetic. Everything here is the thor, on one
 title.
 
+### The nova, and the build gate on the committed state
+
+`05b4c2bce5` / apk `131db451fd76`, dispatch `1789285307-vblank-defer-nova-2158916`,
+Galleon, 90 s, **nova**. Queued under a deliberately different requester so it
+cannot be mistaken for a third arm, and pinned `--device nova` so the
+cross-device reading is the thing measured rather than a coin flip.
+
+Three jobs, all three answered:
+
+- **It builds and boots.** The `simple_vblank` commit landed after both arms
+  were queued against explicit shas, so no dispatcher build had covered the
+  committed HEAD. This one did, and Galleon held for the full 90 s.
+- **First VBLANK figures on the nova**, which every number in this stream has
+  lacked. Whole soak 16,742,068 ns / **59.751 Hz** against the thor's
+  post-#65 Galleon 16,721,058 ns / 59.816 Hz — 0.1% apart, on different run
+  lengths, which is consistency rather than a controlled comparison.
+- **`neg = 0` a third time**, now 33,840 assertions across two devices, two
+  titles and three binaries. The grid-writer inventory holds.
+
+Two differences worth recording rather than explaining:
+
+- **The nova's timer latency is 3.4× the thor's** — non-deferred lateness
+  360,179 ns against 104,923 ns. Two variables move at once (device and title)
+  so this is not attributable, but it is the first sign that the phase floor is
+  not a property of the emulator alone.
+- **The phase tail is dominated by host stalls, not by the deferral.** Max
+  lateness 686,863,907 ns, **41.17× a period**. Nothing in the deferral can
+  produce that; the cap is one period. A 0.69 s stall is the host, and it is
+  the reason a mean is useless here and the histogram is not.
+
 ### Also settled in passing
 
-- **`PCRTC_RASTER` is zero on a second title.** `rast=0/0` across both arms of
-  DOA3, 28,448 assertions. Two titles is still not a survey, but it is twice
-  what #65 had, and nothing has yet been observed to read the register.
+- **`PCRTC_RASTER` is zero on a second title and a second device.** `rast=0/0`
+  across both arms of DOA3 and the nova gate run — 33,840 further assertions.
+  Still not a survey, but nothing has yet been observed to read the register.
 - **`unl=` cross-checks against the independent `Ul:` field** on 58 of 62
   paired samples (94%), with all four disagreements at a transition where a
   per-window count and a point sample must differ. That is the argument for
