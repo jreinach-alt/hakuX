@@ -225,16 +225,26 @@ for f in glob.glob(os.path.join(D, 'queue', '*.req')):
         # actually timed and everything else keeps the ordinary estimate.
         # AN ALLOW-LIST PRICES BY TEST, NOT BY SUITE. `--only-tests` narrows a
         # run to named tests, so its cost scales with how many were named and
-        # not with the one suite they sit in. Measured at ~5.5 s/test wall, so
-        # a 196-test half-disc is ~1,080 s -- which the per-suite estimate
-        # called 340 s, understating an eighteen-minute run as six.
+        # not with the one suite they sit in.
         #
-        # Third time this estimator has misled, and the same shape each time: a
-        # new capability changed the cost model and the estimate kept using the
-        # old one. It is keyed on the field that actually drives the cost.
+        # 1 s/test, MEASURED, and the previous value here was 6 s/test taken
+        # from a figure that has since been retracted. That 5.5 s/test came
+        # from dividing a 1,800 s run's whole wall clock by the tests it had
+        # completed -- on a run that spent 1,525 of those seconds STALLED. It
+        # measured the stall and called it pace, which is this file's own
+        # "a rate over a busy window measures the busyness". The lane that
+        # gave me the number retracted it after its retry ran 189 tests in
+        # 161 s wall: 852 ms/test, against 876 ms/test on the stalled run --
+        # indistinguishable, so pace was never the variable.
+        #
+        # Consequence worth recording: my "fix" using the bad constant made
+        # this estimate WORSE than the per-suite one it replaced. 196 tests
+        # priced at 22 minutes actually took 161 s. A refuted number
+        # propagated into tooling outlives the report that refuted it, so the
+        # comment carries the measurement and not just the value.
         only = r.get('only_tests') or []
         if only:
-            tot += 180 + len(only) * 6
+            tot += 180 + len(only)
             continue
         iso = os.path.basename(r.get('base_iso') or '')
         per = 1150 if iso == 'nxdk_pgraph_tests_xiso_interactive.iso' else 160
