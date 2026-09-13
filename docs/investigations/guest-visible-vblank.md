@@ -996,8 +996,107 @@ Two differences worth recording rather than explaining:
   `request.sh` can set a pref -- so no soak can enter it. The old comment's
   claim that the extra source "avoids timing-dependent freezes" is untested in
   both directions; it was never measured when it was added either.
-- **`defer_cap` in unlock mode is `16`, which makes `max_defer` exactly one
-  period** -- the one value that trips the grid's `<= now` clamp. That is the
-  whole of the residual +3.03 s/min. A one-constant edit, deliberately not made
-  in the same pass as a measured one.
+- ~~**`defer_cap` in unlock mode is `16`, which makes `max_defer` exactly one
+  period**~~ -- the one value that trips the grid's `<= now` clamp. That is the
+  whole of the residual +3.03 s/min. **CHANGED 2026-09-13 to 15, with the
+  clamp itself counted; see the section below.** The attribution above is right
+  and the arithmetic for its SIZE was not written down here, which turned out
+  to matter: reasoning from the excess over a period rather than from the whole
+  lateness under-prices the available gain by about twelve times.
 - **Nova against Thor.** Everything here is one device.
+
+## MEASURED 2026-09-13: the clamp discards the whole lateness, not the excess
+
+Opened to change one constant -- `defer_cap` 16 -> 15 -- and the first thing
+it produced was a correction to the arithmetic of the residual this document
+already attributes correctly. The conclusion did not move. What moved is the
+**instrument**, which is the distinction `AGENTS.md` now records under "a
+correction is not evidence of accuracy": a retraction that changes the answer
+and keeps the instrument is a coin landing the other way up.
+
+### The error, and it is the natural one
+
+The grid's advance reads:
+
+```c
+d->vblank_next_target_ns += period;          /* t + period        */
+if (d->vblank_next_target_ns <= now) {
+    d->vblank_next_target_ns = now + period; /* t + late + period */
+}
+```
+
+`now` is `t + late`, so the clamp's replacement slot is a whole `late` further
+on than the grid's own -- **not `late - period`.** Mean drift per assertion is
+therefore
+
+    E[ late * 1(late > period) ]     and not     E[ max(0, late - period) ]
+
+Working from the second of those, the available gain from taking `max_defer`
+from `period` to `period * 15/16` bounds at `L + L'` per capped deferral, about
+210,000 ns on the thor, which pools to **72,522 ns per assertion -- 8.6% of the
+measured 843,164 ns residual.** That reading says the constant is not worth
+changing. It is wrong.
+
+The first model reproduces the measured drift on this document's own arm B
+logcat, per window, without fitting anything:
+
+| window | n | def_n | def(mean=) | model `def_n * def_mean / n` | measured `drift` |
+|---|---|---|---|---|---|
+| 4 | 109 | 11 | 16,810,019 | 1,696,382 | **1,695,881** |
+| 5 | 111 | 9 | 16,816,423 | 1,363,331 | 1,364,246 |
+| 6 | 110 | 10 | 16,810,270 | 1,528,206 | 1,527,863 |
+| 3 | 117 | 3 | 16,862,204 | 432,364 | 432,933 |
+
+0.03% on the first row. Pooled over arm B's seven fully-unlocked windows the
+model gives 693,684 ns against a measured 843,164 -- 82%, with the shortfall in
+the one window whose deferrals are *not* cap-bound (`def(mean=) = 9,317,831`,
+where the clamped assertions are its tail and a window mean cannot see them).
+
+### Which makes the value's justification arithmetic rather than tuning
+
+The next grid slot is one period away; `max_defer = poll_interval *
+defer_cap`; a period is sixteen poll intervals. So the largest cap that leaves
+the grid **any** room is fifteen, and the room it leaves is one poll interval,
+1,042,734 ns, which is what the timer's round trip has to fit inside. That
+round trip is directly measurable as `def(mean=) - max_defer` and reads
+**126,275 / 126,526 / 132,679 / 178,460 ns** across the four cap-bound windows
+above -- 5.8x to 8.3x inside the margin.
+
+And it is an impossibility rather than a probability: a deferral can only trip
+the clamp if its hold exceeds `period - (L + L')`, so after the change the
+clamp cannot fire from a deferral **unless the timer round trip alone exceeds
+`period/16`**. What no cap bounds is a host stall; the 686,863,907 ns of
+lateness measured on the nova, 41x a period, still reaches the clamp, which is
+why the prediction registers a residual rather than zero.
+
+Predicted from the same logcat, before the arm ran: fully-unlocked drift
+843,164 ns -> ~0 per assertion, 17,526,914 -> 16,683,750 ns, 57.055 -> 59.939
+Hz, and **2.888 -> 0.001 s/min** against true NTSC.
+
+### The instrument change, which is the point
+
+`clamp=` is appended to the `vblphase` line and incremented **at the clamp
+itself**, at both grid-driven assertion sites. Both existing readers' regexes
+are unanchored at the end of that line, so `vblank_report.py` and
+`vblank_phase_ab.py` keep matching; the new judge,
+`docs/testing/vblank_defercap_ab.py`, is a third file rather than an edit to
+either, because this document cites both of their verdicts.
+
+Counted rather than inferred so that a change to the cap is judged on whether
+**the clamp still fires** -- the mechanism -- instead of on a drift figure,
+which is the mechanism mixed with the host's stall tail. `D0` puts that to
+work on arm A alone, where the patch cannot force it: over arm A's cap-bound
+fully-unlocked windows, `drift * n / clamp` must equal `def(mean=)`.
+
+### Where the value is wrong, named before the arm
+
+A host whose timer round trip exceeds 1,042,734 ns. The nova's non-deferred
+lateness is 3.4x the thor's -- 360,179 against 104,923 ns -- which puts its
+round trip near 720,000 ns and the margin at 1.4x rather than 5.8x. If the
+clamp still fires there, the reasoning is unchanged and the value is fourteen.
+
+Arms: A `3de282e006` (counter only), B `e62907fa03` (`defer_cap` 15), DOA3,
+240 s, `--device thor`, one requester, prediction committed at `c8548b6fae`
+before either was queued.
+
+*Results to be filled in from the dispatcher.*
