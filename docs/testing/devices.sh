@@ -108,6 +108,46 @@ device_list() {
     done
 }
 
+device_titles() {
+    # List the ISOs on one device, or on every attached device.
+    #
+    # WHY THIS IS HERE. A soak names a title by its EXACT filename --
+    # dispatcher.sh does `[ -f "$DEVICE_ISO_ROOT/$title" ]` and writes ERROR if
+    # it misses -- and nothing in this repository could tell you one. The two
+    # libraries are the owner's, laid out however the owner chose, and the
+    # naming does not follow from anything checked in: the Nova's root is
+    # `Games/XBox` while the Thor's is `ROMS/xbox`, and the one filename any
+    # document records ("Galleon (USA).xiso.iso") carries an `.xiso` infix that
+    # is part of the name rather than the extension.
+    #
+    # So a second title was a guess, and on 2026-09-12 five guesses in a row
+    # missed -- "Dead or Alive 3 (USA).xiso.iso", the same with `.iso`, the same
+    # without the region, plus JSRF, Psychonauts and Panzer Dragoon Orta. Each
+    # miss cost a queue claim, a cached-APK install and an ERROR, and none of
+    # them narrowed anything down. That is the cheapest possible thing to fix
+    # and it had simply never been needed until a question required a title
+    # other than Galleon.
+    #
+    # It is `ls`, and nothing else. No lease, no install, no `am start`, no
+    # input injection: it cannot disturb a run in progress, which is why it
+    # does not take the device lease and must not grow to anything that would.
+    # `devices.sh list` has always run `adb devices` from a caller's shell for
+    # the same reason -- a read-only query is not device work.
+    local want="${1:-}"
+    adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}' | while read -r s; do
+        ( device_env "$s" 2>/dev/null || exit 0
+          [ -z "$want" ] || [ "$want" = "$DEVICE_LABEL" ] || [ "$want" = "$s" ] || exit 0
+          echo "=== $DEVICE_LABEL ($s)  $DEVICE_ISO_ROOT"
+          # -1 so one name is one line even when a name contains spaces, which
+          # every one of them does. The names are printed verbatim: they are
+          # what --title wants, and quoting them here would mean the caller had
+          # to un-quote them again.
+          adb -s "$s" shell "ls -1 '$DEVICE_ISO_ROOT'" 2>/dev/null \
+              | tr -d '\r' | sed 's/^/  /'
+        )
+    done
+}
+
 # Run directly: print the table. Sourced: define the functions and return 0.
 #
 # The `&&` chain this replaces left a FALSE test as the last statement when the
@@ -117,9 +157,10 @@ device_list() {
 # happens to call device_env on its own line.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     case "${1:-list}" in
-        list) device_list ;;
-        *)    device_env "$1" && printf '%s %s %s\n' \
-                  "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
+        list)   device_list ;;
+        titles) device_titles "${2:-}" ;;
+        *)      device_env "$1" && printf '%s %s %s\n' \
+                    "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
     esac
 else
     return 0 2>/dev/null || true
