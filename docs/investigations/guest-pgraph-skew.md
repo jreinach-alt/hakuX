@@ -959,6 +959,100 @@ stays queued rather than being cancelled, and its verdict is reported as
    need replicates to have power, and its bar is `Tr == 0` rather than a
    count of clean runs.
 
+### ARM B MEASURED: the pre-scan costs 0.03% where the hold cost 40.7%
+
+`78f3f5eec8` / apk `ba4d5d52987e`, **nova**, `disc_id = Texture border`, 10
+runs, `progress_log_proof` on every one, `bound=2` on every `fifoskew` line.
+Pooled over 47 windows and 149.8 s of wall clock: **148,706 submissions.**
+
+| leg | measured | bar | |
+|---|---|---|---|
+| **V2** `held(n)/kicks` | **0.0370** (5,506 of 148,706) | ≤ 0.05 | **HOLDS** |
+| **V3** `scan(ns=)` / wall clock | **0.0303%** (45.4 ms over 149.8 s) | < 2% | **HOLDS** |
+| **V5** `(wrap+big)/held(n)` | **0.0400** (220 of 5,506) | < 0.20 | **HOLDS** |
+| **V6a** `draw+nodraw+wrap+big == scan_n` | 47 of 47 windows exact | exact | **HOLDS** |
+| **V6b** `held(n) == draw+wrap+big` | 45 of 47 windows exact | exact | **FAILS** |
+| **V4** `gave/held(n)` | **0.07374** | ≥ 0.00674 | **HOLDS** |
+| **V1** `stale_px == 0` on 10 of 10 | 0 on 10 of 10 | — | **VOID** (V0) |
+
+**The pre-scan does not cost what the hold cost, and the margin is not
+marginal.** Mode 1's guest sat blocked for **40.7%** of wall clock at a mean
+hold of 2,245,410 ns. Mode 2's scan costs **0.0303%** — a mean of **306 ns
+over 252 words**, about **1,340× cheaper** than the thing it replaces. That
+was the brief's first question and it is answered: the cost was removed, not
+moved.
+
+**The budget was nearly reached, and it is a good thing it is counted.** The
+worst single scan walked **16,038 words against the 16,384 budget** — 98% of
+it — in a boot window, and `big` fired 20 times over the arm. Had budget
+exhaustion been a silent fall-through to holding, that window would have read
+as the mechanism working. It is 4.0% of holds (V5), so the fallbacks are not
+carrying the guarantee, but the headroom is thinner than the 2× the constant
+was sized for and a busier title may sit on it.
+
+### The 826:1 sizing was wrong, and by 30×
+
+The brief sized this change at "148,704 submissions for 180 draws", an 826:1
+reduction. **The measured reduction is 27.0×**, because **5,286 submissions
+publish a draw, not 180.** The 180 figure is the draw count of the *measured
+test*; the run also boots, runs the dashboard, and executes the other
+seventeen tests, and every draw in all of that is a draw the bound must
+cover.
+
+This does not weaken the change — 27× at 0.03% scan cost is the whole result
+— but it does mean **any per-draw arithmetic taken from "180 draws" is wrong
+by about thirty times**, including the "826 holds for every one the invariant
+needs" line elsewhere in this document, which should read **27**.
+
+### V6b FAILED, and the failure is the instrument's granularity, exactly as predicted
+
+Two of 47 windows violate `held(n) == draw + wrap + big`. They are
+**adjacent windows of one run, off by −1 then +1**, and they cancel. Pooled
+over the arm the identity is **exact: 5,506 == 5,286 + 200 + 20.**
+
+The cause is structural and benign: `fsk_note_scan` is called *before*
+`pfifo_bound_skew` runs, so a window dump firing between the two puts one
+submission's scan in window N and its hold in window N+1. This is `AGENTS.md`
+verbatim — *"an identity that holds exactly tells you the two sides are read
+at the same instant; one that holds to ±1 tells you they are not, which is
+information about the instrument rather than noise"* — and the ∓1 in adjacent
+windows **proves** the split rather than suggesting it.
+
+Registered as a per-window identity, so it **fails as registered** and is
+reported as failed. The one-line repair is to note the scan after the hold
+returns rather than before; it is **deliberately not applied**, because the
+cost and Crimson arms are queued against refs that would be invalidated by
+it, and a ∓1 window artefact that pools exactly does not justify disturbing
+them.
+
+### V4: the hole MOVED rather than shrinking, as registered
+
+| | mode 1 | mode 2 |
+|---|---|---|
+| `gave` / all submissions | 1,002 / 148,704 = **0.674%** | 406 / 148,706 = **0.273%** |
+| `gave` / **covered** submissions | 0.674% (all were covered) | 406 / 5,506 = **7.374%** |
+
+**As a fraction of what the bound actually covers the hole is 10.9× larger**,
+which is what V4 predicted and why it was registered on the new denominator:
+a draw-publishing submission is precisely the one a flip follows, so
+selectivity concentrates the hole instead of diluting it. The absolute rate
+did fall 2.5×, and quoting only that would have been the misleading half.
+
+So the honest scope of mode 2, stated against mode 1's:
+
+> Mode 1: the race is impossible on **99.326%** of all submissions.
+> Mode 2: the race is impossible on **92.6% of draw-publishing
+> submissions**, and those are the only ones that can carry it.
+
+Mode 1's headline is the larger number and is **not** the stronger
+guarantee per draw, because its own `gave` events were presumably
+concentrated on the same draw-carrying submissions — it simply never split
+the counter to find out. That is what `gaveby(...)` is for, and it is in the
+cost and Crimson refs rather than this one.
+
+`spun`/`slept` came back **2,386 / 3,120** — 43% caught by the 60 µs spin,
+against mode 1's 9.6%, because a mode-2 hold waits for a much shorter queue.
+
 *Cost, Crimson and defer_cap results to be filled in from the dispatcher.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
