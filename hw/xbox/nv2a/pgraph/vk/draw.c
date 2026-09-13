@@ -36,6 +36,187 @@ static int g_xemu_submit_frames = 3;
 
 struct OptBisectStats g_opt_stats;
 
+/*
+ * #54 read-side race probe: how often does a device-thread read of guest
+ * VRAM race a guest write?
+ *
+ * #54 measured that restoring every guest memory barrier repairs nothing
+ * (6 of 10 failures with mb_emitted at 347,473, identical to the cheap
+ * variant at 80,411 and to the baseline at 0 -- three provably different
+ * binaries). That bounds a different quantity than the one that would close
+ * the issue: it says whether barriers repair 2D_BorderTex_SZ, a texture
+ * uploaded once and drawn, and says nothing about the rate at which a device
+ * thread reads guest memory the guest is concurrently writing, because the
+ * corpus cannot exercise that.
+ *
+ * THERE IS NO WRITE SIDE HERE, DELIBERATELY. A per-page last-written stamp
+ * on the guest-write side is a store in every guest VRAM write -- a TCG
+ * helper or softmmu hook in exactly the position an earlier instrumentation
+ * attempt occupied when it cost +34.1% frame time and presented as a
+ * renderer deadlock. It would perturb the window it is measuring. One write
+ * side already exists at no marginal guest cost: memory_region_set_log(
+ * d->vram, true, DIRTY_MEMORY_NV2A) and _NV2A_TEX are already set in nv2a.c,
+ * so a guest store into VRAM already sets a page bit.
+ *
+ * What makes this a WINDOW rather than "written at some point since boot" is
+ * that each instrumented read is preceded by a test-and-CLEAR of the very
+ * bits it then scans:
+ *
+ *   VTX  sync_vertex_ram_buffer test-and-clears DIRTY_MEMORY_NV2A over the
+ *        range and then copies it out of guest memory. The range is clean on
+ *        entry by construction, so a bit set again by the time the copy
+ *        returns is a guest store into that range DURING the copy -- a torn
+ *        read, which is #54's hazard stated as a frequency.
+ *
+ *   TEX  pgraph_vk_bind_textures -> check_texture_dirty test-and-clears
+ *        DIRTY_MEMORY_NV2A_TEX and, whenever it finds anything, bumps
+ *        r->texture_vram_gen (via pgraph_vk_mark_textures_possibly_dirty).
+ *        So a gen bump across the bind proves the bits were consumed inside
+ *        the window, and a bit set again on return is a guest store during
+ *        the upload. That is #44's resolved mechanism exactly: the upload
+ *        for draw N reads guest memory after the guest has begun writing
+ *        iteration N+1 to the same address.
+ *
+ * The surface upload read (vk/surface.c, pgraph_vk_upload_surface_data) is
+ * deliberately NOT instrumented: nothing on the device clears
+ * DIRTY_MEMORY_NV2A over a surface range -- the only clearer is the vertex
+ * sync below, for its own ranges, and update_surface_part's own scan is
+ * behind !tcg_enabled() and therefore dead here -- so the bitmap is monotone
+ * there and carries no window. A probe on it would report a plausible number
+ * with no time base in it.
+ *
+ * Limits, stated rather than discovered later: page granularity is 4 KiB, so
+ * a guest write to the same page but a different byte counts as a hit. Every
+ * race count here is therefore an UPPER bound on byte-level overlap. And the
+ * TEX denominator counts binds, not draws, so a title that rebinds rarely
+ * reports fewer windows than it has reads.
+ */
+struct HakuxVramRaceStats {
+    uint64_t vtx_copies;        /* vertex-range copies out of guest VRAM */
+    uint64_t vtx_raced;         /* ... whose range was dirty again on return */
+    uint64_t tex_binds;         /* texture bind windows observed */
+    uint64_t tex_uploads;       /* ... in which dirty bits were consumed */
+    uint64_t tex_raced;         /* ... and were set again on return */
+    uint64_t tex_late;          /* dirty on return, nothing consumed inside */
+    uint64_t impossible;        /* see vram_range_dirty_checked() */
+};
+struct HakuxVramRaceStats g_hakux_vram_race;
+
+static bool vram_pages_dirty(DirtyMemoryBlocks *blocks, ram_addr_t ram_base,
+                             hwaddr addr, hwaddr size)
+{
+    if (!size) {
+        return false;
+    }
+    ram_addr_t start = ram_base + (addr & TARGET_PAGE_MASK);
+    ram_addr_t end = ram_base + ROUND_UP(addr + size, TARGET_PAGE_SIZE);
+    unsigned long page = start >> TARGET_PAGE_BITS;
+    unsigned long end_page = end >> TARGET_PAGE_BITS;
+
+    while (page < end_page) {
+        unsigned long idx = page / DIRTY_MEMORY_BLOCK_SIZE;
+        unsigned long ofs = page % DIRTY_MEMORY_BLOCK_SIZE;
+        unsigned long num = MIN(end_page - page,
+                                DIRTY_MEMORY_BLOCK_SIZE - ofs);
+        if (find_next_bit(blocks->blocks[idx], ofs + num, ofs) < ofs + num) {
+            return true;
+        }
+        page += num;
+    }
+    return false;
+}
+
+static bool vram_range_dirty(PGRAPHVkState *r, hwaddr addr, hwaddr size,
+                             unsigned client)
+{
+    RCU_READ_LOCK_GUARD();
+    DirtyMemoryBlocks *blocks =
+        qatomic_rcu_read(&ram_list.dirty_memory[client]);
+    return vram_pages_dirty(blocks, r->vram_ram_addr, addr, size);
+}
+
+/*
+ * The impossible row, and the reason this probe has a check in it at all.
+ *
+ * A second scan of the same range, with nothing between the two but this
+ * function's own arithmetic, cannot see a bit go from set to clear. The
+ * guest only ever SETS these bits; the only code in this process that clears
+ * DIRTY_MEMORY_NV2A or _NV2A_TEX is the vertex sync and check_texture_dirty,
+ * both on the thread already inside this call. So g_hakux_vram_race.impossible
+ * must read exactly zero, and a non-zero value indicts the instrument rather
+ * than the emulator: wrong page arithmetic, a DIRTY_MEMORY_BLOCK_SIZE
+ * boundary straddled wrongly, an RCU pointer read that is not stable, or the
+ * pfifo and render threads overlapping where this assumes they do not.
+ *
+ * It is evaluated only on the dirty path, which is the rare one, so it costs
+ * nothing on the path every draw takes.
+ */
+static bool vram_range_dirty_checked(PGRAPHVkState *r, hwaddr addr,
+                                     hwaddr size, unsigned client)
+{
+    if (!vram_range_dirty(r, addr, size, client)) {
+        return false;
+    }
+    if (!vram_range_dirty(r, addr, size, client)) {
+        g_hakux_vram_race.impossible++;
+    }
+    return true;
+}
+
+/* Snapshot before pgraph_vk_bind_textures; pair with vram_race_tex_end. */
+static inline uint32_t vram_race_tex_begin(PGRAPHVkState *r)
+{
+    return r->texture_vram_gen;
+}
+
+static void vram_race_tex_end(PGRAPHVkState *r, uint32_t gen_before)
+{
+    bool consumed = r->texture_vram_gen != gen_before;
+    bool dirty = false;
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES && !dirty; i++) {
+        TextureBinding *b = r->texture_bindings[i];
+        if (!b || b == &r->dummy_texture) {
+            continue;
+        }
+        /* The binding's own key carries the range the upload actually read. */
+        dirty = vram_range_dirty_checked(r, b->key.texture_vram_offset,
+                                         b->key.texture_length,
+                                         DIRTY_MEMORY_NV2A_TEX) ||
+                (b->key.palette_length &&
+                 vram_range_dirty_checked(r, b->key.palette_vram_offset,
+                                          b->key.palette_length,
+                                          DIRTY_MEMORY_NV2A_TEX));
+    }
+
+    g_hakux_vram_race.tex_binds++;
+    if (consumed) {
+        g_hakux_vram_race.tex_uploads++;
+        if (dirty) {
+            g_hakux_vram_race.tex_raced++;
+        }
+    } else if (dirty) {
+        g_hakux_vram_race.tex_late++;
+    }
+}
+
+/* Appended to the hakuX-perf pacing line by nv2a_profile_get_pacing_str.
+ * Cumulative, not windowed, so the answer is readable off the last line of a
+ * soak's logcat without reassembling a series. */
+int hakux_vram_race_snprintf(char *buf, int bufsize)
+{
+    struct HakuxVramRaceStats *s = &g_hakux_vram_race;
+    return snprintf(buf, bufsize,
+                    " Vr:%llu/%llu Tr:%llu/%llu/%llu Tl:%llu Xd:%llu",
+                    (unsigned long long)s->vtx_raced,
+                    (unsigned long long)s->vtx_copies,
+                    (unsigned long long)s->tex_raced,
+                    (unsigned long long)s->tex_uploads,
+                    (unsigned long long)s->tex_binds,
+                    (unsigned long long)s->tex_late,
+                    (unsigned long long)s->impossible);
+}
+
 #ifdef __ANDROID__
 #define VAF_LOG(...) __android_log_print(ANDROID_LOG_WARN, "xemu-vaf", __VA_ARGS__)
 #else
@@ -1409,7 +1590,9 @@ static void create_pipeline(PGRAPHState *pg)
     NV2A_PHASE_TIMER_BEGIN(pipe_bind_tex);
     if (pg->texture_state_gen != r->last_texture_state_gen ||
         r->texture_vram_gen != r->last_texture_vram_gen) {
+        uint32_t race_gen = vram_race_tex_begin(r);
         pgraph_vk_bind_textures(d);
+        vram_race_tex_end(r, race_gen);
         r->last_texture_state_gen = pg->texture_state_gen;
         r->last_texture_vram_gen = r->texture_vram_gen;
     }
@@ -3093,7 +3276,9 @@ static void begin_pre_draw(PGRAPHState *pg)
                     pg->texture_state_gen != r->last_texture_state_gen) {
                     uint32_t saved_shader_gen = pg->shader_state_gen;
                     NV2AState *d_push = container_of(pg, NV2AState, pgraph);
+                    uint32_t race_gen = vram_race_tex_begin(r);
                     pgraph_vk_bind_textures(d_push);
+                    vram_race_tex_end(r, race_gen);
                     r->last_texture_state_gen = pg->texture_state_gen;
                     r->last_texture_vram_gen = r->texture_vram_gen;
 
@@ -3277,7 +3462,9 @@ static void begin_pre_draw(PGRAPHState *pg)
             (pg->texture_state_gen != r->last_texture_state_gen ||
              r->texture_vram_gen != r->last_texture_vram_gen)) {
             NV2AState *d_mfp_push = container_of(pg, NV2AState, pgraph);
+            uint32_t race_gen = vram_race_tex_begin(r);
             pgraph_vk_bind_textures(d_mfp_push);
+            vram_race_tex_end(r, race_gen);
             r->last_texture_state_gen = pg->texture_state_gen;
             r->last_texture_vram_gen = r->texture_vram_gen;
             if (r->texture_bindings_changed) {
@@ -5557,6 +5744,17 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+                /*
+                 * #54 probe. The bits for this range were consumed by the
+                 * test-and-clear above, so it is clean on entry and a bit
+                 * set again now is a guest store into the range during the
+                 * copy -- a torn read of guest memory by a device thread.
+                 */
+                g_hakux_vram_race.vtx_copies++;
+                if (vram_range_dirty_checked(r, addr, size,
+                                             DIRTY_MEMORY_NV2A)) {
+                    g_hakux_vram_race.vtx_raced++;
+                }
             }
         }
     }

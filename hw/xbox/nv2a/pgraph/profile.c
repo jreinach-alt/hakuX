@@ -477,7 +477,7 @@ void nv2a_profile_flip_stall(void)
      * is far above it, the guest is the slow side and no cap is involved.
      */
     if ((g_nv2a_stats.frame_count % 60) == 0) {
-        char pbuf[256];
+        char pbuf[384];
         nv2a_profile_get_pacing_str(pbuf, sizeof(pbuf));
         __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
                             "gfps=%d %s", (int)g_nv2a_stats.increment_fps,
@@ -538,6 +538,36 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
              p->vblanks_per_flip,
              p->renderer_idle_ms,
              p->tex_dirty_queries);
+    /*
+     * #54's read-side race probe, appended here because this is the line a
+     * soak already carries and the question is a rate, not a frame.
+     *
+     *   Vr: raced/copies      vertex-range copies out of guest VRAM whose
+     *                         range was dirty again when the copy returned
+     *   Tr: raced/uploads/binds   texture bind windows; uploads consumed a
+     *                         dirty bit, raced means it was set again on
+     *                         return -- the guest writing the texture while
+     *                         it was being read (#44's mechanism)
+     *   Tl: dirty on return with nothing consumed inside the window
+     *   Xd: the impossible row. A bit cannot go from set to clear between
+     *       two back-to-back scans with nothing in between, so this must be
+     *       zero; anything else indicts the instrument. See draw.c.
+     */
+    /* CONFIG_VULKAN, not bare: profile.c is built unconditionally while
+     * pgraph/vk/* is behind `if vulkan.found()`. Without the guard a
+     * no-Vulkan desktop configure compiles clean and fails at link on an
+     * undefined symbol -- the failure shape that took the desktop gate red
+     * once already (see AGENTS.md on __android_log_print through a local
+     * extern). */
+#ifdef CONFIG_VULKAN
+    {
+        extern int hakux_vram_race_snprintf(char *buf, int bufsize);
+        int used = (int)strlen(buf);
+        if (used < bufsize - 1) {
+            hakux_vram_race_snprintf(buf + used, bufsize - used);
+        }
+    }
+#endif
     /* Reset min/max every call so the window reflects recent behavior */
     p->game_frame_min_ms = 0;
     p->game_frame_max_ms = 0;
