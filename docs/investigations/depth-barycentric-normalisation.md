@@ -116,29 +116,90 @@ value of `1/153600` is 2.4e-8 *high*; we measure low, so the device's divide
 is itself off by of order an ULP — consistent with a reciprocal-plus-Newton
 divide, and the reason the fix must not merely round the reciprocal better.
 
+## Result: the cell is finished
+
+**Landed**, two arms, both with progress-log proof, both predictions
+registered before the device ran.
+
+    base2 1789272971-depth52-base2-2789306 (5e612529b9)
+    fix2  1789272013-depth52-fix2-2280916  (91b0897e01)
+
+    better 18   worse 6   same 200   noise 0    (224 compared)
+    exact  40 -> 40      regressed from exact 0
+    Depth_buffer                 144  16  0  128  0   1,566,276 -> 1,537,828
+    Depth_buffer_fixed_function   80   2  6   72  0     663,094 ->   663,350
+    VERDICT: PASS -- all 72 registered checks hold.
+
+The `z24` fixed depth cell went **72,138 differing pixels to 43,690**, and
+43,690 is the oracle's own number: our zeta word is now **equal to the exact
+floor on every pixel of all eighteen captures**, `oracle-ours = 0` throughout.
+On `Mffffff_ZB` the big quad's `ours − floor(exact)` histogram is
+`{0: 85192}` where it was `−9,738 / 75,314 / +140`; the bottom quad is
+`{0: 1800}` and the right quad `{0: 3120}`. Every one of the nine predicted
+per-capture values was hit to the pixel.
+
+What is left is silicon's own edge walk around that floor — 3,060 low and
+2,972 high on the big quad of `Mffffff_ZB` — which a fragment shader cannot
+reproduce without an exact fixed-point edge stepper. **This cell is done.**
+
+The other seven cells are byte-identical to the baseline, including all four
+colour cells: nothing downstream moved. `Depth_buffer_fixed_function` costs
+256 pixels of 663,094, four hundredths of a percent, on six captures whose
+vertex depths are not integers and to which the oracle does not apply; that
+was registered in advance at a 2,000-pixel tolerance.
+
 ## The change
 
 Divide once, at the end, from the **unnormalised** areas, and recover what the
 quotient dropped:
 
-    znh/znt = bc1u*zd1 + bc2u*zd2          (exact head + tail, as before)
+    znh/znt = bc1u*zd1 + bc2u*zd2          (exact head + tail)
     zdh     = znh / bcsum
-    zdt     = (fma(-zdh, bcsum, znh) + znt) / bcsum
+    zdt     = (((znh - qp) - qe) + znt) / bcsum,  qp+qe == zdh*bcsum exactly
 
-`fma(-q, S, N)` is exact whatever the hardware's divide does, so the result is
-immune to a reciprocal that is not correctly rounded as well as to the
-rounding that is. `bc1`/`bc2` keep their scaled values, untouched, because
-`zvalue` — the F16/F24 path verified by `a1fe59400e` — reads them.
+`bc1`/`bc2` keep their scaled values, untouched, because `zvalue` — the
+F16/F24 path verified by `a1fe59400e` — reads them.
 
-Modelled in float32 with a software fma over all four primitive shapes, 1,550
-sampled pixels, under three different divide behaviours:
+### The first form asked the compiler for something it does not give
 
-| divide | old, off floor(exact) | new, off floor(exact) |
+The exact products were written with `fma()`, which is exact only if the fma
+is fused. That arm (`1789269678-depth52-base` → `1789269684-depth52-fix`) is
+worth keeping on the record, because it confirmed the mechanism and did not
+finish the job:
+
+| | base | fma form | Dekker form | silicon |
+|---|---|---|---|---|
+| big quad vs floor(exact) | −9,738 / 75,314 / +140 | −4,308 / 78,827 / +2,057 | **0 / 85,192 / 0** | −3,060 / 79,160 / +2,972 |
+| fitted constant relative error | −0.80 ULP | −0.15 ULP | **0** | — |
+| bottom quad vs floor(exact) | −106 / +140 | −53 / **+250** | **0 / 0** | −203 / +147 |
+| cell total | 72,138 | 63,994 | **43,690** | — |
+
+Four fifths of the constant relative error gone and the one-sidedness with it,
+but not the floor — and the **bottom quad moved the wrong way**. That is the
+tell. Its span is 12,582,910, so the quotient's own float32 ULP is a whole
+depth unit and `zdh - floor(zdh)` is identically zero: every bit of its
+fraction has to arrive through the residual term, the one that needs the fma.
+The big quad's span puts its ULP at 0.5, so half of its fraction survives
+elsewhere, which is why it improved while the bottom quad did not.
+
+Re-modelling the identical chain with `fma()` lowered to multiply-then-add
+reproduces both, the bottom quad's one-sided **+95 of 360** included, where a
+fused fma predicts zero everywhere. **This driver does not fuse it.**
+
+So the exact products are Dekker's, from multiply and add only — `4097 =
+2^12+1` halves a float32 mantissa — which asks the compiler for nothing.
+Modelled over all four primitive shapes, 1,550 sampled pixels, 24
+combinations:
+
+| | fma form | Dekker form |
 |---|---:|---:|
-| correctly rounded | 202 | **0** |
-| 1 ULP low | 352 | **0** |
-| 2 ULP high | 931 | **0** |
-| any of the three, z16 geometry | 0 | **0** |
+| fma fused, divide correct / 1 ULP low / 2 ULP high | 0 / 0 / 0 | **0 / 0 / 0** |
+| fma **unfused**, same three (z24, four shapes) | 98 / 158 / — | **0 / 0 / 0** |
+| z16 geometry, all six | 0 | **0** |
+
+It costs about two dozen extra ALU ops per fragment in every depth-writing
+shader. If a perf arm ever says that matters, the `fma()` form is the cheaper
+two thirds of the win and the table above says exactly what it gives up.
 
 ## What it is predicted to be worth
 
@@ -163,7 +224,7 @@ which nothing in the fragment shader can reproduce
 (`depth-interpolation-residual.md` reaches the same conclusion from the other
 side). That is the end of this cell.
 
-## The falsifier, and why it is not a pixel count
+## The falsifier, and what the first arm cost by getting its threshold wrong
 
 **`ours == oracle`, pixel for pixel, on all eighteen `z24 * FZn *_ZB`
 captures.** Equivalently, on `Mffffff_ZB` the big quad's `ours − floor(exact)`
@@ -173,7 +234,20 @@ one-sided ramp with the barycentric goes flat.
 A differing-pixel total cannot say this, for the reason the F24 arm found out:
 a pixel here is wrong for our reason *and* silicon's at once, and the total
 counts it once. 43,690 of the 72,138 are silicon's alone and will not move.
-`docs/testing/predictions/depth-barycentric-normalisation.json`.
+`docs/testing/predictions/depth-barycentric-normalisation{,-2}.json`.
+
+The first arm is the other half of that lesson, and it points the opposite
+way. Its registered escape clause was *"falsified only if the residual is
+still one-sided: |below − above| > 500 of 85,192"*. Measured: 2,251 — down
+from 9,598 but four times over the line, so **the falsifier fired**. It was
+right to fire. The threshold had been set on the assumption that removing the
+reciprocal error would leave *nothing*, which is the same additivity mistake
+that cost the F24 prediction: there was a second error underneath, and no
+amount of arguing from the 77 % improvement would have found it. Chasing the
+remaining 2,251 to its cause — an unfused `fma`, visible in the bottom quad
+moving the wrong way — is what produced a form that is exact. A falsifier
+that fires is not a defeat; it is the only thing that makes "we are close"
+distinguishable from "we are done".
 
 ## Must not move
 
@@ -207,10 +281,19 @@ counts it once. 43,690 of the 72,138 are silicon's alone and will not move.
 
 ## Least certain
 
-`Depth_buffer_fixed_function`. It draws through `UnprojectPoint`, so its
-vertex depths are not integers and the oracle above does not apply to it; its
-own error maxes at 9 units rather than 1, and the last change to this floor
-(`5dac36b2`) cost it 204 pixels in 307,648 — a more accurate floor landing on
-the wrong side of something else slightly more often. `z24_Cn_FZn_Mffffff_ZB`
-in that suite, 144,551 differing pixels of 307,200, is the capture that
-exposes it and the one to read first.
+`Depth_buffer_fixed_function`, and it is now measured rather than feared: six
+captures worse by 256 pixels of 663,094 against two better. It draws through
+`UnprojectPoint`, so its vertex depths are not integers and the oracle above
+does not apply to it; its own error maxes at 9 units rather than 1, and the
+previous change to this floor (`5dac36b2`) cost it 204 pixels for the same
+reason — a more accurate floor landing on the wrong side of something else
+slightly more often. `z24_Cn_FZn_Mc00000_ZB`, which took 115 of the 256, is
+the capture that exposes it and the one to read first;
+`z24_Cn_FZn_Mffffff_ZB` at 144,566 differing pixels of 307,200 is the larger
+defect in that suite and is untouched by any of this.
+
+The second uncertainty is reach. `depth_needed` is set by any draw with the
+depth test or depth writes enabled, so this arithmetic is on the path of
+essentially all 3D content, and it was measured on two suites. Nothing in it
+can make a small-span primitive worse — the margin table is the argument, and
+`z16` is the control — but a wider sweep is the honest confirmation.
