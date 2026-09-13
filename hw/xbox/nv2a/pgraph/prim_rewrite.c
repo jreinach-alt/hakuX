@@ -290,6 +290,26 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
     }
 }
 
+/*
+ * Silicon's edge order for a polygon rasterised in POLY_MODE_LINE, derived
+ * from the `Line width` goldens -- the suite disables the depth test and every
+ * palette entry is opaque, so the colour at a pixel covered by several wide
+ * edges names the edge silicon drew LAST.  The rule is one sentence:
+ *
+ *   triangulate exactly as the FILL path does, drop the tessellation's
+ *   internal edges, and for each triangle (a, b, c) emit the edge opposite a,
+ *   then the edge opposite b, then the edge opposite c -- (b,c), (c,a), (a,b).
+ *
+ * That single sentence yields a different permutation for each primitive
+ * because the tessellations differ, and nothing below is tuned per primitive.
+ * It is correct on 100.00% of 225,558 decisive pixels, in each of eleven
+ * candidate classes separately, against 78.51% for the order that was here
+ * before -- which the goldens refute rather than merely beat.  See
+ * docs/investigations/line-width-residual.md.
+ *
+ * The emission COUNT is unchanged in all three functions, so no counter can
+ * tell the two orders apart; only the captures can.
+ */
 static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
                                uint32_t base, unsigned int count)
 {
@@ -299,8 +319,14 @@ static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
         uint32_t v2 = idx_at(idx, i + 2, base);
         uint32_t v3 = idx_at(idx, i + 3, base);
 
-        emit_line(r, v0, v1);
+        /* rewrite_quads() tessellates as (v0,v1,v2) and (v0,v2,v3) on the
+         * v0-v2 diagonal, so opposite-a/b/c per triangle, less that diagonal,
+         * is (v1,v2), (v0,v1) then (v2,v3), (v3,v0).  The goldens confirm the
+         * diagonal too: on a v1-v3 diagonal the same rule would emit (v3,v0)
+         * first, and (v3,v0) loses to (v0,v1) on 5,780 pixels.
+         */
         emit_line(r, v1, v2);
+        emit_line(r, v0, v1);
         emit_line(r, v2, v3);
         emit_line(r, v3, v0);
     }
@@ -347,10 +373,17 @@ static void rewrite_quad_strip_line(PrimRewrite *r, const uint32_t *idx,
         uint32_t v2 = idx_at(idx, i + 2, base);
         uint32_t v3 = idx_at(idx, i + 3, base);
 
+        /* rewrite_quad_strip() tessellates as (v0,v1,v2) and (v2,v1,v3) on
+         * the v1-v2 diagonal, so opposite-a/b/c per triangle, less that
+         * diagonal, is (v2,v0), (v0,v1) then (v1,v3), (v3,v2) -- our previous
+         * boundary walk rotated by one.  This is the one primitive whose
+         * goldens separate "opposite a, b, c" from "opposite a, c, b"
+         * (100.00% against 79.46%); the two agree everywhere else.
+         */
+        emit_line(r, v2, v0);
         emit_line(r, v0, v1);
         emit_line(r, v1, v3);
         emit_line(r, v3, v2);
-        emit_line(r, v2, v0);
     }
 }
 
@@ -378,12 +411,34 @@ static void rewrite_polygon_line(PrimRewrite *r, const uint32_t *idx,
         return;
     }
 
-    for (unsigned int i = 0; i + 1 < count; i++) {
-        emit_line(r, idx_at(idx, i, base), idx_at(idx, i + 1, base));
+    /* A 2-gon has no triangle for the rule to order; it is the one degenerate
+     * case, and its single edge is emitted once.
+     */
+    if (count == 2) {
+        emit_line(r, idx_at(idx, 0, base), idx_at(idx, 1, base));
+        return;
     }
 
-    /* Close the loop */
-    emit_line(r, idx_at(idx, count - 1, base), idx_at(idx, 0, base));
+    /* rewrite_polygon() fans from v0, so triangle t is (v0, vt, vt+1) and
+     * opposite-a/b/c is (vt,vt+1), (vt+1,v0), (v0,vt).  Of the two spokes,
+     * (v0,vt) survives only for t == 1 and (vt+1,v0) only for t == count-2;
+     * every other spoke is internal to the tessellation and is not drawn,
+     * which the goldens confirm at width 1 (the polygon has no fan spokes).
+     *
+     * This is NOT "swap the first two edges": at count == 3 there is no
+     * internal edge at all and the order is the bare triangle's, (v1,v2),
+     * (v2,v0), (v0,v1).  The loop below gets that right because both
+     * conditions fire in the same iteration, in the rule's own order.
+     */
+    for (unsigned int t = 1; t + 1 < count; t++) {
+        emit_line(r, idx_at(idx, t, base), idx_at(idx, t + 1, base));
+        if (t == count - 2) {
+            emit_line(r, idx_at(idx, count - 1, base), idx_at(idx, 0, base));
+        }
+        if (t == 1) {
+            emit_line(r, idx_at(idx, 0, base), idx_at(idx, 1, base));
+        }
+    }
 }
 
 static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
