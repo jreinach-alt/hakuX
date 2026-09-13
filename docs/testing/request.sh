@@ -73,6 +73,23 @@ done
 # silent, so nothing about audio can be asked of them).
 [ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
 [ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
+# --runs is honoured only on the disc path; the soak path runs once and always
+# has. Accepting it there and ignoring it hands the requester a one-sample
+# noise floor while they believe they asked for N, which is worse than
+# refusing -- and a repeat is what the no-oracle streams judge on, so the
+# error lands where it costs most. Queue N separate soaks under one --who; the
+# per-run median is the replicate, not the window.
+if [ -n "$TITLE" ] && [ "${RUNS:-1}" != "1" ]; then
+    cat >&2 <<MSG
+refusing to queue: --runs $RUNS on a soak is silently ignored by the dispatcher.
+
+The soak path runs the title once. Queue $RUNS separate soak requests with the
+same --who instead: the replicate for a no-oracle measurement is the RUN, not
+the window, and a rule over all windows tightens with every window a longer
+soak happens to produce.
+MSG
+    exit 2
+fi
 
 # A misspelt device label does not fail loudly; it matches no worker, so the
 # request is simply never claimed and sits in the queue looking queued. Check
@@ -100,7 +117,18 @@ fi
 # quietly widened once the numbers are in, which is the same failure with
 # better paperwork. The sha recorded here is of the file as it stood when the
 # device work was asked for, so ab_compare can tell the two apart.
-if [ -n "$SUITES" ]; then
+# A SOAK needs this as much as a suites request, and used to get none of it:
+# this whole block sat inside `if [ -n "$SUITES" ]`, so `--expect` on a soak
+# was ACCEPTED, the file never hashed, and `expect_sha` never recorded -- so
+# the verdict reads UNBOUND and the arm proves nothing. Silent, and it is the
+# same shape as the detached-checkout hash fixed earlier today: the binding
+# machinery present, the binding not taken.
+#
+# The no-oracle streams are exactly the ones that queue soaks, which makes
+# this the second time a guard keyed on the suites path has exempted the runs
+# with the weakest oracle. The first was affinity.py pinning on a prediction
+# that soaks do not have.
+if [ -n "$SUITES" ] || [ -n "$TITLE" ]; then
     if [ -n "$EXPECT" ]; then
         # Resolve and hash under the BUILD LOCK. The dispatcher detaches this
         # same checkout to build a baseline ref, so for the length of any
@@ -125,7 +153,13 @@ if [ -n "$SUITES" ]; then
         echo "queuing without a prediction: $NO_EXPECT" >&2
     else
         cat >&2 <<'MSG'
-refusing to queue: a suites request needs --expect FILE or --no-expect REASON.
+refusing to queue: this request needs --expect FILE or --no-expect REASON.
+
+A SOAK needs it too. A soak writes no captures, so ab_compare cannot judge it
+and its legs have to be read off the logcat by hand -- which makes the
+registered prediction the only thing standing between a soak result and a
+story told afterwards. --no-expect is the right answer for a baseline, a
+survey or a noise-floor run; say which.
 
   --expect docs/testing/predictions/<thing>.json
         the registered prediction this arm will be judged against. Write it
@@ -334,6 +368,21 @@ for _ in $(seq 1 360); do
         python3 -c "
 import json,sys
 m=json.load(open('$D/results/$ID/result.json'))
+# A SOAK has no disc_id, no runs[] and no captures_vs_goldens, so the disc
+# reader below died with KeyError: 'disc_id' rather than printing anything --
+# which made --wait unusable for exactly the stream that most needs to watch a
+# run finish, since a soak's legs are read off the logcat by hand.
+if m.get('kind') == 'soak':
+    print('binary  ', m['apk_sha'], ' device', m.get('device_label') or '(UNRECORDED)',
+          ' classifier', m.get('classifier_rev', '?'))
+    print('soak    ', m.get('title','?'), m.get('seconds','?'), 's,',
+          m.get('logcat_lines','?'), 'log lines')
+    for f in m.get('pulled') or []:
+        print('pulled  ', f['file'], format(f['bytes'],','), 'bytes')
+    if not (m.get('pulled') or []):
+        print('pulled   (nothing)')
+    print('logcat  ', '$D/results/$ID/logcat.txt')
+    raise SystemExit(0)
 print('binary  ', m['apk_sha'], ' disc', m['disc_id'], ' classifier', m.get('classifier_rev'))
 for r in m['runs']:
     print('run     ', r['tsv'], r['captures'], 'captures', r['exact'], 'exact',
