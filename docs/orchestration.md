@@ -256,33 +256,36 @@ useful item in a brief: it is how the fold-in is judged, and it is what makes
 a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
 have been caught at the prediction stage.
 
-### Territories as allocated 2026-09-12 (third wave)
+### Territories as allocated 2026-09-13 (fourth wave)
 
 | stream | files owned |
 |---|---|
-| depth cells (#52) | `glsl/psh.c`, `vk/surface-compute.c` |
-| packed texel expansion (#59) | `vk/texture.c`, `pgraph/texture.c`, `s3tc.c` |
-| line width (#13) | `vk/draw.c`, `gl/draw.c`, `vk/instance.c` |
-| orchestrator | `glsl/vsh*.c` (byte-grid quantisation arm on the device) |
-| remote lane (#34, #39, #51) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/surface.c`, desktop build |
-| nobody | `pgraph.c` |
+| vk surface sync (#61, #50) | `vk/surface.c`, `vk/renderer.h`, `vk/draw.c`, `vk/command.c` |
+| audio state + volume law (#75, #71, #73) | `hw/xbox/mcpx/apu/**`, the ACI device, `android/**` |
+| RADIAL fog (#41, #42) | `glsl/vsh.c`, `vsh-ff.c`, `vsh-prog.c`, `geom.c`, fog paths in `pgraph.c` |
+| issue audit | `nv2a_issues.toml`, `docs/**` prose only -- claims no code |
+| orchestrator | `glsl/psh.c` (#10's HILO arm is queued and unjudged) |
+| remote lane (#34, #39, #51, #62) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/*.c`, desktop build |
+| nobody | `pgraph.c` outside the fog paths |
 
 A file whose stream's arm is **queued but not yet judged** is still claimed.
-The arm measures one delta and a second edit lands inside it.
+The arm measures one delta and a second edit lands inside it. `psh.c` is the
+live example: its implementing agent finished and released it, and it is
+claimed again immediately by the orchestrator, because #10's A/B is in the
+queue and an edit landing between the two arms would be measured as part of
+#10's delta.
 
 Retired: first wave (depth #16, image blit #33, viewport #49, audio); second
-wave (cube face #40, RADIAL fog #41, swatch order #50). Files change hands
-between waves, so every brief says *rebase first and read the current file,
-not your memory of it* -- `psh.c` alone gained `texelTieBias` on the shadow
-fetch and a cube degenerate-direction constant within one wave.
+wave (cube face #40, RADIAL fog #41, swatch order #50); third wave (depth
+cells #52, packed texels #59, line width #13, byte-grid quantisation). Note
+that #41 and #50 are back in the table -- a retired wave means the files are
+free, not that the issue was finished, and re-reading the earlier wave's
+commits is the first instruction in both briefs.
 
-
-**Guardrail against related-issue collisions**, which is a different failure
-from file collisions: two agents on #16 and #52 would not touch the same
-files, yet would derive the same mechanism twice. So the claimed list in every
-brief names the *issues* under way as well as the files, and issues split from
-a common parent (#16/#52, #9/#53/#38, #43/#50) are never assigned
-concurrently.
+Every brief says *rebase first and read the current file, not your memory of
+it*: `psh.c` alone gained `texelTieBias`, a cube degenerate-direction
+constant, and now a 16-bit HILO field read plus a signed gather, across three
+waves.
 
 ### Why the remote lane is different
 
