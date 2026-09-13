@@ -111,6 +111,39 @@ BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format)
     return kelvin_color_format_info_map[color_format];
 }
 
+bool pgraph_texture_format_expands_by_replication(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5:
+        return true;
+    default:
+        return false;
+    }
+}
+
+bool pgraph_texture_format_is_converted(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R6G5B5:
+    /* Decompressed by the renderer rather than here, but equally not stored
+     * in the guest's layout once it reaches a host image. */
+    case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT23_A8R8G8B8:
+    case NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8:
+        return true;
+    default:
+        return pgraph_texture_format_expands_by_replication(color_format);
+    }
+}
+
 bool pgraph_color_format_has_signed_variant(unsigned int color_format)
 {
     switch (color_format) {
@@ -558,6 +591,87 @@ uint8_t *pgraph_convert_texture_data(const TextureShape s, const uint8_t *data,
                     pixel[1] = (g5 << 3) | (g5 >> 2);
                     pixel[2] = (b5 << 3) | (b5 >> 2);
                     pixel[3] = 0xFF;
+                }
+            }
+        }
+    } else if (pgraph_texture_format_expands_by_replication(s.color_format)) {
+        /*
+         * The 5- and 6-bit packed colour formats, expanded to 8 bits the way
+         * silicon does it: BIT REPLICATION, not the exact ratio.
+         *
+         * The two rules are not interchangeable. For a 5-bit field they
+         * disagree at v = 3, 7, 24, 28; for a 6-bit field at v = 11..15 and
+         * 48..52. Everywhere else they coincide, which is why this reads for
+         * years as an occasional off-by-one rather than as a format rule.
+         *
+         *   5-bit v=3   replicate (v<<3)|(v>>2) = 24    round(v*255/31) = 25
+         *   5-bit v=19  replicate               = 156   round(v*255/31) = 156
+         *   6-bit v=38  replicate (v<<2)|(v>>4) = 154   round(v*255/63) = 154
+         *   6-bit v=12  replicate               = 48    round(v*255/63) = 49
+         *
+         * MEASURED from the goldens, 2026-09-13, mapping-free: take the set
+         * of distinct 8-bit values each channel of a golden holds and ask
+         * which grid it lies on. Texture format's TexFmt_R5G6B5(_L),
+         * TexFmt_A1R5G5B5_L, TexFmt_X1R5G5B5_L and TexFmt_R6G5B5 walk a
+         * 256x256 gradient, so every field value appears. Across all of them
+         * every 5-bit channel holds 24, 57, 198 and 231 -- replicate-only --
+         * and holds no ratio-only value; every 6-bit channel holds 44, 48,
+         * 52, 56, 60, 195, 199, 203, 207 and 211, again replicate-only, and
+         * no ratio-only value. Fourteen discriminating levels, all on
+         * replication, none on the ratio. Surface clip's rt_* row is the same
+         * rule seen through one colour: golden (24,154,24) against our
+         * (25,154,25), 5-bit v=3 in red and blue with green's v=38 agreeing
+         * by coincidence.
+         *
+         * A1R5G5B5's alpha bit is unaffected (0/255 under either rule) and
+         * A4R4G4B4 IS DELIBERATELY NOT HERE: for a 4-bit field replication
+         * and the ratio are the same map, v*17, at every one of the 16
+         * values, so converting it would cost throughput and change no pixel.
+         * TexFmt_A4R4G4B4 and TexFmt_A4R4G4B4_L are already 0 differing px.
+         *
+         * Doing it here, before filtering, is deliberate and matches
+         * SZ_R6G5B5 above: the hardware expands the texel and then filters
+         * the 8-bit result, so a correction applied after the sample would be
+         * wrong on every filtered fetch.
+         */
+        size = width * height * depth * 4;
+        converted_data = g_malloc(size);
+        const bool is_565 =
+            s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5 ||
+            s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5;
+        const bool has_alpha_bit =
+            s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5 ||
+            s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5;
+        for (int z = 0; z < depth; z++) {
+            const uint8_t *slice = data + z * slice_pitch;
+            uint8_t *out = converted_data + z * height * width * 4;
+            for (int y = 0; y < height; y++) {
+                for (int x = 0; x < width; x++) {
+                    uint16_t word = *(uint16_t *)(slice + y * row_pitch + x * 2);
+                    uint8_t *pixel = &out[(y * width + x) * 4];
+                    if (is_565) {
+                        unsigned r5 = (word >> 11) & 0x1F;
+                        unsigned g6 = (word >> 5) & 0x3F;
+                        unsigned b5 = word & 0x1F;
+                        pixel[0] = (r5 << 3) | (r5 >> 2);
+                        pixel[1] = (g6 << 2) | (g6 >> 4);
+                        pixel[2] = (b5 << 3) | (b5 >> 2);
+                        pixel[3] = 0xFF;
+                    } else {
+                        unsigned r5 = (word >> 10) & 0x1F;
+                        unsigned g5 = (word >> 5) & 0x1F;
+                        unsigned b5 = word & 0x1F;
+                        pixel[0] = (r5 << 3) | (r5 >> 2);
+                        pixel[1] = (g5 << 3) | (g5 >> 2);
+                        pixel[2] = (b5 << 3) | (b5 >> 2);
+                        /* X1: the pad bit is not alpha, and the host format
+                         * is now RGBA8 rather than a no-alpha packed format,
+                         * so the 1.0 the texture unit owes has to be written
+                         * rather than left to the image format to supply. */
+                        pixel[3] = has_alpha_bit ?
+                                       ((word & 0x8000) ? 0xFF : 0x00) :
+                                       0xFF;
+                    }
                 }
             }
         }

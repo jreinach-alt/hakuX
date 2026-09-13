@@ -240,14 +240,20 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8] =
         {1, false, GL_R8, GL_RED, GL_UNSIGNED_BYTE,
          {GL_RED, GL_RED, GL_RED, GL_RED}},
+    /* Converted to unsigned RGBA8 by pgraph_convert_texture_data. A native
+     * packed format expands a 5- or 6-bit field by the exact ratio; silicon
+     * replicates the high bits into the low ones, and the goldens land on
+     * replication at all fourteen values where the two rules differ. The
+     * leading 2 is still the GUEST stride. A4R4G4B4 stays native: at 4 bits
+     * the two rules are the same map. Issue #59. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5] =
-        {2, false, GL_RGB5_A1, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV},
+        {2, false, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5] =
-        {2, false, GL_RGB5, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV},
+        {2, false, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4] =
         {2, false, GL_RGBA4, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5] =
-        {2, false, GL_RGB565, GL_RGB, GL_UNSIGNED_SHORT_5_6_5},
+        {2, false, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8] =
         {4, false, GL_RGBA8, GL_BGRA, NV2A_GL_UNSIGNED_INT_8_8_8_8_REV},
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8] =
@@ -263,10 +269,11 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
         {4, false, GL_COMPRESSED_RGBA_S3TC_DXT3_EXT, 0, GL_RGBA},
     [NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT45_A8R8G8B8] =
         {4, false, GL_COMPRESSED_RGBA_S3TC_DXT5_EXT, 0, GL_RGBA},
+    /* Converted, as SZ_A1R5G5B5 and SZ_R5G6B5 above. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5] =
-        {2, true, GL_RGB5_A1, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV},
+        {2, true, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5] =
-        {2, true, GL_RGB565, GL_RGB, GL_UNSIGNED_SHORT_5_6_5},
+        {2, true, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8] =
         {4, true, GL_RGBA8, GL_BGRA, NV2A_GL_UNSIGNED_INT_8_8_8_8_REV},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8] =
@@ -286,8 +293,9 @@ static const ColorFormatInfo kelvin_color_format_gl_map[66] = {
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8] =
         {1, true, GL_R8, GL_RED, GL_UNSIGNED_BYTE,
          {GL_RED, GL_RED, GL_RED, GL_RED}},
+    /* Converted, as SZ_X1R5G5B5 above; the decode writes alpha = 1.0. */
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5] =
-        {2, true, GL_RGB5, GL_BGRA, GL_UNSIGNED_SHORT_1_5_5_5_REV},
+        {2, true, GL_RGBA8, GL_RGBA, GL_UNSIGNED_BYTE},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4] =
         {2, true, GL_RGBA4, GL_BGRA, GL_UNSIGNED_SHORT_4_4_4_4_REV},
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8] =

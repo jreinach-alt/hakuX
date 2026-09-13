@@ -1427,6 +1427,20 @@ bool pgraph_gl_check_surface_to_texture_compatibility(
         return false;
     }
 
+    /*
+     * A format the renderer converts on the way in cannot be filled by
+     * rendering the surface into it: what lands in the texture is the
+     * surface's own decode, and for the 5- and 6-bit packed formats that is
+     * the exact-ratio expansion rather than silicon's bit replication. The
+     * texture has to come from VRAM so pgraph_convert_texture_data sees it.
+     * Same argument as check_surface_to_texture_compatiblity() in the Vulkan
+     * renderer; issue #59. The Vulkan side is what the device measures, so
+     * this half is argued from the tables, not from a capture.
+     */
+    if (pgraph_texture_format_is_converted(texture_fmt)) {
+        return false;
+    }
+
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, shape)) {
         return true;

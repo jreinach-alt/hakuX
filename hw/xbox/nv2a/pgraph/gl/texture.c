@@ -73,18 +73,19 @@ static uint8_t android_expand_4_to_8(uint8_t value)
     return (value << 4) | value;
 }
 
-static uint8_t android_expand_5_to_8(uint8_t value)
-{
-    return (value << 3) | (value >> 2);
-}
-
 static bool android_texture_needs_rgba8_upload(const TextureShape s)
 {
     switch (s.color_format) {
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_AY8:
-    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:
-    case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5:
+    /*
+     * A1R5G5B5 and X1R5G5B5 are deliberately absent, here and below: since
+     * issue #59 pgraph_convert_texture_data expands them to RGBA8 for every
+     * renderer, with the same bit replication this file used to apply on its
+     * own, and running both would decode the decoded buffer. A4R4G4B4 stays,
+     * because it keeps its native packed format (4-bit replication and the
+     * exact ratio are the same map) and GLES has no 4_4_4_4_REV + BGRA.
+     */
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4:
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8Y8:
@@ -94,9 +95,7 @@ static bool android_texture_needs_rgba8_upload(const TextureShape s)
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_G8B8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_AY8:
-    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8:
-    case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X8R8G8B8:
     case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8:
@@ -140,7 +139,8 @@ static unsigned int android_texture_source_bpp(const TextureShape s,
                                                bool has_converted_data)
 {
     if (has_converted_data &&
-        s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8) {
+        (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8 ||
+         pgraph_texture_format_expands_by_replication(s.color_format))) {
         return 4;
     }
     return default_bpp;
@@ -187,24 +187,10 @@ static void android_texture_convert_to_rgba8(const TextureShape s,
                     out[3] = value;
                     break;
                 }
-                case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5:
-                case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5: {
-                    uint16_t pixel = lduw_le_p(src_row + x * 2);
-                    out[0] = android_expand_5_to_8((pixel >> 10) & 0x1F);
-                    out[1] = android_expand_5_to_8((pixel >> 5) & 0x1F);
-                    out[2] = android_expand_5_to_8(pixel & 0x1F);
-                    out[3] = (pixel & 0x8000) ? 0xFF : 0x00;
-                    break;
-                }
-                case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5:
-                case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5: {
-                    uint16_t pixel = lduw_le_p(src_row + x * 2);
-                    out[0] = android_expand_5_to_8((pixel >> 10) & 0x1F);
-                    out[1] = android_expand_5_to_8((pixel >> 5) & 0x1F);
-                    out[2] = android_expand_5_to_8(pixel & 0x1F);
-                    out[3] = 0xFF;
-                    break;
-                }
+                /* The 5551 cases that were here are now unreachable: their
+                 * formats have left android_texture_needs_rgba8_upload, and
+                 * pgraph_convert_texture_data does the identical expansion
+                 * for both renderers (issue #59). */
                 case NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4:
                 case NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4: {
                     uint16_t pixel = lduw_le_p(src_row + x * 2);

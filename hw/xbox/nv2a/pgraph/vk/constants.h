@@ -188,18 +188,36 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         VK_FORMAT_R8_UNORM,
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }
     },
+    /*
+     * The 5- and 6-bit packed formats are NOT claimed for their native
+     * Vulkan packed format, and this is the whole of issue #59.
+     *
+     * A native VK_FORMAT_*_PACK16 expands a narrow UNORM field by the exact
+     * ratio, because the Vulkan spec says so. Silicon replicates the field's
+     * high bits into the low ones. The two rules disagree for 5-bit v = 3, 7,
+     * 24, 28 and for 6-bit v = 11..15, 48..52, and the goldens land on
+     * replication at all fourteen (pgraph_convert_texture_data has the
+     * measurement). No component mapping, sampler state or shader correction
+     * can reach that from a packed image, so these convert to RGBA8 on the
+     * way in, exactly as DXT1 and R6G5B5 already do -- and for exactly the
+     * same reason: while the native format is claimed, the software rule is
+     * unreachable and any fit to it measures nothing.
+     *
+     * A4R4G4B4 keeps its native format on purpose. For a 4-bit field the two
+     * rules are the same map (v*17) at every value, so converting it would
+     * buy no pixel and cost a decode.
+     */
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A1R5G5B5] = {
-        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5] = {
-        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
-        { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_ONE },
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted; the decode writes alpha = 1.0
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A4R4G4B4] = {
         VK_FORMAT_A4R4G4B4_UNORM_PACK16,
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R5G6B5] = {
-        VK_FORMAT_R5G6B5_UNORM_PACK16,
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8] = {
         VK_FORMAT_B8G8R8A8_UNORM,
@@ -221,10 +239,10 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         VK_FORMAT_R8G8B8A8_UNORM, // Converted
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A1R5G5B5] = {
-        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted, see SZ_A1R5G5B5 above
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R5G6B5] = {
-        VK_FORMAT_R5G6B5_UNORM_PACK16,
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted, see SZ_R5G6B5 above
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A8R8G8B8] = {
         VK_FORMAT_B8G8R8A8_UNORM,
@@ -250,8 +268,7 @@ static const VkColorFormatInfo kelvin_color_format_vk_map[66] = {
         { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_R }
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_X1R5G5B5] = {
-        VK_FORMAT_A1R5G5B5_UNORM_PACK16,
-        { VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_ONE },
+        VK_FORMAT_R8G8B8A8_UNORM, // Converted; the decode writes alpha = 1.0
     },
     [NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_A4R4G4B4] = {
         VK_FORMAT_A4R4G4B4_UNORM_PACK16,

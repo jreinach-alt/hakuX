@@ -71,8 +71,27 @@ bool pgraph_is_texture_descriptor_decodable(PGRAPHState *pg, int texture_idx);
  * sampler interpolates signed values. Converting after the fetch instead makes
  * a boundary between 0x7f and 0x80 -- adjacent unsigned, opposite extremes
  * signed -- saturate to +/-1 rather than sweep through zero. Only formats with
- * a signed counterpart can do that; packed 5551/565 cannot. */
+ * a signed counterpart can do that. The packed 5551/565 formats now convert
+ * to RGBA8 (see pgraph_texture_format_expands_by_replication) so they *could*
+ * be listed; they deliberately are not, because no golden in the corpus binds
+ * one with the signedness bits set and a format added here on reasoning alone
+ * is a guess with a performance cost. */
 bool pgraph_color_format_has_signed_variant(unsigned int color_format);
+
+/* True for the packed colour formats whose channels are narrower than 8 bits
+ * and whose expansion silicon performs by replicating the field's high bits
+ * into the low ones -- a rule no native packed host format can express, since
+ * both Vulkan and GL define their packed UNORM formats as the exact ratio.
+ * These are decoded to RGBA8 by pgraph_convert_texture_data instead. The
+ * measurement, and why A4R4G4B4 is not one of them, is in that function. */
+bool pgraph_texture_format_expands_by_replication(unsigned int color_format);
+
+/* True when the host image for this colour format does NOT hold the guest's
+ * bytes: the renderer converted, decompressed or expanded them on the way in.
+ * Such a texture can never be filled by a raw image copy from a colour
+ * surface that happens to sit at its address -- the copy would move guest-
+ * layout bits into an image whose format says they are something else. */
+bool pgraph_texture_format_is_converted(unsigned int color_format);
 BasicColorFormatInfo pgraph_get_color_format_info(unsigned int color_format);
 size_t pgraph_get_texture_length(PGRAPHState *pg, TextureShape *shape);
 

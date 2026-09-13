@@ -1228,6 +1228,30 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
         return true;
     }
 
+    /*
+     * A converted format's host image does not hold the guest's bytes, so
+     * there is nothing for vkCmdCopyImage to move into it correctly and
+     * nothing for the surface's own view to decode. It has to come the long
+     * way round: surface downloaded to VRAM, then decoded by
+     * pgraph_convert_texture_data like any other texture.
+     *
+     * The size check below cannot stand in for this. It rejects the case that
+     * prompted the guard -- a 2-byte R5G6B5 surface against the 4-byte RGBA8
+     * image its texture format now wants (issue #59) -- but it ACCEPTS a
+     * 4-byte A8R8G8B8 surface against that same 4-byte image, and would hand
+     * the decode 32-bit pixels claiming to be 565 words. That case is
+     * unreachable today only because 565 used to be two bytes on the host;
+     * widening the format is what creates it.
+     *
+     * Expected to be inert for the other converted formats -- a render target
+     * in DXT, I8 or YUV is not a thing the hardware can produce, so no
+     * surface should ever alias one -- and the must-not-move list on this
+     * change is what checks that rather than the reasoning.
+     */
+    if (pgraph_texture_format_is_converted(shape->color_format)) {
+        return false;
+    }
+
     VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
     return tex_vkf.vk_format &&
            surface->host_fmt.host_bytes_per_pixel == vk_format_texel_size(tex_vkf.vk_format);
