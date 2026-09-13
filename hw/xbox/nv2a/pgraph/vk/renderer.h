@@ -1679,6 +1679,13 @@ void pgraph_vk_texture_surface_view_retired(PGRAPHState *pg, VkImageView view);
 void pgraph_vk_drain_deferred_surface_releases(PGRAPHVkState *r, int frame);
 void pgraph_vk_bind_textures(NV2AState *d);
 void pgraph_vk_poll_bound_textures(NV2AState *d);
+
+/* #54's read-side race probe (vk/draw.c). Appends its counters to the
+ * hakuX-perf pacing line; pgraph/profile.c calls it through a local extern,
+ * under CONFIG_VULKAN because profile.c is built whether or not this
+ * directory is. Declared here so the definition has a prototype and the vk
+ * lane can find it from the header rather than from the log line. */
+int hakux_vram_race_snprintf(char *buf, int bufsize);
 bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg);
 void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d, hwaddr addr,
                                             hwaddr size);
