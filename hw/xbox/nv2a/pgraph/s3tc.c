@@ -73,15 +73,38 @@ static inline uint8_t expand6(unsigned int v)
  *
  * The rule: of the 8 (5-bit) or 4 (6-bit) integers spanning the gap either
  * side of the replicated expansion, emit the one congruent to the matrix
- * entry below. Saturated codes do not dither -- 0 stays 0 and 31/63 stays
- * 255, which is why a flat black or white block decodes to a single colour.
+ * entry below. A flat black or white block still decodes to a single colour,
+ * because a saturated code's whole gap lies outside the band the next
+ * paragraph names.
  *
- * Known residual: a code of exactly 1 decodes to 0 in the goldens rather than
- * to a value near 8, except in the cells selecting the top of the gap. That
- * is 1 of 32 (resp. 64) codes and it accounts for every remaining
- * disagreement on the plasma captures (6 of 1024 texels, 7 of 1024); the rest
- * of this function is exact there. No rule covering it has been fitted, so it
- * is deliberately left alone rather than special-cased on thin evidence.
+ * The dither also SATURATES near both ends, and that is the second half of
+ * #6. The output takes values only in
+ *
+ *     {0} u [11, 250] u {255}    5-bit channels (R, B)
+ *     {0} u [ 5, 252] u {255}    6-bit channels (G)
+ *
+ * -- anything the dither would place below the low bound is emitted as 0 and
+ * anything above the high bound as 255. Both bounds are the *top of the
+ * dither window of the extreme non-saturating code*, replicate(1) + half - 1
+ * and replicate(2^bits - 2) + half - 1, and both are measured at both channel
+ * widths: the five Texture DXT goldens contain no R or B value in 1..10 and
+ * no G value in 1..4, and Texture_format's TexFmt_DXT1 -- a different suite,
+ * a different guest-side compressor and a different quad -- walks green
+ * through 249, 250, 251, 252 and then jumps to 255, which is what pins 252.
+ * The DXT3 and DXT5 goldens hold 8 in R, exactly the value DXT1 never emits,
+ * so the band is this format path and not the test images.
+ *
+ * This REPLACES the two clauses this function used to carry. A palette value
+ * of 0 or 255 needed no dither because its whole window lies outside the
+ * allowed band, so the rule subsumes both rather than adding a third case --
+ * which is the argument that it is a rule and not a curve fit to code 1. The
+ * other argument is that it is not about code 1 at all: of the 1,384 channel
+ * observations where this rule and the previous one disagree, 704 come from
+ * an *interpolated* palette entry, which is an arbitrary 8-bit value with no
+ * code, and the golden agrees with this rule on all 1,384.
+ *
+ * docs/testing/dxt1_saturation_rule.py re-derives all of it and exits
+ * non-zero if any rival rule survives.
  */
 static const uint8_t kDxt1DitherR[4][4] = {
     { 3, 7, 4, 0 }, { 5, 1, 6, 2 }, { 0, 4, 7, 3 }, { 2, 6, 1, 5 },
@@ -95,19 +118,28 @@ static const uint8_t kDxt1DitherB[4][4] = {
 
 /*
  * Pick the value congruent to `t` modulo the gap width that lies in
- * [v - half, v + half - 1]. The +256 keeps the intermediate non-negative
- * without perturbing the residue: 256 is a multiple of both gap widths.
+ * [v - half, v + half - 1], then saturate it outside the band the hardware
+ * emits. The +256 keeps the intermediate non-negative without perturbing the
+ * residue: 256 is a multiple of both gap widths.
+ *
+ * The bounds are the window tops of the extreme non-saturating codes. The gap
+ * width is 2 * half, so replicate(1) is 2 * half and the low bound is
+ * 3 * half - 1; the high bound is 255 - half - 1. That gives 11 and 250 for a
+ * 5-bit channel and 5 and 252 for a 6-bit one, both measured.
  */
 static inline uint8_t dither_to_residue(uint8_t v, unsigned int t,
                                         unsigned int half)
 {
-    if (v == 0 || v == 255) {
-        return v;
-    }
-
     unsigned int mask = 2 * half - 1;
     int out = (int)v - (int)half + (int)((t - v + half + 256) & mask);
-    return (uint8_t)(out < 0 ? 0 : (out > 255 ? 255 : out));
+
+    if (out < 3 * (int)half - 1) {
+        return 0;
+    }
+    if (out > 254 - (int)half) {
+        return 255;
+    }
+    return (uint8_t)out;
 }
 
 static inline uint8_t dither5(uint8_t v, unsigned int t)
