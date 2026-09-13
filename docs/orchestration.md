@@ -341,6 +341,50 @@ an interpolation fix; the selected cube face per pixel rather than differing
 pixels; a swatch's centre row for a reordering; the mean light term over a lit
 region rather than captures-gone-exact.
 
+## A failed arm is a diagnosis, not a revert
+
+**Do not revert a change because its arm failed. Push through to the root
+cause first, and check whether the reasoning that motivated the change still
+holds.** Revert only once you can say *why* it does not work -- and by then
+you usually know what to change instead.
+
+#40 on 2026-09-12 is the worked example, and it cost real time.
+
+Its degenerate-cube guard predicted -70 px on each of 20 captures and moved
+3 px. It was reverted on the reading that the guard "did not fire". Both
+halves of that were wrong:
+
+- **It fired.** On 71 px in exactly the 20 predicted captures and none of the
+  other 63 -- visible immediately by diffing arm A's captures against arm B's,
+  which the revert did not do.
+- **The premise held.** The substituted direction `vec3(1.0)` is itself a
+  three-way major-axis tie, and this stack resolves ties to +Z where the
+  Vulkan rule says +X, so a wrong answer replaced a wrong answer at the same
+  face. The entry point was right; one constant was wrong.
+
+The fix that passed is **the same guard with the constant skewed off the tie**
+-- `vec3(1.0, 1-2^-13, 1-2^-13)` -- and it landed exactly -70 on all 20
+captures, 0 worse, all 69 registered checks holding. So the revert was pure
+churn: remove, then re-add modified. Worse, the agent that found the real
+cause had to cherry-pick the revert into its own worktree to work on the
+post-revert state, rather than editing one line.
+
+The rule that *is* still in force -- code that fixes nothing comes out -- is
+about code with no demonstrated effect at the end of an investigation, not
+about the first disappointing arm.
+
+Questions to answer before a revert, in order:
+
+1. **Did it execute?** Diff the captures. A change that runs and returns a
+   different wrong answer is indistinguishable from one that never ran, in any
+   total.
+2. **Was the premise measured or inferred?** If inferred, measure it. #40's
+   "the direction is exactly zero here" was inferred from a texture being
+   black and turned out to be *true on 70 of 71 pixels* -- the opposite of
+   what the count suggested.
+3. **Is the entry point right and only the value wrong?** That is the common
+   case and it is a one-line edit, not a revert.
+
 ## A flat count does not mean the change was inert
 
 When an arm shows no movement, diff arm A's captures against arm B's before

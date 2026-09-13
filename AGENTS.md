@@ -359,6 +359,13 @@ Four rules, each of which cost a real verdict on 2026-09-12:
   day: per-column depth spread, which cube face a pixel selects, a swatch's
   centre row, the mean light term over a lit region, the recovered byte for a
   named float component.
+- **A failed arm is a diagnosis, not a revert.** Push through to the root
+  cause before reverting, and check whether the reasoning that motivated the
+  change still applies -- usually the entry point is right and only a value is
+  wrong, which is a one-line edit. #40 was reverted on a failed arm and the
+  fix that passed was the same guard with one constant changed. Reverting code
+  that fixes nothing still applies at the *end* of an investigation, not at
+  the first disappointing arm.
 - **A flat count does not mean the change was inert.** Diff arm A's captures
   against arm B's before concluding it did nothing -- a guard that fires and
   returns a *different wrong answer* is indistinguishable in the totals.
