@@ -178,6 +178,21 @@ excludes the dangerous caller by construction — `pgraph_write` reaches
 there for a thread that needs `pgraph.lock` to process a method is a deadlock.
 DMA_PUT cannot have advanced on that path.
 
+**The invariant the `current_cpu` gate rests on, and what breaks if it ever
+stops holding.** The gate excludes every non-guest caller, but one guest-side
+caller is excluded only by an ordering fact: `pgraph_write` reaches
+`pfifo_kick()` holding **`pgraph.lock` as well as `pfifo.lock`**, and waiting
+there for a thread that needs `pgraph.lock` to process a method cannot
+succeed. It never enters the wait today because **every write to DMA_PUT is
+immediately followed by a kick on the same thread** — `user_write` always
+kicks, and `pfifo_write` on the `CACHE1_DMA_PUT` register does too — so by the
+time any later MMIO write reaches `pfifo_kick()`, DMA_PUT has already been
+consumed by the submission test. If a path is ever added that advances DMA_PUT
+*without* an immediate kick, that stops being true, and the symptom is a
+repeated 250 ms stall on PGRAPH register writes rather than a hard hang: the
+pusher parks stalled, the unconditional broadcast releases the waiter, and
+`gave=` counts it. Worth knowing which number to look at.
+
 **A separate condition variable, not `fifo_idle_cond`.** The idle signal means
 "the PFIFO thread has stopped", which is what `nv2a_lock_fifo()` needs, and it
 only becomes true after `FIFO_SPIN_ACTIVE_NS` = 100 µs of spinning. The bound
@@ -213,6 +228,21 @@ races_lost    1, 0,    2, 0, 0,    3, 0,    2,    3,   1
 ```
 
 **Bar: `stale_px == 0` on 10 of 10 runs.**
+
+### The judging path is validated before the arms land
+
+`border_swatch_origin.py` was run against the noise floor's own result
+directory (`1789255594-exp54-stst-correct-3660183`, ten `captures<N>/`
+directories) on this tree, and reproduces the published figures exactly —
+`stale_px` 181, 0, 2352, 0, 0, 2430, 0, 1847, 5640 with `races_lost` 1, 0, 2,
+0, 0, 3, 0, 2, 3, every `prefix_ok=True`, `unexplained_px=0` on every run, and
+the cut points 116, 175, 229, 405, 432, 506 and two `complete`. Its
+`--self-check` reproduces all 73,728 golden swatch pixels.
+
+That is worth doing before rather than after, for the reason `AGENTS.md`
+records twice: a tool that reads captures and silently finds none answers
+anyway, and on 2026-09-12 one reported all three of its captures MISSING on an
+arm that contained them — which reads exactly like a failed render.
 
 ### The caveat that has to travel with any verdict
 
