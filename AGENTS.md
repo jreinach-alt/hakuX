@@ -1370,6 +1370,22 @@ checking the claim rather than either believing or dismissing the report. This
 is the same shape as the stale-artifact and stale-floor failures already
 recorded, arriving through a checker that said ok.
 
+**A CHECKER THAT READS LIVE STATE AND DISK STATE TOGETHER TURNS YOUR
+STALENESS INTO SOMEBODY ELSE'S FAULT.** `check_coverage.py` reads the open-issue
+list from GitHub, live, and the tracker from the working tree. So a lane four
+commits behind sees a real issue with no tracker entry and reports, correctly
+from where it stands, that the board is broken and its push is blocked by
+shared infrastructure.
+
+Three times on 2026-09-13, from two different lanes, and each report was a
+sound argument run against the wrong inputs -- the same shape as the stale
+index, where a lane proved its commit touched "neither the index nor the tests
+tree" while having moved 71 symbols in a file the index records sites from.
+
+**So the check before reporting infrastructure blocked is
+`git rev-list --count HEAD..<campaign tip>`.** If it is not zero, rebase before
+concluding. A gate failing in a stale checkout is evidence about the checkout.
+
 **A finished lane's worktree can still hold live bindings.** Two #10 arms were
 queued with `expect` pointing at a prediction inside `/home/justin/hakuX-wt-31-10`.
 The lane then finished. Removing the worktree would have made a hash-bound
