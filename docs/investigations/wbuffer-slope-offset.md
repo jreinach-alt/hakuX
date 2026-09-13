@@ -252,7 +252,11 @@ the first four triangles.  Column 164 predicts offsets 403,404.8 / 420,816.6 /
 [440,927.2732, 440,927.2878] / [461,755.6224, 461,755.6255].  The errors are
 **-122, +658, +1,547 and +2,555 units** -- 0.03% to 0.55% -- where this same
 model lands *inside* hardware's interval on all 24 `TriH` triangles and on all
-eleven clipped ones.  No other integer column is closer: the recovered anchors
+thirteen clipped ones -- thirteen of the sixteen the clip cut, the three
+exceptions being `ClipF` t1.  An earlier draft of the psh.c comment and the
+commit that landed the fix both said "eleven for eleven", which miscounted the
+`ClipW` pairs and dropped the three exceptions from the denominator; the table
+above is right and that sentence was not.  No other integer column is closer: the recovered anchors
 are 164.007, 163.963, 163.920, 163.876, drifting **-0.0435 px per triangle**
 while the triangles translate by exactly 1 px, and the pattern repeats with
 period 4 across all 24 (so it is a function of the anchor's position relative

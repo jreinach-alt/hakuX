@@ -2275,9 +2275,13 @@ static MString* psh_convert(struct PixelShader *ps)
                  * goldens, exactly, on all 24 `TriH` triangles: their offsets
                  * are 439380/459200/480392/503086 and the anchor row that
                  * reproduces each is 4*floor(k/4)+2 for every one of them, to
-                 * under 2e-6 of the value.  The 2-grid snap is right for every
-                 * triangle the clip DID cut -- Wall, Roof, Floor and all three
-                 * ClipW -- so the regime is selected on that bit, not on size.
+                 * under 2e-6 of the value.  The 2-grid snap is right for
+                 * THIRTEEN of the sixteen triangles the clip DID cut -- Wall,
+                 * Roof and Floor both ways, all three ClipW both ways, and
+                 * ClipFs first triangle -- so the regime is selected on that
+                 * bit rather than on size.  The three exceptions are ClipFs
+                 * SECOND triangle at each clip top, below; do not read the
+                 * thirteen as sixteen.
                  *
                  * Deliberately not done here, both measured:
                  *   - the COLUMN stays on the 2-grid.  `TriV` is the only
