@@ -1170,12 +1170,41 @@ correctly attributed.
   same half of the frame-rate ceiling.
 - **So it does not ship on**, and the reason is now a measurement rather than
   a caution. `XEMU_OPT_FIFO_SKEW_BOUND` stays 0.
-- **What survives as the next candidate is the one this document already
-  named**, and it is now the *only* one: write-tracking. Trap the guest's
-  store to a range a queued draw will read, instead of holding at the
-  submission. That is a read-side mitigation in the texture path, it does not
-  scale with draw density, and it is the only remaining lever that the
-  invariant's intrinsic cost does not defeat.
+- **What survives are two candidates, and reading the source changed which
+  one is first.** Both are read-side and neither scales with draw density,
+  which is the property that defeats everything else here.
+
+  **(a) Release the guest when the draw's READS are done, not when DMA_GET
+  reaches DMA_PUT.** This is the cheaper idea and it keeps the guarantee
+  intact, because the guarantee is about the *reads*, and `DMA_GET ==
+  DMA_PUT` is a much stronger proxy than it needs to be: it waits for the
+  whole segment to drain when all that matters is that
+  `get_texture_layout` and `sync_vertex_ram_buffer` have run. The hold mean
+  is **2,316,996 ns** against a PFIFO service time of ~160 µs per
+  submission, so **most of that hold is queueing behind work the guarantee
+  does not care about.** A signal raised once a draw's guest-memory reads
+  have completed would release the guest far earlier for the same
+  invariant. It is entirely inside this lane's files.
+
+  **(b) Re-upload on detection, and the detection ALREADY EXISTS.** I had
+  written this up as "trap the guest's store", which is wrong about what is
+  needed: `memory_region_set_log(d->vram, true, DIRTY_MEMORY_NV2A)` and
+  `_NV2A_TEX` are **already enabled** (`nv2a.c:1283-1284`), and
+  `pgraph_vk_poll_bound_textures` already test-and-clears the TEX bits at
+  the top of `begin_pre_draw`. **`Tr` is that bit being set again before the
+  window closes — so the emulator already knows, 61.7% of the time, that it
+  read a texture the guest was writing.** No page protection and no store
+  trapping is required. What is missing is not detection, it is a
+  **response**: re-consume the bit and re-upload before the draw proceeds.
+
+  The honest caveat on (b), and it is the one #44's own standard imposes: a
+  bounded retry **reduces** the window rather than eliminating it, and this
+  document is explicit that *"make it rarer" and "fix it" are
+  indistinguishable at n=10*. At a 61.7% per-window race rate a retry
+  converges slowly unless the re-read window is much tighter than the
+  original — which is plausible but unmeasured. So (b) is a mitigation until
+  someone measures the per-retry rate, whereas (a) is a cost reduction on a
+  guarantee that already holds. **(a) first.**
 
 ### CONFIRMED on two runs per arm, and the reproducibility is the point
 
