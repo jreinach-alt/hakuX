@@ -1,9 +1,9 @@
 {
-  "registered_utc": "2026-09-13T00:56:35Z",
+  "registered_utc": "2026-09-13T00:59:19Z",
   "who": "shadow-map-agent",
   "issue": "35",
   "prediction": "MECHANISM (the thing to judge, not the pixel total): the residual on 100 of 112 failing Texture_shadow_comparator captures is a SINGLE SCANLINE, 6,066 px, at the row where a box edge in the depth texture lands on integral v. The falsifier is therefore a measurement of SHAPE: after the fix, no failing capture in the 2R16/2R24/3R16/3R24 raw families may differ on a whole-box region, and the one-row band must be absent. Those 48 raw-family captures (2,940 px) upload the depth texture from the CPU so their tie arithmetic is exact by construction -- they are the half to judge on, and they are predicted to reach 0. The 52 projected one-row captures (3,126 px) go to 0 if the half-texel displacement is the same tie, and stay unmoved if it is a sub-pixel coordinate offset instead; either outcome is informative and neither falsifies the raw-family claim. The 12 remaining 24-bit captures (11,322 px: 2F24 -6.00-193.00, 3F24 10.00-20.00, 3P24 10.00-20.00) keep their whole-box residual -- that is a 24-bit precision floor the test author documents silicon hitting between its own two pipelines -- losing at most their own one-row part (3F24 10.00-20.00 GT/LE, 47 px each). MUST NOT MOVE: all 176 currently-exact captures; 72 are ALWAYS/NEVER and provably cannot (they short-circuit before the fetch), and the 48 exact 2P* captures are the tripwire for a tie biased the wrong way. Nothing outside the suite can move: every change is inside psh_append_shadowmap, gated on shadow_map[i]. Point_params is carried as a control because it is the suite most sensitive to texelTieBias elsewhere. SEPARATELY, the F16 flush-to-zero threshold moving 0x3C000000u -> 0x3C800000u to match psh_convert's 2^-6 grid is predicted INERT on all 288: the reference is a per-capture constant and the only two that reach that path are 4.5669 and 14.0400, some 300x above 2^-6.",
-  "a_ref": "19c74e95da~1",
+  "a_ref": "9bdec552c1",
   "b_ref": "19c74e95da",
   "must_not_move": [
     "Point_params/*"

@@ -501,6 +501,30 @@ def judge(exp, rows):
     return fails, checks
 
 
+def resolve_ref(ref):
+    """A registered ref must be a concrete sha, for the same reason a queued
+    --ref must be.
+
+    `--a-ref 19c74e95da~1` reads fine and is useless: the arm reports the sha
+    it actually built, `9bdec552c1`, and the two do not compare, so the judge
+    aborts with "a prediction registered for other refs is not a prediction
+    about this measurement" -- refusing the very measurement it was written
+    for. Worse is the moving kind: `HEAD` resolves at read time, so a
+    prediction registered against HEAD silently follows the branch and can end
+    up naming the fix it was supposed to be blind to. request.sh resolves
+    --ref at queue time for exactly this reason; this is the same rule one
+    step earlier.
+    """
+    if not ref:
+        return ""
+    try:
+        return subprocess.check_output(
+            ["git", "rev-parse", "--short", ref],
+            text=True, stderr=subprocess.DEVNULL).strip() or ref
+    except Exception:
+        return ref
+
+
 def register(args):
     path = args.register
     if os.path.exists(path) and not args.force:
@@ -513,8 +537,8 @@ def register(args):
         "who": args.who or "",
         "issue": args.issue or "",
         "prediction": args.prediction or "",
-        "a_ref": args.a_ref or "",
-        "b_ref": args.b_ref or "",
+        "a_ref": resolve_ref(args.a_ref),
+        "b_ref": resolve_ref(args.b_ref),
         "must_not_move": list(args.must_not_move or []),
         "expect": {},
         "expect_counts": {},
