@@ -7074,21 +7074,66 @@ void pgraph_vk_flush_draw(NV2AState *d)
     static unsigned long folds, emitted, empty;
     folds++;
 
+    /*
+     * PASS 1 CONSUMES THE INLINE VERTEX STATE, so pass 2 has to have it back.
+     *
+     * The inline_buffer branch below calls
+     * pgraph_vk_bind_vertex_attributes_inline(), which builds the active
+     * attribute list from every attribute whose `inline_buffer_populated` is
+     * set, and then CLEARS that flag on each one it consumed. Run a second
+     * time, the bind therefore finds zero populated attributes, binds no
+     * vertex data and draws nothing -- which is precisely what the first arm
+     * measured: on txt_A8R8G8B8 the two equations' captures were identical on
+     * 125,360 of 125,360 source>=128 channels and equal to the DESTINATION on
+     * all of them, i.e. pass 1 alone with f1 = 0.
+     *
+     * (That also made SREVSUB look 121,989 px better while nothing worked: at
+     * D = 255 the correct answer saturates to 255 and so does a bare
+     * destination, so those channels were accidentally right.)
+     *
+     * Saving and restoring the flags is enough because it is the only draw
+     * state this file consumes -- pg->inline_buffer_length and the other
+     * lengths are reset by the method handler in pgraph.c, after the whole
+     * draw, not here.
+     */
+    bool saved_populated[NV2A_VERTEXSHADER_ATTRIBUTES];
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        saved_populated[i] = pg->vertex_attributes[i].inline_buffer_populated;
+    }
+
     static const int passes[] = { SIGNED_BLEND_PASS_LOW,
                                   SIGNED_BLEND_PASS_HIGH };
     for (int i = 0; i < ARRAY_SIZE(passes); i++) {
         pgraph_glsl_set_signed_blend_pass(passes[i]);
         r->pipeline_state_dirty = true;
         r->uniforms_changed = true;
-
-        bool had_verts = pg->draw_arrays_length || pg->inline_elements_length ||
-                         pg->inline_buffer_length || pg->inline_array_length;
-        if (!had_verts) {
-            empty++;
+        for (int j = 0; j < NV2A_VERTEXSHADER_ATTRIBUTES; j++) {
+            pg->vertex_attributes[j].inline_buffer_populated =
+                saved_populated[j];
         }
+
+        /*
+         * COUNT THE STATE THE DRAW ACTUALLY GATES ON, not a proxy for it.
+         * The first version of this counter tested the inline/draw-array
+         * LENGTHS, which survive both passes untouched -- so it would have
+         * reported emitted == 2*folds on a run where pass 2 drew nothing, and
+         * sent the next edit after the arithmetic. `populated` is the quantity
+         * pgraph_vk_bind_vertex_attributes_inline consumes, so it is the one
+         * that can be zero while a length is not.
+         */
+        int populated = 0;
+        for (int j = 0; j < NV2A_VERTEXSHADER_ATTRIBUTES; j++) {
+            populated += pg->vertex_attributes[j].inline_buffer_populated;
+        }
+        bool have_work = populated || pg->draw_arrays_length ||
+                         pg->inline_elements_length || pg->inline_array_length;
+
         flush_draw_one_pass(d);
-        if (had_verts) {
+
+        if (have_work) {
             emitted++;
+        } else {
+            empty++;
         }
     }
 
