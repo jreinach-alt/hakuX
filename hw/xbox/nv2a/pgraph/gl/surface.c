@@ -2716,6 +2716,13 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
 
     entry->shape = (color || !r->color_binding) ? pg->surface_shape :
                                                     r->color_binding->shape;
+    /*
+     * Not from entry->shape: a zeta target takes the colour binding's shape
+     * whole, so shape.zeta_format there is the colour binding's copy rather
+     * than this target's. The register is the only per-target source.
+     */
+    entry->drawn_format = color ? pg->surface_shape.color_format :
+                                  pg->surface_shape.zeta_format;
     entry->gl_buffer = 0;
     entry->fmt = fmt;
 #ifdef __ANDROID__
@@ -2857,6 +2864,50 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             }
 
             if (is_compatible) {
+                /*
+                 * Refresh what the guest format decides, and only that.
+                 *
+                 * Compatibility here is a host-texture question -- same
+                 * gl_internal_format, gl_attachment, pitch and colour/zeta
+                 * role, with the found surface at least as large -- and
+                 * several guest formats answer it identically: A8R8G8B8,
+                 * X8R8G8B8_Z8R8G8B8, X8R8G8B8_O8R8G8B8 and X1A7R8G8B8_Z/O all
+                 * map to GL_RGBA8, X1R5G5B5_Z/O both to GL_RGB5_A1. So a
+                 * colour format change at an unchanged address, pitch and size
+                 * lands here rather than on the create path below, and the
+                 * create path is the only place that ever assigned these
+                 * fields. Whatever the binding is asked afterwards, it answers
+                 * for the format that first created it -- silently, and for
+                 * the rest of the run, since the suites that do this render
+                 * every swatch into one surface at one address. Issue #60; the
+                 * Vulkan half is #55 / b6239ccb87.
+                 *
+                 * fmt is assigned for symmetry with the Vulkan fix and as a
+                 * guard against a later table row, not because it can move
+                 * today: every row within a GL collision group is byte-
+                 * identical in kelvin_surface_color_format_gl_map (five
+                 * {4, GL_RGBA8, GL_BGRA, ..._8_8_8_8_REV, COLOR_ATTACHMENT0}
+                 * and two {2, GL_RGB5_A1, GL_BGRA, ..._1_5_5_5_REV,
+                 * COLOR_ATTACHMENT0}), and the zeta maps collide only where
+                 * they are byte-identical too. This assignment is a copy of an
+                 * equal value.
+                 *
+                 * shape is deliberately NOT refreshed. Its other fields are
+                 * geometry, and a binding's geometry is its texture's, not the
+                 * target's: a non-strict match reuses a surface that is
+                 * *larger* than asked for, which is why surface_binding_dim
+                 * just below is filled from found-> and not from entry.
+                 * Refreshing shape wholesale would have the binding claim a
+                 * size its texture does not have, and refreshing shape's
+                 * format fields alone has no single right source -- a zeta
+                 * target takes the colour binding's shape entire (see
+                 * populate_surface_binding_entry_sized). The format question
+                 * belongs to drawn_format instead; see
+                 * pgraph_gl_surface_drawn_format().
+                 */
+                found->drawn_format = entry.drawn_format;
+                found->fmt = entry.fmt;
+
                 /* FIXME: Refactor */
                 pg->surface_binding_dim.width = found->width;
                 pg->surface_binding_dim.clip_x = found->shape.clip_x;

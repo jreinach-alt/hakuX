@@ -46,6 +46,14 @@ typedef struct SurfaceBinding {
     hwaddr vram_addr;
 
     SurfaceShape shape;
+
+    /*
+     * The guest surface format this binding was last bound to draw with. Not
+     * the same thing as shape.color_format / shape.zeta_format -- see
+     * pgraph_gl_surface_drawn_format(), which is how you should read it.
+     */
+    unsigned int drawn_format;
+
     uintptr_t dma_addr;
     uintptr_t dma_len;
     bool color;
@@ -316,6 +324,51 @@ void pgraph_gl_render_surface_to_texture(NV2AState *d, SurfaceBinding *surface, 
 void pgraph_gl_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta);
 void pgraph_gl_surface_download_if_dirty(NV2AState *d, SurfaceBinding *surface);
 SurfaceBinding *pgraph_gl_surface_get(NV2AState *d, hwaddr addr);
+
+/*
+ * "What guest format was this surface last rendered as" -- a colour format
+ * when binding->color, a zeta format otherwise; the caller knows which it
+ * asked for.
+ *
+ * This is a third question, distinct from the two that look like it:
+ *
+ *   pg->surface_shape.color_format  what SET_SURFACE_FORMAT says *now*
+ *   binding->shape.color_format     what created this binding
+ *   pgraph_gl_surface_drawn_format  what this binding last drew with
+ *
+ * Ask the register when the surface you mean is the current target. Ask this
+ * one when you are consulting a surface that may no longer be current -- a
+ * scratch render target that is later sampled as a texture has had the
+ * framebuffer format restored over the register before you get there, so the
+ * register would answer about a different surface.
+ *
+ * Do not ask binding->shape for a format at all. shape is creation-time
+ * state, and a binding outlives the format that created it: several guest
+ * formats share one GL internal format (A8R8G8B8, X8R8G8B8_Z8R8G8B8,
+ * X8R8G8B8_O8R8G8B8 and X1A7R8G8B8_Z/O all map to GL_RGBA8, X1R5G5B5_Z/O both
+ * to GL_RGB5_A1), and check_surface_compatibility() matches on
+ * fmt.gl_internal_format and fmt.gl_attachment, so a format change at an
+ * unchanged address, pitch and size reuses the binding without recreating it.
+ * shape is also not per-binding: a zeta target copies the colour binding's
+ * whole shape, geometry and formats together, so shape.zeta_format on a zeta
+ * binding is the colour binding's copy and not this binding's own.
+ *
+ * This mirrors pgraph_vk_surface_drawn_format() (issue #55, b6239ccb87). One
+ * thing differs, and it is why GL's copy has callers where Vulkan's has none:
+ * on the Vulkan side every reader of a binding's shape format was a
+ * diagnostic, and the field that mattered was host_fmt.sampled_pad_alpha. GL
+ * has no host_fmt, and every row inside a GL collision group is byte-identical
+ * in kelvin_surface_color_format_gl_map, so fmt cannot go stale here at all --
+ * the entire GL exposure is shape.color_format, and GL reads it to decide
+ * pixels (surface-to-texture compatibility, and the Android pack/unpack
+ * conversions). Those callers ask this function instead.
+ */
+static inline unsigned int pgraph_gl_surface_drawn_format(
+    SurfaceBinding const *binding)
+{
+    return binding->drawn_format;
+}
+
 SurfaceBinding *pgraph_gl_surface_get_within(NV2AState *d, hwaddr addr);
 void pgraph_gl_surface_invalidate(NV2AState *d, SurfaceBinding *e);
 void pgraph_gl_unbind_surface(NV2AState *d, bool color);
