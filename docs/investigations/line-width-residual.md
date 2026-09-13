@@ -1320,3 +1320,88 @@ and which is why `LLoop` still carries 149 px and why the 100.00% above is on
 the perpendicular-footprint decisive set rather than on all the ink. The
 floor/ceil phase. The sixteen sub-2px widths. And the 0.69% of interior ink
 that neither rule explains.
+
+## The `Tri` class is closed: the edge order lives in `geom.c`, and the arm is PRE-REGISTERED PASS
+
+Arms `5e898fb191` -> `ba31c26ee0`, one commit apart, prediction bound at queue
+time (sha `2dbcf061bf0b`). Same disc in both arms, 378 captures, progress-log
+proof on both.
+
+```
+better 55    worse 5     same 318   noise 0      (378 compared)
+exact 50 -> 50           regressed from exact 0
+differing  10,344,974 -> 10,315,707  (-29,267)
+structural  3,794,956 ->  3,744,483  (-50,473)
+VERDICT: PASS -- all 13 registered checks hold.
+```
+
+Item 4 of this issue's own derivation was wrong: `TRIANGLES` under
+`POLY_MODE_LINE` keeps `PRIM_TYPE_TRIANGLES` through
+`pgraph_prim_rewrite_get_output_mode()`, so **our** geometry shader decomposes
+it, not Turnip. Rotating `pgraph_glsl_gen_geom()`'s three `emit_line` calls to
+`(1,2),(2,0),(0,1)` -- the derived "edge opposite a, then opposite b, then
+opposite c" -- is the whole fix for that class.
+
+### Every leg landed on its predicted value
+
+| leg | predicted | measured |
+|---|---|---|
+| 1 `Tri`, 45,760 decisive px | 58.22% -> **100.00%** | **100.00%** |
+| 2 `TFan`, 9,731 px | 47.57% -> **70.36%**, not 100% | **70.36%** |
+| 3 nine other classes | unchanged | unchanged, `moved = 0` on every one |
+| 4 `moved` on `Tri` | >= 19,000 | **19,119** |
+| 5 `ALL`, 198,880 px (advisory) | 85.12% -> 95.85% | **95.85%** |
+
+`moved` on `TFan` came in at **2,218**, which is 22.79% of 9,731 to the pixel.
+`outside` is **0 on all 28 measured captures**, so the reorder touched nothing
+beyond the footprints whose order changed. `2D_Lines` is byte-identical, as
+registered -- and that leg was registered explicitly as *not* a falsifier,
+because the patch forces it.
+
+### The five worse captures were all pre-named
+
+Four are `Line_0000.1`-`.4` at +1 to +2 px each -- widths 0.125 to 0.5, below
+the 8.0 the derivation's decisive set starts at, so outside the domain the rule
+was derived on. The fifth is `Shade_model/ProgLM_TriFan_Smooth_First` at +2,
+which is a triangle fan in one of the four suites the prediction named as
+reachable with direction unpredicted. Against them: `Shade_model`'s two
+`ProgLM_Tri_Smooth_*` captures -4 each, `Edge_flag` -2 and -5, and
+`Line_width` -3 to -1,727 across 45 captures. Nothing regressed from exact and
+six captures changed status `white-content -> ok`.
+
+`Line_0064.0`-`.7` moved **-3 px each**, which is the prediction's
+out-of-sample check: those goldens are void for the *models* because the width
+register overflows nine bits, but not void for us, because this emulator
+reproduces the overflow -- so they had to move by a couple of pixels rather
+than catastrophically, and they did.
+
+### What is left, and where
+
+`TFan` at 70.36% and `QStrip/TFan` at 77.17% are **not** this fix's to finish.
+`rewrite_triangle_fan()` calls `emit_tri_pv()`, which rotates the provoking
+vertex to index 0, so a fan triangle reaches `geom.c` already rotated by one
+relative to a list triangle -- and `GeomState::primitive_mode` is the
+*rewritten* mode, so `geom.c` cannot tell them apart and cannot compensate.
+Undoing the rotation in `prim_rewrite.c` collides with flat shading, which
+needs the provoking vertex at index 0 for `geom.c`'s `provoking_index`. That is
+a design question in `prim_rewrite.c` and it is worth **32,628 decisive
+pixels** (9,731 at 29.64% short plus 22,897 at 22.83% short).
+
+### Method note, and it is the reusable part
+
+The first version of this analysis was **wrong in the opposite direction**: a
+hand trace of `emit_tri_pv` concluded the reorder would drop `TFan` from
+100.00% to 47.57%, i.e. that the edit was unsafe and needed the
+`prim_rewrite.c` half as well. Reading the code harder would not have caught
+it, because **two different readings of that rotation both reproduce the
+measured `Tri` figure and only one reproduces the measured `TFan` figure**.
+
+What caught it was calibrating the composition on the landed arm instead:
+scoring OUR actual per-triangle edge order against the goldens' decisive pixels
+pins `Tri` at `[0,1,2]` (the only order scoring 58.24%) and `TFan` at `[2,0,1]`
+(the only order scoring 47.57%), and a `geom.c` rotation then moves both by the
+same amount. That model reproduced arm A on all eleven candidate classes to
+within 0.02 points, which is what made `r=+1` and `r=+2` predictions rather
+than guesses -- and it is the same lesson as "an inference can be valid and
+still wrong, because the model it is valid inside was never checked", with the
+fix being to measure the model rather than to argue about it.
