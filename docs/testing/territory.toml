@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 15
-updated_utc = "2026-09-13T18:45:00Z"
+wave = 16
+updated_utc = "2026-09-13T19:20:00Z"
 
 
 
@@ -48,20 +48,19 @@ files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
 note = "#31 has never had an arm -- it predates ab_compare. Briefed to test its own blocker (\"the goldens cannot select the 4-px anchoring regime\") as a claim, because #41 was closed on three such blockers and all three were false."
 
 [lane.pacing]
-issues = ["44", "65"]
+issues = ["44", "65", "54"]
 files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
-note = "The two single-change follow-ons whose mechanism is already measured. #44's SELECTIVE draw-only bound: the guarantee needs no unprocessed DRAW in the FIFO, and the disc makes 148,704 submissions for 180 draws, so holding at every submission is 826x stronger than required and costs half a real title's ceiling. #65's defer_cap 15 -> 12: D9 failed and the observed timer round trip (3,083,365 ns) names 12 at 1.35x margin -- but that is two runs on one device and the nova's latency is 3.4x the thor's, so it must be measured there first."
+note = "#54 SUBSUMED INTO THIS LANE: its own lane verified that mode 2's hold covers the texture upload site (RCMD_DRAW never enqueued, both draw queues false, the reorder window reads at enqueue on the PFIFO thread) and that NO read-side fix exists -- the bytes the upload should read are those the guest had written when it PUBLISHED the draw, and the only observable of that is DMA_PUT in pfifo.c, so a read-side change narrows the window and never orders the read. Its Tr probe is a BETTER falsifier for mode 2 than stale_px: the Texture border disc is structurally blind to the gave hole (18 draws, one frame, no FLIP_STALL) while Crimson Skies flips every frame and Galleon measured gave at 5.603%. The two single-change follow-ons whose mechanism is already measured. #44's SELECTIVE draw-only bound: the guarantee needs no unprocessed DRAW in the FIFO, and the disc makes 148,704 submissions for 180 draws, so holding at every submission is 826x stronger than required and costs half a real title's ceiling. #65's defer_cap 15 -> 12: D9 failed and the observed timer round trip (3,083,365 ns) names 12 at 1.35x margin -- but that is two runs on one device and the nova's latency is 3.4x the thor's, so it must be measured there first."
 
-[lane.texupload]
-issues = ["54"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
-         "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/renderer.h"]
-note = "#54's fix, which the instrument pointed at: ONE site, the texture upload path. 57% of uploads on Crimson Skies read guest memory the guest is concurrently writing (two runs agreeing to 0.2%), 0 on DOA3 and JSRF over 2.8M draws, and the vertex site never races -- 0 over 156,592 copies, a >10,000x separation. Briefed to price at least two options before choosing, and to STOP and say so if an ordering bound in the pfifo path would subsume it, because the pacing lane is landing #44's selective bound next door."
 
 [free]
-files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+files = ["hw/xbox/nv2a/pgraph/vk/renderer.h",
+         "hw/xbox/nv2a/pgraph/vk/command.c",
+         "hw/xbox/nv2a/pgraph/vk/buffer.c",
+         "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/prim_rewrite.c",
          "hw/xbox/nv2a/pgraph/s3tc.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
