@@ -343,7 +343,37 @@ for t in json.load(open(sys.argv[1])).get('skip_tests',[]): print(t)" "$req" > "
     # file is 5.7 MB and this runs per request, and size+mtime changes on any
     # rebuild. A stale mtime with identical content costs a spurious
     # incomparability, which is the safe direction.
-    local base_iso="${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}"
+    # PER-REQUEST base ISO, because the alternative is a global that re-bases
+    # every queued request. DISPATCH_BASE_ISO is an env var on the serving
+    # dispatcher: setting it to run ONE arm off the interactive disc silently
+    # changes the disc under every other request in the queue, including the
+    # hundred-suite corpus sweep. That is not a hypothetical -- it is how a
+    # column comes to be scored against a disc nobody intended, with every
+    # row's disc_id agreeing with every other.
+    #
+    # So a request may name its own `base_iso`, and it wins. The env var stays
+    # as the fleet-wide default.
+    #
+    # A NAMED ISO THAT DOES NOT EXIST FAILS THE REQUEST. It must not fall back
+    # to stock: an arm registered against the interactive disc, silently run
+    # against the stock one, produces captures that are real, scored, and
+    # about the wrong disc -- and its result.json would carry the stock
+    # disc_id, so nothing downstream could tell. A missing file is the cheap
+    # failure; a plausible wrong one is the expensive failure this campaign
+    # keeps paying for.
+    local base_iso
+    base_iso=$(jq_get "$req" base_iso "")
+    if [ -n "$base_iso" ]; then
+        if [ ! -f "$base_iso" ]; then
+            echo "base_iso named by the request does not exist: $base_iso" \
+                > "$rdir/ERROR"
+            log "  BASE ISO MISSING: $base_iso -- refusing rather than falling back to stock"
+            mv "$req" "$rdir/request.json"
+            return 0
+        fi
+    else
+        base_iso="${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}"
+    fi
     disc_id=$(python3 -c "
 import hashlib,json,os,sys
 r=json.load(open(sys.argv[1]))
@@ -374,7 +404,7 @@ else:
         local s
         for s in "${SUITE_LIST[@]}"; do args+=(--suite "${s//_/ }"); done
         for s in "${SKIP_LIST[@]:-}"; do [ -n "$s" ] && args+=(--skip-test "$s"); done
-        python3 "$HERE/make_test_iso.py" "${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}" \
+        python3 "$HERE/make_test_iso.py" "$base_iso" \
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1
         touch "$LEASE"
