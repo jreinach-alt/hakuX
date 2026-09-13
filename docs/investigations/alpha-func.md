@@ -1,18 +1,36 @@
 # `Alpha_func`, measured: the alpha test is right, its input is not (#57)
 
-Written 2026-09-12 against the goldens and the `z-sweep-002-Alpha_func`
-captures (APK `fb4dfafc6d38`, `progress_log_proof` true, 16/16 goldens
-scored). No build, no device.
+Written 2026-09-12 against the goldens and two device arms, both 16/16 goldens
+scored with `progress_log_proof` true: `z-sweep-002-Alpha_func` (APK
+`fb4dfafc6d38`, the binary #57 was filed from) and
+`1789267067-alpha57-577209` (APK `4cb0903f4b23`, branch tip `9a79c9a8a9`).
 
-Reproduce the whole of section 1 with
-`python3 docs/testing/alpha_func_ramp.py`, which is also the falsifier.
+Reproduce the whole of sections 1 and 2 with
+`python3 docs/testing/alpha_func_ramp.py [CAPTUREDIR]`, which is the falsifier.
 
-## 0. The number, and what it is made of
+## 0. The re-measure, and what the number is made of
 
 The issue opens on 435,032 differing pixels from the `pre-fixes-fb4dfafc`
-scoreboard column and asks for a re-measure, because that column sits 31
-`hw/` commits behind the tip. The re-measure is below. **The split matters
-more than the total**, and it was never taken:
+scoreboard column, 31 `hw/` commits behind the tip, and asks for a re-measure
+before any analysis. Done:
+
+| arm | APK | exact | differing px |
+|---|---|---:|---:|
+| `pre-fixes-fb4dfafc` | `fb4dfafc6d38` | 1/16 | 435,032 |
+| **tip `9a79c9a8a9`** | `4cb0903f4b23` | **1/16** | **435,032** |
+
+A flat total is not evidence of inertness, so the arms were diffed against
+each other directly rather than compared through their scores. **All sixteen
+captures are bit-identical between the two binaries: 0 differing pixels, arm
+against arm.** Today's work — #48's pad alpha and blend-format-from-register,
+#55's surface format refresh, #43's signed blend factors, both depth fixes —
+is not merely equal in total here, it changes nothing whatever. Alpha_func
+never binds a texture, never reuses a surface and never takes a signed blend
+equation, so none of the three paths the issue expected to have moved is
+exercised. `classify_residuals.py` returns the same 1 / 9 / 6 on both arms.
+
+So 435,032 stands, and **the split matters more than the total** — it was
+never taken:
 
 | | pixels | share |
 |---|---:|---:|
@@ -20,11 +38,12 @@ more than the total**, and it was never taken:
 | **every channel one step out** | **425,816** | **97.9%** |
 | **more than one step out** | **9,216** | **2.1%** |
 
-`classify_residuals.py` says the same thing in the house vocabulary: 1 exact,
-**9 `one-step-sym`**, 6 `structural`, 706,696 differing channels of which 51%
-lie on a one-pixel boundary. `one-step-sym` is explicitly *not* a rounding
-rule — neither sign dominates — so 97.9% of this suite is #38's mechanism 2,
-interpolator precision, and is a floor rather than a defect.
+`classify_residuals.py` says the same thing in the house vocabulary, and says
+it identically on both arms: 1 exact, **9 `one-step-sym`**, 6 `structural`,
+706,696 differing channels of which 51% lie on a one-pixel boundary.
+`one-step-sym` is explicitly *not* a rounding rule — neither sign dominates —
+so 97.9% of this suite is #38's mechanism 2, interpolator precision, and is a
+floor rather than a defect.
 
 That leaves 9,216 px to explain, and they are not spread about:
 
@@ -173,8 +192,14 @@ and is the floor.
 which is not this stream's territory.** The defect is shown to live there: the
 alpha test in `psh.c` is correct, `vk/draw.c` and `gl/draw.c` carry no alpha
 state that could produce a slope, and `ALPHAREF` is correctly kept out of the
-pipeline cache key because it is a shader uniform. Nothing in the assigned
-territory can move this number. The prediction is registered as
+pipeline cache key because it is a shader uniform (`vk/draw.c:1354` — it is a
+uniform, so a change of reference needs no pipeline rebuild; `ALPHAFUNC` and
+`ALPHATESTENABLE` do stay in the key and also reach the shader key, which is
+redundant but not wrong). The reorder window's `safe_alpha` guard at
+`vk/draw.c:3843` never fires here at all: the suite disables depth test, and
+the window rejects on `!ZENABLE` first. Nothing in the assigned territory can
+move this number — which the two arms confirm from the other side, being
+bit-identical across 31 `hw/` commits. The prediction is registered as
 `docs/testing/predictions/alpha-func-vertex-byte-quantisation.json` so the arm
 can be queued the moment the territory is granted.
 
