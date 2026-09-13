@@ -1065,10 +1065,45 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
 
     bool extract_msb_24b = ps->state->tex_x8y24[i] && ps->opts.vulkan;
 
+    /*
+     * texelTieBias, for the same reason and with the same scaling as the
+     * non-shadow PROJECT2D fetch: see the note by its definition.  The shadow
+     * fetch has exactly the tie that note describes, and this is where the
+     * suite's one-scanline band comes from -- 100 of its 112 failing captures
+     * are a single row, 6,066 px, and each is the row where a box edge in the
+     * depth texture lands on an integral v.
+     *
+     * `edge-defect.md` said the bias could not reach this path, because the
+     * tie here is between the reference and an integral threshold rather than
+     * between a coordinate and a texel boundary.  Measured, that is wrong.
+     * The R families upload the depth texture from the CPU, so their texel
+     * values are exact by construction and no reference quantisation is
+     * involved, and they carry the same one-row residual as the rendered
+     * ones.  Only ONE edge of each box moves, not both, so it is a tie at one
+     * v rather than an offset.  And the arithmetic closes on the boundary.
+     * GetExplicitBoxLayout puts the seven boxes at texture rows 230..293,
+     * 21 texels wide at columns 141, 204, ... 519, which is where the
+     * residual runs are to the pixel.  The raw path maps v(y) = (y - 99.5) *
+     * 12/7, so row 271 -- the row that differs in all six R bases -- is
+     * v = 294.0 on the nose, the box's bottom boundary.  The projected path
+     * maps v(y) = (y + 0.5 - sTop) * 5/3 about sTop = 96, and its differing
+     * row, 234, is the box's TOP boundary v = 230 displaced by the half texel
+     * the test's own comment says this lookup carries ("There is a half texel
+     * offset difference between the shadow lookup and the actual location").
+     * Both are integral v, and each family differs on the one edge that is.
+     *
+     * Hardware resolves both measured sites UP, which is the direction the
+     * bias moves us: at the projected boxes' top edge (row 234) silicon
+     * samples the box where we sample the row above it, and at the raw boxes'
+     * bottom edge (row 271) silicon has already left the box where we have
+     * not.  Issue #35.
+     */
     mstring_append_fmt(
-        vars, "%svec4 t%d_depth%s = textureProj(texSamp%d, %s(pT%d.xyw));\n",
+        vars,
+        "%svec4 t%d_depth%s = textureProj(texSamp%d,\n"
+        "    vec3(%s(pT%d.xy) + texelTieBias * pT%d.w, pT%d.w));\n",
         extract_msb_24b ? "u" : "", i, extract_msb_24b ? "_raw" : "", i,
-        tex_remap, i);
+        tex_remap, i, i, i);
 
     if (extract_msb_24b) {
     mstring_append_fmt(vars,
@@ -1103,20 +1138,30 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
                 "pT%d.z = uintBitsToFloat(floatBitsToUint(pT%d.z) & 0xFFFFFF80u);\n",
                 i, i, i, i, i, i, i);
         } else {
-            /* NOTE: the reference is quantised onto the F16 grid below with a
-             * flush-to-zero threshold of 2^-7, where the depth *write* in
-             * psh_convert now uses 2^-6 -- an F16 exponent field of zero means
-             * zero, so the lowest binade has no representation. The two want
-             * the same grid. Left alone deliberately: this is the
-             * `Texture shadow comparator` cell (#30) with its own goldens, and
-             * only the lowest binade of a reference depth can differ, so it is
-             * a separate measurement rather than a free ride on this one. */
+            /* The reference is quantised onto the same F16 grid the depth
+             * *write* in psh_convert uses, which means the same flush-to-zero
+             * threshold: 2^-6, not the 2^-7 the exponent bias suggests. An
+             * F16 exponent field of zero means zero, so the whole lowest
+             * binade [2^-7, 2^-6) has no representation, and a reference
+             * landing there has to reach the comparator as the zero a written
+             * depth would have become. The grids were left mismatched when
+             * 5ae08d2097 fixed the write, on the argument that the
+             * `Texture shadow comparator` cell has its own goldens and should
+             * be measured rather than ride along.
+             *
+             * It is now measured, and the answer is that no capture in the
+             * suite reaches it: the reference is a per-capture constant in
+             * every one of the 288 (the test puts it in tex coord .z with
+             * w = 1), and the two that come through here are 4.5669 and
+             * 14.0400 -- both some 300x above 2^-6. So this moves nothing and
+             * is not evidence of anything; it closes a divergence that only a
+             * guest with a sub-2^-6 reference depth could have found. */
             mstring_append_fmt(
                 vars,
                 "float t%d_z = t%d_enc == 0u ? 0.0\n"
                 "           : uintBitsToFloat((t%d_enc << 11) + 0x3C000000u);\n"
                 "pT%d.z = clamp(pT%d.z / pT%d.w, 0.0, 511.9375);\n" /* f16_max */
-                "pT%d.z = floatBitsToUint(pT%d.z) < 0x3C000000u ? 0.0\n"
+                "pT%d.z = floatBitsToUint(pT%d.z) < 0x3C800000u ? 0.0\n"
                 "       : uintBitsToFloat(((floatBitsToUint(pT%d.z)\n"
                 "                           - 0x3C000000u) & 0xFFFFF800u)\n"
                 "                         + 0x3C000000u);\n",
@@ -1127,7 +1172,37 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
         return;
     }
 
-    // Depth.y != 0 indicates 24 bit; depth.z != 0 indicates float.
+    /*
+     * What is left of #35 after the texel tie above is a 24-bit floor, and it
+     * is the only thing left: 12 of the suite's 112 failing captures, 11,322
+     * px, all of them 24 bit -- 2F24 -6.00-193.00, 3F24 10.00-20.00 and 3P24
+     * 10.00-20.00. Its shape is not a band. Hardware calls the whole `ref`
+     * box equal to the reference and we call all 712-739 px of it unequal, so
+     * our rendered depth and our quantised reference are at least one unit
+     * apart across the box.
+     *
+     * That is a comparison between numbers that came from two different
+     * places: the stored depth from our vertex transform, rasterised and
+     * floored, and the reference from the test's own CPU projection of the
+     * same z, handed to us as a constant. Agreeing to the unit at 24 bits
+     * means those two agreeing to ~2^-24 relative, and the test author
+     * records silicon missing it by the same margin between its own two
+     * pipelines: "The depth values at 24 bit end up being ~1 off, making it
+     * impossible to choose a reference value that will be matched by both" --
+     * which is why F24 and P24 are given different reference values, 11.47
+     * and 11.45, in the 10.00-20.00 pair.
+     *
+     * FALSIFIED, so nobody spends the day 27b583e17c's note would have cost:
+     * "the reference is not reaching the integer grid there ... points at
+     * comparing as integers rather than scaling to float" is wrong about the
+     * mechanism. The float round trip is exact. float(n)/16777215.0*16777215.0
+     * reproduces n for all 2^24 values of n, and floor() of it likewise, so
+     * the scaling below loses nothing and comparing as integers would buy
+     * nothing. The 24-bit ULP that matters is in the interpolated reference
+     * and in the depth we rasterised, not in this arithmetic.
+     *
+     * Depth.y != 0 indicates 24 bit; depth.z != 0 indicates float.
+     */
     if (compare_z) {
         mstring_append_fmt(
             vars,
@@ -1146,6 +1221,40 @@ static void psh_append_shadowmap(const struct PixelShader *ps, int i, bool compa
             i, i, i, i,
             i, i, comparison, i);
     } else {
+        /*
+         * PROJECT2D really does compare against zero, and the reference the
+         * guest supplied really is discarded. That reads like an oversight --
+         * it is issue #46 -- but it is what silicon does, and the goldens say
+         * so three ways. MEASURED, on the 144 `2*` captures:
+         *
+         *   - The suite runs the SAME code for both modes. Same quad, same
+         *     coordinates, same reference in tex coord .z, w = 1 throughout;
+         *     `2*` and `3*` differ only in SetShaderStageProgram. So every
+         *     difference between the two halves of the suite is the hardware
+         *     dropping the reference in 2D, not the test changing anything.
+         *   - Hardware's relation is `>` on exactly 0 px in all eighteen `2*`
+         *     bases, including the R families whose texels span the full 16
+         *     and 24 bit ranges. Nothing but a zero reference does that.
+         *   - Its `=` set is exactly {stored == 0}: 1,489 px where the value
+         *     range starts at zero (a grid row plus the explicit zero box),
+         *     691 px where it starts at 0x100 (the zero box alone), and 0 px
+         *     in every 10.00-20.00 base, which never stores a zero. A
+         *     reference at the format maximum -- the other candidate -- would
+         *     give the first two the same count, and does not.
+         *
+         * And it scores: 2P16, 2P16f and 2P24 are byte-exact over all 48
+         * captures, and the whole `2*` residual is the texel tie above plus
+         * the 24-bit floor below, both of which the `3*` families have too.
+         *
+         * A TRAP, and it is the reason this looks inverted. Hardware evaluates
+         * `reference <op> stored`, while this emits `stored <op> reference`,
+         * and the guest's SET_SHADOW_DEPTH_FUNC encoding swaps LESS with
+         * GREATER (and LEQUAL with GEQUAL) against the names in nv2a_regs.h,
+         * so shadow_comparison_map[] is indexed one mirror off. The two
+         * mirrors cancel exactly and the composite is what the 176 byte-exact
+         * captures measure. Correcting either half alone inverts every
+         * inequality in all 288. The names are wrong; the arithmetic is not.
+         */
         mstring_append_fmt(
             vars,
             "vec4 t%d = vec4(t%d_depth.x %s 0.0 ? 1.0 : 0.0);\n",
