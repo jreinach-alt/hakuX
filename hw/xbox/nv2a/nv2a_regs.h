@@ -832,8 +832,68 @@
 
 #define NV_MEMORY_TO_MEMORY_FORMAT                       0x0039
 
+/*
+ * The NV04 surfaces object. It is the sibling of NV_CONTEXT_SURFACES_2D
+ * (0x62) below and its method layout is identical, so the two share one
+ * handler in pgraph_method rather than carrying duplicate case labels for
+ * the same offsets.
+ *
+ * That the layouts match is measured, not assumed: pbkitplusplus'
+ * src/nxdk_ext.h defines NV042_SET_PITCH as 0x304 and
+ * NV042_SET_COLOR_FORMAT_LE_A8R8G8B8 as 0x0A -- the same address and the
+ * same enum value the NV10 class uses. The offsets are repeated here so
+ * grepping for a method address finds both classes.
+ */
+#define NV04_CONTEXT_SURFACES_2D                         0x0042
+#   define NV042_SET_OBJECT                                   0x00000000
+#   define NV042_SET_CONTEXT_DMA_IMAGE_SOURCE                 0x00000184
+#   define NV042_SET_CONTEXT_DMA_IMAGE_DESTIN                 0x00000188
+#   define NV042_SET_COLOR_FORMAT                             0x00000300
+#   define NV042_SET_PITCH                                    0x00000304
+#   define NV042_SET_OFFSET_SOURCE                            0x00000308
+#   define NV042_SET_OFFSET_DESTIN                            0x0000030C
+
 #define NV_CONTEXT_PATTERN                               0x0044
 #   define NV044_SET_MONOCHROME_COLOR0                        0x00000310
+
+/*
+ * The NV04 solid-line object, NV04_SOLID_LINE in nv_objects.h and
+ * NV04_RENDER_SOLID_LIN in nv32.h. 2D_Lines is the only suite in the corpus
+ * that binds it; it is not implemented yet, so pgraph_method still drops
+ * these methods at the unhandled label on purpose -- see the commit that
+ * added this block for what the rasteriser still needs.
+ *
+ * The offsets were measured from the hakuX-unhandled logcat of a 2D_Lines
+ * run and then matched against the push order in the test's own source
+ * (nxdk_pgraph_tests src/tests/two_d_line_tests.cpp): OPERATION,
+ * COLOR_VALUE, SURFACE, COLOR_FORMAT, START, END.
+ *
+ * Writing END is the draw. There is no SET_BEGIN_END, no vertex data and no
+ * line width anywhere in the suite -- the whole draw is six method writes to
+ * this class plus three to the surfaces object above.
+ *
+ * SET_LINE_START/SET_LINE_END are the first of sixteen point-pair slots,
+ * each pair eight bytes apart, so slot i is START + i * 8.
+ *
+ * The colour-format values are this class's own small enum and are NOT the
+ * NV062_SET_COLOR_FORMAT_* values -- measured in pbkitplusplus'
+ * src/nxdk_ext.h, which defines them as 1, 2 and 3. The field selects how
+ * COLOR_VALUE is expanded to the destination, not the depth of the
+ * destination: the suite sets the surface to A8R8G8B8 at back-buffer pitch
+ * for every one of its thirteen cases.
+ */
+#define NV_SOLID_LINE                                    0x005C
+#   define NV05C_SET_OBJECT                                   0x00000000
+#   define NV05C_SET_SURFACE                                  0x00000198
+#   define NV05C_SET_OPERATION                                0x000002FC
+#   define NV05C_SET_COLOR_FORMAT                             0x00000300
+#       define NV05C_SET_COLOR_FORMAT_LE_X16R5G6B5             0x01
+#       define NV05C_SET_COLOR_FORMAT_LE_X17R5G5B5             0x02
+#       define NV05C_SET_COLOR_FORMAT_LE_X8R8G8B8              0x03
+#   define NV05C_SET_COLOR_VALUE                              0x00000304
+#   define NV05C_SET_LINE_START                               0x00000400
+#   define NV05C_SET_LINE_END                                 0x00000404
+#   define NV05C_SET_LINE_COUNT                               16
 
 #define NV_CONTEXT_SURFACES_2D                           0x0062
 #   define NV062_SET_OBJECT                                   0x00000000

@@ -1824,6 +1824,20 @@ slow_path:
         }
         break;
     }
+    /*
+     * Both surfaces classes land here. 0x42 is the NV04 object and 0x62 the
+     * NV10 one, and their method layouts are identical -- DMA source and
+     * destin at 0x184 and 0x188, format at 0x300, pitch at 0x304, offsets at
+     * 0x308 and 0x30C, with the same colour-format enum. The NV042_* names
+     * exist in nv2a_regs.h for grepping, but they expand to the same
+     * addresses as the NV062_* labels below, so a second set of case labels
+     * would not compile.
+     *
+     * 2D_Lines is the only suite in the corpus that binds 0x42; Image_blit
+     * and Texture_framebuffer_blit both bind 0x62. So the surfaces state
+     * this now accepts is reachable from exactly one suite.
+     */
+    case NV04_CONTEXT_SURFACES_2D:
     case NV_CONTEXT_SURFACES_2D: {
         switch (method) {
         case NV062_SET_OBJECT:
@@ -1967,6 +1981,20 @@ unhandled:
             seen[n_seen].cls = pg->cached_graphics_class;
             seen[n_seen].method = method;
             n_seen++;
+            /*
+             * Say so the moment the table fills. Past this point the dedupe
+             * stops working while the log keeps printing, so a flooding suite
+             * looks exactly like a suite with a genuinely large set of dropped
+             * methods -- and the union the log is collected for is no longer
+             * trustworthy. The inventory asked for this line so a sweep can
+             * measure the cap instead of estimating it.
+             */
+            if (n_seen == ARRAY_SIZE(seen)) {
+                __android_log_print(ANDROID_LOG_WARN, "hakuX-unhandled",
+                                    "dedupe table full at %zu pairs; every "
+                                    "unhandled method now logs every time",
+                                    (size_t)ARRAY_SIZE(seen));
+            }
         }
         __android_log_print(ANDROID_LOG_WARN, "hakuX-unhandled",
                             "class 0x%04x method 0x%04x param 0x%08x (sub %d)",
