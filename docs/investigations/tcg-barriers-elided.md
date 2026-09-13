@@ -263,3 +263,76 @@ Sequencing, stated because it is doing real work here: the full revert asks
 whether restoring everything is sufficient; store-store asked whether the store
 side alone is; this asks whether x86-equivalence is. Each answer narrows the
 next, and none of them would have been interpretable measured together.
+
+---
+
+# RETRACTED IN FULL: the barrier elision does not cause #44
+
+**Restoring every guest memory barrier leaves `2D_BorderTex_SZ` at 6 failures
+in 10 runs** — indistinguishable from the ~46% base rate and identical to the
+store-store variant. Per run: 28, 68 px fail, pass, pass, 32 px, pass, 6 px,
+pass, 52 px, 517 px.
+
+| variant | `mb_emitted` | game frame ms | #44 failures |
+|---|---:|---:|---|
+| barriers elided (baseline) | 0 | 52.50 | 11/24 (~46%) |
+| store-store only | 80,411 | 54.90 (+4.6%) | 6/10 |
+| **full revert** | **347,473** | **70.40 (+34.1%)** | **6/10** |
+
+This was the falsifier written down before any of it was measured, and it
+fired. **The elision is not the cause of #44.** The `exp-54-x86-equivalent`
+arm was cancelled unrun: it emits a strict subset of the full revert's
+barriers, so it cannot pass a test the full revert failed.
+
+## What still stands, and it is not nothing
+
+Every claim resting on source rather than on the causal link:
+
+- The `#elif defined(XBOX)` branch exists and `CF_PARALLEL` is never set for
+  this machine, so `tcg_gen_mb()` emits nothing.
+- **Upstream's own comment, in the branch the fork bypassed, warns about
+  exactly this class of hazard** — i/o threads running in parallel with a
+  single CPU.
+- The commit's justification is false for the NV2A: `pfifo_thread` and
+  `pgraph.vk.render` read `vram_ptr` with bare loads, through neither the QEMU
+  memory API nor the BQL.
+- The cost of putting it back is now measured precisely rather than estimated:
+  +34.1% for everything, +4.6% for store-store alone.
+
+So #54 remains a real latent correctness issue with **no demonstrated
+symptom**. That is a weaker claim than it was filed with and it should be
+carried as such, not quietly kept at its original strength.
+
+## What this breaks, and it is the part to take seriously
+
+The desktop/Nova asymmetry was the strongest evidence in this file: 20 of 20
+byte-identical on x86 against ~46% failures on the Nova, from one commit that
+is provably a no-op on x86. That argument is now known to prove something
+other than what it was used for, because restoring the barriers on the Nova
+changes nothing.
+
+**The comparison never controlled for the renderer.** The desktop lane runs
+lavapipe, a software rasteriser; the Nova runs Turnip on Adreno. Those two
+arms differ in host memory model *and* renderer *and* timing *and* driver, and
+the elision was only the difference anyone had a mechanism for. The 2,782 px
+uniform `(0, −1, −1)` residual on every desktop run — lavapipe rounding two
+channels down where Adreno does not — is direct evidence that the renderers
+are not interchangeable, and it was sitting in the same measurement the whole
+time.
+
+So #44's cause is open again, and the honest position is that the host
+asymmetry is unexplained rather than explained. Candidates that the elision
+was crowding out, none of them measured:
+
+- a renderer-side race in the Turnip/Adreno path that lavapipe's serialisation
+  hides;
+- timing: the Nova is roughly 3x slower per frame, so any window widens;
+- the texture upload path's own synchronisation, independent of guest memory
+  ordering — note the failure *magnitudes* here (6 to 517 px) are smaller and
+  more variable than the 136 px originally recorded, which itself wants
+  explaining.
+
+What does not change: the frontier being monotone, the twelve nested masks,
+the stale texels being this texture's own pass-1 content, and the two swatches
+failing independently. Those are measurements of #44 and they survive intact.
+Only the cause is gone.
