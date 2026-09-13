@@ -541,6 +541,44 @@ subject and the harness -- and the harness is the explanation nobody checks
 first. This is the same family as the stale-snapshot and frozen-selftest
 failures elsewhere in this file, arriving through version control instead.
 
+## Narrowing a disc changes what it measures -- and the difference is itself a measurement
+
+`--skip-tests` and `--only-tests` exist to make a question affordable: five
+runs of one capture instead of five runs of 1,673. They also change the thing
+being measured, because the tests you removed were leaving state behind.
+
+Measured on 2026-09-13, on the five `Blend tests` captures of #50:
+
+    capture               full disc (1,673)   5-test disc   difference
+    1-dstA_SUB_1-cRGB              16,384         12,512       +3,872
+    1-dstRGB_MIN_1                  8,192          8,192            0
+    cA_MIN_srcRGB                   8,192          8,192            0
+    srcA_REVSUB_1-cA               16,384         16,384            0
+    1-srcRGB_SADD_0        76,032 / 98,304         76,032    (2 states)
+
+**One of five depends on disc composition, by 3,872 px**, and the narrowed disc
+is the *closer* one -- so on the full disc that capture carries 3,872 px
+contributed by tests that ran before it. This is the same class as
+`Texture render target::RenderTextureLoop`, which `make_test_iso.py` documents
+as one test poisoning every test after it; here it appears in reverse, because
+narrowing removed the poisoner.
+
+**Two consequences, and the second is the useful one.**
+
+**A narrowed-disc figure may not be compared with a full-disc figure.** I
+pooled 13 observations across a 1,673-test disc, a 5-test disc and a 1-test
+disc and published a rate from them. It was possible because `disc_id` did not
+include `only_tests`, so all three carried one id -- fixed, and they now tag
+`only5:a5e8ba/`. But the discipline does not live in the tool: ask what the
+disc contained before comparing two numbers from it.
+
+**The difference between compositions MEASURES the leakage.** That is a new
+instrument, not just a hazard: run the capture alone, run it in company, and
+the gap is what its neighbours contributed. It needs no golden and no new
+code -- and here it says that 3,872 of one capture's 16,384 differing pixels
+are not that capture's defect at all. Any issue quoting a full-disc absolute
+should expect that question.
+
 ## Before measuring an effect on a class, check the class is non-empty
 
 The cheap structural check and the expensive exhaustive one often answer the
