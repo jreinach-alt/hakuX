@@ -746,6 +746,52 @@ the dispatcher had no reason to consider preflight. The interaction lived in
 neither. When adding a gate to a shared tree, the question is not only "does
 it pass" but "what else reads this tree, and what does it now see?"
 
+## Shared state read inside a worktree is frozen at the branch point
+
+Every lane here works in its own worktree, and a worktree's `git log` walks
+only the history of the branch it is standing on. So any tool that derives
+shared state from history derives the state **as of the lane's branch point**,
+with everything committed since invisible -- and it reports success, because it
+is internally consistent.
+
+`check_territory.py` derives the territory allocation's high-water wave from
+`git log -p -- territory.toml`, specifically so it has no side effects. In the
+shared tree that is right. In a worktree it read the branch point and nothing
+after.
+
+Measured on 2026-09-13. The #31/#10 lane branched at wave 12 and ran its entire
+life against a table where `glsl/psh.c` sat in `[free]` with **no owner at
+all**. The live table had claimed that file for that very lane at wave 13. Its
+`preflight.sh` printed `territory ok` on every run. The checker was not wrong
+about the file it was handed; it was handed a file four waves stale. Nothing
+collided only because the file the lane saw as free happened to be allocated
+**to it** -- a lane in that position can take a file another lane claimed after
+it branched, and its preflight will pass.
+
+The fix is `--all`, and in a worktree it costs nothing because the object store
+is shared: the same call that derived 12 derives 16.
+
+**A stale read and a live read are indistinguishable once they are quoted into
+one sentence.** The lane reported this as an overlap: "wave 13 lists `psh.c` in
+both `[lane.psh]` and `[free]`". No committed wave ever contained that overlap.
+The two halves came from two different files -- `[lane.psh]` from the live
+table it had been briefed from, `[free]` from its own frozen copy. The report
+was false and the underlying bug was real and worse, which is the argument for
+checking the claim rather than either believing or dismissing the report. This
+is the same shape as the stale-artifact and stale-floor failures already
+recorded, arriving through a checker that said ok.
+
+**A finished lane's worktree can still hold live bindings.** Two #10 arms were
+queued with `expect` pointing at a prediction inside `/home/justin/hakuX-wt-31-10`.
+The lane then finished. Removing the worktree would have made a hash-bound
+prediction unresolvable at judging time -- and the dangerous version of that is
+not the missing file, it is a *different* file of the same name hashing cleanly.
+Before retiring a worktree, check what in `dispatch/queue` and
+`dispatch/running` still names a path inside it. Re-pointing a **queued**
+request at a byte-identical copy is safe and provably neutral, because the
+binding is the content hash and not the path; a **claimed** request is never
+edited.
+
 ## Two masks of equal cardinality can be disjoint
 
 A residual carried between captures -- "this one is at the floor, so that one
