@@ -366,6 +366,14 @@ Four rules, each of which cost a real verdict on 2026-09-12:
   hand. Two falsifiers were bitten on 2026-09-12; one reported all three of
   its captures MISSING on an arm that contained them, which reads exactly like
   a failed render and would have been taken as refuting a change that passed.
+- **A different exclusion reason per case, chosen after seeing the result, is
+  a curve fit and not a mechanism.** On 2026-09-12 a gate was proposed for #51
+  that excluded one capture for "has no sign to survive" and another for
+  "never underflows" -- two unrelated justifications, each selected after
+  seeing which way that capture's delta went. It reads like a principled rule
+  and is really one rationalisation per data point. If your rule needs a fresh
+  reason for each exception, you are fitting, and the giveaway is that no
+  single statement of the precondition predicts the whole set.
 - **A falsifier your own change guarantees is not a falsifier.** Before
   registering a leg, ask what would have to be true for it to FAIL. If the
   change you are about to make forces it true, it is a description of your
