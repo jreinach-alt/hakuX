@@ -839,3 +839,62 @@ fixed permutation is not what a wrong mechanism looks like. What is refuted is
 the specific claim that the corner is `(-z/x, -y/x)` of the sign-only
 direction with `x` forced positive. The next attempt needs its own registered
 prediction; this one is spent.
+
+### The A arm, and what it corrects in the verdict above
+
+The first pass at judging this checked the `must_not_move` set against the
+*goldens* and reported 64 of 72 non-zero. **That was the wrong instrument.**
+`must_not_move` means unchanged between arm A and arm B; those 64 are the known
+residuals that survive on both arms. Judging a must-not-move against a golden
+cannot distinguish "my change moved it" from "it was already wrong", which is
+the entire question.
+
+With the A arm actually run (`0f708c8d` unmodified, same disc, same harness):
+
+**`must_not_move`: 72 of 72 held, 0 px moved. PASSES.** So this substitution
+does not touch a single capture `#40` fixed, and the two changes are not
+fighting over the same pixels -- they are in different modes and the measurement
+confirms it.
+
+| capture | A vs golden | B vs golden | delta |
+|---|---:|---:|---:|
+| `-1to1` | 49,541 | 38,290 | **−11,251** |
+| `-1to1GL` | 49,449 | 38,511 | **−10,938** |
+| `-1to1D3D` | 50,033 | 54,558 | +4,525 |
+| `0to1` | 48,597 | 56,839 | +8,242 |
+| `HiLoHemi` | 50,526 | 56,908 | +6,382 |
+| `HiLo_1` | 48,031 | 56,908 | +8,877 |
+| **total** | **296,177** | 302,014 | **+5,837** |
+
+The A-arm total reproduces the 296,180 quoted for this defect to within 3 px,
+so the baseline here is the same baseline.
+
+### Why "gate it on the triple being zero" does not explain the split
+
+The natural reading of two-better-four-worse is a right mechanism firing where
+it does not belong, gated on the dot mapping. The numbers do not support that
+reading:
+
+- `0to1` (`DOTMAP_ZERO_TO_ONE`, identity) and `-1to1` (`sign3`) **both** carry a
+  zero texel to exactly zero. `-1to1` improved by 11,251 and `0to1` got worse by
+  8,242. A gate on "the triple is actually zero" cannot separate them, because
+  it treats them the same.
+- The split is not signed versus unsigned either: `-1to1D3D` is signed and got
+  *worse*.
+
+What the magnitudes say instead. With a near-uniform four-corner golden, a
+substitution that lands on corners with no correlation to silicon would sit near
+75% wrong, about 42,700 of 56,909. `-1to1` at 38,290 is better than chance;
+`-1to1D3D` at 54,558 is **worse than chance**, which means it is not
+uncorrelated but systematically *anti*-correlated -- a permutation error, and a
+different one per dotmap.
+
+That is consistent with the one thing the dotmaps demonstrably do differently:
+they change the *signs* the dots arrive with. `MINUS1_TO_1_D3D` carries a zero
+texel to −1.008 where `_GL` carries it to +0.0039 -- opposite signs from the
+same input. A single fixed sign-to-corner mapping cannot be right across six
+mappings that disagree about sign, and forcing `x = +1` discards `sign(x)`
+rather than folding it in correctly.
+
+So the next attempt is not a gate. It is the mapping, per dotmap, and it needs
+its own registration.
