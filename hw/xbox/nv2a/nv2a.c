@@ -348,12 +348,56 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         d->vga.get_resolution(&d->vga, &w, &h);
     }
 
+    /*
+     * What the programmed mode says the period ought to be, alongside what we
+     * chose. nv2a_calc_vblank_period_ns does not derive anything: it branches
+     * on one flat-panel register and returns a constant. The NV2A's own
+     * answer is vtotal * htotal / pixel clock, and every ingredient of that
+     * is programmed by the guest and sitting in registers we already model --
+     * the CRTC totals in the VGA register file, the pixel clock in
+     * VPLL_COEFF, which pramdac.c stores and nothing has ever decoded.
+     *
+     * This is deliberately the naive VGA reading: htotal in 8-dot characters,
+     * vtotal from the standard overflow bits, no NV2A extension bits applied,
+     * because their positions are a guess and a guess would be
+     * indistinguishable from a measurement. The raw CRTC bytes go out beside
+     * it so the extension bits can be read out of a real title rather than
+     * assumed. If
+     * this naive figure lands near the constant we return, the derivation is
+     * the fix; if it lands nowhere near, the Xbox does not program the NV2A
+     * CRTC with the encoder's timing and a mode table is the only option.
+     */
+    uint32_t vco   = d->pramdac.video_clock_coeff;
+    uint32_t vm    = vco & NV_PRAMDAC_VPLL_COEFF_MDIV;
+    uint32_t vn    = (vco & NV_PRAMDAC_VPLL_COEFF_NDIV) >> 8;
+    uint32_t vp    = (vco & NV_PRAMDAC_VPLL_COEFF_PDIV) >> 16;
+    int64_t  pixclk = vm ? (int64_t)NV2A_CRYSTAL_FREQ * vn / (1 << vp) / vm : 0;
+    int64_t  htotal = ((int64_t)d->vga.cr[VGA_CRTC_H_TOTAL] + 5) * 8;
+    int64_t  vtotal = (d->vga.cr[VGA_CRTC_V_TOTAL] |
+                       ((d->vga.cr[VGA_CRTC_OVERFLOW] & 0x01) << 8) |
+                       ((d->vga.cr[VGA_CRTC_OVERFLOW] & 0x20) << 4)) + 2;
+    int64_t derived = pixclk > 0
+                          ? vtotal * htotal * NANOSECONDS_PER_SECOND / pixclk
+                          : 0;
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "vblmode want=%lld derived=%lld (vtotal=%lld htotal=%lld pixclk=%lld "
+        "vpll=%08x m=%u n=%u p=%u) cr00=%02x cr06=%02x cr07=%02x cr25=%02x "
+        "cr2d=%02x msr=%02x vd=%u il=%02x res=%dx%d",
+        (long long)period, (long long)derived,
+        (long long)vtotal, (long long)htotal, (long long)pixclk,
+        vco, vm, vn, vp,
+        d->vga.cr[VGA_CRTC_H_TOTAL], d->vga.cr[VGA_CRTC_V_TOTAL],
+        d->vga.cr[VGA_CRTC_OVERFLOW], d->vga.cr[0x25], d->vga.cr[0x2d],
+        d->vga.msr, d->pramdac.fp_vdisplay_end,
+        d->vga.cr[NV_PRMCIO_INTERLACE_MODE], w, h);
+
     __android_log_print(
         ANDROID_LOG_INFO, "hakuX-perf",
         "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "
         "p1=%lld p50=%lld p90=%lld p99=%lld min=%lld max=%lld "
-        "src(tmr=%u smp=%u gfx=%u) coal=%u def=%u rast=%u/%u "
-        "vd=%u il=%02x res=%dx%d",
+        "src(tmr=%u smp=%u gfx=%u) coal=%u def=%u rast=%u/%u",
         s_vbh.n, (long long)(span_ns / 1000000),
         (long long)period, (long long)mean_ns,
         (long long)(mean_ns - period),
@@ -363,9 +407,7 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         (long long)(s_vbh.n ? s_vbh.min_ns : 0), (long long)s_vbh.max_ns,
         s_vbh.src[VBH_SRC_TIMER], s_vbh.src[VBH_SRC_SIMPLE],
         s_vbh.src[VBH_SRC_GFX], s_vbh.coalesced, s_vbh.deferred,
-        s_vbh.raster_reads, s_vbh.raster_reads_max,
-        d->pramdac.fp_vdisplay_end,
-        d->vga.cr[NV_PRMCIO_INTERLACE_MODE], w, h);
+        s_vbh.raster_reads, s_vbh.raster_reads_max);
 
     memset(s_vbh.bucket, 0, sizeof(s_vbh.bucket));
     memset(s_vbh.src, 0, sizeof(s_vbh.src));

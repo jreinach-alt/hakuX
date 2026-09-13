@@ -662,7 +662,7 @@ disposition = "defect"
 [issue.35]
 title = "Texture shadow comparator: a texel tie on one scanline (fixed), plus a 24-bit floor"
 suites = ["Texture shadow comparator"]
-disposition = "part-fixed-part-hardware"
+disposition = "precision-floor"
 
 # RE-MEASURED 2026-09-12 and RE-FRAMED. The commentary that used to sit here
 # was about 3D_primitive line and polygon smoothing -- it belongs to #36 and

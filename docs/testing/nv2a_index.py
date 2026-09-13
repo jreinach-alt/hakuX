@@ -447,6 +447,7 @@ def load_issues():
                 current = m.group(1)
                 issues[current] = {"title": "", "suites": [],
                                    "disposition": "unclassified",
+                                   "no_suites": "",
                                    "component": "pgraph"}
                 continue
             if current is None:
@@ -462,6 +463,13 @@ def load_issues():
             m = re.match(r'^component\s*=\s*"(.*)"$', line)
             if m:
                 issues[current]["component"] = m.group(1)
+                continue
+            # A deliberately suite-less issue says so, in words. See the
+            # empty-suites check below for why a bare empty list is not
+            # allowed to mean this.
+            m = re.match(r'^no_suites\s*=\s*"(.*)"$', line)
+            if m:
+                issues[current]["no_suites"] = m.group(1)
                 continue
             if re.match(r"^suites\s*=\s*\[", line):
                 # Arrays wrap across lines. Reading only single-line ones made
@@ -874,7 +882,14 @@ def cmd_check(repo, tests_root, support_dirs=None):
         # is required in that case, so "no suites" still cannot pass by
         # accident -- an entry whose suites were dropped by a parser bug has no
         # component either, and is still caught.
-        if not meta["suites"] and meta.get("component", "pgraph") == "pgraph":
+        #
+        # `no_suites = "<reason>"` is the same escape stated in words, for a
+        # pgraph-component issue that genuinely has no suite -- guest-visible
+        # timing, for instance, which no golden framebuffer can see. A bare
+        # empty list still fails, deliberately: the reason is what
+        # distinguishes a decision from a parser bug.
+        if (not meta["suites"] and not meta.get("no_suites")
+                and meta.get("component", "pgraph") == "pgraph"):
             problems.append("issue #%s has no suites (parse failure or empty entry)"
                             % num)
         if meta.get("component", "pgraph") not in COMPONENTS:
