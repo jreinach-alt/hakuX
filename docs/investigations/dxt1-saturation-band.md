@@ -99,6 +99,16 @@ and all-one or all-three indices, so every block is punch-through — and its
 quad is 480x360 rather than a 256x256 point magnification. **None of its blocks
 were used to derive the rule.**
 
+**And a seventh capture pins all four bounds at once.**
+`Volume_texture/DXT1` is a third suite and a 3D texture, and it samples
+densely enough — 225, 247 and 242 distinct levels per channel — that its
+lowest non-zero and highest sub-255 values land on every bound
+simultaneously: R 11/250, G 5/252, B 11/250. It is evidence about silicon and
+**not a leg**: our own render of it fails for an unrelated reason (6,129 px at
+max delta 255), so it cannot confirm a fix, only the rule the golden obeys.
+Nothing here says whether the dither matrix is also keyed on `z` — the level
+set cannot see that, and `s3tc.c` indexes `(y & 3, x & 3)` per slice.
+
 ### The control that says it is the format path and not the images
 
 `DXT3` and `DXT5` carry the identical colour-block layout, target
@@ -264,6 +274,11 @@ not address either.**
 - **Mip levels above 0 are still only indirectly verified.** `MIPDXT1_plasma`'s
   higher quads are magnifications of level 0, so they test the same texels.
   Nothing here tests a decode of level 1 in isolation.
+- **Whether the dither matrix is also keyed on `z`** for a 3D DXT1 texture.
+  `s3tc.c` indexes `(y & 3, x & 3)` per slice, `Volume_texture/DXT1`'s golden
+  obeys the band, and a level set cannot distinguish the two — our render of
+  that capture is 6,129 px at max delta 255 for a reason that is not this
+  one, so the question is not answerable from it today.
 - **The `Texture_render_target` DXT1 path is untouched and unmeasured.** No
   golden binds a DXT texture over a surface.
 

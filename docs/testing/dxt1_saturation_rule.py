@@ -285,6 +285,30 @@ def cmd_level_set(args):
         print("  MISSING: %s" % p)
         rc = 1
 
+    print("\nSeventh capture, a THIRD suite and a 3D texture: Volume_texture/DXT1")
+    print("samples densely enough to pin all four bounds from both sides at")
+    print("once.  Our own render of it fails for an unrelated reason (6,129 px")
+    print("at max delta 255), so it is evidence about silicon and NOT a leg:")
+    p3 = os.path.join(GOLDEN_ROOT, "Volume_texture", "DXT1.png")
+    if os.path.exists(p3):
+        a = np.array(Image.open(p3).convert("RGBA")).astype(int)
+        for ch, nm, bits, half in CHANS:
+            s = set(np.unique(a[:, :, ch]).tolist())
+            lo, hi = lo_bound(half), hi_bound(half)
+            band = [v for v in list(range(1, lo)) + list(range(hi + 1, 255))
+                    if v in s]
+            if band:
+                rc = 1
+            print("  Volume_texture/DXT1 %s: forbidden present %-6s  "
+                  "lowest non-zero %3d (bound %3d), highest below 255 %3d "
+                  "(bound %3d), %d distinct levels"
+                  % (nm, band if band else "NONE",
+                     min(v for v in s if v > 0), lo,
+                     max(v for v in s if v < 255), hi, len(s)))
+    else:
+        print("  MISSING: %s" % p3)
+        rc = 1
+
     print("\nCONTROL -- DXT3 and DXT5, same colour-block layout, 8-bit target,")
     print("no dither.  If the forbidden band were a property of the test")
     print("images rather than of the DXT1 path, it would be empty here too:")
