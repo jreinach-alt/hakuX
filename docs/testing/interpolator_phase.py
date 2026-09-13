@@ -36,18 +36,25 @@ The answer is the latter, and the four sections below are the evidence.
    on an odd x; ours are mixed.  The pair is in the fragment's alpha, not in
    the blend unit.
 
-4. The corpus.  The same even-pair test applied to a witness capture from each
-   gradient-carrying suite.  `Alpha_func` is the only place in the corpus where
-   it fires -- a full scan of 6,736 long monotone x-ramps across 26 suites
-   found the signature in 208 of 208 `Alpha_func` rows and 0 of 6,528 others.
+4. Which draws it applies to, tested per row.  `Context_switch/GRZero` is the
+   second confirmation and the important one: a screen-space 7-vertex POLYGON
+   with per-vertex diffuse RGBA, whose pair shows on **RGB** and on a gradient
+   running in **both** axes.  So the rule is neither alpha-specific nor
+   specific to a purely-x gradient -- both readings the `Alpha_func` evidence
+   alone permits are wrong.  It is still not universal: 3D_primitive,
+   Shade_model, Attrib_carryover, Lighting_*, Material_*, Fog and Specular all
+   have hundreds of measurable rows and not one paired row among them.
 
-So mechanism 2 is *not* a sample-position difference (a sample position belongs
-to the rasteriser and would move every suite and both axes), and *not* a
-perspective-correction difference (`Attrib_float` is w = 1 and `3D_primitive`
-is perspective, and both are phase-exact).  Our interpolator's phase is already
-correct.  What is left is one suite in which silicon holds the fragment alpha
-constant across a 2-pixel group, and reproducing that needs per-fragment
-`gl_FragCoord` parity and a screen-space derivative -- fragment-shader code.
+So mechanism 2 is *not* a global sample-position difference -- a sample
+position belongs to the rasteriser and would move every suite and both axes,
+and a corpus-wide best-shift census puts 1,482 of 1,674 non-exact captures at
+(0,0) with the non-zero winners scattered in every direction.  Our
+interpolator's phase is correct on both axes almost everywhere.  What is left
+is a subset of draws in which silicon holds the fragment colour constant
+across an even-aligned 2-pixel group in x, and reproducing that needs
+per-fragment `gl_FragCoord` parity and a screen-space derivative -- which
+exist only in fragment-shader code.  What selects those draws is **not
+established**; see the investigation note.
 
 Run:  python3 docs/testing/interpolator_phase.py [CAPTUREDIR ...]
 
@@ -348,36 +355,60 @@ def section3(caps):
 
 # ---------------------------------------------------------------- section 4
 
+# (suite, capture, minimum paired rows expected, maximum allowed)
 WITNESSES = [
-    ("Alpha_func", "AlphaFuncAlways_Disabled", True),
-    ("Alpha_func", "AlphaFuncLessThan_Enabled", True),
-    ("3D_primitive", "Polygon-inlinearrays", False),
-    ("Shade_model", "Fixed_Quad_Smooth_First", False),
-    ("Attrib_carryover", "T-bd0.2_0.0_0.6_1.0-ie", False),
-    ("Attrib_setter", "Setters-alpha", False),
-    ("Attrib_float", "0_1", False),
-    ("Lighting_accumulation", "Point-4", False),
-    ("Material_alpha", "MatA_SVDiffuse_A3F400000", False),
-    ("Fog", "AFF-linear-planar", False),
-    ("Specular", "ControlFlags_FF", False),
+    ("Alpha_func", "AlphaFuncAlways_Disabled", 120, None),
+    ("Alpha_func", "AlphaFuncLessThan_Enabled", 120, None),
+    # A second, independent confirmation, and the one that kills the two
+    # readings this was first given.  Context_switch/GRZero is a screen-space
+    # 7-vertex POLYGON with per-vertex diffuse RGBA: the pair shows on *RGB*,
+    # not just alpha, and on a gradient that runs in BOTH axes, not just x.
+    # It reads only E=0.787 over the whole frame because the paired polygon
+    # shares the picture with a w=12 perspective triangle, a checkerboard and
+    # the pb_print overlay -- which is why this test is per row.
+    ("Context_switch", "GRZero", 40, None),
+    ("3D_primitive", "Polygon-inlinearrays", None, 0),
+    ("Shade_model", "Fixed_Quad_Smooth_First", None, 0),
+    ("Attrib_carryover", "T-bd0.2_0.0_0.6_1.0-ie", None, 0),
+    # Attrib_float/0_1 is deliberately absent: its gradient runs in y and its
+    # rows are constant in x, so it has nothing for this test to measure.  It
+    # is the y-axis instrument in section 2 instead.
+    # Attrib_setter/Setters-alpha is absent for the opposite reason: only 3 of
+    # its rows are measurable, which is too few to call either way.
+    ("Lighting_accumulation", "Point-4", None, 0),
+    ("Material_alpha", "MatA_SVDiffuse_A3F400000", None, 0),
+    ("Fog", "AFF-linear-planar", None, 0),
+    ("Specular", "ControlFlags_FF", None, 0),
     # Kept as a deliberate contrast: a render target sampled at 2x magnification
     # repeats every value in pairs, but it repeats them at BOTH parities, so O
     # is high too.  That is what a magnified texture looks like; it is not what
     # a pair-constant interpolant looks like.
-    ("Blend_tests", "#spot_0_ADD", False),
+    ("Blend_tests", "#spot_0_ADD", None, 0),
 ]
 
 
-def pair_metric(a):
-    """P(v[x] == v[x+1]) for even x vs odd x, over *gradient* pixels only.
+def row_pair_stats(a):
+    """Per row: E = P(v[x]==v[x+1]) for even x, O for odd x, gradient px only.
 
-    Restricting to neighbours within 4 per channel is load bearing.  The
-    `pb_print` overlay puts 3-px-wide white glyph stems on a flat ground, and
-    a naive version of this metric reads those as a pair (E=1.00, O=0.03 on
-    `Depth_Clamp`'s text alone).  Gradients step by 1; glyph edges step by
-    hundreds, so the bound keeps every ramp and drops every glyph.
+    Two restrictions are load bearing.
+
+    Gradient px only (neighbours within 4 per channel): the `pb_print` overlay
+    puts 3-px white glyph stems on a flat ground, and without the bound the
+    metric reads those as a pair -- E=1.00, O=0.03 on `Depth_Clamp`'s text
+    alone, and E=0.82 on `Specular`'s.  Gradients step by 1, glyph edges by
+    hundreds.
+
+    Per row, not per capture: a paired primitive can share its frame with
+    unpaired content.  `Context_switch/GRZero` averages to E=0.787 over the
+    whole picture and reaches E=1.000, O=0.039 on individual rows inside the
+    polygon.  A whole-capture average hides it.
+
+    Blind spot, stated so it is not mistaken for a negative: a gradient
+    steeper than ~4 bytes/px leaves too few qualifying positions and the row
+    is dropped rather than judged.  So a row this returns nothing for is
+    *unmeasured*, not unpaired.
     """
-    w = a[:, :, :3].astype(int)
+    w = a[:, :, :3].astype(np.int16)
     d = np.abs(w[:, 1:, :] - w[:, :-1, :]).max(axis=2)
     same = d == 0
     grad = d <= 4
@@ -389,37 +420,40 @@ def pair_metric(a):
             vary[:, :m.shape[1]] |= m[:, :vary.shape[1]]
     use = grad & vary
     xs = np.arange(same.shape[1])
-    ev, od = use & (xs % 2 == 0), use & (xs % 2 == 1)
-    if ev.sum() < 500 or od.sum() < 500:
-        return None
-    return ((same & ev).sum() / ev.sum(), (same & od).sum() / od.sum(),
-            int(ev.sum() + od.sum()))
+    evm = (xs % 2 == 0)[None, :]
+    odm = (xs % 2 == 1)[None, :]
+    ne, no = (use & evm).sum(axis=1), (use & odm).sum(axis=1)
+    se, so = (same & use & evm).sum(axis=1), (same & use & odm).sum(axis=1)
+    ok = (ne >= 50) & (no >= 50)
+    if not ok.any():
+        return 0, 0, 0.0, 1.0
+    E, O = se[ok] / ne[ok], so[ok] / no[ok]
+    return (int(ok.sum()), int(((E > 0.90) & (O < 0.25)).sum()),
+            float(E.max()), float(O.min()))
 
 
 def section4():
-    print("4. Does the 2-pixel group belong to the interpolator, or to one suite?")
-    print("   E = P(v[x]==v[x+1]) for even x, O = the same for odd x, gradient px only.")
-    print("   The signature is E > 0.85 with O < 0.30.")
+    print("4. Does the 2-pixel group belong to the interpolator, or to some draws?")
+    print("   Per row: E = P(v[x]==v[x+1]) for even x, O for odd x, gradient px only.")
+    print("   A row is paired when E > 0.90 and O < 0.25.")
     print()
-    for suite, cap, expect in WITNESSES:
+    for suite, cap, lo, hi in WITNESSES:
         p = os.path.join(GOLDENS, suite, cap + ".png")
         if not os.path.exists(p):
             check(False, "witness %s/%s is missing from the goldens" % (suite, cap))
             continue
-        m = pair_metric(np.array(Image.open(p)))
-        if m is None:
-            # A witness that cannot be evaluated is not a pass.  A falsifier
-            # that silently skips its own evidence answers when it should not.
-            check(False, "witness %s/%s has too few gradient px to judge"
-                  % (suite, cap))
+        n, paired, maxE, minO = row_pair_stats(np.array(Image.open(p)))
+        if n == 0:
+            check(False, "witness %s/%s has no measurable rows" % (suite, cap))
             continue
-        e, o, n = m
-        fires = e > 0.85 and o < 0.30
-        print("   %-22s %-34s E=%.3f O=%.3f n=%6d  %s"
-              % (suite, cap[:34], e, o, n, "PAIRED" if fires else "-"))
-        check(fires == expect,
-              "%s/%s %s the even-pair signature"
-              % (suite, cap, "shows" if expect else "does not show"))
+        print("   %-22s %-34s rows=%3d paired=%3d maxE=%.3f minO=%.3f"
+              % (suite, cap[:34], n, paired, maxE, minO))
+        if lo is not None:
+            check(paired >= lo,
+                  "%s/%s has at least %d paired rows (%d)" % (suite, cap, lo, paired))
+        if hi is not None:
+            check(paired <= hi,
+                  "%s/%s has no paired rows (%d)" % (suite, cap, paired))
     print()
 
 
@@ -488,9 +522,11 @@ def main():
         for f in FAILURES:
             print("   - %s" % f)
         return 1
-    print("OK: silicon samples the colour at 2*floor(x/2)+2 in x and at the pixel")
-    print("    centre in y, and does so in Alpha_func alone. Our interpolator's")
-    print("    phase is correct everywhere else in the corpus, on both axes.")
+    print("OK: on the draws where it applies, silicon samples the colour at")
+    print("    2*floor(x/2)+2 in x -- constant across the even-aligned pixel pair")
+    print("    -- and at the pixel centre in y. Confirmed on Alpha_func (alpha,")
+    print("    1-D gradient) and Context_switch (RGB, 2-D gradient); absent from")
+    print("    every other witness. Our phase is correct where it is absent.")
     return 0
 
 

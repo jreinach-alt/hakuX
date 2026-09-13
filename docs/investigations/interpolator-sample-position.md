@@ -17,8 +17,12 @@ sharpest prior statement of it, from #57's `Alpha_func` work, was:
 > 1 px**, not a value bias.
 
 That reading is right about the sign, the axis and the magnitude. It is wrong
-about the shape, and wrong about the scope, and both matter more than the
-number does.
+about the shape and wrong about the scope, and both matter more than the number
+does: the shape is an even-aligned **2-pixel group** in x, not a shift, and the
+scope is **two draws in the whole corpus**, not the interpolator. Our
+interpolator's phase is already correct on both axes on every other capture we
+hold, and `Lighting_normals` — which #38 names as this mechanism's carrier —
+has no displacement of any size.
 
 ## 1. The measurement
 
@@ -110,24 +114,87 @@ different span and a different direction. `AlphaFuncLessThan_Enabled`, which
 holds the low crossing alone with no second edge to average against, is the
 same story: predicted x 64..**147**, hardware x 64..**147**, ours 64..148.
 
-## 3. Scope: it is one suite, not the interpolator
+## 3. Scope: some draws, not the interpolator
 
-This is the part that changes what should be done about it.
+This is the part that changes what should be done about it, and it is also
+where my first two readings of the rule died. Both deserve recording, because
+each is what the `Alpha_func` evidence alone supports and each is wrong.
 
-**Corpus-wide parity scan.** Every golden, every 16th row and column, longest
-monotone unit-step run per line: **6,736 long x-ramps across 26 suites**. The
-even-parity signature appears in **208 of 208 `Alpha_func` rows and 0 of the
-other 6,528.** On the y axis, 10,278 ramps and none.
+### The second instance, and what it kills
 
-**Corpus-wide pair test**, which does not need unit steps and so is not limited
-to shallow ramps: E = P(v[x] == v[x+1]) for even x against O for odd x, over
-gradient pixels. `Alpha_func` reads **E = 1.000, O = 0.009**. Under the
-signature E > 0.85 with O < 0.30, **14 captures of 1,915 fire, and all 14 are
-`Alpha_func`.** Zero fire on the y axis.
+**`Context_switch/GRZero`** is a screen-space 7-vertex `PRIMITIVE_POLYGON`
+(passthrough shader, `w = 1.0`, `z = 0.1f`) with per-vertex diffuse RGBA, and
+**80 of its 192 measurable rows are paired**, reaching E = 1.000, O = 0.039.
+Read a row of it straight out of the golden, y = 96, x = 100..119:
 
-**Corpus-wide best-shift census.** If the interpolator sampled in the wrong
-place, some non-zero (dx, dy) would beat (0,0) on capture after capture. Over
-every capture we hold on both sides:
+```
+x : 100 101 102 103 104 105 106 107 108 109 110 111 112 113 114 115 116 117 118 119
+G : 129 129 128 128 128 128 128 128 127 127 126 126 126 126 126 126 125 125 124 124
+B :  39  39  40  40  40  40  41  41  41  41  42  42  42  42  43  43  43  43  44  44
+```
+
+Every step in both channels is on an even x. That kills both readings:
+
+- **not alpha-specific** — this is R, G and B, and the polygon's alpha is not
+  what is varying here;
+- **not specific to a purely-x gradient** — this polygon's vertex colours
+  differ top to bottom as well as left to right, so `dv/dy ≠ 0`.
+
+It also strengthens the finding: the same even-aligned 2-pixel group, on a
+different attribute, a different primitive type, a different gradient
+orientation, and a suite fitted to nothing.
+
+### But it is not universal, and the counter-example is clean
+
+**`High_vertex_count`** draws 6×6-px screen-space Gouraud quads, passthrough
+shader, `w = 1`, four differing vertex colours each — and is **not paired at
+all**. Straight out of the golden, y = 200, x = 100..105:
+
+```
+R : 227 229 232 234  38  35
+```
+
+Every pixel differs. A pair-constant field cannot do that at any gradient
+steepness, because within a pair the two pixels are equal by construction. Its
+four submission variants (`arrays`, `inlinearrays`, `inlinebuffers`,
+`inlineelements`) all read maxE = 0.000 over 432 measurable rows.
+
+`3D_primitive`, `Shade_model`, `Attrib_carryover`, `Lighting_accumulation`,
+`Material_alpha`, `Fog` and `Specular` are likewise unpaired, with 61 to 329
+measurable rows each and not one paired row among them.
+
+### The census
+
+Per row, over every golden in the corpus — **1,162 captures have x rows this
+test can measure at all**, and the pairing appears in three places:
+
+| capture | paired rows | of measurable rows | what it is |
+|---|---:|---:|---|
+| `Alpha_func/*` (14 captures) | 128 | 128 | interpolated diffuse alpha |
+| `Context_switch/GRZero` | 80 | 192 | interpolated diffuse RGB |
+| `Image_blit/BlitBeyondWidth` | 14 | 479 | a blit, not an interpolant — #59 |
+| the other 1,145 captures | **0** | 61–479 each | — |
+
+**The metric's blind spot, stated so a silence is not read as a negative.** It
+counts only positions where neighbours are within 4 per channel, because
+without that bound the `pb_print` overlay's 3-px white glyph stems on a flat
+ground read as a pair — E = 1.00, O = 0.03 on `Depth_Clamp`'s text alone, and
+E = 0.82 on `Specular`'s, which is what sent me chasing two false positives.
+A gradient steeper than about 4 bytes/px therefore leaves too few qualifying
+positions and the row is *dropped rather than judged*. `High_vertex_count` is
+not one of those: its rows do qualify, and they read maxE = 0.000.
+
+A companion scan — parity of the step positions in long monotone unit-step
+runs — gives 208 of 208 `Alpha_func` rows and 0 of 6,528 rows in 25 other
+suites, but it needs a 32-step monotone run and so never sees
+`Context_switch` at all: the checkerboard under that polygon puts a 7-unit
+jump every 20 px and breaks every run. Quote the row census above, not that
+one.
+
+### And there is no global displacement
+
+If the interpolator sampled in the wrong place, some non-zero (dx, dy) would
+beat (0,0) on capture after capture. Over every capture we hold on both sides:
 
 | best shift | non-exact captures |
 |---|---:|
@@ -166,7 +233,10 @@ with a sample position.
 
 That matters because `Lighting_normals` is 114,164 channels and `Alpha_func` is
 706,696: if mechanism 2 is "the interpolator samples in the wrong place", its
-entire measured extent in this corpus is one suite.
+entire measured extent in this corpus is 15 captures. The other 70
+one-step-lo and 201 one-step-sym captures the issue counts under this
+mechanism are a value-level residual with no displacement in them, and looking
+for a sample position in them will not find one.
 
 ## 5. Where a fix would have to live, and why I did not make one
 
@@ -181,41 +251,48 @@ The change is one expression, and it belongs in
 **`hw/xbox/nv2a/pgraph/glsl/psh.c`**, which is #52's:
 
 ```glsl
-// NV2A holds the fragment's diffuse alpha constant across the even-aligned
+// NV2A holds the interpolated vertex colour constant across the even-aligned
 // pixel pair and evaluates it at the pair's right-hand edge, s = 2*floor(x/2)+2.
 // Relative to the pixel centre x + 0.5 that is +1.5 px on even x, +0.5 on odd;
 // both give the same value, which is what makes the pair constant.
 float nv2aPairOffsetX() {
   return 1.5 - mod(floor(gl_FragCoord.x), 2.0);
 }
-// applied to the interpolated diffuse alpha before the combiners and the
-// alpha test consume it:
-float a = vtxD0.a + dFdx(vtxD0.a) * nv2aPairOffsetX();
+// applied to an interpolated colour before the combiners, the alpha test and
+// the blend consume it:
+vec4 d0 = vtxD0 + dFdx(vtxD0) * nv2aPairOffsetX();
 ```
 
-`dFdx` is evaluated over the 2×1 half of the derivative quad, which is the same
-pair, so the two pixels of a pair land on the same value by construction.
+`dFdx` is taken over the 2×1 half of the derivative quad, which is the same
+pair, so the two pixels of a pair land on the same value by construction, and
+`floor(gl_FragCoord.x)` is the integer pixel x because the fractional part is
+the 0.5 of the pixel centre.
 
-**Three things must be said to whoever takes it.**
+**Three things must be said to whoever takes it, and the first is the one that
+stops this being shippable today.**
 
-1. **It must not be applied to RGB.** Every RGB gradient in the corpus is
-   already per-pixel and phase-exact — 3D_primitive, Shade_model,
-   Attrib_carryover, Lighting_*, Material_*, Fog, Texgen. Applying this to
-   colour would displace all of them by a pixel to fix one suite.
-2. **It must not be applied as a uniform 1-px shift.** A uniform shift is the
-   mean of a structure that is not a shift; it reproduces neither the pair nor
-   the green band's coverage, and it would move the 1,482 captures whose best
-   shift is already (0,0).
-3. **The blast radius is narrow but not empty, and is an A/B question.** Any
-   capture whose visible output depends on an *interpolated* diffuse alpha
-   moves. In this corpus that is `Alpha_func` (16 captures, 435,032 px) and
-   `Attrib_setter` (2), and nothing else obviously — but "nothing else
-   obviously" is a reading of the tests, not a measurement, and the measurement
-   is an arm.
+1. **What selects the paired draws is not established, and an unconditional
+   version of this is wrong.** Two draws in the corpus pair and 1,145 captures
+   do not. Applied unconditionally it would displace every gradient in the
+   corpus by a pixel — including the 1,482 non-exact captures whose best shift
+   is already (0,0) — to fix two. Section 7 lists the candidate conditions and
+   what each of them survives; none is established, and `High_vertex_count` is
+   a clean negative against the most attractive of them.
+2. **It must not be applied as a uniform 1-px shift either.** A uniform shift
+   is the mean of a structure that is not a shift: it reproduces neither the
+   pair nor the green band's coverage, and it gets `AlphaFuncLessThan_Enabled`
+   wrong (a uniform +1 px puts the low crossing at 147 by luck but the pair is
+   what makes both bounds land).
+3. **The blast radius is the whole corpus, and settling it is an A/B, not a
+   reading.** Every Gouraud gradient is downstream of this expression. The
+   must-not-move list in section 6 is the flat- and gradient-region evidence
+   that pins the current, correct phase.
 
 I have registered no prediction and queued no device work, because there is
-nothing in my territory to A/B. The measurement is offline against the goldens
-and stands without a device.
+nothing in my territory to A/B: neither `vsh.c`, `vsh-ff.c`, `vsh-prog.c` nor
+`geom.c` can express a per-fragment sample rule, and a change to any of them
+would be inert on this by construction. The measurement is offline against the
+goldens and stands without a device.
 
 ## 6. Must not move
 
@@ -228,34 +305,48 @@ to fix this must show these unchanged. They are the captures that pin the
 - `Antialiasing_tests/*` — `AAOnThenOffCPUWrite` and
   `FramebufferNotModifiedBySurfaceState` are bit-exact as of `dca3c94b98`
 - `Lighting_normals/*` — 12 of 28 bit-exact, 16 at best shift (0,0)
-- `3D_primitive/*`, `Shade_model/*`, `Attrib_float/*`, `Attrib_carryover/T-*`
-  — every long x-ramp in them is unpaired and phase-exact
+- `3D_primitive/*`, `Shade_model/*`, `Attrib_float/*`, `Attrib_carryover/T-*`,
+  `High_vertex_count/*`, `Material_alpha/*`, `Lighting_accumulation/*`,
+  `Specular/*`, `Fog/*` — measurably unpaired and phase-exact, 61 to 479
+  measurable rows each and zero paired rows
 - `python3 docs/testing/vertex_colour_quantiser.py` must keep reporting
   `surviving rules = ['mantissa13_half_up']`. Checked at `0f708c8d33`: it does.
+- `python3 docs/testing/alpha_func_ramp.py` must keep exiting 0. Checked at
+  `0f708c8d33`: it does. (Note that it still defaults to the pre-fix arm; #57
+  recorded that re-pointing its assertions is owed, and this note does not do
+  it — `interpolator_phase.py` supersedes its green-band framing rather than
+  replacing the tool.)
 
 ## 7. Least certain, and the capture that exposes it
 
-**What makes `Alpha_func` different is not established.** The rule is measured
-on the only probe in the corpus that can see it, and three properties of that
-probe cannot be separated, because `Alpha_func` is the only capture that has
-any of them:
+**What selects the paired draws is not established, and this is the thing to
+attack next.** Two positives is very thin, and I have already had two readings
+of them die (section 3): alpha-specific, killed by `Context_switch`'s RGB, and
+purely-x-gradient, killed by the same capture's 2-D gradient. What the two
+positives share, and what each candidate survives:
 
-  (a) the only varying interpolant is diffuse **alpha**;
-  (b) the gradient is purely along x — `dv/dy` is exactly zero;
-  (c) the quad is axis-aligned screen space, `w = 1`, exactly 512 px wide.
+| candidate condition | `Alpha_func` | `Context_switch` | survives? |
+|---|---|---|---|
+| screen space, `w = 1`, no perspective divide | yes | yes | **no** — `High_vertex_count` is `w = 1` passthrough and unpaired |
+| immediate-mode vertices (`SET_VERTEX*`) rather than arrays | yes | yes | **no on its own** — `Shade_model` is immediate mode and unpaired |
+| immediate mode **and** `w = 1` together | yes | yes | not contradicted: `High_vertex_count` is arrays, `Shade_model` is perspective |
+| a single large primitive (≥ 500 px wide) | yes | yes | not contradicted, but `3D_primitive`'s ~200 px and `Shade_model`'s ~300 px are not a real test of it |
 
-(b) is the one I could partly test. A corpus-wide hunt for ramps that run in x
-across a region exactly constant in y found **91 such regions: 28 in
-`Alpha_func`, all paired, and 63 in six other suites, none paired** — `Texgen`,
-`Texgen_with_texture_matrix`, `Texture_Matrix`, `Texture_palette`,
-`Texture_signed_component_tests`, `W_buffering`. But every one of those 63 is a
-texture- or depth-driven ramp, not a diffuse-colour one, so they rule out "any
-x-only ramp" without reaching "any x-only *diffuse* ramp".
+The third row is the one that fits every data point I have, and I do not
+believe it. It is a two-positive fit to a conjunction, "the vertex submission
+path changes the fragment interpolator's spatial granularity" is not a
+sensible statement about silicon, and a conjunction fitted to two points is
+exactly the shape of an artefact. Recorded as a lead, not a finding.
 
-`Attrib_setter/Setters-alpha` looks like a second blended-alpha probe and is
-not one: its triangle ramps RGB and alpha together, so the output differs
-across a pair whatever the alpha does, and its E = O = 0.000 is uninformative
-rather than contradictory. **No second probe exists.**
+What would settle it is new test geometry, not more fitting: the same
+screen-space quad with a shallow colour ramp, drawn four ways — immediate and
+arrays, `w = 1` and `w ≠ 1` — which is four captures and decides the table
+outright. Only goldens are available here, so this is recorded rather than
+measured.
+
+One near-probe that is not one: `Attrib_setter/Setters-alpha` looks like a
+second blended-alpha instrument and has only **3** measurable rows, far too
+few to call either way. Do not read its E = 0.000 as a negative.
 
 The capture that would expose a wrong choice first is
 **`Alpha_func/AlphaFuncLessThan_Enabled`**. Its green coverage is the narrow
@@ -272,12 +363,15 @@ so the green band **cannot separate them on its own**. What separates them is
 the red and blue bands, where `x + 1.5` is wrong on 127 of 512 px and the pair
 right-half on 126–128. The green band confirms; it does not decide.
 
-**Second**, the 2-pixel group is established in x only. Whether silicon's group
-is 2×1 or 2×2 cannot be read here: `Alpha_func`'s bands are constant in y, so
-they carry no y information, and `Attrib_float`'s y ramp — which shows no y
-pairing at all — is an RGB ramp, which by (a) may not be governed by the same
-rule. A test that ramped diffuse alpha vertically would settle it in one
-capture. None exists.
+**Second**, the group is established in x only. Whether silicon's group is 2×1
+or 2×2 is not settled by the two positives: `Alpha_func`'s bands are constant
+in y and carry no y information at all, and `Context_switch`'s polygon does
+vary in y — its rows are not y-paired, which points at 2×1, but that capture
+differs from ours by 172,824 px with a maximum channel difference of 150 for
+reasons unrelated to this, so I would not hang the 2×1 conclusion on it. The
+clean y statement is `Attrib_float`'s: no y pairing, phase +0.033 px. It is an
+RGB ramp on an unpaired draw, so it bounds our own y phase and says nothing
+about a paired draw's.
 
 ## Falsifier
 
@@ -290,16 +384,22 @@ hardware step phase  -1.0042 px            (red band)
 hardware step phase  -0.9958 px            (blue band)
 prediction pair right    a8 == 127 on x 148..317
 hardware   measured   a8 == 127 on x 148..317
+LessThan_Enabled green: predicted x 64..147, hardware x 64..147
 hardware  1185 steps  phase +0.0332 px  parity skew 0.506     (y)
 hardware  starts 10 even / 0 odd,  ends 0 even / 22 odd
-Alpha_func  AlphaFuncAlways_Disabled  E=1.000 O=0.009  PAIRED
+Alpha_func      AlphaFuncAlways_Disabled  rows=128 paired=128
+Context_switch  GRZero                    rows=192 paired= 80
+3D_primitive    Polygon-inlinearrays      rows=218 paired=  0
 ```
 
-and exit 0, with all twelve witness captures classified as recorded. If any
-capture directory is supplied it must also report our own ramp as the exact
-pixel-centre ramp, 512/512 on both bands.
+and exit 0, with all eleven witness captures classified as recorded — two
+`Alpha_func` and `Context_switch/GRZero` paired, the other eight with zero
+paired rows. If any capture directory is supplied it must also report our own
+ramp as the exact pixel-centre ramp, 512/512 on both bands, and its best-shift
+tally.
 
-If hardware's bands stop matching `2·floor(x/2)+2`, or the green prediction
-stops landing on 148..317, or any suite other than `Alpha_func` starts showing
-the pair, the goldens changed and this document is void. If *our* bands start
-matching `2·floor(x/2)+2`, section 5 has landed in `psh.c`.
+If hardware's bands stop matching `2·floor(x/2)+2`, or either green prediction
+stops landing, or a suite other than `Alpha_func`, `Context_switch` and
+`Image_blit` starts showing paired rows, the goldens changed and this document
+is void. If *our* bands start matching `2·floor(x/2)+2`, section 5 has landed
+in `psh.c`.
