@@ -1347,7 +1347,7 @@ suites = ["Texture border"]
 disposition = "defect"
 status = "open"
 status_note = "No fix attempted; what landed is containment. Re-measured from the arm rather than from the comment: dispatch/results/1789255594-exp54-stst-correct, 10 runs of one unchanged binary over Texture border, 2D_BorderTex_SZ band 5,640 with 4 runs bit-exact and 6 not, and 17 of 18 captures at band 0. ab_compare names it in KNOWN_UNSTABLE and the measured per-capture band classes it NOISE. The 40x magnitude spread across the non-zero runs is unexplained and a single upload racing a two-pass generator cannot produce it. (The issue's comment says five exact and five not, and lists eleven values for ten runs; the arm holds four and six.)"
-blocked_on = "root cause proven and the bound closes it, but it halves a real title; the shippable form is a selective draw-only bound (148,704 submissions for 180 draws) and that needs its own arm"
+blocked_on = "The selective draw-only bound HAS its arm and it holds: V2/V3/V4/V5/V6a pass, scan costs 0.0303% of wall clock (mean 306 ns over 252 words) against mode 1's 40.7% blocked, so the cost was removed rather than moved. Two things block closure, and neither is the mechanism. (1) MAGNITUDE, not existence: the floor every arm here was judged against is 128 commits old, and a fresh arm A at the tip reads 2 of 10 non-zero where that floor read 6 of 10 -- at the tip a stale_px leg is passed by luck at 10.7%, so V1 is VOID and the earlier closure's magnitude is doubtful even though its pairing was sound (its own control showed 5 of 10 in the same pair). border-floor-cb6fc1323f is the 10-run floor at the tip that settles it. (2) The 16,384-word scan budget ran to 16,038, 97.9% consumed, with big firing 20 times -- thinner than the 2x it was sized for, and a busier title may sit on it. Also note the sizing I briefed was wrong by 30x: 5,286 submissions publish a draw, not 180, so the reduction is 27x and any per-draw arithmetic from 180 is thirty times out."
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
@@ -2742,7 +2742,7 @@ status_note = "The rate half landed (0edf4f2f0d, one token at nv2a.c:845) and al
 # live issue list for state and title, which cannot see an issue that has no
 # entry to compare.
 # ---------------------------------------------------------------------------
-blocked_on = "defer_cap = 15 landed; D9 says the value is 12, and the observed timer round trip names it -- one constant, wants an arm"
+blocked_on = "THE ARM HAS RUN AND defer_cap = 12 IS IN THE TREE (nv2a.c:1097). What is left is not a measurement, it is the OWNER'S TRADE: 12 is validated on thor (D9 holds, worst fully-unlocked window clamps 1 against a bar of 2; clamps 6,7 -> 0,1; guest time lost +1.544/+1.864 -> -0.062/+0.085 s/min at gfps p90 59 both arms), and the nova would need about 10 -- but the nova has never entered unlock mode on any title on hand, so cutting to 10 for it would be paying on every device for a mode one device has never been observed to use. Nobody can measure that preference."
 
 [issue.34]
 title = "Vulkan validation layer: four open findings from the desktop lane"

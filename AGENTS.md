@@ -627,6 +627,54 @@ why a RATE over many events inside one run (0.5661 and 0.5672 across two runs,
 reproducible to 0.2%) is a strictly better instrument than a count of clean
 runs, and why its bar can be an identity rather than a tally.
 
+## A predicted FALL is also a claim about the baseline, and it can become unsatisfiable
+
+Registering "this quantity falls by at least X" looks like a claim about the
+fix. It is two claims: that the fix removes X, and that **the baseline has X to
+give**. The second is usually invisible, and when the baseline is
+occupancy-dependent it can go false between registration and judging -- at
+which point the leg cannot be met by any fix whatsoever, and it still reports
+as a failure of the change.
+
+Measured on 2026-09-13, on #65. A previous lane registered D2 as a
+fully-unlocked drift **fall of at least 500,000 ns**, against a published
+baseline of 3,746,966 ns, which was ample. Re-judged on the new pair, arm A's
+drift was **444,340 ns**. A 500,000 ns fall from 444,340 is arithmetically
+impossible -- it would require a negative drift larger than the arm has -- so
+D2 FAILED on data where the underlying rate had in fact improved, 58.08-58.40
+Hz to 59.85-60.00 Hz.
+
+The pattern across that judge's nine legs is the useful part, because it is not
+one accident:
+
+    legs that HELD:   clamp counter, negative-lateness control, locked-window
+                      control, gfps ceiling, window count -- all ABSOLUTES
+    legs that FAILED: D2 drift fall, D5 hold fall, D7 defers-per-window --
+                      all DIFFERENCES or RATIOS against a moving baseline
+
+Arm B's own two runs had 7 and 32 fully-unlocked windows, a 4.6x swing **inside
+one binary**, with defers per window 37.9 against 84.8. Any leg normalised by
+that is measuring the swing.
+
+**So: register the absolute, not the fall.** "The worst window clamps at most
+2" survived every one of these regime changes; "the hold falls by three poll
+intervals" failed twice on arithmetic that had nothing to do with the constant
+under test. When a fall is genuinely the quantity of interest, check at
+registration that it is **smaller than the baseline's plausible range**, and
+say what makes the baseline stable -- and prefer the run-paired form, which at
+least fails for a reason connected to the change.
+
+The companion failure is the same shape from the other side: a leg registered
+against a **proxy** for the thing you care about. #65's E1 counted windows
+where an estimator exceeded a margin, and it failed at 2 and 3 windows while
+**the direct `clamp=` counter read 0 and 1 in the same runs** -- the estimator
+over-predicts by two to three times, because `def_max` can come from a
+`remaining`-bound deferral whose true lateness never exceeded a period. The leg
+built on the counter passed; the leg built on the proxy failed. The counter had
+been added precisely because the reasoning had been wrong once before, and the
+proxy was registered against anyway. Every exceedance figure quoted from that
+estimator, on either device, is an over-estimate.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
