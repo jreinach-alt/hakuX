@@ -406,6 +406,63 @@ title = "Line and point rasterisation"
 # and every EVEN width from 4 to 48 is coverage exact on the vertical edge, so a
 # centre-snap fix must move only the odd ones.
 #
+# SUPERSEDED 2026-09-13 on the centre, twice, and both corrections matter more
+# than the text above. Read them before writing any code here.
+#
+# (1) IT IS NOT A SNAP. The snap was fitted on the quad-strip edge at x = 160.0,
+# an integer, where a snap and a constant +0.5 agree at every width. The fan's
+# hub-to-v4 edge is vertical at x = 318.5 -- already a pixel centre, so a snap
+# would leave it alone -- and the goldens move it anyway, fitting (318.500,
+# 319.000] 7/7 against our (318.000, 318.500] 7/7. The y half gets NOTHING: the
+# polygon's near-horizontal closing edge reads 16/16 identical in the goldens
+# and in our output.
+#
+# (2) AND IT IS NOT A TRANSLATE EITHER. A +0.5 * surface_scale_factor bias on
+# VkViewport.x, on line pipelines only, was DELIVERED EXACTLY -- fitted centre
+# into the golden's interval 18/18 on one edge and 7/7 on the other, y untouched
+# 16/16, all 112 fill-mode captures at zero -- and scored +394,027 px. Reverted.
+# What survives: +0.5 in x holds on a steep edge, nothing holds in y on a
+# shallow one, and NO GLOBAL TRANSLATE IS BOTH.
+#
+# (3) AND IT IS NOT A RASTERISATION MODE. The obvious candidate for "both" was a
+# minor-axis bias whose sign depends on the major axis -- the GL wide-line rule,
+# VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT. The device offers it (ext=1
+# bresenham=1) and it has now been measured: +793,470 px, 0 better and 41 worse
+# at w >= 3, structural 1,000,125 -> 3,671,805. Reverted. NOT a plumbing
+# failure: 118 of 118 must-not-move entries at exactly zero delta, and the mode
+# confirmed at the mechanism -- the isolated QUADS diagonal's column height
+# became exactly ceil(w), 8/12/16/24 at widths 8/12/16/24.
+#
+# The fitted centre DID NOT MOVE on any of the three probe edges, because
+# Bresenham replicates along the minor axis and on an axis-aligned line that is
+# where the rectangle already put it. What it changed was diagonals, the wrong
+# way: golden 10/14/19/28, perpendicular rectangle 8.6/12.9/17.2/25.8,
+# Bresenham exactly 8/12/16/24. SILICON IS WIDER THAN A PERPENDICULAR
+# RECTANGLE; BRESENHAM IS NARROWER; the rectangle we already draw is the
+# closest of the three.
+#
+# THE MODE KNOB IS EXHAUSTED. smoothLines=0 (so #36 stays closed on a
+# capability line), stippledBresenhamLines=0 (so #33 gains nothing here),
+# rectangular is what we draw, bresenham is measured wrong. There is no fourth
+# value; do not spend another arm on lineRasterizationMode.
+#
+# The disagreement this file recorded as open is RESOLVED, against Bresenham.
+# The width-1 IoU 0.958 reading is not an instrument for it: the 48
+# line-primitive captures in 3D primitive moved -1,024 in total, 12 better and
+# 12 worse, because at width 1 the two modes barely differ.
+#
+# NEXT HYPOTHESIS, and it is a hypothesis. Silicon lights about one pixel more
+# on each minor-axis boundary of a DIAGONAL wide line than a
+# centre-in-rectangle rule does, and nothing extra on an axis-aligned one --
+# vertical edge exactly w columns 18/18, near-horizontal exactly w rows 16/16,
+# the 21-degree edge w/cos + 1 to + 2. That is a COVERAGE rule, not a centre
+# and not a mode, it is invisible on every axis-aligned edge in the corpus, and
+# it is the 18.7% golden-only-ink class. It needs generated line geometry.
+#
+# DO NOT ATTACK IT FIRST. 76.3% of the residual sits on top of it and is edge
+# priority. Arm 0499184e2d reproduces the split to the digit on a fresh binary:
+# 1,000,125 channels over 342,679 structural pixels, 18.7 / 5.0 / 76.3.
+#
 # Tool: docs/testing/line_footprint.py (--edge / --footprint / --classify).
 # Full derivation in docs/investigations/line-width-residual.md.
 disposition = "defect"

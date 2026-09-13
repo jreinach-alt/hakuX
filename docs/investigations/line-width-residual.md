@@ -485,3 +485,170 @@ because at width 0 the lines are dropped and the test's sixteen points are the
 whole draw; checking the gate against that entry is what revealed that the
 first draft biased points as well, since the test sets the fill mode before
 drawing them. That build never reached the device.
+
+---
+
+# 2026-09-13: Bresenham is measured, and it is wrong
+
+The section above ends by saying the Bresenham question is settleable cheaply
+and should be settled first. It has been. Arms `0499184e2d` and `8f84f5a8ab`,
+APKs `553cfffc73d3` and `e6ee765a328f`, 307 captures over `Line width`,
+`3D primitive`, `Point size`, `Point params` and `Texture format`. Prediction
+`docs/testing/predictions/line-bresenham.json`, registered and content-hashed
+at queue time.
+
+The capability is real. From the device, on both handhelds:
+
+    line raster: ext=1 rect=1 bresenham=1 smooth=0
+                 stipple(rect=0 bres=0 smooth=0)
+                 width[1.000,127.500] gran=0.500 wide=1 strictLines=1
+
+so `VK_EXT_line_rasterization` was added, `bresenhamLines` enabled, and
+`VkPipelineRasterizationLineStateCreateInfoEXT` with
+`lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_EXT` chained onto
+the rasterisation state of line-drawing pipelines only.
+
+## The result
+
+    differing   4,755,368 -> 5,548,838   (+793,470)
+    structural  1,000,125 -> 3,671,805
+
+| band | n | delta | better / worse |
+|---|---:|---:|---|
+| `Line_width` `Line_*` w >= 3 | 41 | **+783,991** | 0 / 41 |
+| `Line_width` `Line_*` w < 2 | 15 | +3,963 | 6 / 9 |
+| `Line_width` `Fill_*` | 3 | +6,145 | 0 / 2 |
+| `3D primitive` line primitives | 48 | −1,024 | 12 / 12 |
+| `3D primitive` fill primitives | 112 | **0** | 0 / 0 |
+| `Point_size` | 21 | **0** | 0 / 0 |
+| `Point_params` | 25 | **0** | 0 / 0 |
+| `Texture_format` | 40 | **0** | 0 / 0 |
+
+Monotonic in width: `Line_0016.0` +14,124, `Line_0032.0` +24,257,
+`Line_0048.0` +31,786, `Line_0063.7` +38,095.
+
+## It was not a plumbing failure, and this time that is measured rather than argued
+
+118 of 118 must-not-move entries held at **exactly zero delta** — every one of
+the 112 fill-mode `3D primitive` captures, all 21 `Point_size`, all 25
+`Point_params`, all 40 `Texture_format`, `Line_0000.0` still pixel-exact at 0,
+and `Fill_0000.0` byte-identical. The validation layer logged nothing. The
+device log said `-> bresenham ENABLED`.
+
+Two things that cost the last two arms are worth recording as *fixed*:
+
+* The gate requires a **triangle** topology before `polygonMode LINE` counts.
+  The viewport arm's first draft read `POLY_MODE_LINE || primitive_mode ==
+  LINES`, which catches the sixteen POINTS the test draws under a LINE fill
+  mode; `Line_0000.0` is the capture that says so and it held here.
+* `Fill_0001.0` and `Fill_0032.0` were **left off** the list this time, because
+  `LineWidthTests::Draw()` issues `PRIMITIVE_LINE_LOOP` unconditionally and
+  those captures contain real lines. They moved, as expected (+121 and +6,024),
+  and cost no false alarm.
+
+## What it actually measured
+
+**The fitted centre did not move at all.** All three probe edges read
+identically on both arms:
+
+| segment | golden | arm A | arm B |
+|---|---|---|---|
+| quad strip, x = 160.0 | (160.000, 160.500] 18/18 | (159.500, 160.000] | **(159.500, 160.000]** |
+| fan, x = 318.5 | (318.500, 319.000] 7/7 | (318.000, 318.500] | **(318.000, 318.500]** |
+| polygon, col 399 | (279.500, 280.000] 16/16 | same, 16/16 | **same, 16/16** |
+
+Which is obvious in hindsight and was not obvious in advance: Bresenham
+replicates fragments along the **minor axis**, and for an axis-aligned line the
+minor axis is exactly where the rectangle already put them. The half pixel the
+goldens want on a steep edge is not what this mode changes. **Leg 1 of the
+prediction failed outright**, and leg 2 held vacuously.
+
+**What it changed was diagonals, and it changed them the wrong way.** Column
+height of the isolated QUADS edge — local (58.5, 425.4) to (12.75, 407.5),
+x-major, cos θ = 0.9312 — median over columns 186..205:
+
+| width | golden | arm A | arm B | perp rect, w/cos θ | Bresenham, w |
+|---:|---:|---:|---:|---:|---:|
+| 8 | 10 | 9 | **8** | 8.6 | 8 |
+| 12 | 14 | 13 | **12** | 12.9 | 12 |
+| 16 | 19 | 17 | **16** | 17.2 | 16 |
+| 24 | 28 | 26 | **24** | 25.8 | 24 |
+
+and the butt-rectangle fit on that primitive degrades from **0.03–0.20%** of
+its ink to **2.24–4.96%**, the error now almost entirely pixels the rectangle
+has and we lack. So Bresenham *is* applied, and confirmed at the **mechanism**
+rather than by a total: the column height is exactly ⌈w⌉, which the Bresenham
+rule predicts to the pixel and nothing else does.
+
+## This resolves the recorded disagreement, against Bresenham
+
+The section above left two measurements open and disagreeing. **The QUADS half
+wins.** Silicon is *wider* than a perpendicular rectangle on a diagonal;
+Bresenham is *narrower*; the perpendicular rectangle we already draw sits
+between them and is the closest of the three.
+
+The width-1 half is not an instrument here and should stop being quoted as one.
+The 48 line-primitive captures in `3D primitive` moved **−1,024 in total, 12
+better and 12 worse** — at width 1 the two modes barely differ, so IoU 0.958
+neither confirms nor refutes anything about the mode.
+
+And the golden heights were confirmed independently before either arm ran:
+10 / 14 / 19 / 28–29, reproducing the figures recorded from the earlier pass
+from a fresh measurement of the goldens. The w = 24 column is the noisy one
+(27, 28 and 29 all appear across the twenty columns), which is the edge-overlap
+caveat the earlier pass attached to it, honoured.
+
+## The mode knob is exhausted
+
+`VK_EXT_line_rasterization` offers three modes and this device settles all
+three:
+
+* `smoothLines = 0` — **#36 stays closed**, on a capability line rather than an
+  argument.
+* `stippledBresenhamLines = 0` — **#33 gains nothing** from Bresenham here.
+* `RECTANGULAR` is what we already draw.
+* `BRESENHAM` is measured wrong, by 794k pixels and 0 of 41 captures.
+
+There is no fourth value. Nobody should spend another arm on
+`lineRasterizationMode`.
+
+## The next hypothesis, phrased as one
+
+Silicon lights roughly **one pixel more on each minor-axis boundary of a
+diagonal** wide line than a centre-in-rectangle rule does, and nothing extra on
+an axis-aligned one. The evidence is three edges at three angles:
+
+| edge | cos θ | golden's extent |
+|---|---:|---|
+| quad strip, vertical | 0 (y-major) | exactly w columns, 18/18 |
+| polygon closing, near horizontal | 0.99989 | exactly w rows, 16/16 |
+| QUADS, 21.4° | 0.9312 | w/cos θ + 1 to + 2 |
+
+That is the shape of a **coverage** rule — any pixel the rectangle touches —
+rather than a centre rule. It is invisible on every axis-aligned edge in the
+corpus, which is why the footprint fit reads 0.03–0.20% on the interior while
+18.7% of the residual is golden-only ink at the boundary. It also cannot be
+expressed as a rasterisation mode, so it needs the generated line geometry this
+file has now priced and declined three times — reached the third time for a
+reason that has been tested rather than argued.
+
+Do not attack it before the 76.3% it sits underneath. See below.
+
+## What is still the ranking, unchanged by this arm
+
+Arm A reproduces the residual split **to the digit** on a different binary from
+the one that first measured it:
+
+    structural channels 1,000,125  over  342,679 structural pixels
+      golden-only ink (we under-cover)    63,983   18.7%
+      ours-only ink   (we over-cover)     17,062    5.0%
+      colour on ink both agree about     261,634   76.3%
+
+so the "date the captures against the commit" lesson at the top of this file is
+satisfied here by accident as well as by design: the figures are stable, and
+every number above is a B − A delta on a fresh pair regardless.
+
+**76.3% of what is left is edge priority** — both renderers ink the pixel and
+disagree about which of several overlapping wide edges is on top — and it is a
+primitive-decomposition question, partly the driver's to answer. That is the
+next thing, and it is a different issue's shape from anything this arm touched.

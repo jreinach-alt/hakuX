@@ -885,6 +885,35 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
      * issues. Whether we then ENABLE it is a separate decision with its own
      * arm; measuring first is free and reversible, and guessing has already
      * cost #13 a device run.
+     *
+     * THAT ARM HAS NOW RUN, AND BRESENHAM IS WRONG. Do not try it again.
+     * Measured 2026-09-13, arms 0499184e2d / 8f84f5a8ab, 307 captures:
+     * lineRasterizationMode = BRESENHAM on line pipelines only scored
+     * +793,470 px, 0 better and 41 worse across Line width at w >= 3, and
+     * structural channels went 1,000,125 -> 3,671,805.
+     *
+     * It was not a plumbing failure: the gate held at 118 of 118
+     * must-not-move entries at exactly zero delta, the log said
+     * "-> bresenham ENABLED", and the mode is confirmed at the mechanism --
+     * the column height of the isolated QUADS diagonal became exactly
+     * ceil(w), 8/12/16/24 at widths 8/12/16/24, which is the Bresenham rule
+     * to the pixel and nothing else.
+     *
+     * It is wrong because it moves the WRONG THING in the WRONG DIRECTION.
+     * The fitted line centre did not move at all -- all three probe edges
+     * read identically on both arms -- because Bresenham replicates along the
+     * minor axis and on an axis-aligned line that is already where the
+     * rectangle put it. What it changed was diagonals, and there the golden
+     * runs 10/14/19/28 where a perpendicular rectangle predicts 8.6/12.9/
+     * 17.2/25.8 and Bresenham gives exactly 8/12/16/24. Silicon is WIDER
+     * than a perpendicular rectangle; Bresenham is NARROWER; the rectangle
+     * we already draw is the closest of the three.
+     *
+     * So the mode knob is exhausted for both issues. smoothLines = 0 keeps
+     * #36 closed, stippledBresenhamLines = 0 means #33 gains nothing here,
+     * rectangular is what we already draw, and bresenham is measured wrong.
+     * There is no fourth value. See
+     * docs/investigations/line-width-residual.md.
      */
     {
         bool have_ext = is_extension_available(
