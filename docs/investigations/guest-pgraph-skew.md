@@ -244,6 +244,62 @@ records twice: a tool that reads captures and silently finds none answers
 anyway, and on 2026-09-12 one reported all three of its captures MISSING on an
 arm that contained them — which reads exactly like a failed render.
 
+### The twelve failing swatches are not one population, and two lanes are on it
+
+Computed offline from the same ten-run floor, with `border_swatch_classes.py`
+over `border_swatch_origin.py --json`, and **registered before either arm was
+claimed** (`docs/testing/predictions/issue44-skew-class-split.json`). The
+field that separates them is `cut`:
+
+| class | swatches | px | share | what it is |
+|---|---|---|---|---|
+| **torn** | 8 | 3,852 | 30.6% | a finite `cut` with `prefix_ok` — the stale set is a row-major prefix of the successor's write, cut at 116/175/207/229/405/432/506, a different offset every run |
+| **complete** | 3 | 8,064 | 64.0% | no `cut`, successor explains every wrong pixel — the successor's write had *finished* when the read happened |
+| **no-successor** | 1 | 680 | 5.4% | `successor == 0` with pixels still wrong |
+
+```
+captures1   146   torn=146
+captures3  2352   torn=304  complete=2048
+captures6  2430   torn=382  complete=2048
+captures8  1847   torn=1847
+captures9  5640   torn=992  complete=3968  no-successor=680
+captures10  181   torn=181
+```
+
+Three things follow, and the first is the one that matters for judging.
+
+**`stale_px == 0` on 10 of 10 is a sum over classes that fail for different
+reasons, and #44 is now being worked by two lanes with two mechanisms.** The
+texture lane has a decoded-length hash gate that declines to re-upload at all
+— `blind=2` measured directly, on pass-2 4x4 and pass-2 8x8 — while this lane
+has the skew. `AGENTS.md`'s rule is exactly on point: a class count is a count
+of pixels a mechanism *touches*, not of pixels it is solely responsible for,
+and subtracting one from a differing total assumes an additivity these classes
+do not have. So the mechanism leg is registered separately: **torn and
+complete must both go to zero in arm B**, and `no-successor` is declared in
+advance as not this bound's to close.
+
+**The `complete` class is what separates the two mechanisms, directionally.**
+A texture that was never re-uploaded holds content from an *earlier* upload,
+so it cannot show the **successor's** surface — which is written after the
+draw that is missing it. A missed re-upload therefore cannot reach this class;
+a skew can, as a run-ahead of one whole iteration rather than a partial one.
+That is registered as a leg that can fail: if any `complete` swatch is better
+matched by a predecessor than by its successor, the argument is wrong and the
+two mechanisms are not separable this way. (#44 already records that on 2 of
+11 losses the successor is not *uniquely* identified — pass-1 8x2's +1/+2/+3
+all match 2,048 of 2,048 — so the leg is about predecessor versus successor,
+not about which successor.)
+
+**And #44's "the immediate successor explains 100% of wrong pixels" is 94.6%
+on the same data.** 11,916 of 12,596, with the 680-pixel remainder in the
+class that has no successor to be explained by: pass-2 4x8 is the **last**
+swatch of the test. `border_swatch_origin.py` reporting `unexplained_px = 0`
+is correct on its own terms — every wrong pixel is matched by *some* candidate
+surface — but that is a weaker statement than the headline, and the two were
+being read as the same one. Recorded here because it changes what arm B can be
+expected to show, not as a criticism of the finding it qualifies.
+
 ### The caveat that has to travel with any verdict
 
 **Five of the eighteen swatches are structurally blind.** The coloured
