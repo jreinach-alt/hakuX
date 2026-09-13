@@ -632,7 +632,24 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 # control. `xemu-work` is in the same edit deliberately -- it carries BE:/TexU:,
 # the instrumentation-INDEPENDENT workload control, without which a phase
 # survey can be non-empty and still uninterpretable.
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# `hakuX-lane` IS RESERVED FOR LANE INSTRUMENTATION, and it exists because this
+# list is an ALLOW-LIST ending in `*:S`. Every tag not named here is silenced,
+# so a lane that adds a new tag gets back a logcat with not one line of it --
+# indistinguishable from the mechanism never firing. Three times now:
+# `hakuX-phase` cost a whole phase survey, `xemu-work` would have made the next
+# one uninterpretable, and a signed-blend lane printed a pass counter to
+# `hakuX-signfold`, spent an arm, and read back zero lines.
+#
+# Adding each tag as it appears is the fix that does not scale, because the
+# lane discovers the problem only after paying for an arm. So instrument under
+# `hakuX-lane` and the output is captured with no edit here and no restart. A
+# lane's own tag still works when added to this list, but it must be added
+# BEFORE the arm rather than after reading an empty log.
+#
+# And the leg that belongs on any such counter: SILENCE IS VOID, never pass. An
+# absent line means the capture failed, not that the condition did not occur.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 # Which device runs the idle sweep. One of them must, and both of them must
