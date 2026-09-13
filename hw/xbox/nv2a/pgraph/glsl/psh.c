@@ -140,7 +140,7 @@ int pgraph_glsl_window_clip_count(PGRAPHState *pg)
  * is reached from pgraph_glsl_set_psh_uniform_values, which the renderer calls
  * once per pass immediately after setting it.
  */
-static int g_signed_blend_pass = SIGNED_BLEND_PASS_LOW;
+static int g_signed_blend_pass = SIGNED_BLEND_PASS_NONE;
 
 /*
  * How many times each half was actually STAGED into a uniform buffer, which is
@@ -151,11 +151,14 @@ static int g_signed_blend_pass = SIGNED_BLEND_PASS_LOW;
  * can tell that from the arithmetic being wrong. These count the staging
  * itself, so `staged_high == 0` names the cause outright.
  */
-static unsigned long g_signed_blend_staged[2];
+/* Indexed by SIGNED_BLEND_PASS_*, so it must hold NONE, LOW and HIGH. */
+static unsigned long g_signed_blend_staged[3];
 
 void pgraph_glsl_set_signed_blend_pass(int pass)
 {
-    assert(pass == SIGNED_BLEND_PASS_LOW || pass == SIGNED_BLEND_PASS_HIGH);
+    assert(pass == SIGNED_BLEND_PASS_NONE ||
+           pass == SIGNED_BLEND_PASS_LOW ||
+           pass == SIGNED_BLEND_PASS_HIGH);
     g_signed_blend_pass = pass;
 }
 
@@ -173,22 +176,6 @@ void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
 
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
-    /*
-     * #43. Gated on BLEND_EN as well as the equation: with blending disabled
-     * the blend unit contributes nothing, the source reaches the framebuffer
-     * unmodified whatever the equation field happens to say, and masking it
-     * would corrupt a draw that is currently correct. DrawColorStack in
-     * blend_tests.cpp writes its alpha with blending off and the equation
-     * still programmed, so this is a case the corpus actually contains.
-     */
-    {
-        uint32_t blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
-        uint32_t eqn = GET_MASK(blend, NV_PGRAPH_BLEND_EQN);
-        state->signed_blend_fold =
-            (blend & NV_PGRAPH_BLEND_EN) &&
-            (eqn == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||
-             eqn == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED);
-    }
 
     state->window_clip_exclusive = pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                                    NV_PGRAPH_SETUPRASTER_WINDOWCLIPTYPE;
@@ -3315,19 +3302,28 @@ static MString* psh_convert(struct PixelShader *ps)
      * exactly on the byte silicon used. Computing 1.0 - fragColor would be off
      * by one step for every channel.
      */
-    if (ps->state->signed_blend_fold) {
-        mstring_append(
-            ps->code,
-            "// #43 signed blend fold: split the source by its sign bit\n"
-            "{\n"
-            "    ivec4 sb = ivec4(round(clamp(fragColor, 0.0, 1.0) * 255.0));\n"
-            "    ivec4 sbHigh = ivec4(greaterThanEqual(sb, ivec4(128)));\n"
-            "    ivec4 sbSel = (signedBlendPass == 0)\n"
-            "                      ? sb * (ivec4(1) - sbHigh)\n"
-            "                      : (ivec4(256) - sb) * sbHigh;\n"
-            "    fragColor = vec4(sbSel) / 255.0;\n"
-            "}\n");
-    }
+    /*
+     * Emitted UNCONDITIONALLY, and gated at run time on the uniform rather
+     * than at generation time on PshState. See psh.h: keying this on cached
+     * shader state meant keying it on NV_PGRAPH_BLEND, which
+     * pgraph_glsl_check_shader_state_dirty() does not watch, so a stale folded
+     * shader was reused on an unblended draw and zeroed ring 0's green.
+     *
+     * The branch is uniform-valued, so it costs a predicted jump rather than
+     * divergence, and signedBlendPass == NONE leaves fragColor untouched --
+     * which is also what a shader whose uniform was never written does.
+     */
+    mstring_append(
+        ps->code,
+        "// #43 signed blend fold: split the source by its sign bit\n"
+        "if (signedBlendPass != 0) {\n"
+        "    ivec4 sb = ivec4(round(clamp(fragColor, 0.0, 1.0) * 255.0));\n"
+        "    ivec4 sbHigh = ivec4(greaterThanEqual(sb, ivec4(128)));\n"
+        "    ivec4 sbSel = (signedBlendPass == 1)\n"
+        "                      ? sb * (ivec4(1) - sbHigh)\n"
+        "                      : (ivec4(256) - sb) * sbHigh;\n"
+        "    fragColor = vec4(sbSel) / 255.0;\n"
+        "}\n");
 
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
@@ -3561,7 +3557,23 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
      * unrelated draw's uniform hash change.
      */
     if (locs[PshUniform_signedBlendPass] != -1) {
-        int p = pgraph_glsl_get_signed_blend_pass();
+        /*
+         * Computed from the LIVE register here, not from cached shader state,
+         * and that is the whole point: NV_PGRAPH_BLEND is not watched by
+         * pgraph_glsl_check_shader_state_dirty(), so anything derived from it
+         * at shader-generation time can be stale by the time it is used. A
+         * draw with blending off stages NONE no matter what the renderer's
+         * pass selector happens to say, so a folded shader can never be
+         * applied to an unblended draw.
+         */
+        uint32_t blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        uint32_t eqn = GET_MASK(blend, NV_PGRAPH_BLEND_EQN);
+        bool foldable =
+            (blend & NV_PGRAPH_BLEND_EN) &&
+            (eqn == NV_PGRAPH_BLEND_EQN_FUNC_ADD_SIGNED ||
+             eqn == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED);
+        int p = foldable ? pgraph_glsl_get_signed_blend_pass()
+                         : SIGNED_BLEND_PASS_NONE;
         values->signedBlendPass[0] = p;
         /* Count the STAGING, not the request: see g_signed_blend_staged. */
         if (p == SIGNED_BLEND_PASS_LOW || p == SIGNED_BLEND_PASS_HIGH) {

@@ -7193,10 +7193,12 @@ void pgraph_vk_flush_draw(NV2AState *d)
     }
 
     /*
-     * Leave the selector at LOW so an unfolded draw stages a stable value and
-     * cannot be given a spurious uniform change by whatever ran before it.
+     * Back to NONE, which is what every unfolded draw must stage. Leaving it at
+     * LOW was survivable only because set_psh_uniform_values now recomputes
+     * foldability from the live register anyway -- but a selector that says
+     * "low half" outside a fold is a lie waiting to be believed.
      */
-    pgraph_glsl_set_signed_blend_pass(SIGNED_BLEND_PASS_LOW);
+    pgraph_glsl_set_signed_blend_pass(SIGNED_BLEND_PASS_NONE);
     r->pipeline_state_dirty = true;
     r->uniforms_changed = true;
 }
