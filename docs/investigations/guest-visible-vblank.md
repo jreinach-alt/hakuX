@@ -730,6 +730,55 @@ suspicion #65 raised against `FLIP_STALL`: a path that pulled the VBLANK to the
 flip and kept it there could not deliver the period to 930 ns over 9,967
 assertions.
 
+### Was abandoning the grid intended? Yes — and priced, it is not a trade
+
+#65 asked this explicitly, and the history answers it. The condition was
+`if (unlocked)` alone before `ff370c9f5c` ("revert frame pacing experiments",
+2026-02-24), and the comment above it was a design statement:
+
+> Advance the VBLANK target. In normal mode, advance by exactly one period to
+> maintain a fixed 60Hz grid so games that count VBLANKs for timing see a
+> consistent rate.
+>
+> In unlocked mode, always reset from now so the next VBLANK fires one period
+> after this one. Combined with FLIP_STALL rescheduling, this ensures **the
+> game drives the pacing**: frames faster than 60fps get VBLANKs sooner, and
+> slower frames aren't locked to 30fps.
+
+So it is **deliberate and documented**, and as written it is a legitimate
+design: a setting that trades the guest's timebase for throughput, with the
+cost named — the fixed grid is promised only to "games that count VBLANKs for
+timing", i.e. only in normal mode. Three things are wrong with it anyway, and
+only the third needed a device.
+
+**1. `ff370c9f5c` left the code contradicting its own comment.** That commit
+added the `was_deferred ||` half and rewrote the comment around it to reason
+about deferral, ending: *"When the game is on time (no deferral), advance the
+grid by exactly one period to maintain a strict 60Hz cadence for games that
+count VBLANKs for timing."* That clause is false in unlock mode, which is
+precisely the mode an on-time game is in. From that commit onward nothing in
+the surrounding prose defended the half that remained, and #65 then removed the
+half that was being reasoned about.
+
+**2. It is on by default and nothing asks.** `unlock_framerate` defaults true
+and the mode is entered automatically whenever smoothed frame time drops under
+1.5 periods. A trade of the guest's timebase for throughput can be a setting;
+it should not be the state every healthy title falls into without asking.
+
+**3. The mechanism is backwards on its own stated goal.** "Reset from now so
+the next VBLANK fires one period after this one" **delays** the next VBLANK
+relative to the grid. The fixed grid's next target is `target_prev + period`,
+which is `late` nanoseconds *earlier* than `now + period` — so the grid always
+delivers the next VBLANK sooner than the reset does, never later. "Frames
+faster than 60fps get VBLANKs sooner" is better served by the grid that was
+discarded to achieve it, and that follows from the source without a device.
+
+The device then priced the trade. It cost **45.014 Hz against 59.94** — a
+quarter of the guest's clock — and bought, on the one title on hand that can
+enter the mode, a `gfps` p90 of 59 against 59 and a max of 59 against 60.
+**Nothing.** Same shape as #65's B4: a trade that was only ever a loss on the
+title that could be measured.
+
 ### Phase, measured: it is the deferral hold, and its size is `poll_interval * defer_cap`
 
 Arm A, lateness against the grid slot:
