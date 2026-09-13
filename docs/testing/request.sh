@@ -102,9 +102,24 @@ fi
 # device work was asked for, so ab_compare can tell the two apart.
 if [ -n "$SUITES" ]; then
     if [ -n "$EXPECT" ]; then
-        [ -f "$EXPECT" ] || { echo "--expect $EXPECT does not exist. Register it first: ab_compare.py --register $EXPECT --a-ref ... --b-ref ..." >&2; exit 2; }
-        EXPECT_SHA=$(sha256sum "$EXPECT" | cut -d" " -f1)
-        EXPECT=$(cd "$(dirname "$EXPECT")" && pwd)/$(basename "$EXPECT")
+        # Resolve and hash under the BUILD LOCK. The dispatcher detaches this
+        # same checkout to build a baseline ref, so for the length of any
+        # build the prediction file is whatever that commit carried: absent
+        # if it is newer than the ref -- which is how this was found, a queue
+        # refusing a file that plainly existed -- or, far worse, an OLDER
+        # VERSION of the same path, which hashes cleanly and binds the arm to
+        # a prediction nobody wrote. flock is the same lock build_ref takes,
+        # so this waits for the build rather than reading through it.
+        EXPECT_LOCK="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}/.build.lock"
+        : > "$EXPECT_LOCK" 2>/dev/null || true
+        read -r EXPECT EXPECT_SHA < <(flock "$EXPECT_LOCK" bash -c '
+            [ -f "$1" ] || exit 3
+            printf "%s %s\n" \
+                "$(cd "$(dirname "$1")" && pwd)/$(basename "$1")" \
+                "$(sha256sum "$1" | cut -d" " -f1)"' _ "$EXPECT") || {
+            echo "--expect $EXPECT does not exist. Register it first: ab_compare.py --register $EXPECT --a-ref ... --b-ref ..." >&2
+            exit 2; }
+        [ -n "$EXPECT_SHA" ] || { echo "could not hash --expect $EXPECT" >&2; exit 2; }
     elif [ -n "$NO_EXPECT" ]; then
         EXPECT_SHA=""
         echo "queuing without a prediction: $NO_EXPECT" >&2
@@ -149,6 +164,47 @@ serve this request does not support it:
 An older dispatcher ignores skip_tests silently and builds the disc WITH the
 test you asked to drop, then files the result as the measurement you wanted.
 Merge the --skip-test support and restart the serving dispatcher first.
+MSG
+        exit 2
+    fi
+fi
+
+# A skip naming a suite that is not being run is refused HERE, not by the disc
+# builder. make_test_iso.py already refuses it -- correctly, because a skip
+# whose suite is absent is a typo and silently honouring it would build a disc
+# nobody asked for -- but it refuses on the DEVICE side: after the claim, after
+# a build, after the install. On 2026-09-12 that cost an A/B arm a queue slot
+# and a detached-checkout build to learn that "Texture render target" was not
+# in the seven suites the arm ran. The information needed to say so was in the
+# request the whole time.
+if [ -n "$SKIP_TESTS" ] && [ -n "$SUITES" ]; then
+    BAD=$(python3 - "$SKIP_TESTS" "$SUITES" <<'PYEOF'
+import sys
+skips, suites = sys.argv[1], sys.argv[2]
+have = {s.strip() for s in suites.split(",") if s.strip()}
+bad = []
+for t in skips.split(","):
+    t = t.strip()
+    if not t:
+        continue
+    suite = t.split("::")[0].strip()
+    if suite not in have:
+        bad.append(suite)
+print(",".join(sorted(set(bad))))
+PYEOF
+)
+    if [ -n "$BAD" ]; then
+        cat >&2 <<MSG
+refusing to queue: --skip-tests names a suite that --suites does not run.
+
+  skip names a test in: $BAD
+  suites being run:     $SUITES
+
+make_test_iso.py refuses this too, and is right to -- a skip whose suite is
+absent is a typo, and honouring it silently builds a disc nobody asked for.
+But it refuses after the claim, the build and the install, which is a queue
+slot and a detached-checkout build spent on a typo. Fix the name, or drop the
+skip if that suite is genuinely not in this arm.
 MSG
         exit 2
     fi
