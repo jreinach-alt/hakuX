@@ -3455,11 +3455,24 @@ static float pgraph_vk_line_centre_bias_x(PGRAPHState *pg)
      * viewport programmed: such a transition necessarily changes the
      * pipeline, and the viewport is re-issued whenever the pipeline is
      * bound. geom.primitive_mode is the rewritten mode, so PRIM_TYPE_LINES
-     * here already covers LINE_STRIP and LINE_LOOP.
+     * here already covers LINE_STRIP and LINE_LOOP, and QUADS, QUAD_STRIP
+     * and POLYGON under POLY_MODE_LINE have been rewritten into it too.
+     *
+     * The polygon mode only counts for TRIANGLES. Vulkan ignores polygonMode
+     * for a point topology and so does the hardware, and a POINTS draw under
+     * POLY_MODE_LINE is not hypothetical: the Line width test sets the mode
+     * once per test and then draws its sixteen points under it before any of
+     * the wireframe primitives. Biasing those would move Line_0000.0, the
+     * suite's one pixel-exact capture -- at width 0 the lines are dropped
+     * and the points are all that is left of the draw.
      */
+    enum ShaderPrimitiveMode prim = r->shader_binding->state.geom.primitive_mode;
+    enum ShaderPolygonMode poly =
+        r->shader_binding->state.geom.polygon_front_mode;
+
     bool rasterises_lines =
-        r->shader_binding->state.geom.polygon_front_mode == POLY_MODE_LINE ||
-        r->shader_binding->state.geom.primitive_mode == PRIM_TYPE_LINES;
+        prim == PRIM_TYPE_LINES ||
+        (prim == PRIM_TYPE_TRIANGLES && poly == POLY_MODE_LINE);
 
     return rasterises_lines ? 0.5f * pg->surface_scale_factor : 0.0f;
 }
