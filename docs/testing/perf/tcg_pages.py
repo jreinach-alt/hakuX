@@ -434,12 +434,24 @@ def derive(windows):
     if di is not None and ai is not None and vis:
         print("   -> visits %d = real discards %d + already-invalid %d"
               " (residual %d)." % (vis, di, ai, vis - di - ai))
-        print("      The residual is expected to be small and NEGATIVE-side"
-              " only by accident: di counts every caller of"
-              " do_tb_phys_invalidate, while visits are counted in the"
-              " whole-page loop alone, so a positive di surplus is"
-              " tb_check_watchpoint traffic. The exact per-visit identity is"
-              " the xx control above; this line is the aggregate view of it.")
+        # The sign is determined, and an earlier version of this text had it
+        # backwards. Per visit, exactly one of ai or a loop discard happens
+        # (that is what xx checks), so visits == ai + loop_discards exactly,
+        # while di == loop_discards + discards from every OTHER caller of
+        # do_tb_phys_invalidate. Therefore
+        #     residual = visits - di - ai = -(other callers)
+        # and the residual is <= 0 by construction. A NEGATIVE residual is
+        # benign and its magnitude is that other traffic. A POSITIVE one
+        # cannot happen and refutes the identity.
+        print("      residual = -(discards from callers outside the loop),"
+              " so <= 0 by construction: visits == already-invalid + loop"
+              " discards exactly (that is what xx checks), while di also"
+              " counts tb_check_watchpoint and any other"
+              " do_tb_phys_invalidate caller. A POSITIVE residual is the one"
+              " that cannot happen and would refute the identity.")
+        if vis - di - ai > 0:
+            print("      POSITIVE RESIDUAL: that cannot happen. Treat every"
+                  " ratio here as void until it is explained.")
         if ai > vis * 0.5:
             print("      MOST VISITS ARE DEAD BLOCKS (%.0f%%). The page lists"
                   " are carrying already-invalidated TBs, so the visit count"
