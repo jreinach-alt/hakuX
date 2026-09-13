@@ -1,0 +1,36 @@
+{
+  "registered_utc": "2026-09-13T04:30:17Z",
+  "who": "issue59-agent",
+  "issue": "59",
+  "prediction": "Unchanged falsifier, still a SAMPLED ALPHA VALUE: the texture unit returns 1.0 for an X1R5G5B5_O1R5G5B5 pad bit and 0.0 for an X1R5G5B5_Z1R5G5B5 one, out of host_fmt.sampled_pad_alpha, on whichever path filled the host image. Blend_surface's DstAlpha tests display that quantity directly -- the top half of each swatch is drawn with the sampled alpha as its coverage, so 1.0 writes the swatch colour and 0.0 leaves the 0xFF555555 clear showing through as (85,85,85,255). MEASURED TWICE ALREADY: v1 and v2 both took DstAlpha_X_O1RGB5 and 1-DstAlpha_X_O1RGB5 from 65,536 to 0 bit-exact with the Z pair holding at 0, so the rule is not in question. What both got wrong was the SCOPE of the override. v1 keyed it on the address alone, which let a surface Surface format had left behind reach Texture DXT's DXT1 textures and blank them (384 -> 65,536, 448 -> 65,536, status ok -> blank). v2 added extents and compressed-format exclusion, which repaired Texture DXT exactly, but Surface format stayed broken because its extents genuinely agree: it renders a 128x128 scratch surface and then samples a 128x128 LU_IMAGE_A8R8G8B8 pattern the CPU wrote at the same address through stage 3 -- same address, same size, different pixels. v3 adds the texel stride, compared on the GUEST side, because the original host-side size test was doing this job until #59 widened these textures to a 4-byte host format while their surfaces stayed at two. So this arm predicts BOTH earlier repairs held at once and NOTHING ELSE MOVED: the two O1RGB5 captures at 0, Texture DXT's two plasma captures back at 384 and 448 with status ok, and Surface_format/Fmt_X1R5G5B5_O1R5G5B5 back at 16,096 and Fmt_X1R5G5B5_Z1R5G5B5 back at 29,881 -- those last two being the ones v2 could not reach and the sharpest check that the stride test is what was missing. Surface_clip stays 0 across all 47, which is #59's 1,175,741 px win, and Texture_format and Texture_render_target stay byte-identical.",
+  "a_ref": "00dc9c68c5",
+  "b_ref": "a3eddc0214",
+  "must_not_move": [
+    "Surface_clip/*",
+    "Texture_DXT/*",
+    "Texture_format/*",
+    "Texture_render_target/*",
+    "Surface_format/*",
+    "Blend_surface/XA_O1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/XA_Z1A7RGB8_Add_SrcA_DstA",
+    "Blend_surface/DstAlpha_XA_O1A7RGB8",
+    "Blend_surface/DstAlpha_XA_Z1A7RGB8"
+  ],
+  "expect": {
+    "Blend_surface/DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_Z1RGB5": 0,
+    "Blend_surface/DstAlpha_ARGB8": 0,
+    "Blend_surface/DstAlpha_X_ORGB8": 0,
+    "Blend_surface/DstAlpha_X_ZRGB8": 0,
+    "Texture_DXT/DXT1_plasma_dxt1": 384,
+    "Texture_DXT/DXT1_plasma_alpha_dxt1": 448,
+    "Surface_format/Fmt_X1R5G5B5_O1R5G5B5": 16096,
+    "Surface_format/Fmt_X1R5G5B5_Z1R5G5B5": 29881,
+    "Surface_format/Fmt_R5G6B5": 0,
+    "Surface_format/Fmt_A8R8G8B8": 0,
+    "Surface_format/Fmt_X8R8G8B8_Z8R8G8B8": 0
+  },
+  "expect_counts": {}
+}
