@@ -3387,96 +3387,6 @@ static float pgraph_vk_line_width(PGRAPHState *pg)
     return (pg->line_width / 8.0f) * pg->surface_scale_factor;
 }
 
-/*
- * Where silicon puts a line's centre, relative to where Vulkan puts it.
- *
- * Vulkan rasterises a wide line as a rectangle centred on the segment
- * between the two vertices, so the centre lands on the vertex. The NV2A
- * puts it half a pixel further along +x, and leaves y alone. Both halves
- * of that are measured, on the Line width goldens (61 captures, Retroid
- * Pocket Nova sweep z-sweep-044-Line_width):
- *
- *   x, from the quad strip's left edge -- vertical at screen x = 160.0,
- *   crossed by row 230 far from either end. Over the eighteen widths 3.0
- *   to 48.0 where the register is honoured exactly, golden lights the
- *   columns of a line centred at 160.5 (18/18) and we light those of one
- *   centred at 160.0 (18/18). They coincide at even widths and sit one
- *   column apart at odd ones.
- *
- *   x is a translate, not a snap. The obvious reading of the above -- the
- *   centre snapping to the nearest pixel centre -- is falsified by the
- *   triangle fan's hub-to-v4 edge, vertical at screen x = 318.5, which is
- *   already a pixel centre and so would not move under a snap. Golden
- *   lights the columns of a line centred at 319.0 (7/7 widths 3..9 on its
- *   uncontaminated left boundary, three of them discriminating) and we
- *   light those of one centred at 318.5 (7/7). At a half-integer edge the
- *   parity flips -- even widths differ, odd agree -- which is what a
- *   constant +0.5 predicts and a snap does not.
- *
- *   y gets nothing. The polygon's closing edge runs from screen
- *   (477, 278.5) to (378, 280), near horizontal; over sixteen widths in
- *   columns 399..454 golden and our own output light exactly the same
- *   rows, 16/16. A +0.5 in y would move every odd width by one row, and a
- *   snap to the nearest pixel centre would move width 4 by one row; the
- *   goldens do neither.
- *
- * Applied through the viewport rather than the vertex position, and gated on
- * the pipeline rasterising lines, so that nothing but a line can move. Note
- * what that gate is NOT evidence of: Fill_0000.0 in this same suite is
- * coverage exact, but an axis-aligned fill on an integer boundary lights the
- * same columns whether its edge is at 160.0 or 160.5 -- the fill rule takes
- * centres in [left, right) and both boundaries move from lying between
- * centres to lying on one without enclosing a different set. So the corpus
- * cannot say whether the line rasteriser biases x or the whole pipeline is
- * half a pixel out in x and only lines are sharp enough to show it. This is
- * written for the first reading; if the second ever gets its own evidence,
- * the bias belongs in the vertex path and this goes away.
- *
- * The viewport is dynamic state here, so this reaches the device whatever the
- * pipeline was compiled with -- which matters, because
- * VK_EXT_extended_dynamic_state3 leaves the static rasteriser state dead on
- * Turnip.
- *
- * Half a native pixel, so it scales with the surface, the way the line width
- * does. See docs/investigations/line-width-residual.md and #13.
- */
-static float pgraph_vk_line_centre_bias_x(PGRAPHState *pg)
-{
-    PGRAPHVkState *r = pg->vk_renderer_state;
-
-    if (!r->shader_binding) {
-        return 0.0f;
-    }
-
-    /*
-     * Read from the same two fields the pipeline's topology and polygonMode
-     * come from, so the bias is a pure function of the pipeline key and no
-     * transition into or out of line rasterisation can leave a stale
-     * viewport programmed: such a transition necessarily changes the
-     * pipeline, and the viewport is re-issued whenever the pipeline is
-     * bound. geom.primitive_mode is the rewritten mode, so PRIM_TYPE_LINES
-     * here already covers LINE_STRIP and LINE_LOOP, and QUADS, QUAD_STRIP
-     * and POLYGON under POLY_MODE_LINE have been rewritten into it too.
-     *
-     * The polygon mode only counts for TRIANGLES. Vulkan ignores polygonMode
-     * for a point topology and so does the hardware, and a POINTS draw under
-     * POLY_MODE_LINE is not hypothetical: the Line width test sets the mode
-     * once per test and then draws its sixteen points under it before any of
-     * the wireframe primitives. Biasing those would move Line_0000.0, the
-     * suite's one pixel-exact capture -- at width 0 the lines are dropped
-     * and the points are all that is left of the draw.
-     */
-    enum ShaderPrimitiveMode prim = r->shader_binding->state.geom.primitive_mode;
-    enum ShaderPolygonMode poly =
-        r->shader_binding->state.geom.polygon_front_mode;
-
-    bool rasterises_lines =
-        prim == PRIM_TYPE_LINES ||
-        (prim == PRIM_TYPE_TRIANGLES && poly == POLY_MODE_LINE);
-
-    return rasterises_lines ? 0.5f * pg->surface_scale_factor : 0.0f;
-}
-
 static float clamp_line_width_to_device_limits(PGRAPHState *pg, float width)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3587,7 +3497,6 @@ static void begin_draw(PGRAPHState *pg)
         pgraph_apply_scaling_factor(pg, &vp_width, &vp_height);
 
         VkViewport viewport = {
-            .x = pgraph_vk_line_centre_bias_x(pg),
             .width = vp_width,
             .height = vp_height,
             .minDepth = 0.0,
@@ -4609,7 +4518,6 @@ static void snapshot_dynamic_state(PGRAPHState *pg, ReorderWindowEntry *e)
                  vp_height = pg->surface_binding_dim.height;
     pgraph_apply_scaling_factor(pg, &vp_width, &vp_height);
     e->viewport = (VkViewport){
-        .x = pgraph_vk_line_centre_bias_x(pg),
         .width = vp_width, .height = vp_height,
         .minDepth = 0.0, .maxDepth = 1.0,
     };
