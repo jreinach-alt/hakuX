@@ -1973,6 +1973,51 @@ suites = []
 status = "fixed-verified"
 status_note = "MEASURED OUT: the APU sink zero-fills a short read and counts nothing, at 0.0000% steady state on BOTH handhelds. Re-measured on the Nova after the Thor."
 
+#
+# DECIDED AND HALF-FIXED, 2026-09-13. Write-up:
+# docs/investigations/audio-savestate-and-monitor-accumulator.md section 3.
+#
+# THE REASON ABOVE FOR BLAMING THE CURVE IS FALSIFIED BY ITS OWN ARGUMENT.
+# "A perceptual taper uses a power of 2 to 3 by convention ... e looks like a
+# placeholder": e is 2.71828, INSIDE that band, and it behaves like the
+# textbook x^3 audio taper to within two percent of slider travel -- x^e
+# reaches -6 dB at 0.776 of the slider, x^3 at 0.794, linear at 0.501. So the
+# curve is what convention would pick for a linear-travel volume control and
+# "undocumented" cannot carry a change to it. What is left is that the LABEL
+# makes a claim the control never made.
+#
+# AND THE CURVE CHANGE IS NOT FREE, which settles which half to change.
+# volume_limit is persisted, it is the slider POSITION rather than the gain,
+# and config_spec.yml has NO version key -- so an old 0.5 and a new 0.5 are
+# indistinguishable and no one-time conversion exists. Going linear would
+# relouden every saved sub-maximum setting silently and only ever upward:
+# +1.57 dB at 0.90, +4.29 at 0.75, +10.35 at 0.50, +20.69 at 0.25, +41.38 at
+# 0.0625, unbounded as the setting approaches zero. Fixing the label costs
+# nobody a decibel.
+#
+# CHOSEN: keep the curve, fix the label. MIGRATION CONSEQUENCE for a user with
+# a setting already saved: NONE, not one sample changes.
+#
+# The label should read in dB, not a second percentage, because that is the
+# unit the Xbox's own volume control uses -- AC97_Master_Volume_Mute is six
+# bits of attenuation at 1.5 dB a step, 94.5 dB of range, get_volume with mask
+# 0x3f in hw/audio/ac97.c. The desktop one-liner is in ui/xui/main-menu.cc:841
+# and is NOT DONE: that file belongs to another lane. The patch is written out
+# in section 3 of the write-up.
+#
+# THE ANDROID HALF IS DONE, and it is the half that reaches this fork's users:
+# there is no label on a handheld to correct at all, because ui/xui/ is
+# excluded from the Android build at
+# android/app/src/main/cpp/CMakeLists.txt:473 and nothing else states the
+# gain. A non-unity volume_limit now prints its applied gain in dB and as a
+# percent of full scale under the hakuX-audio tag, on change rather than once.
+# That is #70's "the check costs one question" reduced to zero questions.
+#
+# NOT FIXED, recorded rather than bundled: `0 <= volume_limit` means a
+# NEGATIVE volume_limit skips the block and yields FULL volume rather than
+# silence. Android clamps to [0,1] on load (xemu_settings_android.cc:346-352);
+# the desktop path does not, so a hand-edited toml reaches it. Different bug --
+# out-of-range input handling, not the label/effect disagreement.
 [issue.71]
 title = "The volume slider applies x^e while the UI labels it a percentage, so 50% is -16.4 dB"
 disposition = "defect"
@@ -2099,6 +2144,73 @@ suites = []
 status = "unmodellable"
 status_note = "MEASURED OUT as a defect: three titles on one binary in one hour span 13.8 dB of median level (Crimson Skies 9.4 dB hotter in AC RMS than Galleon, DOA3 zero clipped samples at peak -8.17 dBFS). A missing gain cannot be missing from one title and not another -- Galleon is simply quiet."
 
+#
+# FIXED AND MEASURED, 2026-09-13, and the issue's own premise was wrong.
+# Write-up: docs/investigations/audio-savestate-and-monitor-accumulator.md
+# section 2.
+#
+# VOICE COUNT IS THE WRONG AXIS, which is why every measurement above read
+# zero. Voices are summed in FLOAT -- vp.c:1582 per voice, vp.c:1706 across the
+# worker threads -- and converted ONCE by src_float_to_short_array, which
+# clamps to +/-1.0 before scaling (samplerate_stub.c:161; vminq/vmaxq then
+# vqmovn_s32 on aarch64, an explicit clamp in the scalar tail). So no number of
+# simultaneous voices at any level can overflow the int16 store, and the
+# question "how many voices would be needed" has no answer.
+#
+# WHAT THE += ACCUMULATES IS SLICES, and the schedule normally puts exactly one
+# value in each: monitor.frame_buf is int16_t[256][2] = eight 32-sample slices
+# (apu_int.h:104); a VP frame writes the slice at (ep_frame_div % 8) * 32;
+# apu.c:692 flushes all 256 samples and memsets the buffer when
+# (ep_frame_div + 1) % 8 == 0, with apu.c:726 the only increment. Indices run
+# 0..7 and the buffer is zeroed after the eighth, so every += lands on a zeroed
+# element and is equivalent to =. The other two writers of frame_buf
+# (gp_ep.c:469, gp_ep.c:188) are gated on different monitor points and use
+# assignment and memcpy.
+#
+# THE ONE PATH NOT RULED OUT: gp_ep.c:424 sets ep_frame_div = 0 on any guest
+# write to NV_PAPU_EPRST -- with `FIXME: Still unsure about frame sync` already
+# on it -- without clearing frame_buf. Arriving with ep_frame_div % 8 in 1..7,
+# seven of eight phases, it revisits the slices already written this cycle and
+# two near-full-scale samples of the same sign then suffice. That needs no
+# density, the opposite of what this entry assumed.
+#
+# FIXED: the accumulation saturates. Two compares and a store per sample, 64
+# per 5.333 ms frame. NO AUDIBLE IMPROVEMENT IS CLAIMED and the clamp is
+# expected to fire never.
+#
+# NOW MEASURED AT THE EVENT RATHER THAN THE SIGNATURE. The wrap-suspect count
+# is adjacent OUTPUT samples differing by more than full scale, a consequence
+# of a wrap and not the wrap. A `mon_acc:` line every 5 s under hakuX-audio now
+# counts the precondition at the site: samples that found a non-zero
+# accumulator, sums that left int16 range, and the largest magnitude seen.
+#
+# Crimson Skies, Thor, 87.941 s, ref 62eaa2f7f6, binary 64b0a6b4789e, result
+# 1789282799-monacc-crimson-68501, prediction f096815cb5 registered before the
+# request was queued:
+#
+#   18 windows of exactly 480,000 samples (48,000 x 2ch x 5 s -- real time)
+#   8,639,936 samples   nonzero 0   saturated 0   maxabs 32,767 peak, never over
+#
+# M1 instrument alive PASSED. M2 nonzero == 0 PASSED. M3 saturated == 0
+# PASSED. M4 level unmoved PASSED far inside its 2.0 dB tolerance -- p50
+# +0.10 / 0.00 dB against result 1789280122 on the same device, and clipped
+# (84/73) and maxjump (21,866/22,628) IDENTICAL TO THE SAMPLE, so the clamp is
+# inert to the sample on this title. M5 starvation PASSED, 0/704 and 0/703
+# callbacks, 0 of 11,526,144 bytes zero-filled.
+#
+# WHAT THE ZERO BOUNDS: occurrences would arrive in bursts of at most
+# 7*32*2 = 448 samples per rewind, so it bounds the NUMBER OF EPRST REWINDS in
+# 88 s of this title, not a per-sample rate. The counter is permanent, so every
+# later audio soak adds to it.
+#
+# DELIBERATELY NOT FIXED: the frame-sync rewind. Clearing frame_buf on EPRST,
+# or making the slice write an assignment, changes what the guest hears on a
+# path nothing has measured, and gp_ep.c's own FIXME says the sync is not
+# understood. The clamp is the correctness floor; the rewind is a separate
+# question that mon_acc's nonzero column now watches continuously.
+#
+# RECOMMENDED DISPOSITION: this entry closes on the arithmetic. The EPRST
+# rewind wants its own entry, and it is unknown-semantics rather than defect.
 [issue.73]
 title = "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
 disposition = "defect"
@@ -2246,6 +2358,84 @@ suites = []
 status = "unmodellable"
 status_note = "MEASURED OUT as the symptom: CFG_FMT_HEADROOM is 7 on 3,424,618 of 3,424,618 voice-frames across three titles, and 7 = x128 = 42.14 dB. As an unapplied gain that puts whole-file AC RMS at +18.7 dBFS and the 5th percentile at +4.1 -- above full scale. Not an unapplied gain. What moved rather than closing: vp.c:1521-1523 may divide mixbins by the wrong register (2 instead of 128), DSP path only and inert on the monitor path; deliberately unfixed on a guess."
 
+#
+# FIXED AND VERIFIED WITHOUT A DEVICE, 2026-09-13. Write-up:
+# docs/investigations/audio-savestate-and-monitor-accumulator.md section 1.
+#
+# SCALE OF WHAT WAS LOST, counted rather than asserted: 460 bytes of
+# guest-visible state, 0 of them migrated -- glob_cnt, glob_sta, cas, the eight
+# bus-master engines with their BD cache, and the 256-byte mixer page.
+#
+# FIXED: a nested VMSTATE_STRUCT over AC97LinkState with the same fields
+# upstream's own AC97 device migrates, plus ac97_link_post_load (exported from
+# hw/audio/ac97.c, where the mixer register names and reset_voices are static)
+# to re-derive the open host voice's rate, volume, mute and active flags. A
+# field list without that step restores the registers and leaves the codec
+# configured and silent.
+#
+# version_id 2, minimum_version_id 2 -- DELIBERATELY REFUSING version 1. A v1
+# stream carries no codec bytes, so the only options are to refuse it or to
+# succeed while silently restoring reset values, which is this defect. The cost
+# is real: existing savestates of this branch will not load. It falls where it
+# is cheapest -- xemu's snapshot UI is under ui/xui/, excluded from the Android
+# build at android/app/src/main/cpp/CMakeLists.txt:473, and nothing in the
+# android/ tree calls savevm or loadvm.
+#
+# THE ORACLE, and it needs neither a device nor a configured QEMU build (the
+# desktop build still does not configure here: openssl, via the unconditional
+# curl subproject). docs/testing/aci_vmstate, modelled on psh_differ: carve.py
+# lifts the field list out of aci.c and the member list out of ac97_int.h, so
+# it tests the tree rather than a copy. `make run`, three seconds:
+#
+#   aci.c as it stands       stream 716 B   guest state reproduced 460 of 460
+#   PCI-only (pre-fix)       stream 256 B   guest state reproduced   0 of 460
+#   post_load ran once, with &state->ac97
+#
+# The control arm is what makes the rest readable -- the harness REQUIRES the
+# pre-fix list to report zero, so it cannot pass a no-op. Three further gates,
+# each exercised rather than asserted: a non-GUEST member restored from the
+# stream fails; every member of AC97LinkState needs a classification row and
+# the list is generated, so adding a field fails the run (verified with a dummy
+# member); and anything beyond fixed scalars, arrays, buffers and nested
+# structs is refused rather than skipped, because a skipped field reads as
+# covered.
+#
+# THE "FALSIFIED IF RECONSTRUCTIBLE" CLAUSE ABOVE IS ANSWERED, and the answer
+# is no. Two separate readings out of hw/audio/ac97.c:
+#
+#   1. Nothing in the EMULATOR reconstructs any of it. mixer_data's only
+#      writers are mixer_store (from the guest's NAM writes) and mixer_reset
+#      (a guest write to AC97_Reset, or a device reset), and every reader --
+#      nam_read, update_combined_volume_out, update_volume_in, reset_voices --
+#      reads it without reprogramming.
+#
+#   2. Part of it is not the guest's to rewrite at all, which is the airtight
+#      half and does not depend on any title's behaviour. civ, piv, picb and
+#      sr are OUR DMA progress counters through the buffer descriptor list,
+#      advanced by transfer_audio and write_bup (ac97.c:813, :1065, :1075), and
+#      the guest only READS them -- ac97.c:673 (civ), :689 (piv), :736 (picb),
+#      :767 (civ|lvi|sr), :776 (picb|piv|cr). It writes bdbar, lvi and cr and
+#      nothing else. So a load that drops them hands the guest a reset position
+#      for a stream it believes is mid-buffer, and no amount of guest
+#      reprogramming can restore a number the guest never had.
+#
+# INCIDENTAL FIND, fixed in its own commit: ac97_post_load in hw/audio/ac97.c
+# -- the GENERIC device's hook, not the ACI's -- read `AC97LinkState *s =
+# opaque` while vmstate_ac97 is declared over AC97DeviceState. Correct until
+# 7aa5985eba (2018-06-26) split AC97LinkState{PCIDevice dev;...} into
+# AC97DeviceState{PCIDevice dev; AC97LinkState state;} precisely so the ACI
+# could embed the link state, and left the cast. Since then every load of that
+# device has read PCIDevice's bytes as an AC97LinkState and written bup_flag
+# and last_samp back over the embedded DeviceState. Latent on this fork -- the
+# Xbox machine instantiates mcpx-aci -- and it is why the ACI reaches its hook
+# as a nested VMSTATE_STRUCT, where vmstate_load_state passes the sub-struct
+# address (migration/vmstate.c:207).
+#
+# STILL NOT PROVEN: post_load's re-derivation. The harness stubs
+# ac97_link_post_load, so the hook is proved reached with the right pointer,
+# not that reset_voices and set_volume recompute correctly -- that needs a
+# running emulator. And whether a loaded Xbox savestate is USABLE is a bigger
+# question than whether this device's state survives.
 [issue.75]
 title = "ACI migrates only its PCI device, so save/load silently drops all AC'97 codec state"
 disposition = "defect"
