@@ -356,8 +356,37 @@ MString *pgraph_glsl_gen_vsh(const VshState *state, GenVshGlslOptions opts)
          * the hardware still gives the lower byte -- 0.7 comes out 178 and
          * 0.9 comes out 229, which rounding the float cannot produce and
          * truncating its fraction first does, for all ten steps. */
+        /* The mantissa truncation alone is only half the rule, and the
+         * missing half is *where* the quantisation happens rather than how.
+         *
+         * Silicon quantises the vertex colour to its byte BEFORE the
+         * interpolator; we were interpolating the float and quantising at the
+         * fragment. On a flat region both give the same byte, which is why
+         * all nineteen values that fixed the rounding rule could not see it --
+         * every one of them was read from a flat golden region.
+         *
+         * A gradient separates them, and exactly one in the corpus is steep
+         * enough to do it: Alpha_func's green band, which ramps 0.495f to
+         * 0.505f across the quad. Recovering the fragment alpha per pixel by
+         * inverting the blend (all 512 px of a row recover uniquely, zero
+         * residual) and reading the coverage mask of AlphaFuncEqual_Enabled:
+         *
+         *   hardware  a8 == 127 on x 148..317  =>  slope (2.9942, 3.0296)
+         *   ours      a8 == 127 on x 120..321  =>  slope (2.5222, 2.5473)
+         *
+         * Hardware brackets 3.0000, from byte endpoints 126 -> 129. Ours
+         * brackets 2.5369, from the float endpoints. The intercept pins
+         * hardware's left endpoint to 126.005..126.011, which excludes a
+         * 9-bit or 10-bit carrier: it is the byte itself being interpolated.
+         *
+         * So snap to the byte grid here, before the interpolator sees it.
+         * The truncation must still come first -- rounding the float gives
+         * 0.1f -> 26 where hardware says 25 -- and the tie must go up via
+         * floor(x + 0.5) rather than round(), because 0.5f's tie goes up
+         * while the accumulated 0.7's goes down. Issues #38, #57. */
         "vec4 colorPrecision(vec4 c) {\n"
-        "  return uintBitsToFloat(floatBitsToUint(c) & 0xFFFFFC00u);\n"
+        "  vec4 t = uintBitsToFloat(floatBitsToUint(c) & 0xFFFFFC00u);\n"
+        "  return floor(t * 255.0 + 0.5) / 255.0;\n"
         "}\n"
         "\n"
         "vec4 oPos = vec4(0.0,0.0,0.0,1.0);\n"
