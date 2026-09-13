@@ -634,16 +634,252 @@ the weight instead: the difference between the two refs is 43 lines in
 13 fps out of that would have to lower the ceiling. It does not.
 
 
+## MEASURED 2026-09-13: the deferral machinery, and three of the four are one
+
+#65 left four defects open. The first result is that **three of them are one
+mechanism and the fourth is its consequence**, and the way to see it is to
+inventory who decides when the guest's VBLANK happens.
+
+`d->vblank_next_target_ns` is the grid. After this pass there are five writers
+of it, two assertion sites, and two places that move the timer without moving
+the grid:
+
+| site | what it does | verdict |
+|---|---|---|
+| `nv2a.c` timer callback | `target += period`, clamped | the grid |
+| `nv2a.c` simple-VBLANK callback | `target += period`, clamped | the grid |
+| `nv2a_vblank_recalc`, from `pramdac.c` on an `FP_VDISPLAY_END` write | `target = now + period` | legitimate: the period just changed |
+| `nv2a_init` | `target = now + period` | legitimate: there is no grid yet |
+| `ui/xemu.c` pause/resume unstick | `target = now`, `timer_mod(now)` | legitimate: re-arming after a pause |
+| the deferral retry, `nv2a.c` | `timer_mod(now + MIN(max_defer, remaining))` | moves the TIMER, never the grid |
+| `FLIP_STALL`, `pgraph.c:2355` | `timer_mod(now)` | moves the TIMER, never the grid |
+
+Read against that table the four items collapse:
+
+- **`unlock_framerate` (item 2) was a second clock.** `if (unlocked) target =
+  now + period` made the *callback's own lateness* the clock, on every VBLANK,
+  deferred or not. Fixed, and measured below.
+- **`simple_vblank` (item 3) was a second clock.** `nv2a_vga_gfx_update`
+  asserted the VBLANK bit on every host display refresh, so the *viewer's
+  panel* was a clock. Fixed; unmeasurable on this harness, and marked so.
+- **Phase (item 1) is not a third clock, and its named suspect is
+  exonerated.** The deferral retry and `FLIP_STALL`'s `timer_mod(now)` move the
+  timer and never the target, so since #65 they shift one VBLANK and the grid
+  gives it back on the next. Neither can deliver a VBLANK *before* its slot
+  either, because a deferral only happens once the callback has already
+  reached the slot.
+- **Coalescing (item 4) is the consequence, not a fourth defect.** Every
+  assertion the other three misplace lands on a sticky latch. `PCRTC_INTR_0` is
+  sticky on silicon too, so coalescing is faithful in KIND; only its rate is
+  ours.
+
+### The instrument: phase needs no `pgraph.c` change after all
+
+#65 recorded phase as blocked on the flip timestamp and therefore on a
+`pgraph.c` edit. It is not. The grid is a value `nv2a.c` already holds, and
+`d->vblank_next_target_ns` is still un-advanced at the moment of the assertion,
+so `now - target` **is** the phase error, per assertion, at both grid-driven
+call sites. It goes out as a `vblphase` line beside `vbl`, split on deferral,
+with the unlock-mode occupancy on the same line rather than correlated off the
+`gfps` line a different writer emits on a different cadence.
+
+Two checks were registered on the instrument itself before it ran:
+
+- **`neg = 0`, the row that cannot happen.** A QEMU timer fires at or after its
+  deadline, and every early rearm above can only fire a VBLANK already at or
+  past its slot. **Zero over 28,448 assertions across both arms**, so the
+  writer inventory is complete and the deferred/non-deferred split is sound.
+- **U0: in arm A's fully-unlocked windows, `mean interval - period` must equal
+  the mean lateness**, because in unlock mode arm A set `target = now + period`
+  and therefore `interval = period + late` identically. Measured **5,537,274 ns
+  against 5,537,847 ns — 573 ns apart, 0.01%.** The instrument agrees with the
+  arithmetic before any of its conclusions are used.
+
+### Two soaks, and the fast title this stream was missing
+
+Dead or Alive 3 **enters unlock mode**, which Galleon never does (`Ul:N` on all
+129 windows of both of #65's arms). It reports `Ul:Y` and a `gfps` ceiling of
+59-60, and it lives only on the **thor**. Both arms below are DOA3, 240 s,
+pinned `--device thor` under one requester, and `device_label` was read out of
+each `result.json` rather than assumed — #64's cost leg lost a control to
+exactly that.
+
+Arm A `fc59b50726` / apk `09740b583a79`, dispatch `1789284407-vblank-defer-1213578`.
+Arm B `595d258a02` / apk `d09639140b65`, dispatch `1789284413-vblank-defer-1213623`.
+Both **thor**. Prediction committed first at `docs/testing/predictions/vblank-unlock-grid.json`; judged by `docs/testing/vblank_phase_ab.py`.
+
+| regime | A interval | A rate | A drift | B interval | B rate | B drift |
+|---|---|---|---|---|---|---|
+| whole soak | 17,899,948 ns | 55.874 Hz | +4.375 s/min | 16,814,769 ns | **59.478 Hz** | **+0.473 s/min** |
+| fully unlocked | 22,221,024 ns | **45.014 Hz** | **+19.916 s/min** | 17,526,914 ns | **57.065 Hz** | **+3.034 s/min** |
+| unlock-active | 21,072,441 ns | 47.467 Hz | +15.785 s/min | 17,698,324 ns | 56.514 Hz | +3.650 s/min |
+| locked *(control)* | 16,684,680 ns | 59.941 Hz | +0.005 s/min | 16,690,187 ns | 59.921 Hz | +0.025 s/min |
+
+Drift is against the true NTSC 16,683,333 ns, not against our own constant.
+
+**A title in unlock mode was being handed a 45 Hz VBLANK clock.** It loses
+nearly twenty seconds of guest-visible time per minute of play — five times
+the 3.83 s/min #65 fixed, on a mode that is **on by default** and entered by
+every title running above about 40 fps. It now loses 3.03 s/min.
+
+**And the locked regime is the control that makes it readable.** It is the
+regime this change cannot reach, and it delivers 59.941 Hz at +0.005 s/min in
+arm A and 59.921 Hz at +0.025 s/min in arm B, moving 5,507 ns — 0.03%, the same
+figure #65's B3 control moved, against a 33% effect. That also retires the
+suspicion #65 raised against `FLIP_STALL`: a path that pulled the VBLANK to the
+flip and kept it there could not deliver the period to 930 ns over 9,967
+assertions.
+
+### Phase, measured: it is the deferral hold, and its size is `poll_interval * defer_cap`
+
+Arm A, lateness against the grid slot:
+
+| | mean | what it is |
+|---|---|---|
+| not deferred | **104,923 ns** (0.63% of a period) | the QEMU timer's own latency |
+| deferred, locked windows | **5,837,526 ns** | against a cap of `period/8 * 4` = 8,341,872 ns |
+| deferred, unlock windows | **10,777,000 ns** | against a cap of `period/16 * 16` = 16,683,750 ns |
+
+So the deferral hold runs at about 0.65-0.70 of its own cap in both regimes,
+and it is **88× the timer's latency**. That closes the number #65 could not
+explain: its p99 of 25,100,000-25,150,000 ns against a 16,683,750 ns period is
+`period + max_defer` = 25,025,625 ns, and the median window p99 here is
+**25,050,000 ns — within one 50 µs bucket of it, identical in both arms.**
+
+p99 is therefore not a mystery and not a defect of the grid. It is the deferral
+cap, by construction, and the fix deliberately does not move it: **median window
+p99 is 25,050,000 ns in both arms, 0.0% apart.**
+
+### The residue, and the one constant that explains it
+
+Arm B's fully-unlocked windows still sit 843,164 ns above the period. The
+arithmetic says where it goes, and the instrument confirms it by *diverging*
+where arm A's agreed:
+
+| | interval − period | mean lateness | reading |
+|---|---|---|---|
+| arm A | 5,537,274 ns | 5,537,847 ns | **equal** — there is no grid |
+| arm B | 843,164 ns | 1,335,976 ns | **diverge by 492,812 ns** — the grid gives back 37% of every late VBLANK |
+
+The 63% it does not give back is the clamp, and the cause is one constant. In
+unlock mode `max_defer = poll_interval * defer_cap = (period / 16) * 16 =
+period`, **exactly** — the one value that makes `target += period; if (target <=
+now) target = now + period` fire. Any hold at or near a full period discards
+the grid through the clamp. In normal mode the cap is `period / 2`, so a
+deferral alone can never trip it, which is precisely why the locked regime
+lands at +0.005 s/min and the unlock regime does not.
+
+So the identified next step is `defer_cap` in unlock mode, and it is a
+one-constant edit. **Deliberately not made here**: it is a second unmeasured
+mechanism, it trades frame-rate headroom rather than correctness, and there was
+no arm left to price it. Naming it with its arithmetic is worth more than
+shipping it unmeasured.
+
+### Coalescing, attributed: mostly faithful, and U7 is falsified
+
+`coal` on its own cannot say whether the guest lost anything, so the instrument
+now splits it three ways.
+
+| | arm A | arm B |
+|---|---|---|
+| whole soak | 205 of 13,785 (**1.49%**) | 52 of 14,663 (0.35%) |
+| unlock windows | 114 of 3,818 (**2.99%**) | 31 of 1,812 (1.71%) |
+| locked windows | 91 of 9,967 (**0.91%**) | 21 of 12,851 (0.16%) |
+| VBLANK bit unmasked in `INTR_EN_0` | **98%** | 90% |
+| after a shorter-than-period interval | **37%** | 52% |
+| mean preceding interval | 16,536,644 ns = **0.991 periods** | 1.000 periods |
+
+Four readings, and the second is the one that was registered and failed:
+
+1. **1.49% reproduces #65's 1.56% on a different title.** The figure is real
+   and not Galleon-specific.
+2. **U7 FAILED on its second half.** 37% of coalescing follows a short
+   interval, against a registered `> 50%`, and the mean preceding interval is
+   0.991 periods. So coalescing is **predominantly the guest's own ISR failing
+   to acknowledge within a full period** — which silicon has too, the latch
+   being sticky there as well. The conclusion inverts: it is mostly faithful,
+   not mostly ours. That is worth more than the leg holding would have been,
+   because it takes a fix off the board.
+3. **98% of it is with the interrupt unmasked**, on all 123 windows of both
+   arms, so the population #65 counted is the right one and its figure needs no
+   retraction: these are ticks a title taking VBLANK interrupts does lose.
+4. **The machinery modulates the rate 3-11×** — 2.99% against 0.91% in arm A,
+   1.71% against 0.16% in arm B, same direction in both. That part is ours.
+
+What is **not** claimed: the whole-soak fall from 1.49% to 0.35%. It fell in
+the locked regime too, 0.91% to 0.16%, and the fix cannot reach that regime, so
+the drop is scene or load rather than mechanism. Recorded as unattributable
+rather than banked.
+
+### Verdict: 6 of 8 legs hold, 2 fail, and both failures are informative
+
+| leg | outcome |
+|---|---|
+| U8 gate — unlock windows ≥ 5 per arm | **met** — 40 and 16 |
+| U0 — arm A's interval−period equals its lateness | **holds** — 0.01% apart |
+| U1 — the fall equals arm A's own lateness, ±50% | **holds** — 26.1% apart pooled, **15.2% on fully-unlocked windows** |
+| U2 — whole-soak rate rises ≥ 0.20 Hz | **holds** — +3.604 Hz, 55.874 → 59.478 |
+| U3 — locked control within ±50,000 ns | **holds** — moved 5,507 ns (0.03%) |
+| U4 — `neg == 0` on every window of both arms | **holds** — 0 of 28,448 |
+| **U5 — deferred lateness within ±15%, p99 within ±10%** | **FAILED** — p99 exact (0.0%), deferred lateness −28.4% |
+| U6 — `gfps` p90 and max fall by ≤ 2 | **holds** — p90 59 → 59, max 59 → 60 |
+| **U7 — coalescing majority short AND majority unmasked** | **FAILED** — 98% unmasked, but only 37% short |
+
+**U5 failed on a pooled statistic, and the per-regime measurement is the
+diagnosis.** The deferral hold has two different caps — `period/2` locked,
+`period` unlocked — so a figure pooled across both measures the mixture:
+
+| | arm A | arm B | change |
+|---|---|---|---|
+| deferred lateness, pooled | 9,187,596 ns | 6,580,762 ns | **−28.4%** |
+| within unlock windows | 10,777,000 ns | 10,845,837 ns | **+0.6%** |
+| within locked windows | 5,837,526 ns | 5,954,119 ns | **+2.0%** |
+| unlock share of assertions | 27.7% | 12.4% | the mixture |
+
+The hold is unchanged in both regimes, which is exactly what U5 asserted. The
+pooled number moved because the unlock occupancy halved between the two soaks.
+This is the same trap this document records twice already — "a mean over two
+regimes measures the mixture, not either regime" — and I wrote the judge to
+pool by assertion count for that reason and then registered the leg on a pooled
+figure anyway. The leg is reported FAILED as registered; the claim behind it
+holds per regime.
+
+The honest limits: **one run per arm**, and the unlock occupancy differed
+between them (27.7% against 12.4% of assertions), which is the confound that
+broke U5 and which a second pair would settle. What carries the result instead
+of replication is the locked-window control at 0.03% against a 33% effect, the
+within-regime deferral holds at +0.6% and +2.0%, and U0's 0.01% agreement
+between the instrument and the arithmetic. Everything here is the thor, on one
+title.
+
+### Also settled in passing
+
+- **`PCRTC_RASTER` is zero on a second title.** `rast=0/0` across both arms of
+  DOA3, 28,448 assertions. Two titles is still not a survey, but it is twice
+  what #65 had, and nothing has yet been observed to read the register.
+- **`unl=` cross-checks against the independent `Ul:` field** on 58 of 62
+  paired samples (94%), with all four disagreements at a transition where a
+  per-window count and a point sample must differ. That is the argument for
+  putting the occupancy on the line whose numbers it explains.
+- **`nv2a_vblank_recalc` leaves `vblank_deferred` set** if a mode change lands
+  mid-deferral, so the next callback counts one deferral that did not happen
+  and skips one that would have. It fires once per `FP_VDISPLAY_END` write and
+  is instrument noise, not a timebase defect. Not fixed; recorded.
+
 ## UNRESOLVED
 
-- **Phase.** The fix restores the *rate*; p99 says nothing about phase moved.
-  Whether a flip lands where hardware would put it relative to VBLANK is still
-  open, and FLIP_STALL firing a deferred VBLANK immediately via
-  `timer_mod(now)` (`pgraph/pgraph.c:2324`) inverts the causality outright: on
-  hardware VBLANK happens on a grid and the flip latches at the next one, here
-  the flip can pull the VBLANK to itself. Measuring that needs the flip
-  timestamp in the same histogram, which is a `pgraph.c` change and `pgraph.c`
-  belongs to nobody.
+- ~~**Phase.**~~ **MEASURED 2026-09-13.** It needed no `pgraph.c` change: the
+  grid slot is a value `nv2a.c` holds, so `now - target` is the phase error
+  directly. The answer is that phase error is the **deferral hold**, mean
+  104,923 ns when a VBLANK is not deferred and 5.8-10.8 ms when it is, capped
+  at `poll_interval * defer_cap` — which is exactly the p99 of 25.05 ms this
+  document could not explain. `FLIP_STALL`'s `timer_mod(now)` is **exonerated**:
+  it moves the timer and never the grid, `neg = 0` over 28,448 assertions shows
+  it never delivers a VBLANK before its slot, and the locked regime delivers
+  the period to 930 ns over 9,967 assertions. What remains open is whether the
+  hold *itself* should exist at that size; the residual it leaves in unlock
+  mode is +3.03 s/min and traces to `defer_cap` being the one value that trips
+  the grid's clamp.
 - ~~**What the period should be derived from.**~~ **CLOSED 2026-09-13, and
   the answer is that it cannot be.** All three candidates are measured out:
   the extension bits cannot help because the character-quantised CRTC cannot
@@ -653,8 +889,31 @@ the weight instead: the difference between the two refs is 43 lines in
   premise is what fails — the NV2A is not the timing master. What remains is
   the encoder, `hw/xbox/smbus_cx25871.c`, whose 256 registers the guest writes
   and nothing reads; reaching them from `nv2a.c` is cross-device plumbing.
-- **The unlock-mode grid**, which is on by default and unmeasured here.
-- **Whether 1.56% coalesced VBLANKs matter to any title.** The count is real;
-  no title is yet known to count VBLANKs for timing on this corpus.
-- **`PCRTC_RASTER`**, zero on one title. One title is not a survey.
+- ~~**The unlock-mode grid**, which is on by default and unmeasured here.~~
+  **FIXED and MEASURED 2026-09-13** on Dead or Alive 3, the fast title this
+  stream was missing: 45.014 -> 57.065 Hz in fully-unlocked windows,
+  19.92 -> 3.03 s/min of guest-visible time. The remaining 3.03 s/min is the
+  `<= now` clamp, because `max_defer` in unlock mode is exactly one period.
+- **Whether coalesced VBLANKs matter to any title.** The count is real and
+  reproduces on a second title (1.49% on DOA3 against 1.56% on Galleon), and
+  **98% of it is with the interrupt unmasked**, so a title taking VBLANK
+  interrupts does lose those ticks. But it is **mostly faithful**: 63% of it
+  follows a full-length interval, mean 0.991 periods, and a hardware ISR that
+  misses its window loses the same tick on the same sticky latch. What is ours
+  is a 3-11x elevation in unlock windows. Still open: no title is yet known to
+  count VBLANKs for timing on this corpus, so the 0.9% floor has no named
+  victim.
+- **`PCRTC_RASTER`**, now zero on two titles (Galleon and DOA3, 28,448 further
+  assertions). Two is not a survey either, and the register is still a
+  read-counter rather than a scanline.
+- **`simple_vblank`'s single source is unverified.** The second assertion site
+  is gone and the `J` artefact with it, but the mode is reachable only through
+  the debug settings index and per-game overrides, and nothing in
+  `request.sh` can set a pref -- so no soak can enter it. The old comment's
+  claim that the extra source "avoids timing-dependent freezes" is untested in
+  both directions; it was never measured when it was added either.
+- **`defer_cap` in unlock mode is `16`, which makes `max_defer` exactly one
+  period** -- the one value that trips the grid's `<= now` clamp. That is the
+  whole of the residual +3.03 s/min. A one-constant edit, deliberately not made
+  in the same pass as a measured one.
 - **Nova against Thor.** Everything here is one device.
