@@ -1057,3 +1057,57 @@ mappings.
 
 **Still not a fix, and still not fitted.** No permutation table has been
 written into the shader and none should be until this second rule is named.
+
+### The second rule, named: the residue is exactly `sign(dot_3) >= 0`
+
+The region above is directional, and this is the direction. A probe replaced the
+`DOT_STR_3D` cube fetch with the three dot **signs** encoded as a colour, on the
+same base the arms were built from (`0f708c8d`), so the pixels correspond.
+
+**The probe validated itself before it was believed.** `t_i` passes through the
+combiners only if the capture holds nothing but the sign combinations:
+`-1to1D3D` came back with exactly 8 colours plus the scene background, and
+`0to1` with exactly 4. If the combiner had transformed the value there would
+have been more.
+
+The 4 that `0to1` reaches are `#FFFF00`, `#FF0000`, `#FF00FF`, `#FFFFFF` --
+**every one with the red channel set**, so `sign(dot_1) >= 0` throughout. That is
+the recorded claim "the three unsigned dotmaps cannot flip `sign(dot_{i-2})`",
+measured directly rather than inferred from colour counts.
+
+Cross-tabulating the sign class against the residue:
+
+| capture | sign classes with **no** residue | classes that are **all** residue |
+|---|---|---|
+| `-1to1D3D` | `---` 11,880 · `x--` 11,268 · `-y-` 14,753 · `xy-` 14,369 | `--z` 1,842 · `x-z` 1,825 · `-yz` 509 · `xyz` 463 |
+| `0to1` | `x--` 20,042 · `xy-` 25,471 | `x-z` 8,002 · `xyz` 3,394 |
+| `HiLo_1` | `x--` 18,340 · `xy-` 24,704 | `x-z` 10,046 · `xyz` 3,819 |
+
+**0.0% and 100.0%, no exceptions, on three dot mappings with different sign
+distributions.** The totals reproduce the residue counts exactly: 4,639,
+11,396, 13,865.
+
+So the predicate is **`sign(dot_3)`** -- the third component, which
+`nv2a_issues.toml` records as "the third component selects nothing". It selects
+the entire residue.
+
+It also explains both shapes the region presented. `0to1`'s residue being
+one-sided (11,347 left against 49 right) and `-1to1D3D`'s being a 0.936 mirror
+are the same rule seen through different dot mappings: the `z >= 0` set happens
+to fall on one cube under the identity mapping and symmetrically under `_D3D`.
+One predicate, no per-capture parameter, both shapes.
+
+### What this is a derivation *of*
+
+Stated carefully, because the substitution under test uses `sign(z)` itself.
+`dotSTR3dSaturate()` builds `vec3(1.0, s.y*s.x*k, s.z*s.x*k)`, so its output
+does depend on the third sign. What the 100/0 split establishes is that **the
+error is confined entirely to the `sign(dot_3)` term** -- there is no residue
+anywhere `z < 0`, across three mappings. That is a perfect localisation of the
+defect in the candidate rule, and it is what the next attempt has to change.
+
+It is *not* yet a statement of silicon's rule. Four corners cannot be selected
+by three bits without two combinations sharing a corner, so the third bit is
+doing something the corner model does not have a place for -- selecting a face,
+or flipping a coordinate. **Naming that is the remaining work**, and it is now a
+question about one bit rather than about six permutations.
