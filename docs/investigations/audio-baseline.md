@@ -302,7 +302,22 @@ the audio thread. With the marker gone, a soak now yields the clean figure.
 
 The counters need no marker and no pull — they report through logcat, which the
 dispatcher already captures with `hakuX-audiocap:I` in its `LOGCAT_SPEC`.
-Queued: Galleon, Nova, 120 s, at the commit carrying the counter.
+Queued: Galleon, 120 s, at the commit carrying the counter.
+
+**Two arms, on both handhelds, and the reason is worth recording.** The first
+was pinned to the Nova to match the baseline's device. It sat unclaimed: the
+Nova worker's last log line is at 21:43 and every request since has been served
+by the Thor, so a nova-pinned request waits indefinitely. A second arm was
+queued to the Thor rather than unpinning the first, because an unpinned request
+would land on whichever device is idle and the result would not record which —
+soak results do not carry `device_label`, only disc runs do.
+
+The pin exists to stop a *level* being compared across handhelds. This is not
+that: it is a fresh pacing measurement, not a comparison against the Nova
+baseline, so either device answers S1-S3. If both arms run, the pair is a free
+cross-device check — and worth having, because `devices.sh` is explicit that
+the two are "NOT interchangeable until proven so" and the pairing has not yet
+been verified.
 
 - **S1 — the instrument is alive.** At least one `starve:` line appears.
   - *Falsified* by zero lines. That would mean the build lacks the counter or
