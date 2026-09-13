@@ -101,12 +101,28 @@ parent's name. Roles are now tagged at startup under `hakuX-threads`.
 | `pgraph.vk.render` | submit, fence wait, downloads, display sync | ~4% |
 | `pgraph.vk.compile` | shader compilation | small |
 | `mcpx.apu_thread` + voice workers | audio | small |
-| s3tc workers | DXT decode | on demand |
+| s3tc workers | DXT decode | on demand — **but see the note below: this row is misleading** |
 | QEMU main loop, AIO, SDL | housekeeping | 6-11% each |
 
 So the emulator is already threaded in more places than the NV2A had engines.
 The gap is specific: **method decode and Vulkan draw translation share one
 thread, and that thread does the expensive half of the frame.**
+
+**Correction 2026-09-13 on the s3tc row.** "s3tc workers, on demand" reads as a
+background pool, and it is not one. `s3tc_decompress_2d` and `_3d` are
+fork-join *on the calling thread*: they `pthread_create` up to three helpers,
+run the last chunk on the caller, and `pthread_join` before returning. Below
+`S3TC_MIN_BLOCKS_FOR_MT` (128 blocks, so anything up to about 64x64) they are
+fully single-threaded on the caller. The caller is `upload_texture_image` <-
+`create_texture` <- `pgraph_vk_bind_textures`, which is on
+**`nv2a.pfifo_thread`** — the 48% row above, the one that does all the Vulkan
+translation. So DXT decode is *on* the renderer critical path and blocks it,
+not off it.
+
+This matters for #6, whose ordered dither was landed for accuracy with its
+throughput cost deferred to the performance stream on the understanding that it
+ran on worker threads. It does not. Priced in
+[`performance-next-three.md`](performance-next-three.md).
 
 ### Three pieces of the split already exist and none are connected
 
@@ -291,10 +307,44 @@ page.
 
 Two things follow that make this tractable rather than hopeless.
 
-**The invalidation is already range-precise.** `tb_invalidate_phys_range_fast`
-passes the exact written range to `tb_invalidate_phys_page_range__locked`, so
-it does nothing when no translated block overlaps the write. There is no
-page-granularity bug to fix here.
+**~~The invalidation is already range-precise.~~ CORRECTED 2026-09-13 — it is
+not, and this was the load-bearing claim.** `tb_invalidate_phys_range_fast`
+does pass the exact written range down, and
+`tb_invalidate_phys_page_range__locked` then ignores it. The range test is
+wrapped in `#ifndef XBOX`, and `PAGE_FOR_EACH_TB` in the softmmu half of
+`tb-maint.c` is just `TB_FOR_EACH_TAGGED` over `p->first_tb` — it never looks
+at its `start`/`last` arguments. So that `if` was the only thing making the
+invalidation range-precise, and without it **a guest store to a page holding
+translated code discards every block on that page**, whatever was written.
+
+It came from xemu commit `703566ce33`, "tcg: Invalidate all TBs on target
+page" (Matt Borgerson, 2021-10-04), which carries no rationale in its message
+and left no comment in the code. It predates this fork by four years and has
+ridden through every QEMU merge since, which is why it reads as upstream
+behaviour on a casual look — `git log -S` finds only merge commits, and the
+originating commit is reachable only by following the `#ifndef` back through
+`translate-all.c` before the file split.
+
+Two things this changes downstream, and the second is the reason it matters:
+
+- The paragraph below still stands. Code really is being regenerated on that
+  page; nothing here weakens that.
+- **It removes the mechanism the block-extent lever runs on.** Smaller blocks
+  save work by letting a store *miss* a block. Under whole-page invalidation no
+  store can miss one, so halving the extent halves nothing and pays more of the
+  per-block generation cost — which is the larger half here: `tb_gen_code` is
+  19.1% inclusive and `tb_link_page` alone is 11.6% of it. See section 2 of
+  [`performance-next-three.md`](performance-next-three.md), which was scoped on
+  the retracted claim.
+
+The counters that size the difference are on the always-on `hakuX-pages` line
+as of `5f98d1ee5a`, read by `docs/testing/perf/tcg_pages.py`, with the legs
+pre-registered in `docs/testing/predictions/tcg-whole-page-invalidation.json`.
+The prize is not the discarded code. `tb_page_add` arms code-write detection
+only on a page's empty-to-non-empty transition and the invalidator disarms on
+empty, so a store that empties a page buys a full arming TLB walk on the next
+generation there — `tlb_reset_dirty`, the 10.6% self figure above — and a store
+that leaves one block behind buys none.
 
 **Which means code really is being regenerated on that page.** `notdirty_write`
 removes the callback once the page is dirty, so for it to fire 44 times a
