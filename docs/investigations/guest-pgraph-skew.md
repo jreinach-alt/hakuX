@@ -800,77 +800,83 @@ Predictions committed before anything was queued:
 deliberately — it does not read the `gave` split, and moving it would have
 made its arms differ by two things.
 
-### PROVISIONAL, and it is the finding rather than the fix: the CONTROL has stopped flaking
+### RETRACTED AT n=6, BY THE SAME ERROR I HAD JUST USED TO REFUTE ANOTHER ONE
 
-Arm A (`2e4e8403d9`, **mode 0** — the control, carrying no bound at all) read
-**`stale_px = 0` and `2D_BorderTex_SZ` differing = 0 on its first 5 of 10
-runs**, with total differing 4,600 and 15 of 18 exact on every one of them.
+At 5 of 10 runs I wrote this section up as *"the control has stopped
+flaking, so the accuracy pair is VOID"*, with a bisection window and a named
+suspect. **Run 6 read `stale_px = 286`, `races_lost = 1`, `successor_px =
+286`, `unexplained_px = 0` — a genuine race loss, successor-explained, with
+nothing unaccounted for.** The mechanism is intact and the claim was wrong.
+
+It is worth recording *how* it was wrong, because it is the identical mistake
+this lane had spent the afternoon correcting in #65. There, the value 12 was
+justified as "1.35× the observed maximum" and the refutation was that the
+maximum came from ~32 windows and the tail is three times larger — **a
+small-sample extreme read as the distribution.** Here I read a small-sample
+**absence** as the distribution: five zeros in a row, against a floor rate of
+6 in 10, is about a 1% event and therefore *evidence*, but it is not a
+finding, and I wrote it as a finding with a mechanism attached.
+
+The asymmetry that should have stopped me: refuting a maximum needs more
+samples than the maximum had, and I had **fewer** samples than the floor I
+was contradicting. A rate measured on 5 runs cannot overturn a rate measured
+on 10.
+
+### What the arm actually shows so far, stated as a rate with its n
 
 | | `2D_BorderTex_SZ` differing, per run | non-zero |
 |---|---|---|
-| published floor `7b63484c69` | 146, 0, 2352, 0, 0, 2430, 0, 1847, 5640, 181 | **6 of 10** |
-| mode-1 arm A `d97d506514` | 9760, 4600, 5081, 4664, 4792, … (5 non-zero `stale_px`) | **5 of 10** |
-| **this arm A `2e4e8403d9`** | **0, 0, 0, 0, 0** (5 of 10 run) | **0 of 5** |
+| published floor `7b63484c69` | 146, 0, 2352, 0, 0, 2430, 0, 1847, 5640, 181 | 6 of 10 |
+| mode-1 arm A `d97d506514` | (`stale_px` 5160, 0, 481, 64, 192, 0, 0, 0, 64, 0) | 5 of 10 |
+| **this arm A `2e4e8403d9`** | **0, 0, 0, 0, 0, 286, …** | **1 of 6** |
 
-**The instrument is not the explanation, and there is a control inside the
-capture that says so.** The non-flaky `Texture_border::2D` capture reads
-**59 differing pixels in both the published floor and this arm** — same disc
-(`disc_id = Texture border`), same 18 captures, same goldens, same
-comparison. Only the flaky swatch changed. And
-`border_swatch_origin.py --self-check` reproduces all 73,728 golden swatch
-pixels on this tree.
+1 of 6 against 6 of 10 and 5 of 10 is a **possible** reduction and is not
+established; the binomial spread at these n overlaps. **V0 needs at least 3
+of 10 non-zero and is still live** — it needs two more in the remaining four
+runs. If it fails, the pair is VOID and no `stale_px` result from arm B means
+anything, which is the whole reason the gate was registered rather than
+assumed.
 
-So **V0, the validity gate, is on course to FAIL, and the accuracy pair is
-VOID** — exactly as the prediction said it would be. A control that does not
-flake cannot test a fix for a flake, and a `stale_px` of 0 in arm B would be
-an instrument result rather than a mechanism result. This is the failure the
-gate exists to catch, caught before the arm was read as a pass.
+What survives from the retracted section, because it does not depend on the
+rate:
 
-**Why, and it is a clean bisection window rather than a guess.** The
-last ref that *did* flake is `d97d506514`. It already contains `d66e9b861f`
-and `c477155f55`, and it does **not** contain five texture-path commits this
-arm has. Of the 128 commits in that window, 15 touch `pgraph/` and all but
-one are probes, counters or an unrelated path — the one behavioural texture
-change is **`cdd8dc4c89`, "#56's guard tests the one case that cannot
-happen"**, whose fix is that `create_texture` now reports whether it actually
-bound. That is a **missed-re-upload / stale-binding** defect: the reachable
-case had a non-NULL binding, fell through, and stamped `tex_reg_cache[i]`
-with registers the bind had just failed to honour *while clearing*
-`texture_dirty[i]`.
+- **The instrument is sound, and there is a control inside the capture.**
+  `Texture_border::2D` reads **59 differing pixels in both the published
+  floor and this arm** — same `disc_id`, same 18 captures, same goldens —
+  and `--self-check` reproduces all 73,728 golden swatch pixels on this tree.
+  So a change in the flaky swatch is a change in the flake, not in the
+  comparison.
+- **The floor is 128 commits old** (`7b63484c69` against `2e4e8403d9`), and
+  15 of those touch `pgraph/`. A stale floor reads like a fix, which is this
+  project's recorded rule about captures and goldens applied to a *floor* —
+  and in the more dangerous direction, because a floor that overstates the
+  defect makes any arm look like a win. **Whatever V0 decides, the floor
+  should be re-taken at the tip rather than cited from `7b63484c69`.**
+- **If the rate really has fallen**, the window is clean: the last ref that
+  demonstrably flaked at 5 of 10 is `d97d506514`, which lacks five
+  texture-path commits this arm has, and of the 128 commits between them the
+  only behavioural texture change is **`cdd8dc4c89`, #56's stale-binding
+  fix** — the texture lane's mechanism, the other half of #44. That is a
+  hypothesis with a named suspect and no measurement behind it, and it is
+  recorded as such.
+- **None of this bears on the skew itself**, which is measured directly and
+  not through this capture: 100.0% of 148,667 submissions made with PGRAPH
+  behind, p90 ≥34.9 ms, max 528 ms, reproduced on Galleon at twice the ring
+  and a tenth the rate.
 
-Which is the **texture lane's** mechanism — the other half of #44, the one
-this document records as directionally separable via the `complete` class.
-The two mechanisms were never additive (this document says so: "a class count
-is a count of pixels a mechanism *touches*, not of pixels it is solely
-responsible for"), and it now appears they were not independent in the
-observable either: **closing the stale-binding half removed the flake this
-disc can see.**
+### And a defect in my own prediction, recorded rather than repaired
 
-Three things follow, and the third is the one that matters for the lane:
+**The Crimson Skies pair has no arm-A gate.** X1 names only arm B's bar
+(`Tr == 0`); nothing in that prediction says arm A must be non-zero for the
+leg to discriminate, which is precisely the gate V0 provides for the disc.
+The exposure is real: `Tr` = 0.5661 / 0.5672 was measured at `e353735028`,
+which is **not** an ancestor of these arms and does **not** contain
+`cdd8dc4c89`.
 
-1. **This is not evidence that the skew is closed.** The skew is measured
-   directly and does not depend on this capture: 100.0% of 148,667
-   submissions made with PGRAPH behind, p90 ≥34.9 ms, max 528 ms, reproduced
-   on Galleon at twice the ring and a tenth the rate. What is gone is the
-   *observable on one disc*, not the window.
-2. **The noise floor was stale, and a stale floor reads like a fix.** This
-   project's rule is recorded for captures and goldens; it applies to a
-   *floor* just as hard, and in the more dangerous direction. The floor was
-   taken at `7b63484c69`; the arm ran 128 commits later.
-3. **The Crimson Skies `Tr` arm is now the primary instrument, not the
-   supplementary one** — and it has the same exposure. `Tr` = 0.5661 / 0.5672
-   was measured at `e353735028`, which is **not** an ancestor of these arms
-   and does **not** contain `cdd8dc4c89` either. So arm A's Crimson runs are
-   the real test of whether any observable defect survives at this tip. If
-   arm A's `Tr` is still ~0.566 the race is live and mode 2 can be judged; if
-   it is ~0, the race is closed on both titles and there is nothing left for
-   the bound to fix on the corpus on hand.
-
-   `vram_race_report.py`'s own **L5** leg is that gate ("runs with Tr>0 = 0 of
-   N → FAIL"), which is fortunate, because **my registered prediction did not
-   include an arm-A gate for the Crimson pair** — X1 names only arm B's bar.
-   That is a defect in my own prediction, recorded rather than quietly
-   repaired: the judge supplies the gate the prediction should have.
+`vram_race_report.py`'s own **L5** leg supplies it — "runs with Tr>0 = 0 of
+N → FAIL" — so the judge carries the gate the prediction should have. The
+prediction is registered and sha-bound, so it is not being edited; the gap is
+written down here instead.
 
 *Remaining results to be filled in from the dispatcher.*
 
