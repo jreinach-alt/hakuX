@@ -511,6 +511,36 @@ afternoon that no capture showed (#34), so run it on any change to the Vulkan
 backend before calling the change verified. Count distinct VUIDs, not lines:
 one root cause cascades into thousands of messages.
 
+## `git reset --hard` to undo a test commit also deletes the change under test
+
+Testing a gate often needs a commit to test it against -- an empty commit with
+a deliberately wrong subject, say -- and the obvious cleanup is
+`git reset --hard HEAD~1`. That discards the working tree too, including the
+uncommitted patch you are testing.
+
+On 2026-09-13 this produced a false conclusion about a gate that was correct.
+A new `preflight.sh` check was written, tested, and seen to print FAILED on the
+bad input. Then `git reset --hard HEAD~1` removed the test commit **and the
+patch**, and the next run -- the one checking that the gate changed the EXIT
+CODE -- ran against the restored file. It exited 0. For a few minutes the
+reading was "the gate prints FAILED but does not fail", which is a real and
+serious bug, and it was not the bug: there was no gate left to fail.
+
+Two habits, either of which is enough:
+
+**Commit the change under test before testing it.** Then `reset --hard` is
+safe, and this is usually right anyway -- a gate worth testing is a gate worth
+committing.
+
+**Or clean up with `git reset --soft HEAD~1`**, which drops the commit and
+keeps the tree.
+
+The general shape is worth more than the git detail: when a test's *setup or
+teardown* can modify the thing under test, a failure is ambiguous between the
+subject and the harness -- and the harness is the explanation nobody checks
+first. This is the same family as the stale-snapshot and frozen-selftest
+failures elsewhere in this file, arriving through version control instead.
+
 ## Before measuring an effect on a class, check the class is non-empty
 
 The cheap structural check and the expensive exhaustive one often answer the
