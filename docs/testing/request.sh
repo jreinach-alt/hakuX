@@ -87,6 +87,35 @@ MSG
     fi
 fi
 
+# A skip_tests request served by a dispatcher that does not understand the
+# field is the worst possible outcome: the field is silently ignored, the disc
+# is built WITH the poisoning test, and the result is filed as though it were
+# the measurement that was asked for. For `Texture render target` that is the
+# difference between 324,349 px and 3,209,634 px, and the run would look
+# perfectly healthy.
+#
+# So check the dispatcher that will actually serve this -- the one under
+# DISPATCH_TREE, not the copy in the requester's own worktree -- and refuse
+# loudly instead. The check clears itself the moment the change is merged and
+# the serving dispatcher is restarted.
+if [ -n "$SKIP_TESTS" ]; then
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    if ! grep -q skip_tests "$SERVER/dispatcher.sh" 2>/dev/null \
+       || ! grep -q -- --skip-test "$SERVER/make_test_iso.py" 2>/dev/null; then
+        cat >&2 <<MSG
+refusing to queue: --skip-tests was asked for, but the dispatcher that will
+serve this request does not support it:
+
+  $SERVER
+
+An older dispatcher ignores skip_tests silently and builds the disc WITH the
+test you asked to drop, then files the result as the measurement you wanted.
+Merge the --skip-test support and restart the serving dispatcher first.
+MSG
+        exit 2
+    fi
+fi
+
 # Resolve the ref to a concrete sha AT QUEUE TIME. "HEAD" in a queued request
 # is a moving target: the queue is served later, and any commit in between
 # silently changes which tree gets built -- which is how a baseline arm came to
