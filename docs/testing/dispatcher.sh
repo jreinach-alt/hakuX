@@ -413,6 +413,7 @@ case "${1:-status}" in
     # It also removes a class of bug outright: with one process there is no
     # question of whose orphan is whose.
     workers=()
+    serials=()
     for s in $(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1}'); do
         if ! ( device_env "$s" ) 2>/dev/null; then
             log "skipping unknown device $s; add it to devices.sh"
@@ -421,13 +422,32 @@ case "${1:-status}" in
         log "starting worker for $s"
         SERIAL="$s" bash "$HERE/dispatcher.sh" worker "$s" &
         workers+=($!)
+        serials+=("$s")
     done
     if [ "${#workers[@]}" -eq 0 ]; then
         echo "no known device attached" >&2; exit 2
     fi
     log "=== supervising ${#workers[@]} device worker(s) ==="
-    trap 'kill ${workers[@]} 2>/dev/null' INT TERM
-    wait
+    trap 'kill ${serials[@]+} 2>/dev/null; kill ${workers[@]} 2>/dev/null; exit 0' INT TERM
+    # Supervise, rather than merely start and wait. A worker that dies takes
+    # its device out of service silently: the queue keeps accepting requests
+    # pinned to it and nothing serves them. That happened within the hour --
+    # a lane was down for twenty-five minutes and was noticed by an agent
+    # wondering why its request never ran, not by anything here.
+    #
+    # So poll the children and restart any that have exited. Restarting is
+    # safe because all state lives in the queue and results directories, and
+    # a worker's own orphan sweep requeues only what it owns.
+    while :; do
+        sleep 20
+        for i in "${!workers[@]}"; do
+            if ! kill -0 "${workers[$i]}" 2>/dev/null; then
+                log "worker for ${serials[$i]} (pid ${workers[$i]}) is gone; restarting"
+                SERIAL="${serials[$i]}" bash "$HERE/dispatcher.sh" worker "${serials[$i]}" &
+                workers[$i]=$!
+            fi
+        done
+    done
     ;;
   worker)
     # The loop parses this file once at startup, so an edit to it -- or to
@@ -500,7 +520,23 @@ case "${1:-status}" in
                         2>/dev/null | md5sum | cut -c1-12)"
         if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
             log "dispatcher scripts changed on disk; re-execing to pick them up"
-            exec bash "$HERE/dispatcher.sh" worker "$SERIAL"
+            # Take the build lock FIRST. The re-exec reads the script out of
+            # the working tree, and build_ref detaches that tree to an
+            # arbitrary commit -- so a re-exec landing inside another worker's
+            # build would exec a dispatcher.sh from whenever that ref is. An
+            # older one has no `worker` subcommand at all, falls through the
+            # case to `status`, prints and exits. That is exactly how the Nova
+            # worker died silently at 21:46 while the Thor was building,
+            # leaving a supervisor with one child and a lane that accepted no
+            # work for twenty-five minutes.
+            #
+            # build_ref holds this lock across detach, build and restore, so
+            # holding it here means the tree is on its branch.
+            (
+                flock 9
+                exec bash "$HERE/dispatcher.sh" worker "$SERIAL"
+            ) 9>"$D/.build.lock"
+            exit 0
         fi
 
         reqs=("$D"/queue/*.req)
