@@ -1030,8 +1030,25 @@ suites = ["Depth buffer"]
 # write-up and deliberately not implemented.
 # docs/investigations/tcg-barriers-elided.md.
 [issue.54]
-title = "tcg: all guest memory barriers are elided under XBOX, and device threads read guest RAM with bare loads"
-disposition = "defect"
+# RETRACTED 2026-09-12: this does NOT cause #44. With every barrier restored,
+# 2D_BorderTex_SZ still fails 6 of 10 runs -- indistinguishable from the ~46%
+# base rate and identical to the store-store variant (which cost only +4.6%).
+# The x86-equivalent arm was cancelled unrun, being a strict subset. What
+# stands is the source reading -- the branch exists, CF_PARALLEL is never set,
+# upstream warns about this hazard, the BQL justification is false for the
+# NV2A -- so it is a latent issue with NO demonstrated symptom, at a measured
+# cost of +34.1% to fix.
+#
+# What it breaks: the desktop/Nova asymmetry never controlled for the RENDERER.
+# Desktop is lavapipe, the Nova is Turnip on Adreno, and those arms differ in
+# host memory model AND renderer AND driver AND timing. The evidence was in the
+# same measurement -- every desktop run carries a uniform 2,782 px (0,-1,-1)
+# residual because lavapipe rounds G and B down where Adreno does not.
+#
+# Suites are kept only because they are where the intermittency shows; the
+# defect is not in them and is no longer believed to explain them.
+title = "tcg: all guest memory barriers are elided under XBOX (latent; does NOT cause #44)"
+disposition = "unknown-semantics"
 suites = ["Texture border", "W buffering"]
 
 # Added 2026-09-12. Blocks the other half of #48 and is read from ~15 sites, so
