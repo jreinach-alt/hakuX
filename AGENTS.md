@@ -492,6 +492,33 @@ afternoon that no capture showed (#34), so run it on any change to the Vulkan
 backend before calling the change verified. Count distinct VUIDs, not lines:
 one root cause cascades into thousands of messages.
 
+## Establish what your instrument cannot see, before you believe a zero from it
+
+The four sections that follow were all added on one day, all from real errors,
+and they are four faces of one mistake: **a negative result read from an
+instrument that could not see the mechanism.** Read them as one principle.
+
+| what was believed | the instrument | what it could not see |
+|---|---|---|
+| "nothing is scheduled for tomorrow" | `CronList` | a systemd timer, which had run successfully that morning |
+| "float Z is structural, not one channel is one step" | a per-channel diff | a packed depth word, where one ULP moves a channel by 8 |
+| "the blend factor is applied, the images differ" | a whole-image sha256 | a test that prints its own name into rows 0-63 |
+| "the barrier fix has no benefit" | a suite that uploads once and draws | a first-use race, which that workload cannot contain |
+| "the re-exec picks up tree edits" | a hash of `$HERE` | that `$HERE` **was** the snapshot it was comparing |
+| "the index matches the tree" | `check` with no `--tests` | an empty suite half, which both sides agreed on |
+
+Every one of those is a **passing** or **empty** result. None of them errored.
+That is the whole difficulty: a guard satisfied by the absence of the thing it
+guards reports success, and an instrument blind to the mechanism reports zero.
+Both are indistinguishable from good news.
+
+So before a negative result changes a decision, write down the answer to: *if
+the thing I am looking for were present, what would this instrument show?* If
+you cannot answer, the reading is not evidence yet. And prefer an instrument
+with a control inside it -- an impossible row, a within-run reverse-order
+arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
+control is a number you have to trust.
+
 ## A measurement that disagrees with the arithmetic is the instrument until proven otherwise
 
 A probe that only ever reports plausible numbers cannot be checked. One that
