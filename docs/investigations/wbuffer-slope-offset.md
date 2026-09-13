@@ -421,6 +421,11 @@ Arms `1789312070-wslope-anchor-agent-645937` (ref `a00910d346`) and
 `W buffering` + `Depth Clamp`, 571 captures each, prediction
 `predictions/issue31-wslope-unclipped-row-grid.json` bound at queue time.
 
+`ab_compare`: **PRE-REGISTERED PASS on all 693 registered checks**, 8 better /
+0 worse / 562 same across 570 compared, differing 4,829,912 -> 4,773,444
+(-56,468) and structural 2,525,369 -> 2,468,241 (-57,128). This is the first
+judged verdict #31 has ever had; `bdc26fa5c8` predates `ab_compare` entirely.
+
 **Exactly 8 of the 571 captures differ between the arms**, and they are the four
 `WBuf24{D,F}_TriH_V1_ZB{0,1}_ZS1_ZB` depth captures plus their four colour
 siblings. The other 563 are BYTE-IDENTICAL, which covers every `ZBuf*` capture,
