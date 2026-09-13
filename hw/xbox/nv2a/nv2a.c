@@ -432,6 +432,61 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         d->vga.msr, d->pramdac.fp_vdisplay_end,
         d->vga.cr[NV_PRMCIO_INTERLACE_MODE], w, h);
 
+    /*
+     * The other candidate raster, and the reason the first one could not have
+     * worked.
+     *
+     * P7 derived the period from the VGA CRTC and the VPLL and missed by
+     * -26.3%. That failure is sharper than it looks. With vtotal=525 fixed
+     * and the VPLL decoded at 31,089,742 Hz, a 59.94 Hz frame needs a
+     * horizontal total of 987.96 pixels -- and the VGA register can only
+     * count whole 8-dot characters, so 123.5 of them is not a value it can
+     * hold, whatever extension bits we have not decoded. No character width
+     * (8, 9, 4) and no PDIV shift fixes that: halving or doubling the clock
+     * keeps the fractional part. Nor can the clock be repaired instead: at
+     * the CRTC's 728 pixels the period wants a 22,909,091 Hz pixel clock,
+     * which is this VCO over 10.86 -- not a power of two, so not a PDIV
+     * misread, and it would need a 12.28 MHz crystal, which is not one of
+     * the parts. The two register groups cannot be reconciled by any decode;
+     * they describe different rasters.
+     *
+     * The PRAMDAC flat-panel timing generator is the other one, and it counts
+     * in PIXELS rather than characters, so it can hold 988 where the CRTC
+     * cannot. This tree already believes the guest programs that block: the
+     * VBLANK period has always been chosen off FP_VDISPLAY_END, which reads
+     * 479 in a 640x480 title. FP_VTOTAL (0x804) and FP_HTOTAL (0x824) are the
+     * two registers of it that were never modelled -- the writes fell through
+     * pramdac.c's switch -- so they are stored now and printed here beside
+     * everything else the block holds.
+     *
+     * If this derivation lands on the period and the CRTC one does not, the
+     * FP raster is what reaches the encoder and the constants can go. If the
+     * totals read 0, the guest never programs them, the flat-panel block is a
+     * partial write, and the period has to come from outside the NV2A
+     * entirely -- the AV pack or the kernel's video region. Either answer
+     * ends the question; a zero is a result and not a broken run.
+     */
+    int64_t fp_vt = (int64_t)d->pramdac.fp_vtotal + 1;
+    int64_t fp_ht = (int64_t)d->pramdac.fp_htotal + 1;
+    int64_t derived_fp = (pixclk > 0 && d->pramdac.fp_vtotal &&
+                          d->pramdac.fp_htotal)
+                             ? fp_vt * fp_ht * NANOSECONDS_PER_SECOND / pixclk
+                             : 0;
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "vblfp want=%lld derived_fp=%lld (fp_vtotal=%u fp_htotal=%u "
+        "lines=%lld px=%lld) vde=%u hde=%u vcrtc=%u hcrtc=%u vsync=%u "
+        "vvalid=%u hvalid=%u genctl=%08x sr01=%02x",
+        (long long)period, (long long)derived_fp,
+        d->pramdac.fp_vtotal, d->pramdac.fp_htotal,
+        (long long)fp_vt, (long long)fp_ht,
+        d->pramdac.fp_vdisplay_end, d->pramdac.fp_hdisplay_end,
+        d->pramdac.fp_vcrtc, d->pramdac.fp_hcrtc,
+        d->pramdac.fp_vsync_end, d->pramdac.fp_vvalid_end,
+        d->pramdac.fp_hvalid_end, d->pramdac.general_control,
+        d->vga.sr[VGA_SEQ_CLOCK_MODE]);
+
     __android_log_print(
         ANDROID_LOG_INFO, "hakuX-perf",
         "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "

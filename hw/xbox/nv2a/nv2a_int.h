@@ -163,6 +163,12 @@ typedef struct NV2AState {
         uint32_t video_clock_coeff;
         uint32_t general_control;
         uint32_t fp_vdisplay_end;
+        /* The two halves of the output raster's total size. Stored only so
+         * the VBLANK period has something pixel-granular to be derived from:
+         * the VGA CRTC's horizontal total counts 8-dot characters and cannot
+         * express the raster this machine actually scans out. */
+        uint32_t fp_vtotal;
+        uint32_t fp_htotal;
         uint32_t fp_vcrtc;
         uint32_t fp_vsync_end;
         uint32_t fp_vvalid_end;

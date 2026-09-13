@@ -3,7 +3,8 @@
 
     vblank_report.py <logcat.txt> [...]
 
-Reads the `vbl` and `vblmode` lines that hw/xbox/nv2a/nv2a.c emits under the
+Reads the `vbl`, `vblmode` and `vblfp` lines that hw/xbox/nv2a/nv2a.c emits
+under the
 hakuX-perf tag every two seconds and answers the four questions the corpus
 cannot: what period we deliver against what we intended, how that
 distribution is shaped, how many VBLANK assertions the guest never saw
@@ -33,6 +34,20 @@ MODE = re.compile(
     r"cr07=(?P<cr07>[0-9a-f]+) cr25=(?P<cr25>[0-9a-f]+) "
     r"cr2d=(?P<cr2d>[0-9a-f]+) msr=(?P<msr>[0-9a-f]+) vd=(?P<vd>\d+) "
     r"il=(?P<il>[0-9a-f]+) res=(?P<res>\d+x\d+)")
+
+# The flat-panel timing generator's own raster, which counts in pixels rather
+# than in the VGA CRTC's 8-dot characters. It is the second candidate for
+# deriving the period after the CRTC one failed by -26.3%, and it is the only
+# one left inside the NV2A: if fp_vtotal/fp_htotal read 0, the guest never
+# programs them and the video standard has to come from outside the chip.
+FP = re.compile(
+    r"vblfp want=(?P<want>\d+) derived_fp=(?P<derived_fp>\d+) "
+    r"\(fp_vtotal=(?P<fp_vtotal>\d+) fp_htotal=(?P<fp_htotal>\d+) "
+    r"lines=(?P<lines>\d+) px=(?P<px>\d+)\) "
+    r"vde=(?P<vde>\d+) hde=(?P<hde>\d+) vcrtc=(?P<vcrtc>\d+) "
+    r"hcrtc=(?P<hcrtc>\d+) vsync=(?P<vsync>\d+) vvalid=(?P<vvalid>\d+) "
+    r"hvalid=(?P<hvalid>\d+) genctl=(?P<genctl>[0-9a-f]+) "
+    r"sr01=(?P<sr01>[0-9a-f]+)")
 
 NTSC_TRUE_NS = 16683333    # 60000/1001 fields per second
 PAL_TRUE_NS = 20000000
@@ -82,7 +97,7 @@ def describe(label, rows):
 
 
 def main():
-    vbl, mode = [], []
+    vbl, mode, fp = [], [], []
     for path in sys.argv[1:]:
         with open(path, errors="replace") as fh:
             for line in fh:
@@ -93,6 +108,10 @@ def main():
                 m = MODE.search(line)
                 if m:
                     mode.append(m.groupdict())
+                    continue
+                m = FP.search(line)
+                if m:
+                    fp.append(m.groupdict())
     if not vbl:
         sys.exit("no vbl lines found in %s" % ", ".join(sys.argv[1:]))
 
@@ -116,6 +135,32 @@ def main():
         print("      true NTSC is %d ns; our constant is %+d ns (%+.1f ppm)"
               % (NTSC_TRUE_NS, want - NTSC_TRUE_NS,
                  (want - NTSC_TRUE_NS) * 1e6 / NTSC_TRUE_NS))
+
+    seen = set()
+    for m in fp:
+        key = tuple(sorted(m.items()))
+        if key in seen:
+            continue
+        seen.add(key)
+        want = int(m["want"])
+        derived = int(m["derived_fp"])
+        print("  flat-panel raster: fp_vtotal=%s fp_htotal=%s "
+              "(%s lines x %s px) vde=%s hde=%s vcrtc=%s hcrtc=%s "
+              "vsync=%s vvalid=%s hvalid=%s genctl=%s sr01=%s" %
+              (m["fp_vtotal"], m["fp_htotal"], m["lines"], m["px"],
+               m["vde"], m["hde"], m["vcrtc"], m["hcrtc"], m["vsync"],
+               m["vvalid"], m["hvalid"], m["genctl"], m["sr01"]))
+        if derived == 0:
+            print("      the FP timing generator is NOT fully programmed "
+                  "(a total reads 0); no derivation exists inside the NV2A")
+        else:
+            print("      the FP/VPLL derivation says %d ns (%s against the "
+                  "%d ns we return, %s against true NTSC)" %
+                  (derived,
+                   "%+.4f%%" % ((derived - want) * 100.0 / want),
+                   want,
+                   "%+.4f%%" % ((derived - NTSC_TRUE_NS) * 100.0
+                                / NTSC_TRUE_NS)))
     print()
 
     src = {k: sum(int(r[k]) for r in vbl) for k in ("tmr", "smp", "gfx")}

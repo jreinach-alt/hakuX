@@ -49,6 +49,9 @@ uint64_t pramdac_read(void *opaque, hwaddr addr, unsigned int size)
     case NV_PRAMDAC_FP_VDISPLAY_END:
         r = d->pramdac.fp_vdisplay_end;
         break;
+    case NV_PRAMDAC_FP_VTOTAL:
+        r = d->pramdac.fp_vtotal;
+        break;
     case NV_PRAMDAC_FP_VCRTC:
         r = d->pramdac.fp_vcrtc;
         break;
@@ -60,6 +63,9 @@ uint64_t pramdac_read(void *opaque, hwaddr addr, unsigned int size)
         break;
     case NV_PRAMDAC_FP_HDISPLAY_END:
         r = d->pramdac.fp_hdisplay_end;
+        break;
+    case NV_PRAMDAC_FP_HTOTAL:
+        r = d->pramdac.fp_htotal;
         break;
     case NV_PRAMDAC_FP_HCRTC:
         r = d->pramdac.fp_hcrtc;
@@ -114,6 +120,9 @@ void pramdac_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
         d->pramdac.fp_vdisplay_end = val;
         nv2a_vblank_recalc(d);
         break;
+    case NV_PRAMDAC_FP_VTOTAL:
+        d->pramdac.fp_vtotal = val;
+        break;
     case NV_PRAMDAC_FP_VCRTC:
         d->pramdac.fp_vcrtc = val;
         break;
@@ -125,6 +134,9 @@ void pramdac_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
         break;
     case NV_PRAMDAC_FP_HDISPLAY_END:
         d->pramdac.fp_hdisplay_end = val;
+        break;
+    case NV_PRAMDAC_FP_HTOTAL:
+        d->pramdac.fp_htotal = val;
         break;
     case NV_PRAMDAC_FP_HCRTC:
         d->pramdac.fp_hcrtc = val;

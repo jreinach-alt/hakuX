@@ -779,10 +779,12 @@
 #define NV_PRAMDAC_GENERAL_CONTROL                       0x00000600
 #   define NV_PRAMDAC_GENERAL_CONTROL_ALT_MODE_SEL             (1 << 12)
 #define NV_PRAMDAC_FP_VDISPLAY_END                       0x00000800
+#define NV_PRAMDAC_FP_VTOTAL                             0x00000804
 #define NV_PRAMDAC_FP_VCRTC                              0x00000808
 #define NV_PRAMDAC_FP_VSYNC_END                          0x00000810
 #define NV_PRAMDAC_FP_VVALID_END                         0x00000818
 #define NV_PRAMDAC_FP_HDISPLAY_END                       0x00000820
+#define NV_PRAMDAC_FP_HTOTAL                             0x00000824
 #define NV_PRAMDAC_FP_HCRTC                              0x00000828
 #define NV_PRAMDAC_FP_HVALID_END                         0x00000838
 
