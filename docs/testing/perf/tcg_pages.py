@@ -434,24 +434,45 @@ def derive(windows):
     if di is not None and ai is not None and vis:
         print("   -> visits %d = real discards %d + already-invalid %d"
               " (residual %d)." % (vis, di, ai, vis - di - ai))
-        # The sign is determined, and an earlier version of this text had it
-        # backwards. Per visit, exactly one of ai or a loop discard happens
-        # (that is what xx checks), so visits == ai + loop_discards exactly,
-        # while di == loop_discards + discards from every OTHER caller of
-        # do_tb_phys_invalidate. Therefore
-        #     residual = visits - di - ai = -(other callers)
-        # and the residual is <= 0 by construction. A NEGATIVE residual is
-        # benign and its magnitude is that other traffic. A POSITIVE one
-        # cannot happen and refutes the identity.
-        print("      residual = -(discards from callers outside the loop),"
-              " so <= 0 by construction: visits == already-invalid + loop"
-              " discards exactly (that is what xx checks), while di also"
-              " counts tb_check_watchpoint and any other"
-              " do_tb_phys_invalidate caller. A POSITIVE residual is the one"
-              " that cannot happen and would refute the identity.")
-        if vis - di - ai > 0:
-            print("      POSITIVE RESIDUAL: that cannot happen. Treat every"
-                  " ratio here as void until it is explained.")
+        # This residual is NOT expected to be exactly zero, and two earlier
+        # versions of this comment got that wrong in two different ways.
+        #
+        # `visited` is printed on the FIRST hakuX-pages line and `ai`/`di` on
+        # the SECOND -- two separate __android_log_print calls from the nv2a
+        # thread, with the guest CPU thread running in between. So a visit in
+        # flight at that moment lands on one side of the subtraction and not
+        # the other, and each window boundary can slip any of the three by
+        # one, in either direction. Measured: 0/0/0 on one arm and -1/-1/+1
+        # on the next, over ~280,000 visits and 20 window boundaries.
+        #
+        # What IS exact is the within-line identity below, and the per-visit
+        # xx control, both of which are computed without crossing a thread.
+        slack = max(2, len(windows))
+        print("      residual should be within +/-%d (one per window"
+              " boundary), NOT zero: `visited` is on the first hakuX-pages"
+              " line and ai/di on the second, two log calls with the guest"
+              " running in between, so a visit in flight lands on one side"
+              " of the subtraction only. The exact checks are the per-visit"
+              " xx control and sp+ov == di below." % slack)
+        if abs(vis - di - ai) > slack:
+            print("      RESIDUAL EXCEEDS THE SAMPLING SLACK. That is not a"
+                  " log-boundary slip. Treat every ratio here as void until"
+                  " it is explained.")
+    # sp+ov and di are two separate pieces of code counting the same live
+    # population, and they are emitted on ONE line, so this one is exact.
+    # Free, and it is the tightest control in the file after xx.
+    if any("di" in w for w in windows):
+        mism = [i for i, w in enumerate(windows)
+                if "di" in w and w.get("sp", 0) + w.get("ov", 0) != w["di"]]
+        if mism:
+            print("   -> VOID: sp+ov != di in %d window(s) %s. Those are two"
+                  " separate counts of the live population on one log line,"
+                  " so they must agree exactly. They do not."
+                  % (len(mism), mism[:5]))
+        else:
+            print("   -> CONTROL sp+ov == di in every window: the live"
+                  " population agrees between the overlap split and the"
+                  " discard counter, exactly.")
         if ai > vis * 0.5:
             print("      MOST VISITS ARE DEAD BLOCKS (%.0f%%). The page lists"
                   " are carrying already-invalidated TBs, so the visit count"

@@ -45,61 +45,80 @@ where it says "generated" and a visit count where it says "tossed".**
 
 ## The corrected waste ratio
 
-Three 90 s Crimson Skies soaks, **one ref** (`848f98a6a6`), **one device**
-(thor; `848f98a6a6`, which is byte-identical to `d0dc45a130` in `accel/` and
-`profile.c` — the lane doc names the code ref, the requests ran the other),
-first window dropped as boot. Run-level aggregates, because the per-window
-ratio is unusable — see the noise floor below.
+Six 90 s Crimson Skies soaks, **two refs of three runs each**, one device
+(thor), first window dropped as boot. Run-level aggregates; the per-window
+ratio is far noisier and is reported separately by the tool.
 
-| quantity | run 1 | run 2 | run 3 | max/min |
-|---|---|---|---|---|
-| **`waste` = discards / generations** | **11.68** | **11.31** | **6.14** | **1.90** |
-| what 2.8:1 was: visits / calls | 7.67 | 6.53 | 12.80 | 1.96 |
-| `recycle` = calls / generations | 12.26 | 11.88 | 6.70 | 1.83 |
-| `clog` = already-invalid / visits | 0.876 | 0.854 | 0.928 | 1.09 |
-| `blk` = instructions / generation | 6.26 | 5.60 | 5.93 | 1.12 |
-| generations (`cg`) | 3,465 | 3,442 | 3,392 | **1.02** |
-| discards (`di`) | 40,479 | 38,944 | 20,838 | 1.94 |
-| visits | 325,860 | 267,270 | 291,023 | 1.22 |
+| quantity | round 2 (`848f98a6a6`) | round 3 (`d287c512d9`) | within-ref max/min |
+|---|---|---|---|
+| **`waste` = discards / generations** | **11.68 / 11.31 / 6.14** | **4.96 / 4.88 / 4.98** | 1.90 · **1.02** |
+| what 2.8:1 was: visits / calls | 7.67 / 6.53 / 12.80 | 12.12 / 12.07 / 12.49 | 1.96 · 1.03 |
+| `recycle` = calls / generations | 12.26 / 11.88 / 6.70 | 5.60 / 5.53 / 5.61 | 1.83 · 1.02 |
+| `clog` = already-invalid / visits | 0.876 / 0.854 / 0.928 | 0.927 / 0.927 / 0.929 | 1.09 · 1.00 |
+| `blk` = instructions / generation | 6.26 / 5.60 / 5.93 | 5.76 / 5.99 / 5.93 | 1.12 · 1.04 |
+| generations (`cg`) | 3,465 / 3,442 / 3,392 | 4,134 / 4,216 / 4,003 | 1.02 · 1.05 |
+| discards (`di`) | 40,479 / 38,944 / 20,838 | 20,523 / 20,559 / 19,948 | 1.94 · 1.03 |
+| calls | 42,463 / 40,900 / 22,741 | 23,167 / 23,295 / 22,454 | 1.87 · 1.04 |
+| `sp_share` | 1.000 / 1.000 / 1.000 | 1.000 / 1.000 / 1.000 | 1.00 · 1.00 |
 
-**The corrected ratio is 6 to 12 real discards per real generation, and it
-cannot be quoted more precisely than that.** Its floor is the `em`/`pr` class
-— a factor of two — not the `ev`/`sp`/`ov` ±5% class, because all of the
-spread is on the discard side.
+The two refs differ by the renames, the `xx` counter and nothing that can
+touch `di` or `cg`.
 
-And that asymmetry is the most useful thing here, more than the ratio itself:
-**generations are a near-constant of the title and discards are not.** `cg` is
-3,465 / 3,442 / 3,392 across three runs of one binary — 2% — while `calls`
-moves 1.87x (42,463 / 40,900 / 22,741) and `di` 1.94x. So the amount of code
-Crimson Skies causes to be *generated* in 90 s is fixed; what varies by a
-factor of two is how many times it is thrown away and recycled. Every bit of
-the waste ratio's noise is on the numerator, and a lever aimed at generation
-cost is being aimed at the one quantity in this family that does not move.
+### The number, and why it needs two sentences
 
-Three things follow, and the second is the one that matters:
+**The corrected waste ratio is 4.9 to 11.7 real discards per real
+generation.** It is **bimodal by run**, sitting near 5 or near 11.5, and it is
+*not* noisy within a mode: round 3's three runs agree to **2%**.
 
-**It is not 2.8.** 2.8:1 was Fuzion Frenzy's visits over calls. Crimson Skies'
-visits over calls is 6.5–12.8, and its discards over generations is 6.1–11.7.
+**And that is the trap.** Three runs of one ref all landed in one mode and
+reported a 2% floor, which would have licensed quoting "4.96 ± 2%". Round 2,
+three runs of a ref that cannot differ in these counters, says 6.14 to 11.68.
+**Three replicates of one ref are not enough to find this quantity's floor,
+because they can all land in one mode.** The registered noise-floor leg
+(three run medians spanning under 2x) *passed* on round 3 at 1.10 and would
+have *failed* on round 2 at 2.34. A within-ref floor is a lower bound on the
+floor, never the floor.
 
-**The correction does not even have a consistent sign.** Runs 1 and 2 put
-`waste` *above* the legacy ratio; run 3 puts it *below*, and the two are
-anti-correlated across the three runs (run 3 has the lowest `waste` and the
-highest legacy figure). That is because
+### Where the variation lives, and where it does not
+
+`cg` — real generations — is 3,392 to 4,216 across all six runs, a factor of
+**1.24**, while `di` and `calls` move by **1.94** and **1.87** and move
+*together*. They move together for a reason that is an identity rather than a
+coincidence: **`di` ≈ `calls` − `cg`.** Every block recycled out of
+`inv_htable` was put there by a discard, so in steady state discards and
+recycles are the same event counted at two ends.
+
+So: **the amount of code Crimson Skies causes to be generated in 90 s is
+roughly fixed; what is bimodal is how many times that code is thrown away and
+recycled.** All of `waste`'s spread is on the numerator. A lever aimed at
+generation cost is aimed at the one quantity in this family that does not
+move, and `cg` at 4,134 per 21 windows is about **0.5 generations and 3 guest
+instructions per frame** — so whatever `tb_gen_code`'s 19.1% of the bounding
+thread is in this scene, it is not the cost of translating code. It is the
+recycle lookup and the link-and-arm path around it, which is where
+`tb_link_page` at 11.56% inclusive sits.
+
+### It is not 2.8, and the correction has no fixed sign
+
+2.8:1 was Fuzion Frenzy's visits over calls. Crimson Skies' visits over calls
+is 6.5 to 12.8 and its discards over generations is 4.9 to 11.7.
+
+The correction's *direction* is regime-dependent. Because
 
     waste = waste_legacy x (1 - clog) x recycle
 
-and `clog` and `recycle` move independently between runs of one binary. A
-registered leg predicting the direction of the correction therefore **failed**,
-and the failure is a stronger statement of the original defect than a
-corrected number would have been: the retracted ratio was not a number with a
-correctable error, it was a quotient of two quantities whose errors move in
-opposite directions run to run.
+and `clog` and `recycle` move independently, round 3 puts `waste` well below
+the legacy figure (4.96 against 12.12, all three runs) while round 2 puts it
+*above* on two runs of three (11.68 against 7.67). **The registered leg
+predicting the direction passed on its own arm and does not hold on the
+other.** That is a stronger statement of the original defect than a corrected
+number would be: the retracted ratio was not a number with a fixable error,
+it was a quotient of two quantities whose errors move independently.
 
-**A discard is not a retranslation, so the ratio is not a waste ratio in
-work.** A discarded block goes into `inv_htable` and 7–12 calls in 13 come
-back out of it without codegen — that is what `recycle` measures. The cost of
-a discard is `tb_link_page`, the arming walk, and the jump-cache flush below;
-it is *not* a `tb_gen_code`.
+**And a discard is not a retranslation.** Five to twelve calls in six to
+thirteen come back out of `inv_htable` without codegen. The cost of a discard
+is `tb_link_page`, the arming walk and the jump-cache flush below — not a
+`tb_gen_code`.
 
 ## The impossible row, built on purpose
 
@@ -115,10 +134,28 @@ live TB is absent from the htable, or if anything clears `CF_INVALID` without
 re-inserting. `tcg_pages.py` prints `CONTROL xx = 0` when it holds and **VOIDs
 every ratio on the line** when it does not.
 
-The aggregate form of the same identity, available one ref earlier:
-**visits = discards + already-invalid, residual exactly 0 on all three runs**
-(325,860 = 40,479 + 285,381, and twice more). `sp + ov` equals `di` exactly
-too — the live population counted by two separate pieces of code.
+**Measured: `xx = 0` in every one of the 60 windows of all three round-3
+runs.** That is the control the performance lane asked for by name before the
+range test is touched, and the same runs reproduce `ov` at a median of 0 and a
+maximum of 4, which was its other condition.
+
+Two aggregate identities go with it, and the difference between them is worth
+a paragraph because it cost two wrong comments:
+
+- **`sp + ov == di`, exactly, in every window of all six runs, zero
+  mismatches.** Two separate pieces of code counting the live population, and
+  they are emitted on *one* log line, so this one is exact and it is the
+  tightest control here after `xx`.
+- **visits = discards + already-invalid, to ±1 and not exactly.** Round 2 gave
+  0/0/0; round 3 gave −1/−1/+1 over ~280,000 visits. `visited` is printed on
+  the **first** `hakuX-pages` line and `ai`/`di` on the **second** — two
+  separate log calls from the nv2a thread with the guest CPU thread running in
+  between — so a visit in flight lands on one side of the subtraction only,
+  and each window boundary can slip any of the three by one in either
+  direction. Round 2's three exact zeros were luck, and reading them as the
+  contract is what made two successive versions of this check wrong: first
+  "expected 0", then "negative only". The tool now allows one per window
+  boundary and voids the line beyond that.
 
 ## #68: the cost IS now established, and `sp_share` is 1.000 over live blocks
 
