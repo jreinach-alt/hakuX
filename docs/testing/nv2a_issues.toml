@@ -2372,6 +2372,16 @@ suites = []
 status = "fixed-part"
 status_note = "The issue's premise was WRONG and measuring it inverted the reading. Voice count cannot overflow the accumulator: voices sum in float (vp.c:1582, :1706) and convert once through a clamping conversion, and the += accumulates SLICES -- eight 32-sample slices, flushed and memset every cycle -- so it normally adds to zero, which is why #74's census found nothing across 3,424,618 voice-frames. Then F1/F2 failed: gp_ep.c:424 is the only writer of ep_frame_div besides the increment, so every discontinuity is a guest NV_PAPU_EPRST write, and jumps=2 revisits=1 measured on Galleon/Nova AND Crimson Skies/Thor -- two rewinds per run at APU init, deterministically, one of them landing with slices still dirty. It has never overflowed only because it coincides with initialisation silence (nonzero 0). Saturating add landed; residual risk now exact: an EPRST write with ep_frame_div % 8 in 1..7 during near-full-scale content. NOT FIXED deliberately: the rewind itself -- whether a revisited slice should be summed, overwritten or dropped is not decidable here and gp_ep.c:424's own FIXME says so. Six of eleven legs failed, each moving the answer; R3 named the bug before it was found."
 
+# TRACKER COLLISION, recorded 2026-09-13 rather than left silent. GitHub issue
+# 74 is "Android FP JIT: FIST/FISTP truncate where x86 rounds per the control
+# word", filed while scoping #67; GitHub 75 does not exist at all. So this
+# [issue.74] key and the [issue.75] below it do NOT name the GitHub issues of
+# those numbers -- they are two apu entries whose numbers drifted, which is the
+# failure docs/orchestration.md records an audit finding six times over. Left in
+# place because renumbering someone else's entries blind is worse than the
+# collision; the apu lane owns re-keying them to whatever they were really
+# filed as. Do not add an [issue.74] for the FIST defect until this is settled:
+# the key is taken, and a duplicate key would not even parse.
 [issue.74]
 title = "Per-voice CFG_FMT_HEADROOM is 7 on every Galleon voice and read by nothing: not the low-volume symptom (measured), a 36 dB DSP-path error if it is the voice-into-bin reserve"
 disposition = "unknown-semantics"
