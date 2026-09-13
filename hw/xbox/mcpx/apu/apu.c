@@ -705,7 +705,7 @@ static void se_frame(MCPXAPUState *d)
              * reason for the exponent to be e ... a perceptual taper uses a
              * power of 2 to 3 by convention, and e looks like a placeholder".
              * e is 2.71828, which is INSIDE that band, and it behaves like the
-             * textbook x^3 audio taper to within a fifth of a decibel of
+             * textbook x^3 audio taper to within two percent of slider
              * travel: x^e reaches -6 dB at 77.6% of the slider and x^3 at
              * 79.4%. Whatever the author intended, the curve is what
              * convention would have chosen for a linear-travel volume
@@ -715,8 +715,8 @@ static void se_frame(MCPXAPUState *d)
              * slider POSITION rather than the gain, and config_spec.yml has no
              * version key -- so an old 0.5 and a new 0.5 are indistinguishable
              * and no migration is possible. Switching to a linear gain would
-             * therefore relouden every saved sub-maximum setting silently, and
-             * only ever upward:
+             * therefore raise the gain of every saved sub-maximum setting
+             * silently, and only ever upward:
              *
              *     0.90 -> +1.57 dB    0.50 -> +10.35 dB
              *     0.75 -> +4.29 dB    0.25 -> +20.69 dB   0.0625 -> +41.38 dB

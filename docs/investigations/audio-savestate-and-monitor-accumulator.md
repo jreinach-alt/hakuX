@@ -423,7 +423,7 @@ like a placeholder."
 
 **MEASURED, arithmetic.** *e* is 2.71828 — **inside** the 2–3 band that sentence
 names as conventional — and it behaves like the textbook x³ audio taper to
-within two percent of slider travel:
+within two percentage points of slider travel:
 
 | curve | travel at which the gain reaches −6 dB |
 |---|---:|
@@ -441,7 +441,7 @@ that the **label** makes a claim the control was never making.
 `volume_limit` is persisted, it is the slider **position** and not the gain, and
 `config_spec.yml` has **no version key** — so an old `0.5` and a new `0.5` are
 indistinguishable and no one-time conversion is possible. Changing the curve to
-linear would therefore relouden every saved sub-maximum setting silently, and
+linear would therefore raise the gain of every saved sub-maximum setting silently, and
 only ever upward:
 
 | saved `volume_limit` | today | as a linear gain | change |
