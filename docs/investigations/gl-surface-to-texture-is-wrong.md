@@ -294,3 +294,54 @@ the source surface's own GL texture for the surface that backs
 `Surface_pitch::Swizzle` specifically, which first requires identifying that
 surface's address rather than assuming it is one of the swizzled ones seen
 here.
+
+
+## Answered: the thing the blit copied was already wrong
+
+The surfaces backing `Surface_pitch::Swizzle` were identified from the
+existing probe log rather than assumed — the test fills each of its four
+render targets with `0xFF00AA00`, so the surface whose GL texture is mostly
+`#00AA00` is one of them:
+
+```
+SRCTEX addr=0270b000 128x128 distinct=3  top: #00AA00 x12288 #000000 x2048 #FFFFFF x2048
+SRCTEX addr=0271b000 128x128 distinct=3  top: #00AA00 x12288 #000000 x2048 #FFFFFF x2048
+```
+
+128×128 = 16,384 = 12,288 + 2,048 + 2,048, so those two dumps are complete:
+their GL textures hold **exactly three colours**. Each took the fast path
+exactly once, matching the path census.
+
+That settles the question this section was opened to answer.
+
+* The source GL texture is **not** pure fill — it carries `#000000` and
+  `#FFFFFF` drawn over the `#00AA00`, so the blit is not copying a blank.
+* But it does **not** contain `#7722FF`, the colour the fast path loses and
+  the refused-path arm produces.
+
+The refused arm reads guest memory; the fast arm reads the GL texture. The
+colour exists in one and not the other, so **the surface's GL texture is out
+of date with guest memory, and the blit faithfully copies a stale source.**
+Of the two readings left open — *the render copied the wrong thing* versus
+*the thing it copied was already wrong* — it is the second.
+
+That also gives the `upload_pending` bound recorded above its meaning. The
+refresh that would reconcile the two is
+
+```c
+if (surf_to_tex && surface->upload_pending) {
+    pgraph_gl_upload_surface_data(d, surface, false);
+}
+```
+
+and `upload_pending` is 0 at every one of the 412 sites, so it never fires.
+The test writes its inner checkerboard from the CPU
+(`GenerateSwizzledRGBACheckerboard` at `kInnerTextureMemory`), and a CPU
+write to surface memory is what `surface_access_callback()` exists to notice.
+
+**Not established, and the next thing to measure:** whether that callback
+fires for this write at all. If it does and the flag is consumed before the
+texture read, the fix is about ordering; if it never fires, the fix is about
+coverage. Those need opposite changes, which is why this stops here rather
+than guessing between them — the same reason the four earlier hypotheses
+were tested rather than adopted.
