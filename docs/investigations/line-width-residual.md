@@ -117,3 +117,156 @@ parameter is arriving and in what steps. `docs/testing/line_coverage.py`. Its
 one-line verdict ("constant to within 5%: the parameter is not arriving")
 is what should have made me check the date, because a parameter that had never
 worked at all would have been noticed by whoever wrote the register handler.
+
+---
+
+# Rewritten again 2026-09-12 evening: the width is right, and the residual is not the width
+
+The sections above ask "is the width arriving" and answer yes above 3 px. That
+is still true. This section asks the next question — *what shape* is silicon
+laying down, and what is actually left — and the answer moves this issue off
+line width entirely.
+
+Measured on the scoreboard sweep column `z-sweep-044-Line_width`, APK
+`fb4dfafc6d38`, ref `ce9c4eecf8`, Retroid Pocket Nova. Tool:
+`docs/testing/line_footprint.py`.
+
+## Not blocked on a capability, unlike #36
+
+#36 closed as blocked because lines need `VK_EXT_line_rasterization` and its
+six feature booleans are unmeasured. **That does not apply here.** The device
+log from `0a97b8f48e` says:
+
+    lineWidthRange [1.000, 127.500]   lineWidthGranularity 0.5   wideLines=1
+
+63.875 is less than half the limit. Nothing wide is clamped. `63.875` snaps to
+`64.0` and every other width the suite asks for at 3 px and up is delivered
+exactly. **The clamp hypothesis for the six widest captures is dead**, and it is
+dead by measurement rather than by argument: a clamp predicts a residual that
+stops changing above the limit, and the residual instead rises monotonically
+through 63.875 while the *rendered width in pixels* tracks the register exactly.
+
+## What silicon draws for a wide line
+
+Fitted on the QUADS primitive at the bottom left, the only one with a region of
+its own — nothing else in the test reaches y > 366.
+
+| model | golden, err as % of its ink (w = 4 … 63) |
+|---|---|
+| perpendicular rectangle, butt ends | **1.7 – 5.9%**, and every pixel of it *missing* |
+| + bevel join | 6.6 – 15.5% |
+| + round join | 7.0 – 21.2% |
+| + miter join | 7.4 – 24.4% |
+| square caps | 7.6 – 26.8% |
+
+So silicon draws a **perpendicular butt-capped rectangle of exactly the
+requested width**: no square caps, no round, bevel or miter join. Adding any
+join model makes the fit strictly worse, and none of them removes a single one
+of the missing pixels — whatever silicon covers beyond the rectangle union is
+not the outer wedge at a join.
+
+The same fit against **our own** output lands at **0.03 – 0.20%**. Our wide
+line is that rectangle, to within a handful of pixels in a hundred thousand.
+
+## The one exact rule difference: where the line's centre goes
+
+The quad strip's left edge is vertical at screen x = 160, and row 230 crosses
+it far from either end, so the coverage rule can be read off directly. A line
+of width W centred at `cx` lights the columns whose centre is in
+`[cx - W/2, cx + W/2)`:
+
+| | cx = 160.0, the vertex | cx = 160.5, the pixel centre |
+|---|---:|---:|
+| golden matches | 11/18 | **18/18** |
+| ours matches | **18/18** | 11/18 |
+
+over the eighteen widths from 3.0 to 48.0 where the register is honoured.
+Both light exactly W columns. **Silicon puts the line's centre on the pixel
+centre nearest the line; we put it on the vertex.** They coincide at even
+widths and sit one pixel apart at odd ones, which is the ~1,000 extra
+structural channels every odd-width capture carries over its even neighbours
+(56 → 44,486, 57 → 45,697, 58 → 45,532, 59 → 46,451 …).
+
+**This is line-specific, and that matters.** The scope warning on #13 says the
+fix runs through `roundScreenCoords` in `glsl/vsh.c` and is therefore
+rasteriser-wide. It is not: `Fill_0000.0` in this same suite is **coverage
+exact — 0 golden-only pixels and 0 ours-only**, and the filled quad strip's left
+boundary starts at column 160 in both. The shared vertex path is already right.
+Only the line rasteriser disagrees, and it disagrees by snapping, not by an
+offset — a line at x = 160.3 snaps to 160.5 (+0.2) and one at 160.7 snaps to
+160.5 (−0.2), so no constant translate reproduces it. It needs the line turned
+into geometry we place ourselves.
+
+## What the residual actually is
+
+All 57 `Line_*` captures, RGBA, structural = any channel more than one step out:
+
+    structural channels 1,000,125  over  342,679 structural pixels
+      golden-only ink (we under-cover)    63,983   18.7%
+      ours-only ink   (we over-cover)     17,062    5.0%
+      colour on ink both agree about     261,634   76.3%
+
+and of that colour class, by magnitude:
+
+| max channel delta | px | share of the colour class |
+|---|---:|---:|
+| 2 – 8 | 5,753 | 2.2% |
+| 9 – 32 | 40,028 | 15.3% |
+| 33 – 96 | 138,027 | 52.8% |
+| > 96 | 77,826 | 29.7% |
+
+**82.5% of the colour class is larger than a third of the range.** The test's
+palette is built from 0x33 and 0xFF, so a 204-step delta is one palette entry
+swapped for another: at those pixels both renderers put ink down and disagree
+about *which of several overlapping wide edges is on top*. The suite draws
+seven wireframe primitives in a 320×360 box; at width 63 every edge overlaps
+several others, and a single row through the quad strip shows it plainly —
+golden holds the vertical edge's colour across x = 131…179 while ours switches
+at x = 155 to the bottom-left edge's gradient, a segment that is present in
+both renders and merely buried in one of them.
+
+So the ranking is:
+
+* **76.3%** of the structural residual is edge priority in the overlaps, not
+  line width.
+* **18.7%** is coverage we lack, which is the centre snap above plus the
+  sub-pixel widths (0.125 – 1.125, where the device's own 1.0 minimum flattens
+  eight captures and silicon draws dashes).
+* **5.0%** is coverage we add.
+
+The 342,679 figure independently reproduces the ~342k in `line-width.md`,
+reached there by a different split on a different capture set.
+
+## Where the priority difference comes from, and what is unresolved
+
+Two different mechanisms produce the wireframe edges, and both clusters show
+the residual:
+
+* `QUAD_STRIP`, `QUADS` and `POLYGON` in `POLY_MODE_LINE` are rewritten to
+  explicit `PRIM_TYPE_LINES` by `pgraph/prim_rewrite.c`, so **we** choose the
+  emission order. `rewrite_quad_strip_line` emits v0-v1, v1-v3, v3-v2, v2-v0,
+  which makes v2-v0 last and therefore the winner. Silicon shows v0-v1 winning
+  at the one pixel checked by hand, which is consistent with hardware walking
+  the two triangles' edges rather than the quad's boundary — but that is one
+  data point and a triangle-edge order does not fall out of it uniquely.
+* `TRIANGLES`, `TRIANGLE_STRIP` and `TRIANGLE_FAN` keep `VK_POLYGON_MODE_LINE`
+  (`vk/draw.c` line 1593), so **Turnip** chooses the order and we cannot.
+* `LINE_LOOP` has an unambiguous order that we already match, and still carries
+  9,696 structural channels at width 63 — so ordering cannot be the whole
+  story even for the clusters where we control it.
+
+That last point is the one that is not settled. A full painter model of the
+line loop (16 wide butt quads, colour lerped along each) reproduces neither
+capture well enough to arbitrate, so the loop's residual has some other cause
+and is the capture that should be attacked first: **`Line_0016.0`, the
+`LineLoop` cluster** — moderate width, no polygon-mode question, no rewrite
+choice, 2,259 structural channels.
+
+## Recommendation
+
+Do not treat `Line_width` as a line-width defect; the width is correct and the
+footprint is correct. Three quarters of it is which wide edge wins an overlap,
+which is a primitive-decomposition question and partly the driver's to answer,
+not ours. The remaining quarter needs generated line geometry, for the centre
+snap and the sub-pixel dashes both — the change `line-width.md` already priced
+and declined.

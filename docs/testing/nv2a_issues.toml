@@ -323,6 +323,69 @@ title = "Line and point rasterisation"
 # in EIGHTHS -- Line_0063.7 is 63.875, not 63.7; fitting the decimal produces
 # plausible nonsense. Scope warning: the fix runs through roundScreenCoords in
 # glsl/vsh.c, which is rasteriser-wide.
+#
+# MEASURED 2026-09-12 evening on sweep column z-sweep-044-Line_width, APK
+# fb4dfafc6d38. THE SCOPE WARNING ABOVE IS WRONG, and so is the framing.
+#
+# NOT blocked like #36. The device reports lineWidthRange [1.000, 127.500],
+# lineWidthGranularity 0.5, wideLines=1 (logged by 0a97b8f48e). 63.875 is less
+# than half the limit; nothing wide is clamped, and every width from 3 px up is
+# delivered exactly (63.875 snaps to 64.0). The clamp story for the six widest
+# captures is dead by measurement: a clamp predicts a residual that stops
+# changing above the limit, and the rendered width in pixels instead tracks the
+# register all the way to 63.875.
+#
+# What silicon draws, fitted on the isolated QUADS primitive: a PERPENDICULAR
+# BUTT-CAPPED RECTANGLE of exactly the requested width. Butt scores 1.7-5.9% of
+# its ink; bevel, miter and round joins and square caps are all strictly worse
+# and none removes a single missing pixel. Our own output fits the same model at
+# 0.03-0.20%. Line width is not the defect.
+#
+# The one exact rule difference is the line CENTRE. Read off the vertical
+# quad-strip edge over the eighteen widths 3.0-48.0: golden matches a centre at
+# the nearest PIXEL CENTRE (cx=160.5) 18/18, we match a centre at the VERTEX
+# (cx=160.0) 18/18. Both light exactly W columns. They coincide at even widths
+# and sit one pixel apart at odd ones -- worth ~1,000 structural channels on
+# every odd capture. It is LINE-SPECIFIC, not roundScreenCoords: Fill_0000.0 in
+# this same suite is coverage exact, 0 golden-only and 0 ours-only pixels. And
+# it is a snap, not an offset (160.3 -> +0.2, 160.7 -> -0.2), so no constant
+# translate reproduces it; it needs generated line geometry.
+#
+# The residual, all 57 Line_* captures, RGBA:
+#   structural channels 1,000,125 over 342,679 structural pixels
+#     golden-only ink (we under-cover)    63,983   18.7%
+#     ours-only ink   (we over-cover)     17,062    5.0%
+#     colour on ink both agree about     261,634   76.3%
+# and 82.5% of that colour class is a delta larger than a third of the range.
+# The palette is built from 0x33 and 0xFF, so a 204-step delta is one palette
+# entry swapped for another: both renderers put ink down and disagree about
+# WHICH OF SEVERAL OVERLAPPING WIDE EDGES IS ON TOP. Three quarters of this
+# issue is edge priority, not width. 342,679 independently reproduces the ~342k
+# in line-width.md, reached there by a different split on a different capture
+# set.
+#
+# Two mechanisms make the wireframe edges and both show it: QUAD_STRIP, QUADS
+# and POLYGON are rewritten to explicit LINES by prim_rewrite.c, so we choose
+# the order (rewrite_quad_strip_line emits v0-v1, v1-v3, v3-v2, v2-v0, making
+# v2-v0 the winner; silicon shows v0-v1 winning at the one pixel checked by
+# hand); TRIANGLES/STRIP/FAN keep VK_POLYGON_MODE_LINE at vk/draw.c:1593, so
+# Turnip chooses and we cannot.
+#
+# UNRESOLVED, and the capture to attack first: LINE_LOOP has an unambiguous
+# order we already match and still carries 9,696 structural channels at width
+# 63. A full painter model of it reproduces neither capture, so the loop has
+# some other cause. Least certain point in the whole reading; Line_0016.0's
+# LineLoop cluster exposes it (2,259 structural channels, no polygon-mode
+# question, no rewrite choice).
+#
+# TRIPWIRES for any future change here: Line_0000.0 is the only pixel-exact
+# capture in the suite (a zero-width line covers no pixel centre, so the draw is
+# dropped); Fill_0000.0 is coverage exact and a line change must not touch it;
+# and every EVEN width from 4 to 48 is coverage exact on the vertical edge, so a
+# centre-snap fix must move only the odd ones.
+#
+# Tool: docs/testing/line_footprint.py (--edge / --footprint / --classify).
+# Full derivation in docs/investigations/line-width-residual.md.
 disposition = "defect"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
