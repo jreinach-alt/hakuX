@@ -25,6 +25,7 @@ reason. It says which of the two happened rather than printing a bare pass.
 """
 import json
 import os
+import re
 import subprocess
 import sys
 import tomllib
@@ -122,6 +123,52 @@ def main():
               "  re-dispatched. Set the real status and the evidence it rests on.",
               file=sys.stderr)
         return 1
+
+    # A BLOCKER THAT NAMES SOURCE FILES IS OFTEN A GRANT REQUEST, and whether
+    # it is still a blocker is MECHANICALLY CHECKABLE.
+    #
+    # Three blockers on 2026-09-13 had the form "the fix needs A and B and C
+    # together": #43 (psh.c, vk/draw.c, vk/surface.c), #59 (four files
+    # atomically) and #13 (four others). Each read as an impossibility and each
+    # was a territory request nobody had granted. #43's dissolved the moment
+    # three finished lanes were retired and its files went back to free -- and
+    # it was then refuted outright, in two ordinary blend passes.
+    #
+    # The lesson generalises past files: a blocker phrased as what the work
+    # NEEDS goes stale the instant the need is met, and nothing re-reads it.
+    # #50's "behind the test-suite fork" and #54's "HAKUX_PERF_LOG is only a
+    # Gradle property" went the same way, both retired by a capability rather
+    # than by a measurement. Those two are not automatable. THIS shape is: if
+    # every path a blocker names is unheld, the obstacle it describes does not
+    # currently exist.
+    #
+    # ADVISORY, not a failure. Files being free does not make the work right,
+    # and a lane may be deliberately unspawned. But a board where three issues
+    # sit behind a wall that is not there should say so out loud.
+    lane_files = [f for m in (terr.get("lane") or {}).values()
+                  for f in (m.get("files") or [])]
+    # Drop glob entries: a lane may hold `gl/*.c` or `target/**`, whose
+    # basename is `*.c` or `**` and matches nothing meaningfully. Keeping them
+    # would let a stray `*.c` suppress a real flag.
+    heldb = {os.path.basename(f) for f in lane_files if "*" not in f}
+    grantable = []
+    for k, v in sorted(blocked.items()):
+        if k not in live:
+            continue
+        paths = re.findall(r"[A-Za-z0-9_./-]+\.(?:c|h|cpp)\b", v)
+        # Match on basename: blockers write `vk/draw.c` where territory writes
+        # the full repo path, and demanding they agree would answer never.
+        bases = sorted({os.path.basename(q) for q in paths})
+        if len(bases) >= 2 and not (set(bases) & heldb):
+            grantable.append((k, bases))
+    if grantable:
+        print("NOTE: %d blocker(s) name only files NOBODY HOLDS, so the "
+              "obstacle" % len(grantable))
+        print("      they describe does not currently exist -- they are grant")
+        print("      requests rather than walls:")
+        for k, bases in grantable:
+            print("  #%-4s names %s" % (k, ", ".join(bases)))
+        print()
 
     bad = [k for k in mislabelled if k in live and k not in owned]
     if bad:
