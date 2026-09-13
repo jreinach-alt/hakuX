@@ -538,6 +538,49 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## A wrong zero stops work; a wrong ratio redirects it
+
+Both are measurement defects and the second is more expensive, which is not
+obvious and is worth stating.
+
+A negative read from a blind instrument stops one investigation, and the cost
+is bounded by whatever that investigation was worth. A *confident number* from
+a wrong instrument sends everybody somewhere, and the cost is everything built
+on top of it.
+
+The worked example is 2026-09-13's retranslation waste ratio. Two counters,
+each wrong in a different way:
+
+  `hakux_tb_generated` counts CALLS to `tb_gen_code`, not generations -- a
+  call that recycles a block from `inv_htable` takes `goto recycle_tb` and
+  never reaches codegen. Measured recycle rate about 5:1.
+
+  `hakux_tb_invalidated` counts TBs VISITED, not discarded -- it increments
+  before `tb_phys_invalidate__locked`, which early-returns when `qht_remove`
+  fails, BEFORE `tb_remove`. So an already-`CF_INVALID` block is counted, left
+  on the page list, and counted again on the next store.
+
+Their quotient was published as **2.8:1**, "79 blocks destroyed and 29
+regenerated every frame", and `performance-next-three.md` ranked its three
+levers on it. It is visits over calls. Neither counter was ever checked against
+an invariant, because neither ever produced an absurd value on its own -- the
+absurdity only appeared in a THIRD quantity derived from them, guest
+instructions per generated block, at 0.38. A block cannot hold less than one
+instruction.
+
+So: before a number ranks work, divide it by something and check the units.
+A counter that is never divided is never falsified, and a ratio of two
+plausible counters can be arbitrarily wrong while both look fine. State what
+each counter counts in terms of the EVENT you care about -- "calls" and
+"generations" are different events, and so are "visited" and "discarded" --
+and put the increment on the far side of every early return.
+
+The related cheap habit, which is what made this diagnosable: the lane added
+its `ai=` counter for the early-return case PRE-EMPTIVELY, from reading the
+code rather than from being surprised by a number. A probe built for a hazard
+you have not yet hit is what turns an impossible row from suspicious into
+explainable.
+
 ## A measurement that disagrees with the arithmetic is the instrument until proven otherwise
 
 A probe that only ever reports plausible numbers cannot be checked. One that
