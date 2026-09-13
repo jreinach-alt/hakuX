@@ -28,15 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 7
-updated_utc = "2026-09-13T13:40:00Z"
+wave = 8
+updated_utc = "2026-09-13T14:20:00Z"
 
 [lane.texture]
 issues = ["56", "59"]
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pgraph/s3tc.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
-note = "psh.c and psh.h GRANTED: #59's pad write-side fix needs the fragment shader's alpha output and the read-side swizzle removal ATOMICALLY, and either half alone stacks a second correction on the rendered pixels."
+note = "FINISHED. #56 closed as (c) -- the guard tested the unreachable half while the reachable one fell through and stamped tex_reg_cache with registers the bind had failed to honour. Bordered-length fix PASS on 110 checks. The psh.c GRANT IS WITHDRAWN and the pad fix is NOT landed: the lane established from goldens that the atomic set is FOUR files -- psh.c, vk/draw.c, vk/surface.c, vk/texture.c -- because fragColor.a is also the blend source alpha (eight Blend_surface O-vs-Z pairs differ by 38 px, the label, so silicon is suffix-INSENSITIVE) and eight {DstAlpha,1-DstAlpha}_X_* captures are bit-exact THROUGH the read-side swizzle. Two of four files would regress them."
 
 [lane.skew]
 issues = ["44", "65"]
