@@ -75,6 +75,14 @@ void ac97_common_init (AC97LinkState *s,
                        PCIDevice *pci_dev,
                        AddressSpace *as);
 
+/* Re-derive the host-side half of an AC97LinkState after its guest-visible
+ * registers have been loaded from a savestate. Issue #75: a VMState field
+ * list restores the registers, but the open host voice's rate, volume, mute
+ * and active flags are all computed from those registers at write time, so
+ * they have to be recomputed once on load or the codec comes back configured
+ * and silent. Call this from a nested VMSTATE_STRUCT's post_load. */
+void ac97_link_post_load(AC97LinkState *s);
+
 extern const MemoryRegionOps ac97_io_nam_ops;
 extern const MemoryRegionOps ac97_io_nabm_ops;
 

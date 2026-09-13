@@ -68,13 +68,93 @@ static void mcpx_aci_realize(PCIDevice *dev, Error **errp)
     ac97_common_init(&d->ac97, &d->dev, pci_get_address_space(&d->dev));
 }
 
-static const VMStateDescription vmstate_mcpx_aci = {
-    .name = "mcpx-aci",
+/* ------------------------------------------------------------------------
+ * Issue #75: migrate the AC'97 codec, not just the PCI config space.
+ *
+ * What was here was VMSTATE_PCI_DEVICE and a bare `// FIXME`, so a save/load
+ * round trip restored the BARs and the config header and left the embedded
+ * AC97LinkState holding whatever mcpx_aci_realize/ac97_common_init had put
+ * there at boot. Every guest-visible codec register -- the 256-byte mixer
+ * page, the global control and status words, the codec access semaphore, and
+ * all eight bus-master descriptor engines with their BD cache -- came back at
+ * reset values, and the load reported success. That silence is the severe
+ * half: a load that refuses is a bug report, a load that succeeds with the
+ * wrong state is a bug report filed months later against something else.
+ *
+ * The field list below is the same state upstream's own AC97 device migrates
+ * (hw/audio/ac97.c, vmstate_ac97), reached through a nested struct because the
+ * ACI embeds AC97LinkState directly rather than via AC97DeviceState. Reached
+ * that way the nested post_load also gets the right opaque, which the
+ * device-level one in ac97.c does not -- see the note there.
+ *
+ * SCOPE, stated so this is not over-sold: the ACI is not in the audible path
+ * on this platform. ep_sink_samples() returns false for MCPX_APU_DEBUG_MON_AC97
+ * (apu/dsp/gp_ep.c) and the APU opens its own output device, so a corrupted
+ * AC'97 cannot make the emulator quiet and this is not a loudness fix. It is a
+ * savestate-correctness fix.
+ *
+ * VERSION 2, minimum 2, DELIBERATELY REFUSING VERSION 1. A v1 stream contains
+ * no codec bytes at all, so there is nothing to load and no way to reconstruct
+ * them; the only two options are to refuse the stream or to succeed while
+ * silently restoring reset values, which is the defect itself. Refusing is a
+ * real cost -- existing savestates of this branch will not load -- and it is
+ * paid where it is cheapest: xemu's snapshot UI lives in ui/xui/, which
+ * android/app/src/main/cpp/CMakeLists.txt:473 excludes from the Android build
+ * outright, and nothing in the android/ tree calls savevm or loadvm, so no handheld
+ * user has a savestate to lose.
+ * ------------------------------------------------------------------------ */
+
+static int mcpx_aci_post_load(void *opaque, int version_id)
+{
+    AC97LinkState *s = opaque;
+
+    ac97_link_post_load(s);
+    return 0;
+}
+
+static const VMStateDescription vmstate_mcpx_aci_bm_regs = {
+    .name = "mcpx-aci/ac97-bm-regs",
     .version_id = 1,
     .minimum_version_id = 1,
+    .fields = (const VMStateField[]) {
+        VMSTATE_UINT32(bdbar, AC97BusMasterRegs),
+        VMSTATE_UINT8(civ, AC97BusMasterRegs),
+        VMSTATE_UINT8(lvi, AC97BusMasterRegs),
+        VMSTATE_UINT16(sr, AC97BusMasterRegs),
+        VMSTATE_UINT16(picb, AC97BusMasterRegs),
+        VMSTATE_UINT8(piv, AC97BusMasterRegs),
+        VMSTATE_UINT8(cr, AC97BusMasterRegs),
+        VMSTATE_UINT32(bd_valid, AC97BusMasterRegs),
+        VMSTATE_UINT32(bd.addr, AC97BusMasterRegs),
+        VMSTATE_UINT32(bd.ctl_len, AC97BusMasterRegs),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
+static const VMStateDescription vmstate_mcpx_aci_ac97 = {
+    .name = "mcpx-aci/ac97",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .post_load = mcpx_aci_post_load,
+    .fields = (const VMStateField[]) {
+        VMSTATE_UINT32(glob_cnt, AC97LinkState),
+        VMSTATE_UINT32(glob_sta, AC97LinkState),
+        VMSTATE_UINT32(cas, AC97LinkState),
+        VMSTATE_STRUCT_ARRAY(bm_regs, AC97LinkState, LAST_INDEX, 1,
+                             vmstate_mcpx_aci_bm_regs, AC97BusMasterRegs),
+        VMSTATE_BUFFER(mixer_data, AC97LinkState),
+        VMSTATE_END_OF_LIST()
+    },
+};
+
+static const VMStateDescription vmstate_mcpx_aci = {
+    .name = "mcpx-aci",
+    .version_id = 2,
+    .minimum_version_id = 2,
     .fields = (VMStateField[]) {
         VMSTATE_PCI_DEVICE(dev, MCPXACIState),
-        // FIXME
+        VMSTATE_STRUCT(ac97, MCPXACIState, 1, vmstate_mcpx_aci_ac97,
+                       AC97LinkState),
         VMSTATE_END_OF_LIST()
     },
 };
