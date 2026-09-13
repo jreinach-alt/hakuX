@@ -402,21 +402,64 @@ Frenzy:
 |---|---|---|
 | slow stores | ~8,000 | 66 |
 | reached the invalidator | ~6,300 | 53 |
-| **translated blocks discarded** | **~9,500** | **79** |
-| **translated blocks generated** | **~3,440** | **29** |
+| ~~translated blocks discarded~~ **VISITS, see below** | ~~~9,500~~ | ~~79~~ |
+| ~~translated blocks generated~~ **CALLS, see below** | ~~~3,440~~ | ~~29~~ |
 
-So it is not entry overhead. Most calls find real overlap and throw real work
-away: about 79 blocks destroyed and 29 regenerated every frame. More are
-discarded than generated because one store can invalidate several blocks on a
-page and only the ones executed again get rebuilt. That matches `tb_gen_code`
-at 19% inclusive in the profile.
+> **CORRECTED 2026-09-13. The bottom two rows do not measure what they say,
+> and the correction goes the same way for both.**
+>
+> A Crimson Skies run on 2026-09-13 reported mean guest instructions per
+> "generated block" of **0.38**. A block cannot hold less than one
+> instruction, so that row was void rather than small — and per the
+> instrument note in `AGENTS.md`, the impossible row was the finding.
+>
+> - **`hakux_tb_generated` counts calls to `tb_gen_code`, not generations.**
+>   It is incremented at the top of the function, and a call that finds a
+>   recycleable TB in `inv_htable` takes `goto recycle_tb` and never reaches
+>   code generation. The measured recycle rate is roughly five to one, so
+>   "3,440 generated" is a call count and the real generation rate is several
+>   times lower.
+> - **`hakux_tb_invalidated` counts TBs *visited* by the invalidation loop,
+>   not discarded.** It is incremented before `tb_phys_invalidate__locked`,
+>   which early-returns when `qht_remove` fails — before `tb_remove`. So a TB
+>   that already carries `CF_INVALID` is counted, left on the page list, and
+>   counted again on the next store to that page.
+>
+> The same run shows why that second one is not a rounding matter: about **one
+> visit per invalidation event**, with the page emptying in only **6% of
+> events**. Both cannot be true of live blocks, since a page holding one block
+> that is really removed empties. The consistent reading is that the page
+> lists carry dead TBs the early return refuses to unlink and every later
+> store walks over them again.
+>
+> `hakux_tb_codegen` and `hakux_tb_discarded` now count the real events, and
+> the sp/ov overlap split is restricted to blocks without `CF_INVALID`. The
+> re-measurement is registered as
+> `docs/testing/predictions/tcg-whole-page-invalidation-2.json`.
 
-**Which settles the strategic question, and not in our favour.** The stores
-genuinely overlap translated code, so the blocks are genuinely stale and
-discarding them is correct. There is no inefficiency to remove here: this is
-what emulating a title that writes across its own code pages costs a dynamic
-translator. Finer-grained arming would have avoided some *calls*, but it
-cannot avoid an invalidation that is warranted.
+So the paragraph that followed — "most calls find real overlap and throw real
+work away", and the 2.8:1 waste ratio built on it — **is not supported by these
+two rows.** The ratio was visits over calls. Whether real discards exceed real
+generations, and by how much, is what the re-measurement is for.
+
+What does survive, and is worth more than the retracted ratio: **each
+page-emptying event costs exactly one arming TLB walk.** Measured
+`pr_per_em` = 1.000 / 1.000 / 1.000 across three Crimson Skies runs, within-run
+0.987–1.018. The rate is 897 / 909 / 1,844 emptying events per 120 frames, so
+7.5 to 15 arming walks a frame — and `tlb_reset_dirty` is the 10.6% self
+figure at the top of this document. That is a mechanism with a measured
+constant rather than an inferred ratio.
+
+**And a noise floor, which this stream did not have.** Three runs of one ref:
+`ev`, `sp` and `ov` reproduce within ±5%, but `em` and `pr` came in at
+897 / 909 / 1,844 — **a factor of two.** Any claim about the arming-walk rate
+has to beat 2x on an unattended soak.
+
+The original strategic conclusion may still be right — the stores may genuinely
+overlap translated code and discarding may be correct and unavoidable. It is no
+longer *established* by the numbers above, which is a different thing, and the
+distinction is the reason this document is being corrected rather than
+extended.
 
 The levers that remain are all about making the churn cheaper rather than
 rarer: faster code generation, or smaller blocks on pages known to thrash so
@@ -444,12 +487,13 @@ plausibly worth more than the renderer:
 
 | lever | evidence | expected size |
 |---|---|---|
-| smaller blocks on thrashing pages | 9,500 blocks discarded for 3,440 generated, a 2.8:1 waste ratio | `tb_gen_code` is 19% of the thread; halving regeneration is ~4 ms of a 41.5 ms frame |
+| ~~smaller blocks on thrashing pages~~ **withdrawn, see the correction above and `performance-next-three.md` section 2** | ~~9,500 discarded for 3,440 generated, a 2.8:1 waste ratio~~ — visits over calls, not discards over generations | ~~`tb_gen_code` is 19% of the thread; halving regeneration is ~4 ms~~ — and the mechanism needs a range test this fork does not have |
 | audio voice lock off the guest thread | 5% of the critical-path thread | ~2 ms, and it is a lock held across threads rather than real work |
 | renderer draw path | freeing it entirely bounds the frame at 41.5 ms | up to 8.7 ms, the part the guest spends blocked on it |
 
 The block-size lever is the interesting one precisely because the discard
-ratio is so lopsided. Discarding is correct, but discarding 79 blocks to
+ratio is so lopsided. (**That reasoning is retracted**: the ratio was visits
+over calls. See the correction above.) Discarding is correct, but discarding 79 blocks to
 rebuild 29 says the block granularity is poorly matched to this title's write
 pattern, and that granularity is a choice rather than a requirement.
 
