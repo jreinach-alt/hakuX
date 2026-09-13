@@ -11,6 +11,12 @@
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
 #              --device nova --no-expect "survey, not an A/B arm"
 #
+# --device pins the request to one handheld. The dispatcher and affinity.py
+# have honoured a `device` field since the second device arrived; this is the
+# only thing that could not set it, so a soak on a title only one device has
+# had to be queued by hand. Use it for exactly that -- an A/B does not need
+# it, because affinity.py already pins both arms to wherever the first landed.
+#
 # --skip-tests drops named tests from the disc. Needed when a test poisons the
 # tests after it: "Texture render target::RenderTextureLoop" leaves the texture
 # stage disabled, and the 40 TexFmt_* tests after it then render flat black --
@@ -50,6 +56,7 @@ while [ $# -gt 0 ]; do
         --ref) REF="$2"; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
+        --device) DEVICE="$2"; shift 2;;
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
@@ -215,6 +222,7 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "skip_tests": [t.strip() for t in skip_tests.split(",") if t.strip()],
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
+           "device": device,
            "pull_glob": pull_glob,
            "device": device,
            "audio_capture": arm_audio,
