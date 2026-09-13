@@ -866,6 +866,28 @@ def cmd_check(repo, tests_root, support_dirs=None):
     if tests_root and committed.get("suites") != fresh.get("suites"):
         problems.append("suites differ (committed %d, tests tree %d)"
                         % (len(committed.get("suites", {})), len(fresh.get("suites", {}))))
+    # A `build` with no --tests writes an index whose suite half is EMPTY, and
+    # a `check` with no --tests then passes it, because both sides agree there
+    # are no suites. That is a guard satisfied by the absence of the thing it
+    # guards: the index silently lost 102 suites and the checker said "index
+    # matches the tree". It happened on 2026-09-13, to the orchestrator, while
+    # regenerating the index for a reason unrelated to suites.
+    #
+    # So an EMPTY suite half is a failure on its own terms, whatever --tests
+    # says. There is no legitimate state of this repo in which the derived
+    # suite table is empty.
+    if not committed.get("suites"):
+        problems.append(
+            "the committed index has NO suites, so the suite half of every "
+            "query and blast is blind. This is what `build` writes when it is "
+            "run without --tests. Regenerate with:\n"
+            "    nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests")
+    if not tests_root and committed.get("suites"):
+        problems.append(
+            "checked without --tests, so the %d committed suites were NOT "
+            "verified against the tests tree -- only the symbol and site "
+            "halves were. Re-run with --tests to check all three."
+            % len(committed.get("suites", {})))
     known = set(fresh["suites"] or committed.get("suites", {}))
     parsed = load_issues()
     if not parsed:

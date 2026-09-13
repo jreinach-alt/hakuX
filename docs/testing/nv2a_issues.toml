@@ -156,6 +156,9 @@ suites = ["Texture render target"]
 # offline. And the software rule now BEATS native BC for DXT3/DXT5 (0 px,
 # max 0, against native BC's 1,536 px / max 1 on DXT3_plasma), which inverts
 # this issue's "native BC is the better path" conclusion for those formats.
+status = "fixed-part"
+status_note = "closed: contamination removed, 3,209,634 -> 4,235 px; the residual is #38's floor"
+
 [issue.6]
 title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
 disposition = "unknown-semantics"
@@ -310,6 +313,9 @@ suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
 # dot-mapping and dot texture mode differ from the baseline only by the new
 # preflight function definitions, no emitted statement. The Y16 and YUV
 # classes in this issue are untouched and still open.
+status = "fixed-part"
+status_note = "closed: the measurable fog defects landed; #41/#42 split out and both now closed"
+
 [issue.10]
 title = "Bump mapping"
 disposition = "defect"
@@ -405,6 +411,9 @@ suites = ["Attrib carryover", "Attrib setter", "Attrib float", "3D primitive",
 #
 # The source table has 14 entries and the suite runs 13: one row is listed
 # twice and dedups by name.
+status = "fixed-verified"
+status_note = "closed: re-triaged at the tip as one population with #58 -- max |d| 2, 90.6% of differing px at +-1, alpha exact"
+
 [issue.13]
 title = "Line and point rasterisation"
 # Three separate causes and it refuses to collapse: 80% of the structural error
@@ -568,6 +577,8 @@ title = "Blend precision (low priority)"
 # docs/investigations/issue-19-58-at-tip-2026-09-12.md.
 disposition = "precision-floor"
 suites = ["Blend tests", "Color mask blend"]
+status = "fixed-verified"
+status_note = "closed: alpha exact at 0 differing channels, as a disabled alpha write predicts; every channel within 2 and no parity structure, so value-level +-1 rather than #38 mechanism 2"
 
 [issue.63]
 title = "NV_PGRAPH_CTX_SWITCH1 GRCLASS=0 is never observed: two method fast paths test a stale cached class"
@@ -611,6 +622,8 @@ status_note = "pgraph_write now refreshes pg->cached_graphics_class when the gue
 title = "pgraph suite: some tests are order-dependent"
 disposition = "harness"
 suites = ["Pixel shader"]
+status = "fixed-verified"
+status_note = "closed: order dependence is real and handled by skip_tests, which is part of disc identity so a loop-included and a loop-skipped result cannot share a disc_id"
 
 [issue.16]
 title = "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point half is exact or one ULP"
@@ -711,6 +724,9 @@ suites = ["Texture DXT", "Texture render target", "Attrib carryover",
 # v0-v2 decomposition, so these tests are not flat-shaded); and LineStrip "not
 # drawn at all", already fixed at 770/770 exact.
 # docs/investigations/wbuffer-slope-offset.md.
+status = "fixed-verified"
+status_note = "closed: contamination measured ZERO once a disc can drop the poisoning test"
+
 [issue.31]
 title = "Slope-scaled polygon offset is wrong under W buffering"
 suites = ["W buffering"]
@@ -792,6 +808,8 @@ title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
 # pfb.c + nv2a.c + nv2a_int.h.
 suites = ["Image blit"]
 disposition = "defect"
+status = "fixed-part"
+status_note = "closed: stippledBresenhamLines=0 on this driver so the line-mode route gains nothing; the blit divergence moved to #62 finding 2"
 
 [issue.35]
 title = "Texture shadow comparator: a texel tie on one scanline (fixed), plus a 24-bit floor"
@@ -836,6 +854,8 @@ disposition = "precision-floor"
 # Lane split, which must not be mixed when scoring: this suite is 260/288
 # exact and 8,776 px on desktop, and 176/288 and 17,388 px on every device set
 # here, at the same code state.
+status = "fixed-verified"
+status_note = "closed: shadow texel tie fixed, 176/288 -> 256/288 exact"
 
 [issue.36]
 title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
@@ -893,11 +913,13 @@ disposition = "unmodelled-hardware"
 # (Moved here from #35 on 2026-09-12, where it had been appended under the
 # wrong header. It is entirely about 3D_primitive smoothing and says nothing
 # about the shadow comparator.)
+status = "unmodellable"
+status_note = "closed on a capability line: smoothLines=0 on this driver, measured not assumed -- see the 29-line probe comment in vk/instance.c"
 
 [issue.40]
 title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
 suites = ["Texture cubemap"]
-disposition = "unclassified"
+disposition = "defect"
 status = "fixed-verified"
 status_note = "The degenerate cube direction is skewed off the three-way major-axis tie (a9f8ef3bee; kCubeDegenerateDir at glsl/psh.c:2126), and arm 0cbb5bd0c5 -> a9f8ef3bee is PRE-REGISTERED PASS on all 69 checks: exactly -70 px on each of the 20 predicted captures, 0 worse, 63 others byte-identical, and the rendered colour is the +X face's (0,0) texel on both the gradient and the checkerboard cube, so face and texel are confirmed rather than just the face. The 5-67 px left per capture is a separate intensity-rounding class over the cube interior, explicitly not predicted to move, and it did not."
 
@@ -1041,6 +1063,8 @@ title = "nv2a: the fog output register keeps its last value when a vertex progra
 # the FINAL flag, and fixed function.
 suites = ["Fog carryover", "Fog vsh", "Fog coord vec4"]
 disposition = "defect"
+status = "fixed-verified"
+status_note = "closed with #41: the fog output register question is answered by the bounded program-mode coordinate (204.06, 221.81), identical on all 374 quads"
 
 [issue.43]
 title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) are treated as plain add and reverse-subtract"
@@ -1182,6 +1206,8 @@ status_note = "No fix attempted; what landed is containment. Re-measured from th
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
 suites = ["Texture shadow comparator"]
 disposition = "unknown-semantics"
+status = "unmodellable"
+status_note = "closed: PROJECT2D compares against a literal 0.0 and no depth reference exists to compare against"
 
 [issue.48]
 # Retitled 2026-09-12: three premises in the old title and body are measured
@@ -1286,7 +1312,9 @@ suites = ["Blend surface", "Surface format"]
 #     only 0.0 and 1.0 components. Its 66 one-step captures are every one of
 #     them a *_ZB depth capture, i.e. #16, and 0 of its colour captures are
 #     one-step.
-disposition = "unclassified"
+disposition = "defect"
+status = "fixed-verified"
+status_note = "closed: two draws land on the region and the wrong one wins; scoped by guest texel stride in #59 arm 2, PRE-REGISTERED PASS 171/171"
 
 [issue.49]
 title = "Viewport: two fractional offsets (-7/16 and +9/16) differ by 698 px each, none of it one-step"
@@ -1336,6 +1364,8 @@ suites = ["Viewport"]
 # than it meant to, committed under a message about something else. An audit
 # against the GitHub issue list is what caught it; nothing else would have.
 disposition = "unknown-semantics"
+status = "unmodellable"
+status_note = "closed: the two fractional offsets differ by 698 px each and no register distinguishes them"
 
 [issue.53]
 title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the constant term but no light loop (6 captures)"
@@ -1758,6 +1788,9 @@ suites = ["Blend surface", "Texture Framebuffer Blit"]
 # guest has not produced a sample yet rather than the producer falling behind.
 # The corrected predicate from audio-baseline.md 4a -- no STEADY-STATE 5 s
 # interval over 5% -- passes on both devices.
+status = "fixed-part"
+status_note = "closed as the tracker twin of #60; the port landed but check_surface_compatibility is UPSTREAM of it and still compares a lossy view -- 110 permitted reuses measured on one disc, 66 of them O->Z pad-bit swaps"
+
 [issue.70]
 title = "APU sink zero-fills a short read and counts nothing (MEASURED OUT: 0.0000% in steady state, instrument now permanent)"
 disposition = "harness"
@@ -1795,6 +1828,9 @@ suites = []
 # Note for anyone who reproduces the owner's symptom later: if the launcher ever
 # writes a volume_limit below 1, this alone produces "unusually low", and the
 # check costs one question.
+status = "fixed-verified"
+status_note = "MEASURED OUT: the APU sink zero-fills a short read and counts nothing, at 0.0000% steady state on BOTH handhelds. Re-measured on the Nova after the Thor."
+
 [issue.71]
 title = "The volume slider applies x^e while the UI labels it a percentage, so 50% is -16.4 dB"
 disposition = "defect"
@@ -1918,6 +1954,9 @@ suites = []
 # still zero wrap suspects. The hazard is unchanged in the code; the
 # evidence against it firing has gone from 312 s to about 490 s, and the cost of
 # adding to it is now zero.
+status = "unmodellable"
+status_note = "MEASURED OUT as a defect: three titles on one binary in one hour span 13.8 dB of median level (Crimson Skies 9.4 dB hotter in AC RMS than Galleon, DOA3 zero clipped samples at peak -8.17 dBFS). A missing gain cannot be missing from one title and not another -- Galleon is simply quiet."
+
 [issue.73]
 title = "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
 disposition = "defect"
@@ -2062,6 +2101,9 @@ suites = []
 # guest's own reprogramming after a load -- i.e. if every field is rewritten
 # before it is next read. That is checkable by reading ac97_common_init and the
 # NAM/NABM handlers in hw/audio/ac97_int.c, and it has not been checked.
+status = "unmodellable"
+status_note = "MEASURED OUT as the symptom: CFG_FMT_HEADROOM is 7 on 3,424,618 of 3,424,618 voice-frames across three titles, and 7 = x128 = 42.14 dB. As an unapplied gain that puts whole-file AC RMS at +18.7 dBFS and the 5th percentile at +4.1 -- above full scale. Not an unapplied gain. What moved rather than closing: vp.c:1521-1523 may divide mixbins by the wrong register (2 instead of 128), DSP path only and inert on the monitor path; deliberately unfixed on a guess."
+
 [issue.75]
 title = "ACI migrates only its PCI device, so save/load silently drops all AC'97 codec state"
 disposition = "defect"
@@ -2184,6 +2226,8 @@ title = "VBLANK period is two constants and a guard that contradicted its own co
 disposition = "defect"
 suites = []
 no_suites = "A wrong VBLANK period changes when a title steps its simulation and nothing else. Every golden in the corpus is bit-identical either way, so naming a suite would put this on a scoreboard column that can never move -- and the next reader would take a clean column for a fix."
+status = "fixed-verified"
+status_note = "closed: interlace scaled then bounded >480 && <=576, so 720p/1080i leave the PAL branch (20,000,000 -> 16,683,750 ns); must-not-move byte-identical across four soaks. The period itself cannot be derived -- three independent closures, and the NV2A is not the timing master."
 
 [issue.65]
 # MEASURED 2026-09-12. Galleon, 240 s, Thor, ref 19f52510d9, dispatch result
