@@ -194,15 +194,15 @@ The stores are ≤ 8 bytes: every event arrives through
 count exactly. So the finding is that Crimson Skies' stores into code pages
 land on data sharing the page with code, essentially never on the code.
 
-What that costs, per 90 s run:
+What that costs, per 90 s run, over all six:
 
-| | run 1 | run 2 | run 3 |
-|---|---|---|---|
-| live blocks a range test would spare | 40,476 | 38,941 | 20,835 |
-| page-emptying events it would prevent (`ws`/`em`) | 1.000 | 1.000 | 1.000 |
-| arming TLB walks per emptying event (`pr`/`em`) | 1.001 | 1.000 | 1.001 |
-| emptying events | 18,074 | 35,906 | 17,242 |
-| blocks visited per event | 1.07 | 1.01 | 1.01 |
+| | round 2 | round 3 |
+|---|---|---|
+| live blocks a range test would spare | 40,476 / 38,941 / 20,835 | 20,520 / 20,555 / 19,945 |
+| page-emptying events it would prevent (`ws`/`em`) | 1.000 / 1.000 / 1.000 | 1.000 / 1.000 / 1.000 |
+| arming TLB walks per emptying event (`pr`/`em`) | 1.001 / 1.000 / 1.001 | 1.001 / 1.001 / 1.001 |
+| emptying events | 18,074 / 35,906 / 17,242 | 17,649 / 17,639 / 17,126 |
+| blocks visited per event | 1.07 / 1.01 / 1.01 | 1.01 / 1.01 / 1.02 |
 
 Pages hold **about one block** at invalidation time, 85–93% of visits are dead
 blocks, and the range test would spare essentially all the live ones and
@@ -280,16 +280,57 @@ window. The tool refuses arms that span handhelds or mix refs, drops the boot
 window, voids the line if `xx` fires, and voids `blk` if it comes out below
 1.00.
 
+## The legs, judged
+
+Registered in `docs/testing/predictions/tcg-whole-page-invalidation-3.json`
+and committed before the ref was queued; the request carries its sha256, so
+this arm is bound where round two's was not (round two's soak recorded
+`expect_sha: ""` — the `--expect`-on-`--title` path had not landed yet, which
+is the exact failure `AGENTS.md` describes).
+
+| leg | registered | measured (round 3) | verdict |
+|---|---|---|---|
+| **N1** `xx` | 0 every window | 0 / 0 / 0, all 60 windows | **PASS** |
+| **N2** identity residual | under 2% of visits | −1 / −1 / **+1** | **PASS on the number**, and the prose was wrong — see below |
+| **N3** `waste` below `waste_legacy` | direction | 4.96 vs 12.12, ×3 | **PASS here, FAILS on round 2** |
+| **N4** `waste` run medians span | under 2.0× | 1.10 | **PASS here, would FAIL at 2.34 on round 2** |
+| **N5** `sp_share` live-only | ≥ 0.30 | 0.9998 ×3 | **PASS** |
+| **N6** `sp+ov` window median | ≥ 100, and `== visits − ai` | 978 / 978 / 956; exact every window | **PASS** |
+| **N7a** `blk` ≥ 1.00 every window | yes | min 4.24 / 4.58 / 4.75 | **PASS** |
+| **N7b** `blk` median | ≥ 16 | 6.34 / 5.97 / 6.49 | **FAIL** (re-derives the lane's M5) |
+| **N8** `pr_per_em` | 0.95–1.05 | 1.001 ×3 | **PASS** |
+| **N9a** `gfps` p90 | ≥ 30 | 32 / 31 / 31 | **PASS** |
+| **N9b** `gfps` max | ≥ 35 | **33 / 35 / 33** | **FAIL** |
+
+Three of these need saying out loud rather than tabulating:
+
+**N2's prose was wrong, twice, and the number was never in doubt.** See the
+identity paragraphs above. A leg whose prose misstates which sign refutes it
+would have accepted a refutation as a pass, so the error is recorded rather
+than quietly corrected.
+
+**N7b is not new evidence.** It re-derives M5 from
+`tcg-retranslation-measured.md` on a third ref. It should not have been
+registered, and `blk` cannot settle the question it was registered for — see
+the §2 section above.
+
+**N9b failed and I cannot fully explain it.** `gfps` max was 35/35/35/35/37/35
+on the six earlier runs and 33/35/33 here. The p90 sub-leg sits squarely
+inside the prior 30–33 band and the median is 29 in all nine runs (the
+title's own cap). The added work is one re-read of a `cflags` word already
+loaded two lines above, about 120 times a frame, which cannot plausibly cost
+2 fps — but a max over ~44 two-second samples is a poor statistic and **no
+reverse-order control was run**, so a cost cannot be *excluded*. If anybody
+cares to settle it, the arm is a control soak on round 2's ref taken after
+round 3's, on the same device, in that order.
+
 ## The runs
 
 | ref | runs | what it had | what it was for |
 |---|---|---|---|
 | `6b574e163e` | 3 | no `ai`/`di`/`cg` | round 1; produced the impossible 0.38 row |
-| `848f98a6a6` | 3 | `ai`/`di`/`cg`, live-only `sp`/`ov` | round 2; **the corrected numbers above** |
-| `d287c512d9` | 3 | renamed line, `xx` | round 3; the control, and an inertness check on the rename |
-
-Legs: `docs/testing/predictions/tcg-whole-page-invalidation-3.json`,
-registered before the ref was queued.
+| `848f98a6a6` | 3 | `ai`/`di`/`cg`, live-only `sp`/`ov` | round 2; code-identical to `d0dc45a130` in `accel/` and `profile.c` |
+| `d287c512d9` | 3 | renamed line, `xx` | round 3; the control, and the numbers above |
 
 ## Pixel-inertness: inherited, not re-measured
 
