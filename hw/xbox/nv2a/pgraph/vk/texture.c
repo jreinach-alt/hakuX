@@ -136,6 +136,49 @@ static void texprobe_report(const char *why)
                  (unsigned long long)texprobe.slots_full);
 }
 
+/*
+ * One line per DISTINCT bordered shape, so the denominator above can be read
+ * as "N binds over K shapes" rather than as a bare total, and so the ratio is
+ * a measurement rather than something asserted in a commit message. Capped:
+ * a title could have thousands of bordered textures and this is a probe.
+ */
+static void texprobe_shape(const TextureShape *logical, const TextureShape *adj,
+                           size_t tracked, size_t decoded, uint64_t key_hash)
+{
+    static uint64_t seen[64];
+    static unsigned n_seen;
+
+    for (unsigned i = 0; i < n_seen; i++) {
+        if (seen[i] == key_hash) {
+            return;
+        }
+    }
+    if (n_seen >= ARRAY_SIZE(seen)) {
+        return;
+    }
+    seen[n_seen++] = key_hash;
+
+    /*
+     * For a cubemap the tracked length is what fraction of ONE face's decoded
+     * stride, times six -- so "how many faces does the tracked range reach"
+     * is the number that says whether faces 2..5 are visible at all.
+     */
+    double faces_covered = 0.0;
+    if (logical->cubemap && decoded > 0) {
+        faces_covered = 6.0 * (double)tracked / (double)decoded;
+    }
+
+    TEXPROBE_LOG("texprobe shape dim=%d cubemap=%d levels=%d "
+                 "logical=%dx%dx%d adjusted=%dx%dx%d fmt=0x%x "
+                 "tracked=%llu decoded=%llu ratio=%.1f faces_covered=%.2f",
+                 logical->dimensionality, logical->cubemap, logical->levels,
+                 logical->width, logical->height, logical->depth,
+                 adj->width, adj->height, adj->depth, logical->color_format,
+                 (unsigned long long)tracked, (unsigned long long)decoded,
+                 tracked ? (double)decoded / (double)tracked : 0.0,
+                 faces_covered);
+}
+
 static TexProbeSlot *texprobe_slot(uint64_t key_hash)
 {
     unsigned base = (unsigned)(key_hash % TEXPROBE_SLOTS);
@@ -1753,9 +1796,18 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
         texprobe.bordered_binds++;
         texprobe.last_tracked = texture_length;
         texprobe.last_decoded = probe_decoded_length;
-        if ((texprobe.bordered_binds % 128) == 1) {
+        if ((texprobe.bordered_binds % 16) == 1) {
             texprobe_report("alive");
         }
+        /*
+         * Keyed on the SHAPE, not on the full TextureKey: the interesting
+         * thing is one line per distinct bordered geometry, not one per
+         * address or filter. pgraph_get_texture_shape memsets its result
+         * before filling it, so the struct is safe to hash.
+         */
+        texprobe_shape(&state, &probe_adj, texture_length,
+                       probe_decoded_length,
+                       fast_hash((void *)&state, sizeof(state)));
     }
     hwaddr texture_palette_vram_offset = 0;
     size_t texture_palette_data_size = 0;
@@ -3212,6 +3264,13 @@ void pgraph_vk_init_textures(PGRAPHState *pg)
 void pgraph_vk_finalize_textures(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+
+    /*
+     * The final tally, so a zero is a reading and not the absence of a line.
+     * The periodic "alive" report only fires every sixteenth bordered bind,
+     * which bounds the denominator but does not give it.
+     */
+    texprobe_report("final");
 
     assert(!r->in_command_buffer);
 
