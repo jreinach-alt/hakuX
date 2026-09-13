@@ -186,6 +186,25 @@ counts it once. 43,690 of the 72,138 are silicon's alone and will not move.
   reassociate `bc0 + bc1 + bc2` cannot change them.
 * `Cn` must stay identical to `Cy` on every pair.
 
+## The other three cells, for whoever takes them
+
+* **`z16` fixed depth is done** and is now *explained* as well as measured:
+  the margin table above says no floor in that cell can cross under either
+  form of the arithmetic. Leave it alone.
+* **The colour cell is not a depth defect and should be filed elsewhere.**
+  On the big quad the error is 71,000 pixels of 85,192 with a signature that
+  is byte-identical between `z16` and `z24`: R low by one on 46,792 and by two
+  on 3,399, G high by one on 44,567 and by two on 3,519, B high by one on
+  17,808. That is the Gouraud interpolation of the big quad's four vertex
+  colours — green/blue/olive/red — quantising differently from silicon's, and
+  it cannot be downstream of the depth buffer, because the depth buffer under
+  it is bit-exact in the `z16` cell and one unit out in the `z24` cell and the
+  colour histograms are the same to the pixel. The vertex-side quantiser is
+  already measured and correct (`vertex-colour-quantiser.md`, #38); this is the
+  interpolator, one level down.
+* **The `z24` float cell is the ±12,584/12,585 quad-split family** that
+  `a1fe59400e` priced and deliberately left. 12,816 px.
+
 ## Least certain
 
 `Depth_buffer_fixed_function`. It draws through `UnprojectPoint`, so its
