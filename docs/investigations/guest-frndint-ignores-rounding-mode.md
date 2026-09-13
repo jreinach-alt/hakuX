@@ -159,8 +159,17 @@ independent suites, every one decided the same way, and no free parameter.
   swatch 24, ring stack 51 — so the source that produced them and the source we
   build are the same source. `TestSpot`'s printed label is identical in both
   arms.
-- **Not #43 and not #50**, for the reasons #67 already measured; nothing here
-  changes either.
+- **Not #43 and not #50**, and the #50 separation is now two-directional.
+  #67 measured that #50 does not reach the `#spot_` captures; the converse also
+  holds, from the source rather than from a capture. `TestDetailed` -- #50's
+  region -- calls `DrawAlphaStack`/`DrawColorStack`/`DrawColorAndAlphaStack`
+  with their default arguments, which are the literals `256.f`, `24.f` and
+  `64.f` (`blend_tests.h:79-88`). No `floorf` appears anywhere in its geometry,
+  so this mechanism **cannot** reach #50's 16,384-px strip even if
+  `TestDetailed` were ever renderable. The lavapipe oracle run
+  (`blend-oracle-on-lavapipe.md`) is the same story from the other side: its
+  1,568 captures are `TestDetailed`, its fifth-quad defect reproduces on two
+  rasterisers, and none of its geometry is fractional.
 
 ## The fix, and where it lives
 
