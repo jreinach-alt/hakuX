@@ -797,6 +797,58 @@ matter. The same discipline as the disc-ratio rule, one level up: a cost
 measured on one workload is a fact about that workload until a second one
 agrees.
 
+## A FIXED difference gives a consistent sign; a RANDOM one does not -- and look for structure, not direction
+
+Two lessons from one set of five data points, and the orchestrator got the
+first backwards.
+
+**THE DIRECTION ARGUMENT, corrected.** #50's five movers split 4 better / 1
+worse, and the orchestrator wrote: *"if this were device difference you would
+not obviously expect an asymmetry, and if it is an ordering hazard you might."*
+That is the wrong way round.
+
+- A **device or driver difference** is a *fixed* difference in some operation.
+  Whichever device is more nearly right for that operation is closer to the
+  golden on every affected capture, so a **consistent direction is expected.**
+- A **race** resolves per run and per capture into one of several discrete
+  states, and whether a given state lands closer to or further from the golden
+  depends on the capture, so there is **no reason for a consistent direction.**
+
+So directional asymmetry, if it meant anything, weakly favours the *fixed*
+cause. It is worth having the general form right: **a consistent sign is
+evidence of a fixed cause; sign-indifference is evidence of a random one.**
+
+**AND THE DIRECTION QUESTION WAS EMPTY ANYWAY, while a structural one on the
+same five points was decisive.** At n = 5 a 4-1 split is two-sided
+p = 0.375 -- what a coin does more than a third of the time. But:
+
+    capture               nova (A)   thor (B)   B / 8192
+    1-dstA_SUB_1-cRGB       27,136     16,384      2
+    1-dstRGB_MIN_1          23,552      8,192      1
+    1-srcRGB_SADD_0         76,032     98,304     12
+    cA_MIN_srcRGB           66,375      8,192      1
+    srcA_REVSUB_1-cA        23,552     16,384      2
+
+**All five of thor's values are exact multiples of 8,192 and none of nova's
+is** -- 8,192 being 64x128, half a 64x256 stack region, with three of thor's
+five also multiples of the full 16,384. Fisher exact on 5/5 against 0/5 is
+two-sided **p = 0.0079**, roughly fifty times the evidential weight of the
+directional split, on the same five captures.
+
+The readings differ physically too: a residual quantised to exact half-stack
+blocks is what "a whole swatch is wrong" looks like, while a ragged residual --
+nova's includes the odd value 66,375 -- is what partial coverage or per-pixel
+disagreement looks like.
+
+**So: before reporting that a small sample is uninformative, ask a different
+question of it.** Direction and magnitude are the obvious statistics and often
+the weakest. Structure in the values -- alignment, quantisation, a common
+divisor with geometric meaning -- can be decisive where the obvious test is a
+coin flip. Held as an OBSERVATION and deliberately not bound, because it is
+post-hoc on five captures, which is the curve fit this file warns about; but it
+names the discriminator to check first on the next arm, which is what a good
+observation does.
+
 ## A guard that FAILS tells you where to look -- diff the failure by region before calling it noise
 
 A `must_not_move` guard exists to void a measurement, so the reflex on a
