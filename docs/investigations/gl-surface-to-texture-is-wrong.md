@@ -345,3 +345,129 @@ texture read, the fix is about ordering; if it never fires, the fix is about
 coverage. Those need opposite changes, which is why this stops here rather
 than guessing between them — the same reason the four earlier hypotheses
 were tested rather than adopted.
+
+## Measured: the callback never fires, and the premise was wrong
+
+The measurement named above was run. A build instrumented to log every
+surface registration, every `surface_access_callback()` fire, every texture
+stage bind and every surface-to-texture call, on a two-test disc
+(`Surface_pitch::Swizzle`, `Pixel_shader::Passthru`), OpenGL renderer,
+21 seconds a run. Instrumentation removed afterwards; the tree carries none
+of it.
+
+**The addresses, from the run rather than from arithmetic.** The four render
+targets register at `026eb000`, `026fb000`, `0270b000`, `0271b000`, first
+as linear 128x128 and then again as the four swizzled arms:
+
+```
+ACCESSREG surf=026eb000 size=8000  64x64   swizzle=1 pitch=512   arm 1
+ACCESSREG surf=026fb000 size=4000  64x64   swizzle=1 pitch=256   arm 2
+ACCESSREG surf=0270b000 size=10000 128x128 swizzle=1 pitch=512   arm 3
+ACCESSREG surf=0271b000 size=10000 128x128 swizzle=1 pitch=256   arm 4
+```
+
+`kInnerTextureMemory` is `kTextureTargets[3] + kTexturePitch * kTextureSize`,
+so `0272b000` — one 128x128 tile past the last target, outside every
+registered range. Every texture read of it reports no surface:
+
+```
+TEXSTAGE i=0 texaddr=0272b000 len=4000 surf=no 64x64 fmt=12    (x4, one per arm)
+TEXSTAGE i=0 texaddr=0272b000 len=4000 surf=no 64x64 fmt=3a    (DrawResults demo)
+```
+
+**So the callback never fires for this write, and cannot.** Of the
+**2,875,392** `surface_access_callback()` fires in the run, every one lies in
+the framebuffer band `032a4000`-`03aa7ffc`; not one is in the texture band.
+Of the two branches registered — *fires and is consumed early* versus *never
+fires* — it is the second, and the answer is coverage.
+
+**But the premise both branches rested on is refuted.** The earlier section
+concluded the s2t source's GL texture was stale relative to guest memory and
+looked to a missed CPU write on that surface to explain it. There is no such
+write: the CPU never writes `0270b000` or `0271b000` at all, only the GPU
+does. `upload_pending` was never going to carry this. What is stale is not
+the source surface — it is the *texture* that the source surface's own draw
+sampled.
+
+## Root cause: the guest overwrites texture memory a queued draw still needs
+
+`draw_inner_quad()` writes the checkerboard from the CPU, pushes
+`NV097_SET_TEXTURE_OFFSET` and the draw, and returns. `Pushbuffer::End()`
+does not wait for the GPU — it calls `pb_end` and nothing else — so the
+guest goes straight round the loop and rewrites the *same* 0x4000 bytes at
+`0272b000` with the next arm's colour. All four arms share one texture
+buffer.
+
+pgraph reads that buffer lazily, when it gets round to the draw. Logging the
+distinct dwords the texture path actually read, at
+`pgraph_gl_bind_textures()`, one line per arm:
+
+| arm | colour the test wrote | what pgraph read |
+|---|---|---|
+| 1 | `ffff2222` | `ffff2222 00000000` — correct |
+| 2 | `ffff2277` | `ff7722ff 00000000 ff2222ff` — **torn** |
+| 3 | `ff2222ff` | `ff7722ff 00000000` — arm 4's colour |
+| 4 | `ff7722ff` | `ff7722ff 00000000` — correct, being last |
+
+Arm 2's read carries three distinct dwords: arm 4's colour, black, and
+arm 1's colour, in one buffer. That is a half-rewritten buffer, read while
+`swizzle_rect()` was still walking it.
+
+Two independent hashes of the same pointer and the same length, taken a few
+lines apart inside a single `pgraph_gl_bind_textures()` call with no write
+in between, disagree:
+
+```
+TEXDECIDE texaddr=0272b000 datahash=85fa63866e9071c2 guesthash=093e6613f450664a
+```
+
+Guest memory changed underneath one function call. This is a CPU/GPU
+memory-ordering hazard, not a texture-cache miss, not an s2t defect and not
+a filter defect. Real hardware wins the same race: the console spends
+thousands of cycles in the swizzle memcpy while the GPU drains the
+pushbuffer. xemu loses it because pfifo runs on its own thread and may lag
+arbitrarily.
+
+xemu already has a guard for exactly this hazard — `surface_access_callback()`
+stalls the writing CPU and forces a download before letting the write land —
+but `register_cpu_access_callback()` installs it over *surface* ranges only.
+Texture memory has no equivalent.
+
+## This is also the noise floor's mechanism
+
+Three runs of one unchanged binary, same disc, same renderer:
+
+| | score vs golden | capture sha256 |
+|---|---|---|
+| run 1 | 12,800 | `880d4e4c4233203d` |
+| run 2 | 12,800 | `2934fc5da68e04c6` |
+| run 3 | 12,800 | `aa730ddf18472ea4` |
+
+Three byte-distinct captures. Diffed against each other they differ only
+inside one result quad, `x 384..511, y 76..106`, and the only colour that
+moves is `#2222FF` (arm 3's) swapping with `#7722FF` (arm 4's), 352 to 1,468
+pixels depending on the pair. That is the race, visible directly: whether
+pgraph reaches arm 3's draw before or after the CPU has overwritten arm 3's
+checkerboard with arm 4's.
+
+[`../testing/desktop-noise-floor.md`](../testing/desktop-noise-floor.md)
+asked why this one capture is unstable. This is why.
+
+## Why this stops here
+
+A fix is one of two architectural changes, and neither is a small patch:
+
+* extend the CPU-write stall beyond surfaces, so a write to memory a queued
+  draw will read blocks until pgraph has caught up; or
+* snapshot texture memory at submit time rather than reading it at
+  draw-processing time.
+
+The first is the mechanism xemu already has, widened; it costs a stall on
+every guest write to any live texture, which is a performance decision, not
+a correctness one. The second changes when pgraph reads guest memory, which
+touches every renderer. Neither belongs to a lane fixing a filter cache, and
+choosing between them by guessing is how the four refuted hypotheses above
+got written. Recorded, not patched.
+
+The standing condition holds and is not violated by any of this: nothing
+here proposes "fixing" the capture by refusing a path.

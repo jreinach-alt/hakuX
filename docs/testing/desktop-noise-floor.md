@@ -81,6 +81,33 @@ class a move on any other capture as noise without re-measuring: the band
 is per capture, and on this lane every other capture's band is zero.
 
 The right fix is to find out why that one capture is unstable, which is
-worth doing — a non-deterministic capture is a defect in its own right, and
+worth doing -- a non-deterministic capture is a defect in its own right, and
 this one is in `Surface_pitch`, a suite of one. Until then this file is the
 band.
+
+## Answered: why this one capture is unstable
+
+Measured since, and written up in
+[`../investigations/gl-surface-to-texture-is-wrong.md`](../investigations/gl-surface-to-texture-is-wrong.md).
+
+`Surface_pitch::Swizzle` draws four inner quads through **one** texture
+buffer at `0272b000`, rewriting it from the CPU between draws.
+`Pushbuffer::End()` does not wait for the GPU, so the guest overwrites that
+buffer while the previous draw is still queued. pgraph reads texture memory
+when it reaches the draw, not when the draw was submitted, so it sees
+whichever version happens to be there. Instrumented, arm 2's read came back
+with **three** distinct dwords -- arm 4's colour, black, and arm 1's colour
+in one buffer, i.e. read mid-`swizzle_rect()` -- and two hashes of the same
+pointer and length taken a few lines apart in one `pgraph_gl_bind_textures()`
+call disagreed.
+
+Three runs of one unchanged binary scored 12,800 each but produced three
+byte-distinct captures, differing only in one result quad and only by
+swapping arm 3's `#2222FF` for arm 4's `#7722FF`.
+
+So the band in this file is not measurement slop: it is one CPU/GPU
+memory-ordering hazard with a known mechanism. That does not change how to
+use the band -- |512| or less on this capture is still NOISE, and the
+instability is still real -- but it does mean the band will not shrink until
+that hazard is addressed, and that a change to the surface or texture paths
+cannot be credited or blamed for a move inside it.
