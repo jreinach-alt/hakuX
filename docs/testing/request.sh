@@ -3,7 +3,8 @@
 # Ask the dispatcher to run tests, and wait for the result.
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
-#              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait]
+#              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
+#              (--expect predictions/x.json | --no-expect "why not")
 #
 # Agents never touch the device. This is the only way in, and it is deliberately
 # narrow: a request names a *ref*, not "what is in my tree", because with
@@ -15,7 +16,7 @@
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
-TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""
+TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -28,6 +29,8 @@ while [ $# -gt 0 ]; do
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
+        --expect) EXPECT="$2"; shift 2;;
+        --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
         *) echo "unknown option $1" >&2; exit 2;;
     esac
@@ -37,6 +40,44 @@ done
 # silent, so nothing about audio can be asked of them).
 [ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
 [ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
+
+# A measurement request must name the prediction it is going to be judged
+# against, and must do so NOW. Two arms on 2026-09-12 -- the F24 subnormal
+# flush and the NV04 solid line -- were dispatched with their predictions
+# only in prose, so both had to be registered after the results existed and
+# ab_compare stamped both POST-HOC: correct, and it cost a real verdict on two
+# changes that in fact passed. The fix is not discipline, it is that the queue
+# refuses the request.
+#
+# The binding is by CONTENT HASH, not by mtime. An mtime check catches a
+# prediction written late; it does not catch one written on time and then
+# quietly widened once the numbers are in, which is the same failure with
+# better paperwork. The sha recorded here is of the file as it stood when the
+# device work was asked for, so ab_compare can tell the two apart.
+if [ -n "$SUITES" ]; then
+    if [ -n "$EXPECT" ]; then
+        [ -f "$EXPECT" ] || { echo "--expect $EXPECT does not exist. Register it first: ab_compare.py --register $EXPECT --a-ref ... --b-ref ..." >&2; exit 2; }
+        EXPECT_SHA=$(sha256sum "$EXPECT" | cut -d" " -f1)
+        EXPECT=$(cd "$(dirname "$EXPECT")" && pwd)/$(basename "$EXPECT")
+    elif [ -n "$NO_EXPECT" ]; then
+        EXPECT_SHA=""
+        echo "queuing without a prediction: $NO_EXPECT" >&2
+    else
+        cat >&2 <<'MSG'
+refusing to queue: a suites request needs --expect FILE or --no-expect REASON.
+
+  --expect docs/testing/predictions/<thing>.json
+        the registered prediction this arm will be judged against. Write it
+        with ab_compare.py --register before asking for the device; its
+        content is hashed here so a later edit is detectable.
+
+  --no-expect "REASON"
+        for a request that is not an A/B arm -- a baseline, a survey, a
+        noise-floor run. The reason is recorded with the request.
+MSG
+        exit 2
+    fi
+fi
 
 # Resolve the ref to a concrete sha AT QUEUE TIME. "HEAD" in a queued request
 # is a moving target: the queue is served later, and any commit in between
@@ -52,16 +93,20 @@ fi
 
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
-python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" <<'PY'
+python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
- pull_glob) = sys.argv[1:13]
+ pull_glob, expect, expect_sha, no_expect) = sys.argv[1:16]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
-           "pull_glob": pull_glob},
+           "pull_glob": pull_glob,
+           "expect": expect, "expect_sha": expect_sha,
+           "no_expect": no_expect,
+           "queued_utc": __import__("datetime").datetime.now(
+               __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
 PY
 echo "queued $ID"

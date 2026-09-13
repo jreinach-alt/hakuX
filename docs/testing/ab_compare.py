@@ -59,6 +59,7 @@ import csv
 import datetime
 import fnmatch
 import glob
+import hashlib
 import json
 import os
 import statistics
@@ -112,6 +113,17 @@ class Arm:
         self.meta = json.load(open(mpath))
         self.meta_mtime = os.path.getmtime(mpath)
         self.runs = self.meta.get("runs") or []
+
+        # The request as it was queued. request.sh binds the prediction file
+        # to the request by content hash at queue time, which is the only
+        # moment at which "this was predicted in advance" is checkable.
+        self.request = {}
+        rpath = os.path.join(self.path, "request.json")
+        if os.path.exists(rpath):
+            try:
+                self.request = json.load(open(rpath))
+            except Exception:
+                self.request = {}
 
         # Rows, per run, keyed by capture. The dispatcher's own run list is the
         # authority on which TSVs count: a directory can hold a rescored TSV
@@ -382,21 +394,67 @@ def load_expect(path, a, b):
             die("expectations file names %s %s but arm %s ran %s. A "
                 "prediction registered for other refs is not a prediction "
                 "about this measurement." % (k, have, k[0].upper(), want))
+    # Preferred evidence: the sha request.sh recorded when the device work was
+    # asked for. It settles both questions an mtime can only guess at -- was
+    # the prediction on file before the run, and is it still the same
+    # prediction. A file written on time and then widened once the numbers
+    # arrived has a good mtime and a different sha.
+    bound = None
+    for arm in (b, a):
+        want = (arm.request or {}).get("expect_sha") or ""
+        named = (arm.request or {}).get("expect") or ""
+        if want and named and os.path.basename(named) == os.path.basename(path):
+            bound = (arm, named, want)
+            break
+    if bound is not None:
+        arm, named, want = bound
+        try:
+            got = hashlib.sha256(open(path, "rb").read()).hexdigest()
+        except OSError:
+            got = ""
+        if got == want:
+            notes.append("PRE-REGISTERED: arm %s was queued at %s naming this "
+                         "file, and its content still hashes to the sha "
+                         "recorded then (%s). The prediction existed before "
+                         "the device ran and has not been edited since."
+                         % (arm.name.upper(),
+                            (arm.request or {}).get("queued_utc", "?"),
+                            want[:12]))
+            return exp, notes
+        notes.append("TAMPERED: arm %s was queued naming this file with sha "
+                     "%s, but it now hashes to %s. The prediction has been "
+                     "edited since the device work was asked for, so the "
+                     "verdict below is worth nothing. Recover the queued "
+                     "version, or re-register and re-run."
+                     % (arm.name.upper(), want[:12], (got or "unreadable")[:12]))
+        return exp, notes
+
+    reason = (b.request or {}).get("no_expect") or (a.request or {}).get("no_expect")
     newest = max(a.meta_mtime, b.meta_mtime)
     try:
         when = os.path.getmtime(path)
     except OSError:
         when = None
     if when is not None and when > newest + 5:
+        extra = ""
+        if reason:
+            extra = (" The arm was queued with --no-expect %r, so no "
+                     "prediction was ever bound to it." % reason)
         notes.append("POST-HOC: %s was last written %s, after the newer arm's "
                      "result at %s. A prediction written after the "
                      "measurement is a description of it, and the verdict "
-                     "below is worth nothing."
+                     "below is worth nothing.%s"
                      % (os.path.basename(path),
                         datetime.datetime.fromtimestamp(when)
                         .strftime("%Y-%m-%d %H:%M"),
                         datetime.datetime.fromtimestamp(newest)
-                        .strftime("%Y-%m-%d %H:%M")))
+                        .strftime("%Y-%m-%d %H:%M"), extra))
+    elif when is not None:
+        notes.append("UNBOUND: %s predates both results, so it was not written "
+                     "to fit them -- but no arm was queued naming it, so "
+                     "nothing proves it is the prediction that was made. "
+                     "Queue the next arm with request.sh --expect."
+                     % os.path.basename(path))
     return exp, notes
 
 

@@ -282,3 +282,40 @@ resolving there first and passing a concrete sha, which is sufficient. If
 wrapper into the one place every requester goes through. Not urgent, and not
 changed here: `request.sh` is live infrastructure other work depends on right
 now.
+
+## The prediction binding (added after two post-hoc verdicts)
+
+Both arms judged on 2026-09-12 — the F24 subnormal flush and the NV04 solid
+line — had their predictions only in prose, so both had to be registered after
+the results existed, and `ab_compare.py` stamped both POST-HOC and said their
+verdicts were worth nothing. It was right. Both changes in fact passed, and
+both passes are unciteable.
+
+Discipline was not the fix, because discipline is what had just failed twice
+in an hour. The queue now refuses the request: `request.sh` demands either
+`--expect FILE` naming a registered prediction, or `--no-expect REASON` for a
+run that is not an A/B arm (a baseline, a survey, a noise floor).
+
+**The binding is by content hash, not mtime.** An mtime check catches a
+prediction written late. It does not catch one written on time and then
+quietly widened once the numbers are in — which is the same failure with
+better paperwork, and the more likely one, because nobody has to intend it. So
+`request.sh` records the sha256 of the prediction as it stood when the device
+work was asked for, and `ab_compare.py` reports one of four states:
+
+| state | meaning |
+|---|---|
+| `PRE-REGISTERED` | an arm was queued naming this file, and it still hashes to the sha recorded then. The only state in which a verdict is worth citing. |
+| `TAMPERED` | queued naming this file, but the content has changed since. Verdict disclaimed. |
+| `UNBOUND` | the file predates both results, so it was not written to fit them — but no arm named it, so nothing shows it is the prediction that was made. |
+| `POST-HOC` | written after the results. If the arm was queued `--no-expect`, the reason is printed with it. |
+
+`TAMPERED` is reversible: it is a content check, so restoring the queued
+version restores `PRE-REGISTERED`. A hash that only ratcheted would punish a
+revert, which is the one edit that should always be allowed.
+
+One non-obvious hole the self-test closes: a sha bound to a *different*
+filename must not be honoured, or binding arm B to prediction X would launder
+a verdict read out of Y. `ab_bind_selftest.sh` covers all four states, the
+tamper-and-restore cycle, the cross-filename case, and both `request.sh`
+refusals — 11 cases.
