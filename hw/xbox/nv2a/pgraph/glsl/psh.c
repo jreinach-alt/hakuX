@@ -2186,28 +2186,73 @@ static MString* psh_convert(struct PixelShader *ps)
                  * So divide once, at the end, and keep the division's own
                  * residual: form the numerator from the *unnormalised* areas
                  * as an exact head+tail pair, quotient the head, and recover
-                 * what the quotient dropped with an fma. `fma(-q, S, N)` is
-                 * exact whatever the hardware's divide does, so this is
-                 * immune to a reciprocal that is not correctly rounded as well
-                 * as to the rounding that is. bc1 and bc2 keep their scaled
-                 * values because zvalue -- the F16/F24 path, verified by
-                 * a1fe59400e -- reads them and must not move.
+                 * exactly what the quotient dropped. That recovery is what
+                 * makes it immune to a reciprocal that is not correctly
+                 * rounded as well as to the rounding that is. bc1 and bc2 keep
+                 * their scaled values because zvalue -- the F16/F24 path,
+                 * verified by a1fe59400e -- reads them and must not move.
+                 *
+                 * The exact products are Dekker's, from multiply and add only
+                 * (4097 = 2^12+1 halves a float32 mantissa), and deliberately
+                 * not fma(). That is measured rather than stylistic: the first
+                 * form of this change used fma() for the product tails and the
+                 * division residual, and its arm (`1789269678-depth52-base` ->
+                 * `1789269684-depth52-fix`) removed four fifths of the constant
+                 * relative error -- the ramp down the big quad went from -0.80
+                 * of a float32 ULP to -0.15, and the residual stopped being
+                 * one-sided -- but did not reach the exact floor, and it pushed
+                 * the bottom quad the wrong way, from 140 pixels above the
+                 * exact floor to 250. Re-modelling that chain with fma()
+                 * lowered to multiply-then-add reproduces both, the bottom
+                 * quad's one-sided +95 of 360 included, where a fused fma
+                 * predicts zero everywhere. This driver does not fuse it.
+                 * Dekker needs no such promise: modelled over all four
+                 * primitive shapes, 1,550 pixels, with the fma fused *and*
+                 * unfused, the divide correctly rounded and 1 and 2 ULP wrong,
+                 * and both depth formats -- 24 combinations -- every one lands
+                 * on floor(exact).
                  * Issue #16, #32, #52.
                  */
                 "precise float zhi = floor(vtxPos0.z);\n"
                 "precise float zd1 = vtxPos1.z - vtxPos0.z;\n"
                 "precise float zd2 = vtxPos2.z - vtxPos0.z;\n"
+                /* zp1 + zt1 == bu1*zd1 exactly, and likewise for 2 */
+                "precise float v1a = 4097.0*bu1;\n"
+                "precise float b1h = v1a - (v1a - bu1);\n"
+                "precise float b1l = bu1 - b1h;\n"
+                "precise float v1b = 4097.0*zd1;\n"
+                "precise float d1h = v1b - (v1b - zd1);\n"
+                "precise float d1l = zd1 - d1h;\n"
                 "precise float zp1 = bu1*zd1;\n"
+                "precise float zt1 = (((b1h*d1h - zp1) + b1h*d1l)\n"
+                "                     + b1l*d1h) + b1l*d1l;\n"
+                "precise float v2a = 4097.0*bu2;\n"
+                "precise float b2h = v2a - (v2a - bu2);\n"
+                "precise float b2l = bu2 - b2h;\n"
+                "precise float v2b = 4097.0*zd2;\n"
+                "precise float d2h = v2b - (v2b - zd2);\n"
+                "precise float d2l = zd2 - d2h;\n"
                 "precise float zp2 = bu2*zd2;\n"
-                "precise float zt1 = fma(bu1, zd1, -zp1);\n"
-                "precise float zt2 = fma(bu2, zd2, -zp2);\n"
+                "precise float zt2 = (((b2h*d2h - zp2) + b2h*d2l)\n"
+                "                     + b2l*d2h) + b2l*d2l;\n"
                 "precise float znh = zp1 + zp2;\n"
                 "precise float zbv = znh - zp1;\n"
                 "precise float zav = znh - zbv;\n"
                 "precise float znt = ((zp1 - zav) + (zp2 - zbv)) + (zt1 + zt2);\n"
                 "precise float zdh = inv_bcsum == 0.0 ? 0.0 : znh / bcsum;\n"
-                "precise float zdt = inv_bcsum == 0.0 ? 0.0\n"
-                "                  : (fma(-zdh, bcsum, znh) + znt) / bcsum;\n"
+                /* qp + qe == zdh*bcsum exactly, so the numerator residual
+                 * ((znh - qp) - qe) + znt is exact whatever the divide did. */
+                "precise float v3a = 4097.0*zdh;\n"
+                "precise float qzh = v3a - (v3a - zdh);\n"
+                "precise float qzl = zdh - qzh;\n"
+                "precise float v3b = 4097.0*bcsum;\n"
+                "precise float qch = v3b - (v3b - bcsum);\n"
+                "precise float qcl = bcsum - qch;\n"
+                "precise float qp  = zdh*bcsum;\n"
+                "precise float qe  = (((qzh*qch - qp) + qzh*qcl)\n"
+                "                     + qzl*qch) + qzl*qcl;\n"
+                "precise float zrn = ((znh - qp) - qe) + znt;\n"
+                "precise float zdt = inv_bcsum == 0.0 ? 0.0 : zrn / bcsum;\n"
                 "precise float zdn = floor(zdh);\n"
                 "precise float zbase = zhi + zdn;\n"
                 "precise float zrem = ((vtxPos0.z - zhi) + (zdh - zdn)) + zdt;\n"
