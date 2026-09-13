@@ -62,6 +62,22 @@ PLL = re.compile(
     r"p=(?P<mp>\d+)\) mem=(?P<mem>\d+) vpll=(?P<vpll>[0-9a-f]+) "
     r"pix=(?P<pix>\d+)")
 
+# Phase, and the coalescing attribution. A separate line from `vbl` on
+# purpose: `vbl` is parsed by an exact regex here and in vblank_ab.py, and a
+# widened line stops matching rather than failing -- which reads as a soak that
+# emitted nothing.
+PHASE = re.compile(
+    r"vblphase n=(?P<n>\d+) period=(?P<period>\d+) mean=(?P<mean>\d+) "
+    r"p50=(?P<p50>\d+) p90=(?P<p90>\d+) p99=(?P<p99>\d+) "
+    r"max=(?P<max>\d+) neg=(?P<neg>\d+) "
+    r"nodef\(n=(?P<nodef_n>\d+) mean=(?P<nodef_mean>\d+) "
+    r"max=(?P<nodef_max>\d+)\) "
+    r"def\(n=(?P<def_n>\d+) mean=(?P<def_mean>\d+) "
+    r"max=(?P<def_max>\d+)\) unl=(?P<unl>\d+) "
+    r"coal=(?P<coal>\d+) coal_en=(?P<coal_en>\d+) "
+    r"coal_short=(?P<coal_short>\d+) coal_gap=(?P<coal_gap>\d+) "
+    r"en=(?P<en>\d+)")
+
 NV2A_CORE_HZ = 233333333   # documented part speed, not a measurement of ours
 NV2A_MEM_HZ = 200000000
 
@@ -112,8 +128,77 @@ def describe(label, rows):
           % (ref, drift_s_per_min))
 
 
+def weighted(rows, n_key, sum_key_mean):
+    """Re-pool a per-window mean back into a population mean.
+
+    A mean of per-window means weights a two-assertion window the same as a
+    120-assertion one. Every regime split here is uneven by construction --
+    unlock mode comes and goes with the scene -- so the pooling has to carry
+    the counts.
+    """
+    n = sum(int(r[n_key]) for r in rows)
+    if not n:
+        return 0, 0
+    tot = sum(int(r[n_key]) * int(r[sum_key_mean]) for r in rows)
+    return n, tot // n
+
+
+def describe_phase(label, rows):
+    """Phase: where an assertion landed against the slot it was scheduled
+    into. Rate and phase are different properties; #65 fixed the rate and
+    said so, and this is the other one."""
+    if not rows:
+        print("  %-22s (no windows)" % label)
+        return
+    n, mean = weighted(rows, "n", "mean")
+    if not n:
+        print("  %-22s (no grid-scheduled assertions)" % label)
+        return
+    period = int(rows[0]["period"])
+    nodef_n, nodef_mean = weighted(rows, "nodef_n", "nodef_mean")
+    def_n, def_mean = weighted(rows, "def_n", "def_mean")
+    neg = sum(int(r["neg"]) for r in rows)
+    unl = sum(int(r["unl"]) for r in rows)
+    coal = sum(int(r["coal"]) for r in rows)
+    coal_en = sum(int(r["coal_en"]) for r in rows)
+    coal_short = sum(int(r["coal_short"]) for r in rows)
+    _, coal_gap = weighted(rows, "coal", "coal_gap")
+    print("  %-22s %3d windows, %5d grid-scheduled assertions" %
+          (label, len(rows), n))
+    print("      lateness mean      %9d ns  (%.2f%% of a %d ns period)" %
+          (mean, mean * 100.0 / period, period))
+    print("      lateness p50/p90/p99 %7d / %d / %d ns" %
+          (max(int(r["p50"]) for r in rows),
+           max(int(r["p90"]) for r in rows),
+           max(int(r["p99"]) for r in rows)))
+    print("      lateness max       %9d ns  (%.2fx a period)" %
+          (max(int(r["max"]) for r in rows),
+           max(int(r["max"]) for r in rows) / float(period)))
+    print("      not deferred       %9d ns mean over %d  <- the timer's own "
+          "latency" % (nodef_mean, nodef_n))
+    print("      deferred           %9d ns mean over %d  <- plus the "
+          "deferral hold" % (def_mean, def_n))
+    print("      unlock-mode assertions %5d  (%.1f%%)" %
+          (unl, unl * 100.0 / n))
+    if neg:
+        print("      *** neg=%d: an assertion landed BEFORE its scheduled "
+              "slot, which a QEMU timer cannot do. The grid has a writer "
+              "this instrument does not account for." % neg)
+    else:
+        print("      neg=0, as the timer semantics require")
+    if coal:
+        print("      coalesced          %9d, of which %d (%.0f%%) with the "
+              "VBLANK interrupt UNMASKED" %
+              (coal, coal_en, coal_en * 100.0 / coal))
+        print("      coalesced after a short interval %d (%.0f%%), mean "
+              "preceding interval %d ns" %
+              (coal_short, coal_short * 100.0 / coal, coal_gap))
+    else:
+        print("      coalesced                  0")
+
+
 def main():
-    vbl, mode, fp, pll = [], [], [], []
+    vbl, mode, fp, pll, phase = [], [], [], [], []
     for path in sys.argv[1:]:
         with open(path, errors="replace") as fh:
             for line in fh:
@@ -132,6 +217,10 @@ def main():
                 m = PLL.search(line)
                 if m:
                     pll.append(m.groupdict())
+                    continue
+                m = PHASE.search(line)
+                if m:
+                    phase.append(m.groupdict())
     if not vbl:
         sys.exit("no vbl lines found in %s" % ", ".join(sys.argv[1:]))
 
@@ -221,6 +310,21 @@ def main():
     describe("def 1..20", [r for r in vbl if 0 < int(r["def"]) <= 20])
     print()
     describe("def > 20", [r for r in vbl if int(r["def"]) > 20])
+
+    if phase:
+        print()
+        print("phase: lateness against the grid slot each VBLANK was "
+              "scheduled into")
+        describe_phase("all windows", phase)
+        print()
+        describe_phase("unlock active", [r for r in phase
+                                         if int(r["unl"]) > 0])
+        print()
+        describe_phase("unlock never", [r for r in phase
+                                        if int(r["unl"]) == 0])
+    else:
+        print()
+        print("no vblphase lines: this soak predates the phase instrument")
 
 
 if __name__ == "__main__":

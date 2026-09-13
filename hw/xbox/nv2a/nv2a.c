@@ -345,26 +345,109 @@ static struct {
     int64_t  min_ns;
     int64_t  max_ns;
     uint64_t sum_ns;
+
+    /*
+     * PHASE, which is a different property from rate and was the thing left
+     * open on #65.
+     *
+     * The rate question is "how far apart are consecutive assertions", and
+     * the histogram above answers it. The phase question is "did this
+     * assertion land where the grid said it would", and the grid is a value
+     * this file holds: d->vblank_next_target_ns is the slot this VBLANK was
+     * scheduled into, and it is still un-advanced at the moment of the
+     * assertion. So `now - target` IS the phase error, in nanoseconds, per
+     * assertion, and it needs nothing from pgraph.c -- which is what #65
+     * recorded as the blocker for measuring it.
+     *
+     * Split on deferral, because the two are different mechanisms wearing
+     * one number:
+     *
+     *   - a NON-deferred assertion's lateness is the QEMU timer's own
+     *     latency, i.e. how late the main loop got to us;
+     *   - a DEFERRED one's is that plus however long the deferral held it,
+     *     which is bounded by poll_interval * defer_cap -- half a period in
+     *     normal mode, a whole one in unlock mode.
+     *
+     * `late_neg` is the impossible row, and it is here to be zero. A QEMU
+     * timer fires at or after its deadline and never before, and every path
+     * that rearms this timer early (the deferral retry, and FLIP_STALL's
+     * timer_mod(now)) can only fire a VBLANK that is ALREADY past its slot.
+     * So a negative lateness would mean the grid was moved out from under an
+     * armed timer by a writer this file does not know about, which is a
+     * different defect from any of the four and would invalidate the split
+     * above rather than just adding to it.
+     */
+    uint32_t late_bucket[VBH_BUCKETS + 1];
+    uint32_t late_n;
+    uint32_t late_neg;
+    uint64_t late_sum;
+    int64_t  late_max;
+    uint32_t late_nodef_n;
+    uint64_t late_nodef_sum;
+    int64_t  late_nodef_max;
+    uint32_t late_def_n;
+    uint64_t late_def_sum;
+    int64_t  late_def_max;
+
+    /* Assertions made while unlock mode was active. #65 had to read this off
+     * the `gfps` line, which is emitted on a different cadence by a different
+     * writer, so a window could not be attributed with certainty. It belongs
+     * on the line whose numbers it explains. */
+    uint32_t unlocked_n;
+
+    /*
+     * COALESCING, attributed rather than counted.
+     *
+     * `coalesced` alone cannot say whether the guest lost anything. Three
+     * things separate a lost interrupt from a number:
+     *
+     *   - coal_enabled: the VBLANK bit was UNMASKED in INTR_EN_0, so the
+     *     guest had asked to be interrupted and an assertion folded into the
+     *     pending one is a tick it will never see. A coalesce while the bit
+     *     is masked is not observable as a lost interrupt at all -- the guest
+     *     is not taking them -- so if the count is dominated by masked
+     *     periods then 1.56% is a measurement of the wrong population.
+     *   - coal_short: the interval that PRECEDED the coalesce was shorter
+     *     than the period. That is the signature of our own machinery
+     *     causing it: the grid's correction after a deferral, or a second
+     *     source, delivers two assertions closer together than hardware
+     *     would and the ISR has less time to acknowledge.
+     *   - coal_gap_sum: the mean of those preceding intervals, so "shorter"
+     *     has a magnitude.
+     *
+     * Coalescing itself is faithful in KIND -- PCRTC_INTR_0 is a sticky
+     * latch on silicon too, and a hardware ISR that misses its window loses
+     * the same tick. What is ours is the RATE, and these three fields are
+     * what make that separable.
+     */
+    uint32_t coal_enabled;
+    uint32_t coal_short;
+    uint64_t coal_gap_sum;
 } s_vbh;
 
 /* Interval at or below which the given share of the window's samples fell,
  * reported as the containing bucket's upper edge -- so an upper bound good
  * to 50 us, which is 0.3% of a refresh period. */
-static int64_t vbh_percentile(uint32_t pct)
+static int64_t vbh_pct_of(const uint32_t *bucket, uint32_t n, uint32_t pct)
 {
-    uint32_t want = (s_vbh.n * pct + 99) / 100;
+    uint32_t want = (n * pct + 99) / 100;
     uint32_t acc = 0;
 
     if (want == 0) {
         want = 1;
     }
     for (int i = 0; i <= VBH_BUCKETS; i++) {
-        acc += s_vbh.bucket[i];
+        acc += bucket[i];
         if (acc >= want) {
             return (int64_t)(i + 1) * VBH_BUCKET_NS;
         }
     }
     return (int64_t)(VBH_BUCKETS + 1) * VBH_BUCKET_NS;
+}
+
+static int64_t vbh_percentile(uint32_t pct)
+{
+    return vbh_pct_of(s_vbh.bucket, s_vbh.n, pct);
 }
 
 static void vbh_dump_and_reset(NV2AState *d, int64_t now)
@@ -529,6 +612,42 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         (long long)d->pramdac.core_clock_freq,
         mco, mm, mn, mp, (long long)mclk, vco, (long long)pixclk);
 
+    /*
+     * Phase, and the coalescing attribution. On its own line rather than
+     * appended to `vbl`, because vblank_report.py and vblank_ab.py both parse
+     * `vbl` with one exact regex and a widened line would simply stop
+     * matching -- which reads as a soak that emitted nothing.
+     */
+    int64_t late_mean = s_vbh.late_n
+                            ? (int64_t)(s_vbh.late_sum / s_vbh.late_n) : 0;
+    int64_t late_nodef_mean = s_vbh.late_nodef_n
+        ? (int64_t)(s_vbh.late_nodef_sum / s_vbh.late_nodef_n) : 0;
+    int64_t late_def_mean = s_vbh.late_def_n
+        ? (int64_t)(s_vbh.late_def_sum / s_vbh.late_def_n) : 0;
+    int64_t coal_gap_mean = s_vbh.coalesced
+        ? (int64_t)(s_vbh.coal_gap_sum / s_vbh.coalesced) : 0;
+
+    __android_log_print(
+        ANDROID_LOG_INFO, "hakuX-perf",
+        "vblphase n=%u period=%lld mean=%lld p50=%lld p90=%lld p99=%lld "
+        "max=%lld neg=%u nodef(n=%u mean=%lld max=%lld) "
+        "def(n=%u mean=%lld max=%lld) unl=%u "
+        "coal=%u coal_en=%u coal_short=%u coal_gap=%lld en=%u",
+        s_vbh.late_n, (long long)period, (long long)late_mean,
+        (long long)vbh_pct_of(s_vbh.late_bucket, s_vbh.late_n, 50),
+        (long long)vbh_pct_of(s_vbh.late_bucket, s_vbh.late_n, 90),
+        (long long)vbh_pct_of(s_vbh.late_bucket, s_vbh.late_n, 99),
+        (long long)s_vbh.late_max, s_vbh.late_neg,
+        s_vbh.late_nodef_n, (long long)late_nodef_mean,
+        (long long)s_vbh.late_nodef_max,
+        s_vbh.late_def_n, (long long)late_def_mean,
+        (long long)s_vbh.late_def_max,
+        s_vbh.unlocked_n,
+        s_vbh.coalesced, s_vbh.coal_enabled, s_vbh.coal_short,
+        (long long)coal_gap_mean,
+        (unsigned)((d->pcrtc.enabled_interrupts &
+                    NV_PCRTC_INTR_EN_0_VBLANK) ? 1 : 0));
+
     __android_log_print(
         ANDROID_LOG_INFO, "hakuX-perf",
         "vbl n=%u win=%lldms want=%lld got=%lld drift=%+lld rate=%lld.%03lldHz "
@@ -546,8 +665,23 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
         s_vbh.raster_reads, s_vbh.raster_reads_max);
 
     memset(s_vbh.bucket, 0, sizeof(s_vbh.bucket));
+    memset(s_vbh.late_bucket, 0, sizeof(s_vbh.late_bucket));
     memset(s_vbh.src, 0, sizeof(s_vbh.src));
     s_vbh.n = 0;
+    s_vbh.late_n = 0;
+    s_vbh.late_neg = 0;
+    s_vbh.late_sum = 0;
+    s_vbh.late_max = 0;
+    s_vbh.late_nodef_n = 0;
+    s_vbh.late_nodef_sum = 0;
+    s_vbh.late_nodef_max = 0;
+    s_vbh.late_def_n = 0;
+    s_vbh.late_def_sum = 0;
+    s_vbh.late_def_max = 0;
+    s_vbh.unlocked_n = 0;
+    s_vbh.coal_enabled = 0;
+    s_vbh.coal_short = 0;
+    s_vbh.coal_gap_sum = 0;
     s_vbh.coalesced = 0;
     s_vbh.deferred = 0;
     s_vbh.raster_reads = 0;
@@ -561,16 +695,74 @@ static void vbh_dump_and_reset(NV2AState *d, int64_t now)
 /*
  * Call immediately BEFORE the pending-interrupt OR, so the coalescing check
  * still sees the state the guest left behind.
+ *
+ * `grid_target_ns` is the slot this assertion was SCHEDULED into, i.e.
+ * d->vblank_next_target_ns before the caller advances it, or 0 for a source
+ * that is not on the grid at all. The distinction is the point: an assertion
+ * with no grid target has no phase to be wrong about, and in simple-VBLANK
+ * mode the host-refresh source is exactly that -- which is half of why two
+ * sources for one event cannot be summarised by one number.
  */
-static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred)
+static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred,
+                               int64_t grid_target_ns)
 {
     int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
 
     if (d->pcrtc.pending_interrupts & NV_PCRTC_INTR_0_VBLANK) {
         s_vbh.coalesced++;
+        if (d->pcrtc.enabled_interrupts & NV_PCRTC_INTR_EN_0_VBLANK) {
+            s_vbh.coal_enabled++;
+        }
+        /* The interval this coalesce arrived at the end of. A coalesce after
+         * a SHORT interval is one our own machinery caused; after a full
+         * period it is the guest's ISR being slow, which hardware has too. */
+        if (s_vbh.last_ns) {
+            int64_t gap = now - s_vbh.last_ns;
+            s_vbh.coal_gap_sum += (uint64_t)(gap > 0 ? gap : 0);
+            if (gap < nv2a_calc_vblank_period_ns(d)) {
+                s_vbh.coal_short++;
+            }
+        }
     }
     if (was_deferred) {
         s_vbh.deferred++;
+    }
+    if (d->unlock_mode_active) {
+        s_vbh.unlocked_n++;
+    }
+    if (grid_target_ns) {
+        int64_t late = now - grid_target_ns;
+
+        if (late < 0) {
+            /* The impossible row. See the struct comment: this is here to be
+             * zero, and a non-zero count means a writer this file does not
+             * account for moved the grid under an armed timer. */
+            s_vbh.late_neg++;
+            late = 0;
+        }
+        int idx = (int)(late / VBH_BUCKET_NS);
+        if (idx > VBH_BUCKETS) {
+            idx = VBH_BUCKETS;
+        }
+        s_vbh.late_bucket[idx]++;
+        s_vbh.late_n++;
+        s_vbh.late_sum += (uint64_t)late;
+        if (late > s_vbh.late_max) {
+            s_vbh.late_max = late;
+        }
+        if (was_deferred) {
+            s_vbh.late_def_n++;
+            s_vbh.late_def_sum += (uint64_t)late;
+            if (late > s_vbh.late_def_max) {
+                s_vbh.late_def_max = late;
+            }
+        } else {
+            s_vbh.late_nodef_n++;
+            s_vbh.late_nodef_sum += (uint64_t)late;
+            if (late > s_vbh.late_nodef_max) {
+                s_vbh.late_nodef_max = late;
+            }
+        }
     }
     s_vbh.src[src]++;
     /* Read before the caller zeroes it, so this is the count for the period
@@ -609,7 +801,7 @@ static void nv2a_vblank_record(NV2AState *d, int src, bool was_deferred)
 }
 
 #else
-#define nv2a_vblank_record(d, src, was_deferred) ((void)0)
+#define nv2a_vblank_record(d, src, was_deferred, grid) ((void)0)
 #endif
 
 #ifdef __ANDROID__
@@ -635,7 +827,7 @@ static void nv2a_simple_vblank_cb(NV2AState *d)
      * zero in simple mode -- exactly the mode you switch to when you want
      * pacing numbers with the deferral heuristics out of the way. */
     g_nv2a_stats.pacing.vblank_fired++;
-    nv2a_vblank_record(d, VBH_SRC_SIMPLE, false);
+    nv2a_vblank_record(d, VBH_SRC_SIMPLE, false, d->vblank_next_target_ns);
 
     /* Pure x1_box behavior: fire PCRTC interrupt, update IRQ.
      * No adaptive deferral, no flip auto-completion, no NOP assist.
@@ -798,7 +990,8 @@ static void nv2a_vblank_timer_cb(void *opaque)
     }
     s_last_vblank_fire_ns = now;
 
-    nv2a_vblank_record(d, VBH_SRC_TIMER, was_deferred);
+    nv2a_vblank_record(d, VBH_SRC_TIMER, was_deferred,
+                       d->vblank_next_target_ns);
     d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
     d->pcrtc.raster = 0;
 
@@ -880,7 +1073,8 @@ static void nv2a_vga_gfx_update(void *opaque)
      * timing-dependent freezes. */
     if (g_simple_vblank_mode) {
         NV2AState *d = container_of(vga, NV2AState, vga);
-        nv2a_vblank_record(d, VBH_SRC_GFX, false);
+        /* No grid target: the host panel's refresh is not on it. */
+        nv2a_vblank_record(d, VBH_SRC_GFX, false, 0);
         d->pcrtc.pending_interrupts |= NV_PCRTC_INTR_0_VBLANK;
         d->pcrtc.raster = 0;
         nv2a_update_irq(d);
