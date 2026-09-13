@@ -649,7 +649,28 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 #
 # And the leg that belongs on any such counter: SILENCE IS VOID, never pass. An
 # absent line means the capture failed, not that the condition did not occur.
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# THE OVERRIDE IS `LOGCAT_SPEC_OVERRIDE`, NOT `LOGCAT_SPEC`, AND THAT IS THE
+# WHOLE REASON ANY EDIT HERE TAKES EFFECT.
+#
+# This line used to read `${LOGCAT_SPEC:-...}` and then export LOGCAT_SPEC. A
+# `:-` default only fires when the variable is UNSET, so once exported, the
+# worker's own environment shadowed the default -- and a re-exec inherits that
+# environment, so NO EDIT TO THIS SPEC COULD EVER REACH A RUNNING FLEET. The
+# script read its own stale output as its input.
+#
+# Measured 2026-09-13, and it had eaten two fixes silently. The live worker's
+# environment held a spec with neither `hakuX-phase` nor `xemu-work` -- added
+# hours earlier, after an empty phase survey -- and then not `hakuX-lane`
+# either. A lane registered a counter on `hakuX-lane`, got zero lines, and
+# correctly reported the tag as reserved-but-silenced; the reservation was on
+# disk and in the snapshot and inert in practice.
+#
+# With the override under its own name, the default here is authoritative on
+# every re-exec, and a human or a test can still pin a spec deliberately. The
+# general shape is worth keeping in mind: a variable that is both an input and
+# an exported output cannot be changed by editing its default.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 # Which device runs the idle sweep. One of them must, and both of them must
