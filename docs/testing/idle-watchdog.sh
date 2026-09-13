@@ -223,6 +223,19 @@ for f in glob.glob(os.path.join(D, 'queue', '*.req')):
         # measured on. That is the same mistake as sizing a change off the test
         # disc's ratios, one level down, so it is keyed on the image that was
         # actually timed and everything else keeps the ordinary estimate.
+        # AN ALLOW-LIST PRICES BY TEST, NOT BY SUITE. `--only-tests` narrows a
+        # run to named tests, so its cost scales with how many were named and
+        # not with the one suite they sit in. Measured at ~5.5 s/test wall, so
+        # a 196-test half-disc is ~1,080 s -- which the per-suite estimate
+        # called 340 s, understating an eighteen-minute run as six.
+        #
+        # Third time this estimator has misled, and the same shape each time: a
+        # new capability changed the cost model and the estimate kept using the
+        # old one. It is keyed on the field that actually drives the cost.
+        only = r.get('only_tests') or []
+        if only:
+            tot += 180 + len(only) * 6
+            continue
         iso = os.path.basename(r.get('base_iso') or '')
         per = 1150 if iso == 'nxdk_pgraph_tests_xiso_interactive.iso' else 160
         tot += 180 + len(r.get('suites') or []) * per
