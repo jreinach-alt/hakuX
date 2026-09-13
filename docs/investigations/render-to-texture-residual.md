@@ -284,3 +284,122 @@ So the issue title is wrong in a specific way worth saying: after the YUV fix,
 remaining difference is the source texture's decode, surfaced through a render
 target that is itself exact. That was said once before on this issue, on
 2026-09-11, and then buried by a contaminated re-measurement.
+
+---
+
+# Confirmed at the Adreno tip, and the reason it kept coming back
+
+Added 2026-09-12, later the same day, on the device lane. The section above was
+written from lavapipe captures and left one thing open: whether the Adreno
+figure was the same contamination or a second, real defect. It is the same
+contamination, and there is a structural proof of it that needs no arithmetic
+at all.
+
+## The measurement
+
+Scored from captures already on disk -- the `issue59` base and candidate arms,
+refs `5e612529b9` and `0b7e5de8dd`, two runs each, 41 `Texture render target`
+captures per run -- against `/home/justin/goldens/results/Texture_render_target`,
+RGBA:
+
+| disc | captures | exact | differing px | differing ch |
+|---|---:|---:|---:|---:|
+| loop **included** (`issue59` arms, near-tip) | 41 | 1 | **3,209,634** | **9,034,555** |
+| loop **skipped** (`res_v_rt`, same goldens) | 40 | 5 | **324,349** | 752,908 |
+
+The 3,209,634 px headline reproduces to all seven digits on the current build.
+It is a real measurement of a disc, and the disc is the variable.
+
+## The structural proof: the quad is one colour
+
+This is the part that does not depend on any decode rule, and it is why the
+suite resisted eleven comments of per-format reasoning.
+
+In the loop-included captures, the difference is the quad at rows 98-382,
+columns 178-462 -- 285 x 285 = **81,225 px**, which is the uniform per-capture
+count that made the suite look like a single structural defect. Inside that
+quad:
+
+- **our capture holds exactly one colour, `[0,0,0,255]`, in 40 of 40
+  `TexFmt_*` captures.** Not a shifted gradient, not a channel permutation, not
+  a rounding band -- one flat opaque black;
+- the golden holds between 1 and 65,025 colours there, depending on format;
+- **outside the quad, 0 of 225,975 px differ.** The rest of the frame is exact;
+- the difference mask is pixel-identical across 39 of the 40. The fortieth,
+  `TexFmt_DXT1`, differs at 41,859 px, which is 81,225 minus the 39,366 quad
+  pixels where the *golden itself* is black -- the same mask, scored against
+  content that happens to agree;
+- `RenderTextureLoop`, the test that runs first, is **pixel-exact**.
+
+A texture-decode defect cannot produce a single flat colour across every
+format at once, and a memory-layout defect cannot leave the frame outside the
+quad bit-exact. A disabled texture stage produces exactly this.
+
+## It is not #39, and not a code regression
+
+- **Deterministic.** All 41 captures are byte-identical between run 1 and run 2
+  of the same arm. #39 is run-to-run loss with the render target's previous
+  content in the wrong quads; this is the same flat black every time.
+- **Unmoved by code.** All 41 captures are byte-identical between the `issue59`
+  base and candidate arms, two different binaries. Nothing in the renderer is
+  being measured here.
+
+## Why it kept coming back: the dispatcher could not express the disc
+
+The earlier isolation results were correct and were re-poisoned twice. The
+reason is mechanical rather than anyone's oversight.
+
+`make_test_iso.py` had `--suite` and nothing finer. The request format's
+`tests` field is documented "solo arm only" and **was never read when a disc
+was built**. So every dispatcher-served run of this suite was loop-included by
+construction -- including `queue_full_sweep.sh`, which feeds the scoreboard and
+the corpus rankings. The no-loop config existed
+(`docs/testing/configs/texture_render_target-no-loop.json`) but only a human
+running `make_test_iso.py --config` by hand could use it, and the sweep never
+did. Every fresh measurement therefore rediscovered the contamination and
+overwrote the isolated result.
+
+That is fixed: `--skip-test SUITE::TEST` on `make_test_iso.py`, `skip_tests` in
+the request format and folded into `disc_id`, `--skip-tests` on `request.sh`,
+and the loop dropped from every future sweep. The generated block is
+byte-identical to the known-good no-loop config.
+
+`disc_id` matters as much as the disc does. The same suite with and without the
+loop differs by 9.9x on an unchanged binary, so if the two shared an id a disc
+swap would present as a code regression -- which is one way this number has
+moved around before.
+
+`request.sh` also refuses `--skip-tests` outright when the dispatcher that will
+serve the request is too old to honour it, because the silent-drop case files a
+loop-included run under the label of the no-loop measurement that was asked for.
+
+## What is left, and what still needs the device
+
+On the no-loop disc the suite is 324,349 px, and 162,450 of that is the YUV
+pair. **The YUV fix is confirmed landed and effective at this tip**, measured
+in the sibling suite on the same captures: `Texture_format::TexFmt_UYVY_L` and
+`TexFmt_YUY2_L` are both **0 px, pixel-exact** (they were 388,150 each in the
+corpus TSV). `Texture_format::TexFmt_DXT1` is 4,487 px, down from 167,889.
+
+So the expected no-loop figure at tip is well under 200,000 px, with the two
+YUV captures at zero and DXT1 much reduced. That run is the one measurement
+still outstanding; the prediction is registered at
+`docs/testing/predictions/issue4-no-loop-disc.json` and the request is:
+
+    docs/testing/request.sh --who issue4 \
+        --purpose "no-loop disc at tip, 3 runs" \
+        --suites "Texture render target" \
+        --skip-tests "Texture render target::RenderTextureLoop" \
+        --runs 3 --expect docs/testing/predictions/issue4-no-loop-disc.json
+
+It cannot be queued until the `--skip-test` support is merged into the tree the
+dispatcher serves from and that dispatcher is restarted; until then `request.sh`
+refuses it, deliberately, rather than producing a fourth poisoned figure.
+
+## The must-not-move list
+
+Nothing in this work touches the renderer, so every capture in the corpus must
+be byte-identical. The changes are confined to `docs/testing/`:
+`make_test_iso.py`, `dispatcher.sh`, `request.sh`, `queue_full_sweep.sh`. A
+request carrying no `skip_tests` key adds no arguments and keeps the `disc_id`
+it had, so every result already recorded stays comparable.
