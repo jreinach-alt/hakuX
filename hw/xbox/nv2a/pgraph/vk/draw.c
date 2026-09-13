@@ -320,6 +320,59 @@ static uint32_t blend_factor_with_dst_alpha_one(uint32_t factor)
  * per (channel, sign) with a colorWriteMask and a discard, which needs no
  * extension but costs six to eight passes per draw.
  *
+ * BUT THAT LIST IS INCOMPLETE, AND THE CHEAPEST SHAPE IS NOT ON IT.
+ *
+ * Read the impossibility argument above again for its qualifier: no multi-pass
+ * arrangement of blend states driving *the same fragment output*. That is the
+ * load-bearing clause, and the remedies listed after it quietly drop it. Two
+ * passes driving TWO DIFFERENT fragment outputs are outside the proof, because
+ * the discontinuity then lives in the SHADER -- which may branch per channel
+ * for free -- and the blend unit only ever sees a continuous map of whatever
+ * it was handed. The proof is sound; its corollary was too strong.
+ *
+ *     f1 = S   if S < 128 else 0          (pass 1's fragment output)
+ *     f2 = 0   if S < 128 else 256 - S    (pass 2's fragment output)
+ *
+ *     FUNC_ADD_SIGNED               pass1 ADD(f1)    then pass2 REVSUB(f2)
+ *     FUNC_REVERSE_SUBTRACT_SIGNED  pass1 REVSUB(f1) then pass2 ADD(f2)
+ *
+ * Both passes are ONE/ONE, which is exactly what this function already
+ * programs. EXACTLY ONE of f1, f2 is non-zero for any source byte, so the
+ * other pass is an exact identity -- which is why the intermediate UNORM clamp
+ * cannot bite, and why the two passes commute. Four channels ride one pass,
+ * because masking the source to zero is what makes the off-sign channels
+ * identities, so this needs no colorWriteMask and no discard: TWO passes, not
+ * the six to eight quoted above.
+ *
+ * Verified by docs/testing/signed_blend_twopass.py: exact on all 65,536 (S, D)
+ * cells for both equations, and on 7,526,820 channels recovered from silicon's
+ * own goldens across two suites reaching the framebuffer by different paths
+ * (Texture_signed_component_tests, and the 15 Blend_tests `#spot_` pairs via
+ * render target + blit), spanning 18 distinct destinations. Zero mismatches.
+ * The same run reproduces THIS change's measured signature as its control --
+ * 0 wrong below the sign bit, every channel wrong at or above it.
+ *
+ * WHAT IT COSTS, stated because a subset of these conditions double-corrects:
+ *
+ *   - Self-overlap. Pass order becomes p1(all prims), p2(all prims), so a
+ *     pixel a single draw covers twice blends out of order. Every quad in
+ *     blend_tests.cpp is its own Begin/End -- DrawAlphaStack's four nested
+ *     quads are four separate draws -- so the corpus has none, and this is
+ *     exact on it. Framebuffer fetch with rasterization_order_attachment_access
+ *     would survive self-overlap; this does not. Gate it on the equation.
+ *   - Alpha test must be evaluated on the UNMASKED combiner alpha, so the sign
+ *     mask has to be applied strictly after the discard psh.c emits (it reads
+ *     fragColor.a), or the two passes kill different fragments.
+ *   - Pass 2 must not re-apply per-fragment side effects: depth write off and
+ *     a test that cannot reject pass 1's own output, stencil op KEEP, and no
+ *     double-counting in occlusion queries.
+ *
+ * The state selecting which pass a shader is generating for does NOT fit in
+ * this file: it belongs in PshState, i.e. glsl/psh.h, which this lane was not
+ * granted. That file is unclaimed, so the grant is one file short rather than
+ * blocked -- and vk/surface.c, granted for the float-surface shape, is not
+ * needed by this one at all.
+ *
  * So this is deliberately a half fix that closes the half it can prove, and
  * leaves the capture non-exact. Scoring it on whole-capture exactness will read
  * as no progress; score the S < 128 channels.
