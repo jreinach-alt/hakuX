@@ -2806,18 +2806,51 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                                            d->vram, entry.vram_addr, entry.size,
                                            DIRTY_MEMORY_NV2A);
 
-    if (upload && (surface->buffer_dirty || mem_dirty)) {
+    /*
+     * The condition is "the binding is stale OR ABSENT", not just stale. A
+     * surface that is neither buffer-dirty nor memory-dirty but has no binding
+     * at all used to fall through here with nothing bound, and everything
+     * downstream then ran against a framebuffer with no attachments at all:
+     * measured as 378 guest clears per run of the surface disc that raised
+     * GL_INVALID_FRAMEBUFFER_OPERATION and did nothing, the error sitting
+     * pending until an unrelated assert tripped over it. See #66.
+     *
+     * Note mem_dirty is identically false on any TCG build -- which is every
+     * build we run -- so this gate is buffer_dirty alone in practice.
+     */
+    bool no_binding = (color ? r->color_binding : r->zeta_binding) == NULL;
+
+    if (upload && (surface->buffer_dirty || mem_dirty || no_binding)) {
         pgraph_gl_unbind_surface(d, color);
 
         SurfaceBinding *found = pgraph_gl_surface_get(d, entry.vram_addr);
         if (found != NULL) {
-            /* FIXME: Support same color/zeta surface target? In the mean time,
-             * if the surface we just found is currently bound, just unbind it.
+            /* FIXME: Support same color/zeta surface target? One GL texture
+             * cannot be the colour and the depth attachment at the same time,
+             * so when the guest points both at one address one of them has to
+             * lose. Which one is not arbitrary. Hardware lets both units write
+             * and races them, and the only capture that discriminates --
+             * Color zeta overlap's ColorIntoZeta_ZB -- has the colour write
+             * taking 120,729 of the quad's 131,495 pixels in the golden. So
+             * colour wins: it may take a surface zeta is holding, but zeta may
+             * not take one colour is holding. Evicting the colour attachment
+             * instead leaves a framebuffer with nothing attached, which is
+             * never a state the guest asked for, and #66 showed that state can
+             * persist for the rest of a test once entered.
              */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (found == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
+                if (!color) {
+                    /* Zeta declines. The colour attachment stays; this
+                     * surface's zeta binding remains absent, and the
+                     * no_binding gate above brings us back here on every
+                     * request so zeta can take it once colour moves away.
+                     */
+                    surface->buffer_dirty = false;
+                    return;
+                }
                 pgraph_gl_unbind_surface(d, !color);
             }
         }
