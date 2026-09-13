@@ -2209,8 +2209,48 @@ status_note = "MEASURED OUT as a defect: three titles on one binary in one hour 
 # understood. The clamp is the correctness floor; the rewind is a separate
 # question that mon_acc's nonzero column now watches continuously.
 #
-# RECOMMENDED DISPOSITION: this entry closes on the arithmetic. The EPRST
-# rewind wants its own entry, and it is unknown-semantics rather than defect.
+# THE REWIND IS REAL, AND THAT INVERTS THE READING ABOVE, 2026-09-13. After
+# two more rounds of instrument (the per-sample counter was replaced by an
+# O(1) ep_frame_div watcher, and that watcher's first shape had a startup
+# false positive which its own registered consistency leg predicted), results
+# 1789284344-monaccfix-galleon (nova) and -crimson (thor) at ref 37e1fabd89:
+#
+#   Galleon        17 windows x 7500 frames  jumps 2  revisits 1  nonzero 0  saturated 0
+#   Crimson Skies  18 windows x 7500 frames  jumps 2  revisits 1  nonzero 0  saturated 0
+#
+# gp_ep.c:424 is the ONLY writer of ep_frame_div that is not apu.c:726's
+# increment -- mcpx_apu_reset does not touch it and a grep over hw/ returns
+# nothing else -- so every jump is a guest write to NV_PAPU_EPRST. Two of them,
+# deterministically, at APU init, on two titles from two studios on two
+# handhelds. And ONE OF THE TWO LANDS WITH SLICES STILL DIRTY, so the += does
+# add to a non-empty accumulator about once per run.
+#
+# It has never overflowed for a reason the columns give directly: nonzero 0
+# says the revisited accumulators held zero and saturated 0 says nothing left
+# int16 range. The reset happens while the mix is silent.
+#
+# SO THE CLAMP IS NOT DEAD CODE. It guards a path the guest takes about once
+# per run, which would overflow if a title ever resynced the EP mid-cycle while
+# the mix was loud. The residual risk is now stateable exactly -- an
+# NV_PAPU_EPRST write with ep_frame_div % 8 in 1..7 coinciding with
+# near-full-scale content -- rather than as "nobody has seen a wrap".
+#
+# AND IT VINDICATES DROPPING THE PER-SAMPLE COUNTER. `nonzero` could never have
+# found this: it counts accumulators that were non-zero, and the event lands on
+# silence, so the old instrument read zero over 16.8M samples while the
+# mechanism fired twice a run in front of it.
+#
+# SIX OF ELEVEN REGISTERED LEGS FAILED across the three rounds (M5, A1, B1, R2,
+# R3, F1/F2) and every one moved the answer. R3 is the one worth copying: it
+# predicted the disagreement between the two instrument shapes and named the
+# suspect line before the bug was found.
+#
+# RECOMMENDED DISPOSITION: this entry closes on the clamp. The frame-sync
+# rewind at gp_ep.c:424 now has a measurement behind it -- two rewinds a run,
+# one dirty, two titles, two devices -- and wants its own entry as
+# unknown-semantics: whether a revisited slice's samples should be summed,
+# overwritten or dropped is not decidable from this tree, which is what that
+# line's own FIXME says.
 [issue.73]
 title = "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
 disposition = "defect"

@@ -473,7 +473,80 @@ watches `ep_frame_div` directly, and `jumps` (every rewind) is reported
 separately from `revisits` (those landing on still-dirty slices) so a rewind
 onto a freshly flushed buffer cannot be read as an overflow risk.
 
-<!-- FINAL ARMS -->
+### With the detector corrected, the rewind turns out to be real
+
+**MEASURED**, `1789284344-monaccfix-galleon` (Nova) and `-crimson` (Thor), ref
+`37e1fabd89`:
+
+| | Galleon | Crimson Skies |
+|---|---:|---:|
+| windows × frames | 17 × **7,500** | 18 × **7,500** |
+| cumulative frames | 127,500 | 135,000 |
+| **`jumps`** (every `ep_frame_div` rewind) | **2** | **2** |
+| **`revisits`** (rewinds leaving dirty slices) | **1** | **1** |
+| `detail nonzero` | 0 | 0 |
+| `detail saturated` | 0 | 0 |
+| post-startup `starve:` | 3 lines, 0.0000% ×2 | 3 lines, 0.0000% ×2 |
+| p50 | −29.15 / −29.25 | −15.95 / −15.75 |
+
+- **F1** — the artefact is gone: **PASSED** on its frame-count half, every one
+  of 35 windows exactly 7,500 frames. **FAILED** on `revisits == 0`.
+- **F2** — **FAILED as a prediction, and this is the finding.** `jumps` is 2,
+  not 0.
+- **F3** — starvation: **PASSED**, the reference three-line shape on both.
+- **F4** — level: **PASSED**.
+
+**`gp_ep.c:424` is the only writer of `ep_frame_div` that is not the increment
+at `apu.c:726`** — `mcpx_apu_reset` does not touch it, and a grep over `hw/`
+returns nothing else — so **every `jump` is a guest write to
+`NV_PAPU_EPRST`.** Two of them, deterministically, at APU initialisation, on
+two titles from two studios on two different handhelds. And **one of the two
+lands with slices still dirty**, so the `+=` really does add to a non-empty
+accumulator about once per run.
+
+It has never overflowed for a reason the arithmetic gives directly:
+`detail nonzero 0` says the revisited accumulators held **zero**, and
+`saturated 0` says nothing left int16 range. The reset happens during
+initialisation, when the mix is silent.
+
+**So the disposition changes, and in the direction that justifies the fix.**
+The clamp is not dead code guarding an unreachable path: it guards a path the
+guest takes about once per run, which would overflow if a title ever resynced
+the EP mid-cycle while the mix was loud. The residual risk is now stated
+exactly — *an `NV_PAPU_EPRST` write with `ep_frame_div % 8` in 1..7 coinciding
+with near-full-scale content* — instead of as "nobody has seen a wrap".
+
+This is also the vindication of dropping the per-sample counter. `nonzero`
+could never have found this: it counts accumulators that were non-zero, and
+the one event in the run lands on silence, so the old instrument read zero on
+16.8 million samples while the mechanism was firing twice a run in front of it.
+
+**Still deliberately not fixed: the rewind itself.** Whether the samples in a
+revisited slice should be summed, overwritten or dropped is a hardware-semantics
+question, and `gp_ep.c:424` carries `FIXME: Still unsure about frame sync`
+because nobody knows. The clamp makes the arithmetic safe either way. What has
+changed is that the frame-sync question now has a measurement behind it — two
+titles, two devices, two rewinds a run, one of them dirty — and deserves its
+own tracker entry as `unknown-semantics` rather than a comment.
+
+### Five failed legs, and what each one bought
+
+| leg | verdict | what it bought |
+|---|---|---|
+| M2/M3 `nonzero`/`saturated` == 0 | passed | looked like closure; was silence-blind |
+| **M5** starvation 0.0000% | **failed** (1 of 3 runs) | forced the instrument's cost to be answered rather than assumed |
+| **A1** arm without the counter starves too | **failed** | a draw — and exposed that the arm confounded clamp with counter |
+| **B1** the event reproduces | **failed** | one-run draw, so no attribution was available |
+| **R2** `revisits` == 0 | **failed** | the replacement detector had a false positive |
+| **R3** consistency with `nonzero` == 0 | **failed** | *named the bug before it was found* — the reset on the last slice |
+| **F1/F2** `revisits`/`jumps` == 0 | **failed** | the mechanism is real and fires twice a run |
+
+Six of the eleven registered legs failed. Every one of them moved the answer,
+and the last pair inverted the conclusion: #73 began as "a real hazard with no
+observed instance", spent a day looking like "unreachable by construction", and
+ended as "reachable, taken about once per run, safe only because it coincides
+with silence".
+
 
 
 ### What M2's zero does and does not bound
@@ -489,9 +562,12 @@ from here on adds to it whether it was asked to or not.
 
 The defect in the code is real and is now fixed at zero measured cost. The
 hazard it guarded against is **unreachable through voice density by
-construction** and **unobserved through the one path that remains**. #73 should
-close on the arithmetic; the EPRST rewind is a separate, open question about
-frame sync that `mon_acc`'s `nonzero` column now watches continuously.
+construction** — and **reachable, and actually taken, through the EPRST
+rewind**, which the corrected instrument measures at two rewinds a run on both
+titles with one of them landing on dirty slices (see the final arms below). It
+has never overflowed only because it coincides with initialisation silence.
+#73 closes on the clamp; the frame-sync rewind at `gp_ep.c:424` now has a
+measurement behind it and wants its own entry.
 
 ---
 
