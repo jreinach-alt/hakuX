@@ -1828,6 +1828,34 @@ no_suites = "A wrong VBLANK period changes when a title steps its simulation and
 #     a tick the guest never sees. 229 of 14,653, 1.56%, rising to 2.25% in
 #     the 1-20 defer windows.
 #
+# FIX MEASURED AND IT HOLDS, 2026-09-12. Arm B at ed5df55ccc, dispatch result
+# 1789275582-vblank-grid-B-4057320, same title/duration/device, binary
+# 9fcf8ecc4642 against arm A's 38402524d163. Prediction committed first at
+# bace14275d; read with docs/testing/vblank_ab.py.
+#
+#   regime            A mean / rate            B mean / rate
+#   def==0 (control)  16,712,711 / 59.844 Hz   16,718,178 / 59.825 Hz
+#   def 1-20          17,198,838 / 58.186 Hz   16,759,454 / 59.681 Hz
+#   def>20            19,159,610 / 52.285 Hz   16,701,985 / 59.884 Hz
+#   whole soak        17,747,165 / 56.587 Hz   16,721,058 / 59.816 Hz
+#
+# Five of five legs hold, INCLUDING B4, the cost leg the old comment predicted
+# would fail: median gfps 29.0 -> 29.0, unchanged, while deferrals per window
+# nearly doubled (15.8 -> 28.2) exactly as B5 predicted. The cascade the
+# comment feared does not happen on this title. Against the real NTSC
+# standard the guest's VBLANK clock goes from losing 3.83 s per minute of play
+# to 0.136 s, and in heavy scenes from 8.91 s/min to 0.067.
+#
+# p99 is deliberately UNCHANGED (25.10 -> 25.15 ms). Individual VBLANKs are
+# still late; the deferral still distorts phase within a frame. It no longer
+# steals time, because the short interval after gives it back. Phase and rate
+# are different properties and only the second is fixed -- phase stays open,
+# and FLIP_STALL firing a deferred VBLANK via timer_mod(now) (pgraph.c:2324)
+# inverts the causality outright: on hardware VBLANK is on a grid and the flip
+# latches at the next one; here the flip can pull the VBLANK to itself.
+#
+# Limits: one run per arm, one title, one device (Thor), locked grid only.
+#
 # NOT A DEFECT HERE: PCRTC_RASTER advances once per READ (pcrtc.c:39) where
 # silicon advances it per scanline. Counted, because whether it matters
 # depends on whether anything reads it: rast=0/0 across the whole soak.

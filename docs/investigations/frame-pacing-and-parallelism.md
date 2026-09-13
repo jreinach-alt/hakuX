@@ -57,11 +57,26 @@ Forcing it on (`HAKUX_FORCE_UNLOCK=1`) does not help and does harm:
 |---|---|---|---|
 | adaptive, as shipped | 17-29 | 1.7-2.2 ms | 43-57 |
 | adaptive, unlock forced | 15-19 | 6.3-7.2 ms | 60-62 |
-| simple VBLANK, no deferral | 17-29, cruise 33.2-33.9 ms | 0.0 ms | 0 |
+| simple VBLANK, no deferral | 17-29, cruise 33.2-33.9 ms | 0.0 ms* | 0 |
+
+**\* CORRECTED 2026-09-12, see
+[`guest-visible-vblank.md`](guest-visible-vblank.md) and #65.** That 0.0 ms is
+not a clean VBLANK. The jitter figure is an exponential mean kept from
+`s_last_vblank_fire_ns`, which the simple-VBLANK path never writes -- it
+returns before the block that updates it -- so the cell reads its initial
+value. And the row is measuring one of the two VBLANK sources live in that
+mode: `simple_vblank` also fires from `nv2a_vga_gfx_update` on every host
+display refresh, 90-120 Hz on these handhelds, and `pacing.vblank_fired` does
+not count those either. So `simple_vblank` is not "equal or better on every
+measure"; two of the measures could not see it.
+
+The conclusion about deferral below survives, and is now a number rather than
+an impression: on Galleon the deferral machinery took the guest's VBLANK clock
+5.6% slow, losing 3.83 s per minute of play. The cause was one token and the
+fix recovered it to 0.136 s/min at no cost in frame rate.
 
 Deferral is distorting the guest's timebase by several milliseconds per
-refresh and buying nothing here. **On this title, `simple_vblank` is equal or
-better on every measure.** That is one title; the setting exists because
+refresh and buying nothing here. That is one title; the setting exists because
 others presumably benefit, and that should be measured before anything
 changes. But the entry-condition flaw is worth fixing regardless.
 

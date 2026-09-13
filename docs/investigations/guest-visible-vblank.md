@@ -346,8 +346,58 @@ available.
 arm cannot measure it, and moving two things at once would make the half it can
 measure unreadable.
 
+### Verdict: 5 of 5, including the leg the old comment predicted would fail
+
+Arm B is dispatch result `1789275582-vblank-grid-B-4057320`, same title, same
+240 s, same device, binary `9fcf8ecc4642` against arm A's `38402524d163`.
+
+| regime | A mean | A rate | B mean | B rate |
+|---|---|---|---|---|
+| def==0 *(control)* | 16,712,711 ns | 59.844 Hz | 16,718,178 ns | 59.825 Hz |
+| def 1–20 | 17,198,838 ns | 58.186 Hz | 16,759,454 ns | 59.681 Hz |
+| def>20 | 19,159,610 ns | 52.285 Hz | **16,701,985 ns** | **59.884 Hz** |
+| whole soak | 17,747,165 ns | 56.587 Hz | **16,721,058 ns** | **59.816 Hz** |
+
+| leg | outcome |
+|---|---|
+| B1 def>20 mean falls ≥ 1,000,000 ns | **holds** — fell 2,457,625 ns |
+| B2 whole-soak rate above 58.000 Hz | **holds** — 59.816 Hz |
+| B3 def==0 control within ±50,000 ns | **holds** — moved 5,467 ns (0.03%) |
+| B4 median `gfps` drops by ≤ 2 | **holds** — 29.0 → 29.0, unchanged |
+| B5 defers per window rise | **holds** — 15.8 → 28.2 |
+
+Against the real NTSC standard rather than our own constant, the guest's
+VBLANK clock goes from losing **3.83 s per minute of play to losing 0.136 s** —
+a 28× reduction, and in heavy scenes from 8.91 s/min to 0.067 s/min.
+
+**The trade the old comment made is not there.** Deferrals nearly doubled, as
+B5 predicted — a VBLANK arriving sooner after a deferral lands inside the next
+deferral window more often — and the frame rate did not move at all. The
+cascade it feared did not happen on this title.
+
+Two things deliberately did *not* improve, and should not have:
+
+- **p99 is unchanged**, 25,100,000 → 25,150,000 ns. Individual VBLANKs are
+  still late; the deferral still distorts phase *within* a frame. What it no
+  longer does is steal time, because the short interval that follows gives it
+  back. Phase and rate are different properties and only the second was fixed.
+- **The def==0 control barely moved**, which is the point of having it. Galleon's
+  scene varies between soaks and one run per arm cannot rule that out on its
+  own; a 0.03% control against a 15% effect can.
+
+The honest limits: one run per arm, one title, one device (Thor), and the
+locked grid only — unlock mode was never entered in either arm.
+
 ## UNRESOLVED
 
+- **Phase.** The fix restores the *rate*; p99 says nothing about phase moved.
+  Whether a flip lands where hardware would put it relative to VBLANK is still
+  open, and FLIP_STALL firing a deferred VBLANK immediately via
+  `timer_mod(now)` (`pgraph/pgraph.c:2324`) inverts the causality outright: on
+  hardware VBLANK happens on a grid and the flip latches at the next one, here
+  the flip can pull the VBLANK to itself. Measuring that needs the flip
+  timestamp in the same histogram, which is a `pgraph.c` change and `pgraph.c`
+  belongs to nobody.
 - **What the period should be derived from.** P7 killed the CRTC/VPLL
   derivation at −26.3%. Three candidates remain and the measurement has not
   been designed: the NV2A extension bits we do not decode, a VPLL reference
