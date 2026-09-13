@@ -433,8 +433,9 @@ static void se_frame(MCPXAPUState *d)
         d->sleep_acc_us = 0;
     }
     /* Outside the once-a-second block deliberately: that block resets the
-     * utilization window, and starvation wants its own 5 s cadence. Reading
-     * the clock again here is a few nanoseconds against a 5.333 ms frame.
+     * utilization window, and starvation keeps its own 5 s cadence. `now` is
+     * reused rather than re-read, so this costs a call and a comparison on a
+     * 5.333 ms frame.
      */
     apu_starve_report(d, now);
     d->frame_count++;
