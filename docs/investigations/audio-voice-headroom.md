@@ -538,6 +538,15 @@ baseline of 92.843 s taken about eight hours earlier from a different build.
   callbacks — the guest not having produced a sample yet — which the corrected
   predicate in `audio-baseline.md` 4a excludes.
 
+  A second, weaker corroboration from the same logs: median `gfps` on Galleon
+  on the Nova is **18 without the meter** (census-only run, 22 samples) and
+  **23 with it** (25 samples), and Crimson Skies with the meter medians 29 with
+  a maximum of 35. Higher with the instrument in, so there is no measurable cost
+  — but `gfps` swings widely run to run on a warm device and this is offered as
+  "no sign of a cost", not as a measurement of one. The starvation counter is
+  the leg that actually binds, because it measures the audio thread's own
+  deadlines rather than the renderer's.
+
 ### T2: Dead or Alive 3, and one leg fails in the opposite direction
 
 **MEASURED.** Dead or Alive 3, Thor, 89.643 s of output, same ref as the
