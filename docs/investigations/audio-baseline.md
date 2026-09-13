@@ -273,7 +273,43 @@ believed. The arithmetic that catches it is: **captured seconds must not exceed
 the app's lifetime**, and `audio_measure.py` prints the first number while the
 soak's own timestamps give the second.*
 
-## 4. What this baseline cannot do
+## 4. The starvation measurement, predicted before the run
+
+The capture being unarmed is, for this one question, a gift. The harness
+write-up warns that starvation measured *during* a capture describes the capture
+run and not a normal one, because the capture writes to FUSE-backed storage from
+the audio thread. With the marker gone, a soak now yields the clean figure.
+
+The counters need no marker and no pull — they report through logcat, which the
+dispatcher already captures with `hakuX-audiocap:I` in its `LOGCAT_SPEC`.
+Queued: Galleon, Nova, 120 s, at the commit carrying the counter.
+
+- **S1 — the instrument is alive.** At least one `starve:` line appears.
+  - *Falsified* by zero lines. That would mean the build lacks the counter or
+    the report is not reached, and it would invalidate S2 rather than answer it.
+    This leg exists because a silent instrument and a clean result are the same
+    log, and that ambiguity has already cost this campaign two arms.
+- **S2 — starvation does not explain the owner's symptom.** Over the run,
+  zero-filled bytes are **under 1.0%** of output bytes, and **no single 5 s
+  interval reports more than 5%**.
+  - *Falsified* by a larger figure, in which case the handheld is losing that
+    fraction of its output to invented silence, no PCM capture can see it, and
+    the symptom is reopened with a mechanism the baseline could not reach.
+  - **This is not forced true by the change.** The counter does not touch the
+    FIFO, the watermarks or the pacing; it only observes. And the Android
+    defaults are exactly the shape that starves: the sink asks for 8192 bytes at
+    a time while the APU produces 1024 bytes per 5.333 ms, so a callback needs
+    eight production units to have completed, and `monitor_sink_cb` waits at
+    most 10 × 0.5 ms = 5 ms — less than one frame period — before giving up and
+    filling with zeros. A run that starves is entirely plausible a priori; that
+    is why this is worth measuring rather than asserting.
+- **S3 — the figure is uncontaminated.** The line reads `capture off`.
+  - This is a control on an assumption, not an independent prediction. If it
+    reads `ARMED`, someone re-armed the marker between now and the run, the
+    capture is writing on the audio thread, and S2's number describes that
+    rather than a normal run — in which case S2 is void, not falsified.
+
+## 5. What this baseline cannot do
 
 Carried forward from `audio-harness.md` section 4, because each still binds:
 
