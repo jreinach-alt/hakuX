@@ -1,0 +1,71 @@
+# WHO HOLDS WHICH FILES. The live allocation, machine-checked.
+#
+# This used to be a table in docs/orchestration.md and it was SILENTLY
+# REVERTED by folding a lane branch: a lane branches from the tip, works for an
+# hour, and carries whatever that file said when it started, so cherry-picking
+# its commits restores the older table with no conflict. That happened on
+# 2026-09-13 -- the fifth-wave allocation was written, two lane branches were
+# folded, and the file went back to the fourth wave. The #43 lane read the
+# reverted row, saw `glsl/psh.c` listed as another lane's, and correctly
+# reported its brief as wrong.
+#
+# A prose paragraph cannot notice that. This file can: `wave` is monotone and
+# `check_territory.py` (wired into preflight.sh) FAILS if it ever goes
+# backwards. A fold that reverts the allocation now breaks the gate instead of
+# misinforming the next brief.
+#
+# Rules this encodes, all of them earned:
+#
+#   A file whose stream's arm is QUEUED BUT NOT YET JUDGED is still claimed.
+#   The arm measures one delta and a second edit lands inside it. The claim is
+#   as long as the ARM, not as long as the issue.
+#
+#   When a finished fix spans two territories, GRANT one lane the other's file
+#   rather than waiting for both to free. Waiting serialises on the slower lane
+#   for no benefit.
+#
+#   Issues split from a common parent are never assigned concurrently, even to
+#   lanes whose files do not overlap -- two agents would derive the same
+#   mechanism twice. So `issues` is part of a claim, not decoration.
+
+wave = 6
+updated_utc = "2026-09-13T13:10:00Z"
+
+[lane.texture]
+issues = ["56", "59"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/texture.c",
+         "hw/xbox/nv2a/pgraph/vk/buffer.c", "hw/xbox/nv2a/pgraph/s3tc.c",
+         "hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
+note = "psh.c and psh.h GRANTED: #59's pad write-side fix needs the fragment shader's alpha output and the read-side swizzle removal ATOMICALLY, and either half alone stacks a second correction on the rendered pixels."
+
+[lane.skew]
+issues = ["44", "65"]
+files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
+         "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
+
+[lane.vertex]
+issues = ["53", "38", "13-geom"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh.h",
+         "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
+note = "geom.c also carries #13's TRIANGLES edge order: our geometry shader decomposes POLY_MODE_LINE triangles, not Turnip, so 45,760 decisive px may be three lines of GLSL."
+
+[lane.skew_instrument]
+issues = ["54"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/vk/command.c", "hw/xbox/nv2a/pgraph/vk/renderer.h"]
+
+[lane.performance]
+issues = []
+files = ["accel/**", "include/exec/**"]
+note = "accel/ is nominally the remote lane's and is assigned OUT to this lane for the TB-block work."
+
+[lane.remote]
+issues = ["34", "39", "51", "60", "62", "66"]
+files = ["hw/xbox/nv2a/pgraph/gl/*.c", "target/**", "ui/**", "audio/**", "tests/**"]
+note = "Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
+
+[free]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c",
+         "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+         "hw/xbox/mcpx/**"]

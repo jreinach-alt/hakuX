@@ -91,6 +91,21 @@ else
     echo "  regenerate: python3 docs/testing/nv2a_index.py build --tests $TESTS --support $SUPPORT"
 fi
 
+# 3. The territory allocation. Not a CI gate -- CI does not care who holds a
+#    file -- but it belongs here because it catches a SILENT revert, and the
+#    revert happens at exactly the moment this script runs: after folding lane
+#    branches, before pushing. A lane carries whatever territory.toml said when
+#    it branched, so cherry-picking it restores the older allocation with no
+#    conflict. That went unnoticed on 2026-09-13 and the next brief was written
+#    from a reverted table.
+step "territory"
+if python3 docs/testing/check_territory.py >/tmp/preflight-territory.log 2>&1; then
+    ok
+else
+    bad
+    sed 's/^/  /' /tmp/preflight-territory.log
+fi
+
 echo
 if [ $fail -eq 0 ]; then
     echo "preflight passed - safe to push"

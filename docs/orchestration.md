@@ -256,65 +256,68 @@ useful item in a brief: it is how the fold-in is judged, and it is what makes
 a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
 have been caught at the prediction stage.
 
-### Territories as allocated 2026-09-13 (sixth wave, five local lanes)
+### Territories: see `docs/testing/territory.toml`
 
-| stream | files owned |
-|---|---|
-| texture length + LRU (#56), **then #59's pad write-side** | `vk/texture.c`, `pgraph/texture.c`, `vk/buffer.c`, `s3tc.c`, **plus `glsl/psh.c` and `psh.h` granted for the pad fix** |
-| guest/pgraph skew (#44) + defer cap (#65) | `nv2a.c`, `nv2a_int.h`, `nv2a_regs.h`, `pfifo.c`, `pramdac.c`, `pgraph.c` |
-| light association (#53) + interpolator parity (#38) | `glsl/vsh.c`, `vsh.h`, `vsh-ff.c`, `vsh-prog.c`, `geom.c` |
-| barrier-skew instrument (#54) | `vk/surface.c`, `vk/draw.c`, `vk/command.c`, `vk/renderer.h` |
-| performance | `accel/**`, `include/exec/**` (assigned OUT of the remote lane's `accel/`) |
-| remote lane (#34, #39, #51, #60, #62, #66) | `gl/*.c`, `target/**`, `ui/**`, `audio/**`, `tests/**`, desktop build, **and the GL renderer as a capability** |
-| nobody | `prim_rewrite.c`, `vk/surface-compute.c`, `hw/xbox/mcpx/**` |
+The live allocation moved out of this file on 2026-09-13, and the reason is
+the whole lesson.
 
-**ROUTED, and the block is cleared.** #59's pad write-side fix is derived and
-its simulation scores both captures bit-exact. It needs the fragment shader's
-alpha output (`glsl/psh.c`) **and** removal of the read-side swizzle
-(`vk/texture.c`) **atomically** -- either half alone stacks a second
-correction on the rendered pixels -- so it was unlandable for as long as those
-sat in two territories. `psh.c` is now **granted to the texture lane**, which
-already holds the other half.
+**A prose table here is silently reverted by folding a lane branch.** A lane
+branches from the tip, works for an hour, and carries whatever this file said
+when it started -- so cherry-picking its commits restores that older table
+with no conflict and no error. That happened: the fifth-wave allocation was
+written, two lane branches were folded, and the file went back to the fourth
+wave. The #43 lane then read the reverted row, saw `glsl/psh.c` listed as
+another lane's, and correctly reported its brief as wrong. Both were half
+right and the table was the older half.
 
-The general rule, since this will recur: when a finished fix spans two
-territories, **grant one lane the other's file rather than waiting for both to
-free.** Waiting serialises on the slower lane for no benefit; the grant costs
-one message.
+A paragraph cannot notice that about itself. So the allocation is now
+`docs/testing/territory.toml`, with:
 
-**THIS TABLE IS REVERTED BY CHERRY-PICKING A LANE BRANCH, and that is how it
-goes stale.** A lane branches from the tip, works for an hour, and carries
-whatever `orchestration.md` said when it started. Folding its commits then
-silently restores that older table -- which is exactly what happened on
-2026-09-13: the fifth-wave table was written, two lane branches were folded,
-and the file went back to the fourth wave. The #43 lane read the reverted row,
-saw `glsl/psh.c` listed as another lane's, and correctly reported its brief as
-wrong -- both were half right and the table was the older half.
+  - a monotone `wave` integer, checked by `docs/testing/check_territory.py`
+    against the highest wave ever recorded, so **a fold that reverts the
+    allocation FAILS the gate** instead of misinforming the next brief;
+  - an overlap check, because two lanes holding one file is the bug the table
+    exists to prevent and is worth a loop rather than one more request that
+    people check;
+  - a split-issue check, because issues split from a common parent must not be
+    concurrent **even when their files do not overlap** -- two agents would
+    derive the same mechanism twice, and #16/#52, #9/#53/#38 and #43/#50 are
+    the pairs this campaign has actually confused.
 
-So: **after folding any lane branch, re-check this section** before writing
-the next brief. The briefs are written from this table by hand, and a stale row
-is indistinguishable from a live claim. Better still, free a file in the same
-commit that frees it, and never let a wave's allocation live only in a
-paragraph that a fold can overwrite.
+Wired into `docs/testing/preflight.sh`, which is the right place for it: CI
+does not care who holds a file, but the revert happens at exactly the moment
+preflight runs -- after folding lane branches, before pushing.
 
-A file whose stream's arm is **queued but not yet judged** is still claimed.
+Three rules the file encodes, all of them earned:
+
+**A file whose stream's arm is queued but not yet judged is still claimed.**
 The arm measures one delta and a second edit lands inside it. `psh.c` is the
-worked example of the whole life cycle: its implementing agent finished and
+worked example of the full life cycle: its implementing agent finished and
 released it; the orchestrator claimed it immediately because #10's A/B was
-queued and an edit between the arms would have been measured as part of #10's
-delta; it was released to the fog lane the moment the pair was judged (claimed
-23:30, judged 23:51, released 23:55); the fog lane finished and freed it; and
-it is now granted to the texture lane for a fix that cannot land without it.
-**The claim is as long as the arm, not as long as the issue.**
+queued; it was released to the fog lane the moment the pair was judged
+(claimed 23:30, judged 23:51, released 23:55); the fog lane finished and freed
+it; and it is now granted to the texture lane for a fix that cannot land
+without it. **The claim is as long as the arm, not as long as the issue.**
 
-Retired: first wave (depth #16, image blit #33, viewport #49, audio); second
-wave (cube face #40, RADIAL fog #41, swatch order #50); third wave (depth
-cells #52, packed texels #59, line width #13, byte-grid quantisation); fourth
-wave (vk surface sync #61/#50, audio state #75/#71/#73, RADIAL fog #41/#42,
+**When a finished fix spans two territories, grant one lane the other's file
+rather than waiting for both to free.** Waiting serialises on the slower lane
+for no benefit. #59's pad write-side fix is the case: derived, simulated
+bit-exact, and unlandable for as long as `psh.c` and `vk/texture.c` sat in two
+territories.
+
+**Free a file in the same commit that frees it.** The briefs are written from
+the allocation by hand, and a stale row is indistinguishable from a live
+claim.
+
+Retired waves, kept because a retired wave means the **files** are free and
+not that the issue was finished: first (depth #16, image blit #33, viewport
+#49, audio); second (cube face #40, RADIAL fog #41, swatch order #50); third
+(depth cells #52, packed texels #59, line width #13, byte-grid quantisation);
+fourth (vk surface sync #61/#50, audio state #75/#71/#73, RADIAL fog #41/#42,
 issue audit, border flake #44, z16 packing, line priority #13, VBLANK
-deferral #65); fifth wave (line edge order #13, blend region #43, pad
-polarity #59). A retired wave means the **files** are free, not that the issue
-was finished -- #41 and #50 both returned to the table after being retired
-once, and #41 was fixed by the wave that got it back.
+deferral #65); fifth (line edge order #13, blend region #43, pad polarity
+#59). **#41 and #50 both returned to the table after being retired once, and
+#41 was fixed by the wave that got it back.**
 
 Every brief says *rebase first and read the current file, not your memory of
 it*. `glsl/vsh.c` changed twice in one day; `psh.c` gained `texelTieBias`, a
