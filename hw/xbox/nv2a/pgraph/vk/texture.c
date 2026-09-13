@@ -1688,11 +1688,44 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         VkFormat sn = kelvin_format_to_snorm(expected_fmt);
         if (sn) expected_fmt = sn;
     }
+    bool image_is_native_bc = false;
     if (!surface_to_texture && r->texture_compression_bc_supported &&
         state.dimensionality != 3) {
         VkFormat bc = kelvin_format_to_native_bc(state.color_format);
-        if (bc) expected_fmt = bc;
+        if (bc) {
+            expected_fmt = bc;
+            image_is_native_bc = true;
+        }
     }
+
+    /*
+     * What the texture unit reads for this memory's pad bits (issue #48).
+     *
+     * THIS IS A PROPERTY OF THE SURFACE FORMAT, NOT OF HOW THE IMAGE GOT
+     * FILLED, and gating it on surface_to_texture was a latent bug that #59
+     * turned into a live one. Widening the 5/6-bit packed formats to RGBA8
+     * pushed them off the surface-to-texture path and onto the VRAM path, and
+     * the override went with them: Blend_surface/DstAlpha_X_O1RGB5 and
+     * 1-DstAlpha_X_O1RGB5 went from bit-exact to 65,536 differing pixels,
+     * being the whole of eight half-swatches whose displayed alpha is
+     * whatever the texture unit returns for an X1R5G5B5_O1R5G5B5 surface.
+     * Measured, not inferred: the goldens and the pre-#59 arm both hold
+     * (255,255,255,255) there and the post-#59 arm holds (85,85,85,255),
+     * which is the 0xFF555555 clear showing through an alpha of 0.
+     *
+     * The Z variant did not move, and that is luck rather than correctness:
+     * its pad bits happen to be stored as 0, so reading them raw gives the
+     * same 0.0 the format promises. A fix that hardcoded 1.0 would have
+     * broken it; the swizzle says ZERO for Z and ONE for O, from
+     * host_fmt.sampled_pad_alpha, which is the measurement.
+     *
+     * Native BC is excluded because the surface interpretation is not in play
+     * at all there: those blocks are decompressed, not read as surface texels.
+     */
+    VkComponentSwizzle pad_alpha_override =
+        (surface && !image_is_native_bc) ?
+            surface_sampled_pad_alpha(surface) :
+            VK_COMPONENT_SWIZZLE_IDENTITY;
     /*
      * A pad-alpha surface (issue #48) carries its readback in the texture
      * view's alpha swizzle, and that swizzle is baked in when the view is
@@ -1716,8 +1749,7 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * swizzle, which lives in renderer.h; see the commit message.
      */
     bool pad_alpha_needs_rebuild =
-        surface_to_texture &&
-        surface_sampled_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY;
+        pad_alpha_override != VK_COMPONENT_SWIZZLE_IDENTITY;
 
     if (binding_found && (snode->image_config.format != expected_fmt ||
                           pad_alpha_needs_rebuild)) {
@@ -2060,14 +2092,15 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
      * Setting only .a is sound whatever the rest of the mapping is: a
      * VkComponentMapping entry names the source the destination channel reads,
      * so .a = ZERO/ONE yields a sampled alpha of 0.0/1.0 regardless of how
-     * the colour channels are permuted. native_bc cannot be in play here --
-     * it requires !surface_to_texture.
+     * the colour channels are permuted. Native BC is already excluded where
+     * pad_alpha_override is computed.
+     *
+     * It applies whether the image was filled from the surface or uploaded
+     * from VRAM, because the readback is a property of the surface's format
+     * and not of the fill path. See the derivation at pad_alpha_override.
      */
-    if (surface_to_texture) {
-        VkComponentSwizzle pad_alpha = surface_sampled_pad_alpha(surface);
-        if (pad_alpha != VK_COMPONENT_SWIZZLE_IDENTITY) {
-            vkf.component_map.a = pad_alpha;
-        }
+    if (pad_alpha_override != VK_COMPONENT_SWIZZLE_IDENTITY) {
+        vkf.component_map.a = pad_alpha_override;
     }
 
     VkImageViewCreateInfo image_view_create_info = {
