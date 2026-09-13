@@ -538,6 +538,36 @@ with a control inside it -- an impossible row, a within-run reverse-order
 arm, a `MIN`/`MAX` case that must read 1 by specification. A number with no
 control is a number you have to trust.
 
+## Predict an intermediate value, not just an improvement
+
+A leg that says "this class will improve" is satisfied by any change that
+helps. A leg that says "this class will reach exactly 70.36% and NOT 100%"
+can only be satisfied by the mechanism you claim.
+
+#13's `geom.c` arm on 2026-09-13 is the worked example. Two legs:
+
+  `Tri`  58.22% -> 100.00%   -- landed 100.00%
+  `TFan` 47.57% -> 70.36%, and explicitly NOT 100%  -- landed 70.36%
+
+The `Tri` leg is the weaker of the two. A fix aimed at `Tri` was always going
+to move `Tri`, and 100% is the value any correct-looking change trends toward.
+The `TFan` leg is the measurement: it names a specific shortfall, caused by a
+rotation in a DIFFERENT file that the change cannot compensate for, and a
+change that "merely helped" would have overshot or undershot it.
+
+So when a mechanism predicts partial credit somewhere, register the partial
+value. It is free, it is the half of the prediction that can fail, and an
+intermediate value landing exactly is worth more than a headline reaching its
+ceiling.
+
+The corollary is about where the prediction came from. The lane's first answer
+for `TFan` was derived by HAND-TRACING the composition and was wrong -- and
+reading the code harder could not have fixed it, because two readings both
+reproduce the measured `Tri` figure and only one reproduces the measured
+`TFan` figure. What separated them was calibrating the model against arm A's
+eleven classes. **When a model has a free parameter you cannot read off the
+source, calibrate it on data you already have rather than tracing again.**
+
 ## Let the gate's exit code decide something
 
 Running a check and then not letting its result change what you do is worse
