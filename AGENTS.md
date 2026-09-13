@@ -342,6 +342,37 @@ Discs are built just-in-time (`make_isolation_discs.py --build-one`) because
 
 ## Verifying a change
 
+**Write the prediction down before the device runs, or the result proves
+nothing.** `docs/testing/request.sh` enforces this: a suites request needs
+either `--expect FILE`, naming a prediction registered with
+`ab_compare.py --register`, or `--no-expect REASON` for a run that is not an
+A/B arm. The prediction's sha256 is recorded in the request at queue time and
+checked when the arm is judged, so a verdict reads `PRE-REGISTERED`,
+`TAMPERED`, `UNBOUND` or `POST-HOC`. Only the first is worth citing.
+
+Four rules, each of which cost a real verdict on 2026-09-12:
+
+- **State the falsifier as a measurement, not a pixel count.** Name the
+  quantity your mechanism changes and predict *that*. Residual classes
+  overlap: a pixel can be wrong for two independent reasons at once, so
+  removing one cause need not move the count at all. Good falsifiers from that
+  day: per-column depth spread, which cube face a pixel selects, a swatch's
+  centre row, the mean light term over a lit region, the recovered byte for a
+  named float component.
+- **A flat count does not mean the change was inert.** Diff arm A's captures
+  against arm B's before concluding it did nothing -- a guard that fires and
+  returns a *different wrong answer* is indistinguishable in the totals.
+- **Register tolerances as tolerances.** A prediction whose prose said
+  +/-3,000 registered an exact value and turned a passing measurement into a
+  violated check.
+- **Register deltas, not absolutes**, whenever the baseline was read from a
+  different binary than the arm that will run.
+
+And a mean is a poor summary: on 2026-09-12 one hid an 87,381-pixel defect
+behind "0.00" and another hid an ordered dither behind "+0.98". Report
+differing-pixel count plus max delta, and compare RGBA, never RGB.
+
+
 ```bash
 # 1. Does it still boot?  (~25s)
 docs/testing/boot-test.sh mylabel
