@@ -165,6 +165,18 @@ class Arm:
     def classifier(self):
         return self.meta.get("classifier_rev", "")
 
+    @property
+    def scorer(self):
+        # score_sweep.py's revision, which is what actually assigns the
+        # `status` column. `classifier_rev` names classify_residuals.py and
+        # never touched it -- see the warning below.
+        return self.meta.get("scorer_rev", "")
+
+    @property
+    def device(self):
+        return (self.meta.get("device_label")
+                or self.meta.get("device_serial") or "")
+
     def captures(self):
         keys = set()
         for rows in self.per_run:
@@ -288,9 +300,15 @@ def check_comparable(a, b, allow_same_binary=False):
                "Either the two refs resolve to the same commit, or the build "
                "cache served one binary twice." % a.apk)
         if allow_same_binary:
-            warn.append("SAME BINARY: " + msg + " Continuing on "
-                        "--allow-same-binary: any delta below is device "
-                        "noise, which is the only thing it can be.")
+            same_dev = a.device and a.device == b.device
+            warn.append(
+                "SAME BINARY: " + msg + " Continuing on --allow-same-binary. "
+                + ("Both arms ran on %s, so any delta below is run-to-run "
+                   "noise on one device." % a.device if same_dev else
+                   "The arms ran on DIFFERENT devices (A %s, B %s), so a "
+                   "delta below is run-to-run noise OR a difference between "
+                   "the two handhelds, and this pair cannot separate them."
+                   % (a.device or "?", b.device or "?")))
         else:
             die(msg + "\nPass --allow-same-binary if the point is to measure "
                 "the noise floor.")
@@ -312,6 +330,61 @@ def check_comparable(a, b, allow_same_binary=False):
                    .strftime("%Y-%m-%d %H:%M")))
 
     # -- warnings ----------------------------------------------------------
+    # THE DEVICE. There was no check here at all, and the omission cost a
+    # registered leg rather than merely a nicety.
+    #
+    # `affinity.py` pins both arms of a pair to one handheld precisely so a
+    # comparison has one variable. That pin is not a guarantee: it falls
+    # through when the sibling's device is no longer serving, which is correct
+    # -- the alternative is an arm nobody claims for the length of an outage --
+    # and it means a pair CAN span two devices without anyone asking for it.
+    #
+    # Measured 2026-09-13. #50's arm A ran on the nova, the nova was held for
+    # four hours, arm B ran on the thor. The registered determinism legs --
+    # must_not_move over a suite and better=0/worse=0 -- were written to ask
+    # "is this disc deterministic run-to-run". A split pair answers
+    # "run-to-run AND device-to-device together", and a FAILURE stops being
+    # evidence for the world the prediction named, because a device difference
+    # produces the same signature.
+    #
+    # Not fatal, deliberately, and this is the one place it differs from
+    # disc_id. A different disc makes captures INCOMPARABLE. A different device
+    # makes them comparable and CONFOUNDED -- the two handhelds measured 62 of
+    # 62 captures byte-identical -- so the honest response is to say what the
+    # pair can and cannot establish, not to refuse it. Note that the 62/62 was
+    # measured on `Texture DXT` + `Surface clip` on the STOCK disc, so it does
+    # not transfer to an arbitrary capture class on its own.
+    if a.device and b.device and a.device != b.device:
+        warn.append(
+            "DEVICES DIFFER (A %s, B %s). The pair is comparable but "
+            "CONFOUNDED: every figure below mixes run-to-run variation with "
+            "any difference between the two handhelds. A leg that HOLDS is "
+            "strictly stronger than one device would give. A leg that FAILS "
+            "is NOT attributable -- a device difference has the same "
+            "signature as the defect -- so a failure here needs a same-device "
+            "pair before it can be diagnosed." % (a.device, b.device))
+    elif not a.device or not b.device:
+        warn.append("device not recorded for %s; a pair cannot be shown to be "
+                    "single-device, so treat any band below as an upper bound "
+                    "on determinism."
+                    % (", ".join(n for n, arm in (("A", a), ("B", b))
+                                 if not arm.device)))
+    # The SCORER, not just the classifier. `status` -- ok / label-differs /
+    # white-content, and therefore which captures are VOID -- comes from
+    # score_sweep.py, which `classifier_rev` does not name. Two results with
+    # the same classifier_rev disagreed about 63 captures for exactly this
+    # reason, and a whole sweep column turned out to have been scored by two
+    # scorers because the fix landed mid-run.
+    if a.scorer and b.scorer and a.scorer != b.scorer:
+        warn.append("scorer_rev differs (A %s, B %s); the arms disagree about "
+                    "which captures are VOID, which is not a fact about the "
+                    "renderer. Re-score one arm before reading any status "
+                    "count below." % (a.scorer, b.scorer))
+    elif bool(a.scorer) != bool(b.scorer):
+        warn.append("scorer_rev is recorded for only one arm (A %r, B %r). "
+                    "The field was added 2026-09-13, so an older result simply "
+                    "predates it -- that asymmetry is not evidence the scorers "
+                    "differed." % (a.scorer, b.scorer))
     if a.classifier != b.classifier:
         warn.append("classifier_rev differs (A %s, B %s); the boundary-shift "
                     "class exists only from d0114a49, so residual splits "
