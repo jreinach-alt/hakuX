@@ -592,6 +592,41 @@ versions of its check wrong.** An identity that holds exactly tells you the
 two sides are read at the same instant; one that holds to +-1 tells you they
 are not, which is information about the instrument rather than noise.
 
+## A falsifier's power depends on the baseline rate, so an old floor can turn it into a coin flip
+
+`2D_BorderTex_SZ` is judged by `stale_px == 0` on 10 of 10 runs. That bar was
+set against a measured floor of 6 of 10 runs non-zero, where a binary with NO
+fix passes it by luck at 0.4^10 = **0.01%**. On 2026-09-13 an arm A control
+read 2 of 10 non-zero -- and at that rate the same bar is passed by luck at
+0.8^10 = **10.7%**.
+
+**The bar did not change. The disc did.** A one-in-nine coin flip is not a
+falsifier, and an arm B reading zero would have been cited as a pass.
+
+So a falsifier stated as "N clean runs" carries a hidden dependency on the
+baseline rate, and a floor taken long ago silently erodes it. Two things
+follow:
+
+**Register a VALIDITY GATE on arm A, and void the pair when it fails.** The
+lane's V0 -- "arm A must show >= 3 of 10 non-zero, or the pair is void" -- is
+what caught this, before an arm B zero could be read as a win. A validity gate
+is not a leg about the fix; it is a leg about whether the instrument is
+pointing at anything.
+
+**And a stale floor OVERSTATES a defect, which flatters every later arm.** The
+`Texture border` floor in use was 128 commits old. Anything measured against
+it gets credit for whatever fixed the flake in between -- including, in this
+case, the arm that closed the issue.
+
+The honest fallback is also worth naming, because it is tempting and wrong:
+after V0 failed, "the rate has fallen" is NOT established. 2 of 10 against a
+6-of-10 floor is Fisher two-sided **p = 0.160**; against a 5-of-10 control,
+**p = 0.350**. Separating 0.2 from 0.6 at this bar needs roughly twenty runs
+per arm. A per-run coin flip has almost no power without replicates -- which is
+why a RATE over many events inside one run (0.5661 and 0.5672 across two runs,
+reproducible to 0.2%) is a strictly better instrument than a count of clean
+runs, and why its bar can be an identity rather than a tally.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
