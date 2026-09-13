@@ -950,3 +950,61 @@ trap as a threshold tuned until the counts match. **The corner mapping has to
 be derived from what each dotmap does to the dots' signs, not fitted per
 capture**, and until it is derived there is nothing here worth landing -- not
 even the two captures that improved.
+
+### Held-out permutation test: it is per-mapping, and the residue is a region
+
+Registered as `dot-str-3d-corner-permutation.json` (sha256 `a0e3181e...`,
+`a4237834`) before any of it was computed, because quoting agreement under a
+permutation fitted to the same capture cannot fail -- the permutation is chosen
+to maximise the number being quoted. Fit on `-1to1` alone, applied unchanged to
+the other five.
+
+`P` fitted on `-1to1`: `R->R, B->G, W->W, G->B`.
+
+| capture | under `P` | its own best | predicted | |
+|---|---:|---:|---|---|
+| `-1to1` | 64.4% | 64.4% | >=60% | holds *(tautological: this is the fit capture)* |
+| `-1to1GL` | **64.5%** | 64.5% | >=60% | **holds -- transfers exactly** |
+| `-1to1D3D` | 8.2% | 91.8% | <40% | holds |
+| `0to1` | 19.9% | 80.0% | <40% | holds |
+| `HiLo_1` | 24.4% | 75.6% | <40% | holds |
+| `HiLoHemi` | 51.7% | 66.4% | <40% | **fails** |
+
+**Five of six legs hold, and the sixth lands in the 40-60% band the
+registration declared undetermined in advance** -- so the prediction told me
+how to treat `HiLoHemi` before it was measured, rather than after.
+
+**It is not one permutation.** `P` transfers to exactly one capture, `-1to1GL`,
+reproducing its own best figure to a tenth of a point -- the same transform
+family, as the earlier table implied. On everything else it collapses, most
+sharply on `-1to1D3D`, which goes from 91.8% under its own permutation to 8.2%
+under `P`. The corner encoding therefore depends on the dot mapping, and the
+fix is not a transposed constant.
+
+The `-1to1` row is quoted only for completeness. It is the capture `P` was
+fitted on, so its agreement is guaranteed and carries no information; the
+transfer evidence is `-1to1GL`.
+
+### The residue is a region, not noise
+
+Second and independent: after each capture's *own* best permutation, is what
+remains structured or scattered? Measured as the mean number of 4-neighbours a
+residue pixel has that are also residue, against the value expected if the same
+count were scattered at random over the cube region.
+
+| capture | fit | residue px | observed | random | ratio |
+|---|---:|---:|---:|---:|---:|
+| `-1to1D3D` | 91.8% | 4,639 | 3.66 | 0.33 | **11.2x** |
+| `0to1` | 80.0% | 11,396 | 3.86 | 0.80 | **4.8x** |
+| `HiLo_1` | 75.6% | 13,865 | 3.89 | 0.97 | **4.0x** |
+| `-1to1` | 64.4% | 20,264 | 3.85 | 1.42 | **2.7x** |
+
+Predicted >2x; measured 2.7x to 11.2x. A residue pixel has on average 3.7 to
+3.9 of its four neighbours also in the residue -- these are solid regions, not
+salt and pepper.
+
+**So the corner rule is exact with a labelling bug and a second, smaller,
+spatially coherent rule on top** -- not an approximation that a better
+relabelling would finish. Those are different things to chase, and this
+distinguishes them. The next question is what that region *is*: whether it
+follows a cube, a face boundary, or a silhouette.
