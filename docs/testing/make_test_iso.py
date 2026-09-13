@@ -213,6 +213,52 @@ def _suites_with_skips(args):
     that is entirely an artefact of its own disc.
     """
     suites = {name: {"skipped": False} for name in args.suite}
+
+    # --only-test is the ALLOW-LIST, and its shape is the inverse of a skip:
+    # the suite goes to {"skipped": True} and each named test to
+    # {"skipped": False}. That is not a guess. runtime_config.cpp resolves it
+    # in ApplyConfig: `default_skip_test_case` starts at
+    # `skip_tests_by_default_`, a suite-level entry overrides it, and then a
+    # per-test explicit entry overrides THAT --
+    #
+    #     skip_test_case = explicit_config->second == SkipConfiguration::SKIPPED
+    #
+    # so a per-test False beats a suite-level True. `ParseTestCases` reads the
+    # literal key "skipped" as the suite's own setting and every other key as a
+    # test name whose value must be an object. And `ApplyConfig` drops a suite
+    # with no enabled tests entirely, which is why naming only tests that do
+    # not exist yields an empty disc rather than a full one.
+    #
+    # It is written this way round because the obvious spelling silently runs
+    # NOTHING, which the comment above records having already cost a device
+    # round trip once.
+    only = {}
+    for spec in args.only_test:
+        suite, _, test = spec.partition("::")
+        if not test:
+            raise SystemExit("--only-test wants \"Suite::Test\", got %r" % spec)
+        suite = suite.replace("_", " ")
+        if suite not in suites:
+            raise SystemExit(
+                "--only-test names %r, which is not among the --suite names: %s"
+                % (suite, ", ".join(sorted(suites)) or "(none)"))
+        only.setdefault(suite, []).append(test)
+    for suite, tests in only.items():
+        # Refuse the combination rather than pick a winner. Both flags resolve
+        # through the same per-test map, so "only A, skipping A" is a request
+        # with no meaning and "only A, skipping B" is a longer way of writing
+        # "only A" -- either way the requester believes something the disc does
+        # not do.
+        if any(sp.partition("::")[0].replace("_", " ") == suite
+               for sp in args.skip_test):
+            raise SystemExit(
+                "--only-test and --skip-test both name %r; they resolve through "
+                "the same per-test map, so combining them cannot mean what it "
+                "looks like. Use one." % suite)
+        suites[suite] = {"skipped": True}
+        for test in tests:
+            suites[suite][test] = {"skipped": False}
+
     for spec in args.skip_test:
         suite, _, test = spec.partition("::")
         if not test:
@@ -255,6 +301,11 @@ def main(argv=None):
                           "not underscores (\"Bump map\", not \"Bump_map\") -- "
                           "the underscored form is the results directory. "
                           "Without this the disc runs everything.")
+    run.add_argument("--only-test", action="append", default=[],
+                     metavar="SUITE::TEST",
+                     help="run ONLY these tests from their --suite; repeatable. "
+                          "The inverse of --skip-test, and mutually exclusive "
+                          "with it per suite.")
     run.add_argument("--skip-test", action="append", default=[],
                      metavar="SUITE::TEST",
                      help="skip one test within a --suite, repeatable. Needed "

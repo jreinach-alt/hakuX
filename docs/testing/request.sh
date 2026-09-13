@@ -45,7 +45,7 @@ D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
-AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""
+AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -53,6 +53,7 @@ while [ $# -gt 0 ]; do
         --suites) SUITES="$2"; shift 2;;
         --tests) TESTS="$2"; shift 2;;
         --skip-tests) SKIP_TESTS="$2"; shift 2;;
+        --only-tests) ONLY_TESTS="$2"; shift 2;;
         --ref) REF="$2"; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
@@ -236,9 +237,11 @@ reads "tests", so this request would run the WHOLE suite while reporting that
 it was narrowed. dispatcher.sh's header documented the field, which is worse
 than not mentioning it; that line now says NOT IMPLEMENTED.
 
-For now: narrow with --skip-tests, or run the whole suite and select afterwards.
-An allow-list (--only-test, via make_test_iso.py's skip_tests_by_default) is
-the real fix and is not written yet.
+Use --only-tests "Suite::Test,Suite::Other" instead. That is the allow-list and
+it IS implemented: make_test_iso.py --only-test sets the suite to
+{"skipped": true} and each named test to {"skipped": false}, which
+runtime_config.cpp's ApplyConfig resolves in that order -- a per-test entry
+overrides the suite default, and a suite left with no enabled tests is dropped.
 MSG
     exit 2
 fi
@@ -366,6 +369,80 @@ mkdir -p "$D/queue"
 # is not a crash. It is a request that silently ran with `device` empty, i.e.
 # on whichever handheld was idle, which is the one thing the field exists to
 # prevent.
+# --only-tests: validated here, and checked against the SNAPSHOT the dispatcher
+# actually runs rather than against the tree.
+#
+# That distinction is the whole point. `dispatcher.sh` copies its helpers into
+# $DISPATCH_DIR/bin at re-exec and runs THOSE, and its re-exec hash covers only
+# dispatcher.sh, soak_title.sh, run_disc.sh and score_sweep.py -- make_test_iso.py
+# is snapshotted but NOT hashed. So a tree that has --only-test can be served by
+# a snapshot that does not, and the request would reach an argparse that has
+# never heard of the flag. Checking the tree, as the --skip-tests guard above
+# does, is a proxy; checking the snapshot is the truth, and it distinguishes
+# "not merged yet" from "merged, restart the dispatcher".
+if [ -n "$ONLY_TESTS" ]; then
+    SNAPBIN="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}/bin"
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    if ! grep -q -- --only-test "$SNAPBIN/make_test_iso.py" 2>/dev/null \
+       || ! grep -q only_tests "$SNAPBIN/dispatcher.sh" 2>/dev/null; then
+        # BOTH files, because this flag needs both halves: make_test_iso.py to
+        # understand --only-test and dispatcher.sh to pass it. Checking one
+        # would print "merged, restart the dispatcher" while the other half was
+        # still unmerged, sending the reader to restart something that cannot
+        # help -- a refusal whose remedy does not work is worse than a blunt one.
+        if grep -q -- --only-test "$SERVER/make_test_iso.py" 2>/dev/null \
+           && grep -q only_tests "$SERVER/dispatcher.sh" 2>/dev/null; then
+            echo "refusing to queue: --only-tests is merged but the SERVING dispatcher" >&2
+            echo "still runs an older snapshot ($SNAPBIN). Restart it, or touch one of" >&2
+            echo "dispatcher.sh/soak_title.sh/run_disc.sh/score_sweep.py to force its" >&2
+            echo "re-exec -- make_test_iso.py alone does not trigger one." >&2
+        else
+            echo "refusing to queue: --only-tests is not supported by the dispatcher" >&2
+            echo "that will serve this request. Merge the --only-test support first." >&2
+        fi
+        exit 2
+    fi
+    if [ -z "$SUITES" ]; then
+        echo "--only-tests needs --suites: the allow-list narrows WITHIN a suite." >&2
+        exit 2
+    fi
+    BADO=$(python3 - "$ONLY_TESTS" "$SUITES" <<'PYEOF'
+import sys
+only, suites = sys.argv[1], sys.argv[2]
+have = {s.strip() for s in suites.split(",") if s.strip()}
+bad = []
+for t in only.split(","):
+    t = t.strip()
+    if not t:
+        continue
+    if "::" not in t:
+        print("MALFORMED:" + t)
+        raise SystemExit(0)
+    suite = t.split("::")[0].strip().replace("_", " ")
+    if suite not in have and suite.replace(" ", "_") not in have:
+        bad.append(suite)
+print(",".join(sorted(set(bad))))
+PYEOF
+)
+    case "$BADO" in
+        MALFORMED:*)
+            echo "refusing to queue: --only-tests wants \"Suite::Test\", got \"${BADO#MALFORMED:}\"." >&2
+            exit 2 ;;
+    esac
+    if [ -n "$BADO" ]; then
+        echo "refusing to queue: --only-tests names $BADO, which --suites does not run." >&2
+        echo "  suites being run: $SUITES" >&2
+        echo "make_test_iso.py refuses this too, but after the claim and the build." >&2
+        exit 2
+    fi
+    if [ -n "$SKIP_TESTS" ]; then
+        echo "refusing to queue: --only-tests and --skip-tests both given. They" >&2
+        echo "resolve through the same per-test map, so combining them cannot mean" >&2
+        echo "what it looks like. Use one." >&2
+        exit 2
+    fi
+fi
+
 # A NAMED BASE ISO IS RESOLVED AND CHECKED HERE, not on the device.
 #
 # The dispatcher refuses a request whose base_iso is missing rather than
@@ -391,11 +468,11 @@ if [ -n "$BASE_ISO" ]; then
     fi
 fi
 
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" <<'PY'
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
  pull_glob, expect, expect_sha, no_expect, skip_tests, device,
- arm_audio, base_iso, perflog) = sys.argv[1:21]
+ arm_audio, base_iso, perflog, only_tests) = sys.argv[1:22]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -408,6 +485,7 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "audio_capture": arm_audio,
            "base_iso": base_iso,
            "perflog": perflog,
+           "only_tests": [t.strip() for t in only_tests.split(",") if t.strip()],
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(
