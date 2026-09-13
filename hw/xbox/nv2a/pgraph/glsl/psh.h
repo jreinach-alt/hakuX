@@ -48,6 +48,9 @@ typedef struct PshState {
     bool point_sprite;
     bool rect_tex[4];
     bool snorm_tex[4];
+    /* The texel holds two real 16-bit fields, so a HILO dot mapping reads
+     * each field whole instead of rebuilding it from two bytes. */
+    bool tex_hilo16[4];
     uint32_t tex_signed[4]; /* NV_PGRAPH_TEXFILTER0_[ARGB]SIGNED bits */
     bool compare_mode[4][4];
     bool alphakill[4];

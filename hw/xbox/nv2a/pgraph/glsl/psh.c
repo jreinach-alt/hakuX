@@ -330,6 +330,14 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
             (sign_filter & any_signed) == any_signed &&
             pgraph_color_format_has_signed_variant(color_format);
         state->tex_signed[i] = sign_filter & any_signed;
+        /* Formats whose texel is two 16-bit fields rather than four bytes.
+         * A HILO dot mapping reads each field whole (see dotmap_hilo_1),
+         * and a TEXFILTER sign flag on the byte position carrying a field's
+         * high byte -- ASIGNED for the high half of the texel, GSIGNED for
+         * the low half -- signs a 16-bit value, not a byte. */
+        state->tex_hilo16[i] =
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_R16B16 ||
+            color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_R16B16;
         state->shadow_map[i] = f.depth;
 
         uint32_t filter = pgraph_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4);
@@ -825,6 +833,147 @@ static int dotmap_index(struct PixelShader *ps, int i)
         return 0;
     }
     return m;
+}
+
+static const char *const dotmap_funcs[] = {
+    "dotmap_zero_to_one",
+    "dotmap_minus1_to_1_d3d",
+    "dotmap_minus1_to_1_gl",
+    "dotmap_minus1_to_1",
+    "dotmap_hilo_1",
+    "dotmap_hilo_hemisphere_d3d",
+    "dotmap_hilo_hemisphere_gl",
+    "dotmap_hilo_hemisphere",
+};
+
+/* DOT_RGBMAPPING_HILO_1, the only mapping with a 16-bit-field form. */
+#define DOTMAP_HILO_1 4
+
+/* Whether stage i's dot mapping reads a texel that stores real 16-bit
+ * fields rather than four bytes. */
+static bool hilo16_input(struct PixelShader *ps, int i)
+{
+    int k = ps->input_tex[i];
+
+    return k >= 0 && k <= 3 && ps->state->tex_hilo16[k];
+}
+
+/*
+ * The GLSL function implementing stage i's dot mapping.  HILO_1 comes in
+ * two forms, one per texel layout; see dotmap_hilo_1_16.
+ */
+static const char *dotmap_func_name(struct PixelShader *ps, int i)
+{
+    int m = dotmap_index(ps, i);
+
+    if (m == DOTMAP_HILO_1 && hilo16_input(ps, i)) {
+        return "dotmap_hilo_1_16";
+    }
+    return dotmap_funcs[m];
+}
+
+/*
+ * Whether a stage's dot mapping has to rebuild its input texel's 16-bit
+ * fields through a signed filter instead of taking them off the sampler.
+ *
+ * Only HILO_1 is covered: it is the mapping the R16B16 captures exercise,
+ * and dotmap_hilo_1_16 is the one that passes a rebuilt texel of the form
+ * vec4(hi, lo, lo, hi) straight through.  No capture feeds a
+ * 16-bit-field texture to the hemisphere mappings.
+ */
+static bool hilo16_needs_signed_filter(struct PixelShader *ps, int i)
+{
+    int k = ps->input_tex[i];
+
+    if (!hilo16_input(ps, i) || dotmap_index(ps, i) != DOTMAP_HILO_1) {
+        return false;
+    }
+    if (ps->state->snorm_tex[k]) {
+        return false;
+    }
+    if (!(ps->state->tex_signed[k] & (NV_PGRAPH_TEXFILTER0_ASIGNED |
+                                      NV_PGRAPH_TEXFILTER0_GSIGNED))) {
+        return false;
+    }
+    /* The gather needs the input stage's own sampling position, which only
+     * a plain projective 2D sample leaves behind. */
+    return ps->tex_modes[k] == PS_TEXTUREMODES_PROJECT2D &&
+           ps->state->dim_tex[k] == 2 && !ps->state->tex_cubemap[k] &&
+           ps->state->conv_tex[k] == CONVOLUTION_FILTER_DISABLED;
+}
+
+/*
+ * Emits tHilo<k>: texture k's texel with its two 16-bit fields rebuilt the
+ * way the hardware builds them under a sign flag.  The fields are laid out
+ * the way SZ_R16B16's view swizzle lays them out, (hi, lo, lo, hi), so
+ * dotmap_hilo_1_16 reads them straight back.  Gather component 0 is the
+ * high half of the texel and 1 the low half, from that same {G,R,R,G}
+ * swizzle.
+ *
+ * Idempotent per texture: several dot stages share one input.
+ */
+static void append_hilo16_texel(struct PixelShader *ps, MString *vars, int k,
+                                bool *emitted)
+{
+    if (emitted[k]) {
+        return;
+    }
+    emitted[k] = true;
+
+    /* Exactly the coordinate the PROJECT2D sample used, texelTieBias
+     * included, so the gather's 2x2 footprint is the one the sampler
+     * filtered. */
+    if (ps->state->rect_tex[k]) {
+        mstring_append_fmt(
+            vars, "vec2 hiloUV%d = norm%d(pT%d.xy / pT%d.w) + texelTieBias;\n",
+            k, k, k, k);
+    } else {
+        mstring_append_fmt(vars,
+                           "vec2 hiloUV%d = pT%d.xy / pT%d.w + texelTieBias;\n",
+                           k, k, k);
+    }
+    mstring_append_fmt(
+        vars,
+        "vec2 hiloF%d = fract(hiloUV%d * vec2(textureSize(texSamp%d, 0)) - 0.5);\n",
+        k, k, k);
+
+    static const struct {
+        uint32_t flag;
+        int comp;
+    } halves[2] = { { NV_PGRAPH_TEXFILTER0_ASIGNED, 0 },
+                    { NV_PGRAPH_TEXFILTER0_GSIGNED, 1 } };
+    const char *unflagged[2] = { "r", "g" };
+    const char *name[2] = { "hiloHi", "hiloLo" };
+
+    for (int h = 0; h < 2; h++) {
+        if (ps->state->tex_signed[k] & halves[h].flag) {
+            mstring_append_fmt(vars,
+                               "float %s%d = hilo16_signed_gather("
+                               "textureGather(texSamp%d, hiloUV%d, %d), hiloF%d);\n",
+                               name[h], k, k, k, halves[h].comp, k);
+        } else {
+            mstring_append_fmt(vars, "float %s%d = t%d.%s;\n", name[h], k, k,
+                               unflagged[h]);
+        }
+    }
+    mstring_append_fmt(vars,
+                       "vec4 tHilo%d = vec4(hiloHi%d, hiloLo%d, hiloLo%d, hiloHi%d);\n",
+                       k, k, k, k, k);
+}
+
+/*
+ * The texel name a stage's dot mapping reads: the input texture's own
+ * sample, or a rebuilt one when the 16-bit fields need a signed filter.
+ * Caller frees.
+ */
+static gchar *dotmap_src(struct PixelShader *ps, MString *vars, int i,
+                         bool *hilo16_emitted)
+{
+    if (hilo16_needs_signed_filter(ps, i)) {
+        append_hilo16_texel(ps, vars, ps->input_tex[i], hilo16_emitted);
+        return g_strdup_printf("tHilo%d", ps->input_tex[i]);
+    }
+    return g_strdup_printf("t%d", ps->input_tex[i]);
 }
 
 /* Modes that leave a dot product behind for a later stage to consume. */
@@ -1672,17 +1821,6 @@ static MString* psh_convert(struct PixelShader *ps)
         mstring_append(preflight, "};\n");
     }
 
-    const char *dotmap_funcs[] = {
-        "dotmap_zero_to_one",
-        "dotmap_minus1_to_1_d3d",
-        "dotmap_minus1_to_1_gl",
-        "dotmap_minus1_to_1",
-        "dotmap_hilo_1",
-        "dotmap_hilo_hemisphere_d3d",
-        "dotmap_hilo_hemisphere_gl",
-        "dotmap_hilo_hemisphere",
-    };
-
     mstring_append_fmt(preflight,
         "float sign1(float x) {\n"
         "    float xf = float(x) * 255.0;\n"
@@ -1755,6 +1893,31 @@ static MString* psh_convert(struct PixelShader *ps)
         "    float v = mix(mix(u.w, u.z, f.x), mix(u.x, u.y, f.x), f.y);\n"
         "    return round(v * 255.0) / 255.0;\n"
         "}\n"
+        /* One 16-bit HILO field of a texture the sampler holds unsigned,
+         * with the TEXFILTER sign flag set on the byte position carrying
+         * that field's high byte.  The hardware sign-extends each texel
+         * before the filter and reads the filtered result back as an
+         * unsigned 16-bit value.
+         *
+         * Measured on BumpMap_R16B16 and _B, whose four quads differ only
+         * in those flags: the flagged and unflagged quads are byte-identical
+         * everywhere the input texels are flat -- sign extension is a no-op
+         * modulo 2^16, so a field of 0xffff reads 1.0 either way -- and
+         * differ across the whole bilinear ramp between a positive texel and
+         * a negative one, and nowhere else.  Interpolating 0x0202 towards
+         * 0xffff downwards through zero rather than upwards through 0x8000
+         * is the only reading that does that.  On the goldens it scores 144
+         * and 166 wrong pixels per flagged quad against 6,526 and 6,153 for
+         * filtering the field unsigned (docs/testing/bump16_oracle.py).
+         *
+         * g is a textureGather of the field, f the bilinear weights.
+         */
+        "float hilo16_signed_gather(vec4 g, vec2 f) {\n"
+        "    float k = 65536.0 / 65535.0;\n"
+        "    vec4 s = g - k * vec4(greaterThanEqual(g, vec4(32768.0/65535.0)));\n"
+        "    float v = mix(mix(s.w, s.z, f.x), mix(s.x, s.y, f.x), f.y);\n"
+        "    return v < 0.0 ? v + k : v;\n"
+        "}\n"
         "vec3 dotmap_zero_to_one(vec4 col) {\n"
         "    return col.rgb;\n"
         "}\n"
@@ -1767,6 +1930,10 @@ static MString* psh_convert(struct PixelShader *ps)
         "vec3 dotmap_minus1_to_1(vec4 col) {\n"
         "    return vec3(sign3(col.r),sign3(col.g),sign3(col.b));\n"
         "}\n"
+        /* HILO reads the texel as two 16-bit fields: hi from the high half
+         * of the 32-bit word (the A and R byte positions) and lo from the
+         * low half (G and B).  For a four-byte texel that means rebuilding
+         * each half from two eight-bit channels, which is this. */
         "vec3 dotmap_hilo_1(vec4 col) {\n"
         "    uint hi_i = uint(col.a * float(0xff)) << 8\n"
         "              | uint(col.r * float(0xff));\n"
@@ -1775,6 +1942,36 @@ static MString* psh_convert(struct PixelShader *ps)
         "    float hi_f = float(hi_i) / float(0xffff);\n"
         "    float lo_f = float(lo_i) / float(0xffff);\n"
         "    return vec3(hi_f, lo_f, 1.0);\n"
+        "}\n"
+        /* HILO_1 on a format that stores two real 16-bit fields, which must
+         * read each field whole rather than rebuild it from bytes.
+         *
+         * SZ_R16B16's view swizzle is {G,R,R,G} (vk/constants.h and
+         * gl/constants.h agree), so col.r is the whole R16 field -- bytes
+         * 2-3, the texel's high half, hence hi -- and col.g the whole B16
+         * field, bytes 0-1, the low half, hence lo.
+         *
+         * Measured on BumpMap_R16B16 and _B (Test16bit: STAGE_DOT_PRODUCT /
+         * STAGE_DOT_ST with NV097_SET_DOT_RGBMAPPING 0x044).  Going through
+         * the eight-bit reconstruction threw away the low byte of both
+         * fields.  That is invisible on a flat texel -- the test's converter
+         * byte-replicates, so 0x0303/0xffff reads the same either way, and
+         * the quad's four flat corners are exact under both -- and wrong
+         * across every bilinear ramp: the B16 field sweeps 0x0101 -> 0x0303
+         * over the middle half of the quad, where the eight-bit reading
+         * gives the dependent t coordinate three steps against the goldens'
+         * smooth 514-step ramp, up to a whole checkerboard cell of error.
+         * An offline oracle over those goldens scores this reading at 560
+         * and 341 wrong pixels per unsigned quad against 6,525 and 7,316
+         * for the reconstruction (docs/testing/bump16_oracle.py).
+         *
+         * Kept separate from dotmap_hilo_1 rather than folded into it: what
+         * precision the hardware's HILO unit sees of a *filtered* eight-bit
+         * channel is not measured, and the Texture_cubemap HiLo_1 captures
+         * are scored against the reconstruction.
+         */
+        "vec3 dotmap_hilo_1_16(vec4 col) {\n"
+        "    return vec3(col.r, col.g, 1.0);\n"
         "}\n"
         "vec3 dotmap_hilo_hemisphere_d3d(vec4 col) {\n"
         "    return col.rgb;\n" // FIXME
@@ -2365,6 +2562,7 @@ static MString* psh_convert(struct PixelShader *ps)
     ps->code = mstring_new();
 
     bool color_key_comparator_defined = false;
+    bool hilo16_emitted[4] = { false, false, false, false };
 
     for (int i = 0; i < 4; i++) {
 
@@ -2380,10 +2578,18 @@ static MString* psh_convert(struct PixelShader *ps)
         g_autofree gchar *normalize_tex_coords = g_strdup_printf("norm%d", i);
         const char *tex_remap = ps->state->rect_tex[i] ? normalize_tex_coords : "";
 
-        const char *dotmap_func = dotmap_funcs[dotmap_index(ps, i)];
-        if (dotmap_index(ps, i) > 3) {
+        const char *dotmap_func = dotmap_func_name(ps, i);
+        /* HILO_1 and the signed hemisphere are implemented and measured
+         * against goldens; the D3D and GL hemisphere variants are still
+         * stubs returning col.rgb. */
+        if (dotmap_index(ps, i) == 5 || dotmap_index(ps, i) == 6) {
             NV2A_UNIMPLEMENTED("Dot Mapping mode %s", dotmap_func);
         }
+
+        /* The texel this stage's dot mapping reads.  Emitted here, before
+         * the stage's own code, because it is built from the input stage's
+         * sample and position. */
+        g_autofree gchar *dot_src = dotmap_src(ps, vars, i, hilo16_emitted);
 
         switch (ps->tex_modes[i]) {
         case PS_TEXTUREMODES_NONE:
@@ -2585,9 +2791,9 @@ static MString* psh_convert(struct PixelShader *ps)
             if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ST")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_ST */\n");
             mstring_append_fmt(vars,
-               "float dot%d = dot(pT%d.xyz, %s(t%d));\n"
+               "float dot%d = dot(pT%d.xyz, %s(%s));\n"
                "vec2 dotST%d = vec2(dot%d, dot%d);\n",
-                i, i, dotmap_func, ps->input_tex[i], i, i-1, i);
+                i, i, dotmap_func, dot_src, i, i-1, i);
 
             apply_border_adjustment(ps, vars, i, "dotST%d");
             mstring_append_fmt(vars, "vec4 t%d = texture(texSamp%d, %s(dotST%d));\n",
@@ -2596,18 +2802,22 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_DOT_ZW:
             if (!stage_consistent(ps, vars, i, 2, 3, 1, "PS_TEXTUREMODES_DOT_ZW")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_ZW */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
             // FIXME: mstring_append_fmt(vars, "gl_FragDepth = t%d.x;\n", i);
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_DIFF:
             if (!stage_consistent(ps, vars, i, 2, 2, 1, "PS_TEXTUREMODES_DOT_RFLCT_DIFF")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_DIFF */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
-            mstring_append_fmt(vars, "float dot%d_n = dot(pT%d.xyz, %s(t%d));\n",
-                i, i+1, dotmap_funcs[dotmap_index(ps, i+1)], ps->input_tex[i+1]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
+            {
+                g_autofree gchar *dot_src_n =
+                    dotmap_src(ps, vars, i + 1, hilo16_emitted);
+                mstring_append_fmt(vars, "float dot%d_n = dot(pT%d.xyz, %s(%s));\n",
+                    i, i+1, dotmap_func_name(ps, i + 1), dot_src_n);
+            }
             mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d_n);\n",
                 i, i-1, i, i);
             apply_border_adjustment(ps, vars, i, "n_%d");
@@ -2627,8 +2837,8 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC:
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_RFLCT_SPEC")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_SPEC */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d);\n",
                 i, i-2, i-1, i);
             mstring_append_fmt(vars, "vec3 e_%d = vec3(pT%d.w, pT%d.w, pT%d.w);\n",
@@ -2647,9 +2857,9 @@ static MString* psh_convert(struct PixelShader *ps)
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_3D")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_STR_3D */\n");
             mstring_append_fmt(vars,
-               "float dot%d = dot(pT%d.xyz, %s(t%d));\n"
+               "float dot%d = dot(pT%d.xyz, %s(%s));\n"
                "vec3 dotSTR%d = vec3(dot%d, dot%d, dot%d);\n",
-                i, i, dotmap_func, ps->input_tex[i],
+                i, i, dotmap_func, dot_src,
                 i, i-2, i-1, i);
 
             apply_border_adjustment(ps, vars, i, "dotSTR%d");
@@ -2668,8 +2878,8 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_DOT_STR_CUBE:
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_STR_CUBE")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_STR_CUBE */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec3 dotSTR%dCube = vec3(dot%d, dot%d, dot%d);\n",
                                i, i-2, i-1, i);
             apply_border_adjustment(ps, vars, i, "dotSTR%dCube");
@@ -2719,8 +2929,8 @@ static MString* psh_convert(struct PixelShader *ps)
         case PS_TEXTUREMODES_DOTPRODUCT:
             if (!stage_consistent(ps, vars, i, 1, 2, 0, "PS_TEXTUREMODES_DOTPRODUCT")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOTPRODUCT */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec4 t%d = vec4(0.0);\n", i);
             break;
         case PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST:
@@ -2730,8 +2940,8 @@ static MString* psh_convert(struct PixelShader *ps)
              * was blank while this was a zero texel. */
             if (!stage_consistent(ps, vars, i, 3, 3, 2, "PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST")) break;
             mstring_append_fmt(vars, "/* PS_TEXTUREMODES_DOT_RFLCT_SPEC_CONST */\n");
-            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(t%d));\n",
-                i, i, dotmap_func, ps->input_tex[i]);
+            mstring_append_fmt(vars, "float dot%d = dot(pT%d.xyz, %s(%s));\n",
+                i, i, dotmap_func, dot_src);
             mstring_append_fmt(vars, "vec3 n_%d = vec3(dot%d, dot%d, dot%d);\n",
                 i, i-2, i-1, i);
             mstring_append_fmt(vars, "vec3 e_%d = eyeVec.xyz;\n", i);

@@ -151,6 +151,10 @@ static const Field fields[] = {
     F(fog_mode,     K_INT, FOG_MODE_LINEAR, FOG_MODE_EXP2_ABS),
     F4(rect_tex,    K_BOOL, 0, 1),
     F4(snorm_tex,   K_BOOL, 0, 1),
+    /* Reads `same` under every baseline here, and that is not a defect:
+     * it is only looked at for a stage whose dot mapping is HILO_1 with a
+     * sign flag on the half it feeds, and no baseline wires that up. */
+    F4(tex_hilo16,  K_BOOL, 0, 1),
     F4(tex_signed,  K_INT, 0, 15),
     F4x4(compare_mode),
     F4(alphakill,   K_BOOL, 0, 1),
