@@ -180,13 +180,49 @@ lane's:
 
 | candidate | fate |
 |---|---|
-| screen space, `w = 1`, no perspective divide | **dead** — `High_vertex_count` is `w = 1` passthrough and genuinely unpaired |
+| screen space, no perspective divide | **dead** — `High_vertex_count` is passthrough `w = 1` and genuinely unpaired |
 | immediate-mode vertices rather than arrays | **dead alone** — `Shade_model` is immediate mode and unpaired |
-| immediate mode **and** `w = 1` | **unfalsifiable on this corpus** — see below |
-| `SET_VERTEX4F` rather than `SET_VERTEX3F` | **unfalsifiable on this corpus**, and not separable from the row above |
-| one large primitive (≥ 500 px wide) | not contradicted, still not really tested |
+| `SET_VERTEX4F` rather than `SET_VERTEX3F` | **dead** — this lane proposed it and refuted it; see below |
+| immediate mode **and** no perspective divide | the unique survivor, and it survives a *filled* 2×2 |
+| one large primitive (≥ 500 px wide) | not contradicted, and not separable from the survivor |
+| `PRIMITIVE_QUADS` / `PRIMITIVE_POLYGON` | not contradicted, and not separable from the survivor |
 | per-triangle / triangle setup | **dead** — both of `GRZero`'s fan triangles carry it (94.9% / 33.3%), neither is clean-off |
 | a within-draw row selection | **dead** — `GRZero`'s 80/192 is a period-3 partial breakdown, not an on/off |
+
+### `SET_VERTEX4F` was this lane's own candidate, and it is refuted
+
+It looked good: both positives use the four-argument `SetVertex`
+(`NV097_SET_VERTEX4F`) with a literal `w = 1.0`, and every `SET_VERTEX3F`
+gradient suite in the corpus is unpaired. It is wrong.
+**`Shade_model`'s `Fixed_*` variants submit `SET_VERTEX4F` with `w = 1.0`**
+— `Draw(host, primitive, w = 1.0f, w_inc = 0.0f)`, called with the defaults from
+`TestShadeModelFixed` — in an immediate-mode block with a fourteen-colour
+per-vertex diffuse gradient, and they are unpaired over 285 measurable rows of
+untextured Gouraud content. So the register the vertex arrives through is not
+the selector.
+
+What separates `Shade_model/Fixed_*` from the two positives is **not** the
+submitted `w` but the **perspective divide**: its vertices are world space
+(`kLeft = -2.75f`) under `SetVertexShaderProgram(nullptr)`, so the
+fixed-function transform gives a post-transform clip `w ≠ 1`, where
+`Alpha_func` and `GRZero` run a passthrough shader and reach the rasteriser at
+`w = 1`. **Submitted `w` and rasteriser `w` are different quantities and the
+corpus separates them**; the conjunct is the second one.
+
+### The 2×2 is filled, which is stronger than "not contradicted"
+
+Reading `w` as the rasteriser's rather than the submitted one, every cell has a
+witness with genuine interpolated-vertex-colour content:
+
+| | no perspective divide (`w = 1`) | perspective divide |
+|---|---|---|
+| **immediate mode** | **PAIRED** — `Alpha_func` (14), `Context_switch/GRZero` | unpaired — `Shade_model/Fixed_*`, `Prog*` (285–462 rows) |
+| **vertex arrays** | unpaired — `High_vertex_count` (1,728 rows, maxE 0.000) | unpaired — `Lighting_*`, `Specular`, `Attrib_carryover`, `3D_primitive` |
+
+So the conjunction is not merely unfalsified: it is the unique survivor of a
+2×2 in which the other three cells are populated and all three are negative.
+That is a better position than the prior lane recorded, and it is the one real
+piece of good news in this section.
 
 ### The class is exhaustively enumerable, and it has two members
 
@@ -202,22 +238,46 @@ per-vertex diffuse *gradient* — at least two distinct `SetDiffuse` inside one
 | `texture_perspective_tests.cpp` | no | gradient block runs under `SetVertexShaderProgram(nullptr)` with w = 0.3 |
 | `texture_perspective_enable_tests.cpp` | no | no gradient vertex at w = 1.0 |
 | `w_param_tests.cpp` | no | gradient block is fixed-function with a w = 0.0 vertex |
-| `swath_width_tests.cpp` | no | gradient blocks are `SET_VERTEX3F` |
-| `vertex_shader_rounding_tests.cpp` | no | gradient blocks are `SET_VERTEX3F` |
+| `swath_width_tests.cpp` | in class, **not measurable** | renders into a 2×-width AA surface (`pitch = w*4*2`) and composites a checkerboard |
+| `vertex_shader_rounding_tests.cpp` | in class, **not measurable** | no measurable x rows at all |
 | the other 93 | no | no per-vertex diffuse gradient in an immediate-mode block |
 
-**The corpus contains exactly two members of the class and both pair.** That is
-the blocker, and it is a different statement from "two positives is thin": there
-is **no capture in the corpus that could come back unpaired** and refute the
-conjunction. More fitting cannot help, because the complement of the class is
-empty.
+`SET_VERTEX3F` is immediate mode too, so those last two **are** class members —
+they are set aside by measurability, not by the register. The criterion is
+stated once and applied to every row, because a different exclusion reason per
+capture chosen after seeing the result is a curve fit:
 
-`SET_VERTEX4F`-vs-`3F` is the one new candidate this lane can offer and it is no
-better off: both positives use the 4-arg form, every `SET_VERTEX3F` gradient
-suite (`Smoothing_control`, `Stipple_tests`, `Swath_width`,
-`Vertex_shader_rounding`) is either textured-background-only or too small to
-measure, so it too has an empty complement. It is also not separable from
-"immediate mode" — no corpus capture varies one while holding the other.
+> A capture is evidence about the interpolator's x sample position only if
+> **(i)** its qualifying pixels come from the *draw* rather than from a texture
+> or background that happens to carry a shallow gradient, and **(ii)** the
+> fragment-to-framebuffer x mapping is the identity — no 2×-width antialiased
+> surface, no resolve, no blit.
+
+Applied uniformly that admits `Alpha_func` and `Context_switch` (paired) and
+`High_vertex_count` and `Shade_model/Fixed_*` (unpaired — the negatives the 2×2
+rests on); it excludes `Smoothing_control` and `Swath_width`; and it excludes
+`Image_blit/BlitBeyondWidth` by (ii), which is why that capture shows 14 paired
+rows in the census and is still not evidence here. **I had `Swath_width` out for
+the wrong reason first** — "it uses `SET_VERTEX3F`" — which was a register
+distinction I then refuted with `Shade_model`, i.e. exactly the failure the
+criterion above exists to prevent.
+
+**The corpus contains exactly two members of the class and both pair.** The 2×2
+above means the conjunction is well supported *as a conjunction*; what the empty
+rest of the class means is that the **positive cell cannot be subdivided**. Two
+captures is not enough to separate "immediate mode ∧ `w = 1`" from any correlate
+the two happen to share, and they share several:
+
+- both are `PRIMITIVE_QUADS` or `PRIMITIVE_POLYGON` (never a triangle form);
+- both are ≥ 512 px wide, so "one large primitive" predicts them too;
+- both submit `SET_VERTEX4F` at `z = 0.1f` under the same passthrough shader.
+
+Any of those, conjoined with the same two conjuncts, fits all four cells exactly
+as well. So the blocker is not "the rule is unsupported" — it is **"the
+precondition cannot be narrowed below a four-way tie, and three of the four
+would give a different blast radius."** Shipping the widest reading when a
+narrower one is equally supported is how a fix ends up displacing gradients it
+should not touch.
 
 ### The blocker as a measurement that would refute it
 
@@ -225,35 +285,45 @@ Per "a blocker is a claim, and it needs the same evidence as a fix":
 
 > **If the class had a third member, `interpolator_phase.py`'s per-row census
 > would report paired rows for it.** It reports paired rows for exactly 16
-> captures out of 5,608, and 14 of them are `Alpha_func`. If a reader finds a
-> suite that satisfies A ∧ B ∧ C and the census calls it unpaired **on its own
-> draw's pixels rather than on a background**, the conjunction is refuted and
-> this section is void.
+> captures out of 5,608, and 14 of them are `Alpha_func`. So: if a reader finds
+> a suite that satisfies A ∧ B ∧ C and the census calls it unpaired **on its own
+> draw's pixels rather than on a background**, the conjunction is refuted. And
+> if a reader finds one that satisfies A ∧ B ∧ C with a *triangle* primitive, or
+> narrower than 500 px, and it **pairs**, then the four-way tie above breaks and
+> the precondition is narrowed without any new geometry at all. Either finding
+> voids this section, and `pair_rule_candidates.py` is where to look first.
 
 That is cheap to run and it is the check to run before trusting this.
 
 ### The four captures that decide it
 
-Unchanged from the recovered note, and this lane's work is a reason to trust it
-more rather than less: **the same screen-space quad with a shallow colour ramp,
-drawn four ways — immediate vs arrays × `w = 1` vs `w ≠ 1`.** Concretely, and
-sized so the census can actually measure it (which `Smoothing_control` could
-not):
+The recovered note asked for the 2×2. The 2×2 turns out to be **already
+filled** (above), so those four captures would confirm what is now established
+and would not narrow anything. What is needed instead is the set that **breaks
+the four-way tie inside the positive cell**, and every one of them is the same
+draw as `Alpha_func`'s band with one property changed:
 
-- a quad **x 64 → 576** (512 px, so ≥ 100 qualifying positions per row per
-  parity) and **≥ 64 rows tall**, untextured, on a **flat** background;
-- per-vertex diffuse ramping **0 → 255 in one channel across x** (≈ 0.5 byte/px,
-  which is the slope `Alpha_func` pairs at and is well inside the metric's
-  ≤ 4 byte/px window);
-- four cases: `SET_VERTEX4F` w = 1.0; vertex arrays w = 1.0;
-  `SET_VERTEX4F` w = 2.0 with the ramp pre-divided so the screen-space result
-  is identical; vertex arrays w = 2.0 likewise.
-- a fifth, nearly free, that separates this lane's new candidate: the same quad
-  via **`SET_VERTEX3F`**.
+The common base — sized so the census can actually measure it, which is the
+mistake `Smoothing_control` makes: a quad **x 64 → 576** (512 px, so ≥ 100
+qualifying positions per row per parity) and **≥ 64 rows tall**, untextured, on
+a **flat** background, passthrough shader, `SET_VERTEX4F` at `w = 1.0`, with
+per-vertex diffuse ramping **0 → 255 in one channel across x** (≈ 0.5 byte/px —
+the slope `Alpha_func` pairs at, and well inside the metric's ≤ 4 byte/px
+window). That base should pair; it is the control.
 
-That is `tests/**` — the remote lane's territory — and it needs no accuracy
-oracle beyond the goldens it would produce, so it is a disc build and one run,
-not an A/B.
+| vary | separates |
+|---|---|
+| `PRIMITIVE_TRIANGLES` (two triangles) instead of `QUADS` | primitive type from immediate mode |
+| the same quad **128 px wide** instead of 512 | "one large primitive" from immediate mode |
+| `SET_VERTEX3F` instead of `SET_VERTEX4F` | the submission register from immediate mode |
+| the ramp running in **y** instead of x | whether the group is 2×1 or 2×2 — see section 5 |
+| a **second y-gradient** on the base quad | the period-3 breakdown of section 5 |
+
+Five captures, one disc, no A/B and no accuracy oracle beyond the goldens they
+would produce. Three of the five can each independently narrow the precondition,
+and two of the five address the thing this lane is least sure of.
+
+That is `tests/**` — the remote lane's territory, not this one's.
 
 ## 4. Why no shader change landed
 
@@ -288,12 +358,17 @@ recording because each looked attractive:
    rationalisation per data point, and the falsifier it would pass is one this
    change forces true. It would also have made #57 read as closed while #38
    mechanism 2 stayed open, which is the opposite of what section 1 establishes.
-2. **Condition on immediate-mode submission.** Not refutable on this corpus
-   (section 3), "the vertex submission path changes the fragment interpolator's
-   spatial granularity" is not a sensible statement about silicon, and the
-   plumbing needs a new `PshState` field fed from `pgraph.c` or the Vulkan draw
-   path — both other lanes' files at wave 9. Even granted those files, the
-   condition would be a two-point fit with an empty complement.
+2. **Condition on immediate-mode submission and `w = 1`.** This is the
+   survivor of the filled 2×2, so it is better founded than the previous lane
+   thought — but it is in a four-way tie with primitive type, primitive width
+   and the submission register (section 3), and the four choices have different
+   blast radii. "The vertex submission path changes the fragment interpolator's
+   spatial granularity" is also still not a sensible statement about silicon,
+   whereas "quads and polygons take a different setup path from triangles" and
+   "wide spans take a two-pixel-per-clock walker" both are. Picking the one that
+   happens to be expressible would be choosing a mechanism by how easy it is to
+   write. The plumbing also needs a new `PshState` field fed from `pgraph.c` or
+   the Vulkan draw path, which are other lanes' files at wave 9.
 
 ## 5. Least certain
 

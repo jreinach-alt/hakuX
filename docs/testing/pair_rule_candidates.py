@@ -8,16 +8,42 @@ surviving candidate is a conjunction, "immediate mode and `w = 1`", fitted to
 two positives, and the previous lane recorded that it did not believe it.
 
 This script exists to turn "two positives is thin" into a checkable claim about
-the corpus: **the class has an empty complement, so no capture we hold can
-refute the conjunction.**  That is a blocker, and a blocker needs the same
-evidence as a fix, so it has to be runnable rather than asserted.
+the corpus: **the class has exactly two members, so the positive cell cannot be
+subdivided.**  The conjunction itself is well supported -- the 2x2 of
+(immediate | arrays) x (perspective divide | not) is filled and the other three
+cells are negative -- but with only two captures in the positive cell the
+precondition sits in a four-way tie with everything those two happen to share:
+QUADS/POLYGON rather than a triangle form, >= 512 px wide, and SET_VERTEX4F.
+Each would give a different blast radius.  That is a blocker, and a blocker
+needs the same evidence as a fix, so it has to be runnable rather than asserted.
 
 Class membership needs all three, per DRAW:
 
   A  screen space with no perspective divide   -- a PassthroughVertexShader
-  B  immediate-mode vertices                   -- SetVertex inside Begin/End
+  B  immediate-mode vertices                   -- SetVertex inside Begin/End,
+                                                  EITHER SET_VERTEX3F or 4F
   C  a per-vertex diffuse GRADIENT             -- >= 2 distinct SetDiffuse
                                                   inside one Begin/End
+
+and then, to be evidence either way, the capture must be MEASURABLE, which is
+one criterion stated once and applied to every row rather than a reason per
+exception:
+
+  i   the qualifying pixels come from the DRAW, not from a texture or a
+      background that happens to carry a shallow gradient;
+  ii  the fragment-to-framebuffer x mapping is the identity -- no 2x-width
+      antialiased surface, no resolve, no blit.
+
+Applied uniformly that admits Alpha_func and Context_switch (paired) and
+High_vertex_count and Shade_model's untextured variants (unpaired, and the
+negatives the 2x2 rests on); it excludes Smoothing_control and Swath_width by
+(i) and (ii), and Image_blit/BlitBeyondWidth by (ii) -- which is why that last
+one shows paired rows in the census and is nonetheless not evidence here.
+
+NOTE on the register: SET_VERTEX3F is immediate mode as much as SET_VERTEX4F
+is, so a 3F suite is IN the class.  "4F rather than 3F" was offered as a
+candidate selector and is refuted -- Shade_model's Fixed_* variants submit 4F
+at w = 1.0 in an immediate-mode gradient block and do not pair.
 
 C is the discriminator that most suites fail, and it is why the corpus is so
 thin here: a suite can have hundreds of immediate-mode screen-space vertices
@@ -74,10 +100,14 @@ CONFIRMED = {
         False, "no gradient vertex at w=1.0"),
     "w_param_tests.cpp": (
         False, "gradient block is fixed-function and carries a w=0.0 vertex"),
+    # NOT excluded for using SET_VERTEX3F -- 3F is immediate mode too, and the
+    # 3F-vs-4F reading is refuted by Shade_model/Fixed_* (4F at w=1.0 and
+    # unpaired). These two fail the MEASURABILITY criterion in the docstring.
     "swath_width_tests.cpp": (
-        False, "gradient blocks are SET_VERTEX3F, not SET_VERTEX4F"),
+        False, "renders into a 2x-width AA surface and composites a checkerboard:"
+               " framebuffer x is not fragment x"),
     "vertex_shader_rounding_tests.cpp": (
-        False, "gradient blocks are SET_VERTEX3F, not SET_VERTEX4F"),
+        False, "no measurable x rows in the census (its own content is too small)"),
 }
 
 BEGIN = re.compile(r"\bBegin\s*\(")
@@ -135,16 +165,16 @@ def main():
         print("   %-42s %6d %5d %6d  %s %s"
               % (fn, g, v4, w1, "IN " if ok else ("out" if ok is False else "??? "), note))
 
-    print("\nSame but SET_VERTEX3F rather than 4F (implicit w = 1, so also a")
-    print("candidate for the 3F-vs-4F reading):\n")
+    print("\nSame but SET_VERTEX3F (also immediate mode, implicit w = 1, so also")
+    print("IN the class -- these are set aside by measurability, not the register):\n")
     for fn, _a, g, _v4, v3, _w1 in other:
         ok, note = CONFIRMED.get(fn, (None, "NOT CONFIRMED -- open the file"))
         print("   %-42s %6d %5s %6s  %s %s"
               % (fn, g, v3, "-", "IN " if ok else ("out" if ok is False else "??? "), note))
 
     unconfirmed = [r[0] for r in cand + other if r[0] not in CONFIRMED]
-    print("\n%d of %d test sources reach the candidate list; %d confirmed IN the class:"
-          % (len(cand) + len(other), len(rows), len(in_class)))
+    print("\n%d of %d test sources reach the candidate list; %d are measurable"
+          " class members:" % (len(cand) + len(other), len(rows), len(in_class)))
     for fn in in_class:
         print("   %s" % fn)
 
@@ -158,11 +188,13 @@ def main():
         print("CONFIRMED. Until then treat the enumeration as incomplete.")
         return 1
 
-    print("\nThe class has %d members and both pair, so the corpus contains no"
+    print("\nThe class has %d members and both pair. The conjunction \"immediate"
           % len(in_class))
-    print("capture that could come back unpaired and refute \"immediate mode and")
-    print("w = 1\". The complement is empty: more fitting cannot settle it, and")
-    print("the four captures named in the investigation note are what can.")
+    print("mode and w = 1\" survives a filled 2x2, but two captures cannot separate")
+    print("it from what they share -- QUADS/POLYGON, >= 512 px wide, SET_VERTEX4F --")
+    print("and those give different blast radii. A third class member that PAIRS")
+    print("while differing in one of those would narrow it with no new geometry;")
+    print("otherwise the five captures in the investigation note are what can.")
     return 0
 
 
