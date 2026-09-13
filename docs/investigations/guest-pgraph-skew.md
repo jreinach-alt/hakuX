@@ -1177,7 +1177,56 @@ correctly attributed.
   scale with draw density, and it is the only remaining lever that the
   invariant's intrinsic cost does not defeat.
 
-*Arm B run 2 and the Crimson `Tr` pair to follow.*
+### CONFIRMED on two runs per arm, and the reproducibility is the point
+
+| | A r1 | A r2 | **B r1** | **B r2** |
+|---|---|---|---|---|
+| `gfps` p90 / max | 29 / 29 | 29 / 29 | **13 / 15** | **14 / 24** |
+| `held(n)/kicks` | 0 | 0 | **0.9481** | **0.9493** |
+| draw density | — | — | **94.18%** | **94.30%** |
+| `gave/held(n)` | — | — | 0.05910 | 0.06010 |
+| `scan(ns=)` / wall | — | — | 0.0173% | 0.0169% |
+| hold mean | — | — | 2,316,996 | 2,335,808 |
+
+**Every quantity reproduces to better than 1% between the two arm B runs**,
+which matters because three legs today failed on run-to-run spread. The draw
+density — the number the whole change turns on — is 94.18% and 94.30%. This
+is not a noisy measurement that happened to come out badly.
+
+**Worst-case W1: p90 29 → 13 (fall 16) and max 29 → 15 (fall 14)**, against a
+bar of 2. **W2: 0.9493** against 0.20. Pooled, **86,142 of 90,804 submissions
+held (94.87%)** and **85,572 of 90,804 carried a draw (94.24%)**.
+
+**W8 pooled: `flip=9, nop=5,121, ctxsw=2, noaccess=0, other=2` of 5,134.**
+The NOP handshake is **99.75%** of the hole and the flip is **0.18%**. Run 1's
+inversion was not a fluke.
+
+And `other = 2 of 5,134` — **0.04%** — so the 250 ms backstop essentially
+never expires. The residual is almost entirely a **protocol** stall rather
+than a performance one, which is the distinction the split was built to make:
+it cannot be tuned away, because the pusher is waiting for something only the
+guest can supply.
+
+### A stronger statement of "free when off" than I first made
+
+Arm A's `scan_n = 0`, not merely `scan(ns=) = 0`. Mode 0 returns from
+`pfifo_kick` **before** the scan is reached, so the machinery is not cheap —
+it is **not executed**. With `gfps` p90 29 / max 29 matching the pre-change
+arm on both runs, adding this code costs a defaulted-off build nothing that
+any instrument here can see.
+
+### One process note, because it nearly produced a wrong number
+
+Both of my first two attempts to pool these figures used a **hand-rolled
+regex in a scratch script**, and on one run it silently matched nothing —
+surfacing as a `ZeroDivisionError`, which is luck, because the same failure
+one column over would have printed a plausible figure. The committed reader
+parses **121 of 121 lines on all four runs**. `orchestration.md` already says
+this — *"do not hand-roll the comparison; use the tool, or check what the tool
+checks"* — and it is the second time in one session that a reader was the
+thing at fault rather than the data.
+
+*The Crimson `Tr` pair to follow.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
