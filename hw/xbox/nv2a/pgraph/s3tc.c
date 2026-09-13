@@ -50,6 +50,76 @@ static inline uint8_t expand6(unsigned int v)
     return (uint8_t)((v << 2) | (v >> 4));
 }
 
+/*
+ * The NV2A dithers DXT1 -- and only DXT1 -- on the way out of the texture
+ * unit. Issue #6.
+ *
+ * DXT1 is the one compressed format whose NV2A target is 16 bit
+ * (NV097_SET_TEXTURE_FORMAT_COLOR_L_DXT1_A1R5G5B5); DXT23 and DXT45 target
+ * A8R8G8B8. Reaching 8 bits from a 5- or 6-bit field leaves a gap of 8 (or 4)
+ * counts, and rather than land on the replicated value the hardware spreads
+ * the output across that gap with a fixed 4x4 ordered dither, so a decoded
+ * block carries up to 16 distinct colours instead of its palette's 4.
+ *
+ * That is what made this residual look unmodellable: a DXT1 block encodes
+ * four colours and the silicon captures hold sixteen per 4x4 block, so no
+ * palette lookup can reproduce them. But the dither is indexed by the texel's
+ * position *within the block* -- blocks are 4x4 and 4-aligned, so (y & 3,
+ * x & 3) and (y - y0, x - x0) are the same thing -- which is an input a block
+ * decoder already has. Measured against the XBOX 1.0 goldens, the output is a
+ * single-valued function of (5/6-bit code, y & 3, x & 3): 413 R keys, 756 G
+ * and 463 B observed across five DXT1 captures, 347/502/334 of them
+ * corroborated by more than one capture, zero conflicts.
+ *
+ * The rule: of the 8 (5-bit) or 4 (6-bit) integers spanning the gap either
+ * side of the replicated expansion, emit the one congruent to the matrix
+ * entry below. Saturated codes do not dither -- 0 stays 0 and 31/63 stays
+ * 255, which is why a flat black or white block decodes to a single colour.
+ *
+ * Known residual: a code of exactly 1 decodes to 0 in the goldens rather than
+ * to a value near 8, except in the cells selecting the top of the gap. That
+ * is 1 of 32 (resp. 64) codes and it accounts for every remaining
+ * disagreement on the plasma captures (6 of 1024 texels, 7 of 1024); the rest
+ * of this function is exact there. No rule covering it has been fitted, so it
+ * is deliberately left alone rather than special-cased on thin evidence.
+ */
+static const uint8_t kDxt1DitherR[4][4] = {
+    { 3, 7, 4, 0 }, { 5, 1, 6, 2 }, { 0, 4, 7, 3 }, { 2, 6, 1, 5 },
+};
+static const uint8_t kDxt1DitherG[4][4] = {
+    { 0, 2, 3, 1 }, { 3, 1, 2, 0 }, { 2, 0, 1, 3 }, { 1, 3, 0, 2 },
+};
+static const uint8_t kDxt1DitherB[4][4] = {
+    { 2, 6, 1, 5 }, { 0, 4, 7, 3 }, { 5, 1, 6, 2 }, { 3, 7, 4, 0 },
+};
+
+/*
+ * Pick the value congruent to `t` modulo the gap width that lies in
+ * [v - half, v + half - 1]. The +256 keeps the intermediate non-negative
+ * without perturbing the residue: 256 is a multiple of both gap widths.
+ */
+static inline uint8_t dither_to_residue(uint8_t v, unsigned int t,
+                                        unsigned int half)
+{
+    if (v == 0 || v == 255) {
+        return v;
+    }
+
+    unsigned int mask = 2 * half - 1;
+    int out = (int)v - (int)half + (int)((t - v + half + 256) & mask);
+    return (uint8_t)(out < 0 ? 0 : (out > 255 ? 255 : out));
+}
+
+static inline uint8_t dither5(uint8_t v, unsigned int t)
+{
+    return dither_to_residue(v, t, 4);
+}
+
+static inline uint8_t dither6(uint8_t v, unsigned int t)
+{
+    return dither_to_residue(v, t, 2);
+}
+
 static void decode_bc1_colors(uint16_t c0, uint16_t c1, uint8_t r[4],
                               uint8_t g[4], uint8_t b[4], uint8_t a[16],
                               bool transparent)
@@ -70,8 +140,10 @@ static void decode_bc1_colors(uint16_t c0, uint16_t c1, uint8_t r[4],
      * exactly what Texture_DXT measures: before this, every pixel those two
      * entries reached was low by one and never by anything else. With the
      * rounding and the replicated endpoints above, all six of the colour-only
-     * DXT3 and DXT5 tests are pixel-exact. DXT1 is not, and differs by more
-     * than this arithmetic can explain -- see issue #4.
+     * DXT3 and DXT5 tests are pixel-exact. DXT1 needed more than this
+     * arithmetic, but not different arithmetic: this palette is right for
+     * DXT1 too and what was missing is the ordered dither applied on the way
+     * out, in write_dxt1_block_to_texture. Issue #6.
      */
     if (transparent) {
         r[2] = (r[0]+r[1]+1)/2;
@@ -217,6 +289,40 @@ static void write_block_to_texture(uint8_t *converted_data, uint32_t indices,
     }
 }
 
+/*
+ * DXT1 needs its own writer: the colour a texel gets depends on where in the
+ * block it sits, not only on its palette index, so there is no 4-entry table
+ * to hand to write_block_to_texture (and nothing for its NEON path to do --
+ * that path stays in use for DXT3 and DXT5, which do not dither).
+ */
+static void write_dxt1_block_to_texture(uint8_t *converted_data,
+                                        uint32_t indices, int i, int j,
+                                        int width, int height,
+                                        int z_pos_factor, const uint8_t r[4],
+                                        const uint8_t g[4],
+                                        const uint8_t b[4],
+                                        const uint8_t a[4])
+{
+    int x0 = i * 4, y0 = j * 4;
+    int x1 = x0 + 4, y1 = y0 + 4;
+
+    for (int y = y0; y < y1 && y < height; y++) {
+        int y_index = 4 * (y - y0);
+        int z_plus_y_pos_factor = z_pos_factor + y * width;
+        int dy = y & 3;
+        for (int x = x0; x < x1 && x < width; x++) {
+            int xy_index = y_index + x - x0;
+            uint8_t index = (indices >> 2 * xy_index) & 0x03;
+            int dx = x & 3;
+            uint8_t *p = converted_data + (z_plus_y_pos_factor + x) * 4;
+            *p++ = dither5(r[index], kDxt1DitherR[dy][dx]);
+            *p++ = dither6(g[index], kDxt1DitherG[dy][dx]);
+            *p++ = dither5(b[index], kDxt1DitherB[dy][dx]);
+            *p++ = a[index];
+        }
+    }
+}
+
 static void decompress_dxt1_block(const uint8_t block_data[8],
                                   uint8_t *converted_data, int i, int j,
                                   int width, int height, int z_pos_factor)
@@ -227,9 +333,9 @@ static void decompress_dxt1_block(const uint8_t block_data[8],
     decode_bc1_colors(c0, c1, r, g, b, a, c0 <= c1);
 
     uint32_t indices = ((uint32_t*)block_data)[1];
-    write_block_to_texture(converted_data, indices,
-                           i, j, width, height, z_pos_factor,
-                           r, g, b, a, false);
+    write_dxt1_block_to_texture(converted_data, indices,
+                                i, j, width, height, z_pos_factor,
+                                r, g, b, a);
 }
 
 static void decompress_dxt3_block(const uint8_t block_data[16],
