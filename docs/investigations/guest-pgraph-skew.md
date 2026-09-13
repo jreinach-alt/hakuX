@@ -214,11 +214,230 @@ was queued, in `docs/testing/predictions/issue44-fifo-skew-bound.json`; the
 cost pair is Galleon 240 s ×2 on the nova against
 `issue44-fifo-skew-bound-cost.json`.
 
-*Results to be filled in from the dispatcher. Judged on `stale_px` from
-`docs/testing/border_swatch_origin.py`, not on differing pixels: the count
-swings 40× on an unchanged binary because each swatch has a fixed cost if it
-loses and a run's total is the sum over whichever subset lost, so 146 and
-5,640 are the same event once and three times.*
+### ARM A, and the skew is measured for the first time
+
+`d97d506514` / apk `b9f196e7ced9`, dispatch `1789303576-skew-bound-1885045`,
+**nova** (read out of `result.json`, not assumed), `disc_id = Texture border`,
+10 runs, `progress_log_proof` on every one, 18 captures each. 45 two-second
+windows over 145.5 s.
+
+| | |
+|---|---|
+| pushbuffer ring (the guest's DMA object limit) | **67,088,383 bytes** — 63.98 MiB |
+| submissions | 148,667 (1,022/s pooled; 2,000–3,300/s in steady windows) |
+| **submissions made while PGRAPH was not yet current** | **148,667 — 100.0%** |
+| backlog at publish | mean 10,065 bytes, max 65,204,224 |
+| **SKEW, publish → consumed** | **mean 16,885,845 ns**, p50 8,650,000, p90 34,900,000, p99 ≥51,250,000, **max 527,868,229** |
+
+**`behind` is 100.0% of 148,667 submissions.** That is S0, the leg registered
+to be able to refute the whole model on arm A alone, and it does not merely
+hold — the guest is ahead of PGRAPH at *every single submission it makes*. The
+skew model is not a story about an occasional overtake.
+
+**And the window is milliseconds to half a second.** The CPU work between two
+of this test's draws is one `GenerateBordered2DSurface` into scratch plus a
+`swizzle_rect` of a 64×64 surface — microseconds. Against a p50 of 8.65 ms
+the guest does not need to be lucky to get a whole iteration ahead; it needs
+to be unlucky not to. A ~46% per-run loss rate needs no further explanation.
+
+Two limits on those numbers, both reported by the instrument rather than
+inferred:
+
+- `lost = 2,084` of 148,667 (1.4%): the 256-entry pending ring overflowed in
+  the boot windows, so the **skew mean is a floor**. The max is exact.
+- p90 and p99 are **floors** too. The histogram covers 0–51.2 ms and p99
+  lands in the overflow bin, so more than 1% of submissions exceed 51.2 ms.
+  The mean and max are computed outside the histogram and are exact. A future
+  revision wants a wider span; the range was chosen to match the VBLANK
+  histogram, which was the wrong reference for a quantity this large.
+
+### Arm A's `stale_px`, and the gate
+
+```
+stale_px     5160, 0, 481, 64, 192, 0, 0, 0, 64, 0     5 of 10 non-zero
+races_lost      4, 0,   1,  1,   1, 0, 0, 0,  1, 0
+unexplained_px  0 on all ten runs
+```
+
+**S8, the validity gate, holds**: the flake reproduces on 5 of 10 runs against
+a registered bar of at least 3. The magnitudes are smaller than the published
+floor's (5,961 px total against 12,596) and the failing shapes differ — 16x1,
+8x2, 2x2 and 8x8 here against 8x2, 32x32 and 4x8 there. Both are what a
+combinatorial flake looks like: each swatch has a fixed cost if it loses and a
+run's total is the sum over whichever subset lost, which is exactly why this
+is judged on `stale_px` and the classes rather than on differing pixels.
+
+| class | swatches | px | share |
+|---|---|---|---|
+| torn | 4 | 776 | 13.0% |
+| complete | 3 | 3,137 | 52.6% |
+| partial-successor | 1 | 2,048 | 34.4% |
+
+The `partial-successor` row is new against the floor and is the documented
+non-uniqueness rather than a new phenomenon: captures1's pass-1 16x1 has
+`wrong = 2,048` with `successor = 1,024` and `best = 1x1` at 2,048, i.e. the
+grey padding checkerboard is identical across iterations so several candidates
+tie. Its pass-2 16x1 row is the more interesting one — `cut = 88`,
+`prefix_ok = True`, successor 158 of 456 but `4x8` (successor **+2**) at 456 —
+which is the same successor+2 tail #44 already records at 32/146, 400/992 and
+234/591.
+
+**One cross-lane datum, and it is not one this lane went looking for.** Three
+of arm A's failures are **pass-2 8x8** (64, 192, 64 px on captures4, 5 and 9),
+and all three are `torn` — `cut = 172, 236, 172`, `prefix_ok = True`. Pass-2
+8x8 is one of the two shapes the texture lane's `blind` counter fired on. A
+missed re-upload cannot produce a frontier at an arbitrary offset, so on these
+three runs that shape is a mid-write read. That does not refute their
+mechanism — two causes can share a shape — but it does mean theirs is not the
+only cause even on the shapes their counter names.
+
+### ARM B: the bar is met, and one leg failed
+
+`ec7f50e859` / apk `24a5f905a794`, dispatch `1789303576-skew-bound-1885066`,
+**nova**, `disc_id = Texture border`, 10 runs, progress-log proof on every
+one. One line from arm A.
+
+```
+stale_px     0, 0, 0, 0, 0, 0, 0, 0, 0, 0        10 of 10
+races_lost   0, 0, 0, 0, 0, 0, 0, 0, 0, 0
+```
+
+All ten runs are **bit-identical**: 15 of 18 exact, 4,600 px, every run. Arm A
+gave 14–15 exact and 4,600–9,760 px.
+
+| class | A px | B px | |
+|---|---|---|---|
+| torn | 776 | **0** | closed |
+| complete | 3,137 | **0** | closed |
+| partial-successor | 2,048 | **0** | closed |
+
+`ab_compare` on the same pair, both arms 10 runs, same `disc_id`, same
+`classifier_rev`: **0 better, 0 worse, 17 same, 1 noise**, nothing outside its
+measured band, exact 14 → 15. Verdict **PRE-REGISTERED: PASS, all 20
+registered checks hold** — the prediction was queued at 12:46:16Z naming the
+file and its content still hashes to the sha recorded then.
+
+### The instrument says the bound executed, which is a separate question
+
+| | arm A | arm B |
+|---|---|---|
+| `held(n)` / `kicks` | 0 | **1.0000** (148,704 of 148,704) |
+| skew p50 | 8,650,000 ns | **100,000** |
+| skew p90 | 34,900,000 | **150,000** — a 99.6% fall |
+| skew p99 | 51,250,000 | **1,100,000** |
+| skew mean | 16,885,845 | **1,052,811** |
+| skew max | 527,868,229 | 607,705,521 |
+| guest held, mean | — | 497,095 ns |
+| guest held, max | — | 252,009,323 ns |
+| spun / slept | — | 37,103 / 111,601 |
+| `gave` | 0 | **1,002** |
+| `lost` (untimed) | 2,084 | **0** |
+
+`held(n)` equal to `kicks` to four decimal places is what makes S1 a
+measurement rather than a coincidence: **every submission the guest made was
+held.** A flat count cannot distinguish a change that never ran from one that
+ran and returned a different wrong answer, which is why this was registered as
+its own leg.
+
+Two figures in that table are not improvements and should not be read as
+regressions either. The skew **max** rose, 528 → 608 ms: that is the host
+stall tail, which no bound reaches, and it is the same population as the
+725 ms non-deferred VBLANK lateness the `clamp=` counter sees. And `lost` went
+to zero because with the bound in force at most one submission is ever
+outstanding, so the pending ring cannot overflow — arm A's skew mean was a
+floor and arm B's is exact.
+
+### S4 FAILED, and it is the most useful line here
+
+**`gave = 1,002` of 148,704 submissions — 0.674%.** The registered bar was
+zero. `gave` counts releases of the guest with pushbuffer still outstanding,
+which happen when the pusher parks stalled on a flip, a NOP acknowledgement or
+a context switch — none of which can clear until the guest runs again, so the
+alternative to releasing it is a deadlock.
+
+So the honest statement of what this change achieves is narrower than "the
+race is impossible", and the leg is what forces it to be said:
+
+> The race is **impossible on the 99.326% of submissions the bound covers**,
+> and merely **unlikely on the remaining 0.674%**.
+
+S1 passing on 10 of 10 does not by itself close that gap, exactly as the
+prediction said it would not. What it does say is that the hole did not cost a
+race in ten runs, which is unsurprising rather than lucky: the submissions
+that matter are the eighteen per run that publish a draw whose texture the
+guest then overwrites, out of 148,704 that include boot, the dashboard and
+every other test on the disc.
+
+**What is not known is where the 1,002 come from**, and the instrument cannot
+say: `gave` is one counter over four stall reasons. 1,002 is far more than the
+~180 flips the ten runs contain, so most of them are not FLIP_STALL. Splitting
+`gave` by `pfifo_pusher_should_stall`'s four conditions is a one-counter change
+and is the named next step — it decides whether the residual is reachable at
+all or is inherent to the flip handshake.
+
+### T1 and T3
+
+**T1 holds**: torn and complete both zero. **T3 holds** as registered — no
+`complete` swatch is strictly better matched by a predecessor than by its
+successor; on 2 of 3 the successor is the unique best match and on 1 of 3 it
+ties with a lower-indexed candidate, which is the padding-checkerboard
+degeneracy #44 already records.
+
+**T2b is VOID**, not passed: the `unmodelled-successor` class does not appear
+in arm A at all, so this pair could not test it. The 680-px case is in the
+published floor, not here.
+
+**One row deliberately left uninterpreted.** Arm A's `partial-successor`
+swatch (captures1, pass-1 16x1, 2,048 px) has `successor = 1,024` while a
+lower-indexed candidate accounts for 2,048. That reads like predecessor
+content — the texture lane's mechanism — and **it is not safe to read it that
+way from this tool.** `read_through` builds a per-candidate table keyed on
+texel position, and a candidate scores zero on a texel it simply has no entry
+for, so two candidates' counts are not a like-for-like comparison across
+different surface dimensions. Deciding what that row is needs the counting
+normalised, which this lane has not done. It is 2,048 px on 1 of 10 runs and
+it went to zero in arm B along with everything else; nothing in the verdict
+rests on it. Recorded rather than guessed at, because guessing at this tool's
+fields already cost one retraction today.
+
+### What arm A's own numbers predict about the cost, stated before the cost arm runs
+
+A p50 skew of 8.65 ms does **not** mean the bound makes every submission wait
+8.65 ms. That figure is a queue-depth effect: it is how long a backlog takes
+to clear, and with the bound in force the backlog is never allowed to form.
+The quantity that survives is the **service time of one submission**, and the
+arithmetic goes the other way:
+
+- 3,000 submissions/s × 8.65 ms would be 26 seconds of waiting per second of
+  wall clock. The bound is not merely expensive at that rate, it is
+  impossible — so the p50 cannot be the per-submission cost, and reading it as
+  one would have been the "a bound is not a value" mistake.
+- What it should cost instead is the PFIFO thread's own busy time per
+  submission, plus a thread round trip. `frame-pacing-and-parallelism.md`
+  measures `nv2a.pfifo_thread` at **48%** busy in steady state; at 3,000
+  submissions/s that is **~160 µs of service per submission**.
+- Serialised, the guest then spends roughly the PFIFO thread's busy fraction
+  blocked where it previously spent approximately none. The same document has
+  the guest CPU thread **83%** busy with the renderer idle 21.2 ms of a 50.2 ms
+  frame waiting on it, so the two halves overlap substantially and it is that
+  overlap the bound removes.
+
+**So the honest expectation is that C1 fails.** A cost of order the PFIFO
+thread's busy fraction is well past "the `gfps` ceiling falls by at most 2",
+and `orchestration.md` says what to do with that rather than leaving it to
+judgement: measure the accuracy, then the cost, then hand the trade over with
+both numbers. It also says which way the default should lean while that
+happens — *if a change improves accuracy, keep it, and recover the throughput
+through the performance work stream* — which is why the bound is committed on
+by default with `HAKUX_FIFO_SKEW_BOUND=0` as the escape, rather than committed
+off pending a decision nobody asked for.
+
+Two things would make it cheaper without weakening the guarantee, and both are
+measurements this arm produces rather than guesses: if `slept` dominates
+`spun`, the cost is scheduler round trips and the 60 µs spin window is the
+thing to widen; if `spun` dominates and the cost is still there, the cost is
+the serialisation itself and no spin tuning reaches it. That is registered as
+C3.
 
 Noise floor to beat, ten runs of one unchanged APK:
 
@@ -331,6 +550,96 @@ gone", and what has to carry the rest is the impossibility argument above plus
 the two legs that read the bound directly — `held(n)` against `kicks` (did it
 execute) and `gave == 0` (no exceptions on this path).
 
+## MEASURED: the cost, and it is the reason this ships off by default
+
+Galleon, 240 s per arm, **nova** both sides (`device_label` read out of each
+`result.json`), `--who skew-bound-cost`, same two refs as the accuracy pair.
+Arm A `1789303629-skew-bound-cost-1885758`, arm B
+`1789303629-skew-bound-cost-1885779`.
+
+| | arm A | arm B |
+|---|---|---|
+| pushbuffer ring | **134,197,247 bytes (128 MiB)** | same |
+| submissions/s | 257 | 181 |
+| **made while PGRAPH was behind** | **100.0%** | 100.0% |
+| skew mean | 55,384,393 ns *(a floor: 4,251 untimed)* | **2,070,692** |
+| skew p50 / p90 / p99 | 2,450,000 / 7,350,000 / 20,200,000 | — |
+| skew max | **4,668,197,291** ns | 524,949,844 |
+| `held(n)` / `kicks` | 0 | **1.0000** |
+| guest held, mean | — | **2,245,410 ns** |
+| **guest blocked at submissions** | ~0% | **40.7% of wall clock** |
+| `spun` / `slept` | — | 4,237 (9.6%) / 40,060 (90.4%) |
+| `gave` | 0 | **2,482 — 5.603%** |
+| **`gfps` p90** | **29** | **13** |
+| **`gfps` max** | **30** | **15** |
+| `gfps` p50 *(printed, not judged)* | 16 | 10 |
+
+**C1 FAILS: the frame-rate ceiling more than halves.** p90 29 → 13 against a
+registered tolerance of 2, and max 30 → 15. That is not a tolerance missed by
+a little; it is the pipeline's remaining CPU/GPU overlap being removed.
+
+**And it is what the arithmetic predicted before the arm ran.** The prediction
+committed with arm A's result said the cost would be of order the PFIFO
+thread's busy fraction — 48% from `frame-pacing-and-parallelism.md` — and the
+guest came back blocked for **40.7%** of wall clock. The prediction holding is
+worth more here than the number: it means the cost is understood rather than
+merely observed, and it is why "widen something" is not the repair.
+
+**`behind = 100.0%` reproduces on a real title**, at twice the ring size and a
+tenth the submission rate of the test disc. The skew model is not an artefact
+of a pgraph disc.
+
+**C5 behaves exactly as registered.** `gave` is 5.603% on Galleon against
+0.674% on the test disc, because Galleon flips every frame and the guarantee
+genuinely does not hold across a flip stall. That is the honest scope of the
+change on real content: the bound covers 94.4% of a flipping title's
+submissions.
+
+### C3's registered interpretation was wrong, and the hold mean says why
+
+C3 was recorded as a diagnosis rather than a leg, and its reading was: if
+`slept` dominates, the cost is scheduler round trips and the 60 µs spin window
+is the thing to widen; if `spun` dominates and the cost is still there, the
+cost is the serialisation itself.
+
+It came back **90.4% slept**, which by that reading points at the spin window.
+**That reading is backwards**, and the figure that settles it is one the same
+line already carries: the mean hold is **2,245,410 ns — 37× the 60 µs spin**.
+A wait that long is real service time on the PFIFO thread, not wakeup
+latency. Nothing can be spun for 2.25 ms, so no spin tuning reaches it.
+
+The discriminator should have been **hold mean against the spin window**, not
+the `spun`/`slept` split alone. A split that is 90% sleeps tells you the spin
+did not catch them; it does not tell you *why*, and those are opposite
+repairs. Recorded because the wrong version was registered.
+
+### Which points at the cheaper version, now motivated rather than guessed
+
+The guarantee that closes #44 is **"no unprocessed draw sits in the FIFO while
+the guest runs"**. Holding at *every* submission is a far stronger condition
+than that, and the gap is enormous: a submission carrying no draw adds no
+draw, so holding only at **draw-publishing** submissions preserves the
+invariant exactly — and this disc makes **148,704 submissions for 180 draws**.
+
+It needs a pre-scan of the published segment for `NV097_SET_BEGIN_END` before
+deciding whether to hold, and it needs its own arm. It is the concrete target
+`orchestration.md` asks for when it says to recover the throughput through the
+performance stream rather than dropping the fix.
+
+### The trade, handed over rather than resolved
+
+The constant is defaulted **off** (`HAKUX_FIFO_SKEW_BOUND=1` turns it on), and
+that is a statement about *this* version's scope, not about the mechanism:
+
+- **Accuracy bought**: #44 closed on every measurable class, `stale_px` 0 on
+  10 of 10, PRE-REGISTERED PASS on 20 of 20 checks, with the bound proven in
+  force at `held(n)/kicks = 1.0000`.
+- **Cost**: over half the frame-rate ceiling of a real title, and 5.6% of that
+  title's submissions not covered anyway.
+- **What is not being claimed**: that this is the final shape. A selective
+  bound plausibly buys the same accuracy at a fraction of the cost, and that
+  is the next arm rather than a hope.
+
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
 #44 handed #39's lane a falsifier nobody had run: **does a lost quad's region
@@ -376,22 +685,38 @@ measuring:
 
 ## UNRESOLVED
 
-- **What the skew actually is.** `drain` has never been measured. Everything
-  above about "the guest runs ahead" is a reading of the source; its size is
-  the first number this instrument produces.
-- **Whether the bound is affordable.** Every submission becomes a round trip
-  to the PFIFO thread where before it was a store.
-  `frame-pacing-and-parallelism.md` measured the guest CPU thread busy 83% of
-  the wall clock with the renderer idle 21.2 ms of a 50.2 ms frame waiting on
-  it, so the two halves were already only partly overlapped — and what overlap
-  remains is what this removes. `orchestration.md` is explicit about the order:
-  measure the accuracy, then the cost, then hand the trade over rather than
-  resolving it.
-- **How much of a real title the guarantee covers.** `gave` across a title
-  that flips every frame is unknown, and the guarantee genuinely does not hold
-  across a flip stall.
+- ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
+  ring, 100.0% of 148,667 submissions made with PGRAPH behind, and a
+  publish-to-consumed latency with a p50 of 8.65 ms, a p90 of ≥34.9 ms and a
+  max of 528 ms. What remains open is the shape above 51.2 ms, where the
+  histogram overflows and p90/p99 are floors.
+- ~~**Whether the bound is affordable.**~~ **MEASURED: it is not, in this
+  shape.** `gfps` p90 29 → 13 and max 30 → 15 on Galleon, with the guest
+  blocked at its submissions for 40.7% of wall clock — against a predicted
+  ~48% from the PFIFO thread's busy fraction, so the cost is understood and
+  not merely observed. Defaulted off. What is open is the **selective**
+  version: hold only at draw-publishing submissions, which preserves the
+  invariant exactly and skips 148,524 of 148,704 submissions on this disc.
+  Needs a pre-scan for `NV097_SET_BEGIN_END` and its own arm.
+- ~~**How much of a real title the guarantee covers.**~~ **MEASURED: 94.4%.**
+  `gave` is 5.603% of Galleon's submissions against 0.674% of the test disc's,
+  which is the flip-every-frame difference C5 registered in advance. What is
+  still unknown is the *attribution*: `gave` is one counter over four stall
+  reasons, and 2,482 releases against ~14,000 flips in 240 s does not
+  obviously decompose. Splitting it by `pfifo_pusher_should_stall`'s four
+  conditions is a one-counter change and decides whether the residual is
+  reachable at all.
 - **The five blind swatches.** The true per-draw loss rate is a floor by an
   amount this capture cannot bound, before or after any fix.
+- **Whether `defer_cap` could confound the skew arms.** It cannot, and this is
+  now measured rather than assumed: `unl=0` on all 28 `vblphase` windows of
+  arm A, so the `Texture border` disc never enters unlock mode and the
+  deferral-cap change both arms carry is inert on it. The same windows also
+  show the `clamp=` counter live and firing 0–8 times per window with
+  `def(n)=0` — clamps with no deferral at all, which can only be a
+  non-deferred lateness over a period, i.e. the host stall tail. Its max
+  lateness is 725,561,719 ns, **43.5× a period**. That is exactly the residual
+  #65's D9 reserves and no deferral cap can reach.
 - **Whether a cheaper sufficient bound exists outside this path.** The one
   candidate is write-tracking: trap the guest's store to a range a queued draw
   will read, rather than holding every submission. The machinery is partly
