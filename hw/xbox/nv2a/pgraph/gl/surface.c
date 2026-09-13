@@ -1430,7 +1430,19 @@ void pgraph_gl_render_surface_to_texture(NV2AState *d, SurfaceBinding *surface,
     glBindTexture(texture->gl_target, texture->gl_texture);
     glTexParameteri(texture->gl_target, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri(texture->gl_target, GL_TEXTURE_MAX_LEVEL, 0);
+    /*
+     * The default min filter is GL_NEAREST_MIPMAP_LINEAR, which leaves a
+     * single-level texture incomplete, so one has to be set here. But this
+     * is the binding's own texture and apply_texture_parameters() applies
+     * the guest's filter to it a moment later behind a cache guard,
+     * `if (min_filter != binding->min_filter)`. A fresh binding is safe --
+     * generate_texture_binding() seeds the field to 0xFFFFFFFF -- while a
+     * REUSED one whose cached filter already equals what the guest is
+     * asking for skips that call and keeps the GL_LINEAR set here. Drop the
+     * cached value so the guest's filter is reapplied. See #71.
+     */
     glTexParameteri(texture->gl_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    texture->min_filter = 0xFFFFFFFF;
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, texture_shape) &&
         !android_surface_to_texture_needs_guest_reinterpretation(surface,
