@@ -138,12 +138,13 @@ static unsigned int android_texture_source_bpp(const TextureShape s,
                                                unsigned int default_bpp,
                                                bool has_converted_data)
 {
-    if (has_converted_data &&
-        (s.color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_I8_A8R8G8B8 ||
-         pgraph_texture_format_expands_by_replication(s.color_format))) {
-        return 4;
-    }
-    return default_bpp;
+    /* Every conversion pgraph_convert_texture_data performs -- the palette
+     * lookup, the two YUV decodes, R6G5B5 and the 5/6-bit packed formats --
+     * emits RGBA8. The bytes_per_pixel in the format tables is the GUEST
+     * stride and is not the stride of that output, so anything walking the
+     * converted buffer has to ask here instead. */
+    (void)s;
+    return has_converted_data ? 4 : default_bpp;
 }
 
 static void android_texture_convert_to_rgba8(const TextureShape s,
@@ -1009,7 +1010,7 @@ static void upload_gl_texture(PGRAPHGLState *r,
                     android_texture_source_bpp(s, f.bytes_per_pixel,
                                                converted != NULL);
 #else
-                    f.bytes_per_pixel;
+                    converted ? 4 : f.bytes_per_pixel;
 #endif
                 unsigned int row_pitch =
                     converted ? adjusted_width * source_bpp : adjusted_pitch;
@@ -1111,7 +1112,7 @@ static void upload_gl_texture(PGRAPHGLState *r,
                     android_texture_source_bpp(s, f.bytes_per_pixel,
                                                converted != NULL);
 #else
-                    f.bytes_per_pixel;
+                    converted ? 4 : f.bytes_per_pixel;
 #endif
                 unsigned int row_pitch = width * source_bpp;
 
@@ -1221,7 +1222,7 @@ static void upload_gl_texture(PGRAPHGLState *r,
                         android_texture_source_bpp(s, f.bytes_per_pixel,
                                                    converted != NULL);
 #else
-                        f.bytes_per_pixel;
+                        converted ? 4 : f.bytes_per_pixel;
 #endif
                     unsigned int upload_row_pitch = width * source_bpp;
                     unsigned int upload_slice_pitch = upload_row_pitch * height;
