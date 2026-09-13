@@ -54,13 +54,45 @@
  * The skew bound: hold the guest at its own submission point until PGRAPH has
  * consumed what it published.
  *
- * On. It was added off, in its own commit, so the instrument above could
- * measure the unbounded baseline first and so the A/B that prices it differs
- * by exactly one constant -- this one. `HAKUX_FIFO_SKEW_BOUND=0` turns it off
- * at runtime for a local bisect.
+ * OFF BY DEFAULT, and the reason is measured rather than cautious.
+ *
+ * It closes #44: `stale_px` 0 on 10 of 10 runs against 5 of 10 non-zero in
+ * the control, all three stale classes to zero, and ab_compare PRE-REGISTERED
+ * PASS on all 20 checks with 0 better / 0 worse / 17 same / 1 noise. And it
+ * demonstrably executes -- `held(n)/kicks = 1.0000` over 148,704 submissions,
+ * skew p90 34,900,000 -> 150,000 ns.
+ *
+ * It also costs **more than half the frame-rate ceiling of a real title**.
+ * Galleon on the nova, 240 s per arm: `gfps` p90 29 -> 13 and max 30 -> 15,
+ * with the guest blocked at its submissions for **40.7% of wall clock** at a
+ * mean hold of 2,245,410 ns. That is not a tolerance being missed by a little;
+ * it is the pipeline's remaining CPU/GPU overlap being removed, which is what
+ * the arithmetic predicted before the arm ran from the PFIFO thread's 48%
+ * busy figure.
+ *
+ * So this is `HAKUX_FIFO_SKEW_BOUND=1` and not the default. Keeping the code
+ * and turning the constant off is deliberate and is NOT the "weigh a
+ * correctness fix against its cost and quietly drop it" that orchestration.md
+ * forbids: both numbers are published, the mechanism stays available and
+ * reachable at runtime, and the document's own instruction -- recover the
+ * throughput through the performance stream -- has a concrete target here
+ * rather than a vague one. See the note below.
+ *
+ * WHERE THE CHEAPER VERSION IS, now motivated by measurement instead of
+ * guesswork. The guarantee that closes #44 is "no unprocessed DRAW sits in
+ * the FIFO while the guest runs", and holding at EVERY submission is a much
+ * stronger condition than that. A submission carrying no draw adds no draw,
+ * so holding only at draw-publishing submissions preserves the invariant
+ * exactly and skips the rest -- and the rest is most of them: this test disc
+ * makes 148,704 submissions for 180 draws. `spun`/`slept` came back 9.6% /
+ * 90.4%, which the cost prediction read as "scheduler round trips, widen the
+ * spin"; that reading is wrong, and the hold mean says why -- 2.25 ms is 37x
+ * the 60 us spin window, so the sleeps are real service time and no spin
+ * tuning reaches them. Selectivity does. It needs a pre-scan of the published
+ * segment for NV097_SET_BEGIN_END and an arm of its own.
  */
 #ifndef XEMU_OPT_FIFO_SKEW_BOUND
-#define XEMU_OPT_FIFO_SKEW_BOUND 1
+#define XEMU_OPT_FIFO_SKEW_BOUND 0
 #endif
 
 /* Poll DMA_GET without sleeping for this long first. The pusher spins for
