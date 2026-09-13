@@ -256,31 +256,26 @@ useful item in a brief: it is how the fold-in is judged, and it is what makes
 a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
 have been caught at the prediction stage.
 
-### Territories as allocated 2026-09-12 (second wave)
+### Territories as allocated 2026-09-12 (third wave)
 
 | stream | files owned |
 |---|---|
-| cube-face selection (#40) | `glsl/psh.c` |
-| RADIAL fog (#41) | `glsl/vsh.c`, `vsh.h`, `vsh-ff.c`, `vsh-prog.c` |
-| swatch order (#50) | `vk/surface.c`, `vk/blit.c`, `gl/blit.c` |
-| remote lane (#34, #51) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, desktop build |
-| nobody — in flight | `vk/draw.c`, `gl/draw.c` (#43's arm is on the device; moving them makes it unreadable) |
+| depth cells (#52) | `glsl/psh.c`, `vk/surface-compute.c` |
+| packed texel expansion (#59) | `vk/texture.c`, `pgraph/texture.c`, `s3tc.c` |
+| line width (#13) | `vk/draw.c`, `gl/draw.c`, `vk/instance.c` |
+| orchestrator | `glsl/vsh*.c` (byte-grid quantisation arm on the device) |
+| remote lane (#34, #39, #51) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/surface.c`, desktop build |
+| nobody | `pgraph.c` |
 
 A file whose stream's arm is **queued but not yet judged** is still claimed.
-The arm is a measurement of one delta, and a second edit lands inside it.
+The arm measures one delta and a second edit lands inside it.
 
-Retired from the first wave: depth (#16 float Z), image blit (#33), viewport
-(#49), audio. `glsl/psh.c` and `glsl/vsh*.c` changed hands between waves, so
-every brief says *rebase first and read the current file, not your memory of
-it* -- the #53 stream moved `normalization` and `local_eye` out of a union
-they shared with program data, and the shadow stream added `texelTieBias` to
-the shadow fetch.
+Retired: first wave (depth #16, image blit #33, viewport #49, audio); second
+wave (cube face #40, RADIAL fog #41, swatch order #50). Files change hands
+between waves, so every brief says *rebase first and read the current file,
+not your memory of it* -- `psh.c` alone gained `texelTieBias` on the shadow
+fetch and a cube degenerate-direction constant within one wave.
 
-Note `glsl/psh.c` and `glsl/vsh.c` are in the same directory and belong to
-different agents; the brief says so explicitly, because "the shader
-directory" is the obvious wrong-sized unit of ownership. `pgraph.c` belongs to
-nobody by default -- it is the file every stream is tempted to reach into, and
-the one whose conflicts are worst.
 
 **Guardrail against related-issue collisions**, which is a different failure
 from file collisions: two agents on #16 and #52 would not touch the same
