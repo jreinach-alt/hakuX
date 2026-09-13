@@ -271,6 +271,14 @@ static bool download_surface_record_deferred(NV2AState *d,
      * fixed function came back with the quad drawn in one and blank in the
      * next, 38 of 80 captures over three runs. Record the draws first,
      * which is what the synchronous path gets from pgraph_vk_finish.
+     *
+     * Caveat, added 2026-09-12: fact 1 in download_surface_to_buffer()'s
+     * comment below applies here too, and this paragraph overstates its own
+     * commit. c41d288b13 said plainly that "both queues are off by default
+     * on the desktop build, so this is inert on the lane and unmeasured
+     * there", and nothing outside the Android JNI layer can fill either
+     * queue. The 38-of-80 flakiness is a real measurement; this guard cannot
+     * be what moved it. Treat that attribution as open.
      */
     if (r->reorder_window.count > 0) {
         pgraph_vk_flush_reorder_window(d);
@@ -789,16 +797,50 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
      * buffer at all, so there is nothing for a finish to wait on and the stale
      * copy is taken without any of the guards noticing.
      *
-     * Measured consequence, issue #50: `Blend tests`' TestDetailed renders its
-     * third swatch stack into the same 64x256 address as its second, then
-     * binds that address as a texture.  The texture bind takes this path
-     * (pgraph_vk_surface_download_if_dirty, vk/texture.c), the four queued
-     * draws are not yet recorded, and the copy returns the *second* stack's
-     * image.  Our third stack is bit-exact the second stack's render target on
-     * 1,119 of 1,120 unsigned captures of the 1,568-test oracle, which is what
-     * made it look like a reversed draw order: the two stacks draw the same
-     * four colours in opposite order.
-     * See docs/investigations/blend-stack-c-is-render-target-aliasing.md.
+     * THIS IS NOT A FIX FOR ISSUE #50, and the comment that landed here said
+     * it was.  Retracted 2026-09-12 on three source facts, none of which
+     * needed the device:
+     *
+     *   1. Both guards test counters that are structurally zero in every
+     *      configuration we ship or test.  The reorder window is filled only
+     *      under `g_xemu_draw_reorder` and the draw queue only under
+     *      `g_xemu_draw_merge` (vk/draw.c); both are static `false`, and the
+     *      only callers of xemu_set_draw_reorder/xemu_set_draw_merge in the
+     *      whole tree are the Android JNI layer, where the prefs default to
+     *      false (xemu_android.cpp:949,954).  The desktop build cannot turn
+     *      them on at all.  Every logcat on disk that records the line prints
+     *      `draw reorder: OFF` / `draw merge: OFF`.  So the A/B that carried
+     *      this change and moved 0 of 255 captures did not measure a harmless
+     *      change; it measured a change that never executed.
+     *   2. Even with the prefs on, this flush is downstream of the decision
+     *      it would need to influence.  Every caller gates on
+     *      `surface->draw_dirty` before reaching a download --
+     *      pgraph_vk_surface_download_if_dirty() just below,
+     *      pgraph_vk_download_surfaces_in_range_if_dirty() above, and the
+     *      texture bind in vk/texture.c -- and a draw sitting in the reorder
+     *      window has not set that flag, because vk/draw.c's reorder path
+     *      returns before its `post_draw` label and only
+     *      flush_reorder_window_internal() calls
+     *      pgraph_vk_set_surface_dirty().  A surface whose only pending
+     *      writes are in the window therefore reads CLEAN and no download is
+     *      attempted, so nothing ever arrives here to be rescued.  That hole
+     *      is the real one, it is in the reorder path's bookkeeping rather
+     *      than here, and it is unfixed.
+     *   3. TestDetailed cannot be measured by the dispatcher at all.  It is
+     *      in `interactive_only_tests_` (blend_tests.cpp:92) and
+     *      test_driver.cpp calls `RunAll(false)` unconditionally, which is
+     *      why the guard arms scored Blend_tests at 105 of 1,673.  #50's
+     *      entire evidence base is one capture set taken at 2026-09-12 02:12,
+     *      seventeen hours and 31 vk/ commits BEFORE this change, so no
+     *      post-fix state of #50 has ever been observed.
+     *
+     * The flush is kept because it is correct for the configuration in which
+     * it does fire -- a user can turn either pref on -- and removing it would
+     * leave the hazard above behind a toggle.  It is a latent-hazard guard,
+     * not a measured fix, and it must not be cited as one.
+     * See docs/investigations/blend-stack-c-is-render-target-aliasing.md for
+     * the aliasing measurement, which stands on its own: what is retracted is
+     * the attribution of that aliasing to a queued draw.
      */
     if (r->reorder_window.count > 0) {
         pgraph_vk_flush_reorder_window(d);
