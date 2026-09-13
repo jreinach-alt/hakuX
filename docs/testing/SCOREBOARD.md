@@ -4,11 +4,11 @@ Each cell is **exact/captures · structural px** — structural being differing 
 
 | run | binaries | built | hw commits behind tip | discs | captures | rescored |
 |---|---|---|---:|---:|---:|---:|
-| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 31 ⚠️ | 73 | 1915 | — |
+| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 35 ⚠️ | 78 | 2021 | — |
 
 | category | goldens | `pre-fixes-fb4dfafc` |
 |---|---:|---|
-| Texture addressing ⚠️40% | 198 | 37/80 · 268,689 |
+| Texture addressing ⚠️94% | 198 | 65/186 · 613,851 |
 | Texture formats ⚠️32% | 119 | 12/38 · 333,758 |
 | Render to texture ⚠️37% | 67 | 10/25 · 602,034 |
 | Lighting | 195 | 27/195 · 476,228 |
