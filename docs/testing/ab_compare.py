@@ -759,7 +759,16 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                            "from exact. The prediction allowed for them; the "
                            "regressions are still real."
                            % (tally["worse"], len(reg)))
-        if exp_notes:
+        # Only the BAD binding labels make the exit code non-zero. This used
+        # to be `if exp_notes: rc = 1`, and exp_notes carries the GOOD label
+        # too -- so **every PRE-REGISTERED PASS this campaign produced exited
+        # 1**, and the exit code has been useless as a signal since the binding
+        # was added. Nobody was caught by it because every lane reads the
+        # verdict text, but a script keying on `$?` would have seen a clean
+        # pass as a failure, which is the worst direction for a gate to be
+        # wrong in. Found by the #6 lane, in a file it does not own.
+        if any(n.startswith(("TAMPERED", "POST-HOC", "UNBOUND"))
+               for n in exp_notes):
             rc = 1
     out.append("=" * 78)
 
