@@ -28,6 +28,16 @@
 # Design constraints that matter
 # ------------------------------
 #
+# THIS LOOP PARSES ITS SCRIPT ONCE, so editing this file does not reach a
+# RUNNING watchdog -- it must be stopped and restarted. That is not a quirk of
+# this script, it is how bash executes a `while` loop, and it has now cost this
+# campaign three times in one day: soak_title.sh and run_disc.sh changes that
+# never reached the serving dispatcher, a dispatcher snapshot that re-execed
+# its own copy, and this file's message continuing to print the old text after
+# it was rewritten. The dispatcher solved it by re-execing on a source hash;
+# this script is short-lived enough that restarting it is the honest fix, and
+# saying so here is cheaper than adding the machinery.
+#
 # ONE EVENT PER IDLE PERIOD. It latches after firing and only re-arms once the
 # transcript is touched again. A monitor that emits repeatedly gets throttled
 # and then stopped by the harness, which would leave the session unwatched
