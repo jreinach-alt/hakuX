@@ -149,7 +149,33 @@ while :; do
     case "$cov" in
         FAIL*)  hint="COVERAGE GAP -- $(printf '%s' "$cov" | sed -n 2p | sed 's/^ *//'). Give it a lane in territory.toml or write blocked_on on its tracker entry." ;;
         *"NOT CHECKED"*) hint="coverage unchecked (no gh). Pick up: fold a finished lane's diff and dispatch its A/B; claim an issue whose files territory.toml lists free; or refresh the scoreboard with collect_sweep.sh." ;;
-        *)      hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered, so the next move is a FINISHED lane to fold, a free file in territory.toml to claim, or collect_sweep.sh." ;;
+        *)
+            # DEVICE-BOUND IS A STATE, NOT AN ABSENCE OF SUGGESTIONS. When
+            # nothing is uncovered and arms are queued, all three of the
+            # suggestions below are unavailable -- and printing them anyway is
+            # the nag this file's own comment warns about, now aimed at a
+            # reader who can only wait. Say so, with the number that makes
+            # waiting a decision rather than a guess.
+            mins=$(cd "$HERE/../.." 2>/dev/null && python3 - <<'PYEOF' 2>/dev/null
+import json, glob, os
+tot = 0
+for f in glob.glob('/home/justin/hakux-work/dispatch/queue/*.req'):
+    if os.path.basename(f).startswith('z-'):
+        continue
+    try:
+        r = json.load(open(f))
+    except Exception:
+        continue
+    tot += (int(r.get('seconds', 60)) + 120) if r.get('title') \
+        else 180 + len(r.get('suites') or []) * 160
+print(tot // 120)
+PYEOF
+)
+            if [ "${agentwork:-0}" -gt 0 ] && [ -n "$mins" ]; then
+                hint="$(printf '%s' "$cov" | sed -n 1p). DEVICE-BOUND: ~${mins} min of arms queued across two handhelds and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
+            else
+                hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered and no arms are queued, so the next move is a FINISHED lane to fold, a free file in territory.toml to claim, or collect_sweep.sh."
+            fi ;;
     esac
 
     armed=0
