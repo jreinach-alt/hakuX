@@ -9,11 +9,12 @@ hakuX-perf pacing line and this reads them back:
 
     Vr:raced/copies         vertex-range copies out of guest VRAM whose range
                             was dirty again when the copy returned
-    Tr:raced/uploads/binds  texture bind windows; `uploads` consumed a dirty
-                            bit inside the window, `raced` means it was set
-                            again on return -- the guest writing the texture
+    Tr:raced/uploads/windows begin_pre_draw windows; `uploads` consumed a
+                            dirty bit for a bound texture inside the window,
+                            `raced` means it was set again by the time the
+                            window closed -- the guest writing the texture
                             while the upload read it
-    Tl:n                    dirty on return with nothing consumed inside
+
     Xd:n                    the impossible row; must be exactly 0
 
 Why the numbers are cumulative and this takes the LAST line rather than a
@@ -43,8 +44,7 @@ PERF = re.compile(
 TQ = re.compile(r"\bTq:(?P<tq>[\d.]+)")
 PROBE = re.compile(
     r"\bVr:(?P<vr>\d+)/(?P<vc>\d+)\s+"
-    r"Tr:(?P<tr>\d+)/(?P<tu>\d+)/(?P<tb>\d+)\s+"
-    r"Tl:(?P<tl>\d+)\s+Xd:(?P<xd>\d+)")
+    r"Tr:(?P<tr>\d+)/(?P<tu>\d+)/(?P<tb>\d+)\s+Xd:(?P<xd>\d+)")
 MB = re.compile(r"mb_emitted=(?P<mb>\d+)")
 
 
@@ -123,7 +123,7 @@ def describe(r):
     print(f"          Tr={p['tr']}/{p['tu']}/{p['tb']}"
           + (f"  raced/uploads = {p['tr']/p['tu']:.3e}" if p["tu"]
              else "  (uploads 0)"))
-    print(f"          Tl={p['tl']}  Xd={p['xd']}"
+    print(f"          Xd={p['xd']}"
           + ("  <-- IMPOSSIBLE ROW NON-ZERO; every other leg is void"
              if p["xd"] else "  (impossible row reads zero, as required)"))
 
@@ -140,7 +140,7 @@ def legs(bs):
 
     zb = sum(1 for p in probes if p["tb"] == 0)
     zv = sum(1 for p in probes if p["vc"] == 0)
-    print(f"L2 path live: runs with tex_binds==0 = {zb}, "
+    print(f"L2 path live: runs with tex_windows==0 = {zb}, "
           f"runs with vtx_copies==0 = {zv} "
           f"-> {'PASS' if zb == 0 and zv == 0 else 'FAIL -- not measured, '
               'which is not the same as zero races'}")

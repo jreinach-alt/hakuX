@@ -68,14 +68,19 @@ struct OptBisectStats g_opt_stats;
  *        returns is a guest store into that range DURING the copy -- a torn
  *        read, which is #54's hazard stated as a frequency.
  *
- *   TEX  pgraph_vk_bind_textures -> check_texture_dirty test-and-clears
- *        DIRTY_MEMORY_NV2A_TEX and, whenever it finds anything, bumps
- *        r->texture_vram_gen (via pgraph_vk_mark_textures_possibly_dirty).
- *        So a gen bump across the bind proves the bits were consumed inside
- *        the window, and a bit set again on return is a guest store during
- *        the upload. That is #44's resolved mechanism exactly: the upload
- *        for draw N reads guest memory after the guest has begun writing
- *        iteration N+1 to the same address.
+ *   TEX  pgraph_vk_poll_bound_textures, the first thing begin_pre_draw does,
+ *        test-and-clears DIRTY_MEMORY_NV2A_TEX for every bound texture and
+ *        bumps r->texture_vram_gen when it finds anything. So a gen bump
+ *        across a begin_pre_draw window proves the bits were consumed inside
+ *        it, and a bit set again by the time it closes is a guest store
+ *        during the upload that followed. That is #44's resolved mechanism
+ *        exactly: the upload for draw N reads guest memory after the guest
+ *        has begun writing iteration N+1 to the same address.
+ *
+ *        The window is begin_pre_draw and NOT the bind_textures calls inside
+ *        it, which is the whole trick and was wrong on the first attempt.
+ *        See the comment on the wrapper for why a bracket around the bind
+ *        reports ~0 for a reason that has nothing to do with the hardware.
  *
  * The surface upload read (vk/surface.c, pgraph_vk_upload_surface_data) is
  * deliberately NOT instrumented: nothing on the device clears
@@ -94,10 +99,9 @@ struct OptBisectStats g_opt_stats;
 struct HakuxVramRaceStats {
     uint64_t vtx_copies;        /* vertex-range copies out of guest VRAM */
     uint64_t vtx_raced;         /* ... whose range was dirty again on return */
-    uint64_t tex_binds;         /* texture bind windows observed */
+    uint64_t tex_windows;       /* begin_pre_draw windows observed */
     uint64_t tex_uploads;       /* ... in which dirty bits were consumed */
-    uint64_t tex_raced;         /* ... and were set again on return */
-    uint64_t tex_late;          /* dirty on return, nothing consumed inside */
+    uint64_t tex_raced;         /* ... and were set again by the end */
     uint64_t impossible;        /* see vram_range_dirty_checked() */
 };
 struct HakuxVramRaceStats g_hakux_vram_race;
@@ -163,43 +167,6 @@ static bool vram_range_dirty_checked(PGRAPHVkState *r, hwaddr addr,
     return true;
 }
 
-/* Snapshot before pgraph_vk_bind_textures; pair with vram_race_tex_end. */
-static inline uint32_t vram_race_tex_begin(PGRAPHVkState *r)
-{
-    return r->texture_vram_gen;
-}
-
-static void vram_race_tex_end(PGRAPHVkState *r, uint32_t gen_before)
-{
-    bool consumed = r->texture_vram_gen != gen_before;
-    bool dirty = false;
-
-    for (int i = 0; i < NV2A_MAX_TEXTURES && !dirty; i++) {
-        TextureBinding *b = r->texture_bindings[i];
-        if (!b || b == &r->dummy_texture) {
-            continue;
-        }
-        /* The binding's own key carries the range the upload actually read. */
-        dirty = vram_range_dirty_checked(r, b->key.texture_vram_offset,
-                                         b->key.texture_length,
-                                         DIRTY_MEMORY_NV2A_TEX) ||
-                (b->key.palette_length &&
-                 vram_range_dirty_checked(r, b->key.palette_vram_offset,
-                                          b->key.palette_length,
-                                          DIRTY_MEMORY_NV2A_TEX));
-    }
-
-    g_hakux_vram_race.tex_binds++;
-    if (consumed) {
-        g_hakux_vram_race.tex_uploads++;
-        if (dirty) {
-            g_hakux_vram_race.tex_raced++;
-        }
-    } else if (dirty) {
-        g_hakux_vram_race.tex_late++;
-    }
-}
-
 /* Appended to the hakuX-perf pacing line by nv2a_profile_get_pacing_str.
  * Cumulative, not windowed, so the answer is readable off the last line of a
  * soak's logcat without reassembling a series. */
@@ -207,13 +174,12 @@ int hakux_vram_race_snprintf(char *buf, int bufsize)
 {
     struct HakuxVramRaceStats *s = &g_hakux_vram_race;
     return snprintf(buf, bufsize,
-                    " Vr:%llu/%llu Tr:%llu/%llu/%llu Tl:%llu Xd:%llu",
+                    " Vr:%llu/%llu Tr:%llu/%llu/%llu Xd:%llu",
                     (unsigned long long)s->vtx_raced,
                     (unsigned long long)s->vtx_copies,
                     (unsigned long long)s->tex_raced,
                     (unsigned long long)s->tex_uploads,
-                    (unsigned long long)s->tex_binds,
-                    (unsigned long long)s->tex_late,
+                    (unsigned long long)s->tex_windows,
                     (unsigned long long)s->impossible);
 }
 
@@ -1590,9 +1556,7 @@ static void create_pipeline(PGRAPHState *pg)
     NV2A_PHASE_TIMER_BEGIN(pipe_bind_tex);
     if (pg->texture_state_gen != r->last_texture_state_gen ||
         r->texture_vram_gen != r->last_texture_vram_gen) {
-        uint32_t race_gen = vram_race_tex_begin(r);
         pgraph_vk_bind_textures(d);
-        vram_race_tex_end(r, race_gen);
         r->last_texture_state_gen = pg->texture_state_gen;
         r->last_texture_vram_gen = r->texture_vram_gen;
     }
@@ -3207,7 +3171,7 @@ void pgraph_vk_end_nondraw_commands(PGRAPHState *pg, VkCommandBuffer cmd)
 // buffer. For other reasons though (like descriptor set amount, surface
 // changes, etc) we do flush often.
 
-static void begin_pre_draw(PGRAPHState *pg)
+static void begin_pre_draw_inner(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
@@ -3276,9 +3240,7 @@ static void begin_pre_draw(PGRAPHState *pg)
                     pg->texture_state_gen != r->last_texture_state_gen) {
                     uint32_t saved_shader_gen = pg->shader_state_gen;
                     NV2AState *d_push = container_of(pg, NV2AState, pgraph);
-                    uint32_t race_gen = vram_race_tex_begin(r);
                     pgraph_vk_bind_textures(d_push);
-                    vram_race_tex_end(r, race_gen);
                     r->last_texture_state_gen = pg->texture_state_gen;
                     r->last_texture_vram_gen = r->texture_vram_gen;
 
@@ -3462,9 +3424,7 @@ static void begin_pre_draw(PGRAPHState *pg)
             (pg->texture_state_gen != r->last_texture_state_gen ||
              r->texture_vram_gen != r->last_texture_vram_gen)) {
             NV2AState *d_mfp_push = container_of(pg, NV2AState, pgraph);
-            uint32_t race_gen = vram_race_tex_begin(r);
             pgraph_vk_bind_textures(d_mfp_push);
-            vram_race_tex_end(r, race_gen);
             r->last_texture_state_gen = pg->texture_state_gen;
             r->last_texture_vram_gen = r->texture_vram_gen;
             if (r->texture_bindings_changed) {
@@ -3578,6 +3538,74 @@ mfp_miss: (void)0;
 
         pgraph_vk_ensure_command_buffer(pg);
         NV2A_PHASE_TIMER_END(draw_setup);
+    }
+}
+
+/*
+ * #54's texture read window, and the reason it wraps the whole of
+ * begin_pre_draw rather than the pgraph_vk_bind_textures calls inside it.
+ *
+ * The dirty bits for a bound texture are consumed by
+ * pgraph_vk_poll_bound_textures, which is the FIRST thing begin_pre_draw
+ * does -- four bitmap test-and-clears per draw, by its own comment -- and
+ * not by the bind. The guest's write is therefore already consumed and
+ * recorded as a texture_vram_gen bump before any bind_textures call is even
+ * reached, so a bracket around the bind would have found the gen unchanged
+ * on nearly every window, reported a race rate of ~0, and closed #54 on an
+ * artefact of where the bracket was placed. Wrapping begin_pre_draw puts the
+ * consume and the upload that reads guest memory inside one window.
+ *
+ * A gen bump across this window therefore means: the guest had written a
+ * bound texture, we consumed the evidence, and we then read that memory. If
+ * the bits are set AGAIN by the time the window closes, the guest wrote into
+ * the range while the upload was reading it.
+ *
+ * Both directions of error, stated here rather than discovered later:
+ *
+ *  - UPPER bound on byte overlap. Pages are 4 KiB, so a write to the same
+ *    page but a different byte counts as a hit. It also over-counts a bound
+ *    unit whose bits were not consumed in this window but were already set;
+ *    the poll consumes every bound unit it is not already flagged on, which
+ *    bounds but does not eliminate that.
+ *  - LOWER bound on #44's version skew. If the guest COMPLETES iteration
+ *    N+1's write before the poll clears the bits, the clear consumes that
+ *    write, the upload reads a fully written successor, and nothing is set
+ *    again. That is #44's `cut == complete` case and it is invisible here.
+ *    No barrier can fix reading the wrong version of a completed write, and
+ *    no read-side counter can see it either.
+ *
+ * The scan runs only when the gen bumped, which is the rare path, so the
+ * common path costs one 32-bit compare.
+ */
+static void begin_pre_draw(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+    uint32_t gen_before = r->texture_vram_gen;
+
+    begin_pre_draw_inner(pg);
+
+    g_hakux_vram_race.tex_windows++;
+    if (r->texture_vram_gen == gen_before) {
+        return;
+    }
+    g_hakux_vram_race.tex_uploads++;
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        TextureBinding *b = r->texture_bindings[i];
+        if (!b || b == &r->dummy_texture) {
+            continue;
+        }
+        /* The binding's own key is the range the upload actually read. */
+        if (vram_range_dirty_checked(r, b->key.texture_vram_offset,
+                                     b->key.texture_length,
+                                     DIRTY_MEMORY_NV2A_TEX) ||
+            (b->key.palette_length &&
+             vram_range_dirty_checked(r, b->key.palette_vram_offset,
+                                      b->key.palette_length,
+                                      DIRTY_MEMORY_NV2A_TEX))) {
+            g_hakux_vram_race.tex_raced++;
+            break;
+        }
     }
 }
 
