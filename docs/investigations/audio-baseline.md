@@ -58,6 +58,26 @@ scale is 32,768, and RMS dBFS is relative to a full-scale *square* wave, so a
 full-scale **sine** reads −3.01 dBFS. Subtract 3.01 from every RMS figure above
 to read it sine-referenced, which is what most meters show.
 
+### The instrument checks out against the one result it already has
+
+Before trusting the numbers above, I re-derived the published headroom result
+from the two captures on disk rather than taking it on trust:
+
+```sh
+python3 docs/testing/audio_measure.py --compare armB2.pcm armA2.pcm
+```
+
+The ten percentile shifts come out +6.17/+6.02, +6.22/+6.17, +5.98/+5.96,
++5.94/+6.20, +6.49/+6.03 — mean **+6.118 dB**, spread **0.55 dB**, exactly what
+`audio-headroom-verified.md` reports. The whole-file summary line reads mean
++5.85 with a 3.06 dB spread, and the difference between those two numbers is the
+censoring: the post-fix peak is pinned at 32,767, so the peak statistic cannot
+show the rest of the gain and drags the summary down. Quoting the summary would
+have been wrong, which that write-up also says.
+
+So the tool, the captures and the published claim all agree, and the baseline
+below rests on an instrument that reproduces a known answer.
+
 ### The zeros are not a dropout
 
 **MEASURED.** The headline "9.78% of samples are exactly zero" decomposes
