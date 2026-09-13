@@ -6,8 +6,23 @@ ratio**, and `performance-next-three.md` ranked its three levers on it. Both
 documents retracted the figure. **Nobody had the corrected number.** This is
 it, with its noise floor, and what it does to #68.
 
-Read `AGENTS.md` §"A wrong zero stops work; a wrong ratio redirects it" first;
-it is the general lesson. This is the arithmetic.
+**Read [`docs/investigations/tcg-retranslation-measured.md`](../../investigations/tcg-retranslation-measured.md)
+first.** That is the performance lane's device half of #69: legs M1-M5, the
+noise floor, the byte-identical corpus arm, and the verdict on the three
+levers. Everything there was derived independently of this file and the
+numbers agree throughout. **This file is only what is additive**:
+
+1. the corrected waste ratio, which that document does not state;
+2. that generations are a near-constant of the title and discards are not,
+   which is where all the ratio's noise lives;
+3. the direction of the correction, which is not fixed;
+4. a second instrument for `ov` approximately 0, one that does not use the
+   overlap predicate — which is the check that lane asked for by name;
+5. `tcg_flush_jmp_cache`, a cost symbol that scales with discards;
+6. why `blk` cannot settle the block-extent lever's feasibility on its own.
+
+Read `AGENTS.md` §"A wrong zero stops work; a wrong ratio redirects it" for
+the general lesson. This is the arithmetic.
 
 ## What each counter counts, after `82e3967e54`
 
@@ -31,8 +46,10 @@ where it says "generated" and a visit count where it says "tossed".**
 ## The corrected waste ratio
 
 Three 90 s Crimson Skies soaks, **one ref** (`848f98a6a6`), **one device**
-(thor), first window dropped as boot. Run-level aggregates, because the
-per-window ratio is unusable — see the noise floor below.
+(thor; `848f98a6a6`, which is byte-identical to `d0dc45a130` in `accel/` and
+`profile.c` — the lane doc names the code ref, the requests ran the other),
+first window dropped as boot. Run-level aggregates, because the per-window
+ratio is unusable — see the noise floor below.
 
 | quantity | run 1 | run 2 | run 3 | max/min |
 |---|---|---|---|---|
@@ -197,12 +214,24 @@ breakpoint and precise-SMC paths. Those are short by construction. A mean of
 6 over the mixture does not say what a *permissive* block's length is, and it
 is only the permissive path that `HAKUX_SMALL_BLOCK_INSNS` narrows.
 
+How much this matters is bounded, and the bound is reassuring rather than
+otherwise. If a fraction *f* of generations are forced-short one-shots and
+the permissive ones average *P*, then *f*·1 + (1−*f*)·*P* = 6.2. For *P* to
+reach the clamp's 8 needs *f* ≥ 0.26; for 16, *f* ≥ 0.65. So **the lane's
+feasibility verdict survives unless at least a quarter of all generations are
+forced one-shots.** That is not obviously false — `do_st_mmio_leN` is 6.43%
+of the bounding thread, so MMIO stores are frequent and `cpu_io_recompile`
+asks for n of 1 or 2 — but nothing measured here reaches 0.26.
+
 So the honest state of §2's lever is: it is dead because no store can miss a
-block (#68), which is established; whether an 8-instruction cap would also be
-a no-op is **not** established, and `blk` cannot settle it. The measurement
-that would is one more counter pair — instructions and generations restricted
-to calls whose request was `CF_COUNT_MASK == 0` — which is two lines in
-`tb_gen_code` beside the narrowing branch that already tests exactly that.
+block (#68), which is established; whether an 8-instruction cap would *also*
+be a no-op is **probably true and not established**, and `blk` cannot settle
+it. The measurement that would is one more counter pair — instructions and
+generations restricted to calls whose request was `CF_COUNT_MASK == 0` —
+which is two lines in `tb_gen_code` beside the narrowing branch that already
+tests exactly that condition. **No device time is asked for it**: the lever
+ships at 0 either way, and this is a note for whoever revisits it, not a
+reopening.
 
 ## How to read a run
 
@@ -224,3 +253,42 @@ window, voids the line if `xx` fires, and voids `blk` if it comes out below
 
 Legs: `docs/testing/predictions/tcg-whole-page-invalidation-3.json`,
 registered before the ref was queued.
+
+## A soft-invalidated block IS found and executed (#73, reading only)
+
+`tcg-retranslation-measured.md` flags, unverified, that `tb_lookup_cmp` masks
+`CF_INVALID` off before comparing, so the tier-1 soft invalidation's stated
+intent — "so it won't be reused from cache" — may not hold. **Reading the
+three sites settles it, at no device cost. It does not hold.**
+
+1. `tb_lookup`'s jump-cache fast path tests `tb_cflags(tb) == s.cflags`
+   **exactly**, unmasked. Setting `CF_INVALID` in place therefore makes that
+   path miss, every time, forever.
+2. `tb_htable_lookup_common` then hashes with `s.cflags`, which comes from
+   `curr_cflags()` and never carries `CF_INVALID` — **the bucket the TB was
+   inserted under** — and `tb_lookup_cmp` masks `CF_INVALID` off. So the
+   stale block is found, returned, and written back into the jump cache,
+   where step 1 will reject it again next time.
+3. `cpu_exec_loop` runs `cpu_loop_exec_tb()` on it and only *afterwards* does
+   `if (tb->cflags & CF_INVALID) last_tb = NULL;`, which suppresses
+   **chaining**, not execution.
+
+Two consequences, and the second is the one to take to #73:
+
+- The invalidation this is diagnosing costs a permanent htable lookup per
+  execution of every soft-invalidated block, on top of the ~112 futile
+  `qht_remove` attempts a frame the lane measured.
+- `tier1_consume_request()` is called from **inside `tb_gen_code`**
+  (`translate-all.c:527`), and `tb_gen_code` runs only when `tb_lookup`
+  returns NULL. If the lookup never returns NULL for that PC, the request is
+  never consumed and `CF_TIER1` is never set — so the promotion the soft
+  invalidation exists to trigger may not happen at all until a real page
+  invalidation removes the block.
+
+**This is a code reading, not a measurement, and it is #73's, not this
+lane's.** The cheap confirmation needs no new instrument: `tier1_consume_request`
+already logs `consume #N: ... -> CF_TIER1` under tag `hakuX-tier1` at
+priority DEBUG, and that tag is **absent from `LOGCAT_SPEC`** in
+`dispatcher.sh`, `run_disc.sh` and `soak_title.sh`. Adding `hakuX-tier1:D`
+to the spec would show on the next soak anybody runs whether consumption ever
+happens. Nothing here should be fixed before that line is read.
