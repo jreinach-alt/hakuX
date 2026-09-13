@@ -305,44 +305,64 @@ static int setjmp_gen_code(CPUArchState *env, TranslationBlock *tb,
 }
 
 /* Called with mmap_lock held for user mode emulation.  */
-uint64_t hakux_tb_invalidated;
-uint64_t hakux_tb_generated;
 /*
- * Guest instructions and guest bytes actually translated. hakux_tb_generated
- * on its own cannot price a change to block extent, because most of the cost
- * of generating a block is per-block and not per-instruction: on the bounding
+ * THE EVENT: a CALL to tb_gen_code. Not a generation. The two names below are
+ * the same distinction the always-on line used to blur, so read them as a
+ * pair:
+ *
+ *   hakux_tb_gen_calls  -- calls, incremented at the top of the function
+ *   hakux_tb_codegen    -- generations, incremented past every early return
+ *
+ * A call that finds a recycleable block in inv_htable takes `goto recycle_tb`
+ * and never reaches code generation; it still pays tcg_tb_insert and
+ * tb_link_page, so it is not free, but no code is produced. The measured
+ * recycle rate is about five to one, which is why the quotient of these two
+ * is worth reading rather than just one of them.
+ *
+ * This counter was called `hakux_tb_generated` until 2026-09-13 and was
+ * reported on the always-on hakuX-pages line as "generated". It is the
+ * denominator of the retracted 2.8:1 retranslation waste ratio, and of the
+ * "3,440 blocks generated per 120 frames" that ranked
+ * performance-next-three.md's three levers. Renamed rather than moved,
+ * because calls/generations IS the recycle rate: anything reading
+ * "generated" out of a log older than the rename is reading a call count.
+ */
+uint64_t hakux_tb_gen_calls;
+/*
+ * Guest instructions and guest bytes actually translated. A block count on its
+ * own cannot price a change to block extent, because most of the cost of
+ * generating a block is per-block and not per-instruction: on the bounding
  * thread tb_gen_code is 19.1% inclusive and tb_link_page alone is 11.6% of
  * it, nearly all of that the arming TLB walk, which happens once per block
  * whatever its length. So halving the mean block length roughly doubles the
  * fixed half of the cost while leaving the variable half alone. These two make
  * mean block length readable off a run, which is the falsifier any
  * smaller-blocks arm has to move -- and the thing that says whether it paid.
+ *
+ * Divide them by hakux_tb_codegen, never by hakux_tb_gen_calls. Dividing by
+ * the call count is exactly how this family of defects was found: a first
+ * device run reported 0.38 mean instructions per "generated block", and a
+ * block cannot contain less than one instruction. The impossible row was the
+ * finding -- see the note in AGENTS.md about a measurement that disagrees with
+ * the arithmetic being the instrument until proven otherwise.
  */
 uint64_t hakux_gen_insns;
 uint64_t hakux_gen_bytes;
 /*
- * Calls to tb_gen_code that actually generated code.
+ * THE EVENT: a GENERATION. Calls to tb_gen_code that actually produced code.
  *
- * This exists because `hakux_tb_generated`, which the always-on hakuX-pages
- * line has reported as "blocks generated" all along, is incremented at the top
- * of tb_gen_code and therefore counts **calls**, not generations. A call that
- * finds a recycleable TB in inv_htable takes `goto recycle_tb` and never
- * reaches code generation at all.
- *
- * A first device run made that unmistakable rather than arguable: mean
- * instructions per "generated block" came back as 0.38, and a block cannot
- * contain less than one instruction. The impossible row was the finding -- see
- * the note in AGENTS.md about a measurement that disagrees with the
- * arithmetic being the instrument until proven otherwise. The recycle rate is
- * roughly five to one, so the published "3,440 generated per 120 frames" and
- * the 2.8:1 waste ratio derived from it are both call counts.
+ * Incremented after encode_search succeeds, which is past every early return,
+ * every `goto buffer_overflow` retry and the `goto recycle_tb` shortcut, so it
+ * is reached exactly once per block whose code was emitted. It still counts a
+ * block that tb_link_page then throws away for a concurrently-inserted
+ * duplicate, which is right: the codegen work was done.
  */
 uint64_t hakux_tb_codegen;
 
 TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
-    /* Counts CALLS. hakux_tb_codegen counts generations; see above. */
-    hakux_tb_generated++;
+    /* CALLS. hakux_tb_codegen counts generations; see above. */
+    hakux_tb_gen_calls++;
     CPUArchState *env = cpu_env(cpu);
     TranslationBlock *tb, *existing_tb;
     tb_page_addr_t phys_pc, phys_p2;

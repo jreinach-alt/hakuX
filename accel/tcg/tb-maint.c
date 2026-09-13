@@ -83,23 +83,64 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
  */
 uint64_t hakux_inval_already;
 /*
- * TBs that were really removed, as opposed to visited.
+ * THE EVENT: a VISIT. Every TB the whole-page invalidation loop walks over.
  *
- * `hakux_tb_invalidated`, reported on the always-on line as "blocks tossed",
- * is incremented per TB *visited* by the invalidation loop, before
- * tb_phys_invalidate__locked -- which early-returns when qht_remove fails, so
- * a visit is not a discard. The first device run showed about one visit per
- * event and the page emptying in only 6% of events, which cannot both be true
- * of live blocks: a page holding one block that is really removed empties.
- * The consistent reading is that the page lists carry already-invalidated TBs
- * the early return refuses to unlink, and every later store re-visits them.
+ * This counter was called `hakux_tb_invalidated` until 2026-09-13 and was
+ * reported on the always-on hakuX-pages line as "blocks tossed". It is the
+ * numerator of the retracted 2.8:1 retranslation waste ratio, and of the
+ * "9,500 blocks discarded per 120 frames" that went with it. A visit is not a
+ * discard: tb_phys_invalidate__locked -> do_tb_phys_invalidate early-returns
+ * when qht_remove fails, and that return is BEFORE tb_remove, so an
+ * already-invalid TB is counted, left on the page list, and counted again on
+ * every later store to that page. The count therefore grows with how clogged
+ * the list is, not with how much work was thrown away.
  *
- * If that is right, "blocks tossed" has been counting re-visits of dead blocks
- * and the discard side of the waste ratio is inflated too. This counter and
- * hakux_inval_already settle it: visits should equal real discards plus
- * already-invalid ones.
+ * It is renamed rather than moved, because visits/discards is itself the
+ * measure of that clog and worth reading. hakux_tb_discarded below is the
+ * discard count, and the split between the two is hakux_inval_already.
+ */
+uint64_t hakux_tb_visited;
+/*
+ * THE EVENT: a DISCARD. TBs really unlinked, past the early return.
+ *
+ * Incremented inside do_tb_phys_invalidate after qht_remove has succeeded and
+ * before tb_remove, so it is reached exactly once per block that is really
+ * taken out of the hash table and off the page list.
+ *
+ * Note the population is wider than hakux_tb_visited's: this counts EVERY
+ * caller of do_tb_phys_invalidate, while visits are counted only in the
+ * whole-page loop below. In a softmmu build the other live caller is
+ * tb_check_watchpoint(); tb_gen_superblock() is inert while
+ * XBOX_SUPERBLOCK_ENABLED is 0. So `discarded - (visited - already)` is the
+ * traffic from outside the loop, and is expected to be ~0 rather than exactly
+ * 0. The exact identity is the per-visit one asserted by
+ * hakux_inval_impossible.
  */
 uint64_t hakux_tb_discarded;
+/*
+ * THE IMPOSSIBLE ROW. Must read zero, and is built to, deliberately.
+ *
+ * #69 exists because an impossible row appeared by accident -- 0.38 guest
+ * instructions per generated block -- and was the only thing that made two
+ * silently-wrong counters findable. A probe whose every row is plausible has
+ * no check in it, so this one carries a row that cannot happen if the model
+ * behind the counters above is right.
+ *
+ * The model: a live TB (no CF_INVALID) sits in tb_ctx.htable under the hash of
+ * its current cflags, so do_tb_phys_invalidate's qht_remove finds it and it is
+ * really discarded. A TB that already carries CF_INVALID is NOT findable under
+ * that hash -- cflags is an input to tb_hash_func and CF_INVALID was clear
+ * when the TB was inserted -- so qht_remove fails and nothing is removed.
+ * Live <=> discarded, exactly, per visit. This counts the violations.
+ *
+ * It is not a tautology of the patch. It fires if a live TB is absent from the
+ * htable, if an already-invalid TB is still findable there (which is what the
+ * tier-1 soft invalidation in cpu-exec.c would produce if it rehashed as well
+ * as setting the bit), or if anything clears CF_INVALID without re-inserting.
+ * A nonzero value means "visits = discards + already-invalid" is the wrong
+ * model and NO ratio derived from these counters may be quoted.
+ */
+uint64_t hakux_inval_impossible;
 #endif
 
 /* List iterators for lists of tagged pointers in TranslationBlock. */
@@ -1383,15 +1424,26 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
                 current_tb_modified = true;
                 cpu_restore_state_from_tb(cpu, current_tb, retaddr);
             }
-            /* Diagnostic: blocks actually thrown away, as opposed to calls
-             * that reach here and find nothing overlapping the written bytes.
-             * The two have different remedies -- one is regeneration cost, the
-             * other is pure entry overhead -- and a call count cannot tell
-             * them apart. Counts every range invalidation, not only the ones
-             * arriving from the slow store path. */
-            extern uint64_t hakux_tb_invalidated;
-            hakux_tb_invalidated++;
+#ifdef XBOX
+            /*
+             * VISITS here, DISCARDS in do_tb_phys_invalidate, and the
+             * identity between them checked per visit. See the three comment
+             * blocks at the top of this file; the short version is that the
+             * early return on qht_remove sits before tb_remove, so counting
+             * here counts re-visits of blocks this loop already refused to
+             * unlink.
+             */
+            hakux_tb_visited++;
+            bool live = !(tb_cflags(tb) & CF_INVALID);
+            uint64_t discarded_before = hakux_tb_discarded;
             tb_phys_invalidate__locked(tb);
+            if (live != (hakux_tb_discarded != discarded_before)) {
+                /* Cannot happen; see hakux_inval_impossible. */
+                hakux_inval_impossible++;
+            }
+#else
+            tb_phys_invalidate__locked(tb);
+#endif
         }
     }
 
