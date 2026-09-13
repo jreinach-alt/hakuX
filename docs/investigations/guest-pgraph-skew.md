@@ -1064,7 +1064,104 @@ cost and Crimson refs rather than this one.
 `spun`/`slept` came back **2,386 / 3,120** — 43% caught by the 60 µs spin,
 against mode 1's 9.6%, because a mode-2 hold waits for a much shorter queue.
 
-*Cost, Crimson and defer_cap results to be filled in from the dispatcher.*
+## MEASURED: selectivity buys NOTHING on a real title, and the premise is refuted
+
+Galleon, 240 s, **nova**, `--who draw-only-cost`. Arm A `5cfc236d9b` / apk
+`4509eeeb11c7` (mode 0) ×2; arm B `d879e6e03b` / apk mode 2, run 1 of 2.
+
+| | arm A run 1 | arm A run 2 | **arm B run 1** | mode 1 (published) |
+|---|---|---|---|---|
+| `bound=` | 0 | 0 | **2** | 1 |
+| `gfps` p90 | **29** | **29** | **13** | 13 |
+| `gfps` max | **29** | **29** | **15** | 15 |
+| `held(n)/kicks` | 0 | 0 | **0.9481** | 1.0000 |
+| hold mean | — | — | **2,316,996 ns** | 2,245,410 |
+| `behind` | 100.0% | 100.0% | 100.0% | 100.0% |
+
+| leg | measured | bar | |
+|---|---|---|---|
+| **W1** `gfps` p90 / max fall | **16 and 14** | ≤ 2 | **FAILS** |
+| **W2** `held(n)/kicks` | **0.9481** | ≤ 0.20 | **FAILS** |
+| W3 `scan(ns=)` / wall clock | 0.0173% | < 2% | **HOLDS** |
+| W4 `big/scan_n`; `wmax` | 0.00004; 16,038 | <0.05; <16,384 | **HOLDS** |
+| **W5** `gave/held(n)` | **0.05910** | > 0.05603 | **HOLDS** |
+| **W8** `gaveby(flip)/gave` | **0.0016** | ≥ 0.50 | **FAILS** |
+
+**Mode 2 costs exactly what mode 1 cost.** p90 29 → 13 and max 29 → 15,
+against mode 1's 29 → 13 and 30 → 15 on the same title, device and duration.
+The hold mean is 2,316,996 ns against mode 1's 2,245,410. **Selectivity
+recovered none of the throughput.**
+
+### Why, and it is the brief's sizing being a property of the test disc
+
+**94.8% of Galleon's submissions carry a draw** — `draw = 42,980` of 45,334.
+The `Texture border` disc's figure is **3.6%**.
+
+So the premise *"a submission carrying no draw adds no draw, and most
+submissions carry no draw"* is **true of a pgraph test disc and false of a
+real title.** A disc submits 27 times more often than it draws; Galleon
+submits **1.05 times** per draw. It publishes roughly one draw per
+submission, which is what a game doing ~187 draws a second at ~189
+submissions a second looks like.
+
+**And the scan is not the cost — that part of the design is vindicated.** It
+costs **0.0173%** of wall clock at a mean of 923 ns over 3,226 words
+(12.8× the disc's segment size, still trivial). W3 and W4 hold, the budget is
+barely touched (`big = 2`), and the identities hold. The implementation does
+what it was designed to do. **The thing it was designed to exploit is not
+there on a real title.**
+
+Which means the conclusion is about the guarantee and not about this patch:
+**"no unprocessed draw sits in the FIFO while the guest runs" is intrinsically
+as expensive as mode 1 on a draw-dense workload**, because there every
+submission has a draw and no selection rule can skip one. The cost is a
+property of the invariant, not of how cheaply you detect draws. No further
+tuning of this mechanism reaches it.
+
+### W8 FAILED and it INVERTS the published attribution of the hole
+
+`gaveby(flip=4 nop=2534 ctxsw=1 noaccess=0 other=1)` — sum 2,540, matching
+`gave` exactly.
+
+**99.8% of the releases are `waiting_for_nop`. Four of 2,540 are the flip.**
+
+This document's C5 registered, and its verdict section published, the opposite:
+*"`gave` is 5.603% on Galleon against 0.674% on the test disc, **because
+Galleon flips every frame** and the guarantee genuinely does not hold across a
+flip stall."* The rate was right and **the attribution was wrong.** It is the
+**NOP acknowledgement handshake**, essentially never FLIP_STALL.
+
+That is exactly what one counter over four reasons cannot tell you, and why
+the split was the named next step. It also redirects the residual: a flip
+stall clears only when a VBLANK fires and is arguably unclosable, whereas the
+NOP handshake is a different mechanism with its own timing, and **whether it
+is reachable is now a question someone can ask.**
+
+`W5` holds at 5.910% of covered submissions — and `gave/kicks` is **5.603%**,
+matching mode 1's Galleon figure to five figures, because with 94.8% of
+submissions held the two denominators are nearly the same population. So on
+this title the hole neither moved nor shrank; it is the same hole, now
+correctly attributed.
+
+### The trade, handed over with both numbers
+
+- **Mode 2 is correct and cheap to evaluate**: the scan costs 0.03% on a disc
+  and 0.017% on a title, the identities hold, the budget holds, and mode 0
+  pays nothing at all (`scan(ns=) = 0`, ceiling unchanged from the
+  pre-change arm).
+- **Mode 2 is not cheaper than mode 1 where it matters.** On a pgraph disc it
+  holds 27× less often; on Galleon it holds 1.05× less often and costs the
+  same half of the frame-rate ceiling.
+- **So it does not ship on**, and the reason is now a measurement rather than
+  a caution. `XEMU_OPT_FIFO_SKEW_BOUND` stays 0.
+- **What survives as the next candidate is the one this document already
+  named**, and it is now the *only* one: write-tracking. Trap the guest's
+  store to a range a queued draw will read, instead of holding at the
+  submission. That is a read-side mitigation in the texture path, it does not
+  scale with draw density, and it is the only remaining lever that the
+  invariant's intrinsic cost does not defeat.
+
+*Arm B run 2 and the Crimson `Tr` pair to follow.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
