@@ -467,6 +467,62 @@ def report_extent(golden_dir, lo, hi):
               f"{ok[m].mean()*100:>8.1f}%{(ext-A)[m].mean():>12.3f}")
 
 
+
+# --------------------------------------------------------------------------
+# full-scene reconstruction -- the selection-free score
+# --------------------------------------------------------------------------
+def render(w, which, extent_rule):
+    """Painter's-algorithm reconstruction of one capture.
+
+    Every edge of every primitive, in the order `which` says silicon submits
+    them, each filling its footprint with the lerp colour.  No pixel selection
+    of any kind: this scores the whole scene, unlike --rules, which scores the
+    0.1% of pixels that are decisive.
+    """
+    rgb = np.full((H, W, 3), np.nan)
+    inside = np.zeros((H, W), dtype=bool)   # strictly interior, 1px in
+    for blk, _ in BLOCKS:
+        for e in order_for(blk, which):
+            edge = EDGES[BASE[blk] + e]
+            cov, t, _, _ = field(edge, w, (0.25, 0.0), 0.0, extent_rule)
+            col = edge_colour(edge, t)
+            rgb[cov] = col[cov]
+            deep, _, _, _ = field(edge, w, (0.25, 0.0), 1.5, extent_rule)
+            inside |= deep
+    return rgb, inside
+
+
+def report_reconstruct(golden_dir, lo, hi):
+    """Score every order x extent combination over the whole scene."""
+    combos = [(o, x) for x in (True, False) for o in SCHEMES]
+    hit = {c: 0 for c in combos}
+    tot = {c: 0 for c in combos}
+    exact = {c: 0 for c in combos}
+    for test, w, g in captures(golden_dir, lo, hi):
+        txt = text_mask(g)
+        # the sixteen POINTS are not modelled; mask their neighbourhoods
+        pts = np.zeros((H, W), dtype=bool)
+        for (x, y) in POINTS:
+            xi, yi = int(round(x + OX)), int(round(y + OY))
+            pts[max(0, yi-4):yi+5, max(0, xi-4):xi+5] = True
+        gold = g[:, :, :3].astype(float)
+        for c in combos:
+            rgb, inside = render(w, c[0], c[1])
+            m = inside & ~txt & ~pts & ~np.isnan(rgb[:, :, 0])
+            d = np.abs(rgb - gold).max(axis=2)
+            tot[c] += int(m.sum())
+            hit[c] += int((d[m] <= 16).sum())
+            exact[c] += int((d[m] <= 4).sum())
+        print(f"  {test:<14} w={w:<8} scored={tot[combos[0]]}", file=sys.stderr)
+    print(f"\n{'order':<12}{'extent':<16}{'scored':>10}"
+          f"{'<=16/255':>11}{'<=4/255':>11}")
+    rows = sorted(combos, key=lambda c: -hit[c] / max(tot[c], 1))
+    for c in rows:
+        n = max(tot[c], 1)
+        print(f"{c[0]:<12}{'hypot-approx' if c[1] else 'perp rect':<16}"
+              f"{tot[c]:>10}{hit[c]/n*100:>10.2f}%{exact[c]/n*100:>10.2f}%")
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -476,13 +532,16 @@ def main():
     ap.add_argument("--order", action="store_true")
     ap.add_argument("--rules", action="store_true")
     ap.add_argument("--extent", action="store_true")
+    ap.add_argument("--reconstruct", action="store_true")
     ap.add_argument("--extent-rule", action="store_true",
                     help="build candidate footprints with the derived "
                          "hypot-approximation width instead of the "
                          "perpendicular rectangle")
     a = ap.parse_args()
-    if not (a.order or a.rules or a.extent):
-        ap.error("pick at least one of --order / --rules / --extent")
+    if not (a.order or a.rules or a.extent or a.reconstruct):
+        ap.error("pick at least one of --order / --rules / --extent / --reconstruct")
+    if a.reconstruct:
+        report_reconstruct(a.goldens, a.min_width, a.max_width)
     if a.extent:
         report_extent(a.goldens, a.min_width, a.max_width)
     if a.order or a.rules:
