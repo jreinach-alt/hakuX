@@ -211,6 +211,36 @@ fi
 # and a detached-checkout build to learn that "Texture render target" was not
 # in the seven suites the arm ran. The information needed to say so was in the
 # request the whole time.
+# --tests IS ACCEPTED, RECORDED, DOCUMENTED, AND SILENTLY IGNORED. It is parsed
+# above, written into the request JSON, and named in dispatcher.sh's own header
+# as "optional, solo arm only" -- but the dispatcher builds make_test_iso.py's
+# arguments from `suites` and `skip_tests` ONLY and never reads `tests`. So a
+# requester narrowing a run to three captures silently gets the whole suite, and
+# an arm that was meant to isolate one test measures hundreds.
+#
+# Refused rather than quietly honoured-as-nothing, which is the rule the rest of
+# this file follows. Implementing it is a real change to make_test_iso.py -- the
+# config schema has the right polarity already (`skip_tests_by_default`, which
+# it sets for `--suite`), so an allow-list is a few hundred bytes -- but a silent
+# drop must not wait for that.
+if [ -n "$TESTS" ]; then
+    # Quoted heredoc: the message names shell-ish identifiers, and an unquoted
+    # one ran them as commands. Third time that footgun has landed today.
+    cat >&2 <<'MSG'
+refusing to queue: --tests is not implemented and would be silently ignored.
+
+The dispatcher builds the disc from "suites" and "skip_tests" only; it never
+reads "tests", so this request would run the WHOLE suite while reporting that
+it was narrowed. dispatcher.sh's header documented the field, which is worse
+than not mentioning it; that line now says NOT IMPLEMENTED.
+
+For now: narrow with --skip-tests, or run the whole suite and select afterwards.
+An allow-list (--only-test, via make_test_iso.py's skip_tests_by_default) is
+the real fix and is not written yet.
+MSG
+    exit 2
+fi
+
 if [ -n "$SKIP_TESTS" ] && [ -n "$SUITES" ]; then
     BAD=$(python3 - "$SKIP_TESTS" "$SUITES" <<'PYEOF'
 import sys

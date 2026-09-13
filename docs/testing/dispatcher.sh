@@ -21,7 +21,7 @@
 #
 # Request format, one JSON object per file in queue/:
 #   {"id","requester","purpose","ref","suites":["Specular"],"arm":"company|solo",
-#    "tests":["Suite::Test"]            optional, solo arm only
+#    "tests":[...]                      NOT IMPLEMENTED -- never read; request.sh refuses it
 #    "skip_tests":["Suite::Test"]       optional, drop one test from the disc
 #    "runs":1}                          >1 for no-oracle measurements
 #
