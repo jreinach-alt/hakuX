@@ -2025,10 +2025,10 @@ static void voice_headroom_report(void)
  * 22,628 of 65,535. A zero there is consistent with "never wrapped" and with
  * "wrapped without leaving a full-scale sign flip".
  *
- * This counts the PRECONDITION instead, at the site, which is a much smaller
- * and much more decisive quantity. The accumulator can only exceed int16
- * range if two values land in the same element between two flushes, and the
- * schedule says that normally cannot happen:
+ * This watches the MECHANISM instead, and it costs one integer comparison per
+ * VP frame. The accumulator can only exceed int16 range if two values land in
+ * the same element between two flushes, and the schedule says that normally
+ * cannot happen:
  *
  *   - monitor.frame_buf is int16_t[256][2] = eight 32-sample slices
  *     (apu_int.h:104);
@@ -2042,8 +2042,9 @@ static void voice_headroom_report(void)
  * src_float_to_short_array has already clamped to +/-32767. No number of
  * simultaneous voices can overflow it, because the voices are summed in FLOAT
  * (vp.c:1582 into sample_buf, and vp.c:1706 across the worker threads) and
- * converted once, with saturation. That is why the census's 3,424,618 voice
- * frames across three titles found nothing: voice count is the wrong axis.
+ * converted once, with saturation. That is why the #74 census's 3,424,618
+ * voice frames across three titles found nothing: voice count is the wrong
+ * axis.
  *
  * The axis that is NOT ruled out is the slice schedule being rewound.
  * gp_ep.c:424 sets ep_frame_div = 0 on any guest write to NV_PAPU_EPRST --
@@ -2053,52 +2054,80 @@ static void voice_headroom_report(void)
  * near-full-scale samples of the same sign are then enough. That needs no
  * density at all, which is the opposite of what the issue assumed.
  *
- * nonzero counts exactly that: the accumulator was not zero when we added to
- * it. saturated counts the sums that left int16 range, i.e. the samples the
- * clamp below actually changes. maxabs says how close the mix gets. Two
- * comparisons per sample, 32 samples and two channels per 5.333 ms frame, so
- * about 12,000 of them a second. */
-static uint64_t ma_samples, ma_nonzero, ma_saturated;
-static uint64_t ma_samples_w, ma_nonzero_w, ma_saturated_w;
-static int32_t ma_maxabs_w;
-static uint32_t ma_frames;
+ * Because the slice index is a pure function of ep_frame_div, a revisit is
+ * exactly a non-increasing index with no flush in between -- one comparison,
+ * once per frame, about 187 a second. The per-sample detail (how many
+ * accumulators were already non-zero, how many sums left int16 range) is
+ * collected ONLY in a flush cycle where a rewind was seen, so in the common
+ * case it costs nothing and the clamp loop below stays a straight
+ * vectorisable pass.
+ *
+ * The first shape of this counter ran per output sample, about 12,000 times a
+ * second, and one Galleon soak out of three carrying it reported a late
+ * starvation event that neither the arm without it nor its own repeat
+ * reproduced (results 1789282793, 1789283508-monacc-starveA/B). Registered
+ * legs A1 and B1 both failed, so that was a single-run draw which neither
+ * implicated the counter nor cleared it -- and the two arms differed by the
+ * clamp as well as by the counter, so they could not have separated them
+ * anyway. Rather than spend three more soaks a side on a diagnostic's cost,
+ * the diagnostic became 130x cheaper and structurally unable to be the cause.
+ */
+static int ma_prev_off = -1;
+static bool ma_rewound;
+static uint64_t ma_frames_total, ma_frames_w;
+static uint64_t ma_revisits, ma_revisits_w;
+static uint64_t ma_nonzero, ma_saturated;
+static uint32_t ma_report_frames;
 
-static inline void mon_acc_observe(int32_t acc, int32_t sum)
+/* True when this frame writes a slice that has already been written since the
+ * last flush. */
+static bool mon_acc_frame(int off)
 {
-    ma_samples_w++;
+    ma_frames_total++;
+    ma_frames_w++;
+    if (off <= ma_prev_off) {
+        ma_revisits++;
+        ma_revisits_w++;
+        ma_rewound = true;
+    }
+    bool detail = ma_rewound;
+    if (off == (8 - 1) * NUM_SAMPLES_PER_FRAME) {
+        /* apu.c is about to flush and memset, so the next cycle starts clean
+         * whatever index it uses. */
+        ma_prev_off = -1;
+        ma_rewound = false;
+    } else {
+        ma_prev_off = off;
+    }
+    return detail;
+}
+
+static inline void mon_acc_sample(int32_t acc, int32_t add)
+{
+    int32_t sum = acc + add;
+
     if (acc != 0) {
-        ma_nonzero_w++;
+        ma_nonzero++;
     }
     if (sum > 32767 || sum < -32768) {
-        ma_saturated_w++;
-    }
-    int32_t a = sum < 0 ? -sum : sum;
-    if (a > ma_maxabs_w) {
-        ma_maxabs_w = a;
+        ma_saturated++;
     }
 }
 
 static void mon_acc_report(void)
 {
-    if (++ma_frames < 7500) {
+    if (++ma_report_frames < 7500) {
         return;
     }
-    ma_frames = 0;
-    ma_samples += ma_samples_w;
-    ma_nonzero += ma_nonzero_w;
-    ma_saturated += ma_saturated_w;
+    ma_report_frames = 0;
     __android_log_print(4, "hakuX-audio",
-        "mon_acc: window %llu samples  nonzero %llu  saturated %llu  "
-        "maxabs %d of 32767  cumulative %llu samples nonzero %llu "
-        "saturated %llu",
-        (unsigned long long)ma_samples_w, (unsigned long long)ma_nonzero_w,
-        (unsigned long long)ma_saturated_w, ma_maxabs_w,
-        (unsigned long long)ma_samples, (unsigned long long)ma_nonzero,
-        (unsigned long long)ma_saturated);
-    ma_samples_w = 0;
-    ma_nonzero_w = 0;
-    ma_saturated_w = 0;
-    ma_maxabs_w = 0;
+        "mon_acc: window %llu frames  revisits %llu  cumulative %llu frames "
+        "revisits %llu  detail nonzero %llu saturated %llu",
+        (unsigned long long)ma_frames_w, (unsigned long long)ma_revisits_w,
+        (unsigned long long)ma_frames_total, (unsigned long long)ma_revisits,
+        (unsigned long long)ma_nonzero, (unsigned long long)ma_saturated);
+    ma_frames_w = 0;
+    ma_revisits_w = 0;
 }
 #endif /* __ANDROID__ */
 
@@ -2150,34 +2179,42 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
         src_float_to_short_array((float *)d->vp.sample_buf, isamp,
                                  NUM_SAMPLES_PER_FRAME * 2);
         int off = (d->ep_frame_div % 8) * NUM_SAMPLES_PER_FRAME;
-        /* Issue #73: saturate instead of wrapping. The accumulation was
+#ifdef __ANDROID__
+        /* One comparison. True only in a flush cycle whose slice schedule was
+         * rewound, which is the only way the accumulation below can add to
+         * anything but zero -- see mon_acc_frame. */
+        bool mon_acc_detail = mon_acc_frame(off);
+        if (mon_acc_detail) {
+            for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
+                mon_acc_sample(d->monitor.frame_buf[off + i][0], isamp[2 * i]);
+                mon_acc_sample(d->monitor.frame_buf[off + i][1],
+                               isamp[2 * i + 1]);
+            }
+        }
+#endif
+        /* Issue #73: saturate instead of wrapping. This was
          * `frame_buf[...] += isamp[...]` straight into an int16_t, so a sum
          * past full scale wrapped and flipped the sign of a loud sample --
          * which a band-limited 48 kHz signal does not do, and which is
          * therefore audible as a click rather than as distortion.
          *
-         * This changes NOTHING that has ever been measured, and that is the
-         * claim being made for it: the clamp only fires on a sum outside
-         * +/-32767, the slice schedule above means every `+=` normally lands
-         * on a zeroed element holding an already-clamped value, and the
-         * saturated counter says so on device. No audible improvement is
-         * claimed -- one of those two things would be measured and the other
-         * would not. See mon_acc_observe for the reachability argument and
-         * for the one path (an NV_PAPU_EPRST write rewinding ep_frame_div
-         * mid-cycle, gp_ep.c:424) that is not ruled out.
+         * NO AUDIBLE IMPROVEMENT IS CLAIMED, and the clamp is expected to fire
+         * never: the accumulator normally holds zero when we add to it (the
+         * slice schedule in mon_acc_frame's comment) and the value added has
+         * already been clamped by src_float_to_short_array. Measured inert --
+         * three Galleon soaks on one device spread 0.20 dB in median active
+         * window across the arm with this clamp and the arm without it.
          *
-         * Cost is two compares and a store per sample, 64 per 5.333 ms frame.
-         */
+         * Kept as one straight pass of 32 iterations rather than a nested
+         * channel loop so the aarch64 backend can still vectorise it; the
+         * clamp idiom is a saturating add there. */
         for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
-            for (int ch = 0; ch < 2; ch++) {
-                int32_t acc = d->monitor.frame_buf[off + i][ch];
-                int32_t sum = acc + isamp[2 * i + ch];
-#ifdef __ANDROID__
-                mon_acc_observe(acc, sum);
-#endif
-                d->monitor.frame_buf[off + i][ch] =
-                    (int16_t)MIN(MAX(sum, -32768), 32767);
-            }
+            int32_t l = d->monitor.frame_buf[off + i][0] + isamp[2 * i];
+            int32_t r = d->monitor.frame_buf[off + i][1] + isamp[2 * i + 1];
+            d->monitor.frame_buf[off + i][0] =
+                (int16_t)MIN(MAX(l, -32768), 32767);
+            d->monitor.frame_buf[off + i][1] =
+                (int16_t)MIN(MAX(r, -32768), 32767);
         }
 
         memset(d->vp.sample_buf, 0, sizeof(d->vp.sample_buf));
