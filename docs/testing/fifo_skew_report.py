@@ -44,6 +44,7 @@ the PFIFO thread was already awake and the cases that needed a futex, and
 stalled -- the one hole in its guarantee, counted rather than argued.
 """
 import argparse
+import glob
 import os
 import re
 import sys
@@ -63,27 +64,42 @@ GFPS = re.compile(r"gfps=(\d+)")
 
 
 def resolve(path):
-    """Accept a dispatch result directory or a logcat path directly."""
-    if os.path.isdir(path):
-        for name in ("logcat.txt", "log.txt"):
-            p = os.path.join(path, name)
-            if os.path.isfile(p):
-                return p
-        sys.exit("no logcat.txt in %s" % path)
-    return path
+    """Accept a dispatch result directory or a logcat path directly.
+
+    A dispatcher result holds `logcat.txt` for a soak and `logcat<N>.txt` per
+    run for a multi-run disc request, and callers pass both shapes. Getting
+    this wrong is the failure AGENTS.md records twice: a tool that reads a
+    result directory and silently finds nothing reports a run full of numbers
+    as a run that emitted none, which reads exactly like a failed render. So
+    every candidate is returned and the caller reads all of them, and a
+    directory with no logcat at all is an error rather than an empty answer.
+    """
+    if not os.path.isdir(path):
+        return [path]
+    named = [os.path.join(path, n) for n in ("logcat.txt", "log.txt")]
+    found = [p for p in named if os.path.isfile(p)]
+    if not found:
+        found = sorted(glob.glob(os.path.join(path, "logcat*.txt")),
+                       key=lambda p: int("".join(c for c in
+                                                 os.path.basename(p)
+                                                 if c.isdigit()) or 0))
+    if not found:
+        sys.exit("no logcat.txt or logcat<N>.txt in %s" % path)
+    return found
 
 
 def load(path):
     rows, gfps = [], []
-    with open(resolve(path), errors="replace") as fh:
-        for line in fh:
-            m = SKEW.search(line)
-            if m:
-                rows.append({k: int(v) for k, v in m.groupdict().items()})
-                continue
-            m = GFPS.search(line)
-            if m:
-                gfps.append(int(m.group(1)))
+    for f in resolve(path):
+        with open(f, errors="replace") as fh:
+            for line in fh:
+                m = SKEW.search(line)
+                if m:
+                    rows.append({k: int(v) for k, v in m.groupdict().items()})
+                    continue
+                m = GFPS.search(line)
+                if m:
+                    gfps.append(int(m.group(1)))
     return rows, gfps
 
 
