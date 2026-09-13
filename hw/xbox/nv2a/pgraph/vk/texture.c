@@ -2337,6 +2337,45 @@ void pgraph_vk_bind_textures(NV2AState *d)
         TextureBinding *prev_binding = r->texture_bindings[i];
         create_texture(pg, i);
 
+        /*
+         * create_texture returns without binding anything when the texture
+         * LRU is exhausted -- every slot in flight -- on the stated
+         * assumption that we can "use whatever was previously bound". On a
+         * FIRST bind there is nothing previously bound: texture_bindings[i]
+         * is NULL, having been cleared wholesale on the last renderer reset.
+         *
+         * That NULL is then permanent, because the tail of this loop clears
+         * texture_dirty[i], so the slot is never reconsidered once the LRU
+         * has room again. And it is dereferenced unguarded three times --
+         * vk/shaders.c in both the push-descriptor and the cached-descriptor
+         * paths, and vk/draw.c -- over ALL NV2A_MAX_TEXTURES rather than only
+         * the enabled ones. The `.sampler` member is read without even the
+         * tex_surface_direct ternary that shields `.imageView`, so the direct
+         * path crashes too.
+         *
+         * So keep the invariant this loop already maintains for disabled
+         * slots -- a binding is never NULL, it is the dummy -- and leave the
+         * slot dirty so the real texture is bound on a later draw when the
+         * LRU can serve it. Substituting the dummy for one frame is a wrong
+         * texture; leaving the NULL is a segfault, and a permanent one.
+         *
+         * This is the live half of the inherited "VK texture LRU exhaustion"
+         * entry. The abort it described is gone; this replaced it, which is
+         * worse, because an assert says what happened.
+         */
+        if (!r->texture_bindings[i]) {
+            r->texture_bindings[i] = &r->dummy_texture;
+            if (r->texture_bindings[i] != prev_binding) {
+                r->texture_bindings_changed = true;
+            }
+            /* texture_dirty[i] is deliberately NOT cleared: that is the whole
+             * repair. The loop's other skips fall through to the shared tail
+             * below for pipeline_state_dirty, update_timestamps and the debug
+             * group, so this one must too -- ending the group per iteration
+             * would unbalance it against the single DGROUP_BEGIN. */
+            continue;
+        }
+
         r->tex_reg_cache[i].regs[0] = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4);
         r->tex_reg_cache[i].regs[1] = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);
         r->tex_reg_cache[i].regs[2] = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4);

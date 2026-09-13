@@ -10,6 +10,26 @@
 #define XEMU_OPT_TB_CACHE_HINTS 1
 #endif
 
+/*
+ * The metric counters live outside the feature guard on purpose.
+ *
+ * hw/xbox/nv2a/pgraph/profile.c declares them extern under `#ifdef XBOX`
+ * alone and reads them to build its per-frame line, so with
+ * XEMU_OPT_TB_CACHE_HINTS=0 the definitions vanished while the references
+ * remained and the Android link failed on two undefined symbols. That
+ * configuration had never actually been built: the CMake option was declared
+ * OFF and only ever emitted `...=1`, so the consumers' own
+ * `#ifndef / #define 1` fallback made OFF mean ON, and the zero case was
+ * unreachable until the emission was repaired.
+ *
+ * Defining the counters unconditionally is the cheaper half of the fix than
+ * threading the macro through profile.c: they are two words, every increment
+ * site is inside the guard, and with the feature off they simply stay zero,
+ * which is exactly what a disabled counter should report.
+ */
+uint64_t tb_cache_stats_lookup_hits;
+uint64_t tb_cache_stats_lookup_misses;
+
 #if defined(XBOX) && XEMU_OPT_TB_CACHE_HINTS
 
 #include "tb-cache-hints.h"
@@ -106,9 +126,9 @@ static int           loaded_count;
 /*  Runtime metrics                                                    */
 /* ------------------------------------------------------------------ */
 
-/* These are declared extern in tb-cache-hints.h for inline accessors. */
-uint64_t tb_cache_stats_lookup_hits;
-uint64_t tb_cache_stats_lookup_misses;
+/* These are declared extern in tb-cache-hints.h for inline accessors.
+ * lookup_hits and lookup_misses are defined at the top of this file, outside
+ * the feature guard, because profile.c references them unconditionally. */
 uint64_t tb_cache_stats_call_count;
 
 static uint64_t stats_prev_hits;
