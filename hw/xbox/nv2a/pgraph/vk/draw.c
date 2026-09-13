@@ -7051,13 +7051,58 @@ void pgraph_vk_flush_draw(NV2AState *d)
         return;
     }
 
+    /*
+     * A DIRECT COUNTER FOR THE MECHANISM, because the first arm could not tell
+     * "pass 2 never emitted" from "pass 2 emitted and the arithmetic is wrong".
+     *
+     * That arm (5c52049f66 -> 322adc3a01) came back with every number fitting
+     * ONE model: arm B behaves as a single pass carrying the LOW mask.
+     * source < 128 went exact for BOTH equations, which proves the shader mask
+     * and its placement after the alpha test are right; source >= 128 stayed
+     * 365,491/365,491 wrong under SADD, and under SREVSUB fell to exactly
+     * 125,704 -- which is the D=127 subset, the D=255 channels being
+     * ACCIDENTALLY right because clamp(255 + anything) saturates to 255. An
+     * independent closed-form recovery counted 125,360 high channels at D=127
+     * from the goldens alone, agreeing to 0.27%.
+     *
+     * A pixel total cannot separate those two worlds and this can: `emitted`
+     * counts passes that actually reached a vkCmdDraw, so `folds` * 2 ==
+     * emitted is the identity that must hold. If it does and the pixels are
+     * still wrong, the arithmetic is wrong; if it does not, the second pass is
+     * being dropped and the arithmetic was never under test.
+     */
+    static unsigned long folds, emitted, empty;
+    folds++;
+
     static const int passes[] = { SIGNED_BLEND_PASS_LOW,
                                   SIGNED_BLEND_PASS_HIGH };
     for (int i = 0; i < ARRAY_SIZE(passes); i++) {
         pgraph_glsl_set_signed_blend_pass(passes[i]);
         r->pipeline_state_dirty = true;
         r->uniforms_changed = true;
+
+        bool had_verts = pg->draw_arrays_length || pg->inline_elements_length ||
+                         pg->inline_buffer_length || pg->inline_array_length;
+        if (!had_verts) {
+            empty++;
+        }
         flush_draw_one_pass(d);
+        if (had_verts) {
+            emitted++;
+        }
+    }
+
+    if ((folds % 64) == 0) {
+        /* Core-QEMU fprintf(stderr) never reaches logcat. */
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-signfold",
+                            "folds=%lu emitted=%lu empty=%lu (want emitted==2*folds)",
+                            folds, emitted, empty);
+#else
+        fprintf(stderr,
+                "[signfold] folds=%lu emitted=%lu empty=%lu "
+                "(want emitted==2*folds)\n", folds, emitted, empty);
+#endif
     }
 
     /*

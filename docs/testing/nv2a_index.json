@@ -3855,6 +3855,13 @@
    ],
    "title": "score_sweep.py runs the colour-buffer label check on _ZB captures, voiding real depth defects"
   },
+  "77": {
+   "component": "pgraph",
+   "disposition": "unknown-semantics",
+   "no_suites": "A VISIBLE ARTIFACT IN A COMMERCIAL TITLE, so no pgraph suite can see it and none should be named. Galleon is not on any disc the campaign scores: there is no golden framebuffer for it, so the usual method -- compare a capture against silicon -- does not apply at all. The evidence is instead a measured per-run rate (galleon_flash_rate.py), cross-field invariants over diagnostic captures (check_diag_invariants.py), and a driver A/B. Naming a suite here would get a false one written down, which is what this field exists to prevent.",
+   "suites": [],
+   "title": "Galleon: deck and ground textures intermittently stipple and cycle hatching direction (10-14 frames per 100)"
+  },
   "8": {
    "component": "pgraph",
    "disposition": "defect",
@@ -4465,7 +4472,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "5c52049f668b3acdb755e910cfdc10e32b149350",
+  "emulator_commit": "a102299027b9d4596007f0e93cb03bcee18650bb",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2809,
