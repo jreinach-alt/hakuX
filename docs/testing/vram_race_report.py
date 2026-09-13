@@ -22,17 +22,27 @@ mean: a rate wants one denominator, and a soak's early lines are all boot.
 
 Two things this deliberately refuses to do.
 
-**The cost statistic is the gfps LINE COUNT, not a percentile.** The pacing
-line fires once per 60 guest frames, so its count over a fixed-duration soak
-is guest frames rendered in fixed wall time -- one monotone scalar, and
-exactly the throughput the cost question asks about. Percentiles are printed
-and are not part of any verdict, for two separate reasons. A median gfps
-measures how busy the device is: the series is bimodal (ceiling 29-31, floor
-5-20) and the median tracks occupancy, which moved 80% -> 16-32% across one
-evening. And a p90 is no better on a real title, because the series is not
-stationary -- DOA3 over one 150 s soak runs through logos, attract, an FMV
-and a collapse (21, 39, .., 59, 59, .., 8, .., 3), so the 59s that set p90
-are the logo and a percentile picks whichever phase sits at that rank.
+**The cost statistic is the ceiling of the UNCAPPED phase.** Three readings
+are printed and only one carries a verdict, and each of the other two is
+disqualified by a measurement rather than by taste.
+
+A *median* gfps measures how busy the device is: two Galleon soaks on one
+device, both gfps max 29 and p90 29, had medians 27 and 17.
+
+An *average* -- including the count of pacing lines over a fixed-duration
+soak, which is guest frames in fixed wall time -- has the same defect one
+step removed, because absolute per-window counts vary 3-5x within a single
+run. A busy device then reads as a cost the instrument imposed.
+
+So the statistic must come off the ceiling. But a *bare* ceiling is pinned by
+the display cap on any title that reaches it: DOA3 sits at D: 16.7 ms
+(59.9 Hz) and gives gfps max 60, 59, 59 with p90 59.0, 59.0, 56.6. A
+statistic at the cap cannot move, so it cannot show a cost either -- it is
+insensitive by construction, not robust. The verdict therefore reads the
+ceiling of the lines BELOW the cap (gfps <= UNCAPPED_MAX, set by the cap and
+not by any series' shape); a frame the display limited is not measuring the
+build. Fewer than MIN_UNCAPPED such lines on a run and leg 6 is NOT
+MEASURED on it.
 
 **It refuses a cost comparison whose arms ran on different handhelds or
 different titles.** #64's cost leg lost its control because four soaks ran
@@ -55,6 +65,23 @@ PROBE = re.compile(
     # accepted so those runs still read as the negative control for it.
     r"(?:Tl:(?P<tl>\d+)\s+)?Xd:(?P<xd>\d+)")
 MB = re.compile(r"mb_emitted=(?P<mb>\d+)")
+
+
+# The display cap this fleet runs at is 59.9 Hz, so anything at or above this
+# is limited by the display rather than by the build. Set by the cap, not by
+# the shape of any measured series.
+UNCAPPED_MAX = 50
+MIN_UNCAPPED = 10
+
+
+def uncapped(r):
+    """(gfps, G ms) restricted to the pacing lines below the display cap."""
+    g, ms = [], []
+    for a, b in zip(r["gfps"], r["gms"]):
+        if a <= UNCAPPED_MAX:
+            g.append(a)
+            ms.append(b)
+    return g, ms
 
 
 def pct(vals, p):
@@ -116,10 +143,18 @@ def describe(r):
     if not r["gfps"]:
         print("    NO PERF LINES -- nothing measurable in this run")
         return
+    ug, ums = uncapped(r)
     print(f"    gfps  p90={pct(r['gfps'],90):.1f} max={max(r['gfps'])} "
           f"[median={pct(r['gfps'],50):.1f} = occupancy, not a cost read]")
     print(f"    G ms  p10={pct(r['gms'],10):.1f} min={min(r['gms']):.1f} "
           f"[median={pct(r['gms'],50):.1f}]")
+    if len(ug) >= MIN_UNCAPPED:
+        print(f"    uncapped (gfps<={UNCAPPED_MAX}, n={len(ug)}): "
+              f"gfps p90={pct(ug,90):.1f} max={max(ug)}  "
+              f"G ms p10={pct(ums,10):.1f}   <- the cost read")
+    else:
+        print(f"    uncapped (gfps<={UNCAPPED_MAX}): only {len(ug)} lines -- "
+              f"this run is at the display cap and carries no cost read")
     if r["tq"]:
         print(f"    Tq    median={pct(r['tq'],50):.0f}  (control: the probe "
               f"adds no test-and-clear, so this must not move)")
@@ -172,6 +207,15 @@ def legs(bs):
         verdict = ("#54 GAINS A TARGET" if rate >= 1e-4
                    else "#54 CLOSES on evidence")
         print(f"L3 rate Tr/tex_uploads = {tr}/{tu} = {rate:.3e} -> {verdict}")
+        # Ratios, never per-window counts: absolute counts vary 3-5x within
+        # one run, so only a rate against something that scales with them is
+        # comparable across runs or across arms.
+        tb = sum(p["tb"] for p in probes)
+        if tb:
+            print(f"   exposure: tex_uploads/tex_windows = {tu}/{tb} = "
+                  f"{tu/tb:.3e}  -- the rate at which a draw's texture read "
+                  f"follows an unsynced guest write (#44's skew exposure)")
+            print(f"   per draw: Tr/tex_windows = {tr}/{tb} = {tr/tb:.3e}")
         if tr == 0:
             # A zero is not a rate until it carries what it rules out. 3/N is
             # the one-sided 95% Poisson bound for zero events in N trials, and
@@ -212,12 +256,26 @@ def cost(a_runs, b_runs):
               "A cost read across two handhelds is what #64 lost.")
         return
     print(f"device={devs.pop()} title={titles.pop()!r}")
-    stats = (("guest frames (gfps lines x 60)", None, None),
-             ("p90 gfps", "gfps", 90), ("p10 G ms", "gms", 10))
-    for stat, key, p in stats:
+    for r in a_runs + b_runs:
+        n = len(uncapped(r)[0])
+        if n < MIN_UNCAPPED:
+            print(f"NOT MEASURED: {r['dir']} has only {n} pacing lines below "
+                  f"the {UNCAPPED_MAX} gfps cap; leg 6 needs {MIN_UNCAPPED}")
+            return
+    stats = (("p90 gfps  (uncapped, VERDICT)", "gfps", 90, True),
+             ("p10 G ms  (uncapped, VERDICT)", "gms", 10, True),
+             ("p90 gfps  (all lines)", "gfps", 90, False),
+             ("p10 G ms  (all lines)", "gms", 10, False),
+             ("guest frames (gfps lines x 60)", None, None, False))
+    for stat, key, p, verdict in stats:
         if key is None:
             av = [r["perf_lines"] * 60 for r in a_runs if r["perf_lines"]]
             bv = [r["perf_lines"] * 60 for r in b_runs if r["perf_lines"]]
+        elif verdict:
+            av = [pct(uncapped(r)[0 if key == "gfps" else 1], p)
+                  for r in a_runs]
+            bv = [pct(uncapped(r)[0 if key == "gfps" else 1], p)
+                  for r in b_runs]
         else:
             av = [pct(r[key], p) for r in a_runs if r[key]]
             bv = [pct(r[key], p) for r in b_runs if r[key]]
@@ -245,7 +303,7 @@ def cost(a_runs, b_runs):
         det = "below the noise floor" if abs(d) <= floor else "ABOVE the floor"
         print(f"{stat}: A={[round(x,2) for x in av]} (spread {sa:.2f})  "
               f"B={[round(x,2) for x in bv]} (spread {sb:.2f})")
-        tag = "" if key is None else "   [advisory: see module docstring]"
+        tag = "" if verdict else "   [advisory: see module docstring]"
         print(f"          delta {d:+.2f} ({100*d/ma:+.1f}%), floor {floor:.2f} "
               f"-> {det}{tag}")
 
