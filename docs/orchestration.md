@@ -269,6 +269,14 @@ have been caught at the prediction stage.
 | remote lane (#34, #39, #51, #62) | `accel/**`, `target/**`, `ui/**`, `audio/**`, `tests/**`, `gl/*.c`, desktop build |
 | nobody | `pgraph.c` outside the fog paths |
 
+**A STALE TABLE MISINFORMS A BRIEF.** The #43 lane's brief told it `glsl/psh.c`
+was free. It was -- the fog lane had finished -- but this table still read
+"released to the RADIAL fog lane", so the lane reasonably flagged the brief as
+wrong. Both were half right and the table was the older half. So: update this
+table in the same commit that frees a file, not in the next wave's edit. The
+briefs are generated from it by hand and a stale row is indistinguishable from
+a claim.
+
 A file whose stream's arm is **queued but not yet judged** is still claimed.
 The arm measures one delta and a second edit lands inside it. `psh.c` is the
 live example, and it has now run its course: its implementing agent finished
