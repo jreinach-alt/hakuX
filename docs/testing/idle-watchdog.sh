@@ -41,6 +41,7 @@
 # whole exercise, so the watchdog should not outlive it.
 set -u
 
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SID="${1:?usage: idle-watchdog.sh <session-id>}"
 # Overridable so the latching behaviour can be tested without relocating HOME,
 # which hides gh's credentials and makes the fail-quiet path swallow the test.
@@ -101,6 +102,26 @@ while :; do
     sweep=$(ls "$DISPATCH"/queue/z-*.req 2>/dev/null | wc -l | tr -d ' ')
     agentwork=$(( queued - sweep )); [ "$agentwork" -lt 0 ] && agentwork=0
 
+    # NAME THE SPECIFIC GAP, not the generic list. The old message printed the
+    # same five suggestions every time, which is a nag: it tells the reader
+    # nothing they did not know and trains them to skim it. Worse, on
+    # 2026-09-13 the orchestrator twice asserted a state of the board that the
+    # board did not support -- once saying every issue had a lane or a blocker
+    # when #53 had neither, once saying the remaining work was all blocked when
+    # two items were neither blocked nor claimed. Both were caught by reading
+    # the machine-readable state instead of the summary.
+    #
+    # check_coverage.py already reads exactly that state and already fails open
+    # without gh, so ask it rather than re-deriving. Its output replaces the
+    # suggestion list when it has something specific to say.
+    cov=$(cd "$HERE/../.." 2>/dev/null && timeout 45 python3 \
+              docs/testing/check_coverage.py 2>&1 | head -6)
+    case "$cov" in
+        FAIL*)  hint="COVERAGE GAP -- $(printf '%s' "$cov" | sed -n 2p | sed 's/^ *//'). Give it a lane in territory.toml or write blocked_on on its tracker entry." ;;
+        *"NOT CHECKED"*) hint="coverage unchecked (no gh). Pick up: fold a finished lane's diff and dispatch its A/B; claim an issue whose files territory.toml lists free; or refresh the scoreboard with collect_sweep.sh." ;;
+        *)      hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered, so the next move is a FINISHED lane to fold, a free file in territory.toml to claim, or collect_sweep.sh." ;;
+    esac
+
     armed=0
-    echo "IDLE ${idle}s with ${count} issues open -- ${running} device run(s) in flight, ${agentwork} agent request(s) queued, ${sweep} sweep request(s) left. Pick up the next piece of work: fold in a finished agent's diff and dispatch its A/B; spawn an agent on an unclaimed issue whose files nobody holds (docs/orchestration.md has the territory table); triage a tracker entry still marked unclassified; close something measured unmodellable with its evidence; or refresh the scoreboard with collect_sweep.sh."
+    echo "IDLE ${idle}s with ${count} issues open -- ${running} device run(s) in flight, ${agentwork} agent request(s) queued, ${sweep} sweep request(s) left. ${hint}"
 done
