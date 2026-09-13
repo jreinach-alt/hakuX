@@ -1606,6 +1606,16 @@ suites = ["Blend surface", "Texture Framebuffer Blit"]
 #
 # Disposition stays unclassified until that number exists. There is a
 # measurement pending, not a rule.
+#
+# RE-MEASURED ON THE OTHER HANDHELD, 2026-09-12. The 0.0000% figure was taken on
+# the Thor; Galleon 90 s on the NOVA at ref 8d96196c71 (result
+# 1789278817-audio74-galleon-1188071) reads 33/121 callbacks short in the first
+# 5 s window, all 33 empty, 27.2727% of that window -- and then 0/703 short,
+# 0.0000%, in every steady-state window after it. Same shape as the Thor, same
+# conclusion, and the startup burst is again entirely EMPTY callbacks, i.e. the
+# guest has not produced a sample yet rather than the producer falling behind.
+# The corrected predicate from audio-baseline.md 4a -- no STEADY-STATE 5 s
+# interval over 5% -- passes on both devices.
 [issue.70]
 title = "APU sink zero-fills a short read and counts nothing (MEASURED OUT: 0.0000% in steady state, instrument now permanent)"
 disposition = "harness"
@@ -1745,8 +1755,71 @@ suites = []
 # this closes as unreachable. If titles program it non-zero, the next step is a
 # hardware capture of one voice with the field set and cleared -- there is no
 # way to get the direction from source.
+#
+# THE EXPERIMENT WAS RUN, 2026-09-12. Census in mcpx_apu_vp_frame over voices
+# that are ACTIVE and about to be mixed, so the distribution is weighted by
+# what is audible rather than by what is merely configured. Galleon, Nova, 90 s,
+# ref 8d96196c71, binary 2413de7c33ad, result
+# 1789278817-audio74-galleon-1188071:
+#
+#   1,288,746 active voice-frames, 18 windows of 5 s
+#   headroom = 7 : 1,288,746   (100.00%)
+#   headroom = 0..6 : 0        (  0.00%)
+#
+# Every voice, every window, at 7 -- the MAXIMUM the three-bit field holds, x128,
+# 42.14 dB. The prediction registered before the run said non-zero (right) with
+# a modal value of 1 by analogy with submix_headroom (wrong). The same run
+# re-confirms submix_headroom[0..30] = 1, so the two registers hold DIFFERENT
+# values on the same title, which is itself the finding: they are two
+# quantities, not two names for one reserve.
+#
+# MEASURED OUT AS THE OWNER'S SYMPTOM, by arithmetic against the level baseline
+# rather than by deciding the direction. Suppose the field were a GAIN we fail
+# to apply -- the only direction that could make us too quiet. It is 7 on 100%
+# of voice-frames, so the whole mix would move by +42.14 dB, and against
+# audio-baseline.md section 1 that puts whole-file AC RMS at +18.7 dBFS, the
+# median active 50 ms window at +12.8 dBFS and even the FIFTH PERCENTILE of
+# active windows at +4.1 dBFS. Every one of those is above full scale. No title
+# ships a mix whose fifth percentile is 4 dB into the rails, so the field is not
+# an unapplied gain. #74 is not "volume seems unusually low", and with #70's
+# starvation measured at 0.0000% and the uniform-gain hypothesis closed by the
+# peak, all three candidates the baseline left standing are now measured out.
+#
+# WHAT IS STILL OPEN, and it moved rather than closing. 7 = 42 dB = seven bits
+# is exactly the reserve the arithmetic needs: the GP mixbuf is 24-bit, a voice
+# is 16-bit, and shifting each voice down by 7 leaves room to sum on the order of
+# 128-256 voices into one bin without overflow. The Xbox APU sums up to 256. So
+# the coherent reading is that CFG_FMT_HEADROOM is the voice-into-bin reserve,
+# while submix_headroom = 1 is a separate, smaller reserve at the bin OUTPUT --
+# the stage the uploaded GP scene reads.
+#
+# If that is right, vp.c:1521-1523 divides the voice by the WRONG REGISTER: it
+# uses 2^submix_headroom[bin[b]] = 2 where hardware would use
+# 2^voice_headroom = 128, leaving our mixbins 64x = 36.1 dB hot into a
+# saturating 24-bit buffer. INERT on the monitor path (use_dsp=false, the
+# handheld default and the owner's configuration): the mixbins are discarded,
+# the monitor mix applies no headroom, and the one place headroom reaches the
+# audible output -- the multipass read at vp.c:1316 -- divides and multiplies by
+# the SAME submix_headroom[mp_bin] and is self-consistent whatever the true
+# convention is. A 36 dB error on the DSP path only, which is off by default and
+# labelled experimental.
+#
+# NOT FIXED, deliberately. Changing 2 to 128 moves the DSP path by 36 dB in a
+# direction nothing has measured, on a path this harness cannot reach: the PCM
+# tap and the level meter both read monitor.frame_buf, and use_dsp is a config
+# toggle no soak can set. Doing it on a guess is how a measured chain acquires
+# an unmeasured stage.
+#
+# FALSIFIED / RESOLVED BY: a capture of the DSP path (needs use_dsp reachable
+# from a soak), or a hardware capture of one voice with the field set and
+# cleared. NOTE FOR WHOEVER IMPLEMENTS IT: the multipass read at vp.c:1316 must
+# then earn back BOTH headrooms, not just the submix one, or multipass content
+# alone lands 2^voice_headroom below everything else on the monitor path -- the
+# same class of defect 54a00d28fb fixed, introduced BY the fix for this.
+#
+# Write-up: docs/investigations/audio-voice-headroom.md.
 [issue.74]
-title = "A third 3-bit voice headroom field is decoded and never read, direction unknown"
+title = "Per-voice CFG_FMT_HEADROOM is 7 on every Galleon voice and read by nothing: not the low-volume symptom (measured), a 36 dB DSP-path error if it is the voice-into-bin reserve"
 disposition = "unknown-semantics"
 component = "apu"
 suites = []
