@@ -1,0 +1,33 @@
+{
+  "registered_utc": "2026-09-13T15:10:42Z",
+  "who": "draw-only-cost",
+  "issue": "44",
+  "title": "Galleon (USA).xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "runs_per_arm": 2,
+  "a_ref": "2e4e8403d9",
+  "b_ref": "78f3f5eec8",
+  "judge": "docs/testing/fifo_skew_report.py --a A/logcat.txt --b B/logcat.txt, plus the gfps ceiling from the hakuX-perf line",
+  "prediction": "THE SELECTIVE (DRAW-ONLY) SKEW BOUND, cost side, on its own request because a pgraph disc emits no usable gfps. Arm A is mainline at XEMU_OPT_FIFO_SKEW_BOUND = 0; arm B is the same tree at 2 and nothing else. Galleon, 240 s, --device nova, one --who, TWO runs per arm queued as separate soaks (request.sh refuses --runs on the soak path, and the replicate for a no-oracle measurement is the RUN, not the window). device_label read out of each result.json.\n\nWHAT IS BEING PRICED, and the number to beat is published rather than guessed. The every-submission bound (mode 1) on this exact title, device and duration cost gfps p90 29 -> 13 and max 30 -> 15, with the guest blocked at its submissions for 40.7% of wall clock at a mean hold of 2,245,410 ns -- which is what the arithmetic predicted in advance from the PFIFO thread's 48% busy figure, so the cost is understood and not merely observed. Mode 2 holds only where a draw is outstanding. On the pgraph disc that is 180 draws in 148,704 submissions, an 826:1 reduction; on a flipping title the ratio is unknown and this arm is what measures it.\n\nW1 (THE COST, on the CEILING and never the median): gfps p90 and gfps max each fall by at most 2 from arm A to arm B, judged WORST-CASE across each arm's two runs. The statistic is declared in advance because #64 established that a median gfps on this queue measures device occupancy -- bimodal, ceiling 29-31 and floor 5-20, with p50 moving 16 -> 19 between two runs of ONE binary while p90 held at 29 +- 1. FAILS at a fall of 3 or more, and then selectivity did not recover the throughput and the trade goes back to the owner with mode 1's numbers and mode 2's side by side.\n\nW2 (DID IT SELECT, on a title rather than a test disc, and this is the figure nobody has): held(n) / kicks <= 0.20 on both runs. Galleon submits at 257/s against the disc's 1,022/s pooled, and flips every frame, so the draw density per submission is expected to be far higher than the disc's 1-in-826 -- but \"far higher than 1-in-826\" is not \"most\", and 0.20 is where the reduction stops being worth the code. FAILS above 0.20. Report scan(draw=)/scan(n=) and the implied draws per second next to it.\n\nW3 (THE PRE-SCAN MUST NOT BE THE COST, and on Galleon the scan is bigger than on the disc): scan(ns=) over the window span is under 2%. Mode 1's un-consumed backlog on this title measured 3,396 to 13,352 bytes mean and 32,264 bytes max, i.e. 850 to 3,300 words per scan, so at 257 submissions/s the arithmetic says roughly 0.5 to 2 ms of scanning per wall-clock second -- 0.05% to 0.2%. A measurement ten times that is still inside the leg; a hundred times is not. FAILS at 2% or more.\n\nW4 (THE BUDGET MUST NOT BE CARRYING THE GUARANTEE): scan(big=) / scan(n=) < 0.05, and scan(wmax=) < 16,384. The 16,384-word budget sits at 2x the largest backlog mode 1 ever showed on this title, but mode 2 lets the un-consumed span GROW -- that is the point, draw-free submissions are no longer drained -- so the span this arm sees is a quantity mode 1 could not measure. If big is a material share, the budget is acting as the bound rather than the scan being cheap, and a hold rate that rises under a heavy scene would read as the mechanism working when it is the budget running out. FAILS at 0.05 or more, and the repair is a larger budget, not a different bound.\n\nW5 (gave RE-MEASURED AGAINST THE NEW DENOMINATOR, on the title where the hole is largest): report gave / held(n) AND gave / kicks. Mode 1 on this title gave 2,482 releases of 44,304-ish submissions -- 5.603% -- against 0.674% on the disc, because Galleon flips every frame and the guarantee genuinely does not hold across a flip stall. PREDICTION: gave / held(n) > 0.05603, i.e. the hole is a LARGER fraction of the covered submissions than it was of all of them, because a draw-publishing submission is precisely the one a flip follows. FAILS if gave / held(n) <= 0.05603, and that failure is the good outcome. Nothing in the patch forces either direction.\n\nW6 (must-not-move, pacing): whole-soak VBLANK delivered rate from the vbl line stays within 0.5 Hz between arms. Nothing here touches the VBLANK grid and Galleon reports unl=0 throughout, so the defer_cap 12 change both refs carry identically cannot reach the unlock branch on this title. FAILS if it moves more, and then holding the guest is perturbing the timebase as well as the frame rate, which is a second effect needing its own arm.\n\nW7 (the impossible row): neg == 0 across every vblphase window of all four runs, and the scan counter identities hold exactly. neg counts assertions ahead of their own grid slot, which a QEMU timer cannot produce; it has read 0 over 33,840 assertions across two devices, two titles and three binaries, so a non-zero here is an instrument fault and voids the run rather than being a finding.",
+  "must_not_move": [
+    "whole-soak VBLANK delivered rate within 0.5 Hz between arms",
+    "gfps p90 falls by at most 2 (worst run of each arm)",
+    "gfps max falls by at most 2 (worst run of each arm)",
+    "device_label == nova on all four results",
+    "neg == 0 on every vblphase window"
+  ],
+  "expect": {
+    "W1/gfps_p90_drop_max": 2,
+    "W1/gfps_max_drop_max": 2,
+    "W2/held_n_max_frac_of_kicks": 0.2,
+    "W3/scan_ns_max_frac_of_window": 0.02,
+    "W4/scan_big_max_frac_of_scan_n": 0.05,
+    "W4/scan_wmax_max": 16384,
+    "W5/gave_over_held_n_min": 0.05603,
+    "W6/vblank_rate_tolerance_hz": 0.5
+  },
+  "expect_counts": {},
+  "note_refs": "Same two refs as the accuracy request, differing by ONE HUNK in ONE FILE. Mode 1's figures for this exact title, device and duration are 1789303629-skew-bound-cost-1885758/1885800 (arm A) and 1885779/1885821 (arm B) and are the comparison this arm is trying to beat; they are cited as published context and NOT used as an arm, because comparing against another lane's ref would be a cross-ref comparison rather than an A/B. Both refs here carry the #65 defer_cap 12 change identically.",
+  "runs_per_arm_note": "TWO soaks per arm under one --who, queued separately."
+}
