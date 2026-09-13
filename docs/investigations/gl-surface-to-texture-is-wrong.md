@@ -219,3 +219,38 @@ for that shape before queueing an arm.
 Neither arm matches the golden's own multiset — `#FF2222` and `#2222FF`
 appear in the golden and in neither of ours — which is the shared
 address-mapping defect, unchanged and still separate.
+
+
+### And it is not the texture cache serving a stale render either
+
+The next candidate after the swizzle reading was the gate in `gl/texture.c`:
+
+```c
+if (surf_to_tex && binding->draw_time < surface->draw_time) {
+    pgraph_gl_render_surface_to_texture(...);
+    binding->draw_time = surface->draw_time;
+}
+```
+
+If a surface were drawn into without `surface->draw_time` advancing, the
+cached texture would be served unchanged and the guest would see the previous
+render — which is exactly the observed signature.
+
+Instrumented over a full run: **335 surface-to-texture decisions, every one
+`RENDER`, none `REUSE-CACHED`.** 222 on unswizzled surfaces, 112 on the one
+swizzled surface (`02e06000`, the only swizzled address on the disc), one
+more with `draw_dirty` clear. The cached-texture path is never taken on this
+disc, so it cannot be what serves the fill.
+
+So the render *does* run, every time, and still produces the fill rather
+than the drawn result. **The loss is inside `pgraph_gl_render_surface_to_texture()`,
+not in whether it is called.** That is a narrowing rather than an answer, and
+it is where the next probe goes: dump what the surface's own GL texture holds
+at the moment of the render, which separates "the render copied the wrong
+thing" from "the thing it copied was already wrong".
+
+One more fact from the same run, recorded because it bounds a candidate:
+`surface->upload_pending` is **0 at every one of the 335 sites**, so the
+`if (surf_to_tex && surface->upload_pending)` refresh in `gl/texture.c` never
+fires. Whatever the surface's GL texture holds when the render runs, it was
+not refreshed from guest memory there.
