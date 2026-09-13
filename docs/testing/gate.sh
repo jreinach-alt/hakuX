@@ -76,8 +76,23 @@ fi
 
 echo "--- warning families ---"
 grep -oE '\[-W[a-z=-]+\]' "$LOG" | sort | uniq -c | sort -rn || true
-SITES=$(grep -oE '\.\./[a-z0-9_/-]+\.c:[0-9]+:[0-9]+: warning: ' "$LOG" | sort -u | wc -l)
-echo "distinct warning sites: $SITES"
+# Count every warning site, and write the count INTO the log as well as to
+# stdout. Both halves of that were wrong and the two mistakes compounded.
+#
+# The old pattern was '\.\./[a-z0-9_/-]+\.c', which required the ../ prefix,
+# matched only .c, and allowed only lowercase path characters -- so it missed
+# every warning in a header. On 2026-09-13 that was four sites
+# (accel/tcg/tb-cache-hints.h x2, vk/stb_image_write.h x2) and the count read
+# 70 against a true 74.
+#
+# And because the number went to stdout only, a later comparison had to be
+# made against a differently-counted figure or recomputed by hand off the log,
+# which is exactly what happened: two counters were quoted as one series and a
+# fold that was flat was reported as four warnings better. A number is only a
+# series if it was produced the same way every time, so the log now carries it.
+SITES=$(grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning' "$LOG" \
+        | sed 's|^\.\./||' | sort -u | wc -l)
+echo "distinct warning sites: $SITES" | tee -a "$LOG"
 
 if [ -n "$BASE" ]; then
     echo "--- warning sites in files changed by $BASE..$SHA ---"
