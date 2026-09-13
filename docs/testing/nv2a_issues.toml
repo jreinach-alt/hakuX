@@ -243,6 +243,40 @@ suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
 # failure masks do NOT exonerate the decode. Those captures are the same image
 # apart from the printed test name (68 px, none inside the mask), so they are
 # not a probe of anything.
+#
+# SOLVED 2026-09-13, the R16B16 dot-product class (BumpMap_R16B16 32,748 px and
+# _B 35,106 px). "Hardware separates them by channel bit width" was right, and
+# the separation is in the HILO dot mapping, not the format table. Two
+# mechanisms, both derived offline against the goldens with
+# docs/testing/bump16_oracle.py (a full Test16bit oracle, validated by
+# reproducing OUR shader on our captures to 2,616 and 1,616 px of 111,496):
+#
+#   1. The mapping must read each 16-bit field WHOLE. dotmap_hilo_1 rebuilds
+#      each half of the texel from two bytes, which is right for a four-byte
+#      texel and discards the low byte of both fields here. The endpoints are
+#      unaffected -- the test's converter byte-replicates, which is exactly why
+#      the flat corners were already exact and why this never looked like a
+#      decode error -- so all of it is the tent ramp: at fx = 0.25 across the
+#      B16 ramp lo must be 385.5/65535, the byte reading gives 257/65535, and
+#      the DOT_ST stage's 15x multiplier turns that into 0.94 of a
+#      checkerboard cell. 6,525 and 7,316 px per quad -> 560 and 341, the #38
+#      floor. psh.c now has dotmap_hilo_1_16 for it.
+#   2. A TEXFILTER sign flag signs the FILTER, not the value. The four quads
+#      differ in nothing but ASIGNED/GSIGNED and are byte-identical wherever
+#      the input texels are flat -- including where the flagged field holds
+#      0xffff, which as a signed value would be -1/32767 -- and differ across
+#      exactly the flagged field's ramp rows 42..125 (or columns, on _B) and
+#      nowhere else. So each texel is sign-extended before interpolation and
+#      the filtered result read back unsigned; sign extension is a no-op
+#      modulo 2^16, which is why flat texels cannot see it. Reading the field
+#      as signed scores 12,519 px on that quad, clamping negatives to zero
+#      3,830, this 144. ASIGNED signs the texel's high half, GSIGNED its low
+#      half, following the byte positions of each field's high byte.
+#
+# Both gated on the two R16B16 formats: 8,192 generated shaders across every
+# dot-mapping and dot texture mode differ from the baseline only by the new
+# preflight function definitions, no emitted statement. The Y16 and YUV
+# classes in this issue are untouched and still open.
 [issue.10]
 title = "Bump mapping"
 disposition = "defect"
