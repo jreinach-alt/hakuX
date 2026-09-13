@@ -151,9 +151,15 @@ guest runs again, so the alternative to releasing it is a deadlock.
 
 `gave=` counts it. #44's eighteen draws sit inside one frame with no
 FLIP_STALL between them, so the hole should not be on its path; a title that
-flips every frame exercises it constantly, which is why the cost arm is
-registered to report `gave` as a **rate** rather than judge it. That rate is
-the honest scope of the change and was unknown before this pass.
+flips every frame was expected to exercise it constantly, which is why the cost
+arm is registered to report `gave` as a **rate** rather than judge it. That
+rate is the honest scope of the change and was unknown before this pass.
+
+The expectation in that sentence turned out to be wrong, and it is left here
+because it is the reason the counter was split: on Galleon the flip accounts
+for four or five releases out of ~2,500, and the NOP handshake for 99.7%.
+Reasoning about which of four causes dominates is exactly what a single
+summed counter licenses and cannot support.
 
 ### Two mechanics that are easy to get wrong
 
@@ -589,11 +595,21 @@ merely observed, and it is why "widen something" is not the repair.
 tenth the submission rate of the test disc. The skew model is not an artefact
 of a pgraph disc.
 
-**C5 behaves exactly as registered.** `gave` is 5.603% on Galleon against
-0.674% on the test disc, because Galleon flips every frame and the guarantee
-genuinely does not hold across a flip stall. That is the honest scope of the
-change on real content: the bound covers 94.4% of a flipping title's
-submissions.
+**C5's RATE behaves exactly as registered; its ATTRIBUTION was wrong.** `gave`
+is 5.603% on Galleon against 0.674% on the test disc, and the bound covers
+94.4% of a flipping title's submissions. Both of those stand.
+
+> **CORRECTED BY MEASUREMENT — the cause named here is not the cause.** This
+> section read "*because Galleon flips every frame and the guarantee genuinely
+> does not hold across a flip stall*". Splitting the counter gives
+> `gaveby(flip=4 nop=2534 ctxsw=1 noaccess=0 other=1)` on one run and
+> `flip=5 nop=1973` on a second: **99.8% and 99.6% of the releases are the NOP
+> acknowledgement handshake, and four or five of ~2,500 are the flip.** The
+> rate was right and the reason was wrong, which is precisely what one counter
+> summed over four reasons cannot tell you. It also redirects the residual — a
+> flip stall clears only on a VBLANK and is arguably unclosable, whereas the
+> NOP handshake is a different mechanism whose reachability is an askable
+> question. See "99.8% of the releases are `waiting_for_nop`".
 
 ### C3's registered interpretation was wrong, and the hold mean says why
 
