@@ -254,6 +254,22 @@ window, voids the line if `xx` fires, and voids `blk` if it comes out below
 Legs: `docs/testing/predictions/tcg-whole-page-invalidation-3.json`,
 registered before the ref was queued.
 
+## Pixel-inertness: inherited, not re-measured
+
+The performance lane's corpus arm (`9eb64cbcc3` against `6b574e163e`, eight
+suites, one disc, both on the thor, arms proven distinct by APK hash) came
+back with **all 593 capture PNGs byte-identical by md5** and all nine scored
+columns identical. That establishes the *round-two* counters are pixel-inert.
+
+**It does not, strictly, establish it for the patch in this file**, which adds
+one `tb_cflags` read and one global compare per visited TB. The argument that
+carried that leg applies to this change with room to spare — the only route
+from a counter on a slow path to a pixel is perturbing timing enough to flip
+an nv2a race, and this adds strictly less work per event than the counters
+that were measured — but it is an argument, not a measurement, and no device
+time is being asked for it. Said here so that nobody later reads the
+byte-identical result as covering a commit it predates.
+
 ## A soft-invalidated block IS found and executed (#73, reading only)
 
 `tcg-retranslation-measured.md` flags, unverified, that `tb_lookup_cmp` masks
