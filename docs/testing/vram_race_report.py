@@ -224,11 +224,24 @@ def cost(a_runs, b_runs):
         if not av or not bv:
             print(f"{stat}: missing an arm")
             continue
-        sa = max(av) - min(av) if len(av) > 1 else float("nan")
-        sb = max(bv) - min(bv) if len(bv) > 1 else float("nan")
-        floor = max(sa, sb)
+        # An arm with one run has NO measured spread, and max(x, nan) is nan
+        # whose comparisons are all false -- which printed "ABOVE the floor"
+        # for a floor that had not been measured at all. That is the #64
+        # failure with a decimal point on it, so say so instead.
+        spreads = [max(v) - min(v) for v in (av, bv) if len(v) > 1]
         ma, mb_ = sum(av) / len(av), sum(bv) / len(bv)
         d = mb_ - ma
+        if len(spreads) < 2:
+            sa = f"{max(av)-min(av):.2f}" if len(av) > 1 else "unmeasured"
+            sb = f"{max(bv)-min(bv):.2f}" if len(bv) > 1 else "unmeasured"
+            print(f"{stat}: A={[round(x,2) for x in av]} (spread {sa})  "
+                  f"B={[round(x,2) for x in bv]} (spread {sb})")
+            print(f"          delta {d:+.2f} ({100*d/ma:+.1f}%) -> NOISE FLOOR "
+                  f"NOT MEASURED; both arms need two runs before this is a "
+                  f"cost read")
+            continue
+        sa, sb = max(av) - min(av), max(bv) - min(bv)
+        floor = max(sa, sb)
         det = "below the noise floor" if abs(d) <= floor else "ABOVE the floor"
         print(f"{stat}: A={[round(x,2) for x in av]} (spread {sa:.2f})  "
               f"B={[round(x,2) for x in bv]} (spread {sb:.2f})")
