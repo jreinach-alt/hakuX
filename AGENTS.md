@@ -492,6 +492,32 @@ afternoon that no capture showed (#34), so run it on any change to the Vulkan
 backend before calling the change verified. Count distinct VUIDs, not lines:
 one root cause cascades into thousands of messages.
 
+## A measurement that disagrees with the arithmetic is the instrument until proven otherwise
+
+A probe that only ever reports plausible numbers cannot be checked. One that
+reports something the arithmetic forbids has told you, for free and before the
+number was believed, that it is measuring the wrong population.
+
+The worked example is #60's alias probe on 2026-09-13. It counted surface
+reuses the compatibility predicate permits across a guest-format change, and
+reported ten instances of `A8R8G8B8 -> R5G6B5` -- a transition the predicate
+cannot allow, since bpp *and* internal format both differ. The impossible row
+was the finding: the probe guarded on `s1->color == s2->color`, which is also
+true of two ZETA surfaces, whose `shape.color_format` is meaningless. Guarded
+on `s1->color && s2->color` the row vanished and the remaining four agreed
+exactly with the map.
+
+The reusable part is not "check your probes". It is the specific failure:
+**a field that is meaningless for one variant of a union still compares
+equal.** Every probe that keys on a struct field shared by two kinds of object
+has this available to it, and the symptom is a plausible number in the rows you
+expected plus one row that cannot happen.
+
+So when a probe and the arithmetic disagree, do not reconcile them by
+adjusting the arithmetic. Find the row that cannot happen and explain it
+first -- and if every row is plausible, that is not reassurance, it is the
+absence of a check.
+
 ## Conventions
 
 - Defects live in GitHub issues, grouped by likely shared cause, each carrying
