@@ -23,6 +23,7 @@ FAILS OPEN on no `gh` and no network, deliberately. A blip must not make this
 unpushable, and the same choice is made by backlog-gate.sh for the same
 reason. It says which of the two happened rather than printing a bare pass.
 """
+import glob
 import json
 import os
 import re
@@ -147,10 +148,40 @@ def main():
     # sit behind a wall that is not there should say so out loud.
     lane_files = [f for m in (terr.get("lane") or {}).values()
                   for f in (m.get("files") or [])]
-    # Drop glob entries: a lane may hold `gl/*.c` or `target/**`, whose
-    # basename is `*.c` or `**` and matches nothing meaningfully. Keeping them
-    # would let a stray `*.c` suppress a real flag.
-    heldb = {os.path.basename(f) for f in lane_files if "*" not in f}
+    # MATCH ON PATH SUFFIX, NOT BASENAME, and expand globs against the tree.
+    # Both halves are corrections to this detector's first firing in anger,
+    # which produced one error in each direction from a single run.
+    #
+    # Dropping glob patterns (`gl/*.c`, `target/**`) on the grounds that their
+    # basename means nothing gave a FALSE POSITIVE: #13 was reported as a grant
+    # request while `gl/shaders.c`, one of the four files its blocker names, was
+    # held by lane.remote through exactly that glob.
+    #
+    # Expanding the globs and still comparing basenames then gave a FALSE
+    # NEGATIVE: `gl/*.c` expands to include `gl/draw.c`, whose basename
+    # `draw.c` suppressed #59 -- whose blocker names `vk/draw.c`, an entirely
+    # different file. There are two `draw.c`, two `shaders.c` and two
+    # `surface.c` in this tree.
+    #
+    # So: a blocker's path matches a held path when the held path ENDS WITH it
+    # (at a directory boundary). `vk/draw.c` matches
+    # `hw/xbox/nv2a/pgraph/vk/draw.c` and not `.../gl/draw.c`. A bare `psh.c`
+    # matches any `psh.c`, which is the blocker's own imprecision and the safe
+    # direction -- it suppresses a flag rather than inventing one.
+    REPO = os.path.join(HERE, "..", "..")
+    held_paths = set()
+    for f in lane_files:
+        if "*" in f:
+            for hit in glob.glob(os.path.join(REPO, f), recursive=True):
+                if os.path.isfile(hit):
+                    held_paths.add(os.path.relpath(hit, REPO))
+        else:
+            held_paths.add(f)
+
+    def is_held(named):
+        named = named.lstrip("./")
+        return any(h == named or h.endswith("/" + named) for h in held_paths)
+
     grantable = []
     for k, v in sorted(blocked.items()):
         if k not in live:
@@ -158,9 +189,9 @@ def main():
         paths = re.findall(r"[A-Za-z0-9_./-]+\.(?:c|h|cpp)\b", v)
         # Match on basename: blockers write `vk/draw.c` where territory writes
         # the full repo path, and demanding they agree would answer never.
-        bases = sorted({os.path.basename(q) for q in paths})
-        if len(bases) >= 2 and not (set(bases) & heldb):
-            grantable.append((k, bases))
+        named = sorted(set(paths))
+        if len(named) >= 2 and not any(is_held(q) for q in named):
+            grantable.append((k, [os.path.basename(q) for q in named]))
     # PRINTED AFTER THE SUMMARY, NOT BEFORE IT, and that ordering is not
     # cosmetic. `idle-watchdog.sh` takes `sed -n 1p` of this output as its
     # one-line coverage summary, so emitting the note first replaced
