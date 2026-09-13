@@ -32,6 +32,37 @@
 # whole point of the field is to stop someone re-deriving what was already ruled
 # out.
 
+# Each entry also carries a `status`, which is a different question from
+# `disposition`: disposition says what blocks the remaining work, status says
+# what the LOG has established about the fix. They drifted apart because this
+# table had no status field at all, so an issue whose fix had landed and been
+# judged read exactly like one nobody had touched. The audit of 2026-09-13
+# found that on six of twenty-six open issues.
+#
+#   fixed-verified  the fix is on the branch AND an arm judged it with its
+#                   prediction bound before the device ran -- ab_compare
+#                   reported PRE-REGISTERED. Closable.
+#   fixed-part      the issue names several defects and only some landed.
+#                   `status_note` says what scope remains, and whether the
+#                   remainder is a defect or a measured precision floor.
+#   unmodellable    the mechanism was tested and refuted, or it is hardware we
+#                   cannot reach. Closable, with the measurement.
+#   open            no fix, or a fix with no bound prediction judging it.
+#
+# `fixed-verified` is deliberately hard: a commit message naming an issue is
+# not evidence, and neither is a passing arm whose prediction was written
+# afterwards. Most `#N` matches in `git log` here are a prediction
+# registration, a docs note, or a commit that touched the same file. An arm
+# that measured a mechanism and landed on it still leaves `fixed-part` if the
+# issue named other defects, and `open` if nothing judged it.
+#
+# The arm ids, the pre-registration verdicts and the deltas live in
+# `status_note` itself rather than in a separate write-up, so that the field a
+# reader lands on is the field carrying the evidence. Every arm cited there was
+# re-judged with `ab_compare.py --expect <the registered prediction>` during the
+# audit rather than quoted from an issue comment; the shas are as-DISPATCHED and
+# several were rebased, so match a commit by its subject and not by its sha.
+
 # An entry may also carry `component`, which defaults to `pgraph` and may be
 # `apu`. It exists because audio arrived on this tracker with no entries at all
 # and cannot name a suite: the pgraph test discs play no sound, so no suite
@@ -129,6 +160,8 @@ suites = ["Texture render target"]
 title = "DXT1 decode rounding differs from silicon (minor; the large failures were #19)"
 disposition = "unknown-semantics"
 suites = ["Texture DXT"]
+status = "fixed-part"
+status_note = "DXT1 decode is an ordered dither and it landed (19d449c953 plus 9b8f1915e8, which stops claiming DXT1 for native BC1 so s3tc.c is reachable at all); arm a8bf9137fb -> 9b8f1915e8 PRE-REGISTERED PASS on all 12 checks, 6 better 0 worse, suite 402,999 -> 34,911 px. Remaining is a defect, not a floor: a code of exactly 1 decodes to 0 where the model says 8, and MIPDXT1_64x256_bands keeps 7,594 px of which only 637 of 1,342 residual texels are code-1."
 
 [issue.8]
 title = "Fog"
@@ -281,6 +314,8 @@ suites = ["Fog", "Fog gen", "Fog param", "Fog carryover", "Fog vsh",
 title = "Bump mapping"
 disposition = "defect"
 suites = ["Bump map", "Bump env lum"]
+status = "open"
+status_note = "The HILO R16B16 fix is in the tree (1e527b74d7 plus 60b185afa8; state->tex_hilo16 at glsl/psh.c:338) and its prediction is registered (predictions/issue10-hilo-r16b16.json), but no arm has run it -- nothing under dispatch/results names that prediction -- so the 68,014 px on BumpMap_R16B16 and _B are unjudged."
 
 # MEASURED 2026-09-12: 98.05% of this is sub-perceptual gradient rounding, not
 # an attribute or primitive-assembly defect. Across 111 captures in four
@@ -502,6 +537,8 @@ title = "Line and point rasterisation"
 disposition = "defect"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
+status = "fixed-part"
+status_note = "The mode knob is exhausted and that half is finished: bresenhamLines=1 was enabled and measured, arm 0499184e2d -> 8f84f5a8ab PRE-REGISTERED PASS on all 200 checks at +793,470 px and 41 of 41 Line_width captures worse, so it was reverted (64b1e2a054); smoothLines=0 and stippledBresenhamLines=0 close the other two values, and rectangularLines is what we already draw. What remains is not the mode: Line_width still carries 1,000,125 structural channels over 342,679 px, 76.3% of it edge priority with both renderers inking the pixel and disagreeing about which overlapping wide edge is on top, and the offline derivation of the quad-strip order (24 permutations, no device) has not been attempted."
 
 [issue.14]
 title = "Blend precision (low priority)"
@@ -567,6 +604,8 @@ title = "NV_PGRAPH_CTX_SWITCH1 GRCLASS=0 is never observed: two method fast path
 # docs/investigations/issue-19-58-at-tip-2026-09-12.md.
 disposition = "defect"
 suites = ["Context switch"]
+status = "fixed-verified"
+status_note = "pgraph_write now refreshes pg->cached_graphics_class when the guest writes NV_PGRAPH_CTX_SWITCH1 (2b75e723af, pgraph.c:1016), so both method fast paths fall through to the slow path and GRCLASS 0 lands on default: goto unhandled. Arm 1d4794ac63 -> 2b75e723af is PRE-REGISTERED PASS on all 249 checks: 171,820 -> 70,444 px, the lower-half region (98,304 px, rows 240-431 x cols 64-575) goes 0.00% -> 100.00% bare checkerboard, and the following triangle's modal colours move to the golden's at matching counts. Blend_tests (105 captures) and Depth_buffer (144) were carried as corpus-wide canaries because the cached class is read by every method dispatch, and both are byte-identical. z-after-018-Context_switch reproduces 70,444 independently at ref 2501f35211. The residual is #38 mechanism 2, not this register."
 
 [issue.15]
 title = "pgraph suite: some tests are order-dependent"
@@ -588,6 +627,8 @@ title = "Depth surface: float Z (F16/F24) is structurally wrong; the fixed-point
 # accuracy rather than protecting it. See #52.
 disposition = "defect"
 suites = ["W buffering", "Depth buffer", "Depth buffer fixed function"]
+status = "fixed-verified"
+status_note = "The conversion is measured exact: z16 fixed is 49 of 49 bit-identical on lavapipe and 98 of 98 on Adreno, the float-Z encoding landed in 23a8962df2 and a33fa42bc3, and the z24 fixed-point one-unit-high readback this was REOPENED for is gone -- the #52 barycentric arm 5e612529b9 -> 91b0897e01 is PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px, and 43,690 equals depth_exact_floor.py's integer floor on all 18 captures with ours - floor collapsing to {0: 85192} on the big quad. The remaining float-Z cells and the colour residual are #52's and #38's respectively, not this issue's conversion."
 
 [issue.19]
 title = "Tests that render another test's image: 2 contamination, 82 missing-state (measured 2026-09-12)"
@@ -674,6 +715,8 @@ suites = ["Texture DXT", "Texture render target", "Attrib carryover",
 title = "Slope-scaled polygon offset is wrong under W buffering"
 suites = ["W buffering"]
 disposition = "unknown-semantics"
+status = "fixed-part"
+status_note = "The per-primitive slope offset landed as bdc26fa5c8 and is live (wbufSlopeStep at glsl/psh.c:2158, called at :2329), and it has NO pre-registered arm because it predates ab_compare and request.sh. Scored off z-sweep-095-W_buffering: WallQuad and LargeZ are structural 0 at both ZS settings, and TriH/TriV go 0 structural at ZS0 to 158,400 at ZS1 on identical geometry, which is what proves they are this defect. 619,349 structural px remain a defect rather than a floor -- ClipF 460,949 plus TriH/TriV 158,400, all under the 4-pixel anchoring regime the available goldens cannot select between. The issue's own '66k px (TriH/TriV)' is wrong by 2.4x, most likely scored RGB-only where _ZB packs depth as A<<16|R<<8|G."
 
 [issue.33]
 title = "Image blit: BlitBeyondWidth diverges by 284k px (not an overlap case)"
@@ -855,6 +898,8 @@ disposition = "unmodelled-hardware"
 title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"
 suites = ["Texture cubemap"]
 disposition = "unclassified"
+status = "fixed-verified"
+status_note = "The degenerate cube direction is skewed off the three-way major-axis tie (a9f8ef3bee; kCubeDegenerateDir at glsl/psh.c:2126), and arm 0cbb5bd0c5 -> a9f8ef3bee is PRE-REGISTERED PASS on all 69 checks: exactly -70 px on each of the 20 predicted captures, 0 worse, 63 others byte-identical, and the rendered colour is the +X face's (0,0) texel on both the gradient and the checkerboard cube, so face and texel are confirmed rather than just the face. The 5-67 px left per capture is a separate intensity-rounding class over the cube interior, explicitly not predicted to move, and it did not."
 
 [issue.41]
 title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad on hardware"
@@ -910,6 +955,8 @@ title = "nv2a: RADIAL fog gen mode with a vertex program fully fogs every quad o
 # docs/investigations/fog-vs-radial-band.md, docs/testing/fog_radial_band.py.
 suites = ["Fog gen"]
 disposition = "unknown-semantics"
+status = "unmodellable"
+status_note = "The program-mode RADIAL coordinate is measured into (204.06, 221.81) and is identical on all 374 quads: not 200 (where silicon reads f8=2, killing the obvious guess) and not geometry (it varies by under 17.74 where the fixed-function radial distance over the same vertices runs 19 to 222). The recovery chain was pre-registered (predictions/vs-radial-fog-band.json, sha 720edadfa63c) and landed at 0.00 deviation on all six captures against a stated tolerance of 3.0, so the bound is sound. What would separate scene state from a hardware constant is a VS RADIAL scene drawn after a different fixed-function scene, and that capture does not exist: FOG_GEN_MODE_V_RADIAL under a vertex program appears only in fog_gen_tests.cpp, and the two suites that would give a second observation comment it out citing abaire/nxdk_pgraph_tests#214."
 
 # MEASURED 2026-09-12, so this is no longer unknown-semantics. Hardware's
 # oFog is an output register that is never cleared: a vertex program that does
@@ -1027,6 +1074,8 @@ title = "Signed blend equations (FUNC_ADD_SIGNED, FUNC_REVERSE_SUBTRACT_SIGNED) 
 # docs/investigations/blend-signed-full-oracle.md.
 disposition = "defect"
 suites = ["Blend tests", "Texture signed component tests"]
+status = "fixed-part"
+status_note = "The factor half landed (ab4a829316, through pgraph_vk_effective_blend_reg so the static pipeline, the eds3 path, the reorder snapshot and the cache key all agree) and arm 7cbd8dd029 -> ec0560d28b is PRE-REGISTERED PASS on all 124 checks: every one of the 856,098 channels whose source byte is below 128 is now exact in both captures, against 594,738 and 592,409 wrong before, 28 better 4 worse, -179,872 px. The sign fold remains -- 365,491 channels per capture, a defect with a known rule that provably cannot be blend state, since silicon's output steps 254 -> 0 between adjacent source bytes at D=127 and every Vulkan blend op is a continuous map of the source."
 
 # MEASURED 2026-09-12: real, reproducible at ~46% of runs, and DISTINCT from
 # #39. The fix is not in the texture path.
@@ -1126,6 +1175,8 @@ suites = ["Blend tests", "Texture signed component tests"]
 title = "2D_BorderTex_SZ flakes: a band of padding texels inside the B32x32 swatch on some runs"
 suites = ["Texture border"]
 disposition = "defect"
+status = "open"
+status_note = "No fix attempted; what landed is containment. Re-measured from the arm rather than from the comment: dispatch/results/1789255594-exp54-stst-correct, 10 runs of one unchanged binary over Texture border, 2D_BorderTex_SZ band 5,640 with 4 runs bit-exact and 6 not, and 17 of 18 captures at band 0. ab_compare names it in KNOWN_UNSTABLE and the measured per-capture band classes it NOISE. The 40x magnitude spread across the non-zero runs is unexplained and a single upload racing a two-pass generator cannot produce it. (The issue's comment says five exact and five not, and lists eleven values for ten runs; the arm holds four and six.)"
 
 [issue.46]
 title = "PROJECT2D shadow maps compare against a literal 0.0, with no depth reference"
@@ -1308,6 +1359,8 @@ title = "Vertex program with LIGHTING_ENABLE: the programmable path emits the co
 # negative already rules out.
 suites = ["Specular", "Specular back", "Lighting control"]
 disposition = "unknown-semantics"
+status = "fixed-part"
+status_note = "Two arms landed, both PRE-REGISTERED and both FAIL on overshoots rather than on mechanism. The light-loop mux (63be3ebf75) took Specular/ControlFlagsNoLight_VS 18,658 -> 10,510 against a predicted 10,510, exactly, with all seven must-not-move lighting and material suites byte-identical; the back-specular source (7a650a98a9, oB1 = v8 rather than v4) took both Specular_back captures down by exactly 7,730, overshooting its prediction by 3,075 in the favourable direction. What remains is a defect with no model: silicon assigns the light term's two values to the four quad corners differently under a program than under fixed function, and in four of the eight lit quads the assignment is not a permutation of the vertex stream at all, so no skew of the normal queue produces it. Specular_back/ControlFlags_VS at 88,059 px is dominated by it. The v8-versus-last-written-oB1 ambiguity cannot be settled from the corpus: no capture writes anything but the vertex specular to oB1."
 
 [issue.50]
 title = "Blend tests: DrawColorAndAlphaStack's stack is wrong on 1,567 of 1,568 captures; mechanism unknown, not a reversal"
@@ -1345,6 +1398,8 @@ title = "Blend tests: DrawColorAndAlphaStack's stack is wrong on 1,567 of 1,568 
 # docs/investigations/blend-stacks-are-two-defects.md.
 disposition = "defect"
 suites = ["Blend tests"]
+status = "open"
+status_note = "The aliasing is measured -- our stack C equals a model of stack A blitted at C on 1,119 of 1,120 oracle captures against 0 of 1,568 for the goldens under the same test, and the recovered texel alpha 221 is stack A's unblended rule rather than stack C's clamp(221+51) -- and the flush landed as 771c8eb4f1. The benefit is unverifiable rather than unverified: TestDetailed is interactive-only and absent from the release disc, so no dispatcher arm can reach the captures the falsifier is written on. The arm that ran is the must-not-move half only, 424 captures across all 17 suites byte-identical; ab_compare reported FAIL on nine globs that matched no capture, correctly refusing to count a guard that was never applied."
 
 [issue.51]
 title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic, and the corner rule is still unimplemented"
@@ -1396,6 +1451,8 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # docs/investigations/cubemap-is-dot-str-3d.md.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
+status = "open"
+status_note = "The DOT_STR_3D undefined behaviour was fixed (a8086d8905, a sampler2D declared against a cube image view) and two mechanisms were measured dead and reverted -- returning samplerCube when tex_cubemap[i] is set moved 0 captures, which is what establishes tex_cubemap[3] is false here, and a remapCubeTo2D fallback moved 0 here while breaking the sibling suite's DotSTR3D_Bad2D from exact by +59,142. The coordinate range this issue is titled on is unimplemented and no arm has judged anything on it. The thread carries none of the above: it has zero comments, and the #51 probe build's own measurements are recorded on #40 instead."
 
 [issue.52]
 title = "Depth buffer: four independent defects on eight cells, one fixed, and the compression axis is inert"
@@ -1411,6 +1468,8 @@ title = "Depth buffer: four independent defects on eight cells, one fixed, and t
 # larger defect: same cell, error maxes at 9 units rather than 1.
 disposition = "defect"
 suites = ["Depth buffer"]
+status = "fixed-part"
+status_note = "Two of the four cells are done. Cell 1 (z16 fixed) was already exact and is now explained rather than lucky -- worst normalisation error 0.0059 units against a 0.00625 margin on the same code path. Cell 2 (z24 fixed) is finished by arm 5e612529b9 -> 91b0897e01, PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px, with ours - floor(exact) collapsing to {0: 85192} on the big quad and oracle - ours = 0 on all 18 captures. Remaining: z16 float 1,436 px (a defect, but its _ZB packing is not the z24 ARGB one and has to be established first), z24 float 12,816 px (a measured floor -- the +-12,584/12,585 quad-split family, priced and deliberately left), and 1,479,886 px of colour whose histograms are byte-identical between the bit-exact z16 cell and the one-unit-out z24 one, so it is #38's Gouraud interpolator and not depth at all."
 
 # Added 2026-09-12. Cross-cutting root cause rather than a pgraph defect, and
 # filed separately because it is not about a suite: tcg/tcg-op.c's
@@ -1458,6 +1517,8 @@ suites = ["Depth buffer"]
 title = "tcg: all guest memory barriers are elided under XBOX (latent; does NOT cause #44)"
 disposition = "unknown-semantics"
 suites = ["Texture border", "W buffering"]
+status = "open"
+status_note = "Benefit measured zero: with ALL guest barriers restored 2D_BorderTex_SZ failed 6 of 10 runs, identical to the store-store variant and indistinguishable from the ~46% base rate, at +34.1% game frame time -- and mb_emitted 0 / 80,411 / 347,473 proves the three arms were genuinely different binaries. The hazard is still sourced and unrefuted: CF_PARALLEL is never set for this machine so tcg_gen_mb emits nothing, aarch64's TCG_TARGET_DEFAULT_MO is 0, and pfifo_thread and pgraph.vk.render read vram_ptr with bare loads. That zero bounds whether barriers fix #44's capture; it does not bound how often the race fires, and the corpus cannot separate the two because it is nearly all static content. Kept open for a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A bitmap and r->texture_vram_gen, which already exist; a soak cannot settle it (no frame capture) and the per-page write-side timestamp the thread proposes is the +34.1% in a different coat."
 
 # Added 2026-09-12. Blocks the other half of #48 and is read from ~15 sites, so
 # it is tracked rather than folded into any one issue.
@@ -2168,3 +2229,86 @@ title = "Guest-visible VBLANK: the period is right to 0.17%, the deferral machin
 disposition = "defect"
 suites = []
 no_suites = "Nothing in a framebuffer records when it was produced. A title steps its simulation off VBLANK and draws the same pixels at the wrong rate, so the corpus is blind to every part of this."
+status = "fixed-part"
+status_note = "The rate half landed (0edf4f2f0d, one token at nv2a.c:845) and all five registered legs hold on re-judging: def>20 mean 19,159,610 -> 16,701,985 ns, whole-soak 56.587 -> 59.816 Hz, the def==0 control moved 5,467 ns, gfps median unchanged at 29.0, defers per window 15.8 -> 28.2. This is NOT an ab_compare verdict and cannot be -- a soak writes no captures, result.json records runs: 0, and ab_compare would refuse the arms -- it is vblank_ab.py against a prediction bound by commit date, which catches a prediction written late but not one widened on time, and it is one run per arm against the runs>=2 rule. Four defects remain: phase (p99 25.15 ms, and FLIP_STALL's timer_mod(now) lets the flip pull the VBLANK to itself), unlock_framerate still abandoning the grid and defaulting true so that half is unmeasured, simple_vblank running two VBLANK sources at 150-180 assertions/s, and PCRTC coalescing at 1.35-1.56%. The HD 50 Hz guard split to #64 and is closed."
+
+# ---------------------------------------------------------------------------
+# Added by the issue-log audit of 2026-09-13. Ten of the twenty-six open issues
+# had no entry here at all, including #59 -- at the time the largest one-step
+# group in the corpus -- and #38, which almost every other entry cites as its
+# floor. issues_for_suite returned nothing for any of them, so every query and
+# blast was blind to them. That is the same drift docs/orchestration.md was
+# written about, one level down: the audit there compared entries against the
+# live issue list for state and title, which cannot see an issue that has no
+# entry to compare.
+# ---------------------------------------------------------------------------
+
+[issue.34]
+title = "Vulkan validation layer: four open findings from the desktop lane"
+no_suites = "the instrument is a VUID count from VK_LAYER_KHRONOS_validation, which no suite scores; the findings were surfaced while running Image blit, Surface clip, Depth buffer fixed function and Texture render target, but naming those here would make issues_for_suite answer a pixel question with a layer issue"
+disposition = "harness"
+status = "fixed-part"
+status_note = "All eight findings measure zero on the desktop lane, and the null result carries a positive control: rebuilding 2337519c, the binary this was filed against, reproduces this issue's own numbers -- 24,126 Validation Errors and exactly the 17 SYNC-HAZARD-READ-AFTER-WRITE it tabulates. The fixes are e7998e7fdd (descriptor set recycled while still bound, 22,613 -> 0), 83a47188f7 (push template against an incompatible pipeline layout, 2,666 -> 0, with its 228-message echo), 0a428d5b62, 8f49518936, 9e39ca431a, 136b15a40d and 4b42532466, all ancestors of HEAD and none reverted. No ab_compare arm exists or can: a VUID count is not a capture. What remains is a measurement gap rather than a defect -- the Adreno confirmation this closes on has never run because nothing in android/ packages libVkLayer_khronos_validation.so, so instance.c:111 finds no available layer and all 266 device logcats under dispatch/results carry no VUID at all. The device nondeterminism it was ranked on measures zero: 763 repeated captures across six 2-run arms, band 0 on every one."
+
+[issue.38]
+title = "One-step colour differences from hardware across many suites (rounding, interpolation, blending)"
+suites = ["3D primitive", "Alpha func", "Attrib carryover", "Attrib float", "Attrib setter", "Context switch", "Image blit", "Lighting normals", "Point size", "Surface clip", "Texgen with texture matrix"]
+disposition = "defect"
+status = "fixed-part"
+status_note = "Mechanism 1 is decided, implemented and confirmed by slope rather than by position: silicon quantises the vertex colour to its byte BEFORE the interpolator (colorPrecision in glsl/vsh.c plus dca3c94b98), and arm ff1604d457 -> dca3c94b98 is PRE-REGISTERED with the green band's slope moving 2.53 -> 3.01 against a hardware 3.00, 169 better 10 worse, -489,757 px. It reads FAIL because three must-not-move captures moved, all three BETTER and two of them to zero. Mechanism 2 is measured and NOT implemented: hardware holds the fragment colour constant across an even-aligned pixel pair and evaluates it at the pair's right edge, s = 2*floor(x/2)+2, 0 wrong of 512 on both Alpha_func bands with two out-of-sample confirmations, but only 3 of 1,162 measurable captures are paired and what selects those draws is unestablished -- the conjunction that fits is fitted to two positives. Mechanism 3 (Image_blit, -0.70 bias over 515,562 one-step px) is untouched and is its own lead; mechanism 4 is #16's. The 201 one-step-symmetric captures are a measured precision floor: two independent hosts agree to a tenth of a percent on the one-step share."
+
+[issue.39]
+title = "Vulkan: a draw's result is intermittently lost, same disc and binary, run to run"
+suites = ["Texture render target", "Texture format", "Stencil", "Depth buffer fixed function"]
+disposition = "defect"
+status = "open"
+status_note = "The first root cause was real and is fixed -- 2dd232172c carries a vertex RAM upload to every frame of the ring, not just the next, and is in HEAD unreverted -- but a second mechanism survives it: rebuilding 2dd232172c ITSELF measures 3 failures in 15 against ~3 in 10 at HEAD, statistically identical, so there is no regression to bisect and the fix never addressed this. No pre-registered arm exists and none can judge it: the defect is a ~30% coin flip on a single capture, which is what a single-arm A/B cannot see. Eliminated by measurement: contamination, draw reordering, deferred replay, no-op misclassification, inline clear, pipeline rebinding, per-draw state, pipeline/render-pass/framebuffer identity, cross-command-buffer state (0 mismatches in 165 draws), recording/submit overlap (0 of 161). Every intervention is a timing knob and the full validation layer closes the window outright (0 of 7), which is a statement about the instrument. Desktop-lavapipe-lane only so far: 763 repeated Adreno captures across six 2-run arms give band 0 on every one. Its own recommendation has landed as ab_compare's measured --runs N band."
+
+[issue.56]
+title = "Vulkan: an LRU-exhausted first texture bind leaves a permanent NULL binding, dereferenced unguarded in three places"
+no_suites = "the defect needs texture-LRU exhaustion to coincide with a FIRST bind, and no pgraph disc is a texture-count workload; #18 names Dead or Alive 3 as the one that reaches it"
+disposition = "defect"
+status = "open"
+status_note = "The guard is present and intact -- 7cbd8dd029 is an ancestor of HEAD and vk/texture.c:2497 substitutes &r->dummy_texture while deliberately not clearing texture_dirty[i], with the LRU early return it defends against unchanged at texture.c:1709. Nothing has judged it and nothing on the pgraph discs can: 7cbd8dd029 reached the device exactly once, as arm A of the #43 signed-blend A/B, which proves the binary boots and renders and judges nothing about this. Note the issue's 'Fix ... in texture.c alone' section reads as a landed claim but was written as a proposal seventeen hours before the commit; it happens to have come true."
+
+[issue.57]
+title = "Alpha_func: the enabled comparison boundary is misplaced (9,216 structural px; the other 97.9% is #38's floor)"
+suites = ["Alpha func"]
+disposition = "defect"
+status = "open"
+status_note = "The suite's total fell 435,032 -> 385,752 px on arm ff1604d457 -> dca3c94b98, but that is #38's vertex-byte ramp and not this defect. Scored off z-after-003-Alpha_func at ref 2501f35211, the six _Enabled captures still pair up with identical structural counts -- Equal/NotEqual 448/448, GreaterThanOrEqual/LessThan 192/192, GreaterThan/LessThanOrEqual 256/256, 1,792 px total where it was 9,216 -- and complementary functions carrying equal counts IS the misplaced-boundary signature, now standing against a ramp whose slope is correct. So the instrument is 5.1x sharper and the named defect is untouched. Every _Disabled capture remains pure floor (differing == off_by_one exactly, 32,050 px)."
+
+[issue.58]
+title = "Three single-capture suites fail with no issue: Context_switch, Color_mask_blend, Degenerate_begin_end"
+suites = ["Context switch", "Color mask blend", "Degenerate begin end"]
+disposition = "harness"
+status = "fixed-verified"
+status_note = "Definition of done met: all three landed somewhere -- Context_switch to #63, Color_mask_blend to #14, Degenerate_begin_end to #12 -- and the one that needed a mechanism was closed by a pre-registered arm, 1d4794ac63 -> 2b75e723af PASS on all 249 checks, 171,820 -> 70,444 px, which z-after-018 reproduces independently at 70,444. Re-triaged at the tip for the audit rather than taken from the thread: all three are now a +-2 band with 94.2%, 93.3% and 90.6% of differing pixels at +-1, alpha exact on two and +-1 on 4,603 channels of the third, so none is a state or semantics defect. Context_switch's residual is confined to rows 48-239 -- the polygon's upper half, the lower half having gone exact -- and is #38 mechanism 2, not the 4-gon-versus-7-gon interpolation the thread predicts."
+
+[issue.59]
+title = "R5G6B5 texel expansion: silicon replicates bits, Vulkan's native format uses the exact ratio"
+suites = ["Surface clip", "Texture format", "Blend surface", "Surface format"]
+disposition = "defect"
+status = "fixed-verified"
+status_note = "Both arms are PRE-REGISTERED PASS. 5e612529b9 -> 0b7e5de8dd, all 106 checks: Surface_clip 1,175,741 -> 0 with every rt_* capture bit-exact, Texture_format 309,333 -> 139,389, all fifteen predicted captures byte-exact, 27 better 4 worse, -1,542,162 px. 00dc9c68c5 -> a3eddc0214, all 171 checks, closes the two X_O1RGB5 regressions the first arm cost by scoping #48's pad readback on the guest texel stride rather than on the fill path, 4 better 0 worse. The rule was decided mapping-free by level set, not by fit: 21 channels across 7 gradient goldens hold every replicate-only 8-bit level and not one ratio-only level, and 4-bit and 1-bit fields differ nowhere so A4R4G4B4 needed nothing and was already exact -- a check on the derivation rather than a lucky control. Throughput is the owed item, not accuracy: a 565 surface sampled as a texture loses its GPU-side view bind, and nobody has counted a real title's 565 working set."
+
+[issue.60]
+title = "GL renderer: a reused surface binding keeps its creation-time guest format (the defect #55 fixed in Vulkan)"
+suites = ["Surface format", "Color zeta overlap"]
+disposition = "defect"
+status = "open"
+status_note = "The port is faithfully present -- the cited 8ab35a6167 and f7261e616d are not ancestors of HEAD but were rebased in as a105a51a00 and 082bc0ac4d, and drawn_format appears 17 times in gl/surface.c and 6 in gl/renderer.h. The load-bearing claim verifies: every remaining shape.color_format read is pg->surface_shape.color_format, i.e. current register state, so no binding's stale shape is read anywhere. Nothing judges it and the device lane cannot -- it is Vulkan -- and the issue says so itself: nothing was built and nothing was run. The arm it needs is already specified in the thread: a105a51a00 against its parent on the GL lane, predicting that no capture moves at all, which is a real falsifier of the format-table audit."
+
+[issue.61]
+title = "Vulkan: frame_submitted is read non-atomically at two sites that gate surface reuse and descriptor-ring reset"
+no_suites = "a non-atomic read of cross-thread state is not observable by pixel count; the arm that would judge a fix is an inertness arm, and any capture moving would mean the reads were not previously benign"
+disposition = "defect"
+status = "open"
+status_note = "No fix, and zero comments. Every claim in the filing still holds against the tree: surface_in_flight at vk/surface.c:2348 is a plain read of frame_submitted gating get_any_compatible_invalid_surface and prune_invalid_surfaces, and the any_in_flight loop at vk/draw.c:2851 is another, gating the descriptor_set_index and push_ubo_set_index reset with no wait_idle between the spin-wait and it. The two reads the issue calls benign are benign -- draw.c:816 and draw.c:2436 are each immediately preceded by pgraph_vk_render_thread_wait_idle -- so its scoping argument is right and the fix is still the two-line change it proposes. Line numbers have drifted from the filing (2315 -> 2348), which the issue predicted."
+
+[issue.62]
+title = "GL renderer: five findings from a second pass over gl/surface.c (an R5G6B5 abort, an over-read, and three nits)"
+no_suites = "gl/surface.c and the Android GL path only; the device lane is Vulkan, so no suite on any scorable disc reaches these sites"
+disposition = "defect"
+status = "open"
+status_note = "The comment on this issue records a fix that does not exist here. a763b1d4fc is NOT an ancestor of HEAD -- git branch --contains puts it only on remotes/origin/claude/docs-tooling-agentic-coding-u152m1 -- so findings 1 and 3, reported as fixed, are both still live: android_surface_guest_to_rgba8 handles exactly X1R5G5B5_Z1R5G5B5, X8R8G8B8_Z8R8G8B8 and A8R8G8B8 with g_assert_not_reached in default and no R5G6B5 case, while both gates in front of it admit R5G6B5; and render_surface_to_texture_slow at gl/surface.c:1335 still sizes bufsize from the surface dimensions and then reassigns width/height to the texture shape's before buf is consumed. Of the six listed findings, zero landed on this branch. The only thing that did land is the NEON 565 body disagreeing with its own scalar tail, as c234c1cc3f, and it landed under #59. This is the remote-lane fold-in gap docs/orchestration.md warns about."
