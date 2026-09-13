@@ -153,6 +153,63 @@ and range-precise invalidation coincide in practice, and this section stands as
 originally written. That is registered as L1 and it is the leg I am least sure
 of.
 
+### Is restoring the range test safe? Today yes, and there is a precondition
+
+Worth settling before anyone acts on the above, because "it is a five-year-old
+SMC hedge" is a reason to be careful and not an argument that it is safe to
+remove.
+
+The range test is sound in general: it compares the written bytes against
+`[tb_page_addr0, tb_page_addr0 + tb->size)`, a TB reads exactly those bytes
+(plus the `page_addr1` spill when it crosses a page), and a store that misses
+them cannot have changed the block's code. That is upstream QEMU's behaviour
+for every target including i386 with `precise_smc`.
+
+**But this fork has a mechanism for which `tb->size` is not the block's code
+extent.** `tb_gen_superblock` merges TB A and TB B into one TB and then does
+`tb->size = a_size; /* Restore A's size for the TB entry point range */` while
+`tb->icount = a_insns + b_insns`. So a superblock's recorded extent covers A's
+bytes and its native code was translated from B's as well. It links B's page as
+`page_addr1`, and `SuperblockInfo` says outright that it exists to track B's
+range "so that page invalidation covers both code regions" — which whole-page
+invalidation does for free and a range test would not.
+
+Worse than merely missing it, the `n == 1` arithmetic would be *arbitrary*
+there rather than conservative. It computes B's range as
+`phys_pc_b + ((phys_pc_a + a_size - 1) & ~TARGET_PAGE_MASK)`, which assumes
+page1 is the contiguous continuation of page0. For a superblock page1 is a
+different, non-adjacent region, so that offset is derived from A's address and
+applied to B's page base and means nothing.
+
+**It is not live.** `XBOX_SUPERBLOCK_ENABLED` is `0` in `cpu-exec.c`, so
+`tier1_maybe_form_superblock` returns immediately, no superblock is ever
+formed, and `tb->superblock` is always NULL. The gate's own comment says it is
+disabled "while the lookup/**invalidation** integration is being finalised",
+which is this exact problem, already known.
+
+So the two features are mutually constraining, and that is the thing to record:
+
+- **Restoring the range test is safe against this today**, because nothing
+  forms a superblock.
+- **Whoever enables superblocks must handle it**, and whoever restores the
+  range test must leave a guard for them. The cheap correct form is to treat
+  `tb->superblock != NULL` as always-overlapping — never spare a superblock —
+  rather than to try to make the `n == 1` arithmetic cover a non-contiguous
+  second region. `SuperblockInfo` already carries `phys_pc_b` and `size_b` if
+  precision is wanted later.
+
+None of this says anything about *xemu's* 2021 reason, which is unrecorded and
+may have been a different title's SMC pattern entirely. The corpus A/B is the
+oracle for that, and it is why the range test is not being restored on a code
+reading.
+
+Flagged and **not** chased, because it is outside this lane: for a superblock,
+`page_addr1` is B's page rather than the page following A, and `tb_lookup_cmp`
+checks `page_addr1` against `get_page_addr_code(env, TARGET_PAGE_ALIGN(pc))` --
+the page after A. If that is right, a cross-page superblock would not be
+findable by hash lookup at all. Unverified, and moot while formation is off,
+but it belongs with the invalidation work the gate is waiting on.
+
 ## 3. The threaded draw path is much less built than it looked
 
 **Correcting an earlier claim of mine.** I described this as a design that was
