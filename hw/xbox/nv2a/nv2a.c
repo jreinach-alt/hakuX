@@ -1030,18 +1030,37 @@ static void nv2a_vblank_timer_cb(void *opaque)
      * intend -- 3.8 seconds lost per minute of play for anything that counts
      * VBLANKs to measure time, and 8.9 s/min in heavy scenes.
      *
-     * `unlocked` still resets the grid. It is the same defect and it is left
-     * alone deliberately: Galleon never enters unlock mode (`Ul:N` on all 129
-     * windows), so this arm cannot measure that half, and changing two things
-     * at once would make the one it can measure unreadable.
+     * `unlocked` used to reset the grid too, and that half was left alone
+     * deliberately -- Galleon never enters unlock mode (`Ul:N` on all 129
+     * windows of both arms) so neither arm could measure it, and moving two
+     * things at once would have made the half that was measurable unreadable.
+     * It is fixed here, on the same reasoning and one measurement further on.
+     *
+     * The condition was `was_deferred || unlocked`, and the second half was
+     * never about deferral: while unlock mode is active EVERY VBLANK reset the
+     * target to `now + period`, deferred or not. A QEMU timer fires at or
+     * after its deadline and never before, so that added the callback's own
+     * lateness to the period on every single VBLANK and compounded it instead
+     * of letting a fixed grid absorb it. A mean lateness of 0.3 ms is a
+     * permanent 16.98 ms period -- 58.9 Hz, 1.8% slow -- for as long as the
+     * mode is held, and `unlock_framerate` defaults to TRUE.
+     *
+     * Which inverts the intuition: the titles whose pacing looks healthiest
+     * are the ones running with no phase grid, because the mode is entered
+     * whenever smoothed frame time is under 1.5 periods. The measurement that
+     * makes this arm possible is Dead or Alive 3, which reports `Ul:Y` on 15
+     * of 47 windows and a `gfps` ceiling of 59 -- the fast title #65 said this
+     * half needed and did not have.
+     *
+     * The grid is now the sole authority on when a VBLANK happens. The
+     * deferral retry and FLIP_STALL's `timer_mod(now)` still move the TIMER,
+     * which is how a single VBLANK's phase is distorted, but neither writes
+     * the target, so what they shift the grid gives back on the next one.
+     * `vblphase` above measures exactly that residue.
      */
-    if (unlocked) {
+    d->vblank_next_target_ns += period;
+    if (d->vblank_next_target_ns <= now) {
         d->vblank_next_target_ns = now + period;
-    } else {
-        d->vblank_next_target_ns += period;
-        if (d->vblank_next_target_ns <= now) {
-            d->vblank_next_target_ns = now + period;
-        }
     }
     timer_mod(d->vblank_timer, d->vblank_next_target_ns);
 
