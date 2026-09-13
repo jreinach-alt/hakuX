@@ -28,19 +28,9 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 11
-updated_utc = "2026-09-13T15:25:00Z"
+wave = 12
+updated_utc = "2026-09-13T16:40:00Z"
 
-[lane.interp]
-issues = ["57", "38"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
-note = "#57's misplaced comparison boundary and #38 mech 2's interpolator parity are both \"where does the renderer think this pixel is\", so one lane holds both. First act is to recover interpolator_phase.py and interpolator-sample-position.md out of worktree-agent-a461720f7c39f5548 -- the census #38 cites is not an ancestor of the integration branch."
-
-
-[lane.skew]
-issues = ["44", "65"]
-files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
-         "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 
 
 [lane.skew_instrument]
@@ -75,4 +65,14 @@ note = "SCOPE-FIRST lane. #67's fix file is NOT known -- the over-extent could b
 
 [free]
 files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-         "hw/xbox/mcpx/**"]
+         "hw/xbox/mcpx/**",
+         "hw/xbox/nv2a/pgraph/glsl/psh.c",
+         "hw/xbox/nv2a/pgraph/glsl/psh.h",
+         "hw/xbox/nv2a/pgraph/glsl/vsh.c",
+         "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
+         "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c",
+         "hw/xbox/nv2a/nv2a.c",
+         "hw/xbox/nv2a/pfifo.c",
+         "hw/xbox/nv2a/pramdac.c",
+         "hw/xbox/nv2a/pgraph/pgraph.c"]
