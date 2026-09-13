@@ -139,6 +139,13 @@ uint64_t hakux_tb_discarded;
  * as setting the bit), or if anything clears CF_INVALID without re-inserting.
  * A nonzero value means "visits = discards + already-invalid" is the wrong
  * model and NO ratio derived from these counters may be quoted.
+ *
+ * One caveat for whoever ports this to a target with more than one vCPU: the
+ * check reads hakux_tb_discarded either side of the call, so a concurrent
+ * discard on another vCPU would show up here as a violation. The Xbox has one
+ * CPU and the invalidation path holds the page locks, so there is no second
+ * writer on this tree -- but a nonzero xx on a multi-CPU target should be
+ * checked against that before it is read as a model failure.
  */
 uint64_t hakux_inval_impossible;
 #endif
