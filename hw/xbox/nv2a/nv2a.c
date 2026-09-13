@@ -231,14 +231,53 @@ static int64_t nv2a_calc_vblank_period_ns(NV2AState *d)
         return override_ns;
     }
 
+    /*
+     * Which mode this is, from the two registers that describe the output
+     * raster rather than from the one that happens to be written last.
+     *
+     * fp_vdisplay_end is the last ACTIVE LINE, not a line count: measured
+     * vd=479 with res=640x480 over a 240 s soak (Galleon, Thor, dispatch
+     * 1789275041-vblank-timing-4013526), on all 129 windows. So a mode's
+     * line count is vd + 1, and PAL's 576 lines put 575 here.
+     *
+     * The NV2A interlaces only for 1080i. SD output is scanned out
+     * progressively and the external encoder does the interlacing, which is
+     * why 480i and 480p are one mode as far as this register file is
+     * concerned and why the measured title reports il=ff. Both display back
+     * ends read this same bit for this same purpose -- vk/display.c and
+     * gl/display.c, "used only in 1080i", doubling the viewport height -- so
+     * when it is set, the raster described here is one FIELD and the frame is
+     * twice as tall.
+     *
+     * The 50 Hz branch must therefore be BOUNDED. PAL is 576 lines and never
+     * more, so anything taller is an HD mode running at the NTSC field rate.
+     * The open `vdisplay > 480` this replaces sent 720p (719) and 1080i to
+     * 50 Hz -- a 19.9% period error on a path both renderers handle -- while
+     * its own comment claimed those modes for the 59.94 branch. Scaling for
+     * interlace first makes the bound right whether 1080i puts 539 (per
+     * field) or 1079 (per frame) in the register, which is not something any
+     * title on hand can be made to report.
+     *
+     * Both branches are still constants. Deriving the period from the CRTC
+     * raster and the VPLL was tried and failed by -26.3% (P7 in
+     * docs/investigations/guest-visible-vblank.md); until something
+     * authoritative about the video standard is found, the guard is what
+     * there is, and it can at least be right about which mode is which.
+     */
     uint32_t vdisplay = d->pramdac.fp_vdisplay_end;
 
-    if (vdisplay > 480) {
-        /* PAL (576i/576p): ~50 Hz */
+    if (d->vga.cr[NV_PRMCIO_INTERLACE_MODE] !=
+        NV_PRMCIO_INTERLACE_MODE_DISABLED) {
+        /* Per-field raster: the frame is two of these. */
+        vdisplay = vdisplay * 2 + 1;
+    }
+
+    if (vdisplay > 480 && vdisplay <= 576) {
+        /* PAL (576i/576p): 50 Hz, exactly. */
         return NANOSECONDS_PER_SECOND / 50;
     }
 
-    /* NTSC / HDTV (480i/480p/720p/1080i): ~59.94 Hz */
+    /* NTSC and HD (480i/480p/720p/1080i): 60000/1001 fields a second. */
     return 16683750;
 }
 
