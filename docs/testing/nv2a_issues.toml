@@ -507,8 +507,52 @@ suites = ["Image blit"]
 disposition = "defect"
 
 [issue.35]
-title = "Projective shadow comparison is off by a thin band in every 3* family, independent of depth format"
+title = "Texture shadow comparator: a texel tie on one scanline (fixed), plus a 24-bit floor"
 suites = ["Texture shadow comparator"]
+disposition = "part-fixed-part-hardware"
+
+# RE-MEASURED 2026-09-12 and RE-FRAMED. The commentary that used to sit here
+# was about 3D_primitive line and polygon smoothing -- it belongs to #36 and
+# has been moved there. Nothing in it was ever about this suite.
+#
+# #35 is TWO defects, and the title names neither correctly.
+#
+#   (a) A TEXTURE-COORDINATE TEXEL TIE. 100 of the 112 failing captures differ
+#       on a SINGLE SCANLINE, 6,066 px, at the row where a box edge in the
+#       depth texture lands on integral v. The R families upload the depth
+#       texture from the CPU, so their texels are exact by construction and no
+#       reference quantisation is involved, and they carry the same residual --
+#       which is what rules out a precision story. Only ONE edge of each box
+#       moves, so it is a tie at one v rather than a coordinate offset, and the
+#       arithmetic closes on GetExplicitBoxLayout's own geometry: seven boxes
+#       at rows 230..293, 21 texels wide at columns 141, 204, ... 519, which is
+#       where the residual runs are to the pixel. Fixed at 19c74e95da by
+#       biasing the fetch with texelTieBias, exactly as the non-shadow
+#       PROJECT2D fetch already does. NOT unmodelled hardware.
+#
+#   (b) A 24-BIT FLOOR. The remaining 12 captures, 11,322 px, all 24 bit
+#       (2F24 -6.00-193.00, 3F24 10.00-20.00, 3P24 10.00-20.00), differ over a
+#       whole box rather than a band. It is a comparison between our
+#       rasterised depth and the test's own CPU projection of the same z,
+#       required to agree to ~2^-24 relative; the test author records silicon
+#       missing it by the same margin between its own two pipelines, which is
+#       why F24 and P24 are given different reference values (11.47 and 11.45)
+#       in the 10.00-20.00 pair. THIS half is the unmodelled-hardware part.
+#
+# Also FALSIFIED here: 27b583e17c's note pointing at "comparing as integers
+# rather than scaling to float". The float round trip is exact --
+# float(n)/16777215.0*16777215.0 reproduces n for all 2^24 values of n, and
+# floor() of it likewise -- so comparing as integers would buy nothing. The
+# 24-bit ULP that matters is in the interpolated reference and the rasterised
+# depth, not in that arithmetic.
+#
+# Lane split, which must not be mixed when scoring: this suite is 260/288
+# exact and 8,776 px on desktop, and 176/288 and 17,388 px on every device set
+# here, at the same code state.
+
+[issue.36]
+title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
+suites = ["3D primitive"]
 disposition = "unmodelled-hardware"
 
 # MEASURED NEGATIVE 2026-09-12, and the framing on this issue is wrong. One
@@ -558,10 +602,10 @@ disposition = "unmodelled-hardware"
 # sideways only worsens it -- which corrects the discrimination index, where
 # ten of its thirteen are classed boundary-shift.
 # docs/investigations/line-polygon-smoothing.md.
-[issue.36]
-title = "Line and polygon smoothing are not applied; every -ls/-ps 3D_primitive test differs on its edges"
-suites = ["3D primitive"]
-disposition = "unmodelled-hardware"
+#
+# (Moved here from #35 on 2026-09-12, where it had been appended under the
+# wrong header. It is entirely about 3D_primitive smoothing and says nothing
+# about the shadow comparator.)
 
 [issue.40]
 title = "Cube-face selection differs on the left cube's silhouette column in 24 dot-product cubemap tests"

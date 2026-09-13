@@ -176,7 +176,7 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
-        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
+        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
