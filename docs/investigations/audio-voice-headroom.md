@@ -276,6 +276,31 @@ included — rests on an assumption nobody checked.
 about to be handed and writes nothing back; the census reads one register.
 Neither touches the mix, the level or the pacing.
 
+### F1 — the instrument does not cause the defect it sits next to
+
+Registered while the runs were still in flight and before either result
+directory contained anything but a partial logcat, because it is the one way
+this work could do harm and it would be easy to miss.
+
+The meter is per-sample arithmetic **on the audio thread** — about 96,000
+samples a second, a handful of integer operations each — and it sits three lines
+from `monitor_sink_cb`'s zero-fill, which is #70. An instrument that costs the
+APU thread its deadlines would manufacture the starvation that issue is about,
+and the result would read as a finding.
+
+- **F1 — steady-state starvation stays at zero with the meter in.** Every
+  `starve:` line after the startup window reports **0.0000%** of output bytes
+  zero-filled, on both handhelds, in all three runs.
+
+*Falsified* by any non-zero steady-state figure, in which case the meter is
+removed or moved off the audio thread before a single one of its numbers is
+quoted. The startup window is excluded per the corrected predicate in
+`audio-baseline.md` section 4a — it reads 17-27% because the guest has not
+produced a sample yet, which is not starvation.
+
+This leg costs nothing to take: the starvation counter is already permanent and
+already in the same logcat.
+
 ## 4. Results: every active voice carries headroom = 7, and that settles it
 
 **MEASURED.** Galleon, Retroid Pocket Nova, 90 s held, ref `8d96196c71`, binary
