@@ -4,7 +4,7 @@ Each cell is **exact/captures · structural px** — structural being differing 
 
 | run | binaries | built | hw commits behind tip | discs | captures | rescored |
 |---|---|---|---:|---:|---:|---:|
-| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 57 ⚠️ | 94 | 3067 | — |
+| `pre-fixes-fb4dfafc` | fb4dfafc6d38 | 2026-09-12 | 57 ⚠️ | 98 | 3303 | — |
 
 | category | goldens | `pre-fixes-fb4dfafc` |
 |---|---:|---|
@@ -16,10 +16,10 @@ Each cell is **exact/captures · structural px** — structural being differing 
 | Bump mapping | 82 | 0/82 · 818,008 |
 | Fog | 280 | 23/280 · 1,574,992 |
 | Blend ⚠️9% | 1722 | 5/154 · 5,907,527 |
-| Depth / stencil ⚠️49% | 1688 | 188/828 · 3,030,409 |
+| Depth / stencil ⚠️57% | 1688 | 220/970 · 5,993,899 |
 | Rasterisation ⚠️98% | 514 | 43/502 · 2,054,474 |
-| Clipping / viewport ⚠️50% | 183 | 75/91 · 533,596 |
-| Vertex pipeline ⚠️97% | 226 | 99/220 · 405,100 |
+| Clipping / viewport | 183 | 167/183 · 533,596 |
+| Vertex pipeline ⚠️98% | 226 | 101/222 · 405,100 |
 | 2D / blit ⚠️98% | 46 | 18/45 · 198,029 |
 
 † that run did not record the one-step column, so its figure is *all* differing pixels and is not comparable with a structural count. The 2026-09-08 baseline predates it.
