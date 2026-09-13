@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 13
-updated_utc = "2026-09-13T17:30:00Z"
+wave = 14
+updated_utc = "2026-09-13T18:10:00Z"
 
 
 
@@ -46,6 +46,12 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 issues = ["31", "10"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/glsl/psh.h"]
 note = "#31 has never had an arm -- it predates ab_compare. Briefed to test its own blocker (\"the goldens cannot select the 4-px anchoring regime\") as a claim, because #41 was closed on three such blockers and all three were false."
+
+[lane.pacing]
+issues = ["44", "65"]
+files = ["hw/xbox/nv2a/nv2a.c", "hw/xbox/nv2a/nv2a_int.h", "hw/xbox/nv2a/nv2a_regs.h",
+         "hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pramdac.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
+note = "The two single-change follow-ons whose mechanism is already measured. #44's SELECTIVE draw-only bound: the guarantee needs no unprocessed DRAW in the FIFO, and the disc makes 148,704 submissions for 180 draws, so holding at every submission is 826x stronger than required and costs half a real title's ceiling. #65's defer_cap 15 -> 12: D9 failed and the observed timer round trip (3,083,365 ns) names 12 at 1.35x margin -- but that is two runs on one device and the nova's latency is 3.4x the thor's, so it must be measured there first."
 
 [free]
 files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
@@ -64,8 +70,4 @@ files = ["hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c",
-         "hw/xbox/nv2a/nv2a.c",
-         "hw/xbox/nv2a/pfifo.c",
-         "hw/xbox/nv2a/pramdac.c",
-         "hw/xbox/nv2a/pgraph/pgraph.c"]
+         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
