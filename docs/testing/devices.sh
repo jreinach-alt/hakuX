@@ -88,4 +88,19 @@ device_list() {
     done
 }
 
-[ "${BASH_SOURCE[0]}" = "$0" ] && { [ "${1:-list}" = list ] && device_list; }
+# Run directly: print the table. Sourced: define the functions and return 0.
+#
+# The `&&` chain this replaces left a FALSE test as the last statement when the
+# file was sourced, so `. devices.sh` returned 1 -- and the documented usage
+# `. devices.sh && device_env <serial>` silently never ran device_env. Caught
+# by the device-setup session. dispatcher.sh was unaffected only because it
+# happens to call device_env on its own line.
+if [ "${BASH_SOURCE[0]}" = "$0" ]; then
+    case "${1:-list}" in
+        list) device_list ;;
+        *)    device_env "$1" && printf '%s %s %s\n' \
+                  "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
+    esac
+else
+    return 0 2>/dev/null || true
+fi

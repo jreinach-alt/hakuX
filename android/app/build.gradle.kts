@@ -86,6 +86,16 @@ android {
         }
       }
     }
+    // A second debug install, for the Thor's second screen. Two emulators on
+    // one device need two packages: MainActivity always runs in the
+    // package's one ":xemu" process, and xemu is one instance per process.
+    // A separate id also gives it its own prefs, HDD image and SAF grant.
+    create("debug2") {
+      initWith(getByName("debug"))
+      applicationIdSuffix = ".debug2"
+      resValue("string", "app_name", "hakuX (debug 2)")
+      matchingFallbacks += listOf("debug")
+    }
     release {
       resValue("string", "app_name", "hakuX (fork)")
       externalNativeBuild {
