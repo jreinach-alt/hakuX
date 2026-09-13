@@ -24,11 +24,18 @@
 #   * **A merge has two parents**, so "its parent" is not a thing. Refused
 #     unless --parent names which one.
 #   * **Refs are resolved in the tree the DISPATCHER builds in**, not in the
-#     caller's. request.sh resolves against its own checkout -- correctly, it
-#     is fixing the --ref HEAD problem -- but an agent in a worktree can hold
-#     commits the dispatch tree has never seen. Such a ref resolves at queue
-#     time and then fails to build five minutes later, and the failure reads
-#     like a device problem.
+#     caller's, because that is the tree the APK comes out of. request.sh
+#     resolves against its own checkout, which correctly fixes the --ref HEAD
+#     problem but is the wrong tree when the two differ.
+#
+#     MEASURED, and narrower than it first looked: a git worktree SHARES the
+#     object database -- `git rev-parse --git-common-dir` is
+#     /home/justin/hakuX/.git for every agent worktree here -- so a commit
+#     made in an agent's worktree is already resolvable, and buildable, from
+#     the dispatch tree. The check below was written expecting to fire for
+#     worktree agents and does not. It still fires for the remote lane, a
+#     second session on another machine with its own checkout (see
+#     docs/orchestration.md), where a ref really can be absent; and for a typo.
 #   * **--ref HEAD is never passed on.** A baseline arm was queued as HEAD on
 #     2026-09-12, sat in the queue while three commits landed, and would have
 #     built the very change it was the baseline for. Both arms here are
@@ -95,10 +102,12 @@ else
     FIX_SHA=$(in_tree "$FIX") || FIX_SHA=""
     if [ -z "$FIX_SHA" ]; then
         if git -C "$HERE/../.." rev-parse --verify "$FIX^{commit}" >/dev/null 2>&1; then
-            fail "--fix $FIX exists in this worktree but NOT in the dispatch tree
-       $TREE, which is where the dispatcher builds. Push or cherry-pick it
-       there first; queued as-is it would resolve now and fail to build later,
-       and that failure reads like a device fault."
+            fail "--fix $FIX exists in this checkout but NOT in the dispatch tree
+       $TREE, which is where the dispatcher builds. Push or fetch it there
+       first; queued as-is it would resolve now and fail to build later, and
+       that failure reads like a device fault. (An agent worktree on this
+       machine shares the object database and will not reach this; a separate
+       checkout on another machine will.)"
         fi
         fail "cannot resolve --fix $FIX to a commit in $TREE"
     fi
@@ -160,15 +169,18 @@ $DIRTY"
        A prediction registered after the measurement is a description of it."
     else
         EXPECT="$D/expect/${WHO}-${PAR_SHA}-${FIX_SHA}.json"
-        mkdir -p "$D/expect"
         args=(--register "$EXPECT" --who "$WHO" --issue "$ISSUE"
               --a-ref "$PAR_SHA" --b-ref "$FIX_SHA" --prediction "$PREDICTION")
         for x in "${MNM[@]:-}"; do [ -n "$x" ] && args+=(--must-not-move "$x"); done
         for x in "${EV[@]:-}"; do [ -n "$x" ] && args+=(--expect-value "$x"); done
         for x in "${EC[@]:-}"; do [ -n "$x" ] && args+=(--expect-count "$x"); done
         if [ "$DRY" = 1 ]; then
+            # A dry run creates nothing at all, not even the directory: it is
+            # what gets used to check a command before spending device time,
+            # so it has to be side-effect free to be worth anything.
             echo "  expect   would register $EXPECT"
         else
+            mkdir -p "$D/expect"
             python3 "$HERE/ab_compare.py" "${args[@]}" >/dev/null || exit 2
             echo "  expect   registered $EXPECT"
         fi

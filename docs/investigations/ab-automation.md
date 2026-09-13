@@ -60,12 +60,20 @@ serve one APK to both arms. Identical `apk_sha` is refused unless
 resolves at queue time, which fixes the original incident. `ab_run.sh` resolves
 both refs itself before queueing anything and passes concrete shas — and
 resolves them **in the tree the dispatcher builds in** (`DISPATCH_TREE`,
-default `/home/justin/hakuX`), not the caller's. That is a live trap for a
-worktree agent: `request.sh` resolves against its own checkout, so a commit
-that exists only in an agent's worktree resolves happily at queue time and then
-fails to build five minutes later, and the failure reads like a device fault.
-`ab_run.sh` detects that case specifically and says which tree is missing the
-commit.
+default `/home/justin/hakuX`), not the caller's, because that is the tree the
+APK comes out of.
+
+The trap I expected here turned out not to exist, which is worth recording as
+a negative. I predicted that a commit made in an agent worktree would resolve
+at queue time and then fail to build, because `request.sh` resolves against its
+own checkout. MEASURED: it resolves and builds fine, because a git worktree
+**shares the object database** — `git rev-parse --git-common-dir` is
+`/home/justin/hakuX/.git` for every agent worktree here. Tested by committing
+this work and asking `ab_run.sh --dry-run` to use that sha: it resolved in the
+dispatch tree and derived the correct parent. The check is kept because it is
+cheap and it *does* fire for the remote lane — a second session on another
+machine with its own checkout, per `docs/orchestration.md` — and for a typo.
+Its message now says which case it is.
 
 **The parent is derived, never typed**, and a merge is refused: a merge has two
 parents, "its parent" is not a thing, and silently taking `^1` makes the
@@ -248,6 +256,10 @@ the difference between "broken commit" and "bad commit".
   bit-stable and the instability is one capture wide.
 - **`KNOWN_UNSTABLE` is hearsay and is treated as such.** It only applies where
   there is no band to measure, and it never overrides a measured band.
+- **The worktree-ref trap does not exist on this machine.** Worktrees share the
+  object database, so an agent's commit is already buildable from the dispatch
+  tree. Predicted, coded against, then measured false — see above. The check
+  survives for the remote lane only.
 - **`--purpose` prose predictions are not a substitute for a checked file**,
   and the blend48b table above is the proof: two exact per-capture hits
   alongside three aggregate claims computed against the wrong baseline, all in
