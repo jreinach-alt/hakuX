@@ -88,6 +88,32 @@ def serving(d):
     return sorted(live)
 
 
+def _live(d, label):
+    """Is that device serving RIGHT NOW?
+
+    A PIN TO A DEVICE THAT IS NOT SERVING IS NOT A PIN, IT IS A STALL. Rule 2
+    pins a request to wherever its sibling landed, which is ground truth while
+    both devices are up and a trap the moment one goes away: the sibling's
+    owner file and its result.json outlive the device by design, so the pin
+    survives and nothing will ever claim the request. This file's own docstring
+    already names that as the worse of the two failures -- "a queued request
+    with no claimant is silent" -- and it was reachable through rule 2 the whole
+    time.
+
+    Measured 2026-09-13: the nova went offline for four hours with #50's arm A
+    already run on it. Arm B was queued, rule 2 pinned it to the nova from arm
+    A's owner file, and the thor -- idle, and byte-identical to the nova on
+    62 of 62 captures by devices.sh's own check -- would have skipped it for
+    the whole outage.
+
+    Falling through to rule 3 costs at most a pair split across two handhelds,
+    and devices.sh records that as an efficiency matter rather than a
+    correctness one since the two measured identical. A silent stall costs the
+    measurement.
+    """
+    return label in serving(d)
+
+
 def load(p):
     try:
         with open(p) as f:
@@ -154,7 +180,7 @@ def main():
                     owner = f.read().strip()
             except OSError:
                 pass
-            if owner:
+            if owner and _live(d, owner):
                 print(owner)
                 return
     except OSError:
@@ -179,7 +205,7 @@ def main():
             continue
         meta = load(os.path.join(e.path, "result.json"))
         label = (meta.get("device_label") or "").strip()
-        if label:
+        if label and _live(d, label):
             print(label)
             return
         # A result from before device labels existed cannot pin anything, and
