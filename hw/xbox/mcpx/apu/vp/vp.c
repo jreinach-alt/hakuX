@@ -1920,6 +1920,100 @@ static void voice_work_finalize(MCPXAPUState *d)
     vwd->workers = NULL;
 }
 
+#ifdef __ANDROID__
+/* Issue #74: NV_PAVS_VOICE_CFG_FMT_HEADROOM is decoded in apu_regs.h (bits
+ * 13-15 of the voice's CFG_FMT register) and read NOWHERE in this tree. It is
+ * the third three-bit headroom control in the same register file; the other
+ * two, submix_headroom and hrtf_headroom, are divisions by 1 << value, so
+ * 6.0206 dB per unit. One of those two was a live, uncompensated -6.02 dB on
+ * the default Android path and turned out to be the owner's "volume is low
+ * even at maximum" (54a00d28fb, verified at +6.118 dB measured against +6.02
+ * predicted, docs/investigations/audio-headroom-verified.md).
+ *
+ * Whether this one is a gain or an attenuation on silicon cannot be read out
+ * of this tree, and guessing is how five mechanism claims were retracted on
+ * this project in two days. But the question that comes FIRST is cheaper and
+ * is answerable here: does any title put anything but 0 in it? If every voice
+ * of every title leaves it 0 then the direction does not matter, the field is
+ * unreachable, and #74 closes as measured-inert without anyone having to
+ * decide what the hardware does. That is exactly how submix_headroom was
+ * settled -- 5e3923a0ed logged it and found all 31 slots at 1.
+ *
+ * So: a census, not a fix. Counted here rather than in voice_process because
+ * this loop is the APU thread, while voice_process runs on up to four worker
+ * threads (mcpx_apu_default_vp_worker_count), where a shared histogram would
+ * need atomics before it was worth reading. Counted over voices that are
+ * ACTIVE and about to be enqueued, so the distribution is weighted by what is
+ * audible rather than by what happens to be configured -- a voice programmed
+ * and never played cannot move a level.
+ *
+ * Tag is hakuX-audio because logcat tag filters are exact matches and not
+ * prefixes; that tag is already in the dispatcher's LOGCAT_SPEC, and getting
+ * this wrong produced a 0-byte capture twice (3e97c26d85). */
+extern int __android_log_print(int prio, const char *tag, const char *fmt, ...);
+
+static uint64_t vh_window[8];
+static uint64_t vh_total[8];
+static uint32_t vh_frames;
+static uint8_t vh_first_reported[8];
+
+static void voice_headroom_observe(MCPXAPUState *d, uint16_t v)
+{
+    uint32_t hr = voice_get_mask(d, v, NV_PAVS_VOICE_CFG_FMT,
+                                 NV_PAVS_VOICE_CFG_FMT_HEADROOM);
+    /* Three bits wide, so this cannot exceed 7. Indexed without a clamp on
+     * purpose: a value out of range would mean the mask is wrong, and that is
+     * worth an assert rather than a silent bucket. */
+    assert(hr < 8);
+    vh_window[hr]++;
+    vh_total[hr]++;
+    if (hr != 0 && !vh_first_reported[hr]) {
+        vh_first_reported[hr] = 1;
+        __android_log_print(4, "hakuX-audio",
+            "voice_headroom: FIRST active voice with headroom=%u -- voice %u. "
+            "The unit is 6.02 dB per step, so this is x%u (%u.%02u dB) in "
+            "whichever direction silicon applies it. Read by nothing here; #74",
+            hr, v, 1u << hr, (602 * hr) / 100, (602 * hr) % 100);
+    }
+}
+
+/* mcpx_apu_vp_frame runs once per 32-sample VP frame, so 1500 a second at
+ * 48 kHz. 7500 frames is 5 s -- the same cadence as the starvation counter in
+ * apu.c, and for the same reason: a heartbeat on a clean interval is what
+ * tells a live instrument apart from a dead one. A census that spoke only when
+ * it found something would be indistinguishable from one that never ran, and
+ * that ambiguity has already cost this campaign two arms. */
+#define VH_REPORT_FRAMES 7500
+
+static void voice_headroom_report(void)
+{
+    if (++vh_frames < VH_REPORT_FRAMES) {
+        return;
+    }
+    vh_frames = 0;
+
+    uint64_t win_n = 0, tot_n = 0, tot_nz = 0;
+    for (int i = 0; i < 8; i++) {
+        win_n += vh_window[i];
+        tot_n += vh_total[i];
+        if (i != 0) {
+            tot_nz += vh_total[i];
+        }
+    }
+    __android_log_print(4, "hakuX-audio",
+        "voice_headroom: window %llu active voice-frames  hr0..7 = "
+        "%llu %llu %llu %llu %llu %llu %llu %llu  "
+        "cumulative %llu nonzero of %llu",
+        (unsigned long long)win_n,
+        (unsigned long long)vh_window[0], (unsigned long long)vh_window[1],
+        (unsigned long long)vh_window[2], (unsigned long long)vh_window[3],
+        (unsigned long long)vh_window[4], (unsigned long long)vh_window[5],
+        (unsigned long long)vh_window[6], (unsigned long long)vh_window[7],
+        (unsigned long long)tot_nz, (unsigned long long)tot_n);
+    memset(vh_window, 0, sizeof(vh_window));
+}
+#endif /* __ANDROID__ */
+
 void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_PER_FRAME])
 {
     memset(d->vp.sample_buf, 0, sizeof(d->vp.sample_buf));
@@ -1948,11 +2042,17 @@ void mcpx_apu_vp_frame(MCPXAPUState *d, float mixbins[NUM_MIXBINS][NUM_SAMPLES_P
                                 NV_PAVS_VOICE_PAR_STATE_ACTIVE_VOICE)) {
                 fe_method(d, SE2FE_IDLE_VOICE, v);
             } else {
+#ifdef __ANDROID__
+                voice_headroom_observe(d, v);
+#endif
                 voice_work_enqueue(d, v, list);
             }
             d->regs[current] = d->regs[next];
         }
     }
+#ifdef __ANDROID__
+    voice_headroom_report();
+#endif
     voice_work_dispatch(d, mixbins);
 
     if (d->monitor.point == MCPX_APU_DEBUG_MON_VP) {
