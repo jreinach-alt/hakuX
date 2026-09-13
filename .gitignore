@@ -46,3 +46,7 @@ replay_pid*.log
 
 # Local desktop build tree, for the pre-fold-in link check.
 build-linux/
+
+# Agent worktrees. They live inside the repo and are separate checkouts, so a
+# `git add -A` here stages 44 embedded git repositories -- caught once.
+.claude/worktrees/
