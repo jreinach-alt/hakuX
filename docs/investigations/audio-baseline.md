@@ -431,7 +431,57 @@ been verified.
     capture is writing on the audio thread, and S2's number describes that
     rather than a normal run — in which case S2 is void, not falsified.
 
-## 5. What this baseline cannot do
+## 5. How to take the measurements this document is missing
+
+Ready to run once the orchestrator has merged the `audio_capture` support and
+restarted the serving dispatcher. Until then `request.sh` refuses these on
+purpose, rather than running them with the capture off and handing back a stale
+file.
+
+**The repeat the R1-R4 prediction is waiting on** — two more, same device as the
+baseline, so the level can be shown to be a property of the emulator:
+
+```sh
+for i in 1 2; do
+  docs/testing/request.sh --who audio-rep$i --device nova \
+    --title "Galleon (USA).xiso.iso" --seconds 90 \
+    --audio-capture 30 --pull 'apu_monitor.s16le48k2ch.pcm*' \
+    --no-expect "baseline repetition, R1-R4 in audio-baseline.md section 2"
+done
+```
+
+Then, for each, before believing it:
+
+```sh
+python3 docs/testing/audio_measure.py CAPTURE.pcm      # duration is the first line
+python3 docs/testing/audio_zero_structure.py CAPTURE.pcm
+grep audiocap RESULTDIR/logcat.txt                     # must be non-empty
+```
+
+**Date it.** The captured duration must not exceed the app's lifetime, which
+the soak's own timestamps bound. That single check is what caught the stale file
+in section 3, and it costs one subtraction.
+
+**The second title, which is the cheapest open question** — is the −23 dBFS /
+23 dB-crest shape a property of our mix or of Galleon's content? Both candidates
+are on the Thor:
+
+```sh
+docs/testing/request.sh --who audio-title2 --device thor \
+  --title "Dead or Alive 3 (USA).xiso.iso" --seconds 90 \
+  --audio-capture 30 --pull 'apu_monitor.s16le48k2ch.pcm*' \
+  --no-expect "second title, to separate our mix's shape from one game's content"
+```
+
+Confirm the exact filename against `devices.sh list` first; a wrong title costs
+a build and an install before the dispatcher notices.
+
+Predict before running: if a dense, consistently loud title lands within a few
+dB of Galleon's AC RMS **with a similar crest factor**, the shape is ours. If it
+lands substantially hotter with a narrower crest, Galleon is a quiet game and
+the level is fine. Either answer is worth having and they are distinguishable.
+
+## 6. What this baseline cannot do
 
 Carried forward from `audio-harness.md` section 4, because each still binds:
 
