@@ -526,7 +526,8 @@ def report_reconstruct(golden_dir, lo, hi):
 def main():
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--goldens", default="goldens/results")
+    ap.add_argument("--goldens",
+                    default=os.path.expanduser("~/goldens/results"))
     ap.add_argument("--min-width", type=float, default=8.0)
     ap.add_argument("--max-width", type=float, default=999.0)
     ap.add_argument("--order", action="store_true")
