@@ -1,0 +1,16 @@
+{
+  "registered_utc": "2026-09-13T07:25:43Z",
+  "who": "audio-monacc-rev2",
+  "issue": "73",
+  "prediction": "Issue #73. R2 and R3 failed on 30d7c29f06 and R3's registered diagnosis was right: the rewind detector reset its state inside the monitor block, which is skipped on one startup frame, so a stale comparison produced exactly one false revisit. Both soaks showed it identically -- window 7499 frames against the report's 7500, revisits 1 in the first window and 0 in every window after, on two titles and two handhelds, with detail nonzero 0 confirming the accumulator was in fact zero. The bookkeeping now runs at the top of every VP frame and watches ep_frame_div itself.\n\nF1 -- THE ARTEFACT IS GONE. Every window reports `window 7500 frames`, including the first, and cumulative revisits == 0 and jumps == 0 over both soaks. FAILS if the first window is short again or if revisits is non-zero, in which case the state still lives somewhere that does not run every frame and the next place to look is whether mcpx_apu_vp_frame itself is skipped rather than just its monitor block.\n\nF2 -- jumps AND revisits, reported separately, both zero. jumps counts every ep_frame_div discontinuity; revisits only those landing on still-dirty slices. jumps > 0 with revisits == 0 would be the genuinely interesting middle case -- the guest DOES resync the EP, but only ever on a freshly flushed buffer -- and it is registered as a distinct outcome rather than folded into either neighbour. FAILS as a prediction if jumps > 0; that failure is a finding about the guest, not about the detector, and it makes gp_ep.c:424's FIXME the next thing to work.\n\nF3 -- the fix did not cost anything. Starvation: every steady-state starve: line 0.0000%, startup excluded per audio-baseline.md 4a, and the three-line shape the references have. FAILS on any non-zero steady-state figure.\n\nF4 -- the level still has not moved. p50 within 2.0 dB of the same-title, same-device references: Galleon on the nova -29.15/-29.15 (and -29.05/-29.05, -29.15/-29.25 before it, a measured 0.20 dB band across four runs); Crimson Skies on the thor -15.95/-15.75. FAILS outside 2.0 dB. This has now held across four arms including one without the clamp at all, so a failure here would point at the detector's new call site rather than at the clamp.\n\nWHAT THIS CANNOT DO, unchanged: a zero bounds the number of NV_PAPU_EPRST rewinds over the two soaks' ~175 s on these two titles at this configuration. It is not proof the rewind cannot happen. The counter is permanent, so every audio soak from here on adds to it.",
+  "a_ref": "30d7c29f06",
+  "b_ref": "37e1fabd89",
+  "must_not_move": [],
+  "expect": {
+    "mon_acc/revisits_total": 0,
+    "mon_acc/jumps_total": 0,
+    "mon_acc/window_frames": 7500,
+    "starve/steady_state_ppm": 0
+  },
+  "expect_counts": {}
+}
