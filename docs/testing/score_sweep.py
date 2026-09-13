@@ -130,7 +130,15 @@ def score_dir(args):
                            dtype=np.int16)
         except Exception:
             # A truncated capture is a finding of its own; count it.
-            rows.append((suite, test, solo, "unreadable", 0, 0, 0, 0))
+            #
+            # NINE fields, like every other append here. This had EIGHT --
+            # missing `off_by_one` -- so an unreadable capture wrote an
+            # 11-column row against a 12-column header, and csv.DictReader
+            # fills the shortfall silently rather than raising. A malformed row
+            # in the one status meaning "this capture could not be read" is the
+            # worst place for one: the row reporting the instrument's failure
+            # was itself misaligned.
+            rows.append((suite, test, solo, "unreadable", 0, 0, 0, 0, 0))
             continue
         if g.shape != o.shape:
             rows.append((suite, test, solo, "size", 0, 0, 0,
@@ -193,9 +201,39 @@ def score_dir(args):
                  and gold_colours > 4)
 
         status = "blank" if blank else "ok"
+        # NEITHER CHECK APPLIES TO A DEPTH CAPTURE, which is the other half and
+        # was missing. A `_ZB` capture has NO LABEL: the guest prints its
+        # overlay into the COLOUR buffer, and the `_ZB` image is packed depth
+        # (z24 = A<<16|R<<8|G with stencil in B; z16 = RGB565). So "all three
+        # channels >= 250" there does not mean white text -- it means a depth
+        # value near maximum, which is the CLEARED value and the most common
+        # value in the buffer.
+        #
+        # Running it anyway files real depth defects under a white-pixel
+        # heuristic. Measured: the two `Depth_buffer_fixed_function` z16 rows
+        # at 2,840 px each are a genuine depth disagreement, called
+        # `label-differs` (void) by the pre-06:20 scorer and `white-content`
+        # after it, and neither is what they are. Five `ZPass_pixel_count`
+        # `_ZB` rows and one instance of #39 went the same way.
+        #
+        # This is the mirror of the false positive the band above fixed: that
+        # made the check narrower, this stops it running on a class of capture
+        # the concept does not apply to. Same error twice -- a test for white
+        # text applied where white is data.
+        #
+        # PLACED HERE, AFTER `status` IS ASSIGNED, and the first version of
+        # this was not. Returning early above the assignment made every depth
+        # row inherit the PREVIOUS capture's status from the loop variable --
+        # Python keeps it across iterations, so there was no NameError to
+        # notice, just plausible statuses on the wrong rows. Caught by running
+        # it against the two captures it was written for and finding rows that
+        # should have been skipped coming back changed.
+        depth_capture = test.endswith("_ZB")
         # Report it, do not silently downgrade the row: a differing label makes
         # the pixel comparison untrustworthy, not automatically wrong.
-        if label_delta > 8:
+        if depth_capture:
+            pass
+        elif label_delta > 8:
             status = "label-differs"
         elif content_white_delta > 8:
             # White pixels differ in the image BODY. That is a real
