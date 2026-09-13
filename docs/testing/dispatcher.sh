@@ -311,8 +311,16 @@ if os.path.isdir(pdir):
 # one. Three audio titles live on the Thor and Galleon on the Nova, and the
 # volume comparisons across them are exactly the measurement this silently
 # mixes. devices.sh exists to stop that; it cannot stop what is never written.
+# THE EFFECTIVE SPEC, on the soak path too. Only the disc path recorded it, and
+# the omission is worse here for the same reason the device label was: a soak
+# has no golden to disagree with, so from a soak result alone "the filter
+# dropped the tag" and "the code does not log it" are INDISTINGUISHABLE. That
+# cost a phase survey exactly this way. No fallback literal: if LOGCAT_SPEC is
+# unset, say so rather than inventing the string it probably was.
+_spec = os.environ.get("LOGCAT_SPEC", "(LOGCAT_SPEC UNSET -- spec unknown)")
 json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                requester=who, purpose=purpose, ref=ref,
+               logcat=dict(spec=_spec, lines=int(lines)),
                device_serial=os.environ.get("SERIAL", ""),
                device_label=os.environ.get("DEVICE_LABEL", ""),
                logcat_lines=int(lines), pulled=pulled),
@@ -342,6 +350,15 @@ for s in json.load(open(sys.argv[1])).get('suites',[]): print(s)" "$req" > "$sui
     python3 -c "import json,sys
 for t in json.load(open(sys.argv[1])).get('skip_tests',[]): print(t)" "$req" > "$skipfile"
     mapfile -t SKIP_LIST < "$skipfile"
+    # The ALLOW-LIST. `tests` was a field this dispatcher accepted, recorded and
+    # never read, so a requester narrowing an arm to three captures silently
+    # measured hundreds. `only_tests` is the implemented replacement, and this
+    # is the line whose absence made `tests` a lie.
+    local onlyfile="$rdir/.only_tests"
+    python3 -c "import json,sys
+r=json.load(open(sys.argv[1]))
+print('\n'.join(r.get('only_tests') or []))" "$req" > "$onlyfile" 2>/dev/null || : > "$onlyfile"
+    mapfile -t ONLY_LIST < "$onlyfile"
 
     local disc_id
     # disc_id must IDENTIFY the disc, because the dispatcher's rule is that two
@@ -437,6 +454,7 @@ else:
         local s
         for s in "${SUITE_LIST[@]}"; do args+=(--suite "${s//_/ }"); done
         for s in "${SKIP_LIST[@]:-}"; do [ -n "$s" ] && args+=(--skip-test "$s"); done
+        for s in "${ONLY_LIST[@]:-}"; do [ -n "$s" ] && args+=(--only-test "$s"); done
         python3 "$HERE/make_test_iso.py" "$base_iso" \
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1
@@ -455,13 +473,32 @@ else:
 import csv, glob, json, os, subprocess, sys
 rdir, sha, disc, who, purpose, ref = sys.argv[1:7]
 meta = dict(apk_sha=sha, disc_id=disc, requester=who, purpose=purpose, ref=ref)
-try:
-    meta["classifier_rev"] = subprocess.run(
-        ["git", "-C", "/home/justin/hakuX", "log", "-1", "--format=%h",
-         "--", "docs/testing/classify_residuals.py"],
-        capture_output=True, text=True).stdout.strip()
-except Exception:
-    meta["classifier_rev"] = "unknown"
+# TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
+#
+# The `status` column every consumer reads -- ok / label-differs /
+# white-content -- is assigned by `score_sweep.py`. `classify_residuals.py`
+# never touches it. So a column scored before score_sweep.py changed and one
+# scored after can disagree on which captures are VOID with no pixel differing
+# and nothing in the metadata to tell them apart.
+#
+# That is not hypothetical. The label-band fix landed in score_sweep.py at
+# 06:20 on 2026-09-13; classify_residuals.py was last touched at 04:45. Two
+# results with the SAME classifier_rev 37a5cc7ff3 produce the same 42/63 split
+# on identical test names, and one calls those 63 `label-differs` (void) while
+# the other calls them `white-content` (scorable) -- so the whole z-tip-* sweep
+# column's void counts are inflated. ab_compare refuses a mismatched disc_id
+# and had no equivalent guard here; the #75 filer re-scored both capture sets
+# by hand specifically to rule this out, which is the work a recorded revision
+# saves.
+def _rev(path):
+    try:
+        return subprocess.run(
+            ["git", "-C", "/home/justin/hakuX", "log", "-1", "--format=%h",
+             "--", path], capture_output=True, text=True).stdout.strip() or "unknown"
+    except Exception:
+        return "unknown"
+meta["classifier_rev"] = _rev("docs/testing/classify_residuals.py")
+meta["scorer_rev"] = _rev("docs/testing/score_sweep.py")
 runs = []
 for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
     rows = [r for r in csv.DictReader(open(t), delimiter="\t") if r.get("suite")]
@@ -545,7 +582,16 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 # answer "were the draw-reorder prefs on for this run?" are logged at I, and
 # the #50 investigation could not answer that question from any of the
 # dispatcher's own logcats.
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+# hakuX-phase and xemu-work were MISSING and it cost a survey. A -Pperflog=true
+# build compiles NV2A_PERF_LOG in and logs under `hakuX-phase`; with the tag
+# absent here the run produced ZERO phase lines while the binary was correct,
+# which reads exactly like a soak that measured nothing. Established on the APK
+# files rather than the device: libxemu.so from the perflog APK contains
+# `hakuX-phase` and the normal one does not, with `hakuX-perf` in both as the
+# control. `xemu-work` is in the same edit deliberately -- it carries BE:/TexU:,
+# the instrumentation-INDEPENDENT workload control, without which a phase
+# survey can be non-empty and still uninterpretable.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 # Which device runs the idle sweep. One of them must, and both of them must
@@ -666,8 +712,42 @@ case "${1:-status}" in
         mv "$orphan" "$D/queue/" 2>/dev/null || true
     done
     log "=== dispatcher serving; queue=$D/queue ==="
+    held_logged=0
     while :; do
         shopt -s nullglob
+        # A DEVICE CAN BE TAKEN OUT OF SERVICE WITHOUT STOPPING ANYTHING.
+        #
+        #     touch  $D/hold/<label>     # stop claiming on that handheld
+        #     rm     $D/hold/<label>     # put it back in service
+        #
+        # There was no way to do this, and the absence showed: when the nova
+        # went offline for four hours its worker kept claiming requests,
+        # finding no device, and requeueing them every thirty seconds. Nothing
+        # was lost -- the requeue path is correct -- but a claim/requeue churn
+        # is indistinguishable in the log from the dirty-tree loop that cost
+        # 251 requeues earlier the same day, and it occupies the queue head
+        # against a device that cannot serve it.
+        #
+        # Killing the worker does not work either: the supervisor restarts any
+        # worker that exits, by design, because a silently dead lane once took
+        # a device out of service for twenty-five minutes. So the hold has to
+        # be something the worker consults, not a process state.
+        #
+        # Checked HERE, at the top of the loop and before the queue is read, so
+        # a hold placed mid-run takes effect after the current request rather
+        # than interrupting it -- the same discipline as the re-exec below.
+        if [ -e "$D/hold/$DEVICE_LABEL" ]; then
+            [ "$held_logged" = 1 ] || log "HELD by $D/hold/$DEVICE_LABEL; claiming nothing until it is removed"
+            held_logged=1
+            rm -f "$D/lanes/$DEVICE_LABEL"   # affinity must not pin a pair here
+            sleep 30
+            continue
+        fi
+        if [ "$held_logged" = 1 ]; then
+            log "hold released; serving again"
+            held_logged=0
+            printf '%s' "$$" > "$D/lanes/$DEVICE_LABEL"
+        fi
         # Served in glob order, which is ASCII order, and that is the whole
         # priority mechanism. Normal requests are named with an epoch prefix so
         # they sort by arrival. Two conventions ride on top:
