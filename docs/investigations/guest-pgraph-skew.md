@@ -1226,7 +1226,56 @@ this — *"do not hand-roll the comparison; use the tool, or check what the tool
 checks"* — and it is the second time in one session that a reader was the
 thing at fault rather than the data.
 
-*The Crimson `Tr` pair to follow.*
+### CRIMSON ARM A: the race is LIVE at this tip, at 61.7%, and that settles the disc question
+
+`5cfc236d9b` / apk `4509eeeb11c7`, **nova**, Crimson Skies, 240 s, mode 0 —
+run 1 of 2.
+
+```
+Tr = 11,829 / 19,167 / 23,859      raced/uploads = 0.6172
+Vr = 0 / 3,040                      the vertex site is clean
+Xd = 0                              the impossible row
+```
+
+**61.7% of texture uploads raced** — a bound texture's dirty bit consumed by
+an upload and set again before the `begin_pre_draw` window closed. That is
+#44's mechanism read from the other side, and it is **higher** than the
+published baseline of 0.5661 / 0.5672 (measured at `e353735028`, a ref that
+does not contain `cdd8dc4c89`).
+
+**L5 PASSES — `Tr > 0` — which is the arm-A gate my registered prediction
+omitted.** So unlike the disc pair, **this pair can discriminate.** The judge
+supplied the gate the prediction should have carried, and it reads the right
+way round.
+
+### Which retires the hypothesis the n=6 write-up floated
+
+That write-up guessed the `Texture border` flake was receding because
+`cdd8dc4c89` (#56's stale-binding fix) had closed the race. **It has not.**
+The race is live at 61.7% on a real title at the *same ref* those disc runs
+used. So:
+
+- **The disc's 2-in-10 is a weak observable, not a fixed defect.** The two
+  readings are consistent — a disc whose eighteen draws sit in one frame is
+  simply a poor detector of a race that a flipping title exhibits on three
+  fifths of its uploads.
+- **The n=6 retraction was doubly right to retract.** Not only was five zeros
+  too few to conclude from; the conclusion itself was false.
+- **`Tr` is the instrument this issue should have been using.** It is a rate
+  over 19,167 uploads in one 240 s run, reproducible to 0.2% across runs,
+  against a per-run coin flip that needs 20–30 replicates to have power. It
+  also carries its own impossible row and a clean negative control at the
+  vertex site (`Vr = 0` over 3,040 copies, bounding that rate at ≤9.87e-4).
+
+**The vertex site being clean is worth stating separately**, because it is the
+falsifier this document already answered from #39's hashes and now has a
+second, independent measurement for: `Vr = 0/3,040`. Vertex data is read from
+guest RAM at the same point by the same thread, and it does not race here.
+
+*Crimson arm B and the second runs to follow. Given mode 2 holds 94.9% of
+submissions on Galleon, the expectation is that **X1 holds and X5 fails** —
+the bound closes the race and costs the ceiling, exactly as mode 1 did, which
+would complete the picture rather than change it.*
 
 ## Does #39 share the class? The falsifier is already answered, in the negative
 
