@@ -918,7 +918,19 @@ debugging a lone score change. Having the rule is not applying it.
 
 **So: before attributing any sweep-column delta to a commit, re-run the suite at
 one of the two refs.** If the delta is inside one ref's own spread, there is
-nothing to bisect. And the ordering that caught this is worth copying: the first
+nothing to bisect.
+
+**DO NOT DIFF TWO COLUMNS BY HAND -- `docs/testing/sweep_diff.py` is the gate,
+and it EXITS NON-ZERO rather than warning.** That distinction is the whole
+reason it exists: the hand-rolled diff did print the movers and a reader could
+have applied this rule to them, and the conclusion was drawn anyway. It pools
+every same-ref repeat on disk, refuses to believe a band behind fewer than
+`MIN_RUNS` runs, and prints the exact `request.sh` line that would settle an
+unattributable mover.
+
+It also reports when a column is internally mixed across `score_sweep.py`
+revisions, which one column was for five hours -- the sweep runs long enough
+that a scorer change lands mid-column. And the ordering that caught this is worth copying: the first
 build went to the **tip** rather than into the window, and it returned the three
 named captures exact with a *different* capture broken at the same total -- a
 failure that relocates at constant total is nondeterminism, not a fix.

@@ -105,3 +105,29 @@ done
 python3 "$HERE/scoreboard.py" "${RUNS[@]}" \
     --goldens /home/justin/goldens/results \
     --md "$HERE/SCOREBOARD.md"
+
+# NAME THE GATE AT THE POINT SOMEONE IS ABOUT TO NEED IT.
+#
+# A fresh column exists for exactly one reason: to be compared with another
+# one. That comparison is where #75 came from -- two columns diffed by hand,
+# three movers read as a regression, a suspect commit named and a lane spawned
+# to bisect nothing. `sweep_diff.py` refuses that attribution until a same-ref
+# repeat exists, and it exits non-zero rather than warning.
+#
+# Printed rather than run, and deliberately: this script has just written a
+# column, and which OTHER column is the meaningful comparison is a judgement
+# nobody here can make. Naming the command with the arguments filled in is the
+# most this can honestly do -- and it is what the rule in AGENTS.md asks for,
+# at the moment the reader is looking.
+OTHERS=$(for d in /home/justin/hakux-work/scoreboard/*/; do
+             b=$(basename "$d"); [ "$b" = "$LABEL" ] || printf '%s ' "$b"
+         done)
+if [ -n "$OTHERS" ]; then
+    echo
+    echo "before attributing any difference between this column and another to a"
+    echo "commit, run the gate -- a one-run-per-suite column cannot tell a change"
+    echo "from a suite's own variance:"
+    for o in $OTHERS; do
+        echo "    python3 $HERE/sweep_diff.py $o $LABEL"
+    done
+fi
