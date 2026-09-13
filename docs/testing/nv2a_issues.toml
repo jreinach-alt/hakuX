@@ -1476,6 +1476,39 @@ suites = ["Blend surface", "Texture Framebuffer Blit"]
 # audio_measure.py), audio-headroom-verified.md (the one verified fix), and
 # audio-baseline.md (the measured level these issues are stated against).
 
+# MEASURED OUT 2026-09-12, the same day it was filed. Galleon on the Thor, 120 s
+# held: 2,816 consecutive sink callbacks over four 30 s windows, NOT ONE of them
+# short by a single byte. 0.0000% of output zero-filled in steady state. The
+# mechanism below is real in the code and does not fire on this title.
+#
+# The run's only shortfall is 21 callbacks in the first 5 s window, 0.90 s of
+# output, and ALL 21 are `empty` -- copied == 0, nothing in the FIFO at all.
+# That is the signature of no audio having been produced yet rather than of a
+# producer falling behind, which delivers PARTIAL fills. The PCM captures agree
+# from the other side: Galleon leads with 2.2-3.3 s of silence.
+#
+# This closes the last explanation for the owner's symptom that the audio
+# harness can reach. Of the three candidates standing after the level baseline
+# -- a uniform missing gain, a per-voice missing gain, something downstream of
+# the tap -- the first and third are now both measured out. #74 is what remains.
+#
+# What it does NOT establish, and the counter is permanent so each costs a soak:
+# it is the Thor, not the Nova, and devices.sh says the pairing is unproven; it
+# is Galleon, which is not a stress case, and starvation is load-dependent by
+# construction; and a zero does not vindicate the 5 ms wait ceiling, which is
+# still less than one 5.333 ms frame period and simply was not tested.
+#
+# The prediction this was judged against had two clauses and ONE FAILED: "no 5 s
+# interval over 5%" is false, because the startup window reads 17.5% and I did
+# not exclude startup when writing it. The prediction was wrong, not the
+# emulator. Recorded rather than restated, and the corrected predicate is in
+# docs/investigations/audio-baseline.md section 4a.
+#
+# Disposition is `harness`: what remains of this entry is the instrument, which
+# is now permanent and reports on every run, not a defect in the audio path.
+#
+# ---- as filed, before the measurement ----
+#
 # The only mechanism that survives the measured baseline and can still explain
 # the owner's report of "unusually low, even at max".
 #
@@ -1517,8 +1550,8 @@ suites = ["Blend surface", "Texture Framebuffer Blit"]
 # Disposition stays unclassified until that number exists. There is a
 # measurement pending, not a rule.
 [issue.70]
-title = "APU sink zero-fills a short read and counts nothing, so output starvation is invisible to the PCM tap"
-disposition = "unclassified"
+title = "APU sink zero-fills a short read and counts nothing (MEASURED OUT: 0.0000% in steady state, instrument now permanent)"
+disposition = "harness"
 component = "apu"
 suites = []
 

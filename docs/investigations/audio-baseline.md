@@ -431,6 +431,79 @@ been verified.
     capture is writing on the audio thread, and S2's number describes that
     rather than a normal run — in which case S2 is void, not falsified.
 
+## 4a. The starvation result: zero, and one leg of my prediction failed
+
+Galleon, **AYN Thor**, 120 s held, ref `ad98928a34`, binary `728f38965cfe`,
+result `1789275832-audio-starve-thor-4093048`. Five `starve:` lines:
+
+| window | short / callbacks | empty | bytes zero-filled | % of output |
+|---|---:|---:|---:|---:|
+| first 5 s (startup) | 21 / 120 | **21** | 172,032 / 983,040 | **17.5000** |
+| +30 s | 0 / 704 | 0 | 0 / 5,767,168 | 0.0000 |
+| +30 s | 0 / 704 | 0 | 0 / 5,767,168 | 0.0000 |
+| +30 s | 0 / 704 | 0 | 0 / 5,767,168 | 0.0000 |
+| +30 s | 0 / 704 | 0 | 0 / 5,767,168 | 0.0000 |
+| **total** | **21 / 2,936** | 21 | **172,032 / 24,051,712** | **0.7153** |
+
+Every line reads `capture off`, `device buf 8192 B`, `fifo 49152 B`.
+
+### Verdict against the prediction
+
+- **S1 — the instrument is alive. PASSED.** Five lines, and four of them are
+  heartbeats on clean intervals. Without the heartbeat this run would have
+  emitted one startup line and then nothing for two minutes, which is
+  indistinguishable from an instrument that died.
+- **S2 first clause — under 1.0% overall. PASSED**, at 0.7153%.
+- **S2 second clause — no 5 s interval over 5%. FAILED.** The first window
+  reports 17.5%.
+- **S3 — `capture off`. PASSED**, so the figure is not the capture's own writes.
+
+### The failed leg is a diagnosis, and the fault is in the prediction
+
+**All 21 short callbacks are `empty`** — `copied == 0`, nothing in the FIFO at
+all — and they are the entire shortfall of the run. That is the signature of
+*no audio having been produced yet*, not of a producer falling behind: a
+producer that is merely late delivers **partial** fills, because the FIFO holds
+some of what was asked for. Twenty-one empty callbacks is 0.90 s of output, at
+startup, before the guest has written a sample. The PCM captures say the same
+thing from the other side — 2.2 to 3.3 s of leading silence before Galleon
+produces audio.
+
+**I should have excluded the startup window when I wrote S2, and did not.** The
+prediction is wrong, not the emulator. Recording it rather than quietly
+restating the threshold, because a prediction edited after the numbers arrive is
+the same failure as one written after them.
+
+The corrected predicate, for whoever runs this next: *no steady-state 5 s
+interval over 5%, where steady-state begins at the first window containing a
+non-empty callback.* On this run that predicate passes with four consecutive
+windows at exactly zero.
+
+### What it establishes, and what it does not
+
+**MEASURED: output starvation is zero during steady playback.** 2,816
+consecutive callbacks over 120 s, not one of them short by a single byte. The
+mechanism of issue #70 is real in the code and does not fire here.
+
+That closes the last explanation for the owner's symptom that this instrument
+can reach. Of the three candidates left standing after the level baseline — a
+uniform missing gain, a per-voice missing gain, and something downstream of the
+tap — the first and third are now both measured out. **Only #74, the unread
+per-voice headroom field, remains.**
+
+Held back deliberately:
+
+- **This is the Thor, not the Nova**, and `devices.sh` is explicit that the two
+  are not interchangeable until proven so. The pairing is still unverified.
+- **This is Galleon**, which is not a stress case. Starvation is load-dependent
+  by construction — the sink asks for eight production units at a time and waits
+  less than one frame period — so a denser title, or one running at a lower
+  frame rate, could starve where this does not. The counter is now permanent, so
+  that question costs a soak rather than an investigation.
+- **A zero here does not vindicate the 5 ms wait ceiling.** It says the APU
+  thread kept up on this title on this device. The ceiling is still less than
+  one 5.333 ms frame period, which is a thin margin; it simply was not tested.
+
 ## 5. How to take the measurements this document is missing
 
 Ready to run once the orchestrator has merged the `audio_capture` support and
