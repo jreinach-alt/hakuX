@@ -1694,8 +1694,38 @@ suites = []
 # audible and is not an argument against the fix; it IS the reason a limiter is
 # worth considering and the reason this is on the tracker rather than in a
 # comment.
+#
+# TWO CORRECTIONS FROM MEASUREMENT, 2026-09-12, and both narrow this.
+#
+# 1. THE CLIPPED-SAMPLE COUNT IS NOT A PROPERTY OF THE LEVEL. A second Galleon
+#    playthrough on the same device at the same ref (result
+#    1789279659-audio-level-galleon-1503189, read by the in-emulator level
+#    meter) clips 562 and 714 samples -- 0.0138% and 0.0176% -- against the
+#    baseline playthrough's 36 and 16, i.e. 0.0008% and 0.0004%. A 16-45x
+#    spread between two runs whose MEDIAN active window agrees to 0.22 dB.
+#    Clipping counts transients, and two playthroughs of a title that peaks at
+#    the rails do not contain the same transients. So "52 samples in 92.843 s"
+#    above is one draw, not a figure; the only stable statement is that the mix
+#    REACHES the rails, which it does in both runs on both channels. A
+#    prediction registered as "clipped below 0.01%" failed on exactly this and
+#    the prediction was the thing that was wrong.
+#
+# 2. IT IS NOT THE EMULATOR RUNNING HOT, IT IS GALLEON. Dead or Alive 3, same
+#    binary, same hour, Thor (result 1789279792-audio-level-doa3-1542469):
+#    peak 12,795 / 12,803 = -8.17 / -8.16 dBFS, and ZERO clipped samples in
+#    89.6 s. Its median active window is 5.9 dB HOTTER than Galleon's while its
+#    peak is 8 dB below full scale -- loud-half spread (p95-p50) 4.2/5.1 dB
+#    against Galleon's 11.6/12.9. One binary, two shapes. So the monitor path
+#    is not systematically at the rails; one wide-dynamic title gets there and
+#    another leaves 8 dB unused.
+#
+# What survives unchanged is the real question: nobody knows what silicon does
+# at the rails, and there is still no golden PCM. But a limiter would now be
+# solving a problem that one title's transients produce, on a path where
+# another title never approaches full scale -- which is an argument for leaving
+# it alone until a hardware reference exists.
 [issue.72]
-title = "The monitor path now runs at the rails with no limiter, and whether that matches hardware is unknown"
+title = "The monitor path reaches the rails on Galleon and not on DOA3; whether the clipping matches hardware is unknown"
 disposition = "unknown-semantics"
 component = "apu"
 suites = []
@@ -1724,6 +1754,18 @@ suites = []
 # explain them. That is the trigger to clamp, and it is worth re-checking on any
 # title denser than Galleon -- the Xbox APU sums up to 256 voices and Galleon is
 # not a stress case.
+#
+# NOW WATCHED CONTINUOUSLY, 2026-09-12. The wrap-suspect count no longer needs a
+# capture: the level meter in apu.c counts it on device and prints it every 5 s
+# under tag hakuX-audio, so every audio soak from here on is a test of this
+# whether it was asked to be or not. Three more runs, zero wrap suspects: a
+# second Galleon playthrough on the Nova (largest adjacent jump 13,096 of
+# 65,535, up from the captures' 11,537, with 562/714 clipped samples against 36
+# /16 -- so a louder-transient run than any previous one and still no wrap), and
+# Dead or Alive 3 on the Thor (largest jump 10,085, and its peak never exceeds
+# 12,803, so it is not even close). The hazard is unchanged in the code; the
+# evidence against it firing has gone from 312 s to about 490 s, and the cost of
+# adding to it is now zero.
 [issue.73]
 title = "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
 disposition = "defect"
