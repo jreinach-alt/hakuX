@@ -28,7 +28,13 @@ set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TREE="${DISPATCH_TREE:-/home/justin/hakuX}"
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
-SERIAL="${SERIAL:-ee317437}"
+# Which handheld this instance drives. Two dispatchers can share one queue:
+# claiming a request is `mv queue/x running/x`, an atomic rename that either
+# wins or returns non-zero, so whichever renames first owns it. Everything
+# else that is per-device -- the lease, the SD card path, the orphan sweep --
+# has to be keyed on the device, which is what devices.sh is for.
+. "$HERE/devices.sh"
+device_env "${SERIAL:-ee317437}" || exit 2
 GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
 SWEEP_STATE="${SWEEP_STATE:-/home/justin/hakux-work/night19/sq_g0}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
@@ -113,6 +119,7 @@ serve_one() {
     local req="$1" id
     id=$(basename "$req" .req)
     mv "$req" "$D/running/$id.req" 2>/dev/null || return 0
+    printf '%s\n' "$DEVICE_LABEL" > "$D/running/$id.owner"
     req="$D/running/$id.req"
     local requester purpose ref arm runs
     requester=$(jq_get "$req" requester unknown)
@@ -170,7 +177,7 @@ serve_one() {
     # it -- and no human has to hold the handheld.
     if [ -n "$title" ]; then
         log "  soak: $title for ${seconds}s"
-        local tpath="/storage/E6C6-D7AA/Games/XBox/$title"
+        local tpath="$DEVICE_ISO_ROOT/$title"
         if ! adb -s "$SERIAL" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
             echo "title not on device: $tpath" > "$rdir/ERROR"
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
@@ -196,7 +203,8 @@ print("soak done:", title, lines, "log lines")
 PYEOF
         log "  soak done, $lines log lines -> $rdir/logcat.txt"
         mv "$req" "$rdir/request.json"
-        touch "$rdir/DONE"
+        rm -f "$D/running/$id.owner"
+    touch "$rdir/DONE"
         resume_sweep
         return 0
     fi
@@ -237,7 +245,8 @@ else:
             -o "$rdir/disc$r.iso" "${args[@]}" --progress-log \
             --shutdown-on-completion --output-dir "e:/$gdir" >>"$rdir/run$r.log" 2>&1
         touch "$LEASE"
-        SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat$r.txt" \
+        SERIAL="$SERIAL" DEVICE_ISO_ROOT="$DEVICE_ISO_ROOT" \
+            HAKUX_DEVICE_LEASE="$LEASE" CAPTURE_LOG="$rdir/logcat$r.txt" \
             bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
             "$rdir/captures$r" 1800 >>"$rdir/run$r.log" 2>&1
         rm -f "$rdir/disc$r.iso"
@@ -268,6 +277,11 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
                      exact=sum(1 for r in rows if int(r["differing"] or 0) == 0),
                      px=sum(int(r["differing"] or 0) for r in rows),
                      progress_log_proof=proof))
+# Which device produced this. A scoreboard column that mixes two handhelds
+# is the same failure as one that mixes two binaries, and apk_sha could not
+# catch that one either -- it was perfectly consistent and consistently old.
+meta["device_serial"] = os.environ.get("SERIAL", "")
+meta["device_label"] = os.environ.get("DEVICE_LABEL", "")
 meta["runs"] = runs
 
 # Name the log explicitly, so "we captured nothing" and "the suite dropped
@@ -316,6 +330,7 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
         log "  FAILED: 0 captures"
         return 0
     fi
+    rm -f "$D/running/$id.owner"
     touch "$rdir/DONE"
     log "  done -> $rdir"
     adb -s "$SERIAL" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
@@ -343,9 +358,21 @@ case "${1:-status}" in
     # hand: restarting the loop between a build and a device run silently
     # orphaned a queued A/B arm exactly once, which is once more than it
     # should be possible to do.
+    # Only OUR orphans. With two dispatchers sharing a queue, a blanket
+    # requeue at startup would yank the other instance's in-flight request
+    # back into the queue and it would be served twice -- on two different
+    # devices, into one result id. The owner file is written at claim time.
     for orphan in "$D"/running/*.req; do
         [ -e "$orphan" ] || continue
-        log "requeueing orphan $(basename "$orphan" .req) from a previous loop"
+        oid=$(basename "$orphan" .req)
+        owner=""
+        [ -f "$D/running/$oid.owner" ] && owner=$(cat "$D/running/$oid.owner" 2>/dev/null)
+        if [ -n "$owner" ] && [ "$owner" != "$DEVICE_LABEL" ]; then
+            log "leaving orphan $oid alone; it belongs to $owner"
+            continue
+        fi
+        log "requeueing orphan $oid from a previous loop"
+        rm -f "$D/running/$oid.owner"
         mv "$orphan" "$D/queue/" 2>/dev/null || true
     done
     log "=== dispatcher serving; queue=$D/queue ==="

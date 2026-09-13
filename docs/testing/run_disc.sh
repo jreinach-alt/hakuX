@@ -30,7 +30,10 @@ TIMEOUT="${4:-900}"
 SERIAL="${SERIAL:-$(adb devices | awk 'NR==2{print $1}')}"
 PKG="${PKG:-com.jreinach.hakux.debug}"
 ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
-DEVISO="${DEVISO:-/storage/E6C6-D7AA/Games/XBox/fast.iso}"
+# Per-device, because the SD card UUID and the library layout are the owner's
+# choice, not something discoverable. devices.sh is the table; the dispatcher
+# exports DEVICE_ISO_ROOT before calling here.
+DEVISO="${DEVISO:-${DEVICE_ISO_ROOT:-/storage/E6C6-D7AA/Games/XBox}/fast.iso}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 HDD="${HAKUX_HDD_SCRATCH:-$HOME/hakux-work/hdd.img}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
