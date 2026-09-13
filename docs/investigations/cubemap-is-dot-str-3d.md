@@ -1008,3 +1008,52 @@ spatially coherent rule on top** -- not an approximation that a better
 relabelling would finish. Those are different things to chase, and this
 distinguishes them. The next question is what that region *is*: whether it
 follows a cube, a face boundary, or a silhouette.
+
+### What the residue region follows: it mirrors with the geometry
+
+The region half of the previous section, characterised. `-1to1D3D` is the
+specimen -- 91.8% under its own permutation, so its residue is the smallest and
+cleanest at 4,639 px.
+
+**It is not a seam.** Only 12.3% of residue pixels sit on a boundary in the
+golden's corner field, against a 4.9% base rate over the cube region. Enriched
+2.5x, but 88% of it is interior, so this is an area rather than an edge effect
+-- consistent with the 3.66 mean neighbour count.
+
+**It is 16 components, and the large ones come in pairs.** The cube region
+itself is exactly two blobs, 28,455 px at x[117..314] and 28,454 px at
+x[325..522] -- the two cubes, the same size to one pixel. The residue's six
+largest components pair off across them at matching `y`:
+
+| left cube | right cube |
+|---|---|
+| 1,058 px x[130..197] y[103..205] | 1,101 px x[442..511] y[103..209] |
+| 759 px x[264..314] y[115..179] | 814 px x[325..379] y[112..180] |
+| 427 px x[190..244] y[282..300] | 465 px x[394..451] y[281..300] |
+
+**And the pairing is a reflection, not a translation.** Reflecting the right
+cube's residue onto the left:
+
+| capture | residue L / R | IoU mirrored | IoU translated |
+|---|---|---:|---:|
+| `-1to1D3D` | 2,251 / 2,388 | **0.936** | 0.044 |
+| `HiLo_1` | 10,045 / 3,820 | 0.378 | 0.182 |
+| `0to1` | 11,347 / 49 | 0.004 | 0.004 |
+
+`-1to1D3D`'s residue is a 94% mirror image of itself. A region that reflects
+with the geometry is a function of the **surface direction**, not of screen
+position, not of texel address, and not of noise -- which is what a second rule
+on top of the corner rule would look like.
+
+`0to1` is the counter-shape and is informative on its own: its residue is
+almost entirely on the **left cube alone**, 11,347 against 49. So whatever the
+second rule is, the identity dot mapping reaches it on one cube and not the
+other, while `_D3D` reaches it symmetrically on both.
+
+That is the boundary the region was worth chasing for. It says the remaining
+error is directional, and it gives two shapes -- symmetric and one-sided -- that
+any candidate has to produce from the same geometry under different dot
+mappings.
+
+**Still not a fix, and still not fitted.** No permutation table has been
+written into the shader and none should be until this second rule is named.
