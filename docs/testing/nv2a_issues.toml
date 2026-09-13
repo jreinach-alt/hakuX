@@ -1722,3 +1722,117 @@ title = "ACI migrates only its PCI device, so save/load silently drops all AC'97
 disposition = "defect"
 component = "apu"
 suites = []
+
+# The first two entries about guest-visible TIMING rather than pixels. Both
+# carry `no_suites` for the same reason: nothing in a framebuffer records when
+# it was produced, so the whole corpus is bit-identical whatever the refresh
+# rate is. Measured with the VBLANK instrument in hw/xbox/nv2a/nv2a.c, read by
+# docs/testing/vblank_report.py. Write-up in
+# docs/investigations/guest-visible-vblank.md.
+# ---------------------------------------------------------------------------
+
+[issue.64]
+# nv2a_calc_vblank_period_ns (hw/xbox/nv2a/nv2a.c:234-242) derives nothing: one
+# branch on one flat-panel register, two constants, both from 7aae57b77d
+# ("fps stabilization") with no source for either.
+#
+# LARGE: the guard contradicts the comment under it. The comment says the
+# 59.94 Hz branch covers 480i, 480p, 720p and 1080i. `vdisplay > 480` sends
+# 720p and 1080i to the 50 Hz branch, because a display-end register holds
+# height-1 and both 719 and 1079 exceed 480. That is a 19.9% period error.
+# 1080i is a live path -- vk/display.c:1723 and gl/display.c:442 both handle
+# it. The minimal correct guard is bounded (PAL is 576 lines and never more).
+#
+# SMALL: 16683750 ns is not 59.94 Hz. NTSC's field rate is 60000/1001, so the
+# period is 16683333 ns. +417 ns, +25.0 ppm, 0.09 s of drift per hour of play.
+# One character. It also retires a larger worry: the 60.00 Hz this stream was
+# opened to check for would have been 40x this.
+#
+# MEASURED 2026-09-12, Galleon 240 s on the Thor at 19f52510d9 (dispatch
+# 1789275041-vblank-timing-4013526): vd=479 res=640x480 in all 129 windows, so
+# a 480-line title takes the NTSC branch as intended. The HD half is a source
+# reading and not an observation; no title on hand reaches those modes.
+#
+# THE FIX THAT WOULD SUBSUME BOTH IS NOT AVAILABLE. Deriving the period as
+# vtotal * htotal / pixel clock, the way the NV2A does, was registered as a
+# falsifier before the soak -- "within 1% of 16683333 ns" -- and FAILED:
+#
+#   vblmode want=16683750 derived=12293443
+#     (vtotal=525 htotal=728 pixclk=31089742 vpll=0003c20d m=13 n=194 p=3)
+#     cr00=56 cr06=0b cr07=3e cr25=10 cr2d=00 msr=e3
+#
+# -26.3%. vtotal=525 is right and cr25 carries no vertical extension bit, so
+# that half is sound; the gap is htotal, the VPLL decode, or the fact that the
+# Xbox drives an external video encoder and need not program the NV2A CRTC
+# with the analog timing at all. So the fix is a table keyed on something
+# authoritative about the video standard, and finding what that is, is the
+# open measurement. NV_PRAMDAC_VPLL_COEFF is stored at pramdac.c:108 and has
+# never been decoded, unlike NVPLL beside it at pramdac.c:92-100.
+title = "VBLANK period is two constants and a guard that contradicts its own comment: 720p and 1080i get 50 Hz, and the NTSC constant is 25 ppm long"
+disposition = "defect"
+suites = []
+no_suites = "A wrong VBLANK period changes when a title steps its simulation and nothing else. Every golden in the corpus is bit-identical either way, so naming a suite would put this on a scoreboard column that can never move -- and the next reader would take a clean column for a fix."
+
+[issue.65]
+# MEASURED 2026-09-12. Galleon, 240 s, Thor, ref 19f52510d9, dispatch result
+# 1789275041-vblank-timing-4013526. 14,653 VBLANK assertions in 129 two-second
+# windows, split by how many went through the adaptive deferral:
+#
+#   no deferral      36 windows   16,712,711 ns mean   59.844 Hz   p99 16.85 ms
+#   1-20 defers      48 windows   17,198,838 ns mean   58.186 Hz   p99 25.05 ms
+#   >20 defers       45 windows   19,159,610 ns mean   52.285 Hz   p99 25.50 ms
+#   whole soak      129 windows   17,747,165 ns mean   56.587 Hz   max 61.90 ms
+#
+# against an intended 16,683,750 ns / 59.939 Hz.
+#
+# THE PERIOD IS GOOD. With deferral off, the mean is 0.17% high and p99 is
+# within 1%: correct to about 29 us in the mean and 170 us at p99. That closes
+# a class of suspicion that had no evidence either way.
+#
+# THE DEFERRAL MACHINERY IS NOT. It takes the delivered rate 5.6% below what
+# we intend across the soak and 12.8% below it in heavy scenes -- 3.8 seconds
+# lost per minute of play for anything counting VBLANKs to measure time, 8.9
+# s/min in a heavy scene. One-sided: every path either advances by a period or
+# resets to now+period and a QEMU timer never fires early, so it only ever
+# loses. And it is gated on d->flip_active, so the rate of the clock a title
+# times against is modulated by what that title is drawing.
+#
+# A MEAN CANNOT SEE ANY OF THIS. The distribution is a very sharp mode at the
+# right period plus a long right tail: p50 16.70 ms, p99 25.1 ms, worst window
+# 28.7 ms, extreme 61.9 ms. The existing `J` figure is an exponential mean of
+# |delta - period| and reads 0.0-2.8 ms; it cannot tell a 0.25 ms symmetric
+# jitter from a mode accurate to 0.1% with a 28 ms tail.
+#
+# MECHANISM, one token: `if (was_deferred || unlocked)` restarts the phase
+# grid from where the late VBLANK landed instead of advancing it from where
+# the last one was scheduled. The else branch is already self-correcting --
+# the 7,090,520 ns intervals in the measurement are the grid catching up after
+# a late callback, not a fault -- and that is exactly the correction the
+# deferred branch throws away. Fix at ed5df55ccc, prediction registered and
+# committed first at bace14275d.
+#
+# THREE MORE FROM THE SAME READING:
+#  1. `unlocked` abandons the grid on EVERY VBLANK, not just deferred ones, so
+#     timer lateness compounds. unlock_framerate defaults TRUE and the mode is
+#     entered above ~40 fps, so the titles that look healthiest run with no
+#     grid. UNMEASURED: Galleon never enters it (Ul:N on all 129 windows).
+#     Needs a fast title.
+#  2. simple_vblank runs two sources at once -- the period timer and
+#     nv2a_vga_gfx_update on every host display refresh (ui/xemu.c:2217), so
+#     150-180 assertions a second on a 90-120 Hz handheld. Also:
+#     s_last_vblank_fire_ns is written only on the adaptive path, so `J` reads
+#     0.0 in simple mode because it was never written. The 0.0 ms in the
+#     simple_vblank row of frame-pacing-and-parallelism.md is that artefact.
+#  3. PCRTC coalesces (pcrtc.c:58 is the only clear, and it is the guest's own
+#     write), so an assertion arriving before the ISR acknowledges the last is
+#     a tick the guest never sees. 229 of 14,653, 1.56%, rising to 2.25% in
+#     the 1-20 defer windows.
+#
+# NOT A DEFECT HERE: PCRTC_RASTER advances once per READ (pcrtc.c:39) where
+# silicon advances it per scanline. Counted, because whether it matters
+# depends on whether anything reads it: rast=0/0 across the whole soak.
+# Latent, no demonstrated symptom, wants counting on more titles first.
+title = "Guest-visible VBLANK: the period is right to 0.17%, the deferral machinery takes the delivered rate 5.6% below it and never gives it back"
+disposition = "defect"
+suites = []
+no_suites = "Nothing in a framebuffer records when it was produced. A title steps its simulation off VBLANK and draws the same pixels at the wrong rate, so the corpus is blind to every part of this."
