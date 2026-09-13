@@ -4,8 +4,12 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
-#              [--skip-tests "Suite::Test,..."] \
+#              [--skip-tests "Suite::Test,..."] [--device nova|thor] \
 #              (--expect predictions/x.json | --no-expect "why not")
+#
+#   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
+#              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
+#              --device nova --no-expect "survey, not an A/B arm"
 #
 # --skip-tests drops named tests from the disc. Needed when a test poisons the
 # tests after it: "Texture render target::RenderTextureLoop" leaves the texture
@@ -19,11 +23,22 @@
 #
 # --wait blocks until the result lands and then prints the summary. Without it,
 # the request id is printed and the caller can poll result.json.
+#
+# --device nova|thor pins the request to one handheld. The dispatcher side has
+# honoured a `device` field since affinity.py's rule 1 -- "an explicit device
+# field in the request wins" -- but there was no way for a requester to set it,
+# so the only pin available was the implicit A/B one (both arms follow their
+# shared prediction file). Two things need the explicit pin: a soak on a title
+# only one device has, and a repeat run that must land on the SAME handheld as
+# the baseline it is being compared with. The second is the one that bites
+# quietly: an unpinned repeat is free, so it lands wherever is idle, and a level
+# measured on the Nova then gets compared against one from the Thor while being
+# reported as a repeat of the same experiment.
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
 SKIP_TESTS=""
-TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""
+TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -37,6 +52,7 @@ while [ $# -gt 0 ]; do
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
+        --device) DEVICE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -48,6 +64,19 @@ done
 # silent, so nothing about audio can be asked of them).
 [ -n "$WHO" ] || { echo "need --who" >&2; exit 2; }
 [ -n "$SUITES" ] || [ -n "$TITLE" ] || { echo "need --suites, or --title for a soak" >&2; exit 2; }
+
+# A misspelt device label does not fail loudly; it matches no worker, so the
+# request is simply never claimed and sits in the queue looking queued. Check
+# it against the device table rather than against a hardcoded pair, so adding a
+# third handheld to devices.sh does not silently start rejecting it here.
+if [ -n "$DEVICE" ]; then
+    KNOWN=$(sed -n 's/.*DEVICE_LABEL="\([a-z0-9]*\)".*/\1/p' "$(dirname "$0")/devices.sh")
+    printf '%s\n' "$KNOWN" | grep -qx "$DEVICE" || {
+        echo "unknown --device '$DEVICE'; devices.sh knows:" >&2
+        printf '  %s\n' $KNOWN >&2
+        exit 2
+    }
+fi
 
 # A measurement request must name the prediction it is going to be judged
 # against, and must do so NOW. Two arms on 2026-09-12 -- the F24 subnormal
@@ -130,10 +159,18 @@ fi
 
 ID="$(date +%s)-$WHO-$$"
 mkdir -p "$D/queue"
-python3 - "$D/queue/$ID.req" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" <<'PY'
+# Written to a dotfile and renamed into place, because the dispatcher globs
+# `queue/*.req` and a claim is an atomic rename of whatever it finds. Writing
+# the JSON directly into the queue leaves a window in which a worker can claim
+# and parse a half-written request -- and `jq_get` answers a missing field with
+# its default rather than an error, so the visible outcome of losing that race
+# is not a crash. It is a request that silently ran with `device` empty, i.e.
+# on whichever handheld was idle, which is the one thing the field exists to
+# prevent.
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
- pull_glob, expect, expect_sha, no_expect, skip_tests) = sys.argv[1:17]
+ pull_glob, expect, expect_sha, no_expect, skip_tests, device) = sys.argv[1:18]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -141,13 +178,15 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "ref": ref, "arm": arm, "runs": int(runs),
            "title": title, "seconds": int(seconds),
            "pull_glob": pull_glob,
+           "device": device,
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(
                __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
 PY
-echo "queued $ID"
+mv "$D/queue/.$ID.req.tmp" "$D/queue/$ID.req"
+echo "queued $ID${DEVICE:+ (pinned to $DEVICE)}"
 [ "$WAIT" = 1 ] || exit 0
 
 # Device work is 1-10 minutes and the queue may be busy; a long ceiling is
