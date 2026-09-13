@@ -653,10 +653,21 @@ at 0 and arm B is the side branch `arm/issue44-draw-only-on`, one hunk apart.
 ### Why it can be this much cheaper, and it is arithmetic rather than hope
 
 The guarantee is *"no unprocessed draw sits in the FIFO while the guest
-runs"*. A submission carrying no draw adds no draw. **148,704 submissions for
-180 draws** — so mode 1 pays 826 holds for every one the invariant needs, and
-the price of those 826 is `gfps` p90 29 → 13 with the guest blocked 40.7% of
-wall clock.
+runs"*. A submission carrying no draw adds no draw.
+
+> **CORRECTED BY MEASUREMENT — the sizing below was wrong by 30×.** This
+> section originally read "148,704 submissions for 180 draws, so mode 1 pays
+> **826** holds for every one the invariant needs". Arm B measured **5,286
+> draw-publishing submissions**, not 180: the 180 is the draw count of the
+> *measured test*, while the run also boots, runs the dashboard and executes
+> seventeen other tests, and every draw in all of that is a draw the bound
+> must cover. The figure is left visible rather than quietly replaced because
+> it was used to size the change. See "The 826:1 sizing was wrong, and by 30×".
+
+So mode 1 pays **27** holds for every one the invariant needs — and the price
+of those 27 is `gfps` p90 29 → 13 with the guest blocked 40.7% of wall clock,
+which is unchanged, because that was measured directly and never derived from
+the ratio.
 
 ### The scan is a WORD FILTER, not a parse, and the asymmetry is the reason
 
