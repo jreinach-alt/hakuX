@@ -1154,6 +1154,55 @@ even when both are "the measurement we have". When a defect has a weak
 observable and a strong one, the weak one's movement is a fact about the weak
 one.
 
+## Register two legs that CANNOT both be satisfied by turning the feature off
+
+A guard stops a fix from breaking something else. It does not stop a fix from
+doing nothing, and neither does a tautology check on a single leg. The stronger
+construction is a **pair** of legs in tension.
+
+#43's arm registers W1 -- ring 0 returns to bit-exact -- and W2 -- both signed
+texture captures *stay* bit-exact. Disabling the fold satisfies W1 immediately,
+because ring 0's regression is caused by the fold. It fails W2, because the
+signed captures are only bit-exact *with* the fold working. **No inert change
+and no disabled feature can pass both.** That is a property of the pair, not of
+either leg.
+
+Look for it whenever a fix has both an intended effect and a regression to
+undo: register the undo AND the effect, and check that the trivial way to get
+one loses the other. It costs nothing at registration time and it closes the
+gap a per-leg tautology check leaves open -- a leg can be non-tautological on
+its own and still be satisfiable by reverting.
+
+## A state field keyed into a cache whose dirty-check uses a FIXED register list
+
+`PshState` is hashed into the shader cache key, and
+`pgraph_glsl_check_shader_state_dirty()` decides when to rebuild it from a
+**hard-coded list of registers**. So a new `PshState` field driven by a register
+absent from that list is stale by construction: the cache hands back a shader
+built for different state, and nothing reports it.
+
+Found structurally on 2026-09-13, with one grep, before any code was touched:
+
+    NV_PGRAPH_BLEND in check_shader_state_dirty()'s register list:  0
+
+#43's sign fold put `signed_blend_fold` in `PshState` from `NV_PGRAPH_BLEND`.
+`DrawQuad` calls `SetBlend(false)` for its colour half between two blended
+alpha draws, so the **folded shader was reused on a draw with blending off** --
+where green `0xCC` = 204 sits above the sign bit, was masked to `f1 = 0`, and
+reached the framebuffer unblended. That predicts `G 204 -> 0`, and ring 0
+measures exactly `G 204 -> 0` against a golden of 204 on all 11,280 px:
+agreement on the **value**, not merely the direction.
+
+**Adding the register to the list fixes the instance and leaves the class.**
+The next field driven by an unlisted register fails the same way, silently. The
+fix that removes the class is to keep the new state **out of the cache key**
+entirely -- emit the code unconditionally, gate it at run time on a
+uniform-valued selector, and recompute the condition from the **live** register
+at every staging. Nothing cached, nothing stale.
+
+So before adding a field to `PshState`: grep that list for the register that
+drives it. If it is absent, prefer a runtime gate to a cache-key extension.
+
 ## Predict an intermediate value, not just an improvement
 
 A leg that says "this class will improve" is satisfied by any change that
