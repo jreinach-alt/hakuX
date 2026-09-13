@@ -37,6 +37,168 @@ static bool image_pool_acquire(PGRAPHVkState *r, const TextureImageConfig *confi
                                VkImage *out_image, VmaAllocation *out_allocation);
 static void image_pool_drain(PGRAPHVkState *r);
 
+/*
+ * ---------------------------------------------------------------------------
+ * Bordered-texture length probe.  TEMPORARY: instrumentation only.
+ * ---------------------------------------------------------------------------
+ *
+ * create_texture() takes `pgraph_get_texture_length(pg, &state)` from the
+ * UNADJUSTED shape, but a swizzled texture with a texture-supplied border is
+ * decoded at max(16, 2n) per axis -- the doubling applied further down for the
+ * VkImage extent, and by get_texture_layout() for the bytes it actually reads.
+ * So for a bordered 32x32 A8R8G8B8 we track and hash 4,096 bytes of a region
+ * we decode 16,384 bytes from: a quarter in 2D, an eighth in 3D.
+ *
+ * Four consumers take that length, and each is short by the same factor: the
+ * per-draw dirty poll and the mark-possibly-dirty overlap test (via
+ * key.texture_length), the content hash that gates vram_changed, and
+ * download_surfaces_in_range_if_dirty.  The consequence is that a guest write
+ * confined to the tail is invisible -- no poll sees it, no hash sees it, and
+ * the texture keeps its previous texels.
+ *
+ * That is a mechanism by inspection.  Whether it is REACHED is a different
+ * question, and the minimal fix moves a cache key, a dirty range and a
+ * surface-overlap range for every bordered texture, which is not a thing to
+ * change unmeasured.  So: count the event first.
+ *
+ *   bordered_binds   bordered create_texture calls -- the denominator, and the
+ *                    proof the probe ran at all.  A zero `blind` is only
+ *                    evidence if this is non-zero.
+ *   bordered_skips   bordered binds that decided NOT to re-upload
+ *   blind            ...of those, the ones where the DECODED range's content
+ *                    had changed since the last upload under this key.  This
+ *                    is the defect firing: a write we did not see.
+ *   blind_via_poll   the skip was because possibly_dirty was false (the page
+ *                    poll never covered the changed bytes)
+ *   blind_via_hash   possibly_dirty was true but the truncated content hash
+ *                    matched, so vram_changed came out false
+ *   tail_surf        a draw-dirty surface overlaps the decoded tail and NOT
+ *                    the tracked head, so the narrow range skips a download
+ *   lru_exhausted    create_texture's LRU-exhausted early return was taken
+ *                    (issue #56); _null is the subset where the slot's binding
+ *                    was NULL, which is the case that issue's guard tests for
+ *
+ * Logged under tag "hakuX", not "hakuX-vk": the dispatcher's logcat spec ends
+ * in `*:S` and does not list hakuX-vk, so a VK_LOG_ERROR line never reaches a
+ * recorded result.
+ */
+#ifdef __ANDROID__
+#include <android/log.h>
+#define TEXPROBE_LOG(fmt, ...) \
+    __android_log_print(ANDROID_LOG_INFO, "hakuX", fmt, ##__VA_ARGS__)
+#else
+#define TEXPROBE_LOG(fmt, ...) \
+    do { fprintf(stderr, "hakuX: " fmt "\n", ##__VA_ARGS__); } while (0)
+#endif
+
+#define TEXPROBE_SLOTS 1024
+
+typedef struct TexProbeSlot {
+    uint64_t key_hash;
+    uint64_t decoded_hash;
+    bool used;
+    bool have;
+} TexProbeSlot;
+
+static TexProbeSlot texprobe_slots[TEXPROBE_SLOTS];
+
+static struct {
+    uint64_t bordered_binds;
+    uint64_t bordered_skips;
+    uint64_t blind;
+    uint64_t blind_via_poll;
+    uint64_t blind_via_hash;
+    uint64_t tail_surf;
+    uint64_t lru_exhausted;
+    uint64_t lru_exhausted_null;
+    uint64_t slots_full;
+    size_t last_tracked;
+    size_t last_decoded;
+} texprobe;
+
+static void texprobe_report(const char *why)
+{
+    TEXPROBE_LOG("texprobe %s bordered_binds=%llu skips=%llu blind=%llu "
+                 "via_poll=%llu via_hash=%llu tail_surf=%llu "
+                 "lru_exhausted=%llu lru_exhausted_null=%llu "
+                 "last_tracked=%llu last_decoded=%llu slots_full=%llu",
+                 why,
+                 (unsigned long long)texprobe.bordered_binds,
+                 (unsigned long long)texprobe.bordered_skips,
+                 (unsigned long long)texprobe.blind,
+                 (unsigned long long)texprobe.blind_via_poll,
+                 (unsigned long long)texprobe.blind_via_hash,
+                 (unsigned long long)texprobe.tail_surf,
+                 (unsigned long long)texprobe.lru_exhausted,
+                 (unsigned long long)texprobe.lru_exhausted_null,
+                 (unsigned long long)texprobe.last_tracked,
+                 (unsigned long long)texprobe.last_decoded,
+                 (unsigned long long)texprobe.slots_full);
+}
+
+static TexProbeSlot *texprobe_slot(uint64_t key_hash)
+{
+    unsigned base = (unsigned)(key_hash % TEXPROBE_SLOTS);
+
+    for (unsigned n = 0; n < TEXPROBE_SLOTS; n++) {
+        TexProbeSlot *s = &texprobe_slots[(base + n) % TEXPROBE_SLOTS];
+        if (s->used && s->key_hash == key_hash) {
+            return s;
+        }
+        if (!s->used) {
+            s->used = true;
+            s->key_hash = key_hash;
+            s->have = false;
+            return s;
+        }
+    }
+
+    texprobe.slots_full++;
+    return NULL;
+}
+
+/*
+ * Called on every bordered bind that reads VRAM, with the length the DECODER
+ * covers rather than the length create_texture tracks.
+ */
+static void texprobe_check(uint64_t key_hash, void *data, size_t decoded_len,
+                           bool uploaded, bool possibly_dirty)
+{
+    TexProbeSlot *s = texprobe_slot(key_hash);
+    uint64_t h = fast_hash(data, decoded_len);
+
+    if (uploaded) {
+        if (s) {
+            s->decoded_hash = h;
+            s->have = true;
+        }
+        return;
+    }
+
+    texprobe.bordered_skips++;
+
+    if (!s || !s->have) {
+        return;
+    }
+    if (s->decoded_hash == h) {
+        return;
+    }
+
+    /*
+     * The decoded range changed since the last upload under this key and we
+     * are not re-uploading.  The texture is about to be sampled with stale
+     * texels, and nothing the current length can be asked would have said so.
+     */
+    texprobe.blind++;
+    if (possibly_dirty) {
+        texprobe.blind_via_hash++;
+    } else {
+        texprobe.blind_via_poll++;
+    }
+    s->decoded_hash = h;
+    texprobe_report("BLIND-TAIL-WRITE");
+}
+
 static const VkImageType dimensionality_to_vk_image_type[] = {
     0,
     VK_IMAGE_TYPE_1D,
@@ -1564,6 +1726,30 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
 
     const hwaddr texture_vram_offset = pgraph_get_texture_phys_addr(pg, texture_idx);
     size_t texture_length = pgraph_get_texture_length(pg, &state);
+
+    /*
+     * Probe only (see the texprobe block above): the length the DECODER reads
+     * for this shape, which for a bordered swizzled texture is the doubling
+     * applied further down for the VkImage extent and by get_texture_layout.
+     * Nothing below uses it except the counters; `state` is not touched.
+     */
+    bool probe_bordered = !f_basic.linear && state.border;
+    size_t probe_decoded_length = texture_length;
+    if (probe_bordered) {
+        TextureShape probe_adj = state;
+        probe_adj.width = MAX(16, probe_adj.width * 2);
+        probe_adj.height = MAX(16, probe_adj.height * 2);
+        if (probe_adj.dimensionality == 3) {
+            probe_adj.depth = MAX(16, probe_adj.depth * 2);
+        }
+        probe_decoded_length = pgraph_get_texture_length(pg, &probe_adj);
+        texprobe.bordered_binds++;
+        texprobe.last_tracked = texture_length;
+        texprobe.last_decoded = probe_decoded_length;
+        if ((texprobe.bordered_binds % 128) == 1) {
+            texprobe_report("alive");
+        }
+    }
     hwaddr texture_palette_vram_offset = 0;
     size_t texture_palette_data_size = 0;
 
@@ -1690,6 +1876,37 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
             r->tex_surf_range_cache[texture_idx].surface_list_gen = r->surface_list_gen;
             r->tex_surf_range_cache[texture_idx].surface_draw_gen = r->surface_draw_gen;
         }
+
+        /*
+         * Probe only: is there a draw-dirty surface that overlaps the decoded
+         * tail and NOT the tracked head?  Such a surface is skipped by the
+         * narrow range above, so its GPU content never reaches the VRAM the
+         * decoder is about to read.  Read-only -- no download is issued.
+         */
+        if (probe_bordered && probe_decoded_length > texture_length) {
+            hwaddr head_end = texture_vram_offset + texture_length;
+            hwaddr tail_end = texture_vram_offset + probe_decoded_length;
+            SurfaceBinding *probe_s;
+            bool tail_only = false;
+            QTAILQ_FOREACH(probe_s, &r->surfaces, entry) {
+                if (!probe_s->draw_dirty) {
+                    continue;
+                }
+                hwaddr s_start = probe_s->vram_addr;
+                hwaddr s_end = probe_s->vram_addr + probe_s->size;
+                bool hits_tail = s_start < tail_end && s_end > head_end;
+                bool hits_head =
+                    s_start < head_end && s_end > texture_vram_offset;
+                if (hits_tail && !hits_head) {
+                    tail_only = true;
+                    break;
+                }
+            }
+            if (tail_only) {
+                texprobe.tail_surf++;
+                texprobe_report("TAIL-ONLY-SURFACE");
+            }
+        }
     }
 
     if (surface_to_texture && pg->surface_scale_factor > 1) {
@@ -1710,6 +1927,11 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         if (!node) {
             /* LRU exhausted — all texture slots in-flight. Skip this
              * texture bind and use whatever was previously bound. */
+            texprobe.lru_exhausted++;
+            if (!r->texture_bindings[texture_idx]) {
+                texprobe.lru_exhausted_null++;
+            }
+            texprobe_report("LRU-EXHAUSTED");
             return;
         }
         snode = container_of(node, TextureBinding, node);
@@ -1945,6 +2167,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                 did_upload = true;
             }
             snode->possibly_dirty = false;
+            if (probe_bordered) {
+                texprobe_check(key_hash, texture_data, probe_decoded_length,
+                               did_upload, possibly_dirty);
+            }
         }
 
         NV2A_VK_DGROUP_END();
@@ -2350,6 +2576,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     } else {
         upload_texture_image(pg, texture_idx, snode);
         snode->draw_time = 0;
+        if (probe_bordered) {
+            texprobe_check(key_hash, texture_data, probe_decoded_length,
+                           true, possibly_dirty);
+        }
     }
 
     NV2A_VK_DGROUP_END();
