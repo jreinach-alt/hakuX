@@ -39,6 +39,7 @@ D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
+AUDIO_CAPTURE=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -53,6 +54,7 @@ while [ $# -gt 0 ]; do
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
         --device) DEVICE="$2"; shift 2;;
+        --audio-capture) AUDIO_CAPTURE="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -145,6 +147,41 @@ MSG
     fi
 fi
 
+# Same shape as the skip_tests guard above, and for a failure that has already
+# happened rather than one that might. A dispatcher that does not understand
+# `audio_capture` ignores it silently, runs the soak with the capture unarmed,
+# and the pull then returns whatever PCM an EARLIER experiment left on the
+# device -- which measures as a clean, plausible baseline. That is precisely
+# what a 24 MB file from a soak four hours earlier did on 2026-09-12; it was
+# caught only because 126.976 s of audio cannot come out of a 95 s app
+# lifetime. Refuse instead.
+if [ -n "$AUDIO_CAPTURE" ]; then
+    case "$AUDIO_CAPTURE" in
+        ''|*[!0-9]*) echo "--audio-capture takes a size cap in MB, got '$AUDIO_CAPTURE'" >&2; exit 2;;
+    esac
+    [ -n "$TITLE" ] || { echo "--audio-capture only means anything on a soak (--title)" >&2; exit 2; }
+    SERVER="${DISPATCH_TREE:-/home/justin/hakuX}/docs/testing"
+    if ! grep -q audio_capture "$SERVER/dispatcher.sh" 2>/dev/null \
+       || ! grep -q AUDIO_CAPTURE_MB "$SERVER/soak_title.sh" 2>/dev/null; then
+        cat >&2 <<MSG
+refusing to queue: --audio-capture was asked for, but the dispatcher that will
+serve this request does not arm the capture:
+
+  $SERVER
+
+It would run the soak with the capture off and pull whatever PCM was left on
+the device by an earlier run, then file that as your measurement. Merge the
+AUDIO_CAPTURE_MB support into dispatcher.sh and soak_title.sh and restart the
+serving dispatcher first.
+
+Until then the capture can be armed by hand, once, on the device:
+  adb -s <serial> shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/audio_capture.on'
+and a capture taken that way MUST be dated against the run that produced it.
+MSG
+        exit 2
+    fi
+fi
+
 # Resolve the ref to a concrete sha AT QUEUE TIME. "HEAD" in a queued request
 # is a moving target: the queue is served later, and any commit in between
 # silently changes which tree gets built -- which is how a baseline arm came to
@@ -167,10 +204,11 @@ mkdir -p "$D/queue"
 # is not a crash. It is a request that silently ran with `device` empty, i.e.
 # on whichever handheld was idle, which is the one thing the field exists to
 # prevent.
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" <<'PY'
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
- pull_glob, expect, expect_sha, no_expect, skip_tests, device) = sys.argv[1:18]
+ pull_glob, expect, expect_sha, no_expect, skip_tests, device,
+ arm_audio) = sys.argv[1:19]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -179,6 +217,7 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "title": title, "seconds": int(seconds),
            "pull_glob": pull_glob,
            "device": device,
+           "audio_capture": arm_audio,
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(

@@ -2,6 +2,10 @@
 #
 #   soak_title.sh <device-iso-path> <seconds>
 #
+# Env: CAPTURE_LOG, LOGCAT_SPEC, PULL_GLOB, PULL_DEST, GUEST_FILES,
+#      AUDIO_CAPTURE_MB (arm the APU PCM capture at this size cap, and clear
+#      any previous capture first; disarmed again on the way out)
+#
 # Boot a real title, hold it for a while, keep the log, put the device back.
 #
 # The pgraph discs answer questions that have a golden framebuffer. Some do
@@ -27,15 +31,64 @@ LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 CAPTURE_LOG="${CAPTURE_LOG:-}"
 LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 LOGCAT_PID=""
+GUEST_FILES="${GUEST_FILES:-/sdcard/Android/data/$PKG/files}"
+# MB cap for the APU PCM capture, or empty for no capture. See arm_audio below.
+AUDIO_CAPTURE_MB="${AUDIO_CAPTURE_MB:-}"
+AUDIO_MARKER="$GUEST_FILES/audio_capture.on"
+AUDIO_PCM="$GUEST_FILES/apu_monitor.s16le48k2ch.pcm"
 
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
+
+# The APU's PCM capture is armed by the presence of a marker file whose
+# contents are a size cap in MB (hw/xbox/mcpx/apu/apu.c, apu_capture_armed).
+# Arming it per REQUEST rather than leaving the marker on the device is not a
+# convenience; it is the fix for two failures that both happened on 2026-09-12,
+# in opposite directions:
+#
+#   - A marker left on the device from an earlier experiment armed the capture
+#     for seven unrelated Galleon soaks that never asked for it and never
+#     pulled it, each writing ~192 KB/s to the SD card for four minutes.
+#   - A marker that had since gone missing meant a soak that DID ask for a
+#     capture got none -- and, because the last of those seven runs had left a
+#     24 MB PCM behind, the pull returned that file instead. It measured as a
+#     clean, plausible baseline. It was caught only by arithmetic: 126.976 s of
+#     audio cannot come out of a 95 s app lifetime.
+#
+# The second is the dangerous one, and it is why this also DELETES any existing
+# capture before the run. A stale PCM that measures well is indistinguishable
+# from a good measurement; an absent one is an obvious failure. Given a choice
+# between those two outcomes, take the obvious failure every time.
+arm_audio() {
+    [ -n "$AUDIO_CAPTURE_MB" ] || return 0
+    # Order matters: clear the old capture FIRST, so that if arming then fails
+    # there is nothing left to be mistaken for this run's output.
+    a shell "rm -f '$AUDIO_PCM' '$AUDIO_PCM.json'" >/dev/null 2>&1
+    a shell "mkdir -p '$GUEST_FILES' && echo $AUDIO_CAPTURE_MB > '$AUDIO_MARKER'" >/dev/null 2>&1
+    if a shell "cat '$AUDIO_MARKER'" 2>/dev/null | tr -d '\r' | grep -qx "$AUDIO_CAPTURE_MB"; then
+        echo "AUDIO: capture armed at ${AUDIO_CAPTURE_MB} MB, old capture cleared"
+    else
+        # Loud, because the alternative is a run that looks fine and measures
+        # nothing. The caller can still decide to keep going.
+        echo "AUDIO: FAILED to arm capture at $AUDIO_MARKER -- expect no PCM"
+    fi
+}
+
+disarm_audio() {
+    [ -n "$AUDIO_CAPTURE_MB" ] || return 0
+    a shell "rm -f '$AUDIO_MARKER'" >/dev/null 2>&1
+}
 
 # Always force-stop on the way out. The handheld does not charge over the adb
 # cable, so a title left running flattens it -- and a game, unlike a test disc,
 # never exits on its own.
+#
+# Disarming belongs here and not at the end of the happy path: a marker left
+# behind by a run that crashed or was interrupted is exactly how the device
+# came to be capturing audio for seven experiments that never asked for it.
 release() {
     [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
+    disarm_audio
     a shell input keyevent KEYCODE_SLEEP >/dev/null 2>&1
     rm -f "$LEASE"
 }
@@ -43,6 +96,7 @@ trap release EXIT INT TERM
 
 a shell am force-stop "$PKG" >/dev/null 2>&1
 a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
+arm_audio
 
 if [ -n "$CAPTURE_LOG" ]; then
     a logcat -c >/dev/null 2>&1
@@ -90,7 +144,7 @@ fi
 if [ -n "${PULL_GLOB:-}" ] && [ -n "${PULL_DEST:-}" ]; then
     a shell am force-stop "$PKG" >/dev/null 2>&1
     mkdir -p "$PULL_DEST"
-    files=$(a shell "ls -1 ${GUEST_FILES:-/sdcard/Android/data/$PKG/files}/$PULL_GLOB 2>/dev/null" | tr -d '\r')
+    files=$(a shell "ls -1 $GUEST_FILES/$PULL_GLOB 2>/dev/null" | tr -d '\r')
     if [ -z "$files" ]; then
         echo "PULL: nothing matched $PULL_GLOB"
     else

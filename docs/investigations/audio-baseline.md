@@ -168,9 +168,110 @@ precisely what is under test*.
 
 Results are recorded in section 3 when the runs land.
 
-## 3. Repeat-run results
+## 3. Repeat-run results: the runs did not happen, and the near-miss matters more
 
-*(Pending. Two soaks queued: Galleon, Nova, 90 s, ref `7821f995b5`.)*
+Two soaks were queued as described. **Neither produced a capture, because the
+PCM tap was not armed on the Nova** — and the first of them came back with a
+24 MB PCM anyway, which measured beautifully and was not from that run.
+
+### What came back
+
+| | rep1 `1789274367` | rep2 `1789274376` |
+|---|---|---|
+| pulled PCM | 24,379,392 bytes | **nothing matched** |
+| `hakuX-audiocap` lines in logcat | **0** | **0** |
+
+`hakuX-audiocap` is in the dispatcher's `LOGCAT_SPEC`, and the capture logs one
+line at start unconditionally. Zero lines in both runs, and an empty pull in the
+second, is conclusive: **the marker file `audio_capture.on` is no longer on the
+Nova.** It was there at 15:09 when arm A2 was taken.
+
+### Why rep1's file was not rep1's
+
+rep2 is what proves it, and it proves it cleanly: `soak_title.sh` deletes the
+capture from the device after pulling it, so rep1's pull removed whatever was
+there. rep2 could not have pulled a stale file even if it wanted to, and it
+pulled nothing. The capture is off.
+
+But the arithmetic said so first, and this is the part worth keeping, because
+the file was otherwise entirely convincing:
+
+- The capture holds **126.976 s** of audio.
+- The app cannot have lived that long. Its first log line is at device time
+  `21:43:25.584`; the pull completed at host time `21:45:00.68`, and the device
+  clock runs 2.08 s ahead of the host (`logcat.txt` was last written at host
+  `21:44:59.778` carrying a device stamp of `21:45:01.859`). Force-stop precedes
+  the pull. That bounds the app's life at **about 95 s**.
+- 127 s of audio does not come out of 95 s of app.
+
+The file is a leftover from one of **eight Galleon soaks run between 15:51 and
+16:48** for an unrelated CPU experiment, none of which asked for a capture and
+none of which pulled one (`pull_glob` empty in all eight). Every one of them
+armed the capture anyway, because the marker was still lying on the device from
+the headroom A/B, and each wrote ~192 KB/s to the SD card for four minutes.
+
+**All eight refs contain the headroom fix** (`git merge-base --is-ancestor
+54a00d28fb <ref>` is true for `0bb035d89e`, `ade16fa90c`, `689a1a29b9` and
+`7b63484c69`). So the file is a real post-fix Galleon capture on the Nova — just
+not one whose run, build or duration can be named.
+
+### What it says anyway, marked for what it is
+
+Because it cannot be dated to a request, **this cannot discharge the R1-R4
+prediction**, and that prediction stands unresolved. It is recorded as
+corroboration of unknown provenance, not as a repeat:
+
+| statistic | arm A2 (dated) | undated capture | Δ |
+|---|---:|---:|---:|
+| p50 L / R | −29.37 / −29.45 | −29.32 / −29.38 | 0.05 / 0.07 |
+| p25 L / R | −32.01 / −32.05 | −32.02 / −32.07 | 0.01 / 0.02 |
+| p75 L / R | −25.66 / −25.64 | −25.96 / −25.66 | 0.30 / 0.02 |
+| p5 L / R | −38.00 / −38.23 | −37.96 / −38.04 | 0.04 / 0.19 |
+| p95 L / R | −16.46 / −16.58 | −17.74 / −17.40 | 1.28 / 0.82 |
+| peak | 32,767 / 32,767 | 32,767 / 32,767 | — |
+| clipped | 36 / 16 | 28 / 12 | — |
+| wrap suspects | 0 / 0 | 0 / 0 | — |
+| DC %FS | −0.029 / +0.002 | −0.015 / +0.005 | — |
+
+Every leg of R1-R4 would pass on these numbers, and the median agrees to
+0.05 dB across two independent runs from different builds hours apart. That is
+suggestive and it is not a measurement. It is written down so that the next
+person does not have to rediscover that the two agree; it is not written down as
+the repeat, because a capture that cannot be dated to the run that produced it
+is exactly the thing this project has already been burned by.
+
+### The fix, so this cannot recur
+
+The marker being persistent device state is the whole problem, and it failed in
+both directions on the same day: present when nobody wanted it (eight runs), and
+absent when someone did (these two). Arming is now **per request**:
+
+- `request.sh --audio-capture MB` sets an `audio_capture` field;
+- `dispatcher.sh` passes it as `AUDIO_CAPTURE_MB`;
+- `soak_title.sh` writes the marker before `am start`, **deletes any existing
+  capture first**, verifies the marker read back, and removes the marker in its
+  `release()` trap so an interrupted run cannot leave it armed.
+
+Deleting the old capture first is the load-bearing half. A stale PCM that
+measures well is indistinguishable from a good measurement; an absent one is an
+obvious failure. `request.sh` also refuses `--audio-capture` outright when the
+*serving* dispatcher does not implement it, rather than letting the flag be
+ignored and the stale file be filed as the answer — the same guard, and the same
+reasoning, as the existing `--skip-tests` one.
+
+**This needs the orchestrator to merge and restart the serving dispatcher before
+any further capture can be taken.** Until then the immediate unblock is one
+command per handheld:
+
+```sh
+adb -s ee317437 shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/audio_capture.on'   # nova
+adb -s bdc158a5 shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/audio_capture.on'   # thor
+```
+
+and any capture taken that way must be dated against its run before it is
+believed. The arithmetic that catches it is: **captured seconds must not exceed
+the app's lifetime**, and `audio_measure.py` prints the first number while the
+soak's own timestamps give the second.*
 
 ## 4. What this baseline cannot do
 

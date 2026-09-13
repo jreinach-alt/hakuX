@@ -179,10 +179,14 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
-    local title seconds pull_glob
+    local title seconds pull_glob audio_capture
     title=$(jq_get "$req" title "")
     seconds=$(jq_get "$req" seconds 60)
     pull_glob=$(jq_get "$req" pull_glob "")
+    # Arming the APU PCM capture is per REQUEST, not device state left lying
+    # around. See arm_audio in soak_title.sh for the two ways the persistent
+    # marker went wrong on 2026-09-12 -- in both directions, on the same day.
+    audio_capture=$(jq_get "$req" audio_capture "")
     log "request $id from $requester: $purpose (ref=$ref arm=$arm runs=$runs)"
 
     local rdir="$D/results/$id"; mkdir -p "$rdir"
@@ -237,6 +241,7 @@ serve_one() {
         touch "$LEASE"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:W VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
+            AUDIO_CAPTURE_MB="$audio_capture" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
         python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'

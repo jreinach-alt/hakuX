@@ -272,6 +272,142 @@ static void apu_capture_write(const void *buf, size_t len)
     apu_capture.blocks++;
 }
 
+/*
+ * Output starvation accounting -- see docs/investigations/audio-baseline.md.
+ *
+ * monitor_sink_cb zero-fills whatever the FIFO could not supply and says
+ * nothing about it. A chronic partial fill is therefore completely invisible:
+ * it reduces loudness at the speaker by its duty cycle, and it does so
+ * DOWNSTREAM of the PCM tap, so every level in a capture stays exactly as it
+ * was. That combination -- audible, and unmeasurable by the instrument we
+ * built to measure audio -- is why this counter exists.
+ *
+ * It is not covered by g_dbg.utilization, which measures how long the APU
+ * thread SLEEPS. A thread can sleep plenty and still miss deadlines in bursts,
+ * so a utilization below 1 does not rule starvation out.
+ *
+ * Threading. These are incremented on the SDL/AAudio callback thread and read
+ * on the APU thread, so they are relaxed atomics and never touched under a
+ * lock: the callback is a realtime-ish context and must not wait on anything.
+ * Nothing here is derived from a pair of counters read at the same instant, so
+ * a torn read between two of them costs at worst one slightly wrong log line.
+ * They are deliberately NOT written straight into g_dbg, which the APU thread
+ * copies wholesale in mcpx_debug_end_frame(); publishing from the reader side
+ * keeps that copy single-threaded.
+ *
+ * File-static rather than a member of MCPXAPUState, following apu_capture
+ * above: there is one APU, the counters are diagnostics, and putting them in
+ * the device state would drag in a vmstate decision for something that must
+ * not survive a savestate anyway.
+ */
+static struct {
+    uint64_t callbacks;      /* every call into monitor_sink_cb */
+    uint64_t short_calls;    /* ... that could not be filled from the FIFO */
+    uint64_t empty_calls;    /* ... that got NOTHING: a full period of silence */
+    uint64_t bytes_asked;
+    uint64_t bytes_short;    /* bytes the sink emitted as zero-fill */
+    uint64_t max_short;      /* worst single shortfall, in bytes */
+} apu_starve;
+
+static void apu_starve_account(int free_b, int copied)
+{
+    qatomic_set(&apu_starve.callbacks, apu_starve.callbacks + 1);
+    qatomic_set(&apu_starve.bytes_asked, apu_starve.bytes_asked + free_b);
+
+    if (copied >= free_b) {
+        return;
+    }
+    uint64_t missing = (uint64_t)(free_b - copied);
+    qatomic_set(&apu_starve.short_calls, apu_starve.short_calls + 1);
+    qatomic_set(&apu_starve.bytes_short, apu_starve.bytes_short + missing);
+    if (copied == 0) {
+        qatomic_set(&apu_starve.empty_calls, apu_starve.empty_calls + 1);
+    }
+    if (missing > apu_starve.max_short) {
+        qatomic_set(&apu_starve.max_short, missing);
+    }
+}
+
+/*
+ * Called from the APU thread's existing once-a-second accounting block, not
+ * from the callback: logging from a realtime audio callback is how a level
+ * measurement turns into a pacing measurement.
+ *
+ * Reports every 5 s, but only when the interval actually starved -- with two
+ * exceptions, both of which exist because "no lines" and "instrument never
+ * ran" look identical in a log, and this campaign has already lost two arms
+ * and a day to exactly that ambiguity:
+ *
+ *   - the first report always fires, so a clean run still proves the counter
+ *     is alive and says what the device geometry is;
+ *   - a heartbeat fires every 30 s regardless, so a long clean run keeps
+ *     saying so.
+ *
+ * Every figure on the line is the DELTA since the last LINE, not a running
+ * total and not "since the last time this was called": a cumulative report
+ * would make one early burst read as permanent starvation for the rest of the
+ * run, and an interval measured from the last call would not match the window
+ * the line claims to describe. The one exception is labelled worst-ever.
+ *
+ * The line records whether the PCM capture was armed, because the capture
+ * writes to FUSE-backed storage from the audio thread and can itself cause
+ * the starvation being counted. A starvation figure measured with the capture
+ * on describes the capture run, not a normal one, and the reader must be able
+ * to tell which they are holding.
+ */
+static void apu_starve_report(MCPXAPUState *d, int64_t now_ms)
+{
+    static int64_t last_ms;
+    static uint64_t last_calls, last_short, last_empty, last_asked, last_bshort;
+    static unsigned reports;
+
+    if (last_ms == 0) {
+        last_ms = now_ms;
+        return;
+    }
+    if (now_ms - last_ms < 5000) {
+        return;
+    }
+
+    uint64_t calls = qatomic_read(&apu_starve.callbacks);
+    uint64_t shorts = qatomic_read(&apu_starve.short_calls);
+    uint64_t empties = qatomic_read(&apu_starve.empty_calls);
+    uint64_t asked = qatomic_read(&apu_starve.bytes_asked);
+    uint64_t bshort = qatomic_read(&apu_starve.bytes_short);
+
+    uint64_t d_calls = calls - last_calls;
+    uint64_t d_short = shorts - last_short;
+    uint64_t d_empty = empties - last_empty;
+    uint64_t d_asked = asked - last_asked;
+    uint64_t d_bshort = bshort - last_bshort;
+
+    bool heartbeat = (reports == 0) || (now_ms - last_ms >= 30000);
+    if (d_short || heartbeat) {
+        /* The percentage is the one number that matters: it is the fraction of
+         * output time replaced by silence, i.e. the loudness the speaker loses
+         * that no capture can show.
+         */
+        APU_CAP_LOG("starve: %llu/%llu callbacks short (%llu empty), "
+                    "%llu/%llu bytes zero-filled = %.4f%% of output, "
+                    "worst-ever %llu B; device buf %d B, fifo %d B, capture %s",
+                    (unsigned long long)d_short, (unsigned long long)d_calls,
+                    (unsigned long long)d_empty,
+                    (unsigned long long)d_bshort, (unsigned long long)d_asked,
+                    d_asked ? 100.0 * (double)d_bshort / (double)d_asked : 0.0,
+                    (unsigned long long)qatomic_read(&apu_starve.max_short),
+                    d->monitor.device_buffer_bytes,
+                    d->monitor.fifo_capacity_bytes,
+                    apu_capture.fp ? "ARMED" : "off");
+        reports++;
+        last_ms = now_ms;
+        last_calls = calls;
+        last_short = shorts;
+        last_empty = empties;
+        last_asked = asked;
+        last_bshort = bshort;
+    }
+}
+
 static void se_frame(MCPXAPUState *d)
 {
     mcpx_apu_update_dsp_preference(d);
@@ -296,6 +432,11 @@ static void se_frame(MCPXAPUState *d)
         d->frame_count = 0;
         d->sleep_acc_us = 0;
     }
+    /* Outside the once-a-second block deliberately: that block resets the
+     * utilization window, and starvation wants its own 5 s cadence. Reading
+     * the clock again here is a few nanoseconds against a 5.333 ms frame.
+     */
+    apu_starve_report(d, now);
     d->frame_count++;
 
     /* Buffer for all mixbins for this frame */
@@ -373,6 +514,7 @@ static int getenv_int_clamped(const char *name, int min_value, int max_value,
     return (int)parsed;
 }
 
+
 static void monitor_sink_cb(void *opaque, uint8_t *stream, int free_b)
 {
     MCPXAPUState *s = MCPX_APU_DEVICE(opaque);
@@ -416,6 +558,12 @@ static void monitor_sink_cb(void *opaque, uint8_t *stream, int free_b)
     if (copied < free_b) {
         memset(stream + copied, 0, free_b - copied);
     }
+
+    /* Counted here and not on the two early returns above: those zero-fill
+     * because the machine is paused or exiting, which is silence on purpose.
+     * Folding them in would make every pause look like a starvation burst.
+     */
+    apu_starve_account(free_b, copied);
 
     qemu_cond_broadcast(&s->cond);
 }
