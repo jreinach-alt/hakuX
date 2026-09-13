@@ -1310,6 +1310,19 @@ captures, score them, and report them with a perfectly consistent `apk_sha`.
 That is the stale-artifact failure with a fresh timestamp on it, and nothing
 downstream can see it.
 
+**AND THE ORCHESTRATOR MUST ASK FOR THE WORKTREE -- a lane cannot choose one.**
+Isolation is a dispatch parameter, so a lane spawned without it works in
+`/home/justin/hakuX` itself and commits onto the shared branch. That is the
+condition `dispatcher.sh` refuses to build under: a tracked modification in the
+shared tree stops every uncached ref, silently, by requeueing every thirty
+seconds. It has cost 123 requeues in this campaign.
+
+Done once on 2026-09-13, to the Galleon lane, and it cost nothing only because
+the device queue happened to be empty for the whole hour it worked. The tell
+was in its own report -- "the shared tree advanced 4 commits while I worked",
+which is what a lane in the shared tree sees and a lane in a worktree never
+does. Check that line in a report; it identifies the mistake after the fact.
+
 **So the first action in a worktree is to establish its base**, and the cheapest
 tell is whether `docs/testing/territory.toml` exists at all:
 
