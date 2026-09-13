@@ -84,7 +84,28 @@ issue_count() {
 while :; do
     sleep "$POLL"
 
-    [ -f "$TRANSCRIPT" ] || continue
+    # A MISSING TRANSCRIPT MUST BE LOUD, because it looks exactly like a busy
+    # session. The path is built from the session id passed on the command
+    # line, and a single wrong character makes this loop poll a file that will
+    # never exist -- so it never fires, and "no events" reads as "the
+    # orchestrator is working", which is the one thing this watchdog exists to
+    # contradict.
+    #
+    # That happened: restarting this watchdog after an edit, the session id was
+    # typed with one digit wrong (b4db418e for b4db438e) and the replacement
+    # was silently dead on arrival. Caught by re-reading the command, not by
+    # anything here.
+    #
+    # So say it once, after enough polls that a genuinely new session has had
+    # time to write its first line, and then keep quiet rather than nagging.
+    if [ ! -f "$TRANSCRIPT" ]; then
+        missing=$(( ${missing:-0} + 1 ))
+        if [ "$missing" = 4 ]; then
+            echo "WATCHDOG IS WATCHING NOTHING: no transcript at $TRANSCRIPT after $((missing * POLL))s. The session id argument is probably wrong, and this loop will never fire -- its silence is not an idle-free session. Restart it with the right id."
+        fi
+        continue
+    fi
+    missing=0
 
     mtime=$(stat -c %Y "$TRANSCRIPT" 2>/dev/null || echo 0)
     now=$(date +%s)
