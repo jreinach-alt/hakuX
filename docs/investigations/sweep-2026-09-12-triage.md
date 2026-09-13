@@ -82,3 +82,50 @@ a real accuracy defect which no measurement could previously see, and like
 
 Worth stating plainly because it justifies the sweep: this defect was invisible
 not because nobody had looked, but because looking crashed.
+
+## The scoreboard column was 22 hw/ commits stale, and its sha was consistent
+
+Found while checking a flag raised by the shadow-map agent: the queued sweep
+requests pinned `ref b63603975c`. Following it up, 40 of the 45 outstanding
+requests and all 62 collected sheets came from binary `fb4dfafc6d38`, which
+sits **22 commits touching `hw/` behind the branch tip** — 2,111 insertions
+across 23 files, containing every correctness fix landed that day: #42's
+carried fog coord, #48's blend and texture pad-alpha work, #55's surface
+format refresh, the F16 and F24 depth fixes, the NV04 solid line, and the
+inline-buffer heap overrun.
+
+The column was labelled `today-partial`. Read as written, it said the day's
+work had achieved nothing.
+
+**Why the existing guards did not catch it.** Every row carries `apk_sha`, and
+the scoreboard already warns when a column's rows disagree about which binary
+produced them. They did not disagree. The sha was identical across all 1,748
+rows, and consistently old. *Consistency is not currency,* and the existing
+warning could only ever detect the first.
+
+The date does not catch it either, and this is the part worth remembering:
+`fb4dfafc6d38` was built on **2026-09-12**, the same day it was collected and
+the same day as every fix it was missing. A freshness check on the date would
+have passed. Twenty-two commits fit inside one working day.
+
+**The fix.** `collect_sweep.sh` now writes `PROVENANCE.json` into the collected
+directory, recording each scored ref, its commit date, and
+`git rev-list --count <ref>..HEAD -- hw/`. `scoreboard.py` renders that as a
+**hw commits behind tip** column with a ⚠️ when non-zero. Only `hw/` commits
+are counted: a commit that cannot change the build cannot change a score, and
+counting docs would raise the warning on every heavy documentation day —
+which is precisely the day a reader learns to skip it.
+
+A column collected before this record existed shows a dash, not a zero. "Not
+known to be stale" and "known to be current" are different claims.
+
+**Disposition.** The 40 outstanding requests are left pinned. They are the
+same binary as the 62 already collected, so finishing them completes one
+coherent single-binary baseline across the corpus rather than producing a
+column mixing two. It is relabelled `pre-fixes-fb4dfafc` — by binary, not by
+a date that misleads. The "after" sweep is queued once the fix stream
+quiesces; running it now would only make it stale again by morning.
+
+This is the fourth instance of the same shape: *a guard is only a guard on the
+path that actually exercises it.* The `apk_sha` guard exercises the mixing
+path and nothing else.

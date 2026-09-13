@@ -19,12 +19,13 @@
 # like an accuracy change rather than a crash.
 set -u
 
+HERE_PROV="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LABEL="${1:?usage: collect_sweep.sh <label> [dispatch-dir]}"
 D="${2:-/home/justin/hakux-work/dispatch}"
 OUT="/home/justin/hakux-work/scoreboard/$LABEL"
 
 mkdir -p "$OUT"
-rm -f "$OUT"/*.tsv
+rm -f "$OUT"/*.tsv "$OUT/.refs"
 
 taken=0 skipped_noproof=0 skipped_empty=0
 for rdir in "$D"/results/z-sweep-*/; do
@@ -48,8 +49,28 @@ except Exception:
         continue
     fi
     cp "$tsv" "$OUT/$(basename "$rdir").tsv"
+    python3 -c "
+import json,sys
+try: print(json.load(open(sys.argv[1])).get('ref') or '')
+except Exception: print('')" "$rdir/result.json" >> "$OUT/.refs"
     taken=$((taken+1))
 done
+
+# Provenance: WHICH binary is already recorded per row as apk_sha, but not WHEN
+# it is. On 2026-09-12 a sweep column labelled "today-partial" was built from a
+# binary 87 commits and 2,111 hw/ insertions behind the branch tip -- every
+# correctness fix of that day was missing from it, and the table read as though
+# the day had achieved nothing. The apk_sha column could not catch that: the
+# sha was perfectly consistent, and consistently old.
+#
+# So record how far the scored ref is from the tip, counting only commits that
+# touch hw/. Commits that do not change the build cannot change a score, and
+# counting them would cry wolf on a day of heavy doc work -- which is exactly
+# the day someone stops reading the warning.
+if [ -s "$OUT/.refs" ]; then
+    python3 "$HERE_PROV/sweep_provenance.py" "$OUT" "$(git rev-parse --short HEAD)"
+fi
+rm -f "$OUT/.refs"
 
 echo "collected $taken sheets into $OUT"
 [ "$skipped_noproof" -gt 0 ] && echo "  $skipped_noproof skipped for missing progress-log proof"

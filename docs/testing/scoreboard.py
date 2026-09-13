@@ -27,6 +27,7 @@ import argparse
 import csv
 import collections
 import glob
+import json
 import os
 import sys
 
@@ -161,8 +162,20 @@ def main():
             sys.exit(f"--run wants LABEL=DIR, got {spec!r}")
         label, d = spec.split("=", 1)
         rows, shas, discs, dupes = load_run(d)
+        # Written by collect_sweep.sh. Absent for columns collected before the
+        # record existed, which is reported as a dash rather than as zero --
+        # "not known to be stale" and "known to be current" are different
+        # claims and the 2026-09-12 column is exactly why.
+        prov = None
+        ppath = os.path.join(d, "PROVENANCE.json")
+        if os.path.exists(ppath):
+            try:
+                prov = json.load(open(ppath))
+            except Exception:
+                prov = None
         runs.append(dict(label=label, dir=d, rows=rows, shas=shas, discs=discs,
-                         dupes=dupes, agg=summarise(rows, args.goldens)))
+                         dupes=dupes, prov=prov,
+                         agg=summarise(rows, args.goldens)))
 
     out = []
     out.append("# Accuracy scoreboard\n")
@@ -171,14 +184,24 @@ def main():
                "part that is a rule rather than a rounding floor.\n")
 
     # Provenance first. A column built from mixed binaries is not a column.
-    out.append("| run | binaries | discs | captures | rescored |")
-    out.append("|---|---|---|---:|---:|")
+    out.append("| run | binaries | built | hw commits behind tip | discs | captures | rescored |")
+    out.append("|---|---|---|---:|---:|---:|---:|")
     for r in runs:
         shas = ", ".join(sorted(r["shas"])) or "—"
         warn = " ⚠️ mixed" if len(r["shas"]) > 1 else ""
         dup = f"{r['dupes']}" if r["dupes"] else "—"
-        out.append(f"| `{r['label']}` | {shas}{warn} | {len(r['discs'])} | "
-                   f"{len(r['rows'])} | {dup} |")
+        prov = r.get("prov") or {}
+        behind = prov.get("hw_behind_tip")
+        dates = sorted({i.get("date") or "" for i in prov.get("refs") or []} - {""})
+        built = ", ".join(dates) if dates else "—"
+        if behind is None:
+            age = "—"
+        elif behind == 0:
+            age = "0"
+        else:
+            age = f"{behind} ⚠️"
+        out.append(f"| `{r['label']}` | {shas}{warn} | {built} | {age} | "
+                   f"{len(r['discs'])} | {len(r['rows'])} | {dup} |")
     out.append("")
 
     cats = [c for c in CATEGORIES] + ["(uncategorised)"]
@@ -200,6 +223,14 @@ def main():
     out.append("\n† that run did not record the one-step column, so its figure "
                "is *all* differing pixels and is not comparable with a "
                "structural count. The 2026-09-08 baseline predates it.\n")
+    out.append("\n**hw commits behind tip** is how many commits touching `hw/` "
+               "separate the binary that produced a column from the branch tip "
+               "when it was collected. `apk_sha` says which binary; this says "
+               "whether it is the current one. A column collected on 2026-09-12 "
+               "sat 87 commits and 2,111 `hw/` insertions behind, with every "
+               "correctness fix of that day missing, and its sha was perfectly "
+               "consistent throughout -- consistency is not currency. A dash "
+               "means the column predates this record.\n")
     out.append("\n⚠️ on a category means the leftmost run scored fewer captures "
                "than that category has goldens: the cell is a floor, not a "
                "score. ⚠️ on a run means its rows disagree about which binary "
