@@ -691,7 +691,73 @@ static void se_frame(MCPXAPUState *d)
 
     if ((d->ep_frame_div + 1) % 8 == 0) {
         if (0 <= g_config.audio.volume_limit && g_config.audio.volume_limit < 1) {
+            /* Issue #71: the exponent stays, the LABEL is the wrong half, and
+             * this comment is here so the next reader does not spend a build
+             * changing the curve.
+             *
+             * The disagreement is real: ui/xui/main-menu.cc:841 prints
+             * volume_limit * 100 as "Limit output volume (%d%%)" while the
+             * gain applied here is volume_limit^e, so the slider says 50% and
+             * delivers 0.15196 -- -16.37 dBFS.
+             *
+             * THE TRACKER'S OWN REASON FOR BLAMING THE CURVE IS WRONG, and
+             * that is the falsified leg. #71 says "there is no principled
+             * reason for the exponent to be e ... a perceptual taper uses a
+             * power of 2 to 3 by convention, and e looks like a placeholder".
+             * e is 2.71828, which is INSIDE that band, and it behaves like the
+             * textbook x^3 audio taper to within a fifth of a decibel of
+             * travel: x^e reaches -6 dB at 77.6% of the slider and x^3 at
+             * 79.4%. Whatever the author intended, the curve is what
+             * convention would have chosen for a linear-travel volume
+             * control, so "undocumented" cannot carry the change.
+             *
+             * AND THE CHANGE IS NOT FREE. volume_limit is persisted, is the
+             * slider POSITION rather than the gain, and config_spec.yml has no
+             * version key -- so an old 0.5 and a new 0.5 are indistinguishable
+             * and no migration is possible. Switching to a linear gain would
+             * therefore relouden every saved sub-maximum setting silently, and
+             * only ever upward:
+             *
+             *     0.90 -> +1.57 dB    0.50 -> +10.35 dB
+             *     0.75 -> +4.29 dB    0.25 -> +20.69 dB   0.0625 -> +41.38 dB
+             *
+             * Correcting the label costs nobody a decibel. That is the fix,
+             * and it belongs in ui/xui/main-menu.cc: print the gain this line
+             * computes, in dB, which is also the unit the Xbox's own volume
+             * control uses (AC'97 master volume is six bits at 1.5 dB a step,
+             * hw/audio/ac97.c get_volume with mask 0x3f -- 94.5 dB of range).
+             *
+             * Inert at the default either way: volume_limit is 1 in
+             * config_spec.yml and forced to 1.0 on Android
+             * (xemu_settings_android.cc:92), and this block needs < 1.
+             */
             float f = pow(g_config.audio.volume_limit, M_E);
+            /* On Android there is no label to correct, which is the other half
+             * of #71 and the half that reaches this fork's users: the imgui
+             * audio menu lives in ui/xui/, which
+             * android/app/src/main/cpp/CMakeLists.txt:473 excludes from the
+             * build outright, so nothing on a handheld states this gain at
+             * all. #70's note -- "if the launcher ever writes a volume_limit
+             * below 1, this alone produces 'unusually low', and the check
+             * costs one question" -- is the reason to say it once in the log
+             * the audio soaks already read.
+             *
+             * On CHANGE rather than once, because a line reporting only the
+             * first value seen would go stale the moment someone moves the
+             * desktop slider, and a stale gain in a log is worse than none.
+             * Android never changes it (no UI reaches it), so there it is
+             * exactly one line per run; dragging the desktop slider costs at
+             * most one line per 8 VP frames, about 23 a second, and stops
+             * when the drag does. */
+            static double volume_limit_reported = -1.0;
+            if (volume_limit_reported != g_config.audio.volume_limit) {
+                volume_limit_reported = g_config.audio.volume_limit;
+                APU_LVL_LOG("volume_limit %.4f applied as %.6f (%.2f dBFS, "
+                            "%.2f%% of full scale) -- the slider is a x^e "
+                            "taper, not a percentage of output (#71)",
+                            g_config.audio.volume_limit, (double)f,
+                            20.0 * log10((double)f), 100.0 * (double)f);
+            }
             for (int i = 0; i < 256; i++) {
                 d->monitor.frame_buf[i][0] *= f;
                 d->monitor.frame_buf[i][1] *= f;
