@@ -647,6 +647,41 @@ And when reading a multi-gate script like `preflight.sh`, read the VERDICT
 line, not the last `ok` you happen to see -- its per-gate lines print in order
 and a passing gate can be the last thing above a failing summary.
 
+## When a failure recurs, look for the instruction that is producing it
+
+Three lanes dirtied the shared tree on 2026-09-13 and stalled the dispatcher
+251 times between them. The first two were treated as mistakes -- told, fixed,
+moved on. The third made it obvious that three independent agents converging on
+one wrong behaviour is not three mistakes.
+
+It was an instruction. A project memory note said, verbatim: *"For an
+instrumented build, patch the main tree uncommitted, build, save the APK,
+`git checkout --` the files."* Written before the dispatcher's dirty-tree
+refusal mattered, and every lane that read it and complied did the right thing
+with the wrong information.
+
+So when the same failure arrives from independent directions, **stop correcting
+the instances and go looking for the source.** The question is not "why do
+agents keep doing this" but "what is telling them to". Candidates, in the order
+they are worth checking:
+
+  - a memory note or doc that predates the constraint it now violates;
+  - a brief of your own that says one thing while a table says another -- a
+    stale territory row did exactly this, and the lane correctly reported the
+    brief as wrong;
+  - a tool whose default contradicts the written rule;
+  - an example in a doc that is now the wrong pattern.
+
+The tell is convergence. One agent doing something odd is an agent; three doing
+the same odd thing is a document. And the fix is cheaper at the source: one
+note rewritten against three lanes corrected and a fourth still to come.
+
+Two of this campaign's recurring failures resolved this way, both to something
+written down rather than to carelessness: the dirty-tree stalls above, and an
+orchestrator declaring a working systemd timer missing because it read
+`CronList` -- a tool that cannot see a systemd timer -- and then overwrote the
+unit files it had just declared absent.
+
 ## A checker must have no side effects on the tree it checks
 
 `check_territory.py` was added on 2026-09-13 to catch a stale territory
