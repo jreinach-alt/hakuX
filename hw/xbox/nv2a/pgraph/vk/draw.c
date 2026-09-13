@@ -7139,11 +7139,30 @@ void pgraph_vk_flush_draw(NV2AState *d)
 
     if ((folds % 64) == 0) {
         /*
-         * Tag "hakuX-lane", which LOGCAT_SPEC now reserves for exactly this.
-         * Core-QEMU fprintf(stderr) never reaches logcat, and the capture spec
-         * ends in `*:S`, so a tag it does not name is silenced outright -- an
-         * earlier revision of this counter logged to "hakuX-signfold", the arm
-         * ran, and the logcat held not one line of it, which is
+         * Tag "hakuX", NOT "hakuX-lane", and the reason is measured rather
+         * than preferred.
+         *
+         * `hakuX-lane` is reserved in dispatcher.sh's LOGCAT_SPEC for exactly
+         * this purpose, and the reservation is real: the snapshot under
+         * $DISPATCH_DIR/bin carries it. But the dispatcher is a long-lived
+         * process that re-execs from that snapshot, and the instance serving
+         * the queue was started BEFORE the reservation landed -- so the spec it
+         * actually applied to arm 1789339282 was
+         *
+         *   ... hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I ... *:S
+         *
+         * with no hakuX-lane in it, and that arm's logcat holds zero
+         * [signfold] lines. Reserved on disk, silenced in practice, until the
+         * dispatcher restarts. `hakuX:I` is in both the old and new spec, and
+         * an earlier arm printed this counter under it successfully, so it is
+         * the tag with evidence behind it rather than the tag with intent.
+         *
+         * Keep the [signfold] prefix either way: it is what makes the line
+         * greppable out of a shared tag.
+         *
+         * Core-QEMU fprintf(stderr) never reaches logcat at all, and a tag the
+         * spec does not name is dropped by `*:S` -- an earlier revision logged
+         * to "hakuX-signfold" and produced the same silence, which is
          * indistinguishable from the mechanism never firing.
          *
          * `staged_low`/`staged_high` count uniform STAGINGS, not pass
@@ -7158,7 +7177,7 @@ void pgraph_vk_flush_draw(NV2AState *d)
         unsigned long slo, shi;
         pgraph_glsl_get_signed_blend_staged(&slo, &shi);
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "hakuX-lane",
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
                             "[signfold] folds=%lu emitted=%lu empty=%lu "
                             "staged_low=%lu staged_high=%lu "
                             "(want emitted==2*folds, empty==0, "
