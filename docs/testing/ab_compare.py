@@ -297,8 +297,19 @@ def check_comparable(a, b, allow_same_binary=False):
     #    reporting the difference as a fix.
     if a.apk and a.apk == b.apk:
         msg = ("both arms ran APK %s, so there is no independent variable. "
-               "Either the two refs resolve to the same commit, or the build "
-               "cache served one binary twice." % a.apk)
+               "Three ways that happens: the two refs resolve to one commit, "
+               "the build cache served one binary twice, or -- MEASURED on "
+               "2026-09-13 -- the refs differ by commits that touch no "
+               "buildable source, and the build is reproducible enough to "
+               "produce a BYTE-IDENTICAL apk. A survey at ref 78d539834f came "
+               "back with apk_sha b0cba34acef7, the same sha as arms built "
+               "from 49afee8889, across a range of 40 commits touching 20 "
+               "files, none of them buildable source. That third case is not "
+               "a fault and "
+               "the arms really are comparable; it is also the only one of the "
+               "three that a reader cannot diagnose from the shas alone, so "
+               "check whether the range touches hw/ before assuming a cache "
+               "bug." % a.apk)
         if allow_same_binary:
             same_dev = a.device and a.device == b.device
             warn.append(
