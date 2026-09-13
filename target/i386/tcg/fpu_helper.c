@@ -263,8 +263,35 @@ static inline float64 floatx80_to_float64_nds(double a, float_status *s)
 #define floatx80_abs(a)                fabs(a)
 #define floatx80_sqrt(a, s)            ((void)(s), sqrt(a))
 
-#define floatx80_round(a, s)           ((void)(s), rint(a))
-#define floatx80_round_to_int(a, s)    ((void)(s), rint(a))
+/*
+ * FRNDINT rounds per the guest's control-word RC field. rint() rounds per the
+ * HOST FP environment, and `(void)(s)` threw the guest's mode away -- so
+ * nxdk's floorf, which is the textbook x87 sequence (save CW, set RC = round
+ * down, FRNDINT, restore), became round-to-nearest. Guest arithmetic, so it is
+ * wrong in every title rather than in one code path: measured on
+ * Blend_tests and Point_size, where floorf(24.75), floorf(85.714) and
+ * floorf(138.667) each came back one too high and floorf(99.2) and
+ * floorf(136.0) did not, because those are the two arguments where floor and
+ * round-to-nearest agree. See
+ * docs/investigations/guest-frndint-ignores-rounding-mode.md.
+ *
+ * The nearest case still leans on the host environment being nearest-even,
+ * which QEMU never changes; the other three do not depend on host state at
+ * all. floatx80_round has no caller in this file -- softfloat's version rounds
+ * to the control word's PRECISION rather than to an integer, so a future
+ * caller must not take this definition as the right one for it.
+ */
+static inline double floatx80_round_to_int_nds(double a, float_status *s)
+{
+    switch (s->float_rounding_mode) {
+    case float_round_down:    return floor(a);
+    case float_round_up:      return ceil(a);
+    case float_round_to_zero: return trunc(a);
+    default:                  return rint(a);
+    }
+}
+#define floatx80_round(a, s)           floatx80_round_to_int_nds((a), (s))
+#define floatx80_round_to_int(a, s)    floatx80_round_to_int_nds((a), (s))
 
 #undef floatx80_zero
 #undef floatx80_one
