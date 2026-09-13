@@ -359,6 +359,13 @@ Four rules, each of which cost a real verdict on 2026-09-12:
   day: per-column depth spread, which cube face a pixel selects, a swatch's
   centre row, the mean light term over a lit region, the recovered byte for a
   named float component.
+- **A tool that reads captures must accept either directory shape.** The
+  dispatcher puts PNGs in `captures<N>/` inside a result directory, named
+  `<Suite>::<test>.png`, and callers pass both shapes. Use
+  `docs/testing/captures.py` (`resolve`, `find`) rather than joining paths by
+  hand. Two falsifiers were bitten on 2026-09-12; one reported all three of
+  its captures MISSING on an arm that contained them, which reads exactly like
+  a failed render and would have been taken as refuting a change that passed.
 - **A failed arm is a diagnosis, not a revert.** Push through to the root
   cause before reverting, and check whether the reasoning that motivated the
   change still applies -- usually the entry point is right and only a value is
