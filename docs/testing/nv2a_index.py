@@ -55,6 +55,13 @@ DISPOSITIONS = {
     "unclassified":        "not yet triaged against the goldens",
 }
 
+# Which part of the machine an issue is about. Everything historic is pgraph
+# and stays pgraph by default; the field exists because audio arrived without
+# any tracker presence at all and cannot name a pgraph suite -- the test discs
+# play no sound, so there is no suite that exercises the APU and inventing one
+# would put a false name in the one hand-maintained table here.
+COMPONENTS = {"pgraph", "apu"}
+
 SCAN_ROOTS = ["hw/xbox"]
 SCAN_EXTS = (".c", ".h", ".inc", ".cpp")
 
@@ -439,7 +446,8 @@ def load_issues():
             if m:
                 current = m.group(1)
                 issues[current] = {"title": "", "suites": [],
-                                   "disposition": "unclassified"}
+                                   "disposition": "unclassified",
+                                   "component": "pgraph"}
                 continue
             if current is None:
                 continue
@@ -450,6 +458,10 @@ def load_issues():
             m = re.match(r'^disposition\s*=\s*"(.*)"$', line)
             if m:
                 issues[current]["disposition"] = m.group(1)
+                continue
+            m = re.match(r'^component\s*=\s*"(.*)"$', line)
+            if m:
+                issues[current]["component"] = m.group(1)
                 continue
             if re.match(r"^suites\s*=\s*\[", line):
                 # Arrays wrap across lines. Reading only single-line ones made
@@ -851,11 +863,24 @@ def cmd_check(repo, tests_root, support_dirs=None):
     if not parsed:
         problems.append("nv2a_issues.toml parsed to nothing")
     for num, meta in parsed.items():
-        # An issue with no suites is not a valid entry - it is the signature of
-        # a parser that silently dropped them.
-        if not meta["suites"]:
+        # An issue with no suites is not a valid entry FOR A PGRAPH ISSUE - it
+        # is the signature of a parser that silently dropped them. That check
+        # stays exactly as strict as it was, and still covers every issue that
+        # does not say otherwise, because `component` defaults to "pgraph".
+        #
+        # A non-pgraph issue genuinely has no suites: the pgraph discs are
+        # silent, so nothing about the APU can be asked of them, and demanding
+        # a suite name would only get a false one written down. The component
+        # is required in that case, so "no suites" still cannot pass by
+        # accident -- an entry whose suites were dropped by a parser bug has no
+        # component either, and is still caught.
+        if not meta["suites"] and meta.get("component", "pgraph") == "pgraph":
             problems.append("issue #%s has no suites (parse failure or empty entry)"
                             % num)
+        if meta.get("component", "pgraph") not in COMPONENTS:
+            problems.append("issue #%s has component %r, which is not one of: %s"
+                            % (num, meta.get("component"),
+                               ", ".join(sorted(COMPONENTS))))
         if meta.get("disposition") not in DISPOSITIONS:
             problems.append("issue #%s has disposition %r, which is not one of: %s"
                             % (num, meta.get("disposition"),

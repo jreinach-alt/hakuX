@@ -32,6 +32,18 @@
 # whole point of the field is to stop someone re-deriving what was already ruled
 # out.
 
+# An entry may also carry `component`, which defaults to `pgraph` and may be
+# `apu`. It exists because audio arrived on this tracker with no entries at all
+# and cannot name a suite: the pgraph test discs play no sound, so no suite
+# exercises the APU, and writing a plausible-looking suite name for an audio
+# issue would put a false entry in the one hand-maintained table in this index.
+#
+# `nv2a_index.py check` rejects an unknown component, and still requires suites
+# for everything that does not declare one -- so the "no suites" rule, which
+# exists to catch a parser that silently dropped them, keeps its full force on
+# every pgraph issue. An entry whose suites were dropped by a bug has no
+# component either, and is still caught.
+
 [issue.4]
 title = "Render-to-texture diverges from silicon"
 # MEASURED OUT 2026-09-12: there is no residual specific to rendering INTO a
@@ -1443,3 +1455,237 @@ suites = ["Texture border", "W buffering"]
 title = "Surface bindings never refresh their colour format on compatible reuse, and fifteen sites read it"
 disposition = "defect"
 suites = ["Blend surface", "Texture Framebuffer Blit"]
+
+# ---------------------------------------------------------------------------
+# APU / audio. Added 2026-09-12, the first non-pgraph entries in this table.
+#
+# Numbered from 70 deliberately, leaving a gap. The pgraph streams allocate
+# sequentially and several ids above 55 are already in flight on unmerged
+# branches; taking the next free number here would collide with one of them on
+# merge, and an issue number that means two different things is worse than an
+# untidy sequence.
+#
+# These carry `component = "apu"` and no suites. That is not an omission: the
+# pgraph test discs play no audio at all, so no suite exercises the APU, and
+# naming one would put a false entry in the one hand-maintained table in this
+# index. `nv2a_index.py check` knows about the field and still enforces the
+# no-suites rule for everything that does not declare it.
+#
+# Background, in reading order: docs/investigations/audio-assessment.md (the
+# signal path and ten negatives), audio-harness.md (the PCM tap and
+# audio_measure.py), audio-headroom-verified.md (the one verified fix), and
+# audio-baseline.md (the measured level these issues are stated against).
+
+# The only mechanism that survives the measured baseline and can still explain
+# the owner's report of "unusually low, even at max".
+#
+# MEASURED, from source. monitor_sink_cb (apu.c) waits at most 10 x 0.5 ms = 5 ms
+# for the FIFO to reach the requested byte count -- less than one 5.333 ms frame
+# period -- and then fills the remainder with silence:
+#
+#     if (copied < free_b) {
+#         memset(stream + copied, 0, free_b - copied);
+#     }
+#
+# Nothing counted it. With the Android defaults the sink asks for 8192 bytes
+# while the APU produces 1024 bytes per 5.333 ms, so a callback needs eight
+# production units to have completed; if the APU thread is behind, the tail of
+# every buffer is silence.
+#
+# WHY IT IS THE AWKWARD ONE. The PCM tap is at monitor.frame_buf, on the
+# PRODUCING side of the FIFO. A chronic partial fill reduces loudness at the
+# speaker by its duty cycle while leaving every number in a capture exactly as
+# it was -- audible, and invisible to the instrument built to measure audio.
+# The measured baseline (peak at full scale, AC RMS -23.43/-23.50 dBFS, median
+# active 50 ms window -29.4 dBFS, Galleon on the Nova, 92.843 s) therefore
+# cannot rule it out, and the existing g_dbg.utilization does not either: that
+# measures how long the APU thread SLEEPS, and a thread can sleep plenty while
+# missing deadlines in bursts.
+#
+# INSTRUMENTED 2026-09-12: counters on the callback thread, reported from the
+# APU thread every 5 s as the delta since the last line, under tag
+# hakuX-audiocap. The line names the fraction of output replaced by silence, and
+# says whether the PCM capture was armed -- the capture writes to FUSE-backed
+# storage from the audio thread and can cause the starvation it would then be
+# blamed for.
+#
+# PREDICTED before the measuring soak (audio-baseline.md section 4): under 1.0%
+# of output bytes zero-filled overall, and no 5 s interval over 5%. FALSIFIED by
+# a larger figure, which reopens the owner's symptom with a mechanism no capture
+# can see. Not forced true by the counter, which observes and touches nothing.
+#
+# Disposition stays unclassified until that number exists. There is a
+# measurement pending, not a rule.
+[issue.70]
+title = "APU sink zero-fills a short read and counts nothing, so output starvation is invisible to the PCM tap"
+disposition = "unclassified"
+component = "apu"
+suites = []
+
+# MEASURED, and inert at maximum volume, so this is NOT the owner's symptom --
+# recorded as a defect on its own terms, and as a negative for that symptom.
+#
+# apu.c, in the once-per-8-frames output block:
+#
+#     if (0 <= g_config.audio.volume_limit && g_config.audio.volume_limit < 1) {
+#         float f = pow(g_config.audio.volume_limit, M_E);
+#
+# volume_limit defaults to 1 (config_spec.yml) and to 1.0 on Android
+# (xemu_android.cpp), and the guard requires < 1, so the block does not execute
+# at max. The coordinator confirmed 1.0 on the owner's device. That is why the
+# headroom work could exclude this rather than merely rank it unlikely.
+#
+# The defect is the curve. ui/xui/main-menu.cc prints volume_limit * 100 as
+# "%d%%", labelling the control a percentage, while the gain applied is x^e:
+#
+#     slider 90% -> 0.744 (-2.6 dB)      slider 50% -> 0.152 (-16.4 dB)
+#     slider 75% -> 0.464 (-6.7 dB)      slider 25% -> 0.0231 (-32.7 dB)
+#
+# A user who nudges the slider to half expecting half loudness gets -16 dB.
+#
+# There is no principled reason for the exponent to be e. A perceptual taper
+# uses a power of 2 to 3 by convention, or dB directly; e looks like a
+# placeholder. FALSIFIED IF someone shows the curve is deliberate -- an
+# intentional taper matched to a measured listening test, or a label that is not
+# a percentage. Either would make this a documentation problem rather than a
+# defect. Nothing in the tree argues for it today.
+#
+# Note for anyone who reproduces the owner's symptom later: if the launcher ever
+# writes a volume_limit below 1, this alone produces "unusually low", and the
+# check costs one question.
+[issue.71]
+title = "The volume slider applies x^e while the UI labels it a percentage, so 50% is -16.4 dB"
+disposition = "defect"
+component = "apu"
+suites = []
+
+# MEASURED on hardware, both sides. The submix-headroom fix (54a00d28fb,
+# verified in audio-headroom-verified.md) raised the monitor path by a measured
+# +6.118 dB mean over ten percentile statistics, spread 0.55 dB, against a
+# predicted +6.02. It also put the output on the rails:
+#
+#            pre-fix (8254d88ebc)        post-fix (51aa3f9d0e)
+#   peak L/R  17,296 / 22,092             32,767 / 32,767
+#   peak dBFS -5.55 / -3.42               -0.00 / -0.00
+#   clipped   0                           52  (0.0012% of 4,456,448)
+#
+# Both captures Galleon on the Nova, 92.843 s, volume_limit 1.0, use_dsp false.
+# The pre-fix peaks give the true post-fix peaks: 34,592 and 44,184, i.e. about
+# +0.5 and +2.6 dBFS. The mix now exceeds full scale on transients and the only
+# thing between it and the DAC is the clamp to +/-1.0 in the float-to-short
+# conversion.
+#
+# Read the peak row with care, because it is the trap that nearly sank the
+# headroom result: R's peak appears to shift only +3.42 dB, which looks like the
+# prediction failing and is not -- the post-fix peak is pinned at 32,767, so the
+# statistic is censored. The percentiles are what carry the gain.
+#
+# WHAT IS ACTUALLY UNKNOWN, and why this is not simply "add a limiter": nobody
+# knows what the hardware does at the rails. No golden PCM from real silicon
+# exists; the assessment explains that getting one means recording S/PDIF off an
+# actual Xbox. The clipping may be exactly what an Xbox does with this content,
+# in which case the emulation is right and there is nothing to fix. It may also
+# be that the correct level is lower and the headroom fix overshot for a reason
+# not yet found.
+#
+# FALSIFIED / RESOLVED BY: a hardware capture of the same title at the same
+# point, or by a title that clips substantially more than 0.0012%, which would
+# make this audible rather than arithmetic. 52 samples in 92.843 s is not
+# audible and is not an argument against the fix; it IS the reason a limiter is
+# worth considering and the reason this is on the tracker rather than in a
+# comment.
+[issue.72]
+title = "The monitor path now runs at the rails with no limiter, and whether that matches hardware is unknown"
+disposition = "unknown-semantics"
+component = "apu"
+suites = []
+
+# LATENT, measured at zero, and strictly more likely since the headroom fix.
+#
+# MEASURED, from source: the per-voice conversion saturates, but the monitor mix
+# then sums voices with += into an int16_t (vp.c:1887-1888). That accumulator
+# WRAPS rather than saturating, and a wrap flips the sign of a loud sample --
+# which a band-limited 48 kHz signal does not do. The headroom fix doubled what
+# is summed into it, so the margin against overflow halved.
+#
+# MEASURED on hardware: zero wrap suspects in every capture taken so far --
+# both headroom arms (92.843 s each) and one further undated Galleon capture
+# (126.976 s). audio_measure.py counts adjacent samples differing by more than
+# full scale, which is the signature and not the event; a zero count does not
+# prove the accumulator never wrapped, only that it left no full-scale sign flip
+# behind. Largest observed adjacent jump was 11,537 of 65,535.
+#
+# So: a real hazard with no observed instance. Filed rather than fixed because
+# the fix is not free -- clamping the accumulation changes the mix arithmetic on
+# the hot path for every voice, and doing that to prevent something that has
+# never been seen is how a measured chain acquires an unmeasured stage.
+#
+# FALSIFIED IF a capture shows wrap suspects with no genuinely square content to
+# explain them. That is the trigger to clamp, and it is worth re-checking on any
+# title denser than Galleon -- the Xbox APU sums up to 256 voices and Galleon is
+# not a stress case.
+[issue.73]
+title = "The VP monitor mix accumulates voices into an int16_t that wraps instead of saturating"
+disposition = "defect"
+component = "apu"
+suites = []
+
+# MEASURED: NV_PAVS_VOICE_CFG_FMT_HEADROOM (0x7 << 13) is defined at
+# apu_regs.h:231 and read NOWHERE. `grep -rn CFG_FMT_HEADROOM hw/` returns only
+# the definition. A 3-bit field is parsed out of the voice format register and
+# then ignored.
+#
+# This is the third 3-bit headroom control in the same register file. The other
+# two are submix_headroom and hrtf_headroom, both divisions by 1 << value, i.e.
+# 6.0206 dB per unit. One of those two turned out to be a live, uncompensated
+# -6.02 dB on the default Android path and was the owner's low-volume symptom
+# (54a00d28fb). That is the reason this one is worth a tracker entry rather than
+# a shrug: the same register file, the same width, the same natural unit, and no
+# reader at all.
+#
+# DIRECTION UNKNOWN, and this is why the disposition is what it is. If the
+# hardware attenuates by this field we are currently LOUDER than hardware, and
+# this is not a missing gain. If it is a gain we are quieter. Nothing in the
+# tree decides it and guessing is how five mechanism claims were retracted on
+# this project in two days.
+#
+# THE EXPERIMENT THAT SETTLES IT, and it is cheap: log the field's value per
+# voice on a real title, the way submix_headroom was settled (5e3923a0ed, which
+# found all 31 slots at 1). If every title leaves it 0 the question is moot and
+# this closes as unreachable. If titles program it non-zero, the next step is a
+# hardware capture of one voice with the field set and cleared -- there is no
+# way to get the direction from source.
+[issue.74]
+title = "A third 3-bit voice headroom field is decoded and never read, direction unknown"
+disposition = "unknown-semantics"
+component = "apu"
+suites = []
+
+# MEASURED, and unambiguous. hw/xbox/mcpx/aci.c:
+#
+#     static const VMStateDescription vmstate_mcpx_aci = {
+#         ... VMSTATE_PCI_DEVICE(dev, MCPXACIState), ...   // FIXME
+#
+# The field list is VMSTATE_PCI_DEVICE and nothing else, with a bare `// FIXME`
+# already sitting on it. The embedded AC97LinkState -- the codec's mixer
+# registers, its BM descriptors, its running state -- is NOT migrated, so a
+# save/load pair silently restores an AC'97 in whatever state the fresh device
+# happened to be in.
+#
+# Scope, stated so this is not over-sold: the assessment established that ACI is
+# not in the audible path at all on this platform. ep_sink_samples returns false
+# for MCPX_APU_DEBUG_MON_AC97 (gp_ep.c) and the APU opens its own SDL device, so
+# a corrupted AC'97 cannot explain the owner's symptom and this is not a
+# loudness issue. It is a savestate-correctness issue, and it is filed because
+# "silently restores wrong state" is the class of defect that is discovered
+# months later as something else entirely.
+#
+# FALSIFIED IF AC97LinkState turns out to be fully reconstructible from the
+# guest's own reprogramming after a load -- i.e. if every field is rewritten
+# before it is next read. That is checkable by reading ac97_common_init and the
+# NAM/NABM handlers in hw/audio/ac97_int.c, and it has not been checked.
+[issue.75]
+title = "ACI migrates only its PCI device, so save/load silently drops all AC'97 codec state"
+disposition = "defect"
+component = "apu"
+suites = []
