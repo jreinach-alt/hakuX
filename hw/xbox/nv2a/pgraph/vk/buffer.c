@@ -134,9 +134,39 @@ static MemoryBudget compute_memory_budget(PGRAPHVkState *r)
         }
     }
 
-    /* Allow user override of texture cache size */
+    /*
+     * Allow user override of texture cache size.
+     *
+     * Floored, because #56's crash needs a cache too small to hold one draw's
+     * texture stages and nothing else can produce it.
+     * texture_cache_entry_pre_evict refuses to evict a node that is one of the
+     * <= NV2A_MAX_TEXTURES current texture_bindings[], or one still in flight
+     * (submit_time + num_active_frames > submit_count). So the worst case a
+     * single draw can present is NV2A_MAX_TEXTURES nodes pinned by the
+     * bindings plus NV2A_MAX_TEXTURES per active frame pinned by submit_time,
+     * and a cache below that can hand create_texture a NULL from lru_lookup
+     * on the FIRST bind of a stage -- which is the only moment
+     * texture_bindings[] is NULL, and therefore the only way the unguarded
+     * dereferences in vk/shaders.c and vk/draw.c can be reached.
+     *
+     * Derived rather than picked: with the shipped submit_frames of 3 this is
+     * 16. The settings UI only offers 0/512/1024/2048, so nothing a user can
+     * click reaches the floor; a hand-written texture_cache_size in the toml
+     * or in x1box_prefs.xml can, and did not have to be believed to be worth
+     * refusing.
+     */
     if (g_texture_cache_size_override > 0) {
+        extern int xemu_get_submit_frames(void);
+        size_t min_entries =
+            (size_t)NV2A_MAX_TEXTURES * (xemu_get_submit_frames() + 1);
         b.texture_cache_entries = g_texture_cache_size_override;
+        if (b.texture_cache_entries < min_entries) {
+            VK_LOG_ERROR("texture_cache_size=%d is below the %zu entries one "
+                         "draw can pin; using %zu",
+                         g_texture_cache_size_override, min_entries,
+                         min_entries);
+            b.texture_cache_entries = min_entries;
+        }
     }
 
     return b;

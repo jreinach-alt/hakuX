@@ -1714,7 +1714,14 @@ static bool is_linear_filter_supported_for_format(PGRAPHVkState *r,
            VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT;
 }
 
-static void create_texture(PGRAPHState *pg, int texture_idx)
+/*
+ * Bind texture_idx's texture, and say whether it managed to.
+ *
+ * `false` means the texture LRU could serve no node and NOTHING was bound --
+ * see the caller, which has to keep the slot dirty rather than record it as
+ * done. Every other exit binds something and returns true.
+ */
+static bool create_texture(PGRAPHState *pg, int texture_idx)
 {
     VK_LOG("create_texture: idx=%d", texture_idx);
     NV2A_VK_DGROUP_BEGIN("Creating texture %d", texture_idx);
@@ -1925,14 +1932,22 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     } else {
         LruNode *node = lru_lookup(&r->texture_cache, key_hash, &key);
         if (!node) {
-            /* LRU exhausted — all texture slots in-flight. Skip this
-             * texture bind and use whatever was previously bound. */
+            /*
+             * LRU exhausted -- every node is either one of the <= 4 current
+             * texture_bindings[] or still in flight. Nothing is bound here;
+             * the caller must not mark the slot clean.
+             *
+             * The DGROUP_END matters: the indent is incremented
+             * unconditionally by DGROUP_BEGIN at the top of this function,
+             * so returning without it leaked a level per occurrence.
+             */
             texprobe.lru_exhausted++;
             if (!r->texture_bindings[texture_idx]) {
                 texprobe.lru_exhausted_null++;
             }
             texprobe_report("LRU-EXHAUSTED");
-            return;
+            NV2A_VK_DGROUP_END();
+            return false;
         }
         snode = container_of(node, TextureBinding, node);
         binding_found = snode->image != VK_NULL_HANDLE;
@@ -2174,7 +2189,7 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
         }
 
         NV2A_VK_DGROUP_END();
-        return;
+        return true;
     }
 
     NV2A_VK_DPRINTF("Cache miss");
@@ -2583,6 +2598,7 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
     }
 
     NV2A_VK_DGROUP_END();
+    return true;
 }
 
 static bool check_textures_dirty(PGRAPHState *pg)
@@ -2696,44 +2712,64 @@ void pgraph_vk_bind_textures(NV2AState *d)
         }
 
         TextureBinding *prev_binding = r->texture_bindings[i];
-        create_texture(pg, i);
+        bool bound = create_texture(pg, i);
 
         /*
-         * create_texture returns without binding anything when the texture
-         * LRU is exhausted -- every slot in flight -- on the stated
-         * assumption that we can "use whatever was previously bound". On a
-         * FIRST bind there is nothing previously bound: texture_bindings[i]
-         * is NULL, having been cleared wholesale on the last renderer reset.
+         * create_texture binds nothing when the texture LRU can serve no
+         * node, on the stated assumption that we can "use whatever was
+         * previously bound".
          *
-         * That NULL is then permanent, because the tail of this loop clears
-         * texture_dirty[i], so the slot is never reconsidered once the LRU
-         * has room again. And it is dereferenced unguarded three times --
-         * vk/shaders.c in both the push-descriptor and the cached-descriptor
-         * paths, and vk/draw.c -- over ALL NV2A_MAX_TEXTURES rather than only
-         * the enabled ones. The `.sampler` member is read without even the
-         * tex_surface_direct ternary that shields `.imageView`, so the direct
-         * path crashes too.
+         * KEY OFF WHAT IT REPORTS, NOT OFF A NULL BINDING. #56 filed this as
+         * a crash -- a FIRST bind leaves texture_bindings[i] NULL, and that
+         * NULL is dereferenced unguarded in vk/shaders.c's two descriptor
+         * paths and in vk/draw.c, over all NV2A_MAX_TEXTURES rather than only
+         * the enabled slots, reading `.sampler` without even the
+         * tex_surface_direct ternary that shields `.imageView`. It is a real
+         * crash if it happens. But a NULL test can only ever catch it on a
+         * first bind, and a first bind cannot coincide with an exhausted LRU:
+         * texture_bindings[] is set to NULL only by
+         * pgraph_vk_finalize_textures, which then destroys the cache (and
+         * asserts num_used == 0), so a NULL slot always sits beside an EMPTY
+         * LRU. check_textures_dirty and pgraph_vk_check_textures_fast_skip
+         * both treat a NULL binding as dirty, so the first bind_textures call
+         * after init always runs this whole loop and leaves every slot either
+         * &dummy_texture or a real node, with at most NV2A_MAX_TEXTURES nodes
+         * used out of 512 or 1024. The one way to reach it is a
+         * texture_cache_size smaller than the number of enabled stages, which
+         * vk/buffer.c now floors.
          *
-         * So keep the invariant this loop already maintains for disabled
-         * slots -- a binding is never NULL, it is the dummy -- and leave the
-         * slot dirty so the real texture is bound on a later draw when the
-         * LRU can serve it. Substituting the dummy for one frame is a wrong
-         * texture; leaving the NULL is a segfault, and a permanent one.
+         * What IS reachable is exhaustion on a LATER bind, on a title with
+         * enough distinct textures in one submit window, and the NULL test
+         * misses it entirely: the binding is non-NULL, so control fell
+         * through to the tail below, which stamped tex_reg_cache[i] with the
+         * CURRENT registers and cleared texture_dirty[i]. The slot was then
+         * recorded as clean, up to date and matching registers it was not
+         * bound for, and bind_textures returns early at check_textures_dirty
+         * on every following draw -- which is the "permanent" in this issue's
+         * title, in the form that can actually occur.
          *
-         * This is the live half of the inherited "VK texture LRU exhaustion"
-         * entry. The abort it described is gone; this replaced it, which is
-         * worse, because an assert says what happened.
+         * So: keep the never-NULL invariant the loop already maintains for
+         * disabled slots, and leave the slot dirty and the register cache
+         * unstamped so the real texture binds on a later draw once the LRU
+         * can serve it. Substituting the dummy for a frame is a wrong
+         * texture; recording the slot as done is a wrong texture that never
+         * gets corrected.
          */
-        if (!r->texture_bindings[i]) {
-            r->texture_bindings[i] = &r->dummy_texture;
+        if (!bound) {
+            if (!r->texture_bindings[i]) {
+                r->texture_bindings[i] = &r->dummy_texture;
+            }
             if (r->texture_bindings[i] != prev_binding) {
                 r->texture_bindings_changed = true;
             }
-            /* texture_dirty[i] is deliberately NOT cleared: that is the whole
+            /*
+             * texture_dirty[i] is deliberately NOT cleared and
+             * tex_reg_cache[i] is deliberately NOT stamped: that is the whole
              * repair. The loop's other skips fall through to the shared tail
              * below for pipeline_state_dirty, update_timestamps and the debug
              * group, so this one must too -- ending the group per iteration
-             * would unbalance it against the single DGROUP_BEGIN. */
+             * would unbalance it against the single DGROUP_BEGIN.
+             */
             continue;
         }
 
