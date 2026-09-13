@@ -545,6 +545,46 @@ blocker rather than after someone doubts it. A blocker nobody can refute
 cheaply is the most expensive kind of comment a tracker can hold: it stops
 work for as long as it stands, and it costs nothing to write.
 
+## An inference can be valid and still wrong, because the model it is valid inside was never checked
+
+Contributed by the remote lane on 2026-09-13, from its own retraction on #51,
+and it is a different failure from bad reasoning.
+
+Silicon picks a cubemap corner from `sign(dot_1)` and `sign(dot_2)`; the third
+sign selects nothing. That is measured -- 100.0% pure on all eight sign classes
+across all six captures, at most 70 stray pixels in 56,909, all on class
+boundaries. The tracker said exactly that from the beginning. It was
+"corrected" to two products, `sign(z)*sign(x)` and `sign(y)*sign(x)`, by an
+argument that assumed the corner arrives through the cube-face projection
+`(s,t) = (-z/x, -y/x)` of a saturated direction, and then reasoned about which
+PAIR of corners the unsigned dotmaps can reach -- an edge rather than a
+diagonal.
+
+**That inference was sound. The projection it was sound inside had never been
+measured.** Silicon reads two sign bits; it does not project our vector. So a
+correct step produced a specific wrong answer, an arm was built on it, and four
+captures regressed.
+
+It is worth distinguishing from the failures already in this file. A curve fit
+is an answer chosen to match the data. A tautological falsifier is a leg your
+own change forces true. This is neither: the reasoning is checkable and holds,
+and the conclusion is still false, because the premise was a model somebody
+adopted without measuring. It reads as evidence precisely because the argument
+survives inspection.
+
+So when an inference rests on a transform, a projection, a layout or an
+encoding, say which of those is MEASURED and which is assumed, in the same
+breath as the conclusion. If the model underneath is unmeasured, the conclusion
+inherits that and must be registered as a candidate rather than a finding --
+and the legs should be the measurement itself, not the expression derived from
+it. The same lane's next step got this right: register the sign-to-corner table
+as the prediction, not the `vec3` expression that reproduces it.
+
+A related tell, and it is cheap to check: when a measurement agrees with a
+model to 100%, ask what a SYSTEMATIC error in the instrument would do. Here a
+consistent sign error in our own dots would have RELABELLED the table rather
+than adding noise, and no purity figure can see that.
+
 ## Conventions
 
 - Defects live in GitHub issues, grouped by likely shared cause, each carrying
