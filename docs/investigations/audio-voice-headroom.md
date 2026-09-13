@@ -241,6 +241,41 @@ reported as in-between. It is not folded into whichever leg it is closest to.
 **Not forced true by my change.** The census does not touch the mix, the level,
 or the pacing; it reads one register and counts.
 
+### C1-C4 — the level meter on device, registered after the capture route broke
+
+Added after the Galleon census run came back with no PCM (section 4) and before
+either of the two runs that use the meter. The capture route is blocked on a
+dispatcher restart no agent may perform, so the level now comes from an
+instrument inside the emulator: same tap point, same conventions, reported to
+logcat.
+
+Its agreement with `audio_measure.py` is **already established offline**, on
+identical samples, by `audio_level_check.py` over the published baseline
+capture: 26 of 26 statistics, every integer count exact, every percentile within
+0.05 dB. So a disagreement on device is not instrument error — it is either
+run-to-run variance or a real change in the level.
+
+That makes these legs the repeat that `audio-baseline.md` section 2 registered
+as R1-R4 and never got to take, and they are stated at the same tolerances:
+
+- **C1 — level repeats.** Galleon's median active-window AC RMS from the meter
+  is within **±2.0 dB** of the baseline's −29.37 / −29.45 dBFS, and p25/p75
+  within **±2.5 dB** of −32.01/−32.05 and −25.66/−25.64.
+- **C2 — the rails are a property of the level.** Peak reaches 32,767 on both
+  channels, with a non-zero clipped count below 0.01% of samples.
+- **C3 — the int16 accumulator does not wrap.** Zero wrap suspects (#73).
+- **C4 — DC stays negligible.** |DC| under 0.1 %FS on both channels.
+
+*Falsified* by any leg missing, and C1 is the consequential one: if a second
+unscripted playthrough of the same title on the same device at the same ref
+gives a different median, then a single soak is not a measurement of the
+emulator and every audio A/B on this project — the +6.118 dB headroom result
+included — rests on an assumption nobody checked.
+
+**Not forced true by my change.** The meter observes the buffer the sink is
+about to be handed and writes nothing back; the census reads one register.
+Neither touches the mix, the level or the pacing.
+
 ## 4. Results: every active voice carries headroom = 7, and that settles it
 
 **MEASURED.** Galleon, Retroid Pocket Nova, 90 s held, ref `8d96196c71`, binary
