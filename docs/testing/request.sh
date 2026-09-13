@@ -43,6 +43,7 @@
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
+REF_WAS_DEFAULTED=1
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""
@@ -54,7 +55,7 @@ while [ $# -gt 0 ]; do
         --tests) TESTS="$2"; shift 2;;
         --skip-tests) SKIP_TESTS="$2"; shift 2;;
         --only-tests) ONLY_TESTS="$2"; shift 2;;
-        --ref) REF="$2"; shift 2;;
+        --ref) REF="$2"; REF_WAS_DEFAULTED=0; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
         --device) DEVICE="$2"; shift 2;;
@@ -441,6 +442,33 @@ PYEOF
         echo "what it looks like. Use one." >&2
         exit 2
     fi
+fi
+
+# A NARROWED REQUEST IS USUALLY HALF OF A COMPARISON, AND --ref DEFAULTS TO
+# HEAD, WHICH IS USUALLY THE WRONG HALF.
+#
+# `--only-tests` and `--skip-tests` narrow a disc to compare its numbers with
+# something -- the same captures in company, an earlier arm, a scoreboard
+# column. That partner was almost never taken at HEAD, and HEAD is what this
+# script fills in when nobody says otherwise. So the default silently adds a
+# second variable to a measurement built to have one.
+#
+# Twice within an hour on 2026-09-13, and the second time it mattered: a
+# leakage probe was queued at HEAD to be compared against a sweep column
+# 31 hw/ commits behind, which would have mixed disc composition with 31
+# commits of renderer change. It was already claimed before I noticed, and the
+# recovery was to queue the in-company half at the SAME ref rather than to
+# reuse the column.
+#
+# Advisory rather than refusal: a narrowed disc at HEAD is perfectly correct
+# when the partner is also at HEAD, and this script cannot know which arm you
+# mean. Printing the ref it chose is enough to make the question askable.
+if { [ -n "$ONLY_TESTS" ] || [ -n "$SKIP_TESTS" ]; } && [ "$REF_WAS_DEFAULTED" = 1 ]; then
+    echo "note: this request narrows the disc and no --ref was given, so it" >&2
+    echo "      resolved to HEAD ($REF). A narrowed disc is usually compared" >&2
+    echo "      with the same captures elsewhere -- if that partner is at a" >&2
+    echo "      different ref, pass --ref to match it, or the comparison" >&2
+    echo "      carries a binary difference as well as a disc difference." >&2
 fi
 
 # A NAMED BASE ISO IS RESOLVED AND CHECKED HERE, not on the device.
