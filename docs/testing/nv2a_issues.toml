@@ -541,13 +541,140 @@ title = "Line and point rasterisation"
 # priority. Arm 0499184e2d reproduces the split to the digit on a fresh binary:
 # 1,000,125 channels over 342,679 structural pixels, 18.7 / 5.0 / 76.3.
 #
-# Tool: docs/testing/line_footprint.py (--edge / --footprint / --classify).
-# Full derivation in docs/investigations/line-width-residual.md.
+# DERIVED 2026-09-13, offline from the goldens, no device and no build. BOTH
+# remaining rules now have an answer, and one of the two entries above is
+# WRONG rather than incomplete.
+#
+# (A) THE PRIORITY RULE -- the 76.3%. Last-drawn wins (depth test off, every
+# palette entry opaque), so the golden's colour at an overlap pixel NAMES the
+# edge silicon drew last. Silicon's submission order for a polygon rasterised
+# in POLY_MODE_LINE is one sentence: triangulate exactly as the FILL path does,
+# drop the tessellation's internal edges, and per triangle (a,b,c) emit the
+# edge opposite a, then opposite b, then opposite c -- (b,c), (c,a), (a,b).
+# One sentence, four different per-primitive orders because the tessellations
+# differ, all four confirmed:
+#     TRIANGLES/STRIP/FAN   (b,c), (c,a), (a,b) per triangle
+#     QUADS       v0-v2 diag   (v1,v2), (v0,v1), (v2,v3), (v3,v0)
+#     QUAD_STRIP  v1-v2 diag   (v2,v0), (v0,v1), (v1,v3), (v3,v2) per quad
+#     POLYGON     fan from v0  (v1,v2), (v0,v1), (v2,v3), ..., (vn-1,v0)
+#     LINES/STRIP/LOOP        submission order -- ALREADY MATCHED
+# Nothing was tuned per primitive; that the same sentence gives a rotation for
+# the quad strip and a swap of the first two for QUADS is why it is a mechanism
+# rather than four fitted permutations.
+#
+# 100.00% of 225,558 DECISIVE pixels -- deep inside two or more rectangles,
+# inside no third, candidate colours >= 48/255 apart, golden within 10/255 of
+# exactly one. EVERY ONE, and 100.00% in each of the eleven candidate-set
+# classes separately. Rivals: opposite-a-c-b 93.75%, ours 78.51%,
+# first-submitted 30.92%, and every geometric rule between 41% and 48%, which
+# is chance for two-to-four candidates. A
+# COVERAGE-based priority rule cannot even be stated on this population: the
+# pixels are fully inside every candidate, so coverage is 1 for all of them.
+# Our order is REFUTED, not merely beaten -- it predicts (v1,v2) over (v0,v1)
+# in a triangle and in QUADS, and (v2,v0) over (v0,v1) in the quad strip, and
+# the goldens say the opposite in all three on thousands of pixels each. All 61
+# reliable relations are ACYCLIC, which is what leaves an emission order alive
+# at all; a cycle would have forced a geometric rule.
+#
+# (B) THE EXTENT RULE -- and THE COVERAGE HYPOTHESIS ABOVE IS DEAD. Swept over
+# 9,611 CLEAN cuts (no other edge's rectangle within 4px, at least w from
+# either butt cap, run bounded by background), 33 edges, cos(theta) 0.7119 to
+# 1.0000, widths 6-48:
+#     minor-axis extent = w * (1 + tan(theta)/2) = w * (max + min/2) / max
+# with max, min the larger and smaller of |dx|, |dy|. That is the perpendicular
+# rectangle with its half-width scaled by (max + min/2) / hypot(max, min):
+# silicon computes the segment length with the alpha-max-plus-beta-min
+# approximation, beta = 1/2, which OVER-estimates it by up to 6.07% at 45
+# degrees. "Silicon is wider than a perpendicular rectangle" is exactly that,
+# at every angle. In-band (floor/ceil) 100.00% against perpendicular 76.94%,
+# coverage 51.25%, w/cos^2 73.02%, w(1+tan) 55.17%, Bresenham 40.60%; on the 92
+# samples where the first two differ by >= 2px it is 100% against 0%.
+# Coverage dies where it is cheapest to check: at cos(theta) = 1.0000 exactly
+# (the quad strip's two vertical rails, 1,447 samples, fifteen widths, ZERO
+# variance) the extent is exactly w, and any "touches the pixel square" rule
+# gives w+1 for at least one parity. It also reproduces the QUADS column
+# heights this issue has quoted three times -- golden 10/14/19/28-29 at
+# w = 8/12/16/24, predicted 9.57/14.35/19.13/28.70, perpendicular
+# 8.6/12.9/17.2/25.8 which is our own 9/13/17/26.
+#
+# HELD OUT, and one leg FAILED. Fit on w >= 8 (order) and w >= 6 (extent);
+# Line_0003.0 - Line_0007.0 never looked at.
+#   leg 1 priority, held out: VOID. Nine decisive pixels across the five
+#     captures against a 200 floor named in the registration. THE LOW END OF
+#     THIS SUITE CANNOT TEST AN EDGE-PRIORITY RULE; a held-out priority
+#     measurement needs a capture the suite does not have.
+#   leg 2 extent, held out: PASS but non-discriminating, as registered in
+#     advance -- 100.0% over 4,445 samples, and the perpendicular rectangle
+#     manages 98.16% because at w = 3-5 the models differ by under a pixel.
+#   leg 3 the two rules explaining each other: FAIL, and the cause is found.
+#     Predicted the derived-extent footprint would lift the order to >= 99.3%
+#     and lift it on all five blocks; it reached 98.97% and FELL on Quad. The
+#     residual was NINE VOID CAPTURES: Line_0064.0-.7 and Line_FFFFFFFF have
+#     goldens whose ink mask is BYTE-IDENTICAL to Line_0001.0's (3,609 px, zero
+#     pixels of difference), because the width register holds nine bits of
+#     eighths and 64.0 does not fit, so hardware drew all nine at 1.0 while
+#     every model draws them at 64. Drop them and the perpendicular footprint
+#     leaves 149 wrong of 198,880 -- ALL of them in LLoop -- and the derived
+#     extent footprint removes all 149. So the priority rule is exact only when
+#     the extent rule builds the candidates, and LINE_LOOP's long-standing
+#     "some other cause" IS the extent rule. The leg still failed as
+#     registered; the threshold was not moved.
+#   leg 5a held-out reconstruction: PASS. Top-ranked on widths 3-7 at 99.28%
+#     within 16/255 of 35,725 px, but tied with opposite-a-c-b there, so it
+#     discriminates against our order (98.11%) and not between the two
+#     opposite-vertex schemes.
+#   leg 5b whole-corpus reconstruction: 3 of 4 clauses PASS; clause (2) FAILS
+#     as registered because the registered range included the nine void
+#     captures, which score ~1.5% for EVERY combination and are 27.8% of the
+#     scored population -- 72.07% against a 95% floor. On the 48 real captures:
+#     derived order + derived extent 99.31% within 16/255 of 1,741,370 interior
+#     ink pixels, against 85.43% for the order and footprint we draw today, and
+#     the extent rule beats the perpendicular rectangle for all EIGHT order
+#     schemes, which is what makes the two findings independent rather than
+#     entangled.
+#
+# LEAST CERTAIN, and it is no longer LINE_LOOP. The decisive pixels are
+# exhausted, so what is left is outside that population: 0.69% of interior ink
+# (99.31% within 16/255), and it does NOT thin with depth -- 0.42-0.50% remains
+# 3px inside the WINNING edge's own footprint, flat across w = 16, 48 and 63.
+# At w = 48, 357 such pixels: at most 21 name a different covering edge (and
+# none of those is a decisive pixel, so they do not contradict the 100%); the
+# rest match NO covering edge's colour at all, median best-candidate error
+# 44/255. Square caps were the obvious candidate and are measured wrong (butt
+# 99.4% within 16/255 at w = 48, half-extension 77.7%, square 64.3%), which
+# also re-confirms the butt-cap finding above on a metric that can see colour
+# rather than only coverage.
+#
+# IMPLIED CHANGE, priced but NOT WRITTEN -- prim_rewrite.c is unclaimed and
+# this lane claims no code:
+#   * rewrite_quads_line: emit v1-v2 before v0-v1. Two lines swapped.
+#   * rewrite_quad_strip_line: rotate, v2-v0 first. Two lines moved.
+#   * rewrite_polygon_line: fan order, so v1-v2 lands before v0-v1 and for
+#     count == 3 the order is (1,2), (2,0), (0,1). Small loop rewrite.
+#   * TRIANGLES/STRIP/FAN under POLY_MODE_LINE are NOT ours to order today:
+#     they keep VK_POLYGON_MODE_LINE (vk/draw.c:1593) and TURNIP picks. Matching
+#     silicon there means rewriting them to explicit LINES --
+#     pgraph_prim_rewrite_get_output_mode, needs_rewrite, max_output_indices and
+#     three new rewrite_*_line functions -- which is a much larger change than
+#     the three above and should be measured separately from them. Note the
+#     TRIANGLE_STRIP case is INFERRED, not measured: this suite draws no
+#     triangle strip and a strip's (a,b,c) labelling alternates with winding.
+#   * The extent rule cannot be expressed in Vulkan at all and still needs the
+#     generated line geometry this issue has priced three times -- but it now
+#     has a formula rather than a hypothesis: perpendicular half-width
+#     (w/2) * (max + min/2) / hypot(max, min).
+#
+# Tools: docs/testing/line_priority.py (--order / --rules / --extent /
+# --reconstruct) and docs/testing/line_footprint.py (--edge / --footprint /
+# --classify). Predictions:
+# docs/testing/predictions/line-edge-priority-order.json and
+# line-edge-priority-reconstruct.json. Full derivation in
+# docs/investigations/line-width-residual.md.
 disposition = "defect"
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 status = "fixed-part"
-status_note = "The mode knob is exhausted and that half is finished: bresenhamLines=1 was enabled and measured, arm 0499184e2d -> 8f84f5a8ab PRE-REGISTERED PASS on all 200 checks at +793,470 px and 41 of 41 Line_width captures worse, so it was reverted (64b1e2a054); smoothLines=0 and stippledBresenhamLines=0 close the other two values, and rectangularLines is what we already draw. What remains is not the mode: Line_width still carries 1,000,125 structural channels over 342,679 px, 76.3% of it edge priority with both renderers inking the pixel and disagreeing about which overlapping wide edge is on top, and the offline derivation of the quad-strip order (24 permutations, no device) has not been attempted."
+status_note = "The mode knob is exhausted and that half is finished (bresenhamLines=1 enabled and measured at +793,470 px, 41 of 41 Line_width captures worse, reverted 64b1e2a054; smoothLines=0 and stippledBresenhamLines=0 close the other two values; rectangularLines is what we draw and is the closest of the three). BOTH remaining rules are now DERIVED offline from the goldens with no device: edge priority is last-drawn wins with silicon triangulating as for fill and emitting each triangle's edges opposite a, then b, then c -- 98.97% of 203,023 decisive pixels against 77.85% for the order we emit today, which is refuted rather than beaten, and every geometric rival at chance; and the minor-axis extent is w*(1+tan(theta)/2), the alpha-max-plus-beta-min hypot approximation, 100% in-band over 9,611 clean cuts at 33 angles against 76.94% for a perpendicular rectangle and 51.25% for the COVERAGE hypothesis this issue had registered, which is dead. What is left to decide is not a rule but a measurement: three small prim_rewrite.c edits for QUADS, QUAD_STRIP and POLYGON need an arm, TRIANGLES/STRIP/FAN need rewriting to explicit LINES before their order is ours to set at all, and the extent rule still needs generated geometry -- now with a formula rather than a hypothesis. About 0.4% of interior ink stays unexplained by either rule."
 
 [issue.14]
 title = "Blend precision (low priority)"

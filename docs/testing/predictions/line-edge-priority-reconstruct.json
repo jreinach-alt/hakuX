@@ -21,5 +21,24 @@
     "leg5b_hypot_beats_perp_for_all_8_schemes": true
   },
   "must_not_move": [],
-  "expect_counts": {}
+  "expect_counts": {},
+  "judged_utc": "2026-09-13",
+  "verdict": {
+    "leg1_heldout_priority": "VOID -- 9 decisive pixels vs the 200 validity floor named in the registration",
+    "leg2_heldout_extent": "PASS, non-discriminating as registered -- 100.0% of 4,445 samples, perpendicular rectangle 98.16%",
+    "leg3_extent_footprint": "FAIL -- 98.97% vs the 99.3% floor, and fell on Quad; cause found: nine void captures (Line_0064.* and Line_FFFFFFFF have goldens whose ink mask is byte-identical to Line_0001.0's). Excluding them the perpendicular footprint leaves 149 misses of 198,880, all in LLoop, and the derived extent footprint removes all 149 -> 100.00% of 225,558.",
+    "leg5a_heldout_reconstruct": "PASS -- top-ranked, 99.28% within 16/255 of 35,725 px; tied with opp_acb, so discriminating against ours (98.11%) and not between the two opposite-vertex schemes",
+    "leg5b_corpus_reconstruct": "3 of 4 clauses PASS. (1) top-ranked PASS. (2) FAIL as registered: 72.07% vs the 95% floor, because the registered range included the nine void captures, which score ~1.5% for every combination and are 27.8% of the scored population. (3) PASS, 10.18pp over ours+perp. (4) PASS, hypot beats perp for all eight schemes. On the 48 real captures: 99.31% within 16/255 of 1,741,370 px against 85.43% for ours+perp."
+  },
+  "measured": {
+    "priority_decisive_pixels_clean": 225558,
+    "opp_abc_pct_clean": 100.0,
+    "opp_acb_pct_clean": 93.75,
+    "ours_pct_clean": 78.51,
+    "opp_abc_pct_clean_perp_footprint": 99.93,
+    "reconstruct_48_captures_scored": 1741370,
+    "reconstruct_opp_abc_hypot_le16": 99.31,
+    "reconstruct_ours_perp_le16": 85.43,
+    "unexplained_interior_ink_pct": 0.69
+  }
 }
