@@ -413,3 +413,60 @@ What follows either way, and this is the part that is not a candidate:
 - The discriminating test is cheap and already in the corpus: a planar quad's
   two triangles must come out EQUAL under any model that reads only the plane,
   and hardware says they are 0.52 apart.
+
+### The arm: #31's first ever, and what it measured (2026-09-13)
+
+Arms `1789312070-wslope-anchor-agent-645937` (ref `a00910d346`) and
+`1789312071-wslope-anchor-agent-645955` (ref `320d4dda03`), one disc carrying
+`W buffering` + `Depth Clamp`, 571 captures each, prediction
+`predictions/issue31-wslope-unclipped-row-grid.json` bound at queue time.
+
+**Exactly 8 of the 571 captures differ between the arms**, and they are the four
+`WBuf24{D,F}_TriH_V1_ZB{0,1}_ZS1_ZB` depth captures plus their four colour
+siblings. The other 563 are BYTE-IDENTICAL, which covers every `ZBuf*` capture,
+every `ZS0` capture, all four `TriV`, all three `ClipF`, all three `ClipW`,
+`FloorQuad`, `RoofQuad`, `WallQuad`, `LargeZ`, `LineStrip` and all 40
+`Depth_Clamp`.
+
+| capture | arm A | arm B | off-by-one B | structural B |
+|---|---|---|---|---|
+| `WBuf24D_TriH_V1_ZB0_ZS1_ZB` | 13,200 | **204** | 204 | **0** |
+| `WBuf24D_TriH_V1_ZB1_ZS1_ZB` | 13,200 | **204** | 204 | **0** |
+| `WBuf24F_TriH_V1_ZB0_ZS1_ZB` | 13,200 | **126** | 126 | **0** |
+| `WBuf24F_TriH_V1_ZB1_ZS1_ZB` | 13,200 | **126** | 126 | **0** |
+
+Structural 52,800 -> 0. Total differing 52,800 -> 660, and the registered prose
+band was [0, 1400] per capture with 546 predicted across the four, so the band
+holds and was not vacuous: a wrong grid phase would have left ~13,200.
+
+13,200 px moved in each depth capture, which answers the "did it execute"
+question by image comparison rather than by a total.
+
+**The mechanism leg, which is the one that decides it.** Recovered offsets from
+each arm's OWN captures, `wbuf_anchor_recover.py --ours`, against hardware's
+interval from the golden:
+
+| `TriH` residue | arm A | arm B | hardware |
+|---|---|---|---|
+| k = 0 mod 4 | [480392.4963, 480392.5161] | **[439380.4190, 439380.4325]** | [439380.4325, 439380.4454] |
+| k = 1 mod 4 | [503086.2170, 503086.2389] | **[459200.4454, 459200.4626]** | [459200.4059, 459200.4077] |
+| k = 2 mod 4 | [480392.4963, 480392.5161] | [480392.4963, 480392.5161] | [480392.4963, 480392.5161] |
+| k = 3 mod 4 | [503086.2170, 503086.2389] | [503086.2170, 503086.2389] | [503086.2170, 503086.2389] |
+
+Residues 0 and 1 moved a whole ladder rung, to the rung hardware is on;
+residues 2 and 3 stood still and are still *exactly* hardware's interval. That
+is the 4-grid phase 2 confirmed on the device, and it is what the registration
+asked for -- the patch chose the anchor row, the goldens chose which rung that
+had to be.
+
+**And the leg that did not fully land.** Arm B's recovered offsets are adjacent
+to hardware's intervals but not inside them: residue 0 is 0 to 0.013 BELOW,
+residue 1 is 0.038 to 0.055 ABOVE. That is the whole of the 660 remaining
+pixels, it is the same per-triangle plane-solve term the section above measures
+on `FloorQuad`, and it is why residues 2 and 3 land exactly while 0 and 1 do
+not: our float32 offset happens to fall inside hardware's interval on two rungs
+of this ladder and just outside on the other two.
+
+So the residual after this arm is 566,549 structural px: `ClipF` 460,949, which
+is unselectable from this corpus, and `TriV` 105,600, which is a third
+mechanism. Both are named above with the measurement each needs.
