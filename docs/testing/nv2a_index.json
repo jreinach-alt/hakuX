@@ -950,19 +950,19 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1269",
+   "loc": "hw/xbox/nv2a/nv2a.c:1310",
    "symbols": [],
    "text": "// memory_region_unref(&vga->vram); // FIXME: Is ths right?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1472",
+   "loc": "hw/xbox/nv2a/nv2a.c:1513",
    "symbols": [],
    "text": "// FIXME"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/nv2a.c:1485",
+   "loc": "hw/xbox/nv2a/nv2a.c:1526",
    "symbols": [],
    "text": "// FIXME: Split this up into subsections"
   },
@@ -4444,7 +4444,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "1cc934470ce652fff3792d2718e00ee9adb28a2d",
+  "emulator_commit": "3383bc9eec3ad30227b9a5ad72ba3adfbf33138a",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2788,
