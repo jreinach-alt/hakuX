@@ -7,6 +7,17 @@ quantisation, 405 captures, `progress_log_proof` true), and the full-corpus
 sweep `z-sweep-*` (APK `fb4dfafc6d38`, ref `ce9c4eecf8`). Reproduce all of it
 with `python3 docs/testing/interpolator_phase.py [CAPTUREDIR ...]`.
 
+**Recovered onto the integration branch 2026-09-13 and corrected in two places
+since.** This note was written on a retired agent worktree and was not an
+ancestor of `claude/es-de-launcher-disc-error-ojnl14`, so the census below could
+not be re-run at the tip; it now can, and it reproduces exactly. Read
+[`issue57-is-issue38-mech2.md`](issue57-is-issue38-mech2.md) alongside it, which
+(a) establishes that #57's whole structural residual IS this mechanism, mask for
+mask, (b) measures `Context_switch/GRZero` as a *partial* positive -- its second
+fan triangle is only 33.3% pair-exact against the first's 94.9% -- and (c) shows
+that section 3's row metric cannot tell an interpolated colour from a textured
+background, which voids `Smoothing_control` as a negative.
+
 Issue #38 mechanism 2 is "the host rasteriser's colour interpolation differs
 from the NV2A's", and it is the largest one-step class in the corpus — 70
 one-step-lo and 201 one-step-sym captures against mechanism 1's 24. The
