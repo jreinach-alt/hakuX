@@ -367,8 +367,19 @@ case "${1:-status}" in
         oid=$(basename "$orphan" .req)
         owner=""
         [ -f "$D/running/$oid.owner" ] && owner=$(cat "$D/running/$oid.owner" 2>/dev/null)
-        if [ -n "$owner" ] && [ "$owner" != "$DEVICE_LABEL" ]; then
-            log "leaving orphan $oid alone; it belongs to $owner"
+        # Requeue ONLY what this device owns. An owner-less entry is NOT mine
+        # by default: that is exactly what a second dispatcher meets on its
+        # first start, when the other device's in-flight request predates the
+        # owner file. Treating it as mine requeued a live run and handed the
+        # same result id to two devices at once -- caught within seconds of
+        # starting the Thor for the first time, which is the only reason this
+        # reads as a comment rather than as a corrupted arm.
+        #
+        # The cost of being wrong the other way is a request that sits in
+        # running/ until someone looks, which is loud and harmless. The cost
+        # of being wrong this way is two devices writing one result.
+        if [ "$owner" != "$DEVICE_LABEL" ]; then
+            log "leaving orphan $oid alone; owner=${owner:-none}, I am $DEVICE_LABEL"
             continue
         fi
         log "requeueing orphan $oid from a previous loop"
