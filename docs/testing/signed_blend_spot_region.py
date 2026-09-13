@@ -52,7 +52,26 @@ Per cell of the 5x3 grid, exactly, with nothing left over::
           +   490  quad-edge seam, the part of it the sign fold does not
                    already cover
 
-times fifteen cells: 96,855 sign fold + 7,350 seam-only = 104,205.
+times fifteen cells: 96,855 ink + 7,350 seam-only = 104,205.
+
+That split names the pixels each mechanism *touches*, and the two classes
+overlap, so they must not be subtracted from one another -- the same trap as
+one-step versus boundary-shift. Attributed without subtracting, per capture:
+
+    85,065  wrong under SADD and exact under all 75 unsigned captures
+            -- the sign fold alone
+    11,790  in the ink blocks AND in the seam set -- wrong for two independent
+            reasons at once, not separable
+     7,350  seam only
+   104,205
+
+`#50` does NOT reach here, which is worth stating because its region is the
+same `DrawColorAndAlphaStack` stack. Under `1_ADD_0` -- cell 0 of
+`#spot_1_ADD`, sfactor ONE and dfactor ZERO, where the blend unit contributes
+nothing -- that stack differs on 232 of its 2,304 px, all of them on the
+boundary lines, and not as a reordered stack. #50's 16,384 px box is
+`TestDetailed` geometry, and `TestDetailed` is interactive-only and absent from
+any disc we can build.
 
 The seam is a separate, pre-existing defect and the decomposition is stated so
 that neither of its two inputs is derived from the captures being judged:
@@ -320,6 +339,22 @@ def main():
         fails.append("SEAM: the unsigned residual is not the same set in every "
                      "cell, so it is not a geometric seam class and must not "
                      "be subtracted as one")
+    # Reporting only, and deliberately not a leg: it attributes the region to
+    # its two classes WITHOUT subtracting one from the other, because they
+    # overlap and a class count is a count of pixels a mechanism touches
+    # rather than of pixels it is solely responsible for.
+    cs = np.zeros((CELL_H, CELL_W), dtype=bool); cs[0:96, 0:24] = True
+    ca = np.zeros((CELL_H, CELL_W), dtype=bool); ca[0:96, 24:48] = True
+    print("\n=== ATTRIBUTION  overlapping classes, not subtracted ===")
+    print("  DrawColorStack / DrawColorAndAlphaStack / DrawAlphaStack q1..3 "
+          "under the 75")
+    print("  unsigned captures: %d / %d / %d px per cell -- boundary lines "
+          "only, so #50's"
+          % (int((seam & cs).sum()), int((seam & ca).sum()),
+             int((seam & ink & ~cs & ~ca).sum())))
+    print("  reordered stack C does not reach these captures; its region is "
+          "TestDetailed's.")
+
     print("\n=== LEG 2  %s region = sign fold (source byte >= 128) | seam, "
           "to the pixel ===" % eqn)
     print("  %-14s %8s %8s %8s %8s %8s %10s"
@@ -343,10 +378,16 @@ def main():
             unexpl += int((dcell & ~pred).sum())
             overpr += int((pred & ~dcell).sum())
         outside = int(d.sum()) - tot
+        fold_only = sum(int((c & ink & ~seam).sum()) for c in cells(d))
+        both_px = sum(int((c & ink & seam).sum()) for c in cells(d))
         print("  %-14s %8d %8d %8d %8d %8d   %s%s"
               % (f, int(d.sum()), ink_px, seam_px, unexpl, overpr,
                  hashlib.sha256(d.tobytes()).hexdigest()[:10],
-                 "" if not outside else "  %d px OUTSIDE the grid" % outside))
+                 "" if not outside else "  %d px OUTSIDE the grid" % outside),
+              end="")
+        print("   [fold alone %d, both %d, seam alone %d]"
+              % (fold_only, both_px, int(d.sum()) - fold_only - both_px
+                 - outside))
         if unexpl:
             fails.append("LEG 2 %s: %d differing px are neither the sign fold "
                          "nor the seam class -- a second defect" % (t, unexpl))
