@@ -1,0 +1,14 @@
+{
+  "registered_utc": "2026-09-13T05:11:34Z",
+  "who": "orchestrator",
+  "issue": "63",
+  "prediction": "MECHANISM: a guest write of NV_PGRAPH_CTX_SWITCH1 GRCLASS=0 must stop pgraph accepting methods. Two method fast paths test pg->cached_graphics_class and return before the site that refreshes it, so the write is never observed and we keep drawing. FALSIFIER, as a coverage measurement rather than a pixel total -- the three consequences the diagnosis committed to, inverted: (P1) in Context_switch/GRZero the region rows 240..431 x cols 64..575 (98,304 px, 192x512) must become the bare checkerboard 0xFF333333/0xFF444444 on ~100% of its pixels, where ours is currently checkerboard on 0.00% and the golden is 100.00%; (P2) the following triangle's two modal colours must move from ours (208,189,93,207) x1560 and (204,184,89,207) x1512 to the golden's (73,90,140,198) x1560 and (67,85,135,198) x1512 -- the counts are already identical, so the geometry is right and only the vertex colour is wrong; (P3) the polygon's upper half must become a 4-gon interpolation rather than a 7-gon one. Score RGBA, not RGB: max alpha delta is 64 and an RGB comparison reads it as a colour residual. NOT FALSIFIED BY the capture failing to reach 0 -- the upper half's interpolation is a separate class. MUST NOT MOVE: anything outside Context_switch. The change is confined to one register's write path, but the cached class it refreshes is read by every method dispatch, so a mistake here would show up corpus-wide rather than locally -- Blend_tests and Depth_buffer are carried as the canaries for that.",
+  "a_ref": "1d4794ac63",
+  "b_ref": "2b75e723af",
+  "must_not_move": [
+    "Blend_tests/*",
+    "Depth_buffer/*"
+  ],
+  "expect": {},
+  "expect_counts": {}
+}
