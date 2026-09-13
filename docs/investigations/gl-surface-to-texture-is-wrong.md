@@ -181,3 +181,41 @@ Note also that 12,224 is still 1,984 above Vulkan's 10,240 on this capture,
 so even the refusal does not close it — the rest is the swizzle
 address-mapping defect both renderers share, where whole blocks land in the
 wrong place and the two are wrong differently.
+
+
+### The swizzle reading is refuted too, at zero run cost
+
+The reading left standing above was that the fast path is a GPU blit and a
+swizzled guest surface is held *unswizzled* in its GL texture, so the blit
+cannot reapply the layout. That predicts a **pure rearrangement**: the fast
+path's output and the slow path's should hold the same pixels in different
+places.
+
+They do not. Comparing the two arms already on disk — `s2t0` took the fast
+path, `s2t1` refused it — over the 13,296 px where they differ:
+
+| | distinct colours | contents |
+|---|---:|---|
+| fast path | 3 | `#00AA00` ×6,112 · `#FFFFFF` ×4,616 · `#000000` ×2,568 |
+| slow path | 4 | `#FFFFFF` ×4,584 · `#000000` ×4,584 · `#00AA00` ×2,080 · `#7722FF` ×2,048 |
+
+**Not the same multiset**, so not a permutation and not a layout error. The
+fast path loses `#7722FF` entirely — 2,048 px to zero — and gains 4,032 px of
+`#00AA00`, which is the solid colour the test fills each of its four render
+targets with before drawing into them.
+
+So the fast path is not mis-arranging content; it is serving the **fill
+instead of the drawn result**. That is a staleness or wrong-binding
+signature, and it fits the rest of this issue — the path serving something
+other than what the guest last rendered — and it fits the run-to-run
+instability, where sometimes the content is caught and sometimes it is not.
+
+Which of those it is, this does not say, and it is not guessed at here. What
+it does is take the swizzle reading off the board for the cost of reading two
+captures that were already on disk: no build, no run, no device. A hypothesis
+that predicts a multiset invariant is cheap to kill, and it is worth looking
+for that shape before queueing an arm.
+
+Neither arm matches the golden's own multiset — `#FF2222` and `#2222FF`
+appear in the golden and in neither of ours — which is the shared
+address-mapping defect, unchanged and still separate.
