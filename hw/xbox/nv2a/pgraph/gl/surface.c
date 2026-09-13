@@ -197,9 +197,13 @@ static uint8_t android_expand_5_to_8(uint8_t value)
     return (value << 3) | (value >> 2);
 }
 
-/* Silicon expands a 6-bit field by replication too, not by the ratio; the
- * two differ at v = 11..15 and 48..52. See issue #59 and
- * docs/investigations/packed-texel-expansion.md. */
+/*
+ * Silicon expands a short colour field by replicating its high bits, not by
+ * scaling with the exact ratio -- measured in #59, where the level set decided
+ * it: 21 golden channels hold replicate-only levels and none holds a
+ * ratio-only level. The two disagree on 30 of the 64 six-bit values, always
+ * by one step. See docs/investigations/packed-texel-expansion.md.
+ */
 static uint8_t android_expand_6_to_8(uint8_t value)
 {
     return (value << 2) | (value >> 4);
@@ -322,6 +326,9 @@ static inline void android_neon_r5g6b5_to_rgba8_row(const uint8_t *src_row,
     while (remaining-- > 0) {
         uint16_t pixel = *src++;
         dst[0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
+        /* The vector body above replicates ((g << 2) | (g >> 4)); this tail
+         * used to scale by 255/63, so the last up-to-7 pixels of every row
+         * took a different rule from the rest of it. */
         dst[1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
         dst[2] = android_expand_5_to_8(pixel & 0x1F);
         dst[3] = 0xFF;
@@ -546,6 +553,28 @@ static void android_surface_guest_to_rgba8(const SurfaceBinding *surface,
                 uint16_t pixel = lduw_le_p(src_row + x * 2);
                 dst_row[x * 4 + 0] = android_expand_5_to_8((pixel >> 10) & 0x1F);
                 dst_row[x * 4 + 1] = android_expand_5_to_8((pixel >> 5) & 0x1F);
+                dst_row[x * 4 + 2] = android_expand_5_to_8(pixel & 0x1F);
+                dst_row[x * 4 + 3] = 0xFF;
+            }
+        }
+        break;
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:
+        /*
+         * Both gates in front of this call admit R5G6B5 --
+         * android_surface_to_texture_rgba8_compatible() returns true for it
+         * and android_surface_to_texture_needs_guest_reinterpretation()
+         * returns false -- so the default: below was reachable and aborted.
+         * What hid it is the render_surface_to() blit earlier in
+         * render_surface_to_texture_slow(), which returns only for
+         * GL_TEXTURE_2D and only when it succeeds. See #62.
+         */
+        for (y = 0; y < height; y++) {
+            const uint8_t *src_row = src + y * src_stride;
+            uint8_t *dst_row = dst + y * width * 4;
+            for (x = 0; x < width; x++) {
+                uint16_t pixel = lduw_le_p(src_row + x * 2);
+                dst_row[x * 4 + 0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
+                dst_row[x * 4 + 1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
                 dst_row[x * 4 + 2] = android_expand_5_to_8(pixel & 0x1F);
                 dst_row[x * 4 + 3] = 0xFF;
             }
@@ -1338,12 +1367,31 @@ static void render_surface_to_texture_slow(NV2AState *d,
 
     size_t bufsize = width * height * surface->fmt.bytes_per_pixel;
 
+    /*
+     * The download fills buf at the SURFACE's dimensions, but width/height are
+     * reassigned to the texture shape's just below and every consumer reads
+     * buf at those instead. The slow path is by construction the one taken
+     * when the fast path refused, and a dimension mismatch is one of the
+     * reasons it refuses, so a texture larger than the surface read past the
+     * allocation. Size for whichever is larger; that removes the over-read
+     * without changing any case that already worked.
+     *
+     * The row stride below is still the texture width, so a genuine mismatch
+     * also shears the image. That is a separate question about what this path
+     * is supposed to do, and it is not answered here. See #62.
+     */
+    unsigned int tex_w = texture_shape->width, tex_h = texture_shape->height;
+    pgraph_apply_scaling_factor(pg, &tex_w, &tex_h);
+    size_t texsize = (size_t)tex_w * tex_h * surface->fmt.bytes_per_pixel;
+    if (texsize > bufsize) {
+        bufsize = texsize;
+    }
+
     uint8_t *buf = g_malloc(bufsize);
     surface_download_to_buffer(d, surface, false, false, false, buf);
 
-    width = texture_shape->width;
-    height = texture_shape->height;
-    pgraph_apply_scaling_factor(pg, &width, &height);
+    width = tex_w;
+    height = tex_h;
 
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, texture_shape)) {
