@@ -898,3 +898,55 @@ rather than folding it in correctly.
 
 So the next attempt is not a gate. It is the mapping, per dotmap, and it needs
 its own registration.
+
+### Pixel count and mechanism fit are anti-correlated, so do not bank the two that improved
+
+The obvious next move after the failed arm is to gate the substitution to the
+two captures it improved and bank −22,189 px. The corner confusion matrix says
+that would keep the worst evidence and throw away the best.
+
+Per capture on arm B: direct corner agreement, and agreement under the single
+best fixed permutation of the four corners (chance is 25%):
+
+| capture | delta px | direct | best permutation |
+|---|---:|---:|---:|
+| `-1to1` | **−11,251** | 32.7% | 64.4% |
+| `-1to1GL` | **−10,938** | 32.3% | 64.5% |
+| `-1to1D3D` | +4,525 | 4.1% | **91.8%** |
+| `0to1` | +8,242 | 0.1% | **80.0%** |
+| `HiLo_1` | +8,877 | 0.0% | 75.6% |
+| `HiLoHemi` | +6,382 | 0.0% | 66.4% |
+
+**The two captures that improved fit the mechanism worst.** `-1to1D3D`
+regressed by 4,525 px and is 91.8% correct under one relabelling -- nearly
+right, with the corner labels permuted. `-1to1` improved by 11,251 px and is
+64% at best.
+
+The reason is the golden's own shape, not the fix. `-1to1`'s golden is
+near-uniform over four corners, so a wrong-but-uniform output collects ~33% by
+coincidence and the pixel count flatters it. `0to1`'s golden holds two corners,
+so a four-corner output is catastrophic in pixels even when the underlying rule
+is one permutation from correct. **A pixel count is a bad judge of this defect,
+and gating on it would have selected against the mechanism.**
+
+### The permutations, and why they are not yet a fix
+
+Reading the best permutation as a transform of the face coordinates:
+
+| capture | fit | implied |
+|---|---:|---|
+| `0to1`, `HiLo_1` | 80.0%, 75.6% | `s` flip **and** `t` flip |
+| `-1to1`, `-1to1GL` | 64.4%, 64.5% | `t` flip only |
+| `-1to1D3D` | 91.8% | `s` flip, `t` mixed |
+| `HiLoHemi` | 66.4% | mixed |
+
+There is real structure here -- every row is far above chance, and two rows
+agree exactly. But **no permutation reaches 100% on any capture**, so no single
+relabelling fully explains even one, and the transforms differ by dotmap.
+
+Fitting six permutations to six captures is six free parameters for six
+observations: it would score beautifully and mean nothing. That is the same
+trap as a threshold tuned until the counts match. **The corner mapping has to
+be derived from what each dotmap does to the dots' signs, not fitted per
+capture**, and until it is derived there is nothing here worth landing -- not
+even the two captures that improved.
