@@ -48,8 +48,16 @@ per-window ratio is unusable — see the noise floor below.
 **The corrected ratio is 6 to 12 real discards per real generation, and it
 cannot be quoted more precisely than that.** Its floor is the `em`/`pr` class
 — a factor of two — not the `ev`/`sp`/`ov` ±5% class, because all of the
-spread is on the discard side. `cg` is the most reproducible counter in the
-whole set at 2%.
+spread is on the discard side.
+
+And that asymmetry is the most useful thing here, more than the ratio itself:
+**generations are a near-constant of the title and discards are not.** `cg` is
+3,465 / 3,442 / 3,392 across three runs of one binary — 2% — while `calls`
+moves 1.87x (42,463 / 40,900 / 22,741) and `di` 1.94x. So the amount of code
+Crimson Skies causes to be *generated* in 90 s is fixed; what varies by a
+factor of two is how many times it is thrown away and recycled. Every bit of
+the waste ratio's noise is on the numerator, and a lever aimed at generation
+cost is being aimed at the one quantity in this family that does not move.
 
 Three things follow, and the second is the one that matters:
 
