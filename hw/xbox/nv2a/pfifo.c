@@ -95,6 +95,31 @@
 #define XEMU_OPT_FIFO_SKEW_BOUND 0
 #endif
 
+#define FIFO_SKEW_OFF       0   /* no bound */
+#define FIFO_SKEW_EVERY     1   /* hold at every submission (measured, costly) */
+#define FIFO_SKEW_DRAW_ONLY 2   /* hold only where a draw is outstanding */
+
+/*
+ * Words the pre-scan will walk before giving up and holding anyway.
+ *
+ * This constant does two jobs and the second is the one that makes the scan
+ * affordable. It bounds the scan, obviously. Less obviously it bounds the
+ * REGION the scan has to cover: the scan's subject is the whole un-consumed
+ * span `[DMA_GET, DMA_PUT)`, which with a selective bound is free to grow
+ * (that is the point -- draw-free submissions are no longer drained), and a
+ * growing span rescanned at every submission is quadratic. Holding when the
+ * span exceeds the cap forces a drain, so the span is never larger than this
+ * and the per-submission scan is O(cap) rather than O(run length).
+ *
+ * 16,384 words = 64 KiB, against a measured steady-state un-consumed backlog
+ * of 3,396-13,352 bytes mean and 32,264 bytes max on Galleon with the every-
+ * submission bound in force (nova, 240 s, `1789303629-skew-bound-cost-1885779`).
+ * So the cap sits at 2x the largest backlog that run ever showed, and `big=`
+ * on the `fifoskew` line counts the submissions that reach it rather than
+ * leaving the headroom assumed.
+ */
+#define FIFO_SKEW_SCAN_MAX_WORDS 16384
+
 /* Poll DMA_GET without sleeping for this long first. The pusher spins for
  * FIFO_SPIN_ACTIVE_NS before parking, so whenever it is already awake -- the
  * common case under load -- a submission is consumed without either thread
@@ -106,13 +131,41 @@
  * that being wrong about that costs a frame rather than the machine. */
 #define FIFO_SKEW_WAIT_MS  250
 
-static int fifo_skew_bound_enabled(void)
+#define FSK_HDR_MBZ 0xa0030003u
+
+typedef enum {
+    FSK_SEG_NO_DRAW,   /* provably carries no draw: the hold may be skipped */
+    FSK_SEG_DRAW,      /* carries, or may carry, a draw: hold */
+    FSK_SEG_WRAP,      /* not a linear span (a JMP or a ring wrap): hold */
+    FSK_SEG_OVERSIZE,  /* longer than the scan cap: hold */
+} FskSegVerdict;
+
+/*
+ * Clock reads that exist only for the `fifoskew` line. Elided off Android for
+ * the same reason the histogram is: there is nothing there for it to print
+ * into, and `nv2a_clock_ns()` in a per-submission path is not free.
+ */
+#ifdef __ANDROID__
+#define FSK_NOW() nv2a_clock_ns()
+#else
+#define FSK_NOW() 0
+#endif
+
+static int fifo_skew_bound_mode(void)
 {
     static int v = -1;
 
     if (v < 0) {
         const char *e = getenv("HAKUX_FIFO_SKEW_BOUND");
-        v = (e && e[0]) ? (e[0] != '0') : XEMU_OPT_FIFO_SKEW_BOUND;
+        if (e && e[0]) {
+            /* Any other non-zero value keeps the old meaning of this
+             * variable, which is the every-submission bound. */
+            v = (e[0] == '0') ? FIFO_SKEW_OFF
+              : (e[0] == '2') ? FIFO_SKEW_DRAW_ONLY
+                              : FIFO_SKEW_EVERY;
+        } else {
+            v = XEMU_OPT_FIFO_SKEW_BOUND;
+        }
     }
     return v;
 }
@@ -197,6 +250,29 @@ static struct {
     uint32_t gave;
 
     /*
+     * The selective bound's pre-scan, counted because the whole claim is that
+     * it is cheaper than the hold it replaces and that is not self-evident:
+     * the scan walks the same bytes, on the same thread, that the hold was
+     * waiting for. `ns` against the window span is the answer -- a scan
+     * costing what the hold cost would show up as a comparable share of wall
+     * clock, and mode 1's share was 40.7% on Galleon.
+     *
+     * `nodraw` is the reduction; `draw` + `wrap` + `big` is what still holds.
+     * The three hold reasons are separate because they fail for different
+     * reasons and only the first is the mechanism: `wrap` is a span that is
+     * not linearly addressable and `big` is the scan cap, and both are
+     * conservative fallbacks to mode 1's behaviour rather than draws.
+     */
+    uint32_t scan_n;
+    uint64_t scan_words;
+    uint64_t scan_ns;
+    uint32_t scan_draw;
+    uint32_t scan_nodraw;
+    uint32_t scan_wrap;
+    uint32_t scan_big;
+    uint32_t scan_words_max;
+
+    /*
      * Publish timestamps still waiting to be consumed. Timed per submission
      * rather than "oldest outstanding to caught up", because the race is
      * per draw: what matters is how long THIS segment sat unread, not how
@@ -257,15 +333,20 @@ static void fsk_dump_and_reset(int64_t now)
         "backlog(mean=%lld max=%u) "
         "drain(n=%u mean=%lld p50=%lld p90=%lld p99=%lld max=%lld) "
         "bound=%d held(n=%u mean=%lld max=%lld spun=%u slept=%u gave=%u) "
+        "scan(n=%u words=%llu wmax=%u ns=%llu draw=%u nodraw=%u wrap=%u big=%u) "
         "lost=%u",
         (long long)(span / 1000000), s_fsk.kicks, s_fsk.kicks_behind,
         s_fsk.wrap, s_fsk.ring_len,
         (long long)backlog_mean, s_fsk.backlog_max,
         s_fsk.drain_n, (long long)drain_mean, (long long)p50,
         (long long)p90, (long long)p99, (long long)s_fsk.drain_max_ns,
-        fifo_skew_bound_enabled(),
+        fifo_skew_bound_mode(),
         s_fsk.held_n, (long long)held_mean, (long long)s_fsk.held_max_ns,
-        s_fsk.held_spun, s_fsk.held_slept, s_fsk.gave, s_fsk.pend_lost);
+        s_fsk.held_spun, s_fsk.held_slept, s_fsk.gave,
+        s_fsk.scan_n, (unsigned long long)s_fsk.scan_words,
+        s_fsk.scan_words_max, (unsigned long long)s_fsk.scan_ns,
+        s_fsk.scan_draw, s_fsk.scan_nodraw, s_fsk.scan_wrap, s_fsk.scan_big,
+        s_fsk.pend_lost);
 
     memset(s_fsk.drain_bucket, 0, sizeof(s_fsk.drain_bucket));
     s_fsk.kicks = 0;
@@ -282,6 +363,14 @@ static void fsk_dump_and_reset(int64_t now)
     s_fsk.held_spun = 0;
     s_fsk.held_slept = 0;
     s_fsk.gave = 0;
+    s_fsk.scan_n = 0;
+    s_fsk.scan_words = 0;
+    s_fsk.scan_ns = 0;
+    s_fsk.scan_draw = 0;
+    s_fsk.scan_nodraw = 0;
+    s_fsk.scan_wrap = 0;
+    s_fsk.scan_big = 0;
+    s_fsk.scan_words_max = 0;
     s_fsk.pend_lost = 0;
     s_fsk.window_start_ns = now;
 }
@@ -347,6 +436,22 @@ static void fsk_note_caught_up(int64_t now)
     }
 }
 
+static void fsk_note_scan(int verdict, uint32_t words, int64_t ns)
+{
+    s_fsk.scan_n++;
+    s_fsk.scan_words += words;
+    s_fsk.scan_ns += (uint64_t)(ns > 0 ? ns : 0);
+    if (words > s_fsk.scan_words_max) {
+        s_fsk.scan_words_max = words;
+    }
+    switch (verdict) {
+    case FSK_SEG_NO_DRAW:  s_fsk.scan_nodraw++; break;
+    case FSK_SEG_DRAW:     s_fsk.scan_draw++;   break;
+    case FSK_SEG_WRAP:     s_fsk.scan_wrap++;   break;
+    default:               s_fsk.scan_big++;    break;
+    }
+}
+
 static void fsk_note_held(int64_t held_ns, bool spun, bool gave)
 {
     s_fsk.held_n++;
@@ -385,6 +490,7 @@ static void fsk_maybe_dump(int64_t now)
 #define fsk_note_submit(d, put, now)          ((void)0)
 #define fsk_note_caught_up(now)               ((void)0)
 #define fsk_note_held(ns, spun, gave)         ((void)(spun), (void)(gave))
+#define fsk_note_scan(v, words, ns)           ((void)(v), (void)(words))
 #define fsk_maybe_dump(now)                   ((void)0)
 #endif
 
@@ -557,6 +663,165 @@ void pfifo_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
  * everywhere else: the device lock goes first, the BQL is the outer one. See
  * nv2a_set_surface_scale_factor and the NOP-error path in pgraph.c.
  */
+/*
+ * SELECTIVITY: does the un-consumed pushbuffer contain a DRAW?
+ *
+ * The guarantee that closes #44 is "no unprocessed draw sits in the FIFO
+ * while the guest runs". Holding at every submission is far stronger than
+ * that -- a submission carrying no draw adds no draw -- and the gap is
+ * enormous: the `Texture border` disc makes 148,704 submissions for 180
+ * draws, so the every-submission bound pays 826 holds for every one the
+ * invariant needs, and the measured price of that is `gfps` p90 29 -> 13 on
+ * Galleon with the guest blocked 40.7% of wall clock.
+ *
+ * WHAT THE GUEST IS ALLOWED TO RACE PAST, stated precisely, because "skip the
+ * hold" is not "skip the write" and the difference is the whole argument:
+ *
+ *   - The DMA_PUT store has ALREADY happened when we get here (`user_write`
+ *     stores it, then kicks). Selectivity never reorders or withholds the
+ *     publication; it only decides whether the guest's vCPU thread is parked
+ *     afterwards. The pusher sees an identical register sequence either way.
+ *   - What the guest may race past is the CONSUMPTION of methods that perform
+ *     no guest-memory read. #44's race is `get_texture_layout` reading
+ *     `vram_ptr + offset` on the PFIFO thread inside the draw, and
+ *     `pgraph_vk_update_vertex_ram_buffer` doing the same for vertex data;
+ *     both happen at the draw. A register write does not read guest memory,
+ *     so a segment of register writes cannot lose that race.
+ *   - What it may NOT race past, and this is the narrowing that has to travel
+ *     with the change: the 2D class also reads guest memory outside a draw --
+ *     `pgraph_image_blit` and the surface-download paths. Those ARE covered
+ *     by the every-submission bound and are NOT covered here. This is a
+ *     deliberately narrower guarantee than mode 1's, scoped to the mechanism
+ *     #44 measured, and the method table below is where a blit would be added
+ *     if one is ever shown to race.
+ *
+ * WHY THE SCAN IS A WORD FILTER AND NOT A PARSE. A false POSITIVE costs one
+ * unnecessary hold; a false NEGATIVE breaks the invariant silently, which is
+ * the failure this lane exists to remove. So the test is deliberately loose
+ * in the safe direction: every word is treated as a possible method header,
+ * with no attempt to track which words are headers and which are parameters.
+ * A parameter that happens to look like a BEGIN_END header holds the guest
+ * for nothing. A real BEGIN_END header cannot be missed, because:
+ *
+ *   - both header forms (increasing, `(w & 0xe0030003) == 0`, and
+ *     non-increasing, `== 0x40000000`) have bits 31, 29, 17, 16, 1 and 0
+ *     clear, so FSK_HDR_MBZ is a SUPERSET filter and rejects no real header;
+ *   - JMP, old-JMP, CALL and RETURN all set one of those bits, so they are
+ *     rejected -- and none of them can carry a method number anyway;
+ *   - an INCREASING run can reach BEGIN_END without a header naming it, so
+ *     the test is the run's whole span `[m, m + 4*count)` and not `m` alone.
+ *     Applying the increasing rule to a non-increasing header is a further
+ *     over-approximation, which is again the safe direction.
+ *
+ * This costs one load, one mask and two compares per word, against the
+ * pusher's own per-word method dispatch. It is not the pusher's walk done
+ * twice; `scan(ns=)` on the `fifoskew` line is what says so rather than this
+ * comment.
+ */
+/*
+ * A method run ALREADY IN FLIGHT whose remaining span covers BEGIN_END.
+ *
+ * Without this the scan has a hole, and it is the one hole that a
+ * scan-the-new-bytes design cannot see. A header can sit at the very end of
+ * one segment with its parameter words in the next: the pusher consumes up to
+ * DMA_PUT, runs out of data with `METHOD_COUNT` still set, and parks with
+ * DMA_GET == DMA_PUT -- which satisfies a hold. The method has NOT executed.
+ * The next segment then carries only parameter words, no header, so a scan of
+ * it alone says "no draw" and releases the guest into exactly the race the
+ * bound exists to close.
+ *
+ * The pusher's own DMA state says so directly, so this needs no carry flag
+ * and no guesswork about how many submissions a run might span. Read under
+ * pfifo.lock, which the guest submission path holds (`user.c:83`).
+ */
+static bool fifo_skew_pending_method_is_draw(NV2AState *d)
+{
+    uint32_t st = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_STATE];
+    uint32_t cnt = GET_MASK(st, NV_PFIFO_CACHE1_DMA_STATE_METHOD_COUNT);
+
+    if (!cnt) {
+        return false;
+    }
+
+    uint32_t m = GET_MASK(st, NV_PFIFO_CACHE1_DMA_STATE_METHOD) << 2;
+
+    if (GET_MASK(st, NV_PFIFO_CACHE1_DMA_STATE_METHOD_TYPE) ==
+        NV_PFIFO_CACHE1_DMA_STATE_METHOD_TYPE_NON_INC) {
+        return m == NV097_SET_BEGIN_END;
+    }
+    return m <= NV097_SET_BEGIN_END &&
+           NV097_SET_BEGIN_END < m + 4u * cnt;
+}
+
+/*
+ * Scan the whole un-consumed span, `[DMA_GET, put)`, not just the bytes this
+ * submission added.
+ *
+ * That is the invariant restated verbatim -- "no unprocessed draw in the
+ * FIFO" is a statement about everything the pusher has yet to reach -- and it
+ * is why no induction over previous segments is needed to believe this. With
+ * a selective bound DMA_GET genuinely lags, because draw-free submissions are
+ * no longer drained, so "the bytes I just published" and "the bytes nobody
+ * has read" are different sets and only the second one answers the question.
+ * FIFO_SKEW_SCAN_MAX_WORDS is what stops the second one growing without
+ * bound.
+ */
+static FskSegVerdict fifo_skew_scan_for_draw(NV2AState *d, uint32_t put,
+                                             uint32_t *words_out)
+{
+    *words_out = 0;
+
+    if (fifo_skew_pending_method_is_draw(d)) {
+        return FSK_SEG_DRAW;
+    }
+
+    uint32_t get = d->pfifo.regs[NV_PFIFO_CACHE1_DMA_GET];
+
+    if (put <= get || ((put - get) & 3u)) {
+        /* Behind DMA_GET, equal to it, or not word-aligned: the span is not
+         * linearly addressable. A JMP inside it would be fine (the bytes
+         * skipped are stale and can only over-approximate), but a wrap is
+         * not, and the two are indistinguishable from here. */
+        return FSK_SEG_WRAP;
+    }
+
+    uint32_t nwords = (put - get) / 4u;
+    if (nwords > FIFO_SKEW_SCAN_MAX_WORDS) {
+        return FSK_SEG_OVERSIZE;
+    }
+
+    hwaddr dma_instance =
+        GET_MASK(d->pfifo.regs[NV_PFIFO_CACHE1_DMA_INSTANCE],
+                 NV_PFIFO_CACHE1_DMA_INSTANCE_ADDRESS) << 4;
+    hwaddr dma_len = 0;
+    const uint8_t *dma = nv_dma_map(d, dma_instance, &dma_len);
+
+    if (!dma || (hwaddr)put > dma_len) {
+        return FSK_SEG_WRAP;
+    }
+
+    const uint32_t *w = (const uint32_t *)(dma + get);
+    *words_out = nwords;
+
+    for (uint32_t i = 0; i < nwords; i++) {
+        uint32_t word = ldl_le_p(w + i);
+
+        if (word & FSK_HDR_MBZ) {
+            continue;
+        }
+
+        uint32_t m = word & 0x1ffcu;
+        uint32_t cnt = (word >> 18) & 0x7ffu;
+
+        if (m <= NV097_SET_BEGIN_END &&
+            NV097_SET_BEGIN_END < m + 4u * cnt) {
+            return FSK_SEG_DRAW;
+        }
+    }
+
+    return FSK_SEG_NO_DRAW;
+}
+
 static void pfifo_bound_skew(NV2AState *d, uint32_t put)
 {
     int64_t t0 = nv2a_clock_ns();
@@ -681,11 +946,42 @@ void pfifo_kick(NV2AState *d)
     }
     d->pfifo.skew_last_put = put;
 
-    fsk_note_submit(d, put, nv2a_clock_ns());
+    fsk_note_submit(d, put, FSK_NOW());
 
-    if (fifo_skew_bound_enabled() && bql_locked()) {
-        pfifo_bound_skew(d, put);
+    int mode = fifo_skew_bound_mode();
+
+    /*
+     * `bql_locked()` is not redundant with `current_cpu`. A vCPU thread can
+     * reach here on a path that does not hold the BQL, and pfifo_bound_skew
+     * releases both locks by hand; releasing one it does not hold is the kind
+     * of bug that survives a soak and fails once.
+     */
+    if (mode == FIFO_SKEW_OFF || !bql_locked()) {
+        return;
     }
+
+    if (mode == FIFO_SKEW_DRAW_ONLY) {
+        uint32_t words = 0;
+        int64_t t0 = FSK_NOW();
+        FskSegVerdict verdict = fifo_skew_scan_for_draw(d, put, &words);
+
+        fsk_note_scan(verdict, words, FSK_NOW() - t0);
+
+        /*
+         * The ONLY early return. Note what has already happened by this
+         * point and is not being skipped: DMA_PUT carries the guest's new
+         * value, `fifo_kick` has been set and `fifo_cond` broadcast, so the
+         * pusher has been told there is work exactly as it would have been
+         * under mode 1. What is skipped is parking this thread, and it is
+         * skipped only for a span the scan has walked end to end and found no
+         * draw-covering method header in.
+         */
+        if (verdict == FSK_SEG_NO_DRAW) {
+            return;
+        }
+    }
+
+    pfifo_bound_skew(d, put);
 }
 
 static bool can_fifo_access(NV2AState *d) {
