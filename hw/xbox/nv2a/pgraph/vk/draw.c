@@ -3590,6 +3590,78 @@ mfp_miss: (void)0;
  * bump per flip. It therefore INFLATES tex_uploads and DEFLATES the reported
  * rate: the rate is conservative on this axis, while remaining an upper
  * bound on byte-level overlap on the page-granularity axis.
+ *
+ * WHAT THE MEASUREMENT POINTS AT, AND WHY THE FIX IS NOT AT THIS SITE.
+ *
+ * Crimson Skies reads Tr 7113/12540 = 0.567, two runs of one binary agreeing
+ * to 0.2%, against exactly 0 on DOA3 and JSRF over 2.8 M draws; and the
+ * vertex site never races (0 over 156,592 copies, a >10,000x separation). So
+ * the hazard is real, large, reproducible, and it has ONE site -- this one.
+ * The obvious next step is a fix here. There is none that closes it, and the
+ * reason is structural rather than a matter of effort:
+ *
+ *   The bytes this upload ought to read are the ones the guest had written
+ *   when it PUBLISHED the draw. Nothing at this site knows when that was.
+ *   The guest's only observable act between "texture written" and "texture
+ *   overwritten" is its DMA_PUT store, which is in pfifo.c. A read-side-only
+ *   change can therefore narrow the window but never ORDER the read against
+ *   the guest -- and the bar for this mechanism is Tr -> 0, not Tr smaller,
+ *   because a change that merely shifts timing moves the distribution and
+ *   cannot zero it.
+ *
+ * Three options were priced. The two read-side ones fail on mechanism rather
+ * than on cost, which is why neither is worth an arm:
+ *
+ *   RE-READ ON A DIRTY BIT, bounded to one retry. This does terminate -- two
+ *   decodes, not a loop waiting for the guest to go quiet, which on this FMV
+ *   it never does since 57% of uploads race. But the retry reads under the
+ *   same conditions as the first, so the result is torn later rather than
+ *   not torn. Cost is a second full decode on the raced fraction (~47
+ *   FMV-sized decodes/s here) bought for no guarantee.
+ *
+ *   REJECT A RACED UPLOAD AND KEEP THE PREVIOUS TEXTURE. Read-side, no
+ *   retry, costs nothing, and it is refuted by an oracle already on disk
+ *   rather than by argument: keeping the previous upload IS #44's defect --
+ *   2D_BorderTex_SZ rendering pass-1 content where pass-2 belongs -- so it
+ *   would trade a tear for the exact artefact the goldens already score
+ *   wrong, on the one workload that can see either.
+ *
+ *   ORDER THE READ AGAINST THE GUEST. Correct, and already implemented, in
+ *   pfifo.c as pfifo_bound_skew -- whose own comment names THIS site: "that
+ *   covers texture uploads (get_texture_layout) and vertex RAM alike,
+ *   because both happen on this thread inside method processing". In the
+ *   default configuration that justification holds exactly: RCMD_DRAW is
+ *   never enqueued, and both draw queues are off, so every window this probe
+ *   counts opens and closes inside PFIFO method processing while the bound
+ *   holds the guest. The reorder window does not break it either -- it
+ *   snapshots at ENQUEUE time (try_snapshot_*, on the PFIFO thread) and
+ *   emit_reorder_entry issues no guest read at flush. The draw-merge queue
+ *   does break it; see flush_draw_queue_internal.
+ *
+ *   HAKUX_FIFO_SKEW_BOUND mode 2 -- hold only where a draw is outstanding --
+ *   covers this site too, and by its own scoping note: what mode 2 gives up
+ *   relative to mode 1 is "the 2D class reads guest memory outside a draw
+ *   (pgraph_image_blit, surface download)", neither of which is a window
+ *   this probe counts. The texture upload is inside the draw, which is the
+ *   one thing mode 2 keeps.
+ *
+ * THE REFUTING MEASUREMENT, because a blocker is a claim and needs the same
+ * evidence as a fix. Tip carries this probe AND all three bound modes, so
+ * one binary answers it with no code change: Crimson Skies soaks on the
+ * thor at HAKUX_FIFO_SKEW_BOUND 0, 1 and 2, Tr read off this line. If Tr
+ * stays near 0.567 while held(n)/kicks says the bound fired, this reasoning
+ * is wrong and the fix is here after all.
+ *
+ * AND THIS IS A BETTER FALSIFIER FOR MODE 2 THAN THE ONE IT HAS. #44 is
+ * judged on `stale_px` over the Texture border disc, whose eighteen draws
+ * sit inside one frame with no FLIP_STALL between them -- so that disc
+ * cannot exercise the bound's `gave` hole at all, and its own comment says
+ * as much. Crimson Skies flips every frame (Vpf 2.00 on these runs) and
+ * Galleon measured `gave` at 5.603% of submissions, so here the hole IS on
+ * the title's path. Tr on Crimson Skies therefore prices the residual that
+ * `stale_px == 0 on 10 of 10` is structurally unable to see, and the two
+ * numbers are not substitutes: the residual is NOT predictable from #44's
+ * 0.674%.
  */
 static void begin_pre_draw(PGRAPHState *pg)
 {
@@ -4376,6 +4448,33 @@ static void rebind_ubo_dynamic_offsets(PGRAPHState *pg, uint32_t off0,
         2, dyn_off);
 }
 
+/*
+ * A CONDITION ON pfifo_bound_skew's GUARANTEE, recorded here because this is
+ * the file that can break it rather than the file that states it.
+ *
+ * The bound's guarantee is "while the guest executes, the FIFO holds no
+ * unprocessed method, so PGRAPH performs no read of guest memory
+ * concurrently with guest execution", and it is justified by every such read
+ * happening on the PFIFO thread inside method processing. This function is
+ * the exception. With `draw_merge` on, the draw's guest-memory read --
+ * begin_pre_draw below, which polls the texture dirty bits and then uploads
+ * -- is deferred from the submission that carried the draw to whenever the
+ * queue flushes, and RCMD_FLUSH / RCMD_PROCESS_PENDING flush it on the
+ * RENDER thread. The submission is consumed, DMA_GET reaches DMA_PUT, the
+ * bound releases the guest, and the read it was ordering against has still
+ * not happened.
+ *
+ * Both switches are off by default -- `g_xemu_draw_merge` here, and
+ * XEMU_OPT_FIFO_SKEW_BOUND 0 in pfifo.c -- so no measured configuration
+ * contains the interaction, and nothing is changed here for it: a
+ * behavioural change guarding an unmeasured pair of non-default options
+ * would be speculative. It is written down because the failure mode is
+ * silent. The bound would go on reporting held(n)/kicks = 1.0000, which is a
+ * guarantee that reads as intact, while covering nothing for textures.
+ *
+ * So if the skew bound is ever defaulted on, or draw merging is, the pair
+ * needs either an arm together or an explicit refusal to combine them.
+ */
 static void flush_draw_queue_internal(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
