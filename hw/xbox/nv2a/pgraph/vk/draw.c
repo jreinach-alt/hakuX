@@ -7138,15 +7138,23 @@ void pgraph_vk_flush_draw(NV2AState *d)
     }
 
     if ((folds % 64) == 0) {
-        /* Core-QEMU fprintf(stderr) never reaches logcat. */
+        /*
+         * Tag "hakuX", not "hakuX-signfold". Core-QEMU fprintf(stderr) never
+         * reaches logcat, and the dispatcher's capture spec ends in `*:S`, so
+         * a tag it does not name is silenced outright -- the 0b8956e7c3 arm
+         * printed this counter and the logcat contains not one line of it,
+         * which is indistinguishable from the mechanism never firing. `hakuX:I`
+         * is in the spec; `hakuX-signfold` never was.
+         */
 #ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "hakuX-signfold",
-                            "folds=%lu emitted=%lu empty=%lu (want emitted==2*folds)",
+        __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                            "[signfold] folds=%lu emitted=%lu empty=%lu "
+                            "(want emitted==2*folds, empty==0)",
                             folds, emitted, empty);
 #else
         fprintf(stderr,
                 "[signfold] folds=%lu emitted=%lu empty=%lu "
-                "(want emitted==2*folds)\n", folds, emitted, empty);
+                "(want emitted==2*folds, empty==0)\n", folds, emitted, empty);
 #endif
     }
 
