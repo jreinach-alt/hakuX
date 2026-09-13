@@ -1146,7 +1146,28 @@ static const VMStateDescription vmstate_ac97_bm_regs = {
 static int ac97_post_load(void *opaque, int version_id)
 {
     uint8_t active[LAST_INDEX];
-    AC97LinkState *s = opaque;
+    /*
+     * The opaque a device vmsd's post_load receives is the DEVICE state, and
+     * `vmstate_ac97` is declared over AC97DeviceState. This used to read
+     * `AC97LinkState *s = opaque;` and be correct, because AC97LinkState
+     * contained `PCIDevice dev` as its first member. 7aa5985eba ("Port AC97
+     * factorization from XQEMU 1.x", 2018-06-26) split that into
+     * AC97DeviceState { PCIDevice dev; AC97LinkState state; } so that the Xbox
+     * MCPX ACI could embed the link state on its own, and left the cast alone
+     * -- so every load since has interpreted PCIDevice's bytes as an
+     * AC97LinkState, fed mixer_load() garbage into set_volume() and
+     * reset_voices(), and then written `bup_flag`/`last_samp` back over the
+     * embedded DeviceState.
+     *
+     * Latent rather than live on this fork: the Xbox machine instantiates
+     * mcpx-aci, not this device. Found while giving mcpx-aci a field list of
+     * its own (issue #75), which is also why the ACI reaches its post_load as
+     * a nested VMSTATE_STRUCT -- vmstate_load_state passes the sub-struct
+     * address there (migration/vmstate.c:207), so the same mistake is not
+     * available to it.
+     */
+    AC97DeviceState *d = opaque;
+    AC97LinkState *s = &d->state;
 
     record_select(s, mixer_load(s, AC97_Record_Select));
     set_volume(s, AC97_Master_Volume_Mute,
@@ -1188,6 +1209,54 @@ static const VMStateDescription vmstate_ac97 = {
         VMSTATE_END_OF_LIST()
     }
 };
+
+/*
+ * Issue #75: re-derive everything an AC97LinkState holds that is NOT guest
+ * state, after the guest state has been loaded into it.
+ *
+ * Exported rather than static because the MCPX ACI (hw/xbox/mcpx/aci.c)
+ * embeds an AC97LinkState directly instead of through AC97DeviceState, so it
+ * cannot reuse vmstate_ac97 above and needs its own field list -- and a field
+ * list without this step restores the registers while leaving the host voice
+ * closed at the wrong rate, muted, or inactive.
+ *
+ * Three classes of member, and the split is the whole content of the fix:
+ *
+ *   migrated      glob_cnt, glob_sta, cas, bm_regs[], mixer_data[]
+ *   re-derived    voice_pi/po/mc and invalid_freq[] (from mixer_data's rate
+ *                 registers, via reset_voices), the backend's volume (from
+ *                 the mixer's volume registers, via set_volume), and the
+ *                 record source (record_select)
+ *   host-side     pci_dev, as, audio_be -- set by realize, not by the guest
+ *   transient     last_samp and bup_flag are the zero-fill generator's
+ *                 position and are reset, exactly as ac97_post_load does;
+ *                 silence[] is scratch that reset_bm_regs zeroes anyway
+ *
+ * Note the opaque this gets is correct precisely because it is reached as a
+ * nested VMSTATE_STRUCT: vmstate_load_state passes the sub-struct address
+ * (migration/vmstate.c:207), so `s` really is the AC97LinkState.
+ */
+void ac97_link_post_load(AC97LinkState *s)
+{
+    uint8_t active[LAST_INDEX];
+
+    record_select(s, mixer_load(s, AC97_Record_Select));
+    set_volume(s, AC97_Master_Volume_Mute,
+               mixer_load(s, AC97_Master_Volume_Mute));
+    set_volume(s, AC97_PCM_Out_Volume_Mute,
+               mixer_load(s, AC97_PCM_Out_Volume_Mute));
+    set_volume(s, AC97_Record_Gain_Mute,
+               mixer_load(s, AC97_Record_Gain_Mute));
+
+    memset(active, 0, sizeof(active));
+    active[PI_INDEX] = !!(s->bm_regs[PI_INDEX].cr & CR_RPBM);
+    active[PO_INDEX] = !!(s->bm_regs[PO_INDEX].cr & CR_RPBM);
+    active[MC_INDEX] = !!(s->bm_regs[MC_INDEX].cr & CR_RPBM);
+    reset_voices(s, active);
+
+    s->bup_flag = 0;
+    s->last_samp = 0;
+}
 
 static uint64_t nam_read(void *opaque, hwaddr addr, unsigned size)
 {
