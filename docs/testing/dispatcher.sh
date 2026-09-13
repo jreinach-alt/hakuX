@@ -56,12 +56,31 @@ mkdir -p "$D"/{queue,running,results,logs}
 # into. Refreshed deliberately, at the moment a worker chooses to pick changes
 # up, rather than continuously.
 SNAP="$D/bin"
+# The scripts a snapshot is taken FROM. This has to be the working tree and
+# not $HERE: a worker runs from the snapshot, so $HERE *is* $SNAP there, and
+# both halves of the pick-up-changes mechanism then read the copy instead of
+# the original. snapshot_scripts became SNAP -> SNAP, the re-exec hash was the
+# hash of the code already running, and a worker could no longer see an edit
+# to the tree at all -- which is the very failure the re-exec exists to
+# prevent, reintroduced by the fix for the one after it.
+SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
+SCRIPT_DEPS="dispatcher.sh soak_title.sh run_disc.sh score_sweep.py"
 snapshot_scripts() {
     mkdir -p "$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py; do
-        [ -f "$HERE/$f" ] && cp -f "$HERE/$f" "$SNAP/$f" 2>/dev/null
+        [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
     done
+}
+# Hash of the scripts as they are IN THE TREE, or empty while the tree is
+# detached for a build. Empty means "do not compare": mid-build the tree holds
+# some other commit's scripts, and both answers there are wrong -- re-exec and
+# a worker adopts a baseline's dispatcher, don't and the hash is a lie that
+# suppresses the next real edit. DETACHED is written by build_ref for exactly
+# this window.
+src_hash() {
+    [ -e "$D/DETACHED" ] && return 0
+    ( cd "$SRC" && cat $SCRIPT_DEPS 2>/dev/null | md5sum | cut -c1-12 )
 }
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
 # captured as the APK path, so a log line on stdout becomes the path: adding
@@ -447,7 +466,7 @@ case "${1:-status}" in
         echo "no known device attached" >&2; exit 2
     fi
     log "=== supervising ${#workers[@]} device worker(s) ==="
-    trap 'kill ${serials[@]+} 2>/dev/null; kill ${workers[@]} 2>/dev/null; exit 0' INT TERM
+    trap 'kill ${workers[@]} 2>/dev/null; exit 0' INT TERM
     # Supervise, rather than merely start and wait. A worker that dies takes
     # its device out of service silently: the queue keeps accepting requests
     # pinned to it and nothing serves them. That happened within the hour --
@@ -479,9 +498,7 @@ case "${1:-status}" in
     # So the loop re-execs itself whenever its own inputs change on disk. State
     # lives in the queue and results directories, not in the process, so an
     # exec between requests is free. Hash the scripts it actually depends on.
-    DISPATCH_SRC_HASH="$(cat "$HERE"/dispatcher.sh "$HERE"/soak_title.sh \
-                             "$HERE"/run_disc.sh "$HERE"/score_sweep.py \
-                             2>/dev/null | md5sum | cut -c1-12)"
+    DISPATCH_SRC_HASH="$(src_hash)"
     export DISPATCH_SRC_HASH
     # Anything left in running/ belongs to a loop that is gone -- killed,
     # crashed, or restarted to pick up a change. Its request was accepted and
@@ -493,6 +510,16 @@ case "${1:-status}" in
     # requeue at startup would yank the other instance's in-flight request
     # back into the queue and it would be served twice -- on two different
     # devices, into one result id. The owner file is written at claim time.
+    # Register this lane, so affinity.py knows how many devices a prediction
+    # name is being divided over. The claim is "a worker for this label is
+    # alive", and the only honest way to make it is to have the worker make it
+    # about itself: a supervisor's list outlives the worker it describes, and a
+    # timestamp cannot tell a dead lane from one 20 minutes into a 26-minute
+    # A/B arm. A pid can, and needs no refreshing.
+    mkdir -p "$D/lanes"
+    printf '%s\n' "$$" > "$D/lanes/$DEVICE_LABEL"
+    trap 'rm -f "$D/lanes/$DEVICE_LABEL"' EXIT
+
     for orphan in "$D"/running/*.req; do
         [ -e "$orphan" ] || continue
         oid=$(basename "$orphan" .req)
@@ -534,10 +561,14 @@ case "${1:-status}" in
         #
         # It yields between suites rather than mid-suite, so an agent waits at
         # most one suite instead of the remaining hours.
-        now_hash="$(cat "$HERE"/dispatcher.sh "$HERE"/soak_title.sh \
-                        "$HERE"/run_disc.sh "$HERE"/score_sweep.py \
-                        2>/dev/null | md5sum | cut -c1-12)"
-        if [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
+        now_hash="$(src_hash)"
+        # A startup hash of "" -- the worker started while a build held the
+        # tree detached -- must not read as "changed" on the first clean tick,
+        # or every worker re-execs once for nothing. Adopt it silently.
+        if [ -z "$DISPATCH_SRC_HASH" ] && [ -n "$now_hash" ]; then
+            DISPATCH_SRC_HASH="$now_hash"
+        fi
+        if [ -n "$now_hash" ] && [ "$now_hash" != "$DISPATCH_SRC_HASH" ]; then
             log "dispatcher scripts changed on disk; re-execing to pick them up"
             # Exec the SNAPSHOT, never the working tree. build_ref detaches
             # that tree to an arbitrary commit for the length of a build, so a

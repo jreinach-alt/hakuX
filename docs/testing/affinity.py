@@ -14,7 +14,7 @@ precisely the kind of assumption this campaign has been burned by, most
 recently when a scoreboard column turned out to be built from a binary 35
 commits stale while every row's apk_sha agreed with every other.
 
-Two rules, in order:
+Three rules, in order:
 
 1. An explicit `device` field in the request wins. That is for work only one
    device can do -- a soak on a title only one of them has.
@@ -25,11 +25,66 @@ Two rules, in order:
    without anyone having to say so, and it pins it to wherever the first arm
    happened to land rather than to a device chosen in advance.
 
-A request with neither is free and any idle device may take it.
+3. Otherwise, a request naming a prediction is pinned by HASHING the
+   prediction's filename over the serving devices. Same prediction, same
+   device, computed from nothing but the name.
+
+   Rule 2 alone has a race, and it fired: the two arms of a pair are queued
+   seconds apart and can be claimed by two workers in the same instant, each
+   asking "did a sibling already land somewhere?" before the other has written
+   its owner file. Both get "no", both claim, and the pair splits -- which is
+   exactly what happened to #13's arms after `running/` was already being
+   consulted. No amount of looking harder at shared state fixes a read-read
+   race; the fix is to stop reading. A hash needs no state, so there is no
+   window in which two workers can disagree.
+
+   Rule 2 still comes first, because a sibling that has ALREADY RUN is ground
+   truth and the hash is only a prediction of where it would have gone. A
+   re-queued arm after the device set changes must follow its partner, not the
+   modulus.
+
+A request naming no prediction is free and any idle device may take it.
 """
+import hashlib
 import json
 import os
 import sys
+
+def serving(d):
+    """Labels of the device lanes that are alive right now.
+
+    Each worker writes `lanes/<label>` holding its own pid and removes it on
+    exit. Liveness is then `kill -0` on that pid, which is the only test that
+    survives the two ways the obvious answers fail:
+
+      - a list written by the supervisor outlives the worker it describes, and
+        the worker is the thing that dies (one lane was silently down for 25
+        minutes on 2026-09-12);
+      - a timestamp cannot tell a dead lane from a live one 20 minutes into a
+        26-minute A/B arm, and that is the normal state of this queue, not the
+        rare one.
+
+    Fail open: an empty or unreadable directory yields no devices and the hash
+    rule is skipped, which degrades to the old raced behaviour -- at worst a
+    split pair, which `ab_compare` still scores. The alternative failure,
+    hashing over a lane that has stopped serving, pins a request nobody will
+    ever claim, and a queued request with no claimant is silent.
+    """
+    live = set()
+    ldir = os.path.join(d, "lanes")
+    try:
+        names = os.listdir(ldir)
+    except OSError:
+        return []
+    for name in names:
+        try:
+            with open(os.path.join(ldir, name)) as f:
+                pid = int(f.read().strip())
+            os.kill(pid, 0)
+        except (OSError, ValueError):
+            continue
+        live.add(name)
+    return sorted(live)
 
 
 def load(p):
@@ -109,6 +164,17 @@ def main():
             return
         # A result from before device labels existed cannot pin anything, and
         # guessing would be worse than leaving the pair free.
+
+    # Rule 3: no sibling anywhere, so this is the pair's first arm. Decide by
+    # hash, so the second arm decides the same way without having to see this
+    # one. sha256 rather than hash() because hash() of a str is salted per
+    # process -- two workers would compute different answers for the same
+    # name, which is the race again wearing a hat.
+    devs = serving(d)
+    if len(devs) > 1:
+        h = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
+        print(devs[h % len(devs)])
+        return
     print("")
 
 
