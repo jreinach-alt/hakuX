@@ -256,24 +256,33 @@ by the orchestrator and not by agents on purpose: an agent cannot be trusted
 to record that it is stuck, and the point is to make the orchestrator's own
 bookkeeping checkable by something other than the orchestrator.
 
-**Write the lane row BEFORE dispatching, and COMMIT AND PUSH IT FIRST.** An
-agent was briefed as `lane.padwrite` with four files described as "yours" and
-no `[lane.padwrite]` row was ever written. It edited three of them. Nothing
-collided, because nothing else wanted them that hour -- and not one of the
-guards that caught real collisions that day could have fired, because
-`check_territory.py` cannot see a lane that does not exist.
+**EVERY RUNNING LANE HAS A ROW, COMMITTED AND PUSHED BEFORE IT STARTS.** That
+is the general rule, and it is written in this form because the specific form
+was fixed twice and found a new door each time.
 
-**Writing the row is not enough either.** `lane.tcginval` opened its board
-request by reporting `territory.toml` at wave 42 with no `[lane.tcginval]` row
-and `accel/**` still under `[free]` -- and it was right, from where it stood. I
-had written the claim, run `check_territory.py`, dispatched, and only THEN
-committed and pushed. The agent fast-forwarded to a tip that predated my
-commit, so for its entire run the claim existed only in my working tree.
+  - `lane.padwrite` was briefed with four files described as "yours" and **no
+    row was ever written**. It edited three of them. Nothing collided, because
+    nothing else wanted them that hour.
+  - `lane.tcginval`'s row was written and validated, and then **dispatched
+    before it was committed**. The lane fast-forwarded to a tip that predated
+    the commit and opened its board request reporting `territory.toml` at wave
+    42 with no such row -- correct, from where it stood.
+  - `lane.audit-tcg` was dispatched with **no row because an auditor claims no
+    files**, so I reasoned it needed none. It needs one: a row with
+    `files = []`.
 
-A lane verifies its territory by reading the repo, which means the claim has to
-be IN the repo before the lane starts. Order: write the row, validate, commit,
-**push**, then dispatch. The brief is not the claim, and an uncommitted claim
-is not a claim either.
+The common failure is not forgetfulness. Each time, the thing I checked was
+true -- the brief named the files, the row existed, the auditor genuinely
+claimed nothing -- and the thing that mattered was not checked. **A lane that
+is running and unclaimed is invisible to every guard**, because
+`check_territory.py` cannot see a lane that does not exist in the file, and
+`fleet.py`'s LANE-CLAIMED-WITH-NO-RUNNING-AGENT only looks the other way.
+
+So: write the row, validate, commit, **push**, then dispatch. A lane that
+claims no files still gets a row. And the cheap check that catches all three
+is to compare `territory.toml`'s lanes against `$DISPATCH_DIR/fleet/*.json`'s
+running set in both directions -- which is how the third was found, and found
+`lane.tcginval` still claiming files after it had retired at the same time.
 
 ## Non-negotiables
 
