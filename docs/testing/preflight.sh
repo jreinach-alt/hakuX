@@ -28,6 +28,7 @@ SUPPORT=${SUPPORT:-$(find_repo pbkitplusplus)}
 while [ $# -gt 0 ]; do
     case "$1" in
         --allow-ci) ALLOW_CI=1; shift ;;
+        --allow-tracker) ALLOW_TRACKER=1; shift ;;
         --tests) TESTS="$2"; shift 2 ;;
         --support) SUPPORT="$2"; shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
@@ -193,6 +194,102 @@ if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; the
 else
     bad
     sed 's/^/  /' /tmp/preflight-coverage.log
+fi
+
+# 5. THE BOARD FILES, which a lane is contractually barred from editing and
+#    which nothing enforced.
+#
+#    AGENTS.md:228 bars a lane from touching `nv2a_issues.toml` or
+#    `territory.toml`; AGENTS.md:237 puts tracker arbitration with the
+#    orchestrator, because the tracker is the one hand-maintained table in the
+#    index and an agent editing the claim registry while claiming territory in
+#    it is circular. A lane that needs the board changed writes
+#    $DISPATCH_DIR/board-requests/<lane>.md instead.
+#
+#    A LANE DID IT ANYWAY THIS SESSION -- 45c8adb4f6, +42/-11 in
+#    nv2a_issues.toml. The content was correct, so nothing was reverted, and
+#    that is exactly the shape this audit loop exists to catch: the only thing
+#    enforcing the rule was somebody reading the diff, and concurrent edits to
+#    the board conflict badly at the next fold.
+#
+#    WHAT IT MUST NOT REFUSE, stated before the check rather than after it,
+#    because a gate that fires on correct work is worse than no gate and this
+#    one guards a file the ORCHESTRATOR edits constantly -- 178 commits touch
+#    nv2a_issues.toml on this branch and 61 touch territory.toml, essentially
+#    all of them orchestrator `board:` commits. Three exemptions, and none of
+#    them is "trust the subject line":
+#
+#      * THE SHARED TREE. A checkout at $DISPATCH_TREE is the orchestrator's
+#        own position, and it is where every one of those 239 commits was made.
+#      * THE FOLD WORKTREE, /home/justin/hakux-work/fold, which is where a fold
+#        now happens (AGENTS.md, "The orchestrator folds in a separate
+#        worktree"). At fold time HEAD there is ahead of the tip and carries
+#        the lane's commits AND the orchestrator's board edits, so the
+#        ancestor test the nv2a-index gate uses cannot tell the two apart --
+#        which is why this keys on WHERE rather than on WHAT.
+#      * --allow-tracker, said out loud, the same escape --allow-ci provides.
+#
+#    The fold path is READ from AGENTS.md rather than hardcoded here, for the
+#    reason gate 2 reads SCAN_ROOTS from nv2a_index.py: a gate that hardcodes
+#    the thing it guards goes wrong silently the day the guarded thing moves.
+#    HAKUX_FOLD_DIR overrides it.
+#
+#    WHAT IT CANNOT SEE: a lane that edits the board and does not run
+#    preflight, and a lane whose worktree happens to sit at one of the exempt
+#    paths. It is a check on a checkout's position, not on an agent's
+#    identity, and there is no agent identity available here to check.
+step "board files"
+TRACKER_FILES="docs/testing/nv2a_issues.toml docs/testing/territory.toml"
+TRACKER_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
+TRACKER_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
+TRACKER_SHARED="${DISPATCH_TREE:-/home/justin/hakuX}"
+TRACKER_FOLD="${HAKUX_FOLD_DIR:-$(grep -o '/home/[a-z0-9_-]*/hakux-work/fold' AGENTS.md 2>/dev/null | head -1)}"
+# base..HEAD plus the working tree and the index: an uncommitted board edit is
+# the same violation one moment earlier, and preflight is meant to be run
+# before the commit as well as before the push.
+TRACKER_BASE=$(git merge-base HEAD "$TRACKER_TIP" 2>/dev/null || true)
+TRACKER_MINE=""
+if [ -n "$TRACKER_BASE" ] \
+   && ! git merge-base --is-ancestor HEAD "$TRACKER_TIP" 2>/dev/null; then
+    TRACKER_MINE=$(git log --format='%h %s' "$TRACKER_BASE..HEAD" -- $TRACKER_FILES 2>/dev/null)
+fi
+TRACKER_DIRTY=$(git status --porcelain -- $TRACKER_FILES 2>/dev/null)
+if [ -z "$TRACKER_MINE" ] && [ -z "$TRACKER_DIRTY" ]; then
+    ok
+elif [ "${ALLOW_TRACKER:-0}" = 1 ]; then
+    ok
+    echo "  --allow-tracker given: editing the board here is deliberate."
+elif [ -n "$TRACKER_ROOT" ] && [ "$TRACKER_ROOT" = "$TRACKER_SHARED" ]; then
+    ok
+    echo "  the shared tree ($TRACKER_SHARED), so this is the orchestrator's"
+    echo "  own position and the board is its to arbitrate."
+elif [ -n "$TRACKER_FOLD" ] && [ "$TRACKER_ROOT" = "$TRACKER_FOLD" ]; then
+    ok
+    echo "  the fold worktree ($TRACKER_FOLD), where a fold legitimately edits"
+    echo "  the board alongside the lane commits it is folding."
+else
+    bad
+    echo "  This checkout edits the BOARD, which a lane may not do."
+    echo "  AGENTS.md:228 bars it and AGENTS.md:237 puts tracker arbitration"
+    echo "  with the orchestrator: the tracker is the one hand-maintained table"
+    echo "  in the index, and concurrent board edits conflict badly at a fold."
+    if [ -n "$TRACKER_MINE" ]; then
+        echo "  commits of yours that the tip does not have:"
+        printf '%s\n' "$TRACKER_MINE" | sed 's/^/    /'
+    fi
+    if [ -n "$TRACKER_DIRTY" ]; then
+        echo "  uncommitted:"
+        printf '%s\n' "$TRACKER_DIRTY" | sed 's/^/    /'
+    fi
+    echo "  WHAT TO DO INSTEAD: write what the board needs to say, and why, to"
+    echo "    \$DISPATCH_DIR/board-requests/<lane>.md"
+    echo "  and put the same thing in your final report. The orchestrator"
+    echo "  applies it. A lane must never be blamed for a gate it cannot reach,"
+    echo "  and it must not reach past this one either."
+    echo "  nv2a_index.json in the same directory is FINE: nv2a_index.py build"
+    echo "  generates it, and gate 2 above is what governs it."
+    echo "  If you ARE the orchestrator, fold in $TRACKER_FOLD or pass"
+    echo "  --allow-tracker."
 fi
 
 # 6. THE COMMIT SUBJECT'S [skip ci], because nothing enforced it and the
