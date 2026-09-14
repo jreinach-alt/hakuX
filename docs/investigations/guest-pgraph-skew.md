@@ -1928,8 +1928,443 @@ even that, so the *series* is not identical, only its ceiling and median. The
 ceiling is the statistic that matters, and that was fixed by `#64` before this
 arm ran rather than chosen now because it agreed.
 
+## MEASURED, lane.readfreq: the read-side frequency on Galleon was ALREADY ON DISK, and it inverts the target
+
+#54 was kept open "for a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A
+bitmap and `r->texture_vram_gen`". **That counter has existed since
+`e353735028`, it has run on Galleon three times, and nothing had ever read its
+output.** The three Galleon runs were queued for other questions — two as the
+`draw-only-cost` arms in the section above, one as the `wt54-phase` survey —
+and every one of them carries `Vr:`/`Tr:` on the `hakuX-perf` line it was
+already capturing. The cost legs were read off those runs; the probe fields
+were not.
+
+So the first finding is a process one and it is the same failure as the
+blocker: **the measurement #54 was waiting for had already been taken, by runs
+the issue itself cites.** `docs/testing/vram_race_report.py` was committed to
+read exactly these fields and was never pointed at a Galleon result.
+
+### GALLEON, mode 0 (the shipped configuration), three runs across two refs
+
+| run | ref | `Vr` raced/copies | rate | `Tr` raced/uploads/windows | `Xd` |
+|---|---|---|---|---|---|
+| `1789312621-draw-only-cost-1052604` | `5cfc236d9b` | **12 / 135,483** | 8.86e-05 | 0 / 7,518 / 560,343 | 0 |
+| `1789312621-draw-only-cost-1052674` | `5cfc236d9b` | **8 / 134,597** | 5.94e-05 | 0 / 7,942 / 581,491 | 0 |
+| `1789318797-wt54-phase-56718` | `49afee8889` | **5 / 126,933** | 3.94e-05 | 0 / 7,713 / 548,902 | 0 |
+
+**Pooled: `Vr` = 25 / 397,013 = 6.30e-05, `Tr` = 0 / 23,173 uploads over
+1,690,736 draw windows.** All three runs 240 s, all on the nova, `Xd` = 0
+throughout.
+
+Stated in the shape the brief asked for: **the counter fires 0.035 times per
+second on Galleon, all of it at the VERTEX site, and zero times per second at
+the texture site** — bounded at ≤ 3/23,173 = 1.29e-04 per upload (one-sided
+95%), which is ≤ 0.0042/s. The instrument is unchanged across the two refs:
+a diff of `vk/draw.c` over that span touches 660 lines and none of them is a
+probe counter.
+
+### THE TARGET IS THE VERTEX SITE ON GALLEON, WHICH INVERTS v3's LEG 4
+
+v3's leg 4 predicted `Vr/vtx_copies < Tr/tex_uploads`, reasoning that the
+texture window is orders of magnitude longer than a vertex memcpy and a race
+rate scales with window length. **On Galleon the ordering is inverted**, and
+the leg's own registration named the failing world: *"a title streaming
+dynamic vertex buffers rewrites them immediately before drawing from them far
+more often than it rewrites textures, which inverts the ordering."* Galleon is
+that title.
+
+The mechanism is not window length, it is **exposure**, and the probe already
+measures it. `tex_uploads / tex_windows` is the rate at which a draw's texture
+read follows an unsynced guest write:
+
+| title | `tex_uploads/tex_windows` | `Tr/tex_uploads` | `Vr/vtx_copies` |
+|---|---|---|---|
+| **Crimson Skies** (nova, `5cfc236d9b`) | **0.803** | **0.617, 0.619** | 0 / 6,082 |
+| Crimson Skies (thor, `e353735028`) | 0.748, 0.751 | 0.566, 0.567 | 0 / 4,560 |
+| **Galleon** (nova, mode 0) | **0.0134–0.0141** | **0 / 23,173** | **6.30e-05** |
+| JSRF (thor) | 0.0052 | 0 / 5,733 | 0 / 17,703 |
+| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 273,499 |
+
+**A 60x difference in texture exposure between Crimson and Galleon**, and the
+race rate follows it. So Galleon's `Tr = 0` is a statement about Galleon's
+*workload* — it barely rewrites a bound texture — and not about the emulator's
+memory ordering. **The barrier arm's zero and this zero are not the same
+zero**, and neither is evidence for the other: one says barriers do not repair
+`2D_BorderTex_SZ`, this one says Galleon does not present the texture-side
+race to be repaired.
+
+### AND THE SKEW BOUND ELIMINATES THE VERTEX RACE ON GALLEON, p = 0.00008
+
+The same four-run pair carries mode 2, and this was never read either:
+
+| arm | ref | `Vr` raced/copies |
+|---|---|---|
+| A, mode 0 | `5cfc236d9b` | 12/135,483 and 8/134,597 — **20 / 270,080** |
+| B, mode 2 | `d879e6e03b` | 0/88,762 and 0/88,739 — **0 / 177,501** |
+
+Fisher exact, two-sided: **p = 0.00008**. The denominator is live on both arms
+(88,739 copies on the quietest run), so this is elimination and not absence —
+the same shape as #79's `XEMU_OPT_FIFO_SKEW_BOUND` arm taking wrong Stencil
+triangles from 7 of 64 to 0 of 64, on a different workload and a different
+observable, with a direct counter instead of a pixel count.
+
+**That is a second, independent confirmation of #79's diagnosis from a title
+rather than a disc**, and it was sitting in the same four result directories
+the cost table above was built from. It does not attribute Galleon's 25 torn
+vertex reads to any visible defect: a soak writes no captures, and this
+measures a rate, not an artefact.
+
+### WHAT THIS COUNTER CANNOT SEE ON #79's OWN DISC, and it is a DENOMINATOR
+
+The brief asked whether the counter can see #79. On the pgraph corpus the
+honest answer is **no, and the reason is measurable rather than arguable**:
+
+    pgraph disc runs carrying the probe        83
+    vtx_copies == 34 per run                   49 runs
+    vtx_copies == 35..39 per run               23 runs
+    Vr > 0                                      1 run
+    Tr == exactly 1 per run                    77 runs
+
+Every `4-suites:7254741c` disc containing Stencil reads **`Vr` = 0 / 34**
+against ~46,000 `tex_windows`. So the whole disc performs 34 dirty
+vertex-array copies while issuing tens of thousands of draws, and #79's arm
+refs (`d97d506514`, `ec7f50e859`) predate the probe entirely and carry no
+`Vr:` line at all.
+
+**A zero over a denominator of 34 bounds the rate at ≤ 8.8% and settles
+nothing**, and the interesting half is which of two worlds produces the 34:
+
+- Stencil owns most of them — the site is on #79's path and the counter is
+  merely **underpowered** on this disc;
+- Stencil owns none of them — `DefineBiTri`'s six vertices reach pgraph by a
+  path that is not `sync_vertex_ram_buffer`, and the counter is **structurally
+  blind** to #79.
+
+Those need opposite responses and one Stencil-only disc separates them, so it
+is queued rather than assumed. Note the shape: this is AGENTS.md's *"before
+measuring an effect on a class of input, ask whether this data contains that
+class at all"*, and the `ls`-equivalent here — the vertex-copy denominator —
+was printed on every one of those runs.
+
+**The disc's `Tr` = exactly 1 in 77 of 83 runs is the same warning from the
+other side.** A counter that reads the same small constant on every run of a
+1,673-test disc and of a 16-capture disc alike is not measuring a rate; it is
+almost certainly one boot-time event. Nothing should quote a per-run disc `Tr`
+as a frequency.
+
+**ANSWERED OFFLINE WHILE THE DISC RAN, and the answer is the second world.**
+The counters are cumulative and the pacing line is emitted repeatedly, so the
+*series inside one run* separates boot from tests with no device at all. On all
+six Stencil-carrying runs, at the first pacing line and at the last:
+
+| run | `vtx_copies` first → last | `tex_windows` first → last | `Tr` |
+|---|---|---|---|
+| `1789345024-orchestrator-1663172` | **34 → 34** | 16,770 → 46,381 | 1 → 1 |
+| `1789345036-orchestrator-1663213` | **34 → 34** | 17,227 → 47,025 | 1 → 1 |
+| `1789345832-orchestrator-1968847` | **34 → 34** | 16,318 → 45,312 | 1 → 1 |
+| `1789347057-orchestrator-2287889` | **34 → 34** | 15,890 → 45,312 | 1 → 1 |
+| `1789347057-orchestrator-2288027` | **34 → 34** | 16,318 → 45,685 | 1 → 1 |
+| `1789345832-orchestrator-1968834` | **34 → 34** | 16,318 → 46,381 | 1 → 1 |
+
+**Not one dirty vertex-array copy in ~29,500 draws per run, six of six.** All 34
+land before the first pacing line, which is boot. `Tr` = 1 is boot by the same
+reading, while `tex_uploads` does advance during the tests (64–69 → 104–189) —
+so the texture path is live on the disc and races zero times, and the `1` is
+not part of any rate.
+
+The control that makes this a measurement rather than an absence is in the same
+two numbers: `Depth buffer` on the same instrument reads `vtx_copies`
+302 → 744 → 1,166 → 1,580 → 1,979 across its five pacing lines. **The
+instrumented path is alive on a pgraph disc and simply unused by the suites
+carrying Stencil** — which is the discriminator, and it needed no device.
+
+**And the source says why.** Three vertex paths reach a draw and only one of
+them reads guest memory at draw time:
+
+| path | where the vertex values come from | guest read at draw? |
+|---|---|---|
+| `draw_arrays` / `inline_elements` | VRAM vertex arrays, via `update_memory_buffer` → `sync_vertex_ram_buffer` | **yes — this is what `Vr` counts** |
+| `inline_buffer` (`NV097_SET_VERTEX_DATA*F`) | accumulated into `attr->inline_buffer` as methods are processed | **no** |
+| `inline_array` (`NV097_INLINE_ARRAY`) | `pg->inline_array[len++] = parameter`, `pgraph.c:4258` | **no** |
+
+The two inline paths carry vertex values as **pushbuffer method parameters**,
+copied into pgraph-owned state at method-processing time. There is no
+guest-memory read left at the draw for any read-side counter to instrument, so
+`Vr` is not merely quiet on them — there is nothing there to count.
+
+**So `Vr` is blind to #79 structurally, and a zero from it about #79 is not
+evidence.** That is the shape AGENTS.md warns about: *"a guard satisfied by the
+absence of the thing it guards reports success."* Stated as the brief asked:
+the counter **cannot** see #79, and what that means is that #79's skew is not
+at the site #54's counter watches.
+
+**WHERE IT WOULD THEN BE, held as a hypothesis with its falsifier, not as a
+diagnosis.** If the Stencil vertices travel by an inline path, the only guest
+read in their journey is the **pusher's read of the pushbuffer word**, in
+`pfifo.c` — and a torn vertex would be the guest overwriting published
+pushbuffer words before `pfifo_run_pusher` consumed them. That is consistent
+with `XEMU_OPT_FIFO_SKEW_BOUND=1` fixing #79 for a reason about the *pusher*
+rather than about a vertex buffer, and with `behind/kicks = 100.0%` on the
+Stencil disc. It is NOT established: I have not read `nxdk_pgraph_tests`, the
+pushbuffer is not covered by `DIRTY_MEMORY_NV2A` logging so no existing counter
+can see it, and the ring measured on `Texture border` is 63.98 MiB, which is
+large to wrap inside a publish-to-consumed p50 of 8.65 ms. The falsifier is
+cheap and needs no new code: **if the Stencil-only disc reads `vtx_copies` = 34
+with no growth, the VRAM-vertex-array story is dead and the pushbuffer one is
+the surviving candidate; if it grows, `Vr` is on #79's path after all and is
+merely underpowered, and the fix is soak length rather than a new site.**
+
+### Registered before the tip runs
+
+`docs/testing/predictions/vram-read-race-probe-54-v4-galleon.json`, a
+single-arm survey (`a_ref == b_ref == 1dee9e25f6`), Galleon 240 s x2 on the
+**thor**. Every leg is an absolute: `Xd == 0`; denominators live
+(`vtx_copies` > 50,000, `tex_uploads` > 5,000, `tex_windows` > 100,000, so a
+zero cannot be read as an absence); `Tr/tex_uploads` ≤ 1e-03;
+`Vr/vtx_copies` in [1e-05, 1e-03] pooled; `Vr/vtx_copies > Tr/tex_uploads`
+(the inversion, which is the one leg that contradicts a previous registration
+rather than replicating a number); `tex_uploads/tex_windows` ≤ 5e-02. It
+records what is already on disk at the top, so no leg can be read as blind.
+
+Why spend the slot at all when three Galleon runs exist: all three are on the
+**nova**, which is offline, and this file's own rule is that a figure measured
+on one device is a fact about that device until a second agrees; the refs are
+~300 commits behind the tip, and the same probe on Crimson moved 9% in rate
+and 53% in denominator across 128 commits; and #54's blocker asserted the
+measurement needed the Nova, which running it on the Thor retires by
+demonstration rather than by an `ls`.
+
+
+### MEASURED at the tip on the THOR: 6 of 6 registered legs PASS
+
+`1dee9e25f6`, apk `658910889812`, Galleon 240 s x2, thor, `--expect` v4.
+
+| | run 1 | run 2 | spread |
+|---|---|---|---|
+| `Vr` raced/copies | 9 / 225,395 | 7 / 207,831 | — |
+| **`Vr` rate** | **3.993e-05** | **3.368e-05** | 17% |
+| `vtx_copies` | 225,395 | 207,831 | 8.1% |
+| `Tr` raced/uploads/windows | **0** / 12,280 / 995,076 | **0** / 11,561 / 926,584 | — |
+| **exposure `tex_uploads/tex_windows`** | **1.234e-02** | **1.248e-02** | **1.1%** |
+| `gfps` p90 / max | 29 / 30 | 29 / 30 | 0 |
+| `Xd`, `mb_emitted` | 0, 0 | 0, 0 | — |
+
+**G1** `Xd` = 0 both runs — PASS. **G2** every denominator far above its bar
+(225,395 and 207,831 copies; 12,280 and 11,561 uploads; ~1M windows) — PASS,
+so the zeros below are measurements and not absences. **G3** `Tr/tex_uploads`
+= 0 on both, pooled bound ≤ 1.26e-04 — PASS. **G4** `Vr` pooled
+16 / 433,226 = **3.693e-05**, inside the registered [1e-05, 1e-03] — PASS.
+**G5** `Vr` rate > `Tr` rate — PASS, the inversion holds at the tip on the
+second device. **G6** exposure ≤ 5e-02 at 1.24e-02 — PASS. Controls:
+`device_label` = thor on both, one apk across both runs, `mb_emitted` = 0.
+
+`gfps` p90 29 / max 30 reproduces the published Galleon arm-A ceiling exactly,
+so this is a gameplay-shaped soak and not a menu.
+
+Note what `vram_race_report.py` prints as its own "L5 FAIL": that is **v3's**
+leg — *`Tr` > 0 on at least one run* — and it is Crimson-shaped. On Galleon it
+fails, and that failure IS the finding v4's G3 and G5 registered. The tool is
+judging the older prediction, not this one.
+
+### THE WHOLE GALLEON CORPUS: 6 runs, 4 refs, 2 devices
+
+| ref | device | s | `Vr` | rate | `Tr`/uploads/windows | exposure |
+|---|---|---|---|---|---|---|
+| `5cfc236d9b` | nova | 240 | 12 / 135,483 | 8.86e-05 | 0 / 7,518 / 560,343 | 1.342e-02 |
+| `5cfc236d9b` | nova | 240 | 8 / 134,597 | 5.94e-05 | 0 / 7,942 / 581,491 | 1.366e-02 |
+| `49afee8889` | nova | 240 | 5 / 126,933 | 3.94e-05 | 0 / 7,713 / 548,902 | 1.405e-02 |
+| `c866527e03` | thor | 180 | 14 / 179,031 | 7.82e-05 | 0 / 9,117 / 762,024 | 1.196e-02 |
+| `1dee9e25f6` | thor | 240 | 9 / 225,395 | 3.99e-05 | 0 / 12,280 / 995,076 | 1.234e-02 |
+| `1dee9e25f6` | thor | 240 | 7 / 207,831 | 3.37e-05 | 0 / 11,561 / 926,584 | 1.248e-02 |
+| **POOLED** | | **1,380** | **55 / 1,009,270** | **5.45e-05** | **0 / 56,131 / 4,374,420** | **1.283e-02** |
+
+**THE ANSWER, in the shape it was asked for.** On Galleon the read-side race
+fires **55 times in 1,009,270 instrumented guest-memory reads — 5.45e-05 per
+read, 0.040 per second of wall clock — and every one of them is at the VERTEX
+site.** The texture site fires **zero times in 56,131 uploads across 4,374,420
+draw windows**, bounding it at ≤ 5.35e-05 per upload (one-sided 95%). On the
+pgraph corpus it fires **zero times at both sites**, with the per-run `Tr` = 1
+and `vtx_copies` = 34 both landing before the first pacing line — boot, not a
+rate.
+
+**The per-second form is the weaker one and is quoted second on purpose.**
+0.040/s mixes the race rate with how much work Galleon happened to do;
+`Vr/vtx_copies` counts events of a condition against the number of
+opportunities, which is the occupancy-free form this file's own rule asks for.
+The per-run rates span 3.37e-05 to 8.86e-05 — a 2.6x spread on Poisson counts
+of 5 to 14, which is what counts that small do — while the **denominators
+reproduce to 8%** and the **exposure ratio to 17% across four refs and two
+devices**. So the rate is established to about a factor of two and the
+exposure to a few percent; anyone needing the rate tighter needs more soak,
+not a better statistic.
+
+**Xd = 0 on all six runs**, over 1,009,270 copies and 4,374,420 windows. The
+impossible row is the only control inside this instrument and it has never
+fired.
+
+### WHY THE TEXTURE SITE READS ZERO ON GALLEON, AND WHY IT IS NOT #54's ZERO
+
+The probe measures the answer as well as the question. `tex_uploads /
+tex_windows` is the rate at which a draw's texture read follows an unsynced
+guest write:
+
+| title | exposure | `Tr/tex_uploads` | `Vr/vtx_copies` |
+|---|---|---|---|
+| **Crimson Skies** (nova, `5cfc236d9b`) | **0.803, 0.804** | **0.617, 0.619** | 0 / 6,082 |
+| Crimson Skies (thor, `e353735028`) | 0.748, 0.751 | 0.566, 0.567 | 0 / 4,560 |
+| **Galleon** (6 runs, 4 refs, 2 devices) | **0.0128** | **0 / 56,131** | **5.45e-05** |
+| JSRF (thor) | 0.0052 | 0 / 5,733 | 0 / 17,703 |
+| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 273,499 |
+
+**A 63x difference in texture exposure between Crimson and Galleon, and the
+race rate follows it.** Crimson's attract FMV rewrites a bound texture on four
+fifths of its draws and loses three fifths of those races; Galleon rewrites one
+on 1.3% of draws and loses none of 56,131.
+
+So Galleon's `Tr` = 0 is a fact about **what Galleon does**, not about the
+emulator's memory ordering — and **it is a different zero from the barrier
+arm's.** The barrier arm's zero says restoring guest barriers does not repair
+`2D_BorderTex_SZ`; this one says Galleon does not present the texture-side race
+to be repaired. Neither is evidence for the other, and quoting either as "the
+race does not happen" would be wrong: on Crimson, at the same tip, it happens on
+three fifths of uploads.
+
+**Which relocates #54's target.** The issue was kept open for a read-side
+frequency, and the frequency on the title where the cost is says the exposure
+there is at the **vertex** site. That is the same site #79 was diagnosed on, and
+the same one mode 2 takes to zero.
+
+
+### THE STENCIL DISC REFUTED MY OWN DISCRIMINATOR, AND THE REASON IS A SECOND BLINDNESS
+
+`1789363871-readfreq54-3543180`, Stencil disc x2, thor, `1dee9e25f6`,
+`--no-expect` (a denominator survey). The registered discriminator was
+"`vtx_copies` ~34 means underpowered, ~0 means structurally blind". **Neither
+was measurable, because the probe printed nothing at all:**
+
+    hakuX-perf lines in the capture     40   and   40
+    `gfps=` pacing lines                 0   and    0
+    `Vr:` / `Tr:` fields                 0   and    0
+
+All 40 lines per run are `fifoskew` and `vbl*`, which are emitted on their own
+schedules. **The probe's ONLY output channel is
+`nv2a_profile_get_pacing_str`, and `profile.c:479` gates it on
+`(g_nv2a_stats.frame_count % 60) == 0` inside the flip handler.** A 16-capture
+Stencil disc never reaches 60 guest flips, so the line never fires, and the
+counters are unreadable no matter what they counted.
+
+**So there is a second, unconditional blindness and it is the stronger of the
+two.** The path question — does `DefineBiTri` reach pgraph through
+`sync_vertex_ram_buffer` — is now moot for this workload: even a suite that
+raced on every draw would report nothing here. This generalises past #79:
+**no #54 probe reading is obtainable from any short disc**, which is most of
+the corpus, and a reader that took the absence of `Vr:` for "no races" would
+be making the exact error this file's instrument section warns about. The
+4-suite discs that DO print (2 lines each) do so only because four suites'
+flips clear the 60 together — and their first line is at flip 60, so
+everything before it is unmeasured too, which weakens the 34-is-boot reading I
+committed earlier to "34 by flip 60".
+
+What survives from that earlier reading, and it is the useful half:
+**`vtx_copies` does not advance by a single count between flip 60 and the end
+of a run** — 34 → 34 across ~29,600 draws on the 4-suite disc (6 of 6 runs),
+34 → 34 across **1,396,415 draws** on `Blend tests` alone (28 pacing lines),
+34 → 34 on `W param` — while `Depth buffer` on the same instrument advances
+302 → 744 → 1,166 → 1,580 → 1,979. **The instrumented path is alive on a
+pgraph disc and unused by those suites**, which is a measurement with its own
+control. It still does not isolate Stencil, and now cannot be made to.
+
+**I could not close the path question from source either, and say so rather
+than leave it implied.** `/home/justin/nxdk_pgraph_tests` has the Stencil test
+(`stencil_tests.cpp:127`, `AllocateVertexBuffer(6)` then `DefineBiTri` then
+`host_.DrawArrays()`), but `TestHost::DrawArrays` lives in the
+`third_party/pbkitplusplus` submodule, which is **not checked out** on this
+machine. So which of the three vertex paths carries those six vertices is
+unresolved here, and every statement above about #79's site remains a
+hypothesis with the pushbuffer reading as its alternative.
+
+**The fix for the blindness is small and belongs to whoever owns `profile.c`:
+emit the pacing line on a TIME interval as well as a flip count, or flush the
+probe totals once at teardown.** Either makes every disc run carry a reading;
+today only titles and long discs do. Recorded rather than applied — `profile.c`
+is not this lane's file.
+
+### AND THE DISC DELIVERED #79's TIP-REF REPEAT, UNASKED
+
+Two runs of ONE apk (`658910889812`) at `1dee9e25f6`, thor:
+
+| capture | run 1 | run 2 |
+|---|---|---|
+| `Stencil_REPLACE_ST_DT` | **0** | **30,000** |
+| `Stencil_REPLACE_ST_DT_ZB` | **0** | **30,000** |
+| `Stencil_ZERO_DT` | **0** | **40,000** |
+| the other 13 | 0 | 0 |
+
+Run 1 is **16 of 16 bit-exact**; run 2 is 13 of 16. **#79's defect is live at
+the tip**, with the same captures and the same round values its filing records
+(*"5,000 / 5,050 / 5,100 / 30,000 / 40,000"*), and `REPLACE_ST_DT` and
+`ZERO_DT` are two of the three #79 fitted to individual triangles of a
+six-vertex `DefineBiTri`. The `_ZB` twin moves in lockstep with its base at
+exactly 30,000, which is the same draw seen through the depth/stencil packing.
+
+**#79 and #44 both carry the caveat this answers**: *"both arm refs are 292
+commits behind the tip — equally, which is what makes them a pair, but it
+certifies the mechanism rather than mainline, and a tip-ref repeat is the
+honest precondition for shipping."* This is that repeat **for arm A only**: the
+defect is still expressed at mainline. It says nothing about whether the bound
+still removes it at the tip, which is the other half and still owed.
+
+**Held as an OBSERVATION, not as a leg.** This request was registered as a
+denominator survey with `--no-expect`; the score columns were not predicted and
+reading a verdict off them afterwards is the POST-HOC form this file refuses.
+n is 2 runs, 3 wrong of 32 (run, capture) observations = **9.4%**, which sits on
+#79's published 10.9% arm-A floor rather than being compared to it — with two
+runs a per-run coin flip has almost no power, exactly as the `2D_BorderTex_SZ`
+section sets out.
+
+
 ## UNRESOLVED
 
+- ~~**#54's read-side frequency on a real title.**~~ **MEASURED 2026-09-14,
+  and it relocates the target.** Galleon, 6 runs, 4 refs, both devices:
+  `Vr` = **55 / 1,009,270 = 5.45e-05** per instrumented guest read, all of it
+  at the **vertex** site; `Tr` = **0 / 56,131** uploads over 4,374,420 draw
+  windows (≤ 5.35e-05, one-sided 95%); `Xd` = 0 throughout. The texture-side
+  zero is **exposure, not ordering** — `tex_uploads/tex_windows` is 0.0128 on
+  Galleon against 0.80 on Crimson, a 63x gap the race rate follows — so it is
+  a different zero from the barrier arm's and neither is evidence for the
+  other. The mode-0/mode-2 pair takes the vertex race 20/270,080 → 0/177,501,
+  Fisher two-sided **p = 0.000082**, which is #79's result on a title instead
+  of a disc. What is open is the **attribution**: a rate is not an artefact,
+  and nothing ties Galleon's 55 torn vertex reads to a visible defect.
+- **The probe cannot be read off a short disc, at all.** `profile.c:479` gates
+  `nv2a_profile_get_pacing_str` — the counters' only output channel — on
+  `(frame_count % 60) == 0` in the flip handler, so a 16-capture Stencil disc
+  emits **0 pacing lines of 40 `hakuX-perf` lines** and the totals are
+  unreadable whatever they counted. That silently voids the probe on most of
+  the corpus, and an absent `Vr:` reads exactly like "no races". One line
+  fixes it — emit on a time interval as well as a flip count, or flush the
+  totals at teardown — in `profile.c`, which no lane currently holds.
+- **Where #79's vertex skew actually reads guest memory.** Only one of the
+  three vertex paths reads guest memory at draw time (`draw_arrays` /
+  `inline_elements` → `sync_vertex_ram_buffer`, which is what `Vr` counts);
+  `inline_buffer` and `inline_array` carry the values as pushbuffer method
+  parameters into pgraph-owned state (`pgraph.c:4258`) with no read left at
+  the draw. Which one the Stencil suite uses is **not resolvable on this
+  machine**: `stencil_tests.cpp` calls `host_.DrawArrays()` and
+  `TestHost::DrawArrays` lives in `third_party/pbkitplusplus`, which is not
+  checked out. If it is an inline path, the only guest read in those vertices'
+  journey is the pusher's read of the pushbuffer word in `pfifo.c`, which no
+  existing counter can see because the pushbuffer is not covered by
+  `DIRTY_MEMORY_NV2A` logging — a hypothesis, with the 63.98 MiB ring and an
+  8.65 ms publish-to-consumed p50 arguing against it.
+- **The other half of #79's tip-ref repeat.** Arm A is done incidentally:
+  two runs of one apk at `1dee9e25f6` on the thor gave 16 of 16 exact and 13
+  of 16, moving `Stencil_REPLACE_ST_DT` and its `_ZB` twin by 30,000 and
+  `Stencil_ZERO_DT` by 40,000 — the same captures and the same round values
+  #79 recorded, so **the defect is live at mainline**. Whether
+  `XEMU_OPT_FIFO_SKEW_BOUND=1` still removes it at the tip is unrun, and it is
+  the precondition #44's shipping decision names.
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
   ring, 100.0% of 148,667 submissions made with PGRAPH behind, and a
   publish-to-consumed latency with a p50 of 8.65 ms, a p90 of ≥34.9 ms and a
