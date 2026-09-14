@@ -1,0 +1,143 @@
+[
+  {
+    "id": "H1",
+    "severity": "HIGH",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 3154,
+    "summary": "622183271b replaced the round-to-zero conversion macros with floatx80_to_int32_rtz_nds(), which returns INT32_MIN on BOTH signs of overflow and on NaN. Softfloat's partsN(float_to_sint) (fpu/softfloat-parts.c.inc:1226-1271) saturates instead: positive overflow and NaN return `max`, only negative overflow returns `min`. Every FIST/FISTP/FISTTP/FBSTP caller overwrites the returned value when float_flag_invalid is set, so the divergence is invisible there. helper_fscale() is the one consumer on this path that uses the value directly, with no guard, and it now gets INT32_MIN where the soft path gets INT32_MAX.",
+    "scenario": "A guest executes FSCALE with a finite ST1 whose magnitude is at least 2^31 -- ldexp()/scalbn() with a runaway exponent is the ordinary source. NaN and infinite ST1 are handled earlier (fpu_helper.c:3119-3147), so only the finite case reaches the conversion. Before this change the hard path evaluated `(int32_t)ST1`, which is UB in C but on aarch64 compiles to fcvtzs and saturates to INT32_MAX, giving floatx80_scalbn(ST0, INT32_MAX) -> +/-inf -- the x87-correct masked-overflow result, and the same one the soft path gives. After this change n = INT32_MIN, so scalbn(ST0, INT32_MIN) flushes to +/-0. The error does not merely change magnitude, it inverts: infinity becomes zero. It is also a NEW hard-vs-soft divergence, so the same guest code yields a different answer with g_use_fp_jit on and off -- i.e. the Android 'Native Floats (JIT)' setting silently changes a computed result. No pixel corpus can see it; nxdk_pgraph_tests does not exercise FSCALE overflow.",
+    "remediation": "Saturate like softfloat rather than returning the integer-indefinite value: in all four *_nds/_rtz_nds helpers return `r < 0 ? INT32_MIN : INT32_MAX` (resp. INT64) on the out-of-range branch, and INT32_MAX/INT64_MAX for NaN, matching partsN(float_to_sint). The FIST/FISTP/FBSTP guards are unaffected -- they key on float_flag_invalid, not on the value -- so this is a strict correction with no effect on the paths the change was written for. Alternatively clamp in helper_fscale itself, but that leaves the hard/soft divergence in place for any future caller.",
+    "evidence": "Conversion bodies at fpu_helper.c:380-421 (new). Consumers enumerated by grep for floatx80_to_int32/int64 in the file: lines 1029, 1043, 1056, 1069, 1083, 1096 (all six FIST/FISTT helpers, each overwriting val under a float_flag_invalid or int16-range guard), 1594 (helper_fbst_ST0, guarded by the +/-1e18 test), 1918 and 2293 (both inside the #else of `#if USE_NATIVE_DOUBLE_STORAGE`, so soft-path only -- confirmed by walking the preprocessor stack), and 3154 (helper_fscale, UNGUARDED). floatx80_scalbn on this path is scalbn() (fpu_helper.c:468-474). Softfloat saturation confirmed at fpu/softfloat-parts.c.inc:1239 (NaN -> max), 1244 (inf -> sign ? min : max), 1267/1271 (normal overflow -> min / max)."
+  },
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/psh.c",
+    "line": 2376,
+    "summary": "4a08abef66's new DOT_STR_3D cube expression reads dotSTR%d.x and dotSTR%d.y, but apply_border_adjustment() has already rewritten dotSTR%d twenty lines earlier (psh.c:2356). For a cubemap that call emits `dotSTR%d.xyz = remapBorderCube(dotSTR%d.xyz, ...)`, and remapBorderCube (psh.c:2187-2206) does not scale the vector in place -- it projects to the dominant face, remaps (s,t), and RECONSTRUCTS a direction with the major-axis component forced to +/-1.0. So the .x and .y the new code samples are no longer the signs of dot_{i-2} and dot_{i-1} that the measured rule is stated in terms of.",
+    "scenario": "A guest enables a texture border on the cubemap bound to a DOT_STR_3D stage, so border_logical_size[i][0] != 0 and the remap is emitted. Take a direction whose dominant axis is X: remapBorderCube returns vec3(+/-1.0, -st.y, -st.x), so dotSTR.x is now the sign of the MAJOR AXIS rather than the sign of dot_{i-2}, and dotSTR.y is derived from the original y through the face projection. The corner selected is then the wrong one of the four, and it is wrong systematically rather than at boundaries. The six DotSTR3D_* captures the fix was scored against carry no border, which is why 296,177 px -> 150 px does not exclude this. A second, smaller consequence: with a border the outermost texel of the face IS the border ring, so even with correct signs `K = 1 - 1/8192` lands on the border texel rather than the logical corner the rule names.",
+    "remediation": "Sample the signs from the raw dot products, not from the post-remap vector: emit the `dotSTR%dDir` line from `dot%d`, `dot%d-2`, `dot%d-1` directly, or snapshot `vec2 dotSTR%dSign = sign-of(dotSTR%d.xy)` BEFORE the apply_border_adjustment() call. Since the corner fetch discards magnitudes entirely, the cleanest form is to skip apply_border_adjustment() on the dot_str_3d_is_cube() branch and document that the border remap cannot apply to a fetch that keeps only two sign bits -- but that leaves the border-ring question open and should be stated rather than assumed.",
+    "evidence": "psh.c:2356 (apply_border_adjustment on \"dotSTR%d\"), psh.c:1158-1176 (the cubemap arm emits remapBorderCube and returns), psh.c:2187-2206 (remapBorderCube reconstructs vec3 with the major axis at +/-1.0), psh.c:2376-2381 (the new expression reads .x and .y). Not build-verified: the desktop build is a KNOWN GAP here."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/psh.c",
+    "line": 2381,
+    "summary": "The cube fetch is still `texture(texSamp%d, dotSTR%dDir)` -- an implicit-LOD sample -- but the coordinate it is given is no longer continuous. dotSTR%dDir takes exactly four values, so its screen-space derivative is identically zero inside a sign region and approximately 2K across a sign boundary. Implicit LOD is computed from that derivative, so the mip level selected changed character completely: it is pinned to the most detailed level everywhere inside a region, and jumps to the coarsest level on the one quad that straddles a sign change.",
+    "scenario": "A DOT_STR_3D stage bound to a cubemap that has a mip chain and a mipmapped min filter -- the guest sets both through the ordinary texture registers, nothing exotic. Inside each sign region ddx/ddy are exactly 0, so LOD 0 is selected regardless of how minified the surface is; where the sign flips, ddx is ~2K, so LOD = log2(K * faceSize) selects the smallest level (1x1 on a full chain) and that quad samples an average colour that exists on no corner. Both are new: before the change the coordinate varied smoothly with the interpolated dot products and the LOD tracked the footprint. The six goldens cannot show it -- the investigation itself records that the coordinate 'saturates' over 13,000-29,000 px regions on this content, and a capture with no mip chain or a non-mipmapped min filter has no second level to select.",
+    "remediation": "Make the level explicit, because a nearest-corner fetch has no footprint to derive one from: `textureLod(texSamp%d, dotSTR%dDir, 0.0)` (available in GLSL 400, ES 300 and Vulkan 450, all three targets pgraph_glsl_append_version emits), or textureGrad with zero gradients if a non-zero base level must be honoured. Whichever is chosen, say in the comment which level silicon fetches and on what evidence -- the current comment does not mention LOD at all.",
+    "evidence": "psh.c:2376-2382 (the emitted sample). docs/investigations/cubemap-is-dot-str-3d.md:1280-1286 ('the coordinate is constant over large screen regions -- it saturates'), which establishes the region structure but says nothing about the derivative the sampler now sees. Not build-verified and not device-verified."
+  },
+  {
+    "id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/gate.sh",
+    "line": 147,
+    "summary": "aadd7d8f7f added a warning-delta report restricted to files compiled in BOTH runs, and decides membership by mapping a source path to a meson object name with `tr '/' '_'` and grepping for `[/_]<name>\\.o$` in each run's object list. Objects are named after the .c file, never after a header, so a `.h` path can never match and every header warning is silently dropped from the delta. d844e6067f, two commits earlier, widened the census regex from `\\.c` to `\\.[ch]` precisely BECAUSE headers were being missed, and desktop-gate-warnings.md:200-214 lists header warnings in the census. So the same window makes headers visible in the count and structurally invisible in the interlock.",
+    "scenario": "A change introduces a warning in a shared header -- the exact case c19074ed8a's desktop gate was added for, since a header reaches both the Android and desktop builds. `distinct warning sites` goes up by one, but the delta block reports it as neither removed nor added, because the header is not in .common_src. A reviewer comparing two gate logs reads 'removed: 1, added: 0' and concludes the change introduced nothing. The block prints the count of common files but not which files were dropped or why, so the exclusion is not visible in kind.",
+    "remediation": "Map a header to the objects that include it (the .d depfiles meson writes next to each object already carry this: grep the header path in build/**/*.o.d and treat the header as common if any dependent object was compiled in both runs), or -- much simpler and honest -- print header warnings as a separate, explicitly uncompared list with a line saying the delta cannot cover them. Do not leave them silently inside a number labelled as the delta.",
+    "evidence": "gate.sh:140-151 (the .common_src construction), gate.sh:116-118 (the widened SITES regex), desktop-gate-warnings.md:37-40 (the reason for widening) and :200-214 (header warnings in the census). Meson object names end `.c.o`; verified against the naming the same block relies on."
+  },
+  {
+    "id": "M4",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/skew-bound-closes-the-desktop-race.md",
+    "line": 60,
+    "summary": "The doc's 'Where the prediction was wrong' section concludes that mode 2 costs the same as mode 1 because 'on this workload essentially every published segment carries a draw, so the draw-only filter buys nothing'. That is one of at least two explanations, and the run could not separate them. pfifo.c:1064-1082 shows mode 2 skips the hold ONLY when the scan walks the span end to end and returns FSK_SEG_NO_DRAW; every other verdict, including hitting FIFO_SKEW_SCAN_MAX_WORDS and holding anyway (pfifo.c:102-121), falls through to the same pfifo_bound_skew() as mode 1. So 'the scan kept giving up' produces exactly the measured result. The doc's own positive-control paragraph states why this could not be checked: the `fifoskew` line, which carries the `big=` counter that distinguishes them, goes through __android_log_print and prints nothing on the desktop.",
+    "scenario": "Whoever tunes the bound reads 'the six-fold cost is not an artefact of holding too often; it is what holding costs here' and stops looking at selectivity, when the live possibility is that the scan cap is forcing a hold on most submissions and a larger cap or an incremental scan would recover most of the 6x. The doc's chosen explanation is also actively contradicted by the figure in the code it is about: pfifo.c:86-87 records 'this test disc makes 148,704 submissions for 180 draws' -- 0.12% of submissions carrying a draw, not 'essentially every'. A different disc is not an explanation for a factor of 800; it is the thing that needed saying.",
+    "remediation": "Either re-run with the fifoskew counters reachable on the desktop (route that one line through fprintf/qemu_log rather than __android_log_print, which is a one-line change in the reporting path and not in the bound), or restate the conclusion as 'mode 2 did not reduce the cost on this disc; whether that is because segments carry draws or because the scan cap forces a hold was not measured, and pfifo.c's own 148,704/180 figure argues against the first'. The prediction record ../testing/predictions/skew-bound-closes-swizzle.json should carry the same correction.",
+    "evidence": "pfifo.c:1064-1082 (the only early return, and what falls through), pfifo.c:102-121 (FIFO_SKEW_SCAN_MAX_WORDS and the 'holding when the span exceeds the cap forces a drain' comment), pfifo.c:86-87 (148,704 submissions for 180 draws), the doc's own 'The positive control' section (fifoskew is Android-only on the desktop). Separately verified and NOT a problem: the mode-2 arm is not tautological -- 80512e37 does carry FIFO_SKEW_DRAW_ONLY and its distinct code path at pfifo.c:1064, so `HAKUX_FIFO_SKEW_BOUND=2` did not silently fall through to FIFO_SKEW_EVERY."
+  },
+  {
+    "id": "M5",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/skew-bound-closes-the-desktop-race.md",
+    "line": 47,
+    "summary": "'It also bounds the noise floor's cause completely. The measured GL band -- 15,360 down to 11,392 here, and 14,848 with 2,341 px moving at a constant score on the full disc -- is this one hazard and nothing else.' The experiment was run on a TWO-TEST disc (Surface_pitch::Swizzle plus Pixel_shader::Passthru). The full-disc figure it then absorbs is described in the same sentence as pixels moving at a CONSTANT score, which is a different signature from the one measured here, where the score itself varied across 11,392/13,056/15,360. A hazard that changes the score and a hazard that moves pixels without changing it are not shown to be the same hazard by an experiment that only ever saw the first.",
+    "scenario": "The owner is holding a decision on whether to turn the bound on. Reading 'bounds the noise floor's cause completely' retires the search for other causes of the full-disc band, so a second mechanism behind the constant-score pixel movement keeps producing run-to-run differences that are then attributed to a hazard already believed closed -- and the next lane debugging it starts from a false premise rather than from an open question. AGENTS.md:855 and :970 are both about exactly this step.",
+    "remediation": "Restrict the claim to what was run: 'on this two-test disc, the band is this hazard'. State the full-disc constant-score observation as an OPEN item with its differing signature named, or run the same three-arm comparison on the full disc before absorbing it. No code change.",
+    "evidence": "The doc's result table (two-test disc, three runs per arm) against its own 'and 14,848 with 2,341 px moving at a constant score on the full disc'. The full disc was not run under the bound anywhere in the record."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 120,
+    "summary": "636ee8b413's fp_safe comment says xemu_get_fp_safe() 'is handed back to the UI, so the switch reads OFF however it is set'. It is not. Java_..._nativeGetFpSafe exists (android/app/src/main/cpp/xemu_android.cpp:1468-1471) and Kotlin declares it (SettingsActivity.kt:1454), but nothing ever calls it -- grep across android/ returns the declaration and the JNI definition and no call site. setupSwitch() (SettingsActivity.kt:153-165) sets `sw.isChecked = pgBool(key, default)` from SharedPreferences with default true, so the switch reads ON.",
+    "scenario": "No runtime effect; the comment is the deliverable and this is the part of it that is wrong. It also understates the symptom, which matters for the decision the comment explicitly hands to 'whoever owns the Android settings surface': the switch does not read OFF and look broken, it reads ON and silently does nothing, which is the harder failure to notice. The cache-key half of the same sentence IS correct -- xemu_android.cpp:1151 and :1173 xor in a bit that is always zero.",
+    "remediation": "Correct the sentence: the getter is exposed through JNI and declared in Kotlin but never called, so the switch's displayed state comes from SharedPreferences (default ON) and is unrelated to the stub. Keep the cache-key claim as written."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 233,
+    "summary": "The new block-header note says the conversions' float_flag_invalid is still useful 'because helper_fistl_ST0 and helper_fistll_ST0 read get_float_exception_flags() DIRECTLY'. helper_fisttl_ST0 (line 1083) and helper_fisttll_ST0 (line 1096) do exactly the same thing and are not named, and helper_fist_ST0 (1030) and helper_fbst_ST0 (1596) reach the same outcome through their own range guards rather than the flag. The list reads as exhaustive and is not.",
+    "scenario": "No runtime effect. A later edit that trusts the enumeration could conclude the FISTTP helpers do not depend on the flag and drop the raise from the _rtz_ pair, which would make FISTTP store a saturated value instead of the integer-indefinite one on overflow.",
+    "remediation": "Name all four flag-reading helpers, or say 'the FIST/FISTT 32- and 64-bit helpers' rather than listing two of them."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/texture.c",
+    "line": 844,
+    "summary": "The M4/#80 fix captures the helper's return into a variable named `downloaded` and comments it 'Only when a surface was actually written back'. pgraph_gl_download_surfaces_in_range_if_dirty (gl/surface.c:1664-1680) returns found_overlap, which is set whenever a surface OVERLAPS the range, whether or not pgraph_gl_surface_download_if_dirty then found it dirty and downloaded anything.",
+    "scenario": "No behavioural problem -- found_overlap is the right condition, because it is exactly the old `if (overlapping)` guard the change set out to restore, and the stage label 'download_overlap' is true again. Only the name and the comment claim something narrower than what is tested, so a reader checking whether the probe still covers a failed download is told the wrong thing.",
+    "remediation": "Rename to `overlapped` and say 'only when an overlapping surface was found', matching the helper's own found_overlap."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/gate.sh",
+    "line": 46,
+    "summary": "emulator_pids() ends with `[ ... ] && printf ...` as the last statement of a for loop, so the function's exit status is that of the test on the LAST /proc entry -- 1 almost always, including when it did find the emulator and printed a pid. Verified here: with a live process named qemu-system-i386, `RUNNING=$(emulator_pids)` printed the pid and `$?` was 1.",
+    "scenario": "Harmless today because gate.sh is `set -uo pipefail` with no -e (line 13). Adding `set -e` later -- an ordinary hardening edit on a script whose whole purpose is to refuse to run in a bad state -- makes the assignment at line 57 abort the gate before the build, with exit status 1, which is not the 2 the script reserves for REFUSING and not the 2 its callers check for. The gate would then fail closed but indistinguishably from a build failure.",
+    "remediation": "End the function with an explicit `return 0`, or use `printf ... || :`."
+  },
+  {
+    "id": "L5",
+    "severity": "LOW",
+    "file": "docs/testing/gate.sh",
+    "line": 26,
+    "summary": "`cd \"$REPO\"` is unchecked and REPO is hard-coded to /home/user/hakuX (line 15), which does not exist on this host -- the tree is at /home/justin/hakuX. Pre-existing, not introduced by this window, but it is the same class as the inert interlock d844e6067f just fixed.",
+    "scenario": "On any host where REPO is wrong the cd fails, `set -e` is not in force, and the script continues in the caller's working directory. The failure is loud rather than silent (ninja has no build dir, `find build` yields 0 objects, the git commands fail), so it fails closed -- which is why this is LOW and not higher.",
+    "remediation": "`cd \"$REPO\" || { echo \"cannot cd $REPO\" >&2; exit 2; }`, and derive REPO from `git rev-parse --show-toplevel` relative to the script's own location rather than hard-coding a path."
+  },
+  {
+    "id": "L6",
+    "severity": "LOW",
+    "file": "docs/testing/gate.sh",
+    "line": 147,
+    "summary": "Two loose matches in the new delta block. `m=$(printf '%s' \"$src\" | tr '/' '_')` is interpolated straight into `grep -qE \"[/_]${m}\\.o$\"`, so the '.' in 'fpu_helper.c' is an ERE wildcard rather than a literal. And `incommon()` uses `grep -Ff \"$OUT/.common_src\"`, matching each source path as an unanchored fixed substring of the keyed line, so a path that is a suffix of another path matches both.",
+    "scenario": "No wrong answer observed, and both failures are toward INCLUDING a file rather than excluding it, so they cannot manufacture a false 'nothing changed'. They can attribute a warning to the wrong file in the printed delta, which costs a reader one wrong lookup.",
+    "remediation": "Escape the '.' before interpolating (`m=${m//./\\\\.}`), and anchor the incommon match on the '  ::  ' separator the keyed form already provides rather than on a bare substring."
+  },
+  {
+    "id": "L7",
+    "severity": "LOW",
+    "file": "docs/testing/gate.sh",
+    "line": 125,
+    "summary": "`OBJS=$(find build -name '*.c.o' 2>/dev/null | wc -l)` is printed as the denominator of 'warnings cover ONLY these'. It counts C objects that ALREADY EXIST under build/, so it is neither the tree's object count nor a constant: it is smaller on a fresh tree, excludes every C++ object, and grows as builds accumulate. The comment above it quotes a fixed 1377.",
+    "scenario": "The ratio is the number the comment asks readers to carry around ('79 of 1377 objects, 5.7%'), and two gate runs on differently-populated build directories give different denominators for the same tree, so the percentages are not comparable between runs -- the failure the whole scope note exists to prevent, one level down.",
+    "remediation": "Take the denominator from the build description rather than the filesystem (`ninja -C build -t targets all | grep -c '\\.o:'`, or `ninja -t deps` ), or print the raw compile count and drop the ratio."
+  },
+  {
+    "id": "L8",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/psh.c",
+    "line": 2729,
+    "summary": "`#define DOT_STR_3D_K` is appended to `final` unconditionally, so it is emitted into every pixel shader the translator produces whether or not any stage took the dot_str_3d_is_cube() branch.",
+    "scenario": "No runtime effect -- it is a preprocessor define in generated source, it costs nothing at execution and the placement after pgraph_glsl_append_version() is valid on all three targets (the #extension directives are inside append_version, so nothing follows a non-preprocessor token). It is noise in every dumped shader and it puts a constant whose derivation lives in one case arm into the file preamble.",
+    "remediation": "Emit it into `preflight` from the dot_str_3d_is_cube() arm, guarded by a once-per-shader flag the way define_colorkey_comparator() is handled (psh.c:1218, called at :2518). Reviewed-not-fixed is a defensible outcome; log the decision either way."
+  },
+  {
+    "id": "L9",
+    "severity": "LOW",
+    "file": "docs/investigations/skew-bound-closes-the-desktop-race.md",
+    "line": 38,
+    "summary": "'GL converges on Vulkan's exact image' compares the bound=1/bound=2 digest 15845fa9e1e40032 against a Vulkan digest 'this lane recorded for Vulkan earlier, five runs'. The GL arm's tree is named precisely -- peer branch 80512e37, carrying neither #66 nor #71 -- and the Vulkan arm's tree is not named at all.",
+    "scenario": "No failure if the two runs were on the same tree; the doc simply does not say. Since the section's conclusion ('Vulkan was never immune, it was losing the same race reproducibly') is an inference about a renderer from an equality of two hashes, the tree the second hash came from is load-bearing, and a reader cannot check it.",
+    "remediation": "Name the commit the Vulkan five-run digest was recorded on, or re-run Vulkan on 80512e37 so the equality is within one tree."
+  }
+]
