@@ -4512,6 +4512,17 @@ static bool check_draw_mergeable(PGRAPHState *pg, DrawQueue *q)
         return false;
     }
 
+    /*
+     * #13: a merged draw carries exactly one geometry push constant, so two
+     * line draws differing only in SET_LINE_WIDTH cannot share a draw call.
+     * Compared unconditionally rather than only for line primitives: the
+     * width is one register read, and a predicate that is right only for the
+     * primitive modes someone remembered is the shape of bug this is.
+     */
+    if (pg->line_width != q->line_width) {
+        return false;
+    }
+
     return true;
 }
 
@@ -4570,6 +4581,7 @@ static bool try_enqueue_draw_arrays(PGRAPHState *pg, DrawQueue *q)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         q->active = true;
         q->has_uniform_changes = false;
     }
@@ -4679,6 +4691,7 @@ static bool try_enqueue_draw_indexed(PGRAPHState *pg, DrawQueue *q)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         q->active = true;
         q->indexed = true;
         q->has_uniform_changes = false;
@@ -5505,7 +5518,27 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         e->pipeline_binding->draw_time = pg->draw_time;
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
-        if (e->has_dynamic_line_width) {
+    }
+
+    /*
+     * #13: NOT gated on pipeline_changed.  e->line_width is snapshotted per
+     * entry precisely because SET_LINE_WIDTH can change between draws inside
+     * one reorder window, and those draws share a pipeline -- so gating the
+     * push on pipeline_changed dropped exactly the case the snapshot exists
+     * for, and the second draw rendered at the first's width.  The gate was
+     * inherited from the deleted vkCmdSetLineWidth call, where it was merely
+     * a redundant dynamic-state set; now the width drives the geometry the
+     * stage emits, so the failure is a wrong footprint.
+     *
+     * prev->line_width is only meaningful when prev itself had a dynamic
+     * line width -- entries are reused in place in w->entries[] and are not
+     * cleared between windows, so an entry without one carries a stale value.
+     */
+    if (e->has_dynamic_line_width) {
+        bool width_changed = pipeline_changed || !prev ||
+                             !prev->has_dynamic_line_width ||
+                             e->line_width != prev->line_width;
+        if (width_changed) {
             float values[4];
             geom_line_params(pg, values);
             values[2] = e->line_width;
@@ -5945,6 +5978,7 @@ void pgraph_vk_draw_end(NV2AState *d)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         memcpy(q->saved_vertex_attrs, pg->vertex_attributes,
                sizeof(q->saved_vertex_attrs));
         q->active = true;
@@ -6001,6 +6035,7 @@ void pgraph_vk_draw_end(NV2AState *d)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         memcpy(q->saved_vertex_attrs, pg->vertex_attributes,
                sizeof(q->saved_vertex_attrs));
         q->active = true;
