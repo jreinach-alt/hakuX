@@ -147,3 +147,74 @@ after all.
 The lesson is the general one: **compare the sums, not the items, when the items
 are quantised.** Comparing quantised runs individually manufactured a per-line
 story out of a global effect.
+
+---
+
+## Measuring a VERTICAL edge changes the picture again
+
+Everything above measures painted-pixel totals over the whole frame, which mixes
+every line angle together. Isolating one edge where the geometry is trivial --
+the `QUAD_STRIP`'s vertical edges at screen x=160 and x=265, where a line's
+horizontal run IS its width, no trigonometry -- gives a much sharper answer.
+
+### The width is EXACT
+
+| requested | ours | golden |
+|---:|---:|---:|
+| 3, 4, 5, 6, 7, 8 | 3, 4, 5, 6, 7, 8 | identical |
+| 9, 10, 11, 12 | 9, 10, 11, 12 | identical |
+| 13, 14, 15, 16 | 13, 14, 15, 16 | identical |
+| 24, 32, 40, 48 | 24, 32, 40, 48 | identical |
+
+**Zero difference at every integer width from 1 to 48**, on both vertical edges.
+The rendered width of a vertical line is exactly the requested width in ours and
+in the hardware. So "our lines are systematically thinner" -- the headline of
+this document -- is **wrong as a statement about width**. It is true only as a
+statement about painted-pixel totals over a frame that is mostly diagonals.
+
+### Two real differences, both precise
+
+**1. Odd widths are offset one pixel.** At x=160: ours starts at 159 where the
+golden starts at 160 (w=1), 158/159 (w=3), 157/158 (w=5), and so on through
+w=15. Even widths start identically -- 158/158, 156/156, 152/152, 144/144.
+Reproduced independently at x=265: 264/265, 263/264, 262/263, 261/262, 260/261,
+259/260, 257/258, with every even width matching.
+
+So for an ODD line width we place the line one pixel left of where the hardware
+puts it. The width is right; the centring convention is not.
+
+**2. Fractional widths round differently.** Requested 1.125, 1.250 and 1.375 give
+2 on the hardware and 1 from us; 1.500 upward gives 2 from both. That is the
+hardware taking a ceiling where we round to nearest.
+
+### And this partly reinstates what `d902a5cd` retracted
+
+`d902a5cd` falsified the per-primitive predictions and concluded the deficit was
+global, retracting angle as a candidate. The vertical-edge measurement says
+otherwise: if vertical lines are width-exact and the whole frame is still ~0.9x,
+the deficit must live on the NON-vertical lines. **The angle dependence is back**,
+now on a direct measurement rather than a guess.
+
+`d902a5cd`'s per-primitive test could not have seen this: every primitive in the
+grid is mostly diagonal edges, so a uniform ratio across primitives is exactly
+what an angle-dependent rule produces. That test was not wrong, it was
+unable to discriminate -- which is a different failure and worth the distinction.
+
+### What is established now
+
+- Vertical lines: width exact at every integer 1..48, both edges.
+- Odd widths: our line is one pixel left of the hardware's. Even widths agree.
+- Fractional widths: hardware ceilings, we round to nearest.
+- The bulk of the 4.46M is on non-vertical lines and is explained by NONE of the
+  above. It has not been measured.
+
+### What is NOT established
+
+The rule for diagonals, which is where the residual actually lives. Also whether
+the odd-width offset is fixable in `gl/draw.c` at all -- it may be a GL-versus-
+hardware centring convention that only moves by shifting geometry, and
+`roundScreenCoords` in `glsl/vsh.c` is rasteriser-wide and needs the owner.
+Nothing here licenses touching it.
+
+Rows at w >= 13 on the x=265 edge, and w >= 56 on x=160, are merged runs where
+the edge has met a neighbour; they are excluded above rather than read as widths.
