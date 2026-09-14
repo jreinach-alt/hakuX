@@ -281,3 +281,92 @@ max delta 158/159/204, an unrelated clear-colour defect. So removing the
 readback without fixing the clear makes the **Z** member of that pair worse and
 leaves the O member alone, which is exactly the half-done shape this issue has
 carried as "two of four would regress eight bit-exact captures".
+
+## MEASURED 2026-09-14: the write side is right and the SHADER IS THE WRONG PLACE TO PUT IT
+
+Arm `23be8223f5 -> 4381fae5f6`, PRE-REGISTERED, **FAIL**, 10 of 142 checks
+violated (`1789359225-padwrite59-base-1009294` against
+`1789359229-padwrite59-fix-1015145`, thor, 217 captures per arm, progress-log
+proof both sides). The implementation was: stamp the format's constant as
+`fragColor.a` in `glsl/psh.c`, force the alpha blend to ONE/ZERO/ADD in
+`vk/draw.c`, delete the readback swizzle from `vk/texture.c`.
+
+**The failure set has no exceptions, and that is what identifies the cause.**
+
+    worse  Blend_surface  X_O1RGB5_Add_SrcA_1-SrcA    12,374 ->  20,723
+    worse  Blend_surface  X_O1RGB5_Add_SrcA_DstA      12,274 ->  21,868
+    worse  Blend_surface  X_ORGB8_Add_SrcA_1-SrcA          0 ->  20,723   was exact
+    worse  Blend_surface  X_ORGB8_Add_SrcA_DstA            0 ->  18,227   was exact
+    worse  Blend_surface  X_Z1RGB5_Add_SrcA_1-SrcA    12,374 ->  56,801
+    worse  Blend_surface  X_Z1RGB5_Add_SrcA_DstA      12,274 ->  56,791
+    worse  Blend_surface  X_ZRGB8_Add_SrcA_1-SrcA          0 ->  56,801   was exact
+    worse  Blend_surface  X_ZRGB8_Add_SrcA_DstA            0 ->  56,801   was exact
+
+`Blend surface` has 16 `Add_SrcA_*` captures, eight surface formats by two
+blend configs, and **exactly the four pad formats moved**. Its sixteen
+`DstAlpha_*` captures, which blend with `DST_ALPHA`/`ONE_MINUS_DST_ALPHA` and
+never reference the source alpha, **all held at their old values, eight of them
+bit-exact**. `Surface_clip` (47), `Texture_DXT` (15), `Texture_format` (40) and
+`Texture_render_target` (41) moved **zero** captures between them.
+
+    moved = { surface format has pad bits } AND { colour blend factor is SRC_ALPHA }
+
+> **Forcing `fragColor.a` also changes the source alpha the COLOUR blend
+> consumes.** `VK_BLEND_FACTOR_SRC_ALPHA` and `ONE_MINUS_SRC_ALPHA` read the
+> fragment's alpha, so stamping the pad constant there silently rewrites every
+> RGB channel of a draw that blends on source alpha.
+
+The arithmetic confirms it pixel for pixel. `Surface_format`'s quads blend
+`SRC_ALPHA`/`ONE_MINUS_SRC_ALPHA` over a `memset` background of zero:
+
+    Fmt_X8R8G8B8_Z8R8G8B8   golden (255,0,0)   arm B (0,0,0)
+                            stamped As = 0, so src contributes nothing and the
+                            black destination survives
+    Fmt_X8R8G8B8_O8R8G8B8   golden (127,0,0)   arm B (255,0,0)
+                            stamped As = 1, so the source is written unblended
+                            where hardware blends it at the combiner's alpha
+
+and its background -- the 88% the raster never touches -- was repaired exactly
+as predicted, `Fmt_X8R8G8B8_O8R8G8B8` 59,183 -> 32,766, the whole 26,417 being
+the outside-quad region. **The model is right and the entry point is right; the
+site is wrong.**
+
+### Why it cannot simply be moved later in the shader
+
+It is not an ordering bug. `result.a = As*Fs + Ad*Fd` is a linear combination
+of the source and destination alphas, so a **constant 1 is not expressible in
+the fixed-function blend at all** -- it requires `As == 1` or `Ad == 1`.
+(`SRC_ALPHA_SATURATE` does not help: its alpha-component factor is 1, which
+yields `As`, not 1.) A constant **0** *is* expressible, `ZERO`/`ZERO`, with no
+shader involvement. So the two suffixes are not symmetric:
+
+| | stored alpha = 0 (`Z`) | stored alpha = 1 (`O`) |
+|---|---|---|
+| blending off | shader, or `ZERO`/`ZERO` | shader |
+| blending on, no `SRC_ALPHA` factor | `ZERO`/`ZERO` | shader |
+| blending on **with** a `SRC_ALPHA` factor | `ZERO`/`ZERO`, exact | **not expressible** |
+
+The last cell is the whole problem, and it is the cell `Blend surface`'s
+`Add_SrcA_*` captures live in.
+
+### The route that does work, and what it costs
+
+**Dual-source blending.** Write the combiner's alpha to output location 0
+index 1 and the pad constant to index 0, then substitute
+`VK_BLEND_FACTOR_SRC1_ALPHA` / `ONE_MINUS_SRC1_ALPHA` wherever the guest asked
+for `SRC_ALPHA` / `ONE_MINUS_SRC_ALPHA`. The two uses of "the fragment's alpha"
+then stop being one value, which is exactly the conflation measured above.
+
+It needs the `dualSrcBlend` device feature, and **this renderer does not
+request it**: `vk/instance.c`'s `desired_features` table lists nine features
+and `dualSrcBlend` is not among them, so nothing here even reports whether the
+Adreno part advertises it. That is the first thing to measure, and it costs one
+line and one boot, not an arm.
+
+### What is NOT the blocker
+
+The four-file atomicity claim this issue carried since it was filed. The arm
+touched `glsl/psh.c`, `vk/draw.c` and `vk/texture.c`; `vk/surface.c` was never
+needed, and the clear -- the reason `vk/surface.c` was on the list -- turned
+out to live in `vk/draw.c`. The real blocker is a device feature in a fourth
+file nobody had named.
