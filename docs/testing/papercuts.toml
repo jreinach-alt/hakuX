@@ -109,3 +109,11 @@ cost = "A lane reworded correct prose to satisfy it. Right call in the moment, w
 bit = 1
 owner = "unassigned"
 fix = "Either narrow the pattern or report a confidence, so a reader can tell a hedge from a precise `may`."
+
+[[cut]]
+id = "lastbrief-needs-remembering"
+what = "check_coverage.py's UNBRIEFED warning reads $DISPATCH_DIR/lanes/<lane>.lastbrief, a stamp the orchestrator must remember to write when it routes work. It fired on lane.remote at 3.1h after two briefs in that window, because the stamp was not updated either time."
+cost = "A false UNBRIEFED on the board, which is worse than none: the warning exists to catch an idle lane, and crying wolf teaches the reader to skip it."
+bit = 1
+owner = "toolsmith"
+fix = "Derive it from $DISPATCH_DIR/deliveries/<lane>.md's mtime -- routing WRITES that file, so it cannot drift from reality. Fall back to the stamp only when no delivery file exists. A check that depends on the orchestrator remembering will read wrong exactly when the orchestrator is busy, which is when it matters."
