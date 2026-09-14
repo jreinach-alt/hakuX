@@ -77,6 +77,40 @@ fi
 # 2. The nv2a index, as .github/workflows/nv2a-index.yml runs it. It records
 #    site line numbers, so ANY commit touching hw/xbox has to carry a
 #    regenerated index or this goes red on the next push.
+#
+#    AND IT IS SCORED AGAINST THE FOLD BASE, NOT THE TIP, because otherwise it
+#    punishes a lane for the previous fold. `lane.lows` arrived to a failure of
+#    396 entries, ALL in vk/draw.c and NONE of them its own -- it had touched
+#    no hw/xbox file at all. The index is derived from the whole tree, so a
+#    lane that regenerates it necessarily commits other lanes' churn, and three
+#    concurrent lanes produce three conflicting 829 KB JSONs at the next fold.
+#    Decision recorded in docs/audits/2026-09-14-decisions.md: fold-time
+#    regeneration is the rule and the orchestrator owns it.
+#
+#    THE ATTRIBUTION IS STRUCTURAL, not a guess. nv2a_index.py's SCAN_ROOTS is
+#    the only place the symbol/site half comes from, so a change that touches
+#    no file under those roots CANNOT have moved a site -- the way the empty
+#    `_ZB` class settled a scorer question in a second. The suite half comes
+#    from the tests tree, which is a different repository this branch never
+#    commits to, so no commit here can move it either. SCAN_ROOTS is READ from
+#    nv2a_index.py rather than hardcoded: that file is not in this lane's
+#    claim, and a gate that hardcodes the thing it guards goes wrong silently
+#    the day the guarded thing changes.
+#
+#    WHO IS THE FOLD POINT is a question about SHAS, which is the one thing
+#    `merge-base --is-ancestor` answers honestly (AGENTS.md is warning about
+#    using it for PATCHES, which this is not). HEAD an ancestor of the campaign
+#    tip means this checkout IS the shared position -- the orchestrator at fold
+#    time, or a lane that has committed nothing -- and there is nobody else to
+#    attribute the drift to, so it fails exactly as it did before. A lane with
+#    commits the tip does not have gets the attribution.
+#
+#    WHAT THIS CANNOT SEE: whether the pre-existing drift is real. It does not
+#    rebuild the index at the base -- that needs a checkout of the base and a
+#    second index build, and a checker with a side effect on the tree it checks
+#    has already stalled this project's build path once. So it establishes
+#    "this lane did not cause it", never "the index is fine". The stale index
+#    is still reported in full and still has to reach the orchestrator.
 step "nv2a index"
 if [ -z "$TESTS" ] || [ ! -d "$TESTS" ]; then
     bad
@@ -87,9 +121,50 @@ elif python3 docs/testing/nv2a_index.py check --tests "$TESTS" \
         ${SUPPORT:+--support "$SUPPORT"} >/tmp/preflight-index.log 2>&1; then
     ok
 else
-    bad
-    sed 's/^/  /' /tmp/preflight-index.log
-    echo "  regenerate: python3 docs/testing/nv2a_index.py build --tests $TESTS --support $SUPPORT"
+    INDEX_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
+    INDEX_ROOTS=$(python3 - <<'PYROOTS'
+import re, sys
+src = open("docs/testing/nv2a_index.py").read()
+m = re.search(r"^SCAN_ROOTS\s*=\s*\[(.*?)\]", src, re.S | re.M)
+print(" ".join(re.findall(r"['\"]([^'\"]+)['\"]", m.group(1))) if m else "")
+PYROOTS
+)
+    INDEX_BASE=$(git merge-base HEAD "$INDEX_TIP" 2>/dev/null || true)
+    INDEX_MINE=""
+    if [ -n "$INDEX_BASE" ] && [ -n "$INDEX_ROOTS" ] \
+       && ! git merge-base --is-ancestor HEAD "$INDEX_TIP" 2>/dev/null; then
+        # base..WORKING TREE, not base..HEAD: an uncommitted edit under a scan
+        # root moves sites just as a committed one does, and untracked files
+        # add them, so both are asked for.
+        INDEX_MINE=$(
+            { git diff --name-only "$INDEX_BASE" -- $INDEX_ROOTS 2>/dev/null
+              git ls-files --others --exclude-standard -- $INDEX_ROOTS 2>/dev/null
+            } | sort -u)
+    else
+        # No base, no roots, or HEAD is at/behind the tip: no one else to
+        # attribute to. Fail as before.
+        INDEX_MINE="(unattributable)"
+    fi
+    if [ -z "$INDEX_MINE" ]; then
+        echo "ok (stale, but NOT THIS LANE'S)"
+        echo "  The committed index does not match the tree, and none of this"
+        echo "  lane's changes touch $INDEX_ROOTS -- so none of them can have"
+        echo "  moved a site. The drift predates $(git rev-parse --short "$INDEX_BASE" 2>/dev/null)."
+        echo "  Fold-time regeneration is the orchestrator's, per"
+        echo "  docs/audits/2026-09-14-decisions.md. Do NOT regenerate here:"
+        echo "  the index is whole-tree, so you would commit other lanes'"
+        echo "  churn and collide with every concurrent lane at the fold."
+        echo "  PUT THIS IN YOUR REPORT so the orchestrator sees it:"
+        sed 's/^/    /' /tmp/preflight-index.log
+    else
+        bad
+        sed 's/^/  /' /tmp/preflight-index.log
+        if [ "$INDEX_MINE" != "(unattributable)" ]; then
+            echo "  YOUR changes under $INDEX_ROOTS, which is why this is yours:"
+            printf '    %s\n' $INDEX_MINE
+        fi
+        echo "  regenerate: python3 docs/testing/nv2a_index.py build --tests $TESTS --support $SUPPORT"
+    fi
 fi
 
 # 3. The territory allocation. Not a CI gate -- CI does not care who holds a
