@@ -75,6 +75,28 @@ CONTROLS, stated before the numbers so a zero cannot be read as good news:
 IMPOSSIBLE ROW: a capture reporting E == O == 1.000 over many positions means
 the monotone/non-constant filter admitted flat pixels and the run is void.
 
+*** READ THIS BEFORE QUOTING ANY WHOLE-CORPUS NUMBER FROM THIS SCRIPT. ***
+
+**The whole-frame census does not pass its own impossible-row check, and its
+"N paired" total is therefore NOT a finding.** Run over the 5,608 goldens it
+reports about 1,300 captures at E == O == 1.000 -- flat pixels qualifying --
+because the +/-3 neighbourhood that a paired field needs (see `varying` below)
+also sweeps flat background in next to any gradient once the window is the
+whole frame rather than a draw.  `main()` refuses the summary when that count
+is high, rather than printing a plausible zero.
+
+What IS sound is `qualifying()` applied to a RECTANGLE THAT IS THE DRAW, which
+is how `pair_fill_blocks_38.py` uses it: there the population is the primitive's
+own pixels, the impossible row does not fire, and the positive and negative
+controls separate by 0.79-0.98.  Treat this file as that function plus a
+diagnostic, and take findings from the region probe.
+
+This is recorded rather than quietly fixed because the failure is the point:
+two earlier versions of `varying` were wrong in opposite directions, one
+admitting swatch edges and one excluding the between-pair positions of a
+perfectly paired field, and BOTH printed clean-looking totals.  The scope at
+which a filter is valid is part of the filter.
+
 Run:  python3 docs/testing/pair_census_38.py [GOLDENDIR] [--captures DIR ...]
 """
 
@@ -228,6 +250,19 @@ def main():
           " qualified): %d" % len(impossible))
     for r in impossible[:10]:
         print("   %s/%s  even=%d odd=%d" % (r[0], r[1], r[2], r[3]))
+
+    if len(impossible) > 0.02 * max(len(rows), 1):
+        print("""
+   *** THE CENSUS IS VOID AT THIS SCOPE -- DO NOT QUOTE THE TOTAL ABOVE. ***
+   %d of %d measurable captures report E == O == 1.000, so flat pixels are
+   qualifying and the "%d paired" line is a statement about the filter, not
+   about the corpus.  The +/-3 neighbourhood a paired field needs also admits
+   background sitting next to a gradient once the window is a whole frame.
+
+   Use the region probe instead: pair_fill_blocks_38.py applies the same
+   qualifying() to rectangles that ARE the draw, where this check does not
+   fire and the controls separate by 0.79-0.98."""
+              % (len(impossible), len(rows), len(paired)))
 
     print("\nCONTROLS")
     want = [("Alpha_func", "positive, expect E~1 and E-O large"),
