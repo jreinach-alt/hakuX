@@ -51,6 +51,27 @@
 # whole exercise, so the watchdog should not outlive it.
 set -u
 
+# EDITING THIS FILE WHILE IT RUNS DOES NOT CHANGE THE RUNNING WATCHDOG, AND IS
+# NOT FREE EITHER.
+#
+# The watchdog is started once and polls for the life of a session. bash reads
+# a script LAZILY, by byte offset, so a running instance keeps the behaviour it
+# was started with -- and an edit that changes the file's length underneath it
+# can, in the worst case, make it resume mid-token and execute garbage.
+#
+# Measured 2026-09-14: the lane-aware branch below was inserted while PID
+# 822193 was polling, and the watchdog went on emitting the OLD advice for
+# every remaining poll of that session. No corruption, because the loop body
+# had already been parsed -- which is luck, not a guarantee.
+#
+# This is the same shape as the Stop hook: settings.json is read at session
+# start, so a hook edited mid-session cannot fire in that session. A
+# long-running process holds the version it started with.
+#
+# So: fix it here, and expect the fix at the NEXT start. Do not kill and
+# restart a watchdog mid-session to pick up a change -- it is the thing
+# telling you the fleet is idle, and a gap in it is worse than stale advice.
+
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SID="${1:?usage: idle-watchdog.sh <session-id>}"
 # Overridable so the latching behaviour can be tested without relocating HOME,
