@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 57
-updated_utc = "2026-09-14T12:05:00Z"
+wave = 58
+updated_utc = "2026-09-14T12:20:00Z"
 
 
 
@@ -68,6 +68,12 @@ note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. C
 issues = ["52"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c"]
 note = "#52's LAST OPEN CELL: z16 float, 1,436 px, every one of them ONE ULP. The status note already establishes what it is NOT -- not a float-encoding defect (packing is RGB565, verified on 199,065,600 channel samples with 0 lattice violations), not structural (0 px differ in the 63,488-px grid covering every F16 exponent 0-15), and not the colour residual (that is #38's Gouraud interpolator, byte-identical histograms between the bit-exact z16 cell and the one-unit-out z24 one). What is left is the bottom quad's sub-ULP interpolation shortfall -- cell 2's barycentric-normalisation +-1 family at 1/30th the size. Cell 2 was closed in this same file by 91b0897e01 ('the depth floor cannot depend on fma() being fused'), PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px. So the precedent, the mechanism and the tool all exist. NOT IN SCOPE: z24 float's 12,816 px is a MEASURED FLOOR, priced and deliberately left -- do not spend the arm on it. psh.c released by retiring lane.lows."
+
+
+[lane.skew44]
+issues = ["44"]
+files = ["hw/xbox/nv2a/pfifo.c"]
+note = "#44's SHIPPING DECISION, which is one measurement short and has been for its whole life. The accuracy half is settled -- #79's Stencil flake IS this skew on vertex data, PRE-REGISTERED PASS on 16 checks, 7 wrong of 64 observations -> 0. The cost half is settled for MODE 1: gfps p90 29 -> 13 on Galleon, guest blocked 40.7% of wall clock. What is NOT settled is (a) both #79 arm refs are 292 commits behind the tip, so the mechanism is certified and mainline is not, and (b) MODE 2 -- hold only where a draw is outstanding -- has existed in pfifo.c the whole time and has never been priced. vk/draw.c:4016 already specifies the arm that prices it and says the tip needs NO CODE CHANGE to run it: one binary, HAKUX_FIFO_SKEW_BOUND 0 / 1 / 2 by environment. Claims pfifo.c because the shipping act, if mode 2 pays, is flipping XEMU_OPT_FIFO_SKEW_BOUND at pfifo.c:95 -- and for no other reason; the measurement itself edits nothing. Released by lane.readfreq retiring without ever needing it."
 
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
@@ -129,7 +135,6 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c",
-         "hw/xbox/nv2a/pfifo.c",
          "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/prim_rewrite.c",
          "hw/xbox/nv2a/pgraph/s3tc.c",
