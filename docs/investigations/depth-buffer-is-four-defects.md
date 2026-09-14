@@ -176,6 +176,28 @@ else spends the afternoon on it.
 signal in a suite nobody has looked at, which is worth someone's time -- but as
 its own thing.
 
+> **CORRECTED 2026-09-14, and the correction runs the same way twice.** That
+> paragraph was right about the lead and wrong about the number. `-0.70` is
+> **stale**: `score_cv_blit` predates #33's swizzle fix and the clip fix, so its
+> one-step population was diluted by `BlitBeyondWidth`'s structural residual and
+> by seven broken clip captures. Re-measured at `c866527e03`, the cell reads
+> **ours +1 = 0, ours -1 = 234,506, |d| > 1 = 0, alpha = 0** -- not `-0.70` but
+> **`-1.00`, no exceptions**.
+>
+> The cause is in `perform_blit`'s `BLEND_AND` path, and it is **not a rounding
+> mode**, which is exactly why it survived the correction this section makes.
+> `V = src*beta + dst*(0x7f80 - beta)` must be divided by `0x7f80` = 32,640. The
+> NEON aarch64 path -- the **device** path -- substituted `>> 15`, under a
+> comment claiming "Error is < 1 LSB for typical values". 32,768 is **0.39%
+> larger** than 32,640, so it can only ever land low. The scalar path truncates
+> where silicon rounds to nearest.
+>
+> **A rounding mode is roughly symmetric. A scale error has a sign.** That is
+> the distinction this table was drawing without knowing it: the corpus-wide
+> `+0.67 to +1.07` really was an artefact of conditioning on differing pixels,
+> and `Image_blit` really was a separate cause, and both statements are true at
+> once. See `image-blit-blend-divide.md` (#38, mechanism 3).
+
 ## What the D24 fix left behind
 
 `5dac36b2` takes the Z24 fixed-point cell from 309,710 differing pixels to

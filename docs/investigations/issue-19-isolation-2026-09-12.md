@@ -39,7 +39,7 @@ The two genuine contamination cases are `Texture_render_target::TexFmt_A8` and
 | `Blend_surface` | 8 | `DstAlpha_ARGB8` | destination alpha on a surface that **has no alpha channel** |
 | `ZMinMaxControl` | 8 | `CtrlFixed_WBuf_ZCLAMP_IgnW` (4) | the NEARFAR clamp mode, and the ignore-W variant |
 | `Fog_gen` | 6 | each test's `-planar` sibling | **radial fog distance** — every `-radial` draws its `-planar` twin |
-| `Image_blit` | 6 | `ImgBlt_Clip_0_0_640_480` (6/6) | the blit clip rectangle, ignored entirely |
+| `Image_blit` | 6 | `ImgBlt_Clip_0_0_640_480` (6/6) | the blit clip rectangle, ignored entirely — **fixed 2026-09-14**, see below |
 | `Fog_exceptional_value` | 4 | a `NaN-`/`INF-` sibling | INF and NaN fog coordinates |
 | `Bump_map` | 4 | `BumpMap_AY8_L` (2) | Y16 and the YUV pair as bump sources |
 | `Specular` | 2 | `ControlFlagsLightDisable_VS` | a specular control flag under a vertex shader |
@@ -64,6 +64,14 @@ tests.
 **`Image_blit`'s clip rectangle.** Six for six render the unclipped
 `ImgBlt_Clip_0_0_640_480`, which is about as unambiguous as this method gets:
 the clip parameters reach us and change nothing.
+
+> **FIXED, confirmed 2026-09-14 by lane.blit38.** All seven clip captures now
+> read 0 against the goldens. The lane checked the prerequisite first, which is
+> the part worth copying: before reading seven zeroes as a fix, it established
+> that the goldens **discriminate** at all -- all 21 golden pairs differ, the
+> tightest by **81 px**. Zeroes against goldens that agreed with each other
+> would have proved nothing, and that is how a dead observable reads exactly
+> like a working one. See also `border-stale-observable-is-dead.md`.
 
 ## What this settles for both lanes
 
