@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 34
+wave = 35
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -47,12 +47,6 @@ issues = ["77"]
 files = []
 note = "#77, Galleon deck/ground stipple. PURE MEASUREMENT, no source files claimed -- the next step is the DRIVER A/B, and it needs no code change. NOT NOVA-BOUND, which is what unblocked it: Galleon is on the Thor (device_titles thor lists Galleon (USA).xiso.iso at /storage/388C-68F7/ROMS/xbox), and swap_driver.sh opens S=${SERIAL:-ee317437} so the Nova serial is a default, not a requirement. T30/T26 are generic Turnip Adreno builds at minApi 30; the Thor is adreno/kalama, the same part devices.sh measured byte-identical to the Nova on 62 of 62 captures. HARNESS: driver_ab.sh CANNOT be used -- it enumerates a suite's goldens and boots one disc per test. Use swap_driver.sh (t30/t26/stock/restore; restore() always puts T30 back) plus a soak through request.sh with --title and --seconds. The driver arm is FIRST for a reason recorded on the issue: every measurement so far reads EMULATOR state, and if the defect is ours it is a divergence between emulator state and what reached the GPU, which no state logging can see."
 
-[lane.readfreq]
-issues = ["54"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c",
-         "hw/xbox/nv2a/pfifo.c"]
-note = "#54's remaining half: a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A bitmap and r->texture_vram_gen. The barrier lever is DEAD and must not be retried -- with ALL guest barriers restored, 2D_BorderTex_SZ failed 6 of 10 runs, identical to the store-store variant and indistinguishable from the ~46% base rate, at +34.1% game frame time, with mb_emitted 0/80,411/347,473 proving the three arms were genuinely different binaries. That zero bounds whether barriers fix #44's capture; it does NOT bound how often the race fires, and the corpus cannot separate the two because it is nearly all static content. Hence a counter on a real title. NOT NOVA-BOUND: Galleon is on the Thor. target/** stays lane.remote's and accel/** is free but not claimed here -- say so if the counter needs either."
-
 [lane.toolsmith]
 issues = []
 files = ["docs/testing/ab_compare.py",
@@ -66,6 +60,12 @@ files = ["docs/testing/ab_compare.py",
 note = "THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
 
 [free]
+# RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
+# The lane needed NEITHER -- it made no source change, because the counter it
+# was dispatched to build already existed in vk/draw.c and had been running on
+# Galleon since e353735028 with nobody reading its output. The claim walled
+# #44, #59 and #79 for its whole life and bought nothing.
+#
 # A LANE THAT WAS NEVER CLAIMED, recorded because it worked and that is the
 # problem. On 2026-09-14 an agent was dispatched as "lane.padwrite" for #59,
 # briefed with four files as "yours", and NO [lane.padwrite] row was ever
@@ -109,6 +109,7 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c",
+         "hw/xbox/nv2a/pfifo.c",
          "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/prim_rewrite.c",
          "hw/xbox/nv2a/pgraph/s3tc.c",
@@ -119,6 +120,7 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/vk/renderer.h",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]
