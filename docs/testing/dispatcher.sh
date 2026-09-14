@@ -424,7 +424,26 @@ print('\n'.join(r.get('only_tests') or []))" "$req" > "$onlyfile" 2>/dev/null ||
     else
         base_iso="${DISPATCH_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}"
     fi
-    disc_id=$(python3 -c "
+    # A QUOTED HEREDOC, and the quoting is the whole point of the change.
+    #
+    # This block used to be python3 -c with a DOUBLE-quoted shell string, so
+    # the shell ran command substitution over the Python source before Python
+    # ever saw it. The eight backticks in the comments below pair into four
+    # substitutions, and EVERY disc request on this queue printed
+    #     suites: command not found
+    #     skip_tests: command not found
+    #     only_tests: command not found
+    #     iso:85b525/Blend: No such file or directory
+    # on stderr -- noise a lane has to rule out before trusting its own run --
+    # while the comment text itself was deleted from what Python compiled, so
+    # the reasoning recorded here was never actually in the file that ran.
+    #
+    # Cosmetic ONLY because the backticks happen to sit in comments. The
+    # moment a pair wraps something executable it is a live defect, and $ and
+    # backslash in this source are exposed by exactly the same mechanism --
+    # the \n in the only_tests block above survives by luck, not by design.
+    # Quoting the heredoc delimiter takes the shell out of the path entirely.
+    disc_id=$(python3 - "$req" "$base_iso" <<'PYEOF'
 import hashlib,json,os,sys
 r=json.load(open(sys.argv[1]))
 iso=sys.argv[2]
@@ -468,7 +487,9 @@ elif len(s)==1:
     print(pre + '%s-no:%s' % (s[0], ','.join(t.split('::')[-1] for t in k)[:30]))
 else:
     h=hashlib.sha1((','.join(s)+'|'+','.join(k)).encode()).hexdigest()[:8]
-    print(pre + '%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))" "$req" "$base_iso")
+    print(pre + '%d-suites:%s:%s' % (len(s), h, ','.join(s)[:40]))
+PYEOF
+)
 
     local r
     for r in $(seq 1 "$runs"); do
