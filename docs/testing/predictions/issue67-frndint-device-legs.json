@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-13T00:00:00Z",
+  "who": "orchestrator",
+  "issue": "67",
+  "prediction": "THE DEVICE HALF of the remote lane's FRNDINT fix, which that lane registered in prose and explicitly could not run: its predictions/issue67-guest-frndint-rounding.json says 'EVERY pixel leg needs an Android device arm and this lane has none'. The fix is inside `#if defined(XBOX) && defined(__aarch64__)`, so the desktop lane is structurally blind to it and its own falsifier -- 236/236 byte-identical on desktop -- is a scoping check, not a pixel measurement. This registration is the pixel measurement, on the Thor.\n\nBASELINE RE-DERIVED HERE, not copied. On apk 88452c539d64 (result z-tip-009-Blend_tests), Blend_tests/#spot_* is exactly 15 spots x 7 modes = 105 captures. Signed modes are SADD and SREVSUB only -- SUB is unsigned subtract and classifying it by its leading S is the obvious way to get 45/60 instead of 30/75. Split correctly: 75 unsigned summing to 1,168,902 px, range 6,154..19,140; 30 signed, 29 at 104,205 and #spot_1-cA_SREVSUB at 103,440. That reproduces the #67 lane's figures independently, from the scores rather than from its write-up.\n\nMECHANISM. target/i386/tcg/fpu_helper.c defined floatx80_round_to_int as ((void)(s), rint(a)) -- the discarded argument is the guest's rounding-control field, so nxdk's floorf (save CW, RC=down, FRNDINT, restore) was rint. blend_tests.cpp lays every TestSpot out from three floorf calls and exactly one moves: color_swatch_size = floorf(24.75) is 24 on silicon, 25 for us; test_width = floorf(99.2) = 99 and test_height = floorf(136.0) = 136 agree in both, which is what makes this a rule rather than a fitted constant. The per-cell ownership-change set derived from blend_tests.cpp alone is 1,276 px, and over the 75 unsigned captures the union of differing pixels EQUALS that set (union 1,276, intersection 1,276), 1,168,902 px inside it and 0 outside.\n\nWHY THE ABSOLUTE IS HONEST. Predicting a fall to exactly 0 is normally unsatisfiable and I have registered unsatisfiable absolutes before. Here 0 is the mechanism's own arithmetic: every differing pixel on these 75 captures is inside the ownership set, none outside, so correcting the swatch size leaves nothing for the residual to be made of. If ANY unsigned #spot_* lands non-zero the model is refuted, not merely incomplete.\n\nLEGS A TRIVIAL 'TURN IT OFF' CANNOT SATISFY, which is the point of registering them together. (1) The fifteen #spot_*_SADD captures must fall to a SPECIFIC NON-ZERO value, 96,855 from 104,205 -- that is #43's ink set re-counted under the corrected 24-px swatch geometry, 6,457 px x 15 cells, i.e. the sign fold with the seam removed. #43 is untouched by this fix, so they must NOT go to zero and a change that merely zeroed things fails here. The fifteen SREVSUB captures are deliberately NOT registered: one of them measures 103,440 rather than 104,205, the 6,457-per-cell figure was derived over SADD only, and I have not derived the SREVSUB budget. (2) SmallestPointSize_FF and _VS must reach 0 WITH RECOVERED SPACING 85, not 84: Point_size's increment = floorf(85.714) is 85 on silicon against our 86, and 84 would be the model wrong in the SAME DIRECTION as the fix, which a pixel count alone cannot distinguish from right. These two legs and the 75-to-0 leg cannot all be met by disabling anything.\n\nNOT PREDICTED, deliberately. LargestPointSize_FF/_VS (1,099 and 1,040) SHOULD move -- cy = floorf(138.667) is 138 on silicon against our 139, read off the green rows at (102,307) against our (103,309) -- but I am not registering an absolute for it, because the capture also carries the label text the scorer flags as label-differs/white-content and I have not derived its px budget. It is listed as expected-better with no value. Registering a number I have not derived is how #75 happened.\n\nCONTROLS ON THE SAME DISC. Viewport/* and Stencil/* must not move at all: they run in the same process, in the same run, through the same FPU. If the change is not scoped the way the desktop lane's preprocessor-depth trace says it is, these are where it shows.",
+  "a_ref": "e2b6abde73",
+  "b_ref": "",
+  "must_not_move": [
+    "Viewport/*",
+    "Stencil/*"
+  ],
+  "expect": {
+    "Blend tests::#spot_0_ADD": 0,
+    "Blend tests::#spot_0_SUB": 0,
+    "Blend tests::#spot_0_REVSUB": 0,
+    "Blend tests::#spot_0_MIN": 0,
+    "Blend tests::#spot_0_MAX": 0,
+    "Blend tests::#spot_0_SADD": 96855,
+    "Blend tests::#spot_1_SADD": 96855,
+    "Blend tests::#spot_cA_SADD": 96855,
+    "Point size::SmallestPointSize_FF": 0,
+    "Point size::SmallestPointSize_VS": 0
+  },
+  "expect_counts": {
+    "worse": 0
+  }
+}
