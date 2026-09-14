@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 37
+wave = 38
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -45,6 +45,7 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 [lane.toolsmith]
 issues = []
 files = ["docs/testing/ab_compare.py",
+         "docs/testing/preflight.sh",
          "docs/testing/ab_run.sh",
          "docs/testing/check_cited_commits.py",
          "docs/testing/check_coverage.py",
@@ -52,7 +53,7 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/idle-watchdog.sh",
          "docs/testing/request.sh",
          "docs/testing/sweep_agreement.py"]
-note = "THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
+note = "preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
 
 [lane.remediate1]
 issues = []
