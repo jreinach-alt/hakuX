@@ -107,9 +107,32 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
  * (translate-all.c:879 and :1131), so rm_from_page_list is false only for a
  * TB with no page list entry to begin with -- which leaves tier-1 promotion
  * as the only producer of a CF_INVALID TB on a page list. Each is therefore
- * counted here exactly once and then discarded, so ai should fall from ~0.9
+ * counted here exactly once and then discarded.
+ *
+ * THE FALSIFIER THAT WAS REGISTERED HERE DID NOT WORK, and it is replaced
+ * rather than reworded. Audit pass 1 M4. It read: "ai should fall from ~0.9
  * of visits to the tier-1 promotion rate. If it does not, the #73 model is
- * wrong and the mask did not reach the population it was aimed at.
+ * wrong." Two things were wrong with it, and each alone is fatal:
+ *
+ *   - ai counts promoted TBs an invalidation VISITS. That is bounded ABOVE by
+ *     the promotion count and has no reason to equal it -- a promoted block
+ *     on a page the guest never writes is never visited and never counted.
+ *     The prediction named a bound as a value.
+ *   - there is no promotion count on the hakuX-pages line to compare against
+ *     anyway. g_tier1_promotions_total is emitted only by a qemu_printf in
+ *     tier1_maybe_reset_budget() and by hakuX-tier1 DEBUG lines that every
+ *     dispatcher logcat spec drops. So ANY fall reads as confirmation: 0.30
+ *     and 0.001 would both have been read as the model holding, and so would
+ *     a fall caused by something else entirely -- a change in page-write mix,
+ *     or fewer promotions because the 64-slot request table saturated.
+ *
+ * The replacement is an identity rather than a rate, it is checked PER VISIT
+ * instead of read off a window, and it needs nothing on the log line that is
+ * not already there: every visited block must be discarded, dead ones
+ * included. It is counted by hakux_inval_impossible below -- see the "WHAT
+ * MAKES IT FIRE" paragraph there, which names the pre-fix value it would have
+ * carried. `ai` keeps its job of SIZING the population and loses its job of
+ * proving anything.
  */
 uint64_t hakux_inval_already;
 /*
@@ -148,6 +171,36 @@ uint64_t hakux_tb_visited;
  */
 uint64_t hakux_tb_discarded;
 /*
+ * Did THIS call to do_tb_phys_invalidate() get past the early return?
+ *
+ * The counter above cannot answer that question. It is a global, and the
+ * whole-page loop used to infer "my TB was discarded" by reading it either
+ * side of the call -- which is only sound if this thread is the only writer.
+ * Audit pass 1 M3: it is not, and "the Xbox has one vCPU" is a different
+ * claim from "there is one writer". assert_memory_lock() is empty in softmmu,
+ * the page locks are per page while the counter is global, and
+ * do_tb_phys_invalidate() is reachable today from a non-vCPU thread through
+ * system/physmem.c invalidate_and_set_dirty() -> tb_invalidate_phys_range()
+ * on whatever thread performs a device or DMA write -- IDE/DVD here.
+ * tb_invalidate_phys_range_fast()'s own comment says it runs with the iothread
+ * mutex not held.
+ *
+ * That race broke the impossible row in the direction that READS AS HEALTHY:
+ * a DMA discard on page Q, landing between the two reads, made the delta
+ * nonzero and hid a genuine violation on page P. This flag is __thread and is
+ * written only by this thread's own call, so the row no longer depends on any
+ * cross-thread quantity.
+ *
+ * STILL NOT FIXED, and stated rather than left implied: hakux_tb_visited,
+ * hakux_inval_already and hakux_tb_discarded themselves are non-atomic
+ * globals written from both threads, so their absolute values and every ratio
+ * built from them are approximate by however much DMA-side invalidation
+ * traffic there is. Making them qatomic_inc__nocheck is the fix; it is not
+ * done here because it changes what every historical figure means, and the
+ * impossible row -- the one thing that had to be exact -- no longer needs it.
+ */
+static __thread bool hakux_tb_discarded_here;
+/*
  * THE IMPOSSIBLE ROW. Must read zero, and is built to, deliberately.
  *
  * #69 exists because an impossible row appeared by accident -- 0.38 guest
@@ -178,15 +231,40 @@ uint64_t hakux_tb_discarded;
  * re-inserting. A nonzero value means the visit accounting is wrong and NO
  * ratio derived from these counters may be quoted.
  *
- * The half that was dropped is not lost -- it moved to hakux_inval_already,
- * which is now the direct measure of whether the fix reached its population.
+ * AND THE HALF THAT WAS DROPPED COMES BACK, in the direction that is true
+ * after the fix instead of the one that was true before it. Audit pass 1 M4
+ * moved #73's proof onto a rate comparison that could not be made; this is
+ * the same claim as an identity that can. The old model said a dead TB is
+ * never discarded. The new one says a dead TB visited by this loop is ALWAYS
+ * discarded -- because it sits in tb_ctx.htable under a hash without
+ * CF_INVALID while carrying it, and masking the bit off is precisely what
+ * makes do_tb_phys_invalidate() find it. So the row is now simply: a block
+ * this loop walked over and committed to discarding was not discarded.
  *
- * One caveat for whoever ports this to a target with more than one vCPU: the
- * check reads hakux_tb_discarded either side of the call, so a concurrent
- * discard on another vCPU would show up here as a violation. The Xbox has one
- * CPU and the invalidation path holds the page locks, so there is no second
- * writer on this tree -- but a nonzero xx on a multi-CPU target should be
- * checked against that before it is read as a model failure.
+ * WHAT MAKES IT FIRE. Not a tautology of the patch, and not a condition the
+ * patch forces: it is the #73 defect itself, counted. Pre-fix this row would
+ * have read 85-93% OF VISITS -- that is exactly what the six Crimson Skies
+ * soaks of 2026-09-13 measured as ai/visits, every one of which was a visit
+ * whose qht_remove missed. Revert the mask at the hash below and xx goes from
+ * 0 to roughly nine tenths of visits on the next soak. It also fires if
+ * tb_link_page()'s hash inputs diverge from do_tb_phys_invalidate()'s again,
+ * if anything clears CF_INVALID without re-inserting, or if a future caller
+ * reaches do_tb_phys_invalidate() with rm_from_page_list false for a TB that
+ * IS on a page list -- which would strand a block in exactly the #73 shape.
+ * Both of tb_phys_invalidate()'s callers pass -1 today, so nothing does.
+ *
+ * It survives the range test's restoration (937848c9e7, #68) unchanged,
+ * because the check sits where the loop is already committed to discarding:
+ * with the test restored a spared block never reaches here, and a dead block
+ * still does, that commit's `!tb_live` clause being deliberate about it.
+ *
+ * The second-writer caveat that used to sit here named the wrong axis -- see
+ * hakux_tb_discarded_here above. It said a second vCPU, and the Xbox has one;
+ * the real second writer is the DMA/device thread, which exists today. The
+ * row no longer infers the discard from a global delta, so that race can
+ * neither manufacture nor hide a violation here. It still perturbs the
+ * MAGNITUDE of visits/already/discarded; nothing on the log line declares
+ * that, and no ratio built from them is exact.
  */
 uint64_t hakux_inval_impossible;
 #endif
@@ -1163,6 +1241,11 @@ static void do_tb_phys_invalidate(TranslationBlock *tb, bool rm_from_page_list)
 
     assert_memory_lock();
 
+#ifdef XBOX
+    /* Cleared on entry, set past the early return. See its declaration. */
+    hakux_tb_discarded_here = false;
+#endif
+
     /* make sure no further incoming jumps will be chained to this TB */
     qemu_spin_lock(&tb->jmp_lock);
     qatomic_set(&tb->cflags, tb->cflags | CF_INVALID);
@@ -1211,6 +1294,7 @@ static void do_tb_phys_invalidate(TranslationBlock *tb, bool rm_from_page_list)
 #ifdef XBOX
     /* Past the early return above, so this block really is being discarded. */
     hakux_tb_discarded++;
+    hakux_tb_discarded_here = true;
 #endif
 
     /* remove the TB from the page list */
@@ -1547,10 +1631,8 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
              * unlink.
              */
             hakux_tb_visited++;
-            bool live = !(tb_cflags(tb) & CF_INVALID);
-            uint64_t discarded_before = hakux_tb_discarded;
             tb_phys_invalidate__locked(tb);
-            if (live && hakux_tb_discarded == discarded_before) {
+            if (!hakux_tb_discarded_here) {
                 /* Cannot happen; see hakux_inval_impossible. */
                 hakux_inval_impossible++;
             }
