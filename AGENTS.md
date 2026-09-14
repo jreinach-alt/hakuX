@@ -1046,6 +1046,40 @@ floor before the arm runs**, then check the noise floor is smaller than the
 effect. #64's median moved 8 against a tolerance of 2 and the reverse-order
 control moved 8 too. The ceiling's floor is +-1 against an effect of 15.
 
+**But "use the ceiling" is a rule about one shape of series, and an
+intervention can change the shape.** The reasoning above -- the series is
+bimodal, the median tracks which mode it sits in, so take p90 -- assumes the
+series sits AT the ceiling most of the time. That is true of the arm #64 was
+measured on and **false of a bounded arm**. When the intervention changes how
+OFTEN the ceiling is reached rather than how high it is, a high percentile is
+**nearly blind to it by construction**.
+
+Measured on #44, 2026-09-14, on the same statistic. With the bound on, only
+~15% of windows are at the ceiling, so the 90th percentile of 66 windows lands
+just inside that top band and reads 26-28 against the control's 29. The
+registered leg -- p90 falls by >= 8 -- **failed at a fall of 3**, and the lane
+first reported the cost as not reproducing at the tip. The cost was 37.6% of
+guest frames.
+
+p90 was not broken. It was faithfully answering *"can this still reach 30
+sometimes?"*, and the answer is yes. **That is not the question a cost decision
+asks.**
+
+The deeper rule elsewhere in this file is the one that works, and it is the
+same rule: **count events of a condition.** "How many windows were at the
+ceiling" (81% -> 16%) and "how many guest frames in 240 s" (6,480 -> 4,020)
+both show the effect immediately, and the second needs no percentile at all --
+`gfps` is printed every 60 **guest frames** (`profile.c:600`), not on a timer,
+so the line count IS a frame count and a fixed-duration run yields a direct,
+occupancy-free total.
+
+Two things the lane did here that are the reason this is written down. It
+**reported the failed leg** rather than quietly re-deriving a passing one on
+the better statistic. And it **retracted its own published conclusion within
+the hour**, naming the instrument rather than the result -- which is the only
+kind of correction that is worth anything, because a conclusion that moves
+while the instrument stays still is a coin landing the other way up.
+
 **A within-ref floor is a lower bound on the floor, never the floor.** The
 replicate being the RUN is necessary and not sufficient, because a run can be
 bimodal. Measured on #69's corrected waste ratio: three runs of one ref agreed
