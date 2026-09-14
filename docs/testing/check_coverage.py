@@ -23,6 +23,7 @@ FAILS OPEN on no `gh` and no network, deliberately. A blip must not make this
 unpushable, and the same choice is made by backlog-gate.sh for the same
 reason. It says which of the two happened rather than printing a bare pass.
 """
+import datetime
 import glob
 import json
 import os
@@ -358,11 +359,61 @@ def main():
               "  refute it, not as a reason to stop.", file=sys.stderr)
         return 1
 
-    print("coverage ok (%d open: %d owned by a lane, %d with a written blocker)"
+    # AN UNBRIEFED LANE IS AN IDLE LANE, AND IT LOOKS EXACTLY LIKE A COVERED ONE.
+    #
+    # `owned` is satisfied by a number in a lane's `issues` list. It says a
+    # lane is RESPONSIBLE; it cannot say anyone is working. A remote lane that
+    # finished its last instruction and was never given another shows here as
+    # coverage, permanently, and the watchdog reports nothing uncovered.
+    #
+    # Found on 2026-09-14: lane.remote held eight issues, FIVE of them open
+    # with no `blocked_on` at all, and the session had been idle through
+    # several hours of orchestration. Nothing on the board could say so,
+    # because a lane claim suppresses the gap gate and a missing blocker is
+    # only checked for issues WITHOUT a lane.
+    #
+    # So: a lane is briefed by writing an ISO-8601 UTC timestamp to
+    # $DISPATCH_DIR/lanes/<lane>.lastbrief when it is sent direction, and this
+    # reports any lane holding unblocked open issues that has not been briefed
+    # recently.
+    #
+    # IT GOES ON THE SUMMARY LINE, not in the NOTE block below. idle-watchdog.sh
+    # takes `sed -n 1p` of this output as its hint and never shows the notes --
+    # so a note here would be invisible to the one consumer that needs it. That
+    # is the fifth time in this campaign that where output is placed decided
+    # whether it was read.
+    stale_brief = []
+    dispatch = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
+    now = datetime.datetime.now(datetime.timezone.utc)
+    for lane, meta in sorted((terr.get("lane") or {}).items()):
+        idle_issues = [i for i in (meta.get("issues") or [])
+                       if str(i) in live and not (tracker.get(str(i), {})
+                                                  .get("blocked_on") or "").strip()]
+        if not idle_issues:
+            continue
+        path = os.path.join(dispatch, "lanes", "%s.lastbrief" % lane)
+        try:
+            with open(path) as fh:
+                when = datetime.datetime.strptime(fh.read().strip(),
+                                                  "%Y-%m-%dT%H:%M:%SZ")
+            hours = (now - when.replace(tzinfo=datetime.timezone.utc)) \
+                .total_seconds() / 3600.0
+        except Exception:
+            hours = None
+        if hours is None or hours >= 3.0:
+            stale_brief.append((lane, len(idle_issues),
+                                "never" if hours is None else "%.1fh" % hours))
+
+    tail = ""
+    if stale_brief:
+        tail = "; UNBRIEFED: " + ", ".join(
+            "%s %d unblocked issue(s), last brief %s" % (l, n, h)
+            for l, n, h in stale_brief)
+    print("coverage ok (%d open: %d owned by a lane, %d with a written blocker%s)"
           % (len(issues),
              sum(1 for r in issues if str(r["number"]) in owned),
              sum(1 for r in issues if str(r["number"]) in blocked
-                 and str(r["number"]) not in owned)))
+                 and str(r["number"]) not in owned), tail))
     for line in note_lines:
         print(line)
     return 0
