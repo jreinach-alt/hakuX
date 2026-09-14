@@ -25,10 +25,10 @@ fix = "Verify the edit landed before committing -- `git diff --cached --name-onl
 [[cut]]
 id = "backticks-in-commit-m"
 what = "Backticks inside a double-quoted `git commit -m \"...\"` are command substitution, so a word in the message runs as a command and vanishes from the text."
-cost = "Ate the word `agentwork` out of a commit message; caught only by reading the message back."
-bit = 1
+cost = "THREE occurrences: ate `agentwork`, then `unlocked ? 12 : 4`, then `visited` -- each caught only by reading the message back afterwards, and each needing an amend plus (once) a force-push. The shell reports `command not found` to stderr and the commit still succeeds, so the failure is silent in the commit itself."
+bit = 3
 owner = "unassigned"
-fix = "Always `git commit -F -` with a quoted heredoc for anything containing backticks or $."
+fix = "NEVER `git commit -m` for a message with backticks or $ -- write the message to a file and use `-F`. Three occurrences say the discipline does not hold under load; the mechanical form is to always use -F. A pre-commit check could also refuse a message containing an empty `` pair, which is what the substitution leaves behind."
 
 [[cut]]
 id = "watchdog-holds-its-script"
