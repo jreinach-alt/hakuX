@@ -117,8 +117,13 @@
  *    (Safe)", defaulting to ON, described in strings.xml as giving native
  *    ARM64 double precision -- wired through nativeSetFpSafe() to the stub.
  *    xemu_get_fp_safe() also feeds the per-game cache key as a bit that is
- *    now always zero, and is handed back to the UI, so the switch reads OFF
- *    however it is set. Whether to implement the mechanism or retire the
+ *    now always zero. (Audit L1: an earlier version of this note said the
+ *    getter is handed back to the UI "so the switch reads OFF however it is
+ *    set". It is not. Java_..._nativeGetFpSafe exists and Kotlin declares it
+ *    as `external fun nativeGetFpSafe()`, but NOTHING CALLS IT -- the switch's
+ *    displayed state comes from SharedPreferences, default ON, and is
+ *    unrelated to the stub. The setting is inert either way; the reason given
+ *    was wrong.) Whether to implement the mechanism or retire the
  *    setting is a decision for whoever owns the Android settings surface.
  *
  *    So on ARM64 the ONLY thing selecting native-double arithmetic is (1),
@@ -230,10 +235,14 @@ static inline floatx80 pack_arm64(floatx80 v, float_status *status)
  *
  * - Raising a flag into s->float_exception_flags is NOT pointless in general,
  *   but it cannot reach the status word from this block. The conversions below
- *   raise float_flag_invalid anyway, because helper_fistl_ST0 and
- *   helper_fistll_ST0 read get_float_exception_flags() DIRECTLY rather than
- *   through the merge, so that guard does become live. Anything that only a
- *   merge would carry -- PE from FRNDINT, for instance -- does not.
+ *   raise float_flag_invalid anyway, because the FIST/FISTT 32- and 64-bit
+ *   helpers -- all FOUR of helper_fistl_ST0, helper_fistll_ST0,
+ *   helper_fisttl_ST0 and helper_fisttll_ST0, not the two an earlier version
+ *   of this note listed (audit L2) -- read get_float_exception_flags()
+ *   DIRECTLY rather than through the merge, so that guard does become live.
+ *   The 16-bit pair guards on a `val != (int16_t)val` value test instead and
+ *   needs no flag at all. Anything that only a merge would carry -- PE from
+ *   FRNDINT, for instance -- does not.
  * - Making the arithmetic raise flags properly is not a local change. Native
  *   double ops do not populate softfloat's flags at all, so restoring the
  *   merge alone would merge zeros; it would take fetestexcept() around the
