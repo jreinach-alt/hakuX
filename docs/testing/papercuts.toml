@@ -31,14 +31,6 @@ owner = "unassigned"
 fix = "Always `git commit -F -` with a quoted heredoc for anything containing backticks or $."
 
 [[cut]]
-id = "skip-ci-typo"
-what = "`[skip ki]` instead of `[skip ci]`. Not only from chaining -m flags -- it happens in a plain heredoc subject too, which means it is a typing slip and not a git behaviour, and no amount of knowing about it has stopped it."
-cost = "FOUR occurrences now, each needing an amend. The fourth landed minutes after logging the third, in a commit whose body discusses false-positive rates in gap lists."
-bit = 4
-owner = "toolsmith"
-fix = "preflight's commit-subject gate checks HEAD for the marker's PRESENCE and passes anything containing it. It must also FAIL a near-miss -- a bracketed token within edit distance 1 of `skip ci` that is not `skip ci`. Four occurrences is enough evidence that discipline does not fix this one."
-
-[[cut]]
 id = "watchdog-holds-its-script"
 what = "bash reads a script lazily by byte offset, so editing idle-watchdog.sh mid-session changes nothing in the running instance -- and a length-changing edit can in principle make it resume mid-token."
 cost = "A lane-aware branch was written, committed, and had no effect for the rest of the session."
@@ -95,28 +87,12 @@ owner = "unassigned"
 fix = "Make `build` refuse without --support, or default it the way preflight does."
 
 [[cut]]
-id = "index-gate-punishes-lanes"
-what = "preflight's `nv2a index` gate compares against the tip, so a lane fails on drift the PREVIOUS fold introduced. The index is derived from the whole tree, so a lane fixing it sweeps another lane's churn into its commit -- and three concurrent lanes produce three conflicting 829 KB JSONs."
-cost = "lane.lows arrived to a preflight failure of 396 entries, all vk/draw.c, none of them its own. Measured, not assumed."
-bit = 1
-owner = "toolsmith"
-fix = "Compare against the FOLD BASE rather than the tip. Fold-time regeneration is now policy and the orchestrator owns it -- docs/audits/2026-09-14-decisions.md."
-
-[[cut]]
 id = "hedge-gap-false-positive"
 what = "nv2a_index.py scores `may not be` as a HEDGE gap, and it fires on precise sentences -- it tripped on `a surface that may not be the current target`, which is a statement of fact."
 cost = "A lane reworded correct prose to satisfy it. Right call in the moment, wrong as a pattern: the false-positive rate is paid by whoever reads the gap list next, and the daily DX pass reads it."
 bit = 1
 owner = "unassigned"
 fix = "Either narrow the pattern or report a confidence, so a reader can tell a hedge from a precise `may`."
-
-[[cut]]
-id = "lastbrief-needs-remembering"
-what = "check_coverage.py's UNBRIEFED warning reads $DISPATCH_DIR/lanes/<lane>.lastbrief, a stamp the orchestrator must remember to write when it routes work. It fired on lane.remote at 3.1h after two briefs in that window, because the stamp was not updated either time."
-cost = "A false UNBRIEFED on the board, which is worse than none: the warning exists to catch an idle lane, and crying wolf teaches the reader to skip it."
-bit = 1
-owner = "toolsmith"
-fix = "Derive it from $DISPATCH_DIR/deliveries/<lane>.md's mtime -- routing WRITES that file, so it cannot drift from reality. Fall back to the stamp only when no delivery file exists. A check that depends on the orchestrator remembering will read wrong exactly when the orchestrator is busy, which is when it matters."
 
 [[cut]]
 id = "usb-dialog-needs-a-human"
@@ -127,14 +103,6 @@ owner = "unassigned"
 fix = "One CANCEL tap by a human; it survives `am force-stop` and is tied to USB state. NOT automatable from here: `adb shell input keyevent` terminates the emulator, and `svc usb setFunctions` or `pm disable-user` on the ONLY live device during a sweep is not a risk worth taking to save a tap. The durable fix is a device setup step -- pin the USB function so the chooser never arms -- recorded once rather than rediscovered per session."
 
 [[cut]]
-id = "minimised-run-reads-as-a-defect"
-what = "Android can minimise the app mid-run. ui/xemu.c:798-804 pauses the display path on SDL_WINDOWEVENT_MINIMIZED, so the run produces a PARTIAL capture set and its missing captures read exactly like a defect. Nothing checks, though the string is in the logcat every run already captures."
-cost = "#52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls. It is whichever test was running when the window went away -- and the --only-tests arm its blocker proposed would have answered nothing. 1,500 s of an 1,800 s budget lost silently."
-bit = 1
-owner = "toolsmith"
-fix = "Fail or loudly flag any result whose logcat has `window minimized` with no later `window restored`. Twelve longer runs on disk were NOT minimised (1147, 977, 956, 697, 471 s), so it is not a screen timeout or a run ceiling."
-
-[[cut]]
 id = "claim-not-pushed-before-dispatch"
 what = "The orchestrator writes a lane's territory row, validates it, dispatches, and commits afterwards. The agent fast-forwards to a tip that predates the commit, so for its whole run the claim exists only in the orchestrator's working tree."
 cost = "lane.tcginval opened its board request reporting territory.toml at wave 42 with no [lane.tcginval] row and accel/** still free -- correct from where it stood. THREE OCCURRENCES NOW, each a different variant: lane.padwrite had no row at all, lane.tcginval had one written but not committed before dispatch, and lane.audit-tcg was dispatched with no row because an auditor claims no files and I concluded it therefore needed no row. It needs one: a lane running and unclaimed is invisible to every guard."
@@ -143,17 +111,28 @@ owner = "unassigned"
 fix = "Order is: write the row, validate, commit, PUSH, then dispatch. A lane verifies its territory by reading the repo, so the claim must be in the repo before the lane starts. An uncommitted claim is not a claim."
 
 [[cut]]
-id = "expect-gate-refuses-soaks"
-what = "request.sh's queue-time expect-key gate assumes every `expect` key is Results_Directory/TestName. A SOAK produces no captures -- its legs are named rules judged by tcg_pages.py against the hakuX-pages line -- so the gate refuses all 12 keys of a valid soak prediction."
-cost = "Blocks #68's registered arm outright, and with it every soak arm that wants pre-registration. The only workaround is --no-expect, which discards the pre-registration that makes the measurement worth anything."
-bit = 2
-owner = "toolsmith"
-fix = "Skip the capture-name check for a soak (a --title with no --suites), or make the check follow what judge() will actually do with the key. Sixth false positive in this gate -- toolsmith already found 5 of 81 predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two."
-
-[[cut]]
 id = "folded-without-an-audit"
 what = "The orchestrator folded 2af6def68a -- #73's fix, +107/-14 in accel/tcg, guest-CPU core reaching every title -- on an Android build and a green preflight, with no audit pass. AGENTS.md's own heading is 'preflight is not an audit'."
 cost = "Not yet known; an audit is running. The protocol was written the same day, and the first audit had explicitly flagged accel/tcg as glanced-only and deserving its own pass. Both facts were available and neither stopped the fold."
 bit = 1
 owner = "unassigned"
 fix = "The fold path needs the gate, not the orchestrator's memory. lane.toolsmith holds preflight.sh and is already building an audit-record gate; it should refuse a fold whose diff touches compiled code with no audit record covering it. Until then the protocol depends on the person most likely to be in a hurry."
+
+# FIXED AND REMOVED 2026-09-14 by lane.toolsmith, folded in the merge above:
+#   skip-ci-typo                  -> preflight's commit-subject gate now fails a
+#                                    near-miss, including `[skip ci] [skip ki]`
+#                                    which the old grep passed silently. Radius 2
+#                                    for transpositions, verified against 390 real
+#                                    bracketed tokens.
+#   index-gate-punishes-lanes     -> the nv2a index gate scores against the FOLD
+#                                    BASE; attribution is structural, SCAN_ROOTS
+#                                    read out of nv2a_index.py.
+#   expect-gate-refuses-soaks     -> the gate follows judge(); 12 of 12 soak
+#                                    predictions were being refused, now 0 of 15,
+#                                    with all 32 disc-side true positives kept.
+#   lastbrief-needs-remembering   -> derives from deliveries/<lane>.md mtime, with
+#                                    the stamp as a FALLBACK rather than a
+#                                    tiebreak so it cannot mask a missing entry.
+#   minimised-run-reads-as-a-defect -> ab_compare --check-truncation, called by
+#                                    request.sh --wait, the one place both disc
+#                                    and soak results are read.
