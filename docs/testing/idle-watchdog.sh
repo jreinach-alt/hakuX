@@ -71,6 +71,40 @@ set -u
 # So: fix it here, and expect the fix at the NEXT start. Do not kill and
 # restart a watchdog mid-session to pick up a change -- it is the thing
 # telling you the fleet is idle, and a gap in it is worse than stale advice.
+#
+# AND DO NOT MAKE THE POLL BODY RE-EXEC OR SOURCE ITSELF. That was proposed on
+# 2026-09-14 and rejected here, with the reason, so nobody builds it twice.
+#
+# There is already a seam that takes effect immediately, and it is the one
+# every fix has actually gone through: THE LOOP RE-INVOKES ITS CHILDREN FRESH
+# ON EVERY POLL. `check_coverage.py` is a new process each time and the loop
+# prints `sed -n 1p` of its output as the hint, so anything that script learns
+# to say reaches a RUNNING watchdog with no restart. That asymmetry is not
+# theoretical: on 2026-09-14 the UNBRIEFED warning added to check_coverage's
+# summary line worked that same session, while the lane-aware branch added to
+# THIS file did nothing at all. Both edits were made within minutes of each
+# other. The fleet-state reporting added the same night went through
+# check_coverage.py for exactly this reason and was live immediately.
+#
+# So the rule is: PUT THE DECISION IN THE CHILD, NOT IN THE LOOP. The loop
+# should hold only what almost never changes -- the polling, the latch, and
+# the choice of which child to ask.
+#
+# Re-exec would buy the ability to change the loop itself, and cost:
+#   - the hazard in the paragraph above becomes load-bearing rather than
+#     incidental, since re-exec means deliberately re-reading a file that may
+#     be mid-write;
+#   - the latch state (`armed`, `last_mtime`, `missing`) has to survive the
+#     re-exec or the watchdog re-fires on an idle period it already reported,
+#     and a monitor that emits repeatedly gets throttled and then stopped by
+#     the harness -- which leaves the session unwatched exactly when it went
+#     quiet, the failure this whole script exists to prevent;
+#   - the dispatcher's source-hash re-exec is the precedent, and the
+#     dispatcher is long-lived enough to earn it. This script's lifetime is
+#     one session.
+#
+# The honest summary: the running watchdog is a poller, and everything worth
+# changing mid-session belongs in what it polls.
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SID="${1:?usage: idle-watchdog.sh <session-id>}"

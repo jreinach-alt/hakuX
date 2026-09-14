@@ -47,11 +47,55 @@ refuses an expectations file that names other refs, and reports it as
 POST-HOC if the file is newer than the results it judges. The honour system
 does not survive a long day.
 
-What it deliberately does not do: it does not read PNGs, it does not score,
+**`same` MEANS SAME SCORE, AND A SCORE IS NOT A PICTURE.** Every class here --
+better, worse, same, noise -- is computed from the `differing` column, so
+`same` has always meant "the two arms are the same distance from the golden",
+never "the two arms drew the same thing". Those come apart, and it has cost
+this campaign twice in the other direction each time:
+
+  * #59's arm 3 (``1789359225-padwrite59-base-1009294`` ->
+    ``1789360413-padwrite59only-fix-1396389``) read ``0 better, 0 worse,
+    217 same`` with the totals identical to the pixel, and was reported as
+    inert. It was not. ``Clear/SFC_X1R5G5B5_Z1R5G5B5`` moved on 49,104 px:
+    the fix repaired the green channel exactly and the restored readback
+    swizzle broke the same pixels in alpha, so the count held while the image
+    changed. A flat A/B hid a working fix.
+  * #75 went the other way -- a sweep column diffed by hand showed ~100,652 px
+    on ``Stencil``, a suspect commit was named and a bisect lane spawned, and
+    the whole delta was one column's run-to-run noise.
+
+So as of 2026-09-14 the comparison also **hashes the capture PNGs both arms
+wrote** and reports, separately from the classes, how many captures scored the
+same while their bytes differ. What this changed, exactly:
+
+  * ``cls`` is UNCHANGED and still score-based, so ``--expect-count same=N``
+    and every prediction already on file mean what they meant. No registered
+    leg changes its verdict because of this.
+  * a ``byte-level check`` block is printed, and the ``UNJUDGED -- nothing got
+    worse`` verdict now refuses to be read as inertness when the pixels moved.
+  * ``must_not_move`` gains a byte leg, but it can only FAIL on evidence --
+    see ``judge()``. On the single-run arms that are the norm here it reports
+    and does not fail, because one run per arm cannot tell "the change moved
+    it" from "the device moved it".
+
+**WHAT THE BYTE CHECK CANNOT SEE.** It needs the ``capturesN`` directories to
+still be on disk; 82 of the 708 scored result directories here no longer have
+them. When they are gone the check reports UNAVAILABLE, which is deliberately
+not the same word as "agree": a flat count from two armless directories is not
+evidence of inertness, and the old behaviour was to say nothing at all. It
+also cannot attribute a byte move to the change rather than to the device
+unless both arms ran at least twice and each was self-identical; that is the
+same rule the numeric band already follows, applied to bytes.
+
+What it deliberately does not do: it does not decode PNGs, it does not score,
 and it does not decide whether a mixed result should land. It says what moved.
+Which *pixels* moved is ``diff_specimen.py``; which captures a disc can be
+trusted to reproduce at all is ``sweep_agreement.py``.
 
 Exit status: 0 pass, 1 fail (a prediction was violated, or a capture regressed
-with no prediction on file), 2 refused (the arms are not comparable).
+with no prediction on file), 2 refused (the arms are not comparable). The byte
+check does not change the exit code -- it changes what the verdict is allowed
+to claim.
 """
 
 import argparse
@@ -113,6 +157,8 @@ class Arm:
         self.meta = json.load(open(mpath))
         self.meta_mtime = os.path.getmtime(mpath)
         self.runs = self.meta.get("runs") or []
+        self._shas = None
+        self._sha_runs = 0
 
         # The request as it was queued. request.sh binds the prediction file
         # to the request by content hash at queue time, which is the only
@@ -182,6 +228,49 @@ class Arm:
         for rows in self.per_run:
             keys |= set(rows)
         return keys
+
+    def capture_shas(self):
+        """{(suite, test): [sha256 per run]} over the PNGs this arm wrote.
+
+        The capture filenames use the ``Suite::Test.png`` spelling and the TSV
+        keys use ``(suite, test)`` with the same underscored suite, so the map
+        is exact -- checked against
+        ``1789359225-padwrite59-base-1009294``, where all 217 scored rows have
+        a PNG and the only unmatched file is ``pgraph_progress_log.txt``.
+
+        An EMPTY result means the directories are gone, not that the captures
+        agree. ``sha_runs`` says how many run directories were actually read,
+        and every caller must branch on it rather than on the map being empty
+        -- "no evidence of a difference" and "evidence of no difference" are
+        the two readings this whole file exists to keep apart.
+        """
+        if self._shas is not None:
+            return self._shas
+        out = {}
+        self._sha_runs = 0
+        for i in range(1, len(self.runs) + 1):
+            d = os.path.join(self.path, "captures%d" % i)
+            if not os.path.isdir(d):
+                continue
+            self._sha_runs += 1
+            for fn in sorted(os.listdir(d)):
+                if not fn.endswith(".png") or "::" not in fn:
+                    continue
+                suite, test = fn[:-4].split("::", 1)
+                h = hashlib.sha256()
+                with open(os.path.join(d, fn), "rb") as fh:
+                    for chunk in iter(lambda: fh.read(1 << 20), b""):
+                        h.update(chunk)
+                out.setdefault((suite, test), []).append(h.hexdigest())
+        self._shas = out
+        return out
+
+    @property
+    def sha_runs(self):
+        """Run directories the byte check could actually read. 0 means the
+        check is UNAVAILABLE for this arm."""
+        self.capture_shas()
+        return self._sha_runs
 
     def values(self, key, col="differing"):
         """The per-run value of one column for one capture."""
@@ -434,7 +523,32 @@ def unstable_by_name(key):
     return any(fnmatch.fnmatch(name, pat) for pat in KNOWN_UNSTABLE)
 
 
+def byte_verdict(ha, hb):
+    """Did the picture move? ``(moved, attributable)``.
+
+    ``moved`` is True/False/None -- None meaning the captures are not on disk
+    for one or both arms, which is a third answer and not a False.
+
+    ``attributable`` says whether a move can be blamed on the CHANGE rather
+    than on the device. It needs each arm to have run at least twice and to
+    have been byte-identical with itself: that is the numeric band's rule
+    applied to bytes. With one run per arm -- the shape of almost every arm
+    here -- a cross-arm byte difference and a nondeterministic capture have
+    the same signature, so ``attributable`` is False and the move is reported
+    rather than judged. ``Texture_border/2D_BorderTex_SZ`` is bit-exact in
+    five of ten runs of ONE binary; a byte guard that failed on single-run
+    evidence would fail that capture about half the time with nothing changed.
+    """
+    if not ha or not hb:
+        return None, False
+    moved = not (set(ha) & set(hb))
+    self_stable = (len(ha) >= 2 and len(set(ha)) == 1
+                   and len(hb) >= 2 and len(set(hb)) == 1)
+    return moved, bool(moved and self_stable)
+
+
 def compare(a, b):
+    sha_a, sha_b = a.capture_shas(), b.capture_shas()
     rows = []
     for key in sorted(a.captures() & b.captures()):
         va, vb = a.values(key), b.values(key)
@@ -449,7 +563,9 @@ def compare(a, b):
             cls = "noise"
         else:
             cls = "better" if delta < 0 else "worse"
+        moved, attributable = byte_verdict(sha_a.get(key), sha_b.get(key))
         rows.append(dict(
+            pixels_moved=moved, pixels_moved_attributable=attributable,
             key=key, suite=key[0], test=key[1],
             a=pa, b=pb, delta=delta, band=bnd,
             a_runs=va, b_runs=vb,
@@ -598,6 +714,28 @@ def judge(exp, rows):
                                     "moved" if kind == "must_not_move"
                                     else "REGRESSED",
                                     n, r["a"], r["b"]))
+                    continue
+                # `must_not_move` SAYS BIT-IDENTICAL AND USED TO CHECK THE
+                # SCORE. Both this function's own comment and AGENTS.md
+                # describe it as bit-identical; `cls` is computed from the
+                # `differing` column, so until 2026-09-14 a capture could
+                # hold its number, draw a different picture, and satisfy the
+                # guard. #59's arm 3 passed twelve such globs over 192
+                # captures on a disc where one capture's pixels had moved.
+                #
+                # It fails here ONLY on evidence that the change did it --
+                # both arms run twice or more and each self-identical. On a
+                # single-run arm the byte difference is reported by
+                # byte_summary() and does not fail, because device
+                # nondeterminism has the same signature and a guard that
+                # cannot tell them apart is a coin flip, not a check.
+                if kind == "must_not_move" and r["pixels_moved_attributable"]:
+                    fails.append(
+                        "must not move, and the score held, but THE PIXELS "
+                        "MOVED: %-30s %9d -> %9d (byte-different in every "
+                        "run, and each arm was byte-identical with itself, "
+                        "so this is the change and not the device)"
+                        % (n, r["a"], r["b"]))
 
     for name, want in (exp.get("expect") or {}).items():
         hit = [n for n in by_name if fnmatch.fnmatch(n, name)]
@@ -769,6 +907,85 @@ def signed(n):
             ("+" if n > 0 else "-") + fmt(abs(n)))
 
 
+def byte_summary(a, b, rows):
+    """The byte check, as reportable lines plus the facts a verdict needs.
+
+    ``flat_but_moved`` is the one that matters: no capture changed class, and
+    the pixels changed anyway. That is #59 arm 3 exactly, and it is the state
+    in which "inert" is the wrong word.
+    """
+    checked = [r for r in rows if r["pixels_moved"] is not None]
+    unchecked = [r for r in rows if r["pixels_moved"] is None]
+    moved = [r for r in checked if r["pixels_moved"]]
+    quiet = [r for r in moved if r["cls"] in ("same", "noise")]
+    lines = []
+    info = dict(available=bool(checked), checked=len(checked),
+                unchecked=len(unchecked), moved=len(moved),
+                quiet=["%s/%s" % r["key"] for r in quiet],
+                attributable=[("%s/%s" % r["key"]) for r in moved
+                              if r["pixels_moved_attributable"]],
+                flat_but_moved=False)
+
+    if not checked:
+        lines.append("  UNAVAILABLE: %s kept no capture directory, so nothing "
+                     "here can tell"
+                     % (", ".join(x.label for x in (a, b) if not x.sha_runs)))
+        lines.append("  'same number' from 'same image'. THE FLAT COUNT ABOVE "
+                     "IS THEREFORE NOT")
+        lines.append("  EVIDENCE OF INERTNESS -- it is the absence of "
+                     "evidence. Requeue both arms")
+        lines.append("  if inertness is the claim you need.")
+        return dict(info, lines=lines)
+
+    lines.append("  hashed %d of %d shared captures (%d run-dir(s) A, %d B)"
+                 % (len(checked), len(rows), a.sha_runs, b.sha_runs))
+    if unchecked:
+        lines.append("  %d capture(s) had no PNG in one or both arms and were "
+                     "NOT checked" % len(unchecked))
+    if not moved:
+        lines.append("  every checked capture is byte-identical between the "
+                     "arms.")
+        return dict(info, lines=lines)
+
+    lines.append("  %d capture(s) differ BYTE FOR BYTE between the arms."
+                 % len(moved))
+    if quiet:
+        lines.append("")
+        lines.append("  of those, %d did not change class -- the same number, "
+                     "a different image:" % len(quiet))
+        for r in sorted(quiet, key=lambda r: (r["suite"], r["test"])):
+            lines.append("    %-6s %-24s %-30s %9s -> %9s  PIXELS MOVED"
+                         % (r["cls"], r["suite"], r["test"][:30],
+                            fmt(r["a"]), fmt(r["b"])))
+        lines.append("  A score is a distance from the golden, so two "
+                     "different images can sit the")
+        lines.append("  same distance away. #59's arm 3 read 0/0/217-same "
+                     "with identical totals while")
+        lines.append("  49,104 px moved on Clear/SFC_X1R5G5B5_Z1R5G5B5 -- "
+                     "green repaired, alpha broken")
+        lines.append("  by the same edit. Run diff_specimen.py on these "
+                     "before calling the arm inert.")
+
+    if info["attributable"]:
+        lines.append("")
+        lines.append("  ATTRIBUTABLE to the change: both arms ran twice or "
+                     "more and each was")
+        lines.append("  byte-identical with itself, so the device did not do "
+                     "this: " + ", ".join(info["attributable"][:6]))
+    elif moved:
+        lines.append("")
+        lines.append("  NOT ATTRIBUTABLE: one run per arm cannot tell a "
+                     "change from device")
+        lines.append("  nondeterminism -- both have this signature. Requeue "
+                     "with --runs 3 to")
+        lines.append("  separate them; sweep_agreement.py measures the same "
+                     "thing within one ref.")
+
+    info["flat_but_moved"] = bool(quiet) and not [
+        r for r in rows if r["cls"] in ("better", "worse")]
+    return dict(info, lines=lines)
+
+
 def report(a, b, rows, warn, exp, exp_notes, args):
     out = []
     out.append("=" * 78)
@@ -850,6 +1067,20 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                    "(not a result): " +
                    ", ".join("%s/%s" % r["key"] for r in flicker))
 
+    # -- the byte-level check ----------------------------------------------
+    #
+    # Printed unconditionally, including when it found nothing and when it
+    # could not run. A check that only prints when it fires teaches the reader
+    # that silence means agreement, and the whole point here is that silence
+    # is the third answer.
+    bc = byte_summary(a, b, rows)
+    out.append("")
+    out.append("-" * 78)
+    out.append("byte-level check -- what a score count cannot see")
+    out.append("-" * 78)
+    for line in bc["lines"]:
+        out.append(line)
+
     out.append("")
     out.append("-" * 78)
     out.append("per suite")
@@ -907,16 +1138,39 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                        "is no band to test them against: %s. Requeue both "
                        "arms with --runs 3."
                        % ", ".join("%s/%s" % r["key"] for r in soft))
+        elif bc["flat_but_moved"]:
+            # THE FLAT-COUNT TRAP, NAMED IN THE VERDICT LINE.
+            #
+            # This used to read "nothing got worse", which is true of the
+            # scores and was read as "the change did nothing" -- the sentence
+            # #59's arm 3 was reported with while a working fix sat inside it.
+            out.append("VERDICT: UNJUDGED, AND NOT INERT -- no capture "
+                       "changed class, but %d capture(s) are a DIFFERENT "
+                       "IMAGE at the same score: %s. Do not report this arm "
+                       "as having done nothing; the byte check above says "
+                       "otherwise. No prediction was registered either, so "
+                       "register one with --register before the next arm."
+                       % (len(bc["quiet"]), ", ".join(bc["quiet"][:6])))
+            rc = 0
         else:
             out.append("VERDICT: UNJUDGED -- nothing got worse, but no "
                        "prediction was registered, so this measurement "
                        "confirms nothing. Register one with --register "
-                       "before the next arm.")
+                       "before the next arm."
+                       + ("" if bc["available"] else
+                          " AND THE CAPTURES ARE GONE, so 'nothing got worse'"
+                          " is a statement about two numbers only."))
             rc = 0
     else:
         for n in exp_notes:
             out.append(n)
         fails, checks = judge(exp, rows)
+        if bc["quiet"]:
+            out.append("BYTE CHECK: %d capture(s) held their score and moved "
+                       "their pixels: %s. No registered leg tests that -- "
+                       "every class here is score-based -- so this is a fact "
+                       "about the arm, not a verdict on it."
+                       % (len(bc["quiet"]), ", ".join(bc["quiet"][:6])))
         if exp.get("prediction"):
             out.append("prediction (registered %s): %s"
                        % (exp.get("registered_utc", "?"), exp["prediction"]))
@@ -962,6 +1216,7 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                 totals=dict(differing_a=ta, differing_b=tb,
                             structural_a=sa, structural_b=sb),
                 warnings=warn, post_hoc=exp_notes, verdict=rc,
+                byte_check={k: v for k, v in bc.items() if k != "lines"},
                 movers=[{k: v for k, v in r.items() if k != "key"}
                         for r in movers],
             ), f, indent=2)
