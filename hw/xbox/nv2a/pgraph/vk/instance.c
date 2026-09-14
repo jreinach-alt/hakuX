@@ -944,8 +944,75 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
 #endif
 
     /*
-     * Report whether this part supports dualSrcBlend. Query only -- nothing is
-     * enabled and no behaviour changes here.
+     * #59's write side: enable dualSrcBlend where the part has it, and
+     * REFUSE TO ENABLE IT -- never fail to start -- where it does not.
+     *
+     * This block used to be query-only. It printed
+     * "vk dualSrcBlend: available (query only, #59)" on thirty-eight runs
+     * across four lanes and nobody read one of them, which is why #59 stood
+     * blocked on a boolean that had been on disk since 2026-09-13. The line
+     * below is still printed, for the same reason and now also as the arm's
+     * own evidence that the feature actually came up.
+     *
+     * WHY IT IS NOT IN desired_features. That table's contract is
+     * "available -> enabled", and it is the right shape for a feature whose
+     * only cost is asking for it. dualSrcBlend has a second precondition that
+     * a bool cannot express: maxFragmentDualSrcAttachments must be at least
+     * the number of attachments the fragment stage writes with an Index above
+     * 0. We write exactly one (create_render_pass sets
+     * colorAttachmentCount = color ? 1 : 0, so there is no MRT path here at
+     * all), and Vulkan requires the limit to be >= 1 wherever the feature is
+     * supported -- but a driver that reports the feature and a limit of 0 is
+     * self-contradictory rather than impossible, and the failure mode if we
+     * believed it is a pipeline that fails validation at creation on a device
+     * class this fleet does not own. That is audit pass 1's HIGH exactly: a
+     * push-constant range invalid at init on hardware no arm here could ever
+     * have surfaced. So both conditions are checked, together, here.
+     *
+     * WHAT HAPPENS WHERE THE FEATURE IS ABSENT, stated because enabling a
+     * device feature changes device creation for every device and not only
+     * the Adreno part this was measured on:
+     *
+     *   - enabled_physical_device_features.dualSrcBlend stays VK_FALSE, so
+     *     vkCreateDevice is asked for nothing extra and cannot fail for it;
+     *   - pgraph_glsl_set_dual_src_pad_supported(false) means psh.c declares
+     *     no index-1 output, emits no stamp, and stages PSH_PAD_ALPHA_NONE;
+     *   - vk/draw.c's synthetic pad field is therefore never set, so no
+     *     alpha equation is forced and no SRC1 factor is ever named;
+     *   - #48's read-side swizzle keeps doing the job, exactly as today.
+     *
+     * The renderer runs; #59 keeps the read-side approximation on that part.
+     * A missing feature is a narrower fix, not a broken start.
+     */
+    {
+        VkPhysicalDeviceFeatures f;
+        vkGetPhysicalDeviceFeatures(r->physical_device, &f);
+
+        uint32_t max_dual_src =
+            r->device_props.limits.maxFragmentDualSrcAttachments;
+        bool dual_src_ok = (f.dualSrcBlend == VK_TRUE) && (max_dual_src >= 1);
+
+        r->enabled_physical_device_features.dualSrcBlend =
+            dual_src_ok ? VK_TRUE : VK_FALSE;
+        pgraph_glsl_set_dual_src_pad_supported(dual_src_ok);
+
+        const char *verdict = dual_src_ok             ? "enabled" :
+                              f.dualSrcBlend == VK_TRUE ? "available but limit 0, NOT enabled" :
+                                                        "missing, NOT enabled";
+        fprintf(stderr,
+                "Vulkan feature %-36s : %s (maxFragmentDualSrcAttachments=%u, #59)\n",
+                "dualSrcBlend", verdict, max_dual_src);
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
+                            "vk dualSrcBlend: %s (maxFragmentDualSrcAttachments=%u, #59)",
+                            verdict, max_dual_src);
+#endif
+    }
+
+    /*
+     * The original query-only comment, kept because it is the derivation and
+     * the block above is only the consequence. Nothing below this point
+     * enables anything.
      *
      * #59 is blocked on exactly this boolean. Its write-side pad fix is
      * measured and its mechanism is settled: the Z/O suffix on a colour
