@@ -195,20 +195,51 @@ $DIRTY"
     if [ "$DRY" = 1 ]; then
         echo
         echo "--- dry run: would queue these two arms, and nothing else ---"
+        # Printed with the SAME --expect/--no-expect the real path passes. A
+        # dry run whose command differs from the one that would be queued is
+        # worse than no dry run: this one omitted the prediction argument,
+        # which is exactly the argument whose absence broke the real path.
+        if [ -n "$EXPECT" ]; then
+            DRY_EXPECT="--expect $EXPECT"
+        else
+            DRY_EXPECT="--no-expect '...'"
+        fi
         echo "request.sh --who $WHO-base --ref $PAR_SHA --suites '$SUITES' --runs $RUNS \\"
-        echo "           --purpose '$PURP_A'"
+        echo "           $DRY_EXPECT --purpose '$PURP_A'"
         echo "request.sh --who $WHO-fix  --ref $FIX_SHA --suites '$SUITES' --runs $RUNS \\"
-        echo "           --purpose '$PURP_B'"
+        echo "           $DRY_EXPECT --purpose '$PURP_B'"
         echo
         echo "then: ab_compare.py --a \$D/results/<base-id> --b \$D/results/<fix-id>${EXPECT:+ --expect $EXPECT}"
         exit 0
     fi
 
+    # THE PREDICTION HAS TO REACH request.sh, and for a while it did not.
+    #
+    # request.sh grew its own refusal -- a suites request needs --expect FILE
+    # or --no-expect REASON -- after this script was written, and nothing here
+    # passed either. So ab_run.sh refused at its FIRST arm with request.sh's
+    # message about writing a prediction, on a run that had just registered
+    # one and printed "expect registered" two lines earlier. Found on
+    # 2026-09-14 by #59's write-side arm; the arms were queued by hand
+    # instead, which is the path this script exists to remove.
+    #
+    # It matters beyond the inconvenience: the expect_sha request.sh records
+    # at queue time is what makes a verdict read PRE-REGISTERED rather than
+    # UNBOUND, so every arm this script queued was queued unbound.
+    EXPECT_ARGS=()
+    if [ -n "$EXPECT" ]; then
+        EXPECT_ARGS=(--expect "$EXPECT")
+    else
+        EXPECT_ARGS=(--no-expect "ab_run.sh --no-expect: ${PURPOSE:-unjudged A/B}")
+    fi
+
     qa=$(bash "$HERE/request.sh" --who "$WHO-base" --ref "$PAR_SHA" \
-             --suites "$SUITES" --runs "$RUNS" --purpose "$PURP_A") \
+             --suites "$SUITES" --runs "$RUNS" "${EXPECT_ARGS[@]}" \
+             --purpose "$PURP_A") \
         || fail "queueing the baseline arm failed"
     qb=$(bash "$HERE/request.sh" --who "$WHO-fix" --ref "$FIX_SHA" \
-             --suites "$SUITES" --runs "$RUNS" --purpose "$PURP_B") \
+             --suites "$SUITES" --runs "$RUNS" "${EXPECT_ARGS[@]}" \
+             --purpose "$PURP_B") \
         || fail "queueing the fix arm failed"
     IDA="${qa##* }"; IDB="${qb##* }"
     echo
