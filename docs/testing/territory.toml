@@ -43,6 +43,18 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 
 
 [free]
+# A LANE THAT WAS NEVER CLAIMED, recorded because it worked and that is the
+# problem. On 2026-09-14 an agent was dispatched as "lane.padwrite" for #59,
+# briefed with four files as "yours", and NO [lane.padwrite] row was ever
+# written here. It edited three of them. Nothing collided, because nothing
+# else wanted them that hour -- which is luck, and is exactly how the earlier
+# unworktreed Galleon lane also came out fine.
+#
+# The brief is not the claim. check_territory.py cannot see a lane that does
+# not exist, so none of the guards that caught real collisions today -- the
+# walled-blocker advisory among them -- could have fired for it. Write the row
+# BEFORE dispatching, in the same commit as the brief if possible.
+#
 # RELEASED 2026-09-14 by retiring lane.lineext: glsl/geom.c, vk/draw.c and
 # vk/shaders.c. Its #13 Vulkan fix LANDED (merged, 47.82% -> 99.58% against
 # silicon), and a claim exists to stop two agents editing one file at once,
