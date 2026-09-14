@@ -169,6 +169,35 @@ is grading its own homework, and this project has already learned that a
 checker which reads live state while writing it turns its own staleness into
 somebody else's fault.
 
+## Routing on paper is not routing
+
+Four audit findings -- M2, M4, P2 and L5 -- were recorded as "routed to
+lane.remote" in decision records. The lane had been dispatched before any of
+them existed and its brief named none. Audit pass 2 filed it as a MEDIUM
+against the orchestrator; `lane.lows`, reaching the same conclusion
+independently one lane later, named the real defect: **the routing MECHANISM
+is the bug, not the individual deliveries.**
+
+Writing the routing is the satisfying part. It closes the item in the document
+you are working in, the checker that reads that document goes quiet, and the
+recipient is not in the room to notice the silence. Every gate reports healthy.
+
+**So "routed" requires three things, and a record is only the first:**
+
+  1. the decision recorded;
+  2. **an append-only entry in `$DISPATCH_DIR/deliveries/<lane>.md`**, which
+     the lane reads at session start and after every message. A message to a
+     cloud session is one-way and leaves no record either side can check; a
+     file does;
+  3. **somewhere for the work to live** -- an issue, a tracker row, a lane
+     claim. Work with no row is invisible the moment the message scrolls past.
+     M4 had none for hours.
+
+The same shape as a lane briefed with files never claimed in `territory.toml`:
+the brief is not the claim, and the record is not the delivery. When a hand-off
+crosses a session boundary, assume it did not arrive until something on the
+receiving side shows it did.
+
 ## A lane cannot satisfy a gate it is barred from fixing
 
 Found by `lane.toolsmith` auditing the checkers, and it is a governance bug
