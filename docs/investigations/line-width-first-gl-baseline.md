@@ -125,3 +125,25 @@ a diagonal.
 measurement has something to falsify, not offered as the answer. What is
 established is narrower and solid: the deficit is in width, it is per-line
 rather than global, and a single scale factor cannot be the fix.
+
+
+---
+
+## Correction: "per-line, not global" was wrong
+
+The section above concludes that some lines are already correct, that a global
+multiplier would break them, and that angle is the likely per-line variable.
+**All three are retracted.** Measured per primitive type
+(`predictions/2026-09-14-line-width-by-primitive.md`), the ours/golden painted
+ratio is uniform across every primitive -- LINE_LOOP 0.891, TRIANGLES 0.852,
+QUAD_STRIP 0.888, TRIANGLE_FAN 0.885, POLYGON 0.869, QUADS 0.895 at width 8 --
+so the shortfall is global, not per-line.
+
+The runs that appeared to "match exactly" are integer roundings of a uniformly
+scaled width. Summed rather than compared item by item: 42/48 at width 4, 68/78
+at width 8, 119/141 at width 16. A global widening is the right shape of fix
+after all.
+
+The lesson is the general one: **compare the sums, not the items, when the items
+are quantised.** Comparing quantised runs individually manufactured a per-line
+story out of a global effect.
