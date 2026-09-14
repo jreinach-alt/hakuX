@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 65
-updated_utc = "2026-09-14T15:10:00Z"
+wave = 66
+updated_utc = "2026-09-14T15:25:00Z"
 
 
 
@@ -76,6 +76,12 @@ note = "#38 MECHANISM 3, which has never had a lane and is the largest untouched
 issues = []
 files = []
 note = "AUDIT PASS 1 over the ONE held commit 24a75d6e3c -- 'divide BLEND_AND by 0x7f80, not by 32768', +50/-19 in vk/blit.c. Claims no files: an auditor does not fix what it finds. Dispatched WHILE the arm runs rather than after, so both gates clear together instead of serialising. THE SPECIFIC REASON THIS ONE IS AUDITED despite being the best-verified change of the night: it is exhaustively correct over its whole 2^24 input domain under real aarch64 instructions, and that is exactly the evidence that makes a reviewer stop reading the CALLERS. Tonight's HIGH (#82) was that shape -- a conversion correct for the path it was written for, wrong in the one consumer of ten that read it unguarded, and invisible to any test of the intended path."
+
+
+[lane.padwrite59]
+issues = ["59"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "hw/xbox/nv2a/pgraph/vk/instance.c"]
+note = "#59's WRITE SIDE, unblocked for the first time. The blocker said the write side was unreachable because dualSrcBlend is not among the nine desired_features entries -- TRUE PREMISE, FALSE CONCLUSION, which is why it stood. A query-only block at vk/instance.c:870-900, deliberately outside desired_features and tagged '#59', has RUN FOUR TIMES and printed 'vk dualSrcBlend: available (query only, #59)'. Nobody read it. Same shape as the #54 counter and the same lane: the instrument existed, ran, and its output went unread while the issue it answered stayed blocked. THE FAILED ARM IS THE DESIGN DOCUMENT. Arm 1 (23be8223f5 -> 4381fae5f6) stamped the pad constant as fragColor.a and forced the alpha blend to ONE/ZERO/ADD: PRE-REGISTERED FAIL at 10 of 142 checks, and it CONFIRMED THE MODEL -- Fmt_X8R8G8B8_O8R8G8B8 59,183 -> 32,766, the whole 26,417 being the outside-quad background the raster never touches, which no read-side scoping can reach. It broke every draw blending on source alpha because VK_BLEND_FACTOR_SRC_ALPHA and ONE_MINUS_SRC_ALPHA READ THE SAME fragColor.a, and the failure set has no exceptions: moved = {format has pad bits} AND {blend factor is SRC_ALPHA}. That is exactly what a second source output exists to separate. vk/draw.c IS NOT GRANTED YET -- lane.skew44 holds it under a two-line grant and has been ASKED whether it is done. Declared here rather than assumed, because check_territory.py refuses to let a claim wall a blocker silently and because handing two lanes one file is a mistake this project made on 2026-09-14 and survived by luck."
 
 [free]
 #
@@ -145,9 +151,7 @@ note = "AUDIT PASS 1 over the ONE held commit 24a75d6e3c -- 'divide BLEND_AND by
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
          "hw/xbox/nv2a/pgraph/pgraph.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/profile.c",
-         "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/mcpx/**",
