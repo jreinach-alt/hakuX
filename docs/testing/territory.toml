@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 59
-updated_utc = "2026-09-14T12:35:00Z"
+wave = 60
+updated_utc = "2026-09-14T13:05:00Z"
 
 
 
@@ -64,12 +64,6 @@ files = []
 note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. Claims no files: an auditor does not fix what it finds. The reason this is a pass rather than a fold: the diff carries target/i386/tcg/fpu_helper.c at +151 lines -- guest FPU reaching every title -- and I folded exactly that category unaudited once tonight (#73's fix, 2af6def68a), after which an audit found a HIGH in the surrounding code that was reachable from the DMA thread. The 53-commit fold-in before it also went in unaudited. Twice is a pattern and the protocol exists because of it. NOT urgent for durability: the work is already pushed to origin on lane.remote's own branch, so folding buys visibility on this board and the audit findings I routed (M2/#74, M4/#80) landing here -- neither of which is worth repeating the mistake for."
 
 
-[lane.depth52z16]
-issues = ["52"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c"]
-note = "#52's LAST OPEN CELL: z16 float, 1,436 px, every one of them ONE ULP. The status note already establishes what it is NOT -- not a float-encoding defect (packing is RGB565, verified on 199,065,600 channel samples with 0 lattice violations), not structural (0 px differ in the 63,488-px grid covering every F16 exponent 0-15), and not the colour residual (that is #38's Gouraud interpolator, byte-identical histograms between the bit-exact z16 cell and the one-unit-out z24 one). What is left is the bottom quad's sub-ULP interpolation shortfall -- cell 2's barycentric-normalisation +-1 family at 1/30th the size. Cell 2 was closed in this same file by 91b0897e01 ('the depth floor cannot depend on fma() being fused'), PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px. So the precedent, the mechanism and the tool all exist. NOT IN SCOPE: z24 float's 12,816 px is a MEASURED FLOOR, priced and deliberately left -- do not spend the arm on it. psh.c released by retiring lane.lows."
-
-
 [lane.skew44]
 issues = ["44"]
 files = ["hw/xbox/nv2a/pfifo.c"]
@@ -82,6 +76,16 @@ files = ["hw/xbox/nv2a/pgraph/vk/blit.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 note = "#38 MECHANISM 3, which has never had a lane and is the largest untouched directional signal on the board: Image_blit, 515,562 one-step pixels, 76,423 ours-high against 439,139 ours-low, bias -0.70. Read docs/investigations/depth-buffer-is-four-defects.md:150-176 -- it records the trap AND the lead in the same table. The trap: conditioning on DIFFERING pixels made the corpus-wide one-step error look one-sided at +0.67 to +1.07, and unconditioned it is +0.03. There is no single rounding bug behind the corpus. The lead is that Image_blit survives that correction -- it leans as hard negative as Texture_signed leans positive, so it is a real cause and not the artefact. 85% of its one-step pixels are ours-low by exactly one. vk/blit.c WAS IN NO ROW AND NOT IN [free] -- the same gap fleet.py was found in at wave 48; it is registered here rather than quietly taken. glsl/vsh.c is free if the lane needs mechanism 1's colorPrecision site, but it must ASK: a brief is not a claim. NOT #33, which is closed and whose blit divergence moved to #62 -- lane.remote holds that."
 
 [free]
+#
+# RELEASED 2026-09-14 by retiring lane.depth52z16: glsl/psh.c. It made NO source
+# change beyond a comment, and that is the result rather than a shortfall -- #52's
+# last cell is ADVERSE. Our value is the exact floor on all 1,436 differing pixels
+# and silicon is one ULP below; driving our own error to zero would take the cell
+# 1,436 -> 2,040. WHOEVER CLAIMS psh.c NEXT SHOULD KNOW IT IS SPOKEN FOR: audit pass
+# 1 over lane.remote's unfolded commits filed M1 and M2 against #51's DOT_STR_3D
+# work in this file, both to be remediated BEFORE those commits fold. The audit
+# recorded psh.c as lane.remote's territory. It never was.
+#
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
 # lane.tcginval retired. WHOEVER CLAIMS THEM NEXT MUST KNOW: commit 937848c9e7
 # on worktree-agent-af29d9ef9a8f784d4 is #68's range-test restoration, ~200
@@ -128,6 +132,7 @@ note = "#38 MECHANISM 3, which has never had a lane and is the largest untouched
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
+         "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
