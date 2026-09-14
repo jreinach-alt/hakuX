@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 32
+wave = 33
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -41,6 +41,17 @@ files = ["hw/xbox/nv2a/pgraph/gl/*.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
 note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
 
 
+
+[lane.galleon77]
+issues = ["77"]
+files = []
+note = "#77, Galleon deck/ground stipple. PURE MEASUREMENT, no source files claimed -- the next step is the DRIVER A/B, and it needs no code change. NOT NOVA-BOUND, which is what unblocked it: Galleon is on the Thor (device_titles thor lists Galleon (USA).xiso.iso at /storage/388C-68F7/ROMS/xbox), and swap_driver.sh opens S=${SERIAL:-ee317437} so the Nova serial is a default, not a requirement. T30/T26 are generic Turnip Adreno builds at minApi 30; the Thor is adreno/kalama, the same part devices.sh measured byte-identical to the Nova on 62 of 62 captures. HARNESS: driver_ab.sh CANNOT be used -- it enumerates a suite's goldens and boots one disc per test. Use swap_driver.sh (t30/t26/stock/restore; restore() always puts T30 back) plus a soak through request.sh with --title and --seconds. The driver arm is FIRST for a reason recorded on the issue: every measurement so far reads EMULATOR state, and if the defect is ours it is a divergence between emulator state and what reached the GPU, which no state logging can see."
+
+[lane.readfreq]
+issues = ["54"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c",
+         "hw/xbox/nv2a/pfifo.c"]
+note = "#54's remaining half: a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A bitmap and r->texture_vram_gen. The barrier lever is DEAD and must not be retried -- with ALL guest barriers restored, 2D_BorderTex_SZ failed 6 of 10 runs, identical to the store-store variant and indistinguishable from the ~46% base rate, at +34.1% game frame time, with mb_emitted 0/80,411/347,473 proving the three arms were genuinely different binaries. That zero bounds whether barriers fix #44's capture; it does NOT bound how often the race fires, and the corpus cannot separate the two because it is nearly all static content. Hence a counter on a real title. NOT NOVA-BOUND: Galleon is on the Thor. target/** stays lane.remote's and accel/** is free but not claimed here -- say so if the counter needs either."
 
 [free]
 # A LANE THAT WAS NEVER CLAIMED, recorded because it worked and that is the
@@ -80,7 +91,6 @@ files = ["accel/**",
          "hw/xbox/nv2a/nv2a.c",
          "hw/xbox/nv2a/nv2a_int.h",
          "hw/xbox/nv2a/nv2a_regs.h",
-         "hw/xbox/nv2a/pfifo.c",
          "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
@@ -98,6 +108,5 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]
