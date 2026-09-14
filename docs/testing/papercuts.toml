@@ -168,3 +168,11 @@ cost = "Not yet paid, which is the point of logging it now. An unlisted file is 
 bit = 1
 owner = "unassigned"
 fix = "Audit territory.toml for files under docs/testing/ and hw/ that appear in neither a lane nor [free], and place them. A file that is genuinely nobody problem should say so explicitly rather than by omission."
+
+[[cut]]
+id = "discard-model-exact-equality"
+what = "tcg_pages.py's discard_model() compares with exact equality and no tolerance, while the population check beside it carries max(8, n*1e-4). One invalidation straddling a window boundary therefore reads as a model mismatch."
+cost = "C3 called an arm-A run MIXED on a di-(ov+sp) of +1 in one window and -1 in the next. lane.tcgarm had to establish build identity with a SECOND instrument (apk_sha per arm) to dismiss it -- correct, and unnecessary."
+bit = 1
+owner = "toolsmith"
+fix = "Give discard_model() the slack the population check already has. It is the residual of the exact-equality defect that voided a correct arm earlier the same day."
