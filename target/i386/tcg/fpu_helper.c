@@ -212,6 +212,35 @@ static inline floatx80 pack_arm64(floatx80 v, float_status *status)
 /*
  * Native double storage: ST0/FT0 are now `double`, so all floatx80_*
  * operations become native double operations and conversions are trivial.
+ *
+ * X87 EXCEPTION FLAGS ARE DELIBERATELY OUT OF SCOPE FOR THIS ENTIRE BLOCK.
+ * Stated here, at the top, because it is a property of the whole path and not
+ * of any one function -- audit pass 2's P2, which generalised pass 1's L7.
+ *
+ * merge_exception_flags() is itself wrapped in `#ifndef USE_HARD_FPU`, so on
+ * this path it is an EMPTY FUNCTION. No status-word bit -- IE, ZE, OE, UE, PE
+ * or DE -- is ever raised by any helper here, even though every helper still
+ * brackets its work with save_exception_flags()/merge_exception_flags() and so
+ * reads as though it maintains the status word. A guest that executes FNSTSW
+ * or FSTENV sees the exception bits permanently clear, and a guest that
+ * unmasks any of them takes no #MF where hardware would. nxdk leaves the
+ * masks set, so nothing in the corpus is known to reach it.
+ *
+ * Two consequences worth having in front of you before editing anything here:
+ *
+ * - Raising a flag into s->float_exception_flags is NOT pointless in general,
+ *   but it cannot reach the status word from this block. The conversions below
+ *   raise float_flag_invalid anyway, because helper_fistl_ST0 and
+ *   helper_fistll_ST0 read get_float_exception_flags() DIRECTLY rather than
+ *   through the merge, so that guard does become live. Anything that only a
+ *   merge would carry -- PE from FRNDINT, for instance -- does not.
+ * - Making the arithmetic raise flags properly is not a local change. Native
+ *   double ops do not populate softfloat's flags at all, so restoring the
+ *   merge alone would merge zeros; it would take fetestexcept() around the
+ *   host operations. That is why this is stated rather than fixed.
+ *
+ * The x86_64 variant of the same class is the bare "FIXME: rounding and
+ * exceptions" further down this file.
  */
 
 static inline FloatRelation floatx80_compare_nds(double a, double b, float_status *s)
@@ -308,7 +337,17 @@ static inline double floatx80_round_to_int_nds(double a, float_status *s)
     default:                  return rint(a);
     }
 }
-#define floatx80_round(a, s)           floatx80_round_to_int_nds((a), (s))
+/*
+ * No `#define floatx80_round` here, deliberately (audit pass 1, L5). Softfloat's
+ * floatx80_round() rounds to the control word's PRECISION, not to an integer,
+ * so aliasing it to a round-to-integer would be wrong for anything that ever
+ * called it. It had no caller in this file and the previous comment only WARNED
+ * a future one. Leaving the name undefined is strictly better: floatx80 is
+ * `double` on this path, so a future caller now gets a hard compile error
+ * against softfloat's real prototype instead of silently wrong semantics.
+ * target/m68k uses the real function and is unaffected -- this was a macro
+ * local to this translation unit.
+ */
 #define floatx80_round_to_int(a, s)    floatx80_round_to_int_nds((a), (s))
 
 /*
@@ -332,13 +371,11 @@ static inline double floatx80_round_to_int_nds(double a, float_status *s)
  * as a double and would round up to 2^63, admitting exactly the value that
  * overflows.
  *
- * KNOWN INCOMPLETE, and deliberately so: raising the flag makes the two
- * helper guards work, because they call get_float_exception_flags() directly.
- * It does NOT reach the x87 status word, because merge_exception_flags() is
- * itself entirely inside #ifndef USE_HARD_FPU and is an empty function on this
- * path -- so no FPU exception bit, IE or PE or any other, is raised by any
- * hard-path operation. That is a separate defect of wider scope than this one
- * and is not fixed here.
+ * KNOWN INCOMPLETE, and deliberately so: raising the flag makes the two helper
+ * guards work, because they call get_float_exception_flags() directly. It does
+ * NOT reach the x87 status word. See the exception-flag note at the top of this
+ * USE_HARD_FPU block, which is the authority on that and applies to every
+ * helper here, not just to these conversions.
  */
 static inline int32_t floatx80_to_int32_nds(double a, float_status *s)
 {
