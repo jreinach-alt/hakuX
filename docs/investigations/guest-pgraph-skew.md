@@ -2235,6 +2235,94 @@ there is at the **vertex** site. That is the same site #79 was diagnosed on, and
 the same one mode 2 takes to zero.
 
 
+### THE STENCIL DISC REFUTED MY OWN DISCRIMINATOR, AND THE REASON IS A SECOND BLINDNESS
+
+`1789363871-readfreq54-3543180`, Stencil disc x2, thor, `1dee9e25f6`,
+`--no-expect` (a denominator survey). The registered discriminator was
+"`vtx_copies` ~34 means underpowered, ~0 means structurally blind". **Neither
+was measurable, because the probe printed nothing at all:**
+
+    hakuX-perf lines in the capture     40   and   40
+    `gfps=` pacing lines                 0   and    0
+    `Vr:` / `Tr:` fields                 0   and    0
+
+All 40 lines per run are `fifoskew` and `vbl*`, which are emitted on their own
+schedules. **The probe's ONLY output channel is
+`nv2a_profile_get_pacing_str`, and `profile.c:479` gates it on
+`(g_nv2a_stats.frame_count % 60) == 0` inside the flip handler.** A 16-capture
+Stencil disc never reaches 60 guest flips, so the line never fires, and the
+counters are unreadable no matter what they counted.
+
+**So there is a second, unconditional blindness and it is the stronger of the
+two.** The path question — does `DefineBiTri` reach pgraph through
+`sync_vertex_ram_buffer` — is now moot for this workload: even a suite that
+raced on every draw would report nothing here. This generalises past #79:
+**no #54 probe reading is obtainable from any short disc**, which is most of
+the corpus, and a reader that took the absence of `Vr:` for "no races" would
+be making the exact error this file's instrument section warns about. The
+4-suite discs that DO print (2 lines each) do so only because four suites'
+flips clear the 60 together — and their first line is at flip 60, so
+everything before it is unmeasured too, which weakens the 34-is-boot reading I
+committed earlier to "34 by flip 60".
+
+What survives from that earlier reading, and it is the useful half:
+**`vtx_copies` does not advance by a single count between flip 60 and the end
+of a run** — 34 → 34 across ~29,600 draws on the 4-suite disc (6 of 6 runs),
+34 → 34 across **1,396,415 draws** on `Blend tests` alone (28 pacing lines),
+34 → 34 on `W param` — while `Depth buffer` on the same instrument advances
+302 → 744 → 1,166 → 1,580 → 1,979. **The instrumented path is alive on a
+pgraph disc and unused by those suites**, which is a measurement with its own
+control. It still does not isolate Stencil, and now cannot be made to.
+
+**I could not close the path question from source either, and say so rather
+than leave it implied.** `/home/justin/nxdk_pgraph_tests` has the Stencil test
+(`stencil_tests.cpp:127`, `AllocateVertexBuffer(6)` then `DefineBiTri` then
+`host_.DrawArrays()`), but `TestHost::DrawArrays` lives in the
+`third_party/pbkitplusplus` submodule, which is **not checked out** on this
+machine. So which of the three vertex paths carries those six vertices is
+unresolved here, and every statement above about #79's site remains a
+hypothesis with the pushbuffer reading as its alternative.
+
+**The fix for the blindness is small and belongs to whoever owns `profile.c`:
+emit the pacing line on a TIME interval as well as a flip count, or flush the
+probe totals once at teardown.** Either makes every disc run carry a reading;
+today only titles and long discs do. Recorded rather than applied — `profile.c`
+is not this lane's file.
+
+### AND THE DISC DELIVERED #79's TIP-REF REPEAT, UNASKED
+
+Two runs of ONE apk (`658910889812`) at `1dee9e25f6`, thor:
+
+| capture | run 1 | run 2 |
+|---|---|---|
+| `Stencil_REPLACE_ST_DT` | **0** | **30,000** |
+| `Stencil_REPLACE_ST_DT_ZB` | **0** | **30,000** |
+| `Stencil_ZERO_DT` | **0** | **40,000** |
+| the other 13 | 0 | 0 |
+
+Run 1 is **16 of 16 bit-exact**; run 2 is 13 of 16. **#79's defect is live at
+the tip**, with the same captures and the same round values its filing records
+(*"5,000 / 5,050 / 5,100 / 30,000 / 40,000"*), and `REPLACE_ST_DT` and
+`ZERO_DT` are two of the three #79 fitted to individual triangles of a
+six-vertex `DefineBiTri`. The `_ZB` twin moves in lockstep with its base at
+exactly 30,000, which is the same draw seen through the depth/stencil packing.
+
+**#79 and #44 both carry the caveat this answers**: *"both arm refs are 292
+commits behind the tip — equally, which is what makes them a pair, but it
+certifies the mechanism rather than mainline, and a tip-ref repeat is the
+honest precondition for shipping."* This is that repeat **for arm A only**: the
+defect is still expressed at mainline. It says nothing about whether the bound
+still removes it at the tip, which is the other half and still owed.
+
+**Held as an OBSERVATION, not as a leg.** This request was registered as a
+denominator survey with `--no-expect`; the score columns were not predicted and
+reading a verdict off them afterwards is the POST-HOC form this file refuses.
+n is 2 runs, 3 wrong of 32 (run, capture) observations = **9.4%**, which sits on
+#79's published 10.9% arm-A floor rather than being compared to it — with two
+runs a per-run coin flip has almost no power, exactly as the `2D_BorderTex_SZ`
+section sets out.
+
+
 ## UNRESOLVED
 
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
