@@ -258,10 +258,16 @@ could not distinguish "the artifact is absent" from "the chain ate half of
 it", so the two T30 arms being void by V0 is at least partly a statement
 about the instrument and not about the drivers.
 
-It does not rescue those arms. The A/B's own conclusion stands: the artifact
-did not appear in any arm, and 0-2 events in ~90 frames is below even the
-attenuated floor of 2.25-9.5 events that a firing artifact should have given.
-**The null is not explained by the attenuation.**
+It does not rescue those arms, but the margin is thinner than it looks and
+should be stated as a margin. A firing artifact at 10-14 per 100, attenuated
+to 2.5-10.5, gives **2.25 to 9.45 events in ~90 frames**. The A/B observed
+**0 to 2**. So the observation is below the attenuated floor -- but the
+worst-case floor is 2.25 and the best-case observation is 2, which is a gap
+of a quarter of one event. **The null survives the attenuation, and only
+just, at the pessimistic end of both brackets.** Anyone tightening this
+should narrow the native-resolution bracket first: the whole 25-75% spread
+comes from not knowing whether the founding capture's 1280x960 is 2x of
+640x480 (it is -- see above) and what filter the compositor uses (unknown).
 
 ## What re-judging the A/B on a segment would, and would not, buy
 
