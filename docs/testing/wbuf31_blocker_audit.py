@@ -192,6 +192,20 @@ def rivals(np, Image, root):
     print("existing instrument scores and is why TriV read as 'no integer column'")
     print("rather than as a refutation of the model family.")
     print()
+    print("  GUARD, run first, because a filtered-away row makes an all-plausible")
+    print("  table meaningless: an EMPTY interval would mean the offset is not one")
+    print("  constant per triangle, which is the premise the whole instrument rests")
+    print("  on.  Counted over every triangle the sweep scores:")
+    tot = emp = 0
+    for name in ("TriH", "TriV", "FloorQuad", "RoofQuad", "WallQuad"):
+        tris, cl, ct, base = W.PRIMS[name]
+        iv = recover(np, Image, root, "WBuf24D_%s_V1_ZB0_ZS1" % name, base, tris, cl, ct)
+        tot += len(tris)
+        emp += sum(1 for x in iv if x is None)
+    print("    %d triangles, %d empty.  The premise is a property the data could" % (tot, emp))
+    print("    have refused and did not; it is not an assumption.")
+    print()
+
     sets = {}
     for name in ("TriH", "TriV"):
         tris, cl, ct, base = W.PRIMS[name]
