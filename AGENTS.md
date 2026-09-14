@@ -268,6 +268,15 @@ by the orchestrator and not by agents on purpose: an agent cannot be trusted
 to record that it is stuck, and the point is to make the orchestrator's own
 bookkeeping checkable by something other than the orchestrator.
 
+**TASK LANES AND STANDING LANES ARE DIFFERENT, AND ONLY ONE GOES STALE.** A
+**task lane** holds files to do one job and releases them when its agent
+reports -- a claim it still holds afterwards is asserting coverage that does
+not exist, which is the row `[free]` below warns about. A **standing lane**
+owns a domain for as long as the domain needs an owner: `lane.toolsmith` owns
+the instruments, and its claim is correct while no agent is running. It carries
+`standing = true` so a territory/fleet cross-check can tell the two apart
+instead of reporting it as a stale claim every time it is idle.
+
 **EVERY RUNNING LANE HAS A ROW, COMMITTED AND PUSHED BEFORE IT STARTS.** That
 is the general rule, and it is written in this form because the specific form
 was fixed twice and found a new door each time.

@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 53
+wave = 54
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -44,6 +44,7 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 
 [lane.toolsmith]
 issues = []
+standing = true
 files = ["docs/testing/ab_compare.py",
          "docs/testing/perf/tcg_pages.py",
          "docs/testing/fleet.py",
@@ -55,43 +56,7 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/idle-watchdog.sh",
          "docs/testing/request.sh",
          "docs/testing/sweep_agreement.py"]
-note = "tcg_pages.py ADDED at wave 52. lane.tcgcount edited it under this lane's own 'analysis scripts belong to whoever is measuring with them' clause and FLAGGED IT rather than assuming -- correctly, because it is not an analysis script written for one issue, it is the judging tool for every soak prediction. It hard-coded one discard model as an invariant and voided a correct arm; it now tests both and names which one a build matched. fleet.py ADDED at wave 48 on the lane request: it was in NO row and not in [free], and the lane had just shipped a gate whose entire subject is that an unrecorded claim is invisible. It asked rather than took, and flagged the irony itself. It also DECLINED nv2a_index.py, score_sweep.py and collect_sweep.sh with a reason for each. RE-DISPATCHED 2026-09-14 wave 45, with one URGENT item: the queue-time expect-key gate in request.sh refuses EVERY soak prediction, because it assumes an expect key is Results_Directory/TestName and a soak produces no captures. #68's registered arm is blocked on it now. That is the sixth false positive in that gate; this lane already found five of eighty-one predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two. preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
-
-[lane.audit-tcg]
-issues = []
-files = []
-note = "AUDIT PASS 1 over accel/tcg. Claims NO FILES deliberately -- an auditor does not fix what it finds, so it needs visibility on the board and no territory, which is the lane.galleon77 precedent. It exists as a row because a lane that is running and not claimed is invisible to every guard: I dispatched it without one, which is the third time tonight a lane ran unclaimed, after lane.padwrite (no row at all) and lane.tcginval (row written but not committed before dispatch)."
-
-[lane.tcgcount]
-issues = ["68"]
-files = ["accel/tcg/tb-maint.c",
-         "accel/tcg/cpu-exec.c",
-         "accel/tcg/translate-all.c",
-         "hw/xbox/nv2a/pgraph/profile.c"]
-note = "THE COUNTERS, because two separate pieces of work are now blocked on them and neither can be advanced with device time. (1) #68's ARM IS VOID BY ITS OWN INSTRUMENT: arm B has sp + ov != di in 21 of 21 windows -- two counts of the same live population on ONE log line, which must agree exactly -- and `visited` up 573x to 160,838,266 with a residual of 160,836,959. em falls 38,177 -> ~0, the shape the prediction expected, and it cannot be read off an instrument that fails its own check. So 937848c9e7 stays HELD and unfolded. (2) M5 (inv_htable eviction, audit MEDIUM) was folded unremediated by documented exception because the audit's proposed fix was REFUTED -- ihash is over guest bytes, so alternating overlays make a superseded entry recyclable and evicting on insert destroys exactly the hit the cache exists for. Its real fix needs a bound keeping the most recent N and A COUNTER THAT DOES NOT EXIST. Both are counter problems. profile.c is claimed because the log line and its legend live there and tcgfix's board request already lists three comment edits owed on it; it was unlisted in territory.toml, which is itself worth noticing. RETIRED lane.tcgfix at this wave -- it had folded and was still holding these three files, which is the claimed-but-not-running shape the fleet cross-check exists to catch."
-
-# WHAT A FILE LISTED NOWHERE MEANS. Audited 2026-09-14: SIXTY-TWO source files
-# under hw/xbox/nv2a, accel/tcg and target/i386/tcg appear in neither a lane nor
-# this list, and the pattern is not random -- HEADERS ARE SYSTEMATICALLY
-# UNLISTED while the .c files beside them are claimed. glsl/geom.h, vk/renderer.h,
-# gl/renderer.h, pgraph.h, glsl/common.h and the rest.
-#
-# That cost real time twice in one day. lane.remediate1 needed one DrawQueue
-# field in vk/renderer.h and had to disclose it as outside its claim, taking a
-# retroactive grant; lane.lows needed glsl/geom.h and filed a board request
-# instead of making a one-line change. Both behaved correctly. The board was
-# the thing that was wrong.
-#
-# THE DEFAULT, written down because nobody could have known it: a file in
-# neither a lane nor [free] is FREE. A lane may edit it -- and MUST declare it
-# in its report and its board request, the way lane.remediate1 did unprompted,
-# so the orchestrator can record the grant rather than discover the edit.
-#
-# This is a default, not an endorsement. A file that is genuinely contended
-# belongs in a lane, and one that is genuinely safe belongs here by name.
-# Enumerating all 62 would be worse than useless -- a list nobody maintains
-# reads as authoritative while going stale, which is the failure this file's
-# own [free] section already warns about for retired lanes.
+note = "STANDING LANE, not a task lane. It owns the instruments for as long as they need an owner, so its claim does NOT go stale when no agent is running -- which is the distinction the territory/fleet cross-check needs, since every other lane here retires when its agent reports. Two kinds of lane: a TASK lane holds files to do one job and releases them, a STANDING lane owns a domain. Only the first is a stale claim when idle. tcg_pages.py ADDED at wave 52. lane.tcgcount edited it under this lane's own 'analysis scripts belong to whoever is measuring with them' clause and FLAGGED IT rather than assuming -- correctly, because it is not an analysis script written for one issue, it is the judging tool for every soak prediction. It hard-coded one discard model as an invariant and voided a correct arm; it now tests both and names which one a build matched. fleet.py ADDED at wave 48 on the lane request: it was in NO row and not in [free], and the lane had just shipped a gate whose entire subject is that an unrecorded claim is invisible. It asked rather than took, and flagged the irony itself. It also DECLINED nv2a_index.py, score_sweep.py and collect_sweep.sh with a reason for each. RE-DISPATCHED 2026-09-14 wave 45, with one URGENT item: the queue-time expect-key gate in request.sh refuses EVERY soak prediction, because it assumes an expect key is Results_Directory/TestName and a soak produces no captures. #68's registered arm is blocked on it now. That is the sixth false positive in that gate; this lane already found five of eighty-one predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two. preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
 
 [lane.tcgarm]
 issues = ["68"]
@@ -145,6 +110,7 @@ note = "#68's THREE-ARM re-dispatch. The first attempt ran TWO arms for a three-
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
+         "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
