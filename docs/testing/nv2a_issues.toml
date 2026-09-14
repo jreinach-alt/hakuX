@@ -685,6 +685,8 @@ title = "Line and point rasterisation"
 # line-edge-priority-reconstruct.json. Full derivation in
 # docs/investigations/line-width-residual.md.
 disposition = "defect"
+blocker_falsifier = "if 'only the GL half remains' were false, a Line_width arm on the VULKAN path would still move -- so the leg is that arm B at the current tip reproduces 99.5838% / 99.6563% against --vs-goldens and does NOT improve further, because any further movement means something other than the GL half is still wrong."
+blocker_tested = "not run. Cheap: one Line_width disc pair on the Thor, no new instrument -- line_extent_phase.py --vs-goldens already exists and was the tool that produced both figures. The GL half itself is NOT falsifiable on this fleet: gl/*.c is invisible to a Vulkan device lane, which is why it is lane.remote's."
 suites = ["Line width", "Point size", "Point params", "Swath width",
           "2D Lines", "Smoothing control", "Stipple tests"]
 status = "fixed-part"
@@ -1785,6 +1787,8 @@ blocked_on = "SOLVED 2026-09-14 by lane.depthstall, with zero device time -- eve
 # defect is not in them and is no longer believed to explain them.
 title = "tcg: all guest memory barriers are elided under XBOX (latent; does NOT cause #44)"
 disposition = "unknown-semantics"
+blocker_falsifier = "if 'the read-side frequency is measured and the remaining question is only the probe's retirement' were false, a soak with -DHAKUX_VRAM_RACE_PROBE=1 would report Vr materially away from 5.45e-05 per instrumented read, or Tr above the 5.35e-05 one-sided bound -- on a title, not the disc, because the disc is zero at both sites and cannot discriminate."
+blocker_tested = "the measurement is DONE and reproduced: 6 runs, 4 refs, both devices, Vr = 55/1,009,270 = 5.45e-05 with every race at the VERTEX site, Tr = 0/56,131 uploads. The retirement soak is not run. NOTE the instrument's own blind spot, which bounds what any future run can claim: profile.c:479 gates the counters' only output on (frame_count % 60) == 0 in the flip handler, so the probe CANNOT BE READ off a short disc at all and an absent Vr: reads exactly like 'no races'."
 suites = ["Texture border", "W buffering"]
 status = "open"
 status_note = "Benefit measured zero: with ALL guest barriers restored 2D_BorderTex_SZ failed 6 of 10 runs, identical to the store-store variant and indistinguishable from the ~46% base rate, at +34.1% game frame time -- and mb_emitted 0 / 80,411 / 347,473 proves the three arms were genuinely different binaries. The hazard is still sourced and unrefuted: CF_PARALLEL is never set for this machine so tcg_gen_mb emits nothing, aarch64's TCG_TARGET_DEFAULT_MO is 0, and pfifo_thread and pgraph.vk.render read vram_ptr with bare loads. That zero bounds whether barriers fix #44's capture; it does not bound how often the race fires, and the corpus cannot separate the two because it is nearly all static content. Kept open for a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A bitmap and r->texture_vram_gen, which already exist; a soak cannot settle it (no frame capture) and the per-page write-side timestamp the thread proposes is the +34.1% in a different coat."
@@ -2905,6 +2909,8 @@ blocked_on = "belongs to the tier-1 owner; blast radius is every guest instructi
 [issue.77]
 title = "Galleon: deck and ground textures intermittently stipple and cycle hatching direction (10-14 frames per 100)"
 disposition = "unknown-semantics"
+blocker_falsifier = "if 'a soak cannot reach a parked deck view' were false, the attract demo would contain a sustained single-scene segment long enough for galleon_flash_rate.py's median/MAD bar to be set by the deck rather than by scene cuts -- observable offline from frames already captured, by segmenting any existing 180 s soak and asking whether any segment holds one scene."
+blocker_tested = "not run, and it is cheap and offline -- four 180 s soaks are already on disk from the driver A/B. If a long enough single-scene segment exists, the blocker is false and the A/B can be re-judged on that segment instead of waiting for a marker-file-armed frame dump. If none does, the blocker is confirmed and the frame dump is the only route, which is what it currently claims without having checked."
 suites = []
 no_suites = "A VISIBLE ARTIFACT IN A COMMERCIAL TITLE, so no pgraph suite can see it and none should be named. Galleon is not on any disc the campaign scores: there is no golden framebuffer for it, so the usual method -- compare a capture against silicon -- does not apply at all. The evidence is instead a measured per-run rate (galleon_flash_rate.py), cross-field invariants over diagnostic captures (check_diag_invariants.py), and a driver A/B. Naming a suite here would get a false one written down, which is what this field exists to prevent."
 status = "open"
