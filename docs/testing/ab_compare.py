@@ -593,9 +593,73 @@ def judge(exp, rows):
         for k, want in counts.items():
             checks += 1
             if tally.get(k) != int(want):
-                fails.append("predicted %s = %s, measured %s"
-                             % (k, want, tally.get(k)))
+                msg = ("predicted %s = %s, measured %s"
+                       % (k, want, tally.get(k)))
+                # SAY WHICH CAPTURES BROKE A COUNT, and whether an open
+                # harness issue already owns them.
+                #
+                # `expect_counts` is a GLOBAL tally over the whole disc, and
+                # nothing about excluding a suite from `must_not_move`
+                # excludes it here. On the #67 arm the prediction deliberately
+                # left Stencil out of every per-capture leg, because six runs
+                # had shown nine of its sixteen captures varying WITHIN an
+                # arm -- and then `worse = 0` failed anyway, on a Stencil
+                # capture, taking a 121-of-122 result to FAIL. The number was
+                # correct and told the reader nothing about where to look.
+                #
+                # So name them, and cross-reference the tracker: an open issue
+                # with disposition "harness" that names the suite is the board
+                # already saying "this observable is not trustworthy". That
+                # turns a bare count into a pointer, without weakening the
+                # check -- it still fails.
+                if k in ("better", "worse"):
+                    got = sorted("%s/%s" % r["key"] for r in rows
+                                 if r["cls"] == k)
+                    shown = got[:6]
+                    msg += "\n      " + ", ".join(shown)
+                    if len(got) > len(shown):
+                        msg += ", ... and %d more" % (len(got) - len(shown))
+                    owned = _harness_issue_for({n.split("/")[0] for n in got})
+                    if owned:
+                        msg += ("\n      every one is in a suite an OPEN "
+                                "harness issue already owns: %s"
+                                % ", ".join("#%s (%s)" % (i, ", ".join(su))
+                                            for i, su in sorted(owned.items())))
+                fails.append(msg)
     return fails, checks
+
+
+def _harness_issue_for(suites):
+    """Open `harness` tracker issues whose suites cover ALL of `suites`.
+
+    Returns {issue: [suite, ...]} or {} -- and {} on any problem reading the
+    tracker, because this is an annotation on a failure that has already been
+    decided. It must never be the reason a judgement changes.
+    """
+    try:
+        import tomllib
+        path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                            "nv2a_issues.toml")
+        with open(path, "rb") as fh:
+            tracker = tomllib.load(fh)["issue"]
+    except Exception:
+        return {}
+    # The tracker spells suites with spaces; rows carry the results-directory
+    # spelling. Same two spellings that made ten legs inert on the #67 arm.
+    want = {s.replace("_", " ") for s in suites}
+    if not want:
+        return {}
+    out = {}
+    covered = set()
+    for num, v in tracker.items():
+        if v.get("disposition") != "harness" or v.get("status") != "open":
+            continue
+        named = set(v.get("suites") or [])
+        hit = want & named
+        if hit:
+            out[num] = sorted(hit)
+            covered |= hit
+    return out if covered == want else {}
 
 
 def resolve_ref(ref):
