@@ -35,6 +35,44 @@ Then pick an issue. Every accuracy issue carries which suites fail, how many
 tests, the median pixel delta, and what has already been ruled out. Do not start
 by reading source; start by reproducing the measurement.
 
+## The answer is usually already on disk
+
+This is the deepest failure this project has, measured six separate times in
+one session. Every one looked like a different problem and every one was this:
+
+  - **#79's mechanism.** Filed as "Stencil is nondeterministic", blocked on an
+    instrument that had to arrive with a fold-in. Eight runs of captures were
+    already on disk; comparing them byte-for-byte gave the diagnosis and took
+    minutes.
+  - **#13's phase.** Blocked on "the goldens cannot determine it". The goldens
+    determine it at 100.0000% over 20,946 cuts. The old instrument recorded
+    the run's LENGTH and discarded its POSITION, which is the half that pins
+    the phase.
+  - **#54 and #77's "waiting on the Nova".** Both said Galleon lives only on
+    that handheld. One read-only `device_titles thor` refutes it -- and that
+    function exists precisely because guessing a filename had cost five failed
+    queue claims.
+  - **#54's counter.** The read-side probe it was blocked on had existed since
+    `e353735028` and had RUN ON GALLEON THREE TIMES, including the two runs the
+    issue's own cost table was built from. Nobody had read its output.
+  - **#38's mechanism 2.** "Needs five captures that do not exist upstream."
+    Three of the five are answered by data on disk; two remain.
+  - **140 commits unpushed.** Held back on a CI cost that a one-minute check of
+    the workflow triggers shows does not exist for this branch.
+
+**The rule.** Before accepting that work is blocked on something you do not
+have, spend five minutes establishing that the answer is not already on disk.
+Specifically: has an instrument for this ever run, and did anyone read its
+output? Do the captures, goldens or logs already in `dispatch/results/` contain
+the discriminating case? Is the claim about a FILE, a DEVICE or a CAPABILITY
+that can be checked with one command?
+
+This project generates data faster than it reads it. The corpus, the captures
+and the logs on this box already contain answers to questions that are
+currently written down as blockers, and the cheapest refutation of almost every
+blocker here has been an offline script over artefacts that were already
+present.
+
 ## Paper cuts are tracked, and a DX pass runs daily
 
 Friction that has cost real time lives in `docs/testing/papercuts.toml`, with
@@ -130,6 +168,24 @@ own work and audited again in pass 2. An auditor that patches its own findings
 is grading its own homework, and this project has already learned that a
 checker which reads live state while writing it turns its own staleness into
 somebody else's fault.
+
+## A lane cannot satisfy a gate it is barred from fixing
+
+Found by `lane.toolsmith` auditing the checkers, and it is a governance bug
+rather than a code one: **five of `check_coverage.py`'s six FAIL paths and both
+of `check_territory.py`'s can only be satisfied by editing `territory.toml` or
+`nv2a_issues.toml`** -- the two files lanes are contractually barred from
+touching. So a lane's own `preflight.sh` can fail on a condition it is not
+allowed to fix, and its only move is to stop and ask.
+
+That is the retired-lane bug's shape at governance scale: a wall that looks
+like the lane's problem and is actually the orchestrator's.
+
+**So a lane writes a BOARD REQUEST instead of editing the board.** Drop a file
+in `$DISPATCH_DIR/board-requests/<lane>.md` naming what the board needs to say
+and why, and put the same thing in your final report. The orchestrator applies
+it. A lane must never edit `territory.toml` or `nv2a_issues.toml` directly,
+and must never be blamed for a gate it cannot reach.
 
 ## Who does what, and what must NOT flow through the orchestrator
 
