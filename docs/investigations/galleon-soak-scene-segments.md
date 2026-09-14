@@ -155,13 +155,30 @@ contact sheet shows is four or five different places.
 **35 against the 40 needed** -- and 35 is an upper bound, not a value. Each
 of those four segments still contains six or seven transitions at half the
 cut bar or more, several within a per cent of the bar itself (T30a's segment
-holds one at 0.114 against a bar of 0.114). Tighten the bar and they shorten
-at once: at 0.08 the longest anywhere is 23 frames, at 0.06 it is 17.
+holds one at 0.114 against a bar of 0.114).
 
-**So no arm holds one scene for the registered length, and the answer is not
-close in the direction that matters.** What would have been needed: 40
-samples at ~1.7 s is **68 seconds of one continuous shot**, in an attract
-loop that cuts 15-21 times in 180 s -- a mean shot length of 8.6-12 s.
+35 is five short of 40, so the bound has to survive the bar moving. It does,
+and here is exactly where it stops:
+
+| cut bar | T30a | T30b | T26 | stock | longest anywhere | (a) |
+|---|---|---|---|---|---|---|
+| 0.06 | 17 | 13 | 13 | 15 | 17 | NO |
+| 0.08 | 23 | 13 | 15 | 19 | 23 | NO |
+| **0.110-0.128, derived** | **35** | **23** | **28** | **25** | **35** | **NO** |
+| 0.15 | 38 | 36 | 32 | **40** | 40 | YES |
+| 0.20 | 52 | 36 | 32 | 40 | 52 | YES |
+
+**The answer flips at a cut bar about 30% looser than the unrelated-frame
+level** -- and that is not a defensible place to put it. The derived bar is
+already the distance between two frames picked at random from the same run;
+loosening it past that means declaring "one scene" across transitions *more
+different than two unrelated frames*. Everything from a credible bar
+downwards says NO, with margin.
+
+**So no arm holds one scene for the registered length.** What would have been
+needed: 40 samples at ~1.7 s is **68 seconds of one continuous shot**, in an
+attract loop that cuts 15-21 times in 180 s -- a mean shot length of
+8.6-12 s.
 
 ## (b) The cuts are not what sets the bar
 
