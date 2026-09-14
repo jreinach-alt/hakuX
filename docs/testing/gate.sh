@@ -29,10 +29,32 @@ cd "$REPO"
 # status. Do NOT add "|| echo 0" -- that prints a second 0.
 count() { [ -f "$2" ] || { echo 0; return; }; grep -cE "$1" "$2" || true; }
 
-# One emulator at a time: never rebuild under a live run. -x matches the process
-# name only, so this cannot match our own shell the way "pgrep -f" would.
-if pgrep -x qemu-system-i386 >/dev/null 2>&1; then
-    echo "REFUSING: qemu-system-i386 is running; a rebuild would pull it apart." >&2
+# One emulator at a time: never rebuild under a live run.
+#
+# This was "pgrep -x qemu-system-i386" and was INERT -- it never fired once.
+# "qemu-system-i386" is 16 characters, the kernel caps /proc/N/comm at 15, and
+# pgrep -x compares against comm. Measured against a live 16-character process:
+# "pgrep -x qemu-system-i386" -> rc=1 (no match), "pgrep -x qemu-system-i38"
+# -> rc=0. pgrep says so on stderr; the old line discarded it with 2>&1.
+#
+# "pgrep -f qemu-system-i386" is the other trap: the pattern would then sit in
+# this script's own argv on some invocations and match the caller.
+#
+# Compare the exec'd binary's real basename instead -- untruncated, and our own
+# shell's exe is bash, so it cannot match the caller. A binary replaced by a
+# rebuild reads back as "<path> (deleted)", so strip that suffix.
+emulator_pids() {
+    local p exe
+    for p in /proc/[0-9]*; do
+        exe=$(readlink "$p/exe" 2>/dev/null) || continue
+        exe="${exe% (deleted)}"
+        [ "${exe##*/}" = "qemu-system-i386" ] && printf '%s ' "${p#/proc/}"
+    done
+}
+RUNNING="$(emulator_pids)"
+if [ -n "$RUNNING" ]; then
+    echo "REFUSING: qemu-system-i386 is running (pid(s): $RUNNING);" >&2
+    echo "          a rebuild would pull it apart." >&2
     exit 2
 fi
 
@@ -94,9 +116,33 @@ SITES=$(grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning' "$LOG" \
         | sed 's|^\.\./||' | sort -u | wc -l)
 echo "distinct warning sites: $SITES" | tee -a "$LOG"
 
+# SCOPE, and it is the whole reason a warning count can mislead: ninja only
+# recompiles what is out of date, so these warnings cover ONLY the files this
+# run compiled -- not the tree. A fold gate typically compiles 79 of 1377
+# objects, 5.7%. "The tree carries 57 warning sites" was recorded from a run
+# that compiled 62. Print the denominator so the number cannot travel without
+# it; for the real inventory do a clean build (ninja -t clean first).
+OBJS=$(find build -name '*.c.o' 2>/dev/null | wc -l)
+echo "warning scope : $COMPILES of $OBJS objects compiled -- warnings cover ONLY these" | tee -a "$LOG"
+
+# Compare with a previous gate's log by file+MESSAGE, never file:line -- a
+# function inserted upstream shifts every later line, so the same warning reads
+# as one removal plus one addition. ac829cd8 -> 08b4219a scored 30 gone / 27 new
+# by line; by file+message it is 3 removals and 0 additions.
+if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
+    keyed() { grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning: .*' "$1" \
+        | sed 's|^\.\./||; s|:[0-9]*:[0-9]*: warning: |  ::  |' | sort -u; }
+    echo "--- real warning delta vs $(basename "$PREV_LOG") (line drift removed) ---"
+    echo "removed:"; comm -23 <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/^/  /'
+    echo "added:";   comm -13 <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/^/  /'
+    echo "(end)"
+fi
+
 if [ -n "$BASE" ]; then
     echo "--- warning sites in files changed by $BASE..$SHA ---"
-    grep -oE '\.\./[a-z0-9_/-]+\.c:[0-9]+:[0-9]+: warning: .*' "$LOG" \
+    # Same widened pattern as SITES above: the old one excluded .h and any
+    # path containing a dot, and read 67 against 71 actual on one run.
+    grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning: .*' "$LOG" \
         | sed 's|^\.\./||' | sort -u >"$OUT/.sites"
     git diff --name-only "$BASE".."$SHA" -- '*.c' '*.h' | while read -r f; do
         grep -F "$f:" "$OUT/.sites" || true
