@@ -1650,14 +1650,13 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # projection was never measured. Silicon reads two sign bits, not a projection
 # of our vector. The arm built on the products reading regressed four captures.
 # A separate finding that the residue is exactly sign(dot_3)>=0 is true of OUR
-# formula's error surface, not of the rule. On a face, (s,t) = (-z/x, -y/x), so BOTH coordinates carry sign(x) and
-# the selectors are the two PRODUCTS sign(z)*sign(x) and sign(y)*sign(x). The
-# discriminator is the unsigned dotmaps: they reach exactly two corners, and
-# those two are an EDGE pair sharing an s extreme on all three positive faces,
-# never a diagonal pair -- and pinning sign(x) alone would flip s and t
-# together and so give the diagonal. What is pinned is s, i.e. the product.
-# No separate sign rule is needed: it is the ordinary cube-face projection of
-# a direction that has lost its magnitude but kept its signs.
+# formula's error surface, not of the rule.
+#
+# (The products passage that used to run on from here has been CUT. It
+# asserted the rule the paragraph above retracts, three sentences after
+# retracting it, and an entry that asserts and refutes the same rule misleads
+# whoever reads it next. The reasoning is kept, with its own SUPERSEDED
+# marker, in docs/investigations/cubemap-is-dot-str-3d.md.)
 # Evidence: the goldens hold NO colour outside the four corners of a POSITIVE
 # face, {#0000FF,#FF0000,#00FF00,#FFFFFF} (all three positive faces share that
 # set, permuted, and the negatives share {#FF00FF,#000000,#FFFF00,#00FFFF}, so
@@ -1712,9 +1711,41 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # PERMUTATION (chance is 25%), so the mechanism carries real information and
 # the mapping is wrong. Each golden corner maps to a pair of ours differing in
 # exactly one coordinate, so one bit tracks and one is spurious, and it is
-# inverted; the golden pins s and varies t while we vary both. So: one product
-# inverted, and the pinned coordinate driven from a sign that is noise here.
-# The next attempt needs its own registration; this one is spent.
+# inverted; the golden pins s and varies t while we vary both.
+#
+# FIXED, 4a08abef66: 296,177 px -> 150 over the six DotSTR3D_* captures, 6
+# better 0 worse, IDENTICALLY on both renderers, GL vs Vulkan 78/78
+# byte-identical afterwards, DotSTR3D_-1to1D3D byte-exact. CI green on
+# Android, Desktop build and NV2A index -- the Android job matters because
+# glsl/psh.c is SHARED by gl/shaders.c and vk/shaders.c, so this was not a
+# GL-only change and Vulkan was not available as a control.
+#
+# The coordinate is vec3(x >= 0 ? K : -K, y >= 0 ? -K : K, 1.0) with
+# K = 1 - 1/8192: a direction whose dominant axis is +Z, landing on the corner
+# the two surviving sign bits name. Derived rather than fitted -- searching
+# every (face, axis-swap, axis-flip) assignment against the measured
+# sign-to-corner table gives ZERO fits under an A8R8G8B8 reading, three under
+# A8B8G8R8, and only +Z needs no flips; the format is read from the test
+# source, where Initialize() sets stage 3 to SZ_A8B8G8R8. It is NOT the
+# expression the note proposed, which put 1.0 in x and came through the +X
+# face assumption.
+#
+# That lands the underflow mechanism above rather than competing with it: the
+# fix hard-codes exactly what "the magnitude underflows and the sign survives"
+# predicts -- magnitudes discarded, a fixed positive face, the corner chosen by
+# the two sign bits. The mechanism is that entry's, not this fix's.
+#
+# The two register facts recorded above were re-measured AT THE BRANCH rather
+# than from the test source: seven shader generations for stage 3 on
+# iso_cube.iso give dim_tex=2 in all seven and tex_cubemap=1 in six of seven,
+# with dot_str_3d_is_cube() true in the same six. That confirms them; it did
+# not discover them. The GitHub issue BODY still states the opposite and
+# should be corrected there.
+#
+# RESIDUAL 150 px, and Texture_2D_as_cubemap::DotSTR3D_Bad2D staying exact,
+# are the two things to watch if anyone revisits. The residual is bounded by
+# whether our dot SIGNS match silicon's per pixel; DotSTR3D_0to1's 70 px is
+# precisely the "at most 70 stray pixels on class boundaries" already measured.
 # docs/investigations/cubemap-is-dot-str-3d.md.
 disposition = "defect"
 suites = ["Texture cubemap", "Texture 2D as cubemap"]
