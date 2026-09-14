@@ -37,6 +37,36 @@ static int g_xemu_submit_frames = 3;
 struct OptBisectStats g_opt_stats;
 
 /*
+ * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
+ * Profile-grade tracing belongs behind a flag." This probe is the expensive
+ * one of the three that landed unflagged: an RCU read plus a dirty-bitmap
+ * scan on two PER-DRAW paths (sync_vertex_ram_buffer's vertex-range copy and
+ * every begin_pre_draw window). Unswitchable, it could not be turned off for
+ * a timing run, so any later performance measurement on this branch would
+ * have been measuring the probe as well as the emulator -- which is the
+ * SYS_gettid failure AGENTS.md records, in a different coat.
+ *
+ * Compile-time rather than g_config, following NV2A_PERF_LOG (debug.h): with
+ * it off the counters, the scans and the reporting all vanish, so the probe
+ * cannot cost anything it is not explicitly asked to cost. Build with
+ * -DHAKUX_VRAM_RACE_PROBE=1 to answer the question below again.
+ *
+ * SAFE TO SWITCH OFF NOW, and that was checked rather than assumed: the probe
+ * belongs to #54, whose lane (lane.readfreq) has been RETIRED -- territory.toml
+ * records it made no source change and that this counter "had been running on
+ * Galleon since e353735028 with nobody reading its output". No registered
+ * prediction reads it. Contrast the #43 [signfold] counters further down this
+ * file, which are a LIVE instrument and are deliberately left unflagged.
+ *
+ * WHAT RETIRES IT: #54 asks for a read-side race FREQUENCY. Turn it on for a
+ * soak, read the rate off the pacing line, record it on the issue; the probe
+ * then has its answer and can be deleted rather than left switched off.
+ */
+#ifndef HAKUX_VRAM_RACE_PROBE
+#define HAKUX_VRAM_RACE_PROBE 0
+#endif
+
+/*
  * #54 read-side race probe: how often does a device-thread read of guest
  * VRAM race a guest write?
  *
@@ -96,6 +126,8 @@ struct OptBisectStats g_opt_stats;
  * TEX denominator counts binds, not draws, so a title that rebinds rarely
  * reports fewer windows than it has reads.
  */
+#if HAKUX_VRAM_RACE_PROBE
+
 struct HakuxVramRaceStats {
     uint64_t vtx_copies;        /* vertex-range copies out of guest VRAM */
     uint64_t vtx_raced;         /* ... whose range was dirty again on return */
@@ -182,6 +214,23 @@ int hakux_vram_race_snprintf(char *buf, int bufsize)
                     (unsigned long long)s->tex_windows,
                     (unsigned long long)s->impossible);
 }
+
+#else /* !HAKUX_VRAM_RACE_PROBE */
+
+/*
+ * The reporting hook keeps its signature when the probe is off: its caller is
+ * nv2a_profile_get_pacing_str() in pgraph/profile.c, which is NOT this lane's
+ * territory, so switching the probe off must not need an edit there. Zero
+ * appends nothing to the pacing line.
+ */
+int hakux_vram_race_snprintf(char *buf, int bufsize)
+{
+    (void)buf;
+    (void)bufsize;
+    return 0;
+}
+
+#endif /* HAKUX_VRAM_RACE_PROBE */
 
 #ifdef __ANDROID__
 #define VAF_LOG(...) __android_log_print(ANDROID_LOG_WARN, "xemu-vaf", __VA_ARGS__)
@@ -3966,6 +4015,7 @@ mfp_miss: (void)0;
  */
 static void begin_pre_draw(PGRAPHState *pg)
 {
+#if HAKUX_VRAM_RACE_PROBE
     PGRAPHVkState *r = pg->vk_renderer_state;
     uint32_t gen_before = r->texture_vram_gen;
 
@@ -3994,6 +4044,14 @@ static void begin_pre_draw(PGRAPHState *pg)
             break;
         }
     }
+#else
+    /*
+     * Probe off: the wrapper is the probe.  The gen snapshot and the scan over
+     * the bound textures exist only to answer #54, so with it off this is
+     * begin_pre_draw_inner and nothing else -- no per-draw cost at all.
+     */
+    begin_pre_draw_inner(pg);
+#endif
 }
 
 static void begin_draw(PGRAPHState *pg)
@@ -6231,17 +6289,23 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+#if HAKUX_VRAM_RACE_PROBE
                 /*
                  * #54 probe. The bits for this range were consumed by the
                  * test-and-clear above, so it is clean on entry and a bit
                  * set again now is a guest store into the range during the
                  * copy -- a torn read of guest memory by a device thread.
+                 *
+                 * This is one of the two per-draw paths the probe sits on,
+                 * which is why it is compiled out by default rather than
+                 * merely skipped at runtime.
                  */
                 g_hakux_vram_race.vtx_copies++;
                 if (vram_range_dirty_checked(r, addr, size,
                                              DIRTY_MEMORY_NV2A)) {
                     g_hakux_vram_race.vtx_raced++;
                 }
+#endif
             }
         }
     }
@@ -7372,6 +7436,31 @@ void pgraph_vk_flush_draw(NV2AState *d)
     }
 
     if ((folds % 64) == 0) {
+        /*
+         * DELIBERATELY NOT BEHIND A FLAG, unlike the #54 probe at the top of
+         * this file, and the difference is flight status rather than taste.
+         *
+         * Audit pass 1's M5 groups this with two other unflagged facilities.
+         * It is the one that must not be switched off yet: #43's blocker
+         * registers this counter as THE DECIDING INSTRUMENT between its three
+         * outcomes -- staged_high == 0 means pass 2's uniform never reaches
+         * the GPU and runs with the LOW mask, staged_high == folds means
+         * ring 0 is something else, 0 < staged_high < folds is the split
+         * case -- and that prediction is REGISTERED VOID ON SILENCE. A
+         * default-off flag produces exactly that silence, so flagging it now
+         * would not make the instrument cheaper, it would convert a live
+         * registered measurement into a void one and the lane would read the
+         * result as "the mechanism never fired".
+         *
+         * The cost is also not the concern the rule is about: three counter
+         * increments per fold and one log line per 64, on the signed-blend
+         * fold path only, against an RCU read and a bitmap scan per draw.
+         *
+         * WHAT RETIRES IT: #43's staged_high outcome being read off an arm
+         * and recorded on the issue. It goes then -- deleted, not flagged.
+         * Until it is read, leaving it on is the cheaper mistake.
+         */
+
         /*
          * Tag "hakuX", NOT "hakuX-lane", and the reason is measured rather
          * than preferred.
