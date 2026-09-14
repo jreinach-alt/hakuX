@@ -323,6 +323,8 @@ void pgraph_gl_reload_surface_scale_factor(PGRAPHState *pg);
 void pgraph_gl_render_surface_to_texture(NV2AState *d, SurfaceBinding *surface, TextureBinding *texture, TextureShape *texture_shape, int texture_unit);
 void pgraph_gl_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta);
 void pgraph_gl_surface_download_if_dirty(NV2AState *d, SurfaceBinding *surface);
+bool pgraph_gl_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
+                                                   hwaddr start, hwaddr size);
 SurfaceBinding *pgraph_gl_surface_get(NV2AState *d, hwaddr addr);
 
 /*

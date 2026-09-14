@@ -1057,3 +1057,135 @@ mappings.
 
 **Still not a fix, and still not fitted.** No permutation table has been
 written into the shader and none should be until this second rule is named.
+
+### The second rule, named: the residue is exactly `sign(dot_3) >= 0`
+
+The region above is directional, and this is the direction. A probe replaced the
+`DOT_STR_3D` cube fetch with the three dot **signs** encoded as a colour, on the
+same base the arms were built from (`0f708c8d`), so the pixels correspond.
+
+**The probe validated itself before it was believed.** `t_i` passes through the
+combiners only if the capture holds nothing but the sign combinations:
+`-1to1D3D` came back with exactly 8 colours plus the scene background, and
+`0to1` with exactly 4. If the combiner had transformed the value there would
+have been more.
+
+The 4 that `0to1` reaches are `#FFFF00`, `#FF0000`, `#FF00FF`, `#FFFFFF` --
+**every one with the red channel set**, so `sign(dot_1) >= 0` throughout. That is
+the recorded claim "the three unsigned dotmaps cannot flip `sign(dot_{i-2})`",
+measured directly rather than inferred from colour counts.
+
+Cross-tabulating the sign class against the residue:
+
+| capture | sign classes with **no** residue | classes that are **all** residue |
+|---|---|---|
+| `-1to1D3D` | `---` 11,880 · `x--` 11,268 · `-y-` 14,753 · `xy-` 14,369 | `--z` 1,842 · `x-z` 1,825 · `-yz` 509 · `xyz` 463 |
+| `0to1` | `x--` 20,042 · `xy-` 25,471 | `x-z` 8,002 · `xyz` 3,394 |
+| `HiLo_1` | `x--` 18,340 · `xy-` 24,704 | `x-z` 10,046 · `xyz` 3,819 |
+
+**0.0% and 100.0%, no exceptions, on three dot mappings with different sign
+distributions.** The totals reproduce the residue counts exactly: 4,639,
+11,396, 13,865.
+
+So the predicate is **`sign(dot_3)`** -- the third component, which
+`nv2a_issues.toml` records as "the third component selects nothing". It selects
+the entire residue.
+
+It also explains both shapes the region presented. `0to1`'s residue being
+one-sided (11,347 left against 49 right) and `-1to1D3D`'s being a 0.936 mirror
+are the same rule seen through different dot mappings: the `z >= 0` set happens
+to fall on one cube under the identity mapping and symmetrically under `_D3D`.
+One predicate, no per-capture parameter, both shapes.
+
+### What this is a derivation *of*
+
+Stated carefully, because the substitution under test uses `sign(z)` itself.
+`dotSTR3dSaturate()` builds `vec3(1.0, s.y*s.x*k, s.z*s.x*k)`, so its output
+does depend on the third sign. What the 100/0 split establishes is that **the
+error is confined entirely to the `sign(dot_3)` term** -- there is no residue
+anywhere `z < 0`, across three mappings. That is a perfect localisation of the
+defect in the candidate rule, and it is what the next attempt has to change.
+
+It is *not* yet a statement of silicon's rule. Four corners cannot be selected
+by three bits without two combinations sharing a corner, so the third bit is
+doing something the corner model does not have a place for -- selecting a face,
+or flipping a coordinate. **Naming that is the remaining work**, and it is now a
+question about one bit rather than about six permutations.
+
+## Silicon's rule, derived -- and my "two products" correction was wrong
+
+The previous sections correlated the sign field against **our** residue, which is
+a statement about our formula. Correlating it against the **golden's** corner is
+a statement about silicon, and that is the measurement that settles this.
+
+Same probe, same pixels, but the right-hand column is now the golden:
+
+| `sign(dot_1)` | `sign(dot_2)` | `sign(dot_3)` | golden corner |
+|---|---|---|---|
+| `< 0` | `< 0` | **either** | R |
+| `>= 0` | `< 0` | **either** | B |
+| `< 0` | `>= 0` | **either** | W |
+| `>= 0` | `>= 0` | **either** | G |
+
+**100.0% pure on all eight sign classes across all six captures** -- the only
+departures are at most 70 stray pixels in 56,909, on class boundaries. The two
+`sign(dot_3)` rows of each pair agree with each other exactly.
+
+So the corner is a function of `sign(dot_1)` and `sign(dot_2)` alone, and
+**`sign(dot_3)` selects nothing.**
+
+### The retraction
+
+That is what `nv2a_issues.toml` said in the first place: *"picked by
+`sign(dot_{i-2})` and `sign(dot_{i-1})`; the third component selects nothing."*
+An earlier section of this note corrected it to "the two PRODUCTS
+`sign(z)*sign(x)` and `sign(y)*sign(x)`". **That correction was wrong and the
+original was right.**
+
+The bad step is worth keeping. The products argument assumed the corner arrives
+through the cube-face projection `(s,t) = (-z/x, -y/x)` of a saturated
+direction, and reasoned from which *pair* of corners the unsigned dotmaps
+reach: an edge pair rather than a diagonal pair. That inference is sound **given
+the projection**, and the projection is the part that was never measured. The
+golden does not reach the corner through a projection of our vector at all --
+it reads two sign bits. Reasoning inside an unverified model produced a
+confident, specific, wrong answer, and the arm that followed it regressed four
+captures.
+
+The earlier reading also mistook its own instrument for silicon: correlating
+against *our* residue can only characterise *our* error, and the `sign(dot_3)`
+result that came out of it is a fact about `dotSTR3dSaturate()`, not about
+hardware. It is true and it is not the rule.
+
+### Why the failed arm failed, exactly
+
+`dotSTR3dSaturate()` returned `vec3(1.0, s.y*s.x*k, s.z*s.x*k)` -- it folded
+`sign(x)` into both other components and used `sign(z)`. Silicon uses
+`sign(dot_1)` and `sign(dot_2)` and ignores `sign(dot_3)`. So our answer
+diverged precisely where `sign(dot_3)` moved our output and not silicon's, which
+is exactly the `z >= 0` set the residue turned out to be. The 100/0 split was
+our formula's error surface, and it points here.
+
+### What a correct substitution looks like
+
+Reading the +X corner coordinates (R at (0,0), B at (63,0), W at (0,63),
+G at (63,63)) back through the projection, `s` must carry `sign(dot_1)` and `t`
+must carry `sign(dot_2)`, giving
+
+```
+vec3(1.0, -sign(dot_2) * k, -sign(dot_1) * k)
+```
+
+with the same `k = 1 - 2^-13` skew off the three-way tie. **This has not been
+run**, and the step from the measured sign-to-corner table to that expression
+goes back through the projection and the +X face assumption -- the same class of
+step that was wrong above. The table is the measurement; the expression is a
+candidate, and it needs its own registration.
+
+### One caveat on the instrument
+
+The sign field is **our** dot signs, read from a probe; the corner is silicon's.
+The 100% agreement across six captures is strong evidence that our dot signs
+match silicon's, but it is evidence, not an identity -- a systematic sign error
+in our dots would show as a consistent relabelling of the table rather than as
+noise, and would not disturb the purity.

@@ -1,0 +1,19 @@
+{
+  "registered_utc": "2026-09-13T13:21:14Z",
+  "who": "desktop-lane-agent",
+  "issue": "0",
+  "prediction": "DIAGNOSTIC PROBE, not a fix -- the fix touches three files this lane does not hold, so this arm exists to price the grant request rather than to land. The GL column shows Texture_perspective splitting perfectly on one bit. Every capture where OpenGL and Vulkan disagree is a pers_n case (SET_CONTROL0 texture perspective OFF): tex_tex_pers_n_bitri GL 60,290 vs VK 4,283, tex_tex_pers_n_quad 56,639 vs 1,107, tex_diff_pers_n_bitri 199,975 vs 177,149, tex_diff_pers_n_quad 199,933 vs 184,281, and TexPerspective_Textured 9,014 vs 1. Every pers_y capture -- tex_tex_pers_y_bitri 48, tex_tex_pers_y_quad 22, tex_diff_pers_y_bitri 184,210, tex_diff_pers_y_quad 181,998 -- is byte-identical between the renderers. The cause is one line in glsl/common.c, and the code says so itself: 'const char *smooth_s = (noperspective && location) ? \"noperspective \" : \"\";' under a comment reading 'only the Vulkan path gets it, GLES would need GL_NV_shader_noperspective_interpolation'. Every one of the four call sites in psh.c, geom.c and vsh.c passes opts.vulkan as location, so the guard reads literally 'Vulkan only'. The justification is about GLES, but desktop GL has noperspective as a core GLSL 1.30 keyword and needs no extension, so the condition conflates 'uses explicit layout locations' with 'can spell the qualifier'. THE PROBE: drop the location term, so desktop GL emits the qualifier. That is wrong as a shipping change because it would also reach Android GLES, which is why this is a probe -- the real fix passes the gles flag the file already knows about in pgraph_glsl_append_version, and that needs one extra argument at four call sites in files held by the light/interpolator and texture lanes. FALSIFIERS, all genuine. (1) The five pers_n captures land on Vulkan's exact values: 4283, 1107, 177149, 184281 and 1. Strong and genuinely falsifiable -- the two renderers share this GLSL generator but not their compilers, rasterisers or surface paths, and any other GL-side difference on these captures leaves a residual. Landing NEAR but not ON those values would refute the claim that this is the whole GL/Vulkan gap in the suite while confirming the mechanism. (2) The four pers_y captures do not move at all: the qualifier is only emitted when noperspective is set, so a change there means the state bit is being read wrong rather than the qualifier being missing. (3) Nothing else on the 236-capture disc moves. (4) Vulkan byte-identical -- it already emits the qualifier, so this must be inert there. NOT PREDICTED: whether the residual that survives on the three still-imperfect captures (177,149 and 184,281 are large) has anything to do with perspective at all; both renderers are far from the golden there and that is a separate defect the two agree on.",
+  "a_ref": "c2fb5594",
+  "b_ref": "",
+  "must_not_move": [
+    "Vulkan/*"
+  ],
+  "expect": {
+    "Texture_perspective/tex_tex_pers_n_bitri": 4283,
+    "Texture_perspective/tex_tex_pers_n_quad": 1107,
+    "Texture_perspective/tex_diff_pers_n_bitri": 177149,
+    "Texture_perspective/tex_diff_pers_n_quad": 184281,
+    "Texture_perspective_enable/TexPerspective_Textured": 1
+  },
+  "expect_counts": {}
+}

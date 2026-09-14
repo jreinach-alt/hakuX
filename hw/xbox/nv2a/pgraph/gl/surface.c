@@ -144,15 +144,6 @@ static void android_glo_readpixels(PGRAPHGLState *r, GLenum gl_format,
     glPixelStorei(GL_PACK_ALIGNMENT, pa);
 }
 
-static void android_sanitize_surface_format(PGRAPHGLState *r,
-                                            SurfaceFormatInfo *fmt)
-{
-    /* Android keeps the guest surface format metadata intact and converts
-     * unsupported BGRA guest layouts at upload/readback time instead. */
-    (void)r;
-    (void)fmt;
-}
-
 /*
  * drawn_format, not shape.color_format: a binding reused across a colour
  * format change keeps the shape it was created with, so shape would pick the
@@ -1452,7 +1443,19 @@ void pgraph_gl_render_surface_to_texture(NV2AState *d, SurfaceBinding *surface,
     glBindTexture(texture->gl_target, texture->gl_texture);
     glTexParameteri(texture->gl_target, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri(texture->gl_target, GL_TEXTURE_MAX_LEVEL, 0);
+    /*
+     * The default min filter is GL_NEAREST_MIPMAP_LINEAR, which leaves a
+     * single-level texture incomplete, so one has to be set here. But this
+     * is the binding's own texture and apply_texture_parameters() applies
+     * the guest's filter to it a moment later behind a cache guard,
+     * `if (min_filter != binding->min_filter)`. A fresh binding is safe --
+     * generate_texture_binding() seeds the field to 0xFFFFFFFF -- while a
+     * REUSED one whose cached filter already equals what the guest is
+     * asking for skips that call and keeps the GL_LINEAR set here. Drop the
+     * cached value so the guest's filter is reapplied. See #71.
+     */
     glTexParameteri(texture->gl_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    texture->min_filter = 0xFFFFFFFF;
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, texture_shape) &&
         !android_surface_to_texture_needs_guest_reinterpretation(surface,
@@ -1656,6 +1659,24 @@ static void invalidate_overlapping_surfaces(NV2AState *d, SurfaceBinding *surfac
             pgraph_gl_surface_invalidate(d, other_surface);
         }
     }
+}
+
+bool pgraph_gl_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
+                                                   hwaddr start, hwaddr size)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHGLState *r = pg->gl_renderer_state;
+    SurfaceBinding *surface, *next;
+    bool found_overlap = false;
+
+    QTAILQ_FOREACH_SAFE(surface, &r->surfaces, entry, next) {
+        if (check_surface_overlaps_range(surface, start, size)) {
+            found_overlap = true;
+            pgraph_gl_surface_download_if_dirty(d, surface);
+        }
+    }
+
+    return found_overlap;
 }
 
 static SurfaceBinding *surface_put(NV2AState *d, hwaddr addr,
@@ -2757,11 +2778,19 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
         surface = &pg->surface_zeta;
         dma_address = pg->dma_zeta;
         assert(pg->surface_shape.zeta_format != 0);
-        assert(pg->surface_shape.zeta_format <
-               ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map));
-        const SurfaceFormatInfo *map =
-            pg->surface_shape.z_format ? kelvin_surface_zeta_float_format_gl_map :
-                                         kelvin_surface_zeta_fixed_format_gl_map;
+        /* Bound against the map actually indexed, not the other one. The two
+         * have the same extent today, so this is a shape complaint rather
+         * than a live bug -- but the assert should name what it guards. */
+        const SurfaceFormatInfo *map;
+        size_t map_len;
+        if (pg->surface_shape.z_format) {
+            map = kelvin_surface_zeta_float_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map);
+        } else {
+            map = kelvin_surface_zeta_fixed_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_fixed_format_gl_map);
+        }
+        assert(pg->surface_shape.zeta_format < map_len);
         fmt = map[pg->surface_shape.zeta_format];
     }
 
@@ -2787,9 +2816,6 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
                                   pg->surface_shape.zeta_format;
     entry->gl_buffer = 0;
     entry->fmt = fmt;
-#ifdef __ANDROID__
-    android_sanitize_surface_format(r, &entry->fmt);
-#endif
     entry->color = color;
     entry->swizzle =
         (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);
@@ -2849,18 +2875,51 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                                            d->vram, entry.vram_addr, entry.size,
                                            DIRTY_MEMORY_NV2A);
 
-    if (upload && (surface->buffer_dirty || mem_dirty)) {
+    /*
+     * The condition is "the binding is stale OR ABSENT", not just stale. A
+     * surface that is neither buffer-dirty nor memory-dirty but has no binding
+     * at all used to fall through here with nothing bound, and everything
+     * downstream then ran against a framebuffer with no attachments at all:
+     * measured as 378 guest clears per run of the surface disc that raised
+     * GL_INVALID_FRAMEBUFFER_OPERATION and did nothing, the error sitting
+     * pending until an unrelated assert tripped over it. See #66.
+     *
+     * Note mem_dirty is identically false on any TCG build -- which is every
+     * build we run -- so this gate is buffer_dirty alone in practice.
+     */
+    bool no_binding = (color ? r->color_binding : r->zeta_binding) == NULL;
+
+    if (upload && (surface->buffer_dirty || mem_dirty || no_binding)) {
         pgraph_gl_unbind_surface(d, color);
 
         SurfaceBinding *found = pgraph_gl_surface_get(d, entry.vram_addr);
         if (found != NULL) {
-            /* FIXME: Support same color/zeta surface target? In the mean time,
-             * if the surface we just found is currently bound, just unbind it.
+            /* FIXME: Support same color/zeta surface target? One GL texture
+             * cannot be the colour and the depth attachment at the same time,
+             * so when the guest points both at one address one of them has to
+             * lose. Which one is not arbitrary. Hardware lets both units write
+             * and races them, and the only capture that discriminates --
+             * Color zeta overlap's ColorIntoZeta_ZB -- has the colour write
+             * taking 120,729 of the quad's 131,495 pixels in the golden. So
+             * colour wins: it may take a surface zeta is holding, but zeta may
+             * not take one colour is holding. Evicting the colour attachment
+             * instead leaves a framebuffer with nothing attached, which is
+             * never a state the guest asked for, and #66 showed that state can
+             * persist for the rest of a test once entered.
              */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (found == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
+                if (!color) {
+                    /* Zeta declines. The colour attachment stays; this
+                     * surface's zeta binding remains absent, and the
+                     * no_binding gate above brings us back here on every
+                     * request so zeta can take it once colour moves away.
+                     */
+                    surface->buffer_dirty = false;
+                    return;
+                }
                 pgraph_gl_unbind_surface(d, !color);
             }
         }

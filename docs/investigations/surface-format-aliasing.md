@@ -72,10 +72,40 @@ compared field matches, so the trace prints nothing that names the difference.
 Those are one omission, not two, and fixing the trace without fixing the
 predicate would only make the blindness legible.
 
-## What is not established here
+## Measured: the alias fires 110 times on one disc, and 66 are pad-bit swaps
 
-- No capture is attributed to this. It is read from the source, and the
-  aliasing is arithmetic on the map rather than a measurement.
+The above is arithmetic on the map. This is the instrument reading.
+
+A temporary probe in `check_surface_compatibility()`, counting every reuse the
+predicate permits where the two guest colour formats actually differ, run on
+`iso_surf1` under the **GL** renderer (which this lane can select --
+`renderer = 'OPENGL'`, confirmed working):
+
+| transition | meaning | count |
+|---|---|---:|
+| `7 -> 6` | `X1A7R8G8B8_O1A7R8G8B8` -> `X1A7R8G8B8_Z1A7R8G8B8` | 62 |
+| `4 -> 8` | `X8R8G8B8_Z8R8G8B8` -> `A8R8G8B8` | 44 |
+| `5 -> 4` | `X8R8G8B8_O8R8G8B8` -> `X8R8G8B8_Z8R8G8B8` | 2 |
+| `2 -> 1` | `X1R5G5B5_O1R5G5B5` -> `X1R5G5B5_Z1R5G5B5` | 2 |
+
+**110 reuses the predicate allowed across a guest format change**, every one of
+them inside a group the map predicts is aliased, and **66 of them are O->Z
+pad-bit swaps** -- the case `dst_alpha_is_one()` reads.
+
+### The first version of this probe was wrong, and its error is worth keeping
+
+It guarded on `s1->color == s2->color`, which is true for two *zeta* surfaces
+as well, and a zeta binding's `shape.color_format` is not meaningful. That run
+reported an extra `8 -> 3` transition, 10 times -- `A8R8G8B8` to `R5G6B5`,
+which is a different bpp *and* a different internal format, so the predicate
+could not possibly have allowed it. The impossible row is what exposed the
+instrument. Guarded properly on `s1->color && s2->color` it disappears and the
+remaining four rows agree exactly with the map.
+
+A measurement that disagrees with the arithmetic is the instrument until proven
+otherwise.
+
+## What is not established here
 - Whether adding `shape.color_format` to the predicate is the right fix is a
   separate question: it would evict bindings that today are reused, and the
   cost of that has not been measured. Some aliased pairs may be genuinely

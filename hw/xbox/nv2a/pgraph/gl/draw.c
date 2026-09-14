@@ -197,6 +197,39 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
         parameter, xmin, ymin, xmax, ymax,
         d->pgraph.regs_[NV_PGRAPH_COLORCLEARVALUE]);
 
+    /*
+     * The surface clip rectangle bounds a clear as it bounds a draw: the
+     * memory outside it is left alone whatever the clear rect says. pbkit
+     * paints its debug text with clears, and Surface clip's
+     * DebugTextShouldClip expects the lines above a tiny clip to stay
+     * invisible; its rt_ tests fill the memory around the clip from the CPU
+     * and expect a full-surface clear to leave that fill alone. A zero clip
+     * size is not a hardware case that has been measured -- the suite sends
+     * the surface size instead -- so it bounds nothing here.
+     *
+     * vk/draw.c has done this since the Vulkan renderer was fixed for these
+     * same captures; this is that change, ported.
+     */
+    {
+        unsigned int cx = pg->surface_shape.clip_x;
+        unsigned int cy = pg->surface_shape.clip_y;
+        unsigned int cw = pg->surface_shape.clip_width;
+        unsigned int ch = pg->surface_shape.clip_height;
+        if (cw) {
+            xmin = MAX(xmin, cx);
+            xmax = MIN(xmax, cx + cw - 1);
+        }
+        if (ch) {
+            ymin = MAX(ymin, cy);
+            ymax = MIN(ymax, cy + ch - 1);
+        }
+        if (xmin > xmax || ymin > ymax) {
+            /* Entirely outside the clip: nothing is written. */
+            pg->clearing = false;
+            return;
+        }
+    }
+
     unsigned int scissor_width = xmax - xmin + 1,
                  scissor_height = ymax - ymin + 1;
     pgraph_apply_anti_aliasing_factor(pg, &xmin, &ymin);
