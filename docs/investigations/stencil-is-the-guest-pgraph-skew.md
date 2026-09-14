@@ -234,3 +234,84 @@ untouched.
 bound does not reach, and the place to look next is `sync_vertex_ram_buffer`'s
 `OPT_SYNC_RANGE_SKIP` early exit, which can decline to re-copy a range on a
 dirty-bitmap read rather than on the draw's own ordering.
+
+## MEASURED
+
+Arm A `1789350310-stencil-skew-91468`, arm B `1789350317-stencil-skew-100339`,
+both **thor**, `disc_id = Stencil`, 4 runs each, `progress_log_proof` on all
+eight. `ab_compare` reads **PRE-REGISTERED: PASS — all 16 registered checks
+hold**, prediction bound at sha256 `7701eea32c`.
+
+**V0 HOLDS — the instrument is pointing at something.**
+
+```
+arm A   captures1  wrong 0 of 16
+        captures2  wrong 2   Stencil_ZERO_ST / _ZB              30,000 px
+        captures3  wrong 2   Stencil_REPLACE_ST_DT / _ZB           833 px
+        captures4  wrong 3   Stencil_ZERO_DT                    40,000 px
+                             Stencil_ZERO_ST_DT / _ZB           10,000 px
+        TOTAL 7 wrong of 64, 3 of 4 runs flaking
+```
+
+7 of 64 is **10.9%** against the 11.2% floor taken from fourteen earlier runs
+at five other refs — the rate reproduces on a fresh pair of binaries.
+
+**V1 HOLDS.**
+
+```
+arm B   captures1  wrong 0 of 16
+        captures2  wrong 0 of 16
+        captures3  wrong 0 of 16
+        captures4  wrong 0 of 16
+        TOTAL 0 wrong of 64, 0 of 4 runs flaking
+```
+
+**V2 HOLDS, and it is what makes V1 a mechanism result rather than a quiet
+run.** Every `fifoskew` window in arm A reads `bound=0 held(n=0)`; every window
+in arm B reads `bound=1` with `held(n)` equal to `kicks` — 1494/1494,
+1388/1387, 1494/1494, 1494/1494 in the busy windows. Held/kicks = 1.0000, the
+same figure #44's arm produced over 148,704 submissions. The ±1 is two counters
+printed on one line with the guest running between them, which is the
+instrument telling you it is not atomic rather than noise.
+
+The skew itself collapses, which is the quantity the model is about:
+
+| | arm A (4 runs) | arm B (4 runs) |
+|---|---|---|
+| `behind` / `kicks` | **100.0%** | 100.0% (measured before the hold) |
+| drain p50 | 100,000 – 2,300,000 ns | **50,000 ns** |
+| drain p90 | 950,000 – 22,650,000 ns | **50,000 ns** |
+| `gave` | 0 | 7 – 10 per 2 s window |
+
+`behind = 100.0%` on the Stencil disc is the first time S0 has been measured on
+anything but `Texture border`, and it says the guest is ahead of PGRAPH at
+*every* submission this suite makes.
+
+**How strong this is, stated both ways.** Against the published 10.9% floor, a
+bound that did nothing gives 0 of 64 with probability 0.891^64 = **0.0006**.
+Against arm A's own four runs alone — the only control inside the pair —
+Fisher two-sided on 7/64 against 0/64 is **p = 0.013**. Quote the second when
+the floor is in question; the first is what the leg was registered on and it
+was registered before the arms ran.
+
+**What this does NOT establish.** That the bound is free — it is not, and
+`guest-pgraph-skew.md` already priced it at `gfps` p90 29 → 13 on Galleon with
+`gave` counting a hole that cannot be closed. That the tip behaves the same:
+both refs are 292 commits behind it, equally, so this is a clean pair and not a
+certification of mainline. And `gave` is non-zero here (7–10 per two-second
+window against arm A's 0, because `gave` only exists when the bound runs), so
+the honest statement remains #44's: **impossible on the covered submissions,
+merely unlikely on the rest.** Four clean runs do not close that gap and were
+not registered as closing it.
+
+## Disposition
+
+#79 is not a defect of its own. It is **#44's class, on vertex data**, and it
+has no fix that lives in the stencil, surface, clear or draw paths. The board
+now carries one cost decision — whether `XEMU_OPT_FIFO_SKEW_BOUND` ships
+non-zero, and in which mode — rather than two open defects, and the accuracy
+side of that decision has one more suite's worth of evidence behind it.
+
+Until that decision lands, `stencil-is-intermittently-wrong.md`'s operational
+rule stands unchanged: no Stencil number from a single run means anything, and
+`Stencil/*` must not be used as a `must_not_move` control.

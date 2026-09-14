@@ -117,3 +117,25 @@ No Stencil number from a single run means anything, and `Stencil/*` must not
 be used as a `must_not_move` control until this is fixed. A Stencil claim needs
 **four runs minimum**, and should be made on the *majority* image with the
 outlier count reported alongside.
+
+---
+
+## RESOLVED to a mechanism, 2026-09-14
+
+The "Not established" list above named the site as unknown and offered a shape
+for the mechanism. Both are now settled, and the shape was wrong in its second
+half: **no clear is lost and no zeta surface races.** The stencil buffer's
+contents differ because the *vertex array the draw reads* is rewritten by the
+guest while PGRAPH is still behind — [#44's guest↔pgraph
+skew](guest-pgraph-skew.md), on vertex data instead of texture data.
+
+The wrongly drawn regions are TRIANGLES, halves of the `DefineBiTri` quads,
+including one whose shared `ul` vertex carries `x` from the 100x100 quad and
+`y` from the 200x200 one. Measured: with `XEMU_OPT_FIFO_SKEW_BOUND` at 1 the
+flake goes from **7 wrong (run, capture) observations of 64 to 0 of 64** over
+four runs per arm, with `held(n)/kicks = 1.0000` proving the bound in force.
+
+See [`stencil-is-the-guest-pgraph-skew.md`](stencil-is-the-guest-pgraph-skew.md).
+The operational rule in this document is unchanged while the bound is off by
+default: no Stencil number from a single run means anything, and `Stencil/*`
+must not be a `must_not_move` control.
