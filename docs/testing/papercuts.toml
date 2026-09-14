@@ -144,3 +144,11 @@ cost = "Following M5's remediation would have destroyed exactly the recycle hit 
 bit = 2
 owner = "unassigned"
 fix = "State in AGENTS.md that a remediation is a CLAIM like a blocker, and a lane that disagrees should decline with a reason rather than implement it. Both lanes did this correctly without being told; the protocol should say so, so the next one does not assume the finding is authoritative."
+
+[[cut]]
+id = "soak-results-keep-no-frames"
+what = "A soak result dir carries `pulled: []` and holds only a logcat. The FRAMES an analysis rests on survive nowhere durable -- for #77's driver A/B they existed only in the lane's scratchpad, one reap from gone."
+cost = "434 frames across four arms, the entire evidential basis of a four-arm driver A/B, were recoverable only by hand-copying out of /tmp before the scratchpad was reaped. Found by lane.scene77 while re-analysing them; nobody had noticed the result dirs were empty."
+bit = 1
+owner = "unassigned"
+fix = "A soak that captures frames should pull them into its result dir like a disc run pulls captures. Until then the orchestrator must copy them at fold time -- done for these four, but that is a step someone has to remember, which is the category this file exists to eliminate."
