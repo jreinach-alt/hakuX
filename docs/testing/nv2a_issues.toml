@@ -2935,7 +2935,10 @@ title = "GL renderer never emits `noperspective`: one line in glsl/common.c gate
 suites = ["Texture perspective", "Texture perspective enable"]
 disposition = "defect"
 status = "fixed-unlanded"
-fixed_by = ["0092dd53", "2c25f7195e"]
+# The FIX first. 0092dd53 is the investigation doc, and it sat first in this
+# list -- reading as though the fix were a docs commit -- until
+# check_cited_commits.py printed the subject next to each sha.
+fixed_by = ["2c25f7195e", "0092dd53"]
 status_note = "CLOSED ON GITHUB, NOT FIXED ON THIS BRANCH -- recorded as open here deliberately, because the tracker's job is to say what is true of HEAD. The suite splits perfectly on one bit: every capture where the renderers disagree is a pers_n case (SET_CONTROL0 texture perspective off) and every pers_y case is byte-identical between them, e.g. TexPerspective_Textured 9,014 under GL against Vulkan's 1. Cause is one line in glsl/common.c: the gate is `noperspective && location` and location is Vulkan-only, so the GL renderer never emits the qualifier. Worth 159,574 px measured. The fix is commit 0092dd53 and the later 2c25f7195e, and NEITHER IS AN ANCESTOR OF HEAD -- git branch --contains puts both only on remotes/origin/claude/docs-tooling-agentic-coding-u152m1, along with 6 more hw/ and target/ commits for #62, #67 and #71. This is the same remote-lane fold-in gap #62 already records, now measured: 53 commits on that branch are not here. Condition attached to the glsl/common.c grant, and it still applies to whatever lands: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile."
 blocked_on = "the fold-in, not the fix: the work exists on the remote lane's branch and has never been merged or measured against the goldens here."
 
