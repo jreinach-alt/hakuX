@@ -190,6 +190,23 @@ the branch has an open PR. `claude/es-de-launcher-disc-error-ojnl14` has no PR
 anything that may reach a PR-backed branch, and never use `gh workflow run`.
 
 The obligation that replaces it is local: **build both Android and desktop.**
+
+**THE DESKTOP HALF IS CURRENTLY UNMEETABLE ON THIS HOST AND MUST NOT BE
+CLAIMED.** Verified 2026-09-14: `libcurl4-openssl-dev` is not installed, there
+is no `build/` tree, and installing it needs a sudo password this session does
+not have. Three separate lanes reported being unable to run it and each was
+correct; `preflight.sh`'s `psh_differ` and `aci_vmstate` steps compile a
+little C and are the closest thing to a desktop check that runs here.
+
+So: a lane that cannot build desktop must SAY SO in its report rather than
+passing over it, and must not write "built both". A rule that is
+systematically violated and never corrected is worse than no rule, because it
+teaches everyone to treat the list as decorative. The fix is one package
+install by the owner:
+
+    sudo apt install libcurl4-openssl-dev
+
+Until then this is a KNOWN, NAMED gap and not a lane's failure.
 The Android build cannot catch a desktop link error, because the same core
 sources compile for both and an Android-only symbol resolves on one and not the
 other. That is not hypothetical -- it broke the desktop gate on 2026-09-12 and
