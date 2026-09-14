@@ -178,11 +178,37 @@ void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
  * Issue #59: which constant the raster stores into this colour format's pad
  * bits. See the derivation at the declaration in psh.h.
  *
- * Keyed on the guest format from NV097_SET_SURFACE_FORMAT rather than on any
- * host format or surface binding, for the reason draw.c writes out at
- * surface_color_format_dst_alpha_is_one(): A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8
- * and X1A7R8G8B8_{Z,O}1A7R8G8B8 all map to one VkFormat, so a binding reused
- * across a format change reports whichever format first created it.
+ * Takes a GUEST colour format enum -- the value NV097_SET_SURFACE_FORMAT
+ * carries -- and not a host format: A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8 and
+ * X1A7R8G8B8_{Z,O}1A7R8G8B8 all map to B8G8R8A8_UNORM, so a VkFormat cannot
+ * answer this question at all.
+ *
+ * WHICH guest format to pass is the caller's problem, and this comment used
+ * to get it wrong.  It said the answer could not be taken from "any host
+ * format or surface binding", because a binding reused across a format change
+ * reports whichever format first created it.  That was true of the whole
+ * binding until b6239ccb87 (#55), and is now true only of
+ * `binding->shape.color_format`, which is deliberately creation-time state.
+ * host_fmt and drawn_format ARE refreshed on check_surface_compatibility()'s
+ * reuse path, and pgraph_vk_surface_drawn_format() is the right source for a
+ * surface that is not necessarily the current target.  vk/constants.h:449 and
+ * vk/renderer.h:1628 carry the same fact correctly; this was the third copy
+ * and the only wrong one.
+ *
+ * IT COST SOMETHING, which is the argument for fixing stale comments rather
+ * than deleting them: audit pass 1's M3 cited these lines as its authority
+ * for saying the clear side and the sample side could disagree, and
+ * overstated the finding on the strength of a sentence about a world that
+ * b6239ccb87 had already ended.  A comment that is wrong is not neutral; it
+ * is believed.
+ *
+ * KEEP IN SYNC with the sampled_pad_alpha column of
+ * kelvin_surface_color_format_vk_map (vk/constants.h), which encodes the
+ * READBACK side of the same per-format fact -- ZERO for X1R5G5B5_Z and
+ * X8R8G8B8_Z, ONE for both _O twins, no override for X1A7R8G8B8_{Z,O} whose
+ * readback is not a constant.  A format row added to that table without a
+ * matching case here makes the clear and the sampler disagree again, which is
+ * M3's scenario returning by a different door (audit pass 2, P4).
  */
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
 {
@@ -3577,9 +3603,13 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
      * #43. The uniform block is emitted from PshUniformInfo unconditionally, so
      * this is declared in every shader and the loc is -1 only where reflection
      * dropped it as unused. Staging it costs one int and is harmless for
-     * unfolded draws: the renderer leaves the selector at LOW except across a
-     * signed draw's HIGH pass, so the value is stable and cannot make an
-     * unrelated draw's uniform hash change.
+     * unfolded draws: pgraph_vk_flush_draw() resets the selector to
+     * SIGNED_BLEND_PASS_NONE at the end of every draw (vk/draw.c, under a
+     * comment saying "a selector that says low half outside a fold is a lie
+     * waiting to be believed"), so outside a fold the value is NONE, it is
+     * stable, and it cannot make an unrelated draw's uniform hash change.
+     * This said LOW until audit finding L4; LOW was a superseded revision of
+     * the renderer and the invariant a reader would reason from was wrong.
      */
     if (locs[PshUniform_signedBlendPass] != -1) {
         /*
