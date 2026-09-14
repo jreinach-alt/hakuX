@@ -73,6 +73,38 @@ not comparable (no captures, or no capture in common). So it can stand in
 front of a sweep: if it exits non-zero, the sweep's numbers are conditional
 and the disagreeing captures must be excluded or re-run, not averaged.
 
+WHERE IT IS WIRED IN, AND WHY THE OTHER HALF CANNOT BE YET
+
+Two questions need a byte comparison and only one of them is this file's.
+
+**The A/B half is wired, in ab_compare.py.** "Did this change move the
+pixels?" is asked on every arm, and as of 2026-09-14 ab_compare hashes both
+arms' captures itself and refuses to let a flat count be reported as
+inertness. That is the half that cost #59 arm 3 and #75, and it needed to live
+there rather than here because it has to reach the verdict line. It uses the
+same rule as this file -- byte equality, and a move is only blamed on the
+change when each arm was byte-identical with itself over two or more runs.
+
+**The SWEEP half cannot be wired today, and the reason is data, not code.**
+Measured 2026-09-14 over the dispatch results: the corpus sweep is queued as
+one request per suite with ONE RUN each -- 90 of 90 suites in the
+`z-c866527e03` column have a single `captures1` -- so there is no second run
+of a suite to compare against, and this tool exits 2 on a single run by
+design. Nor can two columns stand in for one: there are five sweep columns on
+disk (`sweep`, `tip`, `after`, `6762a54c82`, `c866527e03`) and **all five are
+at different refs**, so comparing any two of them measures the refs, which is
+the comparison `sweep_diff.py` already refuses to attribute for exactly this
+reason.
+
+So the prerequisite is a device cost and not a patch: **one repeat column at a
+ref already swept.** Queue the same suite list at the same ref a second time
+and this file becomes the per-capture byte check over that pair, which is what
+#39 asked for and what `sweep_diff.py` means when it says it needs a same-ref
+repeat before it will attribute a difference to a commit. Until that column
+exists, wiring a call to this script into the sweep path would add a check
+that can only ever exit 2 -- which is worse than no check, because a gate that
+always fails gets switched off and then nobody notices when it means it.
+
 WHAT IT DELIBERATELY DOES NOT DO
 
 It does not decide how many runs are enough. Two runs catch a defect that
