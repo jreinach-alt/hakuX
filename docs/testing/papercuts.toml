@@ -117,3 +117,11 @@ cost = "A false UNBRIEFED on the board, which is worse than none: the warning ex
 bit = 1
 owner = "toolsmith"
 fix = "Derive it from $DISPATCH_DIR/deliveries/<lane>.md's mtime -- routing WRITES that file, so it cannot drift from reality. Fall back to the stamp only when no delivery file exists. A check that depends on the orchestrator remembering will read wrong exactly when the orchestrator is busy, which is when it matters."
+
+[[cut]]
+id = "usb-dialog-needs-a-human"
+what = "A persistent `Use USB for` chooser (com.odin.settings) sits modal over the Thor's display. It occludes the central 61% x 44% and caps everything behind it at ~100/255 -- a measured 0.40 scrim -- so every screen-based measurement on the only live handheld is attenuated and partly blind."
+cost = "Cost #77's driver A/B 60% of its signal and forced an instrument correction before any result could be believed. It is identical in all arms so it cannot manufacture a difference, but it can HIDE one."
+bit = 1
+owner = "unassigned"
+fix = "One CANCEL tap by a human; it survives `am force-stop` and is tied to USB state. NOT automatable from here: `adb shell input keyevent` terminates the emulator, and `svc usb setFunctions` or `pm disable-user` on the ONLY live device during a sweep is not a risk worth taking to save a tap. The durable fix is a device setup step -- pin the USB function so the chooser never arms -- recorded once rather than rediscovered per session."
