@@ -732,6 +732,27 @@ def derive(windows):
                       " like. Check the population identity above before"
                       " reading this as the premise check."
                       % (100.0 * ai / vis))
+            elif ai is None:
+                # A MISSING FIELD IS NOT A ZERO, and this branch used to
+                # CRASH rather than say so: `ai` is None on a build that
+                # predates the counter, and `100.0 * None / vis` is a
+                # TypeError that killed the whole report -- not this line, the
+                # report. Four of the 111 hakuX-pages logs on disk are
+                # unreadable by this tool for that reason, and three of them
+                # are perf-tcg-noise1/2/3, i.e. the entire noise floor of one
+                # experiment.
+                #
+                # Saying 0.0% instead would be worse than crashing. This file
+                # already treats the absent/zero distinction as load-bearing
+                # for ai/di/cg/xx, and 0% here is the reading that makes the
+                # clogged-page-list caution look inapplicable.
+                print("      At or near 100%%, and the dead-block share is"
+                      " UNKNOWN on this build -- it emits no `ai` field at"
+                      " all, so this is a run from before that counter"
+                      " existed. The standing clogged-page-list caution can"
+                      " be neither applied nor dismissed here; it is not"
+                      " established that these are live blocks the guest"
+                      " never wrote the bytes of.")
             else:
                 print("      At or near 100%%, with a dead-block share of"
                       " %.1f%%, so the standing clogged-page-list caution"
