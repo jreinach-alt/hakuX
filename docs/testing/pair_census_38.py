@@ -134,15 +134,28 @@ def qualifying(a):
     # even-aligned pitch EVERY edge in the frame shares a parity -- which
     # manufactures E >> O out of geometry that has no interpolant in it.
     #
-    # A genuine interpolant ramp has SEVERAL steps in a 4-px window (at
+    # A genuine interpolant ramp has SEVERAL steps in a small neighbourhood (at
     # ~0.5 byte/px, one step every other pixel); a lone edge has exactly one.
-    # So require at least two of the three window deltas to be non-zero.  That
-    # keeps every real gradient from 1/px to MAXSTEP/px and drops isolated
-    # edges without reintroducing a tight magnitude bound.
-    nz = ((np.abs(prev).max(axis=2) > 0).astype(np.int8)
-          + (amax > 0).astype(np.int8)
-          + (np.abs(nxt).max(axis=2) > 0).astype(np.int8))
-    varying = nz >= 2
+    # So require at least two non-zero deltas nearby.
+    #
+    # THE WINDOW MUST BE +/-3, NOT +/-1, AND THE NARROW VERSION FAILED ITS OWN
+    # POSITIVE CONTROL.  Counting non-zero deltas over just (prev, d, nxt)
+    # looks equivalent and is not: in a PERFECTLY pair-constant field the
+    # deltas alternate 0, non-zero, 0, non-zero, so at a between-pair position
+    # prev and nxt are both zero and the count is 1.  That excluded every odd
+    # position of `Alpha_func` -- the cleanest positive in the corpus -- and
+    # the census reported it as having no measurable captures at all while
+    # still reporting a plausible "0 paired" overall.  A threshold that
+    # silently drops the thing it is calibrated on is the failure this file's
+    # guards exist for, so the control is checked rather than assumed.
+    #
+    # Over +/-3 a paired field has three non-zero deltas and qualifies, a lone
+    # edge still has one and does not.
+    nzmap = (np.abs(d).max(axis=2) > 0).astype(np.int8)
+    near = np.zeros_like(nzmap)
+    for k in range(-3, 4):
+        near += np.roll(nzmap, k, axis=1)
+    varying = near >= 2
 
     mask = mono & bounded & varying
     mask[:, :1] = False
