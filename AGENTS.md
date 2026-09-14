@@ -35,6 +35,58 @@ Then pick an issue. Every accuracy issue carries which suites fail, how many
 tests, the median pixel delta, and what has already been ruled out. Do not start
 by reading source; start by reproducing the measurement.
 
+## Code is audited twice before it is trusted, and preflight is not an audit
+
+Set by the owner on 2026-09-14, after **+1,531 / -539 lines of compiled code
+landed in fourteen hours with nobody reading a diff** -- across eleven files
+including `target/i386/tcg/fpu_helper.c`, which reaches every title, and
+`vk/draw.c`, which three separate lanes touched.
+
+**`preflight.sh` is not an audit.** Its six gates -- psh_differ, aci_vmstate,
+nv2a index, territory, coverage, commit subject -- check that the TREE and the
+BOARD are consistent. Not one of them reads a change. Passing preflight says
+the index is current and the tracker is honest; it says nothing about the code.
+
+**And a measurement is not an audit either.** This campaign verifies claims
+well: a prediction is bound before the device runs, an arm is judged against
+silicon, a rival sweep is registered in advance. All of that establishes that
+a change moves the pixels it said it would. None of it looks at error paths,
+resource lifetimes, cross-thread access, integer overflow, or behaviour in
+cases the corpus does not contain -- and `nxdk_pgraph_tests` is nearly all
+static content, so "the captures moved correctly" is a narrow claim.
+
+### The loop
+
+  1. **Audit pass 1** reviews the DIFF of a lane's work before it folds.
+     Findings are classified **HIGH / MEDIUM / LOW**, each with a file, a line,
+     and the concrete scenario in which it bites. A finding with no failure
+     scenario is an opinion -- say so, and downgrade it.
+  2. **Every HIGH and MEDIUM is remediated before the code folds in.** Not
+     deferred, not noted. The fold waits.
+  3. **Every LOW is reviewed and a DECISION IS LOGGED** if it is not
+     remediated. "Reviewed, not fixed, because X" is an acceptable outcome;
+     silence is not.
+  4. **Audit pass 2 verifies the remediation was effective** -- not that a
+     commit exists, but that the scenario pass 1 named can no longer occur.
+
+Severity, as used here:
+
+  - **HIGH** -- incorrect behaviour, memory or resource unsafety, a crash
+    path, or a change that is wrong outside the cases the goldens exercise.
+  - **MEDIUM** -- a real defect with bounded blast radius, or a correctness
+    risk behind a condition that is not currently reachable and not guarded.
+  - **LOW** -- quality, clarity, dead code, a guard nothing can currently reach.
+
+Records live in `docs/audits/<date>-pass{1,2}.{md,json}`. The JSON carries
+severity, file, line, summary, scenario, remediation, so a gate can consume it
+rather than a human re-reading prose.
+
+**The auditor does not fix what it finds.** Remediation is dispatched as its
+own work and audited again in pass 2. An auditor that patches its own findings
+is grading its own homework, and this project has already learned that a
+checker which reads live state while writing it turns its own staleness into
+somebody else's fault.
+
 ## Who does what, and what must NOT flow through the orchestrator
 
 Set by the owner on 2026-09-14 after the orchestrator had spent a session
