@@ -630,3 +630,181 @@ two agree by construction and a divergence between state and the pushed buffer
 is exactly what this instrument cannot see. That measurement needs a read-back
 of the descriptor's bound image view and of the uniform buffer contents at
 submission, which is a source change and a new territory grant.
+
+## The driver A/B was attempted on the Thor, and V0 failed. Here is what stopped it
+
+Run 2026-09-14 by `lane.galleon77`, ref `c866527e03`, Thor `bdc158a5`.
+
+### The blocker this issue carried was false, and the real one is different
+
+`#77` and this document both recorded the A/B as blocked on device
+availability -- "Galleon lives only on the Nova, which is held". That is not
+true. `docs/testing/devices.sh titles thor` lists `Galleon (USA).xiso.iso` at
+`/storage/388C-68F7/ROMS/xbox`, and `swap_driver.sh` opens
+`S=${SERIAL:-ee317437}`, so the Nova serial is a DEFAULT and not a
+requirement. The A/B was run on the Thor with `SERIAL=bdc158a5`.
+
+**The real obstacle is the workload, and nothing in the issue had named it.**
+The A/B needs the stipple rate on a view of the deck or the town ground. The
+founding capture got one by being *driven by hand* to the scene and then
+holding still. A soak cannot do that: reaching gameplay needs input, and
+injecting input terminates the emulator. So what an unattended Galleon soak
+actually renders is the **attract demo** -- Galleon boots to its title screen
+and plays a scripted loop of gameplay footage, watermarked `Demo`, cutting
+between cliffs, caves, sky, a lit courtyard and `Loading...` cards, with a
+static `Please press the START button to begin` title card between passes.
+
+That matters because `galleon_flash_rate.py` sets its outlier bar from the
+median and MAD of the frames it is handed, which assumes ONE scene with a
+parked camera. Over a loop that cuts between scenes the MAD is set by the
+cuts, and the artifact has to clear a bar the cuts raised.
+
+### V0 failed on two corrections to the instrument, not on one reading
+
+Registered gate: a T30 arm must show >= 3 stipple frames per 40 (>= 7.5 per
+100) or the pair is void. Measured over 115 sampled frames, 94 of them lit:
+
+    STIPPLE   2 / 94  =  2.1 per 100        against a 7.5 gate
+    HF energy median 0.614   MAD 0.153   bar 1.295
+    median frame-to-frame motion in the band   8.97 grey levels
+
+against this document's own baseline of **10.0-14.0 per 100** with HF median
+4.65 and hatched frames at 6.80-8.96. V0 **FAILS**.
+
+Two instrument errors were found and corrected before believing that, because
+a rate this far below the baseline is first a suspicion about the instrument:
+
+**The screencap is an UPSCALE, and HF measured on it is the compositor's.**
+The guest renders 640x480 and the display shows it at 1440x1080 -- exactly
+2.25x. A 3x3 neighbourhood on the 1920-wide capture spans well under half a
+guest pixel, so the statistic is computed across a smooth interpolation ramp
+and reads low whatever the guest drew. Resampling to 640x480 before measuring
+raised HF median **0.256 -> 0.614** and the capture maximum **0.687 -> 1.937**
+on the identical frames. Most of the apparent "the artifact is not here" was
+this, and any future screen-based measurement on this device must resample
+first.
+
+**A modal dialog is dimming every frame by a measured 0.40.** A persistent
+`Use USB for` chooser (`com.odin.settings`) sits over the display, occludes
+the central 61% x 44%, and dims everything behind it. The factor is not
+estimated: the emulator's own `FPS:` overlay reads **exactly 102** in every
+frame of every capture while the navigation bar, which is drawn above the
+scrim, reads **255** -- and 255 x 0.40 = 102. It survives `am force-stop
+com.odin.settings` (the package respawns and re-shows it) and it is tied to
+the USB connection state, so clearing it needs a human to press CANCEL. It
+cannot manufacture a difference between arms, because it is identical in all
+of them -- but it costs 60% of the signal and hides the middle of the screen,
+and it is the first thing to remove before any negative here is believed.
+
+After both corrections the whole capture still tops out at HF 1.94 -- about
+1.5 after correcting for the scrim -- against a baseline whose *unhatched*
+median is 4.65. The demo simply does not put the stippling surface on screen
+at the scale the founding capture did.
+
+### What did come out of it: "cannot be driven identically twice" is false for the demo
+
+This document's argument for a per-arm rate was that "Galleon cannot be driven
+identically twice and frames will not compare between arms". That is true of
+hand-driven gameplay and **false of the attract demo**, which is scripted and
+repeats. Matching the survey's first loop against its second by a descriptor
+built only from the display the dialog does not cover -- the dialog is
+pixel-identical everywhere and an instrument that matched on it would pair
+everything with everything and report beautiful agreement -- gives 10 mutually
+nearest scene pairs agreeing on HF to **+0.3% median, p90 +3.3%**.
+
+So a much stronger observable than the rate exists on this workload: *same
+scene, different driver, compare the ground texture*, with a within-run floor
+of a few per cent. It is the instrument the A/B should use if it is run
+unattended again. What it still cannot do is put the deck on screen.
+
+### What would actually unblock the measurement
+
+In increasing order of cost:
+
+1. **Press CANCEL on the Thor's `Use USB for` dialog.** One human action,
+   recovers 60% of the signal and the middle of the screen, and every
+   screen-based measurement on this device is degraded until it happens.
+2. **Drive Galleon to the deck once and leave it parked**, then soak. This is
+   the measurement the issue actually specified, and it needs either a human
+   or a sanctioned input path -- the evdev route in AGENTS.md's device table
+   exists precisely because `input keyevent` terminates the emulator.
+3. **A marker-file-armed frame dump**, the way `apu.c` arms the PCM capture.
+   There is no unattended frame capture today: `nv2a_dbg_trigger_diag_frames`
+   is reachable only from a JNI method bound to the Debug Capture button,
+   there is no intent extra and no marker file, and `LauncherActivity` reads
+   only `rom_path`. It would also have to dump WITHOUT the per-draw
+   `pgraph_vk_finish` a diag capture does, or it inherits that capture's
+   blindness to merging and barriers.
+
+### The four arms, and why they settle less than they look like they do
+
+Ref `c866527e03` on all four, Thor, 180 s each, display sampled at ~0.53 Hz.
+Each arm's driver was verified rather than assumed: T30 and T26 share
+`libraryName vulkan.purple.so`, so `meta.json` alone cannot say which is
+armed, and the on-device payload size was checked against the local one
+(T30 18,869,912; T26 18,138,081). The stock arm was verified from the other
+end -- its logcat carries **0** `Loading custom Vulkan driver` lines where
+both Turnip arms carry exactly 1.
+
+| arm | lit frames | HF median | HF bar | stipple | per 100 |
+|---|---|---|---|---|---|
+| T30 run a | 94 | 0.614 | 1.295 | 2 | **2.1** |
+| T30 run b | 90 | 0.586 | 1.202 | 1 | **1.1** |
+| T26 | 90 | 0.598 | 1.153 | 0 | **0.0** |
+| stock | 86 | 0.625 | 1.300 | 1 | **1.2** |
+
+**V0 FAILS on both T30 runs** -- 2.1 and 1.1 per 100 against a 7.5 gate and a
+10-14 baseline -- so by the registration A1 and A2 are **VOID**. The driver is
+neither exonerated nor implicated by this table, and it must not be quoted as
+though it were.
+
+It would be easy to read T26's **0.0** as "T26 fixes the stipple". It does not.
+The whole table is 0 to 2 events out of ~90 frames, and the **T30 replicate
+alone spans 2 and 1** -- so T26's zero and stock's one sit inside the spread of
+one driver measured twice. That is the reason V1 was registered: the replicate
+is the RUN, and without it a 2-vs-0 on single runs reads as an effect.
+
+V0's failure is not an artefact of where the region was put. Scored over seven
+regions of the same frames -- the registered ground band, both lower quadrants,
+the band above the dialog, both side columns and the full frame -- the rate
+runs **0.9 to 4.1 per 100**, every one of them under the gate.
+
+### The matched-scene reading, which does have a floor
+
+The rate has no demonstrated power here, so the same frames were also scored on
+the stronger observable the demo makes possible: match the SAME scene between
+two arms, then compare HF in the ground band. `t30a` vs `t30b` is two runs of
+one driver and one binary, so it is the floor.
+
+| pair | matched scenes | HF delta, median | rel |
+|---|---|---|---|
+| **t30a vs t30b (FLOOR)** | 24 | -0.0004 | **-0.0%** |
+| t30a vs t26 | 23 | -0.0005 | -0.1% |
+| t30b vs t26 | 24 | -0.0001 | -0.0% |
+| t30a vs stock | 25 | +0.0021 | +0.3% |
+| t30b vs stock | 24 | +0.0030 | +0.3% |
+| t26 vs stock | 22 | +0.0039 | +0.5% |
+
+**T26 is indistinguishable from T30**: both Turnip-to-Turnip pairs land on the
+floor. **Stock sits a little above both Turnip builds**, +0.3 to +0.5%, and the
+sign is the same in all three pairings that involve it while the two that do
+not are zero -- a consistent sign is structure rather than scatter, and it is
+what a different vendor's filtering and precision would produce.
+
+It is also **not the artifact, by two orders of magnitude**. A stipple frame is
+a 1.5-2x excursion in HF (4.65 -> 6.80-8.96 in the baseline's units, i.e. +45%
+to +90%). +0.3% is about 100x smaller. Nothing in any arm resembles the event
+this issue is about.
+
+### So what is ruled in or out
+
+**Nothing about the driver, and that is the honest answer.** The artifact was
+not observed in ANY arm, so the A/B never ran on it. What was established is
+that the three drivers render the attract demo's ground surfaces the same to
+within a measured floor -- which is worth having, because it says the
+comparison machinery works and the remaining problem is purely that the
+workload will not show the defect.
+
+The one thing this does rule out is a cheap escape: the stipple is not going to
+be caught by pointing a general-purpose instrument at whatever Galleon happens
+to render. It needs the deck, parked, which needs input.
