@@ -606,18 +606,197 @@ static TranslationBlock *tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
     return tb_htable_lookup_common(cpu, s, &tb_ctx.htable, tb_lookup_cmp);
 }
 
+/*
+ * WHAT THE RECYCLE CACHE COSTS. Audit pass 1 M5, and it needed a counter
+ * before it needed a patch.
+ *
+ * M5: tb_ctx.inv_htable has NO EVICTION PATH. do_tb_phys_invalidate() inserts
+ * every discarded block; the only removals are a successful recycle in
+ * tb_gen_code() and the wholesale qht_reset_size() on a tb_flush. So each
+ * distinct byte-content ever translated at a pc leaves an entry, and every
+ * later tb_gen_code() for that pc offers all of them to the comparison below
+ * -- each costing a tb_code_hash_func(), which is cpu_ldub_code() ONE GUEST
+ * BYTE AT A TIME over up to ~4 KB, inside a qht lookup callback. On exactly
+ * the self-modifying pages #73 and #68 are about.
+ *
+ * THE AUDIT'S PROPOSED REMEDIATION IS REFUTED AND MUST NOT BE IMPLEMENTED.
+ * It read: evict any existing entry with the same tb_cmp key on insert, since
+ * a superseded translation "can never be recycled again". `ihash` is over the
+ * GUEST BYTES, so an entry becomes recyclable the moment the guest restores
+ * those bytes -- which is not exotic, it is the workload. Overlay A is
+ * translated; B is loaded over it and A's block is discarded carrying
+ * ihash(A); A is loaded back and B's block is discarded carrying ihash(B);
+ * the next tb_gen_code there sees bytes A and recycles the A entry. Evicting
+ * on insert destroys exactly the hit the cache exists for, on exactly the
+ * alternating-overlay page. That refutation is lane.tcgfix's; the decision to
+ * fold M5 unremediated is logged in docs/audits/2026-09-14-decisions.md.
+ *
+ * The real fix bounds the chain while keeping the most recent N recyclable,
+ * and N has to be picked against a measurement. These are that measurement.
+ *
+ * WHAT POPULATION EACH IS OVER -- stated because getting this wrong is what
+ * voided #68's arm, where an identity true of one predicate was asserted over
+ * another. None of these changes any existing population: they are new
+ * globals, read nowhere else, incremented on paths that already existed, with
+ * no change of control flow. The only thing that moves is that the hakuX-pages
+ * line gains fields, appended at the end so an older regex still matches.
+ *
+ *   hakux_inv_lookups (iv)
+ *      CALLS to inv_tb_htable_lookup(). tb_gen_code() reaches this
+ *      unconditionally -- there is no early return between hakux_tb_gen_calls++
+ *      and the probe, including for phys_pc == -1, which returns NULL from
+ *      inside tb_htable_lookup_common() having hashed nothing. It is NOT
+ *      "lookups that had a chain to walk".
+ *
+ *   hakux_inv_cands (ic)
+ *      CANDIDATES: entries that reached the ihash test, which is one
+ *      tb_code_hash_func() call each. THIS IS THE COST M5 NAMES. It is not
+ *      the bucket chain length: qht filters on the 32-bit tb_hash_func value
+ *      before calling this function at all, and tb_lookup_cmp() then filters
+ *      on pc/page/cs_base/flags/cflags for a few field compares and no byte
+ *      hash. So `ic` is exactly the number of full guest-memory hashes, and
+ *      those are all for entries that differ from the request in nothing but
+ *      their bytes -- which is precisely the superseded-translation chain.
+ *
+ *   hakux_inv_hash_bytes (ib)
+ *      GUEST BYTES hashed, summed over that same population. The unit that
+ *      matters, because the hash is byte-at-a-time and blocks vary in size;
+ *      ib/ic is the mean block hashed and is arithmetically confined to
+ *      [1, 4095] by tb->size's own range and tb_code_hash_func's assert.
+ *
+ *   hakux_inv_hits (ih)
+ *      Lookups that returned a block, i.e. recycles. ih/iv is the recycle hit
+ *      rate over the SAME denominator as ic, which is the point: cost per
+ *      call and benefit per call are directly comparable.
+ *
+ *   hakux_inv_depth[] (hd=a/b/c/d/e)
+ *      Histogram of how many candidates a HIT hashed, itself included:
+ *      1, 2, 3-4, 5-8, >8. Sizes a cap on how much walking a hit is worth.
+ *
+ *   hakux_inv_impossible (ix)
+ *      THE IMPOSSIBLE ROW, and it must read 0. A hit that hashed no
+ *      candidate. It cannot happen: a hit IS a candidate whose ihash matched,
+ *      so the counter below was incremented before the comparison that
+ *      returned true. It fires if this function is ever called from a second
+ *      lookup site that does not reset the per-call scratch, if the scratch
+ *      stops being __thread while a second translating thread exists, or if a
+ *      future qht returns a pointer its own callback never approved. Nonzero
+ *      voids hd and ih/ic.
+ *
+ * THE IDENTITIES THAT HOLD THEM:
+ *
+ *   iv == cl      exactly. `cl` is hakux_tb_gen_calls on the first
+ *                 hakuX-pages line, so this crosses the two log calls and
+ *                 carries the usual in-flight slip; it is not a fudge, it is
+ *                 the same cross-line term the visits identity has. A
+ *                 divergence beyond that means the probe is no longer on
+ *                 every codegen call -- a new early return, or a second
+ *                 caller -- and everything below is then over a population
+ *                 nobody has stated.
+ *   ih <= iv, trivially: a lookup returns at most one block.
+ *   sum(hd) + ix == ih exactly -- every hit lands in a bucket or in the
+ *                 impossible row, never both and never neither. All seven
+ *                 terms are on one log line, so there is no slack term. Write
+ *                 it with the ix term: dropping it would make the identity
+ *                 false in exactly the case it exists to catch.
+ *   ic >= ih, enforced per call by ix == 0.
+ *   1 <= ib/ic < 4096 whenever ic > 0.
+ *
+ * WHAT THIS INSTRUMENT CANNOT SEE, and it is the half that matters for
+ * choosing N. `hd` is the hit's ordinal IN THE WALK, and the walk is qht
+ * bucket-slot order, which is NOT recency order. qht_insert__locked() fills
+ * the first empty slot, and qht_remove__locked() leaves a hole -- so every
+ * successful recycle, the event being measured, perturbs the order. `hd`
+ * therefore bounds THE COST OF A HIT and answers "would capping the walk at K
+ * have kept this hit"; it does NOT answer "would keeping the most recent N
+ * have kept this hit". Sizing an MRU-N policy needs a monotone insertion
+ * stamp on the TranslationBlock, which does not exist -- there is one spare
+ * byte (tier_pad[1]) and that is not enough for one. Say which question is
+ * being asked before quoting these.
+ *
+ * And a cap on chain length is not the only shape a fix can take: `ic` and
+ * `ib` also price the alternative of memoising the guest-byte hash per
+ * distinct tb->size within one lookup, which the current code cannot do
+ * because it hashes `tb->size` bytes afresh for every candidate.
+ *
+ * SIZE N ON THE RIGHT SIDE OF #68'S FOLD. The six soaks of 2026-09-14 measured
+ * calls to tb_gen_code falling 34-fold (1,954 -> 57 per 120-frame window) and
+ * the recycle rate falling from 35.0 calls per generation to 1.000 when the
+ * range test is restored at 937848c9e7: nothing is discarded, so nothing
+ * enters inv_htable, so nothing is recycled and calls collapse onto
+ * generations. #68 removes most of the traffic M5 is about. A chain bound
+ * sized against a whole-page build would be sized against a workload that
+ * build no longer has. Record which side of that fold the run came from --
+ * docs/testing/perf/tcg_pages.py names it -- and re-size if #68 folds.
+ */
+uint64_t hakux_inv_lookups;
+uint64_t hakux_inv_cands;
+uint64_t hakux_inv_hash_bytes;
+uint64_t hakux_inv_hits;
+uint64_t hakux_inv_depth[5];
+uint64_t hakux_inv_impossible;
+/*
+ * Per-call candidate count. __thread for the reason hakux_tb_discarded_here in
+ * tb-maint.c is: a global would make the depth of a hit on this thread depend
+ * on another thread's lookups, and the impossible row would then be a
+ * cross-thread quantity that can both manufacture and hide a violation.
+ *
+ * Reset at the top of every lookup rather than at the end, deliberately:
+ * tb_code_hash_func() -> cpu_ldub_code() can raise a guest page fault and
+ * longjmp out of the walk, which would leave a count from an abandoned lookup
+ * behind. Resetting on entry makes that stale value unreachable instead of
+ * merely unlikely. Such a candidate is counted in `ic` although its hash never
+ * completed -- it paid the walk, and the alternative is a counter that
+ * undercounts exactly the expensive case.
+ */
+static __thread uint32_t hakux_inv_cands_here;
+
 static bool inv_tb_lookup_cmp(const void *p, const void *d)
 {
     const TranslationBlock *tb = p;
     const struct tb_desc *desc = d;
 
-    return tb_lookup_cmp(p, d) &&
-           tb->ihash == tb_code_hash_func(desc->env, desc->s.pc, tb->size);
+    if (!tb_lookup_cmp(p, d)) {
+        return false;
+    }
+    /*
+     * Counted HERE, past the cheap field compares and before the byte hash,
+     * so that `ic` is the number of tb_code_hash_func() calls and nothing
+     * else. Counting at entry would count qht's hash collisions as M5 cost;
+     * counting after would lose the faulting candidate.
+     */
+    hakux_inv_cands++;
+    hakux_inv_cands_here++;
+    hakux_inv_hash_bytes += tb->size;
+    return tb->ihash == tb_code_hash_func(desc->env, desc->s.pc, tb->size);
 }
 
 TranslationBlock *inv_tb_htable_lookup(CPUState *cpu, TCGTBCPUState s)
 {
-    return tb_htable_lookup_common(cpu, s, &tb_ctx.inv_htable, inv_tb_lookup_cmp);
+    TranslationBlock *tb;
+
+    hakux_inv_lookups++;
+    hakux_inv_cands_here = 0;
+    tb = tb_htable_lookup_common(cpu, s, &tb_ctx.inv_htable,
+                                 inv_tb_lookup_cmp);
+    if (tb) {
+        uint32_t d = hakux_inv_cands_here;
+
+        hakux_inv_hits++;
+        if (d == 0) {
+            /* Cannot happen; see hakux_inv_impossible above. */
+            hakux_inv_impossible++;
+        } else if (d <= 2) {
+            hakux_inv_depth[d - 1]++;
+        } else if (d <= 4) {
+            hakux_inv_depth[2]++;
+        } else if (d <= 8) {
+            hakux_inv_depth[3]++;
+        } else {
+            hakux_inv_depth[4]++;
+        }
+    }
+    return tb;
 }
 
 /**

@@ -123,7 +123,16 @@ import sys
 INVAL_RE = re.compile(
     r"inval ev=(\d+) ov=(\d+) sp=(\d+) em=(\d+) ws=(\d+) pr=(\d+) "
     r"(?:ai=(\d+) )?(?:di=(\d+) cg=(\d+) )?(?:xx=(\d+) )?"
-    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
+    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)"
+    r"(?: iv=(\d+) ic=(\d+) ib=(\d+) ih=(\d+) ix=(\d+)"
+    r" hd=(\d+)/(\d+)/(\d+)/(\d+)/(\d+))?")
+
+# The M5 group above is APPENDED and optional, in one piece. Appended because
+# a field inserted in the middle would stop this regex matching every log
+# already on disk; optional in one piece because these six counters arrive
+# together in one commit, so a build either has all of them or none, and
+# splitting them into six optional groups would model a state that cannot
+# exist. As everywhere in this file: a missing field is not a zero.
 
 # "slow stores N (M reached the invalidator) ... [blocks ...]"
 STORES_RE = re.compile(
@@ -166,6 +175,11 @@ COUNTERS = [
     ("visited", "VISITS: TBs the invalidation loop walked over"),
     ("calls",  "CALLS to tb_gen_code, recycles included"),
     ("stores", "slow stores into code pages"),
+    ("iv",    "CALLS to the inv_htable recycle probe (== calls; see M5)"),
+    ("ic",    "CANDIDATES hashed: one guest-byte hash each. M5's cost"),
+    ("ib",    "guest BYTES hashed by those, one cpu_ldub_code at a time"),
+    ("ih",    "recycle HITS: lookups that returned a block"),
+    ("ix",    "THE M5 IMPOSSIBLE ROW -- a hit that hashed nothing. Must be 0"),
 ]
 
 
@@ -244,6 +258,13 @@ def parse(path):
                     w["cg"] = int(g[8])
                 if g[9] is not None:
                     w["xx"] = int(g[9])
+                if g[14] is not None:
+                    w["iv"] = int(g[14])
+                    w["ic"] = int(g[15])
+                    w["ib"] = int(g[16])
+                    w["ih"] = int(g[17])
+                    w["ix"] = int(g[18])
+                    w["hd"] = [int(g[19 + i]) for i in range(5)]
                 # blk is instructions per block that really generated code.
                 # Divided by a CALL count instead -- which is what
                 # hakux_tb_generated is -- it comes out below 1, which a block
@@ -301,6 +322,12 @@ RATIOS = [
      "share of page-emptying events a range test would prevent"),
     ("pr_per_em", "pr", "em",
      "arming TLB walks per page-emptying event"),
+    ("inv_cand", "ic", "iv",
+     "M5: guest-byte hashes per recycle probe -- the unbounded chain"),
+    ("inv_hit", "ih", "iv",
+     "M5: recycle hit rate, same denominator as the cost above"),
+    ("inv_bytes_per_cand", "ib", "ic",
+     "M5: mean block hashed. Arithmetically confined to [1, 4096)"),
 ]
 
 
@@ -368,6 +395,47 @@ def report(label, path, keep_first=False):
     return windows, pacing, info
 
 
+def discard_model(windows):
+    """Which invalidation predicate this build carries, read off the counters.
+
+    Returns (model, bad_page_windows, bad_range_windows). `model` is None when
+    the log has no di= field at all.
+
+    THE POINT OF DOING IT THIS WAY. `di` and the ov/sp/ai split are emitted on
+    ONE log line, so each identity below is exact -- no sampling slack, no
+    cross-thread term. But WHICH identity holds is a property of the build, and
+    this tool is handed a logcat that does not say. Hard-coding one of them is
+    what voided #68's arm: the pre-#68 form was asserted against an arm-B soak
+    of a range-tested build and reported "sp+ov != di in 21 of 21 windows,
+    two counts of the same live population", over counters that were coherent.
+
+    So: test both, name the one that held, and VOID only a run that matches
+    neither. A tool that cannot see which side of a fold it is on must not
+    assert one side of it.
+
+        WHOLE-PAGE (pre-#68):   di == ov + sp
+        RANGE-TESTED (#68):     di == ov + ai
+
+    Both carry do_tb_phys_invalidate()'s non-loop callers -- tb_check_watchpoint
+    in a softmmu build -- as an error term. Measured 0 on all six 2026-09-14
+    soaks, which is why exact equality is used; if that ever stops being true
+    this is the first place it will show, as MIXED.
+    """
+    if not any("di" in w for w in windows):
+        return None, [], []
+    bad_page = [i for i, w in enumerate(windows)
+                if "di" in w and w.get("sp", 0) + w.get("ov", 0) != w["di"]]
+    bad_rng = [i for i, w in enumerate(windows)
+               if "di" in w and w.get("ov", 0) + w.get("ai", 0) != w["di"]]
+    if not bad_page and not bad_rng:
+        return "DEGENERATE", bad_page, bad_rng
+    if not bad_page:
+        return "WHOLE-PAGE", bad_page, bad_rng
+    if not bad_rng:
+        return "RANGE-TESTED", bad_page, bad_rng
+    return "MIXED", bad_page, bad_rng
+
+
 def derive(windows):
     """The two ratios the levers turn on, plus the self-consistency check."""
     if not windows:
@@ -431,48 +499,115 @@ def derive(windows):
     vis = sum(series(windows, "visited"))
     di = sum(series(windows, "di")) if any("di" in w for w in windows) else None
     ai = sum(series(windows, "ai")) if any("ai" in w for w in windows) else None
-    if di is not None and ai is not None and vis:
-        print("   -> visits %d = real discards %d + already-invalid %d"
-              " (residual %d)." % (vis, di, ai, vis - di - ai))
-        # This residual is NOT expected to be exactly zero, and two earlier
-        # versions of this comment got that wrong in two different ways.
+    # THE POPULATION IDENTITY, and it is the one that survives #68.
+    #
+    # `visited == ov + sp + ai` holds on BOTH sides of the range-test
+    # restoration, because tb-maint.c makes the live/dead split and the
+    # overlap split BEFORE applying the discard predicate -- deliberately, so
+    # that the predicate cannot select its own population.
+    #
+    # What this check used to be was `visits == discards + already`, and that
+    # is a PRE-#68 statement wearing the words of a population check: with the
+    # range test restored a visit can be a live block the test spared, which
+    # is neither a discard nor an already-invalid block. Checking it against
+    # arm B produced a residual of 160 million and read as a broken counter.
+    # The counters were fine. See docs/investigations/issue68-arm-void.md and
+    # the CROSS-COUNTER IDENTITIES block in accel/tcg/tb-maint.c.
+    ov_t = sum(series(windows, "ov"))
+    sp_t = sum(series(windows, "sp"))
+    if ai is not None and vis:
+        resid = vis - (ov_t + sp_t + ai)
+        print("   -> POPULATION visits %d = ov %d + sp %d + already-invalid %d"
+              " (run residual %d)." % (vis, ov_t, sp_t, ai, resid))
+        # THE RESIDUAL IS PER WINDOW, NOT PER RUN, and checking the run total
+        # is what made it look like a defect.
         #
-        # `visited` is printed on the FIRST hakuX-pages line and `ai`/`di` on
+        # `visited` is printed on the FIRST hakuX-pages line and ov/sp/ai on
         # the SECOND -- two separate __android_log_print calls from the nv2a
-        # thread, with the guest CPU thread running in between. So a visit in
+        # thread, with the guest CPU thread running in between. A visit in
         # flight at that moment lands on one side of the subtraction and not
-        # the other, and each window boundary can slip any of the three by
-        # one, in either direction. Measured: 0/0/0 on one arm and -1/-1/+1
-        # on the next, over ~280,000 visits and 20 window boundaries.
+        # the other, so it is MISSING from window k and PRESENT in window
+        # k+1. The slips therefore come in cancelling pairs, which is visible
+        # in the data: -30/+30, -100/+96, -164/+182 on the arm-B soaks.
         #
-        # What IS exact is the within-line identity below, and the per-visit
-        # xx control, both of which are computed without crossing a thread.
-        slack = max(2, len(windows))
-        print("      residual should be within +/-%d (one per window"
-              " boundary), NOT zero: `visited` is on the first hakuX-pages"
-              " line and ai/di on the second, two log calls with the guest"
-              " running in between, so a visit in flight lands on one side"
-              " of the subtraction only. The exact checks are the per-visit"
-              " xx control and sp+ov == di below." % slack)
-        if abs(vis - di - ai) > slack:
-            print("      RESIDUAL EXCEEDS THE SAMPLING SLACK. That is not a"
-                  " log-boundary slip. Treat every ratio here as void until"
-                  " it is explained.")
-    # sp+ov and di are two separate pieces of code counting the same live
-    # population, and they are emitted on ONE line, so this one is exact.
-    # Free, and it is the tightest control in the file after xx.
-    if any("di" in w for w in windows):
-        mism = [i for i, w in enumerate(windows)
-                if "di" in w and w.get("sp", 0) + w.get("ov", 0) != w["di"]]
-        if mism:
-            print("   -> VOID: sp+ov != di in %d window(s) %s. Those are two"
-                  " separate counts of the live population on one log line,"
-                  " so they must agree exactly. They do not."
-                  % (len(mism), mism[:5]))
+        # Two consequences, and both are properties of the logging and not of
+        # which way a number moved:
+        #
+        #  * The tolerance scales with the window's OWN visit count, because
+        #    what slips is however many visits happen in the gap between two
+        #    log calls. Measured over six 2026-09-14 soaks the worst
+        #    non-terminal slip is 1.9e-5 of its window; 1e-4 with a floor of
+        #    8 covers every one of them with two decades of margin.
+        #  * THE FINAL WINDOW'S SLIP IS UNCOMPENSATED BY CONSTRUCTION -- the
+        #    run ends before the partner window is ever emitted -- so it is
+        #    reported and not judged. It is the whole of the run residual.
+        #    One soak's last window carried -3544 of a -3536 run total and it
+        #    is not a finding. This exclusion is structural and applies to
+        #    every run identically; it is not a case granted an exception
+        #    after its number was seen.
+        res = [w.get("visited", 0) - (w.get("ov", 0) + w.get("sp", 0)
+                                      + w.get("ai", 0))
+               for w in windows]
+        bad = [(i, res[i], windows[i].get("visited", 0))
+               for i in range(len(res) - 1)
+               if abs(res[i]) > max(8, windows[i].get("visited", 0) * 1e-4)]
+        print("      per window: max |residual| %d over %d windows; final"
+              " window %+d, reported not judged (the run ends between the two"
+              " log calls, so its slip has no partner window to cancel in)."
+              % (max((abs(r) for r in res[:-1]), default=0),
+                 max(len(res) - 1, 0), res[-1] if res else 0))
+        if bad:
+            print("      RESIDUAL EXCEEDS THE PER-WINDOW SLACK in %d window(s)"
+                  " %s. That is not a log-boundary slip: a slip is bounded by"
+                  " the visits in flight across one log call and cancels into"
+                  " the next window. Treat every ratio here as void until it"
+                  " is explained."
+                  % (len(bad), [(i, r) for i, r, _ in bad[:5]]))
+    # THE DISCARD IDENTITY, and WHICH ONE HOLDS DEPENDS ON THE PREDICATE.
+    #
+    # Both terms of each are on ONE log line, so both are exact -- no slack.
+    # This used to hard-code the pre-#68 form and call it "two counts of the
+    # same live population", which is what VOIDed #68's arm in 21 of 21
+    # windows against counters that were coherent. So it now tests both and
+    # reports WHICH MODEL the run matched, and VOIDs only a run that matches
+    # neither. A tool that cannot see which side of a fold it is on must not
+    # assert one of them.
+    #
+    #   WHOLE-PAGE (pre-#68):  di == ov + sp    every live visited block dies
+    #   RANGE-TESTED (#68):    di == ov + ai    the spared population leaves
+    #
+    # The model is a property of the BUILD, so a run whose windows disagree
+    # among themselves is itself a finding and is reported as MIXED.
+    model, bad_page, bad_rng = discard_model(windows)
+    if model:
+        n_di = len([w for w in windows if "di" in w])
+        if model == "DEGENERATE":
+            # Only possible when sp == ai in every window, which in practice
+            # means both are 0: a run that invalidated nothing. Say so rather
+            # than picking a model off a degenerate run.
+            print("   -> CONTROL both discard identities hold in every window,"
+                  " which means sp == ai throughout (in practice both 0). This"
+                  " run does not determine which invalidation predicate the"
+                  " build carries; do not use it to date a build.")
+        elif model == "WHOLE-PAGE":
+            print("   -> CONTROL di == ov+sp in every window (%d): the build"
+                  " discards every live block it visits, so this is a"
+                  " WHOLE-PAGE invalidation build, pre-#68." % n_di)
+        elif model == "RANGE-TESTED":
+            print("   -> CONTROL di == ov+ai in every window (%d): discards are"
+                  " the live-and-overlapping blocks plus the already-invalid"
+                  " ones, so this is a RANGE-TESTED build, #68 applied. `sp`"
+                  " is the SPARED population here and is not part of di."
+                  % n_di)
         else:
-            print("   -> CONTROL sp+ov == di in every window: the live"
-                  " population agrees between the overlap split and the"
-                  " discard counter, exactly.")
+            print("   -> VOID: neither discard identity holds. di != ov+sp in"
+                  " %d window(s) %s AND di != ov+ai in %d window(s) %s. Both"
+                  " sides of each are on ONE log line, so one of them must"
+                  " hold exactly for any build this tool knows about. Read"
+                  " NOTHING below as a measurement."
+                  % (len(bad_page), bad_page[:5],
+                     len(bad_rng), bad_rng[:5]))
+    if any("di" in w for w in windows) and ai is not None and vis:
         if ai > vis * 0.5:
             print("      MOST VISITS ARE DEAD BLOCKS (%.0f%%). The page lists"
                   " are carrying already-invalidated TBs, so the visit count"
@@ -481,26 +616,55 @@ def derive(windows):
                   " from `visited` is not -- including waste_legacy, which is"
                   " why it is printed beside `waste` rather than instead of"
                   " it." % (100.0 * ai / vis))
-        print("      A large already-invalid share means the page lists carry"
-              " dead TBs that do_tb_phys_invalidate's early return refuses to"
-              " unlink, every later store re-visits them, and BOTH the"
-              " discarded-blocks count and the sp/ov split are measured over"
-              " the wrong population.")
+        elif model == "RANGE-TESTED":
+            print("      already-invalid is %.1f%% of visits. Under a"
+                  " range-tested build this is the SMALL number: #73's mask"
+                  " makes a dead block findable and #68's `!tb_live` clause"
+                  " discards it on its first visit, so a clogged page list"
+                  " reads here as a defect rather than as the baseline."
+                  % (100.0 * ai / vis))
+        if ai > vis * 0.5:
+            print("      A large already-invalid share means the page lists"
+                  " carry dead TBs that do_tb_phys_invalidate's early return"
+                  " refuses to unlink, every later store re-visits them, and"
+                  " BOTH the discarded-blocks count and the sp/ov split are"
+                  " measured over the wrong population.")
     ov = sum(series(windows, "ov"))
     sp = sum(series(windows, "sp"))
     em = sum(series(windows, "em"))
     ws = sum(series(windows, "ws"))
     if ov + sp:
-        print("   -> %.1f%% of discarded blocks had no written byte in them"
-              " (sp/(sp+ov) = %d/%d)." % (100.0 * sp / (ov + sp), sp, ov + sp))
+        # The noun changes with the model and the number does not: sp+ov is
+        # the LIVE VISITED population either way, which is why it is the
+        # quantity the two arms of #68 are comparable on. Under whole-page
+        # invalidation every one of them is discarded; under the restored
+        # range test the sp half is spared, which is the change itself.
+        noun = ("live blocks visited" if model == "RANGE-TESTED"
+                else "discarded blocks")
+        print("   -> %.1f%% of %s had no written byte in them"
+              " (sp/(sp+ov) = %d/%d)."
+              % (100.0 * sp / (ov + sp), noun, sp, ov + sp))
         if sp and ov * 100 < sp:
-            print("      CAUTION: that is at or near 100%, and a systematic"
-                  " instrument error would look exactly like this. An"
-                  " already-invalidated TB left on the page list has no"
-                  " reason to overlap the current write, so a list clogged"
-                  " with dead blocks reports 100% spared while saying"
-                  " nothing about live ones. Check the visits identity above"
-                  " before reading this as the premise check.")
+            # The standing caution, and it is about the DEAD share, not about
+            # the value being near 100%. A page list clogged with
+            # already-invalid TBs reports 100% spared while saying nothing
+            # about live ones -- but sp/ov have been live-only since
+            # 02f04060e8, so the caution only bites where `ai` is large.
+            # Saying it on a run with ai == 0 taught readers to ignore it.
+            if ai and ai > vis * 0.5:
+                print("      CAUTION: that is at or near 100%%, and on THIS run"
+                      " %.0f%% of visits were already-dead blocks, which is"
+                      " exactly what a systematic instrument error looks"
+                      " like. Check the population identity above before"
+                      " reading this as the premise check."
+                      % (100.0 * ai / vis))
+            else:
+                print("      At or near 100%%, with a dead-block share of"
+                      " %.1f%%, so the standing clogged-page-list caution"
+                      " does not apply: these are live blocks the guest"
+                      " never wrote the bytes of. That is the premise check"
+                      " passing, not an instrument artefact."
+                      % (100.0 * ai / vis if vis else 0.0))
         print("      This is the premise check for"
               " performance-next-three.md section 2. Near 0% means the"
               " invalidation is already effectively range-precise and the"
@@ -511,10 +675,20 @@ def derive(windows):
     if ev and em < ev:
         ai = sum(series(windows, "ai")) if any("ai" in w for w in windows) \
             else None
-        print("   -> em (%d) is BELOW ev (%d). Under whole-page invalidation"
-              " every block on the page is discarded, so the page should"
-              " always empty." % (em, ev))
-        if ai is None:
+        if model == "RANGE-TESTED":
+            print("   -> em (%d) is BELOW ev (%d), and under a RANGE-TESTED"
+                  " build that is the change working rather than a shortfall"
+                  " to explain: a block the write missed is spared, so the"
+                  " page keeps its code and does not empty. em/ev is the"
+                  " measure of it. The paragraphs below are the whole-page"
+                  " reading and do not apply." % (em, ev))
+        else:
+            print("   -> em (%d) is BELOW ev (%d). Under whole-page"
+                  " invalidation every block on the page is discarded, so the"
+                  " page should always empty." % (em, ev))
+        if model == "RANGE-TESTED":
+            pass
+        elif ai is None:
             print("      This build has no ai= counter, so the shortfall is"
                   " unexplained here. The known benign cause is"
                   " do_tb_phys_invalidate returning early, before tb_remove,"
@@ -532,13 +706,130 @@ def derive(windows):
         print("   -> em (%d) EXCEEDS ev (%d), which no path in tb-maint.c"
               " allows. Treat every number above as void until this is"
               " explained." % (em, ev))
-    if em:
+    if em and model == "RANGE-TESTED":
+        # `ws` is RETIRED on this side of the fold. 937848c9e7 removes the
+        # increment and keeps the symbol only so this regex and profile.c's
+        # format string keep parsing, because the counterfactual it measured
+        # is what that commit makes actual -- any value it could carry would
+        # be true by construction. Printing "0.0% of events would not have
+        # emptied" here reads as a measured collapse of the prize and is not
+        # a measurement at all.
+        print("   -> ws is RETIRED on a range-tested build and reads 0 by"
+              " construction (it counted the counterfactual this build makes"
+              " actual). ws/em is NOT computed. The before-and-after lives in"
+              " two ARMS, on em and pr, which mean the same thing on both"
+              " sides.")
+    elif em:
         print("   -> %.1f%% of page-emptying events would NOT have emptied the"
               " page under a range test (ws/em = %d/%d)."
               % (100.0 * ws / em, ws, em))
         print("      That is the arming TLB walk -- tlb_reset_dirty, 10.6%"
               " self of the bounding thread -- that the range test would"
               " remove. It is the prize, and it is not about discarded code.")
+
+
+    m5(windows)
+
+
+def m5(windows):
+    """The inv_htable recycle cache: what it costs and what it buys.
+
+    Audit pass 1 M5. `inv_htable` has no eviction path, so every distinct
+    byte-content ever translated at a pc leaves a permanently resident entry,
+    and each later tb_gen_code() for that pc pays one byte-at-a-time
+    guest-memory hash per entry. The remediation the audit proposed -- evict on
+    insert -- is REFUTED and must not be implemented; see the comment block at
+    inv_tb_lookup_cmp() in accel/tcg/cpu-exec.c. The real fix bounds the chain,
+    and N has to be sized against these numbers.
+    """
+    if not any("ic" in w for w in windows):
+        print("   -> NO iv=/ic= FIELDS. This build predates the M5 counters,"
+              " so the inv_htable chain is unmeasured here -- which is not the"
+              " same as unmeasured cost. Nothing below is printed.")
+        return
+    iv = sum(series(windows, "iv"))
+    ic = sum(series(windows, "ic"))
+    ib = sum(series(windows, "ib"))
+    ih = sum(series(windows, "ih"))
+    ix = sum(series(windows, "ix"))
+    hd = [0] * 5
+    for w in windows:
+        for i, v in enumerate(w.get("hd", [])):
+            hd[i] += v
+    # THE IMPOSSIBLE ROW FIRST, before anything is printed about the numbers.
+    if ix:
+        print("   -> VOID (M5): ix = %d. A recycle hit that hashed no"
+              " candidate, which cannot happen -- a hit IS a candidate whose"
+              " ihash matched, so the counter was incremented before the"
+              " comparison that returned true. Read NOTHING in this section"
+              " as a measurement: the depth histogram and ih/ic are over a"
+              " population that is not what cpu-exec.c says." % ix)
+    else:
+        print("   -> CONTROL (M5) ix = 0: every recycle hit hashed at least"
+              " one candidate, so hd and the ratios below are over the"
+              " population inv_tb_lookup_cmp() names.")
+    if sum(hd) + ix != ih:
+        print("   -> VOID (M5): sum(hd) + ix != ih (%d + %d != %d). Every hit"
+              " lands in exactly one depth bucket or in the impossible row."
+              " All terms are on ONE log line, so there is no slack: this is"
+              " a counter defect, not a sampling slip."
+              % (sum(hd), ix, ih))
+    else:
+        print("   -> CONTROL (M5) sum(hd) + ix == ih exactly (%d)." % ih)
+    # iv == calls is the check that the probe is still on every codegen call.
+    # It crosses the two log lines, so it carries the same in-flight slip the
+    # population identity does, and is judged with the same shape of bound.
+    calls = sum(series(windows, "calls"))
+    if calls:
+        slack = max(8, int(calls * 1e-4) + 1)
+        ok = abs(iv - calls) <= slack
+        print("   -> %s (M5) iv %d vs calls %d (residual %d, slack +/-%d)."
+              " tb_gen_code() reaches inv_tb_htable_lookup() unconditionally,"
+              " so these count the same event across two log calls. A"
+              " divergence beyond the slip means the probe is no longer on"
+              " every codegen call -- a new early return, or a second caller"
+              " -- and every ratio below is then over an unstated population."
+              % ("CONTROL" if ok else "VOID", iv, calls, iv - calls, slack))
+    if not ic:
+        print("   -> M5: ic = 0 over %d windows. NOT 'the chain is short' --"
+              " no lookup reached the guest-byte hash at all, so this run"
+              " says nothing about chain length. Check ih and iv before"
+              " concluding anything." % len(windows))
+        return
+    print("   -> M5 COST %.2f guest-byte hashes per recycle probe (%d / %d),"
+          " %.0f guest bytes per probe (%d total), mean block hashed %.0f"
+          " bytes." % (ic / float(iv) if iv else 0.0, ic, iv,
+                       ib / float(iv) if iv else 0.0, ib, ib / float(ic)))
+    if not (1.0 <= ib / float(ic) < 4096.0):
+        print("      VOID: mean bytes per candidate is outside [1, 4096),"
+              " which tb->size's own range and tb_code_hash_func's assert"
+              " make arithmetically impossible. One of ib and ic is being"
+              " summed over the wrong population.")
+    print("   -> M5 BENEFIT %.3f recycle hits per probe (%d / %d). The cost"
+          " and the benefit share a denominator on purpose: a chain bound"
+          " trades the second against the first."
+          % (ih / float(iv) if iv else 0.0, ih, iv))
+    if ih:
+        labels = ["1", "2", "3-4", "5-8", ">8"]
+        print("   -> M5 HIT DEPTH (candidates hashed by a hit, itself"
+              " included): " + ", ".join(
+                  "%s: %d (%.1f%%)" % (labels[i], hd[i], 100.0 * hd[i] / ih)
+                  for i in range(5)))
+        cum = 0
+        for i, k in enumerate([1, 2, 4, 8]):
+            cum += hd[i]
+            print("      capping the WALK at %d candidate(s) keeps %.2f%% of"
+                  " hits and spends at most %d hashes per probe"
+                  % (k, 100.0 * cum / ih, k))
+        print("      AND THIS DOES NOT SIZE AN MRU-N BOUND. `hd` is the hit's"
+              " ordinal in the WALK, and the walk is qht bucket-slot order:"
+              " qht_insert__locked() fills the first empty slot and"
+              " qht_remove__locked() leaves a hole, so every successful"
+              " recycle -- the event being measured -- perturbs the order. It"
+              " answers 'would capping the walk at K have kept this hit'. It"
+              " does NOT answer 'would keeping the most recent N have kept"
+              " it'; that needs a monotone insertion stamp on the"
+              " TranslationBlock, which does not exist.")
 
 
 def cost(pacing):
@@ -601,6 +892,31 @@ def judge(arm_a, arm_b):
               " that line, so any quantity it lacks is ABSENT from the"
               " verdict below rather than judged."
               % ("A" if leg_a else "B", "B" if leg_a else "A"))
+
+    # TWO ARMS ON OPPOSITE SIDES OF #68 ARE NOT COMPARABLE ON `di`, and this
+    # is the note that would have saved #68's arm. `visited`, `ov`, `sp`,
+    # `ai`, `em`, `pr`, `cg`, `ins` and `stores` are counted identically on
+    # both sides -- tb-maint.c makes the live/dead and overlap splits BEFORE
+    # applying the discard predicate, deliberately, so the predicate cannot
+    # select its own population. `di` is the one that moves population, and
+    # every ratio built on it moves with it: waste (di/cg) and sp_share's
+    # NOUN, though not its value.
+    ma = {discard_model(ws)[0] for ws, _, _ in arm_a} - {None, "DEGENERATE"}
+    mb = {discard_model(ws)[0] for ws, _, _ in arm_b} - {None, "DEGENERATE"}
+    if len(ma) > 1 or len(mb) > 1:
+        print("   REFUSED as a pair: an arm mixes invalidation models"
+              " (A=%s B=%s). Each arm is one binary."
+              % (sorted(ma), sorted(mb)))
+    elif ma and mb and ma != mb:
+        print("   CROSS-FOLD PAIR: arm A is a %s build and arm B is a %s one,"
+              " so this A/B spans #68's predicate change. That is the intended"
+              " comparison, and it makes `di` INCOMMENSURABLE between the"
+              " arms: a spared live block is a visit on both sides and a"
+              " discard on only one. Judge on visited/ov/sp/ai/em/pr/cg/"
+              " stores, which are counted before the predicate and mean the"
+              " same thing on both. `waste` (di/cg) below is a quotient of"
+              " two different populations and must not be quoted."
+              % (sorted(ma)[0], sorted(mb)[0]))
 
     refs_a = {(i or {}).get("ref") for _, _, i in arm_a} - {None}
     refs_b = {(i or {}).get("ref") for _, _, i in arm_b} - {None}

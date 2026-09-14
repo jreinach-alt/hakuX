@@ -348,12 +348,65 @@ void nv2a_profile_flip_stall(void)
      *         disarmed and the next generation there must re-arm it
      *   ws    of those, events where a block would have survived the range
      *         test -- so the page would have stayed armed and the re-arming
-     *         TLB walk would not have happened. ws is the prize.
+     *         TLB walk would not have happened. ws was the prize; see the
+     *         POPULATION CAVEAT below before differencing it against anything.
      *   pr    arming walks actually performed (tlb_protect_code, whose
      *         tlb_reset_dirty is 10.6% self of the bounding thread)
-     *   xx    THE IMPOSSIBLE ROW. Visits where live-ness and discard-ness
-     *         disagreed. Must be 0; anything else voids the whole line.
+     *   ai    visited blocks that ALREADY carried CF_INVALID. Sizes the
+     *         page-list clog; it proves nothing on its own (audit M4 -- it is
+     *         bounded above by the tier-1 promotion count, which this line
+     *         does not carry, so any fall in it reads as confirmation).
+     *   di    DISCARDS: blocks really unlinked, past do_tb_phys_invalidate's
+     *         early return. A wider population than the visit counters: it
+     *         counts every caller, and the whole-page loop is only one.
+     *   cg    GENERATIONS: tb_gen_code calls that really emitted code. The
+     *         waste ratio is di/cg and nothing else on this line is it.
+     *   xx    THE IMPOSSIBLE ROW. Must be 0; anything else voids every ratio
+     *         on this line. See the legend at the print below for what it
+     *         counts, which CHANGED at #73's fix and again at audit M4.
      *   ins   guest instructions translated, and blk their mean per block
+     *   iv    CALLS to inv_tb_htable_lookup, the inv_htable recycle probe.
+     *         tb_gen_code reaches it unconditionally, so iv == cl on the
+     *         line above and a divergence means the probe moved.
+     *   ic    CANDIDATES that reached the guest-byte hash: one
+     *         tb_code_hash_func each, byte-at-a-time over up to ~4 KB. This
+     *         is audit M5's cost, and it is not the qht chain length.
+     *   ib    guest bytes those hashed. ib/ic must be in [1, 4096).
+     *   ih    recycle HITS. ih/iv is the benefit over the same denominator
+     *         as the cost, which is why iv counts calls and not chains.
+     *   ix    the impossible row for that family: a hit that hashed no
+     *         candidate. sum(hd) + ix == ih exactly, all on this line.
+     *   hd    how many candidates a HIT hashed, bucketed 1/2/3-4/5-8/>8.
+     *         WALK order, which is qht bucket-slot order, NOT recency: it
+     *         bounds what a hit costs and does not size an MRU-N bound.
+     *
+     * POPULATION CAVEAT ON ai, em AND ws -- audit pass 1 M1 and M6, and the
+     * reason a reader must date a run before differencing it.
+     *
+     * All three changed what they are counted over at 2af6def68a (#73's fix),
+     * without changing their names or their units, which is the failure mode
+     * #69 exists to make findable. Pre-fix, an already-invalid block took
+     * do_tb_phys_invalidate()'s early return BEFORE tb_remove(), so it stayed
+     * on the page list: `ai` then counted the same block once per store to its
+     * page for the life of the translation buffer (it measured 0.85-0.93 of
+     * visits in the six Crimson Skies soaks of 2026-09-13), and `em` could not
+     * fire on any event that had visited one, because p->first_tb stayed
+     * non-NULL. Post-fix such a block is unlinked on its FIRST visit, so `ai`
+     * falls to the visit rate of the tier-1 population and `em` rises for a
+     * reason that has nothing to do with what the guest wrote. `ws` is gated
+     * on `em` and moves with it.
+     *
+     * So the 2026-09-13 soaks are PRE-fix on all three and must not be
+     * differenced against a post-fix run. `ws` figures from runs between
+     * 2af6def68a and 761273a324 are wrong a third way on top of that -- it
+     * compared a live-only overlap count against a dead-inclusive total, and
+     * over-reports.
+     *
+     * AND `ws` IS RETIRED by #68's range-test restoration (937848c9e7): that
+     * commit makes the counterfactual actual, so any value it could then carry
+     * is true by construction. It reads 0 from that commit on. The column is
+     * kept only so this line and docs/testing/perf/tcg_pages.py's `ws=` group
+     * keep parsing; do not read it as a measurement on either side.
      *
      * sp/ov is whether "smaller blocks on thrashing pages"
      * (docs/investigations/performance-next-three.md section 2) has a
@@ -377,8 +430,23 @@ void nv2a_profile_flip_stall(void)
         extern uint64_t hakux_gen_bytes;
         extern uint64_t hakux_tb_codegen;
         extern uint64_t hakux_tb_discarded;
+        /*
+         * M5, the inv_htable recycle cache. Appended at the END of this line
+         * rather than inserted, so tcg_pages.py's existing regex -- which ends
+         * at blk= and is a search, not a match -- keeps parsing a new log, and
+         * so a new tool reading an old log sees the fields absent rather than
+         * zero. A missing field is not a zero; that distinction is already
+         * load-bearing for ai/di/cg/xx.
+         */
+        extern uint64_t hakux_inv_lookups;
+        extern uint64_t hakux_inv_cands;
+        extern uint64_t hakux_inv_hash_bytes;
+        extern uint64_t hakux_inv_hits;
+        extern uint64_t hakux_inv_depth[5];
+        extern uint64_t hakux_inv_impossible;
         static uint64_t p_ev, p_ov, p_sp, p_em, p_ws, p_pr, p_in, p_by, p_cg;
         static uint64_t p_ai, p_di, p_xx;
+        static uint64_t p_iv, p_ic, p_ib, p_ih, p_ix, p_hd[5];
         uint64_t d_ev = hakux_inval_events        - p_ev;
         uint64_t d_ov = hakux_inval_tbs_overlap   - p_ov;
         uint64_t d_sp = hakux_inval_tbs_spared    - p_sp;
@@ -391,6 +459,21 @@ void nv2a_profile_flip_stall(void)
         uint64_t d_ai = hakux_inval_already       - p_ai;
         uint64_t d_di = hakux_tb_discarded        - p_di;
         uint64_t d_xx = hakux_inval_impossible    - p_xx;
+        uint64_t d_iv = hakux_inv_lookups         - p_iv;
+        uint64_t d_ic = hakux_inv_cands           - p_ic;
+        uint64_t d_ib = hakux_inv_hash_bytes      - p_ib;
+        uint64_t d_ih = hakux_inv_hits            - p_ih;
+        uint64_t d_ix = hakux_inv_impossible      - p_ix;
+        uint64_t d_hd[5];
+        for (int i = 0; i < 5; i++) {
+            d_hd[i] = hakux_inv_depth[i] - p_hd[i];
+            p_hd[i] = hakux_inv_depth[i];
+        }
+        p_iv = hakux_inv_lookups;
+        p_ic = hakux_inv_cands;
+        p_ib = hakux_inv_hash_bytes;
+        p_ih = hakux_inv_hits;
+        p_ix = hakux_inv_impossible;
         p_ev = hakux_inval_events;
         p_ov = hakux_inval_tbs_overlap;
         p_sp = hakux_inval_tbs_spared;
@@ -405,22 +488,60 @@ void nv2a_profile_flip_stall(void)
         p_xx = hakux_inval_impossible;
         __android_log_print(ANDROID_LOG_INFO, "hakuX-pages",
             "inval ev=%llu ov=%llu sp=%llu em=%llu ws=%llu pr=%llu ai=%llu "
-            "di=%llu cg=%llu xx=%llu ins=%llu bytes=%llu blk=%llu.%02llu",
+            "di=%llu cg=%llu xx=%llu ins=%llu bytes=%llu blk=%llu.%02llu "
+            "iv=%llu ic=%llu ib=%llu ih=%llu ix=%llu "
+            "hd=%llu/%llu/%llu/%llu/%llu",
             (unsigned long long)d_ev, (unsigned long long)d_ov,
             (unsigned long long)d_sp, (unsigned long long)d_em,
             (unsigned long long)d_ws, (unsigned long long)d_pr,
             (unsigned long long)d_ai,
             (unsigned long long)d_di, (unsigned long long)d_cg,
-            /* xx is the impossible row: a visit that was live and was not
-             * discarded, or was already invalid and was. Anything but 0 voids
-             * every ratio on this line. */
+            /*
+             * xx is the impossible row: a block this invalidation walked over
+             * and COMMITTED TO DISCARDING, and did not discard. Live or
+             * already-invalid, both must be discarded -- the already-invalid
+             * half is #73's fix stated as an identity, and it read 85-93% of
+             * visits before that fix. Anything but 0 voids every ratio on this
+             * line.
+             *
+             * This legend has been wrong twice and in opposite directions, so
+             * it says the date rather than just the rule. It read "a visit
+             * that was live and was not discarded, or was already invalid and
+             * WAS" -- the pre-#73 model, in which a dead block being discarded
+             * was the violation. #73 (2af6def68a) makes that the intended
+             * behaviour, and audit M4's replacement (765d0ff52d) then widened
+             * the row to both halves of a single per-visit test. A reader
+             * diagnosing a NONZERO xx under the old legend looks for a dead
+             * block that was discarded, which is now correct behaviour, and
+             * misses the live block that was not.
+             */
             (unsigned long long)d_xx,
             (unsigned long long)d_in, (unsigned long long)d_by,
             /* Per block that really generated code, not per call. A value
              * below 1.00 is arithmetically impossible and means this figure
              * is being divided by a call count again. */
             (unsigned long long)(d_cg ? d_in / d_cg : 0),
-            (unsigned long long)(d_cg ? (d_in * 100 / d_cg) % 100 : 0));
+            (unsigned long long)(d_cg ? (d_in * 100 / d_cg) % 100 : 0),
+            /*
+             * M5. iv is CALLS to inv_tb_htable_lookup, which tb_gen_code
+             * reaches unconditionally -- so iv == cl on the line above, and a
+             * divergence beyond the two-log-call slip means the probe is no
+             * longer on every codegen call. ic is CANDIDATES that reached the
+             * guest-byte hash, one tb_code_hash_func each, and is the cost M5
+             * names; ib is the guest bytes those hashed, so ib/ic must lie in
+             * [1, 4096). ih is recycle hits. ix is the impossible row for this
+             * family -- a hit that hashed no candidate -- and sum(hd) + ix ==
+             * ih exactly, every term on this line. hd is the hit's ordinal in
+             * the WALK (1 / 2 / 3-4 / 5-8 / >8), which is qht bucket-slot
+             * order and NOT recency order: it bounds what a hit costs, it does
+             * not size an MRU-N bound. See accel/tcg/cpu-exec.c.
+             */
+            (unsigned long long)d_iv, (unsigned long long)d_ic,
+            (unsigned long long)d_ib, (unsigned long long)d_ih,
+            (unsigned long long)d_ix,
+            (unsigned long long)d_hd[0], (unsigned long long)d_hd[1],
+            (unsigned long long)d_hd[2], (unsigned long long)d_hd[3],
+            (unsigned long long)d_hd[4]);
     }
 #endif
 

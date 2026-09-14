@@ -273,6 +273,84 @@ static __thread bool hakux_tb_discarded_here;
  * that, and no ratio built from them is exact.
  */
 uint64_t hakux_inval_impossible;
+/*
+ * THE CROSS-COUNTER IDENTITIES, and WHICH ONE HOLDS DEPENDS ON THE PREDICATE.
+ *
+ * Written down because leaving it implicit voided a device arm. #68's arm ran
+ * six soaks on 2026-09-14 and docs/testing/perf/tcg_pages.py declared arm B
+ * VOID in 21 of 21 windows on `sp + ov == di`, reported as "two counts of the
+ * same live population that must agree exactly". They are not two counts of
+ * the same population once the range test is restored, and the held commit's
+ * own message says so. The counters were coherent; the identity the tool
+ * checked was a pre-#68 one that nothing had dated. See
+ * docs/investigations/issue68-arm-void.md.
+ *
+ * There are three, and only the first is invariant across the predicate:
+ *
+ * (1) THE POPULATION IDENTITY, and it holds on BOTH sides of #68:
+ *
+ *         visited == ov + sp + ai
+ *
+ *     Every block the loop walks is counted once in `visited`, and exactly
+ *     once more as either already-invalid (`ai`) or live -- and a live block
+ *     is split by the overlap test into `ov` (bytes written) and `sp`
+ *     (not written, accumulated as tbs_live - tbs_overlap). The split is made
+ *     BEFORE the discard predicate is applied, deliberately, so the predicate
+ *     cannot select its own population. This is the identity to check first.
+ *
+ *     It is exact in arithmetic and NOT exact on the log line: `visited` is
+ *     printed on the first hakuX-pages line and ov/sp/ai on the second, two
+ *     __android_log_print calls with the guest CPU thread running in between,
+ *     so a visit in flight lands on one side only. Measured slip on the six
+ *     soaks: 0 in most windows, +/-42 in the two boot windows of one run,
+ *     cancelling to 0 over the run. A slip that does not cancel, or one at
+ *     steady state, is not a boundary effect.
+ *
+ * (2) THE DISCARD IDENTITY, PRE-#68 -- whole-page invalidation:
+ *
+ *         di == ov + sp    (equivalently: every live visited block dies)
+ *
+ *     Holds because the loop discards unconditionally and, before #73's fix,
+ *     an already-invalid block took do_tb_phys_invalidate()'s early return
+ *     and so was NOT counted in `di`. Both terms are on one log line, so this
+ *     one is exact. Measured: 22 of 22 windows on all three arm-A soaks at
+ *     117203fe9b.
+ *
+ * (3) THE DISCARD IDENTITY, POST-#68 -- the range test restored (937848c9e7):
+ *
+ *         di == ov + ai
+ *
+ *     A live block whose bytes the write missed is now SPARED, so `sp` leaves
+ *     the discard side entirely -- that is the whole change. What is discarded
+ *     is the live-and-hit population (`ov`) plus the already-invalid one
+ *     (`ai`), which #73's mask makes findable and #68's `!tb_live` clause
+ *     discards whatever the write touched. Also exact, both terms on one line.
+ *     Measured: 22 of 22 windows on all three arm-B soaks at 937848c9e7,
+ *     exactly, with no slack term needed.
+ *
+ *     The tier >= 2 / superblock clause of that predicate would add a third
+ *     term. It is not modelled here for the same reason it is not modelled at
+ *     the `ws` site below: XBOX_SUPERBLOCK_ENABLED is 0 and tb_gen_superblock()
+ *     is the only producer, so it is a term nothing can currently reach. It
+ *     must be added on the day that flag is flipped, and this identity is the
+ *     thing that will break if it is not.
+ *
+ * WHY BOTH (2) AND (3) MATTER RATHER THAN JUST THE CURRENT ONE. An instrument
+ * that hard-codes either is wrong on one side of the fold, and the two arms of
+ * #68's A/B sit on opposite sides. The check that is honest across a fold is
+ * to test both and report WHICH MODEL THE RUN MATCHED -- a run matching
+ * neither is the void condition, and two arms matching different models are
+ * comparable on `visited`, `ov`, `sp`, `ai`, `em`, `pr` and `cg`, which are
+ * counted identically on both, and NOT comparable on anything derived from
+ * `di` alone. tcg_pages.py does that as of this commit.
+ *
+ * `di` REMAINS THE ONE WITH A WIDER POPULATION, on both sides: it counts every
+ * caller of do_tb_phys_invalidate() and the whole-page loop is only one of
+ * them, so (2) and (3) carry tb_check_watchpoint()'s traffic as an error term.
+ * It measured zero on all six soaks. It is not guaranteed zero, and a nonzero
+ * residual on these two identities should be checked against that before it is
+ * called a defect.
+ */
 #endif
 
 /* List iterators for lists of tagged pointers in TranslationBlock. */
