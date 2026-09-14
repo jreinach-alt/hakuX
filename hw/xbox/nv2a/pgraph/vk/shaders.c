@@ -34,6 +34,22 @@ extern bool xemu_get_async_compile(void);
 const size_t MAX_UNIFORM_ATTR_VALUES_SIZE = NV2A_VERTEXSHADER_ATTRIBUTES * 4 * sizeof(float);
 
 /*
+ * #13's wide-line geometry stage reads one vec4 of push constants:
+ * (2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused).  The
+ * range is declared on EVERY graphics pipeline and on every push-descriptor
+ * template layout, whether or not that pipeline has a geometry shader,
+ * because two pipeline layouts are compatible for a descriptor set only if
+ * their push-constant ranges are identical as well -- a mismatch silently
+ * leaves set 0 unbound, which is issue #34's finding 3.  It therefore sits at
+ * offset 0 and the vertex stage's inline attributes move up past it.
+ *
+ * KEEP IN SYNC with draw.c, which declares the same range in
+ * create_pipeline() and pushes it in push_geom_line_params(), and with
+ * glsl/geom.c, which declares the matching GeomPushConstants block.
+ */
+#define GEOM_PUSH_CONSTANT_SIZE ((uint32_t)(4 * sizeof(float)))
+
+/*
  * Standard texture descriptor sets (used when push descriptors unavailable).
  * Set 0: NV2A_MAX_TEXTURES combined image samplers (bindings 0..3).
  * These are separate from UBO sets so that UBO-only changes (the common case)
@@ -266,17 +282,24 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
         r->push_ubo_set_layout,
     };
     for (int n = 0; n <= NV2A_VERTEXSHADER_ATTRIBUTES; n++) {
-        VkPushConstantRange push_range = {
-            .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-            .offset = 0,
-            .size = n * 4 * sizeof(float),
+        VkPushConstantRange push_ranges[2] = {
+            {
+                .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT,
+                .offset = 0,
+                .size = GEOM_PUSH_CONSTANT_SIZE,
+            },
+            {
+                .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+                .offset = GEOM_PUSH_CONSTANT_SIZE,
+                .size = n * 4 * sizeof(float),
+            },
         };
         VkPipelineLayoutCreateInfo template_layout_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 2,
             .pSetLayouts = template_set_layouts,
-            .pushConstantRangeCount = n > 0 ? 1 : 0,
-            .pPushConstantRanges = n > 0 ? &push_range : NULL,
+            .pushConstantRangeCount = n > 0 ? 2 : 1,
+            .pPushConstantRanges = push_ranges,
         };
         VK_CHECK(vkCreatePipelineLayout(r->device, &template_layout_info,
                                         NULL, &r->push_template_layout[n]));
@@ -773,6 +796,8 @@ static void shader_binding_build_module_keys(
     vsh_key->vsh.glsl_opts.prefix_outputs = *need_geom;
     vsh_key->vsh.glsl_opts.use_push_constants_for_uniform_attrs =
         r->use_push_constants_for_uniform_attrs;
+    /* The geometry stage's wide-line vec4 owns offset 0 on every layout. */
+    vsh_key->vsh.glsl_opts.vertex_push_offset = GEOM_PUSH_CONSTANT_SIZE;
     /* Both push and standard paths use 2-set layout:
      * set 0 = textures (bindings 0..3), set 1 = UBOs (bindings 0,1) */
     vsh_key->vsh.glsl_opts.ubo_binding = 0;
@@ -1400,9 +1425,16 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
 #endif
     shader_cache_init(pg);
 
+    /*
+     * The geometry stage's wide-line vec4 is unconditional and sits below the
+     * inline attributes, so the attributes need room for both.  A device that
+     * cannot hold both falls back to the UBO path for the attributes, which
+     * is what every device with the guaranteed-minimum 128-byte limit already
+     * does.
+     */
     r->use_push_constants_for_uniform_attrs =
         (r->device_props.limits.maxPushConstantsSize >=
-         MAX_UNIFORM_ATTR_VALUES_SIZE);
+         GEOM_PUSH_CONSTANT_SIZE + MAX_UNIFORM_ATTR_VALUES_SIZE);
 }
 
 void pgraph_vk_finalize_shaders(PGRAPHState *pg)

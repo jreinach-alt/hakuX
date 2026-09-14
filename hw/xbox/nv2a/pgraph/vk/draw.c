@@ -776,6 +776,36 @@ void pgraph_vk_draw_begin(NV2AState *d)
     }
 }
 
+/*
+ * #13's wide-line geometry stage reads one vec4 of push constants at offset
+ * 0: (2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused).
+ * KEEP IN SYNC with vk/shaders.c, which declares the identical range on every
+ * push-descriptor template layout, and with glsl/geom.c, which declares the
+ * matching GeomPushConstants block.  Declared on every pipeline whether or
+ * not it has a geometry shader: two pipeline layouts are compatible for a
+ * descriptor set only if their push-constant ranges match too.
+ */
+#define GEOM_PUSH_CONSTANT_SIZE ((uint32_t)(4 * sizeof(float)))
+
+/*
+ * Whether this shader's geometry stage generates the wide-line footprint
+ * itself, which is every draw that puts a line on screen.  MUST agree
+ * exactly with widen_lines in pgraph_glsl_gen_geom(): it decides the shader's
+ * output topology, so a disagreement means triangles rasterised under a line
+ * polygon mode, or quads silently culled.
+ */
+static bool geom_widens_lines(const GeomState *g)
+{
+    return g->primitive_mode == PRIM_TYPE_LINES ||
+           (g->primitive_mode == PRIM_TYPE_TRIANGLES &&
+            g->polygon_front_mode == POLY_MODE_LINE);
+}
+
+static bool binding_widens_lines(PGRAPHVkState *r)
+{
+    return r->shader_binding && geom_widens_lines(&r->shader_binding->state.geom);
+}
+
 static VkPrimitiveTopology get_primitive_topology(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -1821,6 +1851,15 @@ static void create_pipeline(PGRAPHState *pg)
         r->enabled_physical_device_features.fillModeNonSolid != VK_TRUE) {
         polygon_mode = VK_POLYGON_MODE_FILL;
     }
+    /*
+     * The geometry stage has already turned each edge of a POLY_MODE_LINE
+     * triangle into its own filled parallelogram (#13), so leaving the
+     * polygon mode on LINE here would outline those quads instead of filling
+     * them -- the widening would be drawn as a one-pixel wireframe of itself.
+     */
+    if (geom_widens_lines(&r->shader_binding->state.geom)) {
+        polygon_mode = VK_POLYGON_MODE_FILL;
+    }
 
     VkPipelineRasterizationStateCreateInfo rasterizer = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
@@ -1854,7 +1893,9 @@ static void create_pipeline(PGRAPHState *pg)
     };
 
 #if !OPT_DYNAMIC_STATES
-    if (pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) & NV_PGRAPH_SETUPRASTER_CULLENABLE) {
+    if ((pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
+         NV_PGRAPH_SETUPRASTER_CULLENABLE) &&
+        !geom_widens_lines(&r->shader_binding->state.geom)) {
         uint32_t cull_face = GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),
                                       NV_PGRAPH_SETUPRASTER_CULLCTRL);
         assert(cull_face < ARRAY_SIZE(pgraph_cull_face_vk_map));
@@ -2016,15 +2057,18 @@ static void create_pipeline(PGRAPHState *pg)
         dynamic_states[num_dynamic_states++] = VK_DYNAMIC_STATE_COLOR_WRITE_MASK_EXT;
     }
 
+    /*
+     * No VK_DYNAMIC_STATE_LINE_WIDTH any more.  Every draw that puts a line
+     * on screen goes through pgraph_glsl_need_geom(), and the geometry stage
+     * now emits the footprint as filled parallelograms (#13), so no line
+     * primitive ever reaches the rasteriser and the API's own width -- the
+     * perpendicular rectangle, 47.8178% against silicon -- is unreachable.
+     * The field keeps its name because renderer.h belongs to another lane; it
+     * now means "this pipeline needs the geometry stage's wide-line push
+     * constants", which is true of exactly the same draws.
+     */
     snode->has_dynamic_line_width =
-        (r->enabled_physical_device_features.wideLines == VK_TRUE) &&
-        (r->shader_binding->state.geom.polygon_front_mode == POLY_MODE_LINE ||
-         r->shader_binding->state.geom.primitive_mode == PRIM_TYPE_LINES ||
-         r->shader_binding->state.geom.primitive_mode == PRIM_TYPE_LINE_LOOP ||
-         r->shader_binding->state.geom.primitive_mode == PRIM_TYPE_LINE_STRIP);
-    if (snode->has_dynamic_line_width) {
-        dynamic_states[num_dynamic_states++] = VK_DYNAMIC_STATE_LINE_WIDTH;
-    }
+        geom_widens_lines(&r->shader_binding->state.geom);
 
     VkPipelineDynamicStateCreateInfo dynamic_state = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
@@ -2105,6 +2149,13 @@ static void create_pipeline(PGRAPHState *pg)
     VkPushConstantRange push_constant_ranges[2];
     int num_push_ranges = 0;
 
+    /* Unconditional, and first: see GEOM_PUSH_CONSTANT_SIZE above. */
+    push_constant_ranges[num_push_ranges++] = (VkPushConstantRange){
+        .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT,
+        .offset = 0,
+        .size = GEOM_PUSH_CONSTANT_SIZE,
+    };
+
     /* Both paths use 2 set layouts: set 0 = textures, set 1 = UBOs */
     VkDescriptorSetLayout set_layouts[2];
     set_layouts[0] = r->push_descriptors_supported
@@ -2122,7 +2173,7 @@ static void create_pipeline(PGRAPHState *pg)
         int num_uniform_attributes =
             __builtin_popcount(r->shader_binding->state.vsh.uniform_attrs);
         if (num_uniform_attributes) {
-            uint32_t vtx_offset = 0;
+            uint32_t vtx_offset = GEOM_PUSH_CONSTANT_SIZE;
             push_constant_ranges[num_push_ranges++] = (VkPushConstantRange){
                 .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
                 .offset = vtx_offset,
@@ -2131,10 +2182,8 @@ static void create_pipeline(PGRAPHState *pg)
         }
     }
 
-    if (num_push_ranges > 0) {
-        pipeline_layout_info.pushConstantRangeCount = num_push_ranges;
-        pipeline_layout_info.pPushConstantRanges = push_constant_ranges;
-    }
+    pipeline_layout_info.pushConstantRangeCount = num_push_ranges;
+    pipeline_layout_info.pPushConstantRanges = push_constant_ranges;
 
     VkPipelineLayout layout;
     VK_CHECK(vkCreatePipelineLayout(r->device, &pipeline_layout_info, NULL,
@@ -2240,12 +2289,115 @@ static void push_vertex_attr_values(PGRAPHState *pg)
                              values, &num_uniform_attrs);
 
     if (num_uniform_attrs > 0) {
-        uint32_t vtx_offset = 0;
+        uint32_t vtx_offset = GEOM_PUSH_CONSTANT_SIZE;
         vkCmdPushConstants(r->command_buffer, r->pipeline_binding->layout,
                            VK_SHADER_STAGE_VERTEX_BIT, vtx_offset,
                            num_uniform_attrs * 4 * sizeof(float),
                            &values);
     }
+}
+
+/*
+ * The geometry stage widens in the SCREEN space vsh.c leaves in vtxPos, so it
+ * needs vsh.c's own screen->NDC scale to put the widened corners back into
+ * clip space.  Computed here with the identical expression the vertex
+ * uniform uses (VshUniform_surfaceSize in glsl/vsh.c): surface_binding_dim
+ * divided by the anti-aliasing factor, NOT multiplied by the surface scale
+ * factor.  The width is likewise in guest pixels -- the scale factor cancels,
+ * because a guest pixel is scale device pixels on both sides of the map.
+ */
+static void geom_line_params(PGRAPHState *pg, float out[4])
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    unsigned int aa_width = 1, aa_height = 1;
+    pgraph_apply_anti_aliasing_factor(pg, &aa_width, &aa_height);
+    float width = (float)pg->surface_binding_dim.width / aa_width;
+    float height = (float)pg->surface_binding_dim.height / aa_height;
+
+    out[0] = width > 0.0f ? 2.0f / width : 0.0f;
+    out[1] = height > 0.0f ? 2.0f / height : 0.0f;
+    out[2] = pg->line_width / 8.0f; /* SET_LINE_WIDTH is eighths of a pixel */
+
+    /*
+     * One subpixel quantum, expressed in the guest pixels the geometry stage
+     * works in: the rasteriser's grid is 1/2^subPixelPrecisionBits of a
+     * DEVICE pixel, and one guest pixel is surface_scale_factor of those.
+     * This is the wide line's low-open tie-break, and it has to be this
+     * value and not a constant -- smaller and the rasteriser's own vertex
+     * quantisation swallows it, larger and it starts moving band edges that
+     * were right.  See the derivation in glsl/geom.c.
+     *
+     * Vulkan guarantees subPixelPrecisionBits >= 4; the shift below is
+     * exact whatever it reports.
+     */
+    uint32_t bits = r->device_props.limits.subPixelPrecisionBits;
+    if (bits == 0 || bits > 16) {
+        bits = 8;
+    }
+    float scale = (float)MAX(pg->surface_scale_factor, 1);
+    out[3] = 1.0f / ((float)(1u << bits) * scale);
+
+    /*
+     * subPixelPrecisionBits is the ceiling on how exactly this footprint can
+     * be placed, and nothing has ever logged it.  The corners are quantised
+     * to its grid; because the endpoints are already on a 1/16 grid that
+     * quantisation TRANSLATES both long edges by one constant vector rather
+     * than shearing them, so the band moves bodily by up to one quantum --
+     * and 143 of the goldens' 41,892 band edges sit within 1/256 of a pixel
+     * centre without being on one.  Simulated against the goldens' own runs
+     * by docs/testing/line_extent_subpixel.py, that is the whole difference
+     * between 8,890 of 8,890 clean cuts with the quantisation removed and
+     * 8,863-8,868 with it at 8 bits.
+     *
+     * So a reading of 99.7% rather than 100% is a statement about THIS
+     * number, and reading it out of the same run is what tells the two apart.
+     * It replaces the line-width limits log that stood here until the native
+     * line went away: same question one level down -- not "is the width
+     * arriving" but "how finely can the shape be positioned".
+     */
+    static uint32_t last_bits = 0xffffffff;
+    if (bits != last_bits) {
+        last_bits = bits;
+#ifdef __ANDROID__
+        /*
+         * hakuX-build, not a tag of its own.  run_disc.sh's LOGCAT_SPEC ends
+         * in `*:S`, so a tag not on its allowlist is silenced -- and
+         * hakuX-linewidth, the tag the deleted line-width log used, is NOT on
+         * it.  That log was added to settle whether the width was reaching
+         * the rasteriser and never appeared in a single dispatcher run.  A
+         * diagnostic the harness cannot see is worse than none, because it
+         * reads as having been checked.
+         */
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-build",
+            "geom wide lines: subPixelPrecisionBits=%u scale=%d "
+            "tie bias %.6f guest px (1/%u)",
+            r->device_props.limits.subPixelPrecisionBits,
+            pg->surface_scale_factor, out[3], (1u << bits) * (unsigned)scale);
+#else
+        fprintf(stderr,
+                "nv2a: geom wide lines: subPixelPrecisionBits=%u scale=%d "
+                "tie bias %.6f guest px\n",
+                r->device_props.limits.subPixelPrecisionBits,
+                pg->surface_scale_factor, out[3]);
+#endif
+    }
+}
+
+static void push_geom_line_params(PGRAPHState *pg)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (!r->pipeline_binding || !r->pipeline_binding->has_dynamic_line_width) {
+        return;
+    }
+
+    float values[4];
+    geom_line_params(pg, values);
+    vkCmdPushConstants(r->command_buffer, r->pipeline_binding->layout,
+                       VK_SHADER_STAGE_GEOMETRY_BIT, 0,
+                       GEOM_PUSH_CONSTANT_SIZE, values);
 }
 
 /*
@@ -3374,6 +3526,7 @@ static void begin_pre_draw_inner(PGRAPHState *pg)
                         r->pipeline_num_active_attr_descs = r->num_active_vertex_attribute_descriptions;
                         r->pipeline_num_active_bind_descs = r->num_active_vertex_binding_descriptions;
                         push_vertex_attr_values(pg);
+                        push_geom_line_params(pg);
                         g_vaf_stats.sfp_vaf_hit++;
                         if (r->use_push_constants_for_uniform_attrs &&
                             r->shader_binding->state.vsh.uniform_attrs) {
@@ -3774,58 +3927,6 @@ static void begin_pre_draw(PGRAPHState *pg)
     }
 }
 
-/* The width SET_LINE_WIDTH asks for, at the scale the surface is drawn at
- * and within what the device can actually draw. */
-static float pgraph_vk_line_width(PGRAPHState *pg)
-{
-    return (pg->line_width / 8.0f) * pg->surface_scale_factor;
-}
-
-static float clamp_line_width_to_device_limits(PGRAPHState *pg, float width)
-{
-    PGRAPHVkState *r = pg->vk_renderer_state;
-
-    float min_width = r->device_props.limits.lineWidthRange[0];
-    float max_width = r->device_props.limits.lineWidthRange[1];
-    float granularity = r->device_props.limits.lineWidthGranularity;
-    float requested = width;
-
-    if (granularity != 0.0f) {
-        float steps = roundf((width - min_width) / granularity);
-        width = min_width + steps * granularity;
-    }
-    width = fminf(fmaxf(min_width, width), max_width);
-
-    /*
-     * Line width is measurably not arriving: our coverage is constant to
-     * within 1% for every width the register can hold, from 0.0 to 63.875,
-     * while silicon's grows thirtyfold
-     * (docs/investigations/line-width-never-reaches-the-rasteriser.md).
-     *
-     * Two mechanisms could do that and the captures cannot tell them apart,
-     * because both answer 1.0: the device refusing the width through its
-     * limits, or the width never being asked for. This says which, once per
-     * distinct register value, so one run of the suite decides it. It also
-     * prints the limits themselves, which nothing logs today -- wideLines
-     * reports available, and that alone implies a range reaching 8.0, so a
-     * 4.0 line coming out 1 pixel wide would have to be our own doing.
-     */
-    static uint32_t last_reported = 0xffffffff;
-    if (pg->line_width != last_reported) {
-        last_reported = pg->line_width;
-#ifdef __ANDROID__
-        __android_log_print(
-            ANDROID_LOG_INFO, "hakuX-linewidth",
-            "reg=%u (%.3f px) scale=%d requested=%.3f -> %.3f  "
-            "device range [%.3f, %.3f] granularity %.4f wideLines=%d",
-            pg->line_width, pg->line_width / 8.0f, pg->surface_scale_factor,
-            requested, width, min_width, max_width, granularity,
-            r->enabled_physical_device_features.wideLines == VK_TRUE);
-#endif
-    }
-    return width;
-}
-
 static void begin_draw(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -3920,17 +4021,27 @@ static void begin_draw(PGRAPHState *pg)
         };
         vkCmdSetScissor(r->command_buffer, 0, 1, &scissor);
 
-        if (r->pipeline_binding->has_dynamic_line_width) {
-            float line_width = clamp_line_width_to_device_limits(
-                pg, pgraph_vk_line_width(pg));
-            vkCmdSetLineWidth(r->command_buffer, line_width);
-        }
     }
 
     if (!pg->clearing) {
 #if OPT_DYNAMIC_STATES
         {
             uint32_t setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+            /*
+             * Silicon does not cull lines, and until #13 neither did we: the
+             * geometry stage emitted line primitives, which face culling does
+             * not apply to at all.  It now emits the wide-line footprint as
+             * triangles, so the guest's cull state would start dropping them
+             * -- and which way a widened edge faces is decided by the sign of
+             * the perpendicular offset, not by the guest's winding, so it
+             * would drop them unpredictably.  Clearing the bit in the value
+             * that is CACHED, rather than only in the value that is issued,
+             * keeps the cache key honest: a later draw with the same register
+             * but a non-widening pipeline then compares unequal and re-issues.
+             */
+            if (binding_widens_lines(r)) {
+                setupraster &= ~NV_PGRAPH_SETUPRASTER_CULLENABLE;
+            }
             if (!r->dyn_state.valid ||
                 setupraster != r->dyn_state.setupraster) {
                 VkCullModeFlags cull = VK_CULL_MODE_NONE;
@@ -4110,6 +4221,7 @@ static void begin_draw(PGRAPHState *pg)
         if (!r->pre_draw_skipped) {
             bind_descriptor_sets(pg);
             push_vertex_attr_values(pg);
+            push_geom_line_params(pg);
         }
     }
 
@@ -4732,6 +4844,7 @@ static void flush_draw_queue_internal(NV2AState *d)
         if (r->pre_draw_skipped) {
             bind_descriptor_sets(pg);
             push_vertex_attr_values(pg);
+            push_geom_line_params(pg);
         }
         bind_vertex_buffer(pg, remap.attributes, 0);
 
@@ -4810,6 +4923,7 @@ static void flush_draw_queue_internal(NV2AState *d)
         if (r->pre_draw_skipped) {
             bind_descriptor_sets(pg);
             push_vertex_attr_values(pg);
+            push_geom_line_params(pg);
         }
         bind_vertex_buffer(pg, remap.attributes, 0);
 
@@ -4950,7 +5064,12 @@ static void snapshot_vertex_buffers(PGRAPHState *pg, ReorderWindowEntry *e,
 
 static void snapshot_dynamic_state(PGRAPHState *pg, ReorderWindowEntry *e)
 {
+    PGRAPHVkState *r_sr = pg->vk_renderer_state;
     e->dyn_setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);
+    /* Lines are not culled -- see the matching note in begin_draw(). */
+    if (binding_widens_lines(r_sr)) {
+        e->dyn_setupraster &= ~NV_PGRAPH_SETUPRASTER_CULLENABLE;
+    }
     e->dyn_blendcolor = pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR);
     e->dyn_control_0 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_0);
     e->dyn_control_1 = pgraph_vk_reg_r(pg, NV_PGRAPH_CONTROL_1);
@@ -5131,8 +5250,11 @@ static bool try_snapshot_draw_arrays(NV2AState *d, ReorderWindowEntry *e)
         r->shader_binding ? r->shader_binding->state.vsh.uniform_attrs : 0);
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
-        e->line_width =
-            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
+        /* Guest pixels, for the geometry stage's push constant.  Snapshotted
+         * because SET_LINE_WIDTH can change between draws inside one reorder
+         * window; the surface size cannot, since a surface change flushes the
+         * window through pgraph_vk_finish(). */
+        e->line_width = pg->line_width / 8.0f;
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -5268,8 +5390,11 @@ static bool try_snapshot_inline_elements(NV2AState *d, ReorderWindowEntry *e)
         r->shader_binding ? r->shader_binding->state.vsh.uniform_attrs : 0);
     e->has_dynamic_line_width = r->pipeline_binding->has_dynamic_line_width;
     if (e->has_dynamic_line_width) {
-        e->line_width =
-            clamp_line_width_to_device_limits(pg, pgraph_vk_line_width(pg));
+        /* Guest pixels, for the geometry stage's push constant.  Snapshotted
+         * because SET_LINE_WIDTH can change between draws inside one reorder
+         * window; the surface size cannot, since a surface change flushes the
+         * window through pgraph_vk_finish(). */
+        e->line_width = pg->line_width / 8.0f;
     }
 
     e->descriptor_set = r->push_ubo_sets[r->push_ubo_set_index - 1];
@@ -5339,7 +5464,12 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
         if (e->has_dynamic_line_width) {
-            vkCmdSetLineWidth(r->command_buffer, e->line_width);
+            float values[4];
+            geom_line_params(pg, values);
+            values[2] = e->line_width;
+            vkCmdPushConstants(r->command_buffer, e->layout,
+                               VK_SHADER_STAGE_GEOMETRY_BIT, 0,
+                               GEOM_PUSH_CONSTANT_SIZE, values);
         }
     }
 
