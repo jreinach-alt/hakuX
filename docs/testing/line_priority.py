@@ -38,6 +38,9 @@ from collections import Counter, defaultdict
 import numpy as np
 from PIL import Image
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import captures as cap
+
 H, W = 480, 640
 SUITE = "Line_width"
 BG = np.array([0x20, 0x22, 0x24])
@@ -238,14 +241,36 @@ def pick(cands, rule):
 # captures
 # --------------------------------------------------------------------------
 def captures(golden_dir, lo, hi):
+    """Every Line_width capture in a directory, in EITHER shape.
+
+    The goldens keep one directory per suite and bare test names --
+    goldens/results/Line_width/Line_0008.0.png -- while the dispatcher writes
+    a result directory with the run number in the path and the suite in the
+    FILENAME: <id>/captures1/Line_width::Line_0008.0.png.
+
+    Reading only the first shape is the failure captures.py exists to stop,
+    and it is the dangerous one: a tool that cannot find its own evidence
+    still answers. line_extent_phase.py --vs-goldens is the judged leg of
+    #13's arm, so pointed at the arm it was registered against it would have
+    raised FileNotFoundError, or -- had the directory merely been empty --
+    reported that our render disagrees with silicon everywhere.
+    """
     d = os.path.join(golden_dir, SUITE)
-    for f in sorted(os.listdir(d)):
-        m = NAME.match(f[:-4])
+    if os.path.isdir(d):
+        names = [(f, f[:-4]) for f in sorted(os.listdir(d))
+                 if f.endswith(".png")]
+    else:
+        d = cap.resolve(golden_dir, "%s::*.png" % SUITE)
+        prefix = SUITE + "::"
+        names = [(f, f[len(prefix):-4]) for f in sorted(os.listdir(d))
+                 if f.startswith(prefix) and f.endswith(".png")]
+    for f, test in names:
+        m = NAME.match(test)
         if not m:
             continue
         w = int(m.group(1)) + int(m.group(2)) / 8.0
         if lo <= w <= hi:
-            yield f[:-4], w, np.asarray(
+            yield test, w, np.asarray(
                 Image.open(os.path.join(d, f)).convert("RGBA")).astype(np.int16)
 
 
