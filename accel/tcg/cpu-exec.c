@@ -505,13 +505,23 @@ struct tb_desc {
  *    carries CF_INVALID while no descriptor ever does. Make this comparison
  *    exact and inv_tb_htable_lookup() matches nothing, ever.
  *
- * 2. It is one of a matched PAIR, and unmasking either one alone is worse
- *    than unmasking neither. tb_cmp() in tb-maint.c -- the qht_insert dedup
- *    for tb_ctx.htable -- masks CF_INVALID the same way. With this one exact
+ * 2. It is one of a matched PAIR, and unmasking THIS ONE alone is worse than
+ *    unmasking neither. tb_cmp() in tb-maint.c -- the qht_insert dedup for
+ *    tb_ctx.htable -- masks CF_INVALID the same way. With this one exact
  *    and that one masked, a lookup for a tier-1-promoted TB misses, calls
  *    tb_gen_code, and tb_link_page's qht_insert then returns the OLD
  *    CF_INVALID TB as `existing_tb`; the freshly generated block is thrown
  *    away and the stale one handed to the executor on every single lookup.
+ *
+ *    NARROWED 2026-09-14, audit pass 1 L3. This used to claim the symmetric
+ *    "either one alone" and only ever demonstrated the direction above. The
+ *    other direction -- tb_cmp exact, this one still masked -- reads INERT
+ *    and was not traced further: the lookup still finds the promoted TB, so
+ *    tb_gen_code is never called for that pc and the dedup never sees the
+ *    pair at all; inv_tb_cmp is unaffected because both operands carry the
+ *    bit, and qht_remove is pointer identity. Inert is not the same finding
+ *    as worse, and this comment is the record of a decision an auditor is
+ *    told to check, so it may not assert the half nobody checked.
  *
  * 3. The correctness scenario the issue names is closed at its source
  *    instead. A TB found here with CF_INVALID set is only dangerous if its
@@ -1417,6 +1427,19 @@ cpu_exec_loop(CPUState *cpu, SyncClocks *sc)
 
 #ifdef XBOX
             {
+                /*
+                 * The clamp is anti-overflow, and it has a SIDE EFFECT worth
+                 * stating because it is load-bearing elsewhere: exec_count is
+                 * clamped rather than reset or latched after a promotion, so
+                 * tier1_maybe_promote()'s `exec_count >= g_tier1_threshold`
+                 * test stays true forever for any TB whose tier is still 0 --
+                 * and the tier is set on the NEW block, so a promoted-but-
+                 * still-executing old block keeps tier 0 for life. That is
+                 * what turns a duplicate promotion request into an unbounded
+                 * stream of them rather than a one-off. Audit pass 1 L4; the
+                 * defect itself is M2 / issue #81, and the fix belongs in
+                 * tb_request_tier1_promotion(), not here.
+                 */
                 uint32_t c = tb->exec_count;
                 if (c < (uint32_t)g_tier1_threshold * 2) {
                     tb->exec_count = c + 1;

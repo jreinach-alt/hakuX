@@ -23,6 +23,7 @@
 #include "disas/disas.h"
 #include "tcg/tcg.h"
 #include "exec/mmap-lock.h"
+#include "exec/target_page.h"
 #include "tb-internal.h"
 #include "exec/tb-flush.h"
 #include "exec/translation-block.h"
@@ -253,6 +254,95 @@ static bool tb_pc_cmp(const void *p, const void *d)
 #endif
 
 /*
+ * Is there a LIVE sigsetjmp(tcg_ctx->jmp_trans) frame on this thread?
+ *
+ * jmp_trans is armed in exactly two places, both in this file:
+ * setjmp_gen_code() below and tb_gen_superblock(). tb_lock_page1()
+ * (tb-maint.c) ends its out-of-order contention branch in
+ * siglongjmp(tcg_ctx->jmp_trans, -3), so it may only be called from inside
+ * one of those frames while that frame is still on the stack.
+ *
+ * The flag exists so tb_lock_page1() can ASSERT that precondition rather than
+ * leave it to nobody re-introducing the caller that used to violate it. See
+ * the assert there, and tb_lock_pages_in_order() below for the defect it
+ * replaces.
+ *
+ * __thread because tcg_ctx is per-thread: an armed frame on one translating
+ * thread says nothing about another.
+ */
+__thread bool hakux_jmp_trans_armed;
+
+/*
+ * Lock the one or two physical pages at @paddr0 and @paddr1 (either may be
+ * -1) in ASCENDING page-index order, blocking on each. Release with
+ * tb_unlock_pages().
+ *
+ * This is tb_lock_page0() + tb_lock_page1() with the deadlock-avoidance
+ * RESTART removed, and it is the lock helper for a caller that holds no page
+ * lock yet and has translated nothing it would have to throw away.
+ *
+ * WHY IT EXISTS -- audit pass 1 H1 (docs/audits/2026-09-14-tcg-pass1.md), and
+ * the defect it replaces is pre-existing: 255d110496 (xemu, 2025-01-06) added
+ * the recycle path's locking without the setjmp context that locking depends
+ * on. tb_lock_page1() is called with page0 ALREADY locked, so when page1
+ * sorts BELOW page0 it cannot block without inverting the global page-lock
+ * order. It therefore drops page0, retakes both in order, and restarts
+ * translation via siglongjmp(tcg_ctx->jmp_trans, -3). That is correct for its
+ * upstream caller, translator.c:353, which runs inside translate_code()
+ * inside setjmp_gen_code() -- a frame that armed jmp_trans and is still on
+ * the stack, and whose -3 case is `goto restart_translate`.
+ *
+ * It was undefined behaviour for the two callers in THIS file. Both lock
+ * before any sigsetjmp on the current call, and the recycle path never
+ * reaches setjmp_gen_code() at all -- that being the point of recycling -- so
+ * jmp_trans still held the context of an earlier tb_gen_code() whose frame
+ * had already returned. The jump would have landed in that dead frame with
+ * two page spinlocks held. It needs a two-page block whose second page sorts
+ * lower plus a second thread holding that page's lock, and the second thread
+ * is not a second vCPU: do_tb_phys_invalidate() is reachable from
+ * system/physmem.c invalidate_and_set_dirty() on whatever thread performs a
+ * device write, i.e. IDE/DVD DMA here.
+ *
+ * Acquiring both locks in index order while holding none is deadlock-free
+ * against every acquirer that respects the same order -- tb_lock_pages() in
+ * tb-maint.c is the same algorithm over a TB's own two pages -- so these two
+ * callers simply have no reason to restart: they know both addresses up
+ * front.
+ *
+ * In user-mode tb_lock_page0() is page_protect() and there is no lock and no
+ * ordering, so the order below is irrelevant there and the protection applied
+ * is the same.
+ */
+static void tb_lock_pages_in_order(tb_page_addr_t paddr0,
+                                   tb_page_addr_t paddr1)
+{
+    tb_page_addr_t pindex0, pindex1;
+
+    if (paddr0 == -1) {
+        return;
+    }
+    if (paddr1 == -1) {
+        tb_lock_page0(paddr0);
+        return;
+    }
+
+    pindex0 = paddr0 >> TARGET_PAGE_BITS;
+    pindex1 = paddr1 >> TARGET_PAGE_BITS;
+    if (pindex0 == pindex1) {
+        /* One page. page_lock() is not recursive, so take it exactly once. */
+        tb_lock_page0(paddr0);
+        return;
+    }
+    if (pindex1 < pindex0) {
+        tb_lock_page0(paddr1);
+        tb_lock_page0(paddr0);
+    } else {
+        tb_lock_page0(paddr0);
+        tb_lock_page0(paddr1);
+    }
+}
+
+/*
  * Isolate the portion of code gen which can setjmp/longjmp.
  * Return the size of the generated code, or negative on error.
  */
@@ -262,8 +352,11 @@ static int setjmp_gen_code(CPUArchState *env, TranslationBlock *tb,
 {
     int ret = sigsetjmp(tcg_ctx->jmp_trans, 0);
     if (unlikely(ret != 0)) {
+        /* Unwound into this frame; it is about to stop being live. */
+        hakux_jmp_trans_armed = false;
         return ret;
     }
+    hakux_jmp_trans_armed = true;
 
     tcg_func_start(tcg_ctx);
 
@@ -301,7 +394,14 @@ static int setjmp_gen_code(CPUArchState *env, TranslationBlock *tb,
     }
 #endif
 
-    return tcg_gen_code(tcg_ctx, tb, pc);
+    ret = tcg_gen_code(tcg_ctx, tb, pc);
+    /*
+     * Past every siglongjmp(jmp_trans) target for this frame: translate_code()
+     * above and tcg_gen_code() just now are the only things that jump here,
+     * and both land at the sigsetjmp with a nonzero value, which disarms.
+     */
+    hakux_jmp_trans_armed = false;
+    return ret;
 }
 
 /* Called with mmap_lock held for user mode emulation.  */
@@ -363,6 +463,13 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
 {
     /* CALLS. hakux_tb_codegen counts generations; see above. */
     hakux_tb_gen_calls++;
+    /*
+     * No caller of tb_gen_code() has a jmp_trans frame of its own -- the only
+     * frames that arm it are set up below, inside setjmp_gen_code(). Stating
+     * it here is what lets tb_lock_page1()'s assert fire for the recycle path
+     * rather than inherit a stale `true` from an earlier call on this thread.
+     */
+    hakux_jmp_trans_armed = false;
     CPUArchState *env = cpu_env(cpu);
     TranslationBlock *tb, *existing_tb;
     tb_page_addr_t phys_pc, phys_p2;
@@ -427,7 +534,20 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
                                       (orig & CF_PCREL ? 0 : tb->pc),
                                       tb->flags, tb->cs_base,
                                       orig & ~CF_INVALID);
-            qht_remove(&tb_ctx.inv_htable, tb, h);
+            bool dropped = qht_remove(&tb_ctx.inv_htable, tb, h);
+            /*
+             * Checked the same way as the recycle removal below, which
+             * asserted its result while this one discarded it -- audit pass 1
+             * L5, and the two cannot both have been right. Neither can fail:
+             * inv_tb_htable_lookup() just found this exact pointer in this
+             * exact table, both hash derivations here and below agree with the
+             * insertion hash in do_tb_phys_invalidate() on every input
+             * (phys_pc == tb_page_addr0(tb) is guaranteed by tb_lookup_cmp()
+             * having matched desc->page_addr0), and qht_remove is pointer
+             * identity. It fires if a second thread removes the entry between
+             * the lookup and here, which needs a second translating thread.
+             */
+            g_assert(dropped);
             tb = NULL;
             goto skip_recycle;
         }
@@ -439,12 +559,15 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
                                   tb->flags, tb->cs_base, tb->cflags);
         bool removed = qht_remove(&tb_ctx.inv_htable, tb, h);
         g_assert(removed);
-        if (phys_pc != -1) {
-            tb_lock_page0(phys_pc);
-            if (tb->page_addr[1] != -1) {
-                tb_lock_page1(phys_pc, tb->page_addr[1]);
-            }
-        }
+        /*
+         * AUDIT H1. This used to be tb_lock_page0() + tb_lock_page1(), and
+         * tb_lock_page1()'s contention branch siglongjmp()s into jmp_trans --
+         * which nothing has armed on this call, and which this path never
+         * arms, because it is about to `goto recycle_tb` past
+         * setjmp_gen_code() entirely. Both pages are known here, so take them
+         * in index order and block: see tb_lock_pages_in_order().
+         */
+        tb_lock_pages_in_order(phys_pc, phys_pc == -1 ? -1 : tb->page_addr[1]);
         recycled = true;
         goto recycle_tb;
     }
@@ -1110,6 +1233,9 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     int64_t ti;
     int non_dominant = 1 - dominant_exit;
 
+    /* See the identical line in tb_gen_code(): no caller arms jmp_trans. */
+    hakux_jmp_trans_armed = false;
+
     /* Look up TB B from A's jump destination. */
     uintptr_t dest = qatomic_read(&tb_a->jmp_dest[dominant_exit]);
     if (dest == (uintptr_t)NULL || (dest & 1)) {
@@ -1153,10 +1279,14 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     tb->superblock = NULL;
     tb_set_page_addr0(tb, phys_pc_a);
     tb_set_page_addr1(tb, (phys_pc_a != phys_pc_b) ? phys_pc_b : -1);
-    tb_lock_page0(phys_pc_a);
-    if (phys_pc_a != phys_pc_b) {
-        tb_lock_page1(phys_pc_a, phys_pc_b);
-    }
+    /*
+     * AUDIT H1, second site. jmp_trans is armed at the sigsetjmp BELOW, not
+     * here, so tb_lock_page1()'s siglongjmp had the same dead-frame target as
+     * the recycle path's. Dead while XBOX_SUPERBLOCK_ENABLED == 0, fixed
+     * anyway because it is the same defect and the same fix.
+     */
+    tb_lock_pages_in_order(phys_pc_a,
+                           (phys_pc_a != phys_pc_b) ? phys_pc_b : -1);
 
     tcg_ctx->gen_tb = tb;
     tcg_ctx->addr_type = target_long_bits() == 32 ? TCG_TYPE_I32 : TCG_TYPE_I64;
@@ -1166,10 +1296,13 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     int ret = sigsetjmp(tcg_ctx->jmp_trans, 0);
     if (ret != 0) {
         /* Translation error -- bail out. */
+        hakux_jmp_trans_armed = false;
         tb_unlock_pages(tb);
         tcg_ctx->gen_tb = NULL;
         return NULL;
     }
+
+    hakux_jmp_trans_armed = true;
 
     tcg_func_start(tcg_ctx);
     tcg_ctx->cpu = cpu;
@@ -1187,6 +1320,7 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     /* Step 2: Detach the exitreq epilogue. */
     TCGOp *exitreq_label, *exitreq_exit;
     if (!sb_detach_exitreq(tcg_ctx, &exitreq_label, &exitreq_exit)) {
+        hakux_jmp_trans_armed = false;
         tb_unlock_pages(tb);
         tcg_ctx->gen_tb = NULL;
         tcg_ctx->cpu = NULL;
@@ -1199,6 +1333,7 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     if (!dom_goto || !dom_exit) {
         /* Can't find the exit -- reattach exitreq and bail. */
         sb_reattach_exitreq(tcg_ctx, exitreq_label, exitreq_exit, tb);
+        hakux_jmp_trans_armed = false;
         tb_unlock_pages(tb);
         tcg_ctx->gen_tb = NULL;
         tcg_ctx->cpu = NULL;
@@ -1268,6 +1403,8 @@ TranslationBlock *tb_gen_superblock(CPUState *cpu,
     (void)b_size;  /* b_size tracked in SuperblockInfo */
 
     gen_code_size = tcg_gen_code(tcg_ctx, tb, tb_a->pc);
+    /* Past the last thing that can jump back to the sigsetjmp above. */
+    hakux_jmp_trans_armed = false;
     tcg_ctx->cpu = NULL;
     tcg_ctx->gen_tb = NULL;
 
