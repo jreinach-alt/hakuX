@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 28
+wave = 29
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -45,9 +45,8 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 [lane.stencil]
 issues = ["79"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/vk/command.c"]
-note = "#79 reclassified harness -> defect: for every one of the nine unstable Stencil captures the MAJORITY image is golden-exact and the outliers are wrong, so this is an intermittent CORRECTNESS defect, ~8.6% of Stencil captures per run. Signature is sharp and is what this lane is for: every deviation is one WHOLE REGION going from exactly one colour to exactly one other, inside the same 200x200 quad at x220..419 y140..339 or a concentric part; red<->green means the stencil COMPARISON RESULT flipped, not the shading; and Stencil_REPLACE_ST_ZB reads (255,255,1) -> (255,255,0), which in the _ZB packing (z24 = A<<16|R<<8|G, stencil = B) is the stencil buffer holding 1 in the correct image and 0 in the wrong one over 5,050 px with depth identical. Tables in docs/investigations/stencil-is-intermittently-wrong.md. NOT a diagnosis: no code has been read. Adjacent family the remote lane measured is Surface_pitch::Swizzle varying up to 2,341 px while scoring 14,848 every time, because Pushbuffer::End() does not wait for the GPU and the guest rewrites a shared buffer under a queued draw. gl/*.c is lane.remote's and is NOT in this claim."
+note = "#79 reclassified harness -> defect: for every one of the nine unstable Stencil captures the MAJORITY image is golden-exact and the outliers are wrong, so this is an intermittent CORRECTNESS defect, ~8.6% of Stencil captures per run. Signature is sharp and is what this lane is for: every deviation is one WHOLE REGION going from exactly one colour to exactly one other, inside the same 200x200 quad at x220..419 y140..339 or a concentric part; red<->green means the stencil COMPARISON RESULT flipped, not the shading; and Stencil_REPLACE_ST_ZB reads (255,255,1) -> (255,255,0), which in the _ZB packing (z24 = A<<16|R<<8|G, stencil = B) is the stencil buffer holding 1 in the correct image and 0 in the wrong one over 5,050 px with depth identical. Tables in docs/investigations/stencil-is-intermittently-wrong.md. NOT a diagnosis: no code has been read. Adjacent family the remote lane measured is Surface_pitch::Swizzle varying up to 2,341 px while scoring 14,848 every time, because Pushbuffer::End() does not wait for the GPU and the guest rewrites a shared buffer under a queued draw. gl/*.c is lane.remote's and is NOT in this claim. vk/draw.c WAS in this claim and was RELEASED within the hour: check_territory.py's new advisory showed it is named by the blockers of #13, #43 AND #59, so holding it walled three issues to buy read access this lane already has. The lane reads it freely; if the fix turns out to need an edit there, ask for it as a grant and say which of the three is being ordered behind it."
 
 [free]
 # RELEASED by retiring lane.pacing, lane.writetrack and lane.blendstack, whose
@@ -72,6 +71,7 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/s3tc.c",
          "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/vk/renderer.h",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/vk/texture.c",

@@ -126,6 +126,51 @@ def main():
                             "parent and must not be concurrent in two lanes"
                             % (a, live[a], b, live[b]))
 
+    # WHOSE BLOCKER DID THIS CLAIM JUST WALL?
+    #
+    # A lane claims files. Some OTHER open issue's `blocked_on` names files by
+    # path, because that is how this campaign records "the fix needs these
+    # together". Nothing connected the two, so a claim could silently become
+    # another issue's blocker and the board would show both as covered.
+    #
+    # Measured, on the same day, by the orchestrator: #59's blocker said it was
+    # ordered behind lane.signfold. lane.signfold had been RETIRED and its
+    # files were free -- check_coverage.py's grant-request NOTE reported the
+    # wall as gone, twice. I read that note and then claimed vk/draw.c and
+    # vk/surface.c for lane.stencil without checking who else wanted them,
+    # rebuilding two thirds of the same wall for a different issue.
+    #
+    # ADVISORY, not a failure. Ordering lanes is legitimate and sometimes
+    # necessary. What is not legitimate is doing it without saying so, leaving
+    # a blocker naming a predecessor that finished months ago while the real
+    # one is the lane claimed this morning.
+    walled = []
+    try:
+        with open(os.path.join(HERE, "nv2a_issues.toml"), "rb") as fh:
+            tracker = tomllib.load(fh)["issue"]
+    except Exception:
+        tracker = {}
+    for num, v in sorted(tracker.items()):
+        blocker = (v.get("blocked_on") or "")
+        if not blocker:
+            continue
+        named = set(re.findall(r"[A-Za-z0-9_./-]+\.[ch]\b", blocker))
+        if not named:
+            continue
+        hits = {}
+        for f, lane in owner.items():
+            if num in (d.get("lane") or {}).get(lane, {}).get("issues", []):
+                continue          # the lane that owns the issue is not a wall
+            for n in named:
+                # Suffix match at a directory boundary, the same rule
+                # check_coverage.py settled on: `vk/draw.c` must not be
+                # satisfied by `gl/draw.c`, and there are two of each here.
+                if f == n or f.endswith("/" + n):
+                    hits.setdefault(lane, set()).add(n)
+        for lane, ns in hits.items():
+            if lane not in blocker:
+                walled.append((num, lane, sorted(ns)))
+
     if problems:
         print("FAIL: territory.toml", file=sys.stderr)
         for p in problems:
@@ -134,6 +179,11 @@ def main():
 
     print("territory ok (wave %d, %d lanes, %d files claimed)"
           % (wave, len(d.get("lane") or {}), len(owner)))
+    # After the summary line: idle-watchdog.sh reads `sed -n 1p` of this.
+    for num, lane, ns in walled:
+        print("NOTE: #%s's blocker names %s, held by %s, which does not own "
+              "#%s and is not mentioned in the blocker -- say so, or release "
+              "them" % (num, ", ".join(ns), lane, num))
     return 0
 
 
