@@ -715,6 +715,15 @@ depend on the face being unidentifiable from colour:
 The diagonal pairs, for contrast, would have been `{#00FF00,#FF0000}` or
 `{#0000FF,#FFFFFF}` -- and the goldens hold neither combination.
 
+> **SUPERSEDED — this paragraph is wrong.** It is kept because the bad step
+> is instructive, but the rule it states was retracted by the measurement in
+> "Silicon's rule, derived" below: the corner is selected by
+> `sign(dot_{i-2})` and `sign(dot_{i-1})` taken alone, 100.0% pure on all
+> eight sign classes across all six captures, and `sign(dot_3)` selects
+> nothing. The products argument reasons *inside* the cube-face projection,
+> which is the part that was never measured. Read the retraction before using
+> anything below.
+
 So what is pinned is **`s` itself**, the product `sign(z)*sign(x)`, and what
 varies is **`t`**, the product `sign(y)*sign(x)`. The corner is selected by
 those two products, not by two of the three signs taken alone.
