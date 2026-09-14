@@ -148,6 +148,43 @@ enum PshPadAlphaMode {
 };
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
 
+/*
+ * Whether the raster may stamp that constant at all, which is a DEVICE
+ * question and the reason #59's write side stood blocked.
+ *
+ * Stamping the constant as `fragColor.a` and nothing else is arm 1
+ * (23be8223f5 -> 4381fae5f6), and it failed: VK_BLEND_FACTOR_SRC_ALPHA and
+ * ONE_MINUS_SRC_ALPHA read the very channel the stamp overwrote, so every
+ * draw blending on source alpha broke. The failure set had no exceptions --
+ * moved = {format has pad bits} AND {colour blend factor is SRC_ALPHA} -- and
+ * it is not fixable by reordering, because result.a = As*Fs + Ad*Fd is linear
+ * in two alphas: a constant 0 is expressible as ZERO/ZERO and a constant 1 is
+ * not expressible at all.
+ *
+ * The two consumers have to be separated, which is what a second source
+ * output is for. Index 0 carries the stamped pad constant and is what the
+ * alpha half of the blend stores (forced ONE/ZERO/ADD in vk/draw.c); index 1
+ * carries the combiner's real alpha and is what the COLOUR half reads, via
+ * SRC1_ALPHA / ONE_MINUS_SRC1_ALPHA substituted for the guest's SRC_ALPHA
+ * factors. That needs the `dualSrcBlend` device feature.
+ *
+ * SET ONCE, at device creation, by vk/instance.c -- so unlike every other
+ * input to shader generation this one cannot go stale in the shader cache:
+ * it does not change for the life of the process. It is deliberately NOT a
+ * PshState field for that reason (see the fixed-register-list trap that cost
+ * #43 its ring 0), and it is a generation-time gate rather than a uniform
+ * because what it controls is an output DECLARATION.
+ *
+ * FALSE IS THE SAFE ANSWER AND IS THE DEFAULT. A device that does not
+ * advertise dualSrcBlend declares no second output, emits no stamp, and keeps
+ * #48's read-side approximation -- which is exact on every pixel the raster
+ * drew. The GL renderer shares this file and never calls the setter, so it is
+ * unchanged. Absence of the feature is a REFUSAL TO ENABLE the write side,
+ * never a failure to start.
+ */
+void pgraph_glsl_set_dual_src_pad_supported(bool supported);
+bool pgraph_glsl_dual_src_pad_supported(void);
+
 #define PSH_UNIFORM_DECL_X(S, DECL) \
     DECL(S, alphaRef, int, 1)       \
     DECL(S, borderColor, vec4, 4)   \
@@ -164,6 +201,7 @@ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
     DECL(S, eyeVec, vec4, 1)        \
     DECL(S, fogColor, vec4, 1)      \
     DECL(S, fogParam, vec2, 1)      \
+    DECL(S, padAlphaMode, int, 1)   \
     DECL(S, signedBlendPass, int, 1) \
     DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceScale, ivec2, 1) \

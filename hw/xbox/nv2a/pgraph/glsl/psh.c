@@ -210,6 +210,29 @@ void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
  * matching case here makes the clear and the sampler disagree again, which is
  * M3's scenario returning by a different door (audit pass 2, P4).
  */
+/*
+ * Whether this renderer's device can separate the two consumers of the
+ * fragment's alpha. See the derivation at the declaration in psh.h.
+ *
+ * Process-wide rather than per-shader because it is a property of the
+ * physical device, fixed at device creation and constant for the life of the
+ * process. That is what makes a generation-time gate safe here where #43's
+ * was not: a cached shader can only be stale about something that CHANGES,
+ * and this never does. The GL renderer never calls the setter, so it keeps
+ * false and generates exactly the GLSL it generates today.
+ */
+static bool g_dual_src_pad_supported;
+
+void pgraph_glsl_set_dual_src_pad_supported(bool supported)
+{
+    g_dual_src_pad_supported = supported;
+}
+
+bool pgraph_glsl_dual_src_pad_supported(void)
+{
+    return g_dual_src_pad_supported;
+}
+
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
 {
     switch (color_format) {
@@ -1955,23 +1978,45 @@ static MString* psh_convert(struct PixelShader *ps)
                              ps->state->smooth_shading,
                              ps->state->noperspective, true, false, false);
 
+    /*
+     * #59. The second source output, declared only where the device
+     * advertises dualSrcBlend -- an Index decoration above 0 is invalid
+     * without that feature, so this may not be emitted speculatively.
+     *
+     * Emitted on EVERY shader once the feature is on, not only on shaders
+     * that will stamp. The alternative is to key the declaration on the
+     * surface format, which is generation-time state driven by a register
+     * pgraph_glsl_check_shader_state_dirty() does not watch: the cache would
+     * hand back a shader with no second output to a draw that needs one, and
+     * `Blend surface` and `Surface format` both change
+     * NV097_SET_SURFACE_FORMAT between cases while rendering into ONE surface
+     * at one address, which is exactly that shape. One declaration for one
+     * binary is also what makes the cost measurable in a single A/B rather
+     * than smeared across shader variants.
+     *
+     * A pipeline that names no SRC1 factor simply ignores index 1.
+     */
+    const char *frag_outputs =
+        (ps->opts.vulkan && g_dual_src_pad_supported) ?
+            "layout(location = 0, index = 0) out vec4 fragColor;\n"
+            "layout(location = 0, index = 1) out vec4 fragColorSrc1;\n" :
+            "layout(location = 0) out vec4 fragColor;\n";
+
     if (ps->opts.vulkan) {
+        mstring_append(preflight, frag_outputs);
         if (ps->opts.ubo_set > 0) {
             mstring_append_fmt(
                 preflight,
-                "layout(location = 0) out vec4 fragColor;\n"
                 "layout(set = %d, binding = %d, std140) uniform PshUniforms {\n",
                 ps->opts.ubo_set, ps->opts.ubo_binding);
         } else {
             mstring_append_fmt(
                 preflight,
-                "layout(location = 0) out vec4 fragColor;\n"
                 "layout(binding = %d, std140) uniform PshUniforms {\n",
                 ps->opts.ubo_binding);
         }
     } else {
-        mstring_append_fmt(preflight,
-                           "layout(location = 0) out vec4 fragColor;\n");
+        mstring_append(preflight, frag_outputs);
     }
 
     const char *u = ps->opts.vulkan ? "" : "uniform ";
@@ -3423,6 +3468,47 @@ static MString* psh_convert(struct PixelShader *ps)
         "    fragColor = vec4(sbSel) / 255.0;\n"
         "}\n");
 
+    /*
+     * #59: the raster stamps the surface format's pad constant.
+     *
+     * LAST, after both the alpha test and the signed fold, because it is not
+     * a property of the fragment at all -- it is what the memory holds once
+     * the pixel has been written. Before the alpha test it would kill or
+     * spare fragments on a constant instead of on the combiner's alpha;
+     * before the fold it would hand the fold a value the fold then splits by
+     * sign and hands back as 1/255.
+     *
+     * THE COPY TO INDEX 1 IS THE WHOLE FIX, and it is taken here rather than
+     * earlier for the same reason: it must be the alpha the blend unit would
+     * have consumed today. Arm 1 stamped index 0 and stopped, so
+     * VK_BLEND_FACTOR_SRC_ALPHA read the constant and eight `Add_SrcA_*`
+     * captures broke, four of them from bit-exact. vk/draw.c now substitutes
+     * SRC1_ALPHA for the guest's SRC_ALPHA in the COLOUR half and forces the
+     * ALPHA half to ONE/ZERO/ADD, so the colour blend sees the combiner's
+     * alpha here and the stored alpha is the constant. Copying the whole
+     * vec4, not just .a, keeps a later SRC1_COLOR substitution expressible
+     * without revisiting this.
+     *
+     * Emitted UNCONDITIONALLY within a dual-source build and gated at run
+     * time on the uniform, following #43 and for the same reason:
+     * pgraph_glsl_check_shader_state_dirty() rebuilds ShaderState from a
+     * fixed register list that does not include NV_PGRAPH_SETSURFACE, so
+     * anything keyed on the surface format at generation time can be served
+     * stale from the shader cache.
+     *
+     * The branch is uniform-valued, and PSH_PAD_ALPHA_NONE -- which is also
+     * what a shader whose uniform was never written reads -- leaves fragColor
+     * untouched.
+     */
+    if (ps->opts.vulkan && g_dual_src_pad_supported) {
+        mstring_append(
+            ps->code,
+            "// #59 write-side pad bits: index 1 keeps the combiner's alpha\n"
+            "fragColorSrc1 = fragColor;\n"
+            "if (padAlphaMode != 0) {\n"
+            "    fragColor.a = float(padAlphaMode - 1);\n"
+            "}\n");
+    }
 
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
@@ -3682,6 +3768,33 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         if (p == SIGNED_BLEND_PASS_LOW || p == SIGNED_BLEND_PASS_HIGH) {
             g_signed_blend_staged[p]++;
         }
+    }
+    if (locs[PshUniform_padAlphaMode] != -1) {
+        /*
+         * #59. From pg->surface_shape.color_format, the LIVE guest format:
+         * the SET_SURFACE_FORMAT method handler writes it eagerly, so it is
+         * the format the draw is actually targeting and never a cached
+         * binding's creating format. Staged every draw for the same reason
+         * signedBlendPass is -- nothing invalidates a shader on a
+         * surface-format change.
+         *
+         * THE SAME EXPRESSION vk/draw.c's pgraph_vk_effective_blend_reg()
+         * folds into its synthetic pad field, from the same register, so the
+         * shader's stamp and the blend state that must accompany it cannot
+         * disagree about which draws stamp. Two independent derivations of
+         * one per-format fact is how #48's clear and sampler halves came
+         * apart (audit M3/P4); this is one derivation read twice.
+         *
+         * Gated on the device feature, so a part without dualSrcBlend stages
+         * NONE and the shader it is staged into has no stamp to gate. Without
+         * that guard this would be arm 1 on such a part -- the stamp with no
+         * separation, which is the configuration that broke eight captures.
+         */
+        values->padAlphaMode[0] =
+            g_dual_src_pad_supported ?
+                pgraph_glsl_surface_pad_alpha_mode(
+                    pg->surface_shape.color_format) :
+                PSH_PAD_ALPHA_NONE;
     }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {
