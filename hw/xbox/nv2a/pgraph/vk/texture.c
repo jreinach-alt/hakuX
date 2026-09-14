@@ -1330,6 +1330,39 @@ static VkComponentSwizzle surface_sampled_pad_alpha(
     if (!surface->color) {
         return VK_COMPONENT_SWIZZLE_IDENTITY;
     }
+
+    /*
+     * #59. WITHDRAWN, not deleted, once the raster actually stamps the
+     * constant into memory.
+     *
+     * This override is a READ-SIDE approximation of a WRITE-SIDE rule. It is
+     * exactly right while the bytes in memory are wrong, and it becomes a
+     * second correction stacked on a corrected value the moment psh.c stamps
+     * and vk/draw.c stops the blend unit overwriting the stamp. For the 8888
+     * formats the two agree to the bit, so leaving it in would make the write
+     * side INVISIBLE -- an arm that can fail no leg but must_not_move, which
+     * a do-nothing patch also passes.
+     *
+     * It is also actively wrong in one case the write side fixes, which is
+     * where the 49,104 px on Clear/SFC_X1R5G5B5_Z1R5G5B5 live: a 1555 surface
+     * sampled through an 8888 view reads TWO 1555 words as one texel, so that
+     * texel's alpha byte is the high byte of the SECOND word, not a pad bit
+     * at all. Forcing it to the format's constant substitutes a value for a
+     * channel that never held one. Stored bytes read plainly are right there
+     * and this is not.
+     *
+     * GATED, NOT REMOVED, and that distinction is the measurement's. Arm 1
+     * deleted it outright, in the same arm that added the stamp, and that is
+     * precisely what made its 26,417 px on Fmt_X8R8G8B8_O8R8G8B8
+     * uninterpretable -- two changes to one quantity, with no way to say
+     * which moved it. Behind the same device condition everything else on
+     * this path is behind, a part without dualSrcBlend keeps #48 intact and
+     * unchanged, and the two mechanisms are never both live.
+     */
+    if (pgraph_glsl_dual_src_pad_supported()) {
+        return VK_COMPONENT_SWIZZLE_IDENTITY;
+    }
+
     return surface->host_fmt.sampled_pad_alpha;
 }
 
