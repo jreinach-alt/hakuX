@@ -735,3 +735,76 @@ In increasing order of cost:
    only `rom_path`. It would also have to dump WITHOUT the per-draw
    `pgraph_vk_finish` a diag capture does, or it inherits that capture's
    blindness to merging and barriers.
+
+### The four arms, and why they settle less than they look like they do
+
+Ref `c866527e03` on all four, Thor, 180 s each, display sampled at ~0.53 Hz.
+Each arm's driver was verified rather than assumed: T30 and T26 share
+`libraryName vulkan.purple.so`, so `meta.json` alone cannot say which is
+armed, and the on-device payload size was checked against the local one
+(T30 18,869,912; T26 18,138,081). The stock arm was verified from the other
+end -- its logcat carries **0** `Loading custom Vulkan driver` lines where
+both Turnip arms carry exactly 1.
+
+| arm | lit frames | HF median | HF bar | stipple | per 100 |
+|---|---|---|---|---|---|
+| T30 run a | 94 | 0.614 | 1.295 | 2 | **2.1** |
+| T30 run b | 90 | 0.586 | 1.202 | 1 | **1.1** |
+| T26 | 90 | 0.598 | 1.153 | 0 | **0.0** |
+| stock | 86 | 0.625 | 1.300 | 1 | **1.2** |
+
+**V0 FAILS on both T30 runs** -- 2.1 and 1.1 per 100 against a 7.5 gate and a
+10-14 baseline -- so by the registration A1 and A2 are **VOID**. The driver is
+neither exonerated nor implicated by this table, and it must not be quoted as
+though it were.
+
+It would be easy to read T26's **0.0** as "T26 fixes the stipple". It does not.
+The whole table is 0 to 2 events out of ~90 frames, and the **T30 replicate
+alone spans 2 and 1** -- so T26's zero and stock's one sit inside the spread of
+one driver measured twice. That is the reason V1 was registered: the replicate
+is the RUN, and without it a 2-vs-0 on single runs reads as an effect.
+
+V0's failure is not an artefact of where the region was put. Scored over seven
+regions of the same frames -- the registered ground band, both lower quadrants,
+the band above the dialog, both side columns and the full frame -- the rate
+runs **0.9 to 4.1 per 100**, every one of them under the gate.
+
+### The matched-scene reading, which does have a floor
+
+The rate has no demonstrated power here, so the same frames were also scored on
+the stronger observable the demo makes possible: match the SAME scene between
+two arms, then compare HF in the ground band. `t30a` vs `t30b` is two runs of
+one driver and one binary, so it is the floor.
+
+| pair | matched scenes | HF delta, median | rel |
+|---|---|---|---|
+| **t30a vs t30b (FLOOR)** | 24 | -0.0004 | **-0.0%** |
+| t30a vs t26 | 23 | -0.0005 | -0.1% |
+| t30b vs t26 | 24 | -0.0001 | -0.0% |
+| t30a vs stock | 25 | +0.0021 | +0.3% |
+| t30b vs stock | 24 | +0.0030 | +0.3% |
+| t26 vs stock | 22 | +0.0039 | +0.5% |
+
+**T26 is indistinguishable from T30**: both Turnip-to-Turnip pairs land on the
+floor. **Stock sits a little above both Turnip builds**, +0.3 to +0.5%, and the
+sign is the same in all three pairings that involve it while the two that do
+not are zero -- a consistent sign is structure rather than scatter, and it is
+what a different vendor's filtering and precision would produce.
+
+It is also **not the artifact, by two orders of magnitude**. A stipple frame is
+a 1.5-2x excursion in HF (4.65 -> 6.80-8.96 in the baseline's units, i.e. +45%
+to +90%). +0.3% is about 100x smaller. Nothing in any arm resembles the event
+this issue is about.
+
+### So what is ruled in or out
+
+**Nothing about the driver, and that is the honest answer.** The artifact was
+not observed in ANY arm, so the A/B never ran on it. What was established is
+that the three drivers render the attract demo's ground surfaces the same to
+within a measured floor -- which is worth having, because it says the
+comparison machinery works and the remaining problem is purely that the
+workload will not show the defect.
+
+The one thing this does rule out is a cheap escape: the stipple is not going to
+be caught by pointing a general-purpose instrument at whatever Galleon happens
+to render. It needs the deck, parked, which needs input.
