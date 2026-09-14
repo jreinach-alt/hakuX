@@ -1,0 +1,20 @@
+{
+  "registered_utc": "2026-09-13T13:55:28Z",
+  "who": "desktop-lane-agent",
+  "issue": "71",
+  "prediction": "A CANDIDATE ROOT CAUSE FOR #71, read out of the code and registered before it is tested, with the diagnostic arm that motivates it already measured: refusing every GL surface-to-texture fast path moves nine captures better and none worse, and they are exactly the nine where OpenGL still trails Vulkan. THE READING. pgraph_gl_render_surface_to_texture()'s fast path does, at gl/surface.c:1433, 'glTexParameteri(texture->gl_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR)' on the DESTINATION TextureBinding's texture. It has to: the default min filter is GL_NEAREST_MIPMAP_LINEAR, which leaves a single-level texture incomplete. But it does not update texture->min_filter, and apply_texture_parameters() -- called immediately afterwards from pgraph_gl_bind_textures(), gl/texture.c:928 -- applies the guest's filter through a cache guard, 'if (min_filter != binding->min_filter)'. A FRESH binding is safe because generate_texture_binding() seeds both filter fields to 0xFFFFFFFF. A REUSED cached binding is not: if its cached filter already equals what the guest is asking for, the guard skips the glTexParameteri and the texture keeps the GL_LINEAR this function just forced, whatever the guest asked for. That is a cache-coherence bug on its own terms, independent of any pixel. WHY IT FITS. The evidence says precision is introduced after a genuine 565 surface: the GL R5G6B5 surface really is 565 (asked GL_RGB565, got GL_RGB565, glGetTexLevelParameteriv reports 5/6/5/0), the golden and Vulkan hold 33 distinct red values, and GL holds 156 of which 124 are not valid 5-bit expansions. Sampling a 565 source with GL_LINEAR where hardware used a point sample produces exactly that: intermediate values between quantised neighbours. FALSIFIERS. (1) The four registered captures land on the values the refuse-the-path arm produced -- Blend_surface/R5G6B5_Add_SrcA_1-SrcA at 12,598, R5G6B5_Add_SrcA_DstA at 11,964, Surface_clip/rt_x8y16_w632h464 and rt_x0y0_w512h384 at 0. Genuine and the whole test: if the stale filter is the cause, invalidating the cache reproduces the refusal arm exactly; if it is only part, they move partway and the rest of the path is still wrong. (2) No capture regresses. Genuine: this makes the guest's filter reach textures it was not reaching, which is correct but is a behaviour change wherever the guest asked for something other than LINEAR. (3) Vulkan byte-identical -- gl/ only. NOT PREDICTED, deliberately: the remaining five of the nine (Surface_pitch/Swizzle and four more Surface_clip residuals). If the mechanism is right they should follow, but Swizzle is the one capture on this disc with a measured noise band and I will not register a value for it. NOT A FALSIFIER: 'the cached filter is refreshed' is the edit.",
+  "a_ref": "3051e39b",
+  "b_ref": "",
+  "must_not_move": [
+    "Vulkan/*"
+  ],
+  "expect": {
+    "Blend_surface/R5G6B5_Add_SrcA_1-SrcA": 12598,
+    "Blend_surface/R5G6B5_Add_SrcA_DstA": 11964,
+    "Surface_clip/rt_x8y16_w632h464": 0,
+    "Surface_clip/rt_x0y0_w512h384": 0
+  },
+  "expect_counts": {
+    "worse": 0
+  }
+}

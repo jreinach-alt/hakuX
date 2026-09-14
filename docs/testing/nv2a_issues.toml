@@ -1620,11 +1620,23 @@ title = "Texture cubemap: DOT_STR_3D was undefined behaviour; now deterministic,
 # in: it emits textureProj(), which has no cube form, so a cube sampler there
 # trades a wrong result for one that does not build. It wants its own fix.
 #
-# THE RULE, still the target, derived from the goldens and so unaffected by any
-# of the above: the fetched texel is a CORNER of the texture. An earlier
-# revision said "picked by sign(dot_{i-2}) and sign(dot_{i-1}); the third
-# component selects nothing" -- the corner claim holds, the two bits named do
-# not. On a face, (s,t) = (-z/x, -y/x), so BOTH coordinates carry sign(x) and
+# THE RULE, now MEASURED against silicon rather than inferred: the fetched texel
+# is a CORNER, picked by sign(dot_{i-2}) and sign(dot_{i-1}), and the third
+# component selects nothing. A sign probe encoding the three dot signs as a
+# colour, cross-tabulated against the GOLDEN's corner, is 100.0% pure on all
+# eight sign classes across all six captures (at most 70 stray px in 56,909, on
+# class boundaries), and the two sign(dot_3) rows of each pair agree exactly.
+# (<0,<0)->R  (>=0,<0)->B  (<0,>=0)->W  (>=0,>=0)->G.
+#
+# THIS RESTORES THE ORIGINAL WORDING. An intermediate revision "corrected" it to
+# the two PRODUCTS sign(z)*sign(x) and sign(y)*sign(x); that correction was
+# WRONG. It assumed the corner arrives through the cube-face projection
+# (s,t) = (-z/x,-y/x) and reasoned from the unsigned dotmaps reaching an edge
+# pair rather than a diagonal pair -- sound GIVEN the projection, and the
+# projection was never measured. Silicon reads two sign bits, not a projection
+# of our vector. The arm built on the products reading regressed four captures.
+# A separate finding that the residue is exactly sign(dot_3)>=0 is true of OUR
+# formula's error surface, not of the rule. On a face, (s,t) = (-z/x, -y/x), so BOTH coordinates carry sign(x) and
 # the selectors are the two PRODUCTS sign(z)*sign(x) and sign(y)*sign(x). The
 # discriminator is the unsigned dotmaps: they reach exactly two corners, and
 # those two are an EDGE pair sharing an s extreme on all three positive faces,
@@ -2918,7 +2930,7 @@ no_suites = "not wrong in any one suite: one stale GL error aborts the run, so i
 disposition = "defect"
 status = "open"
 status_note = "The assert at gl/shaders.c:413 is on the GL error state ON ENTRY, so it reports an error raised by some earlier call and never names it. Probed rather than asserted, exactly one error is pending in a whole run and it is 0x0506 GL_INVALID_FRAMEBUFFER_OPERATION. The __ANDROID__ arm of the same ifdef drains unconditionally instead of asserting, which is why Android never aborted -- and which also disables the check for every future error on that path. NOT LOCATED: the raising call is not bisected to, and guessing between an incomplete FBO at a bind and one at a blit would be a guess. NOT ESTABLISHED as ours rather than a lavapipe limitation; this is a software GL stack and an FBO legal elsewhere may be rejected here, so it wants a second GL implementation before it is called a renderer defect. Draining on desktop too is the one fix that must not be taken: it converts a reported defect into an unreported one. android_log_and_drain_gl_errors() already exists in gl/surface.c, unused, and looks written for catching it where it is raised."
-blocked_on = "lane.remote holds gl/*.c and the desktop GL build; this is measurable there and nowhere else in the fleet -- the device lane is Vulkan."
+blocked_on = "measurement here, not the fix: lane.remote's fada1d89d4 is now an ancestor of HEAD via the 2026-09-13 merge of that branch. It binds a surface that is ABSENT as well as one that is stale, and makes colour rather than zeta win a shared offset, on the evidence of ColorIntoZeta_ZB's golden giving the colour write 120,729 of the quad's 131,495 px. UNMEASURED ON THIS BRANCH: the 44 -> 236 capture recovery was read on the desktop GL renderer on their branch, and this branch's device lane is Vulkan, so nothing here has re-run it. The assert-versus-drain asymmetry the entry describes is a separate question and this merge does not answer it."
 
 [issue.71]
 title = "GL surface-to-texture fast path is wrong for every format that exercises it -- refusing it fixes all 9 captures where GL still trails Vulkan, and blocks #60"
@@ -2927,20 +2939,20 @@ suites = ["Blend surface", "Surface pitch", "Surface clip"]
 disposition = "defect"
 status = "open"
 status_note = "One arm, nine captures, 9 better and 0 worse: making pgraph_gl_check_surface_to_texture_compatibility() return false always -- so a texture backed by a live render surface is read from guest memory instead of sampled directly -- moves every capture on the disc where GL still trailed Vulkan. GL's bit-exact count goes 102 -> 108, which is Vulkan's exactly, and its differing-pixel total to 4,293,810 against Vulkan's 4,443,147. Three suites, three formats, one cause, so it is NOT the A8R8G8B8 finding it was filed as. The obvious explanation is ruled out: the GL R5G6B5 surface really is 565 -- asked for GL_RGB565, got GL_RGB565, glGetTexLevelParameteriv reports 5/6/5/0 -- and yet the capture holds 156 distinct reds, 242 greens, 156 blues, of which 124/178/124 are not valid 5- or 6-bit expansions, against 33/64/33 in both Vulkan and the golden. A 565 texture cannot hold 156 distinct reds, so the precision enters AFTER the surface, in the sampling path this arm refuses. NOT MEASURED: which part of that path. Candidates visible in the code are the sampler state set at creation in update_surface_part() (MIN_FILTER forced to GL_LINEAR, MAG_FILTER never set), the scaling factor, and the format the sampling shader believes it reads -- none named without an arm, because three hypotheses on this issue have already died that way. THE FIX IS NOT 'turn it off': refusing the fast path forces a guest-memory round trip for every render-to-texture, a throughput cost on exactly the workload the path exists for, and declining a path to make pixels better is a curve fit with a bill attached. What the arm buys is a mechanism instead of a correlation, plus nine captures to measure any candidate against."
-blocked_on = "lane.remote, and it BLOCKS #60: #60's fix is correct and regresses captures that are entirely s2t decisions flipping into this broken path."
+blocked_on = "still #60's blocker, but lane.remote's answer is now HERE: f75a4aad1a is an ancestor of HEAD via the 2026-09-13 merge, and it is NOT the 'turn the fast path off' this entry warned against. It names one of the three candidates listed above -- the sampler state set at creation -- and the mechanism is the CACHE rather than the filter: pgraph_gl_render_surface_to_texture() forces GL_LINEAR to make a single-level texture complete, and apply_texture_parameters() then skips reapplying the guest filter on a REUSED binding whose cached min_filter already equals what the guest asked for, so the forced value survives. The fix drops the cached value. Their later docs go further and say the residual after it is a CPU/GPU race on one texture buffer, the blit copying faithfully from a stale source -- read docs/investigations/ on that branch before re-deriving any of it. UNMEASURED ON THIS BRANCH: none of the nine captures has been re-run here since the merge."
 
 [issue.72]
 title = "GL renderer never emits `noperspective`: one line in glsl/common.c gates it on the Vulkan path, worth 159,574 px measured"
 # Untracked until 2026-09-13, same as #66 -- see the note there.
 suites = ["Texture perspective", "Texture perspective enable"]
 disposition = "defect"
-status = "fixed-unlanded"
+status = "fixed-part"
 # The FIX first. 0092dd53 is the investigation doc, and it sat first in this
 # list -- reading as though the fix were a docs commit -- until
 # check_cited_commits.py printed the subject next to each sha.
 fixed_by = ["2c25f7195e", "0092dd53"]
-status_note = "CLOSED ON GITHUB, NOT FIXED ON THIS BRANCH -- recorded as open here deliberately, because the tracker's job is to say what is true of HEAD. The suite splits perfectly on one bit: every capture where the renderers disagree is a pers_n case (SET_CONTROL0 texture perspective off) and every pers_y case is byte-identical between them, e.g. TexPerspective_Textured 9,014 under GL against Vulkan's 1. Cause is one line in glsl/common.c: the gate is `noperspective && location` and location is Vulkan-only, so the GL renderer never emits the qualifier. Worth 159,574 px measured. The fix is commit 0092dd53 and the later 2c25f7195e, and NEITHER IS AN ANCESTOR OF HEAD -- git branch --contains puts both only on remotes/origin/claude/docs-tooling-agentic-coding-u152m1, along with 6 more hw/ and target/ commits for #62, #67 and #71. This is the same remote-lane fold-in gap #62 already records, now measured: 53 commits on that branch are not here. Condition attached to the glsl/common.c grant, and it still applies to whatever lands: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile."
-blocked_on = "the fold-in, not the fix: the work exists on the remote lane's branch and has never been merged or measured against the goldens here."
+status_note = "CLOSED ON GITHUB, NOT FIXED ON THIS BRANCH -- recorded as open here deliberately, because the tracker's job is to say what is true of HEAD. The suite splits perfectly on one bit: every capture where the renderers disagree is a pers_n case (SET_CONTROL0 texture perspective off) and every pers_y case is byte-identical between them, e.g. TexPerspective_Textured 9,014 under GL against Vulkan's 1. Cause is one line in glsl/common.c: the gate is `noperspective && location` and location is Vulkan-only, so the GL renderer never emits the qualifier. Worth 159,574 px measured. THE FOLD-IN HAS NOW HAPPENED and that reading is history: the whole 53-commit remote lane was merged into this branch on 2026-09-13, so 0092dd53 and 2c25f7195e are both ancestors of HEAD and the `fixed-unlanded` gate in check_coverage.py fired exactly as it was designed to. WHAT IS AND IS NOT ESTABLISHED HERE: the code is on the branch and the Android build compiles it, GRADLE_EXIT=0. The 159,574 px was measured by lane.remote on ITS branch under the desktop GL renderer, and NOTHING ON THIS BRANCH HAS RE-MEASURED IT. So this is `fixed-part` on the strength of another lane's arm rather than of ours; the pers_n/pers_y split is the falsifier that would upgrade it, because the suite divides perfectly on that one bit. Condition attached to the glsl/common.c grant, and it still applies to whatever lands: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile."
+blocked_on = "measurement, no longer the fold-in: the merge landed the code here on 2026-09-13 and the goldens have still never been run against it on this branch. The GLES condition on the glsl/common.c grant is also still unverified by anything but a compile -- noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile, which no build gate here can see."
 
 [issue.79]
 title = "Stencil is nondeterministic: 9 of 16 captures change value between runs of the SAME binary, and at least one issue was filed on the noise"
