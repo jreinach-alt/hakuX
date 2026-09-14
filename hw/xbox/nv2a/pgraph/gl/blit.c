@@ -25,7 +25,7 @@
 static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
                          size_t width, size_t height, size_t width_bytes,
                          size_t source_pitch, size_t dest_pitch,
-                         BetaState *beta)
+                         unsigned int bytes_per_pixel, BetaState *beta)
 {
     if (operation == NV09F_SET_OPERATION_SRCCOPY) {
         for (unsigned int y = 0; y < height; y++) {
@@ -34,6 +34,46 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
             dest += dest_pitch;
         }
     } else if (operation == NV09F_SET_OPERATION_BLEND_AND) {
+        /*
+         * This branch hard-codes 32bpp: it walks `width` PIXELS and indexes
+         * s[x * 4 + ch]. The caller admits Y8 (1 byte) and R5G6B5 (2), so a
+         * narrow-format blend walked twice the intended extent per row, four
+         * times on Y8, and past the destination on the last row. SRCCOPY above
+         * is format-correct because it memmoves width_bytes; only this branch
+         * converts pixels to bytes, and it did so with a constant.
+         *
+         * The overrun was unbounded rather than merely wrong: nv_dma_map's
+         * end-of-object assert is commented out (nv2a.c:96) and the caller
+         * asserts only dest_offset < dest_dma_len, so nothing downstream
+         * notices. The surplus also falls outside the download range and the
+         * invalidate, so no capture can show it.
+         *
+         * Refusing rather than guessing, which is what the Vulkan side's
+         * solid_line does for the identical question. A correct 16bpp blend
+         * would have to unpack 5/6/5, blend, and repack, and the rounding rule
+         * for that repack is NOT established by anything measured here -- the
+         * 2^24 exhaustive that fixed this blend's divide covers 8-bit channels
+         * only. Inventing it would put an unmeasured rule into the one path
+         * that has just been made exact.
+         *
+         * All 20 BLENDAND captures in the suite are 32bpp, so no arm on this
+         * fleet can reach this branch with a narrow format; the warn is how it
+         * becomes visible if a title does. Audit HIGH, file #84, found on the
+         * Vulkan side of the same function and pre-existing on both.
+         */
+        if (bytes_per_pixel != 4) {
+            static bool warned;
+            if (!warned) {
+                warned = true;
+                fprintf(stderr,
+                        "nv2a: BLEND_AND blit at %u bytes/pixel is not "
+                        "implemented; skipping the blend rather than "
+                        "overrunning the destination\n",
+                        bytes_per_pixel);
+            }
+            return;
+        }
+
         uint32_t max_beta_mult = 0x7f80;
         uint32_t beta_mult = beta->beta >> 16;
         uint32_t inv_beta_mult = max_beta_mult - beta_mult;
@@ -204,7 +244,7 @@ static void perform_blit_tiled(int operation, uint8_t *source,
             perform_blit(operation, source + done,
                          tile_base + gpu_tile_swizzle(offset, tile->pitch),
                          chunk / bytes_per_pixel, 1, chunk, source_pitch,
-                         dest_pitch, beta);
+                         dest_pitch, bytes_per_pixel, beta);
             done += chunk;
         }
 
@@ -380,7 +420,7 @@ void pgraph_gl_image_blit(NV2AState *d)
             perform_blit(image_blit->operation, source_row, dest_row,
                          row_pixels, adjusted_height, row_bytes,
                          context_surfaces->source_pitch,
-                         context_surfaces->dest_pitch, beta);
+                         context_surfaces->dest_pitch, bytes_per_pixel, beta);
         }
     }
 
@@ -403,7 +443,7 @@ void pgraph_gl_image_blit(NV2AState *d)
             perform_blit(image_blit->operation, src, dest,
                          leftover_bytes / bytes_per_pixel, 1, leftover_bytes,
                          context_surfaces->source_pitch,
-                         context_surfaces->dest_pitch, beta);
+                         context_surfaces->dest_pitch, bytes_per_pixel, beta);
         }
     }
 
