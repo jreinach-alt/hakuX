@@ -52,6 +52,105 @@ def open_issues():
         return None, "could not parse gh output: %s" % e
 
 
+def commits_behind():
+    """How far this checkout is behind the campaign tip, or None if unknown.
+
+    AGENTS.md names THIS SCRIPT as the example of the failure it prevents: it
+    reads the open-issue list from GitHub, live, and the tracker from the
+    working tree, so a lane a few commits behind sees a real issue with no
+    tracker row and reports -- soundly, from where it stands -- that the board
+    is broken and shared infrastructure is blocking its push. That happened
+    three times on 2026-09-13 from two lanes, and the prescribed check is
+    `git rev-list --count HEAD..<campaign tip>`. It was never added. This is
+    it.
+
+    A worktree shares the object database, so the campaign ref resolves here
+    without a fetch and this costs nothing.
+    """
+    tip = os.environ.get("HAKUX_TIP",
+                         "claude/es-de-launcher-disc-error-ojnl14")
+    try:
+        out = subprocess.run(["git", "-C", HERE, "rev-list", "--count",
+                              "HEAD..%s" % tip],
+                             capture_output=True, text=True, timeout=15)
+    except Exception:
+        return None
+    if out.returncode != 0:
+        return None
+    try:
+        return int(out.stdout.strip())
+    except ValueError:
+        return None
+
+
+def fleet_tail():
+    """The fleet registry's states, from DISK ONLY -- no `gh` call.
+
+    WHY THIS LIVES HERE AND NOT IN THE WATCHDOG. `idle-watchdog.sh` is a bash
+    `while` loop, so it parses its body once and a running instance keeps the
+    version it started with; a lane-aware branch added to it on 2026-09-14 had
+    no effect for the rest of that session. But the loop re-invokes THIS SCRIPT
+    fresh on every poll and prints `sed -n 1p` of the output as its hint. So
+    the summary line is the only channel that reaches a RUNNING watchdog, and
+    anything that needs to take effect tonight has to arrive through it. That
+    asymmetry is why the UNBRIEFED note above works and the watchdog's own edit
+    did not.
+
+    The watchdog spent a session advising "fold a FINISHED lane, claim a free
+    file" while three lanes were mid-flight, because coverage can see a lane
+    that is CLAIMED and not one that is WORKING. The registry can, so this
+    reports it.
+
+    Deliberately no `gh`: every state here comes from
+    $DISPATCH_DIR/fleet/*.json, so adding it to a script the watchdog already
+    runs costs no API call and cannot stall on the network.
+    """
+    dispatch = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
+    fdir = os.path.join(dispatch, "fleet")
+    if not os.path.isdir(fdir):
+        return ""
+    rows = []
+    for fn in sorted(os.listdir(fdir)):
+        if not fn.endswith(".json"):
+            continue
+        try:
+            with open(os.path.join(fdir, fn)) as fh:
+                rows.append(json.load(fh))
+        except Exception:
+            # An unreadable row is not nothing -- it is a lane whose state is
+            # unknown, and silence would read as "no lanes running".
+            rows.append({"lane": fn[:-5], "state": "UNREADABLE"})
+    if not rows:
+        return ""
+    running = [r for r in rows if r.get("state") == "running"]
+    reported = [r for r in rows if r.get("state") == "reported"]
+    waiting = [r for r in rows if (r.get("waiting_on") or "").strip()]
+    unreadable = [r for r in rows if r.get("state") == "UNREADABLE"]
+
+    bits = []
+    # Ordered worst-first: a lane blocked on the orchestrator is the one state
+    # only the orchestrator can clear, and it is reading this line.
+    if waiting:
+        bits.append("WAITING ON YOU: " + ", ".join(
+            "%s (%s)" % (r.get("lane", "?"), (r.get("waiting_on") or "")[:60])
+            for r in waiting))
+    if reported:
+        bits.append("%d lane(s) REPORTED AND NOT FOLDED (%s) -- their claim "
+                    "still reads as coverage"
+                    % (len(reported),
+                       ", ".join(r.get("lane", "?") for r in reported)))
+    if unreadable:
+        bits.append("%d fleet row(s) UNREADABLE (%s)"
+                    % (len(unreadable),
+                       ", ".join(r.get("lane", "?") for r in unreadable)))
+    if running:
+        bits.append("%d lane(s) RUNNING (%s) -- do not claim their files or "
+                    "advise folding them"
+                    % (len(running),
+                       ", ".join(r.get("lane", "?") for r in running)))
+    return ("; " + "; ".join(bits)) if bits else ""
+
+
 def main():
     with open(os.path.join(HERE, "territory.toml"), "rb") as fh:
         terr = tomllib.load(fh)
@@ -92,10 +191,37 @@ def main():
     # The reverse (gh OPEN, tracker fixed-verified) matters only when there is
     # no blocker to explain it -- a fixed-part issue with a written blocker is
     # a perfectly ordinary state.
+    # THE STALENESS QUALIFIER GOES ON EVERY FAIL, NOT JUST THE SUMMARY.
+    #
+    # Every FAIL below compares LIVE GitHub state against the WORKING TREE's
+    # two toml files. If this checkout is behind the campaign tip, a real
+    # disagreement between them is evidence about the CHECKOUT and not about
+    # the board -- and the report that comes out of it is a sound argument run
+    # against the wrong inputs, which is how three false "infrastructure is
+    # blocking me" reports were filed from two lanes in one day.
+    #
+    # So compute it once, before anything is judged, and attach it to whatever
+    # is printed. A lane that reads "FAIL ... and you are 979 commits behind"
+    # rebases; a lane that reads "FAIL" files a report.
+    behind = commits_behind()
+    if behind:
+        stale = ("\n  YOU ARE %d COMMIT(S) BEHIND THE CAMPAIGN TIP. This "
+                 "check reads the open-issue list LIVE from GitHub and the "
+                 "tracker from your working tree, so a disagreement between "
+                 "them is evidence about THIS CHECKOUT first. Rebase, then "
+                 "re-run, and only then report the board as broken."
+                 % behind)
+    else:
+        stale = ""
+
     issues, err = open_issues()
     if issues is None:
-        print("coverage NOT CHECKED: %s" % err)
+        print("coverage NOT CHECKED: %s%s" % (err, fleet_tail()))
         print("  (failing open -- a network blip must not make this unpushable)")
+        # Said even here, because "NOT CHECKED" plus a stale tree is the state
+        # in which a lane is most likely to conclude something about the board.
+        if stale:
+            print(stale)
         return 0
 
     gaps = []
@@ -124,6 +250,8 @@ def main():
         print("\n  Finished work reading as available is how an issue gets\n"
               "  re-dispatched. Set the real status and the evidence it rests on.",
               file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     # A BLOCKER THAT NAMES SOURCE FILES IS OFTEN A GRANT REQUEST, and whether
@@ -221,6 +349,8 @@ def main():
         print("\n  \"wants an arm\" is a next step, not a blocker. Either give\n"
               "  it a lane, or write what it is actually waiting for.",
               file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     # AN ISSUE A LANE CLAIMS BUT THE BOARD NEVER DESCRIBES.
@@ -290,6 +420,8 @@ def main():
               "  and there is none. Keeping the old name as history is fine:\n"
               "  either naming a live lane alongside it, or the word\n"
               "  'retired', clears this.", file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     # `fixed-unlanded` IS CHECKED, NOT TAKEN ON TRUST.
@@ -332,6 +464,8 @@ def main():
         print("\n  `fixed-unlanded` means a fix exists somewhere that is not\n"
               "  this branch. If it landed, say what it is worth here: read\n"
               "  the merge and give it a real status.", file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     unwritten = sorted((str(r["number"]), r["title"]) for r in issues
@@ -346,6 +480,8 @@ def main():
               "  the issue IS, and this check used to accept it as if it did.\n"
               "  Write the row: what moves, what is measured, what is not.",
               file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     if gaps:
@@ -357,6 +493,8 @@ def main():
               "  its nv2a_issues.toml entry saying what it is waiting for.\n"
               "  A blocker is a claim: state it as the measurement that would\n"
               "  refute it, not as a reason to stop.", file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
         return 1
 
     # AN UNBRIEFED LANE IS AN IDLE LANE, AND IT LOOKS EXACTLY LIKE A COVERED ONE.
@@ -409,11 +547,16 @@ def main():
         tail = "; UNBRIEFED: " + ", ".join(
             "%s %d unblocked issue(s), last brief %s" % (l, n, h)
             for l, n, h in stale_brief)
-    print("coverage ok (%d open: %d owned by a lane, %d with a written blocker%s)"
+    print("coverage ok (%d open: %d owned by a lane, %d with a written "
+          "blocker%s)%s%s"
           % (len(issues),
              sum(1 for r in issues if str(r["number"]) in owned),
              sum(1 for r in issues if str(r["number"]) in blocked
-                 and str(r["number"]) not in owned), tail))
+                 and str(r["number"]) not in owned), tail,
+             fleet_tail(),
+             "" if not behind else
+             "; STALE CHECKOUT: %d commit(s) behind the campaign tip, so this "
+             "`ok` is about a tree that is not the branch" % behind))
     for line in note_lines:
         print(line)
     return 0
