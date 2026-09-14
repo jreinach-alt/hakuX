@@ -176,3 +176,19 @@ cost = "C3 called an arm-A run MIXED on a di-(ov+sp) of +1 in one window and -1 
 bit = 1
 owner = "toolsmith"
 fix = "Give discard_model() the slack the population check already has. It is the residual of the exact-equality defect that voided a correct arm earlier the same day."
+
+[[cut]]
+id = "fold-in-dirties-the-shared-tree-for-minutes"
+what = "A fold-in is several commits long by nature -- cherry-pick, tracker edit, territory edit, index rebuild, preflight, commit -- and the shared tree is DIRTY for all of it. dispatcher.sh refuses to build any uncached ref against a dirty tree and requeues every 30 s in silence, so the whole fleet stalls on whatever the orchestrator happens to be in the middle of."
+cost = "Seven consecutive requeues of lane.skew44's tip-ref control arm, 05:25:15 to 05:28:22, with eight more of its arms queued behind it. The lane had to diff the shared tree against the tip from the object store to find out why, then report it as BLOCKING FLEET-WIDE. Earlier the same day this class cost 251 requeues."
+bit = 2
+owner = "toolsmith"
+fix = "The orchestrator should fold on a scratch worktree and fast-forward the shared tree in one move, so the dirty window is a single ref update rather than several minutes. Failing that, dispatcher.sh should say WHICH files are dirty and for how long it has been waiting -- it currently repeats an identical line every 30 s, which reads as a hang rather than as a blocked queue. Note the lane could not run git against the shared tree at all, being worktree-isolated."
+
+[[cut]]
+id = "backticks-inside-python-c-double-quotes"
+what = "dispatcher.sh:471 embeds Python in `python3 -c \"...\"` -- a DOUBLE-quoted shell string -- and the Python comments inside it contain backticked identifiers. The shell command-substitutes them before Python ever sees the source."
+cost = "Cosmetic so far: `suites: command not found`, `skip_tests: command not found`, `only_tests: command not found` and `iso:85b525/Blend: No such file or directory` on stderr for every disc request, which is noise a lane has to rule out before trusting its own run. It is a live hazard the moment a backtick pair wraps something executable, and the comment text is silently destroyed either way."
+bit = 1
+owner = "toolsmith"
+fix = "Single-quote the heredoc or the -c string so nothing inside is expanded. Same root cause as the three commit messages that lost a word to backticks today, and as the git commit -F rule -- a double-quoted shell string is not a quoting boundary."
