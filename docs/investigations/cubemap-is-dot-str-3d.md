@@ -1372,3 +1372,66 @@ are both true only if we are not decoding the guest's cubemap-enable for this
 stage, or if something downstream clears it. The earlier arm established what
 *our* state holds; it did not establish what the *guest asked for*, and the
 guest asked for a cubemap.
+
+## Measured at the branch: both of this issue's state claims are false today
+
+Before registering a coordinate, the two facts every model here rests on were
+read out of the running emulator instead of inferred. Both are wrong on the
+current head.
+
+`psh.c`'s `PS_TEXTUREMODES_DOT_STR_3D` case instrumented to print the values
+it actually branches on, `iso_cube.iso` under OpenGL — **seven shader
+generations for stage 3**:
+
+```
+1 x  DOT_STR_3D i=3 dim_tex=2 tex_cubemap=0 rect_tex=0 is_cube=0
+6 x  DOT_STR_3D i=3 dim_tex=2 tex_cubemap=1 rect_tex=0 is_cube=1
+```
+
+**`dim_tex[3]` is 2 in all seven, never 3.** This note says *"the second
+moving nothing in this suite establishes `dim_tex[3]` is 3 — a genuine volume
+texture, so the `dim == 2` branch never fires"*. It is 2 every time, so that
+branch fires on every shader that reaches it and the coordinate is truncated
+to `.xy`.
+
+**`tex_cubemap[3]` is 1 in six of the seven**, and `dot_str_3d_is_cube()`
+returns true in the same six. This note says *"returning `samplerCube` when
+`tex_cubemap[i]` is set moved 0 captures, which is what establishes
+`tex_cubemap[3]` is false here"*. The flag is set. A much better reading of
+that arm moving nothing is that the current code **already** takes the cube
+branch for those six, so the proposed change was a no-op.
+
+Both original inferences have the same shape — *a change moved nothing,
+therefore the state it keys on must be absent* — and both are refuted by
+reading the state. A change can move nothing because it is already the
+behaviour.
+
+Scope: measured on the current head. The `samplerCube` gate landed as
+`a8086d8905`, so these claims may have been true when they were written and
+the code changed underneath them. That does not make them safe to build on
+now.
+
+### What it does to the model above
+
+The derivation that the table is the four corners of the **+Z face** stands —
+it came from the generator and the goldens, not from our state. What changes
+is the *shape of the fix*: the path is a **cubemap** lookup in six of seven
+shaders, not a `sampler3D` over stacked slices, so "the +Z slice at
+`(4 + 0.5) / 6`" is the wrong target. A direction whose dominant axis is +Z
+is the right one.
+
+That also partly rehabilitates the retracted section. The cube-face
+projection is not irrelevant here — the path really is a cube. What was wrong
+was the specific *two products* rule, not the fact that a face projection is
+involved. The superseded marker above stays: the rule it states is still
+refuted by the 100%-pure sign table.
+
+### Probe-method rule this cost
+
+The first two runs of this probe printed **nothing**, and nothing is what a
+probe that was never compiled in prints. Clearing `spv_cache` and
+`shader_module_keys.bin` — what the Vulkan runner does — is **not enough for
+the GL renderer**: the generated shaders are also cached on disk in
+`~/.local/share/xemu/xemu/shaders/` with `shader_cache_list`, and until those
+are removed no shader is regenerated and no emit-site probe fires. Clear all
+four, or a silent probe will read as a measured zero.
