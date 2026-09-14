@@ -245,10 +245,6 @@ static inline float64 floatx80_to_float64_nds(double a, float_status *s)
 #define floatx80_to_float64            floatx80_to_float64_nds
 #define int32_to_floatx80(a, s)        ((void)(s), (double)(a))
 #define int64_to_floatx80(a, s)        ((void)(s), (double)(a))
-#define floatx80_to_int32(a, s)        ((void)(s), (int32_t)(a))
-#define floatx80_to_int64(a, s)        ((void)(s), (int64_t)(a))
-#define floatx80_to_int32_round_to_zero(a, s) ((void)(s), (int32_t)(a))
-#define floatx80_to_int64_round_to_zero(a, s) ((void)(s), (int64_t)(a))
 
 #define floatx80_is_neg(a)             signbit(a)
 #define floatx80_is_zero(a)            ((a) == 0.0)
@@ -292,6 +288,84 @@ static inline double floatx80_round_to_int_nds(double a, float_status *s)
 }
 #define floatx80_round(a, s)           floatx80_round_to_int_nds((a), (s))
 #define floatx80_round_to_int(a, s)    floatx80_round_to_int_nds((a), (s))
+
+/*
+ * FIST/FISTP round per the guest's control-word RC field; only FISTTP
+ * truncates. A C cast always truncates, so these four were `(int32_t)(a)` and
+ * the three non-round-to-zero modes were wrong in exactly the way FRNDINT was
+ * below -- same table, same `(void)(s)` discarding the guest's mode. The
+ * _round_to_zero pair was right by accident and is now right on purpose.
+ *
+ * The cast is also unable to raise float_flag_invalid, and helper_fistl_ST0
+ * and helper_fistll_ST0 test precisely that flag to substitute the x87
+ * integer-indefinite value for an out-of-range or NaN operand. On this path
+ * those guards could never fire, so an out-of-range FISTP stored whatever the
+ * cast produced -- and converting an out-of-range double to an integer type is
+ * undefined behaviour in C, which on aarch64 means fcvtzs saturating to
+ * INT32_MAX rather than the 0x80000000 the architecture requires.
+ *
+ * The range tests are written as !(lo <= r <= hi) so that a NaN, for which
+ * every comparison is false, takes the invalid branch. The int64 upper bound
+ * is `< 2^63` rather than `<= 2^63 - 1` because 2^63 - 1 is not representable
+ * as a double and would round up to 2^63, admitting exactly the value that
+ * overflows.
+ *
+ * KNOWN INCOMPLETE, and deliberately so: raising the flag makes the two
+ * helper guards work, because they call get_float_exception_flags() directly.
+ * It does NOT reach the x87 status word, because merge_exception_flags() is
+ * itself entirely inside #ifndef USE_HARD_FPU and is an empty function on this
+ * path -- so no FPU exception bit, IE or PE or any other, is raised by any
+ * hard-path operation. That is a separate defect of wider scope than this one
+ * and is not fixed here.
+ */
+static inline int32_t floatx80_to_int32_nds(double a, float_status *s)
+{
+    double r = floatx80_round_to_int_nds(a, s);
+
+    if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
+        float_raise(float_flag_invalid, s);
+        return INT32_MIN;
+    }
+    return (int32_t)r;
+}
+
+static inline int64_t floatx80_to_int64_nds(double a, float_status *s)
+{
+    double r = floatx80_round_to_int_nds(a, s);
+
+    if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
+        float_raise(float_flag_invalid, s);
+        return INT64_MIN;
+    }
+    return (int64_t)r;
+}
+
+static inline int32_t floatx80_to_int32_rtz_nds(double a, float_status *s)
+{
+    double r = trunc(a);
+
+    if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
+        float_raise(float_flag_invalid, s);
+        return INT32_MIN;
+    }
+    return (int32_t)r;
+}
+
+static inline int64_t floatx80_to_int64_rtz_nds(double a, float_status *s)
+{
+    double r = trunc(a);
+
+    if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
+        float_raise(float_flag_invalid, s);
+        return INT64_MIN;
+    }
+    return (int64_t)r;
+}
+
+#define floatx80_to_int32(a, s)        floatx80_to_int32_nds((a), (s))
+#define floatx80_to_int64(a, s)        floatx80_to_int64_nds((a), (s))
+#define floatx80_to_int32_round_to_zero(a, s) floatx80_to_int32_rtz_nds((a), (s))
+#define floatx80_to_int64_round_to_zero(a, s) floatx80_to_int64_rtz_nds((a), (s))
 
 #undef floatx80_zero
 #undef floatx80_one
