@@ -48,6 +48,16 @@
 #   unmodellable    the mechanism was tested and refuted, or it is hardware we
 #                   cannot reach. Closable, with the measurement.
 #   open            no fix, or a fix with no bound prediction judging it.
+#   fixed-unlanded  a fix EXISTS and is not on this branch. Added 2026-09-13
+#                   for #72, which was closed on GitHub by a lane that fixed it
+#                   on its own branch; `open` was wrong (a fix exists and
+#                   nobody should write another) and every `fixed-*` value was
+#                   wrong too (nothing here is fixed). The entry must carry
+#                   `fixed_by`, and check_coverage.py VERIFIES that every sha
+#                   in it is a real commit that is NOT an ancestor of HEAD --
+#                   so this value cannot be used to silence the drift gate,
+#                   because the moment the work is merged the check fails and
+#                   demands a real status.
 #
 # `fixed-verified` is deliberately hard: a commit message naming an issue is
 # not evidence, and neither is a passing arm whose prediction was written
@@ -2900,6 +2910,7 @@ status_note = "floatx80_to_int32/int64 are plain C casts under USE_HARD_FPU, so 
 blocked_on = "depends on #67 landing first, or it needs its own RC switch"
 
 [issue.66]
+title = "GL renderer: one stale GL_INVALID_FRAMEBUFFER_OPERATION aborts the desktop run and costs 81% of a disc's captures; Android drains the same error silently"
 # UNTRACKED UNTIL 2026-09-13. This issue, #71 and #72 were claimed by
 # [lane.remote] in territory.toml and had no row here at all, so
 # check_coverage.py reported them covered -- a lane claim satisfies it -- while
@@ -2912,6 +2923,7 @@ status_note = "The assert at gl/shaders.c:413 is on the GL error state ON ENTRY,
 blocked_on = "lane.remote holds gl/*.c and the desktop GL build; this is measurable there and nowhere else in the fleet -- the device lane is Vulkan."
 
 [issue.71]
+title = "GL surface-to-texture fast path is wrong for every format that exercises it -- refusing it fixes all 9 captures where GL still trails Vulkan, and blocks #60"
 # Untracked until 2026-09-13, same as #66 -- see the note there.
 suites = ["Blend surface", "Surface pitch", "Surface clip"]
 disposition = "defect"
@@ -2920,9 +2932,11 @@ status_note = "One arm, nine captures, 9 better and 0 worse: making pgraph_gl_ch
 blocked_on = "lane.remote, and it BLOCKS #60: #60's fix is correct and regresses captures that are entirely s2t decisions flipping into this broken path."
 
 [issue.72]
+title = "GL renderer never emits `noperspective`: one line in glsl/common.c gates it on the Vulkan path, worth 159,574 px measured"
 # Untracked until 2026-09-13, same as #66 -- see the note there.
 suites = ["Texture perspective", "Texture perspective enable"]
 disposition = "defect"
-status = "open"
+status = "fixed-unlanded"
+fixed_by = ["0092dd53", "2c25f7195e"]
 status_note = "CLOSED ON GITHUB, NOT FIXED ON THIS BRANCH -- recorded as open here deliberately, because the tracker's job is to say what is true of HEAD. The suite splits perfectly on one bit: every capture where the renderers disagree is a pers_n case (SET_CONTROL0 texture perspective off) and every pers_y case is byte-identical between them, e.g. TexPerspective_Textured 9,014 under GL against Vulkan's 1. Cause is one line in glsl/common.c: the gate is `noperspective && location` and location is Vulkan-only, so the GL renderer never emits the qualifier. Worth 159,574 px measured. The fix is commit 0092dd53 and the later 2c25f7195e, and NEITHER IS AN ANCESTOR OF HEAD -- git branch --contains puts both only on remotes/origin/claude/docs-tooling-agentic-coding-u152m1, along with 6 more hw/ and target/ commits for #62, #67 and #71. This is the same remote-lane fold-in gap #62 already records, now measured: 53 commits on that branch are not here. Condition attached to the glsl/common.c grant, and it still applies to whatever lands: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile."
 blocked_on = "the fold-in, not the fix: the work exists on the remote lane's branch and has never been merged or measured against the goldens here."

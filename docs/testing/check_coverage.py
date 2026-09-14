@@ -222,6 +222,82 @@ def main():
               file=sys.stderr)
         return 1
 
+    # AN ISSUE A LANE CLAIMS BUT THE BOARD NEVER DESCRIBES.
+    #
+    # `owned` is satisfied by a number appearing in some lane's `issues` list.
+    # That is a claim of RESPONSIBILITY and it was being read as a claim of
+    # KNOWLEDGE. On 2026-09-13 #66, #71 and #72 were listed by lane.remote and
+    # had no row in nv2a_issues.toml at all -- no title, no suites, no status,
+    # no blocker -- and this checker printed `coverage ok` over them for a full
+    # day. Nothing on the board said what they were, and the one artefact whose
+    # job is to notice that said everything was fine.
+    #
+    # Writing those rows then turned up what the silence had been hiding: #72
+    # was CLOSED on GitHub with its fix on a branch that had never been merged
+    # here, along with seven more hw/ and target/ commits. A lane claim is the
+    # weakest possible evidence of coverage precisely because it is the
+    # cheapest to write -- one number in a list -- and it suppresses the two
+    # gates that would otherwise have fired.
+    #
+    # So a claim now has to be accompanied by an entry. This is a FAIL rather
+    # than a note: it is exactly the shape of hole the script was written for,
+    # and it survived the script.
+    # `fixed-unlanded` IS CHECKED, NOT TAKEN ON TRUST.
+    #
+    # The value exists because #72 was closed on GitHub by a lane that fixed it
+    # on its own branch, so `open` was wrong (a fix exists) and every `fixed-*`
+    # was wrong (nothing here is fixed). A status invented to resolve a gate's
+    # complaint is a status that will be used to silence it, so this one costs
+    # something: the entry must list `fixed_by`, and every sha in it must be a
+    # real commit that is NOT an ancestor of HEAD. The instant the work is
+    # merged, this fails and demands a real status -- which is exactly when
+    # somebody needs to go and look at whether it landed intact.
+    unlanded_bad = []
+    for k, v in tracker.items():
+        if v.get("status") != "fixed-unlanded":
+            continue
+        shas = v.get("fixed_by") or []
+        if not shas:
+            unlanded_bad.append((k, "no `fixed_by`"))
+            continue
+        for sha in shas:
+            r = subprocess.run(["git", "-C", HERE, "rev-parse", "--verify",
+                                "-q", sha + "^{commit}"],
+                               capture_output=True, text=True)
+            if r.returncode != 0:
+                unlanded_bad.append((k, "%s is not a commit here" % sha))
+                continue
+            r = subprocess.run(["git", "-C", HERE, "merge-base",
+                                "--is-ancestor", sha, "HEAD"],
+                               capture_output=True, text=True)
+            if r.returncode == 0:
+                unlanded_bad.append(
+                    (k, "%s IS an ancestor of HEAD -- it landed" % sha))
+    if unlanded_bad:
+        print("FAIL: %d `fixed-unlanded` entr%s that does not hold:"
+              % (len(unlanded_bad),
+                 "y" if len(unlanded_bad) == 1 else "ies"), file=sys.stderr)
+        for k, why in unlanded_bad:
+            print("  #%-4s %s" % (k, why), file=sys.stderr)
+        print("\n  `fixed-unlanded` means a fix exists somewhere that is not\n"
+              "  this branch. If it landed, say what it is worth here: read\n"
+              "  the merge and give it a real status.", file=sys.stderr)
+        return 1
+
+    unwritten = sorted((str(r["number"]), r["title"]) for r in issues
+                       if str(r["number"]) in owned
+                       and str(r["number"]) not in tracker)
+    if unwritten:
+        print("FAIL: %d issue(s) claimed by a lane with NO nv2a_issues.toml "
+              "entry:" % len(unwritten), file=sys.stderr)
+        for n, t in unwritten:
+            print("  #%-4s %-10s %s" % (n, owned[n], t[:60]), file=sys.stderr)
+        print("\n  A lane claim says who is responsible. It does not say what\n"
+              "  the issue IS, and this check used to accept it as if it did.\n"
+              "  Write the row: what moves, what is measured, what is not.",
+              file=sys.stderr)
+        return 1
+
     if gaps:
         print("FAIL: %d open issue(s) with neither a lane nor a blocker:"
               % len(gaps), file=sys.stderr)
