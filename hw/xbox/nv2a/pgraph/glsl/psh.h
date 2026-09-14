@@ -118,6 +118,36 @@ int pgraph_glsl_window_clip_count(PGRAPHState *pg);
 bool pgraph_glsl_polygon_stipple_enabled(PGRAPHState *pg);
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state);
 
+/*
+ * Issue #59, the write side of the Z/O pad bits.
+ *
+ * The suffix on a colour surface format does NOT name a constant the texture
+ * unit substitutes on readback; it names what the RASTER STORES into the pad
+ * bits, which are then read back plainly. Derived from the goldens alone by
+ * docs/testing/surface_pad_write_side.py: `Surface format` draws its scratch
+ * surface twice, once with the sampled alpha and once with alpha forced
+ * opaque by the combiner, and the O and Z goldens differ in the ALPHA-FORCED
+ * half by a clean green +128 on 16,384 of 16,384 px. A readback constant can
+ * only ever change a sampled alpha, so it cannot reach that half and cannot
+ * reach a colour channel at all. The bytes in memory differ, so the raster
+ * wrote them differently.
+ *
+ * Returned as a mode rather than a float because it is a uniform: 0 leaves
+ * the combiner's alpha alone, 1 stores 0.0, 2 stores 1.0.
+ *
+ * X1A7R8G8B8_{Z,O} is deliberately absent. Its X bit sits above seven bits of
+ * REAL alpha that we store at 8-bit precision, so forcing the pad bit without
+ * the 7-bit requantisation vk/constants.h has already measured
+ * (sampled alpha = (X << 7) | (stored >> 1), over 32,755 invertible px) would
+ * be half a fix on a capture pair that is not in this arm's scope.
+ */
+enum PshPadAlphaMode {
+    PSH_PAD_ALPHA_NONE = 0,
+    PSH_PAD_ALPHA_ZERO = 1,
+    PSH_PAD_ALPHA_ONE = 2,
+};
+int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
+
 #define PSH_UNIFORM_DECL_X(S, DECL) \
     DECL(S, alphaRef, int, 1)       \
     DECL(S, borderColor, vec4, 4)   \

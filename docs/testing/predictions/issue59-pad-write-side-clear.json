@@ -1,0 +1,31 @@
+{
+  "registered_utc": "2026-09-14T04:22:50Z",
+  "who": "lane.padwrite",
+  "issue": "59",
+  "prediction": "ARM 2 OF #59's WRITE SIDE: THE CLEAR STAMPS THE PAD CONSTANT TOO. Arm 1 (23be8223f5 -> 4381fae5f6) stamps it in the raster and removes #48's readback swizzle. This arm adds the clear, and is registered against the SAME baseline so the two are separable: Surface format uses a CPU memset and no clear at all, Blend surface raster-writes every texel of its scratch surface with a full-surface DrawScreenQuad background, and the Clear suite is the only one of the seven whose surface is written by CLEAR_SURFACE and read back.\n\nTHE CLEAR RULE IS MEASURED, NOT INFERRED, AND THE INVESTIGATION HAD LEFT IT OPEN. Clear::TestSurfaceFmt clears a 128x128 surface to each of six clear colours, draws only a 4x4 black centre mark, and samples the whole surface back through an LU_IMAGE_A8B8G8R8 stage with the final combiner taking alpha from TEX0 -- so the displayed alpha over the cleared area IS the pad byte. In the GOLDENS: SCF_X8R8G8B8_O8R8G8B8 against _Z8R8G8B8 differ on 98,342 px with RGB BIT-IDENTICAL and alpha 255 against 0, 16,368 px per clear colour across all six; SCF_X1R5G5B5_O1R5G5B5 against _Z1R5G5B5 differ on 49,274 px, every one exactly +128 in the byte carrying bit 15 of a 1555 word. The clear values are arbitrary and the difference is the SAME constant for all six, which refutes the memset reading outright -- under it the two variants hold identical bytes and the goldens would agree.\n\nL1, THE DISCRIMINATING LEG, AND IT IS A MECHANISM RATHER THAN A TOTAL. Clear/SFC_X1R5G5B5_Z1R5G5B5 = 0, from 49,152 in the baseline arm (1789359225-padwrite59-base-1009294, thor). That capture's residual is already the pad bit in the open and nothing else: 49,152 differing px, RED AND BLUE BIT-IDENTICAL, green differing on 49,152 px at max delta EXACTLY 128, alpha differing on 49,104. That is a 1555 pad bit landing in byte 1 and byte 3 of an 8888 texel and in no other byte. Its O twin, SCF_X1R5G5B5_O1R5G5B5, is bit-exact today for the same reason in reverse: pgraph_get_clear_color hands every pad format alpha 1.0, which is the O constant by coincidence. So this leg is satisfiable only if the Z clear stores zero, and 0 rather than \"smaller\" is the right bar because the O twin proves the rest of that capture is already exact.\n\nL2, THE CONTROL THAT MAKES L1 A COMPARISON. Clear/SCF_X1R5G5B5_O1R5G5B5 = 0, unchanged. Same code path, same test, same six clear colours, opposite constant. If this moves, the change is not selecting on the format.\n\nL3, THE SUITES THE CLEAR CANNOT REACH. Every Surface_format leg from arm 1 is re-registered unchanged -- Fmt_X8R8G8B8_O8R8G8B8 = 0 and _Z8R8G8B8 = 0, Fmt_A8R8G8B8 = 0, Fmt_R5G6B5 = 0, Fmt_B8 and Fmt_G8B8 and both Fmt_X1A7R8G8B8 rows bit-identical -- together with Blend_surface/* bit-identical on all 32, and Surface_clip/*, Texture_DXT/* and Texture_format/* bit-identical. Surface format's scratch region is memset by the CPU and Blend surface's is covered by a full-surface quad, so a clear-path change that moves either of those is reaching somewhere it should not.\n\nNOT REGISTERED AS LEGS, AND SAID SO. Clear/SCF_X8R8G8B8_{Z,O}8R8G8B8 both sit at 81,840 in the baseline and are NOT bound. Their alpha is already exactly right -- 0 differing alpha px against the golden in both, because the 4-byte stride let #48's readback swizzle fire there -- and their entire residual is RGB, 81,840 px at max delta 158/159/204, an unrelated clear-colour defect. What is predicted of them, and reported rather than bound, is that they come back to 81,840 after arm 1 loses the swizzle: arm 1 removes the readback and leaves the Z clear storing 1.0, so the Z capture should be visibly worse in arm 1 and recover here. Registering a number for them would be registering the unrelated defect.\n\nWHAT WOULD FALSIFY THE WHOLE THING. If L1 lands somewhere between 0 and 49,152 the clear stamps something that is neither the format constant nor the clear value's own byte, and the rule is wrong rather than the patch. If L1 lands at 49,152 the clear path was not reached at all -- the six clear colours go through two different code paths in vk/draw.c depending on whether every colour channel is being cleared, and only the full-channel one is exercised here as far as I know, which is a claim this leg tests and does not assume. If L2 or L3 moves, the selection is wrong.",
+  "a_ref": "23be8223f5",
+  "b_ref": "1f9eac66c4",
+  "must_not_move": [
+    "Surface_format/Fmt_B8",
+    "Surface_format/Fmt_G8B8",
+    "Surface_format/Fmt_X1A7R8G8B8_Z1A7R8G8B8",
+    "Surface_format/Fmt_X1A7R8G8B8_O1A7R8G8B8",
+    "Blend_surface/*",
+    "Surface_clip/*",
+    "Texture_DXT/*",
+    "Texture_format/*",
+    "Clear/SCF_X1A7R8G8B8_Z1A7R8G8B8",
+    "Clear/SCF_X1A7R8G8B8_O1A7R8G8B8",
+    "Clear/SFC_A8R8G8B8",
+    "Clear/SCF_R5G6B5"
+  ],
+  "expect": {
+    "Clear/SFC_X1R5G5B5_Z1R5G5B5": 0,
+    "Clear/SCF_X1R5G5B5_O1R5G5B5": 0,
+    "Surface_format/Fmt_X8R8G8B8_O8R8G8B8": 0,
+    "Surface_format/Fmt_X8R8G8B8_Z8R8G8B8": 0,
+    "Surface_format/Fmt_A8R8G8B8": 0,
+    "Surface_format/Fmt_R5G6B5": 0
+  },
+  "expect_counts": {}
+}

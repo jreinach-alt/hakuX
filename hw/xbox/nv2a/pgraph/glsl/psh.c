@@ -174,6 +174,30 @@ void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
     *high = g_signed_blend_staged[SIGNED_BLEND_PASS_HIGH];
 }
 
+/*
+ * Issue #59: which constant the raster stores into this colour format's pad
+ * bits. See the derivation at the declaration in psh.h.
+ *
+ * Keyed on the guest format from NV097_SET_SURFACE_FORMAT rather than on any
+ * host format or surface binding, for the reason draw.c writes out at
+ * surface_color_format_dst_alpha_is_one(): A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8
+ * and X1A7R8G8B8_{Z,O}1A7R8G8B8 all map to one VkFormat, so a binding reused
+ * across a format change reports whichever format first created it.
+ */
+int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
+{
+    switch (color_format) {
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_Z1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_Z8R8G8B8:
+        return PSH_PAD_ALPHA_ZERO;
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1R5G5B5_O1R5G5B5:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X8R8G8B8_O8R8G8B8:
+        return PSH_PAD_ALPHA_ONE;
+    default:
+        return PSH_PAD_ALPHA_NONE;
+    }
+}
+
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
 
@@ -3324,6 +3348,7 @@ static MString* psh_convert(struct PixelShader *ps)
         "                      : (ivec4(256) - sb) * sbHigh;\n"
         "    fragColor = vec4(sbSel) / 255.0;\n"
         "}\n");
+
 
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
