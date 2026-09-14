@@ -274,14 +274,40 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
     /*
      * One template per pipeline-layout shape. The layouts here mirror the
      * ones create_pipeline builds in draw.c -- the same two set layouts and,
-     * for n > 0, the same vertex-stage push-constant range of n attributes
-     * -- so each template is compatible with every pipeline of that shape.
+     * when use_push_constants_for_uniform_attrs and n > 0, the same
+     * vertex-stage push-constant range of n attributes -- so each template is
+     * compatible with every pipeline of that shape.
+     *
+     * This reads r->use_push_constants_for_uniform_attrs, so it MUST run
+     * after pgraph_vk_init_shaders() has computed it.  See the ordering note
+     * there; the field is g_malloc0'd, so calling this first would silently
+     * read false on every device.
      */
     VkDescriptorSetLayout template_set_layouts[2] = {
         r->push_tex_set_layout,
         r->push_ubo_set_layout,
     };
     for (int n = 0; n <= NV2A_VERTEXSHADER_ATTRIBUTES; n++) {
+        /*
+         * Mirror create_pipeline()'s guard EXACTLY.  When the device cannot
+         * hold the geometry vec4 plus the inline attributes, create_pipeline()
+         * omits the vertex range, push_template_index() pins every draw to
+         * n = 0, and templates 1..16 are never used -- but they are still
+         * CREATED here, so an unguarded vertex range is an invalid
+         * VkPipelineLayoutCreateInfo at init on such a device (272 > 256 for
+         * n = 16, VUID-...-pPushConstantRanges-00294), which VK_CHECK turns
+         * into an abort at startup.  Guarding only create_pipeline() left
+         * this site building the illegal range for every n.
+         *
+         * The guard must also match, not merely exist: if this said only
+         * `n > 0` on one side and the flag on the other, a capable device
+         * would get templates without the vertex range and pipelines with
+         * it, and two layouts whose push-constant ranges differ are NOT
+         * compatible for set 0 -- issue #34's finding 3, a silently unbound
+         * descriptor set rather than a validation error.
+         */
+        bool want_vtx_range = r->use_push_constants_for_uniform_attrs && n > 0;
+
         VkPushConstantRange push_ranges[2] = {
             {
                 .stageFlags = VK_SHADER_STAGE_GEOMETRY_BIT,
@@ -294,11 +320,21 @@ static void create_push_descriptor_resources(PGRAPHState *pg)
                 .size = n * 4 * sizeof(float),
             },
         };
+
+        /*
+         * Fail loudly at the next offset change rather than on whichever
+         * device happens to report the tightest limit.
+         */
+        if (want_vtx_range) {
+            assert(push_ranges[1].offset + push_ranges[1].size <=
+                   r->device_props.limits.maxPushConstantsSize);
+        }
+
         VkPipelineLayoutCreateInfo template_layout_info = {
             .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
             .setLayoutCount = 2,
             .pSetLayouts = template_set_layouts,
-            .pushConstantRangeCount = n > 0 ? 2 : 1,
+            .pushConstantRangeCount = want_vtx_range ? 2 : 1,
             .pPushConstantRanges = push_ranges,
         };
         VK_CHECK(vkCreatePipelineLayout(r->device, &template_layout_info,
@@ -1409,6 +1445,25 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
     r->descriptor_overflow_pools =
         g_array_new(FALSE, FALSE, sizeof(VkDescriptorPool));
     pgraph_vk_init_glsl_compiler();
+
+    /*
+     * The geometry stage's wide-line vec4 is unconditional and sits below the
+     * inline attributes, so the attributes need room for both.  A device that
+     * cannot hold both falls back to the UBO path for the attributes, which
+     * is what every device with the guaranteed-minimum 128-byte limit already
+     * does.
+     *
+     * ORDER IS LOAD-BEARING: this must be computed BEFORE
+     * create_push_descriptor_resources(), which builds all 17 template
+     * pipeline layouts and reads this flag to decide whether to declare the
+     * vertex range.  r is g_malloc0'd, so computing it afterwards left that
+     * site reading a false flag on every device.  pgraph_vk_init_instance()
+     * fills device_props long before we are called, so it is available here.
+     */
+    r->use_push_constants_for_uniform_attrs =
+        (r->device_props.limits.maxPushConstantsSize >=
+         GEOM_PUSH_CONSTANT_SIZE + MAX_UNIFORM_ATTR_VALUES_SIZE);
+
     create_ubo_descriptor_resources(pg);
     create_descriptor_pool(pg);
     create_descriptor_set_layout(pg);
@@ -1424,17 +1479,6 @@ void pgraph_vk_init_shaders(PGRAPHState *pg)
 #endif
 #endif
     shader_cache_init(pg);
-
-    /*
-     * The geometry stage's wide-line vec4 is unconditional and sits below the
-     * inline attributes, so the attributes need room for both.  A device that
-     * cannot hold both falls back to the UBO path for the attributes, which
-     * is what every device with the guaranteed-minimum 128-byte limit already
-     * does.
-     */
-    r->use_push_constants_for_uniform_attrs =
-        (r->device_props.limits.maxPushConstantsSize >=
-         GEOM_PUSH_CONSTANT_SIZE + MAX_UNIFORM_ATTR_VALUES_SIZE);
 }
 
 void pgraph_vk_finalize_shaders(PGRAPHState *pg)

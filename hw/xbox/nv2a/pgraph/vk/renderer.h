@@ -991,6 +991,15 @@ typedef struct DrawQueue {
     uint32_t dyn_control_3;
     uint32_t dyn_blend;
 
+    /*
+     * #13: raw NV_PGRAPH_LINE_WIDTH (1/8 guest px).  Merging concatenates
+     * several draws into ONE draw call carrying ONE geometry push constant,
+     * and line width now drives the geometry the stage EMITS rather than a
+     * rasteriser dynamic state -- so two line draws differing only in width
+     * must not merge or the second gets the first's footprint.
+     */
+    uint32_t line_width;
+
     uint32_t min_start;
     uint32_t max_end;
 

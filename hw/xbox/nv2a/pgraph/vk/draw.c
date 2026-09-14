@@ -37,6 +37,36 @@ static int g_xemu_submit_frames = 3;
 struct OptBisectStats g_opt_stats;
 
 /*
+ * BEHIND A FLAG, DEFAULT OFF. AGENTS.md: "Instrumentation is not free ...
+ * Profile-grade tracing belongs behind a flag." This probe is the expensive
+ * one of the three that landed unflagged: an RCU read plus a dirty-bitmap
+ * scan on two PER-DRAW paths (sync_vertex_ram_buffer's vertex-range copy and
+ * every begin_pre_draw window). Unswitchable, it could not be turned off for
+ * a timing run, so any later performance measurement on this branch would
+ * have been measuring the probe as well as the emulator -- which is the
+ * SYS_gettid failure AGENTS.md records, in a different coat.
+ *
+ * Compile-time rather than g_config, following NV2A_PERF_LOG (debug.h): with
+ * it off the counters, the scans and the reporting all vanish, so the probe
+ * cannot cost anything it is not explicitly asked to cost. Build with
+ * -DHAKUX_VRAM_RACE_PROBE=1 to answer the question below again.
+ *
+ * SAFE TO SWITCH OFF NOW, and that was checked rather than assumed: the probe
+ * belongs to #54, whose lane (lane.readfreq) has been RETIRED -- territory.toml
+ * records it made no source change and that this counter "had been running on
+ * Galleon since e353735028 with nobody reading its output". No registered
+ * prediction reads it. Contrast the #43 [signfold] counters further down this
+ * file, which are a LIVE instrument and are deliberately left unflagged.
+ *
+ * WHAT RETIRES IT: #54 asks for a read-side race FREQUENCY. Turn it on for a
+ * soak, read the rate off the pacing line, record it on the issue; the probe
+ * then has its answer and can be deleted rather than left switched off.
+ */
+#ifndef HAKUX_VRAM_RACE_PROBE
+#define HAKUX_VRAM_RACE_PROBE 0
+#endif
+
+/*
  * #54 read-side race probe: how often does a device-thread read of guest
  * VRAM race a guest write?
  *
@@ -96,6 +126,8 @@ struct OptBisectStats g_opt_stats;
  * TEX denominator counts binds, not draws, so a title that rebinds rarely
  * reports fewer windows than it has reads.
  */
+#if HAKUX_VRAM_RACE_PROBE
+
 struct HakuxVramRaceStats {
     uint64_t vtx_copies;        /* vertex-range copies out of guest VRAM */
     uint64_t vtx_raced;         /* ... whose range was dirty again on return */
@@ -182,6 +214,23 @@ int hakux_vram_race_snprintf(char *buf, int bufsize)
                     (unsigned long long)s->tex_windows,
                     (unsigned long long)s->impossible);
 }
+
+#else /* !HAKUX_VRAM_RACE_PROBE */
+
+/*
+ * The reporting hook keeps its signature when the probe is off: its caller is
+ * nv2a_profile_get_pacing_str() in pgraph/profile.c, which is NOT this lane's
+ * territory, so switching the probe off must not need an edit there. Zero
+ * appends nothing to the pacing line.
+ */
+int hakux_vram_race_snprintf(char *buf, int bufsize)
+{
+    (void)buf;
+    (void)bufsize;
+    return 0;
+}
+
+#endif /* HAKUX_VRAM_RACE_PROBE */
 
 #ifdef __ANDROID__
 #define VAF_LOG(...) __android_log_print(ANDROID_LOG_WARN, "xemu-vaf", __VA_ARGS__)
@@ -519,12 +568,39 @@ static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
  * rather than there because pgraph.c is shared with the GL renderer, whose
  * readback half of #48 was never wired up, so changing it there would be a
  * half-change on a renderer this arm does not measure.
+ *
+ * KEYED ON THE BINDING, NOT THE REGISTER, AND THAT IS THE WHOLE POINT.
+ *
+ * This stamp exists to agree with the sample-side override in
+ * vk/texture.c (surface_sampled_pad_alpha), which reads
+ * surface->host_fmt.sampled_pad_alpha. Keying this side on
+ * pg->surface_shape.color_format -- the LIVE guest format -- made the two
+ * sides answer from different state, and they can differ: A8R8G8B8,
+ * X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one VkFormat, so
+ * check_surface_compatibility() reuses one binding across a change between
+ * them. drawn_format and host_fmt are assigned together from the same
+ * `target` on BOTH the create path (surface.c:3120/3123) and the
+ * compatible-reuse path (3340/3342), so taking this side from drawn_format
+ * makes the two sides derive from one color_format value by construction
+ * rather than by the register happening to be current.
+ *
+ * Before the #59 stamp this could not bite: the clear always wrote 1.0, so
+ * only the sampler had an opinion and there was nothing to disagree with.
+ *
+ * Every caller already guards on r->color_binding; the register fallback is
+ * for the no-binding case only, where nothing is sampled either.
  */
 static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
 {
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
     pgraph_get_clear_color(pg, rgba);
 
-    switch (pgraph_glsl_surface_pad_alpha_mode(pg->surface_shape.color_format)) {
+    unsigned int color_format =
+        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
+                           pg->surface_shape.color_format;
+
+    switch (pgraph_glsl_surface_pad_alpha_mode(color_format)) {
     case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
     case PSH_PAD_ALPHA_ONE:  rgba[3] = 1.0f; break;
     default: break;
@@ -3939,6 +4015,7 @@ mfp_miss: (void)0;
  */
 static void begin_pre_draw(PGRAPHState *pg)
 {
+#if HAKUX_VRAM_RACE_PROBE
     PGRAPHVkState *r = pg->vk_renderer_state;
     uint32_t gen_before = r->texture_vram_gen;
 
@@ -3967,6 +4044,14 @@ static void begin_pre_draw(PGRAPHState *pg)
             break;
         }
     }
+#else
+    /*
+     * Probe off: the wrapper is the probe.  The gen snapshot and the scan over
+     * the bound textures exist only to answer #54, so with it off this is
+     * begin_pre_draw_inner and nothing else -- no per-draw cost at all.
+     */
+    begin_pre_draw_inner(pg);
+#endif
 }
 
 static void begin_draw(PGRAPHState *pg)
@@ -4512,6 +4597,17 @@ static bool check_draw_mergeable(PGRAPHState *pg, DrawQueue *q)
         return false;
     }
 
+    /*
+     * #13: a merged draw carries exactly one geometry push constant, so two
+     * line draws differing only in SET_LINE_WIDTH cannot share a draw call.
+     * Compared unconditionally rather than only for line primitives: the
+     * width is one register read, and a predicate that is right only for the
+     * primitive modes someone remembered is the shape of bug this is.
+     */
+    if (pg->line_width != q->line_width) {
+        return false;
+    }
+
     return true;
 }
 
@@ -4570,6 +4666,7 @@ static bool try_enqueue_draw_arrays(PGRAPHState *pg, DrawQueue *q)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         q->active = true;
         q->has_uniform_changes = false;
     }
@@ -4679,6 +4776,7 @@ static bool try_enqueue_draw_indexed(PGRAPHState *pg, DrawQueue *q)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         q->active = true;
         q->indexed = true;
         q->has_uniform_changes = false;
@@ -5505,7 +5603,27 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
         e->pipeline_binding->draw_time = pg->draw_time;
         vkCmdSetViewport(r->command_buffer, 0, 1, &e->viewport);
         vkCmdSetScissor(r->command_buffer, 0, 1, &e->scissor);
-        if (e->has_dynamic_line_width) {
+    }
+
+    /*
+     * #13: NOT gated on pipeline_changed.  e->line_width is snapshotted per
+     * entry precisely because SET_LINE_WIDTH can change between draws inside
+     * one reorder window, and those draws share a pipeline -- so gating the
+     * push on pipeline_changed dropped exactly the case the snapshot exists
+     * for, and the second draw rendered at the first's width.  The gate was
+     * inherited from the deleted vkCmdSetLineWidth call, where it was merely
+     * a redundant dynamic-state set; now the width drives the geometry the
+     * stage emits, so the failure is a wrong footprint.
+     *
+     * prev->line_width is only meaningful when prev itself had a dynamic
+     * line width -- entries are reused in place in w->entries[] and are not
+     * cleared between windows, so an entry without one carries a stale value.
+     */
+    if (e->has_dynamic_line_width) {
+        bool width_changed = pipeline_changed || !prev ||
+                             !prev->has_dynamic_line_width ||
+                             e->line_width != prev->line_width;
+        if (width_changed) {
             float values[4];
             geom_line_params(pg, values);
             values[2] = e->line_width;
@@ -5945,6 +6063,7 @@ void pgraph_vk_draw_end(NV2AState *d)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         memcpy(q->saved_vertex_attrs, pg->vertex_attributes,
                sizeof(q->saved_vertex_attrs));
         q->active = true;
@@ -6001,6 +6120,7 @@ void pgraph_vk_draw_end(NV2AState *d)
         q->dyn_control_2 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_2);
         q->dyn_control_3 = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3);
         q->dyn_blend = pgraph_reg_r(pg, NV_PGRAPH_BLEND);
+        q->line_width = pg->line_width;
         memcpy(q->saved_vertex_attrs, pg->vertex_attributes,
                sizeof(q->saved_vertex_attrs));
         q->active = true;
@@ -6169,17 +6289,23 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
                 vw->bytes_copied += size;
                 pgraph_vk_update_vertex_ram_buffer(pg, addr,
                                                    d->vram_ptr + addr, size);
+#if HAKUX_VRAM_RACE_PROBE
                 /*
                  * #54 probe. The bits for this range were consumed by the
                  * test-and-clear above, so it is clean on entry and a bit
                  * set again now is a guest store into the range during the
                  * copy -- a torn read of guest memory by a device thread.
+                 *
+                 * This is one of the two per-draw paths the probe sits on,
+                 * which is why it is compiled out by default rather than
+                 * merely skipped at runtime.
                  */
                 g_hakux_vram_race.vtx_copies++;
                 if (vram_range_dirty_checked(r, addr, size,
                                              DIRTY_MEMORY_NV2A)) {
                     g_hakux_vram_race.vtx_raced++;
                 }
+#endif
             }
         }
     }
@@ -7310,6 +7436,31 @@ void pgraph_vk_flush_draw(NV2AState *d)
     }
 
     if ((folds % 64) == 0) {
+        /*
+         * DELIBERATELY NOT BEHIND A FLAG, unlike the #54 probe at the top of
+         * this file, and the difference is flight status rather than taste.
+         *
+         * Audit pass 1's M5 groups this with two other unflagged facilities.
+         * It is the one that must not be switched off yet: #43's blocker
+         * registers this counter as THE DECIDING INSTRUMENT between its three
+         * outcomes -- staged_high == 0 means pass 2's uniform never reaches
+         * the GPU and runs with the LOW mask, staged_high == folds means
+         * ring 0 is something else, 0 < staged_high < folds is the split
+         * case -- and that prediction is REGISTERED VOID ON SILENCE. A
+         * default-off flag produces exactly that silence, so flagging it now
+         * would not make the instrument cheaper, it would convert a live
+         * registered measurement into a void one and the lane would read the
+         * result as "the mechanism never fired".
+         *
+         * The cost is also not the concern the rule is about: three counter
+         * increments per fold and one log line per 64, on the signed-blend
+         * fold path only, against an RCU read and a bitmap scan per draw.
+         *
+         * WHAT RETIRES IT: #43's staged_high outcome being read off an arm
+         * and recorded on the issue. It goes then -- deleted, not flagged.
+         * Until it is read, leaving it on is the cheaper mistake.
+         */
+
         /*
          * Tag "hakuX", NOT "hakuX-lane", and the reason is measured rather
          * than preferred.
