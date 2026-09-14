@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 33
+wave = 34
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -52,6 +52,18 @@ issues = ["54"]
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pfifo.c"]
 note = "#54's remaining half: a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A bitmap and r->texture_vram_gen. The barrier lever is DEAD and must not be retried -- with ALL guest barriers restored, 2D_BorderTex_SZ failed 6 of 10 runs, identical to the store-store variant and indistinguishable from the ~46% base rate, at +34.1% game frame time, with mb_emitted 0/80,411/347,473 proving the three arms were genuinely different binaries. That zero bounds whether barriers fix #44's capture; it does NOT bound how often the race fires, and the corpus cannot separate the two because it is nearly all static content. Hence a counter on a real title. NOT NOVA-BOUND: Galleon is on the Thor. target/** stays lane.remote's and accel/** is free but not claimed here -- say so if the counter needs either."
+
+[lane.toolsmith]
+issues = []
+files = ["docs/testing/ab_compare.py",
+         "docs/testing/ab_run.sh",
+         "docs/testing/check_cited_commits.py",
+         "docs/testing/check_coverage.py",
+         "docs/testing/check_territory.py",
+         "docs/testing/idle-watchdog.sh",
+         "docs/testing/request.sh",
+         "docs/testing/sweep_agreement.py"]
+note = "THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
 
 [free]
 # A LANE THAT WAS NEVER CLAIMED, recorded because it worked and that is the
