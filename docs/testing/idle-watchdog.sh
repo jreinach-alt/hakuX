@@ -261,7 +261,36 @@ PYEOF
                 esac
                 hint="$(printf '%s' "$cov" | sed -n 1p). DEVICE-BOUND: ~${mins} min of arms queued ${fleet}, and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
             else
-                hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered and no arms are queued, so the next move is a FINISHED lane to fold, a free file in territory.toml to claim, or collect_sweep.sh."
+                # DO NOT ADVISE WORK THAT IS ALREADY RUNNING.
+                #
+                # This branch told the orchestrator to "fold a FINISHED lane,
+                # claim a free file, or collect_sweep.sh" eight times in a row
+                # on 2026-09-14 while three lanes were mid-flight, a 100-suite
+                # sweep was draining, and every one of those three actions had
+                # either just been done or would have collided with a live
+                # lane. The advice was generic because it was computed from
+                # coverage alone, and coverage cannot see a lane that is
+                # WORKING -- only one that is CLAIMED.
+                #
+                # The queue being empty of agent requests does not mean the
+                # fleet is idle: a lane spends most of its life reading code
+                # and building, and queues an arm once.
+                #
+                # So count what is actually claimed, and say that instead.
+                # A lane that has reported is retired by the orchestrator and
+                # its files released, so a standing claim IS work in progress.
+                lanes=$(grep -c '^\[lane\.' "$HERE/territory.toml" 2>/dev/null || echo 0)
+                heldn=$(python3 - "$HERE/territory.toml" <<'PYLANE' 2>/dev/null || echo 0
+import sys, tomllib
+d = tomllib.load(open(sys.argv[1], "rb"))
+print(sum(len(m.get("files") or []) for m in (d.get("lane") or {}).values()))
+PYLANE
+)
+                if [ "${lanes:-0}" -gt 0 ]; then
+                    hint="$(printf '%s' "$cov" | sed -n 1p). ${lanes} lane(s) hold ${heldn} file(s) and have not reported, and ${sweep} sweep suite(s) are still draining -- so there is nothing FINISHED to fold, and claiming a file now would collide with a live lane. Holding is correct; fold each lane as it reports and release what its result did not need."
+                else
+                    hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered, no arms are queued and NO lane is claimed, so the next move is a free file in territory.toml to claim, or collect_sweep.sh."
+                fi
             fi ;;
     esac
 
