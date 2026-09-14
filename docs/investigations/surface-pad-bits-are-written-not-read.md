@@ -370,3 +370,56 @@ touched `glsl/psh.c`, `vk/draw.c` and `vk/texture.c`; `vk/surface.c` was never
 needed, and the clear -- the reason `vk/surface.c` was on the list -- turned
 out to live in `vk/draw.c`. The real blocker is a device feature in a fourth
 file nobody had named.
+
+## Arm 3 separates the clear from the readback, and a FLAT A/B HID A WORKING FIX
+
+Arm `23be8223f5 -> 55de5edfff` is the clear substitution **alone**: #48's
+readback swizzle restored, `glsl/psh.c` untouched, no blend override.
+PRE-REGISTERED, **FAIL on 1 of 193 checks**, and the one that failed is the
+informative one.
+
+    counts   better 0   worse 0   same 217   exact 139 -> 139
+    totals   differing 4,534,554 -> 4,534,554  (+0)
+
+**Every capture scored identically. The change is not inert.** Diffing arm A's
+captures against arm B's -- which `ab_compare` does not do, and which AGENTS.md
+requires before calling a flat count inert -- **49,104 pixels moved** on
+`Clear/SFC_X1R5G5B5_Z1R5G5B5`. Per channel against the golden:
+
+    arm            differ    R       G       B       A      G max delta
+    base           49,152    0    49,152    0    49,104        128
+    arm 3          49,152    0        48    0    49,104        128
+    arm 2 (+draw)      48    48       48   48        48
+
+**The clear substitution fixed the pad bit exactly.** The green channel -- the
+byte a 1555 word's bit 15 lands in when two words are read as one 8888 texel --
+went from 49,152 px wrong at max delta 128 to **48**, the pre-existing
+residual. The score did not move because *the same pixels are still wrong in
+the alpha channel*, where #48's restored readback swizzle forces 0 over the
+golden's stored byte. One defect was replaced by a different one on the same
+pixels, which is precisely the shape a total cannot see.
+
+So the two halves are now separated by measurement rather than by argument:
+
+| what fixes it | `SFC_X1R5G5B5_Z1R5G5B5` channel |
+|---|---|
+| clear stamps the format's constant | **green** (the stored pad bit) |
+| readback swizzle removed | **alpha** (what the texture unit returns) |
+| raster stamps the constant | neither here -- this surface is cleared, not drawn |
+
+and the earlier reading of arm 2, which credited the whole 49,152 -> 48 to the
+clear, was half right. **The clear-side claim survives; the attribution of the
+alpha half to it does not.**
+
+### Two smaller things the arm settled
+
+**The 96-px mover was the dropped half.** `Clear/SFC_A8R8G8B8` moved by exactly
+96 px in both earlier arms, on a format with no pad bits, and was registered
+`must_not_move` here specifically to test that attribution rather than assume
+it. It held, along with all twelve `must_not_move` globs and 192 of 193 checks.
+
+**And the clear change cannot land on its own benefit.** It is correct, it is
+provably harmless (0 worse over 217 captures), and it is worth 49,104 px only
+once the readback swizzle can come out -- which needs the raster to stamp --
+which needs dual-source blending. It is kept for that reason, not because it
+moved a number.
