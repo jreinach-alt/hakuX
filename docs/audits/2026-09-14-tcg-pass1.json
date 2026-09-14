@@ -1,0 +1,114 @@
+[
+  {
+    "severity": "HIGH",
+    "file": "accel/tcg/translate-all.c",
+    "line": 445,
+    "summary": "The inv_htable recycle path calls tb_lock_page1() with no live sigsetjmp(tcg_ctx->jmp_trans) frame for the current tb_gen_code() invocation. tb_lock_page1()'s contention path (tb-maint.c:585-593) drops page0, re-takes both locks in order, and then does siglongjmp(tcg_ctx->jmp_trans, -3). jmp_trans is armed only by setjmp_gen_code() (translate-all.c:263) and tb_gen_superblock() (:1166); the recycle block at :415-450 runs BEFORE setjmp_gen_code() is ever reached on this call, so jmp_trans still holds the context of a previous tb_gen_code() call whose stack frame has already returned. Upstream's only caller is translator.c:353, which runs inside translate_code() inside setjmp_gen_code(), where the jump target is live. Introduced by 255d110496 (xemu, 2025-01-06, 'accel/tcg: Lock tb page when recycling for link'), which added the locking without the setjmp context it depends on.",
+    "scenario": "A recycled two-page TB (tb->page_addr[1] != -1) whose second physical page index is LOWER than its first -- ordinary under scattered guest paging, and the exact case tb_lock_page1's out-of-order branch exists for -- at a moment when another thread holds that page's spinlock. The other thread is not a second vCPU: assert_memory_lock() is empty in softmmu (internal-common.h:181), and do_tb_phys_invalidate is reachable from system/physmem.c:3297 invalidate_and_set_dirty -> tb_invalidate_phys_range -> page_collection_lock on whichever thread performs a device DMA write. On Xbox that is IDE/DVD DMA -- the overlay load that 2af6def68a names as its own correctness payoff. page_trylock() then reports busy, the function falls into the drop-and-relock path, and siglongjmp lands in a returned stack frame: undefined behaviour, in practice a jump through a stale frame pointer with the two page locks held. Invisible to soaks and to the test disc, because it needs cross-thread contention on one specific page at one specific instant, and the corpus is nearly all static content read by the vCPU.",
+    "remediation": "Do not call tb_lock_page1() outside a live jmp_trans context. Either take the recycle path's second-page lock with an ordering-safe helper that has no longjmp in it (lock lower index first, which the recycle path can do because it knows both addresses up front and has nothing to restart), or arm a sigsetjmp before the lock and handle -3 by retrying the recycle lookup. The same defect is present at translate-all.c:1158, where tb_gen_superblock() locks at :1156-1158 and arms jmp_trans only at :1166 -- fix both, even though the superblock path is currently gated off."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "accel/tcg/tb-maint.c",
+    "line": 1525,
+    "summary": "`ws` (hakux_inval_would_survive) fires on `tbs_overlap < tbs_seen`, but tbs_overlap is computed for LIVE blocks only (:1467-1472, deliberately, per the comment there) while tbs_seen counts every visited block including already-invalid ones. Before 2af6def68a this mismatch was harmless BY ACCIDENT: an already-invalid TB took do_tb_phys_invalidate's early return before tb_remove(), so it stayed on the page list, so `!p->first_tb` could not be true for any event that visited one. em therefore implied tbs_seen == tbs_live and the comparison was made on a clean population. The #73 fix removes exactly that implication -- already-invalid TBs are now really unlinked -- so a page can now empty while dead blocks were visited, and each such block adds 1 to tbs_seen and 0 to tbs_overlap.",
+    "scenario": "Any post-fix run on a page carrying at least one tier-1-promoted block. The event empties the page (em fires) and ws fires too, even when every live block on the page overlapped the written range and the range test would have spared nothing. ws is the quantity profile.c's own legend calls 'the prize', and it is the number #68's held arm (937848c9e7, restore the range test) will be judged on. The bias is one-directional -- ws over-reports -- so the arm gets credited with survivals that would not occur. Separately, `em` itself changes population across the fix, so the six Crimson Skies soaks of 2026-09-13 are not comparable with any post-fix run on either counter; 2af6def68a's 'WHAT THIS COUNTS CHANGED' note (tb-maint.c:79-95) covers `ai` and says nothing about `em` or `ws`.",
+    "remediation": "Compute overlap for every visited block, keeping the live/dead split only for the sp/ov ratio: add a second accumulator `tbs_overlap_all` incremented for live and dead alike, and test `tbs_overlap_all < tbs_seen` at :1525. Extend the 'what this counts changed' note to em and ws, and mark the pre-2026-09-14 ws figures as measured under a different definition."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "accel/tcg/cpu-exec.c",
+    "line": 192,
+    "summary": "tb_request_tier1_promotion() claims the first free slot without checking whether a request for the same (pc, cs_base, flags) is already pending, and tier1_consume_request() clears only one matching slot. Combined with the masked tb_lookup_cmp at :546 -- which keeps the promoted, CF_INVALID-carrying TB findable and executable so tb_gen_code() is never called for that pc -- and with the exec_count saturation at :1421 (clamped at threshold*2, so `tb->exec_count >= g_tier1_threshold` stays true forever on a TB whose tier is still 0), each promotion re-fires on every subsequent execution of the same block. 2af6def68a's cpu-exec.c comment states this as 'the request sits in its slot, and 64 such slots exist'. It does not sit; it multiplies.",
+    "scenario": "A hot block on a code page the guest never writes -- the common case. It is promoted, keeps executing through the masked lookup, and re-requests once per execution up to the budget (TIER1_PROMOTION_BUDGET = 8 per TIER1_BUDGET_RESET_INTERVAL = 100000 loop iterations). All 64 slots fill with duplicates of a handful of pcs within roughly 800k TB executions, i.e. seconds. From then on tb_request_tier1_promotion logs 'requests FULL: dropped' and tier-1 promotion is dead for every other block until the next tb_flush (which calls tier1_clear_all_requests, tb-maint.c:960). The duplicates also make tier1_has_pending_request() permanently true for those pcs, so translate-all.c:424 refuses to recycle them from inv_htable on every regeneration, draining one duplicate per full retranslation. #73's fix reduces this only for pages the guest writes; a never-written code page is unaffected. No counter shows it: g_tier1_promotions_total/_dropped are not on the hakuX-pages line, and the hakuX-tier1 lines are DEBUG and dropped by every dispatcher logcat spec.",
+    "remediation": "Make tb_request_tier1_promotion() return early if tier1_has_pending_request(tb->pc, tb->cs_base, tb->flags) is already true, and set tb->tier (or a dedicated 'promotion requested' bit) on the OLD TB so tier1_maybe_promote's `tb->tier == 0` guard stops re-firing. Both are needed: the first bounds the table, the second stops the budget drain."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "accel/tcg/tb-maint.c",
+    "line": 167,
+    "summary": "The impossible row's own caveat names the wrong second writer. It says a concurrent discard 'would show up here as a violation' only 'for whoever ports this to a target with more than one vCPU', and rules it out because 'the Xbox has one CPU and the invalidation path holds the page locks'. But assert_memory_lock() is empty in softmmu (internal-common.h:181), the page locks are per-page while hakux_tb_discarded is global and non-atomic, and do_tb_phys_invalidate is reachable today from a non-vCPU thread: system/physmem.c:3297 invalidate_and_set_dirty -> tb_invalidate_phys_range, on whatever thread performs a device or DMA write. tb_invalidate_phys_range_fast's own comment (tb-maint.c:1605) says it is called 'with iothread mutex not held'.",
+    "scenario": "The vCPU thread is inside tb_invalidate_phys_page_range__locked at :1498-1502, holding page P's lock, having read discarded_before. An IDE/DVD DMA completion on the main loop concurrently invalidates a TB on a different page Q and increments hakux_tb_discarded. The vCPU's post-call read then differs from discarded_before even though ITS tb was not discarded, so a genuine model violation is silently not counted: the impossible row reads 0 while the model is broken, which is the failure direction that reads as healthy. The same race tears hakux_tb_visited, hakux_inval_already and hakux_tb_discarded themselves, so ai/visits and di/visits are approximate in a way nothing on the line declares. One vCPU is not the same claim as one writer, and the caveat only establishes the former.",
+    "remediation": "State the real second-writer axis in the comment (non-vCPU invalidation via invalidate_and_set_dirty), and either make the counters qatomic_inc__nocheck or gate the impossible-row check on the discard happening for THIS tb -- e.g. have do_tb_phys_invalidate set a per-call out-parameter or a thread-local flag instead of inferring the discard from a global delta."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "accel/tcg/tb-maint.c",
+    "line": 96,
+    "summary": "The falsifier registered for #73's fix is not falsifiable as stated. The comment predicts 'ai should fall from ~0.9 of visits to the tier-1 promotion rate. If it does not, the #73 model is wrong.' hakux_inval_already counts tier-1-promoted TBs that an invalidation VISITS, which is bounded above by the number of promotions and has no reason to equal it: a promoted block on a page the guest never writes is never visited and never counted. The prediction therefore names a bound as a value. Worse, the comparison cannot be made at all from the instruments that exist: g_tier1_promotions_total and g_tier1_promotions_dropped (cpu-exec.c:68-69) are not on the hakuX-pages line, and their only emission is a qemu_printf inside tier1_maybe_reset_budget (:379) plus hakuX-tier1 DEBUG lines that 2af6def68a itself says every dispatcher logcat spec drops.",
+    "scenario": "The fold is judged on a soak. ai/visits falls from 0.90 to, say, 0.04. There is no number on the log line to compare 0.04 against, so it is read as confirmation. It would be read as confirmation for 0.30 and for 0.001 equally, and also if the fall were caused by something else entirely -- a change in page-write mix, or fewer promotions because the 64-slot table saturated (see the tier-1 duplicate finding). The half of the impossible-row model that 2af6def68a deliberately dropped was moved onto this counter; it did not survive the move.",
+    "remediation": "Put a promotion counter on the hakuX-pages line -- either g_tier1_promotions_total as a per-window delta, or better a direct counter incremented where do_tb_phys_invalidate discards a TB that already carried CF_INVALID -- and restate the prediction as an inequality with a stated floor, or as the exact identity `ai == (discards of CF_INVALID TBs)` which IS checkable per visit."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "accel/tcg/cpu-exec.c",
+    "line": 605,
+    "summary": "tb_ctx.inv_htable has no eviction path. Entries are inserted by do_tb_phys_invalidate (tb-maint.c:1155) for every discarded TB and removed only by a successful recycle (translate-all.c:440) or the pending-tier-1-request drop (:430), plus qht_reset_size on tb_flush (:943). An entry whose guest bytes have since changed can never be recycled, because inv_tb_lookup_cmp requires tb->ihash to equal a hash recomputed over current memory -- so it stays forever. ihash is not part of the qht hash, so every such entry for one (pc, cflags, page) key lands in the SAME bucket, and inv_tb_lookup_cmp calls tb_code_hash_func once per candidate. tb_code_hash_func (tb-code-hash.h:23) reads the guest bytes one at a time through cpu_ldub_code -> cpu_ldb_code_mmu, up to ~4000 bytes.",
+    "scenario": "A page the guest rewrites repeatedly -- self-modifying or overlay-loaded code, which is exactly the workload #73 and #68 are about. Each distinct byte content ever translated leaves one permanently unrecyclable entry in the bucket for that pc. Every later tb_gen_code call for that pc walks them all and performs a full byte-at-a-time guest-memory hash per entry before falling through to generation, so the cost of a translation on a thrashing page grows linearly in how many times that page has been rewritten since the last tb_flush. Nothing measures it: the work happens inside qht_lookup_custom, before hakux_tb_codegen is incremented, so it is charged to neither calls nor generations, and the 'about five to one' recycle rate quoted at translate-all.c:319 does not price it.",
+    "remediation": "Evict on insert: before qht_insert at tb-maint.c:1155, remove any existing inv_htable entry with the same tb_cmp key (the ihash differs, so it is a superseded translation of the same block and can never be recycled again). Alternatively fold tb->size and tb->ihash into the inv_htable bucket hash so superseded entries do not share a bucket."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/profile.c",
+    "line": 412,
+    "summary": "The hakuX-pages legend still states the biconditional model that 2af6def68a deliberately abandoned. The inline comment at :412 reads 'xx is the impossible row: a visit that was live and was not discarded, OR WAS ALREADY INVALID AND WAS [discarded]. Anything but 0 voids every ratio on this line.' The second clause is now the fix's intended behaviour -- a tier-1-promoted TB is already invalid AND is now really discarded, which tb-maint.c:143-155 calls 'the entire point'. The prose legend at :352 says the same thing ('xx THE IMPOSSIBLE ROW. Visits where live-ness and discard-ness disagreed'). tb-maint.c's comment and the code were updated by the fix; the log line's own documentation, which is what a reader of a soak actually reads, was not. OUTSIDE lane.audit-tcg's territory (hw/); routed via the board request.",
+    "scenario": "Someone reads a post-fix soak to decide whether #73 landed. The legend tells them xx counts, among other things, already-invalid TBs that WERE discarded. They see xx = 0 and conclude that no already-invalid TB was discarded -- that is, that the fix did not reach its population -- which is the exact opposite of what xx = 0 now means. The same legend also tells them 'anything but 0 voids every ratio on this line', so the reading is treated as authoritative. The legend at :352 additionally still describes ws as the counterfactual prize without the population caveat that the fix introduced (see the tb-maint.c:1525 finding).",
+    "remediation": "Restate xx on both the prose legend (:352) and the inline comment (:412) as the surviving half only -- 'a visit that was live and was not discarded' -- and add one line saying that already-invalid-and-discarded is now expected and is measured by ai. While in the file, add the em/ws population caveat from the tb-maint.c:1525 finding."
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/tb-maint.c",
+    "line": 1183,
+    "summary": "The superblock-metadata free added to do_tb_phys_invalidate is unreachable. tb->superblock is set only by tb_gen_superblock (translate-all.c:1345), whose only caller is tier1_maybe_form_superblock, which returns immediately while XBOX_SUPERBLOCK_ENABLED is 0 (cpu-exec.c:313, 318). Every other site sets tb->superblock = NULL. The __android_log_print inside it is at ANDROID_LOG_INFO under the tag 'superblock', which no dispatcher logcat spec lists, so even if it did fire nothing would record it.",
+    "scenario": "None today -- it is a guard nothing can reach, which is the LOW definition. It becomes live the day XBOX_SUPERBLOCK_ENABLED flips to 1, and at that point it frees metadata belonging to a TB that the fork's tier-1 design deliberately keeps executing; that is the moment to re-audit it, not now.",
+    "remediation": "Leave it, but put the reachability condition in the comment so the next reader does not spend time on it: 'dead while XBOX_SUPERBLOCK_ENABLED == 0; re-audit the lifetime against a still-executing TB before enabling superblocks.'"
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/translate-all.c",
+    "line": 430,
+    "summary": "Two adjacent qht_remove(&tb_ctx.inv_htable, tb, h) calls with identical hash derivations are checked differently: :430 (the pending-tier-1-request drop) discards the return value, :440 (the recycle) asserts it with g_assert(removed). Either the removal can fail, in which case :430 leaks a stale entry and :440 aborts, or it cannot, in which case the assert is documentation. They cannot both be right.",
+    "scenario": "No failure scenario found -- I traced both hash derivations against the insertion hash at tb-maint.c:1150 and they agree on every input (phys_pc == tb_page_addr0(tb) is guaranteed by tb_lookup_cmp having matched desc->page_addr0). This is an opinion about consistency, recorded as such and downgraded accordingly.",
+    "remediation": "Check :430's return the same way, or drop the assert at :440. Whichever is chosen, say in one line why the removal cannot fail."
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/tb-code-hash.h",
+    "line": 25,
+    "summary": "tb_code_hash_func declares `uint8_t code[size]` -- a variable-length array of up to ~4 KB on the stack -- inside a qht lookup callback, guarded by a bare assert(size < 4096). Nothing ties that 4096 to the translation-extent cap it depends on: i386 stops a block at TARGET_PAGE_SIZE - 32 plus one instruction, which happens to land under 4096, but that is a target-side property with no build-time link to this header. A target or a fork change that lets a block reach 4096 guest bytes turns this into an abort, and the VLA into a stack overflow before the assert ever runs.",
+    "scenario": "Not reachable on i386 today. It bites if TB extent is ever widened (the small-blocks work at HAKUX_SMALL_BLOCK_INSNS moves extent in the safe direction, but the lever is two-sided) or if this header is reused on a target with a larger page or a longer maximum instruction. The assert is also the wrong order of operations: the VLA is declared before it is checked.",
+    "remediation": "Replace the VLA with a fixed uint8_t code[TARGET_PAGE_SIZE] (or hash incrementally without a buffer), and make the bound a QEMU_BUILD_BUG_ON or a runtime clamp rather than an assert that runs after the allocation."
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/cpu-exec.c",
+    "line": 508,
+    "summary": "The masked-pair comment's claim 2 says 'unmasking either one alone is worse than unmasking neither' but demonstrates only one direction -- tb_lookup_cmp exact with tb_cmp masked. I could not construct the other direction. With tb_cmp exact and tb_lookup_cmp still masked, tb_lookup finds the tier-1-promoted TB, tb_gen_code is never called for that pc, and tb_link_page's dedup never sees the pair at all; inv_tb_cmp is unaffected because both operands carry CF_INVALID, and qht_remove is pointer-identity. That direction reads inert, not worse.",
+    "scenario": "No failure scenario -- this is about the completeness of an argument, not about behaviour, so it is an opinion and downgraded. It matters only because the comment is written as the record of a decision an auditor is told to check, and half of it is unchecked.",
+    "remediation": "Either show the second direction or narrow the claim to the one that was traced: 'unmasking tb_lookup_cmp alone is worse than unmasking neither; unmasking tb_cmp alone appears inert and was not traced further.'"
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/tb-maint.c",
+    "line": 89,
+    "summary": "'Both callers of tb_phys_invalidate() pass page_addr == -1 (translate-all.c:879 and :1131)' is literally true but overstates the evidence: :1131 is inside tb_gen_superblock, which is unreachable while XBOX_SUPERBLOCK_ENABLED is 0. The load-bearing inference that follows -- 'which leaves tier-1 promotion as the only producer of a CF_INVALID TB on a page list' -- rests on one live caller, tb_check_watchpoint, not two.",
+    "scenario": "None; the conclusion is unaffected. Recorded because the same sentence is the premise of the ai falsifier, and a premise that counts a dead caller as evidence is the kind that survives into a context where it is wrong.",
+    "remediation": "Say 'one live caller (translate-all.c:879) and one gated-off one (:1131, tb_gen_superblock, dead while XBOX_SUPERBLOCK_ENABLED == 0)'."
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/cpu-exec.c",
+    "line": 1421,
+    "summary": "exec_count is clamped at g_tier1_threshold * 2 rather than being reset or latched after a promotion, so tier1_maybe_promote's `tb->exec_count >= g_tier1_threshold` test is permanently true for any TB whose tier is still 0 -- which includes every promoted-but-still-executing TB, because the tier is set on the NEW block and the old one keeps tier 0 forever.",
+    "scenario": "This is the latch that makes the duplicate-request finding unbounded rather than a one-off; on its own it is a quality issue. The clamp reads as a deliberate anti-overflow measure and its side effect on re-promotion is not stated anywhere.",
+    "remediation": "Note the interaction in a comment at the clamp, and fix it at the source by marking the old TB (tier, or a promotion-requested bit) in tb_request_tier1_promotion."
+  },
+  {
+    "severity": "LOW",
+    "file": "accel/tcg/cpu-exec.c",
+    "line": 639,
+    "summary": "tb_lookup's jmp-cache fast path compares `tb_cflags(tb) == s.cflags` exactly, while tb_htable_lookup's tb_lookup_cmp masks CF_INVALID. A tier-1-promoted TB is therefore stored into the jmp cache by the slow path and then rejected by the fast path on every subsequent lookup, so it takes the full get_page_addr_code + qht_lookup_custom route forever.",
+    "scenario": "Pure cost, on exactly the blocks the tier-1 heuristic identified as hottest, for as long as they stay stranded. Correctness is unaffected -- the exact comparison is the conservative direction. Worth recording because it is a second, independent cost of leaving the pair masked, and because it is invisible on the hakuX-pages line.",
+    "remediation": "None while the pair stays masked; if the tier-1 mechanism is fixed so promoted TBs are not re-found, this disappears with it. Record it against the tier-1 issue rather than fixing it here."
+  }
+]
