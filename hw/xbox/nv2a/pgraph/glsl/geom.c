@@ -148,6 +148,19 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                    "  EndPrimitive();\n";
         } else if (polygon_mode == POLY_MODE_LINE) {
             need_linez = true;
+            /*
+             * 12 is the largest max_vertices this generator can emit -- three
+             * edges times four vertices per widened line -- and it is what
+             * vk/instance.c checks the device's maxGeometryOutputVertices and
+             * maxGeometryTotalOutputComponents against at device init, and
+             * what it build-asserts against the Vulkan required minimums.
+             * RAISING IT, or adding a varying to pgraph_glsl_get_vtx_header()
+             * in glsl/common.c, means updating PGRAPH_GEOM_MAX_OUTPUT_VERTICES
+             * / PGRAPH_GEOM_VTX_COMPONENTS there.  A geometry shader that
+             * overruns a device limit fails to compile, and a failed compile
+             * on the Vulkan path draws NOTHING rather than raising an error
+             * (audit finding L10).
+             */
             layout_out = widen_lines ?
                 "layout(triangle_strip, max_vertices = 12) out;\n" :
                 "layout(line_strip, max_vertices = 6) out;\n";

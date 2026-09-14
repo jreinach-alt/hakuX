@@ -896,7 +896,14 @@ void pgraph_vk_draw_begin(NV2AState *d)
 
 /*
  * #13's wide-line geometry stage reads one vec4 of push constants at offset
- * 0: (2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused).
+ * 0: (2/surfaceWidth, 2/surfaceHeight, line width in guest px, one rasteriser
+ * subpixel quantum in guest px).  The fourth component is NOT unused -- this
+ * comment said it was until audit finding L1 -- it is lineTieBias, and
+ * glsl/geom.c spends thirty lines on why: it is the low-open tie break that
+ * decides the 4.562% of the goldens' band edges (1,911 of 41,892) landing
+ * exactly on a pixel centre, worth 550-580 of the 8,890 fit-set cuts.
+ * Repurposing it would destroy that silently.  push_geom_line_params()
+ * computes it, and it has to be exactly one subpixel quantum.
  * KEEP IN SYNC with vk/shaders.c, which declares the identical range on every
  * push-descriptor template layout, and with glsl/geom.c, which declares the
  * matching GeomPushConstants block.  Declared on every pipeline whether or
@@ -2473,10 +2480,21 @@ static void geom_line_params(PGRAPHState *pg, float out[4])
      * It replaces the line-width limits log that stood here until the native
      * line went away: same question one level down -- not "is the width
      * arriving" but "how finely can the shape be positioned".
+     *
+     * KEYED ON EVERYTHING IT PRINTS, which audit finding L3 is about: this
+     * was keyed on `bits` alone, and `bits` is the CLAMPED value, so it could
+     * not move at all after the first draw.  The line also carries
+     * surface_scale_factor and the tie bias derived from both, and a guest
+     * that changes resolution moves those while leaving the log showing the
+     * first value -- the same "reads as having been checked" failure the
+     * paragraph below is about, one level up.  out[3] is a pure function of
+     * (bits, scale), so keying on the pair keys on the whole line.
      */
     static uint32_t last_bits = 0xffffffff;
-    if (bits != last_bits) {
+    static unsigned int last_scale = 0;
+    if (bits != last_bits || pg->surface_scale_factor != last_scale) {
         last_bits = bits;
+        last_scale = pg->surface_scale_factor;
 #ifdef __ANDROID__
         /*
          * hakuX-build, not a tag of its own.  run_disc.sh's LOGCAT_SPEC ends

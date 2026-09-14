@@ -696,6 +696,83 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
     return true;
 }
 
+/*
+ * #13's wide-line widening made the geometry stage the tightest-fitting
+ * stage in this renderer, and nothing in hw/ or ui/ has ever read the limits
+ * it has to fit inside.  pgraph_glsl_gen_geom() emits
+ * `layout(triangle_strip, max_vertices = 12)` for PRIM_TYPE_TRIANGLES under
+ * POLY_MODE_LINE (glsl/geom.c), up from 6, because emit_line() now emits four
+ * vertices per line instead of two.  Before this block,
+ * maxGeometryOutputVertices and maxGeometryTotalOutputComponents occurred in
+ * exactly two places in the tree -- their own field declarations in the
+ * bundled vulkan_core.h -- and no code read either.
+ *
+ * WHY IT MATTERS HERE RATHER THAN AT DRAW TIME.  A geometry shader that
+ * exceeds one of these limits fails to COMPILE, and a failed compile on this
+ * path is silent: pgraph_vk_compile_glsl_to_spv() returns NULL,
+ * pgraph_vk_create_shader_module_from_glsl() (vk/glsl.c) frees the info and
+ * returns NULL, and shader_module_cache_entry_gen() (vk/shaders.c) simply
+ * leaves module_info NULL.  There is no VkResult to check and no assert on
+ * that path, so the symptom is a draw that produces no pixels, not an error.
+ *
+ * KEEP IN SYNC with two files, because neither can be included from here:
+ *   - the max_vertices values in pgraph_glsl_gen_geom() (glsl/geom.c);
+ *   - the vtx varying table in pgraph_glsl_get_vtx_header() (glsl/common.c),
+ *     which is 11 vec4 (vtxD0/D1, vtxB0/B1, vtxT0-3, vtxPos0-2) plus 4 float
+ *     (vtxFog, vtxFogSpecial, triMZ, vtxPointSize) = 48 components, the same
+ *     set on the in and the out side.
+ * glsl/geom.h is the right home for these and is the fold-in audit pass 2
+ * recommended when it declined L2; it crosses into glsl/, which also serves
+ * the GL renderer, so it is filed as a board request rather than done here.
+ */
+#define PGRAPH_GEOM_MAX_OUTPUT_VERTICES 12
+#define PGRAPH_GEOM_VTX_COMPONENTS 48
+/* gl_Position (4) + gl_PointSize (1); both are written by emit_vertex(). */
+#define PGRAPH_GEOM_BUILTIN_COMPONENTS 5
+#define PGRAPH_GEOM_COMPONENTS_PER_VERTEX \
+    (PGRAPH_GEOM_VTX_COMPONENTS + PGRAPH_GEOM_BUILTIN_COMPONENTS)
+#define PGRAPH_GEOM_TOTAL_OUTPUT_COMPONENTS \
+    (PGRAPH_GEOM_MAX_OUTPUT_VERTICES * PGRAPH_GEOM_COMPONENTS_PER_VERTEX)
+
+/*
+ * The Vulkan 1.0 required minimums for these four limits (spec table
+ * "Required Limits").  Every conformant device reports at least these, so
+ * these are what our own worst case has to fit inside to be portable -- and
+ * checking against them at BUILD time is the half of this that can catch the
+ * problem before a device does.
+ *
+ * This is deliberately not a runtime assert on the same numbers.  A runtime
+ * `assert(limits.maxGeometryOutputVertices >= 12)` is unfireable on any
+ * conformant device -- 12 is far below the 256 every device must report --
+ * which is the shape audit pass 2 caught in H1's first remediation: an assert
+ * implied by a condition it sits under.  The build-time checks below fire on
+ * the case that actually bites: someone adding a varying to
+ * pgraph_glsl_get_vtx_header(), or raising max_vertices again.  The runtime
+ * block in create_logical_device() reports the device's real numbers and
+ * warns, which is the only thing that can catch a driver reporting below the
+ * required minimum.
+ *
+ * maxGeometryOutputComponents is the binding one and neither audit pass named
+ * it: its required minimum is 64 and we use 53 of that, where the total sits
+ * at 636 of 1024.  glslang's own resource table (vk/glsl.c) allows 128
+ * per-vertex output components, so a varying set between 65 and 128
+ * components would compile cleanly on the host and fail only on a device at
+ * the minimum -- exactly the silent draws-nothing this exists for.
+ */
+#define VK_MIN_MAX_GEOMETRY_INPUT_COMPONENTS 64
+#define VK_MIN_MAX_GEOMETRY_OUTPUT_COMPONENTS 64
+#define VK_MIN_MAX_GEOMETRY_OUTPUT_VERTICES 256
+#define VK_MIN_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS 1024
+
+QEMU_BUILD_BUG_ON(PGRAPH_GEOM_COMPONENTS_PER_VERTEX >
+                  VK_MIN_MAX_GEOMETRY_INPUT_COMPONENTS);
+QEMU_BUILD_BUG_ON(PGRAPH_GEOM_COMPONENTS_PER_VERTEX >
+                  VK_MIN_MAX_GEOMETRY_OUTPUT_COMPONENTS);
+QEMU_BUILD_BUG_ON(PGRAPH_GEOM_MAX_OUTPUT_VERTICES >
+                  VK_MIN_MAX_GEOMETRY_OUTPUT_VERTICES);
+QEMU_BUILD_BUG_ON(PGRAPH_GEOM_TOTAL_OUTPUT_COMPONENTS >
+                  VK_MIN_MAX_GEOMETRY_TOTAL_OUTPUT_COMPONENTS);
+
 static bool create_logical_device(PGRAPHState *pg, Error **errp)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -899,6 +976,74 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
                             "vk dualSrcBlend: %s (query only, #59)",
                             f.dualSrcBlend == VK_TRUE ? "available" : "missing");
 #endif
+    }
+
+    /*
+     * Report this device's geometry-stage limits against what
+     * pgraph_glsl_gen_geom() actually asks for.  Query only -- nothing is
+     * enabled and no behaviour changes here, in the same sense as the
+     * dualSrcBlend block above.  See the requirement constants and the
+     * build-time checks above create_logical_device() for the derivation, and
+     * for why the portable half of this is a build assert and not a runtime
+     * one.
+     *
+     * The warning below can only be reached by a driver reporting below the
+     * Vulkan required minimum.  That is out of spec but not hypothetical on
+     * this target: draw.c already has to clamp a subPixelPrecisionBits of 0
+     * or > 16 coming from real drivers here.  It warns rather than aborting
+     * for that same reason -- a device that misreports a limit it in fact
+     * honours would otherwise fail to start where today it runs, and the
+     * geometry stage is needed only for lines and for POLY_MODE_LINE
+     * triangles, not for the whole renderer.
+     */
+    {
+        const VkPhysicalDeviceLimits *lim = &r->device_props.limits;
+        bool geom_fits =
+            lim->maxGeometryInputComponents >=
+                PGRAPH_GEOM_COMPONENTS_PER_VERTEX &&
+            lim->maxGeometryOutputComponents >=
+                PGRAPH_GEOM_COMPONENTS_PER_VERTEX &&
+            lim->maxGeometryOutputVertices >=
+                PGRAPH_GEOM_MAX_OUTPUT_VERTICES &&
+            lim->maxGeometryTotalOutputComponents >=
+                PGRAPH_GEOM_TOTAL_OUTPUT_COMPONENTS;
+
+        fprintf(stderr,
+                "geom limits: inComp=%u/%d outComp=%u/%d outVerts=%u/%d "
+                "totalOutComp=%u/%d -> %s (query only, #13)\n",
+                lim->maxGeometryInputComponents,
+                PGRAPH_GEOM_COMPONENTS_PER_VERTEX,
+                lim->maxGeometryOutputComponents,
+                PGRAPH_GEOM_COMPONENTS_PER_VERTEX,
+                lim->maxGeometryOutputVertices,
+                PGRAPH_GEOM_MAX_OUTPUT_VERTICES,
+                lim->maxGeometryTotalOutputComponents,
+                PGRAPH_GEOM_TOTAL_OUTPUT_COMPONENTS,
+                geom_fits ? "ok" : "TOO SMALL");
+#ifdef __ANDROID__
+        __android_log_print(geom_fits ? ANDROID_LOG_INFO : ANDROID_LOG_ERROR,
+                            "hakuX-build",
+                            "vk geom limits: inComp=%u/%d outComp=%u/%d "
+                            "outVerts=%u/%d totalOutComp=%u/%d -> %s (#13)",
+                            lim->maxGeometryInputComponents,
+                            PGRAPH_GEOM_COMPONENTS_PER_VERTEX,
+                            lim->maxGeometryOutputComponents,
+                            PGRAPH_GEOM_COMPONENTS_PER_VERTEX,
+                            lim->maxGeometryOutputVertices,
+                            PGRAPH_GEOM_MAX_OUTPUT_VERTICES,
+                            lim->maxGeometryTotalOutputComponents,
+                            PGRAPH_GEOM_TOTAL_OUTPUT_COMPONENTS,
+                            geom_fits ? "ok" : "TOO SMALL");
+#endif
+        if (!geom_fits) {
+            fprintf(stderr,
+                    "WARNING: this device reports geometry limits below what "
+                    "the wide-line geometry stage needs and below the Vulkan "
+                    "required minimum. Geometry shaders will fail to compile, "
+                    "and a failed compile here draws NOTHING rather than "
+                    "raising an error: lines and POLY_MODE_LINE triangles "
+                    "will be missing.\n");
+        }
     }
 
     /*
