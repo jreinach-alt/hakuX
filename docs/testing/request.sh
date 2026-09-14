@@ -152,6 +152,67 @@ if [ -n "$SUITES" ] || [ -n "$TITLE" ]; then
             echo "--expect $EXPECT does not exist. Register it first: ab_compare.py --register $EXPECT --a-ref ... --b-ref ..." >&2
             exit 2; }
         [ -n "$EXPECT_SHA" ] || { echo "could not hash --expect $EXPECT" >&2; exit 2; }
+
+        # EVERY `expect` KEY MUST NAME A CAPTURE THAT EXISTS, checked here,
+        # because after the device has run it is too late to find out that a
+        # leg tested nothing.
+        #
+        # Measured 2026-09-13 on the #67 FRNDINT arm. Ten legs were registered
+        # as `Blend tests::#spot_0_ADD` -- the DERIVED suite spelling with the
+        # `::` separator used everywhere in nv2a_issues.toml and in the test
+        # binary's own capture filenames. ab_compare keys its rows as
+        # `"%s/%s" % r["key"]`, the RESULTS-DIRECTORY spelling: `Blend_tests/
+        # #spot_0_ADD`. So all ten matched nothing. The arm came back
+        # PRE-REGISTERED, every capture it named went to exactly the predicted
+        # value, and the prediction's entire machine-readable half had been
+        # inert -- ten legs that could not fail, on an arm whose prose called
+        # them the legs a trivial fix could not satisfy.
+        #
+        # ab_compare does report "matched no capture" as a violation, which is
+        # the right design and is also a post-mortem. Two spellings of the same
+        # suite exist on purpose (the index carries results_name separately) so
+        # this is not fixable by picking one; it is fixable by checking.
+        #
+        # The check is against the GOLDEN TREE, not the queued suites: a leg
+        # naming a capture in a suite this request does not run is a different
+        # error and ab_compare will catch it with real rows in hand.
+        python3 - "$EXPECT" "${GOLDENS:-/home/justin/goldens/results}" <<'PYEXP' || exit 2
+import json, os, sys
+exp_path, goldens = sys.argv[1], sys.argv[2]
+try:
+    exp = json.load(open(exp_path))
+except Exception as e:
+    print("--expect %s is not readable JSON: %s" % (exp_path, e), file=sys.stderr)
+    sys.exit(2)
+keys = list((exp.get("expect") or {}).keys())
+if not keys:
+    sys.exit(0)
+known = set()
+for suite in os.listdir(goldens):
+    d = os.path.join(goldens, suite)
+    if not os.path.isdir(d):
+        continue
+    for png in os.listdir(d):
+        if png.endswith(".png"):
+            known.add("%s/%s" % (suite, png[:-4]))
+bad = [k for k in keys if k not in known]
+if not bad:
+    sys.exit(0)
+print("REFUSED: %d of %d `expect` key(s) name no capture in the goldens:"
+      % (len(bad), len(keys)), file=sys.stderr)
+for k in bad:
+    print("  %s" % k, file=sys.stderr)
+    if "::" in k:
+        cand = k.replace(" ", "_").replace("::", "/")
+        if cand in known:
+            print("      did you mean  %s" % cand, file=sys.stderr)
+print("\n  Keys are RESULTS_DIRECTORY_SPELLING/TestName -- underscores in the\n"
+      "  suite, a single slash. The `Suite name::Test` form is what the test\n"
+      "  binary and nv2a_issues.toml use, and ab_compare will never match it.\n"
+      "  A leg that matches no capture cannot fail, and an arm full of them\n"
+      "  comes back PRE-REGISTERED with nothing measured.", file=sys.stderr)
+sys.exit(2)
+PYEXP
     elif [ -n "$NO_EXPECT" ]; then
         EXPECT_SHA=""
         echo "queuing without a prediction: $NO_EXPECT" >&2
