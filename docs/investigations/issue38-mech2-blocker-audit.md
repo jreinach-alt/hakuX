@@ -25,9 +25,12 @@ The five, from [`issue57-is-issue38-mech2.md`](issue57-is-issue38-mech2.md) §3:
 | 4 | the ramp running in y instead of x | whether the group is 2×1 or 2×2 | **answered: 2×1** |
 | 5 | a second y-gradient | the period-3 breakdown | still needed |
 
-**The claim is FALSE.** Three of the five are answered by data already on disk.
-**Two** new captures are needed, not five: one that separates width from the
-submission register, and one for the period-3 breakdown.
+**The claim is FALSE.** Counting exactly: captures **1 and 4 are answered
+outright** by data already on disk; captures **2 and 3 collapse into a single
+remaining capture**, because the corpus supplies draws that are narrow *and* 3F
+together and so eliminates the bare conjunction without separating those two
+from each other; capture **5 stands**. So **two** new captures are needed, not
+five.
 
 The tie the blocker rests on was four-way. It is now **two-way**, and the
 surviving pair is exactly confounded — which is the one thing a new capture
