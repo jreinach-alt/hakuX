@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 52
+wave = 53
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -92,6 +92,11 @@ note = "THE COUNTERS, because two separate pieces of work are now blocked on the
 # Enumerating all 62 would be worse than useless -- a list nobody maintains
 # reads as authoritative while going stale, which is the failure this file's
 # own [free] section already warns about for retired lanes.
+
+[lane.tcgarm]
+issues = ["68"]
+files = []
+note = "#68's THREE-ARM re-dispatch. The first attempt ran TWO arms for a three-arm question, so 73-1 and 73-2 came back NOT ATTRIBUTABLE -- arm B on disk is #68 stacked on #73, with no arm isolating #73. All three refs exist and were verified by ancestry against the lane's OWN sha rather than the orchestrator's cherry-pick, which is the sha-versus-patch trap one more time: 117203fe9b has neither, a94386a3c8 is #73 ALONE and is the missing middle, 937848c9e7 is #73 + #68. It also needs A LEG BOUNDING `visited`, which rose ~560x (13,270 -> 7.5M per window), each visit a page-list traversal plus a range test -- leg 68-4 counts STORES and cannot see it, and that unmeasured cost is now the only reason 937848c9e7 stays unfolded. Claims NO FILES: this is measurement, and tcg_pages.py is lane.toolsmith's after it hard-coded one discard model as an invariant and voided a correct arm."
 
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
