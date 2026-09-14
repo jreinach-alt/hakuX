@@ -2355,10 +2355,30 @@ static MString* psh_convert(struct PixelShader *ps)
 
             apply_border_adjustment(ps, vars, i, "dotSTR%d");
             if (dot_str_3d_is_cube(ps, i)) {
-                /* The whole direction goes in, as DOT_STR_CUBE does with its
-                 * own triple; a cubemap is never rect_tex, so no remap. */
+                /*
+                 * Silicon discards the magnitudes and keeps two sign bits.
+                 * Measured: the fetched texel is always a CORNER of the +Z
+                 * face, picked by sign(dot_{i-2}) and sign(dot_{i-1}), with
+                 * sign(dot_i) selecting nothing -- 100% pure on all eight
+                 * sign classes across all six DotSTR3D_* captures. The three
+                 * positive faces are also the only ones whose corners carry
+                 * the four colours the goldens ever show. Issue #51.
+                 *
+                 * In the cube convention +Z is chosen when rz is the major
+                 * axis and rz > 0, and there sc = rx, tc = -ry, ma = rz. So
+                 * corner x wants rx = +/-k and corner y wants ry = -/+k, with
+                 * rz = 1 and k just under 1 to make +Z win the major axis
+                 * outright. k lands in the outermost texel for any face at
+                 * least 2 wide, and an edge sample stays inside its own face
+                 * because GL_TEXTURE_CUBE_MAP_SEAMLESS is never enabled here.
+                 */
                 mstring_append_fmt(vars,
-                    "vec4 t%d = texture(texSamp%d, dotSTR%d);\n", i, i, i);
+                    "vec3 dotSTR%dDir = vec3("
+                    "dotSTR%d.x >= 0.0 ? DOT_STR_3D_K : -DOT_STR_3D_K, "
+                    "dotSTR%d.y >= 0.0 ? -DOT_STR_3D_K : DOT_STR_3D_K, "
+                    "1.0);\n"
+                    "vec4 t%d = texture(texSamp%d, dotSTR%dDir);\n",
+                    i, i, i, i, i, i);
             } else {
                 mstring_append_fmt(vars,
                     "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
@@ -2701,6 +2721,12 @@ static MString* psh_convert(struct PixelShader *ps)
     MString *final = mstring_new();
     pgraph_glsl_append_version(final, ps->opts.vulkan, ps->opts.gles,
                                ps->opts.gles_version);
+    /*
+     * Just under 1, so DOT_STR_3D's saturated direction makes +Z the major
+     * axis outright and still lands in the outermost texel of any face at
+     * least two wide. See the PS_TEXTUREMODES_DOT_STR_3D case. Issue #51.
+     */
+    mstring_append(final, "#define DOT_STR_3D_K (1.0 - 1.0/8192.0)\n");
     mstring_append(final, mstring_get_str(preflight));
     mstring_append(final, "void main() {\n");
     mstring_append(final, mstring_get_str(clip));
