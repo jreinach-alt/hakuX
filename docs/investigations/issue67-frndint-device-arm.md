@@ -55,41 +55,58 @@ captures correctly went to 0.
 *A stale artifact re-derives beautifully.* "I derived it myself" is true of the
 arithmetic and false of the premise.
 
-### 3. `Stencil/*` was registered `must_not_move` and moved — six times
+### 3. `Stencil/*` was registered `must_not_move` and is not a valid control
 
-Five of those are the fix working somewhere I asserted it could not reach:
+Six Stencil captures moved. My first reading was that the control's argument —
+Stencil computes its geometry from `floorf(320)` and `floorf(240)`, exact
+integers the fix cannot reach — had been refuted by the fix reaching further
+than argued. **That reading was wrong**, and the correction came from repeating
+rather than from thinking harder.
 
-```
-Stencil_ZERO           5,000 -> 0
-Stencil_ZERO_ST       30,000 -> 0
-Stencil_ZERO_ST_DT    30,000 -> 0
-Stencil_ZERO_ST_DT_ZB 30,000 -> 0
-Stencil_ZERO_ST_ZB    30,000 -> 0
-```
-
-The control's stated reasoning was that Stencil computes its geometry from
-`floorf(320)` and `floorf(240)`, exact integers the fix cannot reach. Five
-captures say otherwise. **The control is refuted, not the fix** — but that also
-means this suite was never the clean scoping check it was registered as, and
-whatever else in Stencil goes through a non-integral `floorf` has not been
-identified.
-
-## The one genuine open question
+Three runs per arm, same binary, same disc, same device:
 
 ```
-Stencil_REPLACE_DT     0 -> 40,000     <<< WAS EXACT
+capture                     A1      A2      A3      B1      B2      B3
+Stencil_REPLACE_DT           0       0       0   40000       0    5100
+Stencil_REPLACE_ST           0       0       0       0       0    5050
+Stencil_REPLACE_ST_DT        0       0       0       0   30000       0
+Stencil_REPLACE_ST_ZB        0       0       0       0       0    5050
+Stencil_ZERO              5000       0       0       0       0       0
+Stencil_ZERO_ST          30000       0       0       0   30000       0
+Stencil_ZERO_ST_DT       30000   30000       0       0       0       0
+Stencil_ZERO_ST_DT_ZB    30000   30000       0       0       0       0
+Stencil_ZERO_ST_ZB       30000       0       0       0       0       0
 ```
 
-One capture in 154, regressed from exact. Every other `REPLACE` variant —
-`_ST`, `_ZB`, `_DT_ZB`, `_ST_DT`, `_ST_ZB`, `_ST_DT_ZB`, and plain `REPLACE` —
-stays at 0. A single lone mover on a single run per arm is also the documented
-shape of a device flake, so **the first move is repetition, not theory**: two
-further runs of each arm are queued on the same device and the same 4-suite
-disc, giving three observations per arm. Narrowing the disc to Stencil alone
-would change what it measures and break comparability with these results.
+**Nine of sixteen Stencil captures vary WITHIN a single arm**, snapping between
+0 and 5,000 / 5,050 / 5,100 / 30,000 / 40,000. The suite is nondeterministic on
+this device. Every Stencil conclusion in the first pass was noise — the five
+"better" and the one "worse" alike — and `Stencil/*` cannot control for
+anything until that is fixed. Filed separately.
 
-Until those land, this is one observation, and the fix is not recommended for
-anything on the strength of it.
+`Viewport/*` is the control that survives: **1,396 px in all six runs,
+identical**, in both arms.
+
+## What the repeats establish about the fix
+
+Everything that matters is perfectly reproducible, which is the opposite of
+the Stencil picture:
+
+| suite | captures | unstable within an arm | A | B |
+|---|---:|---:|---:|---:|
+| `Blend_tests` | 105 | **0** | 1,711,362 px | **0 px** |
+| `Point_size` | 21 | **0** | 22,746 px | 20,579 px |
+| `Viewport` | 12 | **0** | 1,396 px | 1,396 px |
+
+`Blend_tests` reads 1,711,362 px in all three A runs and 0 in all three B runs,
+bit-identical. The `Point_size` difference is 2,167 px and is exactly
+1,099 + 1,040 + 14 + 14 — the two `LargestPointSize` and the two
+`SmallestPointSize` captures, each going to 0 in every B run.
+
+So the fix is confirmed on six runs. The FAIL verdict stands as a fact about
+the prediction, not about the fix, and a corrected registration
+(`issue67-frndint-device-legs-v2.json`, 109 legs, all derived from arm A here,
+Stencil excluded and Viewport as the control) is queued as a fresh pair.
 
 ## What is NOT claimed
 
@@ -98,4 +115,7 @@ anything on the strength of it.
   numbers as a **floor, not a score**.
 - Not that the prediction passed. It failed, 17 of 29 checks, and the FAIL is
   correct.
-- Not that `Stencil_REPLACE_DT` is a regression. It is one observation.
+- Not that `Stencil_REPLACE_DT` is a regression. Six runs say it is noise:
+  40,000, then 0, then 5,100 on the same binary.
+- Not that the Stencil instability is understood. It is measured and filed,
+  and its cause is not known.
