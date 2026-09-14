@@ -2135,6 +2135,106 @@ measurement needed the Nova, which running it on the Thor retires by
 demonstration rather than by an `ls`.
 
 
+### MEASURED at the tip on the THOR: 6 of 6 registered legs PASS
+
+`1dee9e25f6`, apk `658910889812`, Galleon 240 s x2, thor, `--expect` v4.
+
+| | run 1 | run 2 | spread |
+|---|---|---|---|
+| `Vr` raced/copies | 9 / 225,395 | 7 / 207,831 | — |
+| **`Vr` rate** | **3.993e-05** | **3.368e-05** | 17% |
+| `vtx_copies` | 225,395 | 207,831 | 8.1% |
+| `Tr` raced/uploads/windows | **0** / 12,280 / 995,076 | **0** / 11,561 / 926,584 | — |
+| **exposure `tex_uploads/tex_windows`** | **1.234e-02** | **1.248e-02** | **1.1%** |
+| `gfps` p90 / max | 29 / 30 | 29 / 30 | 0 |
+| `Xd`, `mb_emitted` | 0, 0 | 0, 0 | — |
+
+**G1** `Xd` = 0 both runs — PASS. **G2** every denominator far above its bar
+(225,395 and 207,831 copies; 12,280 and 11,561 uploads; ~1M windows) — PASS,
+so the zeros below are measurements and not absences. **G3** `Tr/tex_uploads`
+= 0 on both, pooled bound ≤ 1.26e-04 — PASS. **G4** `Vr` pooled
+16 / 433,226 = **3.693e-05**, inside the registered [1e-05, 1e-03] — PASS.
+**G5** `Vr` rate > `Tr` rate — PASS, the inversion holds at the tip on the
+second device. **G6** exposure ≤ 5e-02 at 1.24e-02 — PASS. Controls:
+`device_label` = thor on both, one apk across both runs, `mb_emitted` = 0.
+
+`gfps` p90 29 / max 30 reproduces the published Galleon arm-A ceiling exactly,
+so this is a gameplay-shaped soak and not a menu.
+
+Note what `vram_race_report.py` prints as its own "L5 FAIL": that is **v3's**
+leg — *`Tr` > 0 on at least one run* — and it is Crimson-shaped. On Galleon it
+fails, and that failure IS the finding v4's G3 and G5 registered. The tool is
+judging the older prediction, not this one.
+
+### THE WHOLE GALLEON CORPUS: 6 runs, 4 refs, 2 devices
+
+| ref | device | s | `Vr` | rate | `Tr`/uploads/windows | exposure |
+|---|---|---|---|---|---|---|
+| `5cfc236d9b` | nova | 240 | 12 / 135,483 | 8.86e-05 | 0 / 7,518 / 560,343 | 1.342e-02 |
+| `5cfc236d9b` | nova | 240 | 8 / 134,597 | 5.94e-05 | 0 / 7,942 / 581,491 | 1.366e-02 |
+| `49afee8889` | nova | 240 | 5 / 126,933 | 3.94e-05 | 0 / 7,713 / 548,902 | 1.405e-02 |
+| `c866527e03` | thor | 180 | 14 / 179,031 | 7.82e-05 | 0 / 9,117 / 762,024 | 1.196e-02 |
+| `1dee9e25f6` | thor | 240 | 9 / 225,395 | 3.99e-05 | 0 / 12,280 / 995,076 | 1.234e-02 |
+| `1dee9e25f6` | thor | 240 | 7 / 207,831 | 3.37e-05 | 0 / 11,561 / 926,584 | 1.248e-02 |
+| **POOLED** | | **1,380** | **55 / 1,009,270** | **5.45e-05** | **0 / 56,131 / 4,374,420** | **1.283e-02** |
+
+**THE ANSWER, in the shape it was asked for.** On Galleon the read-side race
+fires **55 times in 1,009,270 instrumented guest-memory reads — 5.45e-05 per
+read, 0.040 per second of wall clock — and every one of them is at the VERTEX
+site.** The texture site fires **zero times in 56,131 uploads across 4,374,420
+draw windows**, bounding it at ≤ 5.35e-05 per upload (one-sided 95%). On the
+pgraph corpus it fires **zero times at both sites**, with the per-run `Tr` = 1
+and `vtx_copies` = 34 both landing before the first pacing line — boot, not a
+rate.
+
+**The per-second form is the weaker one and is quoted second on purpose.**
+0.040/s mixes the race rate with how much work Galleon happened to do;
+`Vr/vtx_copies` counts events of a condition against the number of
+opportunities, which is the occupancy-free form this file's own rule asks for.
+The per-run rates span 3.37e-05 to 8.86e-05 — a 2.6x spread on Poisson counts
+of 5 to 14, which is what counts that small do — while the **denominators
+reproduce to 8%** and the **exposure ratio to 17% across four refs and two
+devices**. So the rate is established to about a factor of two and the
+exposure to a few percent; anyone needing the rate tighter needs more soak,
+not a better statistic.
+
+**Xd = 0 on all six runs**, over 1,009,270 copies and 4,374,420 windows. The
+impossible row is the only control inside this instrument and it has never
+fired.
+
+### WHY THE TEXTURE SITE READS ZERO ON GALLEON, AND WHY IT IS NOT #54's ZERO
+
+The probe measures the answer as well as the question. `tex_uploads /
+tex_windows` is the rate at which a draw's texture read follows an unsynced
+guest write:
+
+| title | exposure | `Tr/tex_uploads` | `Vr/vtx_copies` |
+|---|---|---|---|
+| **Crimson Skies** (nova, `5cfc236d9b`) | **0.803, 0.804** | **0.617, 0.619** | 0 / 6,082 |
+| Crimson Skies (thor, `e353735028`) | 0.748, 0.751 | 0.566, 0.567 | 0 / 4,560 |
+| **Galleon** (6 runs, 4 refs, 2 devices) | **0.0128** | **0 / 56,131** | **5.45e-05** |
+| JSRF (thor) | 0.0052 | 0 / 5,733 | 0 / 17,703 |
+| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 273,499 |
+
+**A 63x difference in texture exposure between Crimson and Galleon, and the
+race rate follows it.** Crimson's attract FMV rewrites a bound texture on four
+fifths of its draws and loses three fifths of those races; Galleon rewrites one
+on 1.3% of draws and loses none of 56,131.
+
+So Galleon's `Tr` = 0 is a fact about **what Galleon does**, not about the
+emulator's memory ordering — and **it is a different zero from the barrier
+arm's.** The barrier arm's zero says restoring guest barriers does not repair
+`2D_BorderTex_SZ`; this one says Galleon does not present the texture-side race
+to be repaired. Neither is evidence for the other, and quoting either as "the
+race does not happen" would be wrong: on Crimson, at the same tip, it happens on
+three fifths of uploads.
+
+**Which relocates #54's target.** The issue was kept open for a read-side
+frequency, and the frequency on the title where the cost is says the exposure
+there is at the **vertex** site. That is the same site #79 was diagnosed on, and
+the same one mode 2 takes to zero.
+
+
 ## UNRESOLVED
 
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
