@@ -1928,6 +1928,151 @@ even that, so the *series* is not identical, only its ceiling and median. The
 ceiling is the statistic that matters, and that was fixed by `#64` before this
 arm ran rather than chosen now because it agreed.
 
+## MEASURED, lane.readfreq: the read-side frequency on Galleon was ALREADY ON DISK, and it inverts the target
+
+#54 was kept open "for a READ-SIDE frequency counter over the DIRTY_MEMORY_NV2A
+bitmap and `r->texture_vram_gen`". **That counter has existed since
+`e353735028`, it has run on Galleon three times, and nothing had ever read its
+output.** The three Galleon runs were queued for other questions — two as the
+`draw-only-cost` arms in the section above, one as the `wt54-phase` survey —
+and every one of them carries `Vr:`/`Tr:` on the `hakuX-perf` line it was
+already capturing. The cost legs were read off those runs; the probe fields
+were not.
+
+So the first finding is a process one and it is the same failure as the
+blocker: **the measurement #54 was waiting for had already been taken, by runs
+the issue itself cites.** `docs/testing/vram_race_report.py` was committed to
+read exactly these fields and was never pointed at a Galleon result.
+
+### GALLEON, mode 0 (the shipped configuration), three runs across two refs
+
+| run | ref | `Vr` raced/copies | rate | `Tr` raced/uploads/windows | `Xd` |
+|---|---|---|---|---|---|
+| `1789312621-draw-only-cost-1052604` | `5cfc236d9b` | **12 / 135,483** | 8.86e-05 | 0 / 7,518 / 560,343 | 0 |
+| `1789312621-draw-only-cost-1052674` | `5cfc236d9b` | **8 / 134,597** | 5.94e-05 | 0 / 7,942 / 581,491 | 0 |
+| `1789318797-wt54-phase-56718` | `49afee8889` | **5 / 126,933** | 3.94e-05 | 0 / 7,713 / 548,902 | 0 |
+
+**Pooled: `Vr` = 25 / 397,013 = 6.30e-05, `Tr` = 0 / 23,173 uploads over
+1,690,736 draw windows.** All three runs 240 s, all on the nova, `Xd` = 0
+throughout.
+
+Stated in the shape the brief asked for: **the counter fires 0.035 times per
+second on Galleon, all of it at the VERTEX site, and zero times per second at
+the texture site** — bounded at ≤ 3/23,173 = 1.29e-04 per upload (one-sided
+95%), which is ≤ 0.0042/s. The instrument is unchanged across the two refs:
+a diff of `vk/draw.c` over that span touches 660 lines and none of them is a
+probe counter.
+
+### THE TARGET IS THE VERTEX SITE ON GALLEON, WHICH INVERTS v3's LEG 4
+
+v3's leg 4 predicted `Vr/vtx_copies < Tr/tex_uploads`, reasoning that the
+texture window is orders of magnitude longer than a vertex memcpy and a race
+rate scales with window length. **On Galleon the ordering is inverted**, and
+the leg's own registration named the failing world: *"a title streaming
+dynamic vertex buffers rewrites them immediately before drawing from them far
+more often than it rewrites textures, which inverts the ordering."* Galleon is
+that title.
+
+The mechanism is not window length, it is **exposure**, and the probe already
+measures it. `tex_uploads / tex_windows` is the rate at which a draw's texture
+read follows an unsynced guest write:
+
+| title | `tex_uploads/tex_windows` | `Tr/tex_uploads` | `Vr/vtx_copies` |
+|---|---|---|---|
+| **Crimson Skies** (nova, `5cfc236d9b`) | **0.803** | **0.617, 0.619** | 0 / 6,082 |
+| Crimson Skies (thor, `e353735028`) | 0.748, 0.751 | 0.566, 0.567 | 0 / 4,560 |
+| **Galleon** (nova, mode 0) | **0.0134–0.0141** | **0 / 23,173** | **6.30e-05** |
+| JSRF (thor) | 0.0052 | 0 / 5,733 | 0 / 17,703 |
+| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 237,499 |
+
+**A 60x difference in texture exposure between Crimson and Galleon**, and the
+race rate follows it. So Galleon's `Tr = 0` is a statement about Galleon's
+*workload* — it barely rewrites a bound texture — and not about the emulator's
+memory ordering. **The barrier arm's zero and this zero are not the same
+zero**, and neither is evidence for the other: one says barriers do not repair
+`2D_BorderTex_SZ`, this one says Galleon does not present the texture-side
+race to be repaired.
+
+### AND THE SKEW BOUND ELIMINATES THE VERTEX RACE ON GALLEON, p = 0.00008
+
+The same four-run pair carries mode 2, and this was never read either:
+
+| arm | ref | `Vr` raced/copies |
+|---|---|---|
+| A, mode 0 | `5cfc236d9b` | 12/135,483 and 8/134,597 — **20 / 270,080** |
+| B, mode 2 | `d879e6e03b` | 0/88,762 and 0/88,739 — **0 / 177,501** |
+
+Fisher exact, two-sided: **p = 0.00008**. The denominator is live on both arms
+(88,739 copies on the quietest run), so this is elimination and not absence —
+the same shape as #79's `XEMU_OPT_FIFO_SKEW_BOUND` arm taking wrong Stencil
+triangles from 7 of 64 to 0 of 64, on a different workload and a different
+observable, with a direct counter instead of a pixel count.
+
+**That is a second, independent confirmation of #79's diagnosis from a title
+rather than a disc**, and it was sitting in the same four result directories
+the cost table above was built from. It does not attribute Galleon's 25 torn
+vertex reads to any visible defect: a soak writes no captures, and this
+measures a rate, not an artefact.
+
+### WHAT THIS COUNTER CANNOT SEE ON #79's OWN DISC, and it is a DENOMINATOR
+
+The brief asked whether the counter can see #79. On the pgraph corpus the
+honest answer is **no, and the reason is measurable rather than arguable**:
+
+    pgraph disc runs carrying the probe        83
+    vtx_copies == 34 per run                   49 runs
+    vtx_copies == 35..39 per run               23 runs
+    Vr > 0                                      1 run
+    Tr == exactly 1 per run                    77 runs
+
+Every `4-suites:7254741c` disc containing Stencil reads **`Vr` = 0 / 34**
+against ~46,000 `tex_windows`. So the whole disc performs 34 dirty
+vertex-array copies while issuing tens of thousands of draws, and #79's arm
+refs (`d97d506514`, `ec7f50e859`) predate the probe entirely and carry no
+`Vr:` line at all.
+
+**A zero over a denominator of 34 bounds the rate at ≤ 8.8% and settles
+nothing**, and the interesting half is which of two worlds produces the 34:
+
+- Stencil owns most of them — the site is on #79's path and the counter is
+  merely **underpowered** on this disc;
+- Stencil owns none of them — `DefineBiTri`'s six vertices reach pgraph by a
+  path that is not `sync_vertex_ram_buffer`, and the counter is **structurally
+  blind** to #79.
+
+Those need opposite responses and one Stencil-only disc separates them, so it
+is queued rather than assumed. Note the shape: this is AGENTS.md's *"before
+measuring an effect on a class of input, ask whether this data contains that
+class at all"*, and the `ls`-equivalent here — the vertex-copy denominator —
+was printed on every one of those runs.
+
+**The disc's `Tr` = exactly 1 in 77 of 83 runs is the same warning from the
+other side.** A counter that reads the same small constant on every run of a
+1,673-test disc and of a 16-capture disc alike is not measuring a rate; it is
+almost certainly one boot-time event. Nothing should quote a per-run disc `Tr`
+as a frequency.
+
+### Registered before the tip runs
+
+`docs/testing/predictions/vram-read-race-probe-54-v4-galleon.json`, a
+single-arm survey (`a_ref == b_ref == 1dee9e25f6`), Galleon 240 s x2 on the
+**thor**. Every leg is an absolute: `Xd == 0`; denominators live
+(`vtx_copies` > 50,000, `tex_uploads` > 5,000, `tex_windows` > 100,000, so a
+zero cannot be read as an absence); `Tr/tex_uploads` ≤ 1e-03;
+`Vr/vtx_copies` in [1e-05, 1e-03] pooled; `Vr/vtx_copies > Tr/tex_uploads`
+(the inversion, which is the one leg that contradicts a previous registration
+rather than replicating a number); `tex_uploads/tex_windows` ≤ 5e-02. It
+records what is already on disk at the top, so no leg can be read as blind.
+
+Why spend the slot at all when three Galleon runs exist: all three are on the
+**nova**, which is offline, and this file's own rule is that a figure measured
+on one device is a fact about that device until a second agrees; the refs are
+~300 commits behind the tip, and the same probe on Crimson moved 9% in rate
+and 53% in denominator across 128 commits; and #54's blocker asserted the
+measurement needed the Nova, which running it on the Thor retires by
+demonstration rather than by an `ls`.
+
+
 ## UNRESOLVED
 
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
