@@ -1644,6 +1644,75 @@ blocker rather than after someone doubts it. A blocker nobody can refute
 cheaply is the most expensive kind of comment a tracker can hold: it stops
 work for as long as it stands, and it costs nothing to write.
 
+## Three ways a prediction can be inert, all of which still read as PRE-REGISTERED
+
+`PRE-REGISTERED` is a statement about **binding**: the file existed before the
+device ran and still hashes the same. It says nothing about whether any leg in
+it could ever have failed. All three of these happened on 2026-09-13 and 14,
+and each produced a result that looked decisive.
+
+**1. A key that matches no capture.** Ten legs were registered as
+`Blend tests::#spot_0_ADD` -- the derived suite spelling with `::`, which is
+what `nv2a_issues.toml` and the test binary's capture filenames use.
+`ab_compare` keys its rows `"%s/%s"`, the results-directory spelling:
+`Blend_tests/#spot_0_ADD`. All ten matched nothing. The arm returned
+`PRE-REGISTERED`, every capture went to exactly the predicted value, and the
+whole machine-readable half of the prediction had been inert. Both spellings
+exist on purpose -- the index carries `results_name` separately -- so this is
+not fixable by picking one. `request.sh` now refuses such a key at queue time
+with a `did you mean`; trust that gate rather than re-deriving the spelling.
+
+**2. A `must_not_move` that meant `must_not_regress`.** `must_not_move` is
+bit-identical. It was for a long time the only guard, so every "leave this
+alone" intent got written as it. #13's wide-line arm then FAILED on eleven
+captures that all moved **better** and none worse -- at w=1.0 a correct fix
+*must* move a non-axis-aligned line. Both legs now exist. Write down which one
+you mean; a guard nobody can state correctly gets stated incorrectly.
+
+**3. An absolute derived from a stale baseline.** #67's legs said fifteen
+`#spot_*_SADD` must fall to 96,855. The figure was **re-derived** from
+`scores1.tsv` rather than copied, and said so in the prediction as the reason
+to trust it -- true of the arithmetic, false of the premise, because the
+result it came from was an older sweep where #43's ink still existed. On the
+armed ref the baseline was 17,024 and the captures correctly went to 0. Check
+the `apk_sha` and date of whatever you derive an absolute FROM, and prefer
+arm A's own measured value: run the baseline arm first, or predict directions
+and deltas rather than absolutes.
+
+After any PASS, check how many legs actually **bound to rows**. A count of
+checks *performed* is the number that matters, not the count written.
+
+## `merge-base --is-ancestor` answers a question about SHAS, not about patches
+
+Lane work is rebased in constantly here, so **a cited sha being absent is the
+normal state for work that shipped**. Three tracker entries drew a wrong
+conclusion from ancestry in one day, in both directions:
+
+  - I read `merge-base --is-ancestor 8d2bf50075 HEAD` returning false as
+    "#43's sign-fold fix is not present", published a refutation of #43's
+    attribution on it, and withdrew it. `8d2bf50075` was not the fix at all --
+    it was the arm-**B ref** of the pair `322adc3a01 -> 8d2bf50075` -- and the
+    real fix was on the branch as `c2d57ba21a66`, an ancestor of the very arm
+    I had called clean.
+  - #62's entry said "zero of the six findings landed", from the same
+    inference. Two of them are in the tree, at `gl/surface.c:561` and
+    `:1368-1390`.
+  - #72's `fixed_by` listed a **docs** commit first, reading as though that
+    were the fix.
+
+`docs/testing/check_cited_commits.py` does this properly: patch-ids, scoped to
+the paths each commit touches so it covers all of history rather than a recent
+window, and it prints every sha's **subject**, because half the hex in the
+tracker is A/B refs, dispatch request ids and prediction sha256 prefixes. Two
+dead ends are in its docstring so nobody rebuilds them -- `git cherry HEAD
+<sha>` lists the whole divergent range, and a `-200` window silently misses
+older history.
+
+What it cannot see is in the docstring too: patch-id matches exactly, so a fix
+folded in with a resolved conflict or one extra comment line reads ABSENT
+while its substance is present. ABSENT means "no byte-identical patch", not
+"the work is missing" -- go and read the code.
+
 ## An inference can be valid and still wrong, because the model it is valid inside was never checked
 
 Contributed by the remote lane on 2026-09-13, from its own retraction on #51,
