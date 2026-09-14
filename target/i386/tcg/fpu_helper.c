@@ -371,6 +371,32 @@ static inline double floatx80_round_to_int_nds(double a, float_status *s)
  * as a double and would round up to 2^63, admitting exactly the value that
  * overflows.
  *
+ * OUT OF RANGE SATURATES, it does not return the x87 integer-indefinite value,
+ * and getting that backwards was audit H1 / #82 against the first version of
+ * this code. softfloat's partsN(float_to_sint) returns `min` for negative
+ * overflow and `max` for positive overflow AND for NaN
+ * (fpu/softfloat-parts.c.inc:1239/1244/1267/1271), so these must too. `r < 0`
+ * is false for a NaN, which lands it on MAX exactly as softfloat does.
+ *
+ * Returning INT32_MIN for every out-of-range case looks harmless because the
+ * six FIST/FISTT helpers and FBSTP all overwrite the value -- four on the
+ * float_flag_invalid these raise, two on a `val != (int16_t)val` value test,
+ * and FBSTP on a +/-1e18 range test that both conventions trip. It is NOT
+ * harmless, because helper_fscale reads it UNGUARDED: it brackets the call
+ * with save/set_float_exception_flags(0) and restores the old flags
+ * afterwards, deliberately discarding the invalid this raises, then passes the
+ * result straight to floatx80_scalbn(). A guest FSCALE with finite
+ * |ST1| >= 2^31 -- ldexp with a runaway exponent -- must give +/-inf. With
+ * MIN it got scalbn(ST0, INT32_MIN) and returned +/-0: infinity became zero,
+ * and the answer differed between fp_jit on and off, because the soft path
+ * uses real softfloat and saturates.
+ *
+ * The other two conversion sites in this file, the f2xm1 table index and the
+ * fyl2x split, sit inside `#else of #if USE_NATIVE_DOUBLE_STORAGE` and so
+ * never see these macros at all -- checked by walking the preprocessor stack,
+ * not by reading around them. That matters: both use the result as an array
+ * index, where a wrong saturation would be worse than a wrong value.
+ *
  * KNOWN INCOMPLETE, and deliberately so: raising the flag makes the two helper
  * guards work, because they call get_float_exception_flags() directly. It does
  * NOT reach the x87 status word. See the exception-flag note at the top of this
@@ -383,7 +409,7 @@ static inline int32_t floatx80_to_int32_nds(double a, float_status *s)
 
     if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
         float_raise(float_flag_invalid, s);
-        return INT32_MIN;
+        return r < 0 ? INT32_MIN : INT32_MAX;
     }
     return (int32_t)r;
 }
@@ -394,7 +420,7 @@ static inline int64_t floatx80_to_int64_nds(double a, float_status *s)
 
     if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
         float_raise(float_flag_invalid, s);
-        return INT64_MIN;
+        return r < 0 ? INT64_MIN : INT64_MAX;
     }
     return (int64_t)r;
 }
@@ -405,7 +431,7 @@ static inline int32_t floatx80_to_int32_rtz_nds(double a, float_status *s)
 
     if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
         float_raise(float_flag_invalid, s);
-        return INT32_MIN;
+        return r < 0 ? INT32_MIN : INT32_MAX;
     }
     return (int32_t)r;
 }
@@ -416,7 +442,7 @@ static inline int64_t floatx80_to_int64_rtz_nds(double a, float_status *s)
 
     if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
         float_raise(float_flag_invalid, s);
-        return INT64_MIN;
+        return r < 0 ? INT64_MIN : INT64_MAX;
     }
     return (int64_t)r;
 }
