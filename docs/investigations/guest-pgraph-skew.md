@@ -1983,7 +1983,7 @@ read follows an unsynced guest write:
 | Crimson Skies (thor, `e353735028`) | 0.748, 0.751 | 0.566, 0.567 | 0 / 4,560 |
 | **Galleon** (nova, mode 0) | **0.0134–0.0141** | **0 / 23,173** | **6.30e-05** |
 | JSRF (thor) | 0.0052 | 0 / 5,733 | 0 / 17,703 |
-| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 237,499 |
+| Dead or Alive 3 (thor, 6 runs) | 0.00068–0.00088 | 0 / 8,944 | 2 / 273,499 |
 
 **A 60x difference in texture exposure between Crimson and Galleon**, and the
 race rate follows it. So Galleon's `Tr = 0` is a statement about Galleon's
