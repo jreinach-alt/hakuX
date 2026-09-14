@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 38
+wave = 39
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -59,8 +59,8 @@ note = "preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate b
 issues = []
 files = ["hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c"]
-note = "REMEDIATION of audit pass 1's HIGH and the three MEDIUMs in vk/. H1 is the reason this is urgent and is the first thing this project's new audit protocol caught: moving the vertex inline-attribute push range to offset 16 took the largest range's end from 256 to 272 bytes, and the guard added for it is read by create_pipeline() in draw.c but NOT by create_push_descriptor_resources(), which builds all 17 template layouts unconditionally. On a device reporting maxPushConstantsSize == 256 (desktop NVIDIA, many Mali) that is an invalid range AT INIT -- validation error or VK_CHECK's assert aborting at startup -- and it cannot appear in a golden run on this hardware, because there use_push_constants_for_uniform_attrs is false and the templates are created and never used. M1: the wide-line push is gated on pipeline_changed, defeating the e->line_width snapshot added two lines above for exactly that case, and check_draw_mergeable() still does not compare width. M3: the clear-side pad stamp keys on the LIVE guest format while the sample side keys on the binding's CREATION format, which psh.c:180 says itself can differ. M5: three diagnostic facilities landed unflagged against AGENTS.md. Records in docs/audits/2026-09-14-pass1.json. THE AUDITOR DOES NOT FIX WHAT IT FINDS -- this is a separate lane, and pass 2 verifies the named scenario can no longer occur, not that a commit exists. M2 (fpu_helper.c) and M4 (gl/texture.c) are NOT here: both are lane.remote's territory and are routed there."
+         "hw/xbox/nv2a/pgraph/vk/renderer.h"]
+note = "vk/texture.c RELEASED at wave 39 on the lane's own report -- it never edited it, M3 landed entirely clear-side, and that unwalls #59. vk/renderer.h GRANTED RETROACTIVELY at wave 39: the lane edited one DrawQueue field there, disclosed it unprompted as outside its named claim, and M1's merge half is unfixable without it. The file is in [free] so nothing was taken from anyone, and disclosing it is the behaviour the board wants -- recording the grant is cheaper than pretending the edit did not happen. REMEDIATION of audit pass 1's HIGH and the three MEDIUMs in vk/. H1 is the reason this is urgent and is the first thing this project's new audit protocol caught: moving the vertex inline-attribute push range to offset 16 took the largest range's end from 256 to 272 bytes, and the guard added for it is read by create_pipeline() in draw.c but NOT by create_push_descriptor_resources(), which builds all 17 template layouts unconditionally. On a device reporting maxPushConstantsSize == 256 (desktop NVIDIA, many Mali) that is an invalid range AT INIT -- validation error or VK_CHECK's assert aborting at startup -- and it cannot appear in a golden run on this hardware, because there use_push_constants_for_uniform_attrs is false and the templates are created and never used. M1: the wide-line push is gated on pipeline_changed, defeating the e->line_width snapshot added two lines above for exactly that case, and check_draw_mergeable() still does not compare width. M3: the clear-side pad stamp keys on the LIVE guest format while the sample side keys on the binding's CREATION format, which psh.c:180 says itself can differ. M5: three diagnostic facilities landed unflagged against AGENTS.md. Records in docs/audits/2026-09-14-pass1.json. THE AUDITOR DOES NOT FIX WHAT IT FINDS -- this is a separate lane, and pass 2 verifies the named scenario can no longer occur, not that a commit exists. M2 (fpu_helper.c) and M4 (gl/texture.c) are NOT here: both are lane.remote's territory and are routed there."
 
 [free]
 # RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
@@ -119,8 +119,8 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
          "hw/xbox/nv2a/pgraph/vk/command.c",
-         "hw/xbox/nv2a/pgraph/vk/renderer.h",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]

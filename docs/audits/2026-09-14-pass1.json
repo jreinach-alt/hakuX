@@ -29,7 +29,8 @@
     "line": 523,
     "summary": "The new clear-side pad-alpha stamp keys on pg->surface_shape.color_format, the live guest format. The sample-side pad-alpha override it is meant to agree with (vk/texture.c:1327, surface_sampled_pad_alpha) keys on surface->host_fmt, i.e. the format the binding was CREATED with. psh.c:180-186 states in its own words that a binding reused across a format change reports whichever format first created it.",
     "scenario": "A surface binding created under X8R8G8B8_Z8R8G8B8 and reused after the guest switches to the _O variant (all of A8R8G8B8, X8R8G8B8_{Z,O} and X1A7R8G8B8_{Z,O} map to one VkFormat, which is why the binding is reused at all). The clear now writes pad byte 1 into the image while sampling still returns 0, or the reverse. Before the change the clear always wrote 1.0 and the two could not disagree on the clear path. Reaches the guest when the surface is downloaded to VRAM and read, or re-uploaded as a texture.",
-    "remediation": "Key both sides on the same thing -- either resolve the clear stamp through surface->host_fmt like the sampler does, or force a binding recreate when the pad-format class changes."
+    "remediation": "Key both sides on the same thing -- either resolve the clear stamp through surface->host_fmt like the sampler does, or force a binding recreate when the pad-format class changes.",
+    "pass1_overstated": "Corrected by lane.remediate1 during remediation: the cited authority psh.c:180-186 is STALE. b6239ccb87 (#55) made the reuse path refresh host_fmt -- the exact staleness that comment describes. constants.h:449 and renderer.h:1628 are correct; psh.c is the third copy and the only wrong one. All three call sites also sit after pgraph_vk_surface_update(), so the two values are equal today. The remediation is STRUCTURAL, not behavioural, and claims no pixel change. Pass 2 must expect none."
   },
   {
     "severity": "MEDIUM",
