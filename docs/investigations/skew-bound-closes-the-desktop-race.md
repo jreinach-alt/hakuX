@@ -40,10 +40,34 @@ same 10,240:
 > | Vulkan | 5 | 10,240 ×5 | one digest, `15845fa9e1e40032` |
 
 So with the skew bound on, OpenGL produces **byte-for-byte the image Vulkan
-produces**, on a tree carrying neither this lane's #66 nor #71 fixes. That
-retires an open question: Vulkan was never immune, it was losing the same race
-*reproducibly*, and 10,240 is what both renderers give once the race is out of
-the way. Everything above 10,240 was the race.
+produces**. That retires an open question: Vulkan was never immune, it was
+losing the same race *reproducibly*, and 10,240 is what both renderers give
+once the race is out of the way. Everything above 10,240 was the race.
+
+> **CAVEAT, and it weakens the sentence above — audit L9.** The GL arm's tree
+> is named exactly: peer branch `80512e37`, carrying neither #66 nor #71. The
+> Vulkan arm's is **not**. Its five-run digest comes from
+> `docs/testing/desktop-noise-floor.md`, where the measurement is dated
+> 2026-09-13 and described as "an unmodified binary" — but **no commit is
+> recorded, and neither is the ISO**. Checked rather than assumed: the only
+> shas in that file are at its lines 158 and 198, both for other measurements,
+> and the two-test section names no disc.
+>
+> So this is an equality **across two trees**, not a within-tree identity. What
+> it does support: two independent measurements produced the same 64-bit
+> digest, which is not a coincidence, so the *image* is the same. What it does
+> not support on its own: that the image is what that particular tree produces
+> under Vulkan, since that tree was never measured under Vulkan.
+>
+> Closing it needs one Vulkan re-run on `80512e37` on the same two-test disc.
+> **Not done here, deliberately**: the disc is unrecorded and guessing which of
+> the 58 ISOs it was would have produced a number that looked like a
+> confirmation without being one — the same failure this caveat exists to
+> prevent. Whoever has the disc name can close it in five runs.
+>
+> The lesson is the one this document already argues elsewhere: a measurement
+> is only as reusable as the state it names. It named the state for the arm it
+> was proving and not for the arm it was comparing against.
 
 It also bounds the noise floor's cause completely. The measured GL band —
 15,360 down to 11,392 here, and 14,848 with 2,341 px moving at a constant
