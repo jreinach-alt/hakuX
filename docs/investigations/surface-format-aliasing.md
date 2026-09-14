@@ -140,3 +140,21 @@ So there is a second defect underneath this one: **evicting a binding does not
 preserve its contents**, and the aliasing bug is currently masking it by never
 evicting these bindings. Correcting the predicate unmasks it, and the unmasked
 defect costs more than the masked one. Eviction must preserve contents first.
+
+## Correction 2026-09-14, later the same day
+
+The section above concludes that "evicting a binding does not preserve its
+contents". **That mechanism is wrong and is retracted.** Instrumenting the
+eviction path shows all three statements behaving correctly on every one of the
+seven rejections: `draw_dirty` is 0 so the writeback is rightly skipped (nothing
+was drawn, guest memory is already authoritative), the new binding IS uploaded
+immediately at the new format, and the bytes that upload reads are **entirely
+zero** -- black, which is what the golden wants.
+
+What survives is only the operational result: the predicate change regresses
+`Blend_surface::DstAlpha_XA_O1A7RGB8` by +24,576, identically across two
+independent arms. The cause is upstream of the eviction machinery and is not yet
+identified. The `Surface_pitch::Swizzle` improvement claimed alongside it is also
+retracted -- two runs of the same code give 22,528 and 28,996 there.
+
+Full record: `docs/testing/predictions/2026-09-14-surface-eviction-content-loss.md`.
