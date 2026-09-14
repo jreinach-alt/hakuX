@@ -418,15 +418,70 @@ def discard_model(windows):
 
     Both carry do_tb_phys_invalidate()'s non-loop callers -- tb_check_watchpoint
     in a softmmu build -- as an error term. Measured 0 on all six 2026-09-14
-    soaks, which is why exact equality is used; if that ever stops being true
-    this is the first place it will show, as MIXED.
+    soaks.
+
+    THE SLACK, AND WHY "ONE LOG LINE" IS NOT THE SAME AS "ONE INSTANT".
+
+    This used to compare with `!=`, on the argument written above: di and the
+    ov/sp/ai split go out on one __android_log_print, so the identity is exact
+    and needs no tolerance. ONE LOG LINE IS TRUE. ONE INSTANT IS NOT, and the
+    difference is the whole of this paragraph.
+
+    profile.c:450-461 computes the deltas as TWELVE SEPARATE NON-ATOMIC READS
+    of live globals:
+
+        uint64_t d_ov = hakux_inval_tbs_overlap   - p_ov;
+        ...  nine more statements ...
+        uint64_t d_di = hakux_tb_discarded        - p_di;
+
+    The guest CPU thread is running throughout, and it is the thread that
+    increments all of them. An invalidation landing between the `d_ov` read and
+    the `d_di` read is counted by one side of the identity and not the other,
+    so the window reads di == ov + sp + 1 over counters that are perfectly
+    coherent.
+
+    IT DOES NOT CANCEL IN THE NEXT WINDOW EITHER, which is why the slack is
+    two-sided and the final window is not excluded here the way it is in the
+    population check. The baselines are re-read AFTER the deltas
+    (`p_ov = hakux_inval_tbs_overlap;`), so an event in that second gap is
+    missing from window k's delta AND already inside window k+1's baseline: it
+    is LOST, not deferred. Either side of either identity can be the one that
+    misses it.
+
+    So this now allows the same per-window slack the population identity below
+    already allows for the same class of slip -- `max(8, di * 1e-4)`, scaled on
+    di because what slips is however many of THESE events happen in the read
+    gap, not however many visits happen.
+
+    WHAT THE SLACK COSTS, stated rather than implied. It cannot turn a
+    WHOLE-PAGE build into a RANGE-TESTED one or the reverse: those two differ
+    by `sp` versus `ai`, and a build where those differ at all differs by far
+    more than eight. What it CAN do is make DEGENERATE reachable on a run where
+    |sp - ai| is within the slack in every window -- and that is the honest
+    answer for such a run, which genuinely does not determine the predicate.
+    DEGENERATE is already excluded from the A/B model cross-check, so a
+    degenerate read weakens a verdict rather than corrupting one.
+
+    This is the residual of the exact-equality defect that voided a correct
+    arm: hard-coding one model as an invariant voided #68's arm B, and
+    demanding exact arithmetic of a cross-thread sample made lane.tcgarm
+    establish build identity with a second instrument to dismiss a +-1.
     """
     if not any("di" in w for w in windows):
         return None, [], []
+
+    def _slack(w):
+        # Same shape as the population check's per-window tolerance, and for
+        # the same mechanism. The floor of 8 is what covers a window with a
+        # tiny di, where a proportional bound would be less than one event.
+        return max(8, w.get("di", 0) * 1e-4)
+
     bad_page = [i for i, w in enumerate(windows)
-                if "di" in w and w.get("sp", 0) + w.get("ov", 0) != w["di"]]
+                if "di" in w
+                and abs(w.get("sp", 0) + w.get("ov", 0) - w["di"]) > _slack(w)]
     bad_rng = [i for i, w in enumerate(windows)
-               if "di" in w and w.get("ov", 0) + w.get("ai", 0) != w["di"]]
+               if "di" in w
+               and abs(w.get("ov", 0) + w.get("ai", 0) - w["di"]) > _slack(w)]
     if not bad_page and not bad_rng:
         return "DEGENERATE", bad_page, bad_rng
     if not bad_page:
@@ -434,6 +489,21 @@ def discard_model(windows):
     if not bad_rng:
         return "RANGE-TESTED", bad_page, bad_rng
     return "MIXED", bad_page, bad_rng
+
+
+def _model_residual_note(windows, third):
+    """How far the winning identity actually missed by, worst window.
+
+    Printed because "held within slack" and "held exactly" are different
+    claims, and a reader deciding whether to trust a build's identity should
+    not have to assume the stronger one. Six 2026-09-14 soaks held at 0; if a
+    later build starts reading +-40 every window, that is visible here as a
+    number rather than as continued silence.
+    """
+    res = [abs(w.get("ov", 0) + w.get(third, 0) - w["di"])
+           for w in windows if "di" in w]
+    worst = max(res) if res else 0
+    return " exactly" if worst == 0 else " within slack, worst |residual| %d" % worst
 
 
 def derive(windows):
@@ -590,20 +660,24 @@ def derive(windows):
                   " run does not determine which invalidation predicate the"
                   " build carries; do not use it to date a build.")
         elif model == "WHOLE-PAGE":
-            print("   -> CONTROL di == ov+sp in every window (%d): the build"
+            print("   -> CONTROL di == ov+sp in every window (%d)%s: the build"
                   " discards every live block it visits, so this is a"
-                  " WHOLE-PAGE invalidation build, pre-#68." % n_di)
+                  " WHOLE-PAGE invalidation build, pre-#68."
+                  % (n_di, _model_residual_note(windows, "sp")))
         elif model == "RANGE-TESTED":
-            print("   -> CONTROL di == ov+ai in every window (%d): discards are"
-                  " the live-and-overlapping blocks plus the already-invalid"
-                  " ones, so this is a RANGE-TESTED build, #68 applied. `sp`"
-                  " is the SPARED population here and is not part of di."
-                  % n_di)
+            print("   -> CONTROL di == ov+ai in every window (%d)%s: discards"
+                  " are the live-and-overlapping blocks plus the"
+                  " already-invalid ones, so this is a RANGE-TESTED build, #68"
+                  " applied. `sp` is the SPARED population here and is not"
+                  " part of di."
+                  % (n_di, _model_residual_note(windows, "ai")))
         else:
-            print("   -> VOID: neither discard identity holds. di != ov+sp in"
-                  " %d window(s) %s AND di != ov+ai in %d window(s) %s. Both"
-                  " sides of each are on ONE log line, so one of them must"
-                  " hold exactly for any build this tool knows about. Read"
+            print("   -> VOID: neither discard identity holds, beyond the"
+                  " per-window sampling slack. di != ov+sp in %d window(s) %s"
+                  " AND di != ov+ai in %d window(s) %s. Both sides of each go"
+                  " out on ONE log line -- but as twelve separate non-atomic"
+                  " reads of live counters, so a slip of a few is expected and"
+                  " is allowed for. A residual past that is not sampling. Read"
                   " NOTHING below as a measurement."
                   % (len(bad_page), bad_page[:5],
                      len(bad_rng), bad_rng[:5]))
