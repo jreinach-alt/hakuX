@@ -149,3 +149,11 @@ cost = "Blocks #68's registered arm outright, and with it every soak arm that wa
 bit = 2
 owner = "toolsmith"
 fix = "Skip the capture-name check for a soak (a --title with no --suites), or make the check follow what judge() will actually do with the key. Sixth false positive in this gate -- toolsmith already found 5 of 81 predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two."
+
+[[cut]]
+id = "folded-without-an-audit"
+what = "The orchestrator folded 2af6def68a -- #73's fix, +107/-14 in accel/tcg, guest-CPU core reaching every title -- on an Android build and a green preflight, with no audit pass. AGENTS.md's own heading is 'preflight is not an audit'."
+cost = "Not yet known; an audit is running. The protocol was written the same day, and the first audit had explicitly flagged accel/tcg as glanced-only and deserving its own pass. Both facts were available and neither stopped the fold."
+bit = 1
+owner = "unassigned"
+fix = "The fold path needs the gate, not the orchestrator's memory. lane.toolsmith holds preflight.sh and is already building an audit-record gate; it should refuse a fold whose diff touches compiled code with no audit record covering it. Until then the protocol depends on the person most likely to be in a hurry."
