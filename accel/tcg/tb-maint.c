@@ -559,11 +559,47 @@ void tb_lock_page0(tb_page_addr_t paddr)
     page_lock(page_find_alloc(paddr >> TARGET_PAGE_BITS, true));
 }
 
+/*
+ * Defined in translate-all.c, which owns both sites that arm jmp_trans.
+ * Declared here rather than in a header to match how this fork already
+ * shares its accel/tcg globals (see the extern block in profile.c).
+ */
+extern __thread bool hakux_jmp_trans_armed;
+
 void tb_lock_page1(tb_page_addr_t paddr0, tb_page_addr_t paddr1)
 {
     tb_page_addr_t pindex0 = paddr0 >> TARGET_PAGE_BITS;
     tb_page_addr_t pindex1 = paddr1 >> TARGET_PAGE_BITS;
     PageDesc *pd0, *pd1;
+
+    /*
+     * AUDIT H1'S GUARD. This function's out-of-order branch below ends in
+     * siglongjmp(tcg_ctx->jmp_trans, -3), so calling it without a live frame
+     * that armed jmp_trans is undefined behaviour -- a jump into a returned
+     * stack frame with two page spinlocks held. That was the state of
+     * translate-all.c's recycle path and of tb_gen_superblock() from
+     * 255d110496 until 2026-09-14.
+     *
+     * WHAT MAKES THIS FIRE, stated because a guard whose condition its own
+     * patch forces true is not a guard. It is NOT implied by anything below:
+     * nothing in this file sets the flag, it is cleared at the top of both
+     * tb_gen_code() and tb_gen_superblock(), and it is true only between a
+     * sigsetjmp and the return of the frame that armed it. So it fires on the
+     * FIRST call from any caller outside such a frame, whatever the page
+     * order and whether or not another thread holds the lock -- which is the
+     * point, because the contention race itself is not reproducible on this
+     * fleet. Concretely: put the tb_lock_page1() call back in the recycle
+     * path (translate-all.c) and this aborts on the first recycled two-page
+     * block, i.e. within seconds of boot. It would also fire if a future
+     * caller reached translator_loop()'s tb_lock_page1() through a path that
+     * does not run inside setjmp_gen_code() or tb_gen_superblock().
+     *
+     * It does NOT check that the armed frame is the RIGHT one. Nesting would
+     * defeat it, and nothing nests today: translate_code() is called from
+     * exactly three sites, all in translate-all.c, all inside these two
+     * frames.
+     */
+    assert(hakux_jmp_trans_armed);
 
     if (pindex0 == pindex1) {
         /* Identical pages, and the first page is already locked. */
