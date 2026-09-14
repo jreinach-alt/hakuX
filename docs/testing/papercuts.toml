@@ -137,8 +137,8 @@ fix = "Fail or loudly flag any result whose logcat has `window minimized` with n
 [[cut]]
 id = "claim-not-pushed-before-dispatch"
 what = "The orchestrator writes a lane's territory row, validates it, dispatches, and commits afterwards. The agent fast-forwards to a tip that predates the commit, so for its whole run the claim exists only in the orchestrator's working tree."
-cost = "lane.tcginval opened its board request reporting territory.toml at wave 42 with no [lane.tcginval] row and accel/** still free -- correct from where it stood. No collision guard could have fired for it, the same hole as briefing a lane with files never claimed at all."
-bit = 1
+cost = "lane.tcginval opened its board request reporting territory.toml at wave 42 with no [lane.tcginval] row and accel/** still free -- correct from where it stood. THREE OCCURRENCES NOW, each a different variant: lane.padwrite had no row at all, lane.tcginval had one written but not committed before dispatch, and lane.audit-tcg was dispatched with no row because an auditor claims no files and I concluded it therefore needed no row. It needs one: a lane running and unclaimed is invisible to every guard."
+bit = 3
 owner = "unassigned"
 fix = "Order is: write the row, validate, commit, PUSH, then dispatch. A lane verifies its territory by reading the repo, so the claim must be in the repo before the lane starts. An uncommitted claim is not a claim."
 

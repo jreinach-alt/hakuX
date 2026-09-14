@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 45
+wave = 46
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -55,14 +55,19 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/sweep_agreement.py"]
 note = "RE-DISPATCHED 2026-09-14 wave 45, with one URGENT item: the queue-time expect-key gate in request.sh refuses EVERY soak prediction, because it assumes an expect key is Results_Directory/TestName and a soak produces no captures. #68's registered arm is blocked on it now. That is the sixth false positive in that gate; this lane already found five of eighty-one predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two. preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
 
-[lane.tcginval]
-issues = ["68", "73"]
-files = ["accel/tcg/tb-maint.c",
-         "accel/tcg/translate-all.c",
-         "accel/tcg/cpu-exec.c"]
-note = "#68 and #73 together: both are TB invalidation, both had their blockers REFUTED by lane.falsifiers, and both deferred to an authority that turns out not to exist. #73 said it 'belongs to the tier-1 owner' -- but the mask's origin c1e4e87f5f is xemu-local from 2021 and NEVER UPSTREAM, and the half that actually strands blocks is c174c8bde8, 2026-03-30, FIVE AND A HALF MONTHS OLD. The narrow fix is one sub-expression already in-tree at translate-all.c:429. #68 said restoring the range test is 'a five-year-old SMC correctness decision on every guest instruction, not a lane call' -- the date is fair at 4y11m, but 703566ce33's COMMIT BODY IS EMPTY: no rationale, no SMC reference, no comment added, just the range test wrapped in #ifndef XBOX. There is no recorded decision to respect. The range data was never dropped. ALSO HERE, from audit pass 1's M5: the counters in these files are unconditional against AGENTS.md's flag rule, and docs/audits/2026-09-14-decisions.md logs the decision to leave them for now WITH a removal condition -- they retire when the direct generation/discard counters land, or when #68 closes. If #68 closes here, retire them."
+[lane.audit-tcg]
+issues = []
+files = []
+note = "AUDIT PASS 1 over accel/tcg. Claims NO FILES deliberately -- an auditor does not fix what it finds, so it needs visibility on the board and no territory, which is the lane.galleon77 precedent. It exists as a row because a lane that is running and not claimed is invisible to every guard: I dispatched it without one, which is the third time tonight a lane ran unclaimed, after lane.padwrite (no row at all) and lane.tcginval (row written but not committed before dispatch)."
 
 [free]
+# accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
+# lane.tcginval retired. WHOEVER CLAIMS THEM NEXT MUST KNOW: commit 937848c9e7
+# on worktree-agent-af29d9ef9a8f784d4 is #68's range-test restoration, ~200
+# lines in tb-maint.c, and it is HELD UNFOLDED pending its registered arm --
+# the lane's own recommendation was that it must not fold on an Android build
+# alone. Coordinate with it or expect a conflict when it lands.
+#
 # RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
 # The lane needed NEITHER -- it made no source change, because the counter it
 # was dispatched to build already existed in vk/draw.c and had been running on
