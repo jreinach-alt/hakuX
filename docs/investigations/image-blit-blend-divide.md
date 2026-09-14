@@ -127,3 +127,36 @@ must-not-move control. A boundary/inclusivity question, wanting its own row.
 **And `hw/xbox/nv2a/pgraph/gl/blit.c:49` carries the same truncating divide**,
 unfixed because it is not this lane's file. Raised in
 `$DISPATCH_DIR/board-requests/blit38.md`.
+
+## A negative worth keeping: `pgraph.c`'s beta mask is already right
+
+The other half of this lane's territory is `NV012_SET_BETA`'s handling at
+`pgraph.c:1943-1951`, which masks the parameter with `0x7f800000` and clamps a
+negative value to zero — "only 8 fractional bits are actually implemented in
+hardware", per its own comment. That comment was worth checking rather than
+trusting, because if the extraction were wrong the blend would have been the
+wrong *input*, not the wrong arithmetic, and the divide would have been a
+plausible-looking fix for someone else's defect.
+
+The suite checks it for free: it deliberately includes parameter pairs that
+must collapse to the same beta. Comparing **golden against golden**, inside the
+blit rect:
+
+| pair | what it tests | differing px |
+|---|---|---:|
+| `0x00800000` / `0x00D00000` | both mask to byte 1 | **0** |
+| `0x44400000` / `0x444FFFFF` | low 23 bits dropped | **0** |
+| `0x7F800000` / `0x7FFFFFFF` | both mask to byte 255 | **0** |
+| `0x00000000` / `0x007FFFFF` | both mask to byte 0 | **0** |
+| `0x00000000` / `0x80000000` | bit 31 clamps to zero | **0** |
+| `0x00000000` / `0x8FFFFFFF` | bit 31 clamps regardless of the rest | **0** |
+
+Six of six. Silicon really does implement eight fractional bits and really does
+clamp negatives, so the mask needs no change and **no edit was made to
+`pgraph.c`**. Note this is a claim about the *goldens*, not about us: it is
+hardware compared with hardware, so it holds whatever this emulator does.
+
+Restricting to the blit rect matters — every one of those pairs differs by 6 to
+314 px over the whole frame, and all of it is the guest printing the test's own
+parameter string into the picture. Read whole-frame, four of the six pairs look
+like real disagreements.
