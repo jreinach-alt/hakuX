@@ -94,6 +94,65 @@ device_present() {
     adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
 }
 
+# Say WHAT the shared tree is dirty with and HOW LONG the queue has been
+# stopped for it. Called from the requeue path, once per 30s wait cycle.
+#
+# The elapsed time needs state across cycles, and the state is a stamp file
+# holding `epoch<TAB>fingerprint`. The fingerprint is over the dirty SET, so
+# the wait restarts its clock when the set changes -- otherwise "blocked 40m"
+# would carry over from an edit committed half an hour ago and replaced by a
+# different one, which is a worse lie than no number at all.
+#
+# Both workers share $D and both watch the same shared tree, so they share this
+# stamp deliberately: it is one condition. If they race, the loser's write
+# installs a slightly LATER epoch and the reported wait comes out short rather
+# than long. Under-reporting a stall is the safe direction.
+#
+# This is the half that helps whoever is BLOCKED. The half that stops blocking
+# them is already done on the orchestrator side -- folds happen in a separate
+# worktree now; see AGENTS.md, "The orchestrator folds in a separate worktree".
+dirty_wait_log() {
+    local id="$1" now stamp prev_t prev_f fp files n secs
+    now=$(date +%s)
+    stamp="$D/.dirty-wait"
+    # An UNREADABLE tree is not a clean one, and saying so is the whole point
+    # of this function: "clean again" against a tree git cannot even open
+    # would send the reader looking at the wrong thing entirely.
+    if ! git -C "$TREE" rev-parse --git-dir >/dev/null 2>&1; then
+        log "  $TREE is not readable as a git tree; $id requeued, retrying in 30s"
+        return 0
+    fi
+    files=$(git -C "$TREE" status --porcelain 2>/dev/null | grep -v '^??' | cut -c4-)
+    if [ -z "$files" ]; then
+        # build_ref saw it dirty and it is clean again already. Say exactly
+        # that, rather than printing an empty list, which reads as a bug here.
+        rm -f "$stamp"
+        log "  tree was dirty at the build check and is clean again; $id requeued, retrying in 30s"
+        return 0
+    fi
+    n=$(printf '%s\n' "$files" | wc -l)
+    fp=$(printf '%s' "$files" | md5sum | cut -c1-12)
+    prev_t=""; prev_f=""
+    if [ -f "$stamp" ]; then
+        prev_t=$(cut -f1 "$stamp" 2>/dev/null)
+        prev_f=$(cut -f2 "$stamp" 2>/dev/null)
+    fi
+    if [ "$prev_f" != "$fp" ] || [ -z "$prev_t" ]; then
+        prev_t="$now"
+        printf '%s\t%s\n' "$now" "$fp" > "$stamp"
+    fi
+    secs=$(( now - prev_t ))
+    log "  QUEUE BLOCKED ${secs}s: $TREE has $n uncommitted file(s); $id requeued, retrying in 30s"
+    # Named, up to eight. The count above is the whole truth; these are what
+    # let whoever is holding them recognise their own edit.
+    printf '%s\n' "$files" | head -8 | while IFS= read -r f; do
+        log "    dirty: $f"
+    done
+    if [ "$n" -gt 8 ]; then log "    dirty: ... and $(( n - 8 )) more"; fi
+    log "    a lane cannot run git against the shared tree; commit or stash these to release the queue"
+    return 0
+}
+
 # The full sweep is idle-priority work and yields to requests. pause blocks
 # until the runner has genuinely parked rather than setting a flag and hoping,
 # and every resume reinstalls the baseline so a preempting binary cannot
@@ -251,9 +310,25 @@ serve_one() {
         # uncommitted edit of mine failed 54 consecutive scoreboard-sweep
         # requests in seconds, because each was answered with a hard ERROR
         # instead of being put back.
-        log "  tree dirty; requeueing $id and waiting"
+        #
+        # AND THE LINE HAS TO NAME THE FILES AND THE ELAPSED TIME, because the
+        # only reader who needs it cannot get them any other way. A lane runs
+        # in its own worktree and MUST NOT run git against the shared tree, so
+        # when the queue stops moving it has no way to ask what is holding it.
+        # Two stalls today were diagnosed only because a lane materialised the
+        # tip out of the object store and diffed the shared working tree
+        # against it by hand -- which worked, and is not something anyone
+        # should have to invent twice.
+        #
+        # The old line was byte-identical every 30s. An unchanging line reads
+        # as a hung process, and the difference between "the dispatcher is
+        # wedged" and "the queue is blocked on three edited files" is the
+        # difference between restarting it -- which would drop a live run --
+        # and committing or stashing them.
         rmdir "$rdir" 2>/dev/null
-        mv "$req" "$D/queue/$id.req"; sleep 30; return 0
+        mv "$req" "$D/queue/$id.req"
+        dirty_wait_log "$id"
+        sleep 30; return 0
     fi
     if [ "$rc" != 0 ]; then
         echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
