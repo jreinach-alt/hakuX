@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 60
-updated_utc = "2026-09-14T13:05:00Z"
+wave = 61
+updated_utc = "2026-09-14T13:40:00Z"
 
 
 
@@ -66,8 +66,8 @@ note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. C
 
 [lane.skew44]
 issues = ["44"]
-files = ["hw/xbox/nv2a/pfifo.c"]
-note = "#44's SHIPPING DECISION, which is one measurement short and has been for its whole life. The accuracy half is settled -- #79's Stencil flake IS this skew on vertex data, PRE-REGISTERED PASS on 16 checks, 7 wrong of 64 observations -> 0. The cost half is settled for MODE 1: gfps p90 29 -> 13 on Galleon, guest blocked 40.7% of wall clock. What is NOT settled is (a) both #79 arm refs are 292 commits behind the tip, so the mechanism is certified and mainline is not, and (b) MODE 2 -- hold only where a draw is outstanding -- has existed in pfifo.c the whole time and has never been priced. vk/draw.c:4016 already specifies the arm that prices it and says the tip needs NO CODE CHANGE to run it: one binary, HAKUX_FIFO_SKEW_BOUND 0 / 1 / 2 by environment. Claims pfifo.c because the shipping act, if mode 2 pays, is flipping XEMU_OPT_FIFO_SKEW_BOUND at pfifo.c:95 -- and for no other reason; the measurement itself edits nothing. Released by lane.readfreq retiring without ever needing it."
+files = ["hw/xbox/nv2a/pfifo.c", "hw/xbox/nv2a/pgraph/vk/draw.c"]
+note = "#44's SHIPPING DECISION, which is one measurement short and has been for its whole life. The accuracy half is settled -- #79's Stencil flake IS this skew on vertex data, PRE-REGISTERED PASS on 16 checks, 7 wrong of 64 observations -> 0. The cost half is settled for MODE 1: gfps p90 29 -> 13 on Galleon, guest blocked 40.7% of wall clock. What is NOT settled is (a) both #79 arm refs are 292 commits behind the tip, so the mechanism is certified and mainline is not, and (b) MODE 2 -- hold only where a draw is outstanding -- has existed in pfifo.c the whole time and has never been priced. vk/draw.c:4016 already specifies the arm that prices it and says the tip needs NO CODE CHANGE to run it: one binary, HAKUX_FIFO_SKEW_BOUND 0 / 1 / 2 by environment. Claims pfifo.c because the shipping act, if mode 2 pays, is flipping XEMU_OPT_FIFO_SKEW_BOUND at pfifo.c:95 -- and for no other reason; the measurement itself edits nothing. Released by lane.readfreq retiring without ever needing it. GRANT 2026-09-14, vk/draw.c, on the lane's request and for two specific lines. (1) :66 -- HAKUX_VRAM_RACE_PROBE defaults to 0, so a stock tip build emits no Tr at all and the lane cannot produce the counter its own leg is registered on. Tr is the DIRECT counter for the texture race; gave is the proxy AGENTS.md already records as over-reading (0.4144 while Tr was zero), and the rule is that the leg goes on the counter. (2) :4016-4019 -- that comment says 'tip carries this probe AND all three bound modes, so one binary answers it with no code change', and BOTH HALVES ARE FALSE at the tip: the probe is off, and HAKUX_FIFO_SKEW_BOUND cannot reach the emulator through the queue at all, because the app reads its environment from the env_vars pref in x1box_prefs.xml and nothing in request.sh, dispatcher.sh or soak_title.sh writes it. The lane worked around it with one ref per mode, each a child of the tip differing by one line of pfifo.c -- strictly better for provenance (three apk_shas rather than one) and strictly worse for cost (three builds). The DURABLE fix is an --env field on a request, which is routed to lane.toolsmith; this grant is the immediate unblock and not the answer. CORRECTION TO THIS ROW'S OWN NOTE: it said mode 2 'has never been priced'. False -- see [issue.44]. The lane refuted its own brief from data on disk."
 
 
 [lane.blit38]
@@ -136,7 +136,6 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/mcpx/**",
          "hw/xbox/nv2a/nv2a.c",
