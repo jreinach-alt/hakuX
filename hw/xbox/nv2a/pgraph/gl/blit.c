@@ -45,7 +45,51 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
                 for (unsigned int ch = 0; ch < 3; ch++) {
                     uint32_t a = s[x * 4 + ch] * beta_mult;
                     uint32_t b = d[x * 4 + ch] * inv_beta_mult;
-                    d[x * 4 + ch] = (a + b) / max_beta_mult;
+                    /*
+                     * Round to nearest, do not truncate. Silicon rounds; C's
+                     * integer division truncates, so this could only ever land
+                     * LOW -- a scale error with a sign, not a rounding-mode
+                     * difference, which is why it survived the correction that
+                     * killed the corpus-wide rounding theory: a mode
+                     * difference is roughly symmetric and this is not.
+                     *
+                     * The GL half of the defect lane.blit38 closed on the
+                     * Vulkan side (docs/investigations/image-blit-blend-divide.md,
+                     * peer branch). Their offline reconstruction of the suite's
+                     * own inputs scores the truncating form at 173,410
+                     * differing channels against the golden and this one at
+                     * 1,830 -- and those 1,830 are 100% the same channels the
+                     * reconstruction gets wrong on its own captures, i.e. the
+                     * guest's per-test label text, which is the control.
+                     *
+                     * Verified here independently over the WHOLE domain rather
+                     * than taken from that write-up. beta is masked with
+                     * 0x7f800000 in pgraph.c and read back as `beta >> 16`, so
+                     * beta_mult steps by 0x80 up to 0x7f80: 256 values, and
+                     * with src and dst that is 256^3 = 16,777,216 triples.
+                     * Against an exact integer round-to-nearest reference:
+                     *
+                     *   this form : 0 mismatches
+                     *   truncating: 8,164,890 differ -- LOW on every one of
+                     *               them, high on none, worst error 1
+                     *
+                     * (lane.blit38's 8,388,608 is a different expression, the
+                     * NEON `(V + 0x3fc0) >> 15`, whose divisor is 32,768
+                     * rather than 32,640. Same one-sided signature, different
+                     * count. Do not reconcile the two numbers.)
+                     *
+                     * NOT ESTABLISHED: the tie-break. No triple in the domain
+                     * is an exact half-tie -- measured, 0 of 16,777,216 -- so
+                     * nothing here distinguishes round-half-up from
+                     * round-half-even. `+ max_beta_mult / 2` is half-up; if a
+                     * later measurement needs half-even it must come from
+                     * somewhere this data cannot reach.
+                     *
+                     * max_beta_mult / 2 rather than a literal 0x3fc0 so the
+                     * bias cannot drift away from the divisor.
+                     */
+                    d[x * 4 + ch] =
+                        (a + b + max_beta_mult / 2) / max_beta_mult;
                 }
             }
             source += source_pitch;
