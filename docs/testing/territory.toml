@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 31
+wave = 32
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -42,15 +42,14 @@ note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective
 
 
 
-[lane.lineext]
-issues = ["13"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/shaders.c",
-         "hw/xbox/nv2a/pgraph/vk/compile_worker.c"]
-note = "#13's VULKAN half. The extent rule and its PHASE are derived and reproduced: 20,946 clean cuts from the goldens, 100.0000% exact on both endpoints, 0 wrong -- vertex coords truncate to 1/16 px, E = w*(max + min/2)/max on the truncated coords, pixel lit iff its CENTRE is in the low-open band (c - E/2, c + E/2]. 12,056 of those cuts are widths <= 5 and were never used in any #13 derivation, so they are held out. Every rival loses: tie-break variants 95.3-95.4%, snap variants 98.5-99.4%, perpendicular rectangle 74.0%, beta=1 63.1%, Bresenham 58.6%. Prediction ALREADY REGISTERED at docs/testing/predictions/line-extent-phase-exact.json with an EXACT leg and five near-miss values registered in advance; it is golden-constrained via line_extent_phase.py --vs-goldens, so a patch cannot make it true by construction. Today we draw the API's native line -- gl/draw.c:442 glLineWidth, vk/draw.c:3779 pgraph_vk_line_width -- which IS the perpendicular rectangle at 47.8178%. gl/shaders.c and gl/draw.c are lane.remote's and are NOT in this claim: the device lane is Vulkan, so every Line_width golden is scored on the Vulkan path, and the GL half is lane.remote's to take. THIS CLAIM WALLS #43 AND #59, both of whose blockers name vk/draw.c; both say so and name this lane. Release vk/draw.c the moment the fix does not need it."
-
 [free]
+# RELEASED 2026-09-14 by retiring lane.lineext: glsl/geom.c, vk/draw.c and
+# vk/shaders.c. Its #13 Vulkan fix LANDED (merged, 47.82% -> 99.58% against
+# silicon), and a claim exists to stop two agents editing one file at once,
+# not to reserve a file whose change is already in. I had told #43 and #59
+# that vk/draw.c "cannot be released" -- true of the lane needing to EDIT it,
+# false the moment the edit landed, and corrected in both entries.
+#
 # RELEASED 2026-09-14 by retiring lane.stencil: vk/surface.c and vk/command.c.
 # Its agent reported, and the finding is precisely that NEITHER FILE IS THE
 # SITE -- #79 is #44's guest<->pgraph skew on vertex data, fixed by a constant
@@ -70,6 +69,7 @@ files = ["accel/**",
          "hw/xbox/nv2a/nv2a_int.h",
          "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pfifo.c",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
@@ -81,7 +81,9 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
          "hw/xbox/nv2a/pgraph/vk/command.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/vk/renderer.h",
+         "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pgraph/vk/surface.c",
          "hw/xbox/nv2a/pgraph/vk/texture.c",
