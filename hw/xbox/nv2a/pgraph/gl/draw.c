@@ -51,6 +51,33 @@ static inline void android_log_gl_errors(const char *ctx)
  * cleared and not otherwise drawn to keeps the draw time it had, so a texture
  * sampled from it afterwards still shows what was there before the clear.
  */
+/*
+ * glLineWidth raises GL_INVALID_VALUE for width <= 0 and then does nothing.
+ * The guest can legitimately ask for line width 0 -- Line_width and 2D_Lines
+ * both do -- and the MIN clamps above only bound the TOP of the supported
+ * range, so that reached the driver as glLineWidth(0.0f) and left an error
+ * pending. Nothing consumed it, and gl/shaders.c:413 asserts glGetError() ==
+ * GL_NO_ERROR on entry, so the whole process aborted: iso_line produced ZERO
+ * captures on desktop GL, and seven suites could not be measured at all.
+ * Android never saw it because that same function drains errors in a loop
+ * rather than asserting.
+ *
+ * Skipping the call is BEHAVIOUR-IDENTICAL: a call GL rejects is a no-op, so
+ * the line width GL uses is the same either way. The only difference is that
+ * no error is raised.
+ *
+ * What the hardware actually draws at line width 0 is NOT settled here, and
+ * this deliberately does not decide it -- clamping up to the minimum supported
+ * width would be a visible answer to a question nothing has measured. This
+ * changes a crash into the behaviour we already had.
+ */
+static void set_line_width(float width)
+{
+    if (width > 0.0f) {
+        glLineWidth(width);
+    }
+}
+
 static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
 {
     PGRAPHGLState *r = pg->gl_renderer_state;
@@ -364,18 +391,18 @@ void pgraph_gl_draw_begin(NV2AState *d)
 
     /* Edge Antialiasing */
 #ifdef __ANDROID__
-    glLineWidth(MIN(r->supported_aliased_line_width_range[1],
-                    (pg->line_width / 8.0f) * pg->surface_scale_factor));
+    set_line_width(MIN(r->supported_aliased_line_width_range[1],
+                       (pg->line_width / 8.0f) * pg->surface_scale_factor));
 #else
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {
         glEnable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_smooth_line_width_range[1],
-                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
+        set_line_width(MIN(r->supported_smooth_line_width_range[1],
+                           (pg->line_width / 8.0f) * pg->surface_scale_factor));
     } else {
         glDisable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_aliased_line_width_range[1],
-                        (pg->line_width / 8.0f) * pg->surface_scale_factor));
+        set_line_width(MIN(r->supported_aliased_line_width_range[1],
+                           (pg->line_width / 8.0f) * pg->surface_scale_factor));
     }
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {
