@@ -1,0 +1,27 @@
+{
+  "who": "skew44",
+  "issue": "44",
+  "a_ref": "220858ee9d",
+  "b_ref": "cc8fb579c4",
+  "must_not_move": [],
+  "expect": {
+    "Stencil/Stencil_REPLACE": 0,
+    "Stencil/Stencil_REPLACE_DT": 0,
+    "Stencil/Stencil_REPLACE_DT_ZB": 0,
+    "Stencil/Stencil_REPLACE_ST": 0,
+    "Stencil/Stencil_REPLACE_ST_DT": 0,
+    "Stencil/Stencil_REPLACE_ST_DT_ZB": 0,
+    "Stencil/Stencil_REPLACE_ST_ZB": 0,
+    "Stencil/Stencil_REPLACE_ZB": 0,
+    "Stencil/Stencil_ZERO": 0,
+    "Stencil/Stencil_ZERO_DT": 0,
+    "Stencil/Stencil_ZERO_DT_ZB": 0,
+    "Stencil/Stencil_ZERO_ST": 0,
+    "Stencil/Stencil_ZERO_ST_DT": 0,
+    "Stencil/Stencil_ZERO_ST_DT_ZB": 0,
+    "Stencil/Stencil_ZERO_ST_ZB": 0,
+    "Stencil/Stencil_ZERO_ZB": 0
+  },
+  "expect_counts": {},
+  "prediction": "#44 MODE 2's ACCURACY, WHICH NO MEASUREMENT ON DISK COVERS.\n\nMode 2 (FIFO_SKEW_DRAW_ONLY) has been judged twice and neither judgement can see the defect the shipping decision is now about. It was judged on `stale_px` over the Texture border disc, an observable that is DEAD at the tip (0 of 10 non-zero, docs/investigations/border-stale-observable-is-dead.md) and whose eighteen draws sit inside one frame with no FLIP_STALL, so it cannot exercise the bound's `gave` hole at all. And it was judged on Crimson Skies `Tr`, which went to exactly 0 over 13,751 and 13,901 uploads -- strong, and about the TEXTURE read. #79's visible defect is on VERTEX data, and the vertex counter `Vr` reads 0/3,040 and 0/3,042 on Crimson in the UNBOUNDED arm, so that probe is blind to the vertex race on that title and cannot certify mode 2 for it. The Stencil disc is where the vertex defect is visible. This arm reads it.\n\nARM A IS SHARED with the mode-1 prediction registered alongside this one: one mode-0 control at the tip, 4 runs, judged against both mode arms. Said here, before the run, so that reuse is bound rather than chosen afterwards.\n\nSCOPE OF THE FLOOR, kept to the disc it was measured on. stencil_outliers.py --floor scores every result whose disc_id is exactly `Stencil` -- 26 runs, 416 (run, capture) observations, 40 wrong (9.615%), 14 of 26 runs carrying at least one wrong capture, across refs from b63603975c to 1dee9e25f6 (the most recent being 120 commits behind this tip and showing 3 of 16 wrong in one of its two runs). That figure is a property of THIS disc. It is not carried to any other disc, any other suite, or any full-sweep band, and nothing here is a claim about a noise floor anywhere else.\n\nWHY THREE BINARIES AND NOT ONE. vk/draw.c:4016 says the tip needs no code change because HAKUX_FIFO_SKEW_BOUND selects the mode by environment. That is true of the emulator and FALSE of the dispatch path: the app takes its environment from the `env_vars` pref in x1box_prefs.xml (xemu_android.cpp:796) and no part of request.sh, dispatcher.sh or soak_title.sh writes that pref. So each mode is a ref whose compile-time default is that mode -- 220858ee9d (the tip, mode 0), 03b6a026de (mode 1), cc8fb579c4 (mode 2) -- each a child of the tip differing from it by exactly one line of hw/xbox/nv2a/pfifo.c, verified with `git diff --stat`. Three binaries, three apk_shas, one variable.\n\nV0 (VALIDITY GATE on arm A ALONE; VOID, not passed, if it fails): arm A shows at least 2 wrong observations in 64. Identical gate and identical arm to the mode-1 prediction.\n\nV1 (THE BAR): arm B shows 0 wrong observations in 64. P under the null = 0.90385^64 = 0.155%.\n\nV2 (DID IT EXECUTE -- AND THE LEG IS NOT held(n)/kicks, DELIBERATELY). Mode 2 skips the hold only on FSK_SEG_NO_DRAW, and a scan that hits FIFO_SKEW_SCAN_MAX_WORDS falls through to mode 1's path -- so the bail rate is what separates 'mode 2 worked and this workload simply carries draws' from 'the pre-scan gave up every time and this is mode 1 in disguise'. held(n)/kicks cannot separate them, and on a test disc mode 2 is EXPECTED to read far below 0.90 (the Texture border disc reads 0.0370), so registering a 0.90 bar here would manufacture a failure on an arm working perfectly. The legs are on the scan counters instead, all read off the `fifoskew` line:\n  V2a  bound=2 appears, and scan(n) > 0.\n  V2b  THE BAIL RATE: scan big / scan n < 0.01. FAILS IF the scan is bailing, which is the world in which a mode-2 cost reading near mode 1's is an instrument artefact rather than a property of the workload.\n  V2c  AN INTERNAL CONTROL, an identity that must hold by construction: scan draw + nodraw + wrap + big == scan n, summed over the run's windows. A violation indicts the instrument, not the emulator.\n  V2d  AN IMPOSSIBLE ROW: held(n) <= draw + wrap + big. Mode 2 must not hold on a segment it classified NO_DRAW. A held count above that bound is a probe defect and voids V2.\nSILENCE IS VOID: no fifoskew line means V2 is void, not passed.\n\nV1 AND V2 ARE IN TENSION. Turning the bound off gives bound=0 and fails V2a. A bound in force but not reaching the vertex read passes V2 and fails V1 -- and THAT is the outcome that would say mode 2's scoping note is wrong about vertices, i.e. that what mode 2 gives up relative to mode 1 is not only the 2D class. Nothing in the change forces V1 true.\n\nWHAT A PASS DOES NOT BUY, said in advance so the recommendation cannot be read off this arm alone: mode 2's COST on Galleon is already measured at gfps p90 29 -> 13/14, identical to mode 1's 29 -> 13, because Galleon's submissions carry a draw 94.2% of the time. An accuracy pass here does not make mode 2 cheaper; it only completes the verdict."
+}
