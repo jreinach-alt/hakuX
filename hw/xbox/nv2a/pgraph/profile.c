@@ -348,12 +348,51 @@ void nv2a_profile_flip_stall(void)
      *         disarmed and the next generation there must re-arm it
      *   ws    of those, events where a block would have survived the range
      *         test -- so the page would have stayed armed and the re-arming
-     *         TLB walk would not have happened. ws is the prize.
+     *         TLB walk would not have happened. ws was the prize; see the
+     *         POPULATION CAVEAT below before differencing it against anything.
      *   pr    arming walks actually performed (tlb_protect_code, whose
      *         tlb_reset_dirty is 10.6% self of the bounding thread)
-     *   xx    THE IMPOSSIBLE ROW. Visits where live-ness and discard-ness
-     *         disagreed. Must be 0; anything else voids the whole line.
+     *   ai    visited blocks that ALREADY carried CF_INVALID. Sizes the
+     *         page-list clog; it proves nothing on its own (audit M4 -- it is
+     *         bounded above by the tier-1 promotion count, which this line
+     *         does not carry, so any fall in it reads as confirmation).
+     *   di    DISCARDS: blocks really unlinked, past do_tb_phys_invalidate's
+     *         early return. A wider population than the visit counters: it
+     *         counts every caller, and the whole-page loop is only one.
+     *   cg    GENERATIONS: tb_gen_code calls that really emitted code. The
+     *         waste ratio is di/cg and nothing else on this line is it.
+     *   xx    THE IMPOSSIBLE ROW. Must be 0; anything else voids every ratio
+     *         on this line. See the legend at the print below for what it
+     *         counts, which CHANGED at #73's fix and again at audit M4.
      *   ins   guest instructions translated, and blk their mean per block
+     *
+     * POPULATION CAVEAT ON ai, em AND ws -- audit pass 1 M1 and M6, and the
+     * reason a reader must date a run before differencing it.
+     *
+     * All three changed what they are counted over at 2af6def68a (#73's fix),
+     * without changing their names or their units, which is the failure mode
+     * #69 exists to make findable. Pre-fix, an already-invalid block took
+     * do_tb_phys_invalidate()'s early return BEFORE tb_remove(), so it stayed
+     * on the page list: `ai` then counted the same block once per store to its
+     * page for the life of the translation buffer (it measured 0.85-0.93 of
+     * visits in the six Crimson Skies soaks of 2026-09-13), and `em` could not
+     * fire on any event that had visited one, because p->first_tb stayed
+     * non-NULL. Post-fix such a block is unlinked on its FIRST visit, so `ai`
+     * falls to the visit rate of the tier-1 population and `em` rises for a
+     * reason that has nothing to do with what the guest wrote. `ws` is gated
+     * on `em` and moves with it.
+     *
+     * So the 2026-09-13 soaks are PRE-fix on all three and must not be
+     * differenced against a post-fix run. `ws` figures from runs between
+     * 2af6def68a and 761273a324 are wrong a third way on top of that -- it
+     * compared a live-only overlap count against a dead-inclusive total, and
+     * over-reports.
+     *
+     * AND `ws` IS RETIRED by #68's range-test restoration (937848c9e7): that
+     * commit makes the counterfactual actual, so any value it could then carry
+     * is true by construction. It reads 0 from that commit on. The column is
+     * kept only so this line and docs/testing/perf/tcg_pages.py's `ws=` group
+     * keep parsing; do not read it as a measurement on either side.
      *
      * sp/ov is whether "smaller blocks on thrashing pages"
      * (docs/investigations/performance-next-three.md section 2) has a
@@ -411,9 +450,25 @@ void nv2a_profile_flip_stall(void)
             (unsigned long long)d_ws, (unsigned long long)d_pr,
             (unsigned long long)d_ai,
             (unsigned long long)d_di, (unsigned long long)d_cg,
-            /* xx is the impossible row: a visit that was live and was not
-             * discarded, or was already invalid and was. Anything but 0 voids
-             * every ratio on this line. */
+            /*
+             * xx is the impossible row: a block this invalidation walked over
+             * and COMMITTED TO DISCARDING, and did not discard. Live or
+             * already-invalid, both must be discarded -- the already-invalid
+             * half is #73's fix stated as an identity, and it read 85-93% of
+             * visits before that fix. Anything but 0 voids every ratio on this
+             * line.
+             *
+             * This legend has been wrong twice and in opposite directions, so
+             * it says the date rather than just the rule. It read "a visit
+             * that was live and was not discarded, or was already invalid and
+             * WAS" -- the pre-#73 model, in which a dead block being discarded
+             * was the violation. #73 (2af6def68a) makes that the intended
+             * behaviour, and audit M4's replacement (765d0ff52d) then widened
+             * the row to both halves of a single per-visit test. A reader
+             * diagnosing a NONZERO xx under the old legend looks for a dead
+             * block that was discarded, which is now correct behaviour, and
+             * misses the live block that was not.
+             */
             (unsigned long long)d_xx,
             (unsigned long long)d_in, (unsigned long long)d_by,
             /* Per block that really generated code, not per call. A value
