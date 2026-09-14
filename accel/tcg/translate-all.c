@@ -534,7 +534,20 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
                                       (orig & CF_PCREL ? 0 : tb->pc),
                                       tb->flags, tb->cs_base,
                                       orig & ~CF_INVALID);
-            qht_remove(&tb_ctx.inv_htable, tb, h);
+            bool dropped = qht_remove(&tb_ctx.inv_htable, tb, h);
+            /*
+             * Checked the same way as the recycle removal below, which
+             * asserted its result while this one discarded it -- audit pass 1
+             * L5, and the two cannot both have been right. Neither can fail:
+             * inv_tb_htable_lookup() just found this exact pointer in this
+             * exact table, both hash derivations here and below agree with the
+             * insertion hash in do_tb_phys_invalidate() on every input
+             * (phys_pc == tb_page_addr0(tb) is guaranteed by tb_lookup_cmp()
+             * having matched desc->page_addr0), and qht_remove is pointer
+             * identity. It fires if a second thread removes the entry between
+             * the lookup and here, which needs a second translating thread.
+             */
+            g_assert(dropped);
             tb = NULL;
             goto skip_recycle;
         }

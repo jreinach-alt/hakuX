@@ -103,10 +103,16 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
  * know it. Those runs measured ai/visits at 0.85-0.93: the qht_remove missed
  * on the tier-1 population, so every such TB was counted here once per store
  * to its page, for the life of the translation buffer. It is now removed on
- * its FIRST visit. Both callers of tb_phys_invalidate() pass page_addr == -1
- * (translate-all.c:879 and :1131), so rm_from_page_list is false only for a
- * TB with no page list entry to begin with -- which leaves tier-1 promotion
- * as the only producer of a CF_INVALID TB on a page list. Each is therefore
+ * its FIRST visit. tb_phys_invalidate() has ONE LIVE CALLER and one gated-off
+ * one, and the difference matters because this sentence is the premise of the
+ * row in hakux_inval_impossible below: translate-all.c:879
+ * (tb_check_watchpoint) is live and passes page_addr == -1, and
+ * translate-all.c:1131 is inside tb_gen_superblock(), dead while
+ * XBOX_SUPERBLOCK_ENABLED == 0, and also passes -1. Audit pass 1 L6 -- "both
+ * callers" was literally true and counted a dead caller as evidence. So
+ * rm_from_page_list is false only for a TB with no page list entry to begin
+ * with, which leaves tier-1 promotion as the only producer of a CF_INVALID TB
+ * on a page list. Each is therefore
  * counted here exactly once and then discarded.
  *
  * THE FALSIFIER THAT WAS REGISTERED HERE DID NOT WORK, and it is replaced
@@ -1316,7 +1322,19 @@ static void do_tb_phys_invalidate(TranslationBlock *tb, bool rm_from_page_list)
                 tb_ctx.tb_phys_invalidate_count + 1);
 
 #ifdef XBOX
-    /* Free superblock metadata if this was a merged superblock. */
+    /*
+     * Free superblock metadata if this was a merged superblock.
+     *
+     * DEAD while XBOX_SUPERBLOCK_ENABLED == 0 (cpu-exec.c): tb->superblock is
+     * set only by tb_gen_superblock(), whose only caller returns before
+     * reaching it, and every other site sets the field NULL. Audit pass 1 L1
+     * records the reachability here so the next reader does not re-derive it.
+     * RE-AUDIT THIS LIFETIME on the day that flag is flipped, not now: it
+     * frees metadata belonging to a TB the fork's tier-1 design deliberately
+     * keeps executing after invalidation. The log line below is
+     * ANDROID_LOG_INFO under tag "superblock", which no dispatcher logcat
+     * spec lists, so it would record nothing even if it did fire.
+     */
     if (tb->superblock) {
 #ifdef __ANDROID__
         __android_log_print(ANDROID_LOG_INFO, "superblock",
