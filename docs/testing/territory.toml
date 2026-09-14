@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 41
+wave = 42
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -54,6 +54,11 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/request.sh",
          "docs/testing/sweep_agreement.py"]
 note = "preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
+
+[lane.depthstall]
+issues = ["52"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c"]
+note = "#52, dispatchable for the first time because lane.falsifiers REFUTED its blocker. It said the stalling test is NOT named and any attribution would be the reader's. It is named, three ways: the progress log has 327 Starting against 326 Completed with exactly ONE unmatched, `Starting Depth buffer::DepthFmt_z24_Cy_FZn_Maaaaaf` with no Completed; the capture set bounds it on both sides (Maaaaaf has two PNGs, Cy_FZn_Mc00003 has none); and the retry cited as carrying seven such entries carries ZERO -- 196 Starting, 196 Completed, 'Testing completed normally'. The seven were NEGATIVE DURATIONS, a different anomaly. TWO THINGS RECORDED NOWHERE ELSE came out of that audit and are the real prize: a repeating ~-24.3 s BACKWARD JUMP of the guest clock, and one run reaching 654 of 680 tests, so 26 tests are missing rather than 'the Cy half'. psh.c is claimed because the blocker names it; everything else is READ-ONLY until granted -- ask rather than take."
 
 [free]
 # RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
@@ -98,7 +103,6 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/mcpx/**",
          "hw/xbox/nv2a/nv2a.c",
