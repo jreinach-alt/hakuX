@@ -176,17 +176,40 @@ if [ -n "$SUITES" ] || [ -n "$TITLE" ]; then
         # The check is against the GOLDEN TREE, not the queued suites: a leg
         # naming a capture in a suite this request does not run is a different
         # error and ab_compare will catch it with real rows in hand.
+        #
+        # IT CHECKS ALL FOUR PREDICTION FIELDS, NOT JUST `expect`, and it
+        # matches them THE WAY ab_compare MATCHES THEM. Both halves of that
+        # were wrong until 2026-09-14, and one probe file showed both:
+        #
+        #   * `must_not_move`, `must_not_regress` and `expect_counts` were
+        #     never looked at. A probe carrying `must_not_move:
+        #     ["Blend tests::*"]` -- the very `::` spelling that cost the #67
+        #     arm ten legs -- plus `must_not_regress: ["Nonexistent_suite/*"]`
+        #     and `expect_counts: {"worst": 0}` passed all three straight
+        #     through. judge() does report them afterwards, so they were not
+        #     silent; they were merely discovered a device run too late, which
+        #     is the cost this gate exists to avoid.
+        #   * `expect` keys were compared by EXACT membership while judge()
+        #     matches them with fnmatch. So `Surface_clip/*`, a legitimate leg
+        #     that would have bound to all 47 Surface_clip captures, was
+        #     REFUSED -- and refused with a message telling the author to
+        #     write `SUITE/TestName`, which is what they had written. A gate
+        #     stricter than the thing it guards sends people to fix code that
+        #     is already right.
+        #
+        # `expect_counts` keys are checked against the four class names
+        # because there is nothing else they can be. A typo there does fail in
+        # judge() -- tally.get("worst") is None and None != 0 -- so this is
+        # the same "a run too early" argument, not a new hole.
         python3 - "$EXPECT" "${GOLDENS:-/home/justin/goldens/results}" <<'PYEXP' || exit 2
-import json, os, sys
+import fnmatch, json, os, sys
 exp_path, goldens = sys.argv[1], sys.argv[2]
 try:
     exp = json.load(open(exp_path))
 except Exception as e:
     print("--expect %s is not readable JSON: %s" % (exp_path, e), file=sys.stderr)
     sys.exit(2)
-keys = list((exp.get("expect") or {}).keys())
-if not keys:
-    sys.exit(0)
+
 known = set()
 for suite in os.listdir(goldens):
     d = os.path.join(goldens, suite)
@@ -195,20 +218,50 @@ for suite in os.listdir(goldens):
     for png in os.listdir(d):
         if png.endswith(".png"):
             known.add("%s/%s" % (suite, png[:-4]))
-bad = [k for k in keys if k not in known]
-if not bad:
+if not known:
+    print("REFUSED: no goldens under %s, so no prediction key can be checked. "
+          "This gate cannot tell a good key from a bad one without them."
+          % goldens, file=sys.stderr)
+    sys.exit(2)
+
+# ab_compare matches every one of these with fnmatch, so match with fnmatch.
+def binds(pat):
+    return any(fnmatch.fnmatch(n, pat) for n in known)
+
+bad = []
+for field in ("expect", "must_not_move", "must_not_regress"):
+    v = exp.get(field)
+    pats = list(v.keys()) if isinstance(v, dict) else list(v or [])
+    for pat in pats:
+        if not binds(pat):
+            bad.append((field, pat))
+
+CLASSES = ("better", "worse", "same", "noise")
+badcount = [k for k in (exp.get("expect_counts") or {}) if k not in CLASSES]
+
+if not bad and not badcount:
     sys.exit(0)
-print("REFUSED: %d of %d `expect` key(s) name no capture in the goldens:"
-      % (len(bad), len(keys)), file=sys.stderr)
-for k in bad:
-    print("  %s" % k, file=sys.stderr)
-    if "::" in k:
-        cand = k.replace(" ", "_").replace("::", "/")
-        if cand in known:
+
+if bad:
+    print("REFUSED: %d prediction key(s) match no capture in the goldens:"
+          % len(bad), file=sys.stderr)
+    for field, pat in bad:
+        print("  %-16s %s" % (field, pat), file=sys.stderr)
+        # The two spellings exist on purpose -- the index carries
+        # results_name separately -- so offer the translation rather than
+        # pretending one of them is wrong.
+        cand = pat.replace(" ", "_").replace("::", "/")
+        if cand != pat and binds(cand):
             print("      did you mean  %s" % cand, file=sys.stderr)
-print("\n  Keys are RESULTS_DIRECTORY_SPELLING/TestName -- underscores in the\n"
-      "  suite, a single slash. The `Suite name::Test` form is what the test\n"
-      "  binary and nv2a_issues.toml use, and ab_compare will never match it.\n"
+if badcount:
+    print("REFUSED: %d `expect_counts` key(s) are not a capture class: %s"
+          % (len(badcount), ", ".join(sorted(badcount))), file=sys.stderr)
+    print("  The classes are: %s" % ", ".join(CLASSES), file=sys.stderr)
+print("\n  Capture keys are RESULTS_DIRECTORY_SPELLING/TestName -- underscores\n"
+      "  in the suite, a single slash -- and may contain glob wildcards, which\n"
+      "  ab_compare expands against the captures both arms actually scored.\n"
+      "  The `Suite name::Test` form is what the test binary and\n"
+      "  nv2a_issues.toml use, and ab_compare will never match it.\n"
       "  A leg that matches no capture cannot fail, and an arm full of them\n"
       "  comes back PRE-REGISTERED with nothing measured.", file=sys.stderr)
 sys.exit(2)
