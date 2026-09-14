@@ -2715,6 +2715,14 @@ static void compare_surfaces(SurfaceBinding *s1, SurfaceBinding *s2)
         if (s1->fld != s2->fld) \
             trace_nv2a_pgraph_surface_compare_mismatch( \
                 #fld, (long int)s1->fld, (long int)s2->fld);
+    /*
+     * The guest colour and zeta formats, which are what #60 is about: a
+     * binding reused across a colour format change keeps its creation-time
+     * shape, and until these two lines the eviction trace could not name the
+     * field that had changed. #62 finding 4.
+     */
+    DO_CMP(shape.color_format)
+    DO_CMP(shape.zeta_format)
     DO_CMP(shape.clip_x)
     DO_CMP(shape.clip_width)
     DO_CMP(shape.clip_y)
