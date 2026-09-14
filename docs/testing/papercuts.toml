@@ -160,3 +160,11 @@ cost = "36 of the corpus's 42 movers are unattributable and cannot be made attri
 bit = 1
 owner = "toolsmith"
 fix = "Distinguish truncated (unmatched Starting in the progress log, or window minimized with no restore) from short-disc (completed normally, fewer tests than goldens). Let the second count as a repeat, recording the population it covers so a floor over 72 captures is never read as a floor over 78. progress_log_proof is already in result.json and already true for these runs."
+
+[[cut]]
+id = "dispatcher-sh-unlisted"
+what = "dispatcher.sh is unlisted in territory.toml -- neither claimed by a lane nor in [free] -- despite being the file that defines LOGCAT_SPEC, the queue protocol and the soak/disc branch. profile.c was in the same state until wave 51."
+cost = "Not yet paid, which is the point of logging it now. An unlisted file is one nobody is refused and nobody is responsible for, and the collision guards cannot see a claim on it because there is none to see."
+bit = 1
+owner = "unassigned"
+fix = "Audit territory.toml for files under docs/testing/ and hw/ that appear in neither a lane nor [free], and place them. A file that is genuinely nobody problem should say so explicitly rather than by omission."
