@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 50
+wave = 51
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -61,12 +61,13 @@ issues = []
 files = []
 note = "AUDIT PASS 1 over accel/tcg. Claims NO FILES deliberately -- an auditor does not fix what it finds, so it needs visibility on the board and no territory, which is the lane.galleon77 precedent. It exists as a row because a lane that is running and not claimed is invisible to every guard: I dispatched it without one, which is the third time tonight a lane ran unclaimed, after lane.padwrite (no row at all) and lane.tcginval (row written but not committed before dispatch)."
 
-[lane.tcgfix]
-issues = []
-files = ["accel/tcg/translate-all.c",
-         "accel/tcg/tb-maint.c",
-         "accel/tcg/cpu-exec.c"]
-note = "REMEDIATION of audit pass 1 on accel/tcg: the HIGH and M1, in that order. THE HIGH IS PRE-EXISTING AND REACHABLE BY THE WORKLOAD #73 EXISTS FOR -- translate-all.c:445 calls tb_lock_page1() with no live sigsetjmp(jmp_trans) frame, its contention branch ends in siglongjmp(jmp_trans, -3), and jmp_trans is armed only by setjmp_gen_code(), which the recycle path runs BEFORE and never reaches. The jump target is a frame from an earlier tb_gen_code() that already returned: UB with two page spinlocks held. From 255d110496 (xemu, 2025-01). The second thread is NOT a second vCPU -- assert_memory_lock() is empty in softmmu and do_tb_phys_invalidate is reachable from physmem.c:3297 on the DMA thread, i.e. Xbox IDE/DVD, the overlay load #73 names as its own payoff. tb_gen_superblock() has the same defect at :1156-1158; fix both. M1 IS ON #68's CRITICAL PATH: the #73 fix silently broke `ws`, which now compares a live-only overlap count against a total including already-invalid blocks -- correct by ACCIDENT before, because a dead block was never removed from the page list. #68's held arm is judged on that counter, so M1 lands BEFORE that arm is dispatched. accel/tcg carries an unfolded commit: 937848c9e7 on worktree-agent-af29d9ef9a8f784d4 is #68's range-test restoration, ~200 lines in tb-maint.c. Coordinate with it."
+[lane.tcgcount]
+issues = ["68"]
+files = ["accel/tcg/tb-maint.c",
+         "accel/tcg/cpu-exec.c",
+         "accel/tcg/translate-all.c",
+         "hw/xbox/nv2a/pgraph/profile.c"]
+note = "THE COUNTERS, because two separate pieces of work are now blocked on them and neither can be advanced with device time. (1) #68's ARM IS VOID BY ITS OWN INSTRUMENT: arm B has sp + ov != di in 21 of 21 windows -- two counts of the same live population on ONE log line, which must agree exactly -- and `visited` up 573x to 160,838,266 with a residual of 160,836,959. em falls 38,177 -> ~0, the shape the prediction expected, and it cannot be read off an instrument that fails its own check. So 937848c9e7 stays HELD and unfolded. (2) M5 (inv_htable eviction, audit MEDIUM) was folded unremediated by documented exception because the audit's proposed fix was REFUTED -- ihash is over guest bytes, so alternating overlays make a superseded entry recyclable and evicting on insert destroys exactly the hit the cache exists for. Its real fix needs a bound keeping the most recent N and A COUNTER THAT DOES NOT EXIST. Both are counter problems. profile.c is claimed because the log line and its legend live there and tcgfix's board request already lists three comment edits owed on it; it was unlisted in territory.toml, which is itself worth noticing. RETIRED lane.tcgfix at this wave -- it had folded and was still holding these three files, which is the claimed-but-not-running shape the fleet cross-check exists to catch."
 
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
