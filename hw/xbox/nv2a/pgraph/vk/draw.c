@@ -519,12 +519,39 @@ static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
  * rather than there because pgraph.c is shared with the GL renderer, whose
  * readback half of #48 was never wired up, so changing it there would be a
  * half-change on a renderer this arm does not measure.
+ *
+ * KEYED ON THE BINDING, NOT THE REGISTER, AND THAT IS THE WHOLE POINT.
+ *
+ * This stamp exists to agree with the sample-side override in
+ * vk/texture.c (surface_sampled_pad_alpha), which reads
+ * surface->host_fmt.sampled_pad_alpha. Keying this side on
+ * pg->surface_shape.color_format -- the LIVE guest format -- made the two
+ * sides answer from different state, and they can differ: A8R8G8B8,
+ * X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one VkFormat, so
+ * check_surface_compatibility() reuses one binding across a change between
+ * them. drawn_format and host_fmt are assigned together from the same
+ * `target` on BOTH the create path (surface.c:3120/3123) and the
+ * compatible-reuse path (3340/3342), so taking this side from drawn_format
+ * makes the two sides derive from one color_format value by construction
+ * rather than by the register happening to be current.
+ *
+ * Before the #59 stamp this could not bite: the clear always wrote 1.0, so
+ * only the sampler had an opinion and there was nothing to disagree with.
+ *
+ * Every caller already guards on r->color_binding; the register fallback is
+ * for the no-binding case only, where nothing is sampled either.
  */
 static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
 {
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
     pgraph_get_clear_color(pg, rgba);
 
-    switch (pgraph_glsl_surface_pad_alpha_mode(pg->surface_shape.color_format)) {
+    unsigned int color_format =
+        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
+                           pg->surface_shape.color_format;
+
+    switch (pgraph_glsl_surface_pad_alpha_mode(color_format)) {
     case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
     case PSH_PAD_ALPHA_ONE:  rgba[3] = 1.0f; break;
     default: break;
