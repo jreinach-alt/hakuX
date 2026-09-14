@@ -32,11 +32,11 @@ fix = "Always `git commit -F -` with a quoted heredoc for anything containing ba
 
 [[cut]]
 id = "skip-ci-typo"
-what = "`[skip ki]` instead of `[skip ci]`, produced by chaining -m flags where git concatenates them and the FIRST becomes the subject."
-cost = "Recurred today after being fixed once before. Needed an amend."
-bit = 2
+what = "`[skip ki]` instead of `[skip ci]`. Not only from chaining -m flags -- it happens in a plain heredoc subject too, which means it is a typing slip and not a git behaviour, and no amount of knowing about it has stopped it."
+cost = "FOUR occurrences now, each needing an amend. The fourth landed minutes after logging the third, in a commit whose body discusses false-positive rates in gap lists."
+bit = 4
 owner = "toolsmith"
-fix = "preflight's commit-subject gate already checks HEAD. It could check for near-misses of the marker, not just its absence."
+fix = "preflight's commit-subject gate checks HEAD for the marker's PRESENCE and passes anything containing it. It must also FAIL a near-miss -- a bracketed token within edit distance 1 of `skip ci` that is not `skip ci`. Four occurrences is enough evidence that discipline does not fix this one."
 
 [[cut]]
 id = "watchdog-holds-its-script"
