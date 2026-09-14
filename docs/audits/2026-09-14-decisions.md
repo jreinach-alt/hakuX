@@ -98,3 +98,35 @@ surface that may not be the current target". The lane reworded rather than
 admit a false gap, which is the right call in the moment and the wrong one as a
 pattern: a prose-scoring gap list has a false-positive rate, and that rate is
 paid by whoever reads the list next. It belongs in `papercuts.toml`.
+
+## M5 (`cpu-exec.c:605`, inv_htable eviction) — FOLDED UNREMEDIATED, deliberately
+
+**This is an exception to "every HIGH and MEDIUM is remediated before the code
+folds in", and it is recorded as one rather than quietly taken.**
+
+**The audit's remediation is refuted.** It proposed evicting on insert, on the
+grounds that a superseded entry "can never be recycled again". `lane.tcgfix`
+showed that is false: `ihash` is over **guest bytes**, so alternating overlays
+(A→B→A) make the older entry recyclable — and that is precisely the workload
+#73 and #68 exist for. Evicting on insert destroys exactly the hit the cache is
+there to get.
+
+So following the remediation would have been worse than the finding. That is
+the second time in this audit chain that a proposed fix was wrong and the
+remediating lane caught it: pass 2 found the first HIGH's assert unfireable,
+and `lane.lows` refused to write an unfireable one for L10.
+
+**Why fold anyway.** M5 is **pre-existing** — it is how the recycle cache was
+built, not something this remediation introduced — so folding does not make it
+worse. Holding H1 for it would leave **undefined behaviour with two page
+spinlocks held** in the tree, reachable from the DMA thread by the overlay load
+#73 names as its own payoff. Trading a live UB fix for an unfixed pre-existing
+cost is the wrong way round.
+
+**What the protocol actually protects** is that a MEDIUM must not ship
+*silently*. This one ships with a refutation of its proposed fix, this decision,
+and its own dispatch. The chain-growth cost is real and unmeasured: the fix
+needs a bound that keeps the most recent N, plus a counter that does not exist
+today.
+
+**Open, and it needs its own lane.** Not #81, not #73, not #68.

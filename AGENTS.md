@@ -163,6 +163,18 @@ Records live in `docs/audits/<date>-pass{1,2}.{md,json}`. The JSON carries
 severity, file, line, summary, scenario, remediation, so a gate can consume it
 rather than a human re-reading prose.
 
+**A REMEDIATION IS A CLAIM, LIKE A BLOCKER.** The finding is usually right; the
+proposed fix is a suggestion from someone who did not have to make it work.
+Twice in one chain a remediation was wrong and only the lane implementing it
+caught that: pass 2 found the first HIGH's assert was implied by the condition
+it sat under and could never fire, and M5's proposed eviction-on-insert rested
+on "a superseded entry can never be recycled again" -- false, because `ihash`
+is over guest bytes, so alternating overlays make it recyclable, and evicting
+would have destroyed exactly the hit the cache exists for. **A lane that
+disagrees with a remediation should decline it with a reason rather than
+implement it**, and say so in its report. Both lanes did this unprompted; it is
+written down so the next one does not assume the finding is authoritative.
+
 **The auditor does not fix what it finds.** Remediation is dispatched as its
 own work and audited again in pass 2. An auditor that patches its own findings
 is grading its own homework, and this project has already learned that a

@@ -136,3 +136,11 @@ fix = "The fold path needs the gate, not the orchestrator's memory. lane.toolsmi
 #   minimised-run-reads-as-a-defect -> ab_compare --check-truncation, called by
 #                                    request.sh --wait, the one place both disc
 #                                    and soak results are read.
+
+[[cut]]
+id = "audit-remediation-can-be-wrong"
+what = "An audit finding's proposed REMEDIATION is not itself audited. Twice in one chain a proposed fix was wrong and only the remediating lane caught it: pass 2 found the first HIGH's assert unfireable, and M5's proposed eviction-on-insert was refuted because ihash is over guest bytes, so alternating overlays make a superseded entry recyclable."
+cost = "Following M5's remediation would have destroyed exactly the recycle hit the cache exists for, on the workload #73 and #68 are about. Caught only because the remediating lane read the code rather than the finding."
+bit = 2
+owner = "unassigned"
+fix = "State in AGENTS.md that a remediation is a CLAIM like a blocker, and a lane that disagrees should decline with a reason rather than implement it. Both lanes did this correctly without being told; the protocol should say so, so the next one does not assume the finding is authoritative."
