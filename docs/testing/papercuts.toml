@@ -1,0 +1,95 @@
+# Friction that has cost real time, tracked so it can be fixed on a cadence
+# rather than only at the moment it bites.
+#
+# WHY THIS FILE EXISTS. Six instruments were fixed on 2026-09-13/14 and every
+# one was fixed REACTIVELY -- at the moment it cost something. That works, and
+# it means the only paper cuts that ever get fixed are the ones that draw
+# blood twice. The rest stay, are rediscovered by the next agent, and cost the
+# same time again. Nothing was tracked; the record lived in commit messages.
+#
+# A DX pass is dispatched daily against this file. Entries are removed when
+# fixed, with the commit named.
+#
+#   cost      what it actually cost, measured where possible
+#   bit       how many separate times it has been observed
+#   owner     lane that would fix it, or "unassigned"
+
+[[cut]]
+id = "heredoc-commit-chain"
+what = "`python3 - <<PY ... PY && git commit` commits over an edit that never landed: the heredoc asserts, dies before writing, and the && still runs because python's exit is not what git sees in a multi-command chain."
+cost = "Committed lane.lineext's territory claim without its blocker declarations, then repeated it an hour later with lane.readfreq's. Both needed a follow-up commit to correct the board."
+bit = 2
+owner = "unassigned"
+fix = "Verify the edit landed before committing -- `git diff --cached --name-only`, or split the write and the commit into separate tool calls. Possibly a wrapper."
+
+[[cut]]
+id = "backticks-in-commit-m"
+what = "Backticks inside a double-quoted `git commit -m \"...\"` are command substitution, so a word in the message runs as a command and vanishes from the text."
+cost = "Ate the word `agentwork` out of a commit message; caught only by reading the message back."
+bit = 1
+owner = "unassigned"
+fix = "Always `git commit -F -` with a quoted heredoc for anything containing backticks or $."
+
+[[cut]]
+id = "skip-ci-typo"
+what = "`[skip ki]` instead of `[skip ci]`, produced by chaining -m flags where git concatenates them and the FIRST becomes the subject."
+cost = "Recurred today after being fixed once before. Needed an amend."
+bit = 2
+owner = "toolsmith"
+fix = "preflight's commit-subject gate already checks HEAD. It could check for near-misses of the marker, not just its absence."
+
+[[cut]]
+id = "watchdog-holds-its-script"
+what = "bash reads a script lazily by byte offset, so editing idle-watchdog.sh mid-session changes nothing in the running instance -- and a length-changing edit can in principle make it resume mid-token."
+cost = "A lane-aware branch was written, committed, and had no effect for the rest of the session."
+bit = 1
+owner = "toolsmith"
+fix = "Item 3 on toolsmith's backlog. Header comment added; the structural fix is undecided."
+
+[[cut]]
+id = "checkout-restores-staged"
+what = "`git checkout -- <file>` after a staged change restores the file from the INDEX, i.e. the staged version, not HEAD. Needs `git checkout HEAD -- <file>`."
+cost = "A cherry-pick test left the tree dirty and the next cherry-pick aborted with 'Please commit your changes'."
+bit = 1
+owner = "unassigned"
+fix = "Documentation, or a habit. Not automatable."
+
+[[cut]]
+id = "gh-body-at-file"
+what = "`gh issue create --body \"@file\"` does not expand @; it files the literal string."
+cost = "#77 was filed with a literal path as its body."
+bit = 1
+owner = "unassigned"
+fix = "Always --body-file."
+
+[[cut]]
+id = "prediction-bound-into-worktree"
+what = "An arm queued from a lane's worktree records the prediction's path INSIDE that worktree. If the worktree is removed before anyone re-judges, the binding path breaks."
+cost = "Flagged by two separate lanes in their final reports; no loss yet because both were folded in time."
+bit = 2
+owner = "toolsmith"
+fix = "request.sh could resolve the prediction to a repo-relative path, or record the content hash as the primary key rather than the path."
+
+[[cut]]
+id = "two-suite-spellings"
+what = "The derived suite name uses spaces (`Blend tests`) and the results directory uses underscores (`Blend_tests`). Predictions key on the second; the tracker and the test binary use the first."
+cost = "Ten expect legs matched no capture and could not fail, on an arm that still returned PRE-REGISTERED."
+bit = 1
+owner = "toolsmith"
+fix = "request.sh now refuses an unmatched expect key at queue time. The other prediction fields are unchecked -- toolsmith item 4."
+
+[[cut]]
+id = "logcat-tag-silenced"
+what = "A new logcat tag is invisible unless it is in run_disc.sh's LOGCAT_SPEC, which ends `*:S`."
+cost = "#13's line-width log printed under a silenced tag and was invisible in every dispatcher run; the question it was written to settle stayed open."
+bit = 1
+owner = "unassigned"
+fix = "A gate that greps for __android_log_print tags not present in LOGCAT_SPEC."
+
+[[cut]]
+id = "index-build-needs-both-flags"
+what = "`nv2a_index.py build --tests DIR` alone produces an index that passes a by-hand `check --tests` and then FAILS preflight, which rebuilds with --tests AND --support. The two disagree by 197 lines while reporting identical counts."
+cost = "An agent lost a preflight pass and had to rebuild."
+bit = 1
+owner = "unassigned"
+fix = "Make `build` refuse without --support, or default it the way preflight does."
