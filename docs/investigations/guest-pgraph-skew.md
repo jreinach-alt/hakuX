@@ -2052,6 +2052,68 @@ other side.** A counter that reads the same small constant on every run of a
 almost certainly one boot-time event. Nothing should quote a per-run disc `Tr`
 as a frequency.
 
+**ANSWERED OFFLINE WHILE THE DISC RAN, and the answer is the second world.**
+The counters are cumulative and the pacing line is emitted repeatedly, so the
+*series inside one run* separates boot from tests with no device at all. On all
+six Stencil-carrying runs, at the first pacing line and at the last:
+
+| run | `vtx_copies` first → last | `tex_windows` first → last | `Tr` |
+|---|---|---|---|
+| `1789345024-orchestrator-1663172` | **34 → 34** | 16,770 → 46,381 | 1 → 1 |
+| `1789345036-orchestrator-1663213` | **34 → 34** | 17,227 → 47,025 | 1 → 1 |
+| `1789345832-orchestrator-1968847` | **34 → 34** | 16,318 → 45,312 | 1 → 1 |
+| `1789347057-orchestrator-2287889` | **34 → 34** | 15,890 → 45,312 | 1 → 1 |
+| `1789347057-orchestrator-2288027` | **34 → 34** | 16,318 → 45,685 | 1 → 1 |
+| `1789345832-orchestrator-1968834` | **34 → 34** | 16,318 → 46,381 | 1 → 1 |
+
+**Not one dirty vertex-array copy in ~29,500 draws per run, six of six.** All 34
+land before the first pacing line, which is boot. `Tr` = 1 is boot by the same
+reading, while `tex_uploads` does advance during the tests (64–69 → 104–189) —
+so the texture path is live on the disc and races zero times, and the `1` is
+not part of any rate.
+
+The control that makes this a measurement rather than an absence is in the same
+two numbers: `Depth buffer` on the same instrument reads `vtx_copies`
+302 → 744 → 1,166 → 1,580 → 1,979 across its five pacing lines. **The
+instrumented path is alive on a pgraph disc and simply unused by the suites
+carrying Stencil** — which is the discriminator, and it needed no device.
+
+**And the source says why.** Three vertex paths reach a draw and only one of
+them reads guest memory at draw time:
+
+| path | where the vertex values come from | guest read at draw? |
+|---|---|---|
+| `draw_arrays` / `inline_elements` | VRAM vertex arrays, via `update_memory_buffer` → `sync_vertex_ram_buffer` | **yes — this is what `Vr` counts** |
+| `inline_buffer` (`NV097_SET_VERTEX_DATA*F`) | accumulated into `attr->inline_buffer` as methods are processed | **no** |
+| `inline_array` (`NV097_INLINE_ARRAY`) | `pg->inline_array[len++] = parameter`, `pgraph.c:4258` | **no** |
+
+The two inline paths carry vertex values as **pushbuffer method parameters**,
+copied into pgraph-owned state at method-processing time. There is no
+guest-memory read left at the draw for any read-side counter to instrument, so
+`Vr` is not merely quiet on them — there is nothing there to count.
+
+**So `Vr` is blind to #79 structurally, and a zero from it about #79 is not
+evidence.** That is the shape AGENTS.md warns about: *"a guard satisfied by the
+absence of the thing it guards reports success."* Stated as the brief asked:
+the counter **cannot** see #79, and what that means is that #79's skew is not
+at the site #54's counter watches.
+
+**WHERE IT WOULD THEN BE, held as a hypothesis with its falsifier, not as a
+diagnosis.** If the Stencil vertices travel by an inline path, the only guest
+read in their journey is the **pusher's read of the pushbuffer word**, in
+`pfifo.c` — and a torn vertex would be the guest overwriting published
+pushbuffer words before `pfifo_run_pusher` consumed them. That is consistent
+with `XEMU_OPT_FIFO_SKEW_BOUND=1` fixing #79 for a reason about the *pusher*
+rather than about a vertex buffer, and with `behind/kicks = 100.0%` on the
+Stencil disc. It is NOT established: I have not read `nxdk_pgraph_tests`, the
+pushbuffer is not covered by `DIRTY_MEMORY_NV2A` logging so no existing counter
+can see it, and the ring measured on `Texture border` is 63.98 MiB, which is
+large to wrap inside a publish-to-consumed p50 of 8.65 ms. The falsifier is
+cheap and needs no new code: **if the Stencil-only disc reads `vtx_copies` = 34
+with no growth, the VRAM-vertex-array story is dead and the pushbuffer one is
+the surviving candidate; if it grows, `Vr` is on #79's path after all and is
+merely underpowered, and the fix is soak length rather than a new site.**
+
 ### Registered before the tip runs
 
 `docs/testing/predictions/vram-read-race-probe-54-v4-galleon.json`, a
