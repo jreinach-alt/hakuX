@@ -56,12 +56,32 @@ Three traps, all of them paid for, all of them mine:
    only over it. Same trap as (1), one level deeper: absence of a warning is
    evidence of nothing unless the file was compiled.
 
+5. **The snapshot below is a census of THIS branch. It is the wrong reference
+   for a file another branch has changed.** Same family again, and the one
+   that nearly produced a false report to another lane: gating the peer tip at
+   `89a31c59`, three `profile.c` sites were listed, and cross-checking them
+   here said two were "not in the inventory" -- which reads exactly like "these
+   are new". They were not. The peer's `profile.c` differs from ours, and
+   `grep -c` for both the `-Wcomment` text and `hakux_vram_race_snprintf` in
+   this tree returns **0**: they exist only on their branch, so this file could
+   never have contained them.
+
+   **The oracle for "is this warning new" is the PREVIOUS GATE'S OWN LOG**, not
+   this snapshot and not the delta summary:
+
+       grep -oE '<file>\.c:[0-9]+:[0-9]+: warning: .*' <prev gate log> | sort -u
+
+   compared by message, ignoring line numbers. That settled it immediately --
+   all three sites were present at `60f17632` with identical messages and only
+   drifted lines (557->678, 564->685, 628->749), consistent with a +137/-11
+   fold. Use the snapshot only for files identical in both trees.
+
 The irony is the point: this file was written because an earlier report quoted
 ten warnings that had survived a grep and asked a question about them. It then
 recorded a slice and called it the inventory, one level up. A measurement is
 not trustworthy because it is bigger than the last one.
 
-## Snapshot at `0103d4fa` (full clean build)
+## Snapshot at `0103d4fa` (full clean build, THIS branch)
 
 `ninja -C build -t clean && ninja -C build qemu-system-i386`, unfiltered, exit
 status taken directly from ninja: **NINJA_EXIT=0, 1,812 edges, links clean.**
