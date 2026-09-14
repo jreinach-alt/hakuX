@@ -42,8 +42,19 @@ Three traps, all of them paid for, all of them mine:
 3. **Trends keyed on `file:line` count drift as churn.** A function inserted
    upstream shifts every later line, so the same warning reads as one removal
    plus one addition. `ac829cd8` -> `08b4219a` scored 30 gone / 27 new that
-   way; keyed on file + message it is **3 removals and 0 additions**. Compare
-   by file + message, never by line.
+   way. Compare by file + message, never by line.
+
+4. **A delta is only meaningful over files compiled in BOTH runs**, and this
+   one bit hardest because it hides inside the fix for (3). Keyed by
+   file+message, `ac829cd8` -> `08b4219a` reads as 3 removals -- and 2 of them
+   are false. `target/i386/tcg/fpu_helper.c` was not recompiled in the second
+   run, so its two `xemu_*_fp_safe` warnings were not *removed*, they were
+   **not observed**; the full clean build still carries both, at lines 365 and
+   370. Restricted to the 21 warning-carrying files compiled in both runs the
+   honest answer is **1 removal, 0 additions** -- `vk/draw.c`'s unused
+   `requested`. `gate.sh` now computes the intersection and reports the delta
+   only over it. Same trap as (1), one level deeper: absence of a warning is
+   evidence of nothing unless the file was compiled.
 
 The irony is the point: this file was written because an earlier report quoted
 ten warnings that had survived a grep and asked a question about them. It then
