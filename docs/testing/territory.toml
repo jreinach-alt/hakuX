@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 64
-updated_utc = "2026-09-14T14:55:00Z"
+wave = 65
+updated_utc = "2026-09-14T15:10:00Z"
 
 
 
@@ -70,6 +70,12 @@ note = "#44's SHIPPING DECISION, which is one measurement short and has been for
 issues = ["38", "83"]
 files = ["hw/xbox/nv2a/pgraph/vk/blit.c"]
 note = "#38 MECHANISM 3, which has never had a lane and is the largest untouched directional signal on the board: Image_blit, 515,562 one-step pixels, 76,423 ours-high against 439,139 ours-low, bias -0.70. Read docs/investigations/depth-buffer-is-four-defects.md:150-176 -- it records the trap AND the lead in the same table. The trap: conditioning on DIFFERING pixels made the corpus-wide one-step error look one-sided at +0.67 to +1.07, and unconditioned it is +0.03. There is no single rounding bug behind the corpus. The lead is that Image_blit survives that correction -- it leans as hard negative as Texture_signed leans positive, so it is a real cause and not the artefact. 85% of its one-step pixels are ours-low by exactly one. vk/blit.c WAS IN NO ROW AND NOT IN [free] -- the same gap fleet.py was found in at wave 48; it is registered here rather than quietly taken. glsl/vsh.c is free if the lane needs mechanism 1's colorPrecision site, but it must ASK: a brief is not a claim. NOT #33, which is closed and whose blit divergence moved to #62 -- lane.remote holds that. CLAIM HELD OPEN 2026-09-14 THOUGH THE AGENT HAS REPORTED, because a file whose stream's arm is QUEUED BUT NOT YET JUDGED is still claimed -- this row's own rule, and the reason for it is here: the arms are 9th and 10th behind eight skew44 requests, and an edit landing inside that window would be measured as part of the delta. THE FIX IS HELD UNFOLDED: 24a75d6e3c 'divide BLEND_AND by 0x7f80, not by 32768', +50/-19 in vk/blit.c, is the arm-B ref of a PRE-REGISTERED prediction and is deliberately NOT rebased, so the reported shas are the measured shas. The docs, the prediction and the beta-mask negative are folded (8dae299980, 3fed2f4ee0, 729533959f); only the compiled change waits. It waits on two things, not one: the arm's verdict, AND an audit pass -- compiled code has folded unaudited twice tonight and the second time an audit found a HIGH that exhaustive testing of the INTENDED path would also have missed, because the defect was in a different consumer. This fix is exhaustively verified over its whole 2^24 input domain under real aarch64 instructions, which is exactly the evidence that makes a reviewer stop looking at the callers. pgraph.c RELEASED: the lane checked the beta mask against silicon, found it correct, and made no edit."
+
+
+[lane.audit-blit]
+issues = []
+files = []
+note = "AUDIT PASS 1 over the ONE held commit 24a75d6e3c -- 'divide BLEND_AND by 0x7f80, not by 32768', +50/-19 in vk/blit.c. Claims no files: an auditor does not fix what it finds. Dispatched WHILE the arm runs rather than after, so both gates clear together instead of serialising. THE SPECIFIC REASON THIS ONE IS AUDITED despite being the best-verified change of the night: it is exhaustively correct over its whole 2^24 input domain under real aarch64 instructions, and that is exactly the evidence that makes a reviewer stop reading the CALLERS. Tonight's HIGH (#82) was that shape -- a conversion correct for the path it was written for, wrong in the one consumer of ten that read it unguarded, and invisible to any test of the intended path."
 
 [free]
 #
