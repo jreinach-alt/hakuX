@@ -1488,37 +1488,37 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:977",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:992",
    "symbols": [],
    "text": "assert(!\"Invalid format\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1011",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1026",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1089",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1104",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1136",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1151",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1276",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1291",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1316",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1331",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4192,7 +4192,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "1ab0a5705188baa0bfdc4fd663ca39305617dd22",
+  "emulator_commit": "aadd7d8f7f5d8f80b9b449bfd2d4f3dc23d5f75e",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2727,

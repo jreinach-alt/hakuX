@@ -824,11 +824,26 @@ void pgraph_gl_bind_textures(NV2AState *d)
              * over the same list with check_surface_overlaps_range()'s
              * exclusive ends, which is the form that is right.
              */
-            pgraph_gl_download_surfaces_in_range_if_dirty(
+            bool downloaded = pgraph_gl_download_surfaces_in_range_if_dirty(
                 pg, texture_vram_offset, length);
 #ifdef __ANDROID__
-            android_log_texture_stage_errors(i, "download_overlap", &state,
-                                             GL_TEXTURE_2D);
+            /*
+             * Only when a surface was actually written back. Replacing the
+             * hand-rolled loop lifted this call out of the old
+             * `if (overlapping)` and into the per-draw path, where it ran
+             * glGetError() -- a synchronous driver round-trip, and a loop of
+             * them -- for every texture unit of every draw binding a
+             * non-surface texture, overwhelmingly when no GL call had been
+             * made that could have failed. The helper already returns whether
+             * it found anything, which is the same condition the old guard
+             * tested. Refs #80.
+             */
+            if (downloaded) {
+                android_log_texture_stage_errors(i, "download_overlap", &state,
+                                                 GL_TEXTURE_2D);
+            }
+#else
+            (void)downloaded;
 #endif
         }
 
