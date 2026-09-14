@@ -896,7 +896,14 @@ void pgraph_vk_draw_begin(NV2AState *d)
 
 /*
  * #13's wide-line geometry stage reads one vec4 of push constants at offset
- * 0: (2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused).
+ * 0: (2/surfaceWidth, 2/surfaceHeight, line width in guest px, one rasteriser
+ * subpixel quantum in guest px).  The fourth component is NOT unused -- this
+ * comment said it was until audit finding L1 -- it is lineTieBias, and
+ * glsl/geom.c spends thirty lines on why: it is the low-open tie break that
+ * decides the 4.562% of the goldens' band edges (1,911 of 41,892) landing
+ * exactly on a pixel centre, worth 550-580 of the 8,890 fit-set cuts.
+ * Repurposing it would destroy that silently.  push_geom_line_params()
+ * computes it, and it has to be exactly one subpixel quantum.
  * KEEP IN SYNC with vk/shaders.c, which declares the identical range on every
  * push-descriptor template layout, and with glsl/geom.c, which declares the
  * matching GeomPushConstants block.  Declared on every pipeline whether or

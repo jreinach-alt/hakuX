@@ -35,7 +35,12 @@ const size_t MAX_UNIFORM_ATTR_VALUES_SIZE = NV2A_VERTEXSHADER_ATTRIBUTES * 4 * s
 
 /*
  * #13's wide-line geometry stage reads one vec4 of push constants:
- * (2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused).  The
+ * (2/surfaceWidth, 2/surfaceHeight, line width in guest px, one rasteriser
+ * subpixel quantum in guest px).  The fourth component is NOT unused -- this
+ * comment said it was until audit finding L1 -- it is lineTieBias, the
+ * low-open tie break glsl/geom.c's extent derivation turns on, which decides
+ * the 4.562% of the goldens' band edges (1,911 of 41,892) landing exactly on
+ * a pixel centre.  Repurposing it would destroy that silently.  The
  * range is declared on EVERY graphics pipeline and on every push-descriptor
  * template layout, whether or not that pipeline has a geometry shader,
  * because two pipeline layouts are compatible for a descriptor set only if
