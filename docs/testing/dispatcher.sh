@@ -670,7 +670,23 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 # every re-exec, and a human or a test can still pin a spec deliberately. The
 # general shape is worth keeping in mind: a variable that is both an input and
 # an exported output cannot be changed by editing its default.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# `hakuX-tier1:D` ADDED 2026-09-14 for #81, and it is the case the paragraph
+# above is about. The tag is compiled into accel/tcg (cpu-exec.c:155/182/204,
+# translate-all.c:612/679) and predates the `hakuX-lane` convention, so it
+# cannot be reached by instrumenting under the reserved tag without a build.
+# Every spec this file has ever had ends `*:S`, which silenced it BEFORE the
+# question was asked -- so the zero `[tier1]` lines on every logcat on disk are
+# NOT evidence that the mechanism never fires. They are evidence of the filter.
+# #81's first step is that measurement and not a fix, because "the slots fill
+# with duplicates" and "the mechanism never fires" want different fixes.
+#
+# `:D` and not `:I` because four of the five sites log at priority 3 (DEBUG);
+# only translate-all.c:612 is priority 4. `:I` would have captured one site in
+# five and read as a partial answer. The sites are self-throttled -- first ten,
+# then every ten-thousandth -- so this costs a handful of lines per run, not a
+# flood; that was checked before adding it rather than assumed.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 # Which device runs the idle sweep. One of them must, and both of them must
