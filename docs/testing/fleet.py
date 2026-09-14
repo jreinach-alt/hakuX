@@ -35,7 +35,9 @@ import datetime, json, os, subprocess, sys, tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
-REPO = "jreinach-alt/hakuX"
+# Overridable so the issue-blind path can be exercised without unplugging the
+# network. A gate whose failure branch has never run is not a gate.
+REPO = os.environ.get("HAKUX_REPO", "jreinach-alt/hakuX")
 
 
 def load_fleet():
@@ -69,11 +71,33 @@ def main():
     with open(os.path.join(HERE, "nv2a_issues.toml"), "rb") as fh:
         tracker = tomllib.load(fh)["issue"]
 
-    r = subprocess.run(["gh", "issue", "list", "--repo", REPO, "--state", "open",
-                        "--limit", "80", "--json", "number,title"],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        print("cannot reach gh; fleet report is issue-blind", file=sys.stderr)
+    # A TIMEOUT, BECAUSE THE RISK HERE IS A STALL AND NOT THE RATE LIMIT.
+    #
+    # Measured 2026-09-14: the token's core and graphql limits are both
+    # 5,000/hour with 0 used, and `gh issue list` returns in well under a
+    # second. Even a call per watchdog poll could not approach the limit --
+    # and the watchdog does not poll this anyway, because check_coverage.py
+    # only runs once the session has been idle and armed, not every 20s.
+    #
+    # So caching would solve a problem that does not exist. What DID need
+    # fixing is that this call had no timeout at all: a hung `gh` -- an auth
+    # prompt, a wedged connection -- blocks forever, and anything that invokes
+    # this from a poll loop then stops reporting the fleet at exactly the
+    # moment the fleet is stuck. Fail fast and say the report is issue-blind.
+    try:
+        r = subprocess.run(["gh", "issue", "list", "--repo", REPO,
+                            "--state", "open", "--limit", "80",
+                            "--json", "number,title"],
+                           capture_output=True, text=True, timeout=30)
+        ok = r.returncode == 0
+    except Exception as e:
+        r, ok = None, False
+        print("gh did not answer (%s)" % e, file=sys.stderr)
+    if not ok:
+        print("cannot reach gh; fleet report is issue-blind -- the "
+              "DISPATCHABLE section below is EMPTY BECAUSE IT WAS NOT "
+              "COMPUTED, which is not the same as nothing being dispatchable",
+              file=sys.stderr)
         live, titles = set(), {}
     else:
         rows = json.loads(r.stdout)
@@ -100,18 +124,62 @@ def main():
 
     # DISPATCHABLE: open, not owned by a lane with a running agent, and with
     # no blocker -- or a blocker that has never been tested. A blocker is a
-    # claim (AGENTS.md), and two of this campaign's were false this week.
+    # claim (AGENTS.md), and five of this campaign's were false this week.
+    #
+    # I TRIED TO DETECT AN UNTESTED BLOCKER FROM ITS PROSE AND IT DOES NOT
+    # WORK. Measured 2026-09-14 over all 23 blockers in the tracker, scoring
+    # each for six candidate signals of having been tested -- the words
+    # MEASURED/REFUTED/VERIFIED, an ISO date, a quantity with units, a capture
+    # key, a named tool, a source file:
+    #
+    #     MEASURED/REFUTED/verified     5 of 23
+    #     an ISO date                  13 of 23
+    #     a number with units/px        8 of 23
+    #     names a capture key           7 of 23
+    #     names a tool/command          8 of 23
+    #     names a source file           15 of 23
+    #     NO signal at all              3 of 23
+    #
+    # Twenty of 23 carry at least one signal, so the rule flags almost
+    # nothing. Worse, it flags the WRONG three: #68, #69 and #73 are the only
+    # signal-free blockers and all three are sound scope decisions ("belongs
+    # to the tier-1 owner; blast radius is every guest instruction"), not
+    # guesses. The signals separate TECHNICAL prose from POLICY prose, which
+    # is not the question.
+    #
+    # And there is a reason no text rule can work: THE TRACKER RECORDS A
+    # REFUTATION IN THE SAME FIELD AS THE CLAIM. Once a blocker is disproved
+    # the field is rewritten to say so, so the refuted ones read as the
+    # best-evidenced ones afterwards -- #59's now opens "NOT A TERRITORY
+    # PROBLEM AT ALL, MEASURED 2026-09-14". Before the test it read
+    # confidently too. A classifier cannot see a tense.
+    #
+    # So this asks for a STRUCTURED claim instead of sniffing prose, which is
+    # what AGENTS.md already asks for in words: "Write the blocker down in the
+    # form of the measurement that would refute it". An entry carries
+    # `blocker_falsifier` (what would show the blocker is false) and
+    # `blocker_tested` (when it was last run) or it does not, and only the
+    # absence is reportable. nv2a_issues.toml is the ORCHESTRATOR's file, so
+    # this reads those keys and does not invent them: until they are written
+    # every blocker reports UNTESTED, which is accurate -- none of them has
+    # ever been recorded as tested -- and is listed separately from the
+    # genuinely unblocked so it cannot be mistaken for a dispatch queue.
     dispatchable = []
+    untested = []
     for n in sorted(live, key=int):
         lane = owned.get(n)
         if lane and lane in lanes_with_agent:
             continue
-        b = (tracker.get(n, {}).get("blocked_on") or "").strip()
+        ent = tracker.get(n, {})
+        b = (ent.get("blocked_on") or "").strip()
         why = "no blocker" if not b else None
         if b and "NOT BLOCKED" in b.upper():
             why = "blocker says NOT BLOCKED"
         if why:
             dispatchable.append((n, lane, why, titles.get(n, "")[:52]))
+        elif b and not (ent.get("blocker_tested") or "").strip():
+            untested.append((n, lane, (ent.get("blocker_falsifier") or "").strip(),
+                             titles.get(n, "")[:52]))
 
     print("=== RUNNING (%d)" % len(running))
     for f in running:
@@ -135,6 +203,39 @@ def main():
     print("\n=== DISPATCHABLE NOW, NOT DISPATCHED (%d)" % len(dispatchable))
     for n, lane, why, title in dispatchable:
         print("  #%-4s %-12s %-26s %s" % (n, lane or "-", why, title))
+
+    # SEPARATE SECTION, AND DELIBERATELY NOT PART OF THE EXIT CODE. These are
+    # not known-dispatchable; they are blockers nobody has recorded testing.
+    # Folding them into the FAIL above would say the board is holding work it
+    # can start, which is a stronger claim than the evidence supports.
+    print("\n=== BLOCKER NEVER RECORDED AS TESTED (%d)" % len(untested))
+    if untested:
+        print("  A blocker is a claim. Five were refuted in two days, two of"
+              " them the orchestrator's own.")
+    for n, lane, fals, title in untested:
+        print("  #%-4s %-12s %-30s %s"
+              % (n, lane or "-",
+                 ("falsifier: " + fals[:24]) if fals else "NO FALSIFIER WRITTEN",
+                 title))
+
+    # SAME LIVE-PLUS-DISK MIX AS check_coverage.py, SO THE SAME QUALIFIER.
+    # This reads open issues live from GitHub and territory.toml/
+    # nv2a_issues.toml from whatever checkout it is standing in. Run from a
+    # stale worktree, every section above is a statement about that checkout,
+    # and "DISPATCHABLE NOW" is the one most likely to be acted on.
+    try:
+        out = subprocess.run(
+            ["git", "-C", HERE, "rev-list", "--count", "HEAD..%s"
+             % os.environ.get("HAKUX_TIP",
+                              "claude/es-de-launcher-disc-error-ojnl14")],
+            capture_output=True, text=True, timeout=15)
+        behind = int(out.stdout.strip()) if out.returncode == 0 else None
+    except Exception:
+        behind = None
+    if behind:
+        print("\nSTALE CHECKOUT: %d commit(s) behind the campaign tip. The "
+              "issue list above is live and the two toml files are from this "
+              "tree, so rebase before acting on any of it." % behind)
 
     rc = 0
     if waiting:
