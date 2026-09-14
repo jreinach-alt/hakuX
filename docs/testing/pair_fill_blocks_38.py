@@ -76,6 +76,7 @@ from PIL import Image
 
 sys.path.insert(0, __file__.rsplit("/", 1)[0])
 from pair_census_38 import qualifying  # noqa: E402
+from pair_y_group_38 import steps_along, skew  # noqa: E402
 
 G = "/home/justin/goldens/results"
 
@@ -104,6 +105,26 @@ def pair_stats(path, x0, x1, y0, y1):
     if ne < 50 or no < 50:
         return ne, no, None, None
     return ne, no, (same & ev).sum() / ne, (same & od).sum() / no
+
+
+def xparity(path, x0, x1, y0, y1, minsteps=4):
+    """Parity of the positions where the byte changes, pooled over R, G, B."""
+    a = np.array(Image.open(path).convert("RGB"))
+    ev = od = 0
+    for ch in range(3):
+        for y in range(y0, y1):
+            row = a[y, x0:x1, ch]
+            if int(row.max()) - int(row.min()) < 8:
+                continue
+            idx, _ = steps_along(row)
+            if len(idx) < minsteps:
+                continue
+            for i in idx:
+                if (i + x0) % 2 == 0:
+                    ev += 1
+                else:
+                    od += 1
+    return ev, od
 
 
 def line(label, r):
@@ -146,6 +167,30 @@ def main():
                                 OX + x0, OX + x1, OY + y0, OY + y1))
             if g is not None:
                 gaps.append((cap, name, g))
+
+    # A SECOND, INDEPENDENT STATISTIC on the same blocks.  E/O asks how often
+    # adjacent pixels are equal; this asks, of the positions where the byte
+    # CHANGES, what parity they sit at.  A 2-px group puts every change on one
+    # parity.  The two statistics share the image and nothing else, so agreeing
+    # is worth more than either alone -- and the first version of the E/O
+    # qualifier was wrong twice, which is the reason to carry a second.
+    print("\nCROSS-CHECK -- x-step parity, the statistic pair_y_group_38 uses")
+    print("   a 2-px group puts every step at one parity: skew -> 1.000\n")
+    for lbl, path, box in (
+            ("Alpha_func band  (paired)", G + "/Alpha_func/AlphaFuncAlways_Disabled.png",
+             (64, 576, 100, 180)),
+            ("GRZero polygon   (paired)", G + "/Context_switch/GRZero.png",
+             (64, 576, 48, 240)),
+            ("High_vertex_count (unpaired)",
+             G + "/High_vertex_count/HighVtxCount-arrays.png", (90, 550, 150, 330))):
+        e, o = xparity(path, *box)
+        print("   %-30s even=%6d odd=%6d skew=%.3f" % (lbl, e, o, skew(e, o)))
+    print()
+    for name, prim, wide, (x0, x1, y0, y1) in BLOCKS:
+        e, o = xparity(G + "/Line_width/Fill_0032.0.png",
+                       OX + x0, OX + x1, OY + y0, OY + y1)
+        print("   %-30s even=%6d odd=%6d skew=%.3f"
+              % ("%s %s %s" % (name, prim, wide), e, o, skew(e, o)))
 
     print("\nVERDICT")
     worst = max(abs(g) for _, _, g in gaps)

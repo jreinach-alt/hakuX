@@ -128,13 +128,19 @@ actually missing is narrower and cheaper:
 
 ### What the existing instrument could not see
 
-`wbuf_anchor_recover.py` scores an anchoring rule by **which integer pixel the
-recovered anchor rounds to**. Read that way `TriV` reports "no integer column at
-all", which sounds like a fit nobody has found. The goldens carry more: each
-offset is bounded to an *exact interval*, and inverting that interval gives the
-sample position the golden requires, to a fraction of a thousandth of a pixel.
-Scored against the interval instead of against the nearest integer, `TriV` is
-not unfitted — it is **refuted**, and so is every rule of its shape.
+`wbuf_anchor_recover.py` recovers the anchor correctly — that is not in
+question, and this audit reuses its recovery. What it does with the number is
+compare it against one rule's predicted anchor at a **0.01 px tolerance**
+(`abs(r[6] - r[8]) < 0.01`), and report a miss as "not an integer pixel under
+any rule". Two things follow. The tolerance is **30× wider than the data
+supports** — the interval pins the sample position to 2.7e-4 px. And the verdict
+is per-rule: "no rule I tried fits" is what it can say, which reads as a fit
+nobody has found yet.
+
+The goldens carry more. Each offset is bounded to an *exact interval*, and
+inverting that interval gives the sample position the golden requires. Scored
+against the interval, and then fitted as a **family** with a held-out residue,
+`TriV` is not unfitted — it is **refuted**, and so is every rule of its shape.
 
 ### New structural fact: the offsets are exactly 4-periodic
 
