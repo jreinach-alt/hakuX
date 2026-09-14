@@ -164,7 +164,6 @@ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
     DECL(S, eyeVec, vec4, 1)        \
     DECL(S, fogColor, vec4, 1)      \
     DECL(S, fogParam, vec2, 1)      \
-    DECL(S, padAlphaMode, int, 1)   \
     DECL(S, signedBlendPass, int, 1) \
     DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceScale, ivec2, 1) \

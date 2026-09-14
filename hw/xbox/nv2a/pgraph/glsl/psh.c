@@ -3349,34 +3349,6 @@ static MString* psh_convert(struct PixelShader *ps)
         "    fragColor = vec4(sbSel) / 255.0;\n"
         "}\n");
 
-    /*
-     * #59: the raster stamps the surface format's pad constant.
-     *
-     * LAST, after both the alpha test and the signed fold, because it is not
-     * a property of the fragment at all -- it is what the memory holds once
-     * the pixel has been written. Before the alpha test it would kill or
-     * spare fragments on a constant instead of on the combiner's alpha;
-     * before the fold it would hand the fold a value the fold then splits by
-     * sign and hands back as 1/255.
-     *
-     * Emitted UNCONDITIONALLY and gated on the uniform, following #43 and for
-     * the same reason: pgraph_glsl_check_shader_state_dirty() rebuilds
-     * ShaderState from a fixed register list, so anything keyed on the
-     * surface format at generation time can be served stale from the shader
-     * cache. Blend surface and Surface format both change
-     * NV097_SET_SURFACE_FORMAT between cases while rendering into ONE surface
-     * at one address, which is exactly the shape that goes wrong.
-     *
-     * The branch is uniform-valued, and PSH_PAD_ALPHA_NONE -- which is also
-     * what a shader whose uniform was never written reads -- leaves
-     * fragColor untouched.
-     */
-    mstring_append(
-        ps->code,
-        "// #59 write-side pad bits: the raster stores the format's constant\n"
-        "if (padAlphaMode != 0) {\n"
-        "    fragColor.a = float(padAlphaMode - 1);\n"
-        "}\n");
 
     for (int i = 0; i < ps->num_var_refs; i++) {
         mstring_append_fmt(vars, "vec4 %s = vec4(0);\n", ps->var_refs[i]);
@@ -3632,17 +3604,6 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
         if (p == SIGNED_BLEND_PASS_LOW || p == SIGNED_BLEND_PASS_HIGH) {
             g_signed_blend_staged[p]++;
         }
-    }
-    if (locs[PshUniform_padAlphaMode] != -1) {
-        /*
-         * #59. Read from pg->surface_shape, which the SET_SURFACE_FORMAT
-         * method handler writes eagerly, so this is the format the draw is
-         * actually targeting and never a cached binding's creating format.
-         * Staged every draw for the same reason signedBlendPass is: nothing
-         * invalidates a shader on a surface-format change.
-         */
-        values->padAlphaMode[0] =
-            pgraph_glsl_surface_pad_alpha_mode(pg->surface_shape.color_format);
     }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {

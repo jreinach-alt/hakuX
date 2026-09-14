@@ -1215,6 +1215,45 @@ static unsigned int vk_format_texel_size(VkFormat format)
     }
 }
 
+/*
+ * Whether this colour surface is the memory the texture actually reads: same
+ * extent, one level, not a cubemap, and not a format whose guest bytes are
+ * compressed blocks rather than surface texels.
+ *
+ * Deliberately says nothing about host formats, because it answers a question
+ * that is prior to them -- "is this surface the source" -- which the pad-alpha
+ * readback needs and which the size test below cannot express.
+ */
+static bool surface_is_texture_source(const SurfaceBinding *surface,
+                                      const TextureShape *shape,
+                                      bool texture_is_compressed)
+{
+    if (!surface || !surface->color || texture_is_compressed ||
+        shape->cubemap || shape->levels != 1 ||
+        surface->width != shape->width ||
+        surface->height != shape->height) {
+        return false;
+    }
+
+    /*
+     * Extents are not enough, and this is where the second attempt went
+     * wrong. Surface_format renders a 128x128 scratch surface and then samples
+     * a 128x128 LU_IMAGE_A8R8G8B8 pattern the CPU wrote -- same address, same
+     * extent, different pixels -- so an extent-only test called that surface
+     * the texture's source and applied a pad readback it has no business
+     * applying (Fmt_X1R5G5B5_O1R5G5B5 16,096 -> 91,757).
+     *
+     * The texel stride has to agree as well, and it is compared on the GUEST
+     * side on purpose. The old host-side size test did this job and #59 broke
+     * it by widening 5551 and 565 textures to a 4-byte host format, which is
+     * exactly the failure to not repeat: a host format is ours to change, a
+     * guest stride is the hardware's. Colour surfaces are stored in their
+     * guest layout, so host_bytes_per_pixel is their guest stride too.
+     */
+    return surface->host_fmt.host_bytes_per_pixel ==
+           pgraph_get_color_format_info(shape->color_format).bytes_per_pixel;
+}
+
 static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
                                                   const TextureShape *shape)
 {
@@ -1326,17 +1365,10 @@ static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
     }
 
     /*
-     * A pad-alpha format does not borrow the surface's view.
-     *
-     * The original reason is gone with #59's write-side fix -- the readback
-     * IS in the image now, because psh.c stamps it -- so this is deliberately
-     * kept as the conservative half of that change rather than removed with
-     * the rest. copy_surface_to_texture() fills the texture's own image
-     * bit-for-bit, so the two paths return the same bytes; dropping this line
-     * would move these four formats onto the direct-bind path, which is a
-     * second behaviour change with no measurement behind it riding on an arm
-     * that is measuring something else. Remove it in its own arm, if the
-     * copy ever shows up as a cost.
+     * A pad-alpha format cannot borrow the surface's view either, for a
+     * reason that has nothing to do with channel order: the readback the
+     * texture unit owes us is not in the image at all. See
+     * surface_sampled_pad_alpha().
      */
     if (surface_sampled_pad_alpha(surface) != VK_COMPONENT_SWIZZLE_IDENTITY) {
         return false;
@@ -1779,33 +1811,74 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     }
 
     /*
-     * #59: THE #48 READ-SIDE PAD SWIZZLE USED TO BE COMPUTED HERE AND IS GONE.
+     * What the texture unit reads for this memory's pad bits (issue #48).
      *
-     * It was a read-side approximation of a write-side rule -- exact on every
-     * pixel the raster drew, wrong on every pixel it did not -- and
-     * glsl/psh.c now stamps the format's constant on the way in instead. The
-     * cache-rebuild it forced goes with it: it existed only because the
-     * swizzle was baked into the view and nothing in TextureKey or
-     * TextureImageConfig recorded which of X8R8G8B8_Z8/_O8 (one VkFormat, as
-     * for X1R5G5B5_Z/O) it was baked for. Views no longer vary with the
-     * surface's Z/O suffix, so a cache hit is a cache hit and the four
-     * affected formats stop paying a vkCreateImageView per create_texture.
+     * THIS IS A PROPERTY OF THE SURFACE FORMAT, NOT OF HOW THE IMAGE GOT
+     * FILLED, and gating it on surface_to_texture was a latent bug that #59
+     * turned into a live one. Widening the 5/6-bit packed formats to RGBA8
+     * pushed them off the surface-to-texture path and onto the VRAM path, and
+     * the override went with them: Blend_surface/DstAlpha_X_O1RGB5 and
+     * 1-DstAlpha_X_O1RGB5 went from bit-exact to 65,536 differing pixels,
+     * being the whole of eight half-swatches whose displayed alpha is
+     * whatever the texture unit returns for an X1R5G5B5_O1R5G5B5 surface.
+     * Measured, not inferred: the goldens and the pre-#59 arm both hold
+     * (255,255,255,255) there and the post-#59 arm holds (85,85,85,255),
+     * which is the 0xFF555555 clear showing through an alpha of 0.
      *
-     * surface_is_texture_source() went with it, because it had no other
-     * caller. WHAT IT KNEW, for anyone who needs "is this surface the memory
-     * this texture reads" again: extents and level count are NOT enough, and
-     * the scoping has to be the GUEST texel stride rather than any host size.
-     * An address-keyed version let a 128x128 X1R5G5B5_O1R5G5B5 surface left
-     * behind by Surface format reach Texture DXT's 256x256 DXT1 texture and
-     * flatten both plasma captures (448 -> 65,536 px, ok -> blank), and an
-     * extent-only version reached Surface format's own scratch surface, which
-     * shares an address and extent with a CPU-written LU_IMAGE_A8R8G8B8
-     * pattern (Fmt_X1R5G5B5_O1R5G5B5 16,096 -> 91,757). The derivation that
-     * retired the whole mechanism is in
-     * docs/investigations/surface-pad-bits-are-written-not-read.md.
+     * The Z variant did not move, and that is luck rather than correctness:
+     * its pad bits happen to be stored as 0, so reading them raw gives the
+     * same 0.0 the format promises. A fix that hardcoded 1.0 would have
+     * broken it; the swizzle says ZERO for Z and ONE for O, from
+     * host_fmt.sampled_pad_alpha, which is the measurement.
+     *
+     * IT IS NOT KEYED ON THE ADDRESS ALONE, and the first attempt at this was.
+     * pgraph_vk_surface_get() answers "is a surface registered here", which is
+     * a weaker claim than "is this the memory the texture reads": surfaces
+     * outlive the test that created them, and several tests share a disc. Keyed
+     * on address, a 128x128 X1R5G5B5_O1R5G5B5 surface left behind by Surface
+     * format reached Texture DXT's 256x256 DXT1 texture and flattened both
+     * plasma captures to a single colour (448 -> 65,536 px, status ok ->
+     * blank), and reached Surface format's own full-screen swatches
+     * (16,096 -> 91,757). surface_to_texture had been supplying that filter
+     * for free, which is why gating on it looked sufficient.
+     *
+     * Compressed formats are excluded outright: their bytes are blocks to be
+     * decompressed, not surface texels, so the surface reading does not apply
+     * however well the extents happen to line up.
      */
+    bool texture_is_compressed =
+        pgraph_is_texture_format_compressed(pg, state.color_format);
+    VkComponentSwizzle pad_alpha_override =
+        surface_is_texture_source(surface, &state, texture_is_compressed) ?
+            surface_sampled_pad_alpha(surface) :
+            VK_COMPONENT_SWIZZLE_IDENTITY;
+    /*
+     * A pad-alpha surface (issue #48) carries its readback in the texture
+     * view's alpha swizzle, and that swizzle is baked in when the view is
+     * created. Nothing in TextureKey or TextureImageConfig records which
+     * variant it was baked for -- the key is guest texture state plus VRAM
+     * offsets, and X8R8G8B8_Z8/_O8 share one VkFormat, as do X1R5G5B5_Z/O --
+     * so a cache hit cannot be asked whether its view still matches. Rebuild
+     * unconditionally rather than compare: both affected suites render every
+     * swatch into ONE 128x128 surface at one address, so the Z and O variants
+     * land on the same TextureKey within a run and a kept view would be right
+     * on the first capture and wrong on the rest. That run-order-dependent
+     * failure is the one this whole override was withheld for.
+     *
+     * The cost is confined to four formats. On a miss the image and view are
+     * created anyway (both paths below reach vmaCreateImage / vkCreateImageView
+     * unconditionally), and the image comes from image_pool_acquire, so the
+     * recurring price is a pooled image plus one vkCreateImageView per
+     * create_texture call for a surface in one of these formats -- not per
+     * draw, since pgraph_vk_bind_textures skips create_texture for a clean
+     * slot. A cheaper conditional rebuild needs one field recording the baked
+     * swizzle, which lives in renderer.h; see the commit message.
+     */
+    bool pad_alpha_needs_rebuild =
+        pad_alpha_override != VK_COMPONENT_SWIZZLE_IDENTITY;
 
-    if (binding_found && snode->image_config.format != expected_fmt) {
+    if (binding_found && (snode->image_config.format != expected_fmt ||
+                          pad_alpha_needs_rebuild)) {
         texture_cache_release_node_resources(r, snode);
         snode->image = VK_NULL_HANDLE;
         snode->image_view = VK_NULL_HANDLE;
@@ -2129,25 +2202,32 @@ static bool create_texture(PGRAPHState *pg, int texture_idx)
     assert(create_result == VK_SUCCESS && "vmaCreateImage failed");
 
     /*
-     * #59: THE SWIZZLE IS GONE, AND THIS IS WHERE IT WAS.
+     * Issue #48: the pad bits of the surface this texture was filled from do
+     * not read back as what is stored in them. vkCmdCopyImage moved the bytes
+     * verbatim, so the correction goes on the view that samples them.
      *
-     * #48's readback constant was a read-side approximation of a write-side
-     * rule. It is exact on every pixel the raster drew and wrong on every
-     * pixel it did not, because the pad bits are physically in the surface's
-     * memory: `Surface format`'s O and Z goldens differ in the half where the
-     * combiner FORCES alpha opaque, by a clean green +128 on 16,384 of 16,384
-     * px, and no readback constant can reach a colour channel or an
-     * alpha-forced half. glsl/psh.c now stamps the format's constant on the
-     * way in (see pgraph_glsl_surface_pad_alpha_mode), so this view must hand
-     * back the stored bytes plainly or the two corrections stack on the
-     * rendered pixels.
+     * It goes HERE, on the texture's own view, and deliberately not on
+     * surface->image_view: that view is bound as the colour attachment
+     * (draw.c) as well as handed out for direct sampling, so a swizzle on it
+     * would alter what rendering writes, and it is created once per image and
+     * migrated across surface reuse, so it would also go stale. Verified,
+     * not assumed -- see pgraph_vk_surface_drawn_format() in renderer.h.
+     * surface_view_decodes_as_texture() returns false for these formats so
+     * the direct-bind path is not taken and this view is what gets sampled.
      *
-     * The measured shape of the defect this removes: `Fmt_X8R8G8B8_O8R8G8B8`
-     * carried 59,183 differing px of which 58,159 were OUTSIDE the two quad
-     * rectangles, every one of them the single transition
-     * (32,32,32,255) -> (0,0,0,255) -- the test's own CPU memset showing
-     * through, overwritten by a constant the raster never wrote there.
+     * Setting only .a is sound whatever the rest of the mapping is: a
+     * VkComponentMapping entry names the source the destination channel reads,
+     * so .a = ZERO/ONE yields a sampled alpha of 0.0/1.0 regardless of how
+     * the colour channels are permuted. Compressed formats, native BC among
+     * them, are already excluded where pad_alpha_override is computed.
+     *
+     * It applies whether the image was filled from the surface or uploaded
+     * from VRAM, because the readback is a property of the surface's format
+     * and not of the fill path. See the derivation at pad_alpha_override.
      */
+    if (pad_alpha_override != VK_COMPONENT_SWIZZLE_IDENTITY) {
+        vkf.component_map.a = pad_alpha_override;
+    }
 
     VkImageViewCreateInfo image_view_create_info = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
