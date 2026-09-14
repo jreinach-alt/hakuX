@@ -1,0 +1,18 @@
+[Unit]
+Description=hakuX daily DX pass at 09:23 America/Los_Angeles
+
+[Timer]
+OnCalendar=*-*-* 09:23:00
+# SAME REASON AS THE NIGHTLY. This host is WSL2 and is shut down whenever the
+# user closes it, so a plain cron at 09:23 silently misses every day the box
+# was not running -- and an unharvested day looks exactly like a day with no
+# friction. Persistent=true records the last run and fires once on the next
+# boot if 09:23 was missed.
+Persistent=true
+# Not a reference point anyone reads against the commit log, unlike the
+# nightly's 00:30, so the default fuzz is fine and is preferred: it keeps this
+# off the minute marks that every scheduler on the planet lands on.
+Unit=hakux-dx.service
+
+[Install]
+WantedBy=timers.target

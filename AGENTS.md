@@ -60,13 +60,24 @@ negative-tested against real data on disk rather than fixtures; and entries
 are REMOVED when fixed, naming the commit. A backlog that only grows is a
 list, not a backlog.
 
-**THE SCHEDULE IS NOT DURABLE AND THIS PARAGRAPH IS THE BACKUP.** The daily
-job is a session cron: it is held in memory, dies when the session exits, and
-auto-expires after seven days regardless. So an orchestrator picking this
-project up must re-create it, and should assume it is NOT running rather than
-that it is. That is the same class of trap as the Stop hook and the watchdog,
-both of which hold the version they started with -- three separate pieces of
-this project's automation are invisible to the session that inherits them.
+**The schedule is a systemd USER TIMER, `hakux-dx.timer`, not a session cron.**
+The first version was a session cron and it was wrong for a reason worth
+keeping: held in memory, dead when the session exits, auto-expiring after
+seven days. That would have been the THIRD piece of this project's automation
+that looks installed and is not -- the Stop hook is read from settings.json at
+session start, and `idle-watchdog.sh` is read lazily by byte offset so editing
+it mid-run changes nothing in the running instance.
+
+It follows `hakux-nightly.timer` exactly, including `Persistent=true`, which
+is load-bearing here: this host is WSL2 and is shut down whenever the user
+closes it, so a plain cron silently misses every day the box was off -- and an
+unharvested day is indistinguishable from a day with no friction. Copies of
+both unit files live in `docs/testing/` so the schedule is in the repo and not
+only in `~/.config`.
+
+`dx_pass.sh` HARVESTS and marks a pass due; it does NOT dispatch. Choosing a
+lane, writing its territory row and briefing it is orchestrator work, and a
+timer that spawned agents would be dispatching without a board in view.
 
 ## Code is audited twice before it is trusted, and preflight is not an audit
 
