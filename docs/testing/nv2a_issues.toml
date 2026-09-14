@@ -2898,3 +2898,31 @@ disposition = "defect"
 status = "open"
 status_note = "floatx80_to_int32/int64 are plain C casts under USE_HARD_FPU, so they truncate. Unmeasured and labelled so -- filed alongside #67 rather than bundled into it."
 blocked_on = "depends on #67 landing first, or it needs its own RC switch"
+
+[issue.66]
+# UNTRACKED UNTIL 2026-09-13. This issue, #71 and #72 were claimed by
+# [lane.remote] in territory.toml and had no row here at all, so
+# check_coverage.py reported them covered -- a lane claim satisfies it -- while
+# nothing on the board said what they were. Writing the row is the fix for the
+# reading; the checker gap is separate and noted in check_coverage.py.
+no_suites = "not wrong in any one suite: one stale GL error aborts the run, so it costs captures across the whole disc. Measured on iso_surf1 under renderer = 'OPENGL': 44 captures and exit 134 as shipped, 236 captures and exit 0 with the error drained -- 192 of 236, 81% of the disc."
+disposition = "defect"
+status = "open"
+status_note = "The assert at gl/shaders.c:413 is on the GL error state ON ENTRY, so it reports an error raised by some earlier call and never names it. Probed rather than asserted, exactly one error is pending in a whole run and it is 0x0506 GL_INVALID_FRAMEBUFFER_OPERATION. The __ANDROID__ arm of the same ifdef drains unconditionally instead of asserting, which is why Android never aborted -- and which also disables the check for every future error on that path. NOT LOCATED: the raising call is not bisected to, and guessing between an incomplete FBO at a bind and one at a blit would be a guess. NOT ESTABLISHED as ours rather than a lavapipe limitation; this is a software GL stack and an FBO legal elsewhere may be rejected here, so it wants a second GL implementation before it is called a renderer defect. Draining on desktop too is the one fix that must not be taken: it converts a reported defect into an unreported one. android_log_and_drain_gl_errors() already exists in gl/surface.c, unused, and looks written for catching it where it is raised."
+blocked_on = "lane.remote holds gl/*.c and the desktop GL build; this is measurable there and nowhere else in the fleet -- the device lane is Vulkan."
+
+[issue.71]
+# Untracked until 2026-09-13, same as #66 -- see the note there.
+suites = ["Blend surface", "Surface pitch", "Surface clip"]
+disposition = "defect"
+status = "open"
+status_note = "One arm, nine captures, 9 better and 0 worse: making pgraph_gl_check_surface_to_texture_compatibility() return false always -- so a texture backed by a live render surface is read from guest memory instead of sampled directly -- moves every capture on the disc where GL still trailed Vulkan. GL's bit-exact count goes 102 -> 108, which is Vulkan's exactly, and its differing-pixel total to 4,293,810 against Vulkan's 4,443,147. Three suites, three formats, one cause, so it is NOT the A8R8G8B8 finding it was filed as. The obvious explanation is ruled out: the GL R5G6B5 surface really is 565 -- asked for GL_RGB565, got GL_RGB565, glGetTexLevelParameteriv reports 5/6/5/0 -- and yet the capture holds 156 distinct reds, 242 greens, 156 blues, of which 124/178/124 are not valid 5- or 6-bit expansions, against 33/64/33 in both Vulkan and the golden. A 565 texture cannot hold 156 distinct reds, so the precision enters AFTER the surface, in the sampling path this arm refuses. NOT MEASURED: which part of that path. Candidates visible in the code are the sampler state set at creation in update_surface_part() (MIN_FILTER forced to GL_LINEAR, MAG_FILTER never set), the scaling factor, and the format the sampling shader believes it reads -- none named without an arm, because three hypotheses on this issue have already died that way. THE FIX IS NOT 'turn it off': refusing the fast path forces a guest-memory round trip for every render-to-texture, a throughput cost on exactly the workload the path exists for, and declining a path to make pixels better is a curve fit with a bill attached. What the arm buys is a mechanism instead of a correlation, plus nine captures to measure any candidate against."
+blocked_on = "lane.remote, and it BLOCKS #60: #60's fix is correct and regresses captures that are entirely s2t decisions flipping into this broken path."
+
+[issue.72]
+# Untracked until 2026-09-13, same as #66 -- see the note there.
+suites = ["Texture perspective", "Texture perspective enable"]
+disposition = "defect"
+status = "open"
+status_note = "CLOSED ON GITHUB, NOT FIXED ON THIS BRANCH -- recorded as open here deliberately, because the tracker's job is to say what is true of HEAD. The suite splits perfectly on one bit: every capture where the renderers disagree is a pers_n case (SET_CONTROL0 texture perspective off) and every pers_y case is byte-identical between them, e.g. TexPerspective_Textured 9,014 under GL against Vulkan's 1. Cause is one line in glsl/common.c: the gate is `noperspective && location` and location is Vulkan-only, so the GL renderer never emits the qualifier. Worth 159,574 px measured. The fix is commit 0092dd53 and the later 2c25f7195e, and NEITHER IS AN ANCESTOR OF HEAD -- git branch --contains puts both only on remotes/origin/claude/docs-tooling-agentic-coding-u152m1, along with 6 more hw/ and target/ commits for #62, #67 and #71. This is the same remote-lane fold-in gap #62 already records, now measured: 53 commits on that branch are not here. Condition attached to the glsl/common.c grant, and it still applies to whatever lands: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ but needs GL_NV_shader_noperspective_interpolation on GLES, where the failure mode is a shader that does not compile."
+blocked_on = "the fold-in, not the fix: the work exists on the remote lane's branch and has never been merged or measured against the goldens here."
