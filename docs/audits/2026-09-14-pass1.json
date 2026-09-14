@@ -1,0 +1,146 @@
+[
+  {
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/vk/shaders.c",
+    "line": 284,
+    "summary": "create_push_descriptor_resources() builds 17 pipeline layouts whose largest push-constant range now ends at 272 bytes, with nothing checking maxPushConstantsSize. The guard added for this change (pgraph_vk_init_shaders, line 1435) protects create_pipeline() in draw.c and does not reach this site, which runs unconditionally for every n whenever push descriptors are supported.",
+    "scenario": "A device reporting maxPushConstantsSize == 256 -- the value most desktop NVIDIA and many Mali parts report. Before the change the largest range was {VERTEX, offset 0, size 256}, ending at exactly 256 and legal. Moving the vertex range to offset 16 makes it end at 272, violating VUID-VkPipelineLayoutCreateInfo-pPushConstantRanges-00294 for n = 16. vkCreatePipelineLayout is then called with an invalid range at init: with validation on it is an error, with a driver that reports failure VK_CHECK's assert() aborts the emulator at startup (QEMU does not define NDEBUG), and with a driver that silently accepts it the handle is undefined. Note use_push_constants_for_uniform_attrs is false on such a device, so templates 1..16 are never USED -- the damage is confined to their creation -- which is exactly why this could never show up in a golden run.",
+    "remediation": "Gate the VERTEX range in create_push_descriptor_resources() on r->use_push_constants_for_uniform_attrs the way create_pipeline() does, or stop the loop at the largest n that fits. Add an explicit assert(GEOM_PUSH_CONSTANT_SIZE + n * 4 * sizeof(float) <= r->device_props.limits.maxPushConstantsSize) so the next offset change fails loudly."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 5508,
+    "summary": "The wide-line push constants are issued in emit_reorder_entry() only inside `if (pipeline_changed)`, while e->line_width is snapshotted at lines 5294 and 5434 with a new comment saying the snapshot exists precisely because SET_LINE_WIDTH can change between draws inside one reorder window. The gate drops exactly that case. Separately, check_draw_mergeable() (line 4468) does not compare line width at all, so two line draws differing only in width can be concatenated into one draw call carrying one width.",
+    "scenario": "Two line draws inside one reorder window with identical pipeline state and different SET_LINE_WIDTH. pipeline_changed is false for the second, no vkCmdPushConstants is issued, and it renders at the first draw's width; or the two are merged and there is only ever one width. The gating is inherited from the deleted vkCmdSetLineWidth call, so this is pre-existing -- but the width now drives the GEOMETRY the shader emits rather than a rasteriser dynamic state, so the failure is a wrong footprint rather than a wrong thickness, and the new comment asserts a guarantee the surrounding code does not provide.",
+    "remediation": "Push when `pipeline_changed || e->line_width != prev->line_width`, and add pg->line_width to check_draw_mergeable()'s comparison set."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 249,
+    "summary": "FRNDINT now honours the guest RC field; FIST/FISTP still do not. On this hard-FPU path floatx80_to_int32/64 are plain C casts, which truncate toward zero whatever RC says and never set float_flag_invalid -- so helper_fistl_ST0's out-of-range guard at line 910 (`if invalid: val = 0x80000000`) and helper_fistll_ST0's at line 923 are unreachable. Pre-existing, and the direct sibling of the change: the two halves of the same macro table now disagree about whether the guest's rounding mode exists.",
+    "scenario": "Guest sets RC = round-down via FLDCW and executes FISTP -- the same textbook x87 idiom the FRNDINT fix was written for, just the other instruction -- and gets truncation instead of floor. Separately, FISTP of a value outside int32 range: on aarch64 the cast compiles to fcvtzs, which saturates to INT32_MAX/INT32_MIN and yields 0 for a NaN, where x87 stores the integer-indefinite 0x80000000 and raises #IA. Neither is visible to a pixel corpus.",
+    "remediation": "Route floatx80_to_int32/int64 through the same rounding-mode switch (lrint family, or an explicit RC switch), and set float_flag_invalid on out-of-range and NaN so the existing guards in helper_fist*_ST0 become live."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 523,
+    "summary": "The new clear-side pad-alpha stamp keys on pg->surface_shape.color_format, the live guest format. The sample-side pad-alpha override it is meant to agree with (vk/texture.c:1327, surface_sampled_pad_alpha) keys on surface->host_fmt, i.e. the format the binding was CREATED with. psh.c:180-186 states in its own words that a binding reused across a format change reports whichever format first created it.",
+    "scenario": "A surface binding created under X8R8G8B8_Z8R8G8B8 and reused after the guest switches to the _O variant (all of A8R8G8B8, X8R8G8B8_{Z,O} and X1A7R8G8B8_{Z,O} map to one VkFormat, which is why the binding is reused at all). The clear now writes pad byte 1 into the image while sampling still returns 0, or the reverse. Before the change the clear always wrote 1.0 and the two could not disagree on the clear path. Reaches the guest when the surface is downloaded to VRAM and read, or re-uploaded as a texture.",
+    "remediation": "Key both sides on the same thing -- either resolve the clear stamp through surface->host_fmt like the sampler does, or force a binding recreate when the pad-format class changes."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/gl/texture.c",
+    "line": 830,
+    "summary": "Replacing the hand-rolled overlap loop with pgraph_gl_download_surfaces_in_range_if_dirty() moved android_log_texture_stage_errors() out of the `if (overlapping)` body. It now runs unconditionally on every texture bind that takes the !surf_to_tex path. That function loops on glGetError(), which is a driver synchronisation point; it previously ran only on the rare actual overlap. The stage label it prints, \"download_overlap\", is now also emitted when no overlap occurred.",
+    "scenario": "Android GL builds take a glGetError() per texture unit per draw. AGENTS.md records this exact class -- an added per-call probe in an inner loop that 'throttled the emulator so badly it presented as a renderer deadlock'. The change arrived via the 53-commit remote-lane merge and was measured on that branch under the GL renderer, so the Vulkan-renderer measurements that gated this window could not see it.",
+    "remediation": "pgraph_gl_download_surfaces_in_range_if_dirty() already returns found_overlap and the caller discards it. Capture it and call the log only when it is true, which restores both the old cost and the truth of the label."
+  },
+  {
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 39,
+    "summary": "Three separate diagnostic facilities landed in this window with no flag and no removal plan: the #54 VRAM-race probe (draw.c:39-160, call sites at 3568 and 6169), the #43 [signfold] counters (draw.c:7285-7365), and the TCG counters in accel/tcg/tb-maint.c and translate-all.c under `#ifdef XBOX`, which is always defined here. AGENTS.md's non-negotiable is explicit: 'Instrumentation is not free ... Profile-grade tracing belongs behind a flag.'",
+    "scenario": "The VRAM probe adds an RCU read plus a dirty-bitmap scan to every vertex-range copy in sync_vertex_ram_buffer and to every begin_pre_draw window -- both per-draw paths. None of it is switchable, so it cannot be turned off for a timing run, and any later performance measurement on this branch measures the probe as well as the emulator. The probes' own comments say each exists to answer one bounded question, so each has an end date that nothing records.",
+    "remediation": "Put all three behind one compile-time or g_config switch, default off, and record on the owning issues (#54, #43) what result retires them."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 823,
+    "summary": "The GEOM_PUSH_CONSTANT_SIZE comment describes the vec4 as '(2/surfaceWidth, 2/surfaceHeight, line width in guest px, unused)'. lineParams.w is lineTieBias (glsl/geom.c:275) and is load-bearing -- it is the low-open tie break the whole derivation turns on. The identical stale text is repeated in vk/shaders.c:36-39. Both copies are the stated KEEP-IN-SYNC contract for three files.",
+    "scenario": "No runtime effect. A later edit that trusts the word 'unused' and repurposes lineParams.w silently destroys the tie break, which costs the 4.562% of band edges the comment three files away says it exists for.",
+    "remediation": "Correct both comments to name the fourth component."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 830,
+    "summary": "One contract is hand-copied three ways: GEOM_PUSH_CONSTANT_SIZE is defined independently in draw.c:830 and shaders.c:50, and the widening predicate exists as geom_widens_lines() in draw.c:839 and as widen_lines in glsl/geom.c:123. Each carries a comment saying it MUST agree with the others, which is the correct diagnosis and not a fix.",
+    "scenario": "No current defect -- I checked all three and they agree, including that geom.c's extra `opts.vulkan` term is always true on the only path draw.c serves. A future edit to one copy is a silent wrong-topology or wrong-offset bug, which the same comments describe as 'triangles rasterised under a line polygon mode, or quads silently culled'.",
+    "remediation": "Move the constant to a shared header and export the predicate from glsl/geom.h so the three sites read one definition."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 2401,
+    "summary": "The one-shot wide-line diagnostic keys `static uint32_t last_bits` on subPixelPrecisionBits alone, but the line it prints also carries surface_scale_factor and the derived tie bias, both of which change when the surface scale changes. subPixelPrecisionBits never changes, so the line fires once and is never reprinted.",
+    "scenario": "The guest changes resolution, surface_scale_factor moves, out[3] moves with it, and the log still shows the first value. The comment immediately above this code is itself about a diagnostic that 'reads as having been checked' -- the same failure, one level up.",
+    "remediation": "Key the one-shot on the tuple actually printed (bits, scale), or on out[3]."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/psh.c",
+    "line": 3576,
+    "summary": "The staging comment says 'the renderer leaves the selector at LOW except across a signed draw's HIGH pass, so the value is stable'. pgraph_vk_flush_draw resets it to SIGNED_BLEND_PASS_NONE (draw.c:7373), and the comment there explains why LOW was wrong. psh.c describes a superseded revision of the file it is documenting.",
+    "scenario": "No runtime effect; the code is correct and the comment is not. It misstates the invariant a reader would use to reason about whether an unfolded draw can ever stage a fold.",
+    "remediation": "Update the psh.c comment to say NONE."
+  },
+  {
+    "severity": "LOW",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 293,
+    "summary": "`#define floatx80_round` is retained as an alias for round-to-integer. Softfloat's floatx80_round rounds to the control word's PRECISION, not to an integer. The comment warns a future caller rather than preventing one.",
+    "scenario": "A future caller of floatx80_round in this file compiles cleanly and gets silently wrong semantics. Because floatx80 is `double` on this path, deleting the macro would instead make such a caller a hard compile error -- a strictly better outcome for the same effort.",
+    "remediation": "Delete the floatx80_round macro; keep floatx80_round_to_int."
+  },
+  {
+    "severity": "LOW",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 288,
+    "summary": "The `default:` arm uses rint(), which follows the HOST FP environment. The comment leans on 'which QEMU never changes'. I tested that rather than inheriting it: there is no fesetround, fegetround or FPCR write anywhere in this tree outside other targets' own guest emulation, so the assumption currently holds -- but nothing enforces it and a loaded library on the device could break it with no signal.",
+    "scenario": "Any code in the process that sets the host rounding mode on the vCPU thread silently changes guest FRNDINT results in the nearest case, while the three explicit cases stay correct -- so the bug would present as 'rounding is wrong only when the guest asks for round-to-nearest'.",
+    "remediation": "Replace the default arm with a host-independent nearest-even (roundeven, or nearbyint under an asserted mode) and make the case explicit, leaving default: to assert."
+  },
+  {
+    "severity": "LOW",
+    "file": "target/i386/tcg/fpu_helper.c",
+    "line": 284,
+    "summary": "floor/ceil/trunc/rint raise nothing into s->float_exception_flags, so FRNDINT never sets PE (or C1) in FPUS on this path, though helper_frndint brackets the call with save_exception_flags/merge_exception_flags as if it did. Pre-existing -- the old `(void)(s), rint(a)` raised nothing either -- and not introduced by this change.",
+    "scenario": "A guest that unmasks the precision exception (PM = 0 in the control word) takes no #MF where hardware does. nxdk leaves PM masked, so nothing in the corpus or in a booting title is known to reach it. Recorded because the change rewrote this function and its comment documents every other thing it leans on.",
+    "remediation": "Set float_flag_inexact when the result differs from the input, or state in the comment that flags are deliberately out of scope for the whole native-double block."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": 61,
+    "summary": "SHADER_STATE_LAYOUT_VERSION is still 1, though PshState gained `bool tex_comp0_const[4]` in this window (psh.h:54). The file's own comment requires a manual bump 'when a field changes without changing any of the sizes'. Whether the size changed -- and therefore whether the automatic sizeof term already covers it -- is not recorded anywhere, and the new array is placed exactly where padding could have absorbed it, between `bool tex_hilo16[4]` and `uint32_t tex_signed[4]`.",
+    "scenario": "If the size did not move, shader_module_keys.bin survives the upgrade and is reinterpreted with a field that used to be padding. The warmup then feeds garbage state to pgraph_glsl_gen_* -- which is the failure the comment describes as 'an assertion inside shader generation during warmup, thousands of lines from the actual cause'. Note also that GenVshGlslOptions is NOT one of the three structs the stamp fingerprints, and its vertex_push_offset value changed from 0 to 16 in this window.",
+    "remediation": "Bump SHADER_STATE_LAYOUT_VERSION, and add sizeof(ShaderModuleCacheKey) to the fingerprint so the glsl_opts structs are covered too."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 407,
+    "summary": "A zero-length line now emits nothing, where the line_strip path emitted a degenerate line primitive. The early return is required -- l2 is the divisor -- so this is a modelling choice, not a defect, but the justification ('A zero-length line covers no pixel centre') is a claim about silicon rather than a derivation from the goldens, unlike the three numbered choices above it.",
+    "scenario": "A title that draws zero-length lines as a point-plotting idiom loses them. Whether hardware lights a pixel there is not established here and the corpus is not stated to contain the case.",
+    "remediation": "Either cite the golden that shows it, or record it on #13 as an assumption with the capture that would settle it."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 152,
+    "summary": "max_vertices for PRIM_TYPE_TRIANGLES + POLY_MODE_LINE doubled from 6 to 12. Nothing asserts maxGeometryOutputVertices or maxGeometryTotalOutputComponents.",
+    "scenario": "The vtx varying set here is roughly 56 components per vertex, so 12 vertices is about 672 against the Vulkan guaranteed minimum of 1024 total output components -- it fits, with less headroom than before. A device at the minimum with a larger varying set fails to compile the geometry shader, and in this renderer a failed shader compile is a silent 'draws nothing', not a build error.",
+    "remediation": "Assert the two geometry limits once at device init, alongside the subPixelPrecisionBits log this change already added."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 444,
+    "summary": "At exactly |dx| == |dy| the `ad.x >= ad.y` test picks the y axis for the tie bias arbitrarily; which axis silicon treats as minor at 45 degrees is not derived. The extent n is unaffected, since max(ad) + 0.5*min(ad) is symmetric.",
+    "scenario": "Only band edges that land exactly on a pixel centre on an exactly-45-degree line can move. The reported 20,946-cut fit would contain such lines if Line_width draws them, so this is bounded by evidence rather than unexamined -- but the choice is not stated as a choice.",
+    "remediation": "Note in the comment that the 45-degree case is a tie the goldens do not separate, so a later derivation does not read it as derived."
+  },
+  {
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 6480,
+    "summary": "The partial-clear path, which clears by drawing with vkCmdSetBlendConstants, now also carries the pad-alpha stamp. Whether silicon writes the format's pad bits on a CLEAR_SURFACE that does not enable the alpha channel is not derived; Clear::TestSurfaceFmt, the capture the whole stamp rests on, clears all channels.",
+    "scenario": "A guest that issues CLEAR_SURFACE with the colour bits but not the alpha bit on an X8R8G8B8_{Z,O} surface. We either stamp the pad byte when hardware leaves it, or leave it when hardware stamps it -- the goldens cannot say which.",
+    "remediation": "State the gap on #59 and name the capture that would close it, or restrict the stamp to full clears until it is measured."
+  }
+]
