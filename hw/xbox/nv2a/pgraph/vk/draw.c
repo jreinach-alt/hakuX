@@ -2337,6 +2337,42 @@ static void geom_line_params(PGRAPHState *pg, float out[4])
     }
     float scale = (float)MAX(pg->surface_scale_factor, 1);
     out[3] = 1.0f / ((float)(1u << bits) * scale);
+
+    /*
+     * subPixelPrecisionBits is the ceiling on how exactly this footprint can
+     * be placed, and nothing has ever logged it.  The corners are quantised
+     * to its grid; because the endpoints are already on a 1/16 grid that
+     * quantisation TRANSLATES both long edges by one constant vector rather
+     * than shearing them, so the band moves bodily by up to one quantum --
+     * and 166 of the goldens' 41,892 band edges sit within 1/256 of a pixel
+     * centre without being on one.  Simulated against the goldens' own runs,
+     * that is the whole difference between 8,890 of 8,890 clean cuts with the
+     * quantisation removed and 8,863-8,868 with it at 8 bits.
+     *
+     * So a reading of 99.7% rather than 100% is a statement about THIS
+     * number, and reading it out of the same run is what tells the two apart.
+     * It replaces the line-width limits log that stood here until the native
+     * line went away: same question one level down -- not "is the width
+     * arriving" but "how finely can the shape be positioned".
+     */
+    static uint32_t last_bits = 0xffffffff;
+    if (bits != last_bits) {
+        last_bits = bits;
+#ifdef __ANDROID__
+        __android_log_print(
+            ANDROID_LOG_INFO, "hakuX-linewidth",
+            "geom wide lines: subPixelPrecisionBits=%u scale=%d "
+            "tie bias %.6f guest px (1/%u)",
+            r->device_props.limits.subPixelPrecisionBits,
+            pg->surface_scale_factor, out[3], (1u << bits) * (unsigned)scale);
+#else
+        fprintf(stderr,
+                "nv2a: geom wide lines: subPixelPrecisionBits=%u scale=%d "
+                "tie bias %.6f guest px\n",
+                r->device_props.limits.subPixelPrecisionBits,
+                pg->surface_scale_factor, out[3]);
+#endif
+    }
 }
 
 static void push_geom_line_params(PGRAPHState *pg)
