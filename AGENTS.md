@@ -35,6 +35,53 @@ Then pick an issue. Every accuracy issue carries which suites fail, how many
 tests, the median pixel delta, and what has already been ruled out. Do not start
 by reading source; start by reproducing the measurement.
 
+## Who does what, and what must NOT flow through the orchestrator
+
+Set by the owner on 2026-09-14 after the orchestrator had spent a session
+doing three jobs that were not its own. Each violation below actually
+happened, which is why they are listed as violations rather than as advice.
+
+**The orchestrator** dispatches work to agents and folds completed work in. It
+arbitrates `territory.toml` and `nv2a_issues.toml`, because the tracker is the
+one hand-maintained table in the index and an agent editing the claim registry
+while claiming territory in it is circular. That is the whole job.
+
+It does NOT:
+
+  - **Queue device arms on an agent's behalf.** A lane owns its own
+    measurement: it registers its prediction and calls `request.sh` itself.
+    The dispatcher serves the queue; the orchestrator is not a step in that
+    path. Roughly eight arms went through the orchestrator in one session and
+    every one of them serialised work that had no reason to be serial.
+  - **Edit the instruments.** `ab_compare.py`, `request.sh`, the checkers, the
+    watchdog and `sweep_agreement.py` belong to `lane.toolsmith`. Six
+    instrument fixes landed inline in one session. Each emerged from a failure
+    being diagnosed, which justifies the first and not the sixth.
+  - **Hold a fold in its foreground.** A fold costs a ~6-minute Android build
+    plus preflight, and during it nothing is being allocated.
+
+**A lane** owns its issue, its files, its predictions and its own device
+requests. It reports what it measured. If it needs something outside its
+territory -- a grant, a decision, a file nobody claimed -- it must say so **in
+its final report**, and the orchestrator records that in the fleet registry.
+`lane.padwrite` needed one line in a file nobody had claimed, said so, and it
+sat until a human read the prose.
+
+**The fleet registry** is `$DISPATCH_DIR/fleet/<lane>.json`, written by the
+orchestrator at dispatch and updated when a report lands. `fleet.py` reports
+RUNNING, REPORTED-BUT-NOT-FOLDED, WAITING-ON-THE-ORCHESTRATOR, LANE-CLAIMED-
+WITH-NO-RUNNING-AGENT, and DISPATCHABLE-NOW-BUT-NOT-DISPATCHED. It is written
+by the orchestrator and not by agents on purpose: an agent cannot be trusted
+to record that it is stuck, and the point is to make the orchestrator's own
+bookkeeping checkable by something other than the orchestrator.
+
+**Write the lane row BEFORE dispatching.** An agent was briefed as
+`lane.padwrite` with four files described as "yours" and no `[lane.padwrite]`
+row was ever written. It edited three of them. Nothing collided, because
+nothing else wanted them that hour -- and not one of the guards that caught
+real collisions that day could have fired, because `check_territory.py` cannot
+see a lane that does not exist. The brief is not the claim.
+
 ## Non-negotiables
 
 **Never trigger CI to check your own work.** GitHub Actions minutes here are a
