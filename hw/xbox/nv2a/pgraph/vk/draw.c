@@ -4014,11 +4014,42 @@ mfp_miss: (void)0;
  *   one thing mode 2 keeps.
  *
  * THE REFUTING MEASUREMENT, because a blocker is a claim and needs the same
- * evidence as a fix. Tip carries this probe AND all three bound modes, so
- * one binary answers it with no code change: Crimson Skies soaks on the
- * thor at HAKUX_FIFO_SKEW_BOUND 0, 1 and 2, Tr read off this line. If Tr
- * stays near 0.567 while held(n)/kicks says the bound fired, this reasoning
- * is wrong and the fix is here after all.
+ * evidence as a fix. Crimson Skies soaks at HAKUX_FIFO_SKEW_BOUND 0, 1 and 2,
+ * Tr read off this line. If Tr stays near 0.567 while held(n)/kicks says the
+ * bound fired, this reasoning is wrong and the fix is here after all.
+ *
+ * IT HAS RUN FOR MODE 2 AND THE REASONING SURVIVED: Tr goes 11,829/19,167 and
+ * 11,866/19,176 (0.6172, 0.6188) at mode 0 to EXACTLY 0 over 13,751 and
+ * 13,901 uploads at mode 2, Xd 0, while held(n)/kicks reads 0.7026 -- so the
+ * bound demonstrably fired and the race is annihilated rather than reduced.
+ * Results 1789312621-draw-only-crimson-1052969 / -1053039 (mode 0) and
+ * -1053164 / 1789312622-...-1053270 (mode 2). Against a baseline reproducible
+ * to 0.26%, a timing perturbation would have MOVED the rate, not zeroed it.
+ *
+ * MODE 1 HAS NEVER BEEN RUN ON THIS TITLE. Zero requests name both Crimson
+ * Skies and a mode-1 ref, and the two mode-1 Galleon logs carry no `Tr:` line
+ * at all because this probe did not exist at that ref. That matters because
+ * [issue.44] quotes the numbers above as "THE BOUND CLOSES THE RACE ON A REAL
+ * TITLE" -- they are MODE 2's numbers. The only real-title accuracy evidence
+ * either mode has belongs to mode 2, and the framing "mode 1 is correct and
+ * expensive, mode 2 is cheap and unproven" has it backwards.
+ *
+ * TWO CLAIMS THAT USED TO BE HERE WERE FALSE AT THE TIP, and they were quoted
+ * onward as true, so they are corrected rather than deleted:
+ *
+ *   "Tip carries this probe" -- it does not. HAKUX_VRAM_RACE_PROBE defaults
+ *   to 0 above, so a stock build appends nothing to this line and Tr cannot
+ *   be read from it at all. Build with -DHAKUX_VRAM_RACE_PROBE=1.
+ *
+ *   "one binary answers it with no code change ... by environment" -- true of
+ *   the emulator and false of the dispatch path. The app takes its
+ *   environment from the `env_vars` pref in x1box_prefs.xml
+ *   (xemu_android.cpp:796) and nothing in request.sh, dispatcher.sh or
+ *   soak_title.sh writes that pref, so HAKUX_FIFO_SKEW_BOUND is settable by a
+ *   person holding the device and not by a queued request. Until request.sh
+ *   grows an --env, each mode is a REF whose compile-time default is that
+ *   mode -- which is also better provenance, since three refs carry three
+ *   apk_shas and one binary switched at run time carries one.
  *
  * AND THIS IS A BETTER FALSIFIER FOR MODE 2 THAN THE ONE IT HAS. #44 is
  * judged on `stale_px` over the Texture border disc, whose eighteen draws

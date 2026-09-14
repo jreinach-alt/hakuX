@@ -78,18 +78,64 @@
  * throughput through the performance stream -- has a concrete target here
  * rather than a vague one. See the note below.
  *
- * WHERE THE CHEAPER VERSION IS, now motivated by measurement instead of
- * guesswork. The guarantee that closes #44 is "no unprocessed DRAW sits in
- * the FIFO while the guest runs", and holding at EVERY submission is a much
- * stronger condition than that. A submission carrying no draw adds no draw,
- * so holding only at draw-publishing submissions preserves the invariant
- * exactly and skips the rest -- and the rest is most of them: this test disc
- * makes 148,704 submissions for 180 draws. `spun`/`slept` came back 9.6% /
- * 90.4%, which the cost prediction read as "scheduler round trips, widen the
- * spin"; that reading is wrong, and the hold mean says why -- 2.25 ms is 37x
- * the 60 us spin window, so the sleeps are real service time and no spin
- * tuning reaches them. Selectivity does. It needs a pre-scan of the published
- * segment for NV097_SET_BEGIN_END and an arm of its own.
+ * WHERE THE CHEAPER VERSION IS. The guarantee that closes #44 is "no
+ * unprocessed DRAW sits in the FIFO while the guest runs", and holding at
+ * EVERY submission is a much stronger condition than that. A submission
+ * carrying no draw adds no draw, so holding only at draw-publishing
+ * submissions preserves the invariant exactly and skips the rest. That is
+ * mode 2 below; it exists, it has run, and the paragraph that used to sit
+ * here asking for it has been replaced by what it measured.
+ *
+ * THE SIZING THAT MOTIVATED IT WAS WRONG TWICE, AND BOTH CORRECTIONS MATTER
+ * MORE THAN THE CONCLUSION, because this comment is where the wrong number
+ * was read from afterwards. It said: "the rest is most of them -- this test
+ * disc makes 148,704 submissions for 180 draws", i.e. mode 1 pays 826 holds
+ * for every one the invariant needs.
+ *
+ *   1. THE 180 IS THE WRONG NUMERATOR. It is the draw count of the measured
+ *      TEST; the run also boots, runs the dashboard and executes seventeen
+ *      other tests, and every draw in all of that is a draw the bound must
+ *      cover. Mode 2 measured 5,286 draw-publishing submissions on that disc,
+ *      not 180. The ratio is 27:1, not 826:1 -- wrong by 30x. See
+ *      docs/investigations/guest-pgraph-skew.md, "The 826:1 sizing was wrong".
+ *
+ *   2. IT IS A PROPERTY OF THE DISC AND NOT OF ANY WORKLOAD, which is the
+ *      half that keeps being transferred. Submissions carrying a draw:
+ *      Texture border disc 3.6%, Galleon 94.2% and 93.2%. A test disc sets
+ *      state exhaustively and draws rarely; a game does the opposite. So on
+ *      the content the cost is measured on there is almost nothing to skip,
+ *      and mode 2 is NOT cheaper than mode 1 there -- measured, `gfps` p90
+ *      29 -> 13/14 against mode 1's 29 -> 13 on Galleon
+ *      (1789312621-draw-only-cost-*). AGENTS.md carries this as "the test
+ *      disc's ratios are properties of the disc, not of a workload".
+ *
+ * Anyone reaching for the 148,704:180 figure again -- it has now been used as
+ * a prior at least twice after being corrected -- should read this block
+ * first. `scan(nodraw=)` on the `fifoskew` line is the live measurement and
+ * costs nothing to read: 96.3% of segments skipped on the Texture border
+ * disc, 5.2% on Galleon, 29.7% on Crimson Skies.
+ *
+ * WHAT MODE 2 DOES BUY, since "not cheaper on Galleon" is not "worthless".
+ * It is cheaper wherever submissions are draw-sparse (held(n)/kicks 0.0370 on
+ * the Texture border disc against mode 1's 1.0000), its pre-scan costs 0.017%
+ * of wall clock, and it carries the only real-title accuracy evidence either
+ * mode has: Crimson Skies `Tr` 0.6172/0.6188 -> exactly 0 over 13,751 and
+ * 13,901 uploads, `Xd` 0. Mode 1 has never been run on that title.
+ *
+ * AND THE PRE-SCAN HAS A FALL-THROUGH THAT LOOKS LIKE A RESULT. Mode 2 skips
+ * the hold only on FSK_SEG_NO_DRAW; a span longer than
+ * FIFO_SKEW_SCAN_MAX_WORDS falls through to mode 1's path. So "mode 2 costs
+ * what mode 1 costs" is equally consistent with the mechanism working on
+ * draw-dense content and with the scan bailing every time, and
+ * `held(n)/kicks` reads as an intact guarantee under both. `scan(big=)` is
+ * the discriminator and it is already on the line: measured 0.0044% of scans
+ * on Galleon, 0.0077% on Crimson, 0.0134% on the disc. The scan is not
+ * bailing anywhere, by three orders of magnitude.
+ *
+ * `spun`/`slept` came back 9.6% / 90.4%, which the cost prediction read as
+ * "scheduler round trips, widen the spin". That reading is wrong and the hold
+ * mean says why: 2.25 ms is 37x the 60 us spin window, so the sleeps are real
+ * service time and no spin tuning reaches them.
  */
 #ifndef XEMU_OPT_FIFO_SKEW_BOUND
 #define XEMU_OPT_FIFO_SKEW_BOUND 0
