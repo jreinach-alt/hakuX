@@ -125,3 +125,11 @@ cost = "Cost #77's driver A/B 60% of its signal and forced an instrument correct
 bit = 1
 owner = "unassigned"
 fix = "One CANCEL tap by a human; it survives `am force-stop` and is tied to USB state. NOT automatable from here: `adb shell input keyevent` terminates the emulator, and `svc usb setFunctions` or `pm disable-user` on the ONLY live device during a sweep is not a risk worth taking to save a tap. The durable fix is a device setup step -- pin the USB function so the chooser never arms -- recorded once rather than rediscovered per session."
+
+[[cut]]
+id = "minimised-run-reads-as-a-defect"
+what = "Android can minimise the app mid-run. ui/xemu.c:798-804 pauses the display path on SDL_WINDOWEVENT_MINIMIZED, so the run produces a PARTIAL capture set and its missing captures read exactly like a defect. Nothing checks, though the string is in the logcat every run already captures."
+cost = "#52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls. It is whichever test was running when the window went away -- and the --only-tests arm its blocker proposed would have answered nothing. 1,500 s of an 1,800 s budget lost silently."
+bit = 1
+owner = "toolsmith"
+fix = "Fail or loudly flag any result whose logcat has `window minimized` with no later `window restored`. Twelve longer runs on disk were NOT minimised (1147, 977, 956, 697, 471 s), so it is not a screen timeout or a run ceiling."
