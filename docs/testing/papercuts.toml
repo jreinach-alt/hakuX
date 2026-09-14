@@ -141,3 +141,11 @@ cost = "lane.tcginval opened its board request reporting territory.toml at wave 
 bit = 1
 owner = "unassigned"
 fix = "Order is: write the row, validate, commit, PUSH, then dispatch. A lane verifies its territory by reading the repo, so the claim must be in the repo before the lane starts. An uncommitted claim is not a claim."
+
+[[cut]]
+id = "expect-gate-refuses-soaks"
+what = "request.sh's queue-time expect-key gate assumes every `expect` key is Results_Directory/TestName. A SOAK produces no captures -- its legs are named rules judged by tcg_pages.py against the hakuX-pages line -- so the gate refuses all 12 keys of a valid soak prediction."
+cost = "Blocks #68's registered arm outright, and with it every soak arm that wants pre-registration. The only workaround is --no-expect, which discards the pre-registration that makes the measurement worth anything."
+bit = 2
+owner = "toolsmith"
+fix = "Skip the capture-name check for a soak (a --title with no --suites), or make the check follow what judge() will actually do with the key. Sixth false positive in this gate -- toolsmith already found 5 of 81 predictions falsely refused for legitimate glob keys. The gate models one request shape and there are two."
