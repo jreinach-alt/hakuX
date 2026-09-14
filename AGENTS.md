@@ -35,6 +35,39 @@ Then pick an issue. Every accuracy issue carries which suites fail, how many
 tests, the median pixel delta, and what has already been ruled out. Do not start
 by reading source; start by reproducing the measurement.
 
+## Paper cuts are tracked, and a DX pass runs daily
+
+Friction that has cost real time lives in `docs/testing/papercuts.toml`, with
+what it actually COST rather than a description -- a paper cut with no cost
+attached loses every prioritisation argument it is ever in.
+
+**Why it exists.** Six instruments were fixed on 2026-09-13/14 and every one
+was fixed REACTIVELY, at the moment it cost something. That means the only
+paper cuts that ever get fixed are the ones that draw blood twice; the rest
+stay, get rediscovered by the next agent, and cost the same time again. The
+record of them lived in commit messages, which is where knowledge goes to be
+unfindable.
+
+**The daily pass.** A DX lane is dispatched once a day against that file,
+ordered by `bit` -- observed occurrences -- descending, then by cost.
+Recurrence is evidence of recurrence. The pass must also HARVEST new cuts from
+the last day's commits and agent reports before dispatching, because the whole
+point is to reach the ones that have only bitten once.
+
+Rules specific to a DX lane: it may not touch `hw/`, `target/` or `accel/` --
+paper cuts are tooling and process, not emulator behaviour; every fix is
+negative-tested against real data on disk rather than fixtures; and entries
+are REMOVED when fixed, naming the commit. A backlog that only grows is a
+list, not a backlog.
+
+**THE SCHEDULE IS NOT DURABLE AND THIS PARAGRAPH IS THE BACKUP.** The daily
+job is a session cron: it is held in memory, dies when the session exits, and
+auto-expires after seven days regardless. So an orchestrator picking this
+project up must re-create it, and should assume it is NOT running rather than
+that it is. That is the same class of trap as the Stop hook and the watchdog,
+both of which hold the version they started with -- three separate pieces of
+this project's automation are invisible to the session that inherits them.
+
 ## Code is audited twice before it is trusted, and preflight is not an audit
 
 Set by the owner on 2026-09-14, after **+1,531 / -539 lines of compiled code
