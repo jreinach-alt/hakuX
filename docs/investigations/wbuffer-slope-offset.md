@@ -3,6 +3,16 @@
 Measured on the `W_buffering` goldens (XBOX 1.0), `ZS1` (slope factor 65536)
 minus `ZS0`, both with the depth buffer stored as `floor(w)`.
 
+> **The remaining blocker was audited on 2026-09-13 and it HOLDS** — see
+> [`wbuffer-31-blocker-audit.md`](wbuffer-31-blocker-audit.md). Three
+> corrections to this file come out of it: the `_V0_` ZS1 captures are *not*
+> uniformly empty (`WBuf24F` draws 137,170 px); every `clip_top` the suite can
+> generate is a multiple of 32, so `ClipF` t1's `clip_top+2` and the absolute
+> 4-grid at phase 2 are the **same prediction** on every capture that exists;
+> and `TriV` is a **refuted model family**, not an unfitted one — 0 of 32 rules
+> land inside its intervals and a three-free-parameter fit misses the held-out
+> residue by 418 interval widths.
+
 ## What the hardware does
 
 The offset is **one constant per triangle**, and it is exactly
