@@ -192,3 +192,11 @@ cost = "Cosmetic so far: `suites: command not found`, `skip_tests: command not f
 bit = 1
 owner = "toolsmith"
 fix = "Single-quote the heredoc or the -c string so nothing inside is expanded. Same root cause as the three commit messages that lost a word to backticks today, and as the git commit -F rule -- a double-quoted shell string is not a quoting boundary."
+
+[[cut]]
+id = "territory-gate-fails-lanes-not-on-the-instant-tip"
+what = "preflight.sh's `territory` gate compares the lane's territory.toml against the tip's, so a lane whose worktree is even one wave behind FAILS a gate it is barred from fixing -- territory.toml is the orchestrator's file and a lane must not edit it."
+cost = "lane.audit-blit failed it twice in a row while working, purely because the board advanced 65 -> 66 -> 67 underneath it. The only remedy available to a lane is rebasing onto a moving tip, which on a busy board is a race it cannot win. It reported the friction rather than the gate being broken, which is the right read and is also why nobody noticed sooner."
+bit = 2
+owner = "toolsmith"
+fix = "The gate's subject is whether THIS LANE moved the file, not whether the file is current. Compare the lane's territory.toml against the MERGE BASE rather than the tip, and fail only if the lane's own commits changed it -- which is the same question check_cited_commits.py already learned to ask about patches instead of shas. A monotone-wave check still catches the reversion this file exists to prevent, because that is a comparison against the lane's own base."

@@ -3953,6 +3953,15 @@
    ],
    "title": "Image_blit: eight Overlap_* captures are each 1 px low on the SRCCOPY path, which no blend fix can reach"
   },
+  "84": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Image blit"
+   ],
+   "title": "vk/blit.c: BLEND_AND hard-codes 32bpp, so a 16bpp or Y8 blend writes past the destination object"
+  },
   "aci-vmstate": {
    "component": "apu",
    "disposition": "defect",
@@ -4548,7 +4557,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "3a1ba8e40307aa21a830f02860507d7bd7aa4cb7",
+  "emulator_commit": "d8abd3f29a25d31c87390187abfd6e2daea118d7",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2819,
