@@ -407,7 +407,7 @@ static bool blend_equation_is_signed(uint32_t equation)
  * smoothing routes forcing SRC_ALPHA on, belongs here too: this is the single
  * point where the register is adjusted before it reaches a cache key.
  */
-static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
+static uint32_t pgraph_vk_blend_reg_dst_alpha_folded(PGRAPHState *pg)
 {
     uint32_t blend_reg = pgraph_vk_reg_r(pg, NV_PGRAPH_BLEND);
 
@@ -488,6 +488,58 @@ static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
     SET_MASK(blend_reg, NV_PGRAPH_BLEND_DFACTOR,
              blend_factor_with_dst_alpha_one(dfactor));
     return blend_reg;
+}
+
+/*
+ * Issue #59's write-side pad bits, carried in the effective register.
+ *
+ * NOT A HARDWARE FIELD. NV_PGRAPH_BLEND defines bits 0..11; this is a
+ * synthetic field above them, and it exists only inside the value
+ * pgraph_vk_effective_blend_reg() returns. It is never written back to the
+ * register file -- the draw queue's own `dyn_blend` snapshots the RAW register
+ * for that (see restore_draw_queue_regs), which is the reason this can be
+ * done at all.
+ *
+ * It rides here rather than in a new struct field because the effective
+ * register is already the cache key for every consumer of blend state: the
+ * pipeline key (key->regs[0]), r->dyn_state.blend on the EDS3 path, and
+ * e->dyn_blend on the recorded-draw path. The alpha equation below varies with
+ * the SURFACE FORMAT, which none of those keys otherwise contains -- and
+ * Blend surface renders every case into one surface at one address, changing
+ * only NV097_SET_SURFACE_FORMAT, so a key blind to the format would serve the
+ * previous case's alpha equation. That is the same class of staleness #43
+ * hit through PshState and #48 hit through the surface binding.
+ */
+#define NV2A_VK_BLEND_PAD_ALPHA 0x00030000 /* synthetic, bits 16..17 */
+
+static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
+{
+    uint32_t blend_reg = pgraph_vk_blend_reg_dst_alpha_folded(pg);
+    SET_MASK(blend_reg, NV2A_VK_BLEND_PAD_ALPHA,
+             pgraph_glsl_surface_pad_alpha_mode(
+                 pg->surface_shape.color_format));
+    return blend_reg;
+}
+
+/*
+ * The blend unit must not be allowed to have the last word on a pad-format
+ * surface's alpha.
+ *
+ * psh.c stamps the format's constant as the fragment's alpha, but a blended
+ * draw then computes result.a = As*Fs + Ad*Fd and stores THAT, so the stamp
+ * survives only where the factors happen to be ONE/ZERO. On hardware there is
+ * no alpha channel in these formats at all: the pad bits are stamped, not
+ * blended. ONE/ZERO/ADD on the alpha half reproduces that exactly and leaves
+ * the colour half untouched.
+ *
+ * Applied to every path that programs blend state, static and dynamic alike,
+ * and gated on the same synthetic field the cache keys carry so the three
+ * cannot disagree.
+ */
+static bool pgraph_vk_blend_stamps_pad_alpha(uint32_t effective_blend_reg)
+{
+    return GET_MASK(effective_blend_reg, NV2A_VK_BLEND_PAD_ALPHA) !=
+           PSH_PAD_ALPHA_NONE;
 }
 
 static void vaf_stats_log_and_reset(void)
@@ -2013,6 +2065,15 @@ static void create_pipeline(PGRAPHState *pg)
                 pgraph_blend_equation_vk_map[equation];
             color_blend_attachment.alphaBlendOp =
                 pgraph_blend_equation_vk_map[equation];
+
+            /* #59: see pgraph_vk_blend_stamps_pad_alpha. */
+            if (pgraph_vk_blend_stamps_pad_alpha(effective_blend)) {
+                color_blend_attachment.srcAlphaBlendFactor =
+                    VK_BLEND_FACTOR_ONE;
+                color_blend_attachment.dstAlphaBlendFactor =
+                    VK_BLEND_FACTOR_ZERO;
+                color_blend_attachment.alphaBlendOp = VK_BLEND_OP_ADD;
+            }
 
             uint32_t blend_color = pgraph_vk_reg_r(pg, NV_PGRAPH_BLENDCOLOR);
             pgraph_argb_pack32_to_rgba_float(blend_color, blend_constant);
@@ -4196,6 +4257,12 @@ static void begin_draw(PGRAPHState *pg)
                     .dstAlphaBlendFactor = pgraph_blend_factor_vk_map[df],
                     .alphaBlendOp = pgraph_blend_equation_vk_map[eq],
                 };
+                /* #59: see pgraph_vk_blend_stamps_pad_alpha. */
+                if (pgraph_vk_blend_stamps_pad_alpha(blend_reg)) {
+                    cbeq.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+                    cbeq.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+                    cbeq.alphaBlendOp = VK_BLEND_OP_ADD;
+                }
                 vkCmdSetColorBlendEquationEXT(r->command_buffer, 0, 1, &cbeq);
 
                 VkColorComponentFlags wmask = 0;
@@ -5596,6 +5663,14 @@ static void emit_reorder_entry(PGRAPHState *pg, ReorderWindowEntry *e,
             .dstAlphaBlendFactor = pgraph_blend_factor_vk_map[df],
             .alphaBlendOp = pgraph_blend_equation_vk_map[eq],
         };
+        /* #59: see pgraph_vk_blend_stamps_pad_alpha. e->dyn_blend is the
+         * EFFECTIVE register (draw.c records it that way deliberately), so it
+         * carries the synthetic field. */
+        if (pgraph_vk_blend_stamps_pad_alpha(e->dyn_blend)) {
+            cbeq.srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+            cbeq.dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+            cbeq.alphaBlendOp = VK_BLEND_OP_ADD;
+        }
         vkCmdSetColorBlendEquationEXT(r->command_buffer, 0, 1, &cbeq);
 
         uint32_t ctl0 = e->dyn_color_write_control_0;
