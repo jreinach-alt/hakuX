@@ -12,7 +12,11 @@
 #   Logs land in $GATE_OUT, else a fresh mktemp dir (path printed at the end).
 set -uo pipefail
 
-REPO=/home/user/hakuX
+# Audit L5: this was hard-coded to /home/user/hakuX, which does not exist on
+# other hosts, so the script could only ever run here. gate.sh lives at
+# <repo>/docs/testing/gate.sh, so derive the root from the script's own
+# location; GATE_REPO overrides for anyone who needs it elsewhere.
+REPO="${GATE_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 REF="${1:?usage: gate.sh <ref> [base]}"
 BASE="${2:-}"
 # Logs go to a scratch dir, never beside the script: this lives in the repo
@@ -23,7 +27,9 @@ OUT="${GATE_OUT:-$(mktemp -d -t nv2a-gate-XXXXXX)}"
 mkdir -p "$OUT" || { echo "cannot create $OUT" >&2; exit 2; }
 LOG="$OUT/gate_$(echo "$REF" | tr -c 'A-Za-z0-9._-' '_').log"
 
-cd "$REPO"
+# Audit L5: this cd was unchecked, so on a host without $REPO the script
+# carried on in whatever directory it was invoked from and gated that.
+cd "$REPO" || { echo "REFUSING: cannot cd to REPO=$REPO" >&2; exit 2; }
 
 # grep -c prints 0 and exits 1 on no match; "|| true" keeps the 0 and drops the
 # status. Do NOT add "|| echo 0" -- that prints a second 0.
@@ -50,6 +56,11 @@ emulator_pids() {
         exe="${exe% (deleted)}"
         [ "${exe##*/}" = "qemu-system-i386" ] && printf '%s ' "${p#/proc/}"
     done
+    # Audit L4: without this the function's status is whatever that test
+    # returned for the LAST /proc entry -- almost always 1, i.e. "failed" --
+    # which is wrong for a function whose result is its stdout. Harmless today
+    # only because the caller reads the output and the script is not set -e.
+    return 0
 }
 RUNNING="$(emulator_pids)"
 if [ -n "$RUNNING" ]; then
@@ -122,8 +133,18 @@ echo "distinct warning sites: $SITES" | tee -a "$LOG"
 # objects, 5.7%. "The tree carries 57 warning sites" was recorded from a run
 # that compiled 62. Print the denominator so the number cannot travel without
 # it; for the real inventory do a clean build (ninja -t clean first).
-OBJS=$(find build -name '*.c.o' 2>/dev/null | wc -l)
-echo "warning scope : $COMPILES of $OBJS objects compiled -- warnings cover ONLY these" | tee -a "$LOG"
+# Audit L7: this counted *.c.o files that ALREADY EXIST under build/, so the
+# denominator was neither the tree's object count nor a constant -- smaller on
+# a fresh tree, excluding every C++ object, and growing as builds accumulate.
+# COMPILES counts "Compiling C object" AND "Compiling C++ object", so take the
+# matching denominator from the BUILD DESCRIPTION, which does not depend on
+# what happens to be on disk.
+OBJS=$(ninja -C build -t commands qemu-system-i386 2>/dev/null | grep -c ' -c ')
+if [ "${OBJS:-0}" -gt 0 ]; then
+    echo "warning scope : $COMPILES of $OBJS compile steps in this target -- warnings cover ONLY these" | tee -a "$LOG"
+else
+    echo "warning scope : $COMPILES compile steps this run -- warnings cover ONLY these (denominator unavailable)" | tee -a "$LOG"
+fi
 
 # Compare with a previous gate's log by file+MESSAGE, never file:line -- a
 # function inserted upstream shifts every later line, so the same warning reads
@@ -142,15 +163,54 @@ if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
     # source path maps to its object that way -- preceded by '/' after the '.p/'
     # directory, or by '_' inside the name, hence the [/_] anchor.
     objs "$PREV_LOG" > "$OUT/.objs_prev"; objs "$LOG" > "$OUT/.objs_this"
+
+    # Audit M3: this mapped a source path to a meson object name, and objects
+    # are named after .c files -- so a HEADER could never enter the
+    # intersection and its warnings were silently dropped from the delta. That
+    # is two commits after the census regex was widened to .[ch] *because*
+    # headers were being missed, and the shared-header case is exactly the one
+    # a delta is most useful for. ninja records the real dependency graph, so
+    # ask it: a header is comparable when ANY object depending on it was
+    # compiled in both runs.
+    #
+    # Audit L6: ${m} carries the source's own dots (translate-all.c ->
+    # ..._translate-all.c), and an unescaped '.' in an ERE matches any
+    # character. Escape them.
+    ninja -C build -t deps 2>/dev/null \
+        | awk '/^[^ ]/ { obj = substr($1, 1, length($1) - 1) } /^ / { print obj "\t" $1 }' \
+        > "$OUT/.deps" || : > "$OUT/.deps"
+
     cat <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/  ::.*//' | sort -u \
     | while read -r src; do
-        m=$(printf '%s' "$src" | tr '/' '_')
-        grep -qE "[/_]${m}\.o$" "$OUT/.objs_prev" \
-            && grep -qE "[/_]${m}\.o$" "$OUT/.objs_this" \
-            && printf '%s\n' "$src"
+        case "$src" in
+        *.h)
+            # Objects whose recorded deps mention this header, in both runs.
+            hit=0
+            while read -r obj; do
+                grep -qxF "$obj" "$OUT/.objs_prev" \
+                    && grep -qxF "$obj" "$OUT/.objs_this" \
+                    && { hit=1; break; }
+            done < <(grep -F "	" "$OUT/.deps" | grep -F "/$src" | cut -f1 | sort -u)
+            [ "$hit" -eq 1 ] && printf '%s\n' "$src"
+            ;;
+        *)
+            m=$(printf '%s' "$src" | tr '/' '_' | sed 's/\./\\./g')
+            grep -qE "[/_]${m}\.o$" "$OUT/.objs_prev" \
+                && grep -qE "[/_]${m}\.o$" "$OUT/.objs_this" \
+                && printf '%s\n' "$src"
+            ;;
+        esac
       done > "$OUT/.common_src"
 
-    incommon() { grep -Ff "$OUT/.common_src" <(keyed "$1") 2>/dev/null | sort -u; }
+    # Audit L6: this was `grep -Ff .common_src`, matching each source path as an
+    # unanchored SUBSTRING of the keyed line -- so a path that is a prefix of
+    # another (gl/texture.c against vk/texture.c, say) pulled in the wrong
+    # file's warnings. The keyed form is "path  ::  message", so match the
+    # first field exactly instead.
+    incommon() {
+        keyed "$1" | awk -F'  ::  ' \
+            'NR == FNR { ok[$0] = 1; next } ok[$1]' "$OUT/.common_src" - | sort -u
+    }
     echo "--- real warning delta vs $(basename "$PREV_LOG") ---"
     echo "keyed on file+message (line drift removed), restricted to the" \
          "$(wc -l < "$OUT/.common_src") warning-carrying files compiled in BOTH runs"
