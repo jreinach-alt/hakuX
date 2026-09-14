@@ -69,6 +69,29 @@ files = ["accel/tcg/tb-maint.c",
          "hw/xbox/nv2a/pgraph/profile.c"]
 note = "THE COUNTERS, because two separate pieces of work are now blocked on them and neither can be advanced with device time. (1) #68's ARM IS VOID BY ITS OWN INSTRUMENT: arm B has sp + ov != di in 21 of 21 windows -- two counts of the same live population on ONE log line, which must agree exactly -- and `visited` up 573x to 160,838,266 with a residual of 160,836,959. em falls 38,177 -> ~0, the shape the prediction expected, and it cannot be read off an instrument that fails its own check. So 937848c9e7 stays HELD and unfolded. (2) M5 (inv_htable eviction, audit MEDIUM) was folded unremediated by documented exception because the audit's proposed fix was REFUTED -- ihash is over guest bytes, so alternating overlays make a superseded entry recyclable and evicting on insert destroys exactly the hit the cache exists for. Its real fix needs a bound keeping the most recent N and A COUNTER THAT DOES NOT EXIST. Both are counter problems. profile.c is claimed because the log line and its legend live there and tcgfix's board request already lists three comment edits owed on it; it was unlisted in territory.toml, which is itself worth noticing. RETIRED lane.tcgfix at this wave -- it had folded and was still holding these three files, which is the claimed-but-not-running shape the fleet cross-check exists to catch."
 
+# WHAT A FILE LISTED NOWHERE MEANS. Audited 2026-09-14: SIXTY-TWO source files
+# under hw/xbox/nv2a, accel/tcg and target/i386/tcg appear in neither a lane nor
+# this list, and the pattern is not random -- HEADERS ARE SYSTEMATICALLY
+# UNLISTED while the .c files beside them are claimed. glsl/geom.h, vk/renderer.h,
+# gl/renderer.h, pgraph.h, glsl/common.h and the rest.
+#
+# That cost real time twice in one day. lane.remediate1 needed one DrawQueue
+# field in vk/renderer.h and had to disclose it as outside its claim, taking a
+# retroactive grant; lane.lows needed glsl/geom.h and filed a board request
+# instead of making a one-line change. Both behaved correctly. The board was
+# the thing that was wrong.
+#
+# THE DEFAULT, written down because nobody could have known it: a file in
+# neither a lane nor [free] is FREE. A lane may edit it -- and MUST declare it
+# in its report and its board request, the way lane.remediate1 did unprompted,
+# so the orchestrator can record the grant rather than discover the edit.
+#
+# This is a default, not an endorsement. A file that is genuinely contended
+# belongs in a lane, and one that is genuinely safe belongs here by name.
+# Enumerating all 62 would be worse than useless -- a list nobody maintains
+# reads as authoritative while going stale, which is the failure this file's
+# own [free] section already warns about for retired lanes.
+
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
 # lane.tcginval retired. WHOEVER CLAIMS THEM NEXT MUST KNOW: commit 937848c9e7
