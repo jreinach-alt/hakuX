@@ -70,6 +70,7 @@ SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""
 ENV_VARS=()
+FRAMES_EVERY=0
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -90,6 +91,7 @@ while [ $# -gt 0 ]; do
         --base-iso) BASE_ISO="$2"; shift 2;;
         --perflog) PERFLOG=true; shift;;
         --env) ENV_VARS+=("$2"); shift 2;;
+        --frames-every) FRAMES_EVERY="$2"; shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -704,6 +706,48 @@ if { [ -n "$ONLY_TESTS" ] || [ -n "$SKIP_TESTS" ]; } && [ "$REF_WAS_DEFAULTED" =
     echo "      carries a binary difference as well as a disc difference." >&2
 fi
 
+# --frames-every N KEEPS THE SOAK'S FRAMES, which a soak has never done.
+#
+# A disc run pulls its captures into its result dir; a soak result carries
+# `pulled: []` and a logcat. For #77's driver A/B the entire evidential basis --
+# 434 frames across four arms -- lived only in a lane's scratchpad, one reap
+# from gone, beside a result dir recording that the run produced nothing.
+#
+# SOAK ONLY. On a disc request the captures are already pulled and scored, so
+# accepting it there would hand the requester a second, worse copy of what they
+# already have, plus the cost below. Refused rather than ignored -- an ignored
+# field is the `tests` mistake, which this dispatcher accepted, recorded and
+# never read while a requester believed an arm was narrowed.
+#
+# THE COST IS NOT DISK, IT IS THE MEASUREMENT. A screencap every second costs
+# GPU and CPU on the handheld, and a soak is how this campaign prices frame
+# rate. `frames.every` is written into result.json for exactly that reason: a
+# cost leg from a frame-capturing soak is not comparable with one from a clean
+# soak, and a reader pooling them should have to see the field to do it. Ask
+# for frames on the arm that needs pictures, not on the arm that needs gfps.
+if [ "${FRAMES_EVERY:-0}" != "0" ]; then
+    case "$FRAMES_EVERY" in
+        ''|*[!0-9]*)
+            echo "--frames-every wants a whole number of seconds, got '$FRAMES_EVERY'" >&2
+            exit 2 ;;
+    esac
+    if [ -z "$TITLE" ]; then
+        echo "refusing to queue: --frames-every is a SOAK option (--title)." >&2
+        echo "  A disc run already pulls and scores its captures; frames there" >&2
+        echo "  would be a second, worse copy of what you already have." >&2
+        exit 2
+    fi
+    if [ "$FRAMES_EVERY" -gt "$SECONDS_HOLD" ]; then
+        echo "refusing to queue: --frames-every $FRAMES_EVERY over a"\
+             "${SECONDS_HOLD}s soak takes at most one frame." >&2
+        echo "  That is not a frame set; drop the option or lengthen the soak." >&2
+        exit 2
+    fi
+    echo "note: frames every ${FRAMES_EVERY}s will be captured into the result" >&2
+    echo "      dir, capped at 600. This COSTS FRAME RATE -- do not read a gfps" >&2
+    echo "      leg off this run against one from a soak without frames." >&2
+fi
+
 # --env IS VALIDATED HERE BECAUSE THE APP DROPS A BAD LINE IN SILENCE.
 #
 # xemu_android.cpp:796 splits the pref on newlines, skips any line with no `=`
@@ -788,12 +832,12 @@ fi
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
  pull_glob, expect, expect_sha, no_expect, skip_tests, device,
- arm_audio, base_iso, perflog, only_tests) = sys.argv[1:22]
-env_vars = sys.argv[22:]
+ arm_audio, base_iso, perflog, only_tests, frames_every) = sys.argv[1:23]
+env_vars = sys.argv[23:]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -813,6 +857,7 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            # has already refused duplicate keys, so the two forms carry the
            # same information and only the list survives a round trip.
            "env": env_vars,
+           "frames_every": int(frames_every or 0),
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(

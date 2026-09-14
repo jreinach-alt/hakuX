@@ -153,6 +153,75 @@ device_present() {
 # x1box_prefs.xml also holds the MCPX, flash and HDD paths and setup_complete,
 # and an earlier version of that script cleared a key with `rm` and dropped the
 # app into its setup wizard. Edit the one key; keep the rest byte for byte.
+# A SOAK KEEPS NO FRAMES, AND THAT IS WHERE ITS EVIDENCE GOES TO DIE.
+#
+# A disc run pulls its captures into the result dir. A soak result carries
+# `pulled: []` and a logcat, and nothing else. For #77's driver A/B the entire
+# evidential basis -- 434 frames across four arms -- existed only in a lane's
+# scratchpad, one reap from gone, with the result dir beside it recording that
+# the run had produced nothing.
+#
+# There is no app-side frame dump to ask for: #77 records that
+# nv2a_dbg_trigger_diag_frames is reachable only from the Debug Capture button
+# and LauncherActivity reads only rom_path. What a lane actually did is
+# `adb exec-out screencap`, so that is what this does, in the dispatcher rather
+# than in a scratchpad.
+#
+# OPT-IN, AND IT HAS TO BE, for two reasons that are not disk space:
+#
+#   * IT PERTURBS THE THING BEING MEASURED. A screencap every second on a
+#     handheld costs GPU and CPU, and soaks are how this campaign prices frame
+#     rate -- gfps p90 is read off exactly these runs. A cost leg from a
+#     frame-capturing soak is NOT comparable with one from a clean soak, so
+#     `frames.every` goes into result.json and a reader who pools the two
+#     across it is doing so with the fact in front of them.
+#   * The images are ~1-2 MB each on a 1920x1080 panel. The hdd.img story in
+#     run_disc.sh is the standing lesson here: a dynamically expanding WSL
+#     VHDX never returns deleted blocks to the host, and 12 GB in an afternoon
+#     killed the VM. So there is a hard cap as well as an interval.
+#
+# Killed BY PID. A pattern kill here would match this script's own command
+# line -- the same trap run_disc.sh's logcat reader documents.
+FRAME_PID=""
+start_frame_capture() {   # <rdir> <interval-seconds> <hold-seconds>
+    local rdir="$1" every="$2" hold="$3" cap
+    FRAME_PID=""
+    [ "${every:-0}" -gt 0 ] 2>/dev/null || return 0
+    mkdir -p "$rdir/frames"
+    # The cap is whichever is smaller: what the interval implies over the hold,
+    # or HAKUX_SOAK_FRAME_CAP. A request that asks for a frame every second
+    # over an hour asks for ~3.6 GB, and the honest response is to give it what
+    # it can have and SAY the cap was hit rather than to fill the disk or to
+    # silently widen the interval.
+    cap=$(( hold / every + 2 ))
+    [ "$cap" -gt "${HAKUX_SOAK_FRAME_CAP:-600}" ] && cap="${HAKUX_SOAK_FRAME_CAP:-600}"
+    log "  frames: every ${every}s, cap $cap, -> $rdir/frames"
+    (
+        n=0
+        while [ "$n" -lt "$cap" ]; do
+            n=$((n+1))
+            # exec-out, not `shell`, so the PNG is not mangled by the tty line
+            # discipline -- `adb shell screencap -p` corrupts every 0x0a on
+            # some transports and the file opens as a truncated image.
+            timeout 30 adb -s "$SERIAL" exec-out screencap -p \
+                > "$rdir/frames/$(printf 'f%05d' "$n").png" 2>/dev/null
+            # An empty or tiny file is a failed capture, not a black frame.
+            # Delete it: a 0-byte PNG in a frame set is an image tool's crash
+            # later on, and a count that includes it is a lie about coverage.
+            [ -s "$rdir/frames/$(printf 'f%05d' "$n").png" ] \
+                || rm -f "$rdir/frames/$(printf 'f%05d' "$n").png"
+            sleep "$every"
+        done
+    ) &
+    FRAME_PID=$!
+}
+stop_frame_capture() {
+    [ -n "$FRAME_PID" ] || return 0
+    kill "$FRAME_PID" 2>/dev/null
+    wait "$FRAME_PID" 2>/dev/null
+    FRAME_PID=""
+}
+
 env_pref_marker() { echo "$D/.env_pref.${DEVICE_LABEL:-$SERIAL}"; }
 
 # apply_env_pref <request.json> ; echoes the newline-joined env it installed
@@ -420,10 +489,13 @@ serve_one() {
     ref=$(jq_get "$req" ref HEAD)
     arm=$(jq_get "$req" arm company)
     runs=$(jq_get "$req" runs 1)
-    local title seconds pull_glob audio_capture
+    local title seconds pull_glob audio_capture frames_every
     title=$(jq_get "$req" title "")
     seconds=$(jq_get "$req" seconds 60)
     pull_glob=$(jq_get "$req" pull_glob "")
+    # Screen frames during a soak, off unless the request asks. See
+    # start_frame_capture.
+    frames_every=$(jq_get "$req" frames_every 0)
     # Arming the APU PCM capture is per REQUEST, not device state left lying
     # around. See arm_audio in soak_title.sh for the two ways the persistent
     # marker went wrong on 2026-09-12 -- in both directions, on the same day.
@@ -516,14 +588,22 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
+        start_frame_capture "$rdir" "$frames_every" "$seconds"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
+        # Before the result is written, so the count in result.json is final,
+        # and unconditionally, so an early guest exit does not leave a
+        # screencap loop running against the next request's title.
+        stop_frame_capture
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
-        python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" <<'PYEOF'
+        python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" "$frames_every" <<'PYEOF'
 import json, os, sys
-rdir, sha, title, seconds, who, purpose, ref, lines, req_env = sys.argv[1:10]
+(rdir, sha, title, seconds, who, purpose, ref, lines, req_env,
+ frames_every) = sys.argv[1:11]
+_fdir = os.path.join(rdir, "frames")
+_frames = sorted(f for f in os.listdir(_fdir)) if os.path.isdir(_fdir) else []
 pulled = []
 pdir = os.path.join(rdir, "pulled")
 if os.path.isdir(pdir):
@@ -554,11 +634,23 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                # distinguish them -- this field is the only thing in the result
                # that can. A result with no `env` key predates the feature;
                # `env: []` means it was checked and there was none.
-               env=json.loads(req_env or "[]")),
+               env=json.loads(req_env or "[]"),
+               # THE FRAMES, AND THE INTERVAL THEY WERE TAKEN AT. The interval
+               # is recorded even when it is 0, because a soak with frames and
+               # a soak without are not comparable on COST: a screencap every
+               # second takes GPU and CPU from the thing whose frame rate is
+               # being measured. A reader pooling a frame-capturing run with a
+               # clean one should have to see this field to do it.
+               frames=dict(every=int(frames_every or 0),
+                           count=len(_frames),
+                           bytes=sum(os.path.getsize(os.path.join(_fdir, f))
+                                     for f in _frames),
+                           dir="frames" if _frames else None)),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
-        log "  soak done, $lines log lines -> $rdir/logcat.txt"
+        log "  soak done, $lines log lines -> $rdir/logcat.txt$(
+            [ -d "$rdir/frames" ] && printf ', %s frames' "$(ls "$rdir/frames" | wc -l)")"
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
     touch "$rdir/DONE"
