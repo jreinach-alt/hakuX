@@ -201,9 +201,68 @@ if [ -n "$SUITES" ] || [ -n "$TITLE" ]; then
         # because there is nothing else they can be. A typo there does fail in
         # judge() -- tally.get("worst") is None and None != 0 -- so this is
         # the same "a run too early" argument, not a new hole.
-        python3 - "$EXPECT" "${GOLDENS:-/home/justin/goldens/results}" <<'PYEXP' || exit 2
+        #
+        # AND IT IS THE DISC PATH'S CHECK, NOT THE SOAK PATH'S. Everything
+        # above reasons about judge(), and judge() is reached only when there
+        # are scored rows. A soak produces none: `dispatcher.sh` branches on
+        # `if [ -n "$title" ]`, runs `soak_title.sh`, and writes a result with
+        # `kind: "soak"`, no TSVs and no captures. Nothing ever calls
+        # ab_compare on it -- its legs are named rules read off the
+        # `hakuX-pages` line by `docs/testing/perf/tcg_pages.py` or by hand,
+        # which is why AGENTS.md says a soak's `expect_sha` is the only thing
+        # standing between it and a story told afterwards.
+        #
+        # So a soak's `expect` keys are NOT capture names and were never meant
+        # to be, and checking them against the golden tree is not a strict
+        # gate, it is the wrong oracle. Measured on 2026-09-14 over every
+        # prediction on disk: the gate refuses 32 of 93 files, and **12 of the
+        # 12 that a soak request has ever been queued against** -- a 100%
+        # false-refusal rate on the soak path, blocking #68's registered arm
+        # on all 12 of its keys. This is the sixth false-positive class in
+        # this gate and the same root cause as the other five: it models one
+        # request shape and there are two.
+        #
+        # THE SOAK PREDICATE IS `--title`, MATCHING THE DISPATCHER'S OWN
+        # BRANCH, not "--title with no --suites". If both are set the
+        # dispatcher runs the soak and scores nothing, so a request carrying
+        # both is a soak for every purpose this gate cares about. Keying on
+        # "title and no suites" would hand that case the disc check and
+        # reproduce the bug for the one request shape nobody tests.
+        #
+        # SKIPPING IS NOT ENOUGH, because "the no-oracle stream skips the
+        # guard" is how this gate got exempted twice already (affinity.py
+        # pinning on a prediction soaks do not have; the `expect_sha` binding
+        # block that sat inside the suites branch). So the soak path gets the
+        # two checks that ARE meaningful on it, both derived from who reads
+        # which field:
+        #
+        #   * `must_not_move`, `must_not_regress` and `expect_counts` are read
+        #     by ab_compare and by nothing else. On a soak ab_compare never
+        #     runs, so a non-empty one of them is inert BY CONSTRUCTION. WARN
+        #     rather than refuse: 7 of the 15 soak predictions on disk carry
+        #     one, and in every case inspected it holds PROSE -- "the two refs
+        #     differ by exactly one hunk in one file" -- i.e. a hand-read
+        #     guard written into a machine-read field. That is worth saying at
+        #     queue time and is not worth blocking a device arm over.
+        #   * an `expect` key that DOES bind to a golden capture is the
+        #     inverted check, and on a soak it is an impossible row: a capture
+        #     leg on a run that writes no captures. REFUSED, because it cannot
+        #     be anything but a mistake. Zero of the 15 soak predictions on
+        #     disk trip it, so it is a check with no false positives across
+        #     the whole corpus rather than a sixth way to refuse valid work.
+        #
+        # What this gate CANNOT see on the soak path, stated rather than
+        # implied: whether a soak's rule names mean anything. There is no
+        # queue-time oracle for that key space -- tcg_pages.py takes its rules
+        # from the reader, not from the prediction -- so a misspelt soak leg
+        # is caught by whoever reads the logcat, or not at all. The content
+        # hash is what the soak path has, and it is the reason `--no-expect`
+        # is the wrong answer for a measurement.
+        EXPECT_KIND=disc
+        [ -n "$TITLE" ] && EXPECT_KIND=soak
+        python3 - "$EXPECT" "${GOLDENS:-/home/justin/goldens/results}" "$EXPECT_KIND" <<'PYEXP' || exit 2
 import fnmatch, json, os, sys
-exp_path, goldens = sys.argv[1], sys.argv[2]
+exp_path, goldens, kind = sys.argv[1], sys.argv[2], sys.argv[3]
 try:
     exp = json.load(open(exp_path))
 except Exception as e:
@@ -228,6 +287,43 @@ if not known:
 def binds(pat):
     return any(fnmatch.fnmatch(n, pat) for n in known)
 
+CLASSES = ("better", "worse", "same", "noise")
+
+# THE SOAK PATH. ab_compare never judges a soak, so the capture-name question
+# has no answer and no bearing. See the long comment above the heredoc for the
+# measurement that established it.
+if kind == "soak":
+    capture_legs = [k for k in (exp.get("expect") or {}) if binds(k)]
+    inert = [(f, n) for f, n in
+             (("must_not_move", len(exp.get("must_not_move") or [])),
+              ("must_not_regress", len(exp.get("must_not_regress") or [])),
+              ("expect_counts", len(exp.get("expect_counts") or {})))
+             if n]
+    for field, n in inert:
+        print("WARNING: `%s` has %d entr%s on a SOAK, and only ab_compare "
+              "reads that field." % (field, n, "y" if n == 1 else "ies"),
+              file=sys.stderr)
+    if inert:
+        print("  A soak writes no captures, so ab_compare is never run on its\n"
+              "  result and those entries are inert BY CONSTRUCTION -- they\n"
+              "  cannot pass and cannot fail. Queuing anyway, because this is\n"
+              "  how every soak prediction on disk is written and a hand-read\n"
+              "  guard in the wrong field is still a guard somebody reads.\n"
+              "  Put it in `prediction` prose, or in `expect` as a named rule\n"
+              "  your own reader checks.", file=sys.stderr)
+    if capture_legs:
+        print("REFUSED: %d `expect` key(s) name a real golden capture on a "
+              "SOAK request:" % len(capture_legs), file=sys.stderr)
+        for k in sorted(capture_legs):
+            print("  %s" % k, file=sys.stderr)
+        print("\n  A soak boots a title and keeps its logcat. It scores no\n"
+              "  captures at all, so a capture leg on one is an impossible\n"
+              "  row: nothing will ever read it, in either direction.\n"
+              "  Either this wants --suites instead of --title, or the leg\n"
+              "  belongs in a separate disc arm.", file=sys.stderr)
+        sys.exit(2)
+    sys.exit(0)
+
 bad = []
 for field in ("expect", "must_not_move", "must_not_regress"):
     v = exp.get(field)
@@ -236,7 +332,6 @@ for field in ("expect", "must_not_move", "must_not_regress"):
         if not binds(pat):
             bad.append((field, pat))
 
-CLASSES = ("better", "worse", "same", "noise")
 badcount = [k for k in (exp.get("expect_counts") or {}) if k not in CLASSES]
 
 if not bad and not badcount:
@@ -670,6 +765,38 @@ part=[s for s,c in m['captures_vs_goldens'].items() if c['partial']]
 if part: print('PARTIAL ', ', '.join('%s %d/%d'%(s,m['captures_vs_goldens'][s]['scored'],m['captures_vs_goldens'][s]['goldens']) for s in part))
 print('tsv     ', '$D/results/$ID/' + m['runs'][0]['tsv'] if m['runs'] else '(none)')
 "
+        # DID ANDROID TAKE THE WINDOW AWAY MID-RUN?
+        #
+        # `ui/xemu.c` pauses the display path on SDL_WINDOWEVENT_MINIMIZED, so
+        # a minimised run stops producing captures and stops logging, and what
+        # lands is a PARTIAL set whose absences read exactly like a defect.
+        # #52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls; it
+        # was whichever test was running when the window went away, and 1,500
+        # of 1,800 s went silently.
+        #
+        # Checked HERE, in --wait, because this is the one place both request
+        # shapes are read. A disc arm meets the check again in ab_compare; a
+        # SOAK meets nothing else at all -- ab_compare dies on a soak at
+        # "records no runs", correctly, so a soak truncated at 20 s of 90 has
+        # nothing anywhere to say so, and its per-window counts have been
+        # measured varying 3-5x within one run, so it does not look short.
+        #
+        # The scan lives in ab_compare.py so there is one implementation
+        # rather than two that drift; see truncation_findings() there for what
+        # it cannot see -- WHY the window went (the capture spec ends `*:S`
+        # and carries no ActivityManager lines), and a teardown minimize from
+        # a mid-run one.
+        #
+        # It does NOT change the exit code. The result is on disk either way
+        # and the requester may legitimately want a truncated soak's first
+        # windows; what must not happen is reading them without knowing.
+        if ! python3 "$(dirname "$0")/ab_compare.py" \
+                --check-truncation "$D/results/$ID"; then
+            echo "*** THIS RUN WAS TRUNCATED. Anything missing above is" >&2
+            echo "*** missing because the run stopped, not because the" >&2
+            echo "*** emulator got it wrong. Requeue before reading it as" >&2
+            echo "*** a measurement." >&2
+        fi
         exit 0
     fi
     if [ -f "$D/results/$ID/ERROR" ]; then

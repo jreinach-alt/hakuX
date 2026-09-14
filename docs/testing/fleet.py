@@ -122,6 +122,42 @@ def main():
                    or next((f for f in fleet if f["lane"] == lane), {})
                    .get("state") in ("reported", "retired"))
 
+    # THE OTHER DIRECTION, AND IT IS THE WORSE ONE: an agent that is RUNNING
+    # with no row in territory.toml at all.
+    #
+    # `ghost` above catches a claim with no agent -- coverage asserted that
+    # does not exist, which over-reports and is conservative. This catches an
+    # agent with no claim, and that one is invisible to EVERY guard, because
+    # check_territory.py cannot see a lane that is not in the file. None of
+    # the checks that caught real collisions on 2026-09-13 could have fired
+    # for it.
+    #
+    # Three occurrences in one night, each a different variant, which is why
+    # it is bit=3 in papercuts.toml and a rule in AGENTS.md rather than three
+    # corrections: no row written at all (lane.padwrite, which then edited
+    # three files, and nothing collided only because nothing else wanted them
+    # that hour); a row written and validated but COMMITTED AFTER DISPATCH, so
+    # the lane fast-forwarded to a tip that predated it and spent its whole
+    # life against a table where its files sat in [free] (lane.tcginval); and
+    # no row because an auditor claims no files (lane.audit-tcg). AGENTS.md:
+    # "the brief is not the claim, and an uncommitted claim is not a claim
+    # either."
+    #
+    # A LANE WITH `files = []` STILL COUNTS AS CLAIMED. The row is what
+    # matters, not the territory -- an auditor that edits nothing still has to
+    # be visible to the board, and requiring files would re-create the third
+    # variant exactly.
+    #
+    # WHAT THIS CANNOT SEE: a lane running with no fleet row EITHER. Both
+    # sides of this cross-check are written by the orchestrator, so an agent
+    # dispatched without touching either file is as invisible here as it is to
+    # check_territory.py. That is the residual hole, it is not closable from
+    # this side, and it is why AGENTS.md orders the steps "write the row,
+    # validate, commit, PUSH, then dispatch".
+    unclaimed = sorted(f["lane"] for f in fleet
+                       if f.get("state") == "running"
+                       and f["lane"] not in (terr.get("lane") or {}))
+
     # DISPATCHABLE: open, not owned by a lane with a running agent, and with
     # no blocker -- or a blocker that has never been tested. A blocker is a
     # claim (AGENTS.md), and five of this campaign's were false this week.
@@ -200,6 +236,17 @@ def main():
         print("  %-12s holds %d file(s), issues %s"
               % (lane, len((terr["lane"][lane].get("files") or [])),
                  ",".join(str(i) for i in (terr["lane"][lane].get("issues") or []))))
+    print("\n=== RUNNING WITH NO TERRITORY ROW (%d)" % len(unclaimed))
+    if unclaimed:
+        print("  Invisible to every guard: check_territory.py cannot see a "
+              "lane that is not in the file.")
+    for lane in unclaimed:
+        f = next(x for x in fleet if x["lane"] == lane)
+        print("  %-12s %-18s #%-14s %s"
+              % (lane, f.get("agent", "")[:18],
+                 ",".join(f.get("issues") or []) or "-",
+                 age(f.get("dispatched_utc", ""))))
+        print("      asked: %s" % (f.get("asked", "")[:96]))
     print("\n=== DISPATCHABLE NOW, NOT DISPATCHED (%d)" % len(dispatchable))
     for n, lane, why, title in dispatchable:
         print("  #%-4s %-12s %-26s %s" % (n, lane or "-", why, title))
@@ -249,6 +296,18 @@ def main():
     if unfolded:
         print("FAIL: %d lane(s) have reported and been left unfolded -- their "
               "claim still reads as coverage." % len(unfolded), file=sys.stderr)
+        rc = 1
+    # NON-ZERO, LIKE THE OTHERS. `ghost` is printed and deliberately does not
+    # set rc, because a stale claim OVER-reports coverage and that errs safe.
+    # This one UNDER-reports it: the lane is editing files nothing knows it
+    # holds, so a second lane can be handed the same file and both preflights
+    # will pass.
+    if unclaimed:
+        print("FAIL: %d lane(s) are RUNNING with no territory row -- %s. "
+              "Nothing can see them: check_territory.py cannot detect a "
+              "collision with a lane that is not in the file. Write the row, "
+              "validate, commit, PUSH."
+              % (len(unclaimed), ", ".join(unclaimed)), file=sys.stderr)
         rc = 1
     return rc
 

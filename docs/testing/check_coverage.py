@@ -529,24 +529,65 @@ def main():
                                                   .get("blocked_on") or "").strip()]
         if not idle_issues:
             continue
-        path = os.path.join(dispatch, "lanes", "%s.lastbrief" % lane)
-        try:
-            with open(path) as fh:
-                when = datetime.datetime.strptime(fh.read().strip(),
-                                                  "%Y-%m-%dT%H:%M:%SZ")
-            hours = (now - when.replace(tzinfo=datetime.timezone.utc)) \
-                .total_seconds() / 3600.0
-        except Exception:
-            hours = None
+        # THE LAST-BRIEF TIME IS DERIVED FROM THE DELIVERY FILE, not from a
+        # stamp somebody has to remember.
+        #
+        # This warning fired on lane.remote at 3.1h on 2026-09-14 when the
+        # orchestrator had briefed it TWICE in that window. It was not wrong
+        # about the file: `lanes/remote.lastbrief` had not been written,
+        # because writing it is a second thing to remember and it was
+        # forgotten both times. A check that depends on the orchestrator
+        # remembering to update it reads wrong exactly when the orchestrator
+        # is busy, which is when it matters -- the same family as the
+        # `[skip ci]` near-miss, where a derived value was available for free.
+        #
+        # `$DISPATCH_DIR/deliveries/<lane>.md` is append-only and ROUTING
+        # WRITES IT (AGENTS.md, "Routing on paper is not routing"), so its
+        # mtime is the last-brief time and cannot drift from reality.
+        #
+        # THE STAMP IS A FALLBACK, NOT A TIEBREAK, and that is deliberate: a
+        # brief that updated the stamp but left no delivery entry is not a
+        # routed brief at all by this project's own rule, so letting the stamp
+        # mask a missing delivery entry would silence the gate on exactly the
+        # failure the delivery file was created to catch. Where both exist the
+        # delivery file wins even if it is older.
+        #
+        # mtime is the right instrument here and a content hash is not: the
+        # question is WHEN routing last wrote, not what it wrote. Two things
+        # that would break an mtime elsewhere do not apply -- these files live
+        # in DISPATCH_DIR, outside the repo, so no checkout or rebase ever
+        # restamps them, and a lane READING its deliveries moves atime, not
+        # mtime.
+        #
+        # WHAT THIS CANNOT SEE: whether the delivery entry said anything
+        # useful, or whether the lane read it. A touched file with no new
+        # entry reads as a fresh brief. It measures routing, not receipt.
+        deliv = os.path.join(dispatch, "deliveries", "%s.md" % lane)
+        stamp = os.path.join(dispatch, "lanes", "%s.lastbrief" % lane)
+        hours, src = None, "no delivery file and no stamp"
+        if os.path.exists(deliv):
+            hours = (now.timestamp() - os.path.getmtime(deliv)) / 3600.0
+            src = "deliveries/%s.md" % lane
+        else:
+            try:
+                with open(stamp) as fh:
+                    when = datetime.datetime.strptime(fh.read().strip(),
+                                                      "%Y-%m-%dT%H:%M:%SZ")
+                hours = (now - when.replace(tzinfo=datetime.timezone.utc)) \
+                    .total_seconds() / 3600.0
+                src = "lanes/%s.lastbrief (no delivery file)" % lane
+            except Exception:
+                hours = None
         if hours is None or hours >= 3.0:
             stale_brief.append((lane, len(idle_issues),
-                                "never" if hours is None else "%.1fh" % hours))
+                                "never" if hours is None else "%.1fh" % hours,
+                                src))
 
     tail = ""
     if stale_brief:
         tail = "; UNBRIEFED: " + ", ".join(
-            "%s %d unblocked issue(s), last brief %s" % (l, n, h)
-            for l, n, h in stale_brief)
+            "%s %d unblocked issue(s), last brief %s per %s" % (l, n, h, s)
+            for l, n, h, s in stale_brief)
     print("coverage ok (%d open: %d owned by a lane, %d with a written "
           "blocker%s)%s%s"
           % (len(issues),

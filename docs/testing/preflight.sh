@@ -77,6 +77,40 @@ fi
 # 2. The nv2a index, as .github/workflows/nv2a-index.yml runs it. It records
 #    site line numbers, so ANY commit touching hw/xbox has to carry a
 #    regenerated index or this goes red on the next push.
+#
+#    AND IT IS SCORED AGAINST THE FOLD BASE, NOT THE TIP, because otherwise it
+#    punishes a lane for the previous fold. `lane.lows` arrived to a failure of
+#    396 entries, ALL in vk/draw.c and NONE of them its own -- it had touched
+#    no hw/xbox file at all. The index is derived from the whole tree, so a
+#    lane that regenerates it necessarily commits other lanes' churn, and three
+#    concurrent lanes produce three conflicting 829 KB JSONs at the next fold.
+#    Decision recorded in docs/audits/2026-09-14-decisions.md: fold-time
+#    regeneration is the rule and the orchestrator owns it.
+#
+#    THE ATTRIBUTION IS STRUCTURAL, not a guess. nv2a_index.py's SCAN_ROOTS is
+#    the only place the symbol/site half comes from, so a change that touches
+#    no file under those roots CANNOT have moved a site -- the way the empty
+#    `_ZB` class settled a scorer question in a second. The suite half comes
+#    from the tests tree, which is a different repository this branch never
+#    commits to, so no commit here can move it either. SCAN_ROOTS is READ from
+#    nv2a_index.py rather than hardcoded: that file is not in this lane's
+#    claim, and a gate that hardcodes the thing it guards goes wrong silently
+#    the day the guarded thing changes.
+#
+#    WHO IS THE FOLD POINT is a question about SHAS, which is the one thing
+#    `merge-base --is-ancestor` answers honestly (AGENTS.md is warning about
+#    using it for PATCHES, which this is not). HEAD an ancestor of the campaign
+#    tip means this checkout IS the shared position -- the orchestrator at fold
+#    time, or a lane that has committed nothing -- and there is nobody else to
+#    attribute the drift to, so it fails exactly as it did before. A lane with
+#    commits the tip does not have gets the attribution.
+#
+#    WHAT THIS CANNOT SEE: whether the pre-existing drift is real. It does not
+#    rebuild the index at the base -- that needs a checkout of the base and a
+#    second index build, and a checker with a side effect on the tree it checks
+#    has already stalled this project's build path once. So it establishes
+#    "this lane did not cause it", never "the index is fine". The stale index
+#    is still reported in full and still has to reach the orchestrator.
 step "nv2a index"
 if [ -z "$TESTS" ] || [ ! -d "$TESTS" ]; then
     bad
@@ -87,9 +121,50 @@ elif python3 docs/testing/nv2a_index.py check --tests "$TESTS" \
         ${SUPPORT:+--support "$SUPPORT"} >/tmp/preflight-index.log 2>&1; then
     ok
 else
-    bad
-    sed 's/^/  /' /tmp/preflight-index.log
-    echo "  regenerate: python3 docs/testing/nv2a_index.py build --tests $TESTS --support $SUPPORT"
+    INDEX_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
+    INDEX_ROOTS=$(python3 - <<'PYROOTS'
+import re, sys
+src = open("docs/testing/nv2a_index.py").read()
+m = re.search(r"^SCAN_ROOTS\s*=\s*\[(.*?)\]", src, re.S | re.M)
+print(" ".join(re.findall(r"['\"]([^'\"]+)['\"]", m.group(1))) if m else "")
+PYROOTS
+)
+    INDEX_BASE=$(git merge-base HEAD "$INDEX_TIP" 2>/dev/null || true)
+    INDEX_MINE=""
+    if [ -n "$INDEX_BASE" ] && [ -n "$INDEX_ROOTS" ] \
+       && ! git merge-base --is-ancestor HEAD "$INDEX_TIP" 2>/dev/null; then
+        # base..WORKING TREE, not base..HEAD: an uncommitted edit under a scan
+        # root moves sites just as a committed one does, and untracked files
+        # add them, so both are asked for.
+        INDEX_MINE=$(
+            { git diff --name-only "$INDEX_BASE" -- $INDEX_ROOTS 2>/dev/null
+              git ls-files --others --exclude-standard -- $INDEX_ROOTS 2>/dev/null
+            } | sort -u)
+    else
+        # No base, no roots, or HEAD is at/behind the tip: no one else to
+        # attribute to. Fail as before.
+        INDEX_MINE="(unattributable)"
+    fi
+    if [ -z "$INDEX_MINE" ]; then
+        echo "ok (stale, but NOT THIS LANE'S)"
+        echo "  The committed index does not match the tree, and none of this"
+        echo "  lane's changes touch $INDEX_ROOTS -- so none of them can have"
+        echo "  moved a site. The drift predates $(git rev-parse --short "$INDEX_BASE" 2>/dev/null)."
+        echo "  Fold-time regeneration is the orchestrator's, per"
+        echo "  docs/audits/2026-09-14-decisions.md. Do NOT regenerate here:"
+        echo "  the index is whole-tree, so you would commit other lanes'"
+        echo "  churn and collide with every concurrent lane at the fold."
+        echo "  PUT THIS IN YOUR REPORT so the orchestrator sees it:"
+        sed 's/^/    /' /tmp/preflight-index.log
+    else
+        bad
+        sed 's/^/  /' /tmp/preflight-index.log
+        if [ "$INDEX_MINE" != "(unattributable)" ]; then
+            echo "  YOUR changes under $INDEX_ROOTS, which is why this is yours:"
+            printf '    %s\n' $INDEX_MINE
+        fi
+        echo "  regenerate: python3 docs/testing/nv2a_index.py build --tests $TESTS --support $SUPPORT"
+    fi
 fi
 
 # 3. The territory allocation. Not a CI gate -- CI does not care who holds a
@@ -139,11 +214,100 @@ fi
 #    Refuses rather than warns, because the cost is the resource this script
 #    exists to protect. A deliberate CI run is still available and now has to
 #    be said out loud: --allow-ci.
+#    AND IT MUST NAME A NEAR-MISS, which is now at bit=4 in papercuts.toml.
+#    `[skip ki]` has happened FOUR times, the fourth minutes after the third
+#    was logged, in a commit whose body was about false-positive rates. It
+#    happens in a plain heredoc subject as well as when chaining -m, so it is
+#    a typing slip and not a git behaviour, and four occurrences is enough
+#    evidence that knowing about it does not fix it.
+#
+#    The presence grep is not useless against it -- a bare `[skip ki]` already
+#    FAILS, because the subject does not contain `[skip ci]`. Two things were
+#    still wrong, and the second is the one that let it recur:
+#
+#      * THE MESSAGE SAID "has no [skip ci]" and told the author to add one.
+#        That is true and unhelpful: the marker is right there, one character
+#        out, and the author re-types it -- possibly wrong again. A gate that
+#        names the typo turns a recurring slip into a one-character amend.
+#        Same argument as the nv2a index gate printing WHICH line moved.
+#      * A NEAR-MISS ALONGSIDE A CORRECT MARKER PASSED SILENTLY. `... [skip
+#        ci] [skip ki]` contains `[skip ci]`, so the grep was satisfied and
+#        the typo shipped. That is the "guard satisfied by the presence of
+#        the thing it guards" shape.
+#
+#    So: every bracketed token in the subject is normalised (lowercased,
+#    whitespace collapsed) and measured against `skip ci`. Distance 0 is the
+#    marker; distance 1 or 2 is a near-miss and FAILS whether or not a correct
+#    marker is also present. 2 rather than 1 because a TRANSPOSITION -- the
+#    commonest typing slip of all -- is distance 2 in Levenshtein, so `[skpi
+#    ci]` needs it. Measured over the last 400 subjects on this branch: 390
+#    bracketed tokens, every one of them exactly `[skip ci]`, so the widened
+#    radius flags nothing that is actually in use.
+#
+#    WHAT THIS CANNOT SEE: a near-miss in any commit that is not HEAD. GitHub
+#    evaluates the marker on HEAD, so that is the commit that can spend
+#    minutes -- but a typo further down the branch stays invisible here and
+#    becomes live the moment anything is pushed on top of it.
 step "commit subject"
 subject=$(git log -1 --format=%s 2>/dev/null || echo "")
+# THE SUBJECT ARRIVES AS ARGV, NOT ON STDIN, and the first version got this
+# wrong in a way worth keeping the note for. `python3 - <<'EOF'` already uses
+# stdin for the PROGRAM text, so `printf ... | python3 - <<EOF` has its pipe
+# silently discarded and sys.stdin.read() returns "". Every near-miss case
+# then fell through to the old "has no [skip ci]" message and this branch
+# never ran once.
+#
+# It was invisible because the gate still FAILED on the cases that matter --
+# the right exit code for the wrong reason, which is this file's "a guard
+# satisfied by the absence of the thing it guards". The case that exposed it
+# is the one the gate was added for: a typo BESIDE a correct marker still
+# printed `ok`.
+nearmiss=$(python3 - "$subject" <<'PYSKIP'
+import re, sys
+WANT = "skip ci"
+
+
+def dist(a, b):
+    prev = list(range(len(b) + 1))
+    for i, ca in enumerate(a, 1):
+        cur = [i]
+        for j, cb in enumerate(b, 1):
+            cur.append(min(prev[j] + 1, cur[j - 1] + 1,
+                           prev[j - 1] + (ca != cb)))
+        prev = cur
+    return prev[-1]
+
+
+subject = sys.argv[1] if len(sys.argv) > 1 else ""
+for tok in re.findall(r"\[([^\]]*)\]", subject):
+    norm = " ".join(tok.lower().split())
+    if norm == WANT:
+        continue
+    d = dist(norm, WANT)
+    if d <= 2:
+        print("[%s]\t%d" % (tok, d))
+PYSKIP
+)
 if [ "${ALLOW_CI:-0}" = 1 ]; then
     ok
     echo "  --allow-ci given: HEAD may trigger CI, which is deliberate."
+elif [ -n "$nearmiss" ]; then
+    bad
+    echo "  HEAD's subject carries a NEAR-MISS of the [skip ci] marker:"
+    echo "    $subject"
+    printf '%s\n' "$nearmiss" | while IFS="$(printf '\t')" read -r tok d; do
+        echo "    $tok is $d character(s) from [skip ci] -- did you mean [skip ci]?"
+    done
+    if printf '%s' "$subject" | grep -q '\[skip ci\]'; then
+        echo "  A correct [skip ci] IS also present, so CI would be skipped and"
+        echo "  the old check passed this silently. The typo still ships, and"
+        echo "  this marker is at bit=4 in papercuts.toml precisely because"
+        echo "  knowing about it has not stopped it."
+    else
+        echo "  There is no correct [skip ci], so pushing this can spend CI"
+        echo "  minutes. This is a one-character amend, not a missing marker."
+    fi
+    echo "  Amend the subject, or pass --allow-ci if a CI run is the point."
 elif printf '%s' "$subject" | grep -q '\[skip ci\]'; then
     ok
 else

@@ -329,10 +329,121 @@ def git_commit_epoch(ref):
         return None
 
 
+# --------------------------------------------------------------------------
+# a run that Android took the window away from
+
+MINIMISED = "android: window minimized"
+RESTORED = "android: window restored"
+
+
+def truncation_findings(path):
+    """Logcats in a result directory whose window went away and never came back.
+
+    `ui/xemu.c` pauses the display path on SDL_WINDOWEVENT_MINIMIZED and
+    prints these two lines from the __ANDROID__ arms of that switch. So a run
+    that Android minimises stops producing captures and stops logging, and
+    what lands on disk is a PARTIAL capture set that reads exactly like a
+    defect -- #52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls,
+    and it was simply whichever test was running when the window went away.
+    1,500 s of an 1,800 s budget, silently.
+
+    MEASURED over every logcat in dispatch/results on 2026-09-14: 912 files,
+    ONE with a minimize (`1789320304-depth52-A-599886/logcat1.txt`, 293 s into
+    the run, and the last line in the file) and none with a restore. So this
+    is rare and not a routine event to be tolerated -- which is the argument
+    for failing on it rather than counting it.
+
+    WHAT THIS CANNOT SEE, and it is half the value of the check:
+
+      * WHY the window went away. The capture spec ends `*:S` and names only
+        `hakuX*` tags plus the Vulkan ones, so there is not an
+        `ActivityManager` line anywhere in these files. THAT, never WHY.
+        Twelve runs on disk ran longer (1147, 977, 956, 697, 471 s) and none
+        was minimised, so it is not a screen timeout and not a run ceiling;
+        beyond that this instrument has nothing to say and must not pretend
+        to.
+      * A minimize during TEARDOWN from one during the run. The event is the
+        last line in the one real case, which is what both look like. So the
+        finding reports the corroborating facts -- how many log lines follow
+        it, and what the caller knows about completion -- rather than
+        asserting truncation on its own.
+      * A run Android killed outright, which logs nothing at all. Absence of
+        a minimize is not proof the run was whole; `progress_log_proof` is
+        the check for that, and this one sits in front of it.
+    """
+    out = []
+    names = sorted(glob.glob(os.path.join(path, "logcat.txt")) +
+                   glob.glob(os.path.join(path, "logcat[0-9]*.txt")))
+    for f in names:
+        try:
+            lines = open(f, errors="replace").read().splitlines()
+        except OSError:
+            continue
+        last_min = last_rest = None
+        for i, ln in enumerate(lines):
+            if MINIMISED in ln:
+                last_min = i
+            elif RESTORED in ln:
+                last_rest = i
+        if last_min is None:
+            continue
+        if last_rest is not None and last_rest > last_min:
+            continue
+        # The timestamp is the head of an Android log line; keep it as text
+        # rather than parsing, because the guest clock is offset from host
+        # time and a parsed value invites arithmetic that does not hold.
+        stamp = " ".join(lines[last_min].split()[:2])
+        out.append(dict(file=os.path.basename(f), line=last_min + 1,
+                        when=stamp, after=len(lines) - last_min - 1,
+                        total=len(lines)))
+    return out
+
+
+def truncation_lines(path, label):
+    """The finding as reportable text. Empty list when the run was never
+    minimised, which is the normal case."""
+    out = []
+    for t in truncation_findings(path):
+        out.append(
+            "%s: %s shows `%s` at line %d (%s) with NO later `%s`, and %d of "
+            "%d log lines follow it."
+            % (label, t["file"], MINIMISED, t["line"], t["when"], RESTORED,
+               t["after"], t["total"]))
+        out.append(
+            "  Android took the window away mid-run, so the display path was "
+            "paused from that point (ui/xemu.c, SDL_WINDOWEVENT_MINIMIZED). "
+            "Whatever is missing from this result is missing because the run "
+            "stopped, not because the emulator got it wrong -- a partial "
+            "capture set reads exactly like a defect. Requeue.")
+    return out
+
+
 def check_comparable(a, b, allow_same_binary=False):
     """Refuse the comparisons that are invalid, and say which. Returns the
     list of non-fatal warnings."""
     warn = []
+
+    # 0. THE WINDOW. This sits in front of the proof check on purpose. Both
+    #    fire on the same arm -- depth52-A has progress_log_proof false AND a
+    #    minimize -- but "requeue the arm" is the advice #52 followed for its
+    #    whole life while believing a named test stalls. The proof check
+    #    reports the SYMPTOM; this one reports the CAUSE, and a reader who
+    #    sees it knows there is no defect to chase.
+    #
+    #    An arm whose window went away can be read anyway by setting
+    #    AB_ALLOW_MINIMISED to a REASON, on the same argument as
+    #    `--no-expect REASON`: the escape hatch exists, and it makes you say
+    #    why in something that gets printed.
+    for arm in (a, b):
+        tr = truncation_lines(arm.path, "%s (%s)" % (arm.name, arm.label))
+        if not tr:
+            continue
+        why = os.environ.get("AB_ALLOW_MINIMISED", "").strip()
+        if why:
+            warn.append(tr[0] + " Read anyway, because AB_ALLOW_MINIMISED "
+                        "says: " + why)
+            continue
+        die("\n".join(tr))
 
     # 1. Proof. An arm whose log does not show the tests completing is absent,
     #    not zero: a truncated run leaves the previous image in place and reads
@@ -1252,7 +1363,33 @@ def main():
     p.add_argument("--must-not-move", action="append", metavar="GLOB")
     p.add_argument("--expect-value", action="append", metavar="CAPTURE=PX")
     p.add_argument("--expect-count", action="append", metavar="CLASS=N")
+    p.add_argument("--check-truncation", metavar="RESULTDIR",
+                   help="exit 1 if that result's logcat shows the Android "
+                        "window minimized with no later restore. Works on a "
+                        "SOAK result too, which is the case nothing else "
+                        "covers")
     args = p.parse_args()
+
+    # THE ONE CHECK THAT HAS TO WORK ON A SOAK, which is why it is a mode of
+    # its own rather than only a step inside check_comparable().
+    #
+    # A disc arm is already stopped by two gates: progress_log_proof, and now
+    # the minimize check in front of it. A SOAK reaches neither -- ab_compare
+    # dies on it at "records no runs at all", correctly, because there is
+    # nothing to compare. So a soak that Android minimised 20 s into 90 s
+    # produces a short logcat, the requester reads their legs off it, and
+    # NOTHING anywhere says the window went away. That is the worst place for
+    # this hole to be: the no-oracle streams are the ones that queue soaks,
+    # and per-window counts have been measured varying 3-5x WITHIN one run, so
+    # a truncated window does not look wrong on inspection.
+    #
+    # `request.sh --wait` calls this when a result lands, so both shapes are
+    # covered by one implementation rather than by two that drift.
+    if args.check_truncation:
+        lines = truncation_lines(args.check_truncation, "result")
+        for ln in lines:
+            print(ln)
+        return 1 if lines else 0
 
     if args.register:
         return register(args)
