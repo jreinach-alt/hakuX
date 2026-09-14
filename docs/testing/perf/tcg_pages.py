@@ -123,7 +123,16 @@ import sys
 INVAL_RE = re.compile(
     r"inval ev=(\d+) ov=(\d+) sp=(\d+) em=(\d+) ws=(\d+) pr=(\d+) "
     r"(?:ai=(\d+) )?(?:di=(\d+) cg=(\d+) )?(?:xx=(\d+) )?"
-    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)")
+    r"ins=(\d+) bytes=(\d+) blk=(\d+)\.(\d+)"
+    r"(?: iv=(\d+) ic=(\d+) ib=(\d+) ih=(\d+) ix=(\d+)"
+    r" hd=(\d+)/(\d+)/(\d+)/(\d+)/(\d+))?")
+
+# The M5 group above is APPENDED and optional, in one piece. Appended because
+# a field inserted in the middle would stop this regex matching every log
+# already on disk; optional in one piece because these six counters arrive
+# together in one commit, so a build either has all of them or none, and
+# splitting them into six optional groups would model a state that cannot
+# exist. As everywhere in this file: a missing field is not a zero.
 
 # "slow stores N (M reached the invalidator) ... [blocks ...]"
 STORES_RE = re.compile(
@@ -166,6 +175,11 @@ COUNTERS = [
     ("visited", "VISITS: TBs the invalidation loop walked over"),
     ("calls",  "CALLS to tb_gen_code, recycles included"),
     ("stores", "slow stores into code pages"),
+    ("iv",    "CALLS to the inv_htable recycle probe (== calls; see M5)"),
+    ("ic",    "CANDIDATES hashed: one guest-byte hash each. M5's cost"),
+    ("ib",    "guest BYTES hashed by those, one cpu_ldub_code at a time"),
+    ("ih",    "recycle HITS: lookups that returned a block"),
+    ("ix",    "THE M5 IMPOSSIBLE ROW -- a hit that hashed nothing. Must be 0"),
 ]
 
 
@@ -244,6 +258,13 @@ def parse(path):
                     w["cg"] = int(g[8])
                 if g[9] is not None:
                     w["xx"] = int(g[9])
+                if g[14] is not None:
+                    w["iv"] = int(g[14])
+                    w["ic"] = int(g[15])
+                    w["ib"] = int(g[16])
+                    w["ih"] = int(g[17])
+                    w["ix"] = int(g[18])
+                    w["hd"] = [int(g[19 + i]) for i in range(5)]
                 # blk is instructions per block that really generated code.
                 # Divided by a CALL count instead -- which is what
                 # hakux_tb_generated is -- it comes out below 1, which a block
@@ -301,6 +322,12 @@ RATIOS = [
      "share of page-emptying events a range test would prevent"),
     ("pr_per_em", "pr", "em",
      "arming TLB walks per page-emptying event"),
+    ("inv_cand", "ic", "iv",
+     "M5: guest-byte hashes per recycle probe -- the unbounded chain"),
+    ("inv_hit", "ih", "iv",
+     "M5: recycle hit rate, same denominator as the cost above"),
+    ("inv_bytes_per_cand", "ib", "ic",
+     "M5: mean block hashed. Arithmetically confined to [1, 4096)"),
 ]
 
 
@@ -699,6 +726,110 @@ def derive(windows):
         print("      That is the arming TLB walk -- tlb_reset_dirty, 10.6%"
               " self of the bounding thread -- that the range test would"
               " remove. It is the prize, and it is not about discarded code.")
+
+
+    m5(windows)
+
+
+def m5(windows):
+    """The inv_htable recycle cache: what it costs and what it buys.
+
+    Audit pass 1 M5. `inv_htable` has no eviction path, so every distinct
+    byte-content ever translated at a pc leaves a permanently resident entry,
+    and each later tb_gen_code() for that pc pays one byte-at-a-time
+    guest-memory hash per entry. The remediation the audit proposed -- evict on
+    insert -- is REFUTED and must not be implemented; see the comment block at
+    inv_tb_lookup_cmp() in accel/tcg/cpu-exec.c. The real fix bounds the chain,
+    and N has to be sized against these numbers.
+    """
+    if not any("ic" in w for w in windows):
+        print("   -> NO iv=/ic= FIELDS. This build predates the M5 counters,"
+              " so the inv_htable chain is unmeasured here -- which is not the"
+              " same as unmeasured cost. Nothing below is printed.")
+        return
+    iv = sum(series(windows, "iv"))
+    ic = sum(series(windows, "ic"))
+    ib = sum(series(windows, "ib"))
+    ih = sum(series(windows, "ih"))
+    ix = sum(series(windows, "ix"))
+    hd = [0] * 5
+    for w in windows:
+        for i, v in enumerate(w.get("hd", [])):
+            hd[i] += v
+    # THE IMPOSSIBLE ROW FIRST, before anything is printed about the numbers.
+    if ix:
+        print("   -> VOID (M5): ix = %d. A recycle hit that hashed no"
+              " candidate, which cannot happen -- a hit IS a candidate whose"
+              " ihash matched, so the counter was incremented before the"
+              " comparison that returned true. Read NOTHING in this section"
+              " as a measurement: the depth histogram and ih/ic are over a"
+              " population that is not what cpu-exec.c says." % ix)
+    else:
+        print("   -> CONTROL (M5) ix = 0: every recycle hit hashed at least"
+              " one candidate, so hd and the ratios below are over the"
+              " population inv_tb_lookup_cmp() names.")
+    if sum(hd) + ix != ih:
+        print("   -> VOID (M5): sum(hd) + ix != ih (%d + %d != %d). Every hit"
+              " lands in exactly one depth bucket or in the impossible row."
+              " All terms are on ONE log line, so there is no slack: this is"
+              " a counter defect, not a sampling slip."
+              % (sum(hd), ix, ih))
+    else:
+        print("   -> CONTROL (M5) sum(hd) + ix == ih exactly (%d)." % ih)
+    # iv == calls is the check that the probe is still on every codegen call.
+    # It crosses the two log lines, so it carries the same in-flight slip the
+    # population identity does, and is judged with the same shape of bound.
+    calls = sum(series(windows, "calls"))
+    if calls:
+        slack = max(8, int(calls * 1e-4) + 1)
+        ok = abs(iv - calls) <= slack
+        print("   -> %s (M5) iv %d vs calls %d (residual %d, slack +/-%d)."
+              " tb_gen_code() reaches inv_tb_htable_lookup() unconditionally,"
+              " so these count the same event across two log calls. A"
+              " divergence beyond the slip means the probe is no longer on"
+              " every codegen call -- a new early return, or a second caller"
+              " -- and every ratio below is then over an unstated population."
+              % ("CONTROL" if ok else "VOID", iv, calls, iv - calls, slack))
+    if not ic:
+        print("   -> M5: ic = 0 over %d windows. NOT 'the chain is short' --"
+              " no lookup reached the guest-byte hash at all, so this run"
+              " says nothing about chain length. Check ih and iv before"
+              " concluding anything." % len(windows))
+        return
+    print("   -> M5 COST %.2f guest-byte hashes per recycle probe (%d / %d),"
+          " %.0f guest bytes per probe (%d total), mean block hashed %.0f"
+          " bytes." % (ic / float(iv) if iv else 0.0, ic, iv,
+                       ib / float(iv) if iv else 0.0, ib, ib / float(ic)))
+    if not (1.0 <= ib / float(ic) < 4096.0):
+        print("      VOID: mean bytes per candidate is outside [1, 4096),"
+              " which tb->size's own range and tb_code_hash_func's assert"
+              " make arithmetically impossible. One of ib and ic is being"
+              " summed over the wrong population.")
+    print("   -> M5 BENEFIT %.3f recycle hits per probe (%d / %d). The cost"
+          " and the benefit share a denominator on purpose: a chain bound"
+          " trades the second against the first."
+          % (ih / float(iv) if iv else 0.0, ih, iv))
+    if ih:
+        labels = ["1", "2", "3-4", "5-8", ">8"]
+        print("   -> M5 HIT DEPTH (candidates hashed by a hit, itself"
+              " included): " + ", ".join(
+                  "%s: %d (%.1f%%)" % (labels[i], hd[i], 100.0 * hd[i] / ih)
+                  for i in range(5)))
+        cum = 0
+        for i, k in enumerate([1, 2, 4, 8]):
+            cum += hd[i]
+            print("      capping the WALK at %d candidate(s) keeps %.2f%% of"
+                  " hits and spends at most %d hashes per probe"
+                  % (k, 100.0 * cum / ih, k))
+        print("      AND THIS DOES NOT SIZE AN MRU-N BOUND. `hd` is the hit's"
+              " ordinal in the WALK, and the walk is qht bucket-slot order:"
+              " qht_insert__locked() fills the first empty slot and"
+              " qht_remove__locked() leaves a hole, so every successful"
+              " recycle -- the event being measured -- perturbs the order. It"
+              " answers 'would capping the walk at K have kept this hit'. It"
+              " does NOT answer 'would keeping the most recent N have kept"
+              " it'; that needs a monotone insertion stamp on the"
+              " TranslationBlock, which does not exist.")
 
 
 def cost(pacing):
