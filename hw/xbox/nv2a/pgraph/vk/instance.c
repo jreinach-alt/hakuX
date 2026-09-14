@@ -867,6 +867,41 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
 #endif
 
     /*
+     * Report whether this part supports dualSrcBlend. Query only -- nothing is
+     * enabled and no behaviour changes here.
+     *
+     * #59 is blocked on exactly this boolean. Its write-side pad fix is
+     * measured and its mechanism is settled: the Z/O suffix on a colour
+     * surface format names what the RASTER STORES into the pad bits, so #48's
+     * readback is exact on every pixel the raster drew and wrong on every
+     * pixel it did not. The arm that proved it also found where it stops --
+     * forcing fragColor.a changes the source alpha the COLOUR blend consumes,
+     * and result.a = As*Fs + Ad*Fd is linear in two alphas, so a constant 0 is
+     * expressible and a constant 1 is NOT. Dual-source blending is the route,
+     * and the lane could not take it because this file has never asked the
+     * device whether it is available. The boot log prints nine features; this
+     * is not one of them.
+     *
+     * So the cost of answering is one log line, and it decides whether #59's
+     * remaining half is a fix or a hardware limit. Whether we then ENABLE it
+     * is a separate decision with its own arm -- the file's own line-raster
+     * query above says the same thing, and the arm that ignored that advice
+     * cost #13 a device run.
+     */
+    {
+        VkPhysicalDeviceFeatures f;
+        vkGetPhysicalDeviceFeatures(r->physical_device, &f);
+        fprintf(stderr, "Vulkan feature %-36s : %s (query only, #59)\n",
+                "dualSrcBlend",
+                f.dualSrcBlend == VK_TRUE ? "available" : "missing");
+#ifdef __ANDROID__
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
+                            "vk dualSrcBlend: %s (query only, #59)",
+                            f.dualSrcBlend == VK_TRUE ? "available" : "missing");
+#endif
+    }
+
+    /*
      * Report what this device offers for line rasterisation. Query only --
      * nothing is enabled and no behaviour changes here.
      *
