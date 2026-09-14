@@ -91,16 +91,38 @@
  * ARM64 FPU: convert floatx80 <-> double via inline bit manipulation,
  * then use the native ARM64 double-precision FPU for arithmetic.
  *
- * Two acceleration mechanisms exist on ARM64:
+ * Two acceleration mechanisms are DOCUMENTED for ARM64. Only (1) exists.
  *
  * 1) fp_jit (compile-time): fpu_helper.c is compiled twice via
  *    fpu_helper_hard.c producing helper_*__soft and helper_*__hard symbols.
  *    The __hard helpers always use native double (no runtime branch).
  *    Selection is made once at TCG translation time via g_use_fp_jit.
  *
- * 2) fp_safe (runtime): When fp_jit is off, the __soft helpers use
- *    floatx80_*_rt wrappers that check g_xemu_fp_safe on every call.
- *    Can be toggled at runtime via xemu_set_fp_safe().
+ * 2) fp_safe (runtime): DOES NOT EXIST. This comment used to describe it as
+ *    "when fp_jit is off, the __soft helpers use floatx80_*_rt wrappers that
+ *    check g_xemu_fp_safe on every call, toggled via xemu_set_fp_safe()".
+ *    None of that is in the tree: there are no floatx80_*_rt wrappers, and
+ *    g_xemu_fp_safe appears nowhere except in the sentence that described it.
+ *    The #ifndef USE_HARD_FPU block just below, where they would live, is
+ *    empty. xemu_set_fp_safe() discards its argument and xemu_get_fp_safe()
+ *    returns false unconditionally -- verified in the linked binary, where
+ *    they assemble to `endbr64; ret` and `endbr64; xor %eax,%eax; ret`.
+ *
+ *    It was never implemented here rather than removed: 8f832955 introduced
+ *    this file with 3923 insertions and no deletions, and it carries the
+ *    comment, the empty block and the two stubs together.
+ *
+ *    This is NOT harmless, which is why it is written out rather than
+ *    deleted. Android exposes it as a user-facing setting -- "Native Floats
+ *    (Safe)", defaulting to ON, described in strings.xml as giving native
+ *    ARM64 double precision -- wired through nativeSetFpSafe() to the stub.
+ *    xemu_get_fp_safe() also feeds the per-game cache key as a bit that is
+ *    now always zero, and is handed back to the UI, so the switch reads OFF
+ *    however it is set. Whether to implement the mechanism or retire the
+ *    setting is a decision for whoever owns the Android settings surface.
+ *
+ *    So on ARM64 the ONLY thing selecting native-double arithmetic is (1),
+ *    g_use_fp_jit, assigned from g_config.perf.fp_jit at translate.c:4397.
  */
 #if defined(XBOX) && defined(__aarch64__)
 
