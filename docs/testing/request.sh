@@ -765,6 +765,38 @@ part=[s for s,c in m['captures_vs_goldens'].items() if c['partial']]
 if part: print('PARTIAL ', ', '.join('%s %d/%d'%(s,m['captures_vs_goldens'][s]['scored'],m['captures_vs_goldens'][s]['goldens']) for s in part))
 print('tsv     ', '$D/results/$ID/' + m['runs'][0]['tsv'] if m['runs'] else '(none)')
 "
+        # DID ANDROID TAKE THE WINDOW AWAY MID-RUN?
+        #
+        # `ui/xemu.c` pauses the display path on SDL_WINDOWEVENT_MINIMIZED, so
+        # a minimised run stops producing captures and stops logging, and what
+        # lands is a PARTIAL set whose absences read exactly like a defect.
+        # #52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls; it
+        # was whichever test was running when the window went away, and 1,500
+        # of 1,800 s went silently.
+        #
+        # Checked HERE, in --wait, because this is the one place both request
+        # shapes are read. A disc arm meets the check again in ab_compare; a
+        # SOAK meets nothing else at all -- ab_compare dies on a soak at
+        # "records no runs", correctly, so a soak truncated at 20 s of 90 has
+        # nothing anywhere to say so, and its per-window counts have been
+        # measured varying 3-5x within one run, so it does not look short.
+        #
+        # The scan lives in ab_compare.py so there is one implementation
+        # rather than two that drift; see truncation_findings() there for what
+        # it cannot see -- WHY the window went (the capture spec ends `*:S`
+        # and carries no ActivityManager lines), and a teardown minimize from
+        # a mid-run one.
+        #
+        # It does NOT change the exit code. The result is on disk either way
+        # and the requester may legitimately want a truncated soak's first
+        # windows; what must not happen is reading them without knowing.
+        if ! python3 "$(dirname "$0")/ab_compare.py" \
+                --check-truncation "$D/results/$ID"; then
+            echo "*** THIS RUN WAS TRUNCATED. Anything missing above is" >&2
+            echo "*** missing because the run stopped, not because the" >&2
+            echo "*** emulator got it wrong. Requeue before reading it as" >&2
+            echo "*** a measurement." >&2
+        fi
         exit 0
     fi
     if [ -f "$D/results/$ID/ERROR" ]; then
