@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 40
+wave = 41
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -54,15 +54,6 @@ files = ["docs/testing/ab_compare.py",
          "docs/testing/request.sh",
          "docs/testing/sweep_agreement.py"]
 note = "preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate belongs, because preflight is invoked FRESH while the watchdog holds the script it started with -- the same asymmetry that made one of this lane's own fixes live immediately and another inert. The lane asked rather than taking it, which is the behaviour the board wants; a lane briefed with files that were never claimed is a mistake this project made the same day. THE INSTRUMENTS, taken out of the orchestrator's hands 2026-09-14 at the owner's prompt: 'Why are you handling the manipulation of dispatch scripts?' Six instrument fixes landed tonight inline -- inert prediction legs, lane-claim-as-description, blockers behind retired lanes, cited commits compared as shas, advice that could not see its own fleet, and a guard nobody could state correctly. Each emerged from a failure being diagnosed, which justifies the first and not the sixth: it serialised work that could have run in parallel and spent orchestrator context on editing rather than on allocating. NOT IN THIS CLAIM, deliberately: territory.toml and nv2a_issues.toml. The tracker is the ONE hand-maintained table in the index and the claim registry is what arbitrates lanes -- an agent editing the registry while claiming territory in it is circular, and concurrent edits to the board conflict badly. Those stay with the orchestrator. Analysis scripts written BY a lane for its own issue (line_extent_phase.py, stencil_outliers.py, wbuf31_blocker_audit.py and the rest) are not claimed either: they belong to whoever is measuring with them."
-
-[lane.lows]
-issues = ["13"]
-files = ["hw/xbox/nv2a/pgraph/vk/instance.c",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
-         "hw/xbox/nv2a/pgraph/vk/shaders.c"]
-note = "Audit pass 1's LOW remediations. L10 IS THE PRIORITY and is H1's shape a second time: max_vertices for PRIM_TYPE_TRIANGLES + POLY_MODE_LINE doubled 6 -> 12 when emit_line() started emitting four vertices, and maxGeometryOutputVertices / maxGeometryTotalOutputComponents appear in exactly three places repo-wide -- two field declarations in the bundled SDL2 vulkan_core.h and pass 1's own text. NOTHING in hw/ or ui/ reads either. On a device at the Vulkan guaranteed minimum with a larger varying set the geometry shader fails to compile, and in this renderer a failed shader compile is a SILENT draws-nothing rather than a build error. It is the only one of the twelve whose scenario is a silent wrong picture on real hardware. Also carries the three glsl/psh.c comment corrections pass 2 asked a grant for -- the M3 staleness that MISLED PASS 1 into overstating a finding, plus L4 and P4. vk/instance.c is where the assert belongs, alongside the subPixelPrecisionBits and dualSrcBlend queries already there; it was unclaimed. vk/draw.c and vk/shaders.c come from retiring lane.remediate1, whose work pass 2 verified CLOSED."
 
 [free]
 # RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
@@ -104,6 +95,11 @@ note = "Audit pass 1's LOW remediations. L10 IS THE PRIORITY and is H1's shape a
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
+         "hw/xbox/nv2a/pgraph/vk/instance.c",
+         "hw/xbox/nv2a/pgraph/vk/shaders.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/glsl/psh.c",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/mcpx/**",
          "hw/xbox/nv2a/nv2a.c",
          "hw/xbox/nv2a/nv2a_int.h",
