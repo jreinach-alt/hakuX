@@ -2360,8 +2360,17 @@ static void geom_line_params(PGRAPHState *pg, float out[4])
     if (bits != last_bits) {
         last_bits = bits;
 #ifdef __ANDROID__
+        /*
+         * hakuX-build, not a tag of its own.  run_disc.sh's LOGCAT_SPEC ends
+         * in `*:S`, so a tag not on its allowlist is silenced -- and
+         * hakuX-linewidth, the tag the deleted line-width log used, is NOT on
+         * it.  That log was added to settle whether the width was reaching
+         * the rasteriser and never appeared in a single dispatcher run.  A
+         * diagnostic the harness cannot see is worse than none, because it
+         * reads as having been checked.
+         */
         __android_log_print(
-            ANDROID_LOG_INFO, "hakuX-linewidth",
+            ANDROID_LOG_INFO, "hakuX-build",
             "geom wide lines: subPixelPrecisionBits=%u scale=%d "
             "tie bias %.6f guest px (1/%u)",
             r->device_props.limits.subPixelPrecisionBits,
