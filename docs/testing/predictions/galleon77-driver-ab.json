@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-14T02:35:00Z",
+  "who": "lane.galleon77",
+  "issue": "77",
+  "prediction": "Galleon driver A/B (T30 / T26 / stock) on the Thor, ref c866527e03. THE WORKLOAD IS NOT THE ONE THE ISSUE SPECIFIED, and that is the point of this registration. #77 asks for the stipple rate on a PARKED view of the deck or town ground; an unattended soak cannot park a camera, because reaching gameplay needs input and agents must not inject it. What an unattended Galleon soak actually renders is the ATTRACT DEMO: a scripted loop of moving-camera gameplay shots plus a static title card (cliff/sea vista, not the deck). galleon_flash_rate.py computes its outlier bar from the median/MAD of the frames it is given, which assumes ONE scene with a parked camera; over a loop that cuts between cliffs, caves, sky and loading screens the bar measures scene variety instead, and the artifact has to clear a bar set by the cuts. V0 is therefore the gate on whether any A1 conclusion may be drawn at all.",
+  "a_ref": "c866527e03",
+  "b_ref": "c866527e03",
+  "legs": {
+    "V0": "VALIDITY, and it gates everything else. Each T30 arm must show >= 3 stipple frames per 40 samples (>= 7.5 per 100) in the named region. I PREDICT V0 FAILS on this workload -- the survey arm already read 1.7 per 100 -- because the attract demo never parks on the deck. If V0 fails, A1 and A2 are VOID and MUST NOT be reported as exonerating or implicating the driver.",
+    "V0-falsifier": "If a T30 arm reads >= 7.5 per 100 in the named region, my claim that the unattended demo is an unusable workload is REFUTED, and the A/B proceeds on the rates as the issue registered them.",
+    "V1": "NOISE FLOOR, and it is the run and not the window: two T30 runs of one binary and one driver must be compared before any cross-driver difference is believed. Whatever separation the two T30 runs show is the floor every cross-arm difference must clear.",
+    "A1": "IF AND ONLY IF V0 passes: T30, T26 and stock each report their own stipple rate, and the claim under test is that all three land in 5-20 per 100 -- i.e. the artifact does NOT move with the driver. A1 failing (one arm at zero, or one far outside the others) is the result that redirects the investigation.",
+    "A2": "IF AND ONLY IF V0 passes: the brightness class stays at 0-3 per 100 in every arm and never coincides with a stipple frame.",
+    "I1": "INSTRUMENT, reported whatever V0 does, because a zero from a blind instrument is not evidence: the scrim of the persistent 'Use USB for' dialog caps everything behind it at ~100/255 (nav bar reaches 255, dialog 240), so every arm is measured through a ~0.4x attenuation AND with the central 61% x 44% of the display occluded. This is identical in all arms, so it cannot manufacture a difference between them -- but it can hide one, and it is the first thing to remove before any negative here is believed."
+  },
+  "must_not_move": [],
+  "must_not_regress": [],
+  "expect": {},
+  "expect_counts": {},
+  "expect_note": "EMPTY ON PURPOSE, and not an oversight. A soak writes no captures, so ab_compare has no rows to judge and request.sh's golden-key check would refuse any `expect` key naming a Galleon capture -- Galleon is on no disc the campaign scores and has no golden framebuffer. A machine leg invented to satisfy the schema would be an inert one, which AGENTS.md records as reading PRE-REGISTERED while testing nothing. The legs above are read off by hand; what this file buys is the CONTENT HASH recorded in each request at queue time, so a leg quietly widened after the numbers arrive is detectable."
+}
