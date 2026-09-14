@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 42
+wave = 43
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -59,6 +59,13 @@ note = "preflight.sh GRANTED 2026-09-14 on request: it is where the audit gate b
 issues = ["52"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c"]
 note = "#52, dispatchable for the first time because lane.falsifiers REFUTED its blocker. It said the stalling test is NOT named and any attribution would be the reader's. It is named, three ways: the progress log has 327 Starting against 326 Completed with exactly ONE unmatched, `Starting Depth buffer::DepthFmt_z24_Cy_FZn_Maaaaaf` with no Completed; the capture set bounds it on both sides (Maaaaaf has two PNGs, Cy_FZn_Mc00003 has none); and the retry cited as carrying seven such entries carries ZERO -- 196 Starting, 196 Completed, 'Testing completed normally'. The seven were NEGATIVE DURATIONS, a different anomaly. TWO THINGS RECORDED NOWHERE ELSE came out of that audit and are the real prize: a repeating ~-24.3 s BACKWARD JUMP of the guest clock, and one run reaching 654 of 680 tests, so 26 tests are missing rather than 'the Cy half'. psh.c is claimed because the blocker names it; everything else is READ-ONLY until granted -- ask rather than take."
+
+[lane.tcginval]
+issues = ["68", "73"]
+files = ["accel/tcg/tb-maint.c",
+         "accel/tcg/translate-all.c",
+         "accel/tcg/cpu-exec.c"]
+note = "#68 and #73 together: both are TB invalidation, both had their blockers REFUTED by lane.falsifiers, and both deferred to an authority that turns out not to exist. #73 said it 'belongs to the tier-1 owner' -- but the mask's origin c1e4e87f5f is xemu-local from 2021 and NEVER UPSTREAM, and the half that actually strands blocks is c174c8bde8, 2026-03-30, FIVE AND A HALF MONTHS OLD. The narrow fix is one sub-expression already in-tree at translate-all.c:429. #68 said restoring the range test is 'a five-year-old SMC correctness decision on every guest instruction, not a lane call' -- the date is fair at 4y11m, but 703566ce33's COMMIT BODY IS EMPTY: no rationale, no SMC reference, no comment added, just the range test wrapped in #ifndef XBOX. There is no recorded decision to respect. The range data was never dropped. ALSO HERE, from audit pass 1's M5: the counters in these files are unconditional against AGENTS.md's flag rule, and docs/audits/2026-09-14-decisions.md logs the decision to leave them for now WITH a removal condition -- they retire when the direct generation/discard counters land, or when #68 closes. If #68 closes here, retire them."
 
 [free]
 # RELEASED 2026-09-14 by retiring lane.readfreq: vk/texture.c and pfifo.c.
