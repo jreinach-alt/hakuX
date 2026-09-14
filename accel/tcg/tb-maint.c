@@ -59,6 +59,23 @@ uint64_t hakux_inval_tbs_spared;      /* ... of those TBs, none were */
 uint64_t hakux_inval_emptied;         /* events that emptied the page */
 uint64_t hakux_inval_would_survive;   /* events that would NOT have, with the
                                        * range test restored */
+/*
+ * `em` AND `ws` ALSO CHANGED POPULATION AT #73's FIX, which the note on
+ * hakux_inval_already below says of `ai` and did not say of these two. Audit
+ * pass 1 M1.
+ *
+ * Pre-fix an already-invalid TB was never unlinked, so it held p->first_tb
+ * non-NULL and `em` could not fire on any event that had visited one. The fix
+ * unlinks it, so such events now empty the page and now count. `em` is
+ * therefore larger post-fix for a reason that has nothing to do with what the
+ * guest wrote, and `ws` -- which is gated on `em` -- moves with it.
+ *
+ * The six Crimson Skies soaks of 2026-09-13 are PRE-fix on all three
+ * counters. Do not difference them against a post-fix run. The `ws` figures
+ * from runs between 2af6def68a and the comparison fix at the bottom of
+ * tb_invalidate_phys_page_range__locked() are wrong in a third way again, and
+ * are over-reports.
+ */
 uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
 /*
  * TBs visited by the invalidation loop that already carried CF_INVALID.
@@ -1558,7 +1575,45 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
          */
         if (!p->first_tb) {
             hakux_inval_emptied++;
-            if (tbs_overlap < tbs_seen) {
+            /*
+             * AUDIT M1. This compared tbs_overlap against tbs_SEEN, and
+             * tbs_overlap is accumulated for LIVE blocks only, deliberately,
+             * for the reason given in the loop above. Every already-invalid
+             * block therefore added 1 to the left-hand side's denominator and
+             * 0 to its numerator, and `ws` fired on pages where the range
+             * test would have spared nothing.
+             *
+             * It was correct BY ACCIDENT before #73's fix (2af6def68a) and
+             * stopped being correct with it. Pre-fix, an already-invalid TB
+             * took do_tb_phys_invalidate()'s early return before tb_remove(),
+             * so it stayed on the page list, so `!p->first_tb` could not hold
+             * for any event that had visited one: `em` implied
+             * tbs_seen == tbs_live and the two tests were the same test. The
+             * fix really unlinks those blocks, which removes exactly that
+             * implication. The bias is one-directional -- ws OVER-reports --
+             * and ws is the counter #68 is argued from, so any ws figure from
+             * a run between 2af6def68a and this commit is measured over the
+             * wrong population and must not be compared with one from either
+             * side of it.
+             *
+             * tbs_live is the right denominator rather than a dead-inclusive
+             * overlap count, and that is a statement about what restoring the
+             * range test actually does, not a simplification: 937848c9e7
+             * discards an already-invalid block whatever the write touched
+             * (its `!tb_live` clause), so a dead block does NOT keep the page
+             * alive under the restored test and must not be counted as a
+             * survivor here. A survivor is a block that is live AND whose
+             * bytes the write missed, which is tbs_live - tbs_overlap -- the
+             * quantity already accumulated into `sp` on the line above.
+             *
+             * Not modelled, because it cannot happen in this build: 937848c9e7
+             * also discards tier >= 2 / superblock TBs unconditionally, so
+             * those would not be survivors either. XBOX_SUPERBLOCK_ENABLED is
+             * 0 and tb_gen_superblock() is the only producer, so adding the
+             * term here would be a guard nothing can reach. Add it with that
+             * flag, not before.
+             */
+            if (tbs_overlap < tbs_live) {
                 hakux_inval_would_survive++;
             }
 #if HAKUX_SMALL_BLOCK_INSNS
