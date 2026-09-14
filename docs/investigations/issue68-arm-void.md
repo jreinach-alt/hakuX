@@ -193,3 +193,68 @@ build on the correct side of this fold.
 - Whether the 70–95 visits-per-event plateau holds beyond 90 seconds.
 - Anything about correctness. No corpus arm was run, and one would be weak
   evidence here regardless.
+
+---
+
+# RETRACTED 2026-09-14 — the arm was never void. The instrument was.
+
+**Everything above the line is wrong in its conclusion**, and it is kept rather
+than deleted because how it went wrong is the useful part.
+
+`tcg_pages.py` **hard-coded** `sp + ov == di` and described it as "two separate
+counts of the same live population on one log line, so they must agree
+exactly." They are the same population **only while the loop discards every
+live block it visits** — which is what whole-page invalidation does, and
+exactly what `937848c9e7` stops doing. With the range test restored, a live
+block the write missed is **spared**: a visit, counted in `sp`, not a discard.
+
+**The held commit's own message says this, and it was written before any soak
+ran:**
+
+> `visits = discards + already` no longer holds, deliberately.
+
+I read the instrument's complaint and not the commit's message.
+
+## What actually holds, measured off the same six logcats
+
+| identity | arm A `117203fe9b` | arm B `937848c9e7` |
+|---|---|---|
+| `xx == 0` | 0 over 22 windows × 3 | 0 over 22 windows × 3 |
+| `di == ov + sp` (whole-page) | **holds 22/22 × 3** | fails 22/22 × 3 |
+| `di == ov + ai` (range-tested) | fails 22/22 × 3 | **holds 22/22 × 3** |
+| `visited == ov + sp + ai` | holds, worst ±4 | holds, worst ±182 |
+
+The **160,836,959 residual is the spared count** — a subtraction performed
+against the wrong model. The **573× `visited` rise is leg 68-3 happening**, not
+an overflow and not a misplaced increment.
+
+`visited == ov + sp + ai` is the *population* identity and is **invariant
+across #68**, because both splits are made before the discard predicate is
+applied. That is now the primary check. The tool tests both discard models,
+names which one the build matched, and voids only a run matching neither —
+because **a tool handed a logcat cannot see which side of a fold it is on, and
+must not assert one.**
+
+## The verdict that replaces "void"
+
+**G, 68-1 (`em` 42,456 → 12), 68-3 and 68-4 PASS.** 68-2's `pr_per_em` fails
+because **leg 68-1 of the same prediction drives its denominator to zero** — it
+should have been `pr` per generation. 73-1/73-2 are **not attributable**: the
+prediction specified three arms and two ran, so arm "B" on disk is #68 stacked
+on #73.
+
+## And it still should not fold
+
+For a reason nobody had before: **visits rose ~560×**, 13,270 → 7.5M per
+window, each a page-list traversal plus a range test. **Leg 68-4 counts
+`stores` and cannot see it.** It plateaus at 70–95 visits/event from window 5
+in all three runs — steady state, not a leak — but bounded by
+translation-buffer flush, which #68 does not control.
+
+## The lesson
+
+A consistency check is a **model**. This one encoded whole-page invalidation as
+an invariant and then reported a build that changed that invalidation as
+broken. The failure looked exactly like a defect: an identity failing in every
+window, on a counter, right after a change. The commit that caused it had
+already explained it.
