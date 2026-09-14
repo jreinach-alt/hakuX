@@ -561,18 +561,43 @@ def judge(exp, rows):
     checks = 0
     by_name = {"%s/%s" % r["key"]: r for r in rows}
 
-    for pat in exp.get("must_not_move") or []:
-        hit = [n for n in by_name if fnmatch.fnmatch(n, pat)]
-        if not hit:
-            fails.append("must_not_move %r matched no capture in either arm; "
-                         "the guard was never actually applied" % pat)
-            continue
-        checks += len(hit)
-        for n in sorted(hit):
-            r = by_name[n]
-            if r["cls"] in ("better", "worse"):
-                fails.append("must not move, but moved: %-46s %9d -> %9d "
-                             "(%s)" % (n, r["a"], r["b"], r["cls"]))
+    # `must_not_move` is BIT-IDENTICAL. `must_not_regress` allows improvement.
+    #
+    # For a long time must_not_move was the only guard, so every "leave this
+    # alone" intent got written as it -- including the ones that meant "do not
+    # make this worse". That cost two otherwise-good arms in one day:
+    #
+    #   - #13's wide-line arm FAILED on ELEVEN captures that all moved BETTER
+    #     and none worse. The leg had been transcribed as bit-identical when
+    #     its source criterion was must-not-regress, and at w=1.0 a correct
+    #     fix MUST move a non-axis-aligned line.
+    #   - #67's arm registered Stencil/* as must_not_move to prove scoping,
+    #     and six Stencil captures moved -- five of them better. That one was
+    #     a different bug (#79, the suite is nondeterministic), but the leg
+    #     could not have expressed "do not regress" either.
+    #
+    # A guard nobody can state correctly gets stated incorrectly. So both now
+    # exist, and the message says which one is being applied, because "must
+    # not move, but moved (better)" reads like a defect and usually is not.
+    for kind, pats in (("must_not_move", exp.get("must_not_move") or []),
+                       ("must_not_regress", exp.get("must_not_regress") or [])):
+        bad_cls = ("better", "worse") if kind == "must_not_move" else ("worse",)
+        for pat in pats:
+            hit = [n for n in by_name if fnmatch.fnmatch(n, pat)]
+            if not hit:
+                fails.append("%s %r matched no capture in either arm; "
+                             "the guard was never actually applied"
+                             % (kind, pat))
+                continue
+            checks += len(hit)
+            for n in sorted(hit):
+                r = by_name[n]
+                if r["cls"] in bad_cls:
+                    fails.append("%s, but %s: %-40s %9d -> %9d"
+                                 % (kind.replace("_", " "),
+                                    "moved" if kind == "must_not_move"
+                                    else "REGRESSED",
+                                    n, r["a"], r["b"]))
 
     for name, want in (exp.get("expect") or {}).items():
         hit = [n for n in by_name if fnmatch.fnmatch(n, name)]
@@ -716,7 +741,9 @@ def register(args):
         if k.strip() not in ("better", "worse", "same", "noise"):
             die("--expect-count class must be better|worse|same|noise", 2)
         exp["expect_counts"][k.strip()] = int(v.strip())
-    if not (exp["must_not_move"] or exp["expect"] or exp["expect_counts"]):
+    exp.setdefault("must_not_regress", [])
+    if not (exp["must_not_move"] or exp["must_not_regress"]
+            or exp["expect"] or exp["expect_counts"]):
         die("a registration with nothing falsifiable in it is not a "
             "prediction. Give at least one --must-not-move, --expect-value "
             "or --expect-count.", 2)
