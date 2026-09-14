@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 54
+wave = 55
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -62,6 +62,11 @@ note = "STANDING LANE, not a task lane. It owns the instruments for as long as t
 issues = ["68"]
 files = []
 note = "#68's THREE-ARM re-dispatch. The first attempt ran TWO arms for a three-arm question, so 73-1 and 73-2 came back NOT ATTRIBUTABLE -- arm B on disk is #68 stacked on #73, with no arm isolating #73. All three refs exist and were verified by ancestry against the lane's OWN sha rather than the orchestrator's cherry-pick, which is the sha-versus-patch trap one more time: 117203fe9b has neither, a94386a3c8 is #73 ALONE and is the missing middle, 937848c9e7 is #73 + #68. It also needs A LEG BOUNDING `visited`, which rose ~560x (13,270 -> 7.5M per window), each visit a page-list traversal plus a range test -- leg 68-4 counts STORES and cannot see it, and that unmeasured cost is now the only reason 937848c9e7 stays unfolded. Claims NO FILES: this is measurement, and tcg_pages.py is lane.toolsmith's after it hard-coded one discard model as an invariant and voided a correct arm."
+
+[lane.audit-remote]
+issues = []
+files = []
+note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. Claims no files: an auditor does not fix what it finds. The reason this is a pass rather than a fold: the diff carries target/i386/tcg/fpu_helper.c at +151 lines -- guest FPU reaching every title -- and I folded exactly that category unaudited once tonight (#73's fix, 2af6def68a), after which an audit found a HIGH in the surrounding code that was reachable from the DMA thread. The 53-commit fold-in before it also went in unaudited. Twice is a pattern and the protocol exists because of it. NOT urgent for durability: the work is already pushed to origin on lane.remote's own branch, so folding buys visibility on this board and the audit findings I routed (M2/#74, M4/#80) landing here -- neither of which is worth repeating the mistake for."
 
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
