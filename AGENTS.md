@@ -256,12 +256,24 @@ by the orchestrator and not by agents on purpose: an agent cannot be trusted
 to record that it is stuck, and the point is to make the orchestrator's own
 bookkeeping checkable by something other than the orchestrator.
 
-**Write the lane row BEFORE dispatching.** An agent was briefed as
-`lane.padwrite` with four files described as "yours" and no `[lane.padwrite]`
-row was ever written. It edited three of them. Nothing collided, because
-nothing else wanted them that hour -- and not one of the guards that caught
-real collisions that day could have fired, because `check_territory.py` cannot
-see a lane that does not exist. The brief is not the claim.
+**Write the lane row BEFORE dispatching, and COMMIT AND PUSH IT FIRST.** An
+agent was briefed as `lane.padwrite` with four files described as "yours" and
+no `[lane.padwrite]` row was ever written. It edited three of them. Nothing
+collided, because nothing else wanted them that hour -- and not one of the
+guards that caught real collisions that day could have fired, because
+`check_territory.py` cannot see a lane that does not exist.
+
+**Writing the row is not enough either.** `lane.tcginval` opened its board
+request by reporting `territory.toml` at wave 42 with no `[lane.tcginval]` row
+and `accel/**` still under `[free]` -- and it was right, from where it stood. I
+had written the claim, run `check_territory.py`, dispatched, and only THEN
+committed and pushed. The agent fast-forwarded to a tip that predated my
+commit, so for its entire run the claim existed only in my working tree.
+
+A lane verifies its territory by reading the repo, which means the claim has to
+be IN the repo before the lane starts. Order: write the row, validate, commit,
+**push**, then dispatch. The brief is not the claim, and an uncommitted claim
+is not a claim either.
 
 ## Non-negotiables
 

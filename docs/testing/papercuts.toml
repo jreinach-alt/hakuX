@@ -133,3 +133,11 @@ cost = "#52 spent its life believing DepthFmt_z24_Cy_FZn_Maaaaaf stalls. It is w
 bit = 1
 owner = "toolsmith"
 fix = "Fail or loudly flag any result whose logcat has `window minimized` with no later `window restored`. Twelve longer runs on disk were NOT minimised (1147, 977, 956, 697, 471 s), so it is not a screen timeout or a run ceiling."
+
+[[cut]]
+id = "claim-not-pushed-before-dispatch"
+what = "The orchestrator writes a lane's territory row, validates it, dispatches, and commits afterwards. The agent fast-forwards to a tip that predates the commit, so for its whole run the claim exists only in the orchestrator's working tree."
+cost = "lane.tcginval opened its board request reporting territory.toml at wave 42 with no [lane.tcginval] row and accel/** still free -- correct from where it stood. No collision guard could have fired for it, the same hole as briefing a lane with files never claimed at all."
+bit = 1
+owner = "unassigned"
+fix = "Order is: write the row, validate, commit, PUSH, then dispatch. A lane verifies its territory by reading the repo, so the claim must be in the repo before the lane starts. An uncommitted claim is not a claim."
