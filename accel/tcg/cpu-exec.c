@@ -494,6 +494,46 @@ struct tb_desc {
     tb_page_addr_t page_addr0;
 };
 
+/*
+ * The `& ~CF_INVALID` below is a fork change (c1e4e87f5f, 2021-10-24, never
+ * upstream; upstream compares `tb_cflags(tb) == desc->s.cflags`). It is the
+ * second half of issue #73 and it is LEFT IN PLACE DELIBERATELY. Reasons, in
+ * the order an auditor should check them:
+ *
+ * 1. It is load-bearing for the recycle cache. inv_tb_lookup_cmp() below is
+ *    this function plus an ihash test, and every TB in tb_ctx.inv_htable
+ *    carries CF_INVALID while no descriptor ever does. Make this comparison
+ *    exact and inv_tb_htable_lookup() matches nothing, ever.
+ *
+ * 2. It is one of a matched PAIR, and unmasking either one alone is worse
+ *    than unmasking neither. tb_cmp() in tb-maint.c -- the qht_insert dedup
+ *    for tb_ctx.htable -- masks CF_INVALID the same way. With this one exact
+ *    and that one masked, a lookup for a tier-1-promoted TB misses, calls
+ *    tb_gen_code, and tb_link_page's qht_insert then returns the OLD
+ *    CF_INVALID TB as `existing_tb`; the freshly generated block is thrown
+ *    away and the stale one handed to the executor on every single lookup.
+ *
+ * 3. The correctness scenario the issue names is closed at its source
+ *    instead. A TB found here with CF_INVALID set is only dangerous if its
+ *    translation is STALE, and staleness comes from a guest write to its
+ *    bytes -- which is do_tb_phys_invalidate's job. That is where the fix
+ *    went (see the hash comment in tb-maint.c): the store now really removes
+ *    the block, so it can no longer be found here afterwards.
+ *
+ * WHAT IS NOT FIXED, and is a separate issue rather than a caveat: a
+ * tier-1-promoted TB is still found and executed by this path, so tb_lookup()
+ * never misses for that pc, tb_gen_code() never runs, and
+ * tier1_consume_request() never fires -- the request sits in its slot, and 64
+ * such slots exist. Executing it is CORRECT (the guest bytes are unchanged);
+ * what it defeats is the tier-1 mechanism itself. Both the `promote #N` and
+ * `consume #N` lines that would settle this log under tag `hakuX-tier1` at
+ * priority DEBUG, which every dispatcher logcat spec in dispatch/results/
+ * ends with `*:S` and therefore drops, so the absence of those lines on disk
+ * is NOT evidence either way. Establishing it needs a run with that tag
+ * enabled, and unmasking both comparisons would activate a JIT tier that has
+ * plausibly never once fired across every title -- which is not a change to
+ * make on the side of an invalidation fix.
+ */
 static bool tb_lookup_cmp(const void *p, const void *d)
 {
     const TranslationBlock *tb = p;

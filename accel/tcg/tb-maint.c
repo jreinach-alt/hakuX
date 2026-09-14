@@ -80,6 +80,19 @@ uint64_t hakux_tlb_protect_calls;     /* arming walks: the 10.6% symbol */
  * this many visits were already-invalid TBs, which accounts for it". An
  * impossible row that can be explained is worth much less than one that
  * cannot, and the whole point of the leg is to notice the difference.
+ *
+ * WHAT THIS COUNTS CHANGED with the #73 fix in do_tb_phys_invalidate, and a
+ * reader comparing against the six Crimson Skies soaks of 2026-09-13 must
+ * know it. Those runs measured ai/visits at 0.85-0.93: the qht_remove missed
+ * on the tier-1 population, so every such TB was counted here once per store
+ * to its page, for the life of the translation buffer. It is now removed on
+ * its FIRST visit. Both callers of tb_phys_invalidate() pass page_addr == -1
+ * (translate-all.c:879 and :1131), so rm_from_page_list is false only for a
+ * TB with no page list entry to begin with -- which leaves tier-1 promotion
+ * as the only producer of a CF_INVALID TB on a page list. Each is therefore
+ * counted here exactly once and then discarded, so ai should fall from ~0.9
+ * of visits to the tier-1 promotion rate. If it does not, the #73 model is
+ * wrong and the mask did not reach the population it was aimed at.
  */
 uint64_t hakux_inval_already;
 /*
@@ -126,19 +139,30 @@ uint64_t hakux_tb_discarded;
  * no check in it, so this one carries a row that cannot happen if the model
  * behind the counters above is right.
  *
- * The model: a live TB (no CF_INVALID) sits in tb_ctx.htable under the hash of
- * its current cflags, so do_tb_phys_invalidate's qht_remove finds it and it is
- * really discarded. A TB that already carries CF_INVALID is NOT findable under
- * that hash -- cflags is an input to tb_hash_func and CF_INVALID was clear
- * when the TB was inserted -- so qht_remove fails and nothing is removed.
- * Live <=> discarded, exactly, per visit. This counts the violations.
+ * The model, RESTATED for the #73 fix -- read this before comparing a run
+ * against anything measured before 2026-09-14.
  *
- * It is not a tautology of the patch. It fires if a live TB is absent from the
- * htable, if an already-invalid TB is still findable there (which is what the
- * tier-1 soft invalidation in cpu-exec.c would produce if it rehashed as well
- * as setting the bit), or if anything clears CF_INVALID without re-inserting.
- * A nonzero value means "visits = discards + already-invalid" is the wrong
- * model and NO ratio derived from these counters may be quoted.
+ * The old model was `live <=> discarded`, exactly, per visit. Its second half
+ * relied on a bug: an already-invalid TB was not findable under the hash
+ * do_tb_phys_invalidate computed, because that hash included CF_INVALID while
+ * the insertion hash could not. Masking the bit off is #73's fix, and it
+ * makes the reverse implication FALSE ON PURPOSE: a tier-1-promoted TB is
+ * already invalid AND is now really discarded, which is the entire point.
+ *
+ * What survives, and is what this counts: a LIVE TB must always be discarded.
+ * A live TB sits in tb_ctx.htable under the hash tb_link_page() inserted it
+ * with, do_tb_phys_invalidate now computes that same hash, so qht_remove must
+ * find it. There is no world in which a live block on a page list is not in
+ * the table.
+ *
+ * It is not a tautology of the patch. It fires if a live TB is absent from
+ * the htable, if tb_link_page()'s hash inputs ever diverge from
+ * do_tb_phys_invalidate's again, or if anything clears CF_INVALID without
+ * re-inserting. A nonzero value means the visit accounting is wrong and NO
+ * ratio derived from these counters may be quoted.
+ *
+ * The half that was dropped is not lost -- it moved to hakux_inval_already,
+ * which is now the direct measure of whether the fix reached its population.
  *
  * One caveat for whoever ports this to a target with more than one vCPU: the
  * check reads hakux_tb_discarded either side of the call, so a concurrent
@@ -1093,8 +1117,37 @@ static void do_tb_phys_invalidate(TranslationBlock *tb, bool rm_from_page_list)
 
     /* remove the TB from the hash list */
     phys_pc = tb_page_addr0(tb);
+    /*
+     * CF_INVALID is masked off because it can never have been an input to the
+     * hash this TB was INSERTED under, and qht_remove must be given the
+     * insertion hash or it looks in the wrong bucket. tb_link_page() is the
+     * only insertion site: it asserts !(tb->cflags & CF_INVALID) and then
+     * hashes tb->cflags verbatim. qht_remove__locked() states the same
+     * requirement from the other side --
+     * `qht_debug_assert(b->hashes[i] == hash)`.
+     *
+     * Upstream gets this for free: orig_cflags is read three lines above,
+     * BEFORE the bit is set, so it carries CF_INVALID only for a TB some
+     * earlier call already removed -- and there missing is the correct
+     * outcome, which the mask preserves, because the TB is no longer in
+     * tb_ctx.htable at all and qht_remove (pointer identity) still returns
+     * false.
+     *
+     * This fork breaks that premise. Tier-1 promotion sets CF_INVALID *in
+     * place* -- see tb_request_tier1_promotion() in cpu-exec.c: no
+     * qht_remove, no tb_remove, deliberately, so the block keeps running
+     * until the CPU exits it. Such a TB is in tb_ctx.htable under a hash
+     * without the bit while carrying the bit. Without the mask the qht_remove
+     * below missed, the early return fired BEFORE tb_remove(), and the TB was
+     * stranded for the life of the translation buffer: still in the htable,
+     * still on the page list, revisited by every later store to that page.
+     * tb_lookup_cmp() masks CF_INVALID off before comparing, so a stranded TB
+     * is still found and executed -- with its PRE-WRITE translation once the
+     * guest has rewritten those bytes, since the store that should have
+     * discarded it is exactly the one that took the early return. Issue #73.
+     */
     h = tb_hash_func(phys_pc, (orig_cflags & CF_PCREL ? 0 : tb->pc),
-                     tb->flags, tb->cs_base, orig_cflags);
+                     tb->flags, tb->cs_base, orig_cflags & ~CF_INVALID);
     if (!qht_remove(&tb_ctx.htable, tb, h)) {
         return;
     }
@@ -1444,7 +1497,7 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
             bool live = !(tb_cflags(tb) & CF_INVALID);
             uint64_t discarded_before = hakux_tb_discarded;
             tb_phys_invalidate__locked(tb);
-            if (live != (hakux_tb_discarded != discarded_before)) {
+            if (live && hakux_tb_discarded == discarded_before) {
                 /* Cannot happen; see hakux_inval_impossible. */
                 hakux_inval_impossible++;
             }
