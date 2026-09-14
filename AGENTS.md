@@ -1609,6 +1609,42 @@ not the 251-requeue class. But "the recovery works" is a poor reason to keep
 generating the failure, and an orchestrator committing every few minutes is
 the single largest source of it.
 
+### The orchestrator folds in a separate worktree, and the shared tree only fast-forwards
+
+"Commit first, test after" is right for a lane and is **not sufficient for a
+fold-in**, which is several operations long by nature: cherry-pick, tracker
+edit, territory edit, index rebuild, preflight, commit. The tree is dirty for
+all of it, and no ordering of those steps makes the window short.
+
+On 2026-09-14 this stalled the whole queue twice in one hour. The first window
+requeued one lane's tip-ref control seven times with eight more of its arms
+behind it; the second was longer. Both times the lane diagnosed it correctly
+from outside -- it is worktree-isolated, so it materialised the tip from the
+object store and diffed the shared working tree against it -- and both times
+it was right not to touch it. Neither was a lane's fault and neither was
+recoverable by anything a lane could do.
+
+**So the fold happens somewhere else.** `/home/justin/hakux-work/fold` is a
+detached worktree kept for this:
+
+    cd /home/justin/hakux-work/fold
+    git fetch -q origin && git reset -q --hard origin/<branch>
+    # cherry-pick, edit the board, rebuild the index, run preflight, commit
+    git push origin HEAD:<branch>
+    git merge --ff-only origin/<branch>
+
+The shared tree is never dirty. Its working copy changes once, in a
+fast-forward checkout that takes under a second, and `dispatcher.sh` sees a
+clean tree at a new HEAD rather than a dirty one at the old one.
+
+Two things this does not fix, recorded so nobody reads more into it. A lane
+cannot run `git` against the shared tree at all, so the *diagnosis* still costs
+it the object-store trick. And `dispatcher.sh` still logs an identical line
+every thirty seconds while it waits, which reads as a hang rather than as a
+blocked queue -- it should name the dirty files and the wait duration. That is
+lane.toolsmith's, and it is the half that helps whoever is blocked rather than
+the half that stops blocking them.
+
 ## A checker must have no side effects on the tree it checks
 
 `check_territory.py` was added on 2026-09-13 to catch a stale territory

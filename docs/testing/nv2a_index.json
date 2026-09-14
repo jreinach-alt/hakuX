@@ -3944,6 +3944,15 @@
    "suites": [],
    "title": "x87 FSCALE returns +-0 where it must return +-inf, on the Android FPU JIT only"
   },
+  "83": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Image blit"
+   ],
+   "title": "Image_blit: eight Overlap_* captures are each 1 px low on the SRCCOPY path, which no blend fix can reach"
+  },
   "aci-vmstate": {
    "component": "apu",
    "disposition": "defect",
@@ -4539,7 +4548,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "109a28819dd5d171971974bf1a7b7aea6ff607f7",
+  "emulator_commit": "8c07b4565166186c168dadae4cf68d3e308a7d95",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2820,
