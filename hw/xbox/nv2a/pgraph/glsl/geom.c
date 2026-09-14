@@ -410,8 +410,8 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                 "            (max(ad.x, ad.y) + 0.5 * min(ad.x, ad.y)) / l2) *\n"
                 "           vec2(-delta.y, delta.x);\n"
                 /*
-                 * Choice 3, the LOW-OPEN band.  4.507% of the goldens' band
-                 * edges -- 1,888 of 41,892 -- land EXACTLY on a pixel centre,
+                 * Choice 3, the LOW-OPEN band.  4.562% of the goldens' band
+                 * edges -- 1,911 of 41,892 -- land EXACTLY on a pixel centre,
                  * and getting those wrong costs 550-580 of the 8,890 fit-set
                  * cuts on its own (93.81% instead of 100%).  Vulkan does not
                  * say which way a rasteriser breaks that tie: 27.9 requires
@@ -429,16 +429,17 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  * subPixelPrecisionBits = 8, a bias of 1/512 scores 93.75%
                  * and a bias of 1/1024 scores 93.64%, against 93.41% for no
                  * bias at all.  Above one, it starts flipping cuts the rule
-                 * gets right, because 166 band edges sit within 1/256 of a
+                 * gets right, because 143 band edges sit within 1/256 of a
                  * pixel centre without being on one: 1/128 scores 99.28% and
                  * 1/64 scores 97.93%, against 99.75% at exactly 1/256.
                  *
                  * That 99.75% is a CEILING SET BY THE DEVICE, not by this
                  * rule.  The same simulation with the quantisation removed
-                 * reproduces the goldens on 8,890 of 8,890 fit-set cuts, and
-                 * at subPixelPrecisionBits = 12 the quantised simulation
-                 * reaches 100.0000% as well.  See the prediction registered
-                 * for this arm.
+                 * reproduces the goldens on 8,890 of 8,890 fit-set cuts;
+                 * at subPixelPrecisionBits = 12 it reaches 99.89%, and at 16
+                 * 99.97%.  docs/testing/line_extent_subpixel.py is the
+                 * simulation, and the prediction registered for this arm
+                 * quotes it.
                  */
                 "  vec2 tie = (ad.x >= ad.y) ? vec2(0.0, lineTieBias)\n"
                 "                            : vec2(lineTieBias, 0.0);\n"

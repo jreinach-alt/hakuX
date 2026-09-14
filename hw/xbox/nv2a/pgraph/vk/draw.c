@@ -2344,10 +2344,11 @@ static void geom_line_params(PGRAPHState *pg, float out[4])
      * to its grid; because the endpoints are already on a 1/16 grid that
      * quantisation TRANSLATES both long edges by one constant vector rather
      * than shearing them, so the band moves bodily by up to one quantum --
-     * and 166 of the goldens' 41,892 band edges sit within 1/256 of a pixel
-     * centre without being on one.  Simulated against the goldens' own runs,
-     * that is the whole difference between 8,890 of 8,890 clean cuts with the
-     * quantisation removed and 8,863-8,868 with it at 8 bits.
+     * and 143 of the goldens' 41,892 band edges sit within 1/256 of a pixel
+     * centre without being on one.  Simulated against the goldens' own runs
+     * by docs/testing/line_extent_subpixel.py, that is the whole difference
+     * between 8,890 of 8,890 clean cuts with the quantisation removed and
+     * 8,863-8,868 with it at 8 bits.
      *
      * So a reading of 99.7% rather than 100% is a statement about THIS
      * number, and reading it out of the same run is what tells the two apart.
