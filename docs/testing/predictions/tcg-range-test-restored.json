@@ -1,0 +1,24 @@
+{
+  "registered_utc": "2026-09-14T00:00:00Z",
+  "who": "lane.tcginval",
+  "issue": "68,73",
+  "prediction": "TWO CHANGES OVER ONE MECHANISM, registered together because the second changes what the first's counters mean. Judged on the always-on hakuX-pages line with docs/testing/perf/tcg_pages.py; Crimson Skies dispatcher soaks, 90s, three runs per ref so each ref is its own noise floor. NOT RUN BY THE LANE THAT WROTE IT: one handheld was serving a 57-suite sweep with 54 requests still queued, so no soak and no corpus arm were possible. ARM A = 117203fe9b, the tip before this lane. ARM B = the #73 commit. ARM C = the #68 commit. LEG G, THE GATE, on every arm: xx is 0 in every window. xx is the impossible row and its model was RESTATED by the #73 commit -- it now asserts only that a LIVE block visited by the invalidation loop is always discarded, because #73's fix makes the reverse half (already-invalid implies not discarded) false on purpose, and #68 then makes it legitimate for a live block to be spared before ever reaching the check. If xx is nonzero on any arm, no ratio below may be quoted. LEG 73-1, B against A: ai/visits falls from at least 0.80 to at most 0.20. A measured 0.85-0.93 over six soaks on d0dc45a130. The mechanism: a CF_INVALID block was stranded in tb_ctx.htable AND on the page list because do_tb_phys_invalidate hashed WITH CF_INVALID while tb_link_page can only ever have inserted WITHOUT it, so qht_remove missed and the early return fired before tb_remove; every later store to that page walked it again, permanently. With the mask it is removed on its FIRST visit. FAILS, and refutes the model rather than the patch, if ai/visits stays at or above 0.50 on arm B: that would mean the already-invalid population is not the tier-1 one and was already out of the htable, in which case the correctness claim in #73 does not hold either. LEG 73-2: di/visits RISES on B, because blocks that used to take the early return are now real discards. LEG 68-1, C against B: em, pages emptied, falls by at least 5x. The registered noise floor for em and pr is a FACTOR OF TWO across runs of one ref, measured in round one at 897/909/1844, so 5x is chosen to beat it and 2x would not have been a leg at all. LEG 68-2: pr, tlb_protect_calls, the arming TLB walk, falls with em, and pr_per_em stays in 0.95-1.05 on both arms. It was 1.000 in all six earlier runs and is the check that the relationship itself did not change. LEG 68-3: visits per event RISES on C. This is the leg that separates the test firing from the title behaving differently: blocks the test spares stay on their page list, so each later event walks a longer list. If em falls while visits per event does NOT rise, the fall is not the range test doing its job and something else moved. LEG 68-4, THE COST SIDE, which none of the other legs can see: slow stores RISES on C. A page that keeps its code keeps its code-write detection armed, so stores that used to run fast in the window between a page emptying and code being generated there again now trap every time. That half has never been measured, and a fall in em and pr bought by a large enough rise here is not a win. Registered with no threshold precisely because there is no prior for it: it must be REPORTED, and a rise beyond 10x should stop the fold and be costed before anything else is read. NOT FORCED BY THE PATCH: ai, em, pr, visits and slow stores are all counted for every block the loop walks, BEFORE the range test is applied, so the predicate cannot select its own population. The counter ws is 0 on arm C by construction and is not a leg -- that is why it was retired rather than reinterpreted. WHAT THIS CANNOT SEE, and it is the important half: a corpus arm is a WEAK correctness check here. #68 makes invalidation do LESS, so its failure mode is a stale translation executing after a guest write the range test wrongly spared, and nxdk_pgraph_tests is nearly all static content that does little self-modifying code. Byte-identical captures are necessary and NOT sufficient, and do not license the fold on their own; a title that overlay-loads code is the instrument that would.",
+  "a_ref": "117203fe9b",
+  "b_ref": "",
+  "must_not_move": [],
+  "expect": {
+    "G_xx_every_window": 0,
+    "73_1_ai_over_visits_armA_at_least": 0.8,
+    "73_1_ai_over_visits_armB_at_most": 0.2,
+    "73_1_fails_if_armB_at_or_above": 0.5,
+    "68_1_em_fall_factor_at_least": 5.0,
+    "68_2_pr_per_em_min": 0.95,
+    "68_2_pr_per_em_max": 1.05,
+    "68_3_visits_per_event_must_rise": true,
+    "68_4_slow_stores_direction": "rise; no threshold; must be reported",
+    "68_4_stop_the_fold_above_factor": 10.0,
+    "noise_floor_em_pr_factor": 2.0,
+    "noise_floor_ev_sp_ov_pct": 5
+  },
+  "expect_counts": {}
+}
