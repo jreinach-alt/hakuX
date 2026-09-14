@@ -1189,3 +1189,105 @@ The 100% agreement across six captures is strong evidence that our dot signs
 match silicon's, but it is evidence, not an identity -- a systematic sign error
 in our dots would show as a consistent relabelling of the table rather than as
 noise, and would not disturb the purity.
+
+## The texture model, verified from the generator, and one new constraint
+
+`glsl/psh.c` became this lane's to touch at `territory.toml` wave 27, which
+retired `lane.signfold`. Before writing anything, the two things this note
+asserts about the texture were checked against primary source, and one new
+constraint fell out of the goldens.
+
+### The texture really is the eight corners, and I nearly published otherwise
+
+`GenerateCubemap(host_.GetTextureMemoryForStage(3), kNoise)` writes **six
+64×64 slices** in face order `+X, -X, +Y, -Y, +Z, -Z`, each from
+`GenerateSwizzledRGBMaxContrastNoisePattern` with a per-face seed drawn from
+
+```c
+static constexpr uint32_t kColorMasks[] =
+    {0x0000FF, 0xFF00FF, 0x00FF00, 0x00FFFF, 0xFF0000, 0xFFFF00};
+```
+
+The variable is named `kColorMasks`, and reading it as a mask gives six
+single-hue faces — which is what I concluded first, and it would have made
+this note's "eight corners of the colour cube" wrong. It is not a mask. The
+generator **XORs** it:
+
+```c
+uint8_t r = (x % 2) * 255;              /* 1-px vertical stripes */
+uint8_t g = (y % 2) * 255;              /* 1-px horizontal stripes */
+uint8_t b = ((x / 2 + y / 2) % 2) * 255;  /* 2x2 checker */
+r ^= seed_r;  g ^= seed_g;  b ^= seed_b;
+```
+
+Each channel is 0 or 255 before and after the XOR, so **every face carries
+all eight colour-cube corners** at one- to two-texel granularity, seed-
+permuted per face. The claim stands; the seed only relabels which corner
+sits where.
+
+Recorded because it was one `grep` away from a confident published
+correction that was itself wrong — the same failure this note already
+documents once.
+
+### Silicon reaches only the odd-parity corners
+
+Counted over the goldens, all six captures, background `#141414` excluded:
+
+| capture | quad px | corners reached |
+|---|---:|---|
+| `DotSTR3D_0to1` | 57,951 | `#00FF00` `#0000FF` (+ white label) |
+| `DotSTR3D_-1to1` | 57,951 | `#FFFFFF` `#FF0000` `#0000FF` `#00FF00` |
+| `DotSTR3D_-1to1D3D` | 58,241 | the same four |
+| `DotSTR3D_-1to1GL` | 58,115 | the same four |
+| `DotSTR3D_HiLo_1` | 58,079 | `#00FF00` `#0000FF` (+ label) |
+| `DotSTR3D_HiLoHemi` | 58,285 | `#0000FF` `#00FF00` (+ label) |
+
+**Every colour is an odd-parity corner** — an odd number of channels at 255.
+Over 348,622 quad pixels there is not one black, magenta, cyan or yellow
+pixel, which are the four even-parity corners. So the three selected bits
+satisfy
+
+```
+r ^ g ^ b = 1
+```
+
+and **the third component is determined by the other two.**
+
+That is the same statement the sign table already implies. Solving the table
+— R, B, W, G for the four `(sign(dot_1), sign(dot_2))` classes — for the
+three channel bits gives one channel as the XOR of the other two. Two
+independent measurements agree: the per-pixel sign correlation above, which
+used our dot signs, and this colour-set count, which never looks at a sign.
+The caveat recorded above about the sign field being *our* instrument does
+not apply to the parity result at all.
+
+It also dissolves an apparent contradiction rather than creating one. Reading
+the table under an identity corner-labelling makes one channel come out as
+`s1 XOR s2`, which looks impossible for a nearest-neighbour lookup with
+independent per-axis functions. The parity constraint says that is exactly
+what silicon does.
+
+### And the coordinate saturates
+
+Silicon produces flat regions of **13,000 to 29,000 pixels of one corner**
+from a texture that alternates corners every one or two texels. A varying
+coordinate over a 64×64 stripe-and-checker pattern cannot do that at any
+filter setting. The coordinate is constant over large screen regions — it
+saturates — which is what the `dotSTR3dSaturate` naming assumed and this is
+the first direct evidence for it.
+
+### Registered, and deliberately without an expression
+
+`../testing/predictions/issue51-dot-str-3d-sign-table.json` registers the
+legs: the sign table at the same purity; **every quad pixel an odd-parity
+corner**, which refutes a candidate on structure regardless of what its pixel
+count does; four quad colours on the three `-1to1` captures and two on the
+other three, excluding the white label text that makes a naive whole-image
+count read 3; and `Texture_2D_as_cubemap::DotSTR3D_Bad2D` unmoved at zero
+differing channels.
+
+No expression is registered. The candidate above reaches the table through
+the cube-face projection and the `+X` face assumption — the same class of
+step that was wrong before — and the path here is a `sampler3D` lookup, not a
+cube: `tex_cubemap[3]` is false and `dim_tex[3]` is 3, both established by
+arms that moved nothing.
