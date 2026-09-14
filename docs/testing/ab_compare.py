@@ -208,6 +208,25 @@ class Arm:
         return self.meta.get("disc_id", "")
 
     @property
+    def env(self):
+        """The environment the run was given, as an ordered tuple.
+
+        Added with `request.sh --env`. A result written before that has NO
+        `env` key, which is not the same as `env: []` -- the first means the
+        question was never asked, the second that it was asked and the answer
+        was none. `env_recorded` is what separates them, and nothing here may
+        conclude "the environments matched" from two absences.
+        """
+        v = self.meta.get("env")
+        if isinstance(v, dict):
+            return tuple("%s=%s" % kv for kv in sorted(v.items()))
+        return tuple(v or ())
+
+    @property
+    def env_recorded(self):
+        return "env" in self.meta
+
+    @property
     def classifier(self):
         return self.meta.get("classifier_rev", "")
 
@@ -510,7 +529,38 @@ def check_comparable(a, b, allow_same_binary=False):
                "three that a reader cannot diagnose from the shas alone, so "
                "check whether the range touches hw/ before assuming a cache "
                "bug." % a.apk)
-        if allow_same_binary:
+        # A FOURTH WAY, AND IT IS NOT A FAULT: an `--env` A/B is ONE BINARY BY
+        # DESIGN. `request.sh --env KEY=VALUE` exists precisely so that
+        # HAKUX_FIFO_SKEW_BOUND 0/1/2 is three requests against one build
+        # instead of three builds; the independent variable is the environment
+        # and apk_sha is identical across the arms on purpose.
+        #
+        # Refusing that would have made this gate the seventh false-positive
+        # class in this file's history, and the one that bites hardest: it
+        # would refuse the arm the feature was added to enable, and the
+        # documented escape hatch -- --allow-same-binary -- prints "any delta
+        # below is run-to-run noise on one device", which for an env pair is
+        # not a caveat but a false statement about a real result.
+        #
+        # BOTH ARMS MUST HAVE RECORDED AN env FOR THIS TO APPLY. Two results
+        # that merely lack the field are two results from before the feature
+        # existed, and reading that as "the environments differ" would turn a
+        # genuine same-binary accident into a licence.
+        if a.env_recorded and b.env_recorded and a.env != b.env:
+            warn.append(
+                "SAME BINARY, DIFFERENT ENVIRONMENT, which is what an --env "
+                "A/B is: one build, one disc, and the environment as the "
+                "independent variable.\n    A env: %s\n    B env: %s\n"
+                "  apk_sha is identical by design here and is NOT evidence "
+                "that the arms are the same experiment. What this pair cannot "
+                "show is anything the environment does not reach: if the "
+                "variable is read once at startup, a delta is attributable; "
+                "if nothing in the build reads that name at all, BOTH ARMS ARE "
+                "THE CONTROL and will agree perfectly. Check the `env: KEY="
+                "VALUE` line the app logs at startup under tag `hakuX` in each "
+                "arm's logcat before reading the numbers below."
+                % (", ".join(a.env) or "(none)", ", ".join(b.env) or "(none)"))
+        elif allow_same_binary:
             same_dev = a.device and a.device == b.device
             warn.append(
                 "SAME BINARY: " + msg + " Continuing on --allow-same-binary. "
@@ -526,6 +576,33 @@ def check_comparable(a, b, allow_same_binary=False):
     if a.ref and a.ref == b.ref:
         warn.append("both arms name ref %s; the arms differ only by build or "
                     "by run." % a.ref)
+
+    # 5b. THE ENVIRONMENT IS A SECOND INDEPENDENT VARIABLE WHEN IT IS NOT THE
+    #     FIRST. Two different refs AND two different envs is two changes, and
+    #     the delta cannot be assigned to either. Not fatal -- it is sometimes
+    #     exactly what was meant, e.g. a fix that only takes effect under a
+    #     probe -- but it must be said, because it is invisible in every
+    #     number this tool prints.
+    if a.env_recorded and b.env_recorded:
+        if a.env != b.env and a.apk != b.apk:
+            warn.append(
+                "TWO VARIABLES: the arms differ in BOTH binary and "
+                "environment.\n    A %s env %s\n    B %s env %s\nA delta "
+                "below is not attributable to either on its own."
+                % (a.apk or "?", ", ".join(a.env) or "(none)",
+                   b.apk or "?", ", ".join(b.env) or "(none)"))
+        elif a.env and a.env == b.env:
+            warn.append("both arms ran with env %s, so it is held constant "
+                        "and is not the variable here." % ", ".join(a.env))
+    elif a.env_recorded != b.env_recorded:
+        warn.append(
+            "env is recorded for only one arm (A %s, B %s). The field was "
+            "added 2026-09-14, so an older result simply predates it -- that "
+            "asymmetry is NOT evidence the environments matched, and it is "
+            "not evidence they differed either. If either arm was an --env "
+            "arm, requeue the other one rather than reading across."
+            % ("yes" if a.env_recorded else "no",
+               "yes" if b.env_recorded else "no"))
 
     # 6. A result cannot predate the commit it claims to be of.
     for arm in (a, b):

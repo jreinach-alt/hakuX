@@ -10,6 +10,28 @@
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
 #              --seconds 90 --pull 'apu_monitor.s16le48k2ch.pcm*' \
 #              --device nova --no-expect "survey, not an A/B arm"
+
+#   request.sh --who skew44 --purpose "mode 2" --title "Crimson Skies.iso" \
+#              --env HAKUX_FIFO_SKEW_BOUND=2 --seconds 120 \
+#              --expect predictions/skew44-mode2.json
+#
+# --env KEY=VALUE, repeatable, sets one environment variable in the emulator
+# for this run and this run only. It is how a runtime-selectable option becomes
+# selectable BY A QUEUED REQUEST rather than only by a person holding the
+# device: the app reads its environment from the `env_vars` pref in
+# x1box_prefs.xml (xemu_android.cpp:796) and, until this landed, nothing in the
+# dispatch path wrote that pref -- the only script that wrote any pref was
+# driver_ab.sh, by hand, for the driver override.
+#
+# What it replaces: lane.skew44 needed HAKUX_FIFO_SKEW_BOUND 0/1/2 and burnt
+# THREE BUILDS on it, one ref per mode, each a child of the tip differing by a
+# single line. That is better for provenance (three apk_shas) and worse for
+# everything else. One binary and three requests is the same experiment.
+#
+# The cost, stated because it is real: an env A/B has ONE BINARY, so both arms
+# carry the same apk_sha. ab_compare's "both arms ran APK X" refusal knows
+# about this now and says the env is the independent variable -- but a pair
+# whose envs are EQUAL is still measuring nothing, and it still refuses that.
 #
 # --device pins the request to one handheld. The dispatcher and affinity.py
 # have honoured a `device` field since the second device arrived; this is the
@@ -47,6 +69,7 @@ REF_WAS_DEFAULTED=1
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
 AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""
+ENV_VARS=()
 while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
@@ -66,6 +89,7 @@ while [ $# -gt 0 ]; do
         --audio-capture) AUDIO_CAPTURE="$2"; shift 2;;
         --base-iso) BASE_ISO="$2"; shift 2;;
         --perflog) PERFLOG=true; shift;;
+        --env) ENV_VARS+=("$2"); shift 2;;
         --expect) EXPECT="$2"; shift 2;;
         --no-expect) NO_EXPECT="$2"; shift 2;;
         --wait) WAIT=1; shift;;
@@ -680,6 +704,62 @@ if { [ -n "$ONLY_TESTS" ] || [ -n "$SKIP_TESTS" ]; } && [ "$REF_WAS_DEFAULTED" =
     echo "      carries a binary difference as well as a disc difference." >&2
 fi
 
+# --env IS VALIDATED HERE BECAUSE THE APP DROPS A BAD LINE IN SILENCE.
+#
+# xemu_android.cpp:796 splits the pref on newlines, skips any line with no `=`
+# or with `=` at position 0, and setenv()s the rest. A malformed entry
+# therefore produces a run that looks completely normal and simply does not
+# have the variable set -- which is the worst available outcome for an arm
+# whose whole point is that one variable, because the arm still produces
+# numbers and they are the other arm's numbers.
+#
+# So: refuse at queue time, in front of the person who typed it.
+#
+#   * a key must be a C identifier. `2FOO=1` and `A-B=1` are accepted by
+#     setenv on glibc but not by every shell that might later reproduce the
+#     run by hand, and an empty key is dropped by the app's own parser.
+#   * a value MUST NOT contain a newline, because the pref IS newline-
+#     separated. `FOO=a\nBAR=b` would silently become two variables.
+#   * a repeated key is refused rather than last-wins. Last-wins is a rule
+#     nobody will remember when reading a request back six hours later, and
+#     the request JSON preserves order so the reader cannot see which won.
+#
+# NOT checked, and stated rather than implied: whether the name means anything
+# to this build. There is no queue-time oracle for that -- the emulator's
+# getenv sites are not enumerable from here -- so a misspelt HAKUX_* name is
+# caught by reading the `env: KEY=VALUE` line the app logs at INFO on startup,
+# or not at all. That line is under tag `hakuX` and is in LOGCAT_SPEC, so it
+# IS on every capture; check it before trusting an env arm.
+if [ "${#ENV_VARS[@]}" -gt 0 ]; then
+    BADENV=$(python3 - "${ENV_VARS[@]}" <<'PYENV'
+import re, sys
+seen = {}
+for item in sys.argv[1:]:
+    if "\n" in item or "\r" in item:
+        print("--env %r contains a newline; the env_vars pref is newline-"
+              "separated, so this would silently become two variables." % item)
+        break
+    if "=" not in item:
+        print("--env %r has no '='; expected KEY=VALUE." % item)
+        break
+    k, v = item.split("=", 1)
+    if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", k):
+        print("--env key %r is not an identifier; expected [A-Za-z_][A-Za-z0-9_]*." % k)
+        break
+    if k in seen:
+        print("--env names %s twice (%r then %r). Refusing rather than "
+              "picking one: last-wins is invisible in the queued request."
+              % (k, seen[k], v))
+        break
+    seen[k] = v
+PYENV
+)
+    if [ -n "$BADENV" ]; then
+        echo "refusing to queue: $BADENV" >&2
+        exit 2
+    fi
+fi
+
 # A NAMED BASE ISO IS RESOLVED AND CHECKED HERE, not on the device.
 #
 # The dispatcher refuses a request whose base_iso is missing rather than
@@ -705,11 +785,15 @@ if [ -n "$BASE_ISO" ]; then
     fi
 fi
 
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" <<'PY'
+# `env` goes LAST and as the remaining argv, because it is the only repeatable
+# option here and packing it into one comma-joined string -- the shape every
+# other list option uses -- would make a value containing a comma unqueueable.
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
  pull_glob, expect, expect_sha, no_expect, skip_tests, device,
  arm_audio, base_iso, perflog, only_tests) = sys.argv[1:22]
+env_vars = sys.argv[22:]
 json.dump({"id": i, "requester": who, "purpose": purpose,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
@@ -723,6 +807,12 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "base_iso": base_iso,
            "perflog": perflog,
            "only_tests": [t.strip() for t in only_tests.split(",") if t.strip()],
+           # A LIST, not a dict, and the order is the order given. A dict would
+           # read better and would lose the one thing worth keeping: that the
+           # request is a faithful record of what was typed. Validation above
+           # has already refused duplicate keys, so the two forms carry the
+           # same information and only the list survives a round trip.
+           "env": env_vars,
            "expect": expect, "expect_sha": expect_sha,
            "no_expect": no_expect,
            "queued_utc": __import__("datetime").datetime.now(

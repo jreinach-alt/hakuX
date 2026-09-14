@@ -111,6 +111,144 @@ device_present() {
 # This is the half that helps whoever is BLOCKED. The half that stops blocking
 # them is already done on the orchestrator side -- folds happen in a separate
 # worktree now; see AGENTS.md, "The orchestrator folds in a separate worktree".
+# Put the request's `env` into the app's environment for THIS RUN, and take it
+# out again afterwards.
+#
+# WHY THIS EXISTS. The emulator reads its environment from the `env_vars` pref
+# in x1box_prefs.xml (xemu_android.cpp:796), which splits on newlines and
+# setenv()s each KEY=VALUE. Nothing in the dispatch path wrote that pref: the
+# only script that wrote any pref was driver_ab.sh, by hand, for the driver
+# override. So a runtime-selectable option was selectable by a person holding
+# the device and NOT by a queued request, and lane.skew44 paid for that in
+# builds -- three refs, each a child of the tip differing by one line of
+# pfifo.c, to reach HAKUX_FIFO_SKEW_BOUND 0/1/2. One binary and three requests
+# is the same experiment for a third of the device time and none of the
+# rebasing.
+#
+# THE DANGEROUS HALF IS THE CLEANUP, NOT THE WRITE. A pref persists across
+# runs, across installs and across reboots. An env left behind by request N
+# silently joins request N+1, and on an A/B that is the purest available form
+# of the failure this whole queue exists to prevent: arm B inherits arm A's
+# independent variable, both arms report numbers, and nothing anywhere says
+# they were not the same experiment. It has the exact shape of the stale APU
+# capture marker that armed seven Galleon soaks nobody asked for.
+#
+# So the rule is: WE CLEAN UP AFTER OURSELVES, AND ONLY AFTER OURSELVES.
+#
+#   * request HAS env -> write it, verify it read back, record it. A failure
+#     here fails the REQUEST. Running with the wrong environment would produce
+#     a full set of plausible numbers measuring the wrong thing, and an
+#     obvious failure beats a beautiful measurement of nothing.
+#   * request has NO env, and a marker says WE set one last time -> clear it.
+#   * request has NO env, and no marker -> TOUCH NOTHING. Not one adb call.
+#     This is the overwhelmingly common case, so the cost of this feature on
+#     every other request in the queue is a single json read on the host.
+#
+# The marker is why we do not simply clear the pref before every run. A human
+# sets env_vars through the Settings screen, and a dispatcher that blanked it
+# on every request would delete their setting with no trace and no warning --
+# a gate firing on correct work. We only ever remove a value we put there.
+#
+# The device write is the driver_ab.sh shape, for the same reason it uses it:
+# x1box_prefs.xml also holds the MCPX, flash and HDD paths and setup_complete,
+# and an earlier version of that script cleared a key with `rm` and dropped the
+# app into its setup wizard. Edit the one key; keep the rest byte for byte.
+env_pref_marker() { echo "$D/.env_pref.${DEVICE_LABEL:-$SERIAL}"; }
+
+# apply_env_pref <request.json> ; echoes the newline-joined env it installed
+apply_env_pref() {
+    local req="$1" marker want tmp pkg
+    pkg="${PKG:-com.jreinach.hakux.debug}"
+    marker="$(env_pref_marker)"
+    want=$(python3 - "$req" <<'PYENV'
+import json, sys
+r = json.load(open(sys.argv[1]))
+v = r.get("env") or []
+# A dict is accepted on the way IN because a request could be hand-written,
+# but it is never produced by request.sh -- see the note on the list form there.
+if isinstance(v, dict):
+    v = ["%s=%s" % (k, x) for k, x in v.items()]
+print("\n".join(str(x) for x in v))
+PYENV
+)
+    if [ -z "$want" ] && [ ! -f "$marker" ]; then
+        return 0                    # nothing asked for, nothing of ours to undo
+    fi
+    # The app must not be running while we write: SharedPreferences are cached
+    # in the process and flushed on commit, so a live process would overwrite
+    # this the moment anything else touched a pref.
+    adb -s "$SERIAL" shell am force-stop "$pkg" >/dev/null 2>&1
+    tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.xml"
+    adb -s "$SERIAL" shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
+        2>/dev/null | tr -d '\r' > "$tmp"
+    if [ ! -s "$tmp" ]; then
+        if [ -z "$want" ]; then
+            # Clearing, and we cannot read the file. Drop the marker: another
+            # run of this would loop forever trying to undo something it
+            # cannot see. Say so rather than failing a request that asked for
+            # nothing.
+            rm -f "$marker"
+            log "  WARNING: cannot read x1box_prefs.xml to clear a previous env; marker dropped"
+            return 0
+        fi
+        log "  ENV: cannot read x1box_prefs.xml (run-as failed?); refusing to guess"
+        return 1
+    fi
+    python3 - "$tmp" "$want" <<'PYENV' || return 1
+import re, sys
+path, want = sys.argv[1], sys.argv[2]
+s = open(path).read()
+if "</map>" not in s:
+    sys.exit("prefs file has no </map>; refusing to write")
+# Remove the existing key wherever it is, then re-add if wanted. Exactly the
+# _set_driver_pref.py shape, and for the same reason: every other key in this
+# file has to survive byte for byte.
+s = re.sub(r'\n?[ \t]*<string name="env_vars">.*?</string>', "", s, flags=re.S)
+if want:
+    esc = (want.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+               .replace("\n", "&#10;"))
+    s = s.replace("</map>", '    <string name="env_vars">%s</string>\n</map>' % esc)
+open(path, "w").write(s)
+PYENV
+    adb -s "$SERIAL" shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" < "$tmp"
+    # VERIFY BY READING BACK. A `cat >` over adb can truncate, and the failure
+    # mode of a silently-unwritten pref is a run that measures the other arm.
+    # Via a FILE and a quoted heredoc, not `python3 -c "..."`. The source below
+    # is full of quotes, backslashes and an `&`, and a shell string is the
+    # wrong container for any of them -- the same mistake that was running the
+    # shell over the disc_id block's comments a few hundred lines down.
+    adb -s "$SERIAL" shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
+        2>/dev/null | tr -d '\r' > "$tmp.back"
+    local back
+    back=$(python3 - "$tmp.back" <<'PYENV'
+import re, sys
+m = re.search(r'<string name="env_vars">(.*?)</string>',
+              open(sys.argv[1], errors="replace").read(), re.S)
+v = m.group(1) if m else ""
+# Unescape in the reverse of the order they were applied, or "&amp;#10;" --
+# a literal ampersand followed by that text in somebody's value -- would come
+# back as a newline.
+v = v.replace("&#10;", "\n").replace("&gt;", ">").replace("&lt;", "<")
+v = v.replace("&amp;", "&")
+sys.stdout.write(v)
+PYENV
+)
+    if [ "$back" != "$want" ]; then
+        log "  ENV: wrote env_vars but read back something else; refusing this request"
+        log "      wanted: $(printf '%s' "$want" | tr '\n' ' ')"
+        log "      got:    $(printf '%s' "$back" | tr '\n' ' ')"
+        return 1
+    fi
+    if [ -n "$want" ]; then
+        printf '%s\n' "$want" > "$marker"
+        log "  ENV: $(printf '%s' "$want" | tr '\n' ' ')"
+    else
+        rm -f "$marker"
+        log "  ENV: cleared the previous request's env_vars"
+    fi
+    return 0
+}
+
 dirty_wait_log() {
     local id="$1" now stamp prev_t prev_f fp files n secs
     now=$(date +%s)
@@ -351,6 +489,18 @@ serve_one() {
         mv "$req" "$rdir/request.json"; return 0
     }
 
+    # AFTER the install and BEFORE either run path, because both of them start
+    # the app and neither may start it with the previous request's environment
+    # still in the pref. See apply_env_pref: on a request with no `env` and no
+    # marker this costs zero adb calls.
+    local req_env=""
+    if ! apply_env_pref "$req"; then
+        echo "could not set the requested env_vars pref; see dispatcher.log" > "$rdir/ERROR"
+        log "  ENV SETUP FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
+    req_env=$(python3 -c "import json,sys;print(json.dumps(json.load(open(sys.argv[1])).get('env') or []))" "$req" 2>/dev/null || echo "[]")
+
     # A soak request runs a real title and keeps its log, instead of running a
     # test disc and scoring captures. It exists because some questions have no
     # golden framebuffer: the audio path is silent on the pgraph discs, so
@@ -371,9 +521,9 @@ serve_one() {
             AUDIO_CAPTURE_MB="$audio_capture" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         local lines; lines=$(wc -l < "$rdir/logcat.txt" 2>/dev/null || echo 0)
-        python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" <<'PYEOF'
+        python3 - "$rdir" "$sha" "$title" "$seconds" "$requester" "$purpose" "$ref" "$lines" "$req_env" <<'PYEOF'
 import json, os, sys
-rdir, sha, title, seconds, who, purpose, ref, lines = sys.argv[1:9]
+rdir, sha, title, seconds, who, purpose, ref, lines, req_env = sys.argv[1:10]
 pulled = []
 pdir = os.path.join(rdir, "pulled")
 if os.path.isdir(pdir):
@@ -398,7 +548,13 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                logcat=dict(spec=_spec, lines=int(lines)),
                device_serial=os.environ.get("SERIAL", ""),
                device_label=os.environ.get("DEVICE_LABEL", ""),
-               logcat_lines=int(lines), pulled=pulled),
+               logcat_lines=int(lines), pulled=pulled,
+               # THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH. An env A/B has one
+               # binary, so apk_sha is identical across its arms and cannot
+               # distinguish them -- this field is the only thing in the result
+               # that can. A result with no `env` key predates the feature;
+               # `env: []` means it was checked and there was none.
+               env=json.loads(req_env or "[]")),
           open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("soak done:", title, lines, "log lines")
 PYEOF
@@ -587,10 +743,19 @@ PYEOF
             --tsv "$rdir/scores$r.tsv" >>"$rdir/run$r.log" 2>&1
     done
 
+    REQ_ENV_JSON="$req_env" \
     python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" "$SNAP" <<'PYEOF'
 import csv, glob, json, os, subprocess, sys
 rdir, sha, disc, who, purpose, ref, snap = sys.argv[1:8]
 meta = dict(apk_sha=sha, disc_id=disc, requester=who, purpose=purpose, ref=ref)
+# THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH, deliberately NOT folded into
+# disc_id. disc_id says whether two runs scored the same captures, and an env
+# A/B scores exactly the same captures on purpose -- putting env in there would
+# make ab_compare refuse the one comparison this field was added to enable. It
+# is the independent variable, not part of the disc, and ab_compare reads it as
+# such. A result with no `env` key predates the feature; `env: []` means it was
+# checked and there was none.
+meta["env"] = json.loads(os.environ.get("REQ_ENV_JSON") or "[]")
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
 # The `status` column every consumer reads -- ok / label-differs /
