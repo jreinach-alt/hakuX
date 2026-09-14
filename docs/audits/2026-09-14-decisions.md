@@ -60,3 +60,41 @@ accuracy.** Pass 1 quoted it as authority and overstated M3's blast radius on
 the strength of it. The remediation caught it. That is the two-pass loop
 working, and it is an argument for correcting stale comments that is stronger
 than tidiness.
+
+## The nv2a index: who regenerates it — DECIDED, fold-time, and the gate must stop punishing lanes
+
+`lane.lows` measured the problem rather than asserting it: the committed index
+was already stale at its base by **396 entries, all `vk/draw.c`, none of them
+its own**. It arrived at a lane whose preflight then failed on drift the lane
+did not cause, and fixing it would have swept another lane's churn into its
+commit.
+
+With three lanes running concurrently, three regenerated 829 KB JSONs conflict
+at the next fold.
+
+**Decision: fold-time regeneration is the rule, and the orchestrator owns it.**
+
+That is already what happens in practice — `c58ce95249` is my own commit
+titled "my own merge moved 68 sites" — but it was practice, not policy, so
+nobody could rely on it and every lane paid for the gap.
+
+Why this way round rather than making lanes regenerate on every `hw/xbox`
+commit: the index is derived from the **whole tree**, so a lane regenerating it
+necessarily commits other lanes' churn. That is not a lane's to own, and asking
+three lanes to each produce an 829 KB JSON guarantees the conflict. One writer
+at the merge point is the only arrangement where the file has a single author
+per revision.
+
+**What must change, and it is not mine to write:** `preflight.sh`'s `nv2a
+index` gate should compare against the **fold base** rather than the tip, so a
+lane fails only on drift it introduced. Until that lands, a lane that hits this
+gate should regenerate, say so in its report, and expect the orchestrator to
+take its version — which is what `lane.lows` did, correctly. Routed to
+`lane.toolsmith`, which holds `preflight.sh`.
+
+**Separately, a false positive worth its own note.** `nv2a_index.py` scores
+"may not be" as a HEDGE gap, and it tripped on a *precise* sentence — "a
+surface that may not be the current target". The lane reworded rather than
+admit a false gap, which is the right call in the moment and the wrong one as a
+pattern: a prose-scoring gap list has a false-positive rate, and that rate is
+paid by whoever reads the list next. It belongs in `papercuts.toml`.

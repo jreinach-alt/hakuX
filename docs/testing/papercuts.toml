@@ -93,3 +93,19 @@ cost = "An agent lost a preflight pass and had to rebuild."
 bit = 1
 owner = "unassigned"
 fix = "Make `build` refuse without --support, or default it the way preflight does."
+
+[[cut]]
+id = "index-gate-punishes-lanes"
+what = "preflight's `nv2a index` gate compares against the tip, so a lane fails on drift the PREVIOUS fold introduced. The index is derived from the whole tree, so a lane fixing it sweeps another lane's churn into its commit -- and three concurrent lanes produce three conflicting 829 KB JSONs."
+cost = "lane.lows arrived to a preflight failure of 396 entries, all vk/draw.c, none of them its own. Measured, not assumed."
+bit = 1
+owner = "toolsmith"
+fix = "Compare against the FOLD BASE rather than the tip. Fold-time regeneration is now policy and the orchestrator owns it -- docs/audits/2026-09-14-decisions.md."
+
+[[cut]]
+id = "hedge-gap-false-positive"
+what = "nv2a_index.py scores `may not be` as a HEDGE gap, and it fires on precise sentences -- it tripped on `a surface that may not be the current target`, which is a statement of fact."
+cost = "A lane reworded correct prose to satisfy it. Right call in the moment, wrong as a pattern: the false-positive rate is paid by whoever reads the gap list next, and the daily DX pass reads it."
+bit = 1
+owner = "unassigned"
+fix = "Either narrow the pattern or report a confidence, so a reader can tell a hedge from a precise `may`."
