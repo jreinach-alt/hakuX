@@ -242,6 +242,55 @@ def main():
     # So a claim now has to be accompanied by an entry. This is a FAIL rather
     # than a note: it is exactly the shape of hole the script was written for,
     # and it survived the script.
+    # A BLOCKER NAMING A LANE THAT NO LONGER EXISTS.
+    #
+    # This campaign records ordering as "blocked behind lane.foo". Lanes get
+    # retired when their agent reports, and their files go back to free --
+    # and nothing re-reads the blockers that named them. The issue then sits
+    # behind a predecessor that finished, showing as covered, for as long as
+    # nobody looks.
+    #
+    # Found by hand on 2026-09-13 on #59, whose blocker named lane.signfold
+    # long after signfold retired; check_coverage's grant-request NOTE had
+    # been reporting its files as unheld, which is the same fact arriving
+    # through a different door. A sweep for the general case then turned up
+    # #13 and #44 in the same state.
+    #
+    # THE RULE IS "NAMES ONLY DEAD LANES", not "mentions a dead lane". A
+    # corrected blocker keeps its history -- #59's now reads "ORDERED BEHIND
+    # lane.signfold ... CORRECTED: the current predecessor is lane.stencil" --
+    # and flagging that would punish the fix. So an entry passes as soon as it
+    # names one live lane.
+    live_lanes = {"lane." + k for k in (terr.get("lane") or {})}
+    stale_lane = []
+    for k, v in sorted(tracker.items()):
+        if k not in live:
+            continue
+        blob = (v.get("blocked_on") or "")
+        named = set(re.findall(r"lane\.[a-z0-9_]+", blob))
+        # Two ways to be honest about a dead lane, and the second one took a
+        # second pass to see. Naming a LIVE lane says "here is the real
+        # current predecessor". Saying the word RETIRED says "there is no
+        # predecessor any more" -- which for #44 was the true answer, and the
+        # first version of this check rejected it, demanding a live lane that
+        # does not exist. A gate that only accepts one of two correct answers
+        # pushes people toward writing the wrong one.
+        acknowledged = "retired" in blob.lower()
+        if named and not (named & live_lanes) and not acknowledged:
+            stale_lane.append((k, sorted(named)))
+    if stale_lane:
+        print("FAIL: %d blocker(s) name only lanes that no longer exist:"
+              % len(stale_lane), file=sys.stderr)
+        for k, names in stale_lane:
+            print("  #%-4s %s" % (k, ", ".join(names)), file=sys.stderr)
+        print("\n  A retired lane's files went back to free, so the wall it\n"
+              "  describes is gone and the issue may be dispatchable now.\n"
+              "  Name the real current predecessor, or say the lane RETIRED\n"
+              "  and there is none. Keeping the old name as history is fine:\n"
+              "  either naming a live lane alongside it, or the word\n"
+              "  'retired', clears this.", file=sys.stderr)
+        return 1
+
     # `fixed-unlanded` IS CHECKED, NOT TAKEN ON TRUST.
     #
     # The value exists because #72 was closed on GitHub by a lane that fixed it
