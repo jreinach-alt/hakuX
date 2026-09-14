@@ -1300,3 +1300,75 @@ the cube-face projection and the `+X` face assumption — the same class of
 step that was wrong before — and the path here is a `sampler3D` lookup, not a
 cube: `tex_cubemap[3]` is false and `dim_tex[3]` is 3, both established by
 arms that moved nothing.
+
+## Derived: the table is the four corners of the +Z face, with no free parameters
+
+The odd-parity result above turns out to be the shadow of something exact.
+Reconstructing each face's texels from the generator and reading the corners:
+
+| face | seed | corner colours at (0,0) (63,0) (0,63) (63,63) |
+|---|---|---|
+| `+X` | `0x0000FF` | R B G W |
+| `-X` | `0xFF00FF` | m k c y |
+| `+Y` | `0x00FF00` | G W R B |
+| `-Y` | `0x00FFFF` | y c k m |
+| `+Z` | `0xFF0000` | B R W G |
+| `-Z` | `0xFFFF00` | c y m k |
+
+**The three positive faces offer exactly `{R, B, G, W}` at their corners and
+the three negative faces exactly `{magenta, black, cyan, yellow}`** — which
+are precisely the four colours the goldens never show. So "silicon reaches
+only odd-parity corners" and "the goldens hold no colour outside the corners
+of a positive face" are the same fact, and it now follows from the generator
+rather than being observed twice.
+
+It is a parity identity, not a coincidence. Within a face,
+
+```
+parity(displayed) = ((x/2 + y/2) + x + y) mod 2   XOR   parity(seed)
+```
+
+and `parity(seed)` is **1 for +X, +Y, +Z and 0 for -X, -Y, -Z**. All four
+face corners have the positional term `0`, so on a positive face every corner
+is odd and on a negative face every corner is even.
+
+### And one assignment reproduces the measured table exactly
+
+Searching every (face, axis-swap, axis-flip) assignment of the sign class
+`(sign(dot_1), sign(dot_2))` onto a corner position, against the measured
+table `R, B, W, G`:
+
+| texture read as | faces with corners `{R,B,G,W}` | assignments reproducing `R B W G` |
+|---|---|---|
+| A8R8G8B8 | +X, +Y, +Z | **0** |
+| A8B8G8R8 | +X, +Y, +Z | **3** — `+X` with flip_x, `+Y` with flip_x+flip_y, **`+Z` with nothing** |
+
+**The guest's format is `NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8B8G8R8`**, read
+from `TextureCubemapTests::Initialize()` where stage 3 is configured. That is
+not inferred from the fit — it is the second column's premise, verified
+independently, and it is the column in which a fit exists at all.
+
+Of the three, **`+Z` is the only zero-parameter one**: `(s1, s2)` maps
+straight to `(x, y)`, no swap, no flips. The other two need flips, which are
+free parameters fitted to the answer.
+
+So the measured sign-to-corner table is exactly *"fetch the corner
+`(s1 ? 63 : 0, s2 ? 63 : 0)` of the `+Z` slice"*, and this route never passes
+through the cube-face projection that the earlier correction died on.
+
+### What this does not yet give, and one discrepancy it exposes
+
+It does **not** give a GLSL coordinate. Going from "corner `(x,y)` of the +Z
+slice" to a `vec3` for `texture(sampler3D, ...)` needs the volume layout —
+the faces are written `+X, -X, +Y, -Y, +Z, -Z` in six stacked 64×64 slices,
+so +Z is slice index 4 of 6 and its centre is `(4 + 0.5) / 6`. That step is
+its own registration.
+
+And it exposes something worth a separate look: the guest calls
+**`stage.SetCubemapEnable()` on stage 3**, in the same block that sets the
+format. Our state has `tex_cubemap[3]` **false** — established by the arm
+that returned `samplerCube` when the flag is set and moved 0 captures. Those
+are both true only if we are not decoding the guest's cubemap-enable for this
+stage, or if something downstream clears it. The earlier arm established what
+*our* state holds; it did not establish what the *guest asked for*, and the
+guest asked for a cubemap.
