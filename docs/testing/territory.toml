@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 56
-updated_utc = "2026-09-14T00:10:00Z"
+wave = 57
+updated_utc = "2026-09-14T12:05:00Z"
 
 
 
@@ -62,6 +62,12 @@ note = "STANDING LANE, not a task lane. It owns the instruments for as long as t
 issues = []
 files = []
 note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. Claims no files: an auditor does not fix what it finds. The reason this is a pass rather than a fold: the diff carries target/i386/tcg/fpu_helper.c at +151 lines -- guest FPU reaching every title -- and I folded exactly that category unaudited once tonight (#73's fix, 2af6def68a), after which an audit found a HIGH in the surrounding code that was reachable from the DMA thread. The 53-commit fold-in before it also went in unaudited. Twice is a pattern and the protocol exists because of it. NOT urgent for durability: the work is already pushed to origin on lane.remote's own branch, so folding buys visibility on this board and the audit findings I routed (M2/#74, M4/#80) landing here -- neither of which is worth repeating the mistake for."
+
+
+[lane.depth52z16]
+issues = ["52"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c"]
+note = "#52's LAST OPEN CELL: z16 float, 1,436 px, every one of them ONE ULP. The status note already establishes what it is NOT -- not a float-encoding defect (packing is RGB565, verified on 199,065,600 channel samples with 0 lattice violations), not structural (0 px differ in the 63,488-px grid covering every F16 exponent 0-15), and not the colour residual (that is #38's Gouraud interpolator, byte-identical histograms between the bit-exact z16 cell and the one-unit-out z24 one). What is left is the bottom quad's sub-ULP interpolation shortfall -- cell 2's barycentric-normalisation +-1 family at 1/30th the size. Cell 2 was closed in this same file by 91b0897e01 ('the depth floor cannot depend on fma() being fused'), PRE-REGISTERED PASS on all 72 checks, 72,138 -> 43,690 px. So the precedent, the mechanism and the tool all exist. NOT IN SCOPE: z24 float's 12,816 px is a MEASURED FLOOR, priced and deliberately left -- do not spend the arm on it. psh.c released by retiring lane.lows."
 
 [free]
 # accel/tcg/{tb-maint,translate-all,cpu-exec}.c came back at wave 46 when
@@ -111,7 +117,6 @@ note = "AUDIT PASS 1 over lane.remote's 24 unfolded commits, BEFORE they fold. C
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
          "hw/xbox/nv2a/pgraph/profile.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/nv2a/pgraph/vk/draw.c",
