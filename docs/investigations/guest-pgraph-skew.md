@@ -2325,6 +2325,46 @@ section sets out.
 
 ## UNRESOLVED
 
+- ~~**#54's read-side frequency on a real title.**~~ **MEASURED 2026-09-14,
+  and it relocates the target.** Galleon, 6 runs, 4 refs, both devices:
+  `Vr` = **55 / 1,009,270 = 5.45e-05** per instrumented guest read, all of it
+  at the **vertex** site; `Tr` = **0 / 56,131** uploads over 4,374,420 draw
+  windows (≤ 5.35e-05, one-sided 95%); `Xd` = 0 throughout. The texture-side
+  zero is **exposure, not ordering** — `tex_uploads/tex_windows` is 0.0128 on
+  Galleon against 0.80 on Crimson, a 63x gap the race rate follows — so it is
+  a different zero from the barrier arm's and neither is evidence for the
+  other. The mode-0/mode-2 pair takes the vertex race 20/270,080 → 0/177,501,
+  Fisher two-sided **p = 0.000082**, which is #79's result on a title instead
+  of a disc. What is open is the **attribution**: a rate is not an artefact,
+  and nothing ties Galleon's 55 torn vertex reads to a visible defect.
+- **The probe cannot be read off a short disc, at all.** `profile.c:479` gates
+  `nv2a_profile_get_pacing_str` — the counters' only output channel — on
+  `(frame_count % 60) == 0` in the flip handler, so a 16-capture Stencil disc
+  emits **0 pacing lines of 40 `hakuX-perf` lines** and the totals are
+  unreadable whatever they counted. That silently voids the probe on most of
+  the corpus, and an absent `Vr:` reads exactly like "no races". One line
+  fixes it — emit on a time interval as well as a flip count, or flush the
+  totals at teardown — in `profile.c`, which no lane currently holds.
+- **Where #79's vertex skew actually reads guest memory.** Only one of the
+  three vertex paths reads guest memory at draw time (`draw_arrays` /
+  `inline_elements` → `sync_vertex_ram_buffer`, which is what `Vr` counts);
+  `inline_buffer` and `inline_array` carry the values as pushbuffer method
+  parameters into pgraph-owned state (`pgraph.c:4258`) with no read left at
+  the draw. Which one the Stencil suite uses is **not resolvable on this
+  machine**: `stencil_tests.cpp` calls `host_.DrawArrays()` and
+  `TestHost::DrawArrays` lives in `third_party/pbkitplusplus`, which is not
+  checked out. If it is an inline path, the only guest read in those vertices'
+  journey is the pusher's read of the pushbuffer word in `pfifo.c`, which no
+  existing counter can see because the pushbuffer is not covered by
+  `DIRTY_MEMORY_NV2A` logging — a hypothesis, with the 63.98 MiB ring and an
+  8.65 ms publish-to-consumed p50 arguing against it.
+- **The other half of #79's tip-ref repeat.** Arm A is done incidentally:
+  two runs of one apk at `1dee9e25f6` on the thor gave 16 of 16 exact and 13
+  of 16, moving `Stencil_REPLACE_ST_DT` and its `_ZB` twin by 30,000 and
+  `Stencil_ZERO_DT` by 40,000 — the same captures and the same round values
+  #79 recorded, so **the defect is live at mainline**. Whether
+  `XEMU_OPT_FIFO_SKEW_BOUND=1` still removes it at the tip is unrun, and it is
+  the precondition #44's shipping decision names.
 - ~~**What the skew actually is.**~~ **MEASURED 2026-09-13**: a 63.98 MiB
   ring, 100.0% of 148,667 submissions made with PGRAPH behind, and a
   publish-to-consumed latency with a p50 of 8.65 ms, a p90 of ≥34.9 ms and a
