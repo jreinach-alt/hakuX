@@ -542,6 +542,47 @@ static bool pgraph_vk_blend_stamps_pad_alpha(uint32_t effective_blend_reg)
            PSH_PAD_ALPHA_NONE;
 }
 
+/*
+ * THE CLEAR STAMPS THE PAD CONSTANT TOO, AND THAT IS MEASURED RATHER THAN
+ * ASSUMED. #59.
+ *
+ * The investigation left this as its least certain point -- whether hardware's
+ * CLEAR_SURFACE writes the format's pad constant the way the raster does, or
+ * memsets the clear value's own top byte. `Clear::TestSurfaceFmt` settles it
+ * and needed no device: it CLEARS a 128x128 surface to each of six clear
+ * colours, draws only a 4x4 black centre mark, and then samples the whole
+ * surface through an LU_IMAGE_A8B8G8R8 stage with the final combiner taking
+ * alpha from TEX0 -- so the displayed alpha over the cleared area IS the pad
+ * byte. In the goldens:
+ *
+ *   SCF_X8R8G8B8_O8R8G8B8 vs _Z8R8G8B8   98,342 px differ, RGB IDENTICAL,
+ *                                        alpha 255 against 0, 16,368 px per
+ *                                        clear colour across all six
+ *   SCF_X1R5G5B5_O1R5G5B5 vs _Z1R5G5B5   49,274 px, every difference exactly
+ *                                        +128 in the byte carrying bit 15 of
+ *                                        a 1555 word
+ *
+ * The clear values are arbitrary and the difference is the SAME constant for
+ * all of them, which is what refutes the memset reading: under it the two
+ * variants would hold identical bytes and the goldens would agree.
+ *
+ * pgraph_get_clear_color() hands every pad format alpha 1.0, which is right
+ * for an O surface by coincidence and wrong for a Z one. It is fixed here
+ * rather than there because pgraph.c is shared with the GL renderer, whose
+ * readback half of #48 was never wired up, so changing it there would be a
+ * half-change on a renderer this arm does not measure.
+ */
+static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
+{
+    pgraph_get_clear_color(pg, rgba);
+
+    switch (pgraph_glsl_surface_pad_alpha_mode(pg->surface_shape.color_format)) {
+    case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
+    case PSH_PAD_ALPHA_ONE:  rgba[3] = 1.0f; break;
+    default: break;
+    }
+}
+
 static void vaf_stats_log_and_reset(void)
 {
     static int vaf_frame = 0;
@@ -6413,7 +6454,7 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
                     .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                     .colorAttachment = 0,
                 };
-                pgraph_get_clear_color(
+                pgraph_vk_get_clear_color(
                     pg,
                     clear_attachments[num_attachments].clearValue.color.float32);
                 num_attachments++;
@@ -6503,12 +6544,12 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
                 .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
                 .colorAttachment = 0,
             };
-            pgraph_get_clear_color(
+            pgraph_vk_get_clear_color(
                 pg, attachments[num_attachments].clearValue.color.float32);
             num_attachments++;
         } else {
             float blend_constants[4];
-            pgraph_get_clear_color(pg, blend_constants);
+            pgraph_vk_get_clear_color(pg, blend_constants);
             vkCmdSetScissor(r->command_buffer, 0, 1, &clear_rect.rect);
             vkCmdSetBlendConstants(r->command_buffer, blend_constants);
             vkCmdDraw(r->command_buffer, 3, 1, 0, 0);
