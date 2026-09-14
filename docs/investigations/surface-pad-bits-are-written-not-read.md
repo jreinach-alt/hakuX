@@ -225,13 +225,59 @@ we store at 8-bit precision, so forcing the pad bit without the 7-bit
 requantisation `constants.h` already measured would be half a fix. Hold them at
 today's values.
 
-## Least certain point
+## The clear stamps it too -- SETTLED, and the instrument was already in the corpus
 
-Whether the **clear** stamps the pad constant on hardware. The draw side is
-settled by the 5551 goldens' green `+128`; the clear side is an inference from
-`Blend_surface`'s `DstAlpha_X_O1RGB5`, where the golden's `(255,255,255,255)`
-top half covers area that the clear wrote and the geometry may or may not have
-covered as well. If the clear does *not* stamp it, that suite regresses exactly
-where #59 arm 2 repaired it, and the capture that would say so before anything
-is built is a region comparison between `DstAlpha_X_O1RGB5`'s golden and the
-`0xFF555555` clear colour outside the swatch rectangles.
+This section used to read "Least certain point: whether the **clear** stamps
+the pad constant on hardware", and proposed inferring it from
+`Blend_surface/DstAlpha_X_O1RGB5`, where the answer would have been ambiguous
+because that suite draws a full-surface background quad and so has no
+clear-only region at all.
+
+The decisive test was one suite away. **`Clear::TestSurfaceFmt` clears a
+128x128 surface to each of six clear colours, draws only a 4x4 black centre
+mark, and samples the whole surface back** through an `LU_IMAGE_A8B8G8R8`
+stage with `SetFinalCombiner1Just(SRC_TEX0, true)` -- alpha taken from TEX0.
+So the displayed alpha over the cleared area **is** the pad byte, over an area
+the geometry provably never touched, and the two variants' guest code differs
+only in the format register.
+
+In the **goldens**:
+
+| golden pair | differing px | what differs |
+|---|---:|---|
+| `SCF_X8R8G8B8_O8R8G8B8` vs `_Z8R8G8B8` | 98,342 | **RGB bit-identical**, alpha 255 against 0, 16,368 px per clear colour across all six |
+| `SCF_X1R5G5B5_O1R5G5B5` vs `_Z1R5G5B5` | 49,274 | every difference exactly **+128** in the byte carrying bit 15 of a 1555 word |
+
+The clear values are arbitrary and the difference is the **same constant for
+all six**, which is what refutes the memset reading outright: under it the two
+variants hold identical bytes and the goldens would agree.
+
+> **The clear writes the format's pad constant, exactly as the raster does.**
+
+**And our own output already said so, in the open.** Measured on the #59
+baseline arm at `23be8223f5` (`1789359225-padwrite59-base-1009294`, thor):
+
+    Clear/SFC_X1R5G5B5_Z1R5G5B5   49,152 px   R and B BIT-IDENTICAL
+                                              green 49,152 px at max delta 128
+                                              alpha 49,104 px
+    Clear/SCF_X1R5G5B5_O1R5G5B5        0 px   bit-exact
+
+`pgraph_get_clear_color()` hands **every** pad format alpha 1.0. That is the O
+constant by coincidence -- which is why the O twin is bit-exact and has been
+all along -- and the wrong constant for Z, which is the whole of that 49,152.
+It is the same green `+128` signature the draw side was derived from, in a
+capture no draw reaches.
+
+**A fourth Z-passes-by-luck, and this one is the O passing by luck instead.**
+Worth naming because the pattern in this issue has been Z coinciding with the
+truth; here it is O.
+
+**The 4-byte pair is not a second instance of this, and the difference is worth
+recording.** `Clear/SCF_X8R8G8B8_{Z,O}8R8G8B8` both sit at 81,840 px against
+their goldens with **zero differing alpha pixels in either** -- their stride
+matches the sampling stage's, so #48's readback swizzle was firing there and
+delivering the right alpha for the wrong reason. Their entire residual is RGB,
+max delta 158/159/204, an unrelated clear-colour defect. So removing the
+readback without fixing the clear makes the **Z** member of that pair worse and
+leaves the O member alone, which is exactly the half-done shape this issue has
+carried as "two of four would regress eight bit-exact captures".
