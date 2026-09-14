@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 27
+wave = 28
 updated_utc = "2026-09-14T00:10:00Z"
 
 
@@ -41,6 +41,13 @@ files = ["hw/xbox/nv2a/pgraph/gl/*.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
 note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
 
 
+
+[lane.stencil]
+issues = ["79"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c",
+         "hw/xbox/nv2a/pgraph/vk/draw.c",
+         "hw/xbox/nv2a/pgraph/vk/command.c"]
+note = "#79 reclassified harness -> defect: for every one of the nine unstable Stencil captures the MAJORITY image is golden-exact and the outliers are wrong, so this is an intermittent CORRECTNESS defect, ~8.6% of Stencil captures per run. Signature is sharp and is what this lane is for: every deviation is one WHOLE REGION going from exactly one colour to exactly one other, inside the same 200x200 quad at x220..419 y140..339 or a concentric part; red<->green means the stencil COMPARISON RESULT flipped, not the shading; and Stencil_REPLACE_ST_ZB reads (255,255,1) -> (255,255,0), which in the _ZB packing (z24 = A<<16|R<<8|G, stencil = B) is the stencil buffer holding 1 in the correct image and 0 in the wrong one over 5,050 px with depth identical. Tables in docs/investigations/stencil-is-intermittently-wrong.md. NOT a diagnosis: no code has been read. Adjacent family the remote lane measured is Surface_pitch::Swizzle varying up to 2,341 px while scoring 14,848 every time, because Pushbuffer::End() does not wait for the GPU and the guest rewrites a shared buffer under a queued draw. gl/*.c is lane.remote's and is NOT in this claim."
 
 [free]
 # RELEASED by retiring lane.pacing, lane.writetrack and lane.blendstack, whose
@@ -65,11 +72,8 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/s3tc.c",
          "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
-         "hw/xbox/nv2a/pgraph/vk/command.c",
-         "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/vk/renderer.h",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-         "hw/xbox/nv2a/pgraph/vk/surface.c",
          "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]
