@@ -128,13 +128,34 @@ echo "warning scope : $COMPILES of $OBJS objects compiled -- warnings cover ONLY
 # Compare with a previous gate's log by file+MESSAGE, never file:line -- a
 # function inserted upstream shifts every later line, so the same warning reads
 # as one removal plus one addition. ac829cd8 -> 08b4219a scored 30 gone / 27 new
-# by line; by file+message it is 3 removals and 0 additions.
+# by line; by file+message over the files BOTH runs compiled it is 1 removal and
+# 0 additions. Keying alone is not enough -- see the intersection below.
 if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
     keyed() { grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning: .*' "$1" \
         | sed 's|^\.\./||; s|:[0-9]*:[0-9]*: warning: |  ::  |' | sort -u; }
-    echo "--- real warning delta vs $(basename "$PREV_LOG") (line drift removed) ---"
-    echo "removed:"; comm -23 <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/^/  /'
-    echo "added:";   comm -13 <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/^/  /'
+    objs()  { grep -oE 'Compiling C object [^ ]+' "$1" | sed 's/.*object //' | sort -u; }
+
+    # Only files COMPILED IN BOTH runs can be compared. Otherwise a warning
+    # missing from one side may just not have been rebuilt: gating HEAD after a
+    # 4-object incremental against a 79-object log reports 63 "removed", none of
+    # which was fixed. meson names an object by replacing '/' with '_', so a
+    # source path maps to its object that way -- preceded by '/' after the '.p/'
+    # directory, or by '_' inside the name, hence the [/_] anchor.
+    objs "$PREV_LOG" > "$OUT/.objs_prev"; objs "$LOG" > "$OUT/.objs_this"
+    cat <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/  ::.*//' | sort -u \
+    | while read -r src; do
+        m=$(printf '%s' "$src" | tr '/' '_')
+        grep -qE "[/_]${m}\.o$" "$OUT/.objs_prev" \
+            && grep -qE "[/_]${m}\.o$" "$OUT/.objs_this" \
+            && printf '%s\n' "$src"
+      done > "$OUT/.common_src"
+
+    incommon() { grep -Ff "$OUT/.common_src" <(keyed "$1") 2>/dev/null | sort -u; }
+    echo "--- real warning delta vs $(basename "$PREV_LOG") ---"
+    echo "keyed on file+message (line drift removed), restricted to the" \
+         "$(wc -l < "$OUT/.common_src") warning-carrying files compiled in BOTH runs"
+    echo "removed:"; comm -23 <(incommon "$PREV_LOG") <(incommon "$LOG") | sed 's/^/  /'
+    echo "added:";   comm -13 <(incommon "$PREV_LOG") <(incommon "$LOG") | sed 's/^/  /'
     echo "(end)"
 fi
 
