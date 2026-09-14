@@ -2710,6 +2710,54 @@ static MString* psh_convert(struct PixelShader *ps)
                  * than a shape. The 20,736 (42.0%) with a subnormal span are
                  * untouched by construction, as are the 705 in other quad
                  * rows and 2,024 outside the quad bodies.
+                 *
+                 * THE z16 FLOAT CELL IS A FLOOR, AND CLOSING IT WOULD MAKE IT
+                 * WORSE -- so do not "improve" the arithmetic below for it.
+                 * #52's last open cell is the 1,436 px of the 18
+                 * `DepthFmt_z16_C{n,y}_FZy_*_ZB` captures, and none of it is
+                 * ours. Measured on `1789379943-orchestrator-3500483` (ref
+                 * af1e028fa9, disc `2-suites:93b0fb71`, this file
+                 * byte-identical between that ref and HEAD) with
+                 * depth_exact_floor_float.py, which builds the exact-rational
+                 * floor onto the F16 lattice from the test's own geometry and
+                 * never looks at either capture:
+                 *
+                 *     ours - gold     1,436 px   the cell, as score_sweep sees
+                 *     ours - oracle     604 px   our distance from exact
+                 *     gold - oracle   2,040 px   silicon's distance from exact
+                 *
+                 * and, per pixel: on all 1,436 differing px ours IS the exact
+                 * floor and silicon sits one ULP BELOW it (1,436 below, 0
+                 * above); our own 604 off-floor px are a strict subset of
+                 * silicon's 2,040 -- zero pixels where we are off and silicon
+                 * is on -- and on every one of them we already hold silicon's
+                 * word, which is why they are invisible to the score. So
+                 * making this path exact does not shrink the cell, it grows
+                 * it to 2,040. Reaching zero would mean reproducing silicon's
+                 * shortfall, i.e. introducing error, and z16 FIXED is
+                 * bit-exact on all 18 of its captures through this same
+                 * interpolation -- there is no precision to give up here that
+                 * cell 1 does not immediately pay for.
+                 *
+                 * The legs could have failed and did not: nothing in the
+                 * oracle forces the subset relation or the one-sidedness, both
+                 * are properties of the goldens. And the instrument is not
+                 * blind -- the same oracle on the pre-a1fe59400e capture
+                 * (`1789240604b-depth-baseline`, ref 907869b4c1) reports 4,002
+                 * px off the floor at max 4,094, the subnormal-grid defect the
+                 * scaling above fixed. 23 of the 24 runs on disk carrying this
+                 * capture are byte-identical on it, over ~17 refs and 7 disc
+                 * compositions, the whole cell-2 chain 5e612529b9 ->
+                 * 8620d88c17 -> 91b0897e01 included: that work moved this cell
+                 * by zero pixels because it does not reach it, not because it
+                 * swapped one wrong value for another -- armA against armB is
+                 * 0 px differing on all 18 captures.
+                 *
+                 * Whether silicon's missing ULP is a narrower interpolator or
+                 * a narrower encode stays undecidable on this suite, which has
+                 * no primitive of constant depth; the classification does not
+                 * depend on it, because either way our pixels are already on
+                 * the exact floor.
                  * Issue #16, #52.
                  */
                 "bool zsub = max(abs(zd1), abs(zd2)) >= uintBitsToFloat(0x00800000u)\n"
