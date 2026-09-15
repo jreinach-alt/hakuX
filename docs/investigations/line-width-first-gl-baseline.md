@@ -218,3 +218,25 @@ Nothing here licenses touching it.
 
 Rows at w >= 13 on the x=265 edge, and w >= 56 on x=160, are merged runs where
 the edge has met a neighbour; they are excluded above rather than read as widths.
+
+
+---
+
+## Thickness is correct at every angle, so the angle reading is doubtful too
+
+The section above concludes from vertical edges that thickness is exact at 90
+degrees and infers, from the frame-wide total still being ~0.9x, that "the angle
+dependence is back". Measured directly
+(`predictions/2026-09-15-line-width-square-pen.md`): thickness is **1.000 of the
+golden's** at 3.3, 10.1, 19.6 and 77.7 degrees, at widths 4 and 8, on every
+segment where the instrument's control passes.
+
+So there is no angle dependence in the thickness, and that inference is
+withdrawn. It was drawn from a frame-wide aggregate -- the same mistake as
+before, one level down.
+
+The surviving candidate is **line joins**, from the contaminated rows: where two
+wide segments meet, the golden reads far wider than ours and our own thickness
+dips BELOW the requested width, which is what a notch looks like. A candidate,
+not a finding -- it rests on readings whose whole point is that they cannot be
+trusted, and it needs its own instrument, control and registered prediction.
