@@ -161,3 +161,45 @@ standing rule for `Surface_pitch::Swizzle` and is now general.
 `Texture_anisotropy` (4 captures, 66,278 each, resolving to `gl/texture.c` and
 `gl/renderer.c`) is the one high-ranked candidate that is both unexplored and
 **in lane**. That is the next target, and its first step is a second run.
+
+## Addendum (same day): the unresolved rows, resolved
+
+`Texture_anisotropy` closed as the host's filter
+(`anisotropy-is-the-hosts-filter-not-ours.md`), and I wrote there that the lane
+had "nothing unblocked at the top of the ranking" with fix-site resolution as
+the next step. That step has now run, and it changes the conclusion — recorded
+here rather than left standing as written.
+
+| suite | per capture | n | where a fix would live | in lane? |
+|---|---:|---:|---|---|
+| `Blend_surface` | 114,378 | 32 | `gl/surface.c`, `gl/constants.h`, `pgraph.c` | **partly** |
+| `Texture_DXT` | 74,579 | 15 | `s3tc.c` (the decoder), `gl/texture.c`, `gl/renderer.c` | **partly** |
+| `Bump_env_lum` | 56,710 | 40 | `glsl/psh.c` **only** | no — **seventh** claimant |
+| `Color_mask_blend` | 55,386 | 1 | `pgraph.c` **only** | no |
+| `Texture_format` | 54,791 | 40 | `gl/texture.c`, `gl/surface.c`, `glsl/psh.c` | **partly** |
+| `Surface_format` | 52,029 | 10 | `gl/surface.c`, `glsl/common.c` | **yes** |
+| `Attrib_float` | 50,893 | 12 | `gl/vertex.c`, `pgraph.c`, `vertex.c` | **partly** |
+
+**So the lane is not out of work.** Five of the seven touch files this lane
+holds. `Surface_format` is the only one resolving *entirely* inside the lane
+(`gl/surface.c` + `glsl/common.c`, both mine).
+
+`Blend_surface` is the largest and looks the most tractable: its captures are
+blend factor × surface colour format, and the formats include
+`X1A7R8G8B8_O1A7R8G8B8`, `X1A7R8G8B8_Z1A7R8G8B8` and `X1R5G5B5_O1R5G5B5` — the
+variants where the top bit is forced to one or zero. Whether we synthesise that
+alpha the way hardware does is a `gl/surface.c` question.
+
+Both are subject to the run-twice rule before anything is attributed, and to
+resolving the *specific* line before baselining — `gl/constants.h`'s format
+table is **not** in this lane even though `gl/surface.c` is, so a fix that turns
+out to live in the table is blocked the same way `Depth_buffer_fixed_function`
+is.
+
+**A methodological note on this addendum.** Three of the four resolution greps
+came back empty at first because I wrote `'dxt\|DXT'` under `grep -E`, where
+`\|` is a literal pipe rather than alternation. Empty output read as "no
+consumer", which is the same shape of mistake as the earlier `w_buffer` matching
+`draw_buffers` — in one direction a filter invents a match, in the other it
+hides every one. **An empty grep result is a claim and needs the same suspicion
+as a surprising positive.**
