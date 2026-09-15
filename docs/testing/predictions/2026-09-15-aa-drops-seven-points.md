@@ -152,3 +152,51 @@ screen-x parity of the dropped set is not clean (six odd, one even against a
 mixed surviving set) -- though screen x is the wrong space to test it in, which
 is itself a reason the test has to be built rather than eyeballed. Registering
 it here so the next measurement has something to falsify.
+
+## Follow-up: final-screen-x parity is NOT the discriminator, but position IS
+
+All twelve points isolated by a 5x5 neighbourhood test, with coordinate parity:
+
+| coord | x%2 | y%2 | vertex | AA arm |
+|---|---:|---:|---|---|
+| (121, 113) | 1 | 1 | v0 `kLeft` ZFront | **dropped** |
+| (519, 113) | 1 | 1 | v1 `kRight` ZFront | survived |
+| (447, 149) | 1 | 1 | v7 `1.75,1.25` ZFront | **dropped** |
+| (121, 168) | 1 | 0 | v8 `kLeft` ZFront | **dropped** |
+| (175, 168) | 1 | 0 | v2 `-2,1` ZFront | survived |
+| (248, 204) | **0** | 0 | v5 `-1.5,0.75` ZBack | **dropped** |
+| (392, 216) | **0** | 0 | v4 `1.5,0.5` ZBack | survived |
+| (519, 222) | 1 | 0 | v6 `kRight` ZFront | survived |
+| (417, 240) | 1 | 0 | v3 `2,0` ZBack | **dropped** |
+| (121, 312) | 1 | 0 | v9 `kLeft` ZFront | **dropped** |
+| (187, 324) | 1 | 0 | v10 `kLeft` ZBack | survived |
+| (453, 324) | 1 | 0 | v11 `kRight` ZBack | **dropped** |
+
+**Both sets contain odd and even x**, so the parity of the final screen x is not
+the rule. That was the wrong space to test in, as this file already said it
+would be -- the composited screen x is downstream of the resolve.
+
+**But the outcome is a deterministic function of the projected x**, and that is
+new:
+
+- The three vertices at `kLeft` with `ZFront` -- v0, v8, v9 -- share one
+  projected x (121) and **all three drop**.
+- The two at `kRight` with `ZFront` -- v1, v6 -- share x=519 and **both
+  survive**.
+- At y=113 one drops (x=121) and one survives (x=519); at y=168, x=121 drops and
+  x=175 survives; at y=324, x=453 drops and x=187 survives. **So y is not it,
+  and within a row x decides.**
+
+Same x, same outcome, every time. Whatever rejects these points reads the
+horizontal position and nothing else that varies here -- not depth (v4 and v5
+are both ZBack and split), not colour, not row.
+
+**This is consistent with the column candidate and does not establish it.** A
+rule keyed on the AA-column index would look exactly like this, but so would
+several others, and the AA-column index cannot be computed from the composited
+image because the sub-pixel positions are not recoverable from it. Testing it
+properly needs the projected coordinates, which means instrumenting the
+transform -- and the transform is `glsl/vsh.c:643`, which is **not this lane's**.
+
+Recorded as the state of the evidence: the discriminator is horizontal position,
+the mechanism is not established, and the next step lies outside this lane.
