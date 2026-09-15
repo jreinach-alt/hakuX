@@ -133,4 +133,34 @@ this lane and cannot be finished inside it without a grant.
 
 Nothing is edited here.
 
+## The Points arm, followed up: we drop 7 of the 12 points
+
+Every one of the 7 differing pixels is a **completely isolated single pixel** --
+nothing within +/-5 columns or +/-3 rows in either image -- where we render
+background and the hardware renders a point. `Test()` dispatches
+`PRIMITIVE_POINTS` to `CreateLines()`, so the points are the 12 line vertices,
+and matching by diffuse colour names them: **v0, v3, v5, v7, v8, v9 and v11 are
+dropped; v1, v2, v4, v6 and v10 survive.**
+
+Depth does not explain it: v4 and v5 are both at `kZBack` and only v5 is
+dropped.
+
+**The drop is specific to point rasterisation.** `Points-ls` is a pure loss --
+**0 ours-only pixels against 7 gold-only** -- while every line capture in the AA
+arm is balanced (146/153, 240/223, 297/279), which is displacement. Dropping a
+vertex would delete the segments touching it and show a one-sided gold-only
+excess; nothing of the sort appears. That disfavours the depth test, clipping in
+the doubled-width space, and a mis-doubled scissor -- **the last two being the
+candidates that live in this lane's files.**
+
+Full ledger, and the surviving candidate, in
+`predictions/2026-09-15-aa-drops-seven-points.md`.
+
+### And the AA arm is a three-way confound
+
+`three_d_primitive_tests.cpp:936` changes three things at once: the
+`AA_CENTER_CORNER_2` mode, the depth format (`SZF_Z16`), and rendering into
+texture memory at double pitch with a later resolve. Calling the arm "AA" is
+shorthand, and any mechanism has to say which of the three it blames.
+
 `docs/testing/suite_residual_pivot.py` reproduces every table above.
