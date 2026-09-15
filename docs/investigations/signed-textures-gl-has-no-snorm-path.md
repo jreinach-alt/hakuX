@@ -108,6 +108,48 @@ counterparts in both backends. `txt_A8R8G8B8_ADD` differing at all is **not**
 explained by that and is not explained here either -- plain `ADD` was within
 +/-2 throughout `Blend_tests`. Unmeasured.
 
+## The +/-1 floor and the 55% shortfall are ONE defect
+
+`vk/texture.c:92-100` documents why the conversion has to happen **in the
+sampler, before filtering**:
+
+> the bump maps hold 0x7f and 0x80 in adjacent quadrants, which are neighbouring
+> values unsigned but +127 and -128 signed. Interpolating unsigned and
+> converting afterwards **saturates to +/-1 at every boundary instead of
+> sweeping through zero**.
+
+That is exactly the floor measured above: every mask containing signed alpha
+differs by **exactly one step, maximum 1**, on 1,904 to 5,748 channels. The
+comment predicts that artefact for a post-fetch conversion, and GL does the
+conversion post-fetch.
+
+So this closes a question left open earlier in this document. **The one-step
+floor and the all-four shortfall are the same root cause** -- GL applying
+signedness after the fetch instead of in the sampler. The floor is that
+approach's documented saturation artefact; the 55% shortfall is the same
+approach failing outright when there is no partial set to fix up.
+
+## Why GL cannot simply copy the Vulkan fix
+
+`TextureShape` (`texture.h`) carries `cubemap, dimensionality, color_format,
+levels, width/height/depth, border, mipmap levels, pitch` -- **and no
+signedness**. The GL texture cache is keyed on that shape, and the filter
+register is applied afterwards as *sampler* state (`gl/texture.c:546-580`:
+min/mag filter, LOD bias). That is correct for filter modes and wrong for
+signedness, because signedness needs a **different uploaded image**.
+
+Vulkan solved it structurally: `TextureKey` (`vk/renderer.h:709-720`) embeds
+`uint32_t filter`, so, in its own words, *"a texture bound with different
+signedness gets its own cache entry and its own image"*, and `vk/texture.c:612`
+picks the SNORM format at upload.
+
+**A GL fix needs the same move** -- the signed bits into the GL texture cache
+key -- not a local override at the `glTexImage2D` site. The upload site does
+hold `tex_ifmt` in a local that Android already overrides
+(`android_prepare_tex_upload`), so the override itself is easy; **the cache key
+is the real work**, and without it a texture uploaded unsigned would be reused
+for a signed binding.
+
 ## Ownership
 
 **`gl/texture.c` is `[lane.remote]`** -- this is the first defect in five suites
@@ -122,11 +164,12 @@ Nothing is edited here.
 
 ## Not established
 
-- That an SNORM upload is the right fix for GL rather than an extension of the
-  shader path. Vulkan's comment says the sampler can only sign the whole texel;
-  whether desktop GL and GLES have the same constraint is unchecked.
+- Whether desktop GL and GLES both offer the needed SNORM internal formats.
+  `GL_RGBA8_SNORM` is core in GL 3.1+ and GLES 3.0+, but that is read from the
+  specification, not verified against this renderer's context.
 - Why `txt_A8R8G8B8_ADD` differs.
-- Whether the one-step floor on signed alpha shares a cause with the 0x000F
-  shortfall or is separate.
+- How much of the residual a GL SNORM path would actually remove. The two
+  effects share a cause, but "same cause" is not a predicted number, and no arm
+  has been run.
 
 `docs/testing/signed_texture_pivot.py` reproduces every table above.
