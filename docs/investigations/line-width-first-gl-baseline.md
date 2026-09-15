@@ -303,3 +303,68 @@ established as vertex-colour interpolation and already known not to be
 
 Not tested here. Registered as the next instrument with the discriminator fixed
 in advance.
+
+## MECHANISM FOUND: we interpolate colour ACROSS a wide line's width; the hardware does not
+
+The registered falsifier was: sample colour across the line's width at a fixed
+position along it; ours constant and the golden's varying confirms the
+cross-width candidate. **The measurement inverts it.**
+
+Clean 77.7-degree segment, three positions along the line, sampling every pixel
+across the width:
+
+| W=32, position | distinct colours ours | distinct colours gold |
+|---|---:|---:|
+| s=0.35 | **8** | 5 |
+| s=0.50 | **8** | 5 |
+| s=0.65 | **8** | 4 |
+
+and the values at s=0.50, first / middle / last across the width:
+
+    ours  (143,163,255)  (155,151,255)  (255,112,194)
+    gold  (155,151,255)  (155,151,255)  (154,152,255)
+
+**The golden is constant across the width** -- R spans 154 to 155 -- and **ours
+is not**, spanning R 143 to 255 and G 163 to 112. Our far edge is a completely
+different colour from our near edge. At W=8 the same measurement shows ours with
+2-3 distinct values against the golden's 3-4, all within a few steps: the effect
+is there but small, because a narrow line has little width to go wrong across.
+
+### What that means
+
+The hardware gives a wide line **one colour across its width** -- the
+interpolated vertex colour at that parametric position ALONG the line, which is
+what a line primitive means. We expand the wide line into geometry and then
+interpolate the vertex colours across that geometry, **including across the
+width direction**, so one edge of the line drifts toward a different vertex's
+colour.
+
+This accounts for every measured property of the residual:
+
+- **84-88% of it is commonly-painted pixels differing in colour**, not geometry.
+- It is **roughly symmetric per channel** -- one edge drifts one way, the other
+  the other, so neither sign dominates.
+- It **grows sharply with width** -- zero cross-width at W=1, and at W=32 nearly
+  a third of shared pixels differ by more than 16.
+- The **geometry is right**: thickness exact at every angle, verticals exact at
+  every integer width. We draw the right shape and fill it wrongly.
+
+Nine hypotheses were tested; eight were geometric and all eight were refuted.
+This is the first positive mechanism, and it was reached by abandoning
+painted-pixel count as the metric.
+
+### Ownership, stated rather than assumed
+
+Wide-line expansion happens in the geometry stage. `glsl/geom.c` is `[free]` in
+`territory.toml` -- **unclaimed, and NOT this lane's** -- and `roundScreenCoords`
+in `glsl/vsh.c` is rasteriser-wide and needs the owner. This is a finding and its
+evidence, handed over. No code is touched here.
+
+### Not established
+
+That the fix is a flat-shaded varying across the width rather than something
+subtler -- the golden's 4 to 5 distinct values are not literally one colour, and
+whether that residual variation is dithering, precision, or a real gradient has
+not been measured. And this is one segment of one primitive at two widths;
+confirming it wants the same measurement on a second angle and a second
+primitive before anyone edits a shader on the strength of it.
