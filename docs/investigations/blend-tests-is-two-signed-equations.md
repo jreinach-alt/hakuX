@@ -65,7 +65,7 @@ turns out to be has to land in both.
 
 ## What the signed equations actually compute is NOT established
 
-### The obvious model is falsified
+### The obvious model is UNTESTED -- an earlier "falsified" here is withdrawn
 
 `predictions/2026-09-15-blend-signed-equations.md` registered the usual
 signed-arithmetic pair -- `src*sf + dst*df - 0.5` and `dst*df - src*sf + 0.5` --
@@ -76,12 +76,23 @@ differing pixel:
     SREVSUB    6,533 / 3,540,392 =  0.2%
 
 and the modal `golden - ours` per factor ranges over -221, -192, -147, -74, -25,
--7, -1, +2 for `SADD` rather than sitting at a constant. **P1, P2 and P3 are all
-falsified.** The signed equations are not a half-unit bias on the same expression.
+-7, -1, +2 for `SADD` rather than sitting at a constant.
 
-The controls behaved: the five unsigned equations have modal offsets of +/-1, and
-`MAX` has no differing pixels at all, so the measurement was not finding a
-frame-wide artefact.
+**This was published as a falsification of P1, P2 and P3. It is withdrawn.**
+`predictions/2026-09-15-blend-signed-semantics-from-swatches.md` establishes that
+`TestSpot` composites its 512x512 render target with a pass that **scales RGB by
+the target's alpha** -- measured at 0.8707 (sd 0.0073) against 221/255 = 0.8667,
+and exactly 0.8667 on all three channels of the white swatch. Both `golden` and
+`ours` pass through that composite, and it differs between them, because for us
+`SADD` is `ADD` in the alpha channel too and for the hardware it is not.
+
+So `golden == clamp(ours -/+ 128)` could not have held **even if the half-unit
+model were exactly right**. The measurement had no power to detect what it was
+testing. The half-unit model is **untested**, not refuted, and so is every other
+closed form.
+
+The localisation above is unaffected: it rests on which captures differ and by
+how much, not on any model of what the equations compute.
 
 ### And the instrument that would have named the function is invalid
 
