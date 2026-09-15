@@ -44,13 +44,33 @@ now() { date +%H:%M:%S; }
 
 apk_sha() { sha256sum "$BASELINE_APK" 2>/dev/null | cut -c1-12; }
 
+# This script's whole reason for reinstalling on every resume is that a mix-up
+# must be visible rather than inferred. Throwing away the install's output
+# defeated that: a failed install leaves the previous build running while the
+# log says "installed <sha of the file we meant>". Check it and say so.
+#
+# (The install that exposed this failed because the path was a Linux symlink and
+# adb here is Windows adb.exe, which cannot stat one.)
 install_baseline() {
-    a install -r "$BASELINE_APK" >/dev/null 2>&1
-    echo "$(now) installed baseline $(apk_sha)" >> "$LOG"
+    local out
+    out=$(a install -r "$BASELINE_APK" 2>&1)
+    case "$out" in
+        *Success*) echo "$(now) installed baseline $(apk_sha)" >> "$LOG" ;;
+        *) echo "$(now) BASELINE INSTALL FAILED, rows after this are suspect: $(echo "$out" | tail -1)" >> "$LOG" ;;
+    esac
+}
+
+# The Nova can leave the USB bus -- it did at 23:18 on 2026-09-11, mid-sweep.
+# Without this check the worker "ran" every remaining test in about a second,
+# recorded all of them FAILED, and emptied the queue, which loses the work
+# rather than pausing it. A queue is not the place to record a cable.
+device_present() {
+    adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
 }
 
 run_one() {  # $1 = Suite::Test ; echoes guest_dir on success
     local spec="$1" plan
+    device_present || return 2
     plan=$(python3 "$HERE/make_isolation_discs.py" x --results "$RESULTS" \
              --goldens "$GOLDENS" --base "$BASE_ISO" --out-dir "$STATE/disc" \
              --build-one "$spec" 2>>"$LOG") || return 1
@@ -63,11 +83,27 @@ run_one() {  # $1 = Suite::Test ; echoes guest_dir on success
     a shell input keyevent KEYCODE_WAKEUP >/dev/null 2>&1
     a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'" \
         >/dev/null 2>&1
-    local s
-    for s in $(seq 1 25); do
+    # Same two-stage wait as run_disc.sh, and for the same reason: `am start`
+    # returns before :xemu exists and a transient adb failure looks identical
+    # to a finished run, so a single ps call force-stops healthy runs. Here
+    # that costs one test's capture rather than a whole group, but it costs it
+    # silently.
+    local s misses=0 appeared=0
+    for s in $(seq 1 20); do
+        sleep 1; touch "$LEASE"
+        if a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; then
+            appeared=1; break
+        fi
+    done
+    [ "$appeared" = 1 ] || return 1
+    for s in $(seq 1 40); do
         sleep 1
         touch "$LEASE"          # hold the device so the Stop hook defers
-        a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu" || break
+        if a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; then
+            misses=0; continue
+        fi
+        misses=$((misses+1))
+        [ "$misses" -ge 3 ] && break
     done
     a shell am force-stop "$PKG" >/dev/null 2>&1
     echo "$gdir"
@@ -119,9 +155,17 @@ worker() {
             paused=0
         fi
 
-        local spec gdir
+        local spec gdir rc
         spec=$(head -1 "$QUEUE")
-        if gdir=$(run_one "$spec"); then
+        gdir=$(run_one "$spec"); rc=$?
+        if [ "$rc" = 2 ]; then
+            # Device gone. Keep the row and wait for it: the queue survives a
+            # cable, and nothing here can tell a flat battery from a knock.
+            echo "$(now) device $SERIAL not present; waiting (queue intact)" >> "$LOG"
+            sleep 30
+            continue
+        fi
+        if [ "$rc" = 0 ]; then
             printf '%s\t%s\t%s\t%s\n' "$spec" "$gdir" "$(apk_sha)" "$(date -Is)" >> "$DONE"
             sed -i '1d' "$QUEUE"
         else

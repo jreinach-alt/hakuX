@@ -1,0 +1,5 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Texture_anisotropy	Anisotropy-1	False	ok	1	204	0	307200	0
+Texture_anisotropy	Anisotropy-2	False	ok	15497	204	0	307200	0
+Texture_anisotropy	Anisotropy-4	False	ok	21980	204	0	307200	10
+Texture_anisotropy	Anisotropy-8	False	ok	22616	204	0	307200	10

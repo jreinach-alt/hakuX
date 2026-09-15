@@ -31,24 +31,52 @@
 
 #include "s3tc.h"
 
+/*
+ * A 5- or 6-bit endpoint field reaches 8 bits by replicating its high bits
+ * into the low ones, which is v*255/31 (or v*255/63) rounded to nearest. The
+ * decode this replaces truncated that division instead, leaving every
+ * endpoint that did not divide evenly one count low. R6G5B5 was measured to
+ * replicate (see pgraph_convert_texture_data), and the DXT goldens agree:
+ * Texture_DXT's DXT3 and DXT5 captures are uniformly one count below the
+ * hardware wherever they differ at all.
+ */
+static inline uint8_t expand5(unsigned int v)
+{
+    return (uint8_t)((v << 3) | (v >> 2));
+}
+
+static inline uint8_t expand6(unsigned int v)
+{
+    return (uint8_t)((v << 2) | (v >> 4));
+}
+
 static void decode_bc1_colors(uint16_t c0, uint16_t c1, uint8_t r[4],
                               uint8_t g[4], uint8_t b[4], uint8_t a[16],
                               bool transparent)
 {
-    r[0] = ((c0 & 0xF800) >> 8) * 0xFF / 0xF8,
-    g[0] = ((c0 & 0x07E0) >> 3) * 0xFF / 0xFC,
-    b[0] = ((c0 & 0x001F) << 3) * 0xFF / 0xF8,
+    r[0] = expand5((c0 >> 11) & 0x1F),
+    g[0] = expand6((c0 >> 5) & 0x3F),
+    b[0] = expand5(c0 & 0x1F),
     a[0] = 255;
 
-    r[1] = ((c1 & 0xF800) >> 8) * 0xFF / 0xF8,
-    g[1] = ((c1 & 0x07E0) >> 3) * 0xFF / 0xFC,
-    b[1] = ((c1 & 0x001F) << 3) * 0xFF / 0xF8,
+    r[1] = expand5((c1 >> 11) & 0x1F),
+    g[1] = expand6((c1 >> 5) & 0x3F),
+    b[1] = expand5(c1 & 0x1F),
     a[1] = 255;
 
+    /*
+     * Both interpolants round to nearest. Truncating them left an interpolated
+     * entry a count low whenever the division did not come out even, which is
+     * exactly what Texture_DXT measures: before this, every pixel those two
+     * entries reached was low by one and never by anything else. With the
+     * rounding and the replicated endpoints above, all six of the colour-only
+     * DXT3 and DXT5 tests are pixel-exact. DXT1 is not, and differs by more
+     * than this arithmetic can explain -- see issue #4.
+     */
     if (transparent) {
-        r[2] = (r[0]+r[1])/2;
-        g[2] = (g[0]+g[1])/2;
-        b[2] = (b[0]+b[1])/2;
+        r[2] = (r[0]+r[1]+1)/2;
+        g[2] = (g[0]+g[1]+1)/2;
+        b[2] = (b[0]+b[1]+1)/2;
         a[2] = 255;
 
         r[3] = 0;
@@ -56,14 +84,14 @@ static void decode_bc1_colors(uint16_t c0, uint16_t c1, uint8_t r[4],
         b[3] = 0;
         a[3] = 0;
     } else {
-        r[2] = (2*r[0]+r[1])/3;
-        g[2] = (2*g[0]+g[1])/3,
-        b[2] = (2*b[0]+b[1])/3;
+        r[2] = (2*r[0]+r[1]+1)/3;
+        g[2] = (2*g[0]+g[1]+1)/3,
+        b[2] = (2*b[0]+b[1]+1)/3;
         a[2] = 255;
 
-        r[3] = (r[0]+2*r[1])/3;
-        g[3] = (g[0]+2*g[1])/3;
-        b[3] = (b[0]+2*b[1])/3;
+        r[3] = (r[0]+2*r[1]+1)/3;
+        g[3] = (g[0]+2*g[1]+1)/3;
+        b[3] = (b[0]+2*b[1]+1)/3;
         a[3] = 255;
     }
 }
@@ -240,17 +268,17 @@ static void decompress_dxt5_block(const uint8_t block_data[16],
     a_palette[0] = a0;
     a_palette[1] = a1;
     if (a0 > a1) {
-        a_palette[2] = (6*a0+1*a1)/7;
-        a_palette[3] = (5*a0+2*a1)/7;
-        a_palette[4] = (4*a0+3*a1)/7;
-        a_palette[5] = (3*a0+4*a1)/7;
-        a_palette[6] = (2*a0+5*a1)/7;
-        a_palette[7] = (1*a0+6*a1)/7;
+        a_palette[2] = (6*a0+1*a1+3)/7;
+        a_palette[3] = (5*a0+2*a1+3)/7;
+        a_palette[4] = (4*a0+3*a1+3)/7;
+        a_palette[5] = (3*a0+4*a1+3)/7;
+        a_palette[6] = (2*a0+5*a1+3)/7;
+        a_palette[7] = (1*a0+6*a1+3)/7;
     } else {
-        a_palette[2] = (4*a0+1*a1)/5;
-        a_palette[3] = (3*a0+2*a1)/5;
-        a_palette[4] = (2*a0+3*a1)/5;
-        a_palette[5] = (1*a0+4*a1)/5;
+        a_palette[2] = (4*a0+1*a1+2)/5;
+        a_palette[3] = (3*a0+2*a1+2)/5;
+        a_palette[4] = (2*a0+3*a1+2)/5;
+        a_palette[5] = (1*a0+4*a1+2)/5;
         a_palette[6] = 0;
         a_palette[7] = 255;
     }

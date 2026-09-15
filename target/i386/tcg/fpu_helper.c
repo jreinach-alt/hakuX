@@ -91,16 +91,43 @@
  * ARM64 FPU: convert floatx80 <-> double via inline bit manipulation,
  * then use the native ARM64 double-precision FPU for arithmetic.
  *
- * Two acceleration mechanisms exist on ARM64:
+ * Two acceleration mechanisms are DOCUMENTED for ARM64. Only (1) exists.
  *
  * 1) fp_jit (compile-time): fpu_helper.c is compiled twice via
  *    fpu_helper_hard.c producing helper_*__soft and helper_*__hard symbols.
  *    The __hard helpers always use native double (no runtime branch).
  *    Selection is made once at TCG translation time via g_use_fp_jit.
  *
- * 2) fp_safe (runtime): When fp_jit is off, the __soft helpers use
- *    floatx80_*_rt wrappers that check g_xemu_fp_safe on every call.
- *    Can be toggled at runtime via xemu_set_fp_safe().
+ * 2) fp_safe (runtime): DOES NOT EXIST. This comment used to describe it as
+ *    "when fp_jit is off, the __soft helpers use floatx80_*_rt wrappers that
+ *    check g_xemu_fp_safe on every call, toggled via xemu_set_fp_safe()".
+ *    None of that is in the tree: there are no floatx80_*_rt wrappers, and
+ *    g_xemu_fp_safe appears nowhere except in the sentence that described it.
+ *    The #ifndef USE_HARD_FPU block just below, where they would live, is
+ *    empty. xemu_set_fp_safe() discards its argument and xemu_get_fp_safe()
+ *    returns false unconditionally -- verified in the linked binary, where
+ *    they assemble to `endbr64; ret` and `endbr64; xor %eax,%eax; ret`.
+ *
+ *    It was never implemented here rather than removed: 8f832955 introduced
+ *    this file with 3923 insertions and no deletions, and it carries the
+ *    comment, the empty block and the two stubs together.
+ *
+ *    This is NOT harmless, which is why it is written out rather than
+ *    deleted. Android exposes it as a user-facing setting -- "Native Floats
+ *    (Safe)", defaulting to ON, described in strings.xml as giving native
+ *    ARM64 double precision -- wired through nativeSetFpSafe() to the stub.
+ *    xemu_get_fp_safe() also feeds the per-game cache key as a bit that is
+ *    now always zero. (Audit L1: an earlier version of this note said the
+ *    getter is handed back to the UI "so the switch reads OFF however it is
+ *    set". It is not. Java_..._nativeGetFpSafe exists and Kotlin declares it
+ *    as `external fun nativeGetFpSafe()`, but NOTHING CALLS IT -- the switch's
+ *    displayed state comes from SharedPreferences, default ON, and is
+ *    unrelated to the stub. The setting is inert either way; the reason given
+ *    was wrong.) Whether to implement the mechanism or retire the
+ *    setting is a decision for whoever owns the Android settings surface.
+ *
+ *    So on ARM64 the ONLY thing selecting native-double arithmetic is (1),
+ *    g_use_fp_jit, assigned from g_config.perf.fp_jit at translate.c:4397.
  */
 #if defined(XBOX) && defined(__aarch64__)
 
@@ -190,6 +217,39 @@ static inline floatx80 pack_arm64(floatx80 v, float_status *status)
 /*
  * Native double storage: ST0/FT0 are now `double`, so all floatx80_*
  * operations become native double operations and conversions are trivial.
+ *
+ * X87 EXCEPTION FLAGS ARE DELIBERATELY OUT OF SCOPE FOR THIS ENTIRE BLOCK.
+ * Stated here, at the top, because it is a property of the whole path and not
+ * of any one function -- audit pass 2's P2, which generalised pass 1's L7.
+ *
+ * merge_exception_flags() is itself wrapped in `#ifndef USE_HARD_FPU`, so on
+ * this path it is an EMPTY FUNCTION. No status-word bit -- IE, ZE, OE, UE, PE
+ * or DE -- is ever raised by any helper here, even though every helper still
+ * brackets its work with save_exception_flags()/merge_exception_flags() and so
+ * reads as though it maintains the status word. A guest that executes FNSTSW
+ * or FSTENV sees the exception bits permanently clear, and a guest that
+ * unmasks any of them takes no #MF where hardware would. nxdk leaves the
+ * masks set, so nothing in the corpus is known to reach it.
+ *
+ * Two consequences worth having in front of you before editing anything here:
+ *
+ * - Raising a flag into s->float_exception_flags is NOT pointless in general,
+ *   but it cannot reach the status word from this block. The conversions below
+ *   raise float_flag_invalid anyway, because the FIST/FISTT 32- and 64-bit
+ *   helpers -- all FOUR of helper_fistl_ST0, helper_fistll_ST0,
+ *   helper_fisttl_ST0 and helper_fisttll_ST0, not the two an earlier version
+ *   of this note listed (audit L2) -- read get_float_exception_flags()
+ *   DIRECTLY rather than through the merge, so that guard does become live.
+ *   The 16-bit pair guards on a `val != (int16_t)val` value test instead and
+ *   needs no flag at all. Anything that only a merge would carry -- PE from
+ *   FRNDINT, for instance -- does not.
+ * - Making the arithmetic raise flags properly is not a local change. Native
+ *   double ops do not populate softfloat's flags at all, so restoring the
+ *   merge alone would merge zeros; it would take fetestexcept() around the
+ *   host operations. That is why this is stated rather than fixed.
+ *
+ * The x86_64 variant of the same class is the bare "FIXME: rounding and
+ * exceptions" further down this file.
  */
 
 static inline FloatRelation floatx80_compare_nds(double a, double b, float_status *s)
@@ -245,10 +305,6 @@ static inline float64 floatx80_to_float64_nds(double a, float_status *s)
 #define floatx80_to_float64            floatx80_to_float64_nds
 #define int32_to_floatx80(a, s)        ((void)(s), (double)(a))
 #define int64_to_floatx80(a, s)        ((void)(s), (double)(a))
-#define floatx80_to_int32(a, s)        ((void)(s), (int32_t)(a))
-#define floatx80_to_int64(a, s)        ((void)(s), (int64_t)(a))
-#define floatx80_to_int32_round_to_zero(a, s) ((void)(s), (int32_t)(a))
-#define floatx80_to_int64_round_to_zero(a, s) ((void)(s), (int64_t)(a))
 
 #define floatx80_is_neg(a)             signbit(a)
 #define floatx80_is_zero(a)            ((a) == 0.0)
@@ -263,8 +319,147 @@ static inline float64 floatx80_to_float64_nds(double a, float_status *s)
 #define floatx80_abs(a)                fabs(a)
 #define floatx80_sqrt(a, s)            ((void)(s), sqrt(a))
 
-#define floatx80_round(a, s)           ((void)(s), rint(a))
-#define floatx80_round_to_int(a, s)    ((void)(s), rint(a))
+/*
+ * FRNDINT rounds per the guest's control-word RC field. rint() rounds per the
+ * HOST FP environment, and `(void)(s)` threw the guest's mode away -- so
+ * nxdk's floorf, which is the textbook x87 sequence (save CW, set RC = round
+ * down, FRNDINT, restore), became round-to-nearest. Guest arithmetic, so it is
+ * wrong in every title rather than in one code path: measured on
+ * Blend_tests and Point_size, where floorf(24.75), floorf(85.714) and
+ * floorf(138.667) each came back one too high and floorf(99.2) and
+ * floorf(136.0) did not, because those are the two arguments where floor and
+ * round-to-nearest agree. See
+ * docs/investigations/guest-frndint-ignores-rounding-mode.md.
+ *
+ * The nearest case still leans on the host environment being nearest-even,
+ * which QEMU never changes; the other three do not depend on host state at
+ * all. floatx80_round has no caller in this file -- softfloat's version rounds
+ * to the control word's PRECISION rather than to an integer, so a future
+ * caller must not take this definition as the right one for it.
+ */
+static inline double floatx80_round_to_int_nds(double a, float_status *s)
+{
+    switch (s->float_rounding_mode) {
+    case float_round_down:    return floor(a);
+    case float_round_up:      return ceil(a);
+    case float_round_to_zero: return trunc(a);
+    default:                  return rint(a);
+    }
+}
+/*
+ * No `#define floatx80_round` here, deliberately (audit pass 1, L5). Softfloat's
+ * floatx80_round() rounds to the control word's PRECISION, not to an integer,
+ * so aliasing it to a round-to-integer would be wrong for anything that ever
+ * called it. It had no caller in this file and the previous comment only WARNED
+ * a future one. Leaving the name undefined is strictly better: floatx80 is
+ * `double` on this path, so a future caller now gets a hard compile error
+ * against softfloat's real prototype instead of silently wrong semantics.
+ * target/m68k uses the real function and is unaffected -- this was a macro
+ * local to this translation unit.
+ */
+#define floatx80_round_to_int(a, s)    floatx80_round_to_int_nds((a), (s))
+
+/*
+ * FIST/FISTP round per the guest's control-word RC field; only FISTTP
+ * truncates. A C cast always truncates, so these four were `(int32_t)(a)` and
+ * the three non-round-to-zero modes were wrong in exactly the way FRNDINT was
+ * below -- same table, same `(void)(s)` discarding the guest's mode. The
+ * _round_to_zero pair was right by accident and is now right on purpose.
+ *
+ * The cast is also unable to raise float_flag_invalid, and helper_fistl_ST0
+ * and helper_fistll_ST0 test precisely that flag to substitute the x87
+ * integer-indefinite value for an out-of-range or NaN operand. On this path
+ * those guards could never fire, so an out-of-range FISTP stored whatever the
+ * cast produced -- and converting an out-of-range double to an integer type is
+ * undefined behaviour in C, which on aarch64 means fcvtzs saturating to
+ * INT32_MAX rather than the 0x80000000 the architecture requires.
+ *
+ * The range tests are written as !(lo <= r <= hi) so that a NaN, for which
+ * every comparison is false, takes the invalid branch. The int64 upper bound
+ * is `< 2^63` rather than `<= 2^63 - 1` because 2^63 - 1 is not representable
+ * as a double and would round up to 2^63, admitting exactly the value that
+ * overflows.
+ *
+ * OUT OF RANGE SATURATES, it does not return the x87 integer-indefinite value,
+ * and getting that backwards was audit H1 / #82 against the first version of
+ * this code. softfloat's partsN(float_to_sint) returns `min` for negative
+ * overflow and `max` for positive overflow AND for NaN
+ * (fpu/softfloat-parts.c.inc:1239/1244/1267/1271), so these must too. `r < 0`
+ * is false for a NaN, which lands it on MAX exactly as softfloat does.
+ *
+ * Returning INT32_MIN for every out-of-range case looks harmless because the
+ * six FIST/FISTT helpers and FBSTP all overwrite the value -- four on the
+ * float_flag_invalid these raise, two on a `val != (int16_t)val` value test,
+ * and FBSTP on a +/-1e18 range test that both conventions trip. It is NOT
+ * harmless, because helper_fscale reads it UNGUARDED: it brackets the call
+ * with save/set_float_exception_flags(0) and restores the old flags
+ * afterwards, deliberately discarding the invalid this raises, then passes the
+ * result straight to floatx80_scalbn(). A guest FSCALE with finite
+ * |ST1| >= 2^31 -- ldexp with a runaway exponent -- must give +/-inf. With
+ * MIN it got scalbn(ST0, INT32_MIN) and returned +/-0: infinity became zero,
+ * and the answer differed between fp_jit on and off, because the soft path
+ * uses real softfloat and saturates.
+ *
+ * The other two conversion sites in this file, the f2xm1 table index and the
+ * fyl2x split, sit inside `#else of #if USE_NATIVE_DOUBLE_STORAGE` and so
+ * never see these macros at all -- checked by walking the preprocessor stack,
+ * not by reading around them. That matters: both use the result as an array
+ * index, where a wrong saturation would be worse than a wrong value.
+ *
+ * KNOWN INCOMPLETE, and deliberately so: raising the flag makes the two helper
+ * guards work, because they call get_float_exception_flags() directly. It does
+ * NOT reach the x87 status word. See the exception-flag note at the top of this
+ * USE_HARD_FPU block, which is the authority on that and applies to every
+ * helper here, not just to these conversions.
+ */
+static inline int32_t floatx80_to_int32_nds(double a, float_status *s)
+{
+    double r = floatx80_round_to_int_nds(a, s);
+
+    if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
+        float_raise(float_flag_invalid, s);
+        return r < 0 ? INT32_MIN : INT32_MAX;
+    }
+    return (int32_t)r;
+}
+
+static inline int64_t floatx80_to_int64_nds(double a, float_status *s)
+{
+    double r = floatx80_round_to_int_nds(a, s);
+
+    if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
+        float_raise(float_flag_invalid, s);
+        return r < 0 ? INT64_MIN : INT64_MAX;
+    }
+    return (int64_t)r;
+}
+
+static inline int32_t floatx80_to_int32_rtz_nds(double a, float_status *s)
+{
+    double r = trunc(a);
+
+    if (!(r >= -2147483648.0 && r <= 2147483647.0)) {
+        float_raise(float_flag_invalid, s);
+        return r < 0 ? INT32_MIN : INT32_MAX;
+    }
+    return (int32_t)r;
+}
+
+static inline int64_t floatx80_to_int64_rtz_nds(double a, float_status *s)
+{
+    double r = trunc(a);
+
+    if (!(r >= -9223372036854775808.0 && r < 9223372036854775808.0)) {
+        float_raise(float_flag_invalid, s);
+        return r < 0 ? INT64_MIN : INT64_MAX;
+    }
+    return (int64_t)r;
+}
+
+#define floatx80_to_int32(a, s)        floatx80_to_int32_nds((a), (s))
+#define floatx80_to_int64(a, s)        floatx80_to_int64_nds((a), (s))
+#define floatx80_to_int32_round_to_zero(a, s) floatx80_to_int32_rtz_nds((a), (s))
+#define floatx80_to_int64_round_to_zero(a, s) floatx80_to_int64_rtz_nds((a), (s))
 
 #undef floatx80_zero
 #undef floatx80_one

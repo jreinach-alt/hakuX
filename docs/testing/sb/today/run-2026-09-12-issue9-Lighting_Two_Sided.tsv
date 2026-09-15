@@ -1,0 +1,2 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Lighting_Two_Sided	TwoSidedLighting	True	ok	0	0	0	307200	0

@@ -507,6 +507,7 @@ void pgraph_vk_mark_textures_possibly_dirty(NV2AState *d,
 
 static bool check_texture_dirty(NV2AState *d, hwaddr addr, hwaddr size)
 {
+    g_nv2a_stats.pacing.tex_dirty_query_acc++;
     hwaddr end = TARGET_PAGE_ALIGN(addr + size);
     addr &= TARGET_PAGE_MASK;
     assert(end < memory_region_size(d->vram));
@@ -1207,6 +1208,48 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
            surface->host_fmt.host_bytes_per_pixel == vk_format_texel_size(tex_vkf.vk_format);
 }
 
+/*
+ * Whether the surface's own image view decodes its memory the way the guest's
+ * texture format says to.
+ *
+ * The texture unit decodes what is in memory using the format the guest set on
+ * the texture stage, and it does that even when the memory it is reading is a
+ * colour surface pgraph rendered a moment ago. Binding the surface's own view
+ * skips the decode entirely: that view carries the *surface's* host format and
+ * an identity component mapping, so a surface written as A8R8G8B8 and sampled
+ * as A8B8G8R8 comes back with the channels in the order they were written
+ * rather than the order the texture format asks for -- red and blue swapped.
+ *
+ * Blend tests' #spot_ captures do exactly that: a 512x512 A8R8G8B8 render
+ * target blitted to screen through an A8B8G8R8 texture stage. Correcting the
+ * decode accounts for 81.8% of the residual across the 75 captures that are
+ * not FUNC_*_SIGNED, and makes all fifteen MAX captures byte-exact against
+ * hardware.
+ *
+ * When the formats disagree the surface can still be used, just not by
+ * borrowing its view: copy_surface_to_texture() fills the texture's own image
+ * bit-for-bit (the two formats are in the same Vulkan compatibility class, so
+ * vkCmdCopyImage does no conversion), and that image carries the declared
+ * format and component mapping.
+ */
+static bool surface_view_decodes_as_texture(const SurfaceBinding *surface,
+                                            const TextureShape *shape)
+{
+    if (!surface->color) {
+        return true;
+    }
+
+    VkColorFormatInfo tex_vkf = kelvin_color_format_vk_map[shape->color_format];
+    if (surface->host_fmt.vk_format != tex_vkf.vk_format) {
+        return false;
+    }
+
+    /* A zeroed mapping is VK_COMPONENT_SWIZZLE_IDENTITY on every channel,
+     * which is what the surface's view was created with. */
+    static const VkComponentMapping identity = { 0 };
+    return !memcmp(&tex_vkf.component_map, &identity, sizeof(identity));
+}
+
 static void create_dummy_texture(PGRAPHState *pg)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -1642,8 +1685,10 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                     pgraph_vk_flush_all_frames(pg);
                 }
                 bool can_direct_bind =
-                    surface->color ||
-                    !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+                    (surface->color ||
+                     !(surface->host_fmt.aspect &
+                       VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+                    surface_view_decodes_as_texture(surface, &snode->key.state);
 
                 if (can_direct_bind) {
                     VkImageLayout direct_layout;
@@ -1664,9 +1709,11 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
                     copy_surface_to_texture(pg, surface, snode);
                 }
                 did_s2t_copy = true;
-            } else if (surface->color ||
-                       !(surface->host_fmt.aspect &
-                         VK_IMAGE_ASPECT_STENCIL_BIT)) {
+            } else if ((surface->color ||
+                        !(surface->host_fmt.aspect &
+                          VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+                       surface_view_decodes_as_texture(surface,
+                                                       &snode->key.state)) {
                 // Same draw_time: surface hasn't changed, reuse direct view
                 r->tex_surface_direct[texture_idx] = true;
                 r->tex_surface_direct_views[texture_idx] =
@@ -2049,8 +2096,9 @@ static void create_texture(PGRAPHState *pg, int texture_idx)
 
     if (surface_to_texture) {
         bool can_direct_bind =
-            surface->color ||
-            !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT);
+            (surface->color ||
+             !(surface->host_fmt.aspect & VK_IMAGE_ASPECT_STENCIL_BIT)) &&
+            surface_view_decodes_as_texture(surface, &snode->key.state);
 
         if (can_direct_bind) {
             VkImageLayout direct_layout;
@@ -2115,12 +2163,14 @@ bool pgraph_vk_check_textures_fast_skip(PGRAPHState *pg)
     return true;
 }
 
+
 void pgraph_vk_bind_textures(NV2AState *d)
 {
     NV2A_VK_DGROUP_BEGIN("%s", __func__);
 
     PGRAPHState *pg = &d->pgraph;
     PGRAPHVkState *r = pg->vk_renderer_state;
+
 
     r->texture_bindings_changed = false;
 

@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX nightly at 00:30 America/Los_Angeles
+
+[Timer]
+# The host is America/Los_Angeles, so this is 12:30 AM Pacific.
+OnCalendar=*-*-* 00:30:00
+# WSL is not always running at 00:30; without this a missed window is simply
+# skipped and the day has no build.
+Persistent=true
+AccuracySec=1min
+
+[Install]
+WantedBy=timers.target

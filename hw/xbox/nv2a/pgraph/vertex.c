@@ -118,10 +118,64 @@ void pgraph_allocate_inline_buffer_vertices(PGRAPHState *pg, unsigned int attr)
     }
 }
 
+/* Make room for one more inline-buffer vertex. Returns false if the batch
+ * cannot grow any further, in which case the caller must drop the vertex
+ * rather than write past the end.
+ *
+ * This exists because the bound check and the allocation disagreed. The
+ * allocation is 32,768 vertices on Android against NV2A_MAX_BATCH_LENGTH
+ * (524,287) on the desktop, and the check named the desktop constant
+ * unconditionally -- so a guest submitting more than 32,768 inline vertices
+ * ran 16x past the end of a g_malloc'd buffer. `High vertex count` does
+ * exactly that, and SIGSEGV'd in this function with a page-aligned fault
+ * address, killing the whole run. The assert did not catch it: this is a
+ * release build.
+ *
+ * Growing rather than clamping because dropping vertices is silently wrong
+ * output, and a guest asking for a large batch is legitimate.
+ */
+static bool pgraph_grow_inline_buffers(PGRAPHState *pg, unsigned int needed)
+{
+    if (needed <= pg->inline_buffer_cap) {
+        return true;
+    }
+    if (needed > NV2A_MAX_BATCH_LENGTH) {
+        return false;
+    }
+
+    unsigned int cap = pg->inline_buffer_cap;
+    while (cap < needed) {
+        cap *= 2;
+    }
+    if (cap > NV2A_MAX_BATCH_LENGTH) {
+        cap = NV2A_MAX_BATCH_LENGTH;
+    }
+
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        VertexAttribute *attribute = &pg->vertex_attributes[i];
+        attribute->inline_buffer = (float *)g_realloc(
+            attribute->inline_buffer, (size_t)cap * sizeof(float) * 4);
+    }
+    pg->inline_buffer_cap = cap;
+    return true;
+}
+
 void pgraph_finish_inline_buffer_vertex(PGRAPHState *pg)
 {
     pgraph_check_within_begin_end_block(pg);
-    assert(pg->inline_buffer_length < NV2A_MAX_BATCH_LENGTH);
+
+    if (!pgraph_grow_inline_buffers(pg, pg->inline_buffer_length + 1)) {
+        /* At the hardware limit. Drop rather than corrupt the heap, and say
+         * so once -- a silently short batch is a wrong picture, which is
+         * better than a crash but must not be invisible. */
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            NV2A_DPRINTF("inline buffer full at %u vertices; dropping\n",
+                         pg->inline_buffer_length);
+        }
+        return;
+    }
 
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
         VertexAttribute *attribute = &pg->vertex_attributes[i];

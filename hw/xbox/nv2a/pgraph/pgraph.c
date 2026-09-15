@@ -1072,6 +1072,7 @@ void pgraph_init(NV2AState *d)
     pg->cached_graphics_class = 0;
 
     pg->material_alpha = 0.0f;
+    pg->line_width = 8; /* 1.0 */
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_SHADEMODE,
          NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH);
     /* Perspective-correct interpolation until a SET_CONTROL0 says
@@ -1079,15 +1080,19 @@ void pgraph_init(NV2AState *d)
     PG_SET_MASK(NV_PGRAPH_CONTROL_0, NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE, 1);
     pg->primitive_mode = PRIM_TYPE_INVALID;
 
+#ifdef __ANDROID__
+    /* 32,768 vertices x 4 floats x 16 attributes is 8 MB; the desktop cap
+     * would be 134 MB of address space per context. Kept small deliberately,
+     * and grown on demand by pgraph_grow_inline_buffers() when a guest
+     * actually needs more -- see the overrun note on inline_buffer_cap. */
+    pg->inline_buffer_cap = 32768;
+#else
+    pg->inline_buffer_cap = NV2A_MAX_BATCH_LENGTH;
+#endif
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
         VertexAttribute *attribute = &pg->vertex_attributes[i];
-#ifdef __ANDROID__
-        size_t inline_batch_cap = 32768;
-#else
-        size_t inline_batch_cap = NV2A_MAX_BATCH_LENGTH;
-#endif
-        attribute->inline_buffer = (float*)g_malloc(inline_batch_cap
-                                              * sizeof(float) * 4);
+        attribute->inline_buffer = (float*)g_malloc(
+            (size_t)pg->inline_buffer_cap * sizeof(float) * 4);
         attribute->inline_buffer_populated = false;
     }
 
@@ -1467,6 +1472,59 @@ static const struct {
 #undef DEF_METHOD_CASE_4_OFFSET
 #undef DEF_METHOD_CASE_4
 
+/*
+ * Clip an image blit's destination against the clip-rectangle object, moving
+ * the source by the same amount.
+ *
+ * The clip rectangle (class 0x19) is a destination clip: hardware narrows the
+ * rectangle it writes and reads the correspondingly narrowed part of the
+ * source, rather than scaling the copy. So the two control points move
+ * together and the size shrinks once.
+ *
+ * "Never set" and "set to zero" are different states, and conflating them
+ * fails in one direction or the other. Treating an unwritten rectangle as
+ * empty would clip away every blit in every title that never sets one, which
+ * is most of them; treating a written zero as unbounded leaves the guest's
+ * explicit "draw nothing" unhonoured. Image blit's Clip_320_240_0_0 and
+ * Clip_320_240_0_10 are exactly the second case, and were the two tests still
+ * failing after the first version of this. Issue #47.
+ */
+static void pgraph_apply_clip_rectangle(PGRAPHState *pg)
+{
+    const ClipRectangleState *clip = &pg->clip_rectangle;
+    ImageBlitState *blit = &pg->image_blit;
+
+    if (!clip->size_written) {
+        return;  /* unbounded */
+    }
+
+    if (!clip->width || !clip->height) {
+        /* Written as empty: the guest asked for nothing to be drawn. */
+        blit->width = 0;
+        blit->height = 0;
+        return;
+    }
+
+    unsigned int x0 = MAX(blit->out_x, clip->x);
+    unsigned int y0 = MAX(blit->out_y, clip->y);
+    unsigned int x1 = MIN(blit->out_x + blit->width, clip->x + clip->width);
+    unsigned int y1 = MIN(blit->out_y + blit->height, clip->y + clip->height);
+
+    if (x1 <= x0 || y1 <= y0) {
+        /* Nothing survives. The caller skips a zero-sized blit. */
+        blit->width = 0;
+        blit->height = 0;
+        return;
+    }
+
+    blit->in_x += x0 - blit->out_x;
+    blit->in_y += y0 - blit->out_y;
+    blit->out_x = x0;
+    blit->out_y = y0;
+    blit->width = x1 - x0;
+    blit->height = y1 - y0;
+}
+
 #if TRACE_NV2A_PGRAPH_METHOD_ENABLED
 static void pgraph_method_log(unsigned int subchannel,
                               unsigned int graphics_class,
@@ -1665,6 +1723,7 @@ slow_path:
 
     ContextSurfaces2DState *context_surfaces_2d = &pg->context_surfaces_2d;
     ImageBlitState *image_blit = &pg->image_blit;
+    ClipRectangleState *clip_rectangle = &pg->clip_rectangle;
     BetaState *beta = &pg->beta;
 
     assert(subchannel < 8);
@@ -1746,6 +1805,25 @@ slow_path:
         }
         break;
     }
+    case NV_CONTEXT_CLIP_RECTANGLE: {
+        switch (method) {
+        case NV019_SET_OBJECT:
+            clip_rectangle->object_instance = parameter;
+            break;
+        case NV019_SET_POINT:
+            clip_rectangle->x = parameter & 0xFFFF;
+            clip_rectangle->y = parameter >> 16;
+            break;
+        case NV019_SET_SIZE:
+            clip_rectangle->width = parameter & 0xFFFF;
+            clip_rectangle->height = parameter >> 16;
+            clip_rectangle->size_written = true;
+            break;
+        default:
+            goto unhandled;
+        }
+        break;
+    }
     case NV_CONTEXT_SURFACES_2D: {
         switch (method) {
         case NV062_SET_OBJECT:
@@ -1797,6 +1875,14 @@ slow_path:
         case NV09F_SIZE:
             image_blit->width = parameter & 0xFFFF;
             image_blit->height = parameter >> 16;
+
+            /*
+             * Clip the destination against the clip rectangle here rather than
+             * in each renderer, so Vulkan and GL inherit it from one place.
+             * The source moves with the destination: hardware clips the
+             * rectangle, it does not rescale the copy.
+             */
+            pgraph_apply_clip_rectangle(pg);
 
             if (image_blit->width && image_blit->height) {
                 d->pgraph.renderer->ops.image_blit(d);
@@ -1853,6 +1939,41 @@ slow_path:
 unhandled:
     trace_nv2a_pgraph_method_unhandled(subchannel, pg->cached_graphics_class,
                                            method, parameter);
+#ifdef __ANDROID__
+    /*
+     * The trace above goes through QEMU's trace framework, which does not
+     * reach logcat, so on Android a method we do not implement is dropped in
+     * complete silence. That is the worst possible failure mode for an
+     * accuracy question: #19's isolation pass found all six Image_blit clip
+     * tests rendering the *unclipped* blit, and no clip-rectangle class is
+     * defined in nv2a_regs.h at all -- but "we ignore it" and "the guest never
+     * sends it" are indistinguishable from outside.
+     *
+     * One line per distinct (class, method) pair, so a suite that hammers an
+     * unimplemented method logs once rather than thousands of times.
+     */
+    static struct { uint32_t cls, method; } seen[64];
+    static unsigned int n_seen;
+    bool already = false;
+    for (unsigned int i = 0; i < n_seen; i++) {
+        if (seen[i].cls == pg->cached_graphics_class &&
+            seen[i].method == method) {
+            already = true;
+            break;
+        }
+    }
+    if (!already) {
+        if (n_seen < ARRAY_SIZE(seen)) {
+            seen[n_seen].cls = pg->cached_graphics_class;
+            seen[n_seen].method = method;
+            n_seen++;
+        }
+        __android_log_print(ANDROID_LOG_WARN, "hakuX-unhandled",
+                            "class 0x%04x method 0x%04x param 0x%08x (sub %d)",
+                            pg->cached_graphics_class, method, parameter,
+                            subchannel);
+    }
+#endif
     return num_processed;
 }
 
@@ -2683,6 +2804,30 @@ DEF_METHOD(NV097, SET_PROVOKING_VERTEX)
     assert((parameter & ~1) == 0);
     PG_SET_MASK(NV_PGRAPH_CONTROL_3, NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX,
              parameter);
+}
+
+DEF_METHOD(NV097, SET_LINE_WIDTH)
+{
+    /* Nine bits of eighths of a pixel, so 0 to 63.875. A value that does
+     * not fit leaves the width alone rather than being masked or clamped:
+     * the Line width goldens for every width from 64.0 up, and for -1,
+     * are the 1.0 the suite restores after each test, not the 0.0 a mask
+     * would give or the 63.875 a clamp would. */
+    if (parameter <= NV097_SET_LINE_WIDTH_MAX) {
+        pg->line_width = parameter;
+    }
+}
+
+DEF_METHOD(NV097, SET_STIPPLE_ENABLE)
+{
+    PG_SET_MASK(NV_PGRAPH_SETUPRASTER,
+                NV_PGRAPH_SETUPRASTER_STIPPLEENABLE, parameter != 0);
+}
+
+DEF_METHOD_INC(NV097, SET_STIPPLE_PATTERN)
+{
+    int slot = (method - NV097_SET_STIPPLE_PATTERN) / 4;
+    pg->stipple_pattern[slot] = parameter;
 }
 
 DEF_METHOD(NV097, SET_POLYGON_OFFSET_SCALE_FACTOR)

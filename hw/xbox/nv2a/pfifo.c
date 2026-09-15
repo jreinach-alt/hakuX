@@ -639,6 +639,12 @@ void *pfifo_thread(void *arg)
 
     pgraph_init_thread(d);
 
+#ifdef __ANDROID__
+    __android_log_print(ANDROID_LOG_INFO, "hakuX-threads",
+                        "tid=%d role=pfifo (pusher, puller, pgraph methods, "
+                        "vulkan translation)", (int)gettid());
+#endif
+
     rcu_register_thread();
 
     qemu_mutex_lock(&d->pfifo.lock);
@@ -725,6 +731,14 @@ void *pfifo_thread(void *arg)
             qemu_cond_wait(&d->pfifo.fifo_cond, &d->pfifo.lock);
 #endif
 
+            {
+                /* Always on: idle_t0 above is read unconditionally, so this
+                 * costs one more clock read per wait and answers the
+                 * critical-path question without the phase instrumentation,
+                 * which perturbs the thing it measures. */
+                g_nv2a_stats.pacing.renderer_idle_acc_ns +=
+                    nv2a_clock_ns() - idle_t0;
+            }
             if (NV2A_PERF_LOG) {
                 int64_t idle_ns = nv2a_clock_ns() - idle_t0;
                 g_nv2a_stats.phase_working.fifo_idle_ns += idle_ns;

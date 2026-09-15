@@ -1214,6 +1214,14 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
                 current_tb_modified = true;
                 cpu_restore_state_from_tb(cpu, current_tb, retaddr);
             }
+            /* Diagnostic: blocks actually thrown away, as opposed to calls
+             * that reach here and find nothing overlapping the written bytes.
+             * The two have different remedies -- one is regeneration cost, the
+             * other is pure entry overhead -- and a call count cannot tell
+             * them apart. Counts every range invalidation, not only the ones
+             * arriving from the slow store path. */
+            extern uint64_t hakux_tb_invalidated;
+            hakux_tb_invalidated++;
             tb_phys_invalidate__locked(tb);
         }
     }

@@ -140,6 +140,10 @@ bool pgraph_glsl_check_shader_state_dirty(PGRAPHState *pg,
         return true;
     }
 
+    if (pgraph_glsl_polygon_stipple_enabled(pg) != state->psh.stipple) {
+        return true;
+    }
+
     for (int i = 0; i < 4; i++) {
         if (pgraph_is_reg_dirty(pg, NV_PGRAPH_TEXCTL0_0 + i * 4) ||
             pgraph_is_reg_dirty(pg, NV_PGRAPH_TEXFILTER0 + i * 4) ||

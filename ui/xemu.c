@@ -1819,6 +1819,20 @@ static void update_fps(void)
     if (fabs(avg-ms) > 0.25*avg) avg = ms;
     else avg = avg*(1.0-r)+ms*r;
     fps = 1000.0/avg;
+
+    /* FramePacingStats declares display_frame_ms and its min/max but nothing
+     * ever wrote them, so the pacing string always read D:0.0(0.0-0.0). It is
+     * the number that separates "the frame limiter is holding us" from "we
+     * cannot go faster": compare it against game_frame_ms, which flip stall
+     * fills in from the guest side. */
+    FramePacingStats *p = &g_nv2a_stats.pacing;
+    if (last_update && ms > 0.0f && ms < 10000.0f) {
+        p->display_frame_ms = p->display_frame_ms * 0.8f + ms * 0.2f;
+        if (ms < p->display_frame_min_ms || p->display_frame_min_ms == 0)
+            p->display_frame_min_ms = ms;
+        if (ms > p->display_frame_max_ms)
+            p->display_frame_max_ms = ms;
+    }
 }
 
 void sdl2_gl_refresh(DisplayChangeListener *dcl)
@@ -2183,7 +2197,14 @@ void sdl2_gl_refresh(DisplayChangeListener *dcl)
 #ifdef __ANDROID__
     android_log_gl_error("refresh-finish");
 #endif
-    SDL_GL_SwapWindow(scon->real_window);
+    {
+        int64_t swap_t0 = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+        SDL_GL_SwapWindow(scon->real_window);
+        float swap_ms =
+            (float)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) - swap_t0) / 1e6f;
+        g_nv2a_stats.pacing.swap_ms =
+            g_nv2a_stats.pacing.swap_ms * 0.8f + swap_ms * 0.2f;
+    }
 #ifdef __ANDROID__
     android_log_gl_error("refresh-swap");
 #endif

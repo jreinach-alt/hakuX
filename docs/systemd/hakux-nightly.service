@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX nightly build and publish
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+Environment=JAVA_HOME=/home/justin/toolchains/jdk21
+ExecStart=/home/justin/hakuX/docs/testing/nightly_build.sh
+# A build takes ~40s; allow generously for a cold Gradle daemon.
+TimeoutStartSec=1800
+StandardOutput=append:/home/justin/hakux-work/nightly/service.log
+StandardError=append:/home/justin/hakux-work/nightly/service.log

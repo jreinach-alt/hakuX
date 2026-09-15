@@ -31,12 +31,18 @@ MString *pgraph_glsl_get_vtx_header(MString *out, bool location, bool smooth,
 {
     /*
      * SET_CONTROL0 can turn texture perspective off, and the hardware then
-     * interpolates colours and texture coordinates linearly in screen
-     * space (Texture_perspective: tex_*_pers_n).  GLSL's noperspective is
-     * exactly that; only the Vulkan path gets it, GLES would need
-     * GL_NV_shader_noperspective_interpolation.
+     * interpolates colours and texture coordinates linearly in screen space
+     * (Texture_perspective: tex_*_pers_n). NOPERSPECTIVE is defined by
+     * pgraph_glsl_append_version() above, which is the only place that knows
+     * whether this shader is desktop GL, GLES or Vulkan.
+     *
+     * This used to read `noperspective && location`, and every caller passes
+     * opts.vulkan as location, so desktop GL never got the qualifier at all
+     * -- measured at 159,574 px across six captures, with the
+     * Texture_perspective suite splitting perfectly on the state bit. See
+     * docs/investigations/gl-never-emits-noperspective.md.
      */
-    const char *smooth_s = (noperspective && location) ? "noperspective " : "";
+    const char *smooth_s = noperspective ? "NOPERSPECTIVE " : "";
     const char *flat_s = "flat ";
     const char *qualifier_s = smooth ? smooth_s : flat_s;
     const char *in_out_s = in ? "in" : "out";
@@ -76,17 +82,43 @@ MString *pgraph_glsl_get_vtx_header(MString *out, bool location, bool smooth,
     return out;
 }
 
+/*
+ * SET_CONTROL0 can turn texture perspective off, and the hardware then
+ * interpolates linearly in screen space. GLSL spells that `noperspective`,
+ * which is core in desktop GLSL 1.30+ and in Vulkan, and on GLES needs
+ * GL_NV_shader_noperspective_interpolation. Emitting it as a macro from the
+ * one function that knows which of the three we are generating for keeps
+ * that knowledge here: the alternative was passing `gles` down to every
+ * caller of pgraph_glsl_get_vtx_header(), which lives in three files owned
+ * by other streams.
+ *
+ * The GLES branch degrades rather than failing to compile: where the
+ * extension is absent the macro is empty and behaviour is exactly what it
+ * was before this existed. #extension must precede any non-preprocessor
+ * token, so it goes above the precision block and not below it.
+ */
+#define GLSL_NOPERSPECTIVE_DEFINE "#define NOPERSPECTIVE noperspective\n\n"
+
 void pgraph_glsl_append_version(MString *out, bool vulkan, bool gles,
                                 int gles_version)
 {
     if (vulkan) {
         mstring_append(out, "#version 450\n\n");
+        mstring_append(out, GLSL_NOPERSPECTIVE_DEFINE);
         return;
     }
 
     if (gles) {
         int version = gles_version ? gles_version : 300;
         mstring_append_fmt(out, "#version %d es\n\n", version);
+        mstring_append(out,
+                       "#ifdef GL_NV_shader_noperspective_interpolation\n"
+                       "#extension GL_NV_shader_noperspective_interpolation : enable\n"
+                       "#define NOPERSPECTIVE noperspective\n"
+                       "#else\n"
+                       "#define NOPERSPECTIVE\n"
+                       "#endif\n"
+                       "\n");
         mstring_append(out,
                        "precision highp float;\n"
                        "precision highp int;\n"
@@ -99,6 +131,7 @@ void pgraph_glsl_append_version(MString *out, bool vulkan, bool gles,
     }
 
     mstring_append(out, "#version 400\n\n");
+    mstring_append(out, GLSL_NOPERSPECTIVE_DEFINE);
 }
 
 void pgraph_glsl_set_clip_range_uniform_value(PGRAPHState *pg, float clipRange[4])

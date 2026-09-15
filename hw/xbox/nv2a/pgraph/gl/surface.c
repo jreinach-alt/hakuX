@@ -144,15 +144,6 @@ static void android_glo_readpixels(PGRAPHGLState *r, GLenum gl_format,
     glPixelStorei(GL_PACK_ALIGNMENT, pa);
 }
 
-static void android_sanitize_surface_format(PGRAPHGLState *r,
-                                            SurfaceFormatInfo *fmt)
-{
-    /* Android keeps the guest surface format metadata intact and converts
-     * unsupported BGRA guest layouts at upload/readback time instead. */
-    (void)r;
-    (void)fmt;
-}
-
 static bool android_surface_uses_rgba8_transfer(const SurfaceBinding *surface)
 {
     if (!surface || !surface->color) {
@@ -188,6 +179,18 @@ static void android_surface_get_storage_format(const SurfaceBinding *surface,
 static uint8_t android_expand_5_to_8(uint8_t value)
 {
     return (value << 3) | (value >> 2);
+}
+
+/*
+ * Silicon expands a short colour field by replicating its high bits, not by
+ * scaling with the exact ratio -- measured in #59, where the level set decided
+ * it: 21 golden channels hold replicate-only levels and none holds a
+ * ratio-only level. The two disagree on 30 of the 64 six-bit values, always
+ * by one step.
+ */
+static uint8_t android_expand_6_to_8(uint8_t value)
+{
+    return (value << 2) | (value >> 4);
 }
 
 #ifdef __aarch64__
@@ -307,7 +310,10 @@ static inline void android_neon_r5g6b5_to_rgba8_row(const uint8_t *src_row,
     while (remaining-- > 0) {
         uint16_t pixel = *src++;
         dst[0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
-        dst[1] = (uint8_t)(((pixel >> 5) & 0x3F) * 255 / 63);
+        /* The vector body above replicates ((g << 2) | (g >> 4)); this tail
+         * used to scale by 255/63, so the last up-to-7 pixels of every row
+         * took a different rule from the rest of it. */
+        dst[1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
         dst[2] = android_expand_5_to_8(pixel & 0x1F);
         dst[3] = 0xFF;
         dst += 4;
@@ -531,6 +537,28 @@ static void android_surface_guest_to_rgba8(const SurfaceBinding *surface,
                 uint16_t pixel = lduw_le_p(src_row + x * 2);
                 dst_row[x * 4 + 0] = android_expand_5_to_8((pixel >> 10) & 0x1F);
                 dst_row[x * 4 + 1] = android_expand_5_to_8((pixel >> 5) & 0x1F);
+                dst_row[x * 4 + 2] = android_expand_5_to_8(pixel & 0x1F);
+                dst_row[x * 4 + 3] = 0xFF;
+            }
+        }
+        break;
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:
+        /*
+         * Both gates in front of this call admit R5G6B5 --
+         * android_surface_to_texture_rgba8_compatible() returns true for it
+         * and android_surface_to_texture_needs_guest_reinterpretation()
+         * returns false -- so the default: below was reachable and aborted.
+         * What hid it is the render_surface_to() blit earlier in
+         * render_surface_to_texture_slow(), which returns only for
+         * GL_TEXTURE_2D and only when it succeeds. See #62.
+         */
+        for (y = 0; y < height; y++) {
+            const uint8_t *src_row = src + y * src_stride;
+            uint8_t *dst_row = dst + y * width * 4;
+            for (x = 0; x < width; x++) {
+                uint16_t pixel = lduw_le_p(src_row + x * 2);
+                dst_row[x * 4 + 0] = android_expand_5_to_8((pixel >> 11) & 0x1F);
+                dst_row[x * 4 + 1] = android_expand_6_to_8((pixel >> 5) & 0x3F);
                 dst_row[x * 4 + 2] = android_expand_5_to_8(pixel & 0x1F);
                 dst_row[x * 4 + 3] = 0xFF;
             }
@@ -1308,12 +1336,31 @@ static void render_surface_to_texture_slow(NV2AState *d,
 
     size_t bufsize = width * height * surface->fmt.bytes_per_pixel;
 
+    /*
+     * The download fills buf at the SURFACE's dimensions, but width/height are
+     * reassigned to the texture shape's just below and every consumer reads
+     * buf at those instead. The slow path is by construction the one taken
+     * when the fast path refused, and a dimension mismatch is one of the
+     * reasons it refuses, so a texture larger than the surface read past the
+     * allocation. Size for whichever is larger; that removes the over-read
+     * without changing any case that already worked.
+     *
+     * The row stride below is still the texture width, so a genuine mismatch
+     * also shears the image. That is a separate question about what this path
+     * is supposed to do, and it is not answered here. See #62.
+     */
+    unsigned int tex_w = texture_shape->width, tex_h = texture_shape->height;
+    pgraph_apply_scaling_factor(pg, &tex_w, &tex_h);
+    size_t texsize = (size_t)tex_w * tex_h * surface->fmt.bytes_per_pixel;
+    if (texsize > bufsize) {
+        bufsize = texsize;
+    }
+
     uint8_t *buf = g_malloc(bufsize);
     surface_download_to_buffer(d, surface, false, false, false, buf);
 
-    width = texture_shape->width;
-    height = texture_shape->height;
-    pgraph_apply_scaling_factor(pg, &width, &height);
+    width = tex_w;
+    height = tex_h;
 
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, texture_shape)) {
@@ -1374,7 +1421,19 @@ void pgraph_gl_render_surface_to_texture(NV2AState *d, SurfaceBinding *surface,
     glBindTexture(texture->gl_target, texture->gl_texture);
     glTexParameteri(texture->gl_target, GL_TEXTURE_BASE_LEVEL, 0);
     glTexParameteri(texture->gl_target, GL_TEXTURE_MAX_LEVEL, 0);
+    /*
+     * The default min filter is GL_NEAREST_MIPMAP_LINEAR, which leaves a
+     * single-level texture incomplete, so one has to be set here. But this
+     * is the binding's own texture and apply_texture_parameters() applies
+     * the guest's filter to it a moment later behind a cache guard,
+     * `if (min_filter != binding->min_filter)`. A fresh binding is safe --
+     * generate_texture_binding() seeds the field to 0xFFFFFFFF -- while a
+     * REUSED one whose cached filter already equals what the guest is
+     * asking for skips that call and keeps the GL_LINEAR set here. Drop the
+     * cached value so the guest's filter is reapplied. See #71.
+     */
     glTexParameteri(texture->gl_target, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    texture->min_filter = 0xFFFFFFFF;
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, texture_shape) &&
         !android_surface_to_texture_needs_guest_reinterpretation(surface,
@@ -1564,6 +1623,24 @@ static void invalidate_overlapping_surfaces(NV2AState *d, SurfaceBinding *surfac
             pgraph_gl_surface_invalidate(d, other_surface);
         }
     }
+}
+
+bool pgraph_gl_download_surfaces_in_range_if_dirty(PGRAPHState *pg,
+                                                   hwaddr start, hwaddr size)
+{
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    PGRAPHGLState *r = pg->gl_renderer_state;
+    SurfaceBinding *surface, *next;
+    bool found_overlap = false;
+
+    QTAILQ_FOREACH_SAFE(surface, &r->surfaces, entry, next) {
+        if (check_surface_overlaps_range(surface, start, size)) {
+            found_overlap = true;
+            pgraph_gl_surface_download_if_dirty(d, surface);
+        }
+    }
+
+    return found_overlap;
 }
 
 static SurfaceBinding *surface_put(NV2AState *d, hwaddr addr,
@@ -2602,6 +2679,14 @@ static void compare_surfaces(SurfaceBinding *s1, SurfaceBinding *s2)
         if (s1->fld != s2->fld) \
             trace_nv2a_pgraph_surface_compare_mismatch( \
                 #fld, (long int)s1->fld, (long int)s2->fld);
+    /*
+     * The guest colour and zeta formats, which are what #60 is about: a
+     * binding reused across a colour format change keeps its creation-time
+     * shape, and until these two lines the eviction trace could not name the
+     * field that had changed. #62 finding 4.
+     */
+    DO_CMP(shape.color_format)
+    DO_CMP(shape.zeta_format)
     DO_CMP(shape.clip_x)
     DO_CMP(shape.clip_width)
     DO_CMP(shape.clip_y)
@@ -2665,11 +2750,19 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
         surface = &pg->surface_zeta;
         dma_address = pg->dma_zeta;
         assert(pg->surface_shape.zeta_format != 0);
-        assert(pg->surface_shape.zeta_format <
-               ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map));
-        const SurfaceFormatInfo *map =
-            pg->surface_shape.z_format ? kelvin_surface_zeta_float_format_gl_map :
-                                         kelvin_surface_zeta_fixed_format_gl_map;
+        /* Bound against the map actually indexed, not the other one. The two
+         * have the same extent today, so this is a shape complaint rather
+         * than a live bug -- but the assert should name what it guards. */
+        const SurfaceFormatInfo *map;
+        size_t map_len;
+        if (pg->surface_shape.z_format) {
+            map = kelvin_surface_zeta_float_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_float_format_gl_map);
+        } else {
+            map = kelvin_surface_zeta_fixed_format_gl_map;
+            map_len = ARRAY_SIZE(kelvin_surface_zeta_fixed_format_gl_map);
+        }
+        assert(pg->surface_shape.zeta_format < map_len);
         fmt = map[pg->surface_shape.zeta_format];
     }
 
@@ -2688,9 +2781,6 @@ static void populate_surface_binding_entry_sized(NV2AState *d, bool color,
                                                     r->color_binding->shape;
     entry->gl_buffer = 0;
     entry->fmt = fmt;
-#ifdef __ANDROID__
-    android_sanitize_surface_format(r, &entry->fmt);
-#endif
     entry->color = color;
     entry->swizzle =
         (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);
@@ -2750,18 +2840,51 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                                            d->vram, entry.vram_addr, entry.size,
                                            DIRTY_MEMORY_NV2A);
 
-    if (upload && (surface->buffer_dirty || mem_dirty)) {
+    /*
+     * The condition is "the binding is stale OR ABSENT", not just stale. A
+     * surface that is neither buffer-dirty nor memory-dirty but has no binding
+     * at all used to fall through here with nothing bound, and everything
+     * downstream then ran against a framebuffer with no attachments at all:
+     * measured as 378 guest clears per run of the surface disc that raised
+     * GL_INVALID_FRAMEBUFFER_OPERATION and did nothing, the error sitting
+     * pending until an unrelated assert tripped over it. See #66.
+     *
+     * Note mem_dirty is identically false on any TCG build -- which is every
+     * build we run -- so this gate is buffer_dirty alone in practice.
+     */
+    bool no_binding = (color ? r->color_binding : r->zeta_binding) == NULL;
+
+    if (upload && (surface->buffer_dirty || mem_dirty || no_binding)) {
         pgraph_gl_unbind_surface(d, color);
 
         SurfaceBinding *found = pgraph_gl_surface_get(d, entry.vram_addr);
         if (found != NULL) {
-            /* FIXME: Support same color/zeta surface target? In the mean time,
-             * if the surface we just found is currently bound, just unbind it.
+            /* FIXME: Support same color/zeta surface target? One GL texture
+             * cannot be the colour and the depth attachment at the same time,
+             * so when the guest points both at one address one of them has to
+             * lose. Which one is not arbitrary. Hardware lets both units write
+             * and races them, and the only capture that discriminates --
+             * Color zeta overlap's ColorIntoZeta_ZB -- has the colour write
+             * taking 120,729 of the quad's 131,495 pixels in the golden. So
+             * colour wins: it may take a surface zeta is holding, but zeta may
+             * not take one colour is holding. Evicting the colour attachment
+             * instead leaves a framebuffer with nothing attached, which is
+             * never a state the guest asked for, and #66 showed that state can
+             * persist for the rest of a test once entered.
              */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (found == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
+                if (!color) {
+                    /* Zeta declines. The colour attachment stays; this
+                     * surface's zeta binding remains absent, and the
+                     * no_binding gate above brings us back here on every
+                     * request so zeta can take it once colour moves away.
+                     */
+                    surface->buffer_dirty = false;
+                    return;
+                }
                 pgraph_gl_unbind_surface(d, !color);
             }
         }

@@ -44,6 +44,53 @@ static inline void android_log_gl_errors(const char *ctx)
 }
 #endif
 
+/*
+ * A clear writes the surface the way a draw does, and the surface-to-texture
+ * path has to be told: it only refreshes a texture bound straight from a
+ * surface when that surface's draw time has moved on. A surface that is
+ * cleared and not otherwise drawn to keeps the draw time it had, so a texture
+ * sampled from it afterwards still shows what was there before the clear.
+ */
+/*
+ * glLineWidth raises GL_INVALID_VALUE for width <= 0 and then does nothing.
+ * The guest can legitimately ask for line width 0 -- Line_width and 2D_Lines
+ * both do -- and the MIN clamps above only bound the TOP of the supported
+ * range, so that reached the driver as glLineWidth(0.0f) and left an error
+ * pending. Nothing consumed it, and gl/shaders.c:413 asserts glGetError() ==
+ * GL_NO_ERROR on entry, so the whole process aborted: iso_line produced ZERO
+ * captures on desktop GL, and seven suites could not be measured at all.
+ * Android never saw it because that same function drains errors in a loop
+ * rather than asserting.
+ *
+ * Skipping the call is BEHAVIOUR-IDENTICAL: a call GL rejects is a no-op, so
+ * the line width GL uses is the same either way. The only difference is that
+ * no error is raised.
+ *
+ * What the hardware actually draws at line width 0 is NOT settled here, and
+ * this deliberately does not decide it -- clamping up to the minimum supported
+ * width would be a visible answer to a question nothing has measured. This
+ * changes a crash into the behaviour we already had.
+ */
+static void set_line_width(float width)
+{
+    if (width > 0.0f) {
+        glLineWidth(width);
+    }
+}
+
+static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHGLState *r = pg->gl_renderer_state;
+
+    pg->draw_time++;
+    if (r->color_binding && write_color) {
+        r->color_binding->draw_time = pg->draw_time;
+    }
+    if (r->zeta_binding && write_zeta) {
+        r->zeta_binding->draw_time = pg->draw_time;
+    }
+}
+
 void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -108,6 +155,39 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
         parameter, xmin, ymin, xmax, ymax,
         d->pgraph.regs_[NV_PGRAPH_COLORCLEARVALUE]);
 
+    /*
+     * The surface clip rectangle bounds a clear as it bounds a draw: the
+     * memory outside it is left alone whatever the clear rect says. pbkit
+     * paints its debug text with clears, and Surface clip's
+     * DebugTextShouldClip expects the lines above a tiny clip to stay
+     * invisible; its rt_ tests fill the memory around the clip from the CPU
+     * and expect a full-surface clear to leave that fill alone. A zero clip
+     * size is not a hardware case that has been measured -- the suite sends
+     * the surface size instead -- so it bounds nothing here.
+     *
+     * vk/draw.c has done this since the Vulkan renderer was fixed for these
+     * same captures; this is that change, ported.
+     */
+    {
+        unsigned int cx = pg->surface_shape.clip_x;
+        unsigned int cy = pg->surface_shape.clip_y;
+        unsigned int cw = pg->surface_shape.clip_width;
+        unsigned int ch = pg->surface_shape.clip_height;
+        if (cw) {
+            xmin = MAX(xmin, cx);
+            xmax = MIN(xmax, cx + cw - 1);
+        }
+        if (ch) {
+            ymin = MAX(ymin, cy);
+            ymax = MIN(ymax, cy + ch - 1);
+        }
+        if (xmin > xmax || ymin > ymax) {
+            /* Entirely outside the clip: nothing is written. */
+            pg->clearing = false;
+            return;
+        }
+    }
+
     unsigned int scissor_width = xmax - xmin + 1,
                  scissor_height = ymax - ymin + 1;
     pgraph_apply_anti_aliasing_factor(pg, &xmin, &ymin);
@@ -140,6 +220,7 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
     glDisable(GL_SCISSOR_TEST);
 
     pgraph_gl_set_surface_dirty(pg, write_color, write_zeta);
+    mark_clear_drawn(pg, write_color, write_zeta);
 
     if (r->color_binding) {
         r->color_binding->cleared = full_clear && write_color;
@@ -167,7 +248,8 @@ void pgraph_gl_draw_begin(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     pgraph_gl_surface_update(d, true, true, depth_test || stencil_test);
 
@@ -309,16 +391,18 @@ void pgraph_gl_draw_begin(NV2AState *d)
 
     /* Edge Antialiasing */
 #ifdef __ANDROID__
-    glLineWidth(MIN(r->supported_aliased_line_width_range[1],
-                    pg->surface_scale_factor));
+    set_line_width(MIN(r->supported_aliased_line_width_range[1],
+                       (pg->line_width / 8.0f) * pg->surface_scale_factor));
 #else
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_LINESMOOTHENABLE) {
         glEnable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_smooth_line_width_range[1], pg->surface_scale_factor));
+        set_line_width(MIN(r->supported_smooth_line_width_range[1],
+                           (pg->line_width / 8.0f) * pg->surface_scale_factor));
     } else {
         glDisable(GL_LINE_SMOOTH);
-        glLineWidth(MIN(r->supported_aliased_line_width_range[1], pg->surface_scale_factor));
+        set_line_width(MIN(r->supported_aliased_line_width_range[1],
+                           (pg->line_width / 8.0f) * pg->surface_scale_factor));
     }
     if (!anti_aliasing && pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER) &
                               NV_PGRAPH_SETUPRASTER_POLYSMOOTHENABLE) {
@@ -385,7 +469,8 @@ void pgraph_gl_draw_end(NV2AState *d)
     bool depth_test = control_0 & NV_PGRAPH_CONTROL_0_ZENABLE;
     bool stencil_test =
         pgraph_reg_r(pg, NV_PGRAPH_CONTROL_1) & NV_PGRAPH_CONTROL_1_STENCIL_TEST_ENABLE;
-    bool is_nop_draw = !(color_write || depth_test || stencil_test);
+    bool is_nop_draw = !(color_write || depth_test || stencil_test) ||
+                       pgraph_draw_is_empty_line(pg);
 
     if (is_nop_draw) {
         // FIXME: Check PGRAPH register 0x880.

@@ -243,6 +243,76 @@ void nv2a_profile_flip_stall(void)
 
     g_nv2a_stats.phase_working.post_flip = true;
 
+    /* Where the guest's stores into code pages are landing. */
+#ifdef __ANDROID__
+    if ((g_nv2a_stats.frame_count % 120) == 0) {
+        extern uint64_t hakux_notdirty_total;
+        extern uint64_t hakux_notdirty_invalidate_calls;
+        extern uint64_t hakux_notdirty_page[8];
+        extern uint64_t hakux_notdirty_hits[8];
+        extern uint64_t hakux_notdirty_vaddr[8];
+        extern uint32_t hakux_notdirty_off_lo[8];
+        extern uint32_t hakux_notdirty_off_hi[8];
+        extern uint64_t hakux_tb_invalidated;
+        extern uint64_t hakux_tb_generated;
+        static uint64_t prev_total, prev_inval, prev_tbi, prev_tbg;
+        char nd[768];
+        int n = snprintf(nd, sizeof(nd), "slow stores %llu (%llu reached the invalidator) since last:",
+                         (unsigned long long)(hakux_notdirty_total - prev_total),
+                         (unsigned long long)(hakux_notdirty_invalidate_calls - prev_inval));
+        prev_total = hakux_notdirty_total;
+        prev_inval = hakux_notdirty_invalidate_calls;
+        n += snprintf(nd + n, sizeof(nd) - n,
+                      " [blocks tossed %llu, generated %llu]",
+                      (unsigned long long)(hakux_tb_invalidated - prev_tbi),
+                      (unsigned long long)(hakux_tb_generated - prev_tbg));
+        prev_tbi = hakux_tb_invalidated;
+        prev_tbg = hakux_tb_generated;
+        for (int i = 0; i < 8 && n < (int)sizeof(nd) - 80; i++) {
+            if (!hakux_notdirty_hits[i]) {
+                continue;
+            }
+            n += snprintf(nd + n, sizeof(nd) - n,
+                          " pfn%llx n=%llu va=%llx off=%x..%x",
+                          (unsigned long long)hakux_notdirty_page[i],
+                          (unsigned long long)hakux_notdirty_hits[i],
+                          (unsigned long long)hakux_notdirty_vaddr[i],
+                          hakux_notdirty_off_lo[i],
+                          hakux_notdirty_off_hi[i]);
+        }
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-pages", "%s", nd);
+    }
+#endif
+
+    /* Dirty-bitmap queries for the frame that just ended. */
+    {
+        FramePacingStats *p = &g_nv2a_stats.pacing;
+        p->tex_dirty_queries = p->tex_dirty_queries * 0.8f +
+                               (float)p->tex_dirty_query_acc * 0.2f;
+        p->tex_dirty_query_acc = 0;
+    }
+
+    /* Renderer idle for the frame that just ended. */
+    {
+        FramePacingStats *p = &g_nv2a_stats.pacing;
+        float idle_ms = (float)p->renderer_idle_acc_ns / 1e6f;
+        p->renderer_idle_acc_ns = 0;
+        if (idle_ms >= 0.0f && idle_ms < 10000.0f) {
+            p->renderer_idle_ms = p->renderer_idle_ms * 0.8f + idle_ms * 0.2f;
+        }
+    }
+
+    /* VBLANKs consumed by the frame that just ended. */
+    {
+        static unsigned int prev_vblank_count;
+        FramePacingStats *p = &g_nv2a_stats.pacing;
+        unsigned int n = p->vblank_fired - prev_vblank_count;
+        prev_vblank_count = p->vblank_fired;
+        if (n <= 16) {
+            p->vblanks_per_flip = p->vblanks_per_flip * 0.9f + (float)n * 0.1f;
+        }
+    }
+
     /* Track game frame time (flip-to-flip interval) */
     static int64_t prev_flip_us;
     if (prev_flip_us) {
@@ -255,6 +325,25 @@ void nv2a_profile_flip_stall(void)
             p->game_frame_max_ms = frame_ms;
     }
     prev_flip_us = now;
+
+#ifdef __ANDROID__
+    /*
+     * Always-on pacing line, roughly twice a second at 60 fps and less often
+     * when the guest is slower. The heavyweight breakdown below needs
+     * NV2A_PERF_LOG, which puts a clock read around every method in the puller
+     * and so changes the number it is measuring. This one costs an snprintf
+     * per 60 guest frames and answers the first question on its own: if
+     * display frame time sits at the limiter's interval while game frame time
+     * is far above it, the guest is the slow side and no cap is involved.
+     */
+    if ((g_nv2a_stats.frame_count % 60) == 0) {
+        char pbuf[256];
+        nv2a_profile_get_pacing_str(pbuf, sizeof(pbuf));
+        __android_log_print(ANDROID_LOG_INFO, "hakuX-perf",
+                            "gfps=%d %s", (int)g_nv2a_stats.increment_fps,
+                            pbuf);
+    }
+#endif
 
 #if defined(__ANDROID__) && NV2A_PERF_LOG
     if ((g_nv2a_stats.frame_count % 60) == 0) {
@@ -293,7 +382,8 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
 {
     FramePacingStats *p = &g_nv2a_stats.pacing;
     snprintf(buf, bufsize,
-             "G:%.1f(%.1f-%.1f) D:%.1f(%.1f-%.1f) S:%.1f J:%.1f Df:%u Vd:%.1f Ul:%c",
+             "G:%.1f(%.1f-%.1f) D:%.1f(%.1f-%.1f) S:%.1f J:%.1f Df:%u Vd:%.1f "
+             "Ul:%c Vpf:%.2f Ri:%.1f Tq:%.0f",
              p->game_frame_ms,
              p->game_frame_min_ms,
              p->game_frame_max_ms,
@@ -304,7 +394,10 @@ void nv2a_profile_get_pacing_str(char *buf, int bufsize)
              p->vblank_jitter_ms,
              p->defers_total,
              p->vblank_delivery_ms,
-             p->unlock_mode_active ? 'Y' : 'N');
+             p->unlock_mode_active ? 'Y' : 'N',
+             p->vblanks_per_flip,
+             p->renderer_idle_ms,
+             p->tex_dirty_queries);
     /* Reset min/max every call so the window reflects recent behavior */
     p->game_frame_min_ms = 0;
     p->game_frame_max_ms = 0;

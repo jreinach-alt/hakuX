@@ -45,6 +45,12 @@ android {
           "-DCMAKE_C_FLAGS_DEBUG=-O2 -g1",
           "-DCMAKE_CXX_FLAGS_DEBUG=-O2 -g1"
         )
+        // Diagnostic build: ./gradlew assembleDebug -Pperflog=true
+        // Compiles in the nv2a frame-phase profiler, which is off by default
+        // because its instrumentation perturbs the timings it reports.
+        if (project.hasProperty("perflog")) {
+          arguments += listOf("-DHAKUX_PERF_LOG=ON")
+        }
         cppFlags += listOf("-std=c++17", "-fexceptions", "-frtti")
       }
     }

@@ -48,10 +48,12 @@ Suites are ranked by the share of their tests that are bit-identical, because
 that is the only claim that needs no threshold to defend.
 
 The per-test TSV has one row per test: suite, test, solo, status, differing,
-max_rgb, max_a, pixels, off_by_one. For a depth capture ``differing`` counts
+max_rgb, max_a, pixels, off_by_one. For a colour capture ``off_by_one``
+counts differing pixels no channel of which is more than one step out. For a
+depth capture ``differing`` counts
 pixels whose decoded depth or stencil differs and ``off_by_one`` those whose
 depth is off by exactly one with the stencil equal; ``max_rgb`` and ``max_a``
-stay the raw channel maxima. For a colour capture ``off_by_one`` is 0.
+stay the raw channel maxima. 
 """
 
 import argparse
@@ -148,6 +150,15 @@ def score_dir(args):
             off_by_one = int(((dz == 1) & (ds == 0)).sum())
         else:
             differing = int(((rgb > 0) | (alpha > 0)).sum())
+            # A colour capture's off-by-one bucket, for the same reason the
+            # depth one exists. Measured across 727 captures, the pixels in
+            # this bucket sit 0.01 to 0.04 of a step from the hardware's
+            # value: two nearly identical computations landing either side
+            # of a quantisation boundary, not a rounding rule, which would
+            # put half of them across it. See docs/testing/
+            # run-2026-09-11-residual-classes.tsv and issue #38.
+            off_by_one = int(((rgb <= 1) & (alpha <= 1)
+                              & ((rgb > 0) | (alpha > 0))).sum())
 
         # The overlay text is drawn pure white by the guest. Pixels that are
         # white on exactly one side mean the two runs printed different text,
@@ -187,6 +198,19 @@ def main():
                          "contamination between tests is not ruled out.")
     ap.add_argument("--goldens", required=True)
     ap.add_argument("--tsv", help="write the per-test table here")
+    # Provenance. Two results are only comparable if the binary differs and the
+    # disc composition matches; a row that carries neither cannot be checked.
+    # Comparing a shared-disc number against a per-suite one caused a working
+    # fix to be reverted on 2026-09-12, and nothing in the file said they were
+    # different runs. See docs/orchestration.md.
+    ap.add_argument("--apk-sha", default="",
+                    help="the binary that produced these captures")
+    ap.add_argument("--disc-id", default="",
+                    help="which suites were on the disc, e.g. 'Specular' or "
+                         "'g0:23suites' -- results with different disc ids are "
+                         "not comparable")
+    ap.add_argument("--label", default="",
+                    help="run label, e.g. baseline / published / nightly")
     ap.add_argument("--jobs", type=int, default=os.cpu_count())
     args = ap.parse_args()
 
@@ -220,10 +244,17 @@ def main():
 
     if args.tsv:
         with open(args.tsv, "w") as f:
+            # Provenance goes in columns, not a comment header: a leading
+            # "#" line becomes the header row for csv.DictReader and silently
+            # breaks every consumer. Per-row also means several runs can be
+            # concatenated and still be told apart.
             f.write("suite\ttest\tsolo\tstatus\tdiffering\tmax_rgb\tmax_a"
-                    "\tpixels\toff_by_one\n")
+                    "\tpixels\toff_by_one\tapk_sha\tdisc_id\tlabel\n")
             for r in sorted(rows):
-                f.write("\t".join(str(x) for x in r) + "\n")
+                f.write("\t".join(str(x) for x in r) +
+                        "\t%s\t%s\t%s\n" % (args.apk_sha or "unknown",
+                                             args.disc_id or "unknown",
+                                             args.label or "unlabelled"))
 
     scored = [r for r in rows if r[3] in ("ok", "blank", "label-differs")]
     blanks = [r for r in rows if r[3] == "blank"]
@@ -249,8 +280,8 @@ def main():
             print(f"  every repeated test scored identically on each run\n")
     print(f"  bit-identical to hardware   : {len(exact):5d}  "
           f"({len(exact)/max(len(scored),1)*100:.1f}% of scored)")
-    print(f"  depth within +-1 of hardware: {len(within1):5d}  "
-          f"(depth captures off by exactly one; not counted above)")
+    print(f"  within +-1 of hardware      : {len(within1):5d}  "
+          f"(every differing pixel one step out; not counted above)")
     print(f"  differ                      : "
           f"{len(scored)-len(exact)-len(within1)-len(blanks):5d}")
     print(f"  blank -- nothing drew       : {len(blanks):5d}")
@@ -295,6 +326,31 @@ def main():
         print("\n  * ran on a shared disc, not one test per run — these are the "
               "suites\n    the isolation build could not split, so contamination "
               "between their\n    own tests is not ruled out.")
+
+    # Coverage against the oracle we own. A suite that runs fewer tests than it
+    # has goldens is being scored on part of its oracle, and the score looks
+    # respectable either way -- Depth_buffer read 28/144 exact on a ninth of
+    # its masks and Blend_tests 16/105 on 6.7% of its tests, both for days,
+    # because nothing compared these two numbers. The mismatch is the tell for
+    # a suite whose tests were retired upstream; the 2025-03-14 disc still
+    # emits them. docs/investigations/depth-full-oracle-2026-09-12.md
+    partial = []
+    for name, s in sorted(suites.items()):
+        gdir = os.path.join(args.goldens, name)
+        if not os.path.isdir(gdir):
+            continue
+        have = len([f for f in os.listdir(gdir) if f.endswith(".png")])
+        if have > s["n"]:
+            partial.append((name, s["n"], have))
+    if partial:
+        print("\n  PARTIAL COVERAGE — these suites have more goldens than the "
+              "captures scored:")
+        for name, got, have in sorted(partial, key=lambda r: r[1] / r[2]):
+            print(f"    {name:<34} {got:>5} of {have:<5} "
+                  f"({100.0 * got / have:>5.1f}%)")
+        print("    A score over part of a suite is not the suite's score. If the "
+              "gap is large,\n    the tests were probably retired upstream and "
+              "need the 2025-03-14 disc.")
     return 0
 
 

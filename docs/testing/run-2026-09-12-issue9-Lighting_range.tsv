@@ -1,0 +1,4 @@
+suite	test	solo	status	differing	max_rgb	max_a	pixels	off_by_one
+Lighting_range	Directional	False	ok	792	112	0	307200	0
+Lighting_range	Point	False	ok	1659	112	0	307200	704
+Lighting_range	Spot	False	ok	7913	112	0	307200	6934

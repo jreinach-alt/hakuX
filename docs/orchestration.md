@@ -1,0 +1,306 @@
+# Running this project with several agents
+
+Written 2026-09-12, after a day in which two lanes independently produced the
+same fix twice, five mechanism claims were retracted, the issue tracker drifted
+until an audit found six closed issues listed as open and three entries
+silently deleted, and the single most valuable finding of the day — that two
+suites were being scored on 6.7% and 18% of their available oracle — came from
+reading progress logs side by side rather than from any planned work.
+
+The design below is shaped by those specific failures, not by a general theory
+of agents.
+
+## The binding constraint is the device, not the agent count
+
+| resource | capacity | consequence |
+|---|---|---|
+| **Nova (one device)** | serialised | a measurement is 1–10 min with the image pull and scoring, so the *whole system* does roughly 10–30 device measurements an hour however many agents exist |
+| **Native build** | one tree | a fresh git worktree **cannot build the native side here** (JDK 21 against a system Java 25 JRE), so implementers cannot each hold a private build |
+| **Host CPU** | 8 cores | scoring 1,291 captures takes ~20 min, largely single-threaded; 2–3 concurrent scorers are fine |
+
+So the ceiling is about **two device-bound implementers plus as many
+analysis-only agents as there is work**. Adding device-bound agents past that
+does not go faster, it queues — and queueing is where "stepping on each other's
+toes" actually comes from.
+
+**Split streams by resource class, not by topic.** That is the change that buys
+concurrency.
+
+## Roles
+
+### Dispatcher — owns the device, and owns comparability
+
+Agents do not touch the Nova. They submit a request and wait for a result.
+
+The dispatcher exists for three reasons, in order of value:
+
+**1. Batching, which is the real throughput win.** The overnight sweep only
+became viable by pulling the 1.5GB disk image once per hundred tests instead of
+once per test — the difference between three hours and a day and a half. A
+single implementer asking for one suite cannot see that. A dispatcher holding
+eight requests coalesces them into one boot and one pull. That is a 5–10×
+effect on the binding constraint; nothing else here comes close.
+
+**2. It makes invalid comparisons impossible rather than caught later.** Both
+of the day's bad calls were comparability failures, not measurement failures: a
+shared-disc number compared against a per-suite number, which caused a working
+fix to be reverted. So a request carries, and a result records:
+
+```
+request: { ref, disc_id, suites|tests, arm: company|solo, requester, purpose }
+result:  { tsv, apk_sha, disc_id, classifier_rev,
+           captures_vs_goldens, progress_log_proof, runs }
+```
+
+* **`ref`, not "what's in my tree."** The dispatcher builds a named commit and
+  records the APK sha. With three implementers holding uncommitted work, "run
+  my build" is ambiguous the moment two of them ask — today five APKs were in
+  flight and kept straight by hand.
+* **`disc_id` — which suites are on the disc.** Two results are comparable only
+  if the ref differs and the disc identity matches. The dispatcher refuses any
+  other comparison.
+* **`classifier_rev`.** The boundary-shift class exists only from `d0114a49`;
+  residual splits computed without it are wrong in a way that already corrected
+  one cross-lane ranking.
+* **`captures_vs_goldens`.** Free to compute, and it is what found the 5.4×
+  depth and 15× blend oracle gaps.
+* **`progress_log_proof`.** A run counts only if its own log shows the test
+  completing. Neither file mtimes nor "the PNG exists" substitute: a truncated
+  run leaves the previous image in place and reads as a pass.
+* **`runs ≥ 2` for any no-oracle measurement** (audio, timing, performance). A
+  single Nova run can be a one-off band.
+
+**3. It holds the lease continuously**, so the Stop hook cannot kill a run
+mid-flight — that has destroyed three sessions — and it re-queues rather than
+fails on a device drop. A drop once marked every queued test FAILED and emptied
+the queue.
+
+**Failure modes to design for:** the dispatcher is a serialisation point and a
+single point of failure. It needs a queue file a human can read, a per-request
+timeout, and requeue-on-restart. If it dies, every requester blocks.
+
+### Orchestrator — sole writer of the issue log
+
+Today's drift is the argument. Six closed issues were still listed as open,
+which pollutes `issues_for_suite` and therefore every `query` and `blast`;
+eighteen open ones were absent; and one conflict resolution deleted three
+entries while its commit message talked about something else. Nothing but an
+audit against the GitHub list found any of it — `nv2a_index.py check`
+validates suite *names*, not whether an issue exists.
+
+So: one writer, and the audit becomes a gate that runs before any tracker
+commit. It compares every entry against the live issue list for existence,
+state and title, and validates every suite name against the derived index.
+
+The orchestrator also holds the claim ledger. Every duplicate today — the
+surface-as-texture decode, the line-width analysis, the coverage gap — happened
+because we posted *results* rather than *intentions*. Claim before the first
+build, not after the measurement.
+
+### Reviewer — a checklist, not judgement
+
+Each item below cost real time today, which is why it is a list and not advice.
+
+1. **Same binary in both arms**, or an improvement has two explanations.
+2. **Same disc composition in both arms.** A regression measured on a shared
+   disc is not a regression until it reproduces in isolation.
+3. **Better/worse per capture, never totals.** Six better and seven worse hid
+   behind an exact count that moved by one.
+4. **Compare regions, not point samples.** Point samples through structured
+   content manufacture whatever agreement you look for; two mechanisms died to
+   this in one day.
+5. **Date the captures against the commit.** A capture older than the fix reads
+   exactly like a live defect.
+6. **Prove the code path is live.** A patch to the legacy pipeline path changed
+   nothing at all — 0 better, 0 worse, identical to the pixel — because the
+   device takes the dynamic path.
+7. **Capture count against golden count.** The mismatch is the tell for a
+   partially retired suite, and it is free.
+8. **Never add or subtract overlapping classes.** One-step and boundary-shift
+   overlap; subtracting both gives negative residuals.
+
+### Implementers — by resource class
+
+* **Device-bound** (max ~2 concurrent): the accuracy issues.
+* **Host-only** (many): classification, corpus re-ranking, the
+  unhandled-method inventory per suite, oracle recovery scoring, code reading.
+* **Build-only** (serialised behind the dispatcher): anything needing a binary.
+
+## Concurrency: agents write, the orchestrator builds, the dispatcher tests
+
+The constraint that looked fatal to concurrency turns out to be avoidable. A
+fresh worktree cannot build the native side here -- JDK 21 against a system
+Java 25 JRE -- so the first conclusion was that implementers must share one
+tree and therefore take turns. That conclusion was wrong, because *an agent
+writing a fix does not need to build it*. Only the fold-in needs a build, and
+there is exactly one of those.
+
+So the pipeline is:
+
+1. **Agents work in isolated worktrees, and do not build.** Each is told
+   explicitly not to run gradle/meson/ninja, because a build attempt in a
+   worktree only wastes the time it takes to fail. They reason from source and
+   from captures already on disk.
+2. **Each agent owns a disjoint set of files**, named in its brief, and is
+   told that needing a file outside the set means stopping and reporting
+   rather than editing. Disjointness is what makes the fold-in a
+   fast-forward instead of a merge.
+3. **The orchestrator reviews the diff and folds it into the shared tree**,
+   then builds **both targets**. This is where compile errors surface -- the
+   cost of agents that cannot build -- and it is cheaper than four toolchains.
+
+   Both targets, not one, and this is not optional: the Android build does not
+   catch a desktop link error. The audio instrumentation on 2026-09-12 called
+   `__android_log_print` through a local extern, which links only on Android;
+   the Android build passed, the APK was verified to contain the new string,
+   and the desktop CI gate went red on `undefined reference` at link. Every
+   `__android_log_print` in `pgraph.c` is wrapped in `#ifdef __ANDROID__` for
+   exactly this reason and the new one was not.
+
+   The intended local gate is:
+
+       mkdir -p build-linux && cd build-linux
+       ../configure --target-list=i386-softmmu --extra-cflags="-DXBOX=1" \
+           --disable-werror --disable-docs --disable-guest-agent --disable-tools
+       ninja qemu-system-i386
+
+   Compiling is not sufficient -- the CI gate exists because of a missing
+   include and a missing symbol, and the second only appears at link.
+
+   **It does not currently run on this machine**, and saying so is the point:
+   `configure` needs `ninja` (not on PATH; the Android SDK ships one at
+   `~/Android/Sdk/cmake/3.30.3/bin`) and then fails at
+   `subprojects/curl-8.12.1/meson.build:532` with `Dependency "openssl" not
+   found`, which needs a system package and therefore a human. Until that is
+   installed, **the desktop link is checked only by CI after a push**, so a
+   push is the gate and someone has to watch it. Do not record this as a local
+   gate that exists; it is a local gate that is one `apt-get` away.
+4. **One dispatcher run tests the folded tree.** Batching is the whole point:
+   four fixes in one boot and one image pull, rather than four of each.
+5. **Land on measurement.** Better-per-capture with no regressions lands. A
+   mixed result escalates. A result that contradicts the agent's own
+   prediction goes back to that agent -- we push through to root cause rather
+   than reverting a change that works but is unexplained.
+
+**Every agent states a falsifiable prediction before it measures anything**,
+naming which captures should move and which must not. This is the single most
+useful item in a brief: it is how the fold-in is judged, and it is what makes
+a wrong mechanism cheap to spot. Four of the retractions on 2026-09-12 would
+have been caught at the prediction stage.
+
+### Territories as allocated 2026-09-12
+
+| stream | files owned |
+|---|---|
+| depth (#16 float Z) | `vk/surface-compute.c`, `glsl/psh.c` |
+| image blit (#33) | `vk/blit.c`, `gl/blit.c` |
+| viewport (#49) | `glsl/vsh.c`, `glsl/vsh-ff.c`, `glsl/vsh-prog.c` |
+| audio (assessment) | `hw/xbox/mcpx/apu/**`, `hw/xbox/mcpx/aci.c` |
+
+Note `glsl/psh.c` and `glsl/vsh.c` are in the same directory and belong to
+different agents; the brief says so explicitly, because "the shader
+directory" is the obvious wrong-sized unit of ownership. `pgraph.c` belongs to
+nobody by default -- it is the file every stream is tempted to reach into, and
+the one whose conflicts are worst.
+
+**Guardrail against related-issue collisions**, which is a different failure
+from file collisions: two agents on #16 and #52 would not touch the same
+files, yet would derive the same mechanism twice. So the claimed list in every
+brief names the *issues* under way as well as the files, and issues split from
+a common parent (#16/#52, #9/#53/#38, #43/#50) are never assigned
+concurrently.
+
+### Why the remote lane is different
+
+A second session on another machine has its own checkout and cannot be given
+a worktree here. For it, a file claim is really a claim on *who commits*, and
+the coordination channel is asynchronous: it posts `ASK:` lines in a PR
+comment and a monitor wakes the orchestrator. That is slower than a worktree
+handoff and the briefs should prefer work for it that needs no claim at all
+-- test-repo changes, analysis, docs -- keeping `hw/` claims for when there is
+no alternative.
+
+## The three new streams have no oracle, and that changes everything
+
+Audio, timing and performance have **no goldens**. "Verified" cannot mean
+better/worse per capture, so each needs a harness before it can have a fix.
+
+| stream | what exists | what is missing |
+|---|---|---|
+| **Performance** | `FramePacingStats`, the `hakuX-perf` line, the 7.2 ms texture-bind figure, the critical path established as the guest CPU thread | a repeatable scene and a variance band; two runs minimum per claim |
+| **Timing** | the VBLANK deferral bootstrap flaw (`enter_thresh = period*1.5`, so a title at exactly two periods can never enter unlock mode), `HAKUX_VBLANK_HZ` | a measurement that separates a pacing change from a rendering change |
+| **Audio** | the voice-lock fix landed and was confirmed by ear | **no harness at all.** "It is quiet" is an open report with nothing to measure it against. This stream needs a capture-and-compare path before any fix can be claimed |
+
+Audio is the one to start with precisely because it has no harness: the first
+deliverable is the ability to measure, not a fix.
+
+## Nightly builds
+
+A build needs no device, so it does not contend — but a nightly that also
+*runs* tests would collide with an overnight sweep. So: build and publish
+nightly, and leave running to the dispatcher's queue.
+
+- 00:30 America/Los_Angeles.
+- Build the branch HEAD, stamp the version with the date and the short sha.
+- Publish as a GitHub pre-release on the fork, with the day's commit subjects
+  as the notes.
+- Report the outcome either way. A silent failure is worse than none, because
+  it looks like a day with no work.
+- Signing uses the fork's key from `android/key.properties`, which is
+  gitignored and must never be echoed anywhere.
+
+## The full sweep is the idle-priority job
+
+Scoring the whole corpus is about **4.5 hours of device time**, which cannot
+sit in front of an implementer waiting on eight captures. So it is the
+dispatcher's lowest-priority work, and it yields:
+
+- `sweep_queue.sh pause` **blocks until the runner has genuinely parked**, then
+  frees the device. It does not merely set a flag and hope.
+- Every `resume` **reinstalls the baseline APK**, so a request that installed a
+  different binary mid-sweep cannot silently contaminate the rows that follow.
+- Each row records the APK sha that produced it, so a mix-up is visible after
+  the fact rather than inferred.
+- A device drop **re-queues** rather than failing the row. One drop once marked
+  every queued test FAILED and emptied the queue.
+
+Which gives the scheduling rule: **requests preempt the sweep; the sweep
+resumes when the queue is empty.** A 4.5-hour sweep interleaved with a working
+day will take several days of wall clock to finish, and that is the correct
+trade — a stale full-corpus number is worth less than an implementer's answer
+now.
+
+The one thing the dispatcher must not do is let a sweep and a request share
+the device. That is what the pause handshake is for.
+
+## The scoreboard
+
+`docs/testing/scoreboard.py` rolls the 101 suites into 13 categories and puts
+labelled runs side by side. `docs/testing/SCOREBOARD.md` is the output.
+
+Cells are **exact/captures · structural px**, structural being pixels that are
+not one step out — the part that is a rule rather than a rounding floor.
+
+Three things it refuses to do, each because the alternative reads as progress
+that did not happen:
+
+- **It marks partial coverage.** A category whose run scored fewer captures
+  than it has goldens shows `⚠️` and a percentage: that cell is a floor, not a
+  score. `Blend` at 7% and `Depth / stencil` at 39% are the two that matter.
+- **It marks a run that predates the one-step column** with `†` and reports
+  *all* differing pixels, because the structural share genuinely is not
+  knowable for the 2026-09-08 baseline. Passing its total off as structural
+  would make every later run look like an improvement.
+- **It reports rescored rows rather than absorbing them.** A run directory can
+  hold two scorings of one test — a suite on its own disc and again inside a
+  sweep — and counting both inflated one category to 82 captures against 46
+  goldens, which is how the bug was found. Later files win and the collision
+  count is printed.
+
+Categories are keyed on **suites, not issues**, deliberately: #9 closed and
+became #53 and #38 in an afternoon, and a scoreboard whose rows move when the
+tracker moves cannot show a trend.
+
+Columns fill in as the dispatcher runs them: `baseline` is the 2026-09-08
+sweep, `today` is this session's measurements, and `published` and `nightly`
+each need a full sweep scheduled as idle-priority work.

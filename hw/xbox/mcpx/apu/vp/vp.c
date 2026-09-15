@@ -554,6 +554,41 @@ static void fe_method(MCPXAPUState *d, uint32_t method, uint32_t argument)
         slot = (method-NV1BA0_PIO_SET_SUBMIX_HEADROOM)/4;
         d->vp.submix_headroom[slot] =
             argument & NV1BA0_PIO_SET_SUBMIX_HEADROOM_AMOUNT;
+        /* This field is a per-bin pre-attenuation of 2^value, three bits wide,
+         * so 6.02 dB per unit up to 42 dB. It exists to reserve range in the
+         * 24-bit GP mixbuf, and on the DSP path the scene the title uploaded
+         * earns it back when it reads the bin.
+         *
+         * The monitor mix used to divide by it too, with nothing anywhere
+         * under hw/xbox/mcpx multiplying it back -- that path discards the
+         * mixbins, so there was no reader to earn it. Galleon programs 1 into
+         * all 31 slots, measured with this log on the Nova, which made the
+         * default path uniformly 6.02 dB quiet and explains the reported
+         * "volume is low even at maximum". The monitor mix no longer divides
+         * (see voice_process) and multipass reads compensate at the read (see
+         * get_multipass_samples); this site is unchanged because it only
+         * records the value.
+         *
+         * The log stays: it is one line per slot, it is the evidence the fix
+         * rests on, and it is how a title programming something other than 1
+         * would be noticed. Routed through __android_log_print because a core
+         * fprintf(stderr) never reaches logcat on Android.
+         * docs/investigations/audio-assessment.md. */
+#ifdef __ANDROID__
+        if (d->vp.submix_headroom[slot]) {
+            static uint32_t logged_slots;
+            if (!(logged_slots & (1u << slot))) {
+                logged_slots |= 1u << slot;
+                extern int __android_log_print(int, const char*, const char*, ...);
+                __android_log_print(4, "hakuX-audio",
+                    "submix_headroom[%d] = %d -- reserves x%d (%d.%02d dB), compensated on the monitor path",
+                    slot, d->vp.submix_headroom[slot],
+                    1 << d->vp.submix_headroom[slot],
+                    (602 * d->vp.submix_headroom[slot]) / 100,
+                    (602 * d->vp.submix_headroom[slot]) % 100);
+            }
+        }
+#endif
         break;
     case SE2FE_IDLE_VOICE:
         if (d->regs[NV_PAPU_FETFORCE1] & NV_PAPU_FETFORCE1_SE2FE_IDLE_VOICE) {
@@ -1264,9 +1299,26 @@ static void get_multipass_samples(MCPXAPUState *d,
                                 NV_PAVS_VOICE_CFG_FMT_MULTIPASS_BIN);
     dbg->multipass_bin = mp_bin;
 
+    /* On the monitor path, undo this bin's headroom as we read it. Multipass
+     * sub-voices reach the output only through here -- the monitor mix skips
+     * their direct contribution to avoid counting them twice -- and they were
+     * written into the bin with its divisor applied. Compensating at the read
+     * follows the hardware's own convention, that whoever reads a submix earns
+     * the headroom back, and it uses this bin's own value, so it stays correct
+     * if slots are ever set unequally. Without it, multipass content would sit
+     * 2^headroom below everything else now that the monitor mix no longer
+     * divides.
+     *
+     * The DSP path is deliberately untouched: there the GP scene is the reader
+     * and does this itself, so the guard is required, not cosmetic. */
+    float mp_gain = 1.0f;
+    if (d->monitor.point == MCPX_APU_DEBUG_MON_VP) {
+        mp_gain = 1 << d->vp.submix_headroom[mp_bin];
+    }
+
     for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
-        samples[i][0] = mixbins[mp_bin][i];
-        samples[i][1] = mixbins[mp_bin][i];
+        samples[i][0] = mp_gain * mixbins[mp_bin][i];
+        samples[i][1] = mp_gain * mixbins[mp_bin][i];
     }
 
     // DirectSound sets clear mix to true
@@ -1506,8 +1558,24 @@ static void voice_process(MCPXAPUState *d,
             if (bin[b] == mp_bin && !debug_isolation) {
                 continue;
             }
-            float hr = 1 << d->vp.submix_headroom[bin[b]];
-            g = fmax(g, attenuate(vol[b]) / hr);
+            /* No headroom divisor on this path. Submix headroom is a
+             * pre-attenuation that reserves range in the 24-bit GP mixbuf so
+             * that summing voices into one bin cannot overflow, and the scene
+             * the title uploaded to the GP earns it back when it reads the
+             * bin. The monitor mix has no such reader: it sums in float, and
+             * mcpx_apu_vp_frame discards the mixbins outright. So dividing
+             * here was a loss with no counterpart anywhere under
+             * hw/xbox/mcpx. Galleon programs 1 into all 31 slots, i.e.
+             * -6.02 dB uniformly -- see docs/investigations/audio-assessment.md.
+             *
+             * Dropping the divisor rather than compensating after the mix is
+             * deliberate. The attenuation is per voice and per bin, so its
+             * inverse belongs there too; a single post-mix scale would need
+             * one headroom value for a sum that may draw on bins carrying
+             * different ones. It also restores the intent of the fmax below,
+             * which is to pick the loudest bin this voice actually uses rather
+             * than whichever bin happened to have the least headroom. */
+            g = fmax(g, attenuate(vol[b]));
         }
         g *= ea_value;
         for (int i = 0; i < NUM_SAMPLES_PER_FRAME; i++) {
@@ -1604,6 +1672,25 @@ static void *voice_worker_thread(void *arg)
             for (int i = 0; i < self->queue_len; i++) {
                 voice_process(d, self->mixbins, self->sample_buf,
                               self->queue[i].voice, self->queue[i].list);
+                /*
+                 * Release this voice the moment it is processed, rather than
+                 * holding every voice in the frame until all workers finish.
+                 *
+                 * voice_lock() is a spinlock and the guest takes it on every
+                 * per-voice parameter update, which DirectSound does
+                 * constantly. While these were held for a whole VP frame the
+                 * guest CPU thread span on it uninterruptibly -- 5% of the
+                 * thread that bounds a video frame, measured, doing nothing.
+                 *
+                 * voice_process is the only thing that touches this voice's
+                 * state, and it has returned. What the worker does next is
+                 * accumulate its own private mixbins, which the voice is not
+                 * part of; multipass dependencies flow through those mixbins
+                 * rather than through a locked voice's registers. The
+                 * scheduler assigns every queued voice to exactly one worker,
+                 * so each lock is released exactly once.
+                 */
+                qemu_spin_unlock(&d->vp.voice_spinlocks[self->queue[i].voice]);
             }
 
             qemu_mutex_lock(&vwd->lock);
@@ -1661,15 +1748,6 @@ static void voice_work_enqueue(MCPXAPUState *d, int v, int list)
     };
 
     voice_work_acquire_voice_lock_for_processing(d, v);
-}
-
-static void voice_work_release_voice_locks(MCPXAPUState *d)
-{
-    VoiceWorkDispatch *vwd = &d->vp.voice_work_dispatch;
-
-    for (int i = 0; i < vwd->queue_len; i++) {
-        qemu_spin_unlock(&d->vp.voice_spinlocks[vwd->queue[i].voice]);
-    }
 }
 
 static void voice_work_schedule(MCPXAPUState *d)
@@ -1744,7 +1822,7 @@ voice_work_dispatch(MCPXAPUState *d,
         }
         qemu_cond_wait(&vwd->work_finished, &vwd->lock);
         assert(!vwd->workers_pending);
-        voice_work_release_voice_locks(d);
+        /* Each voice was released by the worker that processed it. */
         vwd->queue_len = 0;
 
         // Add voice contributions

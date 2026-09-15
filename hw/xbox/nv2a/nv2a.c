@@ -204,6 +204,29 @@ int nv2a_get_screen_off(void)
 
 static int64_t nv2a_calc_vblank_period_ns(NV2AState *d)
 {
+    /*
+     * Diagnostic override. A title that presents on every second VBLANK and
+     * one that asks for every VBLANK but misses the deadline both settle at
+     * half the refresh rate, and no amount of watching them apart tells them
+     * apart while the emulator itself cannot make the deadline. Halving the
+     * emulated refresh does: the first title halves again, the second one
+     * suddenly makes its deadline and holds the new rate.
+     */
+    static int64_t override_ns = -1;
+    if (override_ns == -1) {
+        const char *hz = getenv("HAKUX_VBLANK_HZ");
+        override_ns = 0;
+        if (hz && hz[0]) {
+            int v = atoi(hz);
+            if (v >= 10 && v <= 240) {
+                override_ns = NANOSECONDS_PER_SECOND / v;
+            }
+        }
+    }
+    if (override_ns > 0) {
+        return override_ns;
+    }
+
     uint32_t vdisplay = d->pramdac.fp_vdisplay_end;
 
     if (vdisplay > 480) {
@@ -233,6 +256,12 @@ bool nv2a_get_simple_vblank(void)
 
 static void nv2a_simple_vblank_cb(NV2AState *d)
 {
+    /* Count here too. The adaptive path owns the stats and this one did not
+     * touch them, so every pacing figure derived from the VBLANK count read
+     * zero in simple mode -- exactly the mode you switch to when you want
+     * pacing numbers with the deferral heuristics out of the way. */
+    g_nv2a_stats.pacing.vblank_fired++;
+
     /* Pure x1_box behavior: fire PCRTC interrupt, update IRQ.
      * No adaptive deferral, no flip auto-completion, no NOP assist.
      * The guest kernel handles everything itself. */
@@ -299,7 +328,23 @@ static void nv2a_vblank_timer_cb(void *opaque)
      */
     int64_t effective_frame_ns = d->avg_frame_ns ? d->avg_frame_ns
                                                  : d->last_frame_ns;
-    if (g_config.perf.unlock_framerate && effective_frame_ns > 0) {
+    /*
+     * Diagnostic override. Unlock mode is entered only by a title whose frame
+     * time is already under 1.5 periods, which is the state it exists to
+     * produce: a title sitting at two periods can never reach the entry
+     * condition, so it stays locked however much headroom appears. Forcing it
+     * on says whether that bootstrap is what holds a given title at half
+     * rate, or whether the title asked for half rate itself.
+     */
+    static int force_unlock = -1;
+    if (force_unlock == -1) {
+        const char *e = getenv("HAKUX_FORCE_UNLOCK");
+        force_unlock = (e && e[0] && e[0] != '0') ? 1 : 0;
+    }
+
+    if (force_unlock) {
+        d->unlock_mode_active = true;
+    } else if (g_config.perf.unlock_framerate && effective_frame_ns > 0) {
         int64_t enter_thresh = period + period / 2;
         int64_t exit_thresh  = period * 2 + period / 2;
         if (!d->unlock_mode_active && effective_frame_ns < enter_thresh) {
