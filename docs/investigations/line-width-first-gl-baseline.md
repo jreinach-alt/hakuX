@@ -360,6 +360,9 @@ Wide-line expansion happens in the geometry stage. `glsl/geom.c` is `[free]` in
 in `glsl/vsh.c` is rasteriser-wide and needs the owner. This is a finding and its
 evidence, handed over. No code is touched here.
 
+Every number in this section is reproduced by
+`docs/testing/line_width_axis_offset.py <ours_dir> <goldens_dir>`.
+
 ### Not established
 
 That the fix is a flat-shaded varying across the width rather than something
@@ -368,3 +371,170 @@ whether that residual variation is dithering, precision, or a real gradient has
 not been measured. And this is one segment of one primitive at two widths;
 confirming it wants the same measurement on a second angle and a second
 primitive before anyone edits a shader on the strength of it.
+
+---
+
+## CORRECTION: `d913c9dd`'s one segment fails its own clearance control
+
+`d913c9dd` measured a single "clean 77.7-degree segment". Re-derived from the
+test's own source geometry
+(`nxdk_pgraph_tests/src/tests/line_width_tests.cpp`, offset `(160, 48)`), that
+segment is the `TRIANGLES` edge `(392.0, 150.5) -> (404.0, 95.7)` -- 102.3
+degrees in screen convention, 77.7 from horizontal. Its nearest non-adjacent
+neighbour is **23.2 px away**, and at W=32 the half-width alone is 16.
+
+Walking perpendicular there and stopping at background gives a run of **50 px on
+ours and 56 on the golden**, against a true line thickness of about 31 and 34.
+The walk never reached background: it ran off our line onto adjacent painted
+content and kept going.
+
+So `d913c9dd`'s far-edge value `(255, 112, 194)` **is not our line's far edge**,
+and the "8 distinct colours vs the golden's 5" counted a neighbouring primitive.
+That is the same failure that broke the disc instrument in `cc41abef`, caught
+this time only because the replication declared a run-length control in advance
+(`predictions/2026-09-15-cross-width-colour-replication.md`). The numbers in
+`d913c9dd` are withdrawn.
+
+**The qualitative claim survives the correction.** On segments that pass the
+control, ours does vary in colour across the width and the golden does not. But
+the mechanism `d913c9dd` proposed for it is wrong, and the real one is
+geometric.
+
+## The mechanism: GL aliased wide lines are axis-offset copies
+
+`glsl/geom.c` emits `layout(line_strip) out` -- **we do not expand wide lines
+into geometry at all.** `gl/draw.c:394` hands the width to `glLineWidth` and the
+GL implementation rasterises it, on the aliased path (`glDisable(GL_LINE_SMOOTH)`
+at :403; under `#ifdef __ANDROID__` at :394 the aliased path is the *only* path).
+
+The OpenGL specification defines a non-antialiased wide line as the width-1 line
+**replicated with an integer offset along the minor screen axis** -- offset in y
+for an x-major line, in x for a y-major line. It is not a perpendicular-width
+rectangle. The Xbox hardware draws a true perpendicular-width line.
+
+### Prediction and result: perpendicular thickness is `W * max(|cos t|, |sin t|)`
+
+Measured by walking perpendicular from each segment's centreline and stopping at
+background, on every sample at least `W/2 + 4` from **every** other segment,
+adjacent edges included:
+
+| angle | from axis | primitive | max(\|cos\|,\|sin\|) | ours / W | golden / W | n |
+|---:|---:|---|---:|---:|---:|---:|
+| 45.4° | 44.6° | QUAD_STRIP | 0.712 | **0.688** | 1.062 | 12 |
+| 133.5° | 43.5° | POLYGON | 0.725 | **0.750** | 1.094 | 8 |
+| 137.7° | 42.3° | TRIANGLES | 0.740 | **0.750** | 1.125 | 9 |
+| 132.2° | 42.2° | QUAD_STRIP | 0.741 | **0.750** | 1.062 | 12 |
+| 48.3° | 41.7° | POLYGON | 0.747 | **0.750** | 1.109 | 14 |
+| 141.6° | 38.4° | TRIANGLE_FAN | 0.784 | **0.750** | 1.125 | 9 |
+| 33.6° | 33.6° | TRIANGLE_FAN | 0.833 | **0.844** | 1.125 | 11 |
+| 21.4° | 21.4° | QUADS | 0.931 | **0.938** | 1.125 | 10 |
+| 19.6° | 19.6° | TRIANGLE_FAN | 0.942 | **0.969** | 1.125 | 8 |
+| 18.8° | 18.8° | LINE_LOOP | 0.947 | **1.000** | 1.125 | 7 |
+| 165.5° | 14.5° | QUAD_STRIP | 0.968 | **0.969** | 1.062 | 13 |
+| 14.5° | 14.5° | QUAD_STRIP | 0.968 | **0.984** | 1.094 | 12 |
+| 76.8° | 13.2° | POLYGON | 0.974 | **1.000** | 1.089 | 14 |
+| 77.5° | 12.5° | QUADS | 0.976 | **1.000** | 1.073 | 14 |
+| 102.3° | 12.3° | TRIANGLES | 0.977 | **1.000** | 1.062 | 8 |
+| 102.4° | 12.4° | POLYGON | 0.977 | **1.000** | 1.000 | 9 |
+| 169.9° | 10.1° | TRIANGLES | 0.985 | **1.000** | 1.000 | 4 |
+| 170.5° | 9.5° | QUADS | 0.986 | **1.000** | 1.062 | 14 |
+| 94.7° | 4.7° | LINE_LOOP | 0.997 | **1.000** | 1.062 | 4 |
+| 93.3° | 3.3° | LINE_LOOP | 0.998 | **1.000** | 1.125 | 5 |
+| 86.1° | 3.9° | TRIANGLE_FAN | 0.998 | **1.000** | 1.000 | 8 |
+| 92.3° | 2.3° | TRIANGLE_FAN | 0.999 | **1.000** | 1.000 | 5 |
+| 90.0° | 0.0° | QUAD_STRIP | 1.000 | **1.000** | 1.000 | 21 |
+| 179.1° | 0.9° | POLYGON | 1.000 | **1.000** | 1.000 | 18 |
+| 91.0° | 1.0° | QUADS | 1.000 | **1.000** | 1.000 | 17 |
+
+At W = 8, 16, 32 and 48, across all seven primitives -- per cell, meaning one
+entry per (angle, primitive, width) as the table rows are, and per sample,
+meaning every accepted walk:
+
+    per-cell    N= 31   mean( ours/W - max(|cos|,|sin|) ) = +0.0014  sd 0.0295  max|err| 0.101
+    per-sample  N=275   mean( ours/W - max(|cos|,|sin|) ) = +0.0006  sd 0.0432  max|err| 0.181
+
+against a constant-ratio null model, which is the shape `d902a5cd` proposed:
+
+    ours/W = 1.00 constant:  sd 0.1146   max|err| 0.375
+    ours/W = 0.90 constant:  sd 0.1146   max|err| 0.275
+
+**The closed form is between three and four times tighter than any constant, and
+its per-cell residual sd is smaller than one pixel of quantisation at these
+widths.** Both views are quoted because they differ by a factor of ~1.5 in
+scatter and quoting only the tighter one would be picking a number.
+
+The golden's own thickness is 1.063 x W on average (sd 0.065, range 1.000 to
+1.250) and shows no angle dependence -- the hardware's perpendicular thickness
+does not depend on direction, and ours does, exactly as the minor-axis rule
+requires.
+
+### The colour difference is a corollary, not a separate defect
+
+All the offset copies share the same major-axis coordinate, so iso-colour lines
+in our output are **axis-aligned** rather than perpendicular to the line. Walking
+perpendicular therefore crosses colour bands. The along-line parameter shifts by
+`W * min(|cos t|, |sin t|)` across the width, so the predicted cross-width colour
+spread is `(along-line gradient) x W x min(|cos|, |sin|)`.
+
+| sample set | n | ours, cross-width spread | golden |
+|---|---:|---:|---:|
+| axis-aligned, `min(\|cos\|,\|sin\|) < 0.05` | 56 | mean **0.62**, max 2 | mean 0.62, max 3 |
+| near 45°, `min(\|cos\|,\|sin\|) > 0.60` | 55 | mean **24.40**, max 65 | mean 3.11, max 8 |
+
+**On axis-aligned lines ours and the golden are indistinguishable** -- the means
+are equal to two decimal places, and there is no cross-width colour variation to
+explain at any width. Near 45 degrees ours is about eight times the golden's.
+Against the closed form, over 152 samples where the prediction exceeds 2 steps,
+`observed / predicted` is **0.866 (sd 0.170)**: the form is right and the
+magnitude runs about 13% under it.
+
+So the thickness law is exact and the colour law is directional and
+order-of-magnitude. That asymmetry is expected -- the colour prediction needs a
+finite-difference estimate of a blended, quantised colour ramp -- but it is
+stated as the weaker of the two rather than rounded up to a match.
+
+### Why "thickness is exact at every angle" was measured and believed
+
+The four angles sampled earlier in this document were 3.3, 10.1, 19.6 and 77.7
+degrees from the axis. Their `max(|cos|,|sin|)` are 0.998, 0.985, 0.942 and
+0.977 -- so the largest predicted shortfall in that whole set is 6%, which at
+W=8 is half a pixel. **45 degrees was never sampled, and it is the only place the
+effect is large.** The earlier measurement was not wrong; it was blind, in the
+same way the painted-pixel count was blind to colour.
+
+### What this means for the residual
+
+This is one defect with a closed form, not two. It is zero on axis-aligned lines,
+maximal on diagonals, and scales linearly in W -- which is the shape of every
+aggregate measured in this document: the frame-wide ~0.9x painted ratio (a frame
+of mostly diagonals), the growth with width, the exactness of verticals, and the
+84-88% of the residual that is commonly-painted pixels differing in colour.
+
+### Ownership, stated rather than assumed
+
+The fix is to stop relying on `glLineWidth` for guest line widths above 1 and to
+emit a perpendicular-width quad with the colour interpolated along the line only.
+That is a `glsl/geom.c` change and `gl/draw.c`'s line-width call. `glsl/geom.c`
+is `[free]` in `territory.toml` -- **unclaimed, and NOT this lane's**. Handed
+over with the closed form and the measurement, not implemented here.
+
+It is worth noting for whoever takes it that under `#ifdef __ANDROID__` the
+aliased path at `gl/draw.c:394` is the only path, so on the project's actual
+target every wide guest line takes this defect unconditionally.
+
+Every number in this section is reproduced by
+`docs/testing/line_width_axis_offset.py <ours_dir> <goldens_dir>`.
+
+### Not established
+
+- The golden's own residual cross-width spread of 2-3 steps is unexplained.
+  It is small and flat across angle and width, so it is not this mechanism, but
+  whether it is dithering, interpolation precision or a real gradient is
+  unmeasured.
+- The golden renders a W-wide line as about 1.06 x W perpendicular pixels,
+  consistently and at every angle. That is a separate small difference from our
+  1.00 x W on axis-aligned lines, and it is not explained here.
+- That the GL specification's rule is what this particular driver implements is
+  an inference from agreement with the rule, not from reading the driver. What
+  is measured is the closed form; the attribution to the spec is the explanation
+  that fits it.
