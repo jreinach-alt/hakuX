@@ -105,8 +105,19 @@ Nothing is edited here.
   `GL_HALF_FLOAT` uploads is a plausible-looking choice and it is 80.4% of the
   suite, but no measurement here isolates the encoding from the shader that
   writes it.
-- Whether the `M<hex>` axis (the depth cutoff mask) carries structure. It spans
-  13 values with shares from 26.3% down to 0.1% and has not been analysed.
+- **Correction: the `M<hex>` axis is not an independent axis.** It is almost
+  entirely confounded with the format, so the "by M value" pivot mostly restates
+  the z16/z24 split rather than adding anything:
+
+  | cutoff | appears with |
+  |---|---|
+  | `M004002`, `M008001`, `M00c000`, `M00ffff` | **z16 only** (8 captures each) |
+  | `M3fc002`, `M400002`, `M7f8001`, `M800001`, `Mbf4000`, `Mc00000`, `Mfeffff`, `Mffffff` | **z24 only** (4 each) |
+  | `M000003` | **both** (8 + 8) |
+
+  The test scales the cutoff to the format's range, so only `M000003` is
+  comparable across formats -- and it is where all four exact captures sit. What
+  the cutoff does *within* a format is still unanalysed.
 - What Android actually produces. The identical-maps finding is read from the
   source.
 
