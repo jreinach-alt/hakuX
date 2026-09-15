@@ -240,3 +240,66 @@ wide segments meet, the golden reads far wider than ours and our own thickness
 dips BELOW the requested width, which is what a notch looks like. A candidate,
 not a finding -- it rests on readings whose whole point is that they cannot be
 trusted, and it needs its own instrument, control and registered prediction.
+
+---
+
+## The residual is COLOUR, not geometry, and I spent eight hypotheses on geometry
+
+Splitting the differing pixels three ways -- painted only by the golden, painted
+only by us, and painted by BOTH with different colours:
+
+| | W=8 | W=32 |
+|---|---:|---:|
+| gold-only (we leave background) | 2,827 | 5,804 |
+| our-only | 105 | 605 |
+| **both painted, different colour** | **15,219** | **48,304** |
+
+**84% of the residual at W=8 and 88% at W=32 is pixels both renderers paint,
+disagreeing about the colour.** The geometry -- who paints where -- accounts for
+about one pixel in seven.
+
+Every hypothesis in the ledger above is about geometry: clamp, per-primitive
+concentration, global scale, square pen, angle-dependent thickness, joins,
+position offset, boundary-shift floor. Eight, all refuted, all aimed at the
+minority term. They were motivated by "we paint ~10% fewer pixels", which is
+true and is the wrong metric: **painted-pixel COUNT cannot see a colour
+difference at all.**
+
+That is the same lesson as `compare the sums, not the items` and `an aggregate
+over mixed cases hides the rule`, one level up: the metric chosen at the start
+determined which hypotheses were even thinkable.
+
+### What the colour difference looks like
+
+Per channel, ours-low against ours-high is 2,200/2,715, 2,709/2,902,
+2,783/2,354 at W=4 -- **roughly symmetric**, so not a scale error. And it
+degrades sharply with line width:
+
+| | W=4 | W=8 | W=32 |
+|---|---:|---:|---:|
+| \|d\| <= 1 | 63.6% | 41.8% | **18.4%** |
+| \|d\| <= 4 | 92.9% | 80.5% | 35.2% |
+| \|d\| > 16 | 3.0% | 5.7% | **29.7%** |
+
+At W=4 most shared pixels are within one step -- ordinary precision. At W=32
+nearly a third differ by more than 16, with max\|d\| around 200: completely
+different colours.
+
+### The candidate, named with its falsifier
+
+The test Gouraud-shades: `SetDiffuse(kPalette[i])` per vertex, so colour is
+interpolated. GL interpolates a wide line's colour **along** the line only --
+every fragment across the width shares the value at that parametric position. If
+the hardware also varies colour **across** the width, the disagreement would be
+zero at W=1, grow with width, and be symmetric -- which is what the table shows.
+
+**Falsifier:** sample the colour across the line's width at a fixed position
+along it. If ours is constant across the width and the golden's varies, the
+candidate holds. If both are constant across the width and differ only along it,
+the candidate is dead and the difference is in the interpolation ALONG the line
+-- which would make it the same defect class as `Image_blit`'s residual, already
+established as vertex-colour interpolation and already known not to be
+`gl/blit.c`'s.
+
+Not tested here. Registered as the next instrument with the discriminator fixed
+in advance.
