@@ -170,3 +170,57 @@ this is a note for the next instrument rather than a finding.
 Two instruments disagreeing is not a reason to pick the one you like. Dumping
 the raw pixels at the disputed point cost one command and settled it outright.
 Do that first next time, before writing up either as a result.
+
+---
+
+## Joins REFUTED, on an instrument that needs no isolation
+
+The disc failed because nothing in this frame is isolated. Classifying every
+differing pixel by its distance to the nearest vertex and to the nearest segment
+needs no isolation at all, and uses the whole difference map rather than samples.
+
+Gold-only pixels -- the ones the hardware paints and we do not, which are the
+actual deficit -- in the TRIANGLES box:
+
+| W | median dist to VERTEX | median dist to SEGMENT | within W of a vertex |
+|---:|---:|---:|---:|
+| 4 | 25.9 | **2.6** | 5.9% |
+| 8 | 26.7 | **4.4** | 14.4% |
+| 16 | 26.9 | **8.5** | 23.3% |
+
+**The missing pixels are far from vertices and close to segments.** If the
+hardware filled joins and we left notches, the gold-only pixels would cluster AT
+the vertices. They do the opposite: the median distance to a vertex is ~26px at
+every width and does not move, while the median distance to a segment is 2.6,
+4.4 and 8.5 -- **tracking W/2**, which is exactly where a line's own edge sits.
+
+So the deficit is at the EDGES of segments, distributed along their length, not
+at the corners. Joins are refuted.
+
+## Which points back at something already established
+
+Thickness at a segment's midpoint is exact -- the pixel dump showed eight
+contiguous painted on both sides. Yet along the same segment the golden paints
+extra pixels at the edge. Both can hold if the line is in a slightly different
+PLACE: the stepping pattern along the line differs, so at many positions the
+golden's edge falls one pixel further out while the thickness at any given
+cross-section stays the same.
+
+That is the same shape as the **odd-width one-pixel offset** already measured on
+the two vertical edges, now appearing along ordinary segments.
+
+**Consistent is not demonstrated.** Connecting them needs a measurement that
+compares edge POSITION along a segment, not thickness at a point, and it has not
+been done. Recorded as the live candidate, not as a finding.
+
+## The hypothesis ledger for this suite
+
+| hypothesis | status | killed by |
+|---|---|---|
+| driver line-width clamp | refuted | monotone painted-count curve, no plateau |
+| concentrated in outline primitives | refuted | uniform ratio across all seven |
+| global scale factor on width | refuted | vertical edges exact at every integer 1..48 |
+| square pen vs perpendicular | refuted | clean-segment thickness ratio exactly 1.000 |
+| angle-dependent thickness | refuted | thickness 1.000 at 3.3, 10.1, 19.6, 77.7 degrees |
+| line joins | **refuted** | gold-only pixels far from vertices, near segments |
+| **one-pixel position offset** | **live** | established on verticals; not yet tested along segments |
