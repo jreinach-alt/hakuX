@@ -111,6 +111,50 @@ character found in `Line_width` -- the golden holding content we do not produce
 anywhere nearby -- and here it is concentrated in 77,184 channels rather than
 spread over millions.
 
+## CORRECTION: "78.8% of the suite" is a capture count, not a severity
+
+The table above reports shares of the suite total. **There are 120 AA captures
+and 40 non-AA ones**, so the AA arm's 78.8% is three parts test matrix to one
+part defect. Normalised per capture, which is the comparable unit since every
+capture is the same size:
+
+| arm | n | total | **per capture** | mean \|d\| |
+|---|---:|---:|---:|---:|
+| no-AA | 40 | 1,539,200 | **38,480** | 1.05 |
+| AA | 120 | 5,715,292 | **47,627** | 3.25 |
+| no-AA / FILLED | 24 | 1,525,516 | **63,563** | 1.04 |
+| AA / FILLED | 72 | 5,463,420 | **75,880** | 2.54 |
+| no-AA / LINES | 12 | 13,684 | **1,140** | 2.06 |
+| AA / LINES | 36 | 251,620 | **6,989** | 18.61 |
+| no-AA / POINTS | 4 | 0 | **0** | 0.00 |
+| AA / POINTS | 12 | 252 | **21** | 100.67 |
+
+**The AA surface costs 1.24x per capture overall, and only 1.19x on filled
+primitives.** It is not the dominant defect in this suite; it is the arm the
+test happens to run three times as often.
+
+Where AA genuinely hurts is narrow and was already visible: **6.13x per capture
+on LINES**, and points going from byte-exact to 21 channels per capture -- the
+seven dropped points.
+
+### What that redirects
+
+The largest single population in `3D_primitive` is **not** the AA surface. It is
+the **filled one-step floor, which is present at 63,563 to 75,880 channels per
+capture in BOTH arms** -- roughly 7.0M channels in total, mostly \|d\| = 1, and
+almost as bad without the AA surface as with it. Whatever causes it is not the
+AA path.
+
+That floor is characterised above and is **not one rounding convention**: the
+sign inverts by primitive (`QuadStrip` 64.3% one way, `Polygon` and `TriFan`
+78% the other), which is the shape of a decomposition difference -- the same
+filled shape reaching the rasteriser as a different set of triangles. Untested.
+
+This correction is recorded rather than quietly fixed because the earlier
+framing would have sent the next reader -- it nearly sent me -- to spend a cycle
+on the AA filled arm believing it was 78.8% of the problem. It is 19% worse than
+the arm beside it.
+
 ## Where this leaves the triage ranking
 
 `corpus-residual-triage.md` ranks `3D_primitive` fourth at 6,664,407 actionable
