@@ -62,13 +62,65 @@
  * demonstrably executes -- `held(n)/kicks = 1.0000` over 148,704 submissions,
  * skew p90 34,900,000 -> 150,000 ns.
  *
- * It also costs **more than half the frame-rate ceiling of a real title**.
- * Galleon on the nova, 240 s per arm: `gfps` p90 29 -> 13 and max 30 -> 15,
- * with the guest blocked at its submissions for **40.7% of wall clock** at a
- * mean hold of 2,245,410 ns. That is not a tolerance being missed by a little;
- * it is the pipeline's remaining CPU/GPU overlap being removed, which is what
- * the arithmetic predicted before the arm ran from the PFIFO thread's 48%
- * busy figure.
+ * THAT `stale_px` OBSERVABLE IS NOW DEAD AND THE CLOSURE RESTS ON TWO OTHERS.
+ * `stale_px` reads 0 of 10 non-zero AT THE TIP with no fix at all, so a no-op
+ * binary passes its bar with probability ~1 (see
+ * docs/investigations/border-stale-observable-is-dead.md). What carries the
+ * accuracy claim now is #79's Stencil observable and Crimson Skies' `Tr`, and
+ * both were re-measured at TIP REFS on the thor on 2026-09-14:
+ *
+ *     Stencil disc, 4 runs per mode, wrong (run, capture) observations:
+ *       mode 0   6 of 64, 2 of 4 runs flaking     bound=0, held(n)=0
+ *       mode 1   0 of 64, 0 of 4 runs             held(n)/kicks 1.0000
+ *       mode 2   0 of 64, 0 of 4 runs             held(n)/kicks 0.0235-0.0240
+ *
+ * Both PRE-REGISTERED PASS on 16 checks. The mode-0 row is the validity gate:
+ * the defect is LIVE AT MAINLINE, so this is not a decision about a
+ * historical bug. And the two right-hand columns are the interesting pair --
+ * mode 2 bought mode 1's entire accuracy while holding the guest 101 times
+ * per run against mode 1's 4,249, having skipped 97.6% of submissions with a
+ * scan bail rate of 0.047%.
+ *
+ * It also costs about **two fifths of a real title's throughput**, in both
+ * modes, and that figure has been measured twice on two devices at refs 535
+ * commits apart.
+ *
+ *   nova, ref ec7f50e859, Galleon 240 s: `gfps` p90 29 -> 13, max 30 -> 15,
+ *   guest blocked 40.7% of wall clock at a mean hold of 2,245,410 ns.
+ *
+ *   thor, tip refs, Galleon 240 s, two runs per mode, modes 0/1/2 in one
+ *   sweep against one control:
+ *
+ *       mode   guest frames in 240 s   windows >= 25 gfps   submissions
+ *         0        6,480 / 6,300          81% / 79%        115,890 / 110,860
+ *         1        4,020 / 3,960          16% / 14%         68,803 /  67,019
+ *         2        4,020 / 3,960          18% / 18%         69,515 /  68,152
+ *
+ * -37.6% of guest frames, identical to the digit between modes 1 and 2.
+ *
+ * READ THAT OFF THE FRAME COUNT AND NOT OFF `gfps` p90, WHICH IS NEARLY BLIND
+ * TO IT HERE. At the tip the p90 falls only 29 -> 26/28 and the max 32 -> 29,
+ * which reads as "the cost has gone away". It has not. With the bound on,
+ * only about 15% of windows are at the ceiling, so the 90th percentile of 66
+ * windows lands just inside that top band: p90 is faithfully answering "can
+ * this still reach 30 sometimes", and the answer is yes while the throughput
+ * is down by two fifths.
+ *
+ * That is worth stating as a method note because AGENTS.md's #64 entry says
+ * to price this on the ceiling and not the median, and following it here
+ * produces the wrong answer. The entry is right about what it measured -- a
+ * bimodal series whose median tracks device occupancy -- and its reasoning
+ * assumes the series sits AT the ceiling most of the time, which is true of
+ * an unbounded arm and false of a bounded one. When the intervention changes
+ * how OFTEN the ceiling is reached rather than how high it is, a high
+ * percentile cannot see it by construction. The entry's deeper rule is the
+ * one that works: count events of a condition. Both counts above --
+ * ceiling-rate windows, and total frames -- show the effect immediately, and
+ * the frame count needs no percentile at all, because `gfps` is emitted every
+ * 60 guest frames (pgraph/profile.c:600) so the LINE COUNT IS A FRAME COUNT.
+ *
+ * The submission count is a third independent witness at -40%, and all three
+ * agree across two runs of each mode.
  *
  * So this is `HAKUX_FIFO_SKEW_BOUND=1` and not the default. Keeping the code
  * and turning the constant off is deliberate and is NOT the "weigh a
