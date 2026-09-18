@@ -255,3 +255,11 @@ cost = "#59 hit it twice from two causes: once from an abandoned branch that kep
 bit = 2
 owner = "toolsmith"
 fix = "A queue-time gate in request.sh: refuse a b_ref that is not an ancestor of any live branch tip. That is where the other inert-prediction classes are already caught, and it is the only check that fires at the moment it matters. Note the asymmetry that makes it worth the gate rather than the discipline -- an UNREACHABLE ref fails loudly, while a reachable stale one produces a clean confident wrong measurement. AGENTS.md now carries the rule (register after the last rebase), but a rule competes with a territory gate that sometimes demands a rebase."
+
+[[cut]]
+id = "a-fold-takes-the-record-and-leaves-the-evidence"
+what = "Folding an issue's tracker record without the investigation or instrument it CITES. Twice in two days: #82's close was folded while x87-fscale-saturation-is-verified-on-the-shipped-text.md was not (it surfaced only as a modify/delete cherry-pick conflict days later), and #87's blocker_tested cited swizzle_residual.py which did not exist on this branch at all."
+cost = "A cited artefact that is absent reads as a missing instrument to the next lane, which then rewrites it. lane.swizzle87 had to run swizzle_residual.py out of another branch's object store to reproduce its own issue's numbers. And the #82 gap was invisible until a later cherry-pick collided with it -- nothing checks that a cited path exists."
+bit = 2
+owner = "toolsmith"
+fix = "preflight should verify that every path a tracker entry cites actually exists at HEAD -- the entries already name their instruments and write-ups by path, so this is a grep over status_note/blocked_on plus an os.path.exists. Cheap, and it catches the class rather than the instance. For the orchestrator: when folding a record that cites an artefact, fold the artefact in the same commit or say in the message that it is deliberately left behind."
