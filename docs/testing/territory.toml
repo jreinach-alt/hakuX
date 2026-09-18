@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 81
-updated_utc = "2026-09-18T20:40:00Z"
+wave = 82
+updated_utc = "2026-09-18T21:00:00Z"
 
 
 
@@ -83,6 +83,12 @@ note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY:
 issues = []
 files = []
 note = "AUDIT PASS 2 over #59's remediation of its own three HIGHs. Claims no files. PASS 2 VERIFIES THE SCENARIOS CANNOT RECUR, not that the fixes exist -- and this one has an unusual amount to check, because the remediation is itself 600 lines and introduced three QEMU_BUILD_BUG_ONs, a negative control, and a generation-counter change in pgraph.c that reaches beyond #59. TWO THINGS TO WEIGH RATHER THAN RUBBER-STAMP: the DECLINED half of M1 (whether silicon masks pad bits with the ALPHA write mask -- unmeasured, and no golden separates the answers, so the lane refused to force it) is offered as a bound for pass 2 to accept or overrule; and the lane's own statement that THIS FLEET CANNOT VERIFY H1 OR H3 at all, because both live on the static pipeline path which eds3 leaves dead on Adreno."
+
+
+[lane.audit-blitsafe]
+issues = []
+files = []
+note = "AUDIT PASS 1 over lane.blitsafe's two held commits -- 12870b8fde (#84, +109 in vk/blit.c) and e71a9952d1 (#88, +61 in vk/surface.c). Claims no files. DISPATCHED BECAUSE THE ORCHESTRATOR ALMOST FOLDED THEM WITHOUT ONE: they read as small and safe -- a warn-once refusal and a four-line policy port -- and they are not. #84 threads bytes_per_pixel through perform_blit(), a signature change touching every caller, and #88 changes surface eviction policy, which is the exact class where #66 turned out to be TWO defects in one chain. Four HIGHs have been found by audit today, one of them in a change exhaustively verified over its entire input domain. TWO SPECIFIC THINGS TO WEIGH RATHER THAN CONFIRM: #84's choice to REFUSE narrow formats rather than rescale (the lane's reason is that the repack rounding rule for a real 16bpp blend is on nothing on disk, which is either sound or an argument for leaving a wrong picture in place), and #88's claim that the GATE half must not be ported because Vulkan's has been more permissive since 9161e3e14a, 2024-07-27 -- a claim about upstream history that decides how much of #66's fix applies."
 
 [free]
 #
