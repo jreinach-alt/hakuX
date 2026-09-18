@@ -122,13 +122,47 @@
  * The submission count is a third independent witness at -40%, and all three
  * agree across two runs of each mode.
  *
- * So this is `HAKUX_FIFO_SKEW_BOUND=1` and not the default. Keeping the code
- * and turning the constant off is deliberate and is NOT the "weigh a
- * correctness fix against its cost and quietly drop it" that orchestration.md
- * forbids: both numbers are published, the mechanism stays available and
- * reachable at runtime, and the document's own instruction -- recover the
- * throughput through the performance stream -- has a concrete target here
- * rather than a vague one. See the note below.
+ * So this stays off by default. Keeping the code and turning the constant off
+ * is deliberate and is NOT the "weigh a correctness fix against its cost and
+ * quietly drop it" that orchestration.md forbids: both numbers are published,
+ * the mechanism stays available and reachable at runtime, and the document's
+ * own instruction -- recover the throughput through the performance stream --
+ * has a concrete target here rather than a vague one. See the note below.
+ *
+ * AND IF IT IS EVER TURNED ON, THE VALUE IS 2, NOT 1. This comment used to say
+ * `HAKUX_FIFO_SKEW_BOUND=1`, and on the measurements of 2026-09-14 that is the
+ * wrong recommendation: mode 1 is DOMINATED by mode 2 on every axis anything
+ * has measured, and ties on the rest.
+ *
+ *     axis                                  mode 1        mode 2
+ *     Stencil vertex accuracy, tip refs    0 of 64       0 of 64      tie
+ *     Galleon guest frames, tip refs       3,990         3,990        tie
+ *     holds per run, Stencil disc          4,249         101          mode 2
+ *     held(n)/kicks, Texture border disc   1.0000        0.0370       mode 2
+ *     Crimson Skies `Tr`                   NEVER RUN     0/13,751     mode 2
+ *     pre-scan overhead                    none          0.017% of
+ *                                                        wall clock
+ *
+ * The two tie where it matters most and mode 2 wins everywhere else, so there
+ * is no configuration in which mode 1 is the right choice. The cost tie is not
+ * a disappointment either, and the reason is the disc-ratio rule below:
+ * Galleon's submissions carry a draw 96.8% of the time (`nodraw` 3.2%), so on
+ * that title a selective bound has nothing to skip. That BOUNDS how much
+ * cheaper mode 2 can be on draw-dense content -- it cannot be -- and it is an
+ * answer rather than a gap.
+ *
+ * WHAT IS STILL MISSING, named so nobody reads the table above as complete:
+ * mode 1's Crimson Skies `Tr`, and a tip-ref repeat of mode 2's. Six soaks
+ * were registered and queued for it on 2026-09-14
+ * (`issue44-tip-crimson-tr-three-modes.json`, refs e28c402b4d / 7349193309 /
+ * 3b7fe5f5fa, probe on) and the fleet went out of service before they ran.
+ * That row cannot change WHICH mode ships -- mode 2 either way, since a
+ * result there can only add to mode 2's column or move mode 1's from empty to
+ * equal. It bears only on WHETHER any bound is worth enabling, and in one
+ * direction: if the mode-0 control comes back with `Tr` near zero, the texture
+ * race has been closed by something else since 2026-09-13 and the accuracy
+ * case shrinks to the vertex half alone -- which is the half measured directly
+ * above.
  *
  * WHERE THE CHEAPER VERSION IS. The guarantee that closes #44 is "no
  * unprocessed DRAW sits in the FIFO while the guest runs", and holding at
@@ -153,13 +187,19 @@
  *
  *   2. IT IS A PROPERTY OF THE DISC AND NOT OF ANY WORKLOAD, which is the
  *      half that keeps being transferred. Submissions carrying a draw:
- *      Texture border disc 3.6%, Galleon 94.2% and 93.2%. A test disc sets
+ *      Texture border disc 3.6%, Stencil disc 2.4%, Galleon 94.2% / 93.2% on
+ *      the nova and 96.8% / 96.8% at the tip on the thor. A test disc sets
  *      state exhaustively and draws rarely; a game does the opposite. So on
  *      the content the cost is measured on there is almost nothing to skip,
- *      and mode 2 is NOT cheaper than mode 1 there -- measured, `gfps` p90
- *      29 -> 13/14 against mode 1's 29 -> 13 on Galleon
- *      (1789312621-draw-only-cost-*). AGENTS.md carries this as "the test
- *      disc's ratios are properties of the disc, not of a workload".
+ *      and mode 2 is NOT cheaper than mode 1 there -- measured twice, and the
+ *      tip measurement is the sharper one because it counts frames rather
+ *      than taking a percentile: 3,990 guest frames in 240 s under each mode,
+ *      equal to the digit over two runs apiece
+ *      (1789388741/1789388761 against 1789388749/1789388769). The earlier
+ *      nova pair agreed at `gfps` p90 29 -> 13/14 against 29 -> 13
+ *      (1789312621-draw-only-cost-*), but see the p90 warning above before
+ *      quoting that form of it. AGENTS.md carries the general rule as "the
+ *      test disc's ratios are properties of the disc, not of a workload".
  *
  * Anyone reaching for the 148,704:180 figure again -- it has now been used as
  * a prior at least twice after being corrected -- should read this block
