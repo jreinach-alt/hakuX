@@ -147,6 +147,7 @@ fix = "State in AGENTS.md that a remediation is a CLAIM like a blocker, and a la
 
 [[cut]]
 id = "soak-results-keep-no-frames"
+retired = "2026-09-18 by lane.toolsmith: 2d5c9b9b20"
 what = "A soak result dir carries `pulled: []` and holds only a logcat. The FRAMES an analysis rests on survive nowhere durable -- for #77's driver A/B they existed only in the lane's scratchpad, one reap from gone."
 cost = "434 frames across four arms, the entire evidential basis of a four-arm driver A/B, were recoverable only by hand-copying out of /tmp before the scratchpad was reaped. Found by lane.scene77 while re-analysing them; nobody had noticed the result dirs were empty."
 bit = 1
@@ -155,6 +156,7 @@ fix = "A soak that captures frames should pull them into its result dir like a d
 
 [[cut]]
 id = "partial-coverage-suites-can-never-get-a-floor"
+retired = "2026-09-18 by lane.toolsmith: diagnosed with numbers; patch written, sweep_diff.py granted at wave 74"
 what = "sweep_diff's repeats_for() discards any run where a suite is `partial`, conflating 'the run truncated' with 'the disc contains fewer tests than the goldens'. A suite whose disc coverage is short can therefore NEVER get a noise floor, no matter how many times it is run."
 cost = "36 of the corpus's 42 movers are unattributable and cannot be made attributable by any amount of device time. Three ZPass_pixel_count noise-floor runs -- identical to the pixel, 72 captures / 26 exact / 14,244 px, ending 'Testing completed normally' -- were all discarded for scoring 72 of 78 goldens."
 bit = 1
@@ -163,6 +165,7 @@ fix = "Distinguish truncated (unmatched Starting in the progress log, or window 
 
 [[cut]]
 id = "dispatcher-sh-unlisted"
+retired = "2026-09-18 by lane.toolsmith: 7f2d091c58 / wave 74"
 what = "dispatcher.sh is unlisted in territory.toml -- neither claimed by a lane nor in [free] -- despite being the file that defines LOGCAT_SPEC, the queue protocol and the soak/disc branch. profile.c was in the same state until wave 51."
 cost = "Not yet paid, which is the point of logging it now. An unlisted file is one nobody is refused and nobody is responsible for, and the collision guards cannot see a claim on it because there is none to see."
 bit = 1
@@ -171,6 +174,7 @@ fix = "Audit territory.toml for files under docs/testing/ and hw/ that appear in
 
 [[cut]]
 id = "discard-model-exact-equality"
+retired = "2026-09-18 by lane.toolsmith: 521296dfff"
 what = "tcg_pages.py's discard_model() compares with exact equality and no tolerance, while the population check beside it carries max(8, n*1e-4). One invalidation straddling a window boundary therefore reads as a model mismatch."
 cost = "C3 called an arm-A run MIXED on a di-(ov+sp) of +1 in one window and -1 in the next. lane.tcgarm had to establish build identity with a SECOND instrument (apk_sha per arm) to dismiss it -- correct, and unnecessary."
 bit = 1
@@ -179,6 +183,7 @@ fix = "Give discard_model() the slack the population check already has. It is th
 
 [[cut]]
 id = "fold-in-dirties-the-shared-tree-for-minutes"
+retired = "2026-09-18 by lane.toolsmith: c90eaddb1a (dispatcher half) + AGENTS.md fold-worktree section"
 what = "A fold-in is several commits long by nature -- cherry-pick, tracker edit, territory edit, index rebuild, preflight, commit -- and the shared tree is DIRTY for all of it. dispatcher.sh refuses to build any uncached ref against a dirty tree and requeues every 30 s in silence, so the whole fleet stalls on whatever the orchestrator happens to be in the middle of."
 cost = "Seven consecutive requeues of lane.skew44's tip-ref control arm, 05:25:15 to 05:28:22, with eight more of its arms queued behind it. The lane had to diff the shared tree against the tip from the object store to find out why, then report it as BLOCKING FLEET-WIDE. Earlier the same day this class cost 251 requeues."
 bit = 2
@@ -187,6 +192,7 @@ fix = "The orchestrator should fold on a scratch worktree and fast-forward the s
 
 [[cut]]
 id = "backticks-inside-python-c-double-quotes"
+retired = "2026-09-18 by lane.toolsmith: 7d285138ef"
 what = "dispatcher.sh:471 embeds Python in `python3 -c \"...\"` -- a DOUBLE-quoted shell string -- and the Python comments inside it contain backticked identifiers. The shell command-substitutes them before Python ever sees the source."
 cost = "Cosmetic so far: `suites: command not found`, `skip_tests: command not found`, `only_tests: command not found` and `iso:85b525/Blend: No such file or directory` on stderr for every disc request, which is noise a lane has to rule out before trusting its own run. It is a live hazard the moment a backtick pair wraps something executable, and the comment text is silently destroyed either way."
 bit = 1
@@ -195,6 +201,7 @@ fix = "Single-quote the heredoc or the -c string so nothing inside is expanded. 
 
 [[cut]]
 id = "territory-gate-fails-lanes-not-on-the-instant-tip"
+retired = "2026-09-18 by lane.toolsmith: 41739857b0"
 what = "preflight.sh's `territory` gate compares the lane's territory.toml against the tip's, so a lane whose worktree is even one wave behind FAILS a gate it is barred from fixing -- territory.toml is the orchestrator's file and a lane must not edit it."
 cost = "lane.audit-blit failed it twice in a row while working, purely because the board advanced 65 -> 66 -> 67 underneath it. The only remedy available to a lane is rebasing onto a moving tip, which on a busy board is a race it cannot win. It reported the friction rather than the gate being broken, which is the right read and is also why nobody noticed sooner."
 bit = 2
