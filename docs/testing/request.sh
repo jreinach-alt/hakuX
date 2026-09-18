@@ -890,6 +890,28 @@ if m.get('kind') == 'soak':
         print('pulled  ', f['file'], format(f['bytes'],','), 'bytes')
     if not (m.get('pulled') or []):
         print('pulled   (nothing)')
+    # WHAT THE RUN ACTUALLY RAN WITH. Recording `env` in result.json is only
+    # half of it -- the field exists so a reader SEES which arm they have, and
+    # a soak's arms are judged by hand off this very output. An env A/B has one
+    # apk_sha across both arms, so the line above cannot distinguish them.
+    #
+    # 'not recorded' rather than '(none)' when the key is absent: a result
+    # written before the field existed did not answer the question, and that
+    # is not the same as answering 'no environment'.
+    if 'env' in m:
+        print('env     ', ', '.join(m['env']) if m['env'] else '(none)')
+    else:
+        print('env      not recorded (this result predates the field)')
+    fr = m.get('frames') or {}
+    if fr.get('count'):
+        print('frames  ', fr['count'], 'every', str(fr.get('every')) + 's,',
+              format(fr.get('bytes', 0), ','), 'bytes ->',
+              '$D/results/$ID/frames/')
+        print('         NOTE: capturing frames costs frame rate. Do not read a')
+        print('         gfps leg off this run against one from a soak without them.')
+    elif fr.get('every'):
+        print('frames   NONE, though every', str(fr['every']) + 's was asked for'
+              ' -- every capture failed; treat this as a failed run, not as zero')
     print('logcat  ', '$D/results/$ID/logcat.txt')
     raise SystemExit(0)
 print('binary  ', m['apk_sha'], ' disc', m['disc_id'], ' classifier', m.get('classifier_rev'))
