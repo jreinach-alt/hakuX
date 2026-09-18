@@ -42,11 +42,16 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
          * is format-correct because it memmoves width_bytes; only this branch
          * converts pixels to bytes, and it did so with a constant.
          *
-         * The overrun was unbounded rather than merely wrong: nv_dma_map's
-         * end-of-object assert is commented out (nv2a.c:96) and the caller
-         * asserts only dest_offset < dest_dma_len, so nothing downstream
-         * notices. The surplus also falls outside the download range and the
-         * invalidate, so no capture can show it.
+         * The overrun went past the destination object, and nothing downstream
+         * noticed: nv_dma_map's end-of-object assert is commented out
+         * (nv2a.c:96) and the caller asserts only dest_offset < dest_dma_len.
+         * It is bounded, though -- row_pixels is clamped to
+         * MIN(source_pitch, dest_pitch) / bpp below, so the furthest write is
+         * at most 4/bpp pitches into the row: about three extra pitches on Y8,
+         * one on R5G6B5. Corruption beyond the rect, not a host-memory escape
+         * (audit pass 2, which corrected "unbounded" on both sides). The
+         * surplus also falls outside the download range and the invalidate,
+         * so no capture can show it.
          *
          * Refusing rather than guessing, which is what the Vulkan side's
          * solid_line does for the identical question. A correct 16bpp blend
@@ -62,9 +67,16 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
          * Vulkan side of the same function and pre-existing on both.
          */
         if (bytes_per_pixel != 4) {
-            static bool warned;
-            if (!warned) {
-                warned = true;
+            /*
+             * Once per distinct bytes-per-pixel rather than once per process,
+             * so a title that blends at two narrow formats reports both
+             * (audit N3). Deliberately unsynchronised: this runs on a vcpu
+             * thread and the worst a race can do is print a line twice.
+             */
+            static unsigned warned_bpp;
+            unsigned bpp_bit = bytes_per_pixel < 32 ? 1u << bytes_per_pixel : 0;
+            if (!(warned_bpp & bpp_bit)) {
+                warned_bpp |= bpp_bit;
                 fprintf(stderr,
                         "nv2a: BLEND_AND blit at %u bytes/pixel is not "
                         "implemented; skipping the blend rather than "
@@ -76,6 +88,14 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
 
         uint32_t max_beta_mult = 0x7f80;
         uint32_t beta_mult = beta->beta >> 16;
+        /*
+         * beta->beta is masked to 0x7f800000 where it is written
+         * (pgraph.c:1790), which is what keeps beta_mult <= 0x7f80 and the
+         * subtraction below from wrapping. That invariant lives in another
+         * file; enforce it here so a widened mask trips this rather than
+         * silently underflowing inv_beta_mult (audit N2).
+         */
+        assert(beta_mult <= max_beta_mult);
         uint32_t inv_beta_mult = max_beta_mult - beta_mult;
 
         for (unsigned int y = 0; y < height; y++) {

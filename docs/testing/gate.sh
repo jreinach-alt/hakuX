@@ -154,7 +154,9 @@ fi
 if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
     keyed() { grep -oE '^(\.\./)?[^ ]+\.[ch]:[0-9]+:[0-9]+: warning: .*' "$1" \
         | sed 's|^\.\./||; s|:[0-9]*:[0-9]*: warning: |  ::  |' | sort -u; }
-    objs()  { grep -oE 'Compiling C object [^ ]+' "$1" | sed 's/.*object //' | sort -u; }
+    # Audit N5: C++ objects were never counted here while COMPILES and OBJS
+    # count them, so a header included only by C++ TUs could not enter.
+    objs()  { grep -oE 'Compiling C(\+\+)? object [^ ]+' "$1" | sed 's/.*object //' | sort -u; }
 
     # Only files COMPILED IN BOTH runs can be compared. Otherwise a warning
     # missing from one side may just not have been rebuilt: gating HEAD after a
@@ -179,6 +181,11 @@ if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
     ninja -C build -t deps 2>/dev/null \
         | awk '/^[^ ]/ { obj = substr($1, 1, length($1) - 1) } /^ / { print obj "\t" $1 }' \
         > "$OUT/.deps" || : > "$OUT/.deps"
+    # Audit N4: an empty dependency list silently keeps every header out of
+    # the intersection. Say so, the way the L7 fix says '(denominator
+    # unavailable)', rather than reporting a clean delta that tested nothing.
+    [ -s "$OUT/.deps" ] \
+        || echo "gate: ninja -t deps yielded nothing; no header can enter the intersection" >&2
 
     cat <(keyed "$PREV_LOG") <(keyed "$LOG") | sed 's/  ::.*//' | sort -u \
     | while read -r src; do
@@ -190,7 +197,11 @@ if [ -n "${PREV_LOG:-}" ] && [ -f "$PREV_LOG" ]; then
                 grep -qxF "$obj" "$OUT/.objs_prev" \
                     && grep -qxF "$obj" "$OUT/.objs_this" \
                     && { hit=1; break; }
-            done < <(grep -F "	" "$OUT/.deps" | grep -F "/$src" | cut -f1 | sort -u)
+            # Audit N6: anchor on a path separator OR the start of the field,
+            # so a generated header with no directory component (config-host.h
+            # at the top of build/) can match too. Dots and the like escaped.
+            esc=$(printf '%s' "$src" | sed 's/[][\.*^$]/\\&/g')
+            done < <(grep -E "	(.*/)?${esc}$" "$OUT/.deps" | cut -f1 | sort -u)
             [ "$hit" -eq 1 ] && printf '%s\n' "$src"
             ;;
         *)
