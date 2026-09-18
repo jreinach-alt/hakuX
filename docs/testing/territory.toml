@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 89
-updated_utc = "2026-09-18T21:35:00Z"
+wave = 90
+updated_utc = "2026-09-18T21:50:00Z"
 
 
 
@@ -112,6 +112,12 @@ note = "AUDIT PASS 2 over lane.blitsafe's M1 remediation. Claims no files. It ga
 issues = ["89"]
 files = []
 note = "#89's DISC-COMPOSITION EFFECT, which is now the largest open finding on the board and had no owner. Claims no files: the first step is a measurement, not a change. THE MEASUREMENT THAT CREATED IT: Color_zeta_overlap/Swap_ZB reads 0 on a 9-capture narrowed disc and 141,125 on the full 236-capture iso_surf1 -- SAME DEVICE, SAME RENDERER, SAME BINARY -- and 141,125 is exactly the black-pixel count of that capture's golden, so a whole region of the image depends on what else is on the disc. THE SURVEY THAT LICENSED NARROWING MISSED THIS BY TWO ORDERS OF MAGNITUDE: seven captures checked, six moved by exactly zero, largest mover 3,872 px. So every absolute ever registered on a narrowed disc is suspect, and the only thing protecting them is the 'arm A is the check' condition some predictions carry and others do not. DO NOT ASSUME EITHER NUMBER IS THE ARTEFACT: both are real captures the device really produced. AGENTS.md carries the rule as of this wave."
+
+
+[lane.tier81fix]
+issues = ["81", "90"]
+files = ["accel/tcg/cpu-exec.c", "accel/tcg/translate-all.c"]
+note = "#81's FIX AND #90, granted OUTRIGHT because check_coverage told me #81's blocker names files NOBODY HOLDS -- 'a grant request rather than a wall'. That is the psh.c deadlock exactly, and it cost 77 commits several hours today, so this one is not waiting to be asked. THE MEASUREMENT IS DONE AND IT DECIDES THE FIX: the tier-1 mechanism FIRES and is STARVED, not dead. Eight of the first ten promotion requests name ONE pc inside ONE millisecond; cflags goes 0xff020000 -> 0xff024000 between promote #0 and #1, so the block kept CF_INVALID set and was re-promoted seven more times; exec_count climbs 64..71 past thresh=64 and a later request reads exec=128, the clamp ceiling, so the promotion test is TRUE FOREVER for such a block. Saturation in 2.2-2.7 s on four of four runs. SO THE FIX IS THE AUDIT'S M2 -- dedup plus reset-or-latch exec_count in tb_request_tier1_promotion() -- AND NOT unmasking the two CF_INVALID comparisons: the numbers point at eight duplicate requests for one pc, not at the lookup. #90 comes with translate-all.c because it is the same file and a candidate SECOND contributor: the anti-churn tier-hint restore at :659-688, whose own comment says it prevents 'endless re-promotion churn', sits inside #ifndef __ANDROID__ with its __android_log_print nested in an #ifdef __ANDROID__ INSIDE it -- dead preprocessor on the only platform that ships. CHANGE THEM SEPARATELY AND MEASURE SEPARATELY: #81's own entry says doing both at once makes either unattributable. AND THERE IS NO SPEC FOR THE TIER-1 MECHANISM, so the audit's remediation is the auditor's reading of intent from comments -- agree the intent before implementing. COORDINATE ON tb-maint.c, which is NOT granted: 937848c9e7 (#68's range-test restoration, ~200 lines) is HELD UNFOLDED pending its own arm."
 
 [free]
 #
@@ -257,7 +263,7 @@ note = "#89's DISC-COMPOSITION EFFECT, which is now the largest open finding on 
 # #52) now carry written blockers instead of a lane -- which is the honest
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
-files = ["accel/**",
+files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
          "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
