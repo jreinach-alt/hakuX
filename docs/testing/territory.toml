@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 93
+wave = 94
 updated_utc = "2026-09-18T22:25:00Z"
 
 
@@ -73,7 +73,7 @@ note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET I
 
 [lane.swizzle87]
 issues = ["85", "87"]
-files = ["hw/xbox/nv2a/pgraph/gl/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c"]
 note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY: files = [] deliberately, with instructions not to implement until it reports the mechanism. The condition recorded at wave 76 for starting this has been met -- both audits have landed -- but ONE OF THEM FOUND 3 HIGH, which is an argument for MORE caution about a third implementation rather than less. Analysis adds no unverifiable compiled code, so it respects the original concern instead of declaring it satisfied. THE EVIDENCE IS ALREADY ON DISK and needs no device: at HEAD with no bound, the VULKAN renderer reproduces the exact digest #39's skew-bound run recorded (15845fa9e1e40032), so Vulkan loses the race the same way every time and its capture IS the race-free image -- a race-free reference obtained WITHOUT the bound, by using the renderer that fails deterministically. Against the golden it has an IDENTICAL COLOUR MULTISET over its 10,240 differing pixels: the right pixels in the wrong places, runs of 16/32/64/80 px, no single translation explaining more than 40%. The run-length signature is itself a constraint on tile geometry. ALSO PLACED AT THIS WAVE: hw/xbox/nv2a/pgraph/swizzle.c was in NO row and not in [free] -- the third file found in that state (after fleet.py at wave 48 and dispatcher.sh at wave 63), and it is the file this issue is most likely to need. Placed in [free] rather than granted, because an analysis lane should not hold a file it has not yet shown it needs. GRANTED BOTH FILES AT WAVE 86, as one claim -- which is what the lane asked for and why it held rather than forking. vk/texture.c came free when lane.padwrite59 retired; gl/surface.c was named out of lane.remote's glob. #85 comes with the file: a small fully-specified decision (delete the dead mem_dirty half, or make it reachable and test it) 1,400 lines from #87's gates, so it costs this lane almost nothing and would otherwise sit behind a lane that has not answered twice. NOW IMPLEMENT -- it was dispatched analysis-only and derived the mechanism without writing a line, so the fix is its to write. Legs 1-6 are drafted, including the CORRECTED control partition: 17 _L captures MAY move, 24 non-_L and all 1,673 Blend_tests must not, and Vertex_shader_rounding has ZERO goldens so it cannot be a leg either way."
 
 
@@ -120,6 +120,27 @@ files = []
 note = "RETIRED AT WAVE 93, AND THIS TIME THE AGENT IS ACTUALLY DONE -- it declared disc89.md final at 443 lines, with no arm outstanding on the device. Wave 92 had restored this row after the orchestrator retired it on 'it reported' rather than 'it is done'; the rule held and is worth keeping: RETIRE WHEN THE AGENT IS DONE, NOT WHEN THE REPORT IS GOOD. It held no files throughout, by design. WHAT IT DELIVERED: the first ref-controlled composition measurement on this project, thirteen arms at one ref on one device, and a complete disc-side bisect of #89 -- THE THRESHOLD IS EXACTLY TWO CAPTURES IN PRECEDING SUITES, captures inside the capture's own suite do not count (the bare disc has five and reads 0), and no individual predecessor is culpable since Color mask blend and Color Zeta Disable each read 0 alone and 141,125 together. THE TWO OVER-CLAIMS THIS ROW USED TO CARRY ARE GONE FROM AGENTS.md: 'a whole region of the image depends on what else is on the disc' -- it is ONE BYTE, the cleared region's alpha, which in z24s8 is the depth high byte -- and 'every absolute ever registered on a narrowed disc is suspect', which over-claimed against a measured blast radius of ONE CAPTURE IN 4,522. FIVE HYPOTHESES DIED TO THEIR OWN FALSIFIERS, two of them the ORCHESTRATOR'S, and the withdrawal of one of those is now public on #89: the pad-alpha stamp keyed on a stale drawn_format, and 'two captures is the first surface recycle'. ANY SURVIVING CANDIDATE MUST BE LATCHED RATHER THAN GRADED, must count captures completed before the current suite began, and must be blind to any number inside the capture's own suite. IT ALSO REFUTED ITS OWN LAST STATEMENT from data already on disk, which is the behaviour this board wants and is why its ladder can be quoted. TWO OF ITS ARMS WERE VOID and it reported them as an arm defect rather than absorbing them: see #94, where a repeated --only-tests was silently overwritten and the registered reading of the void arm would have EXCLUDED the true answer. Its two schema findings are filed as #95. WHAT REMAINS ON #89 IS NOT A DISC QUESTION and a lane queueing another composition arm should be refused: it is one log line at Swap's clear -- cache-hit vs fresh create for r->color_binding, its drawn_format, and the resulting rgba[3] -- plus a read of the COLOUR download/pack path, which nobody has read. Both need a lane holding hw/xbox/nv2a/pgraph/vk/."
 
 [free]
+#
+# RELEASED AT WAVE 94 BY lane.swizzle87 ITSELF, during the wind-down:
+# gl/surface.c. The lane said so unprompted -- "I no longer need it, release
+# it to lane.remote. The work it was granted for is done, built, measured and
+# passed. I hold it for nothing." #87's arm PASSED (Surface_pitch/Swizzle
+# 10,240 -> 0 exact, all 143 registered checks) and the two-backend claim is
+# coherent as pushed: both files changed in ONE commit c807592d02, so whoever
+# merges origin/lane/swizzle87 gets both backends or neither.
+#
+# IT IS RELEASED, NOT GRANTED. lane.remote asked for this file BY NAME and was
+# told to wait three times; that standing request is recorded here and in the
+# hand-off, but granting it is a dispatch and this session is being retired,
+# so the next actor decides. Do not read the release as an assignment.
+#
+# NOT RELEASED, and flagged by lane.blitsafe rather than resolved by it:
+# vk/draw.c. It holds #89's un-landed probe site, is named by #13, #43, #44
+# and #59's blockers -- NONE of which that lane owns -- and the lane has
+# NEVER EDITED IT. Releasing it would unblock four issues, which is exactly
+# why it deserves a deliberate decision rather than a wind-down reflex.
+#
+
 #
 # RELEASED 2026-09-18 by retiring lane.padwrite59: glsl/psh.c, glsl/psh.h,
 # vk/draw.c, vk/instance.c, vk/texture.c and pgraph.c. #59's 600 lines ARE

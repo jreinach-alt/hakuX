@@ -701,17 +701,29 @@ data.
 
 ## Working with a device
 
-> **DEVICE TESTING IS SUSPENDED, 2026-09-18, BY THE OWNER.** The Ayn Thor has
-> somehow disabled its top screen and the owner is troubleshooting the
-> hardware: *"Can we suspend on device testing for the moment while I
-> troubleshoot that?"* The nova has been held since 2026-09-13, so **the whole
-> fleet is out of service** -- there is no second handheld.
+> **LIFTED 2026-09-18. Both devices are online.** The Nova `ee317437` and the
+> Ayn Thor `bdc158a5` are available; both hold files were moved to
+> `$DISPATCH_DIR/hold/lifted/` at 11:08 and the fleet has run over forty arms
+> since. The suspension below is kept only because the *mechanism* it describes
+> is how a hold works, and that is still true.
 >
-> `$DISPATCH_DIR/hold/thor` is placed, with the reason in `hold/thor.why`. The
-> dispatcher claims nothing while a hold file exists and resumes when it is
-> removed, so **a request already in `queue/` is not lost and must not be
-> re-queued.** Do not remove either hold. If a queue looks stalled, that is the
-> hold working.
+> **Two separate lanes flagged this banner as stale on the same day**, having
+> each run soaks against a file telling them the fleet was out of service. That
+> is the failure this file warns about elsewhere in its own words: a record left
+> standing after the thing it records has ended. A banner is a claim with a
+> date, and nobody owns retracting it. If you place a hold, write down who
+> lifts it.
+>
+> *Superseded text, 2026-09-18:* device testing was suspended by the owner
+> while they troubleshot the Thor's top screen -- *"Can we suspend on device
+> testing for the moment while I troubleshoot that?"* -- with the Nova already
+> held since 2026-09-13, so the whole fleet was briefly out of service.
+>
+> **How a hold works, which is unchanged.** `$DISPATCH_DIR/hold/<device>` is
+> placed, with the reason in `hold/<device>.why`. The dispatcher claims nothing
+> while a hold file exists and resumes when it is removed, so **a request
+> already in `queue/` is not lost and must not be re-queued.** Do not remove a
+> hold you did not place. If a queue looks stalled, that is the hold working.
 >
 > **This is not a reason for a lane to go idle.** Every issue on this board has
 > offline surface, and this campaign has closed or re-diagnosed findings with no
