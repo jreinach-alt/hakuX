@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 84
-updated_utc = "2026-09-18T18:50:00Z"
+wave = 85
+updated_utc = "2026-09-18T20:15:00Z"
 
 
 
@@ -83,6 +83,24 @@ note = "#54's RETIREMENT SOAK and #77's DRIVER A/B -- both blocked on the nova s
 issues = ["81"]
 files = []
 note = "#81's TIER-1 MEASUREMENT, whose consumer was verified live before dispatch rather than after. hakuX-tier1:D IS in the RUNNING dispatcher's LOGCAT_SPEC (checked in the snapshot the worker actually executes, not only in the tracked source) -- so the zero [tier1] lines on every logcat on disk are finally NOT EVIDENCE EITHER WAY, and one soak settles whether the mechanism fires at all. THE ORDER MATTERS AND IS THE ISSUE'S OWN: establish whether tier-1 fires BEFORE fixing the multiplication, because 'the slots fill with duplicates' and 'the mechanism never fires' imply different fixes. accel/** is free, but this lane claims nothing yet -- the first step is a measurement, not a change, and a claim on a file it may not need would wall #68's held work for nothing."
+
+
+[lane.arms]
+issues = ["38", "59", "89"]
+files = []
+note = "THREE ARMS THAT WERE READY AND UNQUEUED WHILE BOTH DEVICES SAT IDLE. Claims no source files -- it registers and queues, it does not edit hw/. THE OWNER SPOTTED THIS BEFORE I DID: 'I find it odd that neither device appears to have any testing running at the moment.' The cause was not a blocked lane; it was that the orchestrator had not queued work that was already ready. (1) #38's blit pair: arm A is 5 of 5 proven, arm B is 3 of 5, ab_compare REFUSED on MIN_RUNS, and BOTH arms need re-queueing rather than just B -- arm A's runs are sound and that was never the question; the question is whether the pair is one population, and a 09-14 A against a half-09-18 B is not. (2) #59's arm: its 600 lines ARE NOW FOLDED, so its prediction needs re-pointing at the FOLDED shas and then queueing -- and note the fleet cannot verify H1/H3 at all in the default build, because OPT_DYNAMIC_BLEND leaves the static pipeline path dead on Adreno, so an arm here confirms accuracy and NOT the remediation. (3) #89: a full iso_surf1 disc run, which is the only thing that separates renderer from disc composition on Swap_ZB -- 236 captures against the 9-capture narrowed disc. REGISTER AFTER THE LAST REBASE: a rebase silently un-ancestors a b_ref and a reachable-but-stale ref makes the dispatcher build fine and measure the WRONG BINARY. Three occurrences, one of them the orchestrator's."
+
+[lane.fold]
+issues = []
+standing = true
+files = []
+note = "STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
+
+[lane.triage]
+issues = []
+standing = true
+files = []
+note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
 [free]
 #
