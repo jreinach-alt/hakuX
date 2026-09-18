@@ -2097,6 +2097,42 @@ folded in with a resolved conflict or one extra comment line reads ABSENT
 while its substance is present. ABSENT means "no byte-identical patch", not
 "the work is missing" -- go and read the code.
 
+### A prediction naming a `b_ref` must be registered AFTER the last rebase
+
+A rebase rewrites every commit it moves, so **a `b_ref` that was an ancestor
+before a rebase is not one after it** — and a `merge-base --is-ancestor` check
+run *before* the rebase reports healthy. There is no warning at the moment the
+binding breaks.
+
+This bit #59 **twice, from two different causes**, which is why it is a rule and
+not an anecdote:
+
+  - First from an abandoned branch. The prediction's `b_ref` was not an ancestor
+    of the lane tip, but shared a patch-id with a commit that was, and was still
+    reachable from an older branch — **so the dispatcher built it successfully**
+    and would have produced an arm B *without* the fix the lane had since
+    written. Nothing announced it. The pair would have completed and scored.
+  - Then from a routine rebase. The lane fixed that, rebased once to clear a
+    territory gate, and **reintroduced the identical defect** — discovering it
+    only because it re-checked afterwards.
+
+So: **register last.** Do the rebases, then register, then do not rebase. If the
+fold rebases the commits, the prediction has to be re-registered — and
+re-registering is cheap, while a silently-wrong arm costs the device time plus
+the time to discover it was void.
+
+Two supporting habits. Run `merge-base --is-ancestor` on both refs **after** the
+last rebase, not before. And prefer the queue-time gate to the discipline: a
+`b_ref` that is not an ancestor of any live branch tip should be refused when
+the request is queued, which is where the other inert-prediction classes are now
+caught.
+
+**The reachable-but-not-an-ancestor case is the dangerous one**, because it
+fails in the direction that looks like success. An unreachable ref makes the
+dispatcher fail loudly; a reachable stale one makes it produce a clean,
+confident, wrong measurement.
+
+
 ## An inference can be valid and still wrong, because the model it is valid inside was never checked
 
 Contributed by the remote lane on 2026-09-13, from its own retraction on #51,

@@ -247,3 +247,11 @@ cost = "Two issues (#83 ordered behind lane.blitsafe, #87 deferred while two unf
 bit = 1
 owner = "toolsmith"
 fix = "Give the reader the distinction the board already records. Either read a structured marker (ORDERED / DEFERRED / UNALLOCATED at the head of blocked_on) or print the three as separate sections. DO NOT fix it by rewording the entries to dodge the match -- silencing a gate by editing the text it reads is how a gate stops meaning anything, and this file already carries a cut about a selftest that passed while its tool could not read real data. The FAIL should mean unallocated; an ordered or deferred issue with a stated reason is the board working."
+
+[[cut]]
+id = "a-rebase-silently-unbinds-a-prediction"
+what = "A rebase rewrites every commit it moves, so a prediction's b_ref stops being an ancestor -- and merge-base --is-ancestor run BEFORE the rebase reports healthy. Nothing warns at the moment the binding breaks. Worse, a stale-but-REACHABLE ref makes the dispatcher build successfully and measure the wrong binary."
+cost = "#59 hit it twice from two causes: once from an abandoned branch that kept a superseded ref reachable, and once from a routine rebase to clear an unrelated gate, which reintroduced the identical defect minutes after it was fixed. Both times the arms would have completed, scored, and been reported. Caught by an audit and then by the lane re-checking, never by a gate."
+bit = 2
+owner = "toolsmith"
+fix = "A queue-time gate in request.sh: refuse a b_ref that is not an ancestor of any live branch tip. That is where the other inert-prediction classes are already caught, and it is the only check that fires at the moment it matters. Note the asymmetry that makes it worth the gate rather than the discipline -- an UNREACHABLE ref fails loudly, while a reachable stale one produces a clean confident wrong measurement. AGENTS.md now carries the rule (register after the last rebase), but a rule competes with a territory gate that sometimes demands a rebase."
