@@ -160,3 +160,57 @@ Restricting to the blit rect matters — every one of those pairs differs by 6 t
 314 px over the whole frame, and all of it is the guest printing the test's own
 parameter string into the picture. Read whole-frame, four of the six pairs look
 like real disagreements.
+
+## The arms ran, and the verdict is REFUSED — correctly
+
+Arms `1789389229-lane.blit38-4028334` (A, `71c7bd1d7d`) and `-4028618`
+(B, `24a75d6e3c`), disc `Image blit`, thor.
+
+**`ab_compare.py` refuses the pair**, and the refusal stands:
+
+    REFUSED: B run(s) 2,3 have progress_log_proof false. An arm without
+    proof is ABSENT, not zero.
+
+Runs 2 and 3 of arm B were lost on 2026-09-14 to the device dropping mid-run;
+runs 4 and 5 were re-attempted on 2026-09-18, and the thor has since been held
+by the owner with a screen fault. `MIN_RUNS` is 5 and arm B has 3. **So the
+prediction stays PRE-REGISTERED and UNJUDGED, and both arms need re-queueing
+when the fleet returns** — arm A included, because the question is not whether
+its own runs are sound but whether the pair is one population.
+
+What the three *proven* runs show, recorded because it is what a clean re-run
+would have to contradict, and explicitly **not** a verdict:
+
+| | runs | per-run values |
+|---|---|---|
+| arm A `71c7bd1d7d` | 5 of 5 proven | 168,245 × 5, band **0** |
+| arm B `24a75d6e3c` | 3 of 5 proven | 8, 8, 8, band **0** |
+
+- **21 of 21 registered expect-values hold**, band 0 on each: every
+  `ImgBlt_BLENDAND_*` capture and `BlitRenderBlit` read exactly 0.
+- **20 of 20 must-not-move controls unmoved**, including the eight SRCCOPY
+  `Overlap_*` captures, still 1 px each in both arms.
+- 17 exact captures becomes **33 of 41**.
+
+Two things the pair establishes independently of the refused verdict:
+
+**The 229 commits between `c866527e03` and arm A were inert here.** Arm A reads
+168,245 — the archived solo runs' value to the digit. So the offline model,
+which was built on the `c866527e03` captures, applied unchanged at my parent
+ref, and the archived data was live rather than stale.
+
+**The four-day gap did not perturb this disc.** Arm B's run 1 (2026-09-14) and
+runs 4-5 (2026-09-18) are **bit-identical** across cols 1-9, either side of the
+hardware fault. That is a legitimate a-priori worry measured and found absent;
+it does not cure the `MIN_RUNS` shortfall, which is a separate objection.
+
+## A must-not-move leg that can never fire
+
+`Image_blit/OverlapFIFO` is registered as a control and is **scored in neither
+arm** — 41 captures against 42 goldens, `partial: true`, in both arms and in
+the archived runs too. The test writes no capture, so that leg is inert by
+construction: it would report "unmoved" whatever happened.
+
+Pre-existing and symmetric, so it invalidates nothing here, but it is one of 21
+controls that cannot see anything, and a control list is worth auditing for
+that rather than counted.
