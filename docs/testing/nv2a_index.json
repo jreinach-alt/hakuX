@@ -4006,7 +4006,7 @@
   },
   "89": {
    "component": "pgraph",
-   "disposition": "harness",
+   "disposition": "defect",
    "no_suites": "",
    "suites": [
     "Color zeta overlap"
@@ -4028,6 +4028,34 @@
     "Color zeta overlap"
    ],
    "title": "Color_zeta_overlap/Swap regresses 165,447 -> 304,750 under #88's colour-wins policy, on a registered must_not_move"
+  },
+  "92": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "not scored directly by any suite -- which is the problem. Color_zeta_overlap/Swap is the capture most likely to expose it, and it is currently watched only as a must_not_move control on two other predictions, i.e. by accident rather than on purpose.",
+   "suites": [],
+   "title": "SurfaceShape carries no address, so framebuffer_dirty() cannot see a DMA-context swap -- and both renderers share it"
+  },
+  "93": {
+   "component": "pgraph",
+   "disposition": "harness",
+   "no_suites": "an orchestration-process issue, not a renderer one. Nothing scores it; its acceptance criteria are the checkboxes in the issue body.",
+   "suites": [],
+   "title": "harness: Phase 0 -- wind down the orchestrator session and migrate to jobs"
+  },
+  "94": {
+   "component": "pgraph",
+   "disposition": "harness",
+   "no_suites": "an instrument defect, not a renderer one -- no golden suite scores request.sh. Its oracle is the queued .req itself: only_tests length in the request record against what the caller passed.",
+   "suites": [],
+   "title": "request.sh silently drops all but the last --only-tests/--skip-tests/--tests/--suites, and it nearly published a bracket that excluded the true answer"
+  },
+  "95": {
+   "component": "pgraph",
+   "disposition": "harness",
+   "no_suites": "a schema gap in the judging tool, not a renderer defect. Every pgraph suite is affected in principle; #89's Color_zeta_overlap/Swap_ZB is the only capture where it has been MEASURED to matter.",
+   "suites": [],
+   "title": "The prediction schema has no composition field, so the comparability rule cannot be enforced -- and disc_id conflates composition with the skip list"
   },
   "aci-vmstate": {
    "component": "apu",
@@ -4624,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "28eeff3d884fe9c325489b553736913bbdefe7ae",
+  "emulator_commit": "4279160242e6a4c3abfad6353e32daf5fb755bb8",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2833,

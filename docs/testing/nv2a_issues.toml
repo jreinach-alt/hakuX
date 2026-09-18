@@ -3175,7 +3175,6 @@ blocked_on = "ASSIGNED 2026-09-18 to lane.blitsafe, which found it, with surface
 
 [issue.93]
 title = "harness: Phase 0 -- wind down the orchestrator session and migrate to jobs"
-component = "harness"
 no_suites = "an orchestration-process issue, not a renderer one. Nothing scores it; its acceptance criteria are the checkboxes in the issue body."
 disposition = "harness"
 blocker_falsifier = "if 'the wind-down has not been authorised' were false, the owner's wind-down prompt would have arrived in the local session -- it has not, and the issue body itself lists that paste as owner action D, the trigger for step A."
@@ -3186,7 +3185,6 @@ blocked_on = "BLOCKED ON AN OWNER ACTION, BY DESIGN, and it is the one thing on 
 
 [issue.94]
 title = "request.sh silently drops all but the last --only-tests/--skip-tests/--tests/--suites, and it nearly published a bracket that excluded the true answer"
-component = "harness"
 no_suites = "an instrument defect, not a renderer one -- no golden suite scores request.sh. Its oracle is the queued .req itself: only_tests length in the request record against what the caller passed."
 disposition = "harness"
 blocker_falsifier = "if 'repeated --only-tests is silently overwritten' were false, a request built with one flag per test would carry every test in its only_tests array -- and two arms on disk carry ONE each where 2 and 8 were passed."
@@ -3197,7 +3195,6 @@ blocked_on = "NOT BLOCKED. docs/testing/request.sh is held by the instruments st
 
 [issue.95]
 title = "The prediction schema has no composition field, so the comparability rule cannot be enforced -- and disc_id conflates composition with the skip list"
-component = "harness"
 no_suites = "a schema gap in the judging tool, not a renderer defect. Every pgraph suite is affected in principle; #89's Color_zeta_overlap/Swap_ZB is the only capture where it has been MEASURED to matter."
 disposition = "harness"
 blocker_falsifier = "if 'composition is not a prediction field' were false, some prediction file would carry the disc it was derived on -- exactly 1 of 107 does, and ab_compare --register has no such key to write."
