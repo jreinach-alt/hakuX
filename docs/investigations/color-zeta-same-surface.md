@@ -193,3 +193,83 @@ here: #85, the `mem_dirty` half of the gate, which `tcg_enabled()` makes dead on
 every build this project runs; and #86, the Android arm of
 `pgraph_gl_shader_load_from_memory()`, which still drains every GL error
 silently now that the error it was added to hide is gone.
+
+## The Vulkan port, and the third capture it moved (#88, #91)
+
+The policy half of the chain above was ported to `pgraph/vk/surface.c` and
+measured. **The gate half was never missing on Vulkan:** `!current_binding` has
+sat outside the `upload` condition since `9161e3e14a`, 2024-07-27, upstream —
+so only the policy needed porting, and Vulkan's gate is strictly *more*
+permissive than GL's fixed form. That is also why Vulkan's `ColorIntoZeta_ZB`
+sat at exactly 131,495: gate-correct-with-a-symmetric-policy is the state GL
+passed through between `fada1d89`'s two halves.
+
+The arm (`PRE-REGISTERED`, 5 runs per arm, arms differing in `vk/surface.c`
+alone, three-suite disc `3-suites:e0a8f913`):
+
+| capture | arm A | arm B | |
+|---|---:|---:|---|
+| `ColorIntoZeta_ZB` | 131,495 | **10,766** | predicted absolute, exact |
+| `ZetaIntoColor` | 102,255 | **71,663** | predicted absolute, exact |
+| `Swap` | 165,447 | **304,750** | +139,303, regressed |
+
+Both absolutes were derived from the goldens' own colour histograms rather than
+copied from GL's score file, and both landed to the digit. **The policy is
+confirmed.** All four values are deterministic 5/5 in both arms.
+
+### `Swap`'s regression is a stray DEPTH CLEAR, not a missing depth test
+
+`[issue.91]` attributes it to the missing depth attachment — no zeta binding,
+`pDepthStencilState == NULL`, so the quad draws with no depth test. **The
+captures refute that, and it can be settled without a device.**
+
+The three colour populations are partitioned *identically* in both arms —
+165,447 quad, 139,303 background, 2,450 text. A change to depth testing moves
+the boundary between populations. Nothing moved; only the background's **value**
+changed:
+
+| | R,G,B,A as read | bytes in memory (BGRA) | as a word |
+|---|---|---|---|
+| golden / arm A | `#242424` a`FE` | `24 24 24 FE` | `0xFE242424` |
+| arm B | `#000024` a`00` | `24 00 00 00` | `0x00000024` |
+
+`0xFE242424` is the test's own clear colour. Arm B holds that value with **bits
+8–31 zeroed and bits 0–7 preserved** — which is precisely a `Z24S8`
+**depth-only clear of 0** written over it: the depth field is bits 8–31, the
+stencil byte is bits 0–7 and is left alone, and the surviving `0x24` is the
+clear colour's own low byte. `PrepareDraw(0xFE242424, 0)` clears colour to that
+value and depth to 0.
+
+So in arm B the depth clear reached the **colour** surface. That is a clear
+landing on the wrong attachment, not a test being skipped, and the distinction
+matters because it points at `pgraph_vk_clear_surface()` rather than at the
+pipeline. Note the inline-clear path in `vk/draw.c` guards correctly
+(`if (write_zeta && r->zeta_binding)`), so the fall-through pipeline clear is
+where to look.
+
+### What is NOT established, and the arm that settles it
+
+Reading `update_surface_part()` against `TestSwap()` does **not** reproduce the
+decline firing inside `Swap`. `SET_CONTEXT_DMA_COLOR` sets
+`surface_color.buffer_dirty` (`pgraph.c:2386`), so colour rebinds to the zeta
+address first; zeta then asks for the colour address and finds an object that is
+no longer `r->color_binding`, so `surface == other` is false and the decline
+does not fire. `SurfaceShape` carries no address, so `framebuffer_dirty()`
+cannot see a DMA swap at all — that is worth knowing separately.
+
+**Which leaves two candidates, and they are separable by one cheap arm.**
+`ColorIntoZeta` and `ColorIntoZeta_ZB` run before `Swap` in the suite, and the
+decline changes the pg-level state they leave behind — it clears
+`surface_zeta.buffer_dirty` and leaves `zeta_binding` absent. So:
+
+| `Swap` run SOLO on arm B | meaning |
+|---|---|
+| back to arm A's value | contamination — an earlier test's decline leaking forward |
+| still +139,303 | intrinsic to `Swap`, and the control-flow reading above is wrong |
+
+That is `make_test_iso.py`'s solo/pair classification, and it is the right next
+step rather than a fix: the mechanism is half-established, and a fix fitted to
+the unestablished half would be a fit. **Predict the arm-A-to-arm-B
+relationship, not an absolute** — #89 measured a 141,125 px composition swing on
+this very suite, so a solo disc's own numbers are not comparable with the
+three-suite ones in either direction.
