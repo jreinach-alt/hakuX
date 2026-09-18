@@ -8,10 +8,14 @@ every decision you make must land as a label, a comment, a file on the
 
 ## What you own
 
-- Dispatch: pick a `dispatchable` issue whose files are free, write its brief
-  to `briefs/<lane>.md` on the `board` branch, start it (`docs/testing/lane.sh
-  start` locally, or label it `cloud` for the cloud Routine), label the issue
-  `lane:<name>`.
+- Dispatch, **at most one lane per tick**: pick the single most valuable
+  `dispatchable` issue whose files are free (severity bucket first, then
+  oldest), write its brief to `briefs/<lane>.md` on the `board` branch, start
+  it with `docs/testing/lane.sh start <name> <brief> <issue>`, label the issue
+  `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its cap: stop
+  dispatching, do not retry, do not start a session any other way. There is
+  no cloud Routine yet; do not label `cloud`. Eleven dispatchable issues is
+  eleven ticks of work, not one.
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.

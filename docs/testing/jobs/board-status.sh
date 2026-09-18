@@ -44,6 +44,11 @@ fi
 echo "== systemd log (tail of $L/systemd.log)"
 [ -f "$L/systemd.log" ] && tail -5 "$L/systemd.log" | sed 's/^/   /' || echo "   none"
 
+echo "== host checkout (ExecStart paths live here; the jobs re-exec from the fetched trunk)"
+R="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
+echo "   $R on $(git -C "$R" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$R" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master"
+echo "   lanes running: $(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l) (cap: $(. "$WORK/limits.env" 2>/dev/null; echo "${LANE_MAX:-2}"))"
+
 echo "== dispatcher"
 systemctl --user is-active hakux-dispatcher.service 2>/dev/null | sed 's/^/   service: /'
 echo "   queue: $(ls "$D"/queue/*.req 2>/dev/null | wc -l) waiting, running: $(ls "$D"/running/*.req 2>/dev/null | wc -l), results: $(ls -d "$D"/results/*/ 2>/dev/null | wc -l)"

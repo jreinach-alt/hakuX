@@ -24,9 +24,18 @@
 # names what a lane may run; everything else is still refused.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
-REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
+REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"      # the object store only
 TIP="${HAKUX_TIP:-master}"
 TURNS="${LANE_TURNS:-150}"
+JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summariser: this tree's
+# THE CAP. Every lane is a model session drawing on the account's shared
+# five-hour and weekly windows (docs/ORCHESTRATION-DESIGN.md §9.1), and the
+# first board tick found eleven dispatchable issues. Nothing else stops a
+# tick from starting eleven lanes. $WORK/limits.env overrides the default
+# without a commit; the board role file tells the job to stop dispatching
+# when this script refuses.
+LANE_MAX=2
+[ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
 
 case "$cmd" in
@@ -36,6 +45,11 @@ case "$cmd" in
     wt="$WORK/wt/$name"; branch="lane/$name"
     mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/lane"
     if [ -e "$wt" ]; then echo "worktree exists: $wt (lane.sh rm $name first)" >&2; exit 3; fi
+    active=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l)
+    if [ "$active" -ge "$LANE_MAX" ]; then
+        echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env). Dispatch nothing more this tick." >&2
+        exit 75
+    fi
     git -C "$REPO" fetch -q origin "$TIP" || { echo "fetch of origin/$TIP failed" >&2; exit 4; }
     if git -C "$REPO" rev-parse --verify --quiet "refs/remotes/origin/$branch" >/dev/null; then
         # A lane resuming after a wind-down or a crash continues its own branch.
@@ -55,7 +69,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$REPO/docs/testing/jobs/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$REPO/docs/testing/jobs/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
     echo "started hakux-lane-$name in $wt on $branch; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
