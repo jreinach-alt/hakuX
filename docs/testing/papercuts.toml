@@ -239,3 +239,11 @@ cost = "The tool that produced this issue's headline cost figures cannot re-read
 bit = 1
 owner = "toolsmith"
 fix = "Default the optional groups instead of int()ing them, and make --selftest cover BOTH log shapes: bound-off and bound-on. The general lesson is the one this file keeps relearning -- a selftest built from the case in front of you tests that case. An impossible row is the check: feed the selftest a bound-on log and assert it parses, because that is the shape a passing selftest could not previously see."
+
+[[cut]]
+id = "the-gate-cannot-see-ordered-or-deliberately-deferred"
+what = "fleet.py's DISPATCHABLE-NOW-NOT-DISPATCHED keys on the words NOT BLOCKED in blocked_on, so it reports three different states identically: genuinely unallocated, ordered behind a live claim, and deliberately deferred with a recorded reason. Only the first is a problem."
+cost = "Two issues (#83 ordered behind lane.blitsafe, #87 deferred while two unfolded implementations await audits) sit in a FAIL bucket with their reasons written one field away. The cost is not the noise -- it is that the ONE state worth acting on is now indistinguishable from two that are not, in the check whose whole purpose is to surface unallocated work."
+bit = 1
+owner = "toolsmith"
+fix = "Give the reader the distinction the board already records. Either read a structured marker (ORDERED / DEFERRED / UNALLOCATED at the head of blocked_on) or print the three as separate sections. DO NOT fix it by rewording the entries to dodge the match -- silencing a gate by editing the text it reads is how a gate stops meaning anything, and this file already carries a cut about a selftest that passed while its tool could not read real data. The FAIL should mean unallocated; an ordered or deferred issue with a stated reason is the board working."
