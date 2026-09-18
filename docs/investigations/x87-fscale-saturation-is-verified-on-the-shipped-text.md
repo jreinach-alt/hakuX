@@ -142,10 +142,14 @@ commit's own message says exactly that -- "x86-64 does not compile it" -- and I
 had it in front of me.
 
 The APK is `arm64-v8a` only (`android/app/build.gradle.kts:37`) and *would*
-compile it. **No arm64 build containing `19737094` is known to exist**: the
-peer branch that feeds the device fleet does not carry the commit
-(`git merge-base --is-ancestor` says no), there is no APK on this host, and the
-fix commit recorded the Android cycle as owed. It still is.
+compile it. **No arm64 build containing `19737094` exists anywhere**, and the argument
+that settles it is containment: `git branch -a --contains 19737094` returns
+this branch and nothing else, so no build of any other ref can carry it. Two
+supporting facts, stated by host because a first draft of this sentence
+conflated them: this lane's container holds no APK at all (`find / -iname
+'*.apk'` is empty), and the orchestrator's host holds seven, all built
+2026-09-06, eight days before the fix. The fix commit recorded the Android
+cycle as owed. It still is.
 
 So what has *executed* the fixed text is the checker's native build of the
 carved helpers, on x86-64; what has *compiled* it for aarch64 is the checker's
