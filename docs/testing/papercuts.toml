@@ -271,3 +271,11 @@ cost = "Not paid, and only because lane.swizzle87 read request.sh's header befor
 bit = 1
 owner = "toolsmith"
 fix = "Move the knowledge out of the comment and into the tool: request.sh should apply the same poison-test skip queue_full_sweep.sh does whenever a request names a suite containing one, or refuse the request and say which test to skip. A hazard that only a careful reader avoids is a hazard the next lane pays for -- and this one is silent, self-consistent and enormous."
+
+[[cut]]
+id = "a-suite-level-annotation-can-excuse-a-capture-level-regression"
+what = "ab_compare annotates a violated leg with any OPEN harness issue owning the SUITE. On #88's arm it annotated `Color_zeta_overlap/Swap` with '#89 (Color zeta overlap)' -- but #89 is about `Swap_ZB`, a different capture. The annotation exists to suppress known noise and here it manufactured a dismissal for a real 139,303-px regression."
+cost = "Not paid, because the verdict was still FAIL and the numbers were read. But the annotation is the sentence a reader in a hurry uses to close the question, and it was wrong: it matched at suite level while claiming per-capture relevance ('every one is in a suite...'). The disc total ALSO improved by 12,018 px, so both the summary line and the excuse pointed the same wrong way."
+bit = 1
+owner = "toolsmith"
+fix = "Match the annotation at CAPTURE level, not suite level -- the harness issues already name their captures. Where only a suite-level match exists, say so in those words ('an open issue owns this suite, but not this capture') rather than implying the capture is covered. An annotation that is right about the suite and wrong about the capture is worse than none, because it reads as specific."
