@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 87
-updated_utc = "2026-09-18T21:20:00Z"
+wave = 88
+updated_utc = "2026-09-18T21:10:00Z"
 
 
 
@@ -105,6 +105,12 @@ note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing
 issues = []
 files = []
 note = "AUDIT PASS 2 over lane.blitsafe's M1 remediation. Claims no files. It gates the #84/#88 fold, the last thing between two finished fixes and the tree. TWO THINGS TO WEIGH: the lane hoisted the guard FURTHER than pass 1 asked -- to after the bytes_per_pixel switch, skipping the source download, both range-download calls and the tile clipping -- arguing those exist so a blit's writes are not later overwritten and are pointless when there is no write. Verify nothing between the switch and the guard mutates surface or guest state, which is what it claims to have read. And it DECLINED both of L3's proposed remediations plus L2's code change, each with a reason; accept or overrule them explicitly."
+
+
+[lane.disc89]
+issues = ["89"]
+files = []
+note = "#89's DISC-COMPOSITION EFFECT, which is now the largest open finding on the board and had no owner. Claims no files: the first step is a measurement, not a change. THE MEASUREMENT THAT CREATED IT: Color_zeta_overlap/Swap_ZB reads 0 on a 9-capture narrowed disc and 141,125 on the full 236-capture iso_surf1 -- SAME DEVICE, SAME RENDERER, SAME BINARY -- and 141,125 is exactly the black-pixel count of that capture's golden, so a whole region of the image depends on what else is on the disc. THE SURVEY THAT LICENSED NARROWING MISSED THIS BY TWO ORDERS OF MAGNITUDE: seven captures checked, six moved by exactly zero, largest mover 3,872 px. So every absolute ever registered on a narrowed disc is suspect, and the only thing protecting them is the 'arm A is the check' condition some predictions carry and others do not. DO NOT ASSUME EITHER NUMBER IS THE ARTEFACT: both are real captures the device really produced. AGENTS.md carries the rule as of this wave."
 
 [free]
 #
