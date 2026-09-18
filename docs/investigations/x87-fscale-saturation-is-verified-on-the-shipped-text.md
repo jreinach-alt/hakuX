@@ -130,26 +130,40 @@ there would be an out-of-bounds read, not a wrong value.
 
 ## What a binary says here, and what it cannot
 
-The APK is `arm64-v8a` only (`android/app/build.gradle.kts:37`).
-`fpu_helper_hard.c:1-4` compiles the helper file a second time with
-`USE_HARD_FPU` under `XBOX && (__x86_64__ || __aarch64__)`, and the `_nds` block
-additionally needs `__aarch64__` (`:132`). So **every Android build compiles this
-block**, and the corpus binary `0.4.0-j1-331-gd7dfe146` contains `19737094`
-(`git merge-base --is-ancestor 19737094 d7dfe146` holds). That build ran the
-whole pgraph corpus — the ranking in
-[`corpus-retriage-and-the-window-clip-flake.md`](corpus-retriage-and-the-window-clip-flake.md)
-is measured on it. What that establishes is that the fixed block compiles under
-the real toolchain and the binary runs. What it **cannot** establish is the
-semantics: #74's instrumented run found zero x87 float-to-integer stores in 619
-captures, and nothing on any disc we can build issues `FSCALE` with a runaway
-exponent. The corpus is blind here by construction, which is why the audit
-found this and no arm did. The semantic evidence is this checker.
+**Corrected 2026-09-18, a few hours after this was first written.** The first
+version of this section claimed the corpus binary `0.4.0-j1-331-gd7dfe146` had
+compiled this block with the fix in it. **That was wrong.** This lane's corpus
+runs are the **desktop** build, `build/qemu-system-i386`, an x86-64 ELF run
+under `xvfb-run`; the git-describe string it embeds names the *source*, not the
+*target*. `fpu_helper_hard.c:1-4` does compile the helper file a second time
+with `USE_HARD_FPU` on x86-64, but the `_nds` block additionally needs
+`__aarch64__` (`:132`), so that binary never compiled a line of it. The fix
+commit's own message says exactly that -- "x86-64 does not compile it" -- and I
+had it in front of me.
+
+The APK is `arm64-v8a` only (`android/app/build.gradle.kts:37`) and *would*
+compile it. **No arm64 build containing `19737094` is known to exist**: the
+peer branch that feeds the device fleet does not carry the commit
+(`git merge-base --is-ancestor` says no), there is no APK on this host, and the
+fix commit recorded the Android cycle as owed. It still is.
+
+So what has *executed* the fixed text is the checker's native build of the
+carved helpers, on x86-64; what has *compiled* it for aarch64 is the checker's
+cross-compile leg, compile only. The corpus could not have judged the semantics
+in any case: #74's instrumented run found zero x87 float-to-integer stores in
+619 captures, and nothing on any disc we can build issues `FSCALE` with a
+runaway exponent. The corpus is blind here by construction, which is why the
+audit found this and no arm did. The semantic evidence is this checker, and
+nothing else.
 
 Not established, stated so nobody reads more into this than it holds:
 
 - **aarch64 execution of the carved text.** Compile only. The arithmetic is
   IEEE double and `trunc`/`rint`/`floor`/`ceil`/`scalbn`, none of which is
   architecture-dependent, but that is an argument and not a run.
+- **A real Android build of this block since the fix.** Owed, and the one
+  thing this record cannot substitute for. A cross-compile of the carved region
+  under stubs is not the real TU under the real headers.
 - **Whether any title reaches it.** A guest `FSCALE` with `|ST1| >= 2^31` is
   `ldexp` with a runaway exponent; the fix is correct by specification whether
   or not a shipped title ever does it.
@@ -175,3 +189,8 @@ sat behind it for four days. The check now lives next to `psh_differ`, takes a
 `python3 docs/testing/x87_conv_check.py`, exit code as the verdict. With
 `clang` present it also runs the aarch64 compile leg; without it, it runs the
 native leg only and prints that it skipped the other.
+
+**And a second rule, earned by the correction above: a version string names
+the source, not the target.** `git describe` is embedded in every build of a
+commit, on every architecture. It says which tree was compiled and nothing
+about which blocks of it were.
