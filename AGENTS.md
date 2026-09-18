@@ -73,6 +73,51 @@ currently written down as blockers, and the cheapest refutation of almost every
 blocker here has been an offline script over artefacts that were already
 present.
 
+## A narrowed disc can change a capture's score by 141,325 px
+
+Narrowing a disc has been treated as safe for absolutes on the strength of a
+survey: seven captures checked, **six moved by exactly zero**, and the largest
+mover was 3,872 px on one `Blend_tests` capture. That survey is now known to
+have missed the interesting case by two orders of magnitude.
+
+**Measured 2026-09-18 on `Color_zeta_overlap/Swap_ZB`, same device, same
+renderer, same binary:**
+
+| disc | differing |
+|---|---:|
+| 9-capture narrowed | **0** |
+| full 236-capture `iso_surf1` | **141,125** |
+
+141,125 is exactly the count of black pixels in that capture's golden, so the
+narrowed disc is not *slightly* different — a whole region of the image depends
+on what else is on the disc.
+
+This was found while separating a confound that pointed the other way.
+`desktop-runs.md`'s rule — *"a difference seen here and not on the handheld is a
+driver difference until proven otherwise"* — had made lavapipe the prime
+suspect for months. **The driver was innocent.**
+
+**What follows, and it is uncomfortable:**
+
+- **Every absolute ever registered on a narrowed disc is suspect.** Not wrong —
+  suspect. The protection that has actually been working is the
+  *"arm A is the check"* condition several predictions carry: if arm A does not
+  reproduce the baseline the absolute was derived from, the claim degrades to a
+  delta. Predictions that lack that condition have been relying on luck.
+- **A figure from a narrowed disc may not be compared with a figure from a
+  fuller one, in either direction.** That was already the rule for `disc_id`
+  comparability and was justified by tens of pixels; it is now justified by six
+  figures.
+- **Registering an absolute at all requires either the full disc, or arm A
+  reproducing the baseline on the same composition.** Deriving it from the
+  goldens' own histograms — which is otherwise the strongest way to get one —
+  does not help: the derivation is right and the *rendering* changes.
+
+**Why it is not simply "a bug in the narrowed disc".** Both scores are of real
+captures the device really produced. Something about disc composition changes
+what the guest renders, and nobody knows what. That is an open question with
+its own row; do not treat either number as the artefact until it is answered.
+
 ## Paper cuts are tracked, and a DX pass runs daily
 
 Friction that has cost real time lives in `docs/testing/papercuts.toml`, with
