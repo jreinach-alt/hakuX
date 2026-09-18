@@ -2509,13 +2509,13 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:127",
+   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:240",
    "symbols": [],
    "text": "assert(false && \"Unknown blit operation\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:347",
+   "loc": "hw/xbox/nv2a/pgraph/vk/blit.c:460",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -2984,49 +2984,49 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3227",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3228",
    "symbols": [],
-   "text": "// FIXME: Support same color/zeta surface target? In the mean time,"
+   "text": "* FIXME: Support same color/zeta surface target? One VkImage"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3232",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3259",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3344",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3403",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3435",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3494",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3480",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3539",
    "symbols": [],
    "text": "// FIXME: Cannot monitor for reads/writes; flush now"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3495",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3554",
    "symbols": [],
    "text": "// FIXME: Move to common?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3704",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3763",
    "symbols": [],
    "text": "pgraph_vk_reload_surface_scale_factor(pg); // FIXME: Move internal"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3739",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3798",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -4013,6 +4013,13 @@
    ],
    "title": "Color_zeta_overlap/Swap_ZB: 141,125 px on the desktop lane, exactly 0 on the handheld across six binaries"
   },
+  "90": {
+   "component": "tcg",
+   "disposition": "defect",
+   "no_suites": "guest-CPU core, not a pgraph defect -- no golden suite scores it, and the corpus is nearly all static content so it could not exercise the promotion path even if one did.",
+   "suites": [],
+   "title": "tcg tier-1: the anti-churn tier-hint restore is compiled out on Android, and its own log site is unreachable by construction"
+  },
   "aci-vmstate": {
    "component": "apu",
    "disposition": "defect",
@@ -4608,7 +4615,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "a2df274d9bfa03b49c2ca560ce2463a6ea852721",
+  "emulator_commit": "0b66411e32bc516f60e506d2edd1bb0920bd9f37",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2833,
@@ -8308,7 +8315,7 @@
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3557",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3616",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    }
@@ -8359,7 +8366,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3661",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3720",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;"
    }
@@ -8401,22 +8408,22 @@
     "text": "// Pack depth+stencil into NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3664",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3723",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3671",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3730",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3678",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3737",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3682",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3741",
     "role": "REF",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]"
    }
@@ -17789,7 +17796,7 @@
     "text": "uint32_t setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3507",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3566",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    }
@@ -18289,7 +18296,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT, z_format);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3508",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3567",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    }

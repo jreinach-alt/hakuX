@@ -91,24 +91,32 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
          * rather than an internal invariant -- the same reasoning
          * pgraph_vk_solid_line() records for its own narrow-format return.
          *
+         * THE DECIDING GUARD IS IN pgraph_vk_image_blit(), before any surface
+         * bookkeeping is committed; this one is the defensive backstop, so no
+         * future caller can reach the 32bpp indexing by another route. Both
+         * exist on purpose. It is silent because the entry guard has already
+         * warned on every path that can currently get here, and a second warn
+         * for one event would misreport it as two.
+         *
          * All 20 ImgBlt_BLENDAND_* captures in the suite are XRGB or ZRGB,
-         * both 32bpp, so no arm on this fleet can reach this branch with a
-         * narrow format; the warn is how it becomes visible if a title does.
-         * stderr is pumped onto logcat under tag hakuX-stderr
+         * both 32bpp, so no arm on this fleet can reach either guard with a
+         * narrow format; the entry warn is how it becomes visible if a title
+         * does. stderr is pumped onto logcat under tag hakuX-stderr
          * (android/app/src/main/cpp/xemu_android.cpp), so a plain fprintf is
          * visible on the platform that ships. Audit HIGH, issue #84,
          * pre-existing on both renderers.
+         *
+         * ONE EXCEPTION to `width` counting destination-format pixels, and it
+         * is the one place in this file where the byte count and the pixel
+         * count are not two views of the same number: perform_blit_tiled()
+         * passes `chunk / bytes_per_pixel` as width and `chunk` as
+         * width_bytes, so an unaligned dest_offset (pgraph.c:2024 masks with
+         * 0x07FFFFFF and does not align) can truncate the division and leave
+         * the two disagreeing. width can only SHRINK there, so it is a wrong
+         * picture and never an overrun, and it needs a valid GPU tile plus a
+         * blit that overruns it. Pre-existing; audit LOW L2, issue #84.
          */
         if (bytes_per_pixel != 4) {
-            static bool warned;
-            if (!warned) {
-                warned = true;
-                fprintf(stderr,
-                        "nv2a: BLEND_AND blit at %u bytes/pixel is not "
-                        "implemented; skipping the blend rather than "
-                        "overrunning the destination\n",
-                        bytes_per_pixel);
-            }
             return;
         }
 
@@ -451,6 +459,43 @@ void pgraph_vk_image_blit(NV2AState *d)
                 context_surfaces->color_format);
         assert(false);
         break;
+    }
+
+    /*
+     * BLEND_AND is implemented for 32bpp destinations only -- see the long
+     * comment in perform_blit(). REFUSE HERE, AT THE ENTRY, and not only in
+     * the leaf, because by the time perform_blit() runs this function has
+     * already committed the destination surface's bookkeeping to a write that
+     * is about to not happen: the surf_dest block below clears
+     * download_pending and draw_dirty on a full-surface blit -- discarding
+     * whatever the GPU rendered and had not yet written back -- sets
+     * upload_pending, so the VkImage reloads from VRAM nobody wrote, and the
+     * three memory_region_set_client_dirty() calls at the end then advertise
+     * the change to the VGA client, the texture cache and the surface tracker.
+     * Refusing in the leaf alone turns "this blit did nothing" into "this blit
+     * reset the destination to stale VRAM and told three subsystems it had
+     * written". Audit MEDIUM M1 over this fix, issue #84.
+     *
+     * This is also where pgraph_vk_solid_line() puts its identical guard: at
+     * the top of the entry function, above its own soft guards and before any
+     * state is touched. Copying its warn-once shape into a leaf three frames
+     * down copied the idiom and not the placement, which was the whole point.
+     *
+     * The leaf keeps its guard as a defensive return, so no future caller can
+     * reach the 32bpp indexing by another route.
+     */
+    if (image_blit->operation == NV09F_SET_OPERATION_BLEND_AND &&
+        bytes_per_pixel != 4) {
+        static bool warned;
+        if (!warned) {
+            warned = true;
+            fprintf(stderr,
+                    "nv2a: BLEND_AND blit at %u bytes/pixel is not "
+                    "implemented; skipping the blit rather than overrunning "
+                    "the destination\n",
+                    bytes_per_pixel);
+        }
+        return;
     }
 
     hwaddr source_dma_len;
