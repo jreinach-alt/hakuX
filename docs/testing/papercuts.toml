@@ -263,3 +263,11 @@ cost = "A cited artefact that is absent reads as a missing instrument to the nex
 bit = 2
 owner = "toolsmith"
 fix = "preflight should verify that every path a tracker entry cites actually exists at HEAD -- the entries already name their instruments and write-ups by path, so this is a grep over status_note/blocked_on plus an os.path.exists. Cheap, and it catches the class rather than the instance. For the orchestrator: when folding a record that cites an artefact, fold the artefact in the same commit or say in the message that it is deliberately left behind."
+
+[[cut]]
+id = "a-hand-built-suites-request-gets-no-poison-test-skip"
+what = "`Texture render target::RenderTextureLoop` leaves the texture stage disabled, so the 40 TexFmt_* tests after it render FLAT BLACK -- 3,209,634 px against 324,349. queue_full_sweep.sh skips it automatically at :66. A hand-built --suites request does not, and NOTHING WARNS: request.sh:43 documents the hazard in a comment only."
+cost = "Not paid, and only because lane.swizzle87 read request.sh's header before queueing. 37 of its prediction's 38 must-not-move keys are in that suite, so the arm would have read as a CATASTROPHIC REGRESSION while measuring nothing -- the most expensive possible failure shape, because a huge adverse number invites a revert rather than an investigation."
+bit = 1
+owner = "toolsmith"
+fix = "Move the knowledge out of the comment and into the tool: request.sh should apply the same poison-test skip queue_full_sweep.sh does whenever a request names a suite containing one, or refuse the request and say which test to skip. A hazard that only a careful reader avoids is a hazard the next lane pays for -- and this one is silent, self-consistent and enormous."
