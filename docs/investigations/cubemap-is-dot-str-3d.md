@@ -1435,3 +1435,65 @@ the GL renderer**: the generated shaders are also cached on disk in
 `~/.local/share/xemu/xemu/shaders/` with `shader_cache_list`, and until those
 are removed no shader is regenerated and no emit-site probe fires. Clear all
 four, or a silent probe will read as a measured zero.
+
+## Audit remediation of the fix, 2026-09-18
+
+Audit pass 1 over the unfolded work filed three findings against `4a08abef`'s
+cube arm, and pass 2 found them unremediated -- `glsl/psh.c` was not this
+lane's file until territory wave 87 granted it. All three are landed together:
+
+- **M1.** The corner direction's signs were read from `dotSTR%d.x/.y` twenty
+  lines after `apply_border_adjustment()`, which for a bordered cubemap
+  rewrites the vector through `remapBorderCube()` with the major axis forced
+  to +/-1, so the components no longer carried the dot signs the measured rule
+  is stated in. The signs are now read from the raw `dot{i-2}` / `dot{i-1}`,
+  and the border remap is applied to the synthesised direction instead:
+  `remapBorderCube` keeps +Z as the major axis and preserves both signs while
+  shrinking `st` into the logical area, so a bordered face lands on its logical
+  corner. **No disc carries a bordered cubemap on a DOT_STR_3D stage**, so this
+  path is correct by construction and unmeasured.
+- **M2.** The fetch was `texture()` on a four-valued step, whose implicit LOD
+  is 0 inside a sign region and the coarsest level on the quad that straddles
+  a boundary -- a level nobody chose. It is now `textureLod(..., 0.0)`.
+  Silicon's level for this fetch is unmeasured; the test's cubemap has one
+  level (`mipmap_levels_{1}`, never overridden), so no capture can measure it,
+  and level 0 is the level the +Z corner rule was measured on.
+- **L8.** `DOT_STR_3D_K` was a `#define` in every pixel shader for the benefit
+  of one arm. The constant now lives in that arm.
+
+### Verified as inert, registered first
+
+`docs/testing/predictions/2026-09-18-dot-str-3d-audit-remediation-is-inert.md`
+was written after the baseline runs and before the edited generator was built.
+Baseline: the pre-edit binary, both renderers, GL and Vulkan byte-identical on
+78 of 78 cube captures. After: **all four shader caches cleared** -- the GL
+`shaders/` tree and `shader_cache_list`, the Vulkan `spv_cache/` and
+`shader_module_keys.bin` -- so the runs regenerated 92 GL shader directories
+and 119 SPIR-V modules and the text that ran was the edited generator's.
+
+| disc | renderer | byte-identical to baseline |
+|---|---|---:|
+| `iso_cube` | OpenGL | 78 / 78 |
+| `iso_cube` | Vulkan | 78 / 78 |
+| `iso_surf1` | OpenGL | 235 / 236 -- `Surface_pitch::Swizzle`, the race, same score of 14,848 with different bytes |
+| `iso_surf1` | Vulkan | 236 / 236 |
+
+`psh_differ`'s bucket totals are unchanged (1513 / 1093 / 24 / 359 / 0 / 37).
+The six `DotSTR3D_*` captures stay at 73 / 0 / 4 / 70 / 2 / 1 on both
+renderers. Zero assert lines in any of the eight run logs.
+
+**What this does and does not show.** Inert is the prediction, and it held on
+every capture, so the edit changed no semantics anywhere a capture can see.
+M1's border path and M2's level choice are exactly the places no capture sees;
+they are argued from the code above and stated as unmeasured. Kill condition 1
+-- any cube capture moving -- would have meant the argument was wrong, and it
+did not fire.
+
+One harness note, recorded because it cost a run. The **first** post-edit
+Vulkan cube run segfaulted with zero captures. Backtraced from the core rather
+than assumed: `draw_find_shader_output` under `llvmpipe_update_derived` under
+`lvp_queue_submit`, on lavapipe's submit thread -- the same stack
+`gl-surface-to-texture-is-wrong.md` logged once on an unmodified tree. The
+cache-cleared re-run completed 78 of 78. Second sighting of that crash; still
+not ours, and still worth reading `QEMU_EXIT` and the capture count before
+believing any Vulkan sweep on this host.
