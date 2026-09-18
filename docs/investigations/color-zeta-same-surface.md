@@ -273,3 +273,61 @@ the unestablished half would be a fit. **Predict the arm-A-to-arm-B
 relationship, not an absolute** — #89 measured a 141,125 px composition swing on
 this very suite, so a solo disc's own numbers are not comparable with the
 three-suite ones in either direction.
+
+## #91 judged: `Swap`'s 304,750 is a COMPOSITION value, and the policy is inert on it
+
+The solo arms ran. `Color_zeta_overlap/Swap` on a disc containing only that
+test, five runs each, **byte-identical between the two arms**:
+
+| disc | captures preceding `Color zeta overlap` | arm A (no policy) | arm B (policy) |
+|---|---:|---:|---:|
+| solo (`Swap` only) | **0** | **304,750** | **304,750** |
+| 3-suite `e0a8f913` | **1** | 165,447 | **304,750** |
+
+Verdict `PASS`, `PRE-REGISTERED`, one leg, deterministic 5/5 in all four arms.
+
+**304,750 is not the policy's value. It is `Swap`'s value when the disc does
+not supply a preceding capture** — both refs reach it with none. So the
+registered `must_not_move` violation on the three-suite disc was the policy
+*removing a compensation the disc was supplying*, not the policy creating a
+defect.
+
+The preceding-capture count is 1 and not 2: the disc orders
+`Color Zeta Disable, Color zeta overlap, Null surface`, so only
+`Color_Zeta_Disable/MaskOff_ZB` runs before the suite —
+`Null_surface/XemuBug893` runs after it. That matters because it puts these
+numbers on #89's own ladder.
+
+### `Swap` and `Swap_ZB` respond to composition in OPPOSITE directions
+
+#89 established the invariant for `Swap_ZB`: **≥2 captures in preceding
+suites**, own-suite captures not counting. Its ladder is 0 → 0, 1 → 0,
+2 → 141,125 — *more* preceding captures make it worse. Both of my discs sit at
+0 and 1, and `Swap_ZB` read 0 on both, which is #89's ladder reproduced on two
+further discs and two further binaries.
+
+`Swap` goes the other way: 0 preceding → 304,750, 1 preceding → 165,447. *More*
+preceding captures make it better.
+
+Two captures of the same test, over the same two surfaces, with opposite
+composition sensitivity, and one defect that the colour-wins policy can also
+trigger on its own. That is a strong argument they are two faces of one
+aliasing defect rather than three issues — and it is consistent with the
+byte signature recorded above, which is a `Z24S8` depth field zeroed inside a
+**colour** surface.
+
+### What this changes
+
+- **#91 is not a defect in #88's policy.** The policy is exact on its two
+  targets and inert on `Swap` once the composition confound is removed. What
+  remains is that it cancels a compensation, which is a decision about whether
+  to ship a policy that exposes a pre-existing defect — an owner's call, not a
+  lane's.
+- **Neither 165,447 nor 304,750 is a correct value.** Even at 165,447 the quad
+  is `#E91A24` against the golden's `#E91624`, off by 4 in green. The
+  "regression" is one wrong value replaced by a worse one.
+- **The probe #89 wants should log `Swap`, not only `Swap_ZB`**, and should
+  record whether the colour binding was a cache hit or a fresh create *and*
+  whether the zeta decline fired, because the policy reaches the same end state
+  that zero preceding captures reach. A probe written to the older picture
+  would miss the one input that is now known to matter.
