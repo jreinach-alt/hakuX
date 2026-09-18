@@ -73,50 +73,67 @@ currently written down as blockers, and the cheapest refutation of almost every
 blocker here has been an offline script over artefacts that were already
 present.
 
-## A narrowed disc can change a capture's score by 141,325 px
+## A predecessor suite can change a capture's score -- and disc SIZE is the wrong axis
 
-Narrowing a disc has been treated as safe for absolutes on the strength of a
-survey: seven captures checked, **six moved by exactly zero**, and the largest
-mover was 3,872 px on one `Blend_tests` capture. That survey is now known to
-have missed the interesting case by two orders of magnitude.
+**This section was wrong twice when first written, and both corrections came
+from the lane sent to test it.** The original claimed disc *size* mattered and
+that "a whole region of the image depends on what else is on the disc", under a
+heading saying **141,325** where its own table said **141,125**. Kept as a
+correction, because the shape of the error is the lesson: I generalised from
+one measurement and put the wrong number in the title of the rule.
 
-**Measured 2026-09-18 on `Color_zeta_overlap/Swap_ZB`, same device, same
-renderer, same binary:**
+**What is actually measured**, every arm at one ref on one device so
+composition is the only variable:
 
-| disc | differing |
-|---|---:|
-| 9-capture narrowed | **0** |
-| full 236-capture `iso_surf1` | **141,125** |
+| disc | suites before `Color zeta overlap` | captures | `Swap_ZB` |
+|---|---|---:|---:|
+| narrowed | -- | 9 | **0** |
+| + `Color Zeta Disable` | one | 11 | **0** |
+| + `Color mask blend` | one | 10 | **0** |
+| **+ `Blend surface`** | **one** | **41** | **141,125** |
+| full `iso_surf1` | three | 236 | **141,125** |
 
-141,125 is exactly the count of black pixels in that capture's golden, so the
-narrowed disc is not *slightly* different — a whole region of the image depends
-on what else is on the disc.
+**A 41-capture disc reproduces the 236-capture value exactly.** Size is not the
+variable; the **predecessor set** is, and `Blend surface` alone is sufficient
+while `Color mask blend` is neither necessary nor sufficient. Only four suites
+have ever run before `Color zeta overlap`, and all four are now measured. This
+is `#19` cross-test contamination, not a disc-scale effect.
 
-This was found while separating a confound that pointed the other way.
-`desktop-runs.md`'s rule — *"a difference seen here and not on the handheld is a
-driver difference until proven otherwise"* — had made lavapipe the prime
-suspect for months. **The driver was innocent.**
+**The narrowed disc was HIDING a real defect, not manufacturing a false one.**
+The difference is **one byte**: 141,125 cleared pixels carry `0xFF000000`
+against a golden `0x00000000` -- the **alpha** byte, which in `z24s8` is the
+depth high byte. `max_rgb = 0`, so every pixel we *drew* matches the golden
+exactly, including 166,075 at `0x00A8BF00`, which is the suite's own stated
+expected value. The golden is right, the narrowed `0` is right, and the 141,125
+is a live defect that appears only after a particular predecessor.
 
-**What follows, and it is uncomfortable:**
+**Blast radius, measured rather than feared: one capture in 4,522.** Across
+47,250 scored rows and 886 runs, `Swap_ZB` is the *only* capture ever showing an
+alpha-only difference, and a 236-capture disc minus one suite is byte-identical
+on all 235 shared captures. The original "every absolute ever registered on a
+narrowed disc is suspect" **over-claimed**: 31 predictions do register an
+absolute on a narrowed disc with no arm-A condition, and **none of them touches
+the sensitive capture.** Three name it, all three correctly as deltas.
 
-- **Every absolute ever registered on a narrowed disc is suspect.** Not wrong —
-  suspect. The protection that has actually been working is the
-  *"arm A is the check"* condition several predictions carry: if arm A does not
-  reproduce the baseline the absolute was derived from, the claim degrades to a
-  delta. Predictions that lack that condition have been relying on luck.
-- **A figure from a narrowed disc may not be compared with a figure from a
-  fuller one, in either direction.** That was already the rule for `disc_id`
-  comparability and was justified by tens of pixels; it is now justified by six
-  figures.
-- **Registering an absolute at all requires either the full disc, or arm A
-  reproducing the baseline on the same composition.** Deriving it from the
-  goldens' own histograms — which is otherwise the strongest way to get one —
-  does not help: the derivation is right and the *rendering* changes.
+**What to carry:**
 
-**Why it is not simply "a bug in the narrowed disc".** Both scores are of real
-captures the device really produced. Something about disc composition changes
-what the guest renders, and nobody knows what. That is an open question with
-its own row; do not treat either number as the artefact until it is answered.
+- **Name the predecessor set, not the size.** Equal-sized discs can differ;
+  very unequal ones can agree.
+- **A composition-induced zero and a true zero are indistinguishable *in the
+  capture*** -- both are md5-identity over all 307,200 px. The discriminator is
+  the predecessor set, so it takes a second run at the same ref. Here the
+  narrowed zero was correct and nothing in the image said so.
+- **`disc_id` conflates composition with the skip list** and truncates at about
+  60 characters. Two classifications were wrong because of it.
+- **Composition is not a field of the prediction schema.** One of 107
+  prediction files carries a `disc_id`. `ab_compare` can compare two arms'
+  discs, but nothing compares an *absolute* against the composition it came
+  from -- and that gap is wider than this capture.
+- **These zeros had no positive control until now:** 548 captures have ever had
+  a same-ref two-disc pair, with zero movers, ever -- and 89 of 100 suites have
+  no coverage at all, including `Blend_tests` (1,673 goldens) and `Image_blit`,
+  whose contamination is already known. The 10-capture arm is that control, and
+  it is what makes the other zeros informative rather than merely quiet.
 
 ## Paper cuts are tracked, and a DX pass runs daily
 
