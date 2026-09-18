@@ -149,3 +149,47 @@ banner. It came out at 71,663, because making colour win also changes the
 quad itself from the depth write to the colour write. The direction was
 right and the size was not: the model of my own change was incomplete on
 the capture the change was aimed at.
+
+## Verified on HEAD, 2026-09-18
+
+The fix above landed on 2026-09-13 and the issue was never closed, so it was
+re-run before closing, on a binary rebuilt from HEAD for the purpose
+(`0.4.0-j1-368-g8c938792`), `renderer = 'OPENGL'`, `iso_surf1`:
+
+| leg | fix arm, 09-13 (as reported on the thread) | HEAD, 09-18 |
+|---|---:|---:|
+| captures extracted | 236 | **236** |
+| process exit | 0 | **0** (47 s) |
+| `Assertion` / `Aborted` / `GL_INVALID` lines in the run log | 0 | **0** |
+| `Color_zeta_overlap/ColorIntoZeta_ZB` | 10,766 | **10,766** |
+| `Color_zeta_overlap/ZetaIntoColor` | 71,663 | **71,663** |
+| bit-exact on the disc (GL) | — | **118 / 236** |
+
+Byte-compared with the two unmodified OpenGL runs of this disc from 09-14 --
+the control arm of that day's surface-alias experiment (`0.4.0-j1-330-g3cfc2790`)
+and the verification run after it (`0.4.0-j1-333-gb0059688`), whose binaries
+differ from HEAD's by docs commits and one `gl/draw.c` guard against
+`glLineWidth(0)` (`5b707602`): **235 of 236 captures byte-identical to each.**
+The one mover in both comparisons is `Surface_pitch::Swizzle` -- 15,360 here
+against 14,848 and 15,360 there, byte-different in every pairing -- which is the
+texture-memory race #71 established and the only capture on this disc that is
+not bit-reproducible. So the `gl/draw.c` change since those runs is inert on
+this disc, and the fix has not moved since it landed. (A first draft of this
+paragraph compared against a third 09-14 run that turned out to be the
+experiment's *treatment* arm, with uncommitted code; it differed on one more
+capture, which said nothing about this fix. Reference runs need their
+provenance read, not their names.)
+
+The `GL_INVALID_FRAMEBUFFER_OPERATION`
+count (378 → 0 at fix time) needs a debug callback the tree does not carry and
+was not re-measured; a completed disc with zero assert lines is the durable
+form of that leg.
+
+Reproduced by
+`docs/testing/verify_surface_disc.py <captures_dir> <goldens_root> [<ref_captures_dir> ...]`.
+
+Two things the thread left open are filed on their own rather than carried
+here: #85, the `mem_dirty` half of the gate, which `tcg_enabled()` makes dead on
+every build this project runs; and #86, the Android arm of
+`pgraph_gl_shader_load_from_memory()`, which still drains every GL error
+silently now that the error it was added to hide is gone.
