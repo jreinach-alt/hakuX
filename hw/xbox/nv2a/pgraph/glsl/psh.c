@@ -2353,7 +2353,6 @@ static MString* psh_convert(struct PixelShader *ps)
                 i, i, dotmap_func, ps->input_tex[i],
                 i, i-2, i-1, i);
 
-            apply_border_adjustment(ps, vars, i, "dotSTR%d");
             if (dot_str_3d_is_cube(ps, i)) {
                 /*
                  * Silicon discards the magnitudes and keeps two sign bits.
@@ -2371,15 +2370,43 @@ static MString* psh_convert(struct PixelShader *ps)
                  * outright. k lands in the outermost texel for any face at
                  * least 2 wide, and an edge sample stays inside its own face
                  * because GL_TEXTURE_CUBE_MAP_SEAMLESS is never enabled here.
+                 * k lives here, in the one arm that uses it, rather than as a
+                 * #define in every pixel shader (audit L8).
+                 *
+                 * The signs are read from the RAW dot products, not from
+                 * dotSTR%d after the border remap: for a bordered cubemap
+                 * apply_border_adjustment() rewrites the vector through
+                 * remapBorderCube(), which reconstructs a direction with the
+                 * major axis forced to +/-1, so the components no longer
+                 * carry the dot signs the measured rule is stated in (audit
+                 * M1). The remap is applied to the synthesised direction
+                 * instead, so a bordered face still lands on its logical
+                 * corner: remapBorderCube keeps +Z as the major axis and
+                 * preserves both signs while shrinking st into the logical
+                 * area. No disc carries a bordered cubemap on this stage, so
+                 * this path is correct by construction and unmeasured.
+                 *
+                 * The fetch is at level 0 explicitly. The direction is a
+                 * four-valued step, so an implicit LOD is 0 inside a sign
+                 * region and the coarsest level on the quad that straddles a
+                 * boundary -- a level nobody chose (audit M2). Silicon's
+                 * level for this fetch is unmeasured (the test's cubemap has
+                 * one level); level 0 is the level the +Z corner rule was
+                 * measured on.
                  */
                 mstring_append_fmt(vars,
+                    "const float dotSTR%dK = 1.0 - 1.0/8192.0;\n"
                     "vec3 dotSTR%dDir = vec3("
-                    "dotSTR%d.x >= 0.0 ? DOT_STR_3D_K : -DOT_STR_3D_K, "
-                    "dotSTR%d.y >= 0.0 ? -DOT_STR_3D_K : DOT_STR_3D_K, "
-                    "1.0);\n"
-                    "vec4 t%d = texture(texSamp%d, dotSTR%dDir);\n",
-                    i, i, i, i, i, i);
+                    "dot%d >= 0.0 ? dotSTR%dK : -dotSTR%dK, "
+                    "dot%d >= 0.0 ? -dotSTR%dK : dotSTR%dK, "
+                    "1.0);\n",
+                    i, i, i-2, i, i, i-1, i, i);
+                apply_border_adjustment(ps, vars, i, "dotSTR%dDir");
+                mstring_append_fmt(vars,
+                    "vec4 t%d = textureLod(texSamp%d, dotSTR%dDir, 0.0);\n",
+                    i, i, i);
             } else {
+                apply_border_adjustment(ps, vars, i, "dotSTR%d");
                 mstring_append_fmt(vars,
                     "vec4 t%d = texture(texSamp%d, %s(dotSTR%d%s));\n",
                     i, i, tex_remap, i,
@@ -2721,12 +2748,6 @@ static MString* psh_convert(struct PixelShader *ps)
     MString *final = mstring_new();
     pgraph_glsl_append_version(final, ps->opts.vulkan, ps->opts.gles,
                                ps->opts.gles_version);
-    /*
-     * Just under 1, so DOT_STR_3D's saturated direction makes +Z the major
-     * axis outright and still lands in the outermost texel of any face at
-     * least two wide. See the PS_TEXTUREMODES_DOT_STR_3D case. Issue #51.
-     */
-    mstring_append(final, "#define DOT_STR_3D_K (1.0 - 1.0/8192.0)\n");
     mstring_append(final, mstring_get_str(preflight));
     mstring_append(final, "void main() {\n");
     mstring_append(final, mstring_get_str(clip));
