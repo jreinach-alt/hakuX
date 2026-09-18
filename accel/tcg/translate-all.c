@@ -662,6 +662,55 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
              * blocks.  The rest are re-created on-demand here at tier-0,
              * causing endless re-promotion churn.  By restoring the
              * tier from hints, the block skips promotion entirely.
+             *
+             * THIS IS OFF ON ANDROID, WHICH IS THE ONLY PLATFORM THAT
+             * SHIPS -- issue #90. The guard below is left in place and is
+             * now documented rather than bare, because the tree previously
+             * carried a silent platform disable wrapped around an
+             * __android_log_print that could never compile: an
+             * `#ifdef __ANDROID__` nested inside this `#ifndef __ANDROID__`.
+             * That log site has been deleted. It was not merely inert, it
+             * was a trap -- it names a `hint-restore` line that no logcat
+             * under any spec can ever contain, so anyone grepping for the
+             * anti-churn mechanism would search for a string that cannot
+             * exist. A tree-wide scan finds no other contradictory
+             * __ANDROID__ guard.
+             *
+             * IT IS NOT #81's SECOND CONTRIBUTOR, and that was the reason it
+             * was filed. Measured over six Crimson Skies soaks: this restore
+             * can only fire for a pc whose hint carries tier >= 1, and on
+             * Android the only producer of a tier >= 1 hint is a successful
+             * tier1_consume_request() at the top of this very block. Consumes
+             * name exactly TWO distinct pcs across all six runs
+             * ({0x32e338, 0x212834}), while the requests that saturate the
+             * 64-slot table in 2.171-2.730 s are {0x402fff, 0x1f5a7b,
+             * 0x1f5b88} -- the same three in all six runs, and ZERO overlap
+             * with the consumed set in the first-ten window, which is
+             * unthrottled and therefore complete. So this mechanism has no
+             * reach over the saturation at all. It could suppress a fraction
+             * of later steady-state churn: 0x212834 does reappear as a
+             * tier-0 promote at exec=128 in one run, and a restore would
+             * have caught that one.
+             *
+             * ENABLING IT AS WRITTEN WOULD BE WRONG, independently of #81,
+             * for the same reason a latch on tb->tier was rejected in
+             * tb_request_tier1_promotion(): it sets tb->tier without setting
+             * CF_TIER1, so the block would be LABELLED tier-1 while its code
+             * was generated without the tier-1 passes. That label is read by
+             * tier1_maybe_form_superblock() to pick superblock candidates and
+             * copied into tb_cache.bin by tb_cache_record_hint(), which
+             * tb_cache_prewarm() acts on next launch. hint_tier can also be
+             * 2, which would mark a TB a superblock with tb->superblock NULL.
+             * A correct enabling sets tb->cflags and s.cflags the way the
+             * consume path above does, so the restored block really is
+             * compiled at tier 1 -- that is a behaviour change with no spec
+             * behind it and it needs a decision, not a lane's judgement.
+             *
+             * One more reason the restore would underdeliver as written:
+             * hint_exec comes from tb_cache_record_hint(), which is called at
+             * the END of this function, when exec_count is still 0. So the
+             * hints' exec_count is ~always 0 and "restoring the hotness"
+             * restores nothing.
              */
 #ifndef __ANDROID__
             uint32_t hint_exec = 0;
@@ -670,20 +719,6 @@ TranslationBlock *tb_gen_code(CPUState *cpu, TCGTBCPUState s)
             if (hint_tier >= 1) {
                 tb->tier = (uint8_t)hint_tier;
                 tb->exec_count = hint_exec;
-#ifdef __ANDROID__
-                {
-                    static int restore_log = 0;
-                    if (restore_log < 50 || (restore_log % 1000 == 0)) {
-                        extern int __android_log_print(int, const char*,
-                                                       const char*, ...);
-                        __android_log_print(3, "hakuX-tier1",
-                            "hint-restore #%d: pc=0x%x tier=%d exec=%u",
-                            restore_log, (uint32_t)s.pc, hint_tier,
-                            hint_exec);
-                    }
-                    restore_log++;
-                }
-#endif
             }
 #endif /* !__ANDROID__ */
         }

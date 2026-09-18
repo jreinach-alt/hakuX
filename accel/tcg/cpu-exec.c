@@ -173,7 +173,14 @@ void tier1_clear_all_requests(void)
     }
 }
 
-static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
+/*
+ * Record a deferred tier-1 promotion request for |tb|.
+ *
+ * Returns true if the caller should CHARGE the promotion budget for this
+ * call. The return value exists because of where the defect actually bites:
+ * see the dedup comment below.
+ */
+static bool tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
 {
 #ifdef __ANDROID__
     static int promo_log_count = 0;
@@ -187,6 +194,57 @@ static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
     promo_log_count++;
 #endif
 
+    /*
+     * DEDUP on (pc, cs_base, flags) -- issue #81, audit pass 1 M2.
+     *
+     * An outstanding request for this exact key already covers this block.
+     * A second one buys nothing, and it costs a slot and a unit of promotion
+     * budget. That is the measured defect rather than a theoretical one:
+     * across six Crimson Skies soaks, eight of the first ten requests name
+     * ONE pc (0x402fff) inside ONE millisecond, and the 64-slot table is
+     * full in 2.171-2.730 s, 6 runs of 6.
+     *
+     * WHY THIS RETURNS false INSTEAD OF SILENTLY SUCCEEDING, and why the
+     * budget charge had to move out to the caller. The audit put this fix
+     * "in tb_request_tier1_promotion()", where the budget has already been
+     * spent by tier1_maybe_promote() before we are called. Deduping here and
+     * letting that charge stand would have moved the starvation from the
+     * table to the budget instead of relieving it: this block re-becomes
+     * eligible, takes all 8 promotions of the next budget window, gets
+     * deduped eight times, and no other block gets a slot -- while
+     * `requests FULL` goes quiet because the table never fills.
+     *
+     * Every counter this lane can read would then have improved. That is the
+     * failure this project has hit most often -- a clean result from a
+     * measurement that could not have come out otherwise -- so the charge is
+     * the caller's decision and a dedup hit is not charged.
+     */
+    if (tier1_has_pending_request(tb->pc, tb->cs_base, tb->flags)) {
+#ifdef __ANDROID__
+        {
+            static int dedup_log = 0;
+            if (dedup_log < 10 || (dedup_log % 10000 == 0)) {
+                extern int __android_log_print(int, const char*,
+                                               const char*, ...);
+                __android_log_print(3 /*DEBUG*/, "hakuX-tier1",
+                    "dedup #%d: pc=0x%x exec=%u already pending",
+                    dedup_log, (uint32_t)tb->pc, tb->exec_count);
+            }
+            dedup_log++;
+        }
+#endif
+        /*
+         * Reset the live counter even though no slot was taken. The request
+         * that already covers this block latched the exec_count it was made
+         * at, so nothing is lost -- and without this the clamped counter
+         * keeps tier1_maybe_promote()'s test true on EVERY execution, so this
+         * O(64) scan would run on every execution instead of once per
+         * threshold executions. The reset is what makes the dedup affordable.
+         */
+        tb->exec_count = 0;
+        return false;
+    }
+
     /* Record the request for deferred tier-1 retranslation. */
     int slot = -1;
     for (int i = 0; i < TIER1_REQUEST_SLOTS; i++) {
@@ -199,16 +257,91 @@ static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
 #ifdef __ANDROID__
         {
             static int drop_log = 0;
+            extern int __android_log_print(int, const char*, const char*, ...);
+            if (drop_log == 0) {
+                /*
+                 * One-shot census of the saturated table, taken at the first
+                 * drop.
+                 *
+                 * WHY THIS EXISTS: #81's central claim -- that all 64 slots
+                 * fill with DUPLICATES of a few pcs -- has never been
+                 * measured. It is inferred from pc repetition in the
+                 * `promote #N` lines plus the `requests FULL` line below, and
+                 * lane.tier81 led its report with slot occupancy as the thing
+                 * it could not see, because nothing prints the table. This
+                 * prints it.
+                 *
+                 * TWO COUNTS, because only one of them is free of the fix
+                 * that is coming. `distinct_key` counts distinct
+                 * (pc, cs_base, flags) -- the key a dedup would act on -- so a
+                 * dedup patch FORCES distinct_key == valid and that number is
+                 * a description of the patch, not evidence about the guest.
+                 * `distinct_pc` counts distinct pc only, which a dedup does
+                 * not pin: two keys may share a pc. Read distinct_pc as the
+                 * measurement and distinct_key as the patch's own control.
+                 *
+                 * POSITIVE CONTROL: `valid` MUST read 64. We only reach here
+                 * because the free-slot scan above found nothing, so a census
+                 * reporting any other occupancy has a broken instrument rather
+                 * than a surprising table. If this line is absent from a run
+                 * that shows `requests FULL`, the instrument did not compile
+                 * in and the run is void -- not evidence of an empty table.
+                 *
+                 * O(64^2) comparisons, once per process, on a path that by
+                 * construction runs exactly once before the throttle below
+                 * takes over. It is not in any hot path.
+                 */
+                int valid = 0, distinct_pc = 0, distinct_key = 0;
+                for (int i = 0; i < TIER1_REQUEST_SLOTS; i++) {
+                    if (!tier1_requests[i].valid) {
+                        continue;
+                    }
+                    valid++;
+                    bool pc_seen = false, key_seen = false;
+                    for (int j = 0; j < i; j++) {
+                        if (!tier1_requests[j].valid) {
+                            continue;
+                        }
+                        if (tier1_requests[j].pc == tier1_requests[i].pc) {
+                            pc_seen = true;
+                            if (tier1_requests[j].cs_base
+                                    == tier1_requests[i].cs_base &&
+                                tier1_requests[j].flags
+                                    == tier1_requests[i].flags) {
+                                key_seen = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!pc_seen) {
+                        distinct_pc++;
+                    }
+                    if (!key_seen) {
+                        distinct_key++;
+                    }
+                }
+                __android_log_print(3 /*DEBUG*/, "hakuX-tier1",
+                    "table census at first FULL: valid=%d/%d distinct_pc=%d "
+                    "distinct_key=%d", valid, TIER1_REQUEST_SLOTS,
+                    distinct_pc, distinct_key);
+            }
             if (drop_log++ % 10000 == 0) {
-                extern int __android_log_print(int, const char*, const char*, ...);
                 __android_log_print(3 /*DEBUG*/, "hakuX-tier1",
                     "requests FULL: dropped pc=0x%x (drop #%d)",
                     (uint32_t)tb->pc, drop_log);
             }
         }
 #endif
-        /* Don't mark CF_INVALID — we couldn't record the request. */
-        return;
+        /*
+         * Don't mark CF_INVALID — we couldn't record the request, so this
+         * block stays retryable. CHARGED, deliberately: the budget is the
+         * only thing stopping a saturated table from being rescanned on
+         * every execution of every hot block, and unlike a dedup hit this
+         * call really did try and fail. Not resetting exec_count here is the
+         * same decision from the other side -- a dropped request has nothing
+         * latched anywhere, so the block must stay eligible.
+         */
+        return true;
     }
 
     tier1_requests[slot].pc         = tb->pc;
@@ -216,6 +349,36 @@ static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
     tier1_requests[slot].flags      = tb->flags;
     tier1_requests[slot].exec_count = tb->exec_count;
     tier1_requests[slot].valid      = true;
+
+    /*
+     * RESET the live counter, having just LATCHED its value into the slot
+     * above -- issue #81, audit pass 1 L4/M2.
+     *
+     * "Reset or latch exec_count" was posed as a choice; the existing data
+     * flow answers it as both, in different places. The slot already carries
+     * the exec_count the request was made at, which is what
+     * tier1_consume_request() hands to the new tier-1 block, so the hotness
+     * is preserved. The defect is purely that the SOURCE was never cleared:
+     * exec_count is clamped at threshold*2 (see cpu_exec_loop), tb->tier
+     * stays 0 because the tier is set on the NEW block, so
+     * `tier == 0 && exec_count >= threshold` is TRUE FOREVER and the block
+     * re-requests on every single execution. Measured: exec climbing
+     * 64,65,...,71 for one pc in one millisecond, and a later request at
+     * exec=128, the clamp ceiling.
+     *
+     * A LATCH on the TB was the other reading and is rejected for a concrete
+     * reason rather than a stylistic one. It needs a per-TB "already asked"
+     * bit, and the only existing field that could carry it is tb->tier --
+     * which is read by tier1_maybe_form_superblock() (tier >= 1 makes a block
+     * a superblock candidate) and copied into the persistent hint table by
+     * tb_cache_record_hint(). Setting tier=1 on a block whose code was
+     * generated WITHOUT the tier-1 passes would make it a superblock
+     * candidate on false pretences and write a lying tier-1 hint to
+     * tb_cache.bin, which tb_cache_prewarm() would later act on. Reset keeps
+     * the retry semantics the surrounding code already encodes and costs no
+     * new state.
+     */
+    tb->exec_count = 0;
 
     /*
      * Mark the old TB as invalid so it won't be reused from cache,
@@ -226,6 +389,7 @@ static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
     qemu_spin_lock(&tb->jmp_lock);
     qatomic_set(&tb->cflags, tb->cflags | CF_INVALID);
     qemu_spin_unlock(&tb->jmp_lock);
+    return true;
 }
 
 /*
@@ -246,9 +410,19 @@ static inline void tier1_maybe_promote(CPUState *cpu, TranslationBlock *tb)
 #endif
     if (tb->tier == 0 && tb->exec_count >= (uint32_t)g_tier1_threshold) {
         if (tier1_promotion_budget > 0) {
-            tier1_promotion_budget--;
-            g_tier1_promotions_total++;
-            tb_request_tier1_promotion(cpu, tb);
+            /*
+             * Charge only if the request was really made. A dedup hit costs
+             * nothing, which is the point of the dedup: see
+             * tb_request_tier1_promotion(). Note this narrows what
+             * g_tier1_promotions_total counts -- requests recorded or
+             * genuinely dropped, no longer every call -- while the
+             * `promote #N` logcat counter above it still counts every call
+             * and so stays comparable across arms.
+             */
+            if (tb_request_tier1_promotion(cpu, tb)) {
+                tier1_promotion_budget--;
+                g_tier1_promotions_total++;
+            }
         } else {
             g_tier1_promotions_dropped++;
         }
