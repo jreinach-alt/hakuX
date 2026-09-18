@@ -33,7 +33,7 @@ jobs:
     timeout-minutes: 60
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: false   # the QEMU ROM submodules are unused by this build
 
@@ -80,7 +80,7 @@ jobs:
       # meson is not installed; QEMU's configure bootstraps it into a venv,
       # which is why python3-venv is above.
       - name: Restore compiler cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ccache
           key: desktop-ccache-${{ github.sha }}
@@ -189,7 +189,7 @@ jobs:
 
       - name: Upload startup log
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: desktop-smoke-log
           path: |

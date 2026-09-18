@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 90
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: false   # the QEMU ROM submodules are unused by this build
 
@@ -33,19 +33,19 @@ jobs:
                       /opt/ghc /usr/local/share/boost
           df -h /
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
 
-      - uses: android-actions/setup-android@v3
+      - uses: android-actions/setup-android@v4
         with:
-          # The action's default package list is "tools platform-tools", and
-          # Google has withdrawn the legacy "tools" package from the SDK
-          # repository: on 2026-09-18 `sdkmanager tools` printed "Failed to
-          # find package 'tools'" and the job failed before checkout was
-          # cold. Nothing here needs it; the next step installs what the
-          # build actually pins.
+          # v3's default package list was "tools platform-tools", and Google
+          # has withdrawn the legacy "tools" package from the SDK repository:
+          # on 2026-09-18 `sdkmanager tools` printed "Failed to find package
+          # 'tools'" and the job failed 25 s in. v4 defaults to platform-tools
+          # alone; it is pinned here explicitly so a future default cannot
+          # bring "tools" back. The next step installs what the build pins.
           packages: platform-tools
 
       - name: Install the SDK components this build pins
@@ -67,7 +67,7 @@ jobs:
           meson --version && ninja --version
 
       - name: Cache Gradle
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.gradle/caches
@@ -84,7 +84,7 @@ jobs:
 
       - name: Upload test report
         if: failure()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: unit-test-report
           path: android/app/build/reports/tests/testDebugUnitTest
@@ -103,7 +103,7 @@ jobs:
             | grep -E "^package|application-label:'" || true
           sha256sum "$APK"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: hakux-debug-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
