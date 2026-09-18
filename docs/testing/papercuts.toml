@@ -224,3 +224,11 @@ cost = "One of 21 controls silently absent on an arm whose whole purpose was to 
 bit = 1
 owner = "toolsmith"
 fix = "ab_compare.py --register should refuse, or at minimum warn, when a must_not_move or expect glob matches no capture in the runs on hand -- the same gate request.sh already applies to expect KEYS at queue time, extended from 'is the key well-formed' to 'does anything actually produce it'. This is the inert-prediction-leg class one layer in: ten legs were inert for naming the wrong key shape, and this one is inert for naming a real key nothing writes."
+
+[[cut]]
+id = "selftest-passes-while-the-tool-cannot-read-real-data"
+what = "fifo_skew_report.py crashes on the mode-1 log shape -- load() calls int() on optional regex groups that are absent when the bound is on -- so it cannot read the very cost pair #44 publishes. Its --selftest passes, because the selftest exercises the shape the author had in front of them."
+cost = "The tool that produced this issue's headline cost figures cannot re-read them. lane.skew44 had to write its own parser and then validate it by reproducing the published numbers to the digit on a known run -- correct, and work the instrument should have done."
+bit = 1
+owner = "toolsmith"
+fix = "Default the optional groups instead of int()ing them, and make --selftest cover BOTH log shapes: bound-off and bound-on. The general lesson is the one this file keeps relearning -- a selftest built from the case in front of you tests that case. An impossible row is the check: feed the selftest a bound-on log and assert it parses, because that is the shape a passing selftest could not previously see."
