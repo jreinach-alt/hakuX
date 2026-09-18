@@ -1,17 +1,16 @@
 #!/usr/bin/env bash
-# Run the gates CI runs, here, before pushing.
+# Run the cheap gates here, before pushing.
 #
 # The workflows that fire on a pull request are Android, Desktop build and
-# NV2A index -- about thirteen minutes of hosted runner time per push, and
-# Actions minutes are a limited monthly budget. Two of those three gates are
+# NV2A index, about thirteen minutes of wall clock. Two of those three are
 # reproducible locally in seconds, so a push that has passed this script
-# should not need CI to tell it anything.
+# rarely has CI tell it anything new -- but CI is free on this public
+# repository and is the gate of record; this is the fast pre-check.
 #
 #   docs/testing/preflight.sh [--tests DIR] [--support DIR]
 #
-# Exits non-zero and says which gate failed. Run it before every push; put
-# [skip ci] in the commit message when it passes and the change cannot affect
-# a platform this script does not build (Android, macOS, Windows).
+# Exits non-zero and says which gate failed. Run it before every push. It is
+# the fast local pass; CI on the pull request is the gate.
 
 set -u
 cd "$(dirname "$0")/../.." || exit 2
@@ -122,7 +121,7 @@ elif python3 docs/testing/nv2a_index.py check --tests "$TESTS" \
         ${SUPPORT:+--support "$SUPPORT"} >/tmp/preflight-index.log 2>&1; then
     ok
 else
-    INDEX_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
+    INDEX_TIP="${HAKUX_TIP:-master}"
     INDEX_ROOTS=$(python3 - <<'PYROOTS'
 import re, sys
 src = open("docs/testing/nv2a_index.py").read()
@@ -240,7 +239,7 @@ fi
 #    identity, and there is no agent identity available here to check.
 step "board files"
 TRACKER_FILES="docs/testing/nv2a_issues.toml docs/testing/territory.toml"
-TRACKER_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
+TRACKER_TIP="${HAKUX_TIP:-master}"
 TRACKER_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 TRACKER_SHARED="${DISPATCH_TREE:-/home/justin/hakuX}"
 TRACKER_FOLD="${HAKUX_FOLD_DIR:-$(grep -o '/home/[a-z0-9_-]*/hakux-work/fold' AGENTS.md 2>/dev/null | head -1)}"
@@ -336,130 +335,10 @@ else
     echo "  --allow-tracker."
 fi
 
-# 6. THE COMMIT SUBJECT'S [skip ci], because nothing enforced it and the
-#    convention was doing less work than it looked like.
-#
-#    The rule here is that every commit subject ends with [skip ci], and CI is
-#    an on-demand resource. GitHub evaluates that marker on the HEAD commit,
-#    so the protection is only as good as the last subject -- and an audit on
-#    2026-09-13 found all FIVE merge commits of the day carried no marker at
-#    all, several of them HEAD at push time. Nothing was spent, because this
-#    branch has no pull request and a push to it fires nothing. THAT is the
-#    real protection, and it is not the one anyone believed they had: open a
-#    PR on this branch and each of those pushes becomes three hosted jobs. For
-#    scale, the single open PR in this repo consumed 21 runs in one day.
-#
-#    Found by a typo -- [skip ki] for [skip ci] -- caught while amending. A
-#    convention a typo can silently disable wants a check.
-#
-#    Refuses rather than warns, because the cost is the resource this script
-#    exists to protect. A deliberate CI run is still available and now has to
-#    be said out loud: --allow-ci.
-#    AND IT MUST NAME A NEAR-MISS, which is now at bit=4 in papercuts.toml.
-#    `[skip ki]` has happened FOUR times, the fourth minutes after the third
-#    was logged, in a commit whose body was about false-positive rates. It
-#    happens in a plain heredoc subject as well as when chaining -m, so it is
-#    a typing slip and not a git behaviour, and four occurrences is enough
-#    evidence that knowing about it does not fix it.
-#
-#    The presence grep is not useless against it -- a bare `[skip ki]` already
-#    FAILS, because the subject does not contain `[skip ci]`. Two things were
-#    still wrong, and the second is the one that let it recur:
-#
-#      * THE MESSAGE SAID "has no [skip ci]" and told the author to add one.
-#        That is true and unhelpful: the marker is right there, one character
-#        out, and the author re-types it -- possibly wrong again. A gate that
-#        names the typo turns a recurring slip into a one-character amend.
-#        Same argument as the nv2a index gate printing WHICH line moved.
-#      * A NEAR-MISS ALONGSIDE A CORRECT MARKER PASSED SILENTLY. `... [skip
-#        ci] [skip ki]` contains `[skip ci]`, so the grep was satisfied and
-#        the typo shipped. That is the "guard satisfied by the presence of
-#        the thing it guards" shape.
-#
-#    So: every bracketed token in the subject is normalised (lowercased,
-#    whitespace collapsed) and measured against `skip ci`. Distance 0 is the
-#    marker; distance 1 or 2 is a near-miss and FAILS whether or not a correct
-#    marker is also present. 2 rather than 1 because a TRANSPOSITION -- the
-#    commonest typing slip of all -- is distance 2 in Levenshtein, so `[skpi
-#    ci]` needs it. Measured over the last 400 subjects on this branch: 390
-#    bracketed tokens, every one of them exactly `[skip ci]`, so the widened
-#    radius flags nothing that is actually in use.
-#
-#    WHAT THIS CANNOT SEE: a near-miss in any commit that is not HEAD. GitHub
-#    evaluates the marker on HEAD, so that is the commit that can spend
-#    minutes -- but a typo further down the branch stays invisible here and
-#    becomes live the moment anything is pushed on top of it.
-step "commit subject"
-subject=$(git log -1 --format=%s 2>/dev/null || echo "")
-# THE SUBJECT ARRIVES AS ARGV, NOT ON STDIN, and the first version got this
-# wrong in a way worth keeping the note for. `python3 - <<'EOF'` already uses
-# stdin for the PROGRAM text, so `printf ... | python3 - <<EOF` has its pipe
-# silently discarded and sys.stdin.read() returns "". Every near-miss case
-# then fell through to the old "has no [skip ci]" message and this branch
-# never ran once.
-#
-# It was invisible because the gate still FAILED on the cases that matter --
-# the right exit code for the wrong reason, which is this file's "a guard
-# satisfied by the absence of the thing it guards". The case that exposed it
-# is the one the gate was added for: a typo BESIDE a correct marker still
-# printed `ok`.
-nearmiss=$(python3 - "$subject" <<'PYSKIP'
-import re, sys
-WANT = "skip ci"
-
-
-def dist(a, b):
-    prev = list(range(len(b) + 1))
-    for i, ca in enumerate(a, 1):
-        cur = [i]
-        for j, cb in enumerate(b, 1):
-            cur.append(min(prev[j] + 1, cur[j - 1] + 1,
-                           prev[j - 1] + (ca != cb)))
-        prev = cur
-    return prev[-1]
-
-
-subject = sys.argv[1] if len(sys.argv) > 1 else ""
-for tok in re.findall(r"\[([^\]]*)\]", subject):
-    norm = " ".join(tok.lower().split())
-    if norm == WANT:
-        continue
-    d = dist(norm, WANT)
-    if d <= 2:
-        print("[%s]\t%d" % (tok, d))
-PYSKIP
-)
-if [ "${ALLOW_CI:-0}" = 1 ]; then
-    ok
-    echo "  --allow-ci given: HEAD may trigger CI, which is deliberate."
-elif [ -n "$nearmiss" ]; then
-    bad
-    echo "  HEAD's subject carries a NEAR-MISS of the [skip ci] marker:"
-    echo "    $subject"
-    printf '%s\n' "$nearmiss" | while IFS="$(printf '\t')" read -r tok d; do
-        echo "    $tok is $d character(s) from [skip ci] -- did you mean [skip ci]?"
-    done
-    if printf '%s' "$subject" | grep -q '\[skip ci\]'; then
-        echo "  A correct [skip ci] IS also present, so CI would be skipped and"
-        echo "  the old check passed this silently. The typo still ships, and"
-        echo "  this marker is at bit=4 in papercuts.toml precisely because"
-        echo "  knowing about it has not stopped it."
-    else
-        echo "  There is no correct [skip ci], so pushing this can spend CI"
-        echo "  minutes. This is a one-character amend, not a missing marker."
-    fi
-    echo "  Amend the subject, or pass --allow-ci if a CI run is the point."
-elif printf '%s' "$subject" | grep -q '\[skip ci\]'; then
-    ok
-else
-    bad
-    echo "  HEAD's subject has no [skip ci]:"
-    echo "    $subject"
-    echo "  GitHub reads that marker on the HEAD commit, so pushing this can"
-    echo "  spend CI minutes. Merge commits are the usual culprit: git does not"
-    echo "  put the marker in a generated merge subject, so pass -m."
-    echo "  Amend the subject, or pass --allow-ci if a CI run is the point."
-fi
+# There is no [skip ci] gate any more. The repository is public, Actions on
+# standard runners is free there, and the owner confirmed it on 2026-09-18;
+# CI now runs on every lane PR and every push to master and is the gate that
+# matters. --allow-ci is accepted and ignored so old callers keep working.
 
 echo
 if [ $fail -eq 0 ]; then

@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX board job -- one tick: read the board, act by rule, exit
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/board.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/board.sh
+# A usage-window limit exits 75; the timer's next tick retries after the
+# window, so nothing here restarts on its own.
+SuccessExitStatus=75
+TimeoutStartSec=3600
+StandardOutput=append:/home/justin/hakux-work/logs/board/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/board/systemd.log

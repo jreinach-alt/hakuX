@@ -1,0 +1,18 @@
+[Unit]
+Description=hakuX device dispatcher -- one worker per attached handheld
+Documentation=file:///home/justin/hakuX/docs/testing/dispatcher.sh
+After=network.target
+
+[Service]
+Type=simple
+Environment=DISPATCH_DIR=/home/justin/hakux-work/dispatch
+Environment=DISPATCH_TREE=/home/justin/hakuX
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/dispatcher.sh serve
+# It self-supervises its workers; this only brings the supervisor back.
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/justin/hakux-work/dispatch/logs/systemd.log
+StandardError=append:/home/justin/hakux-work/dispatch/logs/systemd.log
+
+[Install]
+WantedBy=default.target

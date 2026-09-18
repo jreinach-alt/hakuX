@@ -78,8 +78,10 @@ def committed_high_water():
 
 
 def main():
-    with open(TOML, "rb") as fh:
-        d = tomllib.load(fh)
+    sys.path.insert(0, HERE)
+    import board_files
+    d = board_files.load("territory.toml")
+    print("territory.toml read from %s" % board_files.source("territory.toml"))
 
     wave = d.get("wave")
     if not isinstance(wave, int):
