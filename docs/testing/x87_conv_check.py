@@ -25,6 +25,9 @@ revision tests nothing.
 
 Usage:  x87_conv_check.py [--ref <git-ref>] [--src <path/to/fpu_helper.c>]
         exit 0 = every assertion passed (and the aarch64 compile succeeded)
+        exit 1 = an assertion or a compile failed
+        exit 2 = the four helpers are not in this tree at all (a pre-#74 tree:
+                 #74 and #82 are both live there, and there is nothing to run)
 """
 import argparse
 import os
@@ -139,13 +142,30 @@ int main(void) {
 '''
 
 
+HELPERS = ('floatx80_to_int32_nds', 'floatx80_to_int64_nds',
+           'floatx80_to_int32_rtz_nds', 'floatx80_to_int64_rtz_nds')
+
+
 def carve(text):
+    # A tree from before #74 has none of the four helpers, and the END marker
+    # text is then the OLD truncating macro, which sits ABOVE the #67 rounding
+    # helper that START names. Searching END from the top of the file found
+    # that macro first and carved an empty slice, so the checker failed to
+    # compile on such a tree instead of saying what it had found. Say it.
+    missing = [h for h in HELPERS if f'{h}(' not in text]
+    if missing:
+        sys.stderr.write('NOT PRESENT in this tree: ' + ', '.join(missing) + '\n'
+                         'The #74 conversions, and so the #82 saturation fix, '
+                         'are not in it: both are live there. Nothing to '
+                         'verify; exit 2.\n')
+        sys.exit(2)
     lines = text.splitlines()
-    try:
-        s = next(i for i, l in enumerate(lines) if l.startswith(START))
-        e = next(i for i, l in enumerate(lines) if l.startswith(END))
-    except StopIteration:
-        sys.exit(f'markers not found: START={START!r} END={END!r}')
+    s = next((i for i, l in enumerate(lines) if l.startswith(START)), None)
+    if s is None:
+        sys.exit(f'START marker not found: {START!r}')
+    e = next((i for i in range(s + 1, len(lines)) if lines[i].startswith(END)), None)
+    if e is None:
+        sys.exit(f'END marker not found after START: {END!r}')
     return '\n'.join(lines[s:e + 1]) + '\n'
 
 
