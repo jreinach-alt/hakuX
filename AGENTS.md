@@ -2132,6 +2132,24 @@ fails in the direction that looks like success. An unreachable ref makes the
 dispatcher fail loudly; a reachable stale one makes it produce a clean,
 confident, wrong measurement.
 
+**And a rebase is not the only thing that unbinds it.** The rule above was
+written after two rebases broke the same prediction. It was then broken a
+**third** time, by the orchestrator, with no rebase involved at all: the
+prediction file was folded onto the integration branch **ahead of its own code
+commits**, to make it durable against worktree reaping. At the integration tip
+the `b_ref` was therefore not an ancestor; at the fold candidate both refs were
+fine. Good intention, wrong result.
+
+So the rule generalises: **a prediction and the refs it names must land
+together, or the refs must land first.** Folding a registration early buys
+durability and costs the binding — and the binding is the thing the
+registration exists for. If a prediction must be preserved before its code is
+ready, preserve it *somewhere other than the branch the dispatcher resolves
+refs against*, or re-register it the moment the code lands.
+
+Nothing catches any of this today: `check_cited_commits.py` reads the tracker,
+not `predictions/*.json`.
+
 
 ## An inference can be valid and still wrong, because the model it is valid inside was never checked
 
