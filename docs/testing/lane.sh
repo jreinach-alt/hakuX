@@ -17,6 +17,11 @@
 #
 # WHY systemd-run. A lane started from an interactive session dies with it.
 # A transient user unit does not, is listable, and is stoppable by name.
+#
+# WHY AN EXPLICIT ALLOWLIST. Nobody answers a prompt in a unit; an unlisted
+# tool call in headless mode is refused, and a lane that cannot run git,
+# gradle or adb is a lane that reports nothing. jobs/allowed-tools.lane
+# names what a lane may run; everything else is still refused.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
@@ -50,7 +55,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits > '$log' 2>&1; rc=\$?; python3 '$REPO/docs/testing/jobs/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$REPO/docs/testing/jobs/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$REPO/docs/testing/jobs/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
     echo "started hakux-lane-$name in $wt on $branch; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;

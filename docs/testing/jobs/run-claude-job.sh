@@ -9,6 +9,14 @@
 # JSON output is the audit trail; summarise_run.py keeps a one-line index so
 # nobody reads transcripts to learn what a job did.
 #
+# THE TOOL ALLOWLIST IS EXPLICIT, because nobody is at the keyboard: in
+# headless mode a tool call that is not pre-approved is refused, not
+# prompted, and the first version of this passed no allowlist at all, which
+# would have left the board session unable to run git or gh and logged a
+# run that did nothing. allowed-tools.job names what a job may run; a lane
+# gets the wider allowed-tools.lane from lane.sh. Anything outside the list
+# is still refused, which is the point.
+#
 # EXIT 75 ON A USAGE-WINDOW LIMIT. The account's five-hour and weekly windows
 # are shared by every session, local and cloud. A limit is not a failure to
 # retry into: 75 is EX_TEMPFAIL, the unit's RestartSec grows, and the next
@@ -27,6 +35,7 @@ timeout "${JOB_TIMEOUT:-50m}" claude -p "$(cat "$brief")" \
     --max-turns "$turns" \
     --output-format json \
     --permission-mode acceptEdits \
+    --allowedTools "$(cat "$REPO/docs/testing/jobs/allowed-tools.job")" \
     --append-system-prompt-file "$REPO/docs/testing/jobs/roles/$job.md" \
     > "$log" 2>&1
 rc=$?
