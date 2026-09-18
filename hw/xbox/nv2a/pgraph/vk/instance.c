@@ -994,7 +994,6 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
 
         r->enabled_physical_device_features.dualSrcBlend =
             dual_src_ok ? VK_TRUE : VK_FALSE;
-        pgraph_glsl_set_dual_src_pad_supported(dual_src_ok);
 
         const char *verdict = dual_src_ok             ? "enabled" :
                               f.dualSrcBlend == VK_TRUE ? "available but limit 0, NOT enabled" :
@@ -1248,6 +1247,25 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
     __android_log_print(ANDROID_LOG_INFO, "hakuX",
                         "vk init stage: vkCreateDevice done");
 #endif
+
+    /*
+     * #59. Tell the shader generator the second source output is legal only
+     * once the device that grants it actually EXISTS.
+     *
+     * This used to sit with the query above, which is the wrong side of
+     * vkCreateDevice: the request can be refused, and every early return
+     * between the two leaves the renderer without a device while psh.c has
+     * already been told it may emit an Index decoration. Nothing generates a
+     * shader on those paths today, so the ordering is a latent fault rather
+     * than a live one -- which is exactly the class worth fixing by
+     * construction instead of by argument.
+     *
+     * Read back off `enabled_physical_device_features`, the same struct
+     * `pEnabledFeatures` was populated from, so the shader gate and the
+     * device cannot disagree about what was asked for or granted.
+     */
+    pgraph_glsl_set_dual_src_pad_supported(
+        r->enabled_physical_device_features.dualSrcBlend == VK_TRUE);
 
     pgraph_init_reg_dynamic_masks(
         r->extended_dynamic_state_supported,
