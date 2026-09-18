@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 74
-updated_utc = "2026-09-18T17:45:00Z"
+wave = 75
+updated_utc = "2026-09-18T18:05:00Z"
 
 
 
@@ -76,6 +76,12 @@ note = "AUDIT PASS 1 over lane.padwrite59's UNFOLDED dual-source work -- 424 lin
 issues = []
 files = []
 note = "AUDIT PASS 2 over lane.remote's 71 unfolded commits. Claims no files. PASS 2 VERIFIES THAT THE PASS-1 SCENARIOS CAN NO LONGER OCCUR, not that the remediating commits exist -- the distinction that earned this protocol, because pass 2 last time caught a remediation whose assert was IMPLIED BY THE CONDITION IT SAT UNDER and so could never fire. Scope also includes pass 1 over the compiled code that arrived AFTER the first audit: 383 lines across fpu_helper.c (+186), gl/blit.c (+94), gl/draw.c (+39), glsl/psh.c (+32), gl/texture.c (+24) and gl/surface.c (+8). NEEDS NO DEVICE, which is why it runs now. THE FOLD ITSELF IS THE OWNER'S CALL and is not implied by a clean pass: four commits on that branch carry no [skip ci] and it has PR #45 open, so the branch has already burned six CI runs."
+
+
+[lane.blitsafe]
+issues = ["84", "88"]
+files = ["hw/xbox/nv2a/pgraph/vk/blit.c", "hw/xbox/nv2a/pgraph/vk/surface.c"]
+note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET IS HELD DELIBERATELY rather than for want of anything else to do. This is the one defect on the board whose evidence is COMPLETE WITHOUT A DEVICE and whose evidence could never be completed WITH one: all 20 ImgBlt_BLENDAND_* captures are XRGB/ZRGB, both 32bpp, so no arm on this or any fleet could exercise the narrow-format path. Audit pass 1 over the blit fix found it, pre-existing, and explicitly recommended it not hold that fold. perform_blit indexes s[x*4+ch] and loads 16 bytes per 4 pixels while the caller admits LE_Y8 (1 byte) and LE_R5G6B5 (2); bytes_per_pixel is threaded into perform_blit_tiled() and never into perform_blit(). The overrun is UNBOUNDED because nv_dma_map()'s end-of-object assert is commented out at nv2a.c:96 and the caller checks only dest_offset < dest_dma_len, and the surplus is outside the download range and the invalidate. TWO REFERENCE IMPLEMENTATIONS EXIST, which is why this is a small job rather than a design one: pgraph_vk_solid_line() at blit.c:637 answers the identical narrow-format question at :689-700 with a warn-once early return under a comment refusing to invent an answer for narrow formats -- and note its reasoning, that these are SOFT GUARDS not asserts because an unset destination is reachable GUEST state rather than an internal invariant, which applies here too. And lane.remote has already landed the GL-side equivalent as b9d845d316. ALSO GRANTED: vk/surface.c, for #88 -- 292,446 px Vulkan loses that GL now gets, with the fix direction already decided and evidenced by the goldens. Ordered SECOND and explicitly so: #84 is memory safety and needs no arm, #88 needs an arm this fleet cannot currently run, so do not let the bigger number pull the ordering."
 
 [free]
 #
@@ -192,7 +198,6 @@ note = "AUDIT PASS 2 over lane.remote's 71 unfolded commits. Claims no files. PA
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
          "hw/xbox/nv2a/pfifo.c",
-         "hw/xbox/nv2a/pgraph/vk/blit.c",
          "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
@@ -210,6 +215,5 @@ files = ["accel/**",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
          "hw/xbox/nv2a/pgraph/vk/command.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-         "hw/xbox/nv2a/pgraph/vk/surface.c",
          "hw/xbox/nv2a/pramdac.c",
          "include/exec/**"]
