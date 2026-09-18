@@ -199,8 +199,75 @@ static void tb_request_tier1_promotion(CPUState *cpu, TranslationBlock *tb)
 #ifdef __ANDROID__
         {
             static int drop_log = 0;
+            extern int __android_log_print(int, const char*, const char*, ...);
+            if (drop_log == 0) {
+                /*
+                 * One-shot census of the saturated table, taken at the first
+                 * drop.
+                 *
+                 * WHY THIS EXISTS: #81's central claim -- that all 64 slots
+                 * fill with DUPLICATES of a few pcs -- has never been
+                 * measured. It is inferred from pc repetition in the
+                 * `promote #N` lines plus the `requests FULL` line below, and
+                 * lane.tier81 led its report with slot occupancy as the thing
+                 * it could not see, because nothing prints the table. This
+                 * prints it.
+                 *
+                 * TWO COUNTS, because only one of them is free of the fix
+                 * that is coming. `distinct_key` counts distinct
+                 * (pc, cs_base, flags) -- the key a dedup would act on -- so a
+                 * dedup patch FORCES distinct_key == valid and that number is
+                 * a description of the patch, not evidence about the guest.
+                 * `distinct_pc` counts distinct pc only, which a dedup does
+                 * not pin: two keys may share a pc. Read distinct_pc as the
+                 * measurement and distinct_key as the patch's own control.
+                 *
+                 * POSITIVE CONTROL: `valid` MUST read 64. We only reach here
+                 * because the free-slot scan above found nothing, so a census
+                 * reporting any other occupancy has a broken instrument rather
+                 * than a surprising table. If this line is absent from a run
+                 * that shows `requests FULL`, the instrument did not compile
+                 * in and the run is void -- not evidence of an empty table.
+                 *
+                 * O(64^2) comparisons, once per process, on a path that by
+                 * construction runs exactly once before the throttle below
+                 * takes over. It is not in any hot path.
+                 */
+                int valid = 0, distinct_pc = 0, distinct_key = 0;
+                for (int i = 0; i < TIER1_REQUEST_SLOTS; i++) {
+                    if (!tier1_requests[i].valid) {
+                        continue;
+                    }
+                    valid++;
+                    bool pc_seen = false, key_seen = false;
+                    for (int j = 0; j < i; j++) {
+                        if (!tier1_requests[j].valid) {
+                            continue;
+                        }
+                        if (tier1_requests[j].pc == tier1_requests[i].pc) {
+                            pc_seen = true;
+                            if (tier1_requests[j].cs_base
+                                    == tier1_requests[i].cs_base &&
+                                tier1_requests[j].flags
+                                    == tier1_requests[i].flags) {
+                                key_seen = true;
+                                break;
+                            }
+                        }
+                    }
+                    if (!pc_seen) {
+                        distinct_pc++;
+                    }
+                    if (!key_seen) {
+                        distinct_key++;
+                    }
+                }
+                __android_log_print(3 /*DEBUG*/, "hakuX-tier1",
+                    "table census at first FULL: valid=%d/%d distinct_pc=%d "
+                    "distinct_key=%d", valid, TIER1_REQUEST_SLOTS,
+                    distinct_pc, distinct_key);
+            }
             if (drop_log++ % 10000 == 0) {
-                extern int __android_log_print(int, const char*, const char*, ...);
                 __android_log_print(3 /*DEBUG*/, "hakuX-tier1",
                     "requests FULL: dropped pc=0x%x (drop #%d)",
                     (uint32_t)tb->pc, drop_log);
