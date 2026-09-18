@@ -15,6 +15,21 @@ Read [`ROADMAP.md`](ROADMAP.md) before deciding what to work on — particularly
 "What done looks like", which explains why *making every test pass is not the
 goal*.
 
+## The harness is being restructured (2026-09-19)
+
+Read [`docs/ORCHESTRATION-DESIGN.md`](docs/ORCHESTRATION-DESIGN.md) before
+anything below it. In short: **`master` is the trunk** and the campaign branch
+is being folded into it; every lane is a branch `lane/<name>` from master with
+one draft PR whose body lists its files; the board (`territory.toml`,
+`nv2a_issues.toml`, briefs) is moving to the orphan `board` branch and is
+written by the board job only; the long-lived orchestrator session is
+replaced by scheduled jobs; CI runs on every PR because it is free on this
+public repository, so `[skip ci]` is no longer required. Where a rule below
+names the campaign branch, read `master`. Where it says "ask the
+orchestrator", write a board request and carry on. The measurement
+discipline below -- predictions registered before the run, per-capture
+verdicts, two audit passes -- is unchanged.
+
 ## Start here
 
 ```bash

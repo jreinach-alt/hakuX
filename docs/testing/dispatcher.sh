@@ -65,6 +65,27 @@ SNAP="$D/bin"
 # prevent, reintroduced by the fix for the one after it.
 SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 SCRIPT_DEPS="dispatcher.sh soak_title.sh run_disc.sh score_sweep.py"
+# WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
+#
+# Until 2026-09-19 a build detached the SHARED checkout onto the requested
+# sha, so any tracked modification anywhere in it -- a lane's edit, a fold in
+# progress, a checker's stamp file -- stalled every uncached build with a
+# 30-second requeue loop: 251 requeues in one day, 129 from one stamp file,
+# two fleet-wide stalls in an hour on 09-14. The refusal was correct and the
+# recovery worked, and both were symptoms of building in a tree that other
+# actors edit.
+#
+# So builds happen in a PRIVATE worktree that nothing else ever touches. It
+# hangs off $REPO's object store (a worktree shares objects, so nothing is
+# cloned), it is detached to the requested sha for the length of the build,
+# and it keeps its gradle and cmake outputs between builds so the incremental
+# case stays warm. Nobody edits it, so it is never dirty, so there is nothing
+# to refuse. The dirty-tree path and dirty_wait_log are gone, not improved.
+#
+# $TREE is still the source the script SNAPSHOT is taken from (above), and
+# the place a ref is first resolved. It is never checked out or detached.
+REPO="${DISPATCH_REPO:-$TREE}"
+BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
@@ -72,14 +93,11 @@ snapshot_scripts() {
         [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
     done
 }
-# Hash of the scripts as they are IN THE TREE, or empty while the tree is
-# detached for a build. Empty means "do not compare": mid-build the tree holds
-# some other commit's scripts, and both answers there are wrong -- re-exec and
-# a worker adopts a baseline's dispatcher, don't and the hash is a lie that
-# suppresses the next real edit. DETACHED is written by build_ref for exactly
-# this window.
+# Hash of the scripts as they are IN THE TREE. This used to return empty
+# while $TREE was detached for a build, because mid-build the tree held some
+# other commit's scripts. Builds no longer touch $TREE (see BUILD_TREE), so
+# the tree's scripts are always the tree's scripts and the hash is honest.
 src_hash() {
-    [ -e "$D/DETACHED" ] && return 0
     ( cd "$SRC" && cat $SCRIPT_DEPS 2>/dev/null | md5sum | cut -c1-12 )
 }
 # Logs go to the file and to STDERR, never stdout. build_ref's stdout is
@@ -94,23 +112,6 @@ device_present() {
     adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
 }
 
-# Say WHAT the shared tree is dirty with and HOW LONG the queue has been
-# stopped for it. Called from the requeue path, once per 30s wait cycle.
-#
-# The elapsed time needs state across cycles, and the state is a stamp file
-# holding `epoch<TAB>fingerprint`. The fingerprint is over the dirty SET, so
-# the wait restarts its clock when the set changes -- otherwise "blocked 40m"
-# would carry over from an edit committed half an hour ago and replaced by a
-# different one, which is a worse lie than no number at all.
-#
-# Both workers share $D and both watch the same shared tree, so they share this
-# stamp deliberately: it is one condition. If they race, the loser's write
-# installs a slightly LATER epoch and the reported wait comes out short rather
-# than long. Under-reporting a stall is the safe direction.
-#
-# This is the half that helps whoever is BLOCKED. The half that stops blocking
-# them is already done on the orchestrator side -- folds happen in a separate
-# worktree now; see AGENTS.md, "The orchestrator folds in a separate worktree".
 # Put the request's `env` into the app's environment for THIS RUN, and take it
 # out again afterwards.
 #
@@ -318,48 +319,6 @@ PYENV
     return 0
 }
 
-dirty_wait_log() {
-    local id="$1" now stamp prev_t prev_f fp files n secs
-    now=$(date +%s)
-    stamp="$D/.dirty-wait"
-    # An UNREADABLE tree is not a clean one, and saying so is the whole point
-    # of this function: "clean again" against a tree git cannot even open
-    # would send the reader looking at the wrong thing entirely.
-    if ! git -C "$TREE" rev-parse --git-dir >/dev/null 2>&1; then
-        log "  $TREE is not readable as a git tree; $id requeued, retrying in 30s"
-        return 0
-    fi
-    files=$(git -C "$TREE" status --porcelain 2>/dev/null | grep -v '^??' | cut -c4-)
-    if [ -z "$files" ]; then
-        # build_ref saw it dirty and it is clean again already. Say exactly
-        # that, rather than printing an empty list, which reads as a bug here.
-        rm -f "$stamp"
-        log "  tree was dirty at the build check and is clean again; $id requeued, retrying in 30s"
-        return 0
-    fi
-    n=$(printf '%s\n' "$files" | wc -l)
-    fp=$(printf '%s' "$files" | md5sum | cut -c1-12)
-    prev_t=""; prev_f=""
-    if [ -f "$stamp" ]; then
-        prev_t=$(cut -f1 "$stamp" 2>/dev/null)
-        prev_f=$(cut -f2 "$stamp" 2>/dev/null)
-    fi
-    if [ "$prev_f" != "$fp" ] || [ -z "$prev_t" ]; then
-        prev_t="$now"
-        printf '%s\t%s\n' "$now" "$fp" > "$stamp"
-    fi
-    secs=$(( now - prev_t ))
-    log "  QUEUE BLOCKED ${secs}s: $TREE has $n uncommitted file(s); $id requeued, retrying in 30s"
-    # Named, up to eight. The count above is the whole truth; these are what
-    # let whoever is holding them recognise their own edit.
-    printf '%s\n' "$files" | head -8 | while IFS= read -r f; do
-        log "    dirty: $f"
-    done
-    if [ "$n" -gt 8 ]; then log "    dirty: ... and $(( n - 8 )) more"; fi
-    log "    a lane cannot run git against the shared tree; commit or stash these to release the queue"
-    return 0
-}
-
 # The full sweep is idle-priority work and yields to requests. pause blocks
 # until the runner has genuinely parked rather than setting a flag and hoping,
 # and every resume reinstalls the baseline so a preempting binary cannot
@@ -377,13 +336,23 @@ resume_sweep() {
     SWEEP_STATE="$SWEEP_STATE" bash "$HERE/sweep_queue.sh" resume >>"$D/logs/dispatcher.log" 2>&1
 }
 
+# The private build worktree, created on first use. --detach so it never
+# holds a branch, which keeps `git worktree list` honest about what it is.
+ensure_build_tree() {
+    if [ -e "$BUILD_TREE/.git" ]; then return 0; fi
+    mkdir -p "$(dirname "$BUILD_TREE")"
+    git -C "$REPO" worktree add --quiet --detach "$BUILD_TREE" HEAD || {
+        log "  could not create the build worktree at $BUILD_TREE from $REPO"; return 1; }
+    log "  created the private build worktree at $BUILD_TREE"
+}
+
 build_ref() {  # $1 = ref ; $2 = "perflog" for a diagnostic build ; echoes the apk path
-    # Serialised across devices, because building detaches the SHARED
-    # checkout. Two workers here at once would each `git checkout --detach` a
-    # different sha in the same tree and both would build whatever the other
-    # left behind -- silently, since each would still produce an APK and call
-    # it by its own sha. The APK cache below makes the common case free, so
-    # the lock costs nothing when both devices want the same binary, which is
+    # Serialised across devices, because there is ONE private build tree and
+    # gradle's outputs live in it. Two workers here at once would each detach
+    # it to a different sha and both would build whatever the other left
+    # behind -- silently, since each would still produce an APK and call it
+    # by its own sha. The APK cache below makes the common case free, so the
+    # lock costs nothing when both devices want the same binary, which is
     # most of the time: the two arms of an A/B share one of their two refs
     # with whatever ran before them.
     local lock="$D/.build.lock"
@@ -398,7 +367,14 @@ build_ref() {  # $1 = ref ; $2 = "perflog" for a diagnostic build ; echoes the a
 _build_ref_locked() {
     local ref="$1" variant="${2:-}" out="$D/builds"
     mkdir -p "$out"
-    local sha; sha=$(git -C "$TREE" rev-parse --short "$ref" 2>/dev/null) || return 1
+    # A ref a cloud lane pushed may not be known locally yet; one fetch
+    # before giving up. Resolved in $REPO, never in the build tree, so a
+    # half-finished build cannot change what a name means.
+    local sha
+    sha=$(git -C "$REPO" rev-parse --short "$ref" 2>/dev/null) || {
+        git -C "$REPO" fetch -q origin 2>/dev/null
+        sha=$(git -C "$REPO" rev-parse --short "$ref" 2>/dev/null) || return 1
+    }
     # THE CACHE KEY MUST CARRY THE VARIANT, and this is the whole reason the
     # perflog build needed a change here rather than an env var.
     #
@@ -425,42 +401,24 @@ _build_ref_locked() {
     fi
     local apk="$out/$sha$suffix.apk"
     if [ -f "$apk" ]; then echo "$apk"; return 0; fi
-    # Requests name a ref, never "what is in the tree": with several
-    # implementers holding uncommitted work, "run my build" is ambiguous the
-    # moment two of them ask.
-    if [ -n "$(git -C "$TREE" status --porcelain | grep -v '^??')" ]; then
-        log "  tree is dirty; the binary would not be $sha"
-        return 3
+    ensure_build_tree || return 2
+    # Detach the PRIVATE tree, never $TREE. It is nobody's working copy, so
+    # it is never dirty and nothing is disturbed. Any sha $REPO knows resolves
+    # here, because a worktree shares the object store.
+    git -C "$BUILD_TREE" checkout --quiet --detach "$sha" || {
+        log "  checkout of $sha in $BUILD_TREE failed; not building"; return 2; }
+    # local.properties is gitignored and required: without it meson fails with
+    # "Could not detect Ninja", which reads as a code defect and is not
+    # (AGENTS.md, "Working against a device"). Seed it from the owner's tree.
+    if [ ! -f "$BUILD_TREE/android/local.properties" ] \
+       && [ -f "$TREE/android/local.properties" ]; then
+        cp "$TREE/android/local.properties" "$BUILD_TREE/android/local.properties"
     fi
-    # A baseline arm is never HEAD, so refusing non-HEAD refs made the one
-    # comparison that matters impossible -- and comparing a fix against a
-    # differently-composed earlier run is exactly the mistake that got a
-    # working fix reverted. So build any committed ref by detaching onto it,
-    # and put the branch back on every exit path. The tree is verified clean
-    # above, and agents hold their own worktrees, so a detach here disturbs
-    # nobody.
-    local head restore=""
-    head=$(git -C "$TREE" rev-parse --short HEAD)
-    if [ "$sha" != "$head" ]; then
-        restore=$(git -C "$TREE" symbolic-ref --quiet --short HEAD \
-                  || git -C "$TREE" rev-parse HEAD)
-        log "  ref $ref ($sha) is not HEAD ($head); detaching to build, restoring $restore after"
-        git -C "$TREE" checkout --quiet --detach "$sha" || {
-            log "  checkout of $sha failed; not building"; return 2; }
-        # Visible while detached: anyone committing into this window would
-        # commit onto the wrong base. `dispatcher.sh status` surfaces it.
-        echo "detached at $sha to build a baseline; restoring $restore" > "$D/DETACHED"
-    fi
-    (cd "$TREE/android" && ./gradlew assembleDebug ${gradle_args:+$gradle_args}) \
+    (cd "$BUILD_TREE/android" && ./gradlew assembleDebug ${gradle_args:+$gradle_args}) \
         >>"$D/logs/build-$sha$suffix.log" 2>&1
     local rc=$?
-    if [ -n "$restore" ]; then
-        git -C "$TREE" checkout --quiet "$restore" \
-            || log "  WARNING: could not restore $restore -- tree is left detached at $sha"
-        rm -f "$D/DETACHED"
-    fi
     [ "$rc" -eq 0 ] || return 4
-    cp "$TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
+    cp "$BUILD_TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
     echo "$apk"
 }
 
@@ -513,33 +471,6 @@ serve_one() {
     esac
     [ -z "$perflog" ] || log "  diagnostic build requested: -Pperflog=true"
     apk=$(build_ref "$ref" "$perflog"); rc=$?
-    if [ "$rc" = 3 ]; then
-        # A dirty tree is TRANSIENT -- someone is editing -- and must not
-        # destroy queued work. Requeueing rather than failing is the same
-        # lesson as the device-drop requeue and the orphan requeue: an
-        # uncommitted edit of mine failed 54 consecutive scoreboard-sweep
-        # requests in seconds, because each was answered with a hard ERROR
-        # instead of being put back.
-        #
-        # AND THE LINE HAS TO NAME THE FILES AND THE ELAPSED TIME, because the
-        # only reader who needs it cannot get them any other way. A lane runs
-        # in its own worktree and MUST NOT run git against the shared tree, so
-        # when the queue stops moving it has no way to ask what is holding it.
-        # Two stalls today were diagnosed only because a lane materialised the
-        # tip out of the object store and diffed the shared working tree
-        # against it by hand -- which worked, and is not something anyone
-        # should have to invent twice.
-        #
-        # The old line was byte-identical every 30s. An unchanging line reads
-        # as a hung process, and the difference between "the dispatcher is
-        # wedged" and "the queue is blocked on three edited files" is the
-        # difference between restarting it -- which would drop a live run --
-        # and committing or stashing them.
-        rmdir "$rdir" 2>/dev/null
-        mv "$req" "$D/queue/$id.req"
-        dirty_wait_log "$id"
-        sleep 30; return 0
-    fi
     if [ "$rc" != 0 ]; then
         echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
         log "  BUILD FAILED (code $rc)"; mv "$req" "$rdir/request.json"; return 0
@@ -1276,7 +1207,7 @@ case "${1:-status}" in
     echo "results: $(ls -d "$D/results"/*/ 2>/dev/null | wc -l)"
     device_present && echo "device:  present" || echo "device:  ABSENT"
     sweep_running && echo "sweep:   running" || echo "sweep:   not running"
-    [ -f "$D/DETACHED" ] && echo "TREE:    $(cat "$D/DETACHED") -- DO NOT COMMIT"
+    echo "build:   $BUILD_TREE @ $(git -C "$BUILD_TREE" rev-parse --short HEAD 2>/dev/null || echo 'not created yet')"
     tail -5 "$D/logs/dispatcher.log" 2>/dev/null
     ;;
   *) sed -n '3,12p' "$0" ;;

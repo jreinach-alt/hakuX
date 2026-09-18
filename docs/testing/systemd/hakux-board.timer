@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX board job, every 20 minutes
+
+[Timer]
+OnBootSec=3min
+OnUnitActiveSec=20min
+RandomizedDelaySec=60
+# WSL2 is shut down whenever the owner closes it; catch up once on boot.
+Persistent=true
+Unit=hakux-board.service
+
+[Install]
+WantedBy=timers.target

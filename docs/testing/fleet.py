@@ -66,10 +66,16 @@ def age(iso):
 
 def main():
     fleet = load_fleet()
-    with open(os.path.join(HERE, "territory.toml"), "rb") as fh:
-        terr = tomllib.load(fh)
-    with open(os.path.join(HERE, "nv2a_issues.toml"), "rb") as fh:
-        tracker = tomllib.load(fh)["issue"]
+    # The board lives on the `board` branch when it exists, and in the tree
+    # until then; board_files says which was read, so a stale local copy is
+    # never quoted as a live one (docs/ORCHESTRATION-DESIGN.md §5).
+    sys.path.insert(0, HERE)
+    import board_files
+    terr = board_files.load("territory.toml")
+    tracker = board_files.load("nv2a_issues.toml")["issue"]
+    print("board read from: territory.toml <- %s, nv2a_issues.toml <- %s"
+          % (board_files.source("territory.toml"),
+             board_files.source("nv2a_issues.toml")))
 
     # A TIMEOUT, BECAUSE THE RISK HERE IS A STALL AND NOT THE RATE LIMIT.
     #
@@ -274,7 +280,7 @@ def main():
         out = subprocess.run(
             ["git", "-C", HERE, "rev-list", "--count", "HEAD..%s"
              % os.environ.get("HAKUX_TIP",
-                              "claude/es-de-launcher-disc-error-ojnl14")],
+                              "master")],
             capture_output=True, text=True, timeout=15)
         behind = int(out.stdout.strip()) if out.returncode == 0 else None
     except Exception:

@@ -39,6 +39,14 @@ jobs:
           java-version: '21'
 
       - uses: android-actions/setup-android@v3
+        with:
+          # The action's default package list is "tools platform-tools", and
+          # Google has withdrawn the legacy "tools" package from the SDK
+          # repository: on 2026-09-18 `sdkmanager tools` printed "Failed to
+          # find package 'tools'" and the job failed before checkout was
+          # cold. Nothing here needs it; the next step installs what the
+          # build actually pins.
+          packages: platform-tools
 
       - name: Install the SDK components this build pins
         run: |
