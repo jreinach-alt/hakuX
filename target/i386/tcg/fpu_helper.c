@@ -366,8 +366,9 @@ static inline double floatx80_round_to_int_nds(double a, float_status *s)
  * below -- same table, same `(void)(s)` discarding the guest's mode. The
  * _round_to_zero pair was right by accident and is now right on purpose.
  *
- * The cast is also unable to raise float_flag_invalid, and helper_fistl_ST0
- * and helper_fistll_ST0 test precisely that flag to substitute the x87
+ * The cast is also unable to raise float_flag_invalid, and all four of
+ * helper_fistl_ST0, helper_fistll_ST0, helper_fisttl_ST0 and
+ * helper_fisttll_ST0 test precisely that flag to substitute the x87
  * integer-indefinite value for an out-of-range or NaN operand. On this path
  * those guards could never fire, so an out-of-range FISTP stored whatever the
  * cast produced -- and converting an out-of-range double to an integer type is
