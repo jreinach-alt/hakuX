@@ -3224,12 +3224,71 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         SURF_TIMER_INIT(_gt1);
         SurfaceBinding *surface = pgraph_vk_surface_get(d, target.vram_addr);
         if (surface != NULL) {
-            // FIXME: Support same color/zeta surface target? In the mean time,
-            // if the surface we just found is currently bound, just unbind it.
+            /*
+             * FIXME: Support same color/zeta surface target? One VkImage
+             * cannot be the colour and the depth attachment of one
+             * framebuffer, so when the guest points both at one address --
+             * which Color zeta overlap does on purpose -- one of them has to
+             * lose. Which one is not arbitrary. Hardware lets both units write
+             * and races them sub-word; a single-attachment model can only pick
+             * a winner, and the goldens say pick colour: in ColorIntoZeta_ZB,
+             * the only capture that discriminates, the colour write takes
+             * 120,729 of the quad's 131,495 pixels.
+             *
+             * So colour may take a surface zeta holds, but zeta declines one
+             * colour holds. The structural argument points the same way and
+             * does not depend on the race: unbinding the colour attachment
+             * here leaves the framebuffer with nothing of the guest's
+             * attached, which is never a state it asked for, and #66 measured
+             * that state persisting for the rest of a test once entered.
+             *
+             * This is the POLICY half of #66's chain. The gate half -- "the
+             * binding is stale OR ABSENT", which is what makes zeta's decline
+             * temporary rather than permanent -- has been on this side since
+             * 9161e3e14a (2024-07-27, upstream) as the `!current_binding` term
+             * above, so only the policy needed porting. That is also why
+             * ColorIntoZeta_ZB sat at exactly 131,495 here: the value GL
+             * produced with its gate fixed and its policy still symmetric,
+             * i.e. the depth write winning the whole quad. Issue #88; GL's
+             * half is fada1d89d4, record in
+             * docs/investigations/color-zeta-same-surface.md.
+             */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (surface == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
+                if (!color) {
+                    /*
+                     * Zeta declines. The colour attachment stays, and it
+                     * cannot be absent here: reaching this point needs
+                     * surface == other with surface != NULL, so
+                     * r->color_binding is non-NULL by construction. Zeta's
+                     * binding is left absent, which this renderer supports as
+                     * a first-class state -- create_frame_buffer() and
+                     * begin_pre_draw_inner() assert only that at least ONE of
+                     * the two is bound, and the pipeline passes
+                     * pDepthStencilState = NULL without one. Those two
+                     * asserts are also what makes the both-absent state #66
+                     * found on GL a trap here rather than silent corruption.
+                     *
+                     * buffer_dirty is cleared so pgraph_vk_surface_update()
+                     * stops calling unbind_surface() on an already absent
+                     * binding each pass; the `!current_binding` term above is
+                     * what brings us back here on every zeta request, so zeta
+                     * takes the surface as soon as colour moves away.
+                     *
+                     * Returning here also skips the download tail below, and
+                     * that is the intent rather than a side effect: with no
+                     * zeta binding nothing was drawn into a zeta image, so the
+                     * previous behaviour -- create one, evict colour, and copy
+                     * the fresh image back over VRAM -- wrote a surface the
+                     * guest never rendered. The tail cannot be reached with a
+                     * NULL binding either, since the only way past this point
+                     * binds one.
+                     */
+                    pg_surface->buffer_dirty = false;
+                    return;
+                }
                 unbind_surface(d, !color);
             }
         }
