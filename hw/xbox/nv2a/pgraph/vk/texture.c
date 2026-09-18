@@ -1269,6 +1269,38 @@ static bool check_surface_to_texture_compatiblity(const SurfaceBinding *surface,
     }
 
     /*
+     * Layout has to agree, not just extent and format. The host image is
+     * always linear; what makes sampling it equivalent to the guest's view is
+     * that the hardware's swizzled STORE and the texture unit's swizzled READ
+     * cancel. When only one side is swizzled nothing cancels and the result
+     * differs from the guest's by exactly one Morton transform. Refuse, and
+     * the texture comes from VRAM where unswizzle_rect() applies the layout
+     * the texture format asks for.
+     *
+     * This is the SAME missing discriminator as in GL's
+     * pgraph_gl_check_surface_to_texture_compatibility(), and it has to land
+     * in both or neither: the defect is shared, which is why #87 is a pgraph
+     * row and not a GL or a Vulkan one. Neither gate compared layout, and
+     * both gate on dimensions alone, so both take the fast path for exactly
+     * the surfaces where it is invalid.
+     *
+     * The comment below is the record of this test being caught too weak
+     * once already -- an extent-only test called a scratch surface the
+     * texture's source. Stride was the discriminator added then; layout is
+     * the one still missing. Measured on Surface_pitch::Swizzle (#87),
+     * offline, on the capture five pinned device runs agree on byte for byte.
+     *
+     * Deliberately AFTER the !surface->color early return above: zeta has its
+     * own swizzle flag, but zeta-to-texture returns compatible here without
+     * consulting format at all, and nothing measured says what it should do.
+     * Widening this to zeta would be an unmeasured change riding along with a
+     * measured one.
+     */
+    if (surface->swizzle == pgraph_get_color_format_info(shape->color_format).linear) {
+        return false;
+    }
+
+    /*
      * A converted format's host image does not hold the guest's bytes, so
      * there is nothing for vkCmdCopyImage to move into it correctly and
      * nothing for the surface's own view to decode. It has to come the long
