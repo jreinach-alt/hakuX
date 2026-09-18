@@ -1522,6 +1522,44 @@ bool pgraph_gl_check_surface_to_texture_compatibility(
         return false;
     }
 
+    /*
+     * The surface and the texture must agree about LAYOUT, not just about
+     * extent and format. The host render target is always linear; what makes
+     * sampling it equivalent to what the guest would read is that the
+     * hardware's swizzled STORE and the texture unit's swizzled READ cancel.
+     * When only one side is swizzled nothing cancels, and the fast path hands
+     * back an image that differs from the guest's by exactly one Morton
+     * transform. Refuse, and the texture comes from VRAM instead, where
+     * unswizzle_rect() applies the layout the texture format asks for.
+     *
+     * Measured offline on Surface_pitch::Swizzle (#87): a swizzled 128x128
+     * A8R8G8B8 surface sampled as a 128x128 LU_IMAGE_A8R8G8B8 texture. Our
+     * capture is the golden read through generate_swizzle_masks(128,128) at a
+     * 128-pixel stride -- 100.0000% of both affected quadrants, where the
+     * identity scores 68.75%, and inverting it makes the capture
+     * byte-identical to the golden. The same test's 64x64 surfaces are
+     * already correct because the extent check above refuses them, which is
+     * what makes this the missing discriminator and not a second opinion
+     * about the one already here.
+     *
+     * This is NOT the pitch question #87 was filed as. The test programs the
+     * same surface twice, with SET_SURFACE_PITCH_COLOR 512 and 256, and both
+     * the golden and our capture are identical across that pair: pitch does
+     * not enter. The stride check above stays exactly as it is -- it is
+     * guarded on !swizzle, which after this check is provably the
+     * linear/linear case, the only one where shape->pitch is meaningful at
+     * all (pgraph_texture_shape() forces it to 0 otherwise).
+     *
+     * Placed BEFORE the Android early-return deliberately: that block returns
+     * true on its own, so a layout check after it would be inert on the one
+     * platform this project measures.
+     */
+    if (surface->swizzle == pgraph_get_color_format_info(texture_fmt).linear) {
+        trace_nv2a_pgraph_surface_texture_compat_failed(surface_fmt,
+                                                        texture_fmt);
+        return false;
+    }
+
 #ifdef __ANDROID__
     if (android_surface_to_texture_rgba8_compatible(surface, shape)) {
         return true;
@@ -2879,10 +2917,6 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
     Surface *surface = color ? &pg->surface_color : &pg->surface_zeta;
 
-    bool mem_dirty = !tcg_enabled() && memory_region_test_and_clear_dirty(
-                                           d->vram, entry.vram_addr, entry.size,
-                                           DIRTY_MEMORY_NV2A);
-
     /*
      * The condition is "the binding is stale OR ABSENT", not just stale. A
      * surface that is neither buffer-dirty nor memory-dirty but has no binding
@@ -2892,12 +2926,34 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
      * GL_INVALID_FRAMEBUFFER_OPERATION and did nothing, the error sitting
      * pending until an unrelated assert tripped over it. See #66.
      *
-     * Note mem_dirty is identically false on any TCG build -- which is every
-     * build we run -- so this gate is buffer_dirty alone in practice.
+     * THE mem_dirty TERM IS GONE, and #85 is why. It was
+     *
+     *     !tcg_enabled() && memory_region_test_and_clear_dirty(
+     *         d->vram, entry.vram_addr, entry.size, DIRTY_MEMORY_NV2A)
+     *
+     * and tcg_enabled() is true on every build this project produces -- this
+     * is an x86 guest on ARM Android and a lavapipe/TCG desktop, with no
+     * hardware-virtualised target -- so the term was identically 0 over
+     * 137,816 samples and the test_and_clear side effect never once ran.
+     * Deleting it is therefore provably inert rather than hopefully inert.
+     *
+     * #85 offered two honest outcomes, delete or make-reachable-and-test.
+     * Make-reachable is the wrong one, and not merely because there is no
+     * environment to test it in: DIRTY_MEMORY_NV2A is marked by the blit
+     * paths and test-and-cleared by the vertex RAM buffer sync
+     * (gl/vertex.c:67), and vk/draw.c's own note records that the vertex sync
+     * is THE ONLY CLEARER of that bitmap over a surface range. A reachable
+     * clear here would start consuming dirty bits that invariant depends on,
+     * so switching it on is a behaviour change against a documented
+     * assumption, not a coverage win.
+     *
+     * The previous pass left a comment saying the term was dead. A comment is
+     * not a test, and a never-executed condition in a hot gate reads as
+     * coverage; that is the whole of #85.
      */
     bool no_binding = (color ? r->color_binding : r->zeta_binding) == NULL;
 
-    if (upload && (surface->buffer_dirty || mem_dirty || no_binding)) {
+    if (upload && (surface->buffer_dirty || no_binding)) {
         pgraph_gl_unbind_surface(d, color);
 
         SurfaceBinding *found = pgraph_gl_surface_get(d, entry.vram_addr);
@@ -3044,7 +3100,17 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 pg->surface_binding_dim.height = found->height;
                 pg->surface_binding_dim.clip_y = found->shape.clip_y;
                 pg->surface_binding_dim.clip_height = found->shape.clip_height;
-                found->upload_pending |= mem_dirty;
+                /*
+                 * `found->upload_pending |= mem_dirty;` stood here. It was
+                 * the second and last reader of the dead term deleted at the
+                 * top of this function (#85): an OR with a value that was
+                 * identically 0 on every build this project produces, so
+                 * removing it is inert by the same argument. Recorded rather
+                 * than dropped silently, because an `|=` that has never once
+                 * set its target is precisely the never-executed condition
+                 * #85 is about -- it just happened to be spelled as an
+                 * assignment instead of an `if`.
+                 */
                 pg->surface_zeta.buffer_dirty |= color;
                 should_create = false;
             } else {
