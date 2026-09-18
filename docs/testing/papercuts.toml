@@ -295,3 +295,19 @@ cost = "[issue.74] and [issue.82] both passed the gate at the folded tip while b
 bit = 1
 owner = "toolsmith"
 fix = "Ask about patches, not shas: `git cherry`, a patch-id comparison, or a search for the sha in an `-x` trailer. check_cited_commits.py already classifies by patch-id and knows this -- it is just not wired into preflight, which is its own logged cut. This is the ancestry-asks-about-shas lesson appearing inside a gate written to enforce that lesson."
+
+[[cut]]
+id = "composition-is-not-a-field-of-the-prediction-schema"
+what = "A prediction can register an ABSOLUTE pixel count but cannot record the disc composition it was derived from. Of 107 files in docs/testing/predictions/, exactly ONE carries a disc_id. ab_compare can compare two ARMS' discs to each other, but nothing can compare an absolute against the composition it came from."
+cost = "Thirty-one live predictions register an absolute, on a narrowed disc, with no arm-A reproduction condition -- so nothing would catch a composition substitution. They are safe today only because none touches the one capture measured as composition-sensitive, which is luck rather than protection. Found by auditing all 107 files, after a capture moved 141,125 px on composition alone."
+bit = 1
+owner = "toolsmith"
+fix = "Add disc_id (or the suite list) to the prediction schema and have ab_compare REFUSE an absolute whose recorded composition differs from the arm's. The pattern to copy is already in the codebase: several predictions carry an 'arm A is the check' clause in PROSE that does exactly this, and prose is not enforced -- #88's entry credits itself with that condition while its prediction file does not contain it."
+
+[[cut]]
+id = "disc-id-conflates-composition-with-the-skip-list"
+what = "disc_id is the comparability key, and it encodes the suite list AND the skip list together, then truncates at about 60 characters. So two discs differing only in a skipped test get different keys, and two genuinely different compositions can collide after truncation."
+cost = "Two wrong classifications in one investigation: the 24 Texture_render_target/TexFmt_* captures looked like a composition effect and are actually the known RenderTextureLoop skip, because the skip is inside the key. The lane had to notice and back both out."
+bit = 1
+owner = "toolsmith"
+fix = "Separate the fields: composition and skip-list as distinct keys, both full-length, with the human-readable label derived from them rather than being them. A key that truncates is a key that can silently collide, and this one is the thing every pooled measurement on this board is grouped by."
