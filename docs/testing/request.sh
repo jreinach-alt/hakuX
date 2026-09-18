@@ -918,8 +918,22 @@ print('binary  ', m['apk_sha'], ' disc', m['disc_id'], ' classifier', m.get('cla
 for r in m['runs']:
     print('run     ', r['tsv'], r['captures'], 'captures', r['exact'], 'exact',
           format(r['px'],','), 'px', '' if r['progress_log_proof'] else '  *** NO PROGRESS-LOG PROOF ***')
+if 'env' in m:
+    print('env     ', ', '.join(m['env']) if m['env'] else '(none)')
 part=[s for s,c in m['captures_vs_goldens'].items() if c['partial']]
-if part: print('PARTIAL ', ', '.join('%s %d/%d'%(s,m['captures_vs_goldens'][s]['scored'],m['captures_vs_goldens'][s]['goldens']) for s in part))
+if part:
+    print('PARTIAL ', ', '.join('%s %d/%d'%(s,m['captures_vs_goldens'][s]['scored'],m['captures_vs_goldens'][s]['goldens']) for s in part))
+    # AND SAY WHAT PARTIAL MEANS, because it does not mean the run truncated
+    # and a reader who assumes it does draws the wrong conclusion twice: they
+    # distrust a complete run, and they miss that the shortfall is permanent.
+    # `partial` is `scored < goldens` -- a statement about THIS DISC against
+    # the GOLDEN TREE. Truncation is the progress-log proof on the run lines
+    # above, and it is a different question with a different answer.
+    print('         ^ partial = fewer captures than the golden tree holds for that')
+    print('           suite. That is DISC COVERAGE, not truncation -- truncation is')
+    print('           the progress-log proof above. A suite whose disc is')
+    print('           permanently short (Image blit is 41 of 42) shows here on')
+    print('           every run it will ever have.')
 print('tsv     ', '$D/results/$ID/' + m['runs'][0]['tsv'] if m['runs'] else '(none)')
 "
         # DID ANDROID TAKE THE WINDOW AWAY MID-RUN?

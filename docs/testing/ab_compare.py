@@ -574,8 +574,17 @@ def check_comparable(a, b, allow_same_binary=False):
             die(msg + "\nPass --allow-same-binary if the point is to measure "
                 "the noise floor.")
     if a.ref and a.ref == b.ref:
-        warn.append("both arms name ref %s; the arms differ only by build or "
-                    "by run." % a.ref)
+        # "only by build or by run" was exhaustive until `request.sh --env`
+        # existed. It is not any more, and leaving it would be a sentence that
+        # reads as complete while omitting the variable the pair was built
+        # around -- the same shape as an investigation note that still calls
+        # its own patch unapplied.
+        if a.env_recorded and b.env_recorded and a.env != b.env:
+            warn.append("both arms name ref %s and the ENVIRONMENT is what "
+                        "differs; see the same-binary note above." % a.ref)
+        else:
+            warn.append("both arms name ref %s; the arms differ only by build "
+                        "or by run." % a.ref)
 
     # 5b. THE ENVIRONMENT IS A SECOND INDEPENDENT VARIABLE WHEN IT IS NOT THE
     #     FIRST. Two different refs AND two different envs is two changes, and
