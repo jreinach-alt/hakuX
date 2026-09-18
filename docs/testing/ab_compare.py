@@ -791,6 +791,7 @@ def load_expect(path, a, b):
             die("expectations file names %s %s but arm %s ran %s. A "
                 "prediction registered for other refs is not a prediction "
                 "about this measurement." % (k, have, k[0].upper(), want))
+    notes.extend(composition_notes(exp, a, b))
     # Preferred evidence: the sha request.sh recorded when the device work was
     # asked for. It settles both questions an mtime can only guess at -- was
     # the prediction on file before the run, and is it still the same
@@ -1022,6 +1023,194 @@ def _harness_issue_for(suites):
     return out if covered == want else {}
 
 
+# --------------------------------------------------------------------------
+# disc composition
+#
+# WHY COMPOSITION IS A FIELD OF THE PREDICTION AND NOT ONLY OF THE REQUEST.
+#
+# "A figure from one composition may not be compared with a figure from
+# another" has been the rule for days, and until now nothing could enforce it.
+# `disc_id` is bound into the REQUEST by the dispatcher and never into the
+# prediction, and check (2) in check_comparable() refuses a pair whose two arms
+# disagree on it -- the easy case. The case that bites is an ABSOLUTE
+# registered on one composition and later judged against an arm run on
+# another, and there was no field to compare against, so it could not be seen
+# at all.
+#
+# #89 is the first measured instance: `Color_zeta_overlap/Swap_ZB` reads 0 on
+# a disc with fewer than two captures in preceding suites and 141,125 on one
+# with two or more, at one ref on one device, with composition the only
+# variable. An `--expect-value` of 0 registered on the narrow disc and judged
+# against a wider arm fails by 141,125 px with nothing wrong with the change.
+# lane.disc89's audit of all 107 prediction files found exactly ONE carrying a
+# `disc_id` and THIRTEEN whose composition cannot be determined from the file
+# at all (#95).
+#
+# THE THREE AXES ARE KEPT SEPARATE, which is the second half of #95. `disc_id`
+# concatenates suites with the skip list and truncates at about 60 characters,
+# so grouping by it reported `Texture render target-no:RenderTextureLoop` --
+# a DEFECT WORKAROUND, not a composition -- as a composition effect, and
+# misclassified 24 captures. It also cannot distinguish the 9-suite and
+# 14-suite discs at the centre of #89, because they share a prefix. So the
+# comparison below is over the three lists the dispatcher actually builds the
+# disc from; any `disc_id` recorded alongside them is for a human to read.
+#
+# GRANDFATHERING, decided here and not left implicit. The check runs ONLY when
+# a prediction carries a `disc` block, which no file registered before this
+# landed can have:
+#
+#     $ grep -c '"disc"' docs/testing/predictions/*.json | grep -v ':0' | wc -l
+#     0        (107 prediction files, none with the key)
+#
+# So it is provably inert for every prediction already on disk and for every
+# arm already queued against one -- including the legacy top-level `disc_id` in
+# `issue44-draw-only-bound.json`, which is deliberately NOT read: honouring it
+# would subject one live file to a refusal its author never opted into. A lane
+# that registers a composition from now on gets the check; nobody who already
+# registered loses an arm to it. That asymmetry is the point -- there are live
+# arms on the board, and a judge-time refusal that voids them is worse than the
+# gap it closes.
+
+COMPOSITION_AXES = ("suites", "skip_tests", "only_tests")
+
+
+def disc_axes(record):
+    """The three composition axes of a request record, sorted.
+
+    An ABSENT key here means the dispatcher applied nothing on that axis, not
+    "not recorded" -- and that distinction is usually the other way round on
+    this project. `env` has to separate them because an old result predates
+    the field and simply did not answer the question. This record is different
+    in kind: dispatcher.sh builds the disc FROM these three keys and then
+    moves the same file into the result directory, so it is the INPUT rather
+    than a report of one. `.get(k) or []` is therefore exact, not a guess.
+    """
+    return {k: sorted(record.get(k) or []) for k in COMPOSITION_AXES}
+
+
+def read_request(path):
+    """A request record, from a result directory, a request.json or a .req."""
+    cand = (os.path.join(path, "request.json")
+            if os.path.isdir(path) else path)
+    if not os.path.exists(cand):
+        die("--disc-from %s: no request record there (looked for %s). Pass a "
+            "result directory, its request.json, or a queued .req." % (path, cand))
+    try:
+        with open(cand) as fh:
+            return json.load(fh), cand
+    except Exception as e:
+        die("--disc-from %s: %s is not readable JSON: %s" % (path, cand, e))
+
+
+def _axis_str(items, width=60):
+    if not items:
+        return "(none)"
+    text = ", ".join(items)
+    return "%d: %s" % (len(items),
+                       text if len(text) <= width else text[:width - 3] + "...")
+
+
+def registered_composition(args):
+    """The `disc` block --register should write, or None if none was given."""
+    explicit = [args.disc_suites, args.disc_skip_tests, args.disc_only_tests]
+    if args.disc_from and any(explicit):
+        die("--disc-from and --disc-suites/--disc-skip-tests/--disc-only-tests "
+            "were both given, so there are two answers to one question. Use "
+            "--disc-from and let the arm's own request record speak, or spell "
+            "the composition out, not both.")
+    if args.disc_from:
+        rec, where = read_request(args.disc_from)
+        out = disc_axes(rec)
+        out["source"] = where
+        if rec.get("id"):
+            out["source_request"] = rec["id"]
+        # The dispatcher's own disc_id, when the source is a finished arm.
+        # RECORDED FOR READING, never compared: it conflates the axes above
+        # and truncates. Its value is that it is the string every result,
+        # scores TSV and ab_compare header already prints.
+        meta = os.path.join(args.disc_from, "result.json")
+        if os.path.isdir(args.disc_from) and os.path.exists(meta):
+            try:
+                with open(meta) as fh:
+                    got = json.load(fh).get("disc_id")
+                if got:
+                    out["disc_id_seen"] = got
+            except Exception:
+                pass
+        return out
+    if any(explicit):
+        return {
+            "suites": sorted(_csv(args.disc_suites)),
+            "skip_tests": sorted(_csv(args.disc_skip_tests)),
+            "only_tests": sorted(_csv(args.disc_only_tests)),
+            "source": "stated on the --register command line",
+        }
+    return None
+
+
+def _csv(raw):
+    return [x.strip() for x in (raw or "").split(",") if x.strip()]
+
+
+def composition_notes(exp, a, b):
+    """Refuse an absolute, or downgrade a delta, when the disc differs.
+
+    Symmetrical with the `a_ref`/`b_ref` refusal above: a prediction
+    registered for another composition is not a prediction about this
+    measurement -- but only its ABSOLUTES are void. `expect` compares arm B's
+    pixel count against a number, and that number is a figure about one disc.
+    `must_not_move`, `must_not_regress` and `expect_counts` are differences
+    between two arms that check (2) has already proved share a disc_id, so
+    they survive a composition the registrar did not expect, and refusing them
+    would void an arm for no gain.
+    """
+    want = exp.get("disc")
+    if not isinstance(want, dict):
+        return []
+    notes = []
+    for arm in (a, b):
+        if not arm.request:
+            notes.append(
+                "COMPOSITION UNCHECKED for arm %s: this prediction records a "
+                "disc composition, but %s has no request.json to compare it "
+                "with. That is an INABILITY TO CHECK and not a match -- if "
+                "the arm had run a different disc, this line is what you "
+                "would see." % (arm.name.upper(), arm.label))
+            continue
+        got = disc_axes(arm.request)
+        diff = [k for k in COMPOSITION_AXES
+                if sorted(want.get(k) or []) != got[k]]
+        if not diff:
+            continue
+        body = ["arm %s ran a different disc COMPOSITION from the one this "
+                "prediction was registered on:" % arm.name.upper()]
+        for k in diff:
+            body.append("    %-11s registered  %s" % (k, _axis_str(want.get(k) or [])))
+            body.append("    %-11s arm %s ran   %s" % ("", arm.name.upper(),
+                                                       _axis_str(got[k])))
+        if want.get("source"):
+            body.append("    registered composition came from %s" % want["source"])
+        text = "\n".join(body)
+        if exp.get("expect"):
+            die("%s\n"
+                "An `expect` leg is an ABSOLUTE, and an absolute is a figure "
+                "about one disc. Measured on #89: Color_zeta_overlap/Swap_ZB "
+                "reads 0 with fewer than two captures in preceding suites and "
+                "141,125 with two or more, at one ref on one device. Either "
+                "re-register against this composition, or restate the leg as "
+                "a delta (--must-not-regress / --expect-count), which is "
+                "comparable across compositions because both arms share a "
+                "disc_id." % text)
+        notes.append(
+            "COMPOSITION DIFFERS: %s\n"
+            "  No absolute is registered here, so every leg below is a "
+            "DIFFERENCE between two arms that check (2) proved share a "
+            "disc_id -- those survive this. What does not survive is any "
+            "ABSOLUTE in the prose `prediction` field, which was written "
+            "about the disc named above." % text)
+    return notes
+
+
 def resolve_ref(ref):
     """A registered ref must be a concrete sha, for the same reason a queued
     --ref must be.
@@ -1077,6 +1266,23 @@ def register(args):
             die("--expect-count class must be better|worse|same|noise", 2)
         exp["expect_counts"][k.strip()] = int(v.strip())
     exp.setdefault("must_not_regress", [])
+    # THE COMPOSITION THE PREDICTION IS ABOUT (#95). Optional, and it prints a
+    # note rather than refusing when absent: seven lanes are running right now
+    # with predictions they may have to RE-REGISTER after a rebase, and a
+    # registration that suddenly refuses a command line that worked an hour
+    # ago would strand them. A nudge in front of the person who can act on it
+    # is what this can honestly be.
+    disc = registered_composition(args)
+    if disc is not None:
+        exp["disc"] = disc
+    else:
+        print("note: no disc composition recorded. Pass --disc-from "
+              "<result dir|request.json> -- or --disc-suites/--disc-only-tests"
+              "/--disc-skip-tests -- and the judge will refuse an absolute "
+              "measured on a different disc. 13 of the 107 predictions on disk "
+              "cannot be audited at all for want of this field; #89 measured "
+              "one capture's absolute moving 141,125 px on a composition "
+              "change alone.", file=sys.stderr)
     if not (exp["must_not_move"] or exp["must_not_regress"]
             or exp["expect"] or exp["expect_counts"]):
         die("a registration with nothing falsifiable in it is not a "
@@ -1449,6 +1655,16 @@ def main():
     p.add_argument("--must-not-move", action="append", metavar="GLOB")
     p.add_argument("--expect-value", action="append", metavar="CAPTURE=PX")
     p.add_argument("--expect-count", action="append", metavar="CLASS=N")
+    p.add_argument("--disc-from", metavar="PATH",
+                   help="with --register: take the disc composition (suites, "
+                        "skip_tests, only_tests) from an existing arm's "
+                        "request record -- a result directory, its "
+                        "request.json, or a queued .req")
+    p.add_argument("--disc-suites", metavar="CSV",
+                   help="with --register: the composition, spelled out, when "
+                        "no arm has run yet")
+    p.add_argument("--disc-skip-tests", metavar="CSV")
+    p.add_argument("--disc-only-tests", metavar="CSV")
     p.add_argument("--check-truncation", metavar="RESULTDIR",
                    help="exit 1 if that result's logcat shows the Android "
                         "window minimized with no later restore. Works on a "
