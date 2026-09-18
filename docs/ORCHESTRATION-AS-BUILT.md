@@ -322,9 +322,19 @@ release looks like a day with no work.
 The owner's standing instruction: *"CI is for full build releases only and is
 to be run on demand. Otherwise, never run it."*
 
-- **Every `push:` trigger in `.github/workflows/` is `branches: [master]`.**
-  The campaign branch is not master and has **no PR**, so day-to-day pushes
-  cost nothing.
+- **Almost every `push:` trigger is `branches: [master]`** — but **not all of
+  them, and this document said otherwise until `lane.fold` corrected it.**
+  `build-xemu-win64-toolchain.yml` has a bare `push:` with **no branch filter
+  at all**; it is scoped by `paths:` instead, to itself and
+  `ubuntu-win64-cross/**`. So it fires on **any** branch when those paths
+  change. The 78-commit fold touched neither path and it stayed silent.
+  **A fold must therefore check paths, not just branch filters.** The
+  campaign branch is not master and has no open PR, so day-to-day pushes
+  outside those paths cost nothing.
+
+  Recorded as a correction rather than quietly fixed, because the original
+  claim is exactly the kind of near-true generalisation this harness keeps
+  producing: I checked the common case, found it uniform, and wrote "every".
 - **All four release workflows are `workflow_dispatch:`** —
   `release-on-tag.yml`, `release-on-dispatch.yml`, `prerelease.yml`, and
   `release.yml` (`workflow_call`). **Manual only.** Nothing in this harness
@@ -340,6 +350,12 @@ from four commits whose subjects lacked `[skip ci]`. The orchestrator then
 compounded it by treating those four commits as a **fold blocker for hours** —
 wrong, since a fold never pushes to that branch. **PR #45 must stay a draft and
 unmerged.**
+
+The sharper version of why those four must not be amended: **PR #45's head is
+lane.remote's branch**, so a force-push there fires Android + Desktop + NV2A
+index, about 13 minutes. The campaign branch's only PRs (#1, #2) are **merged**
+and cannot re-trigger. After the fold the four bare subjects sit mid-branch on
+the campaign branch and are never HEAD, so they are inert where they now live.
 
 ## 10. Working against a device — the rules that bite
 

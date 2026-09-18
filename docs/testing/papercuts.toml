@@ -279,3 +279,19 @@ cost = "Not paid, because the verdict was still FAIL and the numbers were read. 
 bit = 1
 owner = "toolsmith"
 fix = "Match the annotation at CAPTURE level, not suite level -- the harness issues already name their captures. Where only a suite-level match exists, say so in those words ('an open issue owns this suite, but not this capture') rather than implying the capture is covered. An annotation that is right about the suite and wrong about the capture is worse than none, because it reads as specific."
+
+[[cut]]
+id = "the-fold-worktree-is-a-shared-resource-with-no-lock"
+what = "One scratch worktree at hakux-work/fold is used by the orchestrator AND by lane.fold. There is no claim file and no lock, so a `git reset --hard` in it is silent and unrecoverable for anyone who has not yet committed."
+cost = "Nearly cost a 78-commit fold. The orchestrator reset that worktree SIXTEEN SECONDS after lane.fold's last command in it and began working there; the lane survived only because its commits already existed and it recovered the tip from the reflog, pushing the sha directly rather than reclaiming the working copy. Separately, the lane's push then rejected the orchestrator's, which had to be rebased."
+bit = 2
+owner = "toolsmith"
+fix = "Per-lane fold worktrees, or a claim file the way the device dispatcher already does it (atomic mv, one holder). Note the first attempt at fixing this made it WORSE in a second way: a separate hakux-work/board worktree for the orchestrator immediately tripped preflight's own board-files gate, which exempts the fold path by name via HAKUX_FOLD_DIR -- so two worktrees means two paths that may edit the tracker, which is the concurrency the gate exists to prevent. DECIDE THE SPLIT DELIBERATELY: either one worktree with a lock, or two with the gate taught about both. It is currently ambiguous and the override is being used to paper over it."
+
+[[cut]]
+id = "the-fixed-unlanded-check-cannot-trip-on-a-fold"
+what = "check_coverage.py's `fixed-unlanded` rule requires every `fixed_by` sha to be a real commit that is NOT an ancestor of HEAD -- so it trips 'the instant the work is merged'. But a fold is a CHERRY-PICK, so the cited lane sha is absent from the campaign tip BY CONSTRUCTION. The check is silent on precisely the event it exists to announce."
+cost = "[issue.74] and [issue.82] both passed the gate at the folded tip while being wrong about the world -- #82 still said lane.remote's commits would not fold until its HIGH was fixed, after they had folded and it was. Found by lane.fold, which expected the gate to fail and reported that its NOT failing was worse."
+bit = 1
+owner = "toolsmith"
+fix = "Ask about patches, not shas: `git cherry`, a patch-id comparison, or a search for the sha in an `-x` trailer. check_cited_commits.py already classifies by patch-id and knows this -- it is just not wired into preflight, which is its own logged cut. This is the ancestry-asks-about-shas lesson appearing inside a gate written to enforce that lesson."
