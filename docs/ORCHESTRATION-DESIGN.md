@@ -6,6 +6,14 @@ itself with shared worktrees."* Read
 [`ORCHESTRATION-AS-BUILT.md`](ORCHESTRATION-AS-BUILT.md) first for what
 exists; this file says what to build instead, and why.
 
+**Revised the same day after the owner's feedback**, which settled five
+things: Actions is confirmed free on this public repository; `master` needed
+a defined role (decided in §8.1); GitHub is canonical (§5); token cost is not
+a concern on this account, only the plan's five-hour and weekly windows
+(§9.1); and the device holds were a travel week, not a standing constraint.
+The remaining open questions are answered in §14 as drafted decisions, each
+marked with who still has to say yes.
+
 Everything below was checked against the tree at `0c32119066`, the live
 `territory.toml` (wave 87), PR #45's thread, the three systemd timers, the
 Stop hooks, the dispatcher, and the Claude Code Remote session and Routine
@@ -51,14 +59,14 @@ and every cherry-pick can silently revert it.
    edits.** One bare mirror; one throwaway worktree per lane; one private,
    sha-keyed build worktree per dispatcher build. The shared tree at
    `/home/justin/hakuX` stops being shared.
-4. **Merge, don't cherry-pick.** Lanes branch from `integration`, open a PR,
-   and are merged with a merge commit after audit and CI. Shas stop moving,
-   so prediction bindings, cited commits and ancestry checks stop breaking.
-5. **CI is not finite.** The repository is public. GitHub Actions on standard
-   hosted runners is free for public repositories. The `[skip ci]` regime, the
-   "never open a PR" rule, and the six-run "CI burn" were built on a premise
-   that a one-minute check refutes. Verify it on Settings → Billing, then let
-   CI gate every lane PR.
+4. **`master` is the trunk, and folds are merges, not cherry-picks.** Lanes
+   branch from `master`, open a PR, and are merged with a merge commit after
+   audit and CI. Shas stop moving, so prediction bindings, cited commits and
+   ancestry checks stop breaking. Nightlies and releases are tags on master.
+5. **CI is not finite.** The repository is public and the owner has confirmed
+   Actions has no minute limit here. The `[skip ci]` regime, the "never open
+   a PR" rule and the six-run "CI burn" rested on the opposite belief. CI
+   gates every lane PR and every fold from now on.
 
 The rest of this file is the detail, in the order the owner's questions were
 asked.
@@ -75,7 +83,7 @@ asked.
 | Remote lane stalls | The cloud session cannot message the local one; it posts to PR #45 and waits | `handoff-2026-09-10.md`; `watch_remote_lane.sh`; the disabled hourly Routine |
 | Standing lanes revert to nothing | A "lane" is a session; sessions end; only three timers exist | AS-BUILT §8 |
 | Dispatcher requeues for hours | It builds out of `/home/justin/hakuX` and refuses a dirty tree | 251 requeues in a day; 129 from a checker's stamp file (AGENTS.md) |
-| Agent worktrees 4 to 764 commits behind | Claude Code's worktree base defaults to `origin/HEAD` = `master`, which has not moved since 09-10 | 49 worktrees measured; `worktrees.md` docs: `worktree.baseRef` default `"fresh"` |
+| Agent worktrees 4 to 764 commits behind | Claude Code's worktree base defaults to `origin/HEAD` = `master`, which has not moved since 09-10 because the trunk lives on another branch | 49 worktrees measured; `worktrees.md` docs: `worktree.baseRef` default `"fresh"`. Fixed by §8.1's branch model, not by a setting |
 | Territory table silently reverted | Coordination state is a tracked file; a cherry-pick restores an older copy | wave counter added after the fifth-wave revert |
 | Lane reads a stale board | `git log` in a worktree walks its own branch; checkers had to grow `--all` | `check_territory.py` docstring |
 | Predictions go inert | `b_ref` un-ancestored by rebase; the fold rewrites shas | four occurrences (AS-BUILT §4) |
@@ -154,14 +162,14 @@ killed at any moment and the next tick picks up where the board says it is.
 | **board job** | local, timer every 20 min | one run, `--max-turns` bounded | dispatch, grants, labels, the derived TOML views, `fleet` state files, queueing ready arms | author code; edit `hw/`; hold a device |
 | **lane** | local worktree or cloud session, one per issue | until its PR is `ready` or it reports `blocked` | its branch, its files (declared in the PR body), its predictions, its device requests | edit the board; push to any branch but its own; run git in the shared tree |
 | **auditor (pass 1 / pass 2)** | cloud, one fresh session per PR, claimed by label | one run | `docs/audits/<pr>-pass{1,2}.{md,json}` posted as a PR review | fix what it finds; claim files |
-| **fold job** | local, triggered by label `fold-ready` | one run | merging a lane PR into `integration` with `--no-ff`, regenerating the index, running preflight, pushing, re-pointing that PR's predictions at the merge sha | resolve a code conflict (returns it to the lane); edit the board |
+| **fold job** | local, triggered by label `fold-ready` | one run | merging a lane PR into `master` with `--no-ff`, regenerating the index, running preflight, pushing, re-pointing that PR's predictions at the merge sha | resolve a code conflict (returns it to the lane); edit the board |
 | **dispatcher** | local daemon, one worker per device | forever, self-supervising (exists today) | the device queue, builds in private worktrees, results | read `/home/justin/hakuX` |
 | **arms job** | local, timer every 30 min | one run | queueing A/B arms for merged candidates; judging results; posting verdicts to the PR/issue | change a prediction |
 | **triage job** | cloud Routine hourly, fresh session | one run | reading new issue/PR comments since its watermark; turning them into labels, board requests or `decision-needed` issues | close issues; edit the tracker |
-| **nightly job** | local timer 00:30 | one run | prerelease build from `integration` tip (exists today) | run tests; touch a device |
+| **nightly job** | local timer 00:30 | one run | prerelease build from `master` tip (exists today) | run tests; touch a device |
 | **release-check job** | local timer, after the nightly | one run | evaluating the release criteria (§11) and opening the release-candidate PR when met | publish a release itself |
 | **dx job** | local timer daily | one run | harvesting paper cuts and dispatching one DX lane | touch `hw/`, `target/`, `accel/` |
-| **owner** | wherever | — | `decision-needed`, hardware, keystore, merging `integration` → `master`, releases | be a step in any automated path |
+| **owner** | wherever | — | `decision-needed`, hardware, the keystore and its backup, the `release-approved` label | be a step in any automated path |
 
 Two things change from today. There is **no orchestrator role**: its
 judgement calls become `decision-needed` issues and its mechanical work
@@ -197,7 +205,7 @@ a fixed body template:
 
 ```
 Lane: swizzle87          Issue: #87 #85
-Base: integration @ <sha>
+Base: master @ <sha>
 Files: hw/xbox/nv2a/pgraph/gl/surface.c, hw/xbox/nv2a/pgraph/vk/texture.c
 Prediction: <sha256 of the registered file>   (or "none: analysis-only")
 Needs device: yes|no      Needs NDK: yes|no
@@ -214,7 +222,7 @@ rich fields (`blocked_on`, `blocker_falsifier`, `blocker_tested`, `fixed_by`)
 because `nv2a_index.py` consumes them, but the board job is the only writer
 and it writes from issue bodies and labels. `territory.toml` is regenerated
 from the open PRs. Both are committed by the board job to an orphan branch
-`board`, not to `integration`, so no lane ever carries a copy and no fold can
+`board`, not to `master`, so no lane ever carries a copy and no fold can
 revert them. A lane that wants the board runs
 `git fetch origin board && git show origin/board:territory.toml`.
 
@@ -256,8 +264,8 @@ tick retries.
 
 | lane needs | run it | how it is started |
 |---|---|---|
-| adb, a device, the Android NDK, or the dispatcher's results on disk | **local**, in `~/hakux-work/wt/<lane>` | `lane.sh <name> <issue>`: creates the worktree from `origin/integration`, writes the brief, runs `claude -p --worktree` in the background under `systemd-run --user --unit hakux-lane-<name>` so it outlives the board job and is killable by name |
-| only source, goldens and lavapipe (analysis, audits, GL renderer work, docs, x87, TCG reading) | **cloud** | the board job labels the issue `cloud`; a cloud Routine in fresh-session mode runs every 30 minutes, claims one `cloud` issue or `needs-audit-*` PR by label, and works it from `source_revision: integration`. If the host session is connected to Remote Control, the board job can call `create_session` directly instead of waiting for the Routine |
+| adb, a device, the Android NDK, or the dispatcher's results on disk | **local**, in `~/hakux-work/wt/<lane>` | `lane.sh <name> <issue>`: creates the worktree from `origin/master`, writes the brief, runs `claude -p --worktree` in the background under `systemd-run --user --unit hakux-lane-<name>` so it outlives the board job and is killable by name |
+| only source, goldens and lavapipe (analysis, audits, GL renderer work, docs, x87, TCG reading) | **cloud** | the board job labels the issue `cloud`; a cloud Routine in fresh-session mode runs every 30 minutes, claims one `cloud` issue or `needs-audit-*` PR by label, and works it from `source_revision: master`. If the host session is connected to Remote Control, the board job can call `create_session` directly instead of waiting for the Routine |
 | a decision only the owner can make | nowhere | `decision-needed` issue |
 
 Cloud sessions get the same repo, the same `CLAUDE.md`, and a SessionStart
@@ -275,7 +283,7 @@ A brief is a file, not a paragraph in a chat. `briefs/<lane>.md` on the
 ```
 # lane.<name>
 issue: #NN
-base: integration @ <sha>      # rebase target; do not rebase after registering
+base: master @ <sha>      # rebase target; do not rebase after registering
 files: ...                     # exactly what the PR body will say
 goal: one sentence, and the measurement that decides it
 falsifier: what result would mean the mechanism is wrong
@@ -334,10 +342,11 @@ reader: it needs a job reading it hourly, not a person.
 
 ### 7.2 Rules that replace the current ones
 
-- **Base every worktree on `integration`, fetched first.** Setting
-  `worktree.baseRef` to `head` is a backstop, not the fix: HEAD in the mirror
-  is whatever was last checked out. `lane.sh` does it explicitly:
-  `git -C mirror.git fetch origin integration && git -C mirror.git worktree add ../wt/<lane> -b lane/<lane> FETCH_HEAD`.
+- **Base every worktree on `master`, fetched first.** With master as the
+  trunk (§8.1), Claude Code's default base of `origin/HEAD` is finally the
+  right answer, so interactive `--worktree` sessions need no setting.
+  `lane.sh` still does it explicitly so a stale mirror cannot leak in:
+  `git -C mirror.git fetch origin master && git -C mirror.git worktree add ../wt/<lane> -b lane/<lane> FETCH_HEAD`.
   The "49 stale worktrees" class ends here.
 - **The dispatcher builds in `build/<sha>`**, created with
   `git -C mirror.git worktree add --detach ../build/<sha> <sha>` after a fetch,
@@ -357,8 +366,8 @@ reader: it needs a job reading it hourly, not a person.
   fold regenerates again. (Longer term: stop committing it and generate it in
   CI as an artifact.)
 - **Cloud sessions are already isolated.** Their only rule is the base:
-  `source_revision: integration`, and a SessionStart hook that fails loudly if
-  `git rev-list --count HEAD..origin/integration` is non-zero.
+  `source_revision: master`, and a SessionStart hook that fails loudly if
+  `git rev-list --count HEAD..origin/master` is non-zero.
 - **Worktrees created by `claude -p` are never auto-cleaned** (documented).
   `lane.sh` removes its worktree when the PR merges or closes, on the board
   job's tick.
@@ -374,17 +383,55 @@ automated reads it, "the shared tree went dirty" cannot stall anything.
 
 ## 8. Folding and CI
 
-### 8.1 Merge, not cherry-pick
+### 8.1 `master` is the trunk; merge, don't cherry-pick
 
-Branch model:
+**Decision.** The owner asked for a strong lean on what `master` should
+represent, and this is it: **`master` is the integration branch.** One
+long-lived branch. Every lane PR targets it, the fold job merges into it,
+and nightlies and releases are tags on it.
+
+Why this and not "master is the last release, `master` is the trunk":
+
+- Every workflow in `.github/workflows` already fires on `push: master` and
+  `pull_request:`. With master as the trunk, CI runs on every fold and every
+  lane PR with no workflow edits.
+- Claude Code creates worktrees from `origin/HEAD` by default. With master
+  as the trunk that default is *correct*, and the stale-worktree class is
+  fixed by the branch model rather than by a setting every session must
+  carry.
+- One branch name to keep right. The campaign branch's name appears in
+  `preflight.sh`, `check_coverage.py`, the Routine prompt, `AGENTS.md`, the
+  dispatcher's tips list and a dozen briefs. A two-branch model doubles the
+  places that can drift.
+- The users of this fork install APKs from the Releases page; nobody clones
+  master to run it. "Master is unstable between releases" costs nothing
+  here, and a nightly-quality tree behind a nightly tag is what master means
+  on most trunk-based projects.
+- Hotfixes need no standing second branch. Fix on master, tag. If master
+  ever holds work that must not ship, branch `release/<tag>` from the last
+  release tag at that moment, not in advance.
+
+What `master` guarantees, stated so the release-check can assert it: the tip
+builds (CI green), preflight passed at the last fold, and every commit
+arrived through a lane PR or a job. What it does not guarantee: that it is
+better than the last release. That is what a release tag asserts, only after
+§11's gates.
 
 ```
-master        ← releases only; owner merges integration → master at a release
-integration   ← the campaign branch, renamed for what it is; fold job merges lane PRs here
-lane/<name>   ← one per lane, from integration, deleted on merge
-board         ← orphan; derived TOML views, briefs, fleet state
-arm/*, nightly-*, v*  ← tags, never branches
+master           ← the trunk. Lane PRs merge here with --no-ff. CI on every push.
+lane/<name>      ← one per lane, from master, deleted on merge
+board            ← orphan; derived TOML views, briefs, fleet state
+nightly-*, v*    ← tags on master. A release is a tag plus a GitHub release.
+arm/*            ← tags naming the refs live predictions bind to (exists today)
 ```
+
+**Migration, one afternoon.** `master` is an ancestor of the campaign
+branch, so `git push origin claude/es-de-launcher-disc-error-ojnl14:master`
+is a fast-forward. It fires the three CI workflows once, which is free and is
+also the first honest CI run the campaign has had. Then every script that
+names the campaign branch is pointed at master, PR #45 (which already targets
+master) becomes an ordinary lane PR, and the campaign branch is deleted once
+nothing references it.
 
 The fold job does `git merge --no-ff lane/<name>` after audit-2 is clean and
 CI is green on the PR head. Commits keep their shas, so:
@@ -394,39 +441,39 @@ CI is green on the PR head. Commits keep their shas, so:
   worth writing;
 - `check_cited_commits.py` can go back to comparing shas;
 - a lane never rebases after registering, because it never needs to: a
-  conflict is resolved by merging `integration` into the lane branch, which
-  keeps every existing commit intact.
+  conflict is resolved by merging `master` into the lane branch, which keeps
+  every existing commit intact.
 
 A conflict in code the fold job does not understand goes back to the lane as
 a `needs-rebase` label and a comment. The fold job resolves only the derived
 index, by regeneration.
 
-### 8.2 CI is free here, so use it
+### 8.2 CI is free here, confirmed; use it
 
-The repository is public. Standard GitHub-hosted runners are free for public
-repositories with no minute cap. The as-built harness treats CI as "an
-exceptionally finite resource" and has built a `[skip ci]` gate, a
-"never open a PR on the campaign branch" rule, and a fold-blocking incident
-around it. **Verify on GitHub → Settings → Billing → Actions**: for a public
-repository the included minutes line reads as unlimited for standard runners.
-If that is what it says, then:
+The repository is public and the owner has confirmed there is no Actions
+minute limit on it. So:
 
 - every lane PR runs `android.yml`, `desktop.yml` and `nv2a-index.yml`
-  (about 13 minutes of wall clock, in parallel, zero cost), and the fold job
-  requires all three green;
-- `preflight.sh` becomes the fast local pre-push check (psh_differ,
-  aci_vmstate, board files) and drops the `[skip ci]` gate;
-- the desktop build that "does not work on this host" is no longer a gap,
-  because CI builds it on every PR and the Khronos validation layer can run
-  there;
-- `release-published.yml` should be deleted or gated on
-  `github.repository_owner == 'xemu-project'`: every observed run has ended
-  in `startup_failure` on a nightly, because it calls upstream workflows that
-  need secrets this fork does not have.
+  (about 13 minutes of wall clock, in parallel), and the fold job requires
+  all three green on the PR head;
+- every fold runs them again on master, because a merge is a new tree;
+- `preflight.sh` drops the `[skip ci]` gate and its near-miss check, and
+  keeps psh_differ, aci_vmstate and the board-files check as the fast local
+  pre-push pass. `[skip ci]` leaves the commit subjects; the existing
+  markers are inert history;
+- the desktop build that "does not work on this host" is no longer a gap:
+  CI builds it on every PR, and the Khronos validation layer can run there
+  as a job, which is where the eight-defects-in-an-afternoon instrument
+  belongs;
+- `release-published.yml` is deleted. It calls upstream xemu workflows that
+  need secrets this fork lacks, and every observed run ended in
+  `startup_failure`;
+- the `pull_request` runs on PR #45 stop being an incident and become the
+  gate they always were.
 
-If billing says otherwise, keep the current discipline and say so in the
-doc. Either way the answer is one screenshot away and should not stay a
-belief.
+One thing CI does not replace: a device. CI proves the tree builds and the
+shader translator agrees with its baselines. Only the dispatcher proves
+pixels.
 
 ---
 
@@ -440,12 +487,12 @@ fresh-session mode. Nothing recurring is a session cron.
 |---|---|---|---|---|
 | dispatcher | local daemon | `hakux-dispatcher.service`, `Restart=always` | `dispatcher.sh serve` | queue → results |
 | board | local | `hakux-board.timer`, every 20 min, `RandomizedDelaySec=60` | `claude -p` with the board brief, `--max-turns 40`, in `~/hakux-work/board` | labels, PR body edits, briefs, `board` branch, `fleet/*.json`, cloud session creation |
-| fold | local | `hakux-fold.timer`, every 30 min | `fold.sh`: for each `fold-ready` PR, merge, regenerate index, preflight, push, label `folded`, re-point predictions | `integration` |
+| fold | local | `hakux-fold.timer`, every 30 min | `fold.sh`: for each `fold-ready` PR, merge, regenerate index, preflight, push, label `folded`, re-point predictions | `master` |
 | arms | local | `hakux-arms.timer`, every 30 min | `arms.sh`: queue arms for `needs-arm` PRs (batched onto one disc when suites allow); judge finished pairs with `ab_compare`; comment verdicts; label `verified` or `regressed` | dispatch queue, PR/issue comments |
 | triage | cloud Routine | hourly `:17`, fresh session | reads comments since watermark (kept in an issue comment on a pinned `harness` issue, since the cloud has no disk that persists); labels `board-request`, opens `decision-needed`, flags results not in the tracker | labels, comments |
 | audit-1 / audit-2 | cloud Routine | every 30 min, fresh session; claims one `needs-audit-*` PR | one audit per run, `--max-turns` bounded | PR review + `docs/audits/` files on the lane branch |
 | cloud lanes | cloud Routine | every 30 min, fresh session; claims one `cloud`-labelled issue | one lane per run; re-runs resume from the PR and `NOTES.md` | lane branch, PR, comments |
-| nightly | local | 00:30 (exists) | `nightly_build.sh` from a worktree of `origin/integration`, not from the owner's checkout | prerelease |
+| nightly | local | 00:30 (exists) | `nightly_build.sh` from a worktree of `origin/master`, not from the owner's checkout | prerelease |
 | release-check | local | 01:30, after the nightly | §11 criteria; opens the RC PR when met | RC PR, `decision-needed` |
 | dx | local | 09:23 (exists) | harvest, then dispatch one DX lane itself (it no longer needs an orchestrator to do so) | papercuts, a lane |
 | device-health | local | every 10 min | battery, charging type, screen, `adb devices`; places/removes `hold/<device>` and comments on the `harness` issue when state changes | hold files |
@@ -455,6 +502,39 @@ job and arms job also run when a PR label changes, via
 `subscribe_pr_activity` from the board job's session, or via a `workflow_run`
 webhook if a small relay is ever wanted. Polling every 30 minutes is the
 floor, not the design.
+
+### 9.1 Budgeting against the plan's windows, not dollars
+
+The owner's constraint is a Claude Max account: no per-token cost, but a
+five-hour window and a weekly window shared by every session on the account,
+local and cloud alike. That changes what "cheap" means. A job that spends a
+model turn on something a script could do is spending the fleet's window.
+
+- **Script first, model second.** Fold, arms, nightly, release-check,
+  device-health and backup are pure scripts; they never start a model
+  session. The board job runs `fleet.py` and the label logic as a script and
+  starts `claude -p` only when the script finds something that needs
+  judgement (a brief to write, a grant to weigh, a comment to route). Most
+  ticks spend nothing.
+- **Concurrency cap.** At most three model sessions run at once by default
+  (two lanes and one audit or triage), set in one place
+  (`~/hakux-work/limits.env`) and read by `lane.sh` and the Routines' prompt.
+  The dispatcher, not the agent count, is the throughput limit anyway (the
+  stale `orchestration.md` measured that correctly).
+- **Back-off on a limit.** `run-claude-job.sh` reads the JSON result; a
+  rate-limit or usage-limit error is exit code 75 and the unit's
+  `RestartSec` grows to the window's reset. No job retries into a closed
+  window. Cloud Routines already surface the same state in their run status.
+- **Reserve.** Lanes and audits do not start in the last fifth of the weekly
+  window; the board job checks the day and the run index and defers. The
+  owner's own interactive sessions come out of the same pool, and an
+  autonomous fleet that exhausts it on Thursday is a fleet that stops on
+  Friday.
+- **Accounting that matters.** `summarise_run.py` records turns, tokens and
+  wall time per run into `logs/<job>/index.tsv`; the board job posts a
+  weekly line on the pinned `harness` issue: runs, turns, issues closed,
+  arms judged. Not dollars: runs per window is the number that predicts
+  whether next week's fleet will be alive.
 
 **Runner skeleton** every local job shares (`docs/testing/jobs/run-claude-job.sh`):
 
@@ -476,6 +556,9 @@ timeout 50m claude -p "$(cat "$brief")" \
     > "$log" 2>&1
 rc=$?
 python3 docs/testing/jobs/summarise_run.py "$log" >> ~/hakux-work/logs/$job/index.tsv
+# A usage-window limit is not a failure to retry into. Exit 75 (EX_TEMPFAIL)
+# and let the unit's RestartSec grow; the next tick after the reset succeeds.
+grep -qiE '"is_error": *true.*(rate.?limit|usage limit)' "$log" && exit 75
 exit $rc
 ```
 
@@ -495,7 +578,7 @@ kept alive; that job belongs to the scheduler above.
 
 | event | hook | why |
 |---|---|---|
-| `SessionStart` (startup, resume, compact) | `session-start.sh`: prints the role and brief from `$HAKUX_ROLE`/`$HAKUX_BRIEF`; prints `git rev-list --count HEAD..origin/integration` and refuses to continue if non-zero in a lane; prints device hold state and the top of `fleet.py` | replaces "read AGENTS.md" with the 40 lines that matter for this session, and survives compaction |
+| `SessionStart` (startup, resume, compact) | `session-start.sh`: prints the role and brief from `$HAKUX_ROLE`/`$HAKUX_BRIEF`; prints `git rev-list --count HEAD..origin/master` and refuses to continue if non-zero in a lane; prints device hold state and the top of `fleet.py` | replaces "read AGENTS.md" with the 40 lines that matter for this session, and survives compaction |
 | `PreToolUse` (Bash) | `guard-bash.py`: denies `pm uninstall`, `adb shell input keyevent`, `gh workflow run`, `git push` to a branch other than `$HAKUX_BRANCH`, `git -C /home/justin/hakuX`, and any edit to `nv2a_issues.toml`/`territory.toml` outside the board job | the four device rules and the board rule move from prose into a refusal with a one-line reason |
 | `Stop` | `stop-emulator.sh` (keep, it is correct) then `goal.sh check` (keep) | safety, and honesty about "fixed" |
 | `PreCompact` | `precompact.sh`: writes the session's current plan and open questions to `NOTES.md` in the worktree and commits it | a compaction no longer loses the brief; a successor can resume from disk |
@@ -527,23 +610,28 @@ on the next tick, within 20 minutes, with no restart choreography.
 ## 11. Release build vs nightly, with no sprint plan
 
 The nightly is a **channel**, not a milestone: every day at 00:30 the tip of
-`integration` that passed preflight becomes `nightly-YYYY-MM-DD`, retained
+`master` that passed preflight becomes `nightly-YYYY-MM-DD`, retained
 for 14 days. Keep it exactly as it is, but build from a worktree of
-`origin/integration` so the release notes cannot say "unpushed".
+`origin/master` so the release notes cannot say "unpushed".
 
 A **release** is a nightly that a job has shown to be strictly better than
 the last release and no worse anywhere, with all of the following true.
-`release-check` evaluates them and opens the release-candidate PR
-(`integration` → `master`) with the evidence attached; the owner merges,
-which is the human gate, and the merge publishes.
+`release-check` evaluates them and, when all are met, opens a
+`release-candidate` issue naming the candidate sha and the proposed tag, with
+the evidence attached (the per-capture table, the soak lines, the audit
+ledger). The owner adds the `release-approved` label. On its next tick the
+job tags master at that sha, builds with the release keystore, publishes the
+GitHub release with generated notes, and closes the issue. The label is the
+human gate, and it is the only human step.
 
 1. **Per-capture regression gate on real silicon.** A full-corpus sweep on
    the candidate, on the same device as the last release's sweep, shows
    `worse == 0` per capture against that baseline, or every worse capture has
    a logged decision naming why it is accepted (a corrected golden reading, a
    label-differs void). Totals do not count; §11 of the as-built doc
-   explains why. Needs one device for ~3 hours. While the fleet is held this
-   gate cannot pass and the release-check says so rather than skipping it.
+   explains why. Needs one device for ~3 hours. While a device is held (a
+   travel week, a repair) this gate cannot pass and the release-check says
+   so rather than skipping it; a hold is never silently waived.
 2. **Improvement floor.** At least one issue moved to `verified` since the
    last release, or at least one capture left the catastrophic bucket
    (>200,000 px) or the severe bucket (>50,000 px). A release with nothing to
@@ -556,13 +644,14 @@ which is the human gate, and the merge publishes.
 4. **Audit closure.** Every PR merged since the last release has a pass-2
    record with zero open HIGH or MEDIUM. Every LOW has a decision line.
 5. **Board hygiene.** Zero `fixed-unlanded`; zero `folded` PRs without an
-   arm verdict; tracker regenerated and CI green on `integration`.
+   arm verdict; tracker regenerated and CI green on `master`.
 6. **Cadence floor.** At least 7 days since the last release, unless a
    `hotfix` label exists on a merged PR, in which case the floor is zero and
    gates 1 and 3 may be run on the affected suites only.
 
 Versioning: `release-check` bumps the patch (`0.4.0-j1` → `0.4.1-j1`) and
-`versionCode` in the RC PR. A minor bump is a `decision-needed`. The
+`versionCode` in a one-line commit on master that the candidate issue names.
+A minor bump is a `decision-needed`. The
 keystore stays on the host, so the release APK is built locally by the same
 script the nightly uses; `RELEASING.md`'s CI-secret path is available if the
 owner wants releases from CI later.
@@ -591,7 +680,7 @@ lands each one:
 | Observability: one page that says what the fleet is doing | `fleet.py` on a terminal in one session | the board job publishes `fleet.py` output and the scoreboard trend as a static page (nightly artifact or a pinned issue comment) |
 | Bounded autonomy: every unattended run has a turn cap and a timeout | none | §9 runner |
 | Decisions routed to a human queue, not to a chat | "told to ask" | `decision-needed` |
-| Cost accounting | none | `summarise_run.py` records tokens and cost per job; the board job posts cost per closed issue weekly |
+| Usage accounting against a shared window | none | §9.1: script-first jobs, a concurrency cap, back-off on a limit, a weekly runs-per-window line |
 | Reproducible oracle | goldens, tests disc and support repo revisions are not pinned anywhere machine-readable | a `oracle.lock` file with the three shas and the disc sha256, read by `request.sh` and recorded in every result |
 | Backups of the irreplaceable | keystore and `hdd.img` are mentioned, not scheduled | a weekly timer copies keystore, `dispatch/results`, `predictions/` and the device HDD images off the WSL disk |
 
@@ -604,138 +693,201 @@ shared tree, because neither failure has a mechanism left to happen through.
 It does not get the emulator to accuracy; that is the lanes' work, and it is
 gated by device time, which no orchestration design manufactures.
 
-**Phase 0, this week, no new agents needed (stops the bleeding):**
+**Phase 0, this week, no device needed (stops the bleeding):**
 
-1. Check Billing → Actions. If free, delete the `[skip ci]` gate from
-   `preflight.sh`, open a PR from `integration` to `master` (draft) so CI runs
-   on every push, and stop treating PR #45's runs as an incident.
+1. Fast-forward `master` to the campaign tip; point every script, the
+   Routine prompt and `AGENTS.md` at master; delete the campaign branch once
+   nothing names it. (§8.1)
 2. `dispatcher.sh`: build in `~/hakux-work/build/<sha>` from the mirror.
-   Delete the dirty-tree refusal and `dirty_wait_log`. This is the single
-   highest-value change in the file.
-3. `lane.sh`: create every worktree from `origin/integration`, explicitly.
-   Set `worktree.baseRef` to `head` as a backstop.
+   Delete the dirty-tree refusal and `dirty_wait_log`. The single
+   highest-value change in the file. (§7.2)
+3. `lane.sh`: worktree from `origin/master` via `FETCH_HEAD`. Leave
+   `worktree.baseRef` at its default, which is now right.
 4. Move `territory.toml`, `nv2a_issues.toml` and briefs to the `board`
    branch; point `check_territory.py` and `check_coverage.py` at
-   `git show origin/board:...`. With one writer and no in-tree copy, the wave
-   counter and its `git log --all` derivation are no longer needed.
-5. Remove `backlog-gate.sh` and `idle-watchdog.sh` from `settings.json`.
-   Install `hakux-board.timer` running the existing `fleet.py` and a
+   `git show origin/board:...`. The wave counter and its `git log --all`
+   derivation are no longer needed.
+5. `settings.json`: drop `backlog-gate.sh` and the idle watchdog; add
+   `session-start.sh`. Install `hakux-board.timer` running `fleet.py` plus a
    `claude -p` board brief. The first version may only dispatch and grant;
    that already removes the two failures measured on 09-18.
-6. Merge, don't cherry-pick, starting with `lane.remote`'s 75 unfolded
-   commits: `git merge --no-ff origin/claude/docs-tooling-agentic-coding-u152m1`
-   into `integration`, resolving the nine conflicts once, instead of asking
-   the lane to re-author them against shas it cannot see.
+6. Merge `origin/claude/docs-tooling-agentic-coding-u152m1` into master with
+   `--no-ff`, resolving the nine conflicts once on the host. Comment on
+   PR #45 that the lane is unblocked and its base is master. (§14, Q12)
+7. `preflight.sh`: remove the `[skip ci]` gate. Delete
+   `release-published.yml`. (§8.2)
+8. Write `oracle.lock` and install the backup timer. (§14, Q6 and Q11)
 
-**Phase 1, next week:** fold job, arms job, triage Routine, lane Stop hook,
-`SessionStart` context injection, `run-claude-job.sh`, delete
-`release-published.yml`, install the device-health timer.
+**Phase 1, next week:** fold job, arms job, triage Routine, the cloud
+lane/auditor Routine, the lane Stop hook, `SessionStart` context injection,
+`run-claude-job.sh` with window-aware back-off (§9.1), the device-health
+timer, the bot account and comment-tag convention (§14, Q8).
 
-**Phase 2:** release-check job and criteria, the static status page, cost
-accounting, `oracle.lock`, the backup timer, `AGENTS.md` split into
-`AGENTS.md` (contract, under 200 lines) and `docs/LESSONS.md`.
+**Phase 2:** release-check job and criteria, the status page and SLO report
+(§14, Q9), the title frame-digest oracle (§14, Q7), the upstream ledger
+(§14, Q10), the `AGENTS.md` split after two weeks of guard logs (§14, Q13),
+and the always-on device host if the utilisation numbers say so (§14, Q5).
 
 **What it does not solve, said plainly:**
 
-- Both handhelds are held. Until at least one returns, gate 1 of §11 cannot
-  run and no arm can be judged. The design lets everything else proceed, and
-  the device-health job will tell you the moment one is back, but the
-  measurement floor is hardware.
+- Device time is the floor. Nothing here manufactures it; Q5 and Q7 are
+  about spending it better. This week's holds were a travel week, not a
+  design constraint, and the hold file is the right tool for the next one.
 - Judgement. The board job dispatches by rule; choosing between two
-  plausible mechanisms, or deciding a regression is acceptable, still goes to
-  the owner via `decision-needed`. The volume of those should be watched: if
-  it is more than a few a day, the rules are too tight or the briefs too
-  vague.
+  plausible mechanisms, or accepting a regression, still goes to the owner
+  via `decision-needed`. Watch the volume: more than a few a day means the
+  rules are too tight or the briefs too vague.
 - The audit loop's blind spot: an auditor from the same model family as the
-  author shares its priors. Pass 2 on a different model or with a different
-  effort setting is cheap insurance and is a one-line change in the auditor's
-  session parameters.
+  author shares its priors. Pass 2 on a different model or effort setting is
+  cheap insurance and a one-line change in the auditor Routine.
+- The account's windows. Every session on the account, local and cloud,
+  draws on the same five-hour and weekly limits. §9.1 budgets them; it
+  cannot enlarge them.
 
 ---
 
-## 14. Questions you are not asking, and should
+## 14. The questions, and the answers now decided
 
-1. **Is CI actually finite?** The repo is public. If Actions is free, a
-   week of harness engineering and one fold-blocking incident were spent on
-   a constraint that does not exist, and the desktop gate that "does not work
-   on this host" has been available on every PR the whole time. One
-   screenshot of Billing settles it.
-2. **What is `master` for?** It has not moved since 09-10 and is 1,275
-   commits behind the campaign branch. Nightlies build from the campaign
-   branch, releases are cut by hand. Name the branch model (§8.1) so "what
-   ships" is a rule and not a memory.
-3. **Which store is canonical: the issue or the TOML?** Today both are
-   edited and a gate reconciles them. Pick GitHub; derive the rest.
-4. **What does a closed issue cost?** The remote lane's session alone has
-   consumed roughly 570k of its 1M token context and on the order of two
-   thousand dollars. Nothing records tokens per issue, per lane, or per
-   verdict. Without that number you cannot tell whether a cloud analysis
-   lane or a lavapipe sweep in free CI is the better use of the next dollar.
-5. **Why is the device host a laptop that gets closed?** Every timer needs
-   `Persistent=true` because WSL2 dies when the lid does. The dispatcher and
-   both handhelds are down whenever you are. A small always-on box (any
-   mini-PC with USB) running the dispatcher, the timers and adb-over-TCP to
-   handhelds on a wall charger removes an entire class of "did it run?"
-   questions and the 4.5 W charging problem at once.
-6. **Is the oracle pinned?** The goldens repo, the tests repo, the support
-   repo and the disc image each have a revision; nothing machine-readable
-   records which. A golden re-shot upstream would silently change every
-   verdict. `oracle.lock`, checked by `request.sh`.
-7. **What is the second oracle?** `nxdk_pgraph_tests` is nearly all static
-   content; the as-built doc says so. Title-based regression (frame digests
-   from the soak titles at fixed points, compared release to release) is the
-   only thing that sees what players see. The `perf/` and soak scripts are
-   most of it already.
-8. **Who is the author of record?** Every commit, comment and review is
-   posted as `jreinach-alt`. An auditor's review and the author's reply are
-   indistinguishable to GitHub, and to you on a phone. A bot account (or the
-   Claude GitHub App) for automated posts, and the lane name as the first
-   line of every comment, makes the thread readable and makes "who said
-   this" answerable a month from now.
-9. **What is the fleet's SLO?** "Keep both devices busy" was the instinct
-   on 09-18 when the owner noticed both idle. Write it down: device
-   utilisation target, maximum age of an unfolded ready PR, maximum age of a
-   `decision-needed` issue. The board job can then report against it, and
-   the release-check can refuse to release when the board is stale.
-10. **Should the nv2a fixes go upstream?** A good fraction of the pgraph
-    work (DOT_STR_3D, BLEND_AND rounding, signed blend, x87 saturation) is
-    not Android-specific. Upstreaming to xemu gets a second set of reviewers
-    for free, reduces the divergence you carry, and is the best possible
-    audit-3. It also forces the branch model of §8.1.
-11. **What is the backup story for the things that cannot be rebuilt?** The
-    release keystore, the 1.18 GB `hdd.img` on each device, `dispatch/results`
-    (every measurement ever made), and `predictions/`. All of it is on one
-    WSL disk today.
-12. **What happens to PR #45's 75 commits right now?** The remote lane is
-    blocked asking for two shas so it can re-author conflicts against a
-    cherry-pick it cannot see. A merge commit on the host resolves all nine
-    conflicts once, keeps every sha, and un-blocks the lane. That is Phase 0
-    item 6, and it is the concrete case for §8.1.
-13. **Is anyone measuring whether agents follow `AGENTS.md`?** Several
-    failures in the as-built doc are re-occurrences of rules already written.
-    A 2,242-line instruction file is a hypothesis about agent behaviour that
-    has never been tested. The `PreToolUse` guard in §10 is the cheap way to
-    find out which rules were actually load-bearing: log every refusal for a
-    week.
+Each carries who decided it. "Owner" means it is settled. "Drafted" means
+this is the recommendation applied to the plan, and it stands unless the
+owner says otherwise; the plan does not wait on it.
+
+**Q1. Is CI finite?** *Owner: no.* Applied in §8.2 and Phase 0 item 7.
+
+**Q2. What is `master` for?** *Owner asked for a lean; §8.1 gives it: master
+is the trunk.* Nightlies and releases are tags on it. Applied throughout.
+
+**Q3. Which store is canonical?** *Owner: GitHub.* Applied in §5; the TOMLs
+are derived views on the `board` branch, written by one job.
+
+**Q4. What does a closed issue cost?** *Owner: not a concern.* The account
+is a Claude Max plan, so the binding constraint is the five-hour and weekly
+windows, shared by every session. §9.1 replaces cost accounting with
+window budgeting.
+
+**Q5. Why is the device host a laptop that gets closed?** *Drafted.* Keep
+WSL2 for now; the timers already survive a closed lid via `Persistent=true`
+and the holds handled a travel week correctly. Measure before moving: the
+device-health job (Phase 1) records, every ten minutes, whether the
+dispatcher and each unheld device were reachable. After two weeks, if the
+dispatcher was unavailable for more than 30% of unheld hours, move the
+dispatcher, the timers and the mirror to a small always-on Linux box (any
+mini-PC with USB; a Raspberry Pi 5 is enough, since the build cache and the
+APK cache do the heavy lifting), with the handhelds on wall chargers and
+adb over TCP, which also fixes the 4.5 W charging problem. The unit files
+are in the repo, so the move is copying them. *Needs the owner's yes only if
+the number says to buy a box.*
+
+**Q6. Is the oracle pinned?** *Drafted: yes, adopt `oracle.lock`.* A
+committed file `docs/testing/oracle.lock`:
+
+```
+goldens   = "<sha of nxdk_pgraph_tests_golden_results>"
+tests     = "<sha of nxdk_pgraph_tests>"
+support   = "<sha of pbkitplusplus>"
+disc      = "<sha256 of nxdk_pgraph_tests_xiso.iso>"
+scorer    = "<rev of ab_compare.py / score_sweep.py>"
+```
+
+`request.sh` copies it into every request; every result records it;
+`ab_compare` refuses to compare two results whose locks differ, the same way
+it refuses mismatched `disc_id`. Changing it is a PR labelled `oracle` that
+the board job treats as a full re-baseline request. *No decision needed;
+this is a correctness fix.*
+
+**Q7. What is the second oracle?** *Drafted: title frame digests, as a
+"look" gate, not pass/fail.* The dispatcher's soak path already captures
+frames (`start_frame_capture`). The arms job hashes 32×32 tiles of the frames
+taken at fixed guest timestamps on the four reference titles, stores the
+digest set per release tag, and diffs the candidate against it. A difference
+is not a failure: it is a row on the `release-candidate` issue with the two
+frames and the diff image attached, for the owner to look at, until enough
+releases have shown which tiles are stable. This is the only instrument that
+sees what a player sees, and the as-built doc is right that the test disc
+does not. Phase 2. *Needs the owner's yes.*
+
+**Q8. Who is the author of record?** *Drafted: a convention now, a bot
+account in Phase 1.* Now: every automated comment, review and issue body
+starts with a tag on its first line, `[lane.<name>]`, `[audit.<pr>]`,
+`[job.board]`, and the triage job routes on it. Phase 1: a machine account
+(`hakux-bot` or similar) with a fine-grained token scoped to this repository
+(issues and pull requests read/write, contents read) used by every local
+job's `gh` via `GH_TOKEN` in the unit files, so the host's automation is
+distinguishable from the owner at a glance. Cloud sessions post through the
+Claude GitHub App as the owner and keep the tag convention. *Needs the
+owner to create the account; the plan does not block on it.*
+
+**Q9. What is the fleet's SLO?** *Drafted numbers, reported weekly by the
+board job on the pinned `harness` issue and asserted by the release-check:*
+
+| measure | target |
+|---|---|
+| device utilisation, unheld hours | ≥ 60% |
+| age of a `ready` lane PR without an audit | ≤ 4 h |
+| age of a `fold-ready` PR unfolded | ≤ 1 h (two fold ticks) |
+| age of a `needs-arm` PR unqueued | ≤ 1 h |
+| a lane blocked on a free file | ≤ 20 min (one board tick) |
+| age of a `decision-needed` issue | ≤ 24 h, owner's |
+| release-check | refuses if any `fold-ready` or `needs-arm` PR is older than its target |
+
+*Needs the owner's yes on the numbers; the mechanism does not change if
+they move.*
+
+**Q10. Should the nv2a fixes go upstream?** *Drafted: yes, opportunistically,
+never as a release gate.* When an issue reaches `verified` and its diff
+touches only files shared with xemu (no `android/`, no `__ANDROID__` guard),
+the board job labels it `upstream-candidate`. A cloud lane prepares the
+patch against xemu's master on a branch of an xemu fork with the
+measurement attached, and records it in `docs/upstream.md` (issue, patch,
+status). The owner opens the upstream PR. Upstream review is the best
+third audit this project can get, and it reduces the diff the fork carries.
+*Needs the owner's yes, and an xemu fork under the owner's account.*
+
+**Q11. What is the backup story?** *Owner: the keystore is theirs.* The
+rest, drafted: `hakux-backup.timer`, weekly, Sunday 03:00, `Persistent=true`,
+copies `dispatch/results`, `predictions/`, `apk/` manifests, the
+`oracle.lock` inputs' hashes, and each device's `hdd.img` (via the existing
+`rollback_release.sh --backup-only`, which verifies sizes) to a second disk
+or a bucket via `rclone`, keeping four weekly sets. It reports on the
+`harness` issue when a set is missing, for the nightly's reason: a silent
+failure looks like nothing to back up. *Needs the owner to name the
+destination.*
+
+**Q12. What happens to PR #45's 75 commits?** *Drafted, and it is Phase 0
+item 6: merge them on the host now.* `git merge --no-ff` of the lane branch
+into master resolves the nine conflicts once, keeps every sha the lane's
+predictions and comments cite, and unblocks a session that is waiting for
+two shas it cannot see. The lane then continues from master like every
+other lane. *No decision needed.*
+
+**Q13. Does anyone measure whether agents follow `AGENTS.md`?** *Drafted:
+measure for two weeks, then cut.* The `PreToolUse` guard (§10) logs every
+refusal with the rule name. After two weeks, `AGENTS.md` is split: the
+operating contract (under 200 lines: roles, the definition of done, the
+branch model, the device rules) stays; a rule survives there only if a guard
+enforces it or the log shows it was violated and cannot be guarded.
+Everything else moves to `docs/LESSONS.md`, indexed by suite and mechanism,
+which lanes read on demand through the brief's `context:` links rather than
+holding in context. *No decision needed.*
 
 ---
 
 ## 15. Immediate actions, in order
 
 ```
-[ ] Billing → Actions: screenshot the public-repo minutes line
+[ ] fast-forward master to the campaign tip; point scripts, Routine, AGENTS.md at master
 [ ] dispatcher.sh: private build worktrees; delete the dirty-tree path
-[ ] lane.sh: worktree from origin/integration; worktree.baseRef = head
+[ ] lane.sh: worktree from origin/master via FETCH_HEAD
 [ ] board branch: move the two TOMLs and briefs; point the checkers at origin/board
 [ ] settings.json: drop backlog-gate.sh and idle-watchdog; add session-start.sh
-[ ] hakux-board.timer: 20 min, runs fleet.py + a claude -p board brief
-[ ] merge origin/claude/docs-tooling-agentic-coding-u152m1 --no-ff into integration
-[ ] rename the campaign branch to integration; update every script that names it
-[ ] delete release-published.yml (or gate it on repository_owner)
+[ ] hakux-board.timer: 20 min, runs fleet.py + a claude -p board brief when needed
+[ ] merge origin/claude/docs-tooling-agentic-coding-u152m1 --no-ff into master; unblock PR #45
+[ ] preflight.sh: remove the [skip ci] gate; delete release-published.yml
 [ ] oracle.lock with the goldens, tests, support and disc revisions
-[ ] a weekly backup timer for keystore, results, predictions, hdd.img
+[ ] hakux-backup.timer (owner names the destination; keystore is the owner's)
+[ ] comment-tag convention in every brief; bot account when the owner creates it
 ```
 
 Each of these is a lane-sized job. None needs a device. All of them can be
-dispatched to cloud sessions today except the two that edit the host's
-timers, which the owner runs once.
+dispatched to cloud sessions today except the ones that edit the host's
+timers and units, which the owner runs once.
