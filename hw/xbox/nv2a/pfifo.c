@@ -129,6 +129,18 @@
  * own instruction -- recover the throughput through the performance stream --
  * has a concrete target here rather than a vague one. See the note below.
  *
+ * THE COST IS PER TITLE, WHICH IS WHY A GLOBAL DEFAULT IS THE WRONG SHAPE FOR
+ * IT. Measured at tip refs on the thor, same statistic, two runs each: Galleon
+ * loses 37.6% of its guest frames, Crimson Skies loses NONE (7,140 frames in
+ * 240 s under all three modes). The difference is whether the guest CPU thread
+ * is that title's critical path. So a user who wants the fix on a title like
+ * Crimson gets it for free, and one playing Galleon pays for it -- and the
+ * mechanism is already reachable per install without a rebuild, because
+ * `fifo_skew_bound_mode()` reads HAKUX_FIFO_SKEW_BOUND and the Android app
+ * copies the `env_vars` pref into the emulator's environment before it starts
+ * (android/app/src/main/cpp/xemu_android.cpp, SyncSetupFiles). A per-title
+ * setting is the natural home for this; a global default is not.
+ *
  * AND IF IT IS EVER TURNED ON, THE VALUE IS 2, NOT 1. This comment used to say
  * `HAKUX_FIFO_SKEW_BOUND=1`, and on the measurements of 2026-09-14 that is the
  * wrong recommendation: mode 1 is DOMINATED by mode 2 on every axis anything
@@ -139,7 +151,7 @@
  *     Galleon guest frames, tip refs       3,990         3,990        tie
  *     holds per run, Stencil disc          4,249         101          mode 2
  *     held(n)/kicks, Texture border disc   1.0000        0.0370       mode 2
- *     Crimson Skies `Tr`                   NEVER RUN     0/13,751     mode 2
+ *     Crimson Skies `Tr`, tip refs         0/13,988      0/14,033     tie
  *     pre-scan overhead                    none          0.017% of
  *                                                        wall clock
  *
@@ -151,18 +163,41 @@
  * cheaper mode 2 can be on draw-dense content -- it cannot be -- and it is an
  * answer rather than a gap.
  *
- * WHAT IS STILL MISSING, named so nobody reads the table above as complete:
- * mode 1's Crimson Skies `Tr`, and a tip-ref repeat of mode 2's. Six soaks
- * were registered and queued for it on 2026-09-14
- * (`issue44-tip-crimson-tr-three-modes.json`, refs e28c402b4d / 7349193309 /
- * 3b7fe5f5fa, probe on) and the fleet went out of service before they ran.
- * That row cannot change WHICH mode ships -- mode 2 either way, since a
- * result there can only add to mode 2's column or move mode 1's from empty to
- * equal. It bears only on WHETHER any bound is worth enabling, and in one
- * direction: if the mode-0 control comes back with `Tr` near zero, the texture
- * race has been closed by something else since 2026-09-13 and the accuracy
- * case shrinks to the vertex half alone -- which is the half measured directly
- * above.
+ * THE CRIMSON ROW IS NOW MEASURED FOR ALL THREE MODES, at tip refs on the
+ * thor, probe on, 240 s, two runs each. It was the last gap and it was
+ * registered before it ran (`issue44-tip-crimson-tr-three-modes.json`, refs
+ * e28c402b4d / 7349193309 / 3b7fe5f5fa). Six of six legs hold.
+ *
+ *     mode     Tr                          rate            Xd   frames
+ *       0   11,986/19,183  12,110/19,339   0.6248 0.6262    0   7,140 7,200
+ *       1        0/13,988       0/13,692   EXACTLY 0        0   7,140 7,140
+ *       2        0/14,033       0/14,580   EXACTLY 0        0   7,140 7,140
+ *
+ * Three things in that table, and the third is the one that changes the shape
+ * of the decision.
+ *
+ *   THE RACE IS LIVE AT THE TIP. 0.6248 and 0.6262 reproduce the 2026-09-13
+ *   baseline of 0.6172/0.6188 to within 1.2%, on a different device and many
+ *   commits later. Nothing else closed it in the meantime -- which was the one
+ *   world in which the accuracy case for a bound would have shrunk.
+ *
+ *   MODE 1'S CELL WAS EMPTY FOR THIS ISSUE'S WHOLE LIFE and is now equal to
+ *   mode 2's, both exactly zero. Registered in advance as the outcome that
+ *   could not change WHICH mode ships, only move mode 1 from empty to equal.
+ *   It did exactly that.
+ *
+ *   AND ON THIS TITLE THE BOUND COSTS NOTHING. 7,140 guest frames in 240 s
+ *   under every mode, against Galleon's 6,390 -> 3,990 in the same statistic.
+ *   So the cost is not a property of the bound: it is a property of whether
+ *   the guest CPU thread is the title's critical path -- Galleon's is,
+ *   Crimson's is not, and the guest is held at 29% of submissions here at a
+ *   mean of 2.95 ms with no frame cost whatsoever. AGENTS.md carries this as
+ *   "a cost is often a property of the workload, not of the mechanism", and
+ *   two titles disagreeing is the finding rather than a problem.
+ *
+ * `Xd` is 0 on all six runs, which is the instrument's own impossible row, and
+ * mode 2's bail rate is 0.0076% with the scan identity exact -- so neither
+ * zero above is a probe that stopped looking.
  *
  * WHERE THE CHEAPER VERSION IS. The guarantee that closes #44 is "no
  * unprocessed DRAW sits in the FIFO while the guest runs", and holding at
