@@ -28,14 +28,14 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 75
-updated_utc = "2026-09-18T18:05:00Z"
+wave = 76
+updated_utc = "2026-09-18T18:20:00Z"
 
 
 
 
 [lane.remote]
-issues = ["34", "39", "51", "60", "62", "66", "71", "72", "82"]
+issues = ["34", "39", "51", "60", "62", "66", "71", "72", "82", "85", "86"]
 files = ["hw/xbox/nv2a/pgraph/gl/*.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
          "target/**", "ui/**", "audio/**", "tests/**"]
 note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
