@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 78
-updated_utc = "2026-09-18T19:30:00Z"
+wave = 79
+updated_utc = "2026-09-18T19:50:00Z"
 
 
 
@@ -71,6 +71,12 @@ note = "#59's WRITE SIDE, unblocked for the first time. The blocker said the wri
 issues = ["84", "88"]
 files = ["hw/xbox/nv2a/pgraph/vk/blit.c", "hw/xbox/nv2a/pgraph/vk/surface.c"]
 note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET IS HELD DELIBERATELY rather than for want of anything else to do. This is the one defect on the board whose evidence is COMPLETE WITHOUT A DEVICE and whose evidence could never be completed WITH one: all 20 ImgBlt_BLENDAND_* captures are XRGB/ZRGB, both 32bpp, so no arm on this or any fleet could exercise the narrow-format path. Audit pass 1 over the blit fix found it, pre-existing, and explicitly recommended it not hold that fold. perform_blit indexes s[x*4+ch] and loads 16 bytes per 4 pixels while the caller admits LE_Y8 (1 byte) and LE_R5G6B5 (2); bytes_per_pixel is threaded into perform_blit_tiled() and never into perform_blit(). The overrun is UNBOUNDED because nv_dma_map()'s end-of-object assert is commented out at nv2a.c:96 and the caller checks only dest_offset < dest_dma_len, and the surplus is outside the download range and the invalidate. TWO REFERENCE IMPLEMENTATIONS EXIST, which is why this is a small job rather than a design one: pgraph_vk_solid_line() at blit.c:637 answers the identical narrow-format question at :689-700 with a warn-once early return under a comment refusing to invent an answer for narrow formats -- and note its reasoning, that these are SOFT GUARDS not asserts because an unset destination is reachable GUEST state rather than an internal invariant, which applies here too. And lane.remote has already landed the GL-side equivalent as b9d845d316. ALSO GRANTED: vk/surface.c, for #88 -- 292,446 px Vulkan loses that GL now gets, with the fix direction already decided and evidenced by the goldens. Ordered SECOND and explicitly so: #84 is memory safety and needs no arm, #88 needs an arm this fleet cannot currently run, so do not let the bigger number pull the ordering."
+
+
+[lane.swizzle87]
+issues = ["87"]
+files = []
+note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY: files = [] deliberately, with instructions not to implement until it reports the mechanism. The condition recorded at wave 76 for starting this has been met -- both audits have landed -- but ONE OF THEM FOUND 3 HIGH, which is an argument for MORE caution about a third implementation rather than less. Analysis adds no unverifiable compiled code, so it respects the original concern instead of declaring it satisfied. THE EVIDENCE IS ALREADY ON DISK and needs no device: at HEAD with no bound, the VULKAN renderer reproduces the exact digest #39's skew-bound run recorded (15845fa9e1e40032), so Vulkan loses the race the same way every time and its capture IS the race-free image -- a race-free reference obtained WITHOUT the bound, by using the renderer that fails deterministically. Against the golden it has an IDENTICAL COLOUR MULTISET over its 10,240 differing pixels: the right pixels in the wrong places, runs of 16/32/64/80 px, no single translation explaining more than 40%. The run-length signature is itself a constraint on tile geometry. ALSO PLACED AT THIS WAVE: hw/xbox/nv2a/pgraph/swizzle.c was in NO row and not in [free] -- the third file found in that state (after fleet.py at wave 48 and dispatcher.sh at wave 63), and it is the file this issue is most likely to need. Placed in [free] rather than granted, because an analysis lane should not hold a file it has not yet shown it needs."
 
 [free]
 #
@@ -202,6 +208,7 @@ note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET I
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
+         "hw/xbox/nv2a/pgraph/swizzle.c",
          "hw/xbox/nv2a/pfifo.c",
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
