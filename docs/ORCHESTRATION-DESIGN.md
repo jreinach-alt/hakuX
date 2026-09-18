@@ -493,7 +493,7 @@ fresh-session mode. Nothing recurring is a session cron.
 | audit-1 / audit-2 | cloud Routine | every 30 min, fresh session; claims one `needs-audit-*` PR | one audit per run, `--max-turns` bounded | PR review + `docs/audits/` files on the lane branch |
 | cloud lanes | cloud Routine | every 30 min, fresh session; claims one `cloud`-labelled issue | one lane per run; re-runs resume from the PR and `NOTES.md` | lane branch, PR, comments |
 | nightly | local | 00:30 (exists) | `nightly_build.sh` from a worktree of `origin/master`, not from the owner's checkout | prerelease |
-| release-check | local | 01:30, after the nightly | §11 criteria; opens the RC PR when met | RC PR, `decision-needed` |
+| release-check | local | 01:30, after the nightly | §11 criteria; opens the `release-candidate` issue when met; tags and publishes once `release-approved` is on it | candidate issue, tag, release |
 | dx | local | 09:23 (exists) | harvest, then dispatch one DX lane itself (it no longer needs an orchestrator to do so) | papercuts, a lane |
 | device-health | local | every 10 min | battery, charging type, screen, `adb devices`; places/removes `hold/<device>` and comments on the `harness` issue when state changes | hold files |
 
