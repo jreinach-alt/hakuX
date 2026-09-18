@@ -320,3 +320,11 @@ bit = 1
 owner = "toolsmith"
 retired = "2026-09-18 by the orchestrator: --state all with a window filter on updatedAt. Verified by positive control -- it now finds the #51 comment it previously missed."
 fix = "Fixed. The lesson is the method rather than the patch: it was caught by asking WHAT WOULD THIS SHOW IF THE THING WERE PRESENT and then feeding it a comment known to exist. `gh` found that comment directly with the same time filter; the script did not, because the issue was not in its list. Every new instrument on this board should get that positive control before its zeros are trusted -- this one had two clean sweeps behind it and was broken the whole time."
+
+[[cut]]
+id = "only-tests-last-wins"
+what = "`request.sh --only-tests` and `--skip-tests` (and `--tests`, `--suites`) silently keep only the LAST of repeated flags. `request.sh:81` is `--only-tests) ONLY_TESTS=\"$2\"`, a scalar assignment, while `--env` accumulates into an array -- so a request built with one flag per test looks right, queues without a warning, and measures a different disc from the one its own `--purpose` and `--who` describe."
+cost = "Two device arms (four runs) re-queued, and ONE NEAR-MISS INFERENCE that is the real cost: `disc89-H-pre8` ran 1 test instead of 8, and its pre-registration said '0 puts the threshold in 9..32'. It read 0. Read as registered it would have placed #89's threshold in 9..32 WHEN THE ANSWER IS 2 -- excluding the correct value rather than merely wasting an arm. Caught only by a pre-registered impossible-row check on the expected row count."
+bit = 1
+owner = "instruments standing lane (filed as #94)"
+fix = "Preferred: make the four list flags APPEND like `--env`, comma-joined to match what the consumer parses -- `--env` already appends, so 'flags repeat' is a correct inference from this same interface and is exactly what the caller drew. Grep `docs/testing/` and `$DISPATCH_DIR/bin/` first for a caller relying on last-wins. Fallback: refuse a repeated occurrence with `exit 2`. Worth landing either way, because it needs no code change and does not trust the caller: assert `only_tests` length in the queued `.req` before the device claims it."

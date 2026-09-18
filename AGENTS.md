@@ -73,31 +73,61 @@ currently written down as blockers, and the cheapest refutation of almost every
 blocker here has been an offline script over artefacts that were already
 present.
 
-## A predecessor suite can change a capture's score -- and disc SIZE is the wrong axis
+## Two captures in a PRECEDING SUITE can change a capture's score -- and disc size is the wrong axis
 
-**This section was wrong twice when first written, and both corrections came
-from the lane sent to test it.** The original claimed disc *size* mattered and
+**This section has now been wrong three times, and every correction came from
+the lane sent to test it.** The first version claimed disc *size* mattered and
 that "a whole region of the image depends on what else is on the disc", under a
-heading saying **141,325** where its own table said **141,125**. Kept as a
-correction, because the shape of the error is the lesson: I generalised from
-one measurement and put the wrong number in the title of the rule.
+heading saying **141,325** where its own table said **141,125**. The second
+named `Blend surface` as the culpable predecessor. Kept as a correction each
+time, because the shape of the error is the lesson and it was the same error
+three times: **I generalised a rule from the arms that happened to have run,
+and the next arm refuted it.** The first two versions were each consistent with
+every measurement then on hand.
 
 **What is actually measured**, every arm at one ref on one device so
 composition is the only variable:
 
-| disc | suites before `Color zeta overlap` | captures | `Swap_ZB` |
-|---|---|---:|---:|
-| narrowed | -- | 9 | **0** |
-| + `Color Zeta Disable` | one | 11 | **0** |
-| + `Color mask blend` | one | 10 | **0** |
-| **+ `Blend surface`** | **one** | **41** | **141,125** |
-| full `iso_surf1` | three | 236 | **141,125** |
+| captures in **preceding suites** | discs measured | `Swap_ZB` |
+|---:|---|---:|
+| 0 | bare 1-suite -- and note it has **five** within-suite predecessors | **0** |
+| 1 | six separate discs: `Color mask blend` alone; `Color Zeta Disable` alone; five single `Blend surface` tests spanning all three pad-alpha classes | **0** |
+| 2 | `{ARGB8, R5G6B5}`; `{ARGB8, ARGB8}`; `{X_ZRGB8, X_ZRGB8}`; `{Color mask blend, Color Zeta Disable}` | **141,125** |
+| 8, 16, 32, 34, 107 | -- | **141,125** |
 
-**A 41-capture disc reproduces the 236-capture value exactly.** Size is not the
-variable; the **predecessor set** is, and `Blend surface` alone is sufficient
-while `Color mask blend` is neither necessary nor sufficient. Only four suites
-have ever run before `Color zeta overlap`, and all four are now measured. This
-is `#19` cross-test contamination, not a disc-scale effect.
+**The threshold is exactly two, and the unit is captures in PRECEDING SUITES.**
+Say it without that qualifier and a disc already in the corpus refutes you
+inside a minute: on the bare disc `Swap` is the 5th of 6 test cases, so **five
+captures precede it** and it reads `0`. Captures from the capture's *own* suite
+do not count, however many. The boundary count is not the variable either --
+one preceding suite with one capture reads `0`, one preceding suite with two
+reads `141,125`.
+
+**No individual predecessor is culpable.** `Color mask blend` alone reads `0`,
+`Color Zeta Disable` alone reads `0`, and the two *together* read `141,125`.
+The earlier claim here that "`Blend surface` alone is sufficient while `Color
+mask blend` is neither necessary nor sufficient" was **the third error in this
+section** -- true of the arms run at the time, false as a rule. This is `#19`
+cross-test contamination, not a disc-scale effect and not a specific
+predecessor.
+
+**Five hypotheses died to their own pre-registered falsifiers; do not re-run
+them.** A leaked `NV097_SET_COLOR_MASK` alpha-write bit; #59's clear pad-alpha
+stamp keyed on a stale `drawn_format`; accumulation/occupancy; a surface-format
+transition; and "two preceding captures anywhere". Any surviving candidate must
+be **latched rather than graded**, must count captures completed **before the
+current suite began**, and must be **blind to any number inside the capture's
+own suite**.
+
+**Flatness above the step is the weak argument, and it is not what killed
+accumulation.** The observable is saturated -- 141,125 *is* the entire cleared
+region, and only two bitmaps have ever existed for this capture -- so the metric
+**cannot express a gradient** and would look identical under a graded cause.
+What killed it is **format-invariance of the threshold**: `R5G6B5` is 16-bit,
+`A8R8G8B8` is 32-bit, and R's two predecessors are different suites of different
+shapes again. Four resource footprints, one threshold of two. A capacity
+threshold cannot do that; **a step with no gradient is the signature of a latch,
+not a level.**
 
 **The narrowed disc was HIDING a real defect, not manufacturing a false one.**
 The difference is **one byte**: 141,125 cleared pixels carry `0xFF000000`
@@ -105,7 +135,7 @@ against a golden `0x00000000` -- the **alpha** byte, which in `z24s8` is the
 depth high byte. `max_rgb = 0`, so every pixel we *drew* matches the golden
 exactly, including 166,075 at `0x00A8BF00`, which is the suite's own stated
 expected value. The golden is right, the narrowed `0` is right, and the 141,125
-is a live defect that appears only after a particular predecessor.
+is a live defect that appears once two captures have run in preceding suites.
 
 **Blast radius, measured rather than feared: one capture in 4,522.** Across
 47,250 scored rows and 886 runs, `Swap_ZB` is the *only* capture ever showing an
