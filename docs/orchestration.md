@@ -1,5 +1,18 @@
 # Running this project with several agents
 
+> **STALE, 2026-09-18. Do not audit against this file.** It was written
+> 2026-09-12 and last touched 09-13, and it is a lessons-from-failures
+> narrative rather than an as-built description — it still discusses a
+> territory table that has since moved into `docs/testing/territory.toml`.
+>
+> For what the harness actually is, read
+> **[`ORCHESTRATION-AS-BUILT.md`](ORCHESTRATION-AS-BUILT.md)**, then
+> `AGENTS.md`.
+>
+> This file is kept because the failures it records are the reasons the current
+> design is shaped the way it is, and several of them have recurred since.
+
+
 Written 2026-09-12, after a day in which two lanes independently produced the
 same fix twice, five mechanism claims were retracted, the issue tracker drifted
 until an audit found six closed issues listed as open and three entries

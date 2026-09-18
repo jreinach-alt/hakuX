@@ -22,6 +22,16 @@
 #   remaining issue waiting on a human, or a device that has gone away) would
 #   spin. The user can always interrupt, but they should not have to.
 #
+#   IT CANNOT TAKE EFFECT IN THE SESSION THAT EDITS IT. settings.json is read
+#   at SESSION START, so a gate reworked mid-session is loaded by the next
+#   session and not this one. That is measured, not assumed: settings.json was
+#   last edited 2026-09-12 21:46:58 and this gate's invocation log stops at
+#   21:43:40 the same day -- three minutes earlier -- while the orchestrator
+#   session claiming the role dates to 16:08 that morning. So it has fired
+#   ZERO times in the session that has most needed it, and the discipline it
+#   encodes has been manual for six days. Say that out loud when reworking it;
+#   the failure mode is reporting a fixed hook and then ending turns anyway.
+#
 #   ORCHESTRATOR ONLY. A Stop hook in .claude/settings.json fires for EVERY
 #   session in this project, and only the orchestrator is supposed to run until
 #   the backlog is clear. Without this check the hook gated an unrelated
@@ -119,7 +129,34 @@ if [ -z "$sid" ] || [ "$sid" != "$claimed" ]; then
     exit 0
 fi
 
-# --- backlog state, cached so a turn end is not an API round trip every time
+# --- WHAT THIS GATES ON, REWORKED 2026-09-18, AND WHY THE OLD SIGNAL WAS WRONG
+#
+# It used to gate on the raw count of OPEN ISSUES. That is the wrong signal and
+# it got worse as the board got better. Thirty-two issues are open and most of
+# them are open for reasons no amount of turn-taking fixes: a measured pixel
+# floor where exactness would make the score WORSE (#52's adverse cell), a
+# defect whose fix needs goldens re-shot on silicon nobody has (#53), a
+# capability gap (#77), an upstream question (#41, #46, #49). Gating on that
+# count means the gate is either always blocking -- and then the release valve
+# fires every time, which trains everyone to ignore it -- or it is telling the
+# session to churn on issues that cannot move.
+#
+# THE RIGHT SIGNAL IS WORK THAT IS ACTIONABLE *BY THIS SESSION, RIGHT NOW*, and
+# fleet.py already computes exactly that and exits non-zero on it:
+#
+#   REPORTED, NOT FOLDED            a lane finished and its claim still reads
+#                                   as coverage
+#   WAITING ON THE ORCHESTRATOR     a lane is blocked on this session
+#   DISPATCHABLE NOW, NOT DISPATCHED an issue nothing holds and nothing blocks
+#   LANE CLAIMED WITH NO RUNNING AGENT / RUNNING WITH NO TERRITORY ROW
+#   BLOCKER NEVER RECORDED AS TESTED
+#
+# Every one of those is a thing only this session can clear, and every one of
+# them was sitting non-empty at some point today while the session ended a turn
+# anyway. That is the failure this gate is for -- not "issues exist".
+#
+# The old open-issue count is still fetched, but only to put a number in the
+# reason. It no longer decides anything.
 now=$(date +%s)
 count=""
 if [ -f "$CACHE" ]; then
@@ -128,16 +165,39 @@ if [ -f "$CACHE" ]; then
 fi
 if [ -z "$count" ]; then
     count=$(timeout 20 gh issue list --repo "$REPO" --state open --limit 100 \
-              --json number --jq 'length' 2>/dev/null) || count=""
-    case "$count" in
-        ''|*[!0-9]*) allow ;;   # fail open: could not establish the state
-    esac
+              --json number --jq 'length' 2>/dev/null) || count="?"
     printf '%s' "$count" > "$CACHE"
 fi
-case "$count" in
-    ''|*[!0-9]*) allow ;;
-esac
-[ "$count" -eq 0 ] && { rm -f "$BLOCKS"; allow; }
+
+# FAIL OPEN on the deciding signal, for the same reason as everything else
+# here: if fleet.py cannot run, the state is unknown, and an unknown state must
+# not make the session unstoppable.
+FLEET="${CLAUDE_PROJECT_DIR:-/home/justin/hakuX}/docs/testing/fleet.py"
+[ -f "$FLEET" ] || allow
+# NOTE THE 2>&1, AND DO NOT "TIDY" IT AWAY. fleet.py writes its FAIL lines to
+# STDERR and its inventory to stdout. The first version of this rework captured
+# stdout only, found zero FAILs, and allowed the stop -- a gate that failed
+# open on a board with three live FAILs, which is precisely the failure it was
+# written to prevent. Caught by dry-running it rather than by trusting it.
+# AND NOTE THERE IS NO `|| fleet_out=""` HERE, WHICH IS THE SECOND BUG THIS
+# REWORK SHIPPED AND CAUGHT. fleet.py EXITS NON-ZERO BY DESIGN when it finds
+# actionable work -- that non-zero IS the signal. A `||` clause therefore fired
+# on exactly the runs that mattered and blanked the output it had just
+# captured, so the gate allowed the stop whenever there was something to do and
+# blocked only when there was nothing. Inverted, silently, and it looked
+# defensive.
+#
+# So: capture unconditionally, ignore the status, and decide on the CONTENT.
+# Emptiness is the fail-open condition, checked on the next line.
+fleet_out=$(cd "${CLAUDE_PROJECT_DIR:-/home/justin/hakuX}" 2>/dev/null; \
+            timeout 30 python3 "$FLEET" 2>&1)
+[ -n "$fleet_out" ] || allow
+
+# The actionable lines are exactly fleet.py's own FAIL lines.
+actionable=$(printf '%s\n' "$fleet_out" | grep -c '^FAIL' || true)
+case "$actionable" in ''|*[!0-9]*) allow ;; esac
+[ "$actionable" -eq 0 ] && { rm -f "$BLOCKS"; allow; }
+fleet_fails=$(printf '%s\n' "$fleet_out" | grep '^FAIL' | sed 's/^/  /')
 
 # --- release valve
 prev_n=0; prev_t=0
@@ -164,21 +224,36 @@ sweep=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l | tr -d ' ')
 agentwork=$(( queued - sweep ))
 [ "$agentwork" -lt 0 ] && agentwork=0
 
-reason="BACKLOG GATE: $count issues are still open, so this turn must not end \
--- ending it stops every agent waiting on this session.
+reason="BACKLOG GATE: $actionable thing(s) on this board are actionable BY THIS \
+SESSION RIGHT NOW, so this turn must not end -- ending it stops every agent \
+waiting on it.
+
+$fleet_fails
+
+Those are fleet.py's own FAIL lines: a lane that reported and has not been \
+folded, a lane blocked on you, or an issue nothing holds and nothing blocks. \
+Each is something only this session can clear. ($count issues are open in \
+total, which is NOT what this gate measures -- most of those are floors, \
+capability gaps or upstream questions that no amount of turn-taking moves.)
 
 Device queue: $running running, $agentwork agent request(s) queued, $sweep \
 idle-priority sweep request(s) remaining.
 
 Pick up the next piece of work now. In rough order of value:
-  1. Fold in any completed agent's diff, build both targets, and dispatch its A/B.
-  2. Spawn an implementing agent on an unclaimed issue, on files no live agent \
-owns (check the territory table in docs/orchestration.md).
-  3. Triage a tracker entry still marked 'unclassified' so the next agent has \
-direction: python3 docs/testing/nv2a_index.py, and docs/testing/nv2a_issues.toml.
-  4. Close an issue that is measured unmodellable, with the evidence posted.
-  5. Re-run docs/testing/collect_sweep.sh to refresh the scoreboard as the \
-sweep fills in.
+  1. Fold a reported lane's work -- lane.fold owns the mechanics; you decide
+     WHAT folds and record what it means. A lane that reported and sits
+     unfolded has a claim asserting coverage that no longer exists.
+  2. Answer a lane that is blocked on you. Check every waiting_on in
+     \$DISPATCH_DIR/fleet/*.json, and remember that 'told to ask' is not a
+     handoff: if a file is in [free] and a lane needs it, GRANT IT rather than
+     waiting to be asked. That deadlock cost 77 commits several hours.
+  3. Dispatch an issue nothing holds and nothing blocks. Write the territory
+     row BEFORE the agent starts, in a pushed commit.
+  4. Read \$HAKUX_SWEEP_DIR/unread.md -- the hourly comment sweep. A lane
+     reporting into an issue nobody reads is the cheapest way to lose finished
+     work; that went unread for a week once.
+  5. Re-queue an arm that ab_compare REFUSED (MIN_RUNS, device drop): the
+     prediction is still bound, so it costs device time and no re-derivation.
 
 A mid-turn status summary is fine -- just keep working after it. \
 (Block $n of $MAX_BLOCKS before the release valve allows a stop.)"
