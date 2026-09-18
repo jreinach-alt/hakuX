@@ -311,3 +311,12 @@ cost = "Two wrong classifications in one investigation: the 24 Texture_render_ta
 bit = 1
 owner = "toolsmith"
 fix = "Separate the fields: composition and skip-list as distinct keys, both full-length, with the human-readable label derived from them rather than being them. A key that truncates is a key that can silently collide, and this one is the thing every pooled measurement on this board is grouped by."
+
+[[cut]]
+id = "a-sweep-of-open-issues-misses-the-closing-comment"
+what = "The hourly comment sweep listed `--state open` only, so it could not see THE COMMENT THAT CLOSES AN ISSUE -- which is the most valuable class there is, because a lane posts its final report as it closes. A sweep reporting zero and a sweep that cannot see are identical from outside."
+cost = "It reported '0 issues with new comments' twice while #51's closing comment sat unread -- a full verification with 92 GL shader dirs and 119 SPIR-V modules regenerated and iso_cube 78/78 byte-identical. Two hours of a brand-new instrument being confidently blind, in the same session it was built to end a week-long gap."
+bit = 1
+owner = "toolsmith"
+retired = "2026-09-18 by the orchestrator: --state all with a window filter on updatedAt. Verified by positive control -- it now finds the #51 comment it previously missed."
+fix = "Fixed. The lesson is the method rather than the patch: it was caught by asking WHAT WOULD THIS SHOW IF THE THING WERE PRESENT and then feeding it a comment known to exist. `gh` found that comment directly with the same time filter; the script did not, because the issue was not in its list. Every new instrument on this board should get that positive control before its zeros are trusted -- this one had two clean sweeps behind it and was broken the whole time."

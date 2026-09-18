@@ -42,8 +42,26 @@ if ! command -v gh >/dev/null 2>&1; then
     exit 2
 fi
 
-nums="$(timeout 60 gh issue list --repo "$REPO" --state open --limit 100 \
-          --json number --jq '.[].number' 2>/dev/null)" || {
+# SWEEP CLOSED ISSUES TOO, AND THIS WAS A REAL BUG FOUND BY A POSITIVE CONTROL.
+# The first version listed --state open only. That misses the single most
+# valuable class of comment there is: THE ONE THAT CLOSES AN ISSUE. A lane's
+# final report is posted as it closes, so the issue stops being open in the
+# same breath -- #51's close at 19:46 carried a full verification (92 GL shader
+# dirs and 119 SPIR-V modules regenerated, iso_cube 78/78 byte-identical) and
+# the sweeper reported "0 issues with new comments" twice while that sat there.
+#
+# It was caught only by asking the question this project keeps having to ask
+# about its own instruments: WHAT WOULD THIS SHOW IF THE THING WERE PRESENT? A
+# sweep reporting zero and a sweep that cannot see are identical from the
+# outside. `gh` found the comment directly with the same time filter; the
+# script did not, because the issue was not in its list.
+#
+# --state all with a window filter is the fix. It costs one more API page and
+# removes the blind spot entirely.
+nums="$(timeout 60 gh issue list --repo "$REPO" --state all --limit 200 \
+          --json number,state,updatedAt \
+          --jq '.[] | select(.state == "OPEN" or .updatedAt > "'"$since"'") | .number' \
+          2>/dev/null)" || {
     echo "SWEEP FAILED: gh issue list. State NOT advanced." >&2
     exit 2
 }
