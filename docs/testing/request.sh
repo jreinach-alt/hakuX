@@ -75,10 +75,40 @@ while [ $# -gt 0 ]; do
     case "$1" in
         --who) WHO="$2"; shift 2;;
         --purpose) PURPOSE="$2"; shift 2;;
-        --suites) SUITES="$2"; shift 2;;
-        --tests) TESTS="$2"; shift 2;;
-        --skip-tests) SKIP_TESTS="$2"; shift 2;;
-        --only-tests) ONLY_TESTS="$2"; shift 2;;
+        # THE FOUR LIST FLAGS ACCUMULATE, comma-joined, the way --env does.
+        #
+        # They were scalar assignments, so a repeated flag silently kept the
+        # LAST occurrence -- while --env, on the same command line, appends
+        # into an array. Nothing detected the second occurrence.
+        #
+        # #94: two arms of #89's composition bisect went out NAMED for a
+        # 2-test and an 8-test prefix, both passed one --only-tests per test,
+        # and both ran ONE test. disc89-H-pre8's pre-registration said "0 puts
+        # the threshold in 9..32". It read 0 -- so read as registered, that arm
+        # concludes 9..32 when the answer is 2: a pre-registered, numerically
+        # bracketed conclusion EXCLUDING the true value, off a run that
+        # completed normally and scored cleanly. It was caught only by its own
+        # impossible-row check (1 scored row where 8 were required).
+        #
+        # APPENDING rather than refusing the repeat, which is the opposite of
+        # what the issue first proposed and what the lane that hit it asked
+        # for: --env already appends, so "flags repeat" is a correct inference
+        # from this same interface, and refusing would reject a command line
+        # whose meaning is unambiguous to any reader. Checked before changing
+        # it -- no caller in docs/testing/ or $DISPATCH_DIR/bin/ passes any of
+        # the four more than once (ab_run.sh, ab_bisect.sh, queue_full_sweep.sh
+        # and sweep_diff.py each emit --suites exactly once), so nothing
+        # relied on last-wins and this cannot change an existing caller's
+        # meaning.
+        #
+        # Comma-joined because that is what the consumer parses: the JSON
+        # writer below splits each on ",", and dispatcher.sh hashes the sorted
+        # result into disc_id. A duplicate entry is refused further down, for
+        # the same reason --env refuses a repeated key.
+        --suites) SUITES="${SUITES:+$SUITES,}$2"; shift 2;;
+        --tests) TESTS="${TESTS:+$TESTS,}$2"; shift 2;;
+        --skip-tests) SKIP_TESTS="${SKIP_TESTS:+$SKIP_TESTS,}$2"; shift 2;;
+        --only-tests) ONLY_TESTS="${ONLY_TESTS:+$ONLY_TESTS,}$2"; shift 2;;
         --ref) REF="$2"; REF_WAS_DEFAULTED=0; shift 2;;
         --arm) ARM="$2"; shift 2;;
         --runs) RUNS="$2"; shift 2;;
@@ -86,7 +116,6 @@ while [ $# -gt 0 ]; do
         --title) TITLE="$2"; shift 2;;
         --seconds) SECONDS_HOLD="$2"; shift 2;;
         --pull) PULL_GLOB="$2"; shift 2;;
-        --device) DEVICE="$2"; shift 2;;
         --audio-capture) AUDIO_CAPTURE="$2"; shift 2;;
         --base-iso) BASE_ISO="$2"; shift 2;;
         --perflog) PERFLOG=true; shift;;
@@ -132,6 +161,39 @@ if [ -n "$DEVICE" ]; then
         printf '  %s\n' $KNOWN >&2
         exit 2
     }
+fi
+
+# A LIST ENTRY NAMED TWICE IS REFUSED, for the same reason --env refuses a
+# repeated key: the queued request preserves what was typed, so a reader six
+# hours later cannot see which occurrence won, and nothing downstream reports
+# it. It is not cosmetic -- dispatcher.sh hashes the SORTED list into disc_id,
+# so a doubled entry produces a DIFFERENT disc_id for a disc that is
+# byte-identical to one built without it, and ab_compare refuses a pair whose
+# disc_ids differ. Now that the four flags accumulate, two overlapping
+# occurrences are the easy way to get there.
+BADDUP=$(python3 - "$SUITES" "$TESTS" "$SKIP_TESTS" "$ONLY_TESTS" <<'PYDUP'
+import sys
+for flag, raw in zip(("--suites", "--tests", "--skip-tests", "--only-tests"),
+                     sys.argv[1:5]):
+    seen, dup = set(), []
+    for item in raw.split(","):
+        item = item.strip()
+        if not item:
+            continue
+        if item in seen and item not in dup:
+            dup.append(item)
+        seen.add(item)
+    if dup:
+        print("%s names %s twice. The flag accumulates, so two occurrences "
+              "with an overlapping list double an entry -- and a doubled "
+              "entry changes disc_id without changing the disc. Pass each "
+              "name once." % (flag, ", ".join(repr(d) for d in dup)))
+        break
+PYDUP
+)
+if [ -n "$BADDUP" ]; then
+    echo "refusing to queue: $BADDUP" >&2
+    exit 2
 fi
 
 # A measurement request must name the prediction it is going to be judged
@@ -846,7 +908,6 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
            "title": title, "seconds": int(seconds),
            "device": device,
            "pull_glob": pull_glob,
-           "device": device,
            "audio_capture": arm_audio,
            "base_iso": base_iso,
            "perflog": perflog,
@@ -864,8 +925,53 @@ json.dump({"id": i, "requester": who, "purpose": purpose,
                __import__("datetime").timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
 PY
+# THE QUEUED RECORD IS READ BACK AND PRINTED BEFORE IT IS EXPOSED TO A WORKER.
+#
+# The third mitigation #94 asked for, and the only one that does not trust the
+# caller OR this script's own parse: it re-reads the JSON the dispatcher will
+# read and prints the composition it actually contains. `--only-tests A
+# --only-tests B` now appends, but the failure this closes was a caller who
+# believed the request said 8 and a queued record that said 1, and no amount
+# of careful parsing tells a caller what they asked for -- showing them the
+# counts does. Both void arms of #89's bisect would have printed
+# "only_tests 1" here, in front of the person who typed 8.
+#
+# ON STDERR, with stdout left as the single "queued $ID" line: ab_run.sh and
+# ab_bisect.sh both take the request id as "${q##* }", the LAST WORD of the
+# captured stdout, so a second stdout line would silently hand them a word out
+# of this summary as an id. For the same reason the pin moves to stderr too --
+# with --device, stdout was "queued $ID (pinned to thor)" and that idiom
+# already yielded "thor)". No caller passes --device today, so that was latent
+# rather than live; stdout is now exactly "queued $ID" in every case.
+#
+# It also refuses to expose a record that does not parse, which is the
+# structured-file rule: validate in memory, then publish.
+SUMMARY=$(python3 - "$D/queue/.$ID.req.tmp" <<'PYSUM'
+import json, sys
+try:
+    r = json.load(open(sys.argv[1]))
+except Exception as e:
+    print("UNREADABLE:%s" % e)
+    raise SystemExit(0)
+if r.get("title"):
+    print("soak: %s, %ss%s" % (r["title"], r["seconds"],
+                               ", env " + " ".join(r["env"]) if r.get("env") else ""))
+else:
+    print("disc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
+          % (len(r["suites"]), ",".join(r["suites"])[:70],
+             len(r["only_tests"]), len(r["skip_tests"]), r["runs"]))
+PYSUM
+)
+case "$SUMMARY" in
+    UNREADABLE:*)
+        echo "refusing to queue: the request JSON just written does not parse:" >&2
+        echo "  ${SUMMARY#UNREADABLE:}" >&2
+        rm -f "$D/queue/.$ID.req.tmp"
+        exit 2 ;;
+esac
 mv "$D/queue/.$ID.req.tmp" "$D/queue/$ID.req"
-echo "queued $ID${DEVICE:+ (pinned to $DEVICE)}"
+echo "queued $ID"
+echo "  $SUMMARY${DEVICE:+, pinned to $DEVICE}" >&2
 [ "$WAIT" = 1 ] || exit 0
 
 # Device work is 1-10 minutes and the queue may be busy; a long ceiling is
