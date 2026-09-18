@@ -1,6 +1,6 @@
 # #54's read-side race frequency is a per-title, per-bound-mode rate, not a number
 
-Run 2026-09-18 by `lane.nova54`, offline, over the 29 probe-on soaks already
+Run 2026-09-18 by `lane.nova54`, offline, over the 30 probe-on soaks already
 on disk. **No device time, no new build, no new capture.** The two handhelds
 came back into service the same morning and neither was needed.
 
@@ -18,11 +18,11 @@ docs/testing/vram_race_probe_sweep.py      # exit 1 today, and says why
 
 and `blocker_tested` said *"The retirement soak is not run."*
 
-**Ten such soaks were already on disk, on four titles, on both devices**, and
-two more landed during this lane's own session at 11:14 and 11:18 as the
-`skew44-crimson` queue resumed. The probe has been read off a title
-twenty-nine times. The retirement condition is **met**, and it was met before
-the holds lifted.
+**Twenty-four such soaks were already on disk, on four titles, on both
+devices**, and the six `skew44-crimson` runs drained during this lane's own
+session, between 11:14 and 11:40, as the queue resumed on its own. The probe
+has been read off a title thirty times. The retirement condition is **met**,
+and it was met before the holds lifted.
 
 The reason nobody noticed is the same one recorded against this probe once
 already -- `[issue.54]` itself says the counter *"had been running on Galleon
@@ -43,9 +43,9 @@ Every run used here produced **42 to 120 pacing lines**, i.e. 2,520 to 7,200
 guest frames. The blind spot does not bite any reading in this document, and
 `vram_race_probe_sweep.py` fails rather than reports when a run is too thin.
 
-Two further controls, both passing on all 29 runs:
+Two further controls, both passing on all 30 runs:
 
-  * **The impossible row `Xd` reads 0 on every run.** `Xd` counts a range
+  * **The impossible row `Xd` reads 0 on all 30 runs.** `Xd` counts a range
     seen dirty and then seen clean by an immediate second scan, which nothing
     on this thread can cause. Non-zero would indict the instrument.
   * **Both denominators are per-EVENT, not per-second.** `Vr` is per
@@ -95,7 +95,7 @@ measures.** Pooling across bound modes mixes two populations. Refs
 | **Galleon** | unbounded | **9** | 79/1,424,827 | **5.54e-05** | 77.65 | 0.45 |
 | Galleon | mode 2 | 2 | 0/177,501 | 0.00 | 9.67 | **6.3e-05** |
 | Crimson | unbounded | 6 | 0/16,704 | 0.00 | 0.91 | 0.40 |
-| Crimson | mode 1 / 2 | 5 | 0/21,720 | 0.00 | 1.18 | 0.31 |
+| Crimson | mode 1 / 2 | 6 | 0/26,498 | 0.00 | 1.44 | 0.24 |
 | **DOA3** | unbounded | 6 | 2/273,499 | **7.31e-06** | 14.90 | **4.3e-05** |
 | JSRF | unbounded | 1 | 0/17,703 | 0.00 | 0.96 | 0.38 |
 
@@ -130,7 +130,7 @@ factor survives.
 |---|---|---|---|---|---|
 | **Crimson** | **unbounded** | **6** | **61,965/101,879** | **0.60822** | **11,380x the bound** |
 | Crimson | mode 1 | 2 | 0/27,680 | 0.00000 | <= 1.08e-04 |
-| Crimson | mode 2 | 3 | 0/41,685 | 0.00000 | <= 7.20e-05 |
+| Crimson | mode 2 | 4 | 0/56,265 | 0.00000 | <= 5.33e-05 |
 | Galleon | unbounded | 9 | 0/78,480 | 0.00000 | <= **3.82e-05** |
 | Galleon | mode 2 | 2 | 0/9,967 | 0.00000 | <= 3.01e-04 |
 | DOA3 | unbounded | 6 | 0/8,944 | 0.00000 | <= 3.35e-04 |
@@ -157,7 +157,7 @@ Meanwhile Galleon's bound **tightens** with the three new runs, from
 **The probe can be retired. "The read-side frequency" cannot be quoted as a
 number.**
 
-The retirement condition -- a soak with the probe on -- is met twenty-nine
+The retirement condition -- a soak with the probe on -- is met thirty
 times over. The probe has answered its question, has a passing impossible
 row, and can be deleted rather than left switched off, which is what
 `vk/draw.c`'s own comment asks for.
@@ -198,11 +198,11 @@ further device time either:
 
 | | unbounded | bounded | expected in the bounded runs at the unbounded rate |
 |---|---|---|---|
-| Crimson TEX | 61,965/101,879 = 0.608 |  **0/69,365** (mode 1 and 2, 5 runs) | 42,189 |
+| Crimson TEX | 61,965/101,879 = 0.608 |  **0/83,945** (mode 1 and 2, 6 runs) | 51,057 |
 | Galleon VTX | 20/270,080 = 7.41e-05 (nova, `-470`) | **0/177,501** (mode 2, 2 runs, same device) | 13.1, p = 2.0e-06 |
 
 Mode 1 -- *"the cell the issue has never measured"*, per its own request
-purpose -- reads `Tr` exactly 0 on both runs, and mode 2 now reads 0 on three,
+purpose -- reads `Tr` exactly 0 on both runs, and mode 2 now reads 0 on four,
 including one at the tip-based `3b7fe5f5fa`. The Galleon vertex half is the
 part nobody had looked at: the bound eliminates that site too, on the same
 device, at p = 2.0e-06.
