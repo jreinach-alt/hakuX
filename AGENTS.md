@@ -1029,6 +1029,51 @@ running. Note this is not an argument for reasoning instead of measuring --
 the `ls` IS a measurement, of the input rather than the output, and that is
 usually the cheaper end.
 
+## A new instrument gets a positive control before its zeros are trusted
+
+**Three instruments on this project have shipped blind, and in every case the
+blindness was invisible precisely because the tool reported cleanly.**
+
+- **`hakuX-tier1` logging.** Every dispatcher `LOGCAT_SPEC` ended `*:S`, which
+  silenced the tag *before* the question was asked. So every logcat on disk
+  carried zero `[tier1]` lines, and `#81` sat blocked on what looked like
+  evidence that the mechanism never fired. It fires, and is starved.
+- **`x87_conv_check.py`.** At one tip it printed `(1 lines carved)` and then
+  failed to compile, because its `END` marker matched the *pre-fix* macro
+  *before* its `START`. Its whole argument was that a number which cannot be
+  re-run is a claim -- and it could not be re-run, and nobody tried.
+- **The hourly comment sweep**, written *in this session to fix a blind spot*,
+  listed `--state open` only. It could not see **the comment that closes an
+  issue**, which is the most valuable class there is, because a lane posts its
+  final report as it closes. Two clean hourly sweeps ran while a full
+  verification sat unread.
+
+**The common shape: a zero and an inability to see are identical from the
+outside.** None of the three failed. They all *succeeded*, quietly, at looking
+in the wrong place.
+
+**So before an instrument's zero or empty result is allowed to change a
+decision, feed it something you know is there.** Not a synthetic fixture -- a
+real case from disk that must produce a non-zero answer:
+
+- the comment sweep was caught by pointing it at a comment `gh` had already
+  returned with the same time filter;
+- `#89`'s composition survey was only informative *because* one 10-capture arm
+  moved, giving the 548 previously-quiet captures a control they had never had;
+- the depth-probe survey states its own blind spot — the counters are gated on
+  `(frame_count % 60) == 0` in the flip handler, so the probe **cannot be read
+  off a run that does not flip**, and the zeros are therefore only meaningful
+  on a title that flips.
+
+**The cheapest version of this is one line in the report:** *"if X were
+present, this instrument would show Y."* If you cannot write that sentence, the
+instrument is not ready to be believed, whatever it printed.
+
+And it generalises past instruments. A gate that never fires, a control leg
+that matches no capture, a falsifier its own patch forces true, and a survey
+whose population was selected by the hypothesis are all the same error: **a
+clean result from a measurement that could not have come out otherwise.**
+
 ## Establish what your instrument cannot see, before you believe a zero from it
 
 The four sections that follow were all added on one day, all from real errors,
