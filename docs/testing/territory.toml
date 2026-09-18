@@ -28,17 +28,19 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 85
-updated_utc = "2026-09-18T20:15:00Z"
+wave = 86
+updated_utc = "2026-09-18T20:50:00Z"
 
 
 
 
 [lane.remote]
-issues = ["34", "39", "51", "60", "62", "66", "71", "72", "82", "85", "86"]
-files = ["hw/xbox/nv2a/pgraph/gl/*.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
+issues = ["34", "39", "51", "60", "62", "66", "71", "72", "82", "86"]
+files = ["hw/xbox/nv2a/pgraph/gl/blit.c", "hw/xbox/nv2a/pgraph/gl/draw.c",
+         "hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/gl/shaders.c",
+         "hw/xbox/nv2a/pgraph/gl/renderer.c", "hw/xbox/nv2a/pgraph/gl/debug.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
          "target/**", "ui/**", "audio/**", "tests/**"]
-note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet."
+note = "glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet. GLOB NARROWED AND #85 REASSIGNED AT WAVE 86 -- an allocation decision, not bookkeeping. gl/*.c was a glob; gl/surface.c is now NAMED OUT of it and granted to lane.swizzle87, which needs it together with vk/texture.c AS ONE CLAIM because #87's fix must land on both backends or its arm is void. This lane was asked for that file TWICE and delivered other work instead; it is a one-way cloud session with 71 unfolded commits and three unremediated findings, so #87 was serialising on the slower lane for no benefit -- the exact case this file's own rules say to GRANT rather than wait on. #85 MOVES WITH THE FILE: its mem_dirty gate is at gl/surface.c:2874-2892 in update_surface_part(), while #87's gates are at :1131 and :1487 in surface_to_texture_can_fastpath() and its caller -- different functions about 1,400 lines apart, verified at the tip, so one lane holds both without the edits meeting. THE REST OF gl/ IS STILL THIS LANE'S, now ENUMERATED rather than globbed so the next narrowing is visible: blit.c, draw.c, texture.c, shaders.c, renderer.c, debug.c. #86 stays here, in gl/shaders.c."
 
 
 
@@ -68,16 +70,11 @@ note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET I
 
 
 [lane.swizzle87]
-issues = ["87"]
-files = []
-note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY: files = [] deliberately, with instructions not to implement until it reports the mechanism. The condition recorded at wave 76 for starting this has been met -- both audits have landed -- but ONE OF THEM FOUND 3 HIGH, which is an argument for MORE caution about a third implementation rather than less. Analysis adds no unverifiable compiled code, so it respects the original concern instead of declaring it satisfied. THE EVIDENCE IS ALREADY ON DISK and needs no device: at HEAD with no bound, the VULKAN renderer reproduces the exact digest #39's skew-bound run recorded (15845fa9e1e40032), so Vulkan loses the race the same way every time and its capture IS the race-free image -- a race-free reference obtained WITHOUT the bound, by using the renderer that fails deterministically. Against the golden it has an IDENTICAL COLOUR MULTISET over its 10,240 differing pixels: the right pixels in the wrong places, runs of 16/32/64/80 px, no single translation explaining more than 40%. The run-length signature is itself a constraint on tile geometry. ALSO PLACED AT THIS WAVE: hw/xbox/nv2a/pgraph/swizzle.c was in NO row and not in [free] -- the third file found in that state (after fleet.py at wave 48 and dispatcher.sh at wave 63), and it is the file this issue is most likely to need. Placed in [free] rather than granted, because an analysis lane should not hold a file it has not yet shown it needs."
+issues = ["85", "87"]
+files = ["hw/xbox/nv2a/pgraph/gl/surface.c", "hw/xbox/nv2a/pgraph/vk/texture.c"]
+note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY: files = [] deliberately, with instructions not to implement until it reports the mechanism. The condition recorded at wave 76 for starting this has been met -- both audits have landed -- but ONE OF THEM FOUND 3 HIGH, which is an argument for MORE caution about a third implementation rather than less. Analysis adds no unverifiable compiled code, so it respects the original concern instead of declaring it satisfied. THE EVIDENCE IS ALREADY ON DISK and needs no device: at HEAD with no bound, the VULKAN renderer reproduces the exact digest #39's skew-bound run recorded (15845fa9e1e40032), so Vulkan loses the race the same way every time and its capture IS the race-free image -- a race-free reference obtained WITHOUT the bound, by using the renderer that fails deterministically. Against the golden it has an IDENTICAL COLOUR MULTISET over its 10,240 differing pixels: the right pixels in the wrong places, runs of 16/32/64/80 px, no single translation explaining more than 40%. The run-length signature is itself a constraint on tile geometry. ALSO PLACED AT THIS WAVE: hw/xbox/nv2a/pgraph/swizzle.c was in NO row and not in [free] -- the third file found in that state (after fleet.py at wave 48 and dispatcher.sh at wave 63), and it is the file this issue is most likely to need. Placed in [free] rather than granted, because an analysis lane should not hold a file it has not yet shown it needs. GRANTED BOTH FILES AT WAVE 86, as one claim -- which is what the lane asked for and why it held rather than forking. vk/texture.c came free when lane.padwrite59 retired; gl/surface.c was named out of lane.remote's glob. #85 comes with the file: a small fully-specified decision (delete the dead mem_dirty half, or make it reachable and test it) 1,400 lines from #87's gates, so it costs this lane almost nothing and would otherwise sit behind a lane that has not answered twice. NOW IMPLEMENT -- it was dispatched analysis-only and derived the mechanism without writing a line, so the fix is its to write. Legs 1-6 are drafted, including the CORRECTED control partition: 17 _L captures MAY move, 24 non-_L and all 1,673 Blend_tests must not, and Vertex_shader_rounding has ZERO goldens so it cannot be a leg either way."
 
 
-
-[lane.nova54]
-issues = ["54", "77"]
-files = []
-note = "#54's RETIREMENT SOAK and #77's DRIVER A/B -- both blocked on the nova since 2026-09-13 and DISPATCHABLE FOR THE FIRST TIME since the owner returned both handhelds 2026-09-18. Claims no source files: #54's remaining step is a soak with -DHAKUX_VRAM_RACE_PROBE=1 to retire the VRAM race probe, and #77's is a driver A/B. NOTE #77's HARNESS EXPLICITLY: ~/hakux-work/drv/swap_driver.sh, and driver_ab.sh CANNOT be used for it -- that is recorded in the nova's own archived hold note, which is the only place it was written down. #54's instrument has a known blind spot that bounds what any run can claim: profile.c:479 gates the counters' only output on (frame_count % 60) == 0 in the flip handler, so the probe CANNOT BE READ off a run that does not flip. #77's blocker mechanism -- that scene cuts set the bar -- is already REFUTED; what remains is signal, not scene identity, so do not re-derive the scene segmentation."
 
 [lane.tier81]
 issues = ["81"]
@@ -101,6 +98,12 @@ issues = []
 standing = true
 files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
+
+
+[lane.audit2-blitsafe]
+issues = []
+files = []
+note = "AUDIT PASS 2 over lane.blitsafe's M1 remediation. Claims no files. It gates the #84/#88 fold, the last thing between two finished fixes and the tree. TWO THINGS TO WEIGH: the lane hoisted the guard FURTHER than pass 1 asked -- to after the bytes_per_pixel switch, skipping the source download, both range-download calls and the tile clipping -- arguing those exist so a blit's writes are not later overwritten and are pointless when there is no write. Verify nothing between the switch and the guard mutates surface or guest state, which is what it claims to have read. And it DECLINED both of L3's proposed remediations plus L2's code change, each with a reason; accept or overrule them explicitly."
 
 [free]
 #
@@ -248,7 +251,6 @@ note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing
 # exist, and check_coverage.py cannot tell the difference.
 files = ["accel/**",
          "hw/xbox/nv2a/pgraph/pgraph.c",
-         "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/vk/draw.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
