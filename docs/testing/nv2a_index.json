@@ -3962,6 +3962,40 @@
    ],
    "title": "vk/blit.c: BLEND_AND hard-codes 32bpp, so a 16bpp or Y8 blend writes past the destination object"
   },
+  "85": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Surface format"
+   ],
+   "title": "gl/surface.c: the mem_dirty half of the surface-upload gate has never been exercised -- tcg_enabled() is true on every build this project runs"
+  },
+  "86": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "an error-reporting gap, not a pixel defect -- no golden scores it, which is precisely the problem: the absence of reported errors is currently indistinguishable from the absence of errors.",
+   "suites": [],
+   "title": "gl/shaders.c: the Android arm drains every pending GL error silently at shader load, so no GL error can surface on the shipping GL path"
+  },
+  "87": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Surface pitch"
+   ],
+   "title": "Surface_pitch::Swizzle: with the race out, the 10,240-px residual is the right pixels in the wrong places -- a swizzled render-target layout both renderers share"
+  },
+  "88": {
+   "component": "pgraph",
+   "disposition": "defect",
+   "no_suites": "",
+   "suites": [
+    "Color zeta overlap"
+   ],
+   "title": "Vulkan: Color_zeta_overlap loses three captures GL now gets -- 292,446 px at HEAD, the same-offset decision #66 settled on the GL side"
+  },
   "aci-vmstate": {
    "component": "apu",
    "disposition": "defect",
@@ -4557,7 +4591,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "d8abd3f29a25d31c87390187abfd6e2daea118d7",
+  "emulator_commit": "3f257b5742aedf0ace73031b0493ea1895d4abf9",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2819,

@@ -609,6 +609,33 @@ data.
 
 ## Working with a device
 
+> **DEVICE TESTING IS SUSPENDED, 2026-09-18, BY THE OWNER.** The Ayn Thor has
+> somehow disabled its top screen and the owner is troubleshooting the
+> hardware: *"Can we suspend on device testing for the moment while I
+> troubleshoot that?"* The nova has been held since 2026-09-13, so **the whole
+> fleet is out of service** -- there is no second handheld.
+>
+> `$DISPATCH_DIR/hold/thor` is placed, with the reason in `hold/thor.why`. The
+> dispatcher claims nothing while a hold file exists and resumes when it is
+> removed, so **a request already in `queue/` is not lost and must not be
+> re-queued.** Do not remove either hold. If a queue looks stalled, that is the
+> hold working.
+>
+> **This is not a reason for a lane to go idle.** Every issue on this board has
+> offline surface, and this campaign has closed or re-diagnosed findings with no
+> device at all at least six times -- twice from a counter that had been running
+> unread, once from a query printed four times into a logcat nobody opened, once
+> from a scores file the tracker had summarised wrongly. The offline order is:
+> finish the implementation, prove the unreachable paths by reading and
+> compiling, **register the prediction and leave it bound**, and only then wait.
+> A bound prediction costs nothing while it waits and is what stops the eventual
+> run being scored post-hoc.
+>
+> If you find yourself wanting *one quick run* to settle something, that
+> instinct is exactly what the hold exists to refuse. The owner is holding a
+> physically broken device; a run is not a small favour to ask.
+
+
 Debug builds are debuggable, so `run-as` can read and write app private data —
 which means the setup wizard can be skipped by writing `x1box_prefs.xml`
 directly. Only the games-folder SAF grant needs real UI interaction.

@@ -200,3 +200,27 @@ cost = "lane.audit-blit failed it twice in a row while working, purely because t
 bit = 2
 owner = "toolsmith"
 fix = "The gate's subject is whether THIS LANE moved the file, not whether the file is current. Compare the lane's territory.toml against the MERGE BASE rather than the tip, and fail only if the lane's own commits changed it -- which is the same question check_cited_commits.py already learned to ask about patches instead of shas. A monotone-wave check still catches the reversion this file exists to prevent, because that is a comparison against the lane's own base."
+
+[[cut]]
+id = "a-request-can-sit-in-running-for-days"
+what = "A request stays in running/ until it completes, with no staleness bound and no report of per-run failures inside it. Two of one arm's five runs died with 'pull failed or timed out' -- the device dropping mid-run -- and the request sat in running/ for FOUR DAYS across a session suspension while every status view reported '1 device run in flight'."
+cost = "Four days of a device slot nominally occupied by a request that had already lost 40% of its runs. The fleet view, the watchdog and the dispatcher log all agreed and all said the same useless true thing. Found only because the owner suspended device testing and the queue was inspected by hand."
+bit = 1
+owner = "toolsmith"
+fix = "Two separate things. (a) Report per-run outcomes as they happen, not only the request's completion: 'run 2 of 5: no captures, device vanished' belongs in the dispatcher log and in the fleet view. (b) Give a running request a staleness bound -- a request whose last run ended hours ago is not in flight, it is stuck, and the two should not render identically. Note the existing MIN_RUNS gate then makes the arm unjudgeable anyway, so the lane learns hours later what the dispatcher knew immediately."
+
+[[cut]]
+id = "score-sweep-tracebacks-after-diagnosing-cleanly"
+what = "score_sweep.py prints a correct, well-worded diagnostic for an empty capture set -- naming the cause, and explicitly saying 'this is not a scoring failure' -- and then tracebacks two lines later on `max(len(k) for k in suites)` over an empty suite set."
+cost = "Every device-drop run ends in a Python traceback, so a cleanly handled condition is indistinguishable from a broken tool in a log tail. Two runs of one arm did exactly this and the traceback is what the log tail shows, not the diagnostic above it."
+bit = 1
+owner = "toolsmith"
+fix = "Return after the diagnostic instead of falling through to the summary table, or default the column width when `suites` is empty. The diagnostic text is already good and should be the last thing printed -- the value here is that the log tail then says what happened."
+
+[[cut]]
+id = "a-must-not-move-glob-matching-no-capture"
+what = "A must_not_move control can name a test that writes NO capture, so the leg can never fire and never reports that it did not. Image_blit/OverlapFIFO was one of 21 registered controls and was scored in NEITHER arm."
+cost = "One of 21 controls silently absent on an arm whose whole purpose was to show a fix moved the right pixels and nothing else. Found by the lane auditing its own prediction after the fact, not by any gate. It had checked the GOLDEN existed and not that the CAPTURE did -- and a golden with no capture is exactly the shape that reads as a passing control."
+bit = 1
+owner = "toolsmith"
+fix = "ab_compare.py --register should refuse, or at minimum warn, when a must_not_move or expect glob matches no capture in the runs on hand -- the same gate request.sh already applies to expect KEYS at queue time, extended from 'is the key well-formed' to 'does anything actually produce it'. This is the inert-prediction-leg class one layer in: ten legs were inert for naming the wrong key shape, and this one is inert for naming a real key nothing writes."
