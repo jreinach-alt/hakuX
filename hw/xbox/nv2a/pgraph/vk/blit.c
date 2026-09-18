@@ -34,7 +34,7 @@
 static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
                          size_t width, size_t height, size_t width_bytes,
                          size_t source_pitch, size_t dest_pitch,
-                         BetaState *beta)
+                         unsigned int bytes_per_pixel, BetaState *beta)
 {
     if (operation == NV09F_SET_OPERATION_SRCCOPY) {
         for (unsigned int y = 0; y < height; y++) {
@@ -43,8 +43,113 @@ static void perform_blit(int operation, uint8_t *source, uint8_t *dest,
             dest += dest_pitch;
         }
     } else if (operation == NV09F_SET_OPERATION_BLEND_AND) {
+        /*
+         * This branch hard-codes 32bpp: it walks `width` PIXELS and indexes
+         * s[x * 4 + ch], and its NEON body loads and stores 16 bytes per four
+         * pixels. The caller admits NV062_SET_COLOR_FORMAT_LE_Y8 (1 byte) and
+         * ..._LE_R5G6B5 (2), so a narrow-format blend walked twice the
+         * intended extent per row -- four times on Y8 -- spilling into the
+         * next row and, on the last row, past dest_offset + dest_size.
+         * SRCCOPY above is format-correct because it memmoves width_bytes;
+         * only this branch converts pixels to bytes, and it did so with a
+         * constant. bytes_per_pixel was already threaded into
+         * perform_blit_tiled() and simply never reached here.
+         *
+         * The overrun is BOUNDED, and the bound is worth stating because it
+         * is the difference between this and a host-memory escape. row_pixels
+         * is clamped to MIN(source_pitch, dest_pitch) / bytes_per_pixel in
+         * pgraph_vk_image_blit(), so the walk is at most 4 pitches where one was
+         * intended: 3 extra pitches at Y8, 1 at R5G6B5, 0 at 32bpp. Nothing
+         * downstream CATCHES it -- nv_dma_map()'s end-of-object assert is
+         * commented out (nv2a.c:96), pgraph_vk_image_blit() checks only
+         * dest_offset < dest_dma_len rather than dest_offset + extent, and the
+         * surplus falls outside both the range given to
+         * pgraph_vk_download_surfaces_in_range_if_dirty() and the later
+         * invalidate -- but not catching it is not the same as it being
+         * open-ended. Corruption beyond the blit rect, not a host-memory
+         * escape, which is the limit the finding's own author stated.
+         *
+         * Those two facts sit a few lines apart and disagree: the clamp
+         * divides by bytes_per_pixel and this loop indexes by a constant 4.
+         * THE CLAMP IS AUTHORITATIVE -- `width` here is a count of
+         * destination-format pixels, and the indexing is the side that is
+         * wrong. Refusing rather than rescaling is what keeps it that way; a
+         * fix that instead treated `width` as 32bpp pixels would have made the
+         * indexing authoritative and left max_row_pixels computing the wrong
+         * clamp.
+         *
+         * Refusing rather than guessing, which is what pgraph_vk_solid_line()
+         * below already does for the identical question, and what gl/blit.c
+         * does after b9d845d316. A correct 16bpp blend must unpack 5/6/5,
+         * blend and repack, and the rounding rule for that repack is not
+         * established by anything measured here -- the 2^24 exhaustive behind
+         * this blend's divide covers 8-bit channels only. Inventing one would
+         * put an unmeasured rule into this path.
+         *
+         * Soft guard, not an assert: a guest can select a narrow surface
+         * format and issue a blend blit, so this is reachable guest state
+         * rather than an internal invariant -- the same reasoning
+         * pgraph_vk_solid_line() records for its own narrow-format return.
+         *
+         * All 20 ImgBlt_BLENDAND_* captures in the suite are XRGB or ZRGB,
+         * both 32bpp, so no arm on this fleet can reach this branch with a
+         * narrow format; the warn is how it becomes visible if a title does.
+         * stderr is pumped onto logcat under tag hakuX-stderr
+         * (android/app/src/main/cpp/xemu_android.cpp), so a plain fprintf is
+         * visible on the platform that ships. Audit HIGH, issue #84,
+         * pre-existing on both renderers.
+         */
+        if (bytes_per_pixel != 4) {
+            static bool warned;
+            if (!warned) {
+                warned = true;
+                fprintf(stderr,
+                        "nv2a: BLEND_AND blit at %u bytes/pixel is not "
+                        "implemented; skipping the blend rather than "
+                        "overrunning the destination\n",
+                        bytes_per_pixel);
+            }
+            return;
+        }
+
         uint32_t max_beta_mult = 0x7f80;
         uint32_t beta_mult = beta->beta >> 16;
+        /*
+         * beta_mult <= max_beta_mult is enforced in a DIFFERENT MODULE and
+         * nothing here named the dependency. NV012_SET_BETA stores
+         * `parameter & 0x7f800000` (pgraph/pgraph.c:1951); those are the only
+         * two write sites for beta->beta, and BetaState appears in no vmstate
+         * description, so neither a guest nor a savestate can exceed it. That
+         * makes it an internal invariant rather than guest input, which is
+         * what assert() is for -- and nothing in this function's control flow
+         * implies it, so the assert can actually fire if the mask changes.
+         *
+         * It is load-bearing twice:
+         *
+         *   - inv_beta_mult below would underflow. The NEON path narrows it to
+         *     uint16 while the scalar path uses it unmasked, so the two would
+         *     not merely be wrong, they would be wrong DIFFERENTLY -- and the
+         *     scalar result could then exceed 255 and truncate in the uint8_t
+         *     store.
+         *   - it bounds the dividend. Today, with a plain division, that only
+         *     keeps the result inside the uint8_t store and the headroom is
+         *     large -- the sum cannot exceed 8,339,520 against 2^32, about
+         *     515x. The narrow margin belongs to the RECIPROCAL form the held
+         *     0x7f80 fix introduces (issue #38), where the operand must stay
+         *     below 2^16: largest reachable 65,152 against a first
+         *     disagreement at 66,299, 1.76% of headroom, and the first failure
+         *     a silently wrong pixel rather than a trap. So the tight bound is
+         *     a property of that trick and not of the problem; gl/blit.c
+         *     divides plainly and has no such precondition at all.
+         *
+         * pgraph.c's own comment there -- "only 8 fractional bits are actually
+         * implemented in hardware" -- signposts the world where someone widens
+         * the mask if a capture says otherwise. One step past it,
+         * beta_mult = 0x8000, gives inv_beta_mult = 0xFFFFFF80, which the NEON
+         * path narrows to 65,408 and which drives the divide's operand to
+         * 195,712 -- past both thresholds. Audit MEDIUM M1, issue #84.
+         */
+        assert(beta_mult <= max_beta_mult);
         uint32_t inv_beta_mult = max_beta_mult - beta_mult;
 
         for (unsigned int y = 0; y < height; y++) {
@@ -270,7 +375,7 @@ static void perform_blit_tiled(int operation, uint8_t *source,
             perform_blit(operation, source + done,
                          tile_base + gpu_tile_swizzle(offset, tile->pitch),
                          chunk / bytes_per_pixel, 1, chunk, source_pitch,
-                         dest_pitch, beta);
+                         dest_pitch, bytes_per_pixel, beta);
             done += chunk;
         }
 
@@ -484,7 +589,7 @@ void pgraph_vk_image_blit(NV2AState *d)
             perform_blit(image_blit->operation, source_row, dest_row,
                          row_pixels, adjusted_height, row_bytes,
                          context_surfaces->source_pitch,
-                         context_surfaces->dest_pitch, beta);
+                         context_surfaces->dest_pitch, bytes_per_pixel, beta);
         }
     }
 
@@ -507,7 +612,7 @@ void pgraph_vk_image_blit(NV2AState *d)
             perform_blit(image_blit->operation, src, dest,
                          leftover_bytes / bytes_per_pixel, 1, leftover_bytes,
                          context_surfaces->source_pitch,
-                         context_surfaces->dest_pitch, beta);
+                         context_surfaces->dest_pitch, bytes_per_pixel, beta);
         }
     }
 
