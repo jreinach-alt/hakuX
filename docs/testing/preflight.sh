@@ -244,14 +244,58 @@ TRACKER_TIP="${HAKUX_TIP:-claude/es-de-launcher-disc-error-ojnl14}"
 TRACKER_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "")
 TRACKER_SHARED="${DISPATCH_TREE:-/home/justin/hakuX}"
 TRACKER_FOLD="${HAKUX_FOLD_DIR:-$(grep -o '/home/[a-z0-9_-]*/hakux-work/fold' AGENTS.md 2>/dev/null | head -1)}"
+# THE TIP IS A SET, NOT A REF, AND THAT IS NOT A REFINEMENT.
+#
+# The first version of this gate keyed on the LOCAL branch name alone, and it
+# produced a FALSE POSITIVE on its own author within the hour. A lane worktree's
+# local `claude/...` ref is whatever it was when the worktree was made; the
+# orchestrator pushes to origin, so the local ref lags. Rebasing onto
+# origin/<branch> -- which is the correct thing to do, and what AGENTS.md's own
+# fold procedure does -- then puts the ORCHESTRATOR'S board commits into
+# base..HEAD, and this gate reported two of them as the lane's:
+#
+#     2445a6ff46 board: #59's headline number quoted the favourable half of a pair
+#     1dce24ff81 board: retire lane.audit-blit
+#
+# Neither was mine, both were already published, and the gate would have told
+# every rebased lane it had edited the board. That is the failure mode this
+# lane exists to prevent, arriving in this lane's own work, and the fix is not
+# a wider tolerance: it is asking the right question. A commit that is
+# CONTAINED IN ANY KNOWN TIP is somebody else's by definition, whichever ref
+# this checkout happens to have.
+#
+# So: candidates are the local ref and its remote-tracking counterpart, the
+# base is taken from whichever is further along, and every board-touching
+# commit is then filtered against all of them. `--is-ancestor` is a question
+# about SHAS, which AGENTS.md permits -- the warning there is about using it
+# for PATCHES, and after a rebase this checkout's OWN commits have new shas
+# that no tip can contain, so the filter keeps exactly them.
+TRACKER_TIPS=""
+for t in "$TRACKER_TIP" "origin/$TRACKER_TIP"; do
+    git rev-parse --verify --quiet "$t" >/dev/null 2>&1 && TRACKER_TIPS="$TRACKER_TIPS $t"
+done
+TRACKER_BASE=""
+for t in $TRACKER_TIPS; do
+    b=$(git merge-base HEAD "$t" 2>/dev/null) || continue
+    if [ -z "$TRACKER_BASE" ] || git merge-base --is-ancestor "$TRACKER_BASE" "$b" 2>/dev/null; then
+        TRACKER_BASE="$b"
+    fi
+done
 # base..HEAD plus the working tree and the index: an uncommitted board edit is
 # the same violation one moment earlier, and preflight is meant to be run
 # before the commit as well as before the push.
-TRACKER_BASE=$(git merge-base HEAD "$TRACKER_TIP" 2>/dev/null || true)
 TRACKER_MINE=""
-if [ -n "$TRACKER_BASE" ] \
-   && ! git merge-base --is-ancestor HEAD "$TRACKER_TIP" 2>/dev/null; then
-    TRACKER_MINE=$(git log --format='%h %s' "$TRACKER_BASE..HEAD" -- $TRACKER_FILES 2>/dev/null)
+if [ -n "$TRACKER_BASE" ]; then
+    for c in $(git log --format='%H' "$TRACKER_BASE..HEAD" -- $TRACKER_FILES 2>/dev/null); do
+        contained=0
+        for t in $TRACKER_TIPS; do
+            git merge-base --is-ancestor "$c" "$t" 2>/dev/null && { contained=1; break; }
+        done
+        [ "$contained" = 1 ] && continue
+        TRACKER_MINE="$TRACKER_MINE$(git log -1 --format='%h %s' "$c")
+"
+    done
+    TRACKER_MINE=$(printf '%s' "$TRACKER_MINE")
 fi
 TRACKER_DIRTY=$(git status --porcelain -- $TRACKER_FILES 2>/dev/null)
 if [ -z "$TRACKER_MINE" ] && [ -z "$TRACKER_DIRTY" ]; then
