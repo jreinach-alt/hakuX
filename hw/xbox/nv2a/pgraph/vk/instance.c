@@ -1009,40 +1009,24 @@ static bool create_logical_device(PGRAPHState *pg, Error **errp)
     }
 
     /*
-     * The original query-only comment, kept because it is the derivation and
-     * the block above is only the consequence. Nothing below this point
-     * enables anything.
+     * The query-only block that used to stand here is GONE, and its history
+     * is the reason this comment replaces it rather than nothing.
      *
-     * #59 is blocked on exactly this boolean. Its write-side pad fix is
-     * measured and its mechanism is settled: the Z/O suffix on a colour
-     * surface format names what the RASTER STORES into the pad bits, so #48's
-     * readback is exact on every pixel the raster drew and wrong on every
-     * pixel it did not. The arm that proved it also found where it stops --
-     * forcing fragColor.a changes the source alpha the COLOUR blend consumes,
-     * and result.a = As*Fs + Ad*Fd is linear in two alphas, so a constant 0 is
-     * expressible and a constant 1 is NOT. Dual-source blending is the route,
-     * and the lane could not take it because this file has never asked the
-     * device whether it is available. The boot log prints nine features; this
-     * is not one of them.
+     * It printed "vk dualSrcBlend: available (query only, #59)" on
+     * thirty-eight runs across four lanes and nobody read one of them, which
+     * is why #59 stood blocked for a day on a boolean that was already on
+     * disk. That was worth recording. But once the block above ENABLES the
+     * feature, a second query printing "query only" is a contradictory line
+     * about the same boolean, and audit pass 1 filed it as L1 with a specific
+     * consequence: this arm's own prediction names that log line as the
+     * evidence that the feature came up. Two lines, one saying "available
+     * (query only)" and one saying "enabled", is precisely the ambiguity the
+     * prediction cannot afford, and it also meant calling
+     * vkGetPhysicalDeviceFeatures twice for one answer.
      *
-     * So the cost of answering is one log line, and it decides whether #59's
-     * remaining half is a fix or a hardware limit. Whether we then ENABLE it
-     * is a separate decision with its own arm -- the file's own line-raster
-     * query above says the same thing, and the arm that ignored that advice
-     * cost #13 a device run.
+     * The derivation it carried lives at pgraph_glsl_set_dual_src_pad_supported()
+     * in glsl/psh.h, which is where a reader looking at the gate will be.
      */
-    {
-        VkPhysicalDeviceFeatures f;
-        vkGetPhysicalDeviceFeatures(r->physical_device, &f);
-        fprintf(stderr, "Vulkan feature %-36s : %s (query only, #59)\n",
-                "dualSrcBlend",
-                f.dualSrcBlend == VK_TRUE ? "available" : "missing");
-#ifdef __ANDROID__
-        __android_log_print(ANDROID_LOG_INFO, "hakuX-build",
-                            "vk dualSrcBlend: %s (query only, #59)",
-                            f.dualSrcBlend == VK_TRUE ? "available" : "missing");
-#endif
-    }
 
     /*
      * Report this device's geometry-stage limits against what

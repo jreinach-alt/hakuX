@@ -542,15 +542,50 @@ static uint32_t pgraph_vk_blend_reg_dst_alpha_folded(PGRAPHState *pg)
 /*
  * Issue #59's write-side pad bits, carried in the effective register.
  *
- * NOT A HARDWARE FIELD. NV_PGRAPH_BLEND defines bits 0..11 (nv2a_regs.h:364
- * onwards: EQN, EN, SFACTOR, DFACTOR); this is a synthetic field above them
- * and it exists only inside the value pgraph_vk_effective_blend_reg()
- * returns. It is never written back to the register file, and the check that
- * it cannot be is structural: the two `dyn_blend` fields are different
- * things. The DRAW QUEUE's `q->dyn_blend` is snapshotted from
- * pgraph_reg_r(NV_PGRAPH_BLEND) and IS restored into pg->regs_ -- it never
- * sees this value. The REORDER entry's `e->dyn_blend` is the effective value
- * and is never restored anywhere.
+ * NOT A HARDWARE FIELD. It exists only inside the value
+ * pgraph_vk_effective_blend_reg() returns. It is never written back to the
+ * register file, and the check that it cannot be is structural: the two
+ * `dyn_blend` fields are different things. The DRAW QUEUE's `q->dyn_blend` is
+ * snapshotted from pgraph_reg_r(NV_PGRAPH_BLEND) and IS restored into
+ * pg->regs_ -- it never sees this value. The REORDER entry's `e->dyn_blend`
+ * is the effective value and is never restored anywhere.
+ *
+ * THIS FIELD WAS AT BITS 16..17 AND THAT WAS A COLLISION, found by audit pass
+ * 1 as H1 and H2. The justification given was "NV_PGRAPH_BLEND defines bits
+ * 0..11", which is false and was asserted from a register listing truncated
+ * by `head -30` before it reached nv2a_regs.h:413. The register's defined
+ * fields run to bit 16:
+ *
+ *     EQN            0x00000007      LOGICOP         0x0000F000
+ *     EN             0x00000008      LOGICOP_ENABLE  0x00010000
+ *     SFACTOR        0x000000F0
+ *     DFACTOR        0x00000F00      union           0x0001FFFF
+ *
+ * So the old field's low bit WAS the guest's colour-logic-op enable, which
+ * broke it in both directions at once: init_pipeline_key() strips exactly
+ * that bit, erasing PSH_PAD_ALPHA_ZERO (1) and making a _Z pad format
+ * indistinguishable from a format with no pad bits -- the precise aliasing
+ * this field exists to prevent -- while PSH_PAD_ALPHA_ONE (2) survived, so
+ * the defect was silent on half the formats. And in reverse, a guest setting
+ * NV097_SET_LOGIC_OP_ENABLE made the field read as ZERO on a device with no
+ * dualSrcBlend, programming SRC1_ALPHA with the feature off.
+ *
+ * TWO INDEPENDENT FIXES, because either one alone leaves the other live and
+ * the audit asked for them to be separable:
+ *
+ *   1. The field moves to bits 18..19, above every defined field, and
+ *      NV2A_VK_BLEND_PAD_ALPHA_ASSERT below makes that a COMPILE-TIME check
+ *      against the macros themselves rather than against someone reading the
+ *      header. That is the part that removes the class: my error was trusting
+ *      a truncated read of a register definition, and an assert built from
+ *      the definitions cannot be truncated. It also asserts the field is
+ *      clear of the bits init_pipeline_key() strips, which is the H1 half.
+ *
+ *   2. The field is now written UNCONDITIONALLY, to PSH_PAD_ALPHA_NONE when
+ *      the gate is off, so its value is always ours and never inherited from
+ *      the raw register. That closes H2 whatever bits the field occupies,
+ *      and it is what makes the placement in (1) a defence in depth rather
+ *      than the only thing standing between a guest register and a crash.
  *
  * It rides here rather than in a new struct field because the effective
  * register is already the cache key for every consumer of blend state: the
@@ -569,17 +604,42 @@ static uint32_t pgraph_vk_blend_reg_dst_alpha_folded(PGRAPHState *pg)
  * twice, rather than two derivations of one per-format fact, which is how
  * #48's clear and sampler halves came apart (audit M3/P4).
  */
-#define NV2A_VK_BLEND_PAD_ALPHA 0x00030000 /* synthetic, bits 16..17 */
+#define NV2A_VK_BLEND_PAD_ALPHA_DEFINED_BITS               \
+    (NV_PGRAPH_BLEND_EQN | NV_PGRAPH_BLEND_EN |            \
+     NV_PGRAPH_BLEND_SFACTOR | NV_PGRAPH_BLEND_DFACTOR |   \
+     NV_PGRAPH_BLEND_LOGICOP | NV_PGRAPH_BLEND_LOGICOP_ENABLE)
+
+#define NV2A_VK_BLEND_PAD_ALPHA 0x000C0000 /* synthetic, bits 18..19 */
+
+/* Both halves of H1/H2, checked against the macros and not against a reading
+ * of them. The second is the one that would have caught the original bug. */
+QEMU_BUILD_BUG_ON(
+    (NV2A_VK_BLEND_PAD_ALPHA & NV2A_VK_BLEND_PAD_ALPHA_DEFINED_BITS) != 0);
+QEMU_BUILD_BUG_ON(
+    (NV2A_VK_BLEND_PAD_ALPHA &
+     (NV_PGRAPH_BLEND_LOGICOP_ENABLE | NV_PGRAPH_BLEND_LOGICOP)) != 0);
+/* The field must be wide enough for every PshPadAlphaMode value. Written
+ * without a hard-coded shift so it stays true if the field moves again. */
+QEMU_BUILD_BUG_ON(
+    PSH_PAD_ALPHA_ONE >
+    (NV2A_VK_BLEND_PAD_ALPHA /
+     (NV2A_VK_BLEND_PAD_ALPHA & -NV2A_VK_BLEND_PAD_ALPHA)));
 
 static uint32_t pgraph_vk_effective_blend_reg(PGRAPHState *pg)
 {
     uint32_t blend_reg = pgraph_vk_blend_reg_dst_alpha_folded(pg);
 
-    if (pgraph_glsl_dual_src_pad_supported()) {
-        SET_MASK(blend_reg, NV2A_VK_BLEND_PAD_ALPHA,
-                 pgraph_glsl_surface_pad_alpha_mode(
-                     pg->surface_shape.color_format));
-    }
+    /*
+     * UNCONDITIONAL, including the off case. See fix (2) above: skipping the
+     * write let the field read back whatever the guest had put in those bits,
+     * and a predicate that consumes a refusal must not be keyed on bits the
+     * guest can set.
+     */
+    int pad_mode = pgraph_glsl_dual_src_pad_supported() ?
+                       pgraph_glsl_surface_pad_alpha_mode(
+                           pg->surface_shape.color_format) :
+                       PSH_PAD_ALPHA_NONE;
+    SET_MASK(blend_reg, NV2A_VK_BLEND_PAD_ALPHA, pad_mode);
     return blend_reg;
 }
 
@@ -595,7 +655,7 @@ static bool pgraph_vk_blend_stamps_pad_alpha(uint32_t effective_blend_reg)
  * This is the half arm 1 did not have, and the only reason it failed.
  * psh.c stamps the pad constant into index 0's alpha, so
  * VK_BLEND_FACTOR_SRC_ALPHA -- which is index 0's alpha -- stopped being the
- * combiner's alpha and became the constant. Eight `Blend_surface/*_Add_SrcA_*`
+ * combiner's alpha and became the constant. Eight `Blend_surface` Add_SrcA
  * captures moved, four from bit-exact, and the rule had no exceptions:
  * moved = {format has pad bits} AND {colour factor is SRC_ALPHA}.
  *
@@ -609,17 +669,26 @@ static bool pgraph_vk_blend_stamps_pad_alpha(uint32_t effective_blend_reg)
  * COLOUR ONLY. The alpha half is forced to ONE/ZERO/ADD at each call site, so
  * result.a is the stamp itself; substituting there would be meaningless.
  *
- * SRC_ALPHA_SATURATE IS LEFT ALONE, deliberately and on the same grounds
- * blend_factor_with_dst_alpha_one() leaves it alone: Vulkan has no
- * SRC1_ALPHA_SATURATE, so there is nothing to substitute, and the class is
- * EMPTY here rather than merely untested -- the disc's whole blend-factor
- * vocabulary across `Blend surface`'s 32 captures is SrcA, 1-SrcA, DstA and
- * 1-DstAlpha, and grepping every test name in the 7-suite results for a
- * saturate case returns 0. A draw that combined SRC_ALPHA_SATURATE with a pad
- * format would read the stamped constant, which is the arm-1 defect confined
- * to one factor; it cannot occur on anything measured here, and it is written
- * down rather than guarded because a guard nothing can reach is worse than a
- * named gap.
+ * SRC_ALPHA_SATURATE IS LEFT ALONE AND THAT IS CORRECT, NOT A GAP. This
+ * paragraph used to say the opposite and audit pass 1 corrected it (L2): the
+ * code was right and the justification was wrong, which is worth fixing
+ * precisely because a wrong comment is believed -- audit M3 overstated a
+ * finding on the strength of a stale sentence three files from here.
+ *
+ * Vulkan has no SRC1_ALPHA_SATURATE, so there is nothing to substitute. But
+ * nothing needs substituting: the factor is min(As, 1 - Ad), and under the
+ * stamp it evaluates to 0 for BOTH pad variants, which is silicon's answer.
+ * For a _Z surface As is stamped to 0, so min(0, 1 - Ad) = 0. For an _O
+ * surface As is stamped to 1 and Ad is folded to 1 by
+ * surface_color_format_dst_alpha_is_one(), so min(1, 0) = 0. Either way the
+ * colour half contributes nothing, which is what a format with no alpha
+ * channel does.
+ *
+ * The class is also empty in the corpus -- `Blend surface`'s 32 captures use
+ * only SrcA, 1-SrcA, DstA and 1-DstAlpha, and no test name in the 7-suite
+ * results contains a saturate case -- so this is unmeasured as well as
+ * derived. Recorded as a derivation rather than a measurement for that
+ * reason.
  */
 static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
 {

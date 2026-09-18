@@ -2462,8 +2462,44 @@ DEF_METHOD(NV097, SET_SURFACE_FORMAT)
 {
     d->pgraph.renderer->ops.surface_update(d, false, true, true);
 
+    /*
+     * A COLOUR-FORMAT CHANGE HAS TO INVALIDATE PIPELINE STATE, and it did not.
+     * Audit pass 1 finding H3, and the defect is older than the change that
+     * exposed it.
+     *
+     * `surface_shape.color_format` is a plain PGRAPHState field rather than a
+     * pgraph register, so none of pgraph_reg_w()'s generation machinery runs
+     * for it, and the zeta arm below was the only thing here that bumped
+     * anything. Meanwhile the Vulkan renderer's create_pipeline() early-returns
+     * on those same generation counters, and its render-pass state carries only
+     * the HOST VkFormat -- and A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8 and
+     * X1A7R8G8B8_{Z,O} all map to B8G8R8A8_UNORM. So a draw that changed only
+     * this field kept the previous format's pipeline, on the reuse path where
+     * bind_surface() is not reached either.
+     *
+     * That silently defeated TWO format-dependent substitutions baked into the
+     * static pipeline's blend state: #48/#59's destination-alpha fold, whose
+     * comment in vk/draw.c claimed keying on the effective register closed
+     * this (true only of the paths that rebuild the key), and #59's pad-alpha
+     * stamp, which widens the consequence from two blend factors to the whole
+     * alpha equation plus a second-source substitution. `Blend surface` and
+     * `Surface format` both render every case into ONE surface at one address
+     * changing only this register, which is exactly the shape that goes wrong.
+     *
+     * pipeline_state_gen is the counter create_pipeline() compares, and
+     * any_reg_gen is bumped alongside it for the same reason the zeta arm does.
+     * shader_state_gen is deliberately NOT bumped: #59's stamp is emitted
+     * unconditionally and gated on a uniform restaged every draw, so the
+     * shader does not depend on this field and rebuilding it would be a cost
+     * with no correctness behind it.
+     */
+    uint32_t old_color_format = pg->surface_shape.color_format;
     pg->surface_shape.color_format =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_COLOR);
+    if (pg->surface_shape.color_format != old_color_format) {
+        pg->pipeline_state_gen++;
+        pg->any_reg_gen++;
+    }
     uint32_t old_zeta_format = pg->surface_shape.zeta_format;
     pg->surface_shape.zeta_format =
         GET_MASK(parameter, NV097_SET_SURFACE_FORMAT_ZETA);

@@ -1358,6 +1358,51 @@ static VkComponentSwizzle surface_sampled_pad_alpha(
      * which moved it. Behind the same device condition everything else on
      * this path is behind, a part without dualSrcBlend keeps #48 intact and
      * unchanged, and the two mechanisms are never both live.
+     *
+     * WHAT THIS WITHDRAWAL DOES AND DOES NOT COVER. Audit pass 1's M1 is that
+     * the withdrawal is unconditional while the stamp is not -- psh.h states
+     * the qualifier "exact on every pixel the raster drew" and this drops it.
+     * The finding is right that the scopes differ. Three of the four paths it
+     * names are not regressions, and the fourth is, so they are separated
+     * here rather than answered together:
+     *
+     *   - SURFACE UPLOAD FROM GUEST RAM is exact, and that is a property of
+     *     the format table rather than of this code. All four stamping
+     *     formats store the guest's bytes 1:1 -- the 1555 pair as
+     *     VK_FORMAT_A1R5G5B5_UNORM_PACK16 and the 8888 pair as
+     *     VK_FORMAT_B8G8R8A8_UNORM (vk/constants.h) -- with no widening and
+     *     no synthesised alpha, so our image's pad byte IS the guest's pad
+     *     byte, which is what silicon's memory holds. Reading it plainly is
+     *     the model; #48's constant was OVERRIDING correct data. That is the
+     *     same thing Clear/SFC_X1R5G5B5_Z1R5G5B5 measures on 49,104 px, where
+     *     our green channel already carries the exact bytes the golden's
+     *     alpha wants and only this override was zeroing them.
+     *
+     *   - THE NV062 BLIT patches guest memory, so the bytes arrive through
+     *     that same upload path and the same argument applies.
+     *
+     *   - AN UNAUTHORED REGION -- a pooled image recycled by
+     *     image_pool_acquire and neither cleared nor drawn -- is undefined
+     *     content in every channel. #48's constant did not make such a
+     *     surface correct; it made one channel of an incorrect surface
+     *     deterministic, while RGB stayed whatever the previous tenant left.
+     *     So this is a change in what undefined content looks like, not a
+     *     loss of a guarantee.
+     *
+     *   - AN ALPHA-WRITE-MASKED DRAW is the real residual and is NOT fixed
+     *     here. With NV_PGRAPH_CONTROL_0_ALPHA_WRITE_ENABLE clear the raster
+     *     does not write the pad byte, so those pixels keep whatever the
+     *     surface held before, and the sampled alpha is that rather than the
+     *     format's constant. Whether silicon masks the pad bits with the
+     *     ALPHA write mask at all is UNMEASURED -- the pad bits are not an
+     *     alpha channel, so there is a real question there and no golden in
+     *     the corpus separates the two answers. Forcing the mask on for pad
+     *     formats would make the stamp unconditional and is deliberately NOT
+     *     done, because it would be an unmeasured behaviour change riding
+     *     along with a measured one, which is the mistake
+     *     blend_factor_with_dst_alpha_one() declines to make two files over.
+     *     Stated as a bound: on such a draw the write side does not claim
+     *     the pixel, and #48's constant would have been a guess there too.
      */
     if (pgraph_glsl_dual_src_pad_supported()) {
         return VK_COMPONENT_SWIZZLE_IDENTITY;
