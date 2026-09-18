@@ -521,3 +521,83 @@ It matters because a sweep that scores "captures present" would read a
 zero-capture disc as a mass regression rather than a crashed run. `runx.sh`
 prints `QEMU_EXIT=` and the capture count; read both before believing a
 sweep.
+
+## Closed on HEAD, 2026-09-18
+
+The fix for the eight captures, `f75a4aad`, is on HEAD by content
+(`gl/surface.c:1429-1436`, the `min_filter` cache reset) and by run. On a
+binary rebuilt from HEAD (`0.4.0-j1-368-g8c938792`), `renderer = 'OPENGL'`,
+`iso_surf1`: the six `Surface_clip` captures the fix took to zero are at zero
+(47 of 47 exact), `Blend_surface::R5G6B5_Add_SrcA_1-SrcA` is 12,598 and
+`R5G6B5_Add_SrcA_DstA` is 11,964 -- the registered values -- and GL is
+bit-exact on **118 of 236** captures of the disc.
+
+### GL against Vulkan, one binary, one disc
+
+The issue's framing was "the captures where GL still trails Vulkan". Measured
+at HEAD with both renderers on the same binary and disc, one run each,
+byte-compared with `docs/testing/verify_surface_disc.py`: **218 of 236 captures
+are byte-identical between the renderers.** The eighteen that differ:
+
+| captures | GL | Vulkan | ahead |
+|---|---:|---:|---|
+| `Color_zeta_overlap::ColorIntoZeta_ZB` | 10,766 | 131,495 | GL |
+| `Color_zeta_overlap::Swap_ZB` | 0 | 141,125 | GL |
+| `Color_zeta_overlap::ZetaIntoColor` | 71,663 | 102,255 | GL |
+| `Color_zeta_overlap::Swap` | 165,447 | 165,447 | neither (different bytes, same distance) |
+| `Image_blit::ImgBlt_BLENDAND_*`, twelve captures | 0 on all twelve | 7,162 to 16,384 | GL |
+| `Image_blit::BlitRenderBlit` | 1,524 | 14,784 | GL |
+| `Surface_pitch::Swizzle` | 15,360 | 10,240 | Vulkan |
+
+Vulkan is bit-exact on 105 of 236. The three `Color_zeta_overlap` captures are
+#66's same-offset policy, which landed on the GL side only; Vulkan's
+`ColorIntoZeta_ZB` value is exactly the "depth write wins" value GL produced
+before the policy was settled, so it is filed as **#88** for the Vulkan file's
+holder. The thirteen `Image_blit` captures are the blit lane's `BLEND_AND`
+divisor fix in `vk/blit.c`, held unfolded on the peer branch pending its arm
+and an audit -- #38's mechanism 3, not this issue.
+
+**So at HEAD the one capture where GL trails Vulkan is `Surface_pitch::Swizzle`,
+and it is the race, not the surface-to-texture path.** The eight captures this
+issue was opened on are closed by mechanism, and nothing the fast path does is
+left on the disc.
+
+### The race-free residual is a permutation
+
+#39's skew-bound measurement showed both renderers giving 10,240 px on this
+capture with one digest, `15845fa9e1e40032`, once the guest/pgraph race is
+held off. **Vulkan at HEAD produces that exact digest with no bound at all** --
+it loses the race identically every run -- so its capture is the race-free
+image, and it can be characterised without a slow bound run.
+`docs/testing/swizzle_residual.py` on it, against the golden:
+
+```
+differing: 10,240 of 307,200; bbox x[128..511] y[277..340]
+ours at differing px: #00AA00x4096, #000000x3072, #2222FFx1536, #7722FFx1536
+gold at differing px: #00AA00x4096, #000000x3072, #2222FFx1536, #7722FFx1536
+same multiset: True
+```
+
+The right pixels in the wrong places. In each of the two wrong 128-column
+results we put the whole checkerboard in the left 64 columns and the fill in
+the right 64, where hardware has each half holding half of each; the
+differing pixels run in horizontal lengths of exactly 16, 32, 64 and 80, and
+no single translation explains more than 40% of them. A block-linear address
+computed with the wrong pitch or tile geometry, shared by both renderers and
+so upstream of the renderer split. Filed as **#87**.
+
+This corrects a conclusion earlier in this document. The multiset test in
+*The second residual, localised* compared the fast path's output with the
+slow path's, found different multisets, and concluded the path was not
+mis-arranging content. Both of those captures were race-affected; the test
+was measuring the race. **A permutation test needs the race out first.**
+
+### Where each residual lives now
+
+- the run-to-run instability of `Surface_pitch::Swizzle`: the CPU/GPU
+  memory-ordering hazard measured above, held off by #44's FIFO skew bound at
+  a six-fold cost, which is #44's shipping decision and #39's family;
+- the 10,240 px both renderers share once the race is out: **#87**;
+- `Blend_surface::DstAlpha_XA_O1A7RGB8`, the one capture #60's format refresh
+  still regresses: #60, on #59's pad-alpha semantics; at HEAD without the
+  refresh it is 81,920 on both renderers.
