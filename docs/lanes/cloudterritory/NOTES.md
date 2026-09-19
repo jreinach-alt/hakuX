@@ -104,6 +104,18 @@ Costs and residual risks, stated rather than assumed:
   the `SPLIT` constant into `cloud.sh` to pre-empt it would be a second copy
   of a rule that drifts.
 
+## A rejected push is not evidence of a race
+
+The first version logged every failed push as "origin/board moved while this
+row was being written". That is the usual cause and it is not the only one: an
+expired credential, a protected branch and a failed unpack all arrive here as
+`[remote rejected]`, and the message would have sent the next reader looking
+for a board tick that never ran. `git`'s own text now goes into the tick log
+verbatim (truncated to 200 characters, newlines flattened) and the
+classification is left to whoever reads it. The retry is unchanged -- three
+tries either way, because a credential failure costs two extra pushes and a
+misdiagnosis costs a session.
+
 ## For the next lane
 
 - Do not re-derive whether the row should be a `[retired.<name>]` entry
@@ -129,14 +141,14 @@ Costs and residual risks, stated rather than assumed:
 was never swapped -- a falsification that leaves the old code in the tree has
 cost a lane its whole session before):
 
-    selftest: 11 passed, 14 failed      # against origin/master's cloud.sh
-    selftest: 312 passed, 0 failed      # the full run against this branch
+    selftest: 11 passed, 15 failed      # against origin/master's cloud.sh
+    selftest: 313 passed, 0 failed      # the full run against this branch
 
 **The 11 that pass against the old file are not evidence of anything and are
 not meant to be.** They are the damage-guards -- "the other lane's row is
 untouched", "the board branch does not move", "master is not touched",
 "finish removes the row" -- and every one of them is vacuously true when
-nothing is written at all. Each of the 14 that fail asserts something
+nothing is written at all. Each of the 15 that fail asserts something
 positive: that the row exists, that it names the PR's issue and files, that
 the omissions are in the note, that a refusal is reported, that a lost race
 is retried and the concurrent writer's row survives.
