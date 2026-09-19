@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 113
-updated_utc = "2026-09-19T12:05:00Z"
+wave = 114
+updated_utc = "2026-09-19T12:15:00Z"
+
+
+[lane.cloud-remediate-128]
+issues = ["86"]
+files = []
+standing = false
+note = "WRITTEN AT WAVE 114 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect [lane.cloud-audit1-128] above documents for its own pass. This is the audit outlet's own claimed unit (jobs/cloud.sh): PR #128 (branch lane/glerr86, #86) carries needs-remediation + claimed:cloud + verified after pass-1 audit found findings against it, and jobs/cloud.sh claims exactly one needs-remediation PR ahead of needs-audit-2/needs-audit-1 in its own priority order. Same PR, same issue as [lane.cloud-audit1-128] above -- no file collision, both claim files = [] (a remediation session edits the PR's own branch in its own worktree, it does not claim source files the way a fresh task lane does). Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
 
 
 [lane.blendrace50]
