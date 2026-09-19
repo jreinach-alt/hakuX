@@ -105,14 +105,6 @@ static const char *gl_error_name(GLenum err)
     }
 }
 
-static bool is_power_of_ten(uint64_t n)
-{
-    while (n >= 10 && n % 10 == 0) {
-        n /= 10;
-    }
-    return n == 1;
-}
-
 /* Report, rather than swallow, the GL errors already pending when a shader
  * load begins (#86).
  *
@@ -120,60 +112,67 @@ static bool is_power_of_ten(uint64_t n)
  * everything drained here was raised by whatever ran before the load -- which
  * is exactly why the desktop build's assert on this spot was the one place an
  * upstream GL failure ever surfaced, and how #66's 378 attachment-less clears
- * per run were found. The Android arm drained the same backlog in silence,
- * which left the shipping renderer with no error-reporting path at all.
+ * per run were found. This was the one GL-error site in this file that the
+ * Android arm drained in silence: android_log_shader_stage_errors,
+ * android_log_apply_uniform_entry_errors and android_log_uniform_update_errors
+ * above already print, ungated by DEBUG_NV2A_GL. That bounds what this report
+ * can see, and the bound is narrow: apply_uniform_updates() drains and prints
+ * the whole backlog on every bind, so an error raised before the previous
+ * bind's uniform updates is reported *there* and is gone before this function
+ * runs. What arrives here was raised since then.
  *
  * The drain stays: the glGetError after glProgramBinary() below cannot tell a
  * stale error from its own, so leaving the backlog in place would turn an
  * unrelated error into a failed binary load and a needless recompile. What
  * changes is that each error is named on the way out.
  *
- * Repeats are counted rather than printed. A shader load happens many times a
- * frame, so one line per drained error per load would flood logcat, and a log
- * that floods is read no more than a log that is silent: each distinct enum
- * prints the first time and then as its running count crosses a power of ten,
- * which keeps a recurring error visible without it becoming the log.
+ * Every occurrence prints, because this is not a per-frame path. The sole
+ * caller is guarded by !binding->initialized, which is cleared only when the
+ * LRU claims a fresh node, so this runs once per shader-cache miss against a
+ * 51200-entry cache -- hundreds of times over a run, front-loaded into the
+ * first seconds. At that rate printing each one is affordable, and it is what
+ * keeps the per-load shader hash: the hash names where the error was found,
+ * and a suppressed repeat is a hash that never appears.
+ *
+ * The budget below is therefore not a rate limit for the expected case. It is
+ * a bound for the case this cannot reason about -- a renderer broken badly
+ * enough to leave an error pending at most loads -- so that the log cannot
+ * become unreadable: the first ANDROID_GLERR_MAX_REPORTS lines are complete,
+ * with their hashes, then one line says reporting stopped. The drain does not
+ * stop with it.
  */
+#define ANDROID_GLERR_MAX_REPORTS 256
+
 static void android_report_pending_gl_errors(const ShaderBinding *binding)
 {
-    /* Keyed by enum, linear-scanned: GL defines a handful of error codes and
-     * the scan stops at a match, at the first unused slot, or at the last
-     * slot, which is shared. Only a vendor code beyond the eight GL defines
-     * can reach the shared slot, and aggregating those costs a suppression
-     * nobody will miss. */
-    static struct {
-        GLenum err;
-        uint64_t count;
-    } seen[8];
+    /* Lines printed so far, process-wide: one counter, not a table keyed by
+     * enum. A fixed set of per-enum slots must either grow without bound or
+     * share one, and a shared slot re-keyed by whichever enum arrived last
+     * suppresses nothing while reporting every count as the first. */
+    static uint64_t printed;
 
     GLenum err;
 
     while ((err = glGetError()) != GL_NO_ERROR) {
-        size_t i;
-        uint64_t count;
-
-        for (i = 0; i < ARRAY_SIZE(seen) - 1; i++) {
-            if (seen[i].err == err || seen[i].err == GL_NO_ERROR) {
-                break;
-            }
+        if (printed > ANDROID_GLERR_MAX_REPORTS) {
+            continue;
         }
-        if (seen[i].err != err) {
-            seen[i].err = err;
-            seen[i].count = 0;
-        }
-        count = ++seen[i].count;
-
-        if (!is_power_of_ten(count)) {
+        if (++printed > ANDROID_GLERR_MAX_REPORTS) {
+            __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                                "[glerr] %d reports printed; further pending "
+                                "errors are still drained, but no longer "
+                                "logged",
+                                ANDROID_GLERR_MAX_REPORTS);
             continue;
         }
 
         __android_log_print(ANDROID_LOG_WARN, "hakuX",
                             "[glerr] %s (0x%X) was already pending on entry to "
                             "pgraph_gl_shader_load_from_memory shader=%llx "
-                            "occurrence=%llu",
+                            "report=%llu",
                             gl_error_name(err), err,
                             (unsigned long long)binding->node.hash,
-                            (unsigned long long)count);
+                            (unsigned long long)printed);
     }
 }
 #endif

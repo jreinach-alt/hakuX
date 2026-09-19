@@ -54,7 +54,13 @@ static GLenum glGetError(void)
     return queued_i < queued_n ? queued[queued_i++] : GL_NO_ERROR;
 }
 
-static char log_lines[256][512];
+/* log_n counts every line the block emitted; the store keeps the first 64 of
+ * them and, separately, the most recent one. The budget leg deliberately
+ * drives more lines than the store holds, and a store that overflowed would
+ * corrupt the very count it is checked against -- so the count lives outside
+ * the store, and no leg indexes past what was kept. */
+static char log_lines[64][512];
+static char log_last[512];
 static size_t log_n;
 
 static int __android_log_print(int prio, const char *tag, const char *fmt, ...)
@@ -64,8 +70,11 @@ static int __android_log_print(int prio, const char *tag, const char *fmt, ...)
     (void)prio;
     (void)tag;
     va_start(ap, fmt);
-    vsnprintf(log_lines[log_n], sizeof(log_lines[0]), fmt, ap);
+    vsnprintf(log_last, sizeof(log_last), fmt, ap);
     va_end(ap);
+    if (log_n < sizeof(log_lines) / sizeof(log_lines[0])) {
+        snprintf(log_lines[log_n], sizeof(log_lines[0]), "%s", log_last);
+    }
     log_n++;
     return 0;
 }
@@ -133,37 +142,58 @@ int main(void)
     before = log_n;
     pending(GL_OUT_OF_MEMORY, GL_NO_ERROR);
     android_report_pending_gl_errors(&binding);
-    check(log_n == before + 1 &&
-          strstr(log_lines[log_n - 1], "GL_OUT_OF_MEMORY") != NULL,
+    check(log_n == before + 1 && strstr(log_last, "GL_OUT_OF_MEMORY") != NULL,
           "a distinct enum is reported despite an earlier one");
 
-    /* Repeats: occurrences 2..9 are counted, 10 prints, 11..99 counted, 100
-     * prints. NOTE these suppression legs pass vacuously against a block that
-     * prints nothing -- they bound the flood, they do not detect silence. The
-     * legs above are the ones that separate reporting from draining. */
+    /* Repeats print. The call site runs once per shader-cache miss, not once
+     * per frame, so the line per load is affordable -- and it is what carries
+     * the per-load shader hash, which is the whole diagnostic: a repeat that
+     * is counted instead of printed is a hash that never appears. */
     before = log_n;
-    for (int i = 2; i <= 9; i++) {
+    for (int i = 0; i < 10; i++) {
         pending(GL_INVALID_OPERATION, GL_NO_ERROR);
         android_report_pending_gl_errors(&binding);
     }
-    check(log_n == before, "occurrences 2..9 of a repeat are suppressed");
-    pending(GL_INVALID_OPERATION, GL_NO_ERROR);
-    android_report_pending_gl_errors(&binding);
-    check(log_n == before + 1, "occurrence 10 prints");
-    check(log_n == before + 1 &&
-          strstr(log_lines[log_n - 1], "occurrence=10") != NULL,
-          "the count that printed is the count reported");
-    before = log_n;
-    for (int i = 11; i <= 99; i++) {
-        pending(GL_INVALID_OPERATION, GL_NO_ERROR);
-        android_report_pending_gl_errors(&binding);
+    check(log_n == before + 10,
+          "every occurrence of a repeat prints, one line per load");
+    check(strstr(log_last, "report=") != NULL,
+          "each line carries its report index");
+
+    /* More distinct enums than a small per-enum table has slots for. This is
+     * the state the block used to keep and no longer does: a table whose last
+     * slot is shared re-keys on every alternation between two codes that land
+     * in it, which suppresses nothing at all and reports every line as the
+     * first occurrence. Both halves are checked -- the count, and that the
+     * index keeps climbing. */
+    {
+        static const GLenum many[] = {
+            GL_INVALID_ENUM, GL_INVALID_VALUE, GL_INVALID_OPERATION,
+            GL_OUT_OF_MEMORY, GL_INVALID_FRAMEBUFFER_OPERATION,
+            0x8000, 0x8001, 0x8002, 0x8003, 0x8004,
+        };
+
+        before = log_n;
+        for (size_t i = 0; i < ARRAY_SIZE(many); i++) {
+            pending(many[i], GL_NO_ERROR);
+            android_report_pending_gl_errors(&binding);
+        }
+        check(log_n == before + ARRAY_SIZE(many),
+              "ten distinct enums, more than any slot table holds -> ten lines");
     }
-    check(log_n == before, "occurrences 11..99 are suppressed");
-    pending(GL_INVALID_OPERATION, GL_NO_ERROR);
-    android_report_pending_gl_errors(&binding);
-    check(log_n == before + 1 &&
-          strstr(log_lines[log_n - 1], "occurrence=100") != NULL,
-          "occurrence 100 prints");
+    {
+        char want[64];
+
+        before = log_n;
+        for (int i = 0; i < 40; i++) {
+            pending(i % 2 ? 0x8005 : 0x8006, GL_NO_ERROR);
+            android_report_pending_gl_errors(&binding);
+        }
+        check(log_n == before + 40,
+              "40 loads alternating between two enums -> 40 lines");
+        snprintf(want, sizeof(want), "report=%zu", log_n);
+        check(strstr(log_last, want) != NULL,
+              "the report index counts up rather than resetting to 1");
+    }
 
     /* The drain still drains. A backlog of two must leave the context clean,
      * or the glGetError after glProgramBinary() at the call site reads a stale
@@ -199,12 +229,29 @@ int main(void)
     android_report_pending_gl_errors(&binding);
     check(log_n == before + 1, "a vendor code is reported too");
 
-    /* is_power_of_ten is the whole of the suppression rule. */
-    check(is_power_of_ten(1) && is_power_of_ten(10) && is_power_of_ten(1000000),
-          "powers of ten print");
-    check(!is_power_of_ten(0) && !is_power_of_ten(2) &&
-          !is_power_of_ten(99999999999ULL),
-          "non-powers do not");
+    /* The budget, driven past on purpose, and last: it is the one piece of
+     * state the block keeps, and exhausting it is permanent. A renderer
+     * leaving an error pending at most loads must not be able to make the log
+     * unreadable, so the count settles at the budget plus the one line that
+     * says it stopped -- and the drain keeps running underneath it. */
+    for (int i = 0; i < ANDROID_GLERR_MAX_REPORTS + 8; i++) {
+        pending(GL_INVALID_VALUE, GL_INVALID_ENUM);
+        android_report_pending_gl_errors(&binding);
+    }
+    check(log_n == (size_t)ANDROID_GLERR_MAX_REPORTS + 1,
+          "past the budget the line count stops at the budget plus one");
+    check(strstr(log_last, "no longer") != NULL &&
+          strstr(log_last, "drained") != NULL,
+          "the last line says reporting stopped and draining did not");
+
+    /* Vacuous against silence, like any leg about what is NOT printed: it is
+     * here because the drain outliving the budget is the property that keeps
+     * the glProgramBinary check below the call site honest. */
+    before = log_n;
+    pending(GL_INVALID_ENUM, GL_INVALID_VALUE);
+    android_report_pending_gl_errors(&binding);
+    check(glGetError() == GL_NO_ERROR && log_n == before,
+          "past the budget the backlog is still drained, and silently");
 
     printf("%s\n", failures ? "FAILURES" : "all checks passed");
     return failures != 0;

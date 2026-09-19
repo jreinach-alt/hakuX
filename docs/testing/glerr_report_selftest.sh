@@ -122,7 +122,11 @@ for leg in \
     "FAIL the line carries the [glerr] tag" \
     "FAIL names the enum" \
     "FAIL names the shader" \
-    "FAIL a distinct enum is reported"
+    "FAIL a distinct enum is reported" \
+    "FAIL every occurrence of a repeat prints" \
+    "FAIL ten distinct enums" \
+    "FAIL the report index counts up" \
+    "FAIL past the budget the line count"
 do
     case "$out" in
         *"$leg"*) ;;
@@ -133,7 +137,8 @@ done
 # failing because the harness broke rather than because the drain is silent.
 for leg in \
     "ok   no pending error" \
-    "ok   the backlog is fully drained"
+    "ok   the backlog is fully drained" \
+    "ok   past the budget the backlog is still drained"
 do
     case "$out" in
         *"$leg"*) ;;
