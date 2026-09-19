@@ -259,6 +259,11 @@ rout=$(ct_claim "$CT/c")
 RROW=$(ct_row "$CT/c" cloud-remediate-102)
 check "a push that lost the race is retried, not forced" \
     grep -q "territory: push rejected (try 1 of 3)" <<< "$rout"
+# A credential, a protected branch and a failed unpack all print "[remote
+# rejected]" too, so the log must carry what git actually said rather than
+# only this script's guess at why.
+check "and the log carries git's own message, not just 'the board moved'" \
+    grep -q "git said:.*rejected" <<< "$rout"
 check "the row lands anyway, on the tip the board tick left" \
     bash -c '[ "$1" != "{}" ]' _ "$RROW"
 check "and the board tick's own row is still there: no lost update" \

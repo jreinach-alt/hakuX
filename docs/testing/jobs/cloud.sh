@@ -110,7 +110,7 @@ mode="${1:-run}"
 BOARD_BRANCH="${HAKUX_BOARD_BRANCH:-board}"
 territory_row() {   # <add|rm> <lane> <issues-json> <files-json> <note>
     local action=$1 lane=$2 ij=$3 fj=$4 note=$5
-    local tmp base blob tree commit out rc try msg
+    local tmp base blob tree commit out rc try msg perr
     command -v python3 >/dev/null 2>&1 || {
         say "  territory: no python3, so the row cannot be VALIDATED; not writing one for $lane"; return 1; }
     tmp=$(mktemp -d) || return 1
@@ -246,12 +246,20 @@ PY
         commit=$(git -C "$REPO" -c user.name=hakux-cloud -c user.email=cloud@hakux.invalid \
                      commit-tree "$tree" -p "$base" -m "$msg" 2>/dev/null) || {
             say "  territory: could not build the commit for $lane"; rc=1; break; }
-        if git -C "$REPO" push -q origin "$commit:refs/heads/$BOARD_BRANCH" 2>/dev/null; then
-            say "  territory: lane.$lane $out on origin/$BOARD_BRANCH ($(echo "$base" | cut -c1-9) -> $(echo "$commit" | cut -c1-9))"
+        # KEEP WHAT GIT SAID. A rejected push is USUALLY the race -- but it is
+        # also what an expired credential, a protected branch and a failed
+        # unpack look like from here, and all four print "[remote rejected]".
+        # Reporting every one of them as "the board moved under us" would send
+        # the next reader to look for a board tick that never ran, so the
+        # message goes into the log verbatim and the classification is left to
+        # whoever reads it.
+        if perr=$(git -C "$REPO" push origin "$commit:refs/heads/$BOARD_BRANCH" 2>&1 >/dev/null); then
+            say "  territory: lane.$lane $out on origin/$BOARD_BRANCH (${base:0:9} -> ${commit:0:9})"
             rc=0; break
         fi
+        perr=$(echo "$perr" | tr '\n' ' ' | cut -c1-200)
         rc=1
-        say "  territory: push rejected (try $try of 3) -- origin/$BOARD_BRANCH moved while this row was being written; re-reading it"
+        say "  territory: push rejected (try $try of 3) -- usually origin/$BOARD_BRANCH moved while this row was being written, so it is re-read and re-applied; git said: $perr"
     done
     rm -rf "$tmp"
     [ "$rc" = 0 ] || say "  territory: lane.$lane is NOT on origin/$BOARD_BRANCH; the next board tick will report it as RUNNING with no row"
