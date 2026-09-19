@@ -7,6 +7,16 @@ After=network.target
 Type=simple
 Environment=DISPATCH_DIR=/home/justin/hakux-work/dispatch
 Environment=DISPATCH_TREE=/home/justin/hakuX
+# MEASURED 2026-09-19: every uncached Android build from this daemon failed at
+# CMake configure with "meson not found in PATH; required to build glib for
+# Android". meson lives in ~/.local/bin, which a systemd user unit does NOT
+# inherit -- a unit's PATH is /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin
+# :/sbin:/bin:... and nothing else. An interactive shell puts ~/.local/bin
+# first, so the same build by hand succeeds, which is why this stayed invisible
+# for as long as every requested ref was already in the APK cache. The first
+# uncached ref -- #89's arm, both sides -- failed in 1m54s with a 1,200-line
+# Gradle stack trace whose one useful line was 80 lines in.
+Environment=PATH=/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/dispatcher.sh serve
 # It self-supervises its workers; this only brings the supervisor back.
 Restart=always

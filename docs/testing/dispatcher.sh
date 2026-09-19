@@ -414,8 +414,35 @@ _build_ref_locked() {
        && [ -f "$TREE/android/local.properties" ]; then
         cp "$TREE/android/local.properties" "$BUILD_TREE/android/local.properties"
     fi
+    BUILD_LOG="$D/logs/build-$sha$suffix.log"   # not local: serve_one reads it for the cause
+    # A MISSING BUILD TOOL IS THE ONE FAILURE THAT LOOKS LIKE A CODE DEFECT AND
+    # IS NOT. meson lives in ~/.local/bin on this host, and a systemd user unit
+    # does not inherit the login shell's PATH -- so every uncached build from
+    # this daemon died at CMake configure with "meson not found in PATH;
+    # required to build glib for Android", while the same build by hand
+    # succeeded. It stayed invisible for as long as every requested ref was
+    # already in the APK cache; the first uncached one was #89's arm, and both
+    # sides of the pair failed identically, which reads like the branch.
+    #
+    # Two seconds here against 1m54s and a 1,200-line Gradle stack trace whose
+    # one useful line is 80 lines in.
+    local missing="" tool
+    for tool in meson; do
+        command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+    done
+    if [ -n "$missing" ]; then
+        { echo "build tool not on PATH:$missing"
+          echo "PATH=$PATH"
+          echo "This is the daemon's environment, not the code: a systemd user unit"
+          echo "does not inherit the login shell's PATH. See the Environment=PATH line"
+          echo "in docs/testing/systemd/hakux-dispatcher.service, and re-install the"
+          echo "units with docs/testing/jobs/install-host.sh."
+        } > "$BUILD_LOG"
+        log "  BUILD TOOL MISSING:$missing -- not starting gradle"
+        return 4
+    fi
     (cd "$BUILD_TREE/android" && ./gradlew assembleDebug ${gradle_args:+$gradle_args}) \
-        >>"$D/logs/build-$sha$suffix.log" 2>&1
+        >>"$BUILD_LOG" 2>&1
     local rc=$?
     [ "$rc" -eq 0 ] || return 4
     cp "$BUILD_TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
@@ -472,7 +499,16 @@ serve_one() {
     [ -z "$perflog" ] || log "  diagnostic build requested: -Pperflog=true"
     apk=$(build_ref "$ref" "$perflog"); rc=$?
     if [ "$rc" != 0 ]; then
-        echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
+        # The arms job puts the first lines of this file on the lane's PR as
+        # "[job.arms] ARM ERROR", and "code 4" tells a lane nothing it can act
+        # on. The first line that names a cause in a Gradle log is typically 80
+        # lines in and everything after it is a stack trace, so pull the lines
+        # that name one rather than the head or the tail.
+        { echo "build failed for ref $ref (code $rc)"
+          grep -m3 -hE "CMake Error|not on PATH|not found in PATH|error:|FAILED: |What went wrong" \
+               "${BUILD_LOG:-/dev/null}" 2>/dev/null | cut -c1-200 | sed 's/^/  /'
+          echo "  full log: ${BUILD_LOG:-none}"
+        } > "$rdir/ERROR"
         log "  BUILD FAILED (code $rc)"; mv "$req" "$rdir/request.json"; return 0
     fi
     if [ ! -f "$apk" ]; then
