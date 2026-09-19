@@ -776,6 +776,110 @@ Hard-won operational facts, each of which cost real time:
 | A run cut off by your wait loop is not a completed run | The emulator does not exit on guest power-off (#20), so waiting for the process to die always hits your timeout. Confirm completion from the progress log's "Testing completed normally", never from the run's duration. |
 | A mashed skip sequence can end the run without crashing | Mashing A, B and Start through a title's intro once ended at the game library. B is **not** the cause and is not a crash: pressed alone it leaves the emulator running, same pid, nothing in the crash buffer. The likely path is the guest itself being powered off from its own menu, which the emulator handles by exiting the process (#20's fix). Treat "we are suddenly at the library" as the guest exiting, not as a fault, and confirm with `pidof <pkg>:xemu` before chasing it. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
+| The Debug Capture button is not the only frame dump any more | `adb shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/frame_dump.on'` arms a per-draw dump mid-run, with **no** per-draw `pgraph_vk_finish`. See below. |
+
+### Arming a frame dump without a button
+
+The Debug Capture button (`nativeDumpDiagFrames`) calls
+`pgraph_vk_finish` before **every** draw so it can read the surface back, which
+flushes the draw queue and the reorder window: under it, no draw is ever
+merged, nothing is ever in flight across a draw boundary, and a soak has nobody
+to press it anyway. #77 was blocked on precisely that.
+
+The live frame dump is the same per-draw records with neither problem. It is
+armed by a marker file, the way `apu.c` arms the PCM capture, and adds no
+Vulkan work **per draw** -- no finish, no command buffer, no fence wait, which
+is the whole claim. With images on it costs one fence wait per *frame*, at the
+flip: the flip only pre-records the display download, so without completing it
+the PPM holds the previous completed download and not the frame whose draw
+records it is filed under. `noimages` removes that too:
+
+**And completing the download is not the same as having downloaded THIS
+surface.** The flip's pre-record has early returns that fire on ordinary
+frames -- an eviction or a shelving earlier in the frame, or a command buffer
+no draw has reopened -- and on those the completion waits a real fence for
+somebody else's copy while the display surface's pixels stay in its `VkImage`.
+So the dump **tests** it, by the surface's own `draw_dirty` after the
+completion, and a frame that fails the test writes **no image**: `"image":
+null`, `img_sync: -2`, and a count in the close line and the trailer. A frame
+dump that hands you fewer pictures than frames is working; one that hands you a
+picture per frame and no way to tell which of them are this frame's is the
+defect that was there before (schema 2, and schema 1 before it -- the checker
+refuses to pair either one's images with a draw record).
+
+```bash
+# 30 frames, one display PPM each, dropped once the title is in the scene
+adb -s <serial> shell \
+  'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/frame_dump.on'
+```
+
+The marker's first line is a spec: a frame count, plus any of `noimages`
+(records only, and no per-frame fence wait), `capNN` (byte cap in MB, default
+96), `afterNN` (start NN seconds after the arm is seen), and `diag` (**also**
+run the old serialising capture, as the control arm -- the frame count is an
+upper bound on it, not its duration, since that capture counts guest frames
+while the dump counts flip_stalls; it is torn down when the dump closes). The
+marker is unlinked the moment it is read and the previous dump's files are
+deleted when a new one is armed -- a stale marker armed eight unrelated soaks
+on the audio side, and a stale capture was once pulled and measured as a later
+run's data.
+
+On Android there is **no fallback directory**. If the app has no writable
+external storage path the dump is unarmed for the whole run and says so once
+on tag `hakuX` at WARN: internal storage is unreadable to `adb` on a
+production build, so arming into it would write 30 frames somewhere
+`--pull 'framedump_*'` cannot reach while logging that a dump was written.
+
+`XEMU_FRAME_DUMP=<same spec>` arms it at startup instead, which is what a
+queued soak can set today (`request.sh --env`) -- nothing in the dispatch path
+can touch a file on the device mid-run, which is what `afterNN` is for:
+`--env XEMU_FRAME_DUMP=30,after100` dumps 30 frames starting 100 s in, once a
+title is past its boot. Output is
+`framedump_<id>.jsonl` plus `framedump_<id>_fNNN.ppm` in the app's external
+files dir, so `--pull 'framedump_*'` collects it.
+
+Every draw record carries `cb_draws` and `submits`, which is how the dump
+proves its own headline claim: a per-draw finish submits the command buffer at
+each draw, so under the button path `cb_draws` cannot exceed 1 and `submits`
+rises once per draw, while under this path `cb_draws` climbs across the frame
+and `submits` is flat between flips. `docs/lanes/diagdump77/framedump_check.py`
+reads a dump and says which of the two it is looking at. What the dump cannot
+give you is a per-draw image: reading a surface back mid-frame is exactly what
+forces the finish.
+
+**Neither column can separate the two paths on a frame that drew once**, so
+the checker refuses rather than guesses: a dump whose frames barely drew --
+`afterNN` landing on a loading screen, a pause menu or a video cut -- exits 3
+with `INSUFFICIENT SAMPLE` and no verdict, because a per-draw finish and a
+one-draw frame produce the same `cb_draws` and the same submits-per-draw. A
+`SERIALISED` verdict from such a dump would have falsified the whole thesis
+from an instrument that behaved correctly.
+
+**But that refusal is about ambiguity, not about sample size, and writing it as
+a sample-size test made it wrong in the other direction.** `max_cb >= 2` means
+a command buffer held two draws, which no per-draw finish produces at *any*
+sample size -- a 30x3-draw dump has already answered the question, and the
+checker was telling its operator "neither column can distinguish the two paths
+on this dump" and sending them back to the device for it. The refusal now also
+requires `max_cb <= 1`; above that the `cb_draws` verdict is printed and the
+`submits` median is marked as carrying no weight, which is the column the
+sample size really does govern. The asymmetry is the point: a cheap
+`NOT SERIALISED` survives a thin sample because one command buffer settles it,
+and `SERIALISED` stays refused because nothing settles that cheaply. The
+general form is in this file already -- *establish what your instrument cannot
+see* -- with the half that is easy to miss: a guard written on a proxy for
+ambiguity refuses the cases the proxy happens to cover, not the ambiguous ones.
+
+**Dedupe frame records on `nv2a_frame` before treating them as independent
+samples.** A frame record is one `flip_stall`, not one guest frame, and the
+two come apart exactly when something has stalled the guest: the `diag`
+control arm wrote 30 frame records that were all `nv2a_frame: 3127`, one guest
+frame sampled thirty times, while the same spec without `diag` advanced 30
+consecutive frames in the same second. Counting rows there over-counts by the
+stall factor. (That the old capture stops the title advancing at all, rather
+than merely serialising its draws, is measured in
+`docs/lanes/diagdump77/NOTES.md` -- it is the sharpest reason not to hunt an
+intermittent artifact under the button path.)
 
 ## Sharing one device between a long sweep and active work
 
