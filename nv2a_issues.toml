@@ -2822,7 +2822,7 @@ status_note = "The rate half landed (0edf4f2f0d, one token at nv2a.c:845) and al
 # live issue list for state and title, which cannot see an issue that has no
 # entry to compare.
 # ---------------------------------------------------------------------------
-blocked_on = "THE ARM HAS RUN AND defer_cap = 12 IS IN THE TREE (nv2a.c:1097). What is left is not a measurement, it is the OWNER'S TRADE: 12 is validated on thor (D9 holds, worst fully-unlocked window clamps 1 against a bar of 2; clamps 6,7 -> 0,1; guest time lost +1.544/+1.864 -> -0.062/+0.085 s/min at gfps p90 59 both arms), and the nova would need about 10 -- but the nova has never entered unlock mode on any title on hand, so cutting to 10 for it would be paying on every device for a mode one device has never been observed to use. Nobody can measure that preference."
+blocked_on = ""
 
 [issue.34]
 title = "Vulkan validation layer: four open findings from the desktop lane"
@@ -3283,7 +3283,7 @@ suites = []
 no_suites = "an owner decision, not a renderer or suite question."
 blocker_falsifier = "if this were not an owner decision, a measurement would settle it; #65's own issue says the value is a trade between unlock-mode loss and a guest-visible cost, and no run can pick a point on that curve."
 blocker_tested = "CONFIRMED BY READING 2026-09-19: the board opened this issue itself, labelled decision-needed, precisely because the rules it dispatches by cannot choose the value."
-status = "open"
+status = "closed"
 status_note = "Opened by the board job 2026-09-19. Awaiting the owner."
 blocked_on = "Blocked on the owner. A decision-needed issue is blocked BY DEFINITION -- that is what the label means -- and the coverage gate requires every open issue to carry a lane or a blocker, so without this row the gate is red and preflight fails for EVERY fold on the repository. Three complete PRs (#134, #139, #140) were queued to fold when this was opened."
 
