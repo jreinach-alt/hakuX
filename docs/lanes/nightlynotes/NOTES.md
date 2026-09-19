@@ -302,11 +302,29 @@ FAIL   but list folded nothing
 
 This branch touches neither `fold.sh` nor that fragment, and `86-fold-` sorts
 before `86-nightly-`, so nothing of this lane's has even been sourced when
-they run. The eleventh failure was the `say_time_s` grep above and is fixed.
+they run.
+
+On this branch at `d10af53ce4`: **520 passed, 10 failed**, and the ten are
+that list, name for name and in that order. The eleventh -- the `say_time_s`
+grep -- is fixed, and all eighteen checks in `86-nightly-notes.sh` plus the
+two new ones in `55-localtime.sh` pass:
+
+```
+ok   nightly_build.sh's say() stamps through say_time_s, in both arms
+ok   nightly_build.sh keeps no bare clock stamp
+ok   THE CHECK: the notes have an Emulator section naming the buried target/i386 fix
+ok   notes mode writes nothing into the nightly output directory
+ok     and prints no empty Emulator section
+```
+
 **This lane adds no failure and removes none**; the fold-regressed ten are a
 live defect on master and belong to whoever owns `86-fold-regressed.sh`. I did
 not touch them: guessing at another lane's fold semantics from a red check is
 how one lane's bug becomes two lanes' bugs.
+
+The consequence for this PR is that its `jobs selftest` check cannot go green
+while master's is red, and `fold.sh` gates on CI green -- so this is not a
+condition this lane can clear from inside. See the closing note.
 
 ### A hazard that cost this attempt a full redo
 
@@ -331,3 +349,25 @@ The second resolution was committed and pushed within a minute of being
 finished, and the two selftest runs after that left it alone. A lane that
 resolves a merge and then runs a 10-minute gate over it is holding the only
 copy in the working tree for ten minutes.
+
+### Where this PR is left
+
+The merge is done and `master` merges into it cleanly again -- GitHub reports
+`mergeable: MERGEABLE` at `d10af53ce4` -- so `needs-rebase`, which means "the
+fold conflicted; bring master into the lane branch", is no longer true and
+comes off. `fold-ready` goes on: this lane is finished.
+
+What it cannot do is hand over a green head. The same ten `86-fold-regressed.sh`
+failures reproduce in three independent places, with identical counts:
+
+| run | result |
+|---|---|
+| `origin/master` @ `6db8217cdb`, CI run `35456001861` | the ten |
+| this branch @ `d10af53ce4`, locally | 520 passed, **10 failed** |
+| this branch @ `d10af53ce4`, CI run `35457071969` | 520 passed, **10 failed** |
+
+`fold.sh` gates on CI green, so this PR will sit at `fold-ready` and wait --
+which is the designed state for it, and `ci_report` comments once per
+(PR, head, state), not once a tick. It will fold on the first tick after
+`86-fold-regressed.sh` goes green on master. Nothing else stands in its way,
+and no push to this branch can change that.
