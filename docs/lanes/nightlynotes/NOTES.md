@@ -134,11 +134,25 @@ that `include/` is *excluded*, so adding it breaks nothing.
   `^### Emulator$` and on `/^### Emulator$/,/^### Harness/` ranges. Change both.
 - The caps (60/8/8) are judgement, not measurement. 37 emulator commits was
   the busiest day observed; 60 has headroom but is not a proof of anything.
-- Each of the five new invariants has a mutant that trips it -- drop
-  `--no-merges`, `EMU_CAP=1`, harness-wins-over-emulator, count merges as
-  work, `HARN_CAP=45`. All five were run against a mutated copy at a temp
-  path and confirmed to fail; none of the checks is vacuous. Re-run that
-  sweep if you change the classification.
+- Every new invariant has a mutant that trips it. All six were run against a
+  mutated copy of the script at a temp path, never the real one, and
+  confirmed to fail; none of the checks is vacuous. Re-run the sweep if you
+  change the classification.
+
+  | mutant | invariant it trips |
+  |---|---|
+  | drop `--no-merges` | the fold subject takes no line |
+  | `EMU_CAP=1` | all four emulator commits are named |
+  | harness wins over emulator | a both-sides commit counts as emulator |
+  | count merges as work | the tally adds up |
+  | `HARN_CAP=45` | a capped section says how many it left out |
+  | `EMU_CAP=0` | **the in-script post-condition warns** |
+
+  The last one is the check the brief asked for -- "never let the emulator
+  section be empty when emulator commits exist". Under `EMU_CAP=0` the script
+  logs `WARNING: 4 emulator commit(s) in the window and the notes name none`,
+  exits 0, and still writes the notes. That is deliberate: the warning is not
+  allowed to cost the nightly.
 
 ## 2. The 78-second nightly: **real build, not a stale APK**
 
