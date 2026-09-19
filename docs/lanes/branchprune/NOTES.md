@@ -173,8 +173,26 @@ The gate is that a new check FAILS against the code it replaces.
 
 | run | result |
 | --- | --- |
-| merged tree, this branch | **162 passed, 0 failed** |
-| same suite, `origin/master`'s `fold.sh` | **139 passed, 23 failed** |
+| attempt 1: merged tree, this branch | **162 passed, 0 failed** |
+| attempt 1: same suite, `origin/master`'s `fold.sh` | **139 passed, 23 failed** |
+| attempt 2, after merging `415dcc6997`: this branch | **351 passed, 0 failed** |
+| attempt 2: same suite, `origin/master`'s `fold.sh` | **328 passed, 23 failed** |
+
+Re-run after the merge because the suite itself had more than doubled (162 →
+351 checks as nine harness lanes folded) and `fold.sh` had gained
+`lane/foldci`'s `preflight-verdict` block. The same 23 fail and no others:
+351 − 23 = 328, so nothing outside this lane's fragment moved either way.
+
+**The 23 are not one reason**, which is the thing worth checking about a red
+column — they are the dry run (3), the apply (3), the name guard (3 refused
+branches × 2 assertions each), the ancestry guard (2), the worktree legs (4),
+the idempotence leg (1), the unreachable-origin legs (2), and the line-order
+legs (2). A single missing function would have produced 23 reds too; what
+says the checks discriminate is that they fail in eight independent groups.
+
+The falsification ran in a **separate detached worktree** with `fold.sh`
+checked out from `origin/master` — never by editing the real path, so the
+working tree could not be left holding the old code.
 
 The 23 are every behavioural check of the new code. The checks that *pass*
 against the old file are must-not-move legs, and an inert control is not a
