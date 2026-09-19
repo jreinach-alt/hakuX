@@ -356,12 +356,55 @@ them would destroy the record of when the claim was last tested, and no consumer
 reads them for a row with an empty `blocked_on` (`fleet.py`'s UNTESTED section
 only considers rows with a non-empty blocker).
 
+## The territory flag on this PR, and the coordination it asked for
+
+At wave 101 the board wrote a `[lane.backlogstate]` row that **excludes**
+`fleet.py` and `check_coverage.py`, on the grounds that both are
+`lane.toolsmith`'s STANDING claim, that a standing claim does not go stale
+while its agent is not running, and that a finished PR is not the same as a
+lane asking. All three are correct as stated, and the row is right that this
+lane never asked.
+
+What it is missing is that this lane never *chose* those files either: the
+brief dispatched it directly at them — "Your files: `docs/testing/check_coverage.py`,
+`docs/testing/fleet.py`, `docs/testing/jobs/selftest.sh`, and
+`nv2a_issues.toml` on the `board` branch only." The gap is between the
+dispatch and `territory.toml`, not between this lane and the file. That is
+this lane's own defect one level up — a claim nothing can see — and it is why
+the row calls it an "invisible-lane defect".
+
+The row asks for one concrete thing before folding: read this diff against the
+two live warnings in toolsmith's note. Done, and both come back clean:
+
+- **`classify_residuals.py`'s `_ZB` trap** — about `classify_residuals.py`.
+  This diff does not touch that file and nothing in it classifies residuals.
+- **The `dispatcher.sh` snapshot-vs-source split** — the real question, and
+  worth asking: if a consumer runs a `cp -f` snapshot taken outside the repo,
+  an edit to the tracked source is inert. Checked at
+  `dispatcher.sh:90`, `snapshot_scripts()` copies exactly
+  `dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py
+  affinity.py captures.py make_test_iso.py extract_results.py`. **Neither
+  `check_coverage.py` nor `fleet.py` is in that list**, and every consumer
+  found by grep (`board.sh:181`, `preflight.sh`, `idle-watchdog.sh:223`,
+  `status.sh`, `handback.sh`, `session-start.sh`, `backlog-gate.sh`) invokes
+  them from the tree. So this change reaches its consumers on the fold, with
+  no restart and no re-snapshot.
+
+`lane.toolsmith` was not running at this wave (`fleet.py` reported `fold` and
+`remote`), so there is nobody to coordinate *with* in-band; this section and
+the PR comment are the record.
+
 ## For the next lane
 
 - **Do not re-add a prose sniff to `fleet.py`.** The table above is why. If a
   new shape of dishonest `blocked_on` turns up, extend the *position*-anchored
   check in `check_coverage.py`, which fails loudly, rather than a consumer that
   silently reinterprets.
+- **Do not take `idle-watchdog.sh` as a drive-by.** Its line 226 is wrong
+  because of this change (below), and fixing it is one line — but it is
+  `lane.toolsmith`'s, and this PR is already flagged for editing two of that
+  lane's files without asking. Adding a third while the flag is open would be
+  the same mistake with the excuse worn thin. Ask for it, or leave it.
 - **`docs/testing/idle-watchdog.sh:226`** (note the path — it is *not* under
   `jobs/`, which cost me a minute) **still says "Give it a lane in
   territory.toml or write blocked_on on its tracker entry."** That advice is now
