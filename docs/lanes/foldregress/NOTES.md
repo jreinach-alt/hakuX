@@ -107,6 +107,25 @@ it is written down here rather than edited.
   something out: the tick ends by calling `handback.sh` and `status.sh`, and
   `status.sh` rewrites the live status issue. The fixture is the way.
 
+## Why attempt 1 did not finish
+
+The work was done and CI was green on `f310e308c0`; the session ended with
+PR #145 still in **draft**, waiting on a CI result that had already landed.
+Nothing else was outstanding. A draft is invisible to every actor here —
+`board.sh` skips drafts, `fleet.py`'s READY-NOT-FOLDED counts only
+non-drafts, `fold.sh` folds only non-drafts, `handback.sh` does not look at
+them — so "green in draft" and "never started" are the same state from
+outside, and it cost a whole resume. The fix is the last line of the role
+file, not a judgement call: **mark ready when green and current.** Waiting
+for CI is not a reason to stay draft; the fold gates on `fold-ready` and the
+check rollup, both of which re-evaluate after the fact.
+
+Attempt 2 merged `origin/master` (25 commits, clean — `selftest.d/` was
+already this branch's base, so no fragment had to move), re-ran the
+selftest, and marked it ready. `lane.armlabel` (#144) landed in that merge
+as `selftest.d/94-arms-label-state.sh`; as predicted above the two lanes
+share no file, and this gate still reads the label that lane now computes.
+
 ## Verification
 
 - `bash docs/testing/jobs/selftest.sh` → **314 passed, 0 failed**;
