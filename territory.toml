@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 105
-updated_utc = "2026-09-19T09:31:16Z"
+wave = 106
+updated_utc = "2026-09-19T09:40:00Z"
 
 
 [lane.cloud-remediate-102]
@@ -110,11 +110,6 @@ issues = []
 files = ["docs/testing/jobs/fold.sh", "docs/lanes/branchprune/NOTES.md"]
 note = "WRITTEN AT WAVE 100 -- lane was RUNNING (PR #137 draft, systemd unit active) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: nothing ever deleted a lane branch, so `arms.sh` walks every `refs/remotes/origin/lane/*` the project has ever run and the cost grows monotonically. Fix (in progress): `fold.sh` deletes the branch once its fold's push succeeds. Files per the PR's own brief header, MINUS selftest.sh -- its PR diff also touches selftest.sh (a check for the deletion), but check_territory.py correctly rejects two rows both claiming it, and lane.selftestsplit is that file's rightful owner of record: its own PR says it will hand-carry any concurrent selftest.sh edits into the right fragment at fold time regardless of source, which is this overlap exactly. Coordinate there, not by re-adding the row here. FLAGGED AT WAVE 101: PR #132 (lane.handback, an invisible-lane running with no territory row until this wave) already carries an 18-line fold.sh hook in the CONFLICT branch of the merge loop, recording the cause for handback.sh to read -- see [lane.handback]. Different region of the file from this lane's branch-cleanup work; expected to merge cleanly, but check at fold time."
 
-[lane.selftestsplit]
-issues = []
-files = ["docs/testing/jobs/selftest.sh", "docs/testing/jobs/selftest.d/**", ".github/workflows/jobs-selftest.yml", "docs/lanes/selftestsplit/NOTES.md"]
-note = "WRITTEN AT WAVE 100 -- lane was RUNNING (PR #136 draft, systemd unit active) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: nine harness lanes all appended to the one shared selftest.sh on 2026-09-19, and two of the first three fold attempts that night CONFLICTed on it. Splits the checks into docs/testing/jobs/selftest.d/NN-<concern>.sh fragments, sourced in order; selftest.sh keeps the entry point and the tally. PR body says FOLD THIS LAST: it conflicts with every other open PR touching selftest.sh (#122, #126, #127, #130, #132, #134) by construction, because it moves the lines they append to -- including lane.branchprune's, which check_territory.py correctly refused to let claim this file as a second row. THIS LANE IS THE FILE'S SOLE OWNER OF RECORD; it hand-carries any concurrent edits (branchprune's included) into the right fragment at its own fold."
-
 [lane.triage]
 issues = []
 standing = true
@@ -122,30 +117,10 @@ files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
 
-[lane.armsskip]
-issues = []
-files = ["docs/testing/jobs/arms.sh", "docs/lanes/armsskip/NOTES.md"]
-note = "WRITTEN AT WAVE 101 -- lane was RUNNING (PR #123 READY, systemd unit active) with no territory row at all, invisible to check_territory.py, one of five found this tick alongside auditoutlet/backlogstate/boardgate/handback. selftest.sh dropped from this row for the same reason it is dropped from all five: lane.selftestsplit is that file's sole owner of record and hand-carries concurrent appends into fragments at its own fold, per its own row's note. arms.sh was in no row and not in [free]; free to claim, no collision."
-
-[lane.auditoutlet]
-issues = []
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/roles/board.md", "docs/lanes/auditoutlet/NOTES.md"]
-note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). board.sh EXCLUDED though PR #130 touches it: PR #124 (lane.boardgate) rewrites the same file's header region far more extensively and boardgate's whole purpose IS board.sh, so it is named the rightful owner below and this lane's small early-cloud.sh-call hunk (inserted right after the `JOBS=` line) needs to be hand-carried in at whichever fold lands second -- the two changes are complementary (an early cloud.sh invocation vs. a later positive-gate rewrite), not a design conflict, just adjacent lines. roles/board.md KEPT HERE: this lane's edit rewrites the existing 'cloud outlet' bullet and the needs-audit/needs-remediation paragraph outright (the more substantive of the two touches), while PR #132 (lane.handback) only appends a new bullet and a new closing paragraph around the same region -- COORDINATE AT FOLD TIME, because handback's patch context is exactly the four lines this lane's second hunk deletes and a mechanical apply will conflict; the fix is textual reconciliation, not a rewrite of either lane's intent. docs/lanes/blit84/NOTES.md also appears in this PR's diff as a 0/0-byte new file, identical stray artifact also present in PR #132 (handback) -- looks like a stale-base carry-over, harmless since both adds are empty and content-identical; not claimed here, not worth a grant fight."
-
 [lane.backlogstate]
 issues = []
 files = ["docs/lanes/backlogstate/NOTES.md"]
 note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). fleet.py and check_coverage.py EXCLUDED though PR #134 edits both (60/5 and 188/12 lines): both are lane.toolsmith's STANDING claim ('it owns the instruments for as long as they need an owner'), and this lane never asked for them -- the unlisted-claim hazard toolsmith's own note already lists twice. NOT a grant: toolsmith is not running but its claim does not go stale (standing), and a finished PR is not the same as a lane asking. Flagged in toolsmith's row below; COORDINATE THERE before folding #134, because toolsmith's note carries live warnings about both files (classify_residuals.py's _ZB trap, the dispatcher.sh snapshot-vs-source split) that this PR's diff needs to be read against. selftest.sh dropped per lane.armsskip's note."
-
-[lane.boardgate]
-issues = []
-files = ["docs/testing/jobs/board.sh", "docs/lanes/boardgate/NOTES.md"]
-note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). Named rightful owner of board.sh over lane.auditoutlet's smaller overlapping edit -- see lane.auditoutlet's note for the coordination this implies at fold time. selftest.sh dropped per lane.armsskip's note."
-
-[lane.handback]
-issues = []
-files = ["docs/testing/jobs/handback.sh", "docs/lanes/handback/NOTES.md"]
-note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). fold.sh EXCLUDED though PR #132 already carries an 18-line hook there (recording the conflict cause for handback.sh to read): lane.branchprune's row has reserved fold.sh since before this wave for a DIFFERENT feature (deleting a lane branch once its fold's push succeeds) and that PR is draft with no diff yet, so this is a claim-vs-not-yet-implemented-work collision rather than a live double-edit -- named branchprune's file of record because it asked first and check_territory.py would fail on two rows naming it. COORDINATE AT FOLD TIME: whichever of the two branches folds first carries the other's fold.sh hunk forward; they touch different regions of the file (handback's hook is inside the CONFLICT branch of the merge loop, branchprune's will be in the branch-cleanup path) so this is very likely a clean textual merge, not a semantic conflict. roles/board.md EXCLUDED though PR #132 appends to it -- see lane.auditoutlet's note, which is the file's owner of record for this wave and needs this lane's addition hand-carried in. docs/lanes/blit84/NOTES.md stray-artifact note also applies here; see lane.auditoutlet. selftest.sh dropped per lane.armsskip's note."
 
 [lane.linecap13]
 issues = ["13"]
@@ -162,6 +137,36 @@ note = "DISPATCHED WAVE 104 (job.board). #77's Galleon stipple investigation nam
 issues = []
 files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/cloud.md", "docs/lanes/ciskip/NOTES.md"]
 note = "WRITTEN AT WAVE 103 -- lane was RUNNING (PR #140 draft, attempt 1/opus-5) with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback. Two harness defects, no tracker issue. (1) the retired skip-ci marker is in no role file, so four PRs (#101, #123, #129, #139) stalled on an empty statusCheckRollup and needed a person to push an unblocking commit -- fix adds the marker to roles/lane.md's and roles/cloud.md's Never sections, including not quoting the marker in the unblocking commit message, since GitHub matches it anywhere in the message. (2) fold.sh writes its preflight-failure marker ($F/failed/$pr-$head) on ANY red gate including a board-level one -- coverage and territory read the board, not the PR's tree -- so when #138 opened, the coverage gate went red for every fold and permanently marked #123/#124/#130 failed on heads that had nothing wrong with them. fold.sh EXCLUDED though the PR's own Files: line names it: lane.branchprune already holds fold.sh (branch-deletion-on-fold-success, PR #137) and check_territory.py refuses two rows naming one file -- COORDINATE THERE. This lane's change is the failure-marker/preflight-gate path, branchprune's is the branch-cleanup path; likely different regions but check at fold time. docs/testing/jobs/selftest.d/91-fold-transient.sh EXCLUDED for the same reason: lane.selftestsplit owns docs/testing/jobs/selftest.d/** as sole owner of record and hand-carries concurrent additions into the right fragment at its own fold -- but this is a NEW fragment file rather than an append to selftest.sh, which the existing coordination note does not explicitly cover, so flag it there rather than assume it's included. roles/lane.md and roles/cloud.md were in no other row and not in [free]; free to claim, no collision."
+
+[retired.armsskip]
+issues = []
+files = []
+retired_utc = "2026-09-19T09:40:00Z"
+note = "RETIRED AT WAVE 105 (job.board): PR #123 MERGED 2026-09-19T08:40:38Z (7d2b9ac165, per the fold commit on this branch's own log). Held arms.sh, docs/lanes/armsskip/NOTES.md -- RELEASED TO [free]. The row survived its own fold with no fleet.py FAIL because it holds no issues; caught by cross-checking merged PRs whose lane row was still live."
+
+[retired.auditoutlet]
+issues = []
+files = []
+retired_utc = "2026-09-19T09:40:00Z"
+note = "RETIRED AT WAVE 105 (job.board): PR #130 MERGED 2026-09-19T09:30:40Z (ab471cc80f, per the fold commit on this branch's own log). Held cloud.sh, roles/board.md, docs/lanes/auditoutlet/NOTES.md -- RELEASED TO [free]. jobs/cloud.sh is now live and is what claimed cloud-remediate-102, the very lane this same tick had to write a row for."
+
+[retired.boardgate]
+issues = []
+files = []
+retired_utc = "2026-09-19T09:40:00Z"
+note = "RETIRED AT WAVE 105 (job.board): PR #124 MERGED 2026-09-19T08:41:59Z (38385b79c1, per the fold commit on this branch's own log). Held board.sh, docs/lanes/boardgate/NOTES.md -- RELEASED TO [free]."
+
+[retired.handback]
+issues = []
+files = []
+retired_utc = "2026-09-19T09:40:00Z"
+note = "RETIRED AT WAVE 105 (job.board): PR #132 MERGED 2026-09-19T08:30:08Z. Held handback.sh, docs/lanes/handback/NOTES.md -- RELEASED TO [free]. jobs/handback.sh is now live and owns needs-rebase resumes, per this role's own instructions."
+
+[retired.selftestsplit]
+issues = []
+files = []
+retired_utc = "2026-09-19T09:40:00Z"
+note = "RETIRED AT WAVE 105 (job.board): PR #136 MERGED 2026-09-19T08:04:10Z. Held selftest.sh, selftest.d/**, .github/workflows/jobs-selftest.yml, docs/lanes/selftestsplit/NOTES.md -- RELEASED TO [free]. Its own note said it was the file's sole owner of record and would hand-carry concurrent appends (#122, #126, #127, #130, #132, #134) into fragments at its own fold; since it is folded, any lane still narrating selftest.sh coordination against it (e.g. lane.ciskip's note) is narrating a completed merge, not a live claim."
 
 [retired.tier81fix]
 issues = ["81", "90"]
