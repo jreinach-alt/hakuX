@@ -119,6 +119,15 @@ actually missing is narrower and cheaper:
 * **(a) one `ClipF` variant at a `clip_top` that is not `0 (mod 4)`** — 33, 34
   or 35. That is one integer in `kVertSampleCoords`, not a new test case, and it
   separates `clip_top+2` from the absolute 4-grid in a single capture.
+
+  **Superseded 2026-09-19 as to which integer:** the three are not
+  interchangeable. Scored over the whole surviving rule family, 34 leaves two
+  of the three plausible rules fused where 33 and 35 do not, and 35 is the
+  pick. The blocker itself holds and holds harder — 63 rules fit the three
+  measured anchors, not two, and all 15 `clip_top` values the suite can
+  generate leave every one of them predicting the same number. See
+  [`wbuffer-31-clipf-phase.md`](wbuffer-31-clipf-phase.md), which also records
+  that the capture needs silicon this lab does not have.
 * **(b) a `clip_top` between 1 and ~127**, so that the `(t0, clipped)` cell gets
   a second observation instead of resting on `clip_top`=32 alone.
 * **(c) a `TriH`/`TriV` variant stepping the CROSS axis by a non-multiple of 4**
