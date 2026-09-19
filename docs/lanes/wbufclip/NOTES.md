@@ -9,6 +9,54 @@ written and verified to apply. The capture is blocked -- it needs NV2A silicon,
 and this lab has none.** Write-up:
 [`docs/investigations/wbuffer-31-clipf-phase.md`](../../investigations/wbuffer-31-clipf-phase.md).
 
+## Why attempt 1 did not finish (recorded 2026-09-19)
+
+The work above was complete and CI was green on PR #156 -- and the PR was left
+**in draft**, so nothing merged it. `board.sh` skips drafts when assigning
+labels, `fold.sh` folds only non-drafts, and `handback.sh` does not look at
+them, so from outside the lane "still working" and "finished and forgotten"
+are the same state. That is the whole of the miss: no measurement was wrong and
+nothing was left to build. The lane's own role file lists `gh pr ready` as step
+5 of done, and the session ended before it.
+
+The trap worth naming for the next lane: this brief's real outcome is *blocked*
+(see below), and a blocked outcome feels like an unfinished one, so leaving the
+PR in draft felt consistent. It is not -- a blocked brief with its blocker
+measured and written up is a **finished** outcome under step 6, and it gets
+marked ready like any other. Draft status is "still typing", not "the answer
+was no".
+
+### Merge state at attempt 2, and a finding that is not mine
+
+Merged `origin/master` (59 commits behind, clean merge, no conflicts) and
+re-ran the chooser as a control: same output, rc 0, so the merge did not
+disturb the deliverable.
+
+`bash docs/testing/jobs/selftest.sh` is **red on this head: 501 passed, 10
+failed** -- and it is red on `origin/master` for the same reason, not because
+of this lane. The evidence, rather than the assertion:
+
+* `git diff --stat origin/master HEAD -- docs/testing/jobs/` is **empty**.
+  Every job and every `selftest.d` fragment on this head is byte-identical to
+  master's, so the run exercises master's code exactly.
+* This branch's whole diff is 6 files: 3 investigation write-ups, this
+  `NOTES.md`, `wbuf_anchor_recover.py`, `wbuf_clip_phase_choice.py`. No
+  harness script, no fragment.
+* All 10 failures are in one fragment, `selftest.d/86-fold-regressed.sh`
+  (`regression-accepted` / fold-override checks), which reads none of my
+  files -- grepped for them by name, no hit.
+* 10 failed on both runs, so it is deterministic, not contention from the
+  three lanes that happened to be running `selftest.sh` at the same time.
+
+`86-fold-regressed.sh` came in with `4eb641e777` (PR #145 `lane/foldregress`)
+and `fold.sh` was touched after it by `234b5366ec` (PR #151 `lane/localtime`,
+the Pacific/UTC change). That ordering is the thing to look at first, but I
+did not: fixing it means editing `fold.sh` and another lane's fragment, which
+this lane has no claim on and `lane.foldregress` does. **Reported, not
+touched.** Marking ready anyway -- CI is the gate of record here and is green
+on this head; a pre-existing master-side red is not this PR's to clear, and
+holding the PR in draft for it would repeat exactly the mistake above.
+
 ## What the next lane should not repeat
 
 **Do not queue a device run for this.** The lane brief says "capture it on
