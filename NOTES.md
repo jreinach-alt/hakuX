@@ -18,7 +18,7 @@ Cloud-class lane, no device. Issue #109. Base `master` @ `4129a349e6`.
 stop claiming it as a lead.** #87 is closed on its subject: the residual was
 one uncancelled Morton transform from the surface-to-texture fast path, fixed
 in `c807592d02` (in `master`), `Surface_pitch/Swizzle` 10,240 -> 0 on device.
-The fix's own comment in `hw/xbox/nv2a/pgraph/gl/surface.c:1544` records that
+The fix's own comment in `hw/xbox/nv2a/pgraph/gl/surface.c:1545` records that
 the test programs the *same* surface at pitch 512 and pitch 256 and that both
 the golden and our capture are **identical across that pair**. An active
 pitch rule forbids exactly that: the two models agree on the pitch-512 member
