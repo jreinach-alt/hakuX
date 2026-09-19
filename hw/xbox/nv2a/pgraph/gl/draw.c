@@ -123,6 +123,59 @@ static bool surface_color_format_dst_alpha_is_one(unsigned int color_format)
 }
 
 /*
+ * #158/#59's GL half. psh.c stamps the format's pad constant into the
+ * fragment's alpha, so GL_SRC_ALPHA -- which is output index 0's alpha --
+ * stops being the combiner's alpha and becomes the constant. Index 1 carries
+ * the combiner's alpha unchanged (psh.c copies it after the alpha test and
+ * after #43's fold, so it is exactly the value the blend unit would have
+ * consumed), and GL_SRC1_ALPHA reads it.
+ *
+ * The substitution is therefore a NO-OP IN INTENT: a draw that does not stamp
+ * is untouched, and a draw that does gets the same colour it would have got
+ * before the stamp existed. This mirrors pad_write_color_factor() in
+ * vk/draw.c, which the Vulkan side measured at eight Blend_surface Add_SrcA
+ * captures, four of them from bit-exact, with no exceptions to the rule
+ * `moved = {format has pad bits} AND {colour factor is SRC_ALPHA}`.
+ *
+ * COLOUR ONLY: the alpha half is forced to ONE/ZERO/ADD by the caller so that
+ * result.a is the stamp itself, which is the whole point of stamping.
+ *
+ * GL_SRC_ALPHA_SATURATE is left alone, as it is on the Vulkan side, and the
+ * reason is a derivation rather than an observation about the corpus: that
+ * factor is min(As, 1 - Ad), which is 0 for BOTH pad variants once the stamp
+ * lands -- _Z because As is the stamped 0, _O because Ad is folded to 1 by
+ * surface_color_format_dst_alpha_is_one(). So there is nothing to substitute
+ * whatever a disc contains, and the absence of a GL_SRC1_ALPHA_SATURATE token
+ * costs nothing. (That no capture on this fleet reaches it on a stamping
+ * format is true, and is the secondary note, not the argument: vk/draw.c's own
+ * pass-1 audit retired the argument-from-absence here as finding L2, because a
+ * wrong comment on right code is believed.)
+ *
+ * NOT COMPILED ON GLES. GL_SRC1_ALPHA and GL_ONE_MINUS_SRC1_ALPHA are
+ * EXT_blend_func_extended tokens there, spelled with an _EXT suffix, and the
+ * extension is not core in GLES 3.0 -- so the GLES headers do not define these
+ * names and the function does not parse, dead code or not. The exclusion is
+ * the same one gl/renderer.c makes for the capability flag and psh.c makes for
+ * the two shader gates; this is the third site, and the one whose omission
+ * broke the arm64-v8a build (audit pass 1, H1). Do not "fix" a future
+ * recurrence by defining the tokens locally: that would compile a blend path
+ * against a shader that has no index-1 output.
+ */
+#ifndef __ANDROID__
+static GLenum pad_write_color_factor(GLenum factor)
+{
+    switch (factor) {
+    case GL_SRC_ALPHA:
+        return GL_SRC1_ALPHA;
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GL_ONE_MINUS_SRC1_ALPHA;
+    default:
+        return factor;
+    }
+}
+#endif
+
+/*
  * Fold a known Ad = 1.0 into a blend factor. SRC_ALPHA_SATURATE is min(As,
  * 1 - Ad) and so is also 0 here, but is left alone: no capture exercises it on
  * an alpha-less surface, and changing it would be unmeasured.
@@ -366,11 +419,68 @@ void pgraph_gl_draw_begin(NV2AState *d)
 
         assert(sfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         assert(dfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
-        glBlendFunc(pgraph_blend_factor_gl_map[sfactor],
-                    pgraph_blend_factor_gl_map[dfactor]);
-
         assert(equation < ARRAY_SIZE(pgraph_blend_equation_gl_map));
+
+        GLenum gl_sfactor = pgraph_blend_factor_gl_map[sfactor];
+        GLenum gl_dfactor = pgraph_blend_factor_gl_map[dfactor];
+
+        /*
+         * #158: when psh.c stamps this surface's pad constant into the
+         * fragment alpha, the colour factors read the combiner's alpha from
+         * index 1 instead, and the alpha half is forced so the stamp is what
+         * lands in memory. Read from the same expression psh.c stages its
+         * uniform from -- one derivation read twice rather than two
+         * derivations of one per-format fact, which is how #48's clear and
+         * sampler halves came apart (audit M3/P4).
+         *
+         * The Ad = 1.0 fold above STAYS, and that is not an oversight. It is
+         * about what the blend unit substitutes for a missing destination
+         * alpha, which #48 measured as one for BOTH suffixes; the stamp is
+         * about what the texture unit reads back, which is zero for _Z and
+         * one for _O. Different questions about the same bits -- see the
+         * comment on surface_color_format_dst_alpha_is_one() above. Once the
+         * stamp lands, memory holds the pad constant, so without this fold a
+         * _Z surface's DST_ALPHA would read zero where hardware reads one.
+         */
+        /*
+         * The GLES term mirrors psh.c's two gates, which read
+         * `g_dual_src_pad_supported && !ps->opts.gles`. Today it cannot
+         * diverge -- gl/shaders.c makes `gles` true exactly when __ANDROID__
+         * is defined, and gl/renderer.c only sets the flag when it is not --
+         * but the three sites disagreeing on HOW GLES is excluded is what
+         * produced H1, and this is the site that would silently name a SRC1
+         * factor against a shader with no index-1 output if the exclusion ever
+         * became a run-time decision (a GLES-capable desktop build, ANGLE).
+         * The GL spec leaves that undefined rather than erroring, so it would
+         * arrive as corrupted colour and not as a diagnostic. Expressed as a
+         * preprocessor guard rather than an `opts.gles` term because the
+         * tokens themselves are absent on GLES, not merely unwanted.
+         */
+#ifdef __ANDROID__
+        /*
+         * Whole branch, not just the flag: making pad_stamped a compile-time
+         * false would still leave the call to pad_write_color_factor() to be
+         * parsed, and that function does not exist here.
+         */
+        glBlendFunc(gl_sfactor, gl_dfactor);
         glBlendEquation(pgraph_blend_equation_gl_map[equation]);
+#else
+        const bool pad_stamped =
+            pgraph_glsl_dual_src_pad_supported() &&
+            pgraph_glsl_surface_pad_alpha_mode(
+                pg->surface_shape.color_format) != PSH_PAD_ALPHA_NONE;
+
+        if (pad_stamped) {
+            glBlendFuncSeparate(pad_write_color_factor(gl_sfactor),
+                                pad_write_color_factor(gl_dfactor),
+                                GL_ONE, GL_ZERO);
+            glBlendEquationSeparate(pgraph_blend_equation_gl_map[equation],
+                                    GL_FUNC_ADD);
+        } else {
+            glBlendFunc(gl_sfactor, gl_dfactor);
+            glBlendEquation(pgraph_blend_equation_gl_map[equation]);
+        }
+#endif
 
         uint32_t blend_color = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);
         float gl_blend_color[4];
