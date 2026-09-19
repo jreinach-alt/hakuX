@@ -142,3 +142,37 @@ That is the same shape as the question the board is already holding on #88 —
 ship a correction that exposes a pre-existing defect, or hold it — with one
 difference: here the correction is **already shipped** in master, so the choice
 is only whether the exposed 8,192 px are chased or recorded.
+
+## The finding #60 opened up: GL and Vulkan have diverged, 413,790 px (#158)
+
+The same pair of runs answers a larger question than #60's. Comparing the two
+renderers capture by capture on one binary, GL now trails Vulkan on **eleven**
+captures. Against this lane's own September runs, still on disk:
+
+**GL-behind total on those eleven: 4,608 px in September → 413,790 px now.** In
+September the two renderers were byte-identical on ten of the eleven, the
+eleventh differing only by the guest/pgraph race. Nothing regressed in absolute
+terms; GL improved on several. Vulkan pulled away.
+
+Every capture but `Surface_pitch::Swizzle` is a pad format — `X_O`, `X_Z`,
+`X1R5G5B5_{Z,O}`, `X8R8G8B8_{Z,O}`, `X1A7R8G8B8_O`. One family.
+
+The cause is structural rather than an oversight: #59's only landed code change
+(`77bd2977`) touches `vk/draw.c` and no GL file; the readback override is a
+column of a **vk** format table that `gl/renderer.h:361` says cannot exist on
+this backend; and the write side is gated on a device feature `psh.c:225`
+records the GL renderer as never enabling. Each decision was locally reasonable.
+The aggregate is what nobody had measured.
+
+`Swizzle` is the same shape from another lane: Vulkan is byte-exact at 0 where
+it was 10,240, so #87's Morton fix reached `vk/texture.c`, and GL sits at
+12,224 — worth confirming the GL half landed, since that lane held both files
+as one claim for exactly this reason.
+
+**The consequence worth more than the pixel count:** *"both renderers agree, so
+the cause is upstream of both"* is no longer safe on this family. This lane used
+that inference in #87 and was right to; on the pad formats the premise has
+quietly expired, and nothing in the tooling flags it.
+
+Filed as #158 rather than started: the fix crosses into #59's model, so it is a
+routing question. The target is registered per capture if it comes back here.
