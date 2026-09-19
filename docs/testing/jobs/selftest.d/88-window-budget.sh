@@ -83,6 +83,7 @@ lane_end() {   # <attempt count to seed> <rc> [log] -> prints "exit=<n> attempts
     echo "exit=$code attempts=$(cat "$WB/work/attempts/wbtest") $out"
 }
 export -f lane_end
+export REPO
 : > "$WB/work/window/limits.tsv"
 check "a lane refused by the window exits 75 (EX_TEMPFAIL), not its session's code" \
     bash -c '[[ "$(lane_end 2 1 "$WB/limit.json")" == exit=75* ]]'
@@ -130,6 +131,39 @@ check "the unit hands its run log to fleet-end, which is what maps the exit" \
     grep -qE "fleet-end 'wbunit' \\\$rc '[^']*wbunit[^']*\.json'" "$WB/unit.log"
 check "and exits on fleet-end's verdict, not on the code it already had" \
     grep -q 'fleet-end .*; exit \$?' "$WB/unit.log"
+
+echo "== run-claude-job.sh: the mapping every other job already had, end to end"
+# The real runner, against a `claude` that returns a chosen result. Cheap, and
+# it is the only place the three outcomes are distinguished in one file: 75 for
+# a refusal, 0 for a turn cap, the session's own code otherwise.
+RJ="$WB/runner"; mkdir -p "$RJ/bin" "$RJ/work"
+cat > "$RJ/bin/claude" <<'EOF'
+#!/usr/bin/env bash
+cat "$FAKE_RESULT"; exit 0
+EOF
+chmod +x "$RJ/bin/claude"
+printf '{"is_error":false,"subtype":"success","num_turns":3,"duration_ms":1000,"total_cost_usd":0.5,"result":"fine"}' > "$RJ/ok.json"
+printf '{"is_error":true,"subtype":"success","num_turns":1,"duration_ms":10,"total_cost_usd":0.01,"result":"Claude AI usage limit reached|1790000000"}' > "$RJ/limit.json"
+# THE LIVE DEFECT IN THE FILE BEING REPLACED: a run cut at the turn cap whose
+# summary talks about a rate limit. is_error is true for error_max_turns, so
+# the old grep called this a closed window, exited 75, and grew the unit's
+# RestartSec for a run that had done its work and must exit 0.
+printf '{"is_error":true,"subtype":"error_max_turns","num_turns":70,"duration_ms":10,"total_cost_usd":1,"result":"a bound rather than a rate limit for the normal run"}' > "$RJ/maxturns.json"
+echo '# brief' > "$RJ/brief.md"
+rj() {   # <fixture> -> the runner's exit code
+    FAKE_RESULT="$RJ/$1.json" HAKUX_WORK="$RJ/work" PATH="$RJ/bin:$PATH" \
+        bash "$HERE/run-claude-job.sh" board "$REPO" "$RJ/brief.md" 5 >/dev/null 2>&1
+    echo $?
+}
+export -f rj; export RJ
+check "a healthy job run exits 0" bash -c '[ "$(rj ok)" = 0 ]'
+check "a job refused by the account's window exits 75" bash -c '[ "$(rj limit)" = 75 ]'
+check "and the runner records the refusal where the board's reserve reads it" \
+    grep -q 'board' "$RJ/work/window/limits.tsv"
+check "a run cut at the turn cap that MENTIONS a rate limit still exits 0" \
+    bash -c '[ "$(rj maxturns)" = 0 ]'
+check "and is still indexed as MAXTURNS, not as an error" \
+    bash -c 'cut -f7 "$RJ/work/logs/board/index.tsv" | grep -q MAXTURNS'
 
 echo "== board.sh: the reserve, which §9.1 named and no file implemented"
 # The board is the only actor that starts a lane or claims an audit, so the

@@ -6,7 +6,10 @@ No issue: a harness defect, dispatched directly. No prediction: no pixels.
 ## What was built
 
 `docs/testing/jobs/window.sh` is new and is the only place any of this is
-decided. Four scripts source it.
+decided. Four scripts source it. (One file rather than the regex in four:
+`run-claude-job.sh` had the detection inline, `lane.sh` had nothing, and
+`board.sh` and `status.sh` both need the reserve -- a regex copied into four
+files means four things by the end of the week.)
 
 1. **A lane's exit is mapped like every other job's.** `lane.sh`'s unit now
    ends `fleet-end <name> <rc> <log>; exit $?`, and `fleet-end` decides the
@@ -150,18 +153,27 @@ swapped and no other fragment ran against the wrong tree.
 
 | shadow | result |
 |---|---|
-| my tree | 45 pass, 0 fail |
-| all six files from `origin/master` | **32 fail**, 11 pass |
-| `window.sh` mine, `lane.sh`/`board.sh`/`status.sh`/`run-claude-job.sh` from `origin/master` | **24 fail**, 19 pass |
+| my tree | 50 pass, 0 fail |
+| all six files from `origin/master` | **35 fail**, 15 pass |
+| `window.sh` mine, `lane.sh`/`board.sh`/`status.sh`/`run-claude-job.sh` from `origin/master` | **27 fail**, 23 pass |
 
-The second run is the one worth keeping: with the helper present, the 8
-detection checks go green and the reds are not one reason but three distinct
-mechanisms -- `lane.sh`'s tail (8), `board.sh`'s gate and outlet (11),
-`status.sh`'s page (5).
+The second run is the one worth keeping: with the helper present, the
+detection checks go green and the reds are not one reason but four distinct
+mechanisms -- `lane.sh`'s tail, `board.sh`'s gate and outlet, `status.sh`'s
+page, and `run-claude-job.sh`'s own mapping.
 
-The 11 that stay green against the fully-old tree are the must-not-move legs:
-master dispatches normally with the window open, mid-week, and after a stale
-refusal, and it has no refund path to break.
+The ones that stay green against the fully-old tree are the must-not-move
+legs: master dispatches normally with the window open, mid-week, and after a
+stale refusal, and it has no refund path to break.
+
+**One of those reds is a live defect on master, not a missing feature.**
+Against `origin/master`'s `run-claude-job.sh`, a run cut at the turn cap whose
+summary says "a bound ... rather than a rate limit for the normal run" exits
+**75**: `error_max_turns` sets `is_error`, the phrase is in the result, and
+the old grep needs nothing more. The board, arms and cloud jobs would have
+reported a completed capped tick as a closed window and grown the unit's
+`RestartSec`. That is not hypothetical wording -- it is `cloud-remediate-128`'s
+own result text, copied into the fixture.
 
 **The first version of three checks passed against the old tree for the wrong
 reason.** `! window_limit_hit x` is *true* when the function does not exist,
