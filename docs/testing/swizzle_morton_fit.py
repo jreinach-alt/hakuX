@@ -34,8 +34,21 @@ an identical colour multiset is not evidence of a permutation: two of the four
 colours appear exactly 1536 times each, so a pure value swap passes a multiset
 test, and this lane built that counter-example once already.
 
-Exit status is 0 only if the model fits the wrong quads, loses on the right
-ones, and reconstructs the golden byte for byte.
+EXIT STATUS, and it has three values rather than two on purpose:
+
+    0  MODEL HOLDS -- fits the wrong quads, LOSES on the right ones, and
+       reconstructs the golden byte for byte. All three, or this is not it.
+    1  MODEL REFUTED -- a leg failed. The layout model is wrong; do not
+       compile a guess against it.
+    2  NOT EXERCISED -- the capture is byte-identical to the golden, so there
+       was no defect to model and no leg was scored.
+
+2 is separate from 0 because #87's fix is in master, which makes the clean
+capture the common case rather than the odd one: point this at any capture
+taken since c807592d02 and it scores nothing. Collapsing that into 0 would
+make `swizzle_morton_fit.py cap.png && echo holds` print "holds" for a run
+that tested nothing, which is exactly the free green this script exists to
+argue against.
 """
 import sys
 
@@ -144,12 +157,21 @@ def main(ours_p, gold_p):
 
     # A capture taken after the fix has no defect left to model, and saying
     # "MODEL REFUTED" about it would be a confident answer to a question that
-    # was not asked. Name that case rather than scoring it.
+    # was not asked. Name that case rather than scoring it -- but do NOT name
+    # it with status 0, which is what this path did when it was written.
+    #
+    # Status 0 there means `swizzle_morton_fit.py cap.png && echo holds` prints
+    # "holds" having scored no leg at all, and since #87's fix is in master the
+    # clean capture is now the COMMON case: every fresh Surface_pitch::Swizzle
+    # run takes this branch. A check whose default outcome is a green that
+    # means nothing is the failure mode this script exists to argue against.
+    # Three outcomes, three statuses: 0 held, 1 refuted, 2 never exercised.
     if not (np.abs(ours - gold).max(axis=2) > 0).any():
-        print("this capture is byte-identical to the golden: the defect this "
-              "models is\nabsent from it. Point the script at a pre-fix "
-              "capture to exercise the model.")
-        return 0
+        print("NOT EXERCISED: this capture is byte-identical to the golden, so "
+              "the defect\nthis models is absent from it and no leg was "
+              "scored. This is the expected\nresult for a post-fix capture. "
+              "Point the script at a pre-fix capture to\nexercise the model.")
+        return 2
 
     print("per quad, fraction of the 16,384 px each model explains:")
     print("  %-22s %9s %9s" % ("quad", "MORTON", "identity"))
