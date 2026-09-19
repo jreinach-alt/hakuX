@@ -104,6 +104,43 @@ its "Retries and escalation" section no longer tells the board to resume a lane
 whose "PR is not `ready`" — `board.sh` filters drafts out before the board ever
 sees one, so that instruction was unactionable from the day it was written.
 
+## Two defects the code had, found by driving it and not by reading it
+
+Both were invisible to a read-through and both were caught the first time the
+fragment ran. Worth recording because neither is specific to this job.
+
+**`fold.sh` exited before calling the actor.** It did `exit 0` the moment no PR
+carried `fold-ready`, which also skipped the `jobs/handback.sh` tail call at the
+bottom of the tick. None of handback's causes *is* that label: a handed-back PR
+has had `fold-ready` removed, and a stranded draft never had it. So the one
+state in which nothing folds — every open PR handed back, waiting, or a draft
+nobody will touch — was exactly the state in which the actor for all of them
+did not run either. **That is a live bug for `needs-rebase` today**, not
+something this change introduced. Fixed by falling through to the tail. It puts
+`fold.sh` on this lane's `Files:` line; see the coordination note below.
+
+**Tab is IFS whitespace.** `IFS=$'\t' read` collapses a run of tabs into one
+delimiter, so an *interior* empty field silently disappears and every field
+after it shifts left by one. Most lane PRs carry no labels at all, so with
+labels in the middle of the TSV the draft pickup read `isDraft=true ci=…` as
+the label list and the state as empty — and refused every unlabelled stranded
+draft as an unfiltered row, which is to say the common case never worked.
+Labels go last in both the pickup and the internal stream now (a *trailing*
+empty field is dropped harmlessly), and a label row's `extra` is `-` rather
+than `""` so nothing interior can be empty. The rule is one line: **only the
+last field of a tab-separated `read` may be empty.**
+
+## On `fold.sh` and territory
+
+lane.branchprune (#137) holds `docs/testing/jobs/fold.sh`, and #137 is itself
+one of the five stranded PRs this lane exists to reach. The brief grants
+`fold.sh` "only if the call site needs it", and it does — with the early
+`exit 0` the detector cannot run on the day it matters most. The change is four
+lines at the candidate early-exit (line 171); branchprune's work is the branch
+deletion after a successful push (~line 330). Different region, expected to
+merge cleanly. Flagged in a `[lane.draftstrand]` comment on #137 and on the PR
+body rather than resolved silently — the board writes `territory.toml`, not me.
+
 ## The deeper fix — "wake lane X when Y" — and why I did not build a file for it
 
 The brief asks whether a small wake-file is the right shape. **I did not build
@@ -143,6 +180,13 @@ that nobody writes is worse than the poll that needs nobody.
 
 ## What the next lane should not repeat
 
+- **Drive the fragment, do not read it.** Both real defects above were found in
+  the first run and neither was visible in review. The full `selftest.sh` takes
+  a long time on a loaded host (eight lanes were running it concurrently), so
+  `.fragdrive.sh` (untracked, deleted before the final push) built the same
+  scaffolding `selftest.sh` builds minus the arms fixtures this fragment's
+  header says it does not use, and ran one fragment in seconds. The full run is
+  still the gate; the driver is for the loop before it.
 - **Do not grep for the phrase when the script's own prose contains it.** The
   first version of "this job never marks a PR ready" was
   `! grep -qE "^[^#]*pr ready"`, which fails against correct code: the brief
@@ -163,6 +207,17 @@ that nobody writes is worse than the poll that needs nobody.
   `stranded_drafts()` and runs it through real `jq` against a fixture that
   includes a non-draft, a `claude/*` head, a failing check, an empty rollup and
   an unconcluded one — the four states that must not read as GREEN.
+- **Anchor a cross-job check on the callee, never on a word both jobs use.**
+  The check that `fold.sh` still reaches `handback.sh` on a barren tick was
+  first `grep isDraft` on the gh log — and it was green against the old
+  `fold.sh`, because *fold.sh's own* candidate query names `isDraft`. The grep
+  matched the caller. It asks for `--label needs-rebase` now, which only
+  `handback.sh` requests.
+- **Every negative needs a positive beside it.** The stale-label block and the
+  non-lane-branch block were five and two bare `! grep systemd-run` checks, all
+  green against a build with no draft pickup at all — which is exactly the
+  build they were written to falsify. Each now also asserts the *reason* the
+  tick gives in `list` mode, which is what tells "guarded" from "inert".
 
 ## The irony, discharged
 
