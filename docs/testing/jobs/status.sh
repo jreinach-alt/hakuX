@@ -161,6 +161,18 @@ if [ $have_gh = 1 ]; then
         --jq '.[] | "- #\(.number) \(if .isDraft then "(draft) " else "" end)`\(.headRefName)` \(.title | .[0:80]) -- labels: \(.labels | map(.name) | join(", ") | if . == "" then "none" else . end)"' 2>/dev/null
 fi
 echo
+echo "### Job errors (last 24h, from the units' logs)"
+echo
+errs=0
+for j in board arms fold cloud status; do
+    f="$WORK/logs/$j/systemd.log"; [ -f "$f" ] || continue
+    [ "$(( now - $(stat -c %Y "$f") ))" -lt 86400 ] || continue
+    e=$(grep -nE 'Traceback|error:|Error|No such file|command not found|REFUSED|FAILED' "$f" | tail -3)
+    [ -n "$e" ] || continue
+    errs=1; echo "- **$j** (\`$f\`):"; echo '```'; echo "$e" | cut -c1-200; echo '```'
+done
+[ $errs = 0 ] && echo "none seen."
+echo
 echo "### Host"
 echo
 echo "- checkout \`$REPO\` on $(git -C "$REPO" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$REPO" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master (jobs run the fetched trunk regardless)"

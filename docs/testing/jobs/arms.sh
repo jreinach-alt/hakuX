@@ -94,11 +94,23 @@ collect() {   # prints: <sha256> <exported-path> <source>, first sighting wins (
     done
 }
 
+ARMS_VERSION=$(md5sum "${BASH_SOURCE[0]}" | cut -c1-12)
 already_ran() {   # the sha is in a result, in the queue, in flight, or judged
     local sha=$1
     [ -f "$A/judged/$sha" ] && return 0
     [ -f "$A/pairs/$sha.json" ] && return 0
-    [ -f "$A/skipped/$sha" ] && return 0
+    if [ -f "$A/skipped/$sha" ]; then
+        # A refusal recorded by an OLDER arms.sh is reconsidered once this
+        # script changes: the first real refusal (#89, 02:56Z) was this
+        # script's own bug, and the fix should not need a human to rm a file
+        # on the host. Other skips (a ref that does not resolve, no suite)
+        # stand until the prediction changes.
+        if grep -q '^arms=' "$A/skipped/$sha" && ! grep -q "^arms=$ARMS_VERSION" "$A/skipped/$sha"; then
+            say "  reconsidering $sha: refused by an older arms.sh"; rm -f "$A/skipped/$sha"
+        else
+            return 0
+        fi
+    fi
     grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req "$D"/results/*/request.json 2>/dev/null
 }
 
@@ -161,7 +173,7 @@ post() {   # <pr> <issue> <body-file>
 # marker keeps it to one comment; a fixed prediction is a new sha.
 refused() {   # <sha> <source> <issue> <which arm> <stderr file>
     local sha=$1 src=$2 issue=$3 arm=$4 err=$5 body="$A/log/$sha.refused.md"
-    skip "$sha" "$src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
+    skip "$sha" "arms=$ARMS_VERSION $src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
     {
         echo "[job.arms] REFUSED: request.sh would not queue the $arm arm of \`${src#*:}\` (sha256 \`${sha:0:12}\`). The prediction is not on the device until this is fixed."
         echo; echo '```'; tail -40 "$err"; echo '```'; echo
