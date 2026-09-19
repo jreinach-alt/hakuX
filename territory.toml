@@ -28,8 +28,55 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 117
-updated_utc = "2026-09-19T13:20:55Z"
+wave = 118
+updated_utc = "2026-09-19T13:48:10Z"
+
+
+[lane.desktopchannel]
+issues = []
+files = ["docs/lanes/desktopchannel/NOTES.md", "docs/testing/desktop_channel.sh",
+         "docs/testing/affinity.py", "docs/testing/devices.sh",
+         "docs/testing/jobs/selftest.d/91-desktop-channel.sh"]
+standing = false
+note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #149 draft, attempt 1/opus-5, started 2026-09-19T13:27:08Z) with no territory row at all, invisible to check_territory.py, the same defect this file has documented for a dozen lanes before it tonight. Harness capability, no tracker issue (PR body: 'Issue: none (harness capability, dispatched directly)'): a desktop GL build on this host so GL-only defects stop waiting on the one-way lane.remote session. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- docs/testing/request.sh is dropped from this claim; it is lane.toolsmith's (standing lane, owns the instruments including request.sh, granted 2026-09-14) and this lane was not told to ask for it. Any request.sh touch this lane needs must be small and coordinated with lane.toolsmith at fold, not taken outright. docs/testing/jobs/selftest.d/ narrowed to a named fragment (91-desktop-channel.sh, next free number in the selftest.d sequence) rather than the whole directory, since lane.cloudterritory already holds a glob over it (selftest.d/**) for its own new fragment and a literal directory-string claim would not collide under check_territory.py's exact-match rule but would read as broader than intended."
+
+
+[lane.localtime]
+issues = []
+files = ["docs/testing/jobs/localtime.sh", "docs/testing/jobs/localtime.py",
+         "docs/testing/jobs/summarise_run.py",
+         "docs/testing/jobs/selftest.d/55-localtime.sh",
+         "docs/lanes/localtime/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #151 draft, attempt 1/opus-5, started 2026-09-19T13:37:25Z) with no territory row at all. Harness change, no tracker issue: show Pacific to the reader, keep UTC in the data. ITS OWN BRIEF'S Files: LINE NAMES SIX FILES ALREADY HELD BY OTHER RUNNING OR STANDING LANES, and none of them are given here -- a brief that lists a file as 'yours' is not the claim, this row is, and check_territory.py rejects a literal duplicate outright: `docs/testing/jobs/status.sh` is [lane.statusfresh]'s below (that lane's ENTIRE brief is this file); `docs/testing/jobs/board.sh` is [lane.windowbudget]'s below (its reserve-check logic lands there); `docs/testing/nightly_build.sh` is [lane.nightlynotes]'s below (its entire brief is this file); `docs/testing/jobs/fold.sh` is [lane.branchprune]'s (already on this board); `docs/testing/jobs/arms.sh` is [lane.armlabel]'s (already on this board); `docs/testing/jobs/cloud.sh` is [lane.cloudterritory]'s (already on this board); `docs/testing/fleet.py` is [lane.toolsmith]'s (standing lane, owns the instruments). If localtime's display change needs a one-line timestamp-formatting call in any of these, that touch must be small and coordinated with the holder at fold time, not a claim -- the same pattern this file already uses for branchprune/selftestsplit over selftest.sh. FLAG FOR THE NEXT READER: six collisions from one brief is not ordinary overlap; the brief was written without checking territory.toml at all, and whoever reviews this PR should confirm its diff actually stays out of the six files above before it is marked ready."
+
+
+[lane.nightlynotes]
+issues = []
+files = ["docs/testing/nightly_build.sh",
+         "docs/testing/jobs/selftest.d/86-nightly-notes.sh",
+         "docs/lanes/nightlynotes/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #152 draft, attempt 1/opus-5, started 2026-09-19T13:30:06Z) with no territory row at all. Harness defect, no tracker issue: the 2026-09-19 nightly release notes listed 40 commits and named 0 touching hw/target/accel/ui/audio, of 29 that did -- grouping by area instead of truncating by recency. Files exactly as its own brief's Files: line names; no collision with any other row (lane.localtime's brief also names nightly_build.sh but that file is claimed HERE, not there -- see [lane.localtime]'s note)."
+
+
+[lane.statusfresh]
+issues = []
+files = ["docs/testing/jobs/status.sh",
+         "docs/testing/jobs/selftest.d/62-status-freshness.sh",
+         "docs/lanes/statusfresh/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #150 draft, attempt 1/opus-5, started 2026-09-19T13:35:46Z) with no territory row at all. Harness defect, no tracker issue: status.sh PATCHes one comment in place, so GitHub renders the comment's created_at and a fresh roll-up reads as eleven hours stale. Files exactly as its own brief's Files: line names; this is the file's PRIMARY claimant among the three lanes that named it tonight (its entire brief is this one file) -- lane.localtime and lane.windowbudget both listed status.sh too and neither holds it here, see their own notes."
+
+
+[lane.windowbudget]
+issues = []
+files = ["docs/testing/lane.sh", "docs/testing/jobs/run-claude-job.sh",
+         "docs/testing/jobs/board.sh",
+         "docs/testing/jobs/selftest.d/95-window-budget.sh",
+         "docs/lanes/windowbudget/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:24:23Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: the pipeline throttles on LANE_MAX, a session count, when the real constraint is the account's shared five-hour/weekly window -- a lane that hits a closed window burns an attempt and eventually escalates model tier for a reason that has nothing to do with the work. board.sh CLAIMED HERE, not released to lane.localtime, which named it too: windowbudget's reserve-check (deferring dispatch in the last fifth of the weekly window) is the substantive edit to that file; localtime's touch would be a one-line display change and is noted as coordinate-at-fold in [lane.localtime] instead. status.sh DROPPED from this claim though the brief names it as a coordination point, not a file to hold -- it is [lane.statusfresh]'s below, that lane's entire brief. docs/testing/jobs/selftest.d/ narrowed to a named fragment (95-window-budget.sh) for the same reason as [lane.desktopchannel]'s note above."
 
 
 [retired.cloud-audit1-143]
