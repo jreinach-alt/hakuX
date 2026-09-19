@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 102
-updated_utc = "2026-09-19T08:53:03Z"
+wave = 103
+updated_utc = "2026-09-19T09:11:17Z"
 
 
 
@@ -139,6 +139,11 @@ note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). fold.sh 
 issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c"]
 note = "DISPATCHED WAVE 102 (job.board). #13's Vulkan extent phase already landed exact (47.8178% -> 99.5838%+ vs silicon, predictions/line-extent-phase-exact.json PASS). glsl/geom.c was FREE (released 2026-09-14 by lane.lineext retiring, never reclaimed) and the issue's own tracker note says the residual is cap/join geometry -- 493 of ~908 px, ours-only, 98.8% within w/2+2 of a vertex -- not the extent rule, so this claims only geom.c and not vk/draw.c (still lane.blitsafe's) or gl/shaders.c (lane.remote's, GL parity out of scope per the issue's own note)."
+
+[lane.ciskip]
+issues = []
+files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/cloud.md", "docs/lanes/ciskip/NOTES.md"]
+note = "WRITTEN AT WAVE 103 -- lane was RUNNING (PR #140 draft, attempt 1/opus-5) with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback. Two harness defects, no tracker issue. (1) the retired skip-ci marker is in no role file, so four PRs (#101, #123, #129, #139) stalled on an empty statusCheckRollup and needed a person to push an unblocking commit -- fix adds the marker to roles/lane.md's and roles/cloud.md's Never sections, including not quoting the marker in the unblocking commit message, since GitHub matches it anywhere in the message. (2) fold.sh writes its preflight-failure marker ($F/failed/$pr-$head) on ANY red gate including a board-level one -- coverage and territory read the board, not the PR's tree -- so when #138 opened, the coverage gate went red for every fold and permanently marked #123/#124/#130 failed on heads that had nothing wrong with them. fold.sh EXCLUDED though the PR's own Files: line names it: lane.branchprune already holds fold.sh (branch-deletion-on-fold-success, PR #137) and check_territory.py refuses two rows naming one file -- COORDINATE THERE. This lane's change is the failure-marker/preflight-gate path, branchprune's is the branch-cleanup path; likely different regions but check at fold time. docs/testing/jobs/selftest.d/91-fold-transient.sh EXCLUDED for the same reason: lane.selftestsplit owns docs/testing/jobs/selftest.d/** as sole owner of record and hand-carries concurrent additions into the right fragment at its own fold -- but this is a NEW fragment file rather than an append to selftest.sh, which the existing coordination note does not explicitly cover, so flag it there rather than assume it's included. roles/lane.md and roles/cloud.md were in no other row and not in [free]; free to claim, no collision."
 
 [retired.tier81fix]
 issues = ["81", "90"]
