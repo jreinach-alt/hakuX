@@ -196,7 +196,24 @@ def main():
     # through would read as "classified" to a human and as "unclassified" to
     # every consumer, which is the exact asymmetry this schema exists to
     # remove.
-    STATES = ("available", "blocked")
+    #
+    # "done" IS HERE BECAUSE THE BOARD WROTE IT BEFORE THIS LANE FOLDED, and
+    # that is evidence, not pressure. The first version of this enum was
+    # ("available", "blocked") and rule (3) below tells a board closing a row
+    # that `available` no longer holds -- while giving it no word to put
+    # there instead. Its two options were to delete the field, losing the
+    # record that the row was ever classified, or to invent a word. On
+    # 2026-09-19 it closed #84 and wrote `dispatch_state = "done"`, which is
+    # the right word; refusing it would have made preflight red for every
+    # lane on the repository over a row nobody will ever dispatch.
+    #
+    # It costs the same as the others. "done" satisfies NOTHING on its own --
+    # the coverage gate below counts only `available`, and fleet.py dispatches
+    # only `available` -- and `done` on a `status = "open"` row is a FAIL,
+    # exactly mirroring `available` on a closed one. The two cannot be used to
+    # silence anything, because each contradicts the `status` it is written
+    # against.
+    STATES = ("available", "blocked", "done")
     state = {k: (v.get("dispatch_state") or "").strip()
              for k, v in tracker.items()}
     available = {k for k, v in state.items() if v == "available"}
@@ -330,6 +347,11 @@ def main():
         if s == "blocked" and not b:
             bad_state.append((k, "`blocked` with no `blocked_on` to say what "
                               "it is blocked on"))
+        if s == "done" and (v.get("status") or "") == "open":
+            bad_state.append((k, "`done` on a row whose status is still "
+                              "`open` -- close the row or say what state it "
+                              "is really in; a second field that contradicts "
+                              "`status` is how the two drift"))
     if bad_state:
         print("FAIL: %d entr%s whose `dispatch_state` does not hold:"
               % (len(bad_state), "y" if len(bad_state) == 1 else "ies"),
@@ -339,7 +361,10 @@ def main():
         print("\n  `dispatch_state` is one of %s. `available` means NOTHING\n"
               "  BLOCKS IT -- not that nobody owns it, which is\n"
               "  territory.toml's business -- and it requires an empty\n"
-              "  `blocked_on` and `status = \"open\"`." % ", ".join(STATES),
+              "  `blocked_on` and `status = \"open\"`. `done` is its mirror\n"
+              "  and requires a status that is NOT open. Neither satisfies\n"
+              "  this gate by itself: only `available` covers a row, and\n"
+              "  only an open row needs covering." % ", ".join(STATES),
               file=sys.stderr)
         if stale:
             print(stale, file=sys.stderr)

@@ -32,6 +32,107 @@ Attempt 2 changed one thing on the substance (below: `CLEARED` is matched only
 shouted, so an honest blocker whose prose uses the word is not punished) and
 otherwise did those four steps.
 
+## Why attempt 2 did not finish (written at the start of attempt 3)
+
+Attempt 2 published correctly — PR #134 was ready, green and labelled. It was
+then handed back `needs-rebase`, twice, on `selftest.sh`: nine harness lanes
+were appending checks to one file and the fold job folds one PR per tick, so
+the conflict rate on that path was ~100%. Nothing attempt 2 did was wrong and
+nothing it could have done would have helped; the fix was structural and
+landed as somebody else's lane (#136, `f53f3f66c2`), which split the file into
+`selftest.d/NN-<concern>.sh`.
+
+So attempt 3 is not a retry of the work. It is the move onto the new shape,
+plus the three things that turned up while doing it — all three from master
+having moved under the branch, none from the original change being wrong.
+
+## What attempt 3 changed, and why each was forced
+
+**1. The checks moved to `docs/testing/jobs/selftest.d/93-backlog-state.sh`,
+unchanged except where a neighbour forced it.** Both adaptations are marked
+`AFTER THE SPLIT` in the fragment.
+
+- *A dispatch directory of its own.* The fragment's fleet fixtures used the
+  shared `$DISPATCH_DIR`; `96-fleet-registry.sh` asserts on the exact registry
+  contents there and sorts after this one. Appending to a single file hid that
+  coupling behind textual order. Separate files make it a real dependency, so
+  it has to be broken rather than tolerated.
+- *`alpha is running` is now said to systemd.* It used to be the registry
+  entry's `"state": "running"` field. `ae3712aae1` (#133) made `fleet.py`
+  derive the running set from `systemctl --user list-units hakux-lane-*`,
+  because nothing had written that field since the orchestrator role was
+  deleted. The fixture follows: same fact, different place asked.
+
+  **This one nearly passed silently and that is the lesson.** The top-level
+  shim answers `is-active` and nothing else, which `lane_units()` reads as an
+  *empty* fleet — and "an available row held by a RUNNING lane is not
+  dispatchable" is true for free against an empty fleet, and against a blind
+  one. The check would have stayed green while testing nothing. Two fixture
+  sanity checks now assert alpha really is in RUNNING and that fleet was not
+  blind, *before* the 0 is read as the skip working.
+
+**2. `96-fleet-registry.sh`'s "an issue no running lane owns FAILs as
+dispatchable" was retargeted, not deleted.** It was true of the old code and
+this change makes it false on purpose: `#9401` has no tracker row at all, and
+the whole point here is that "no blocker" and "somebody looked and nothing
+blocks it" are different claims. That fragment is about *provenance* — an
+issue no active lane owns must reach `board.sh` as a `^FAIL` naming the issue —
+and that still holds, in the section that now describes it correctly. Both
+halves are asserted so the old behaviour cannot come back and satisfy it.
+
+**3. `dispatch_state = "done"` was added to the enum, because the board wrote
+it before this lane folded.** This is the one substantive change, and it is
+evidence rather than pressure.
+
+The first enum was `("available", "blocked")`. Its rule (3) — `available`
+requires `status = "open"` — tells a board closing a row that `available` has
+stopped holding, and gives it no word to put there instead. Its two options
+were to delete the field, losing the record that the row was ever classified,
+or to invent a word. On 2026-09-19 it closed #84 and wrote
+`dispatch_state = "done"`, which is the right word. Against the two-value enum
+that is the "unrecognised value" FAIL — **red for every lane on the repository,
+over a row nobody will ever dispatch.** Caught by running `preflight.sh`
+against the live board rather than against the fixture.
+
+`done` costs exactly what the others cost. It satisfies nothing on its own:
+the coverage gate counts only `available`, `fleet.py` dispatches only
+`available`, and `done` on a `status = "open"` row is a FAIL — the exact mirror
+of `available` on a closed one. Each value contradicts the `status` it is
+written against, so neither can be used to silence anything, which is the
+failure mode this whole schema exists to end.
+
+Four targeted mutants, one per new invariant, each tripping only its own
+checks — a crowd of reds from the `origin/master` falsification would not have
+shown this, since that file knows nothing of `dispatch_state` and fails
+everything:
+
+| mutant | trips |
+|---|---|
+| `STATES` back to two values | "a closed row carrying `done` is accepted"; the open-row rule |
+| the `done`-on-open rule removed | the open-row rule alone |
+| `done` let into the *covered* set | "`done` cannot cover an open row the way `available` does" |
+| `done` let into `fleet.py`'s dispatch branch | "a live row marked `done` is not dispatched" |
+
+The fleet-side check had to be moved onto a **live** row to be worth anything:
+the closed `done` row is never reached, because `fleet.py` iterates only live
+issues, so "not dispatchable" would have been true of it however `fleet.py`
+were written.
+
+`fleet.py` itself was composed rather than chosen at the conflict: master's
+`fleet_blind` guard on the dispatch loop keeps this lane's `unclassified` list,
+and master's `NOT COMPUTED` qualifier is extended to the new
+`NEITHER BLOCKED NOR MARKED AVAILABLE` heading for master's own reason — it is
+built by the same running-lane-skipped loop, so a bare `(0)` under FLEET-BLIND
+would read as "nothing is unclassified" when nothing was looked at.
+
+**State at the end of attempt 3:** `selftest.sh` 152 passed, 0 failed.
+`preflight.sh --allow-tracker` reports `coverage ok`; it still fails on
+`territory`, and that is not this lane's — the board dispatched `lane.linecap13`
+with a claim on `hw/xbox/nv2a/pgraph/glsl/geom.c` while leaving the same path
+in `territory.toml`'s `[free]` list (board branch, lines 140 and 347). This
+branch touches no `territory.toml`, and `--allow-tracker` licenses editing the
+tracker files, not this gate.
+
 ## What the defect actually is, and one correction to the brief
 
 The brief says `fleet.py` treats any non-empty `blocked_on` as blocked, and
@@ -70,10 +171,12 @@ branch, not just in prose:
 
 ## What I built
 
-A third state: **`dispatch_state = "available" | "blocked"`** on a tracker row.
-"Available" is about the *obstacle*, not the owner — whether a lane is on it
-stays territory.toml's business, which is why `fleet.py`'s running-lane skip
-still applies on top of it.
+A third state: **`dispatch_state = "available" | "blocked" | "done"`** on a
+tracker row. "Available" is about the *obstacle*, not the owner — whether a
+lane is on it stays territory.toml's business, which is why `fleet.py`'s
+running-lane skip still applies on top of it. (`done` was added in attempt 3
+after the board wrote it; see "What attempt 3 changed" above. Only `available`
+covers a row, and only an open row needs covering.)
 
 - `check_coverage.py`: covered is now owned **or** non-empty `blocked_on` **or**
   `dispatch_state = "available"`. The gap gate is unchanged for an
@@ -83,16 +186,25 @@ still applies on top of it.
   `available` with a non-empty `blocked_on`; `available` with `status != open`
   (the guard on the opposite failure — "finished work reading as available is
   how an issue gets re-dispatched", this script's own sentence about #56/#57/#61);
-  `blocked` with nothing in `blocked_on`.
+  `blocked` with nothing in `blocked_on`. Attempt 3 added the fifth and its
+  mirror: `done` on a row whose `status` is still `open`.
 - a `blocked_on` whose **opening claim** asserts non-blockage is now a FAIL,
   scoped to live-open issues.
 - `fleet.py`: `DISPATCHABLE NOW` is exactly the `available` rows not held by a
   running lane. The prose sniff is deleted. A new section, `NEITHER BLOCKED NOR
   MARKED AVAILABLE`, shows rows that say nothing, because calling them
   dispatchable asserts more than an empty row supports.
-- `docs/testing/jobs/selftest.sh`: a whole fake board (`$T/board` with copies of
-  the three modules plus two toml files; `HAKUX_BOARD_REF=` makes board_files
-  fall back to it) and 20 checks over ten variants of one row.
+- `docs/testing/jobs/selftest.d/93-backlog-state.sh`: a whole fake board
+  (`$T/board` with copies of the three modules plus two toml files;
+  `HAKUX_BOARD_REF=` makes board_files fall back to it) and 27 checks over
+  twelve variants of one row. **The fixture is a whole fake board, not a unit
+  test of a regex**, because the defect is a disagreement *between* two
+  consumers of one schema: coverage counted those rows as blocked while fleet
+  undid it with a substring search. Both read the board through
+  `board_files.py`, so a directory of copies *is* a board and the real scripts
+  run against it unmodified.
+- `docs/testing/jobs/selftest.d/96-fleet-registry.sh`: one check retargeted,
+  not deleted — see "What attempt 3 changed" above.
 
 ## Two things I got wrong on the first pass, both caught by measuring
 
@@ -146,26 +258,46 @@ first would have been a FAIL under the first pass's regex.
 
 ## Verified against the code being replaced, not reasoned about
 
-`SELFTEST_BOARD_SRC` points the new section at a directory of scripts.
+`SELFTEST_BOARD_SRC` points the fragment at a directory of scripts, so it can
+be run against the code being replaced rather than reasoned about. Re-measured
+at the end of attempt 3, after the move into `selftest.d/`:
 
 | scripts | result |
 |---|---|
-| this branch | 20 passed, 0 failed |
-| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **2 passed, 18 failed** |
+| this branch | 27 passed, 0 failed |
+| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **5 passed, 22 failed** |
 
-The two that pass against the old code are the fixture's own sanity check (the
-three modules were copied) and
-`an UNCLASSIFIED row still fails -- the gate is not weakened`, which is the
-assertion that behaviour was *preserved*. Every other check fails, which is the
-point: a new check that passes against the code it replaces is testing nothing.
+The 22 fail for four distinct reasons — the summary line's shape, the fleet
+section names, the position-anchored detector, and the four `dispatch_state`
+validations — which matters, because N reds that are all one reason is one
+red wearing a crowd's clothes.
+
+The five that pass against the old code all pass for stated reasons, and each
+is a check that *should* be true either way:
+
+| passes against the old code | why that is correct |
+|---|---|
+| the three modules were copied | the fixture's own sanity check |
+| the fixture's lane really is RUNNING | a property of the fixture, not the fix |
+| ...and fleet was not blind | same |
+| an UNCLASSIFIED row still fails | the guard that behaviour was **preserved** — the gate is not weakened |
+| `done` cannot cover an open row | old code has no `done`, so it covers nothing; the mutant that makes this fail is `donecovers` |
+
+That last row is why the falsification against `origin/master` is not enough
+on its own and the four targeted mutants exist. A file that knows nothing of
+`dispatch_state` fails everything, so a vacuous check hides in the crowd.
 
 Every assertion is on the **output words**, never on the exit code: the old
 `check_coverage.py` exits 1 on most of these variants too, for the wrong reason
 (the available row reads as an uncovered gap). rc is far too coarse to tell the
 fix from the defect here.
 
-Reproduce with `.scratch/run-old.sh` / `.scratch/run-new.sh` (uncommitted
-drivers; they just extract the section and set `SELFTEST_BOARD_SRC`).
+Reproduce with the uncommitted drivers in `.scratch/`: `run-selftest.sh` (the
+whole gate, fake host inside the worktree), `falsify.sh` (the same fragment
+against `origin/master`'s three board modules — it refuses to run if those
+already know `dispatch_state`, i.e. if this PR has folded), and `mutants.sh`
+(the four targeted mutants). All three swap into a copy tree and never touch
+the real paths.
 
 ## What actually moves, as a differential
 
@@ -183,10 +315,20 @@ NEW scripts, MIGRATED:     DISPATCHABLE (4)  #88 #89 #91 #92  "dispatch_state=av
 
 `fleet.py`'s count is unchanged and I am not going to dress that up: the old
 sniff did catch those four, one of them (#92) by a false positive that happened
-to land on the right answer. What moves is (a) line 1 of the checker — which
-`idle-watchdog.sh` reads as `sed -n 1p` — no longer calling seven unblocked rows
-blocked, and (b) the board being able to write "waiting for capacity" without
-lying, which is the shape that was invisible to *both* consumers.
+to land on the right answer. What moves is (a) the checker's summary line no
+longer calling seven unblocked rows blocked, and (b) the board being able to
+write "waiting for capacity" without lying, which is the shape that was
+invisible to *both* consumers.
+
+**Correcting my own wording here**, checked at `idle-watchdog.sh:223` rather
+than remembered: the watchdog takes `check_coverage.py 2>&1 | head -6`, matches
+`FAIL*` against the whole block and reads the detail with `sed -n 2p`. It is not
+`sed -n 1p`, and the summary is not line 1 of stdout either — `board read from:`
+is. The substance is unaffected, because `head -6` carries the summary and the
+FAIL detail either way, and the reason this channel matters is the watchdog's
+own design note at line 78: the loop re-invokes its children fresh every poll,
+so what the CHILD says reaches a running watchdog and what the LOOP says does
+not.
 
 ## The migration (7 rows, on the `board` branch only)
 
@@ -248,9 +390,14 @@ only considers rows with a non-empty blocker).
   `claude/hakux-orchestration-design-e663m8` with no `Files:` line, so that
   document is very likely being rewritten right now and a one-word edit there
   is a collision nothing can see. The in-band channel does work without it —
-  the coverage FAIL messages name the field, and line 1 now prints
-  `N AVAILABLE`, which is the only channel that reaches a running
-  `idle-watchdog.sh`.
+  the coverage FAIL messages name the field, and the summary line now prints
+  `N AVAILABLE`. That is the channel that reaches a *running*
+  `idle-watchdog.sh`, because the loop re-invokes the script fresh each poll
+  while holding its own text from startup.
+- **`selftest.sh:282`'s line number is dead** and so is every other one I wrote
+  against that file: #136 split it into `selftest.d/*.sh`. The label check is
+  now `selftest.d/80-labels.sh`. Cite fragments, not offsets into the file that
+  no longer holds the checks.
 - **#34 and #62 are unclassified on the live board** — owned by lane.remote, no
   blocker, no `dispatch_state`. They pass coverage on ownership alone today and
   will fail `fleet.py` the moment remote stops running. They are not in this

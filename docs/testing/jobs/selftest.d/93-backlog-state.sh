@@ -135,8 +135,22 @@ two = {
                   'blocked_on = "Blocked on real hardware."\n',
     "typo":       'status = "open"\ndispatch_state = "avaliable"\n'
                   'blocked_on = ""\n',
+    # `done` where it contradicts `status`: a second place to say a row is
+    # finished, disagreeing with the first. The mirror of "done" on a closed
+    # row is issue 5 below, which the `done_ok` variant adds.
+    "done_open":  'status = "open"\ndispatch_state = "done"\n'
+                  'blocked_on = ""\n',
+    "done_ok":    'status = "open"\nblocker_tested = "2026-09-19"\n'
+                  'blocked_on = "Blocked on real Xbox hardware."\n',
 }[variant]
 rows.append(('2', 'status_note = "n"\n' + two))
+if variant == "done_ok":
+    # The real shape of the board's own `done`, which is #84: a row the gh
+    # shim does NOT list as open, closed in the tracker, `dispatch_state`
+    # kept as the record that it was classified. It must be accepted, and it
+    # must not touch the open accounting -- a closed row needs no coverage.
+    rows.append(('5', 'status = "closed"\nstatus_note = "n"\n'
+                      'dispatch_state = "done"\nblocked_on = ""\n'))
 out = []
 for n, body in sorted(rows, key=lambda r: int(r[0])):
     out.append('[issue.%s]\ntitle = "issue %s"\n%s' % (n, n, body))
@@ -222,3 +236,33 @@ check "AVAILABLE alongside a blocker fails as the contradiction it is" \
 board typo; out=$(cov)
 check "an unrecognised dispatch_state fails rather than reading as classified" \
     grep -q "is not one of available, blocked" <<< "$out"
+
+# `done`, ADDED AFTER THE BOARD WROTE IT. The first enum was (available,
+# blocked), and the `available`-on-a-closed-row rule above told the board
+# that `available` had stopped holding without giving it a word to replace
+# it with. It closed #84 and wrote `dispatch_state = "done"`, which is the
+# right word -- and against the two-value enum that is the "unrecognised
+# value" FAIL above, red for every lane on the repository over a row nobody
+# will ever dispatch. Both directions are pinned, because a value added to
+# stop a gate complaining is exactly the failure this schema was written to
+# end.
+board done_ok; out=$(cov)
+# "4 open" against a FIVE-row tracker is the whole assertion: the closed row
+# is accepted and is not counted among the rows needing coverage.
+check "a closed row carrying dispatch_state = done is accepted, and is not open" \
+    grep -q "^coverage ok (4 open: 0 AVAILABLE, 3 blocked" <<< "$out"
+board done_open; out=$(cov)
+check "done on a row whose status is still open FAILs, mirroring available" \
+    grep -q '`done` on a row whose status is still `open`' <<< "$out"
+check "...so done cannot cover an open row the way available does" \
+    bash -c '! grep -q "^coverage ok" <<< "$1"' _ "$out"
+# The fleet half of the same drift, asserted on a LIVE row: issue 2 is in the
+# gh shim's open list here, so this really exercises the dispatch loop. The
+# `done_ok` variant could not -- its done row is closed, and fleet iterates
+# only live issues, so "not dispatchable" would have been true of it however
+# fleet were written.
+out=$(flt)
+check "a live row marked done is not dispatched" \
+    grep -q "^=== DISPATCHABLE NOW, NOT DISPATCHED (0)$" <<< "$out"
+check "...it is reported as unclassified, since done says nothing about a blocker" \
+    grep -q "^  #2 " <<< "$(sed -n '/NEITHER BLOCKED NOR MARKED/,$p' <<< "$out")"
