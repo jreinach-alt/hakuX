@@ -233,6 +233,17 @@ Two traps it is built around:
   The replacement clause is: *an addressable delivery comment,
   `deliver.sh send <lane> <thread>`, which the lane can read back with
   `deliver.sh inbox`.* Items 1 and 3 are unchanged and still right.
+- **`jobs/roles/board.md` does not tell the board the channel exists.** The
+  board is the only actor that routes work, and nothing in its role file says
+  `deliver.sh send` is how. **Not edited here: PRs #145 and #153 both claim
+  that file.** One paragraph is owed, under whatever section covers dispatch:
+  *routing an issue to a lane is `bash docs/testing/jobs/deliver.sh send <lane>
+  <issue> -b '...'`; the lane reads it with `inbox`, and `check_coverage.py`
+  reports a lane with unblocked issues and no delivery in three hours as
+  UNBRIEFED.* Until that lands, the channel works and nobody has been told.
+- No allowlist change was needed: `allowed-tools.job` and `allowed-tools.lane`
+  already carry `Bash(bash:*)` and `Bash(docs/testing/*:*)`, so both a job
+  session and a lane session can run `deliver.sh` today. Checked, not assumed.
 - `docs/ORCHESTRATION-AS-BUILT.md`'s timer table entry for `hakux-comments`
   describes the sweep's old behaviour. Cosmetic; not claimed by this lane.
 - Nobody has ever sent a delivery. The channel works and is empty. Whether

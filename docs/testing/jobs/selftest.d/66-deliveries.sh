@@ -7,11 +7,13 @@
 # cannot open a file on this host's disk (ORCHESTRATION-DESIGN.md §5). It is
 # now a `[job.deliver] lane.<name>` comment.
 #
-# 66 because it must run after 65-fold-cloud-list.sh and before
-# 70-cloud-audit.sh, and because it depends on no other fragment: it builds its
-# own dispatch directory, its own gh shim, its own board and its own sweep
-# directory, and leaves nothing in the shared $DISPATCH_DIR for a later
-# fragment to trip over.
+# 66 is a free number and nothing more: this fragment has NO ordering
+# requirement in either direction, which is the property worth stating. It
+# builds its own dispatch directory, its own gh shim, its own board and its own
+# sweep directory, reads nothing another fragment wrote, and leaves nothing in
+# the shared $DISPATCH_DIR -- 96-fleet-registry.sh asserts on the exact file
+# count there, and a fragment that drops fixtures in a shared directory for a
+# later one to trip over is the coupling the selftest split was done to remove.
 #
 # SELFTEST_DELIVER_SRC exists so this whole section can be pointed at the OLD
 # scripts and seen to fail, rather than being reasoned about. It must contain

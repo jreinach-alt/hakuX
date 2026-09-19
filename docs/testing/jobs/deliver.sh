@@ -202,10 +202,17 @@ PY
 
 # --------------------------------------------------------------- the feed
 #
-# One paginated call, newest first. Emits TSV: iso, thread, url, first line.
-# `since` filters on the comment's updated_at, so an edited old comment
-# reappears; that is harmless for a max() and is why nothing here assumes the
-# feed is only new material.
+# One paginated call. Emits TSV: iso, thread, url, first line.
+#
+# It ASKS for newest-first and NOTHING DOWNSTREAM MAY RELY ON GETTING IT. The
+# sort is here so a truncated or rate-limited page holds the rows most likely
+# to matter; `scan` takes a max by timestamp regardless, because a correctness
+# property that lives in a URL parameter is one edit from being gone and
+# nothing would report it.
+#
+# `since` filters on the comment's updated_at, not created_at, so an edited old
+# comment reappears. That is harmless for a max() and is the second reason
+# nothing here assumes the feed is only new material.
 feed() {
     local since="$1"
     timeout 120 gh api --paginate \
