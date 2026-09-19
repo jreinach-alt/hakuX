@@ -80,7 +80,10 @@ check "board.sh dispatches the audit outlet" \
 # failed against the file that was correct.
 check "it does so before the 'nothing actionable' exit, which is the tick an audit needs" bash -c '
     c=$(grep -n "bash \"\$JOBS/cloud.sh\"" "$HERE/board.sh" | head -1 | cut -d: -f1)
-    n=$(grep -n "say \"nothing actionable\"" "$HERE/board.sh" | head -1 | cut -d: -f1)
+    # No closing quote: the message gained a "($lanes/$LANE_MAX ...)" suffix
+    # in 38385b79c1 and an exact match then found nothing, which read as
+    # "the exit does not exist" and failed a correctly-ordered file.
+    n=$(grep -n "say \"nothing actionable" "$HERE/board.sh" | head -1 | cut -d: -f1)
     [ -n "$c" ] && [ -n "$n" ] && [ "$c" -lt "$n" ]'
 
 # CLEARING THE STATE LABEL IS PART OF THE JOB. A label that is never cleared
