@@ -1,5 +1,34 @@
 # lane.selftestsplit — `selftest.sh` split into separately-ownable fragments
 
+## Why attempt 1 did not finish
+
+**It left a finished PR in draft.** The work was done, pushed and green; the
+session ended without `gh pr ready 136`, and a draft is "still working", so
+the board resumed the lane. The attempt cost nothing in code and one full
+Opus session in bookkeeping.
+
+The timestamps say how it happened. Attempt 1 wrote the PR body at 00:39 and
+then kept going — master moved twice more, so it carried #133's block into
+`96-fleet-registry.sh` at 00:47 and rewrote these notes at 00:52. The carries
+were the right call; what it never did was come back to the two closing steps.
+So it ended with a **body that described a four-fragment-older branch** (it
+still said 65 checks and eleven fragments when the branch was at 124 and
+fourteen) and the ready flag unset.
+
+The lesson is about ordering, not diligence: this lane's design *guarantees* a
+tail of re-merges, because it must fold last. Attempt 1 treated "mark ready"
+as the final step after the last carry, and there is no last carry until the
+session runs out. **Mark ready as soon as the branch is green and current, and
+re-merge afterwards** — a ready PR that needs one more carry is a PR the board
+can see and audit; a draft is invisible and costs a resume. Nothing about being
+ready folds it early: the fold job only touches PRs labelled `fold-ready`, and
+that label is the board's to apply.
+
+Attempt 2 re-verified rather than assuming: pure move against the current
+master (525 non-blank lines, identical, same order), CI green at the exact
+head, preflight re-run — which is how the territory overlap in proof 6 below,
+new since attempt 1, was caught.
+
 ## What the problem was
 
 `docs/testing/jobs/selftest.sh` is the gate every change under
@@ -143,9 +172,15 @@ paired, not as absolute. The structural argument is the stronger one: the cost
 is the `arms.sh` invocations, untouched, and the split adds fourteen `source`
 calls.
 
-**3. CI runs it, green, on a clean runner.** The `selftest` job on PR #136 at
-`55334e78d2`: **pass, 2m38s**, against a 15-minute timeout. That is also the
-end-to-end proof the workflow still triggers on this change.
+**3. CI runs it, green, on a clean runner.** The `selftest` job on PR #136, at
+two heads: `55334e78d2` **pass, 2m38s**, and the branch head `acc6fe319f`
+**pass, 2m37s** — against a 15-minute timeout. That is also the end-to-end
+proof the workflow still triggers on this change: the job ran at all, on a
+commit that touches only `selftest.d/` and the notes.
+
+The runner is the honest timing number. The 278s/174s local figures in proof 2
+are paired measurements on a box shared with other lane sessions; CI's 2m37s
+on a clean runner is what the 15-minute timeout is actually up against.
 
 **4. A failing fragment fails the run.** The tally is shared state across
 sourced files, and that is exactly the property a split like this can silently
@@ -176,8 +211,29 @@ deleted:
 
 All three exit before a single check runs, so none can be mistaken for a pass.
 
-**6. `preflight.sh`** passes clean on this branch — psh_differ, aci_vmstate,
-nv2a index, territory, coverage, board files — with no `--allow-tracker`.
+**6. `preflight.sh`** passes every gate it can on this branch — psh_differ,
+aci_vmstate, nv2a index, coverage, board files — and fails exactly one,
+`territory`, for a reason that is not this branch's to fix:
+
+```
+territory                   FAILED
+  docs/testing/jobs/selftest.sh is claimed by both branchprune and selftestsplit
+```
+
+This was clean during attempt 1 and is not now, because the board added a
+`[lane.branchprune]` row at wave 100 that claims `selftest.sh` as well. The
+board wrote the overlap **knowingly** — its own note on my row calls it "an
+accepted, fold-order-managed overlap with lane.branchprune above, not a
+collision this file should try to prevent."
+
+Worth being precise about the escape hatch, because the lane contract points
+at it and it does not apply: **`--allow-tracker` does not suppress this.**
+That flag licenses *editing* `territory.toml`/`nv2a_issues.toml` (preflight.sh
+step 7); the territory overlap is step 3 and has no override at all. So
+`preflight.sh --allow-tracker` still exits 1 here. The only thing that clears
+it is an edit to `territory.toml`, which a lane may not make. Nothing in this
+branch's diff can change that result, and it does not gate CI — the territory
+step is explicitly "not a CI gate" (`preflight.sh:170`).
 
 **7. CI trigger.** `.github/workflows/jobs-selftest.yml` gained
 `docs/testing/jobs/selftest.d/**` in both `paths:` lists. Being precise about
@@ -192,6 +248,12 @@ the gate still fires.
 - **Do not edit `selftest.sh` to add a check.** Add
   `selftest.d/NN-<concern>.sh`. An append to `selftest.sh` re-creates exactly
   the collision this lane removed.
+- **Mark the PR ready the moment the branch is green and current, not after
+  the last re-merge.** On a lane that must fold last there is no last
+  re-merge — master keeps moving until the session ends, so "finish, then mark
+  ready" never reaches the second clause. That is the whole of why attempt 1
+  cost a resume. Being ready does not fold anything early: `fold.sh` only
+  considers PRs labelled `fold-ready`, which the board applies.
 - **Do not edit a script while a long run of it is in flight.** Bash reads a
   script lazily by byte offset, so an edit that shifts bytes ahead of the
   interpreter's position makes it resume mid-token. It surfaced as
@@ -219,12 +281,35 @@ the gate still fires.
 ## Sequencing
 
 This PR moves the lines every other open `selftest.sh` PR is appending to, so
-it conflicts with all of them by construction. **It must be folded last.** Open
-and touching `selftest.sh` at the time of writing: #122, #130, #132, #134.
+it conflicts with all of them by construction. **It must be folded last.**
 
-Four blocks have already been carried in this way (#126 → `95-affinity.sh`,
+Open and appending to `selftest.sh` as of the end of attempt 2 — re-read from
+`gh pr list`, not carried over from attempt 1, because three of the names in
+the earlier list had already folded:
+
+| PR | lane | lines added to `selftest.sh` |
+| --- | --- | --- |
+| #122 | orchestration-design | 15 |
+| #123 | armsskip | 72 |
+| #124 | boardgate | 128 |
+| #130 | auditoutlet | 104 |
+| #132 | handback | 187 |
+| #134 | backlogstate | 172 |
+| #137 | branchprune | none yet, but `territory.toml` claims the file |
+
+The fold job takes `--label fold-ready` and `sort_by(.number)` (`fold.sh:93`),
+so among PRs labelled fold-ready together, **#136 already sorts last** behind
+every one of those but #137. That is luck, not design: it holds only while no
+higher-numbered PR appends to `selftest.sh`. If one does — #137 is the live
+candidate — the board has to hold this PR's `fold-ready` label back until that
+one lands, because number order will otherwise fold this first and conflict
+the other. The ordering request is in the PR body for that reason.
+
+Four blocks have already been carried this way (#126 → `95-affinity.sh`,
 #127 → `85-fold-ci.sh`, #133 → `96-fleet-registry.sh`, plus #135's `arms.sh`
-change which needed no carry). The recipe, for whoever does the next one:
+change which needed no carry). That is the whole cost of being folded last,
+and it is bounded: one carry per `selftest.sh` PR that lands first, each one a
+diff's worth of added lines. The recipe, for whoever does the next one:
 
 1. `git merge <explicit sha of origin/master>`.
 2. Keep this branch's `selftest.sh` (`git checkout --ours`) if it conflicts.
