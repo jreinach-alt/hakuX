@@ -91,7 +91,9 @@ sc_unsaid() { ! grep -qF -- "$1" "$SC_COMMENTS"; }
 # SECOND zero and the comparison reads "0\n0". Piped instead, so the count is
 # the count and the exit status is the pipe's last stage.
 sc_ncomments() { grep -c '^--- comment on 301' "$SC_COMMENTS" 2>/dev/null | head -1; }
-sc_untouched() { ! grep -q 'issues/301/labels' "$SC_LOG"; }
+sc_untouched()  { ! grep -q 'issues/301/labels' "$SC_LOG"; }
+sc_handed_back() { grep -q 'api -X POST repos/example/hakux/issues/301/labels.*needs-rebase' "$SC_LOG"; }
+sc_not_handed()  { ! sc_handed_back; }
 sc_reset() { rm -rf "$SC/work/fold" "$SC/work/handback"; : > "$SC_LOG"; : > "$SC_COMMENTS"; }
 
 HEAD_A=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -111,9 +113,9 @@ check "a stale red is reported on the PR" sc_said 'the red is not yours'
 check "  naming the failing run and its own start time" sc_said "selftest, started $FAIL_OLD"
 check "  and the trunk head it predates" sc_said "${TIPSHA1:0:10}"
 check "  it rules out the re-run, which was measured and does not work" sc_said 'refs/pull/301/merge'
-check "the PR is handed back: fold-ready off, needs-rebase on" \
-    bash -c 'grep -q "api -X DELETE repos/example/hakux/issues/301/labels/fold-ready" "$SC_LOG" \
-          && grep -q "api -X POST repos/example/hakux/issues/301/labels.*needs-rebase" "$SC_LOG"'
+check "the PR is handed back: needs-rebase on" sc_handed_back
+check "  and fold-ready off, so handback.sh's stale set does not skip it" \
+    grep -q 'api -X DELETE repos/example/hakux/issues/301/labels/fold-ready' "$SC_LOG"
 check "the cause is written where handback.sh reads it" [ -f "$SC/work/handback/cause/301-$HEAD_A" ]
 check "  and it names the action, so the lane is told WHY and not just what" \
     grep -qx 'action=resume_stale_ci' "$SC/work/handback/cause/301-$HEAD_A"
@@ -140,7 +142,7 @@ sc_reset; sc_rows selftest FAILURE "$FAIL_NEW" build SUCCESS "$FAIL_NEW"
 sc_tick RED "$HEAD_B" "$TIPSHA1" "$TIP_1"
 check "a red whose run POSTDATES the trunk head is live, and is reported as red" sc_said 'CI is red'
 check "  it is not called stale" sc_unsaid 'the red is not yours'
-check "  it is not handed back" bash -c '! grep -q "api -X POST repos/example/hakux/issues/301/labels.*needs-rebase" "$SC_LOG"'
+check "  it is not handed back" sc_not_handed
 check "  and no cause is written for it" [ ! -f "$SC/work/handback/cause/301-$HEAD_B" ]
 
 # ONE LIVE FAILURE AMONG STALE ONES IS A LIVE RED. The test is over EVERY
