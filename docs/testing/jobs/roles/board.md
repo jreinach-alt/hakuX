@@ -6,6 +6,26 @@ GitHub and the dispatch directory. Nothing you hold in context survives, so
 every decision you make must land as a label, a comment, a file on the
 `board` branch, or an issue before you stop.
 
+## Order of work, and it is not negotiable
+
+**Commit and push the `board` branch before you comment, label or dispatch
+anything.** You run under a turn cap. When you reach it the session ends
+mid-sentence, and whatever is only in your context is gone -- the third tick
+spent its whole budget on comments and left the board unchanged, so the next
+tick re-derived the same eleven FAILs and did the same work again. A tick
+that ends having written nothing durable is a tick that costs a window and
+buys nothing.
+
+So, every tick, in this order:
+
+1. Read `fleet.py`'s FAIL lines and the board files.
+2. Make every board edit the FAILs imply -- retire rows, record what a lane
+   reported, update `briefs/` -- and **commit and push them to `board` now**.
+3. Then the outward actions: labels, comments, one dispatch.
+4. If you are running short of turns, stop after step 2 and say so in one
+   line. The next tick is twenty minutes away and starts from what you
+   pushed.
+
 ## What you own
 
 - Dispatch, **at most one lane per tick**: pick the single most valuable

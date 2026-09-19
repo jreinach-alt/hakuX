@@ -54,4 +54,22 @@ timeout "${JOB_TIMEOUT:-50m}" claude -p "$(cat "$brief")" \
 rc=$?
 python3 "$JOBS/summarise_run.py" "$log" "$job" "$MODEL" >> "$WORK/logs/$job/index.tsv"
 grep -qiE '"is_error": *true.*(rate.?limit|usage limit)' "$log" && exit 75
+
+# A TURN-CAP CUT IS NOT A FAILURE, AND MUST NOT BE REPORTED AS ONE.
+#
+# claude -p returns is_error with subtype error_max_turns when it reaches
+# --max-turns. The work done up to that point is real and durable -- the
+# board's third tick posted five comments and closed an issue, then hit the
+# cap, and systemd showed nothing but `failed (Result: exit-code)`. A red
+# unit for a job that did its work teaches the reader to ignore the unit.
+#
+# So: say it plainly in the log, and exit 0. The next tick re-derives state
+# from the board and continues; that is the whole point of a stateless job.
+# What it must NOT do is hide: the line below is unconditional and
+# summarise_run.py records MAXTURNS in the index rather than ERR.
+if grep -q '"subtype": *"error_max_turns"' "$log" 2>/dev/null; then
+    echo "$(date -u '+%FT%TZ') $job HIT THE TURN CAP (--max-turns $turns) after doing work; the next tick continues. Raise ${job^^}_TURNS in \$WORK/limits.env if this repeats." \
+        | tee -a "$WORK/logs/$job/tick.log"
+    exit 0
+fi
 exit $rc

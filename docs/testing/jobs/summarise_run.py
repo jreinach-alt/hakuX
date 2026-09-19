@@ -23,7 +23,15 @@ try:
     turns = d.get("num_turns", "?")
     secs = round(d.get("duration_ms", 0) / 1000) if d.get("duration_ms") else "?"
     cost = d.get("total_cost_usd", "?")
-    err = "ERR" if d.get("is_error") else "ok"
+    # MAXTURNS is not ERR: the run did its work and was cut at the cap.
+    # Collapsing the two hid three consecutive capped board ticks behind a
+    # word that reads as "this run failed".
+    if d.get("subtype") == "error_max_turns":
+        err = "MAXTURNS"
+    elif d.get("is_error"):
+        err = "ERR"
+    else:
+        err = "ok"
     head = (d.get("result") or "").strip().splitlines()[0][:120] if d.get("result") else ""
 except Exception as e:
     err = "UNPARSED:%s" % type(e).__name__
