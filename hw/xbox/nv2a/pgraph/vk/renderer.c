@@ -443,7 +443,13 @@ static void diag_download_surface(NV2AState *d, PGRAPHState *pg,
     }
 }
 
-static void dump_surface_ppm(NV2AState *d, SurfaceBinding *surface,
+/* True only if the file was written. The frame dump files the image name and
+ * charges its bytes on that answer: a zero bytes_per_pixel (which the caller's
+ * width/height test does not cover) or an fopen failure used to be reported
+ * only through DIAG_LOG, whose tag no dispatched run's logcat spec keeps, so
+ * the dump named a file that was not there and shortened itself for a write
+ * that never happened, with nothing in the run's log. */
+static bool dump_surface_ppm(NV2AState *d, SurfaceBinding *surface,
                              const char *path)
 {
     unsigned int w = surface->width;
@@ -452,7 +458,7 @@ static void dump_surface_ppm(NV2AState *d, SurfaceBinding *surface,
     unsigned int pitch = surface->pitch;
 
     if (!w || !h || !bpp) {
-        return;
+        return false;
     }
 
     const uint8_t *vram = d->vram_ptr + surface->vram_addr;
@@ -460,7 +466,7 @@ static void dump_surface_ppm(NV2AState *d, SurfaceBinding *surface,
     FILE *f = fopen(path, "wb");
     if (!f) {
         DIAG_LOG("dump_surface_ppm: cannot open %s (errno=%d)\n", path, errno);
-        return;
+        return false;
     }
 
     fprintf(f, "P6\n%u %u\n255\n", w, h);
@@ -485,7 +491,11 @@ static void dump_surface_ppm(NV2AState *d, SurfaceBinding *surface,
         }
     }
 
-    fclose(f);
+    bool ok = ferror(f) == 0;
+    if (fclose(f) != 0) {
+        ok = false;
+    }
+    return ok;
 }
 
 /*
@@ -545,6 +555,12 @@ typedef struct DiagShaderEntry {
 
 static DiagShaderEntry diag_shaders[DIAG_MAX_SHADERS];
 static int diag_shader_count = 0;
+
+/* The live frame dump shares this file's per-draw hook but is otherwise a
+ * separate instrument; see its header comment further down. Declared here
+ * because the hook is defined above it. */
+static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
+                           int count);
 
 /* Per-frame JSON buffers (each frame's draw_calls array) */
 static char **diag_frame_bufs = NULL;
@@ -1049,6 +1065,15 @@ void nv2a_diag_log_blit(NV2AState *d, PGRAPHState *pg)
 void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
                              const char *type, int count)
 {
+    /* The live dump runs first and independently of the diag capture: when a
+     * run arms both (marker spec "diag"), the same draws are recorded by both
+     * instruments and the live records show the serialisation the capture
+     * imposes. When only the live dump is armed, the function returns below
+     * before anything calls pgraph_vk_finish. */
+    if (nv2a_dbg_framedump_active()) {
+        fdump_log_draw(d, pg, type, count);
+    }
+
     if (!qatomic_read(&diag_frame_active)) {
         return;
     }
@@ -1404,6 +1429,827 @@ void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
     diag_json_append("        }");
 }
 
+/*
+ * Live frame dump -- the second per-draw instrument, and the one that does not
+ * stop the GPU in order to look at it.
+ *
+ * WHY IT IS NOT THE DIAG CAPTURE ABOVE. #77 (Galleon's deck and ground
+ * stipple, 10-14 frames per 100) has had every per-draw field the diag capture
+ * records ruled out by measurement: format, dimensions, level count, pitch,
+ * swizzle flag, texture-matrix enable and texgen mode, over 115 addresses and
+ * 22,493 binds with zero variation while the artifact was on screen. What the
+ * capture cannot record is what is left. nv2a_diag_log_draw_call above calls
+ * pgraph_vk_finish(VK_FINISH_REASON_SURFACE_DOWN) BEFORE EVERY DRAW, and that
+ * finish flushes the draw queue and the reorder window (vk/draw.c:3188-3217)
+ * and waits on a fence. Under a diag capture, therefore:
+ *
+ *   - no draw is ever merged with the one after it, so a merged draw is never
+ *     logged -- not because logging misses it, because merging cannot happen;
+ *   - nothing is ever in flight across a draw boundary, so a missing barrier
+ *     or a stale binding is masked by the serialisation;
+ *   - texture reuse keyed on submit_time against submit_count
+ *     (vk/texture.c:2074) sees one submit per draw, which is not the schedule
+ *     the artifact appears under.
+ *
+ * An instrument that removes the behaviour under suspicion cannot see it.
+ *
+ * So this path records the same draws and adds NO Vulkan work whatsoever: no
+ * pgraph_vk_finish, no command buffer, no vkCmd*, no fence wait, no queue
+ * submit. Everything it writes is host-side state already in memory --
+ * registers, bindings, and the scheduler's own counters. The one image it
+ * writes per frame is the DISPLAY surface read out of guest VRAM at
+ * flip_stall, AFTER the flip's own pgraph_vk_finish has already run, so it
+ * adds no synchronisation of its own either.
+ *
+ * THE COLUMN THAT PROVES THAT, so the claim is measured and not asserted:
+ * every draw record carries `cb_draws` (r->draws_in_cb) and `submits`
+ * (r->submit_count). A per-draw finish submits the command buffer at every
+ * draw, so under the Debug Capture path cb_draws can never climb above 1 and
+ * submits rises once per draw. Under this path cb_draws climbs across the
+ * frame and submits is flat between flips. The dump falsifies its own headline
+ * claim from its own contents; no external trace is needed.
+ *
+ * WHAT IT CANNOT SEE, stated so that a null result is not over-read:
+ *
+ *   - no per-draw image. Reading a surface back mid-frame is exactly what
+ *     forces the finish. Per draw you get state and schedule; per frame you
+ *     get the picture. A draw-level pixel attribution still needs the old
+ *     path, with the old blindness.
+ *   - clears and blits. Their hooks (vk/draw.c:6711, vk/blit.c:450) are gated
+ *     on nv2a_dbg_diag_frame_active() at the CALL SITE, in files this lane
+ *     does not hold. Draws only.
+ *   - merging, when merging is off. draw_merge and draw_reorder are prefs that
+ *     default false (vk/draw.c:32, SettingsActivity.kt:68), so the session
+ *     header records both. A dump taken with them off says nothing about
+ *     merged draws and must not be read as if it did; it still shows deferred
+ *     submission and command-buffer batching, which are on by default.
+ *
+ * ARMING. A marker file, the way apu.c arms the PCM capture
+ * (hw/xbox/mcpx/apu/apu.c:892), and for the same reason: the only existing
+ * trigger is a button in MainActivity, which needs a person holding the
+ * device, and a soak has nobody. The marker is polled once a second at the
+ * flip, so
+ *
+ *     adb shell 'echo 30 > <files>/frame_dump.on'
+ *
+ * arms it mid-run, once the title has reached the scene that matters.
+ *
+ * The marker is UNLINKED the instant it is read, and the previous dump's files
+ * are deleted when a new one is armed. Both are the audio harness's scars: a
+ * marker left behind by one experiment armed eight unrelated soaks, and a
+ * capture left on the device was pulled and measured as a later run's data. A
+ * frame dump is an order of magnitude more bytes than a PCM capture, so it
+ * gets a byte cap for the same reason the PCM one has.
+ */
+
+/*
+ * The dump's own lifecycle lines go to the tag the harness actually keeps.
+ * DIAG_LOG above uses `hakuX-diag`, and neither logcat spec that serves a
+ * dispatched run lists it (dispatcher.sh:1089, soak_title.sh:32, both ending
+ * `*:S`), so every line the diag capture prints about itself is dropped from
+ * the record of the run that produced it -- which is how a dump that never
+ * armed and a dump whose file could not be opened look identical afterwards.
+ * `hakuX` is in both specs, but soak_title's fallback keeps it at :W, so the
+ * handful of lifecycle lines here are WARN on purpose. They are rare: armed,
+ * held, closed, failed. Both spec strings live in files this lane does not
+ * hold, or the tag would have been added there instead.
+ */
+#ifdef __ANDROID__
+#define FDUMP_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define FDUMP_LOG(...) fprintf(stderr, "xemu-framedump: " __VA_ARGS__)
+#endif
+
+/* Both are prefs with no header of their own (vk/draw.c:987-995); the Android
+ * entry point declares them the same way. g_vulkan_driver_info is instance.c's
+ * one-line driver identity, recorded so a dump is attributable to a driver
+ * without a second artifact. */
+extern bool xemu_get_draw_merge(void);
+extern bool xemu_get_draw_reorder(void);
+extern char g_vulkan_driver_info[256];
+
+#define FDUMP_MARKER_NAME     "frame_dump.on"
+#define FDUMP_PREFIX          "framedump_"
+#define FDUMP_DEFAULT_FRAMES  30
+#define FDUMP_MAX_FRAMES      600
+#define FDUMP_DEFAULT_MB      96
+#define FDUMP_POLL_NS         (1000LL * 1000 * 1000)
+#define FDUMP_BUF_BYTES       (256 * 1024)
+/*
+ * 2: frame records carry `img_sync`, the fence slot the per-frame image waited
+ *    on.
+ * 3: the completion is CHECKED to have covered the display surface, and a
+ *    frame where it did not writes no image at all (`img_sync` is
+ *    FDUMP_IMG_STALE and `"image"` is null).
+ *
+ * The images of a schema-1 or schema-2 dump must not be paired with the draw
+ * records they are filed under. Schema 1 never completed the flip's
+ * pre-recorded download, so every PPM is one completed download old. Schema 2
+ * completed whatever was outstanding but never tested that the display surface
+ * was among it, so a PPM is this frame's only on the frames where the flip's
+ * pre-record succeeded -- and `img_sync` said nothing about which those were.
+ * See fdump_end_frame.
+ */
+#define FDUMP_SCHEMA          3
+
+/* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
+ * before the display surface came back clean, and these two are the cases
+ * where no wait happened or where waiting was not enough. */
+#define FDUMP_IMG_NO_WAIT     (-1) /* nothing outstanding, VRAM already current */
+#define FDUMP_IMG_STALE       (-2) /* display surface still dirty; no image */
+
+/* Set from the Android entry point to the app's external files dir, which is
+ * both adb-writable (so the marker can be dropped) and adb-readable (so the
+ * dump can be pulled). Empty elsewhere: the desktop falls back to the settings
+ * base path, and XEMU_FRAME_DUMP_DIR overrides either. */
+static char fdump_dir[512] = "";
+
+static struct {
+    FILE *fp;
+    char *buf;
+    bool images;
+    int frames_remaining;
+    int frame_index;
+    int draw_index;
+    uint64_t draws_total;
+    uint64_t bytes_written;
+    uint64_t byte_limit;
+    uint32_t submit_at_frame_start;
+    unsigned session;
+    int64_t next_poll_ns;
+    bool env_checked;
+    bool no_dir_warned;
+    char base[600];
+
+    /* Frames whose display surface was still draw_dirty after the completion,
+     * so no image was written. Counted rather than only logged per frame: the
+     * per-frame line is emitted once and the total goes in the close line and
+     * the trailer, so a dispatched run can see the rate without the PPMs. */
+    int images_stale;
+    bool stale_warned;
+
+    /* Non-zero when THIS dump armed the diag capture (the `diag` token), and
+     * the value it asked for, so the teardown in fdump_close cannot cancel a
+     * capture somebody else armed. */
+    int diag_armed_frames;
+
+    /* An arm that has been seen but not started yet; see the "afterNN" token.
+     * Held rather than acted on so that a queued soak, which can only set the
+     * environment at startup, can still dump a scene the title takes a minute
+     * to reach. */
+    bool pending;
+    int64_t pending_at_ns;
+    char pending_spec[160];
+    char pending_by[16];
+} fdump;
+
+void nv2a_dbg_set_framedump_dir(const char *dir)
+{
+    snprintf(fdump_dir, sizeof(fdump_dir), "%s", dir ? dir : "");
+}
+
+bool nv2a_dbg_framedump_active(void)
+{
+    return fdump.fp != NULL;
+}
+
+/* NULL means "there is nowhere to write a dump a human can retrieve", which is
+ * a state only Android has. The entry point there refuses internal storage on
+ * purpose -- it is unreadable to adb on a production build, so a dump written
+ * to it is a dump nobody can pull -- and the settings base path IS internal
+ * storage (SDL_GetPrefPath). Falling back to it armed the feature into exactly
+ * the directory that comment rules out: the marker branch is inert there
+ * (nobody can drop a marker either), but an env-armed soak would open the
+ * file, log "armed ... -> <path>" at WARN, write 30 frames and ~27 MB of PPMs
+ * where `--pull 'framedump_*'` cannot see them, and come back with no dump and
+ * a log saying one was written. Unarmed and saying so is the honest state.
+ * Desktop keeps the fallback, where it is the right answer. */
+static const char *fdump_base_dir(void)
+{
+    const char *env = getenv("XEMU_FRAME_DUMP_DIR");
+    if (env && env[0]) {
+        return env;
+    }
+    if (fdump_dir[0]) {
+        return fdump_dir;
+    }
+#ifdef __ANDROID__
+    return NULL;
+#else
+    return xemu_settings_get_base_path();
+#endif
+}
+
+/*
+ * End the diag capture this dump armed, when the dump ends.
+ *
+ * The `diag` token used to pass the dump's frame count straight to
+ * nv2a_dbg_trigger_diag_frames(), and the two count different things: the
+ * dump's number is flip_stall invocations (what fdump_end_frame decrements),
+ * the diag session's is GUEST frames (it advances on g_nv2a_stats.frame_count).
+ * The lane's own control arm is the measurement that these come apart -- 30
+ * frame records, one distinct guest frame -- so `30,diag` closed the dump after
+ * about a second and left the control arm running, with its finish before every
+ * draw, until the title advanced 29 more guest frames: on the order of 900
+ * flip_stalls, serialising every other measurement that soak was queued for,
+ * with nothing recording it and nothing the operator wrote bounding it.
+ * DIAG_MAX_FRAMES bounds the session's arrays, not its duration.
+ *
+ * Tearing it down here makes "the control arm is this dump's control" true by
+ * construction instead of by coincidence of units, so the number in the spec is
+ * only ever an upper bound. The body mirrors the abort path in flip_stall:
+ * partial data is written rather than discarded.
+ */
+static void fdump_end_armed_diag(void)
+{
+    int armed = fdump.diag_armed_frames;
+    if (!armed) {
+        return;
+    }
+    fdump.diag_armed_frames = 0;
+
+    /* Only our own arm: if the value changed, the UI armed a capture over
+     * ours and it is not this dump's to cancel. */
+    int prev = qatomic_cmpxchg(&diag_frame_pending, armed, 0);
+    if (prev != armed && prev != 0) {
+        /* FDUMP_LOG, not DIAG_LOG: `hakuX-diag` is absent from both logcat
+         * specs that serve a dispatched run, and the whole point of tearing
+         * the control arm down here is that its lifetime stopped being
+         * invisible. A run that could not see the teardown -- or that a UI
+         * capture prevented it -- is back where it started. */
+        FDUMP_LOG("framedump: leaving a pending diag arm (%d) it did not "
+                  "make\n", prev);
+    }
+
+    if (!qatomic_read(&diag_frame_active)) {
+        return;
+    }
+    FDUMP_LOG("framedump closed: ending the diag control arm it armed\n");
+    diag_total_frames = diag_current_frame_index;
+    if (diag_total_frames > 0) {
+        diag_write_session_json();
+    }
+    diag_cleanup_session();
+    qatomic_set(&diag_frame_active, 0);
+}
+
+static void fdump_close(const char *why)
+{
+    if (!fdump.fp) {
+        return;
+    }
+
+    FILE *fp = fdump.fp;
+    fdump.fp = NULL; /* latch off before the slow part, as apu_capture does */
+
+    /* The trailer is the reader's date stamp. A dump whose frames exceed the
+     * app's lifetime, or whose trailer is missing entirely, is a file from an
+     * earlier run or a truncated one -- both have been filed as measurements
+     * on this project before. */
+    fprintf(fp,
+            "{\"t\":\"end\",\"why\":\"%s\",\"frames\":%d,\"draws\":%" PRIu64
+            ",\"bytes\":%" PRIu64 ",\"images_stale\":%d,\"wall\":%lld}\n",
+            why, fdump.frame_index, fdump.draws_total, fdump.bytes_written,
+            fdump.images_stale, (long long)time(NULL));
+    fclose(fp);
+    g_free(fdump.buf);
+    fdump.buf = NULL;
+
+    FDUMP_LOG("framedump: closed (%s) after %d frames, %" PRIu64 " draws, %"
+             PRIu64 " bytes, %d frame(s) with no image (display surface still "
+             "dirty)\n", why, fdump.frame_index, fdump.draws_total,
+             fdump.bytes_written, fdump.images_stale);
+
+    /* The control arm ends with the dump it is the control for. */
+    fdump_end_armed_diag();
+}
+
+/* Delete the previous dump's files. See the header comment: an old capture
+ * left on the device reads exactly like this run's data. `keep` is this run's
+ * own file, which exists by the time this runs -- the clear happens after the
+ * output has been opened, so a failed arm cannot destroy the previous dump --
+ * and matches FDUMP_PREFIX like any other. */
+static void fdump_clear_previous(const char *dir, const char *keep)
+{
+    GDir *d = g_dir_open(dir, 0, NULL);
+    if (!d) {
+        return;
+    }
+    const gchar *name;
+    while ((name = g_dir_read_name(d)) != NULL) {
+        if (keep && !strcmp(name, keep)) {
+            continue;
+        }
+        if (g_str_has_prefix(name, FDUMP_PREFIX)) {
+            gchar *p = g_build_filename(dir, name, NULL);
+            unlink(p);
+            g_free(p);
+        }
+    }
+    g_dir_close(d);
+}
+
+/*
+ * Marker/env spec: whitespace- or comma-separated tokens, all optional.
+ *   <integer>   frames to dump            (default 30, capped at 600)
+ *   images      write one display PPM per frame (default on). Costs one fence
+ *               wait per frame at the flip -- see fdump_end_frame, the image
+ *               is otherwise a frame behind the records it is filed under.
+ *   noimages    do not write images -- records only, ~1 MB for the whole dump
+ *               instead of ~900 KB per frame on top of it, and no fence wait
+ *   capNN       byte cap in MB            (default 96)
+ *   diag        ALSO trigger the old Debug Capture path alongside. This is the
+ *               A/B: one run, one instrument, two triggers, and the
+ *               cb_draws/submits columns differ. It is not the default because
+ *               it reintroduces the per-draw finish. The frame count is an
+ *               upper bound on it, not its duration -- the two instruments
+ *               count different things -- so the capture is torn down when the
+ *               dump closes; see fdump_end_armed_diag.
+ *   afterNN     start NN seconds after this arm was SEEN, not immediately.
+ *               For a marker that is NN seconds from the touch; for the
+ *               environment it is NN seconds from startup, which is the only
+ *               way a queued soak reaches a scene a title takes a minute to
+ *               get to -- request.sh can set an env var and cannot touch a
+ *               file on the device mid-run.
+ */
+static void fdump_parse_spec(const char *spec, int *frames, bool *images,
+                             int *cap_mb, bool *also_diag, int *after_s)
+{
+    char buf[160];
+    snprintf(buf, sizeof(buf), "%s", spec ? spec : "");
+
+    char *save = NULL;
+    for (char *tok = strtok_r(buf, " ,\t\r\n", &save); tok;
+         tok = strtok_r(NULL, " ,\t\r\n", &save)) {
+        if (!strcmp(tok, "images")) {
+            *images = true;
+        } else if (!strcmp(tok, "noimages")) {
+            *images = false;
+        } else if (!strcmp(tok, "diag")) {
+            *also_diag = true;
+        } else if (!strncmp(tok, "after", 5)) {
+            long v = strtol(tok + 5, NULL, 10);
+            if (v >= 0 && v <= 3600) {
+                *after_s = (int)v;
+            }
+        } else if (!strncmp(tok, "cap", 3)) {
+            long v = strtol(tok + 3, NULL, 10);
+            if (v >= 1 && v <= 4096) {
+                *cap_mb = (int)v;
+            }
+        } else {
+            char *end = NULL;
+            long v = strtol(tok, &end, 10);
+            if (end != tok && v >= 1) {
+                *frames = (int)MIN(v, (long)FDUMP_MAX_FRAMES);
+            }
+        }
+    }
+}
+
+static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    int frames = FDUMP_DEFAULT_FRAMES;
+    bool images = true;
+    int cap_mb = FDUMP_DEFAULT_MB;
+    bool also_diag = false;
+    int after_s = 0;
+    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s);
+
+    const char *base = fdump_base_dir();
+    if (!base || !base[0]) {
+        /* Android with no adb-readable directory; see fdump_base_dir. */
+        FDUMP_LOG("framedump: armed by %s but there is no dump directory -- "
+                  "not arming\n", armed_by);
+        return;
+    }
+    snprintf(fdump.base, sizeof(fdump.base), "%s", base);
+
+    fdump.session = (unsigned)time(NULL);
+    fdump.images = images;
+    fdump.frames_remaining = frames;
+    fdump.frame_index = 0;
+    fdump.draw_index = 0;
+    fdump.draws_total = 0;
+    fdump.bytes_written = 0;
+    fdump.byte_limit = (uint64_t)cap_mb * 1024 * 1024;
+    fdump.submit_at_frame_start = qatomic_read(&r->submit_count);
+    fdump.images_stale = 0;
+    fdump.stale_warned = false;
+
+    char self[64];
+    snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
+    char path[700];
+    snprintf(path, sizeof(path), "%s/%s", fdump.base, self);
+    FILE *fp = fopen(path, "wb");
+    if (!fp) {
+        FDUMP_LOG("framedump: cannot open %s (errno=%d)\n", path, errno);
+        return;
+    }
+    /* Only now delete the previous dump. Clearing first meant an arm that
+     * could not open its output -- read-only path, full filesystem -- left
+     * the previous run's dump deleted and no new one in its place. The
+     * session id is a timestamp, so the new file never collides with an old
+     * one and nothing depends on the order. */
+    fdump_clear_previous(fdump.base, self);
+    fdump.buf = g_malloc(FDUMP_BUF_BYTES);
+    setvbuf(fp, fdump.buf, _IOFBF, FDUMP_BUF_BYTES);
+    fdump.fp = fp;
+
+    /* The header is the run's own provenance. draw_merge and draw_reorder are
+     * in it because a dump taken with them off cannot speak about merging, and
+     * the scale factor is in it because a capture upscaled 2.25x was read as a
+     * spectral finding on this very issue.
+     *
+     * `per_draw_finish` says whether a finish is forced between draws in THIS
+     * run, and it is `also_diag` because that is the only thing that forces
+     * one here: this path issues no Vulkan call at all, and the `diag` token
+     * arms the old capture alongside, which does. It was a bare `false`
+     * literal until it was caught -- which would have printed "no finish" on
+     * the control arm, the one run where a finish is forced on purpose. A
+     * field that cannot say the thing it exists to detect is not a check.
+     *
+     * It is still only a statement about what was ARMED. The measurement is
+     * `cb_draws` and `submits` on every draw record below; if the two ever
+     * disagree with this field, believe the draw records, because they are
+     * read from the scheduler and this is read from the spec. */
+    fdump.bytes_written += fprintf(
+        fp,
+        "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
+        "\"spec\":\"%s\",\"frames\":%d,\"images\":%s,\"cap_mb\":%d,"
+        "\"after_s\":%d,"
+        "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
+        "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
+        "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
+        FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
+        images ? "true" : "false", cap_mb, after_s, (long long)time(NULL),
+        (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
+        xemu_get_draw_merge() ? "true" : "false",
+        xemu_get_draw_reorder() ? "true" : "false",
+        pg->surface_scale_factor, r->num_active_frames,
+        also_diag ? "true" : "false",
+        also_diag ? "true" : "false", g_vulkan_driver_info);
+
+    FDUMP_LOG("framedump: armed by %s, %d frames, images=%d, cap=%d MB -> %s\n",
+             armed_by, frames, (int)images, cap_mb, path);
+
+    if (also_diag) {
+        /* The comparison arm, on purpose and on the record: this run WILL
+         * serialise. Its draw records are the control the headline claim is
+         * measured against.
+         *
+         * `frames` is an UPPER BOUND here and nothing more, because the two
+         * instruments count in different units -- flip_stalls here, guest
+         * frames there. What actually ends this capture is fdump_close ->
+         * fdump_end_armed_diag; see that function for the run it cost.
+         *
+         * The clamp the trigger applies is applied here too: what lands in
+         * diag_frame_pending is what that teardown has to match. */
+        fdump.diag_armed_frames = MIN(frames, DIAG_MAX_FRAMES);
+        nv2a_dbg_trigger_diag_frames(frames);
+    }
+}
+
+/* Start now, or hold the arm until its "afterNN" has elapsed. The spec is
+ * parsed twice -- here for the delay and again in fdump_begin -- rather than
+ * carried in a struct, so that what the session header records is what
+ * fdump_begin actually read and not a copy that could drift from it. */
+static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
+                      int64_t now)
+{
+    int frames = FDUMP_DEFAULT_FRAMES;
+    bool images = true;
+    int cap_mb = FDUMP_DEFAULT_MB;
+    bool also_diag = false;
+    int after_s = 0;
+    fdump_parse_spec(spec, &frames, &images, &cap_mb, &also_diag, &after_s);
+
+    if (after_s <= 0) {
+        fdump_begin(d, armed_by, spec);
+        return;
+    }
+
+    fdump.pending = true;
+    fdump.pending_at_ns = now + (int64_t)after_s * 1000000000LL;
+    snprintf(fdump.pending_spec, sizeof(fdump.pending_spec), "%s",
+             spec ? spec : "");
+    snprintf(fdump.pending_by, sizeof(fdump.pending_by), "%s", armed_by);
+    FDUMP_LOG("framedump: armed by %s, holding %d s before the first frame\n",
+             armed_by, after_s);
+}
+
+static void fdump_poll_marker(NV2AState *d)
+{
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now < fdump.next_poll_ns) {
+        return;
+    }
+    fdump.next_poll_ns = now + FDUMP_POLL_NS;
+
+    if (fdump.fp) {
+        return; /* a dump in progress does not consume a new arm */
+    }
+
+    /* Nowhere to write anything a human could retrieve: say so once and stay
+     * unarmed, rather than arming into internal storage. See fdump_base_dir.
+     * One line per run, on the tag a dispatched run keeps -- the entry point's
+     * own WARN covers only the case where it got as far as looking. */
+    const char *base = fdump_base_dir();
+    if (!base || !base[0]) {
+        if (!fdump.no_dir_warned) {
+            fdump.no_dir_warned = true;
+            FDUMP_LOG("framedump: no adb-readable dump directory; the frame "
+                      "dump is unarmed this run\n");
+        }
+        return;
+    }
+
+    /* An arm already seen and waiting out its "afterNN". */
+    if (fdump.pending) {
+        if (now >= fdump.pending_at_ns) {
+            fdump.pending = false;
+            fdump_begin(d, fdump.pending_by, fdump.pending_spec);
+        }
+        return;
+    }
+
+    /* The env is read once. It arms at startup, which is what a queued soak
+     * can set today (request.sh --env); the marker is what arms mid-run. */
+    if (!fdump.env_checked) {
+        fdump.env_checked = true;
+        const char *env = getenv("XEMU_FRAME_DUMP");
+        if (env && env[0] && strcmp(env, "0")) {
+            fdump_arm(d, "env", env, now);
+            return;
+        }
+    }
+
+    char marker[700];
+    snprintf(marker, sizeof(marker), "%s/%s", base, FDUMP_MARKER_NAME);
+    FILE *fp = fopen(marker, "rb");
+    if (!fp) {
+        return;
+    }
+    char line[160] = { 0 };
+    if (!fgets(line, sizeof(line), fp)) {
+        line[0] = '\0';
+    }
+    fclose(fp);
+    unlink(marker); /* one touch, one dump */
+
+    fdump_arm(d, "marker", line, now);
+}
+
+/* Per draw. No Vulkan call, no allocation, one buffered fprintf. */
+static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
+                           int count)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (fdump.bytes_written >= fdump.byte_limit) {
+        fdump_close("byte cap reached");
+        return;
+    }
+
+    int idx = fdump.draw_index++;
+    fdump.draws_total++;
+
+    uint64_t shader_hash = 0;
+    if (r->shader_binding) {
+        shader_hash = fast_hash((const uint8_t *)&r->shader_binding->state,
+                                sizeof(ShaderState));
+    }
+
+    int n = fprintf(
+        fdump.fp,
+        "{\"t\":\"draw\",\"f\":%d,\"n\":%d,\"kind\":\"%s\",\"count\":%d,"
+        /* The schedule. cb_draws and submits are the falsifier columns; the
+         * queue counts say whether this draw was sitting in a merge window. */
+        "\"cb\":%d,\"cb_draws\":%d,\"submits\":%u,\"vkframe\":%d,"
+        "\"in_rp\":%d,\"dq\":%d,\"dq_active\":%d,\"rw\":%d,\"rw_active\":%d,"
+        "\"prim\":%d,\"shader\":\"%016" PRIx64 "\",\"pipeline\":\"%p\",",
+        fdump.frame_index, idx, type, count,
+        (int)r->in_command_buffer, r->draws_in_cb,
+        qatomic_read(&r->submit_count), r->current_frame,
+        (int)r->in_render_pass, r->draw_queue.count,
+        (int)r->draw_queue.active, r->reorder_window.count,
+        (int)r->reorder_window.active, pg->primitive_mode, shader_hash,
+        (void *)r->pipeline_binding);
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+
+    if (r->color_binding) {
+        n = fprintf(fdump.fp,
+                    "\"color\":{\"addr\":\"0x%x\",\"w\":%u,\"h\":%u,"
+                    "\"pitch\":%u,\"fmt\":%u,\"swizzle\":%d,\"dirty\":%d},",
+                    (unsigned)r->color_binding->vram_addr,
+                    r->color_binding->width, r->color_binding->height,
+                    r->color_binding->pitch,
+                    r->color_binding->shape.color_format,
+                    (int)r->color_binding->swizzle,
+                    (int)qatomic_read(&r->color_binding->draw_dirty));
+    } else {
+        n = fprintf(fdump.fp, "\"color\":null,");
+    }
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+
+    /* Per stage: the guest's view (raw registers, so nothing is lost to a
+     * decode) and the HOST binding identity. The second is the new one -- an
+     * image handle that does not change when the guest's texture does, or
+     * changes when it does not, is a stale binding, and that is one of the
+     * things the serialised capture cannot show. */
+    n = fprintf(fdump.fp, "\"tex\":[");
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        TextureBinding *tb = r->texture_bindings[i];
+        n = fprintf(fdump.fp,
+                    "%s{\"s\":%d,\"en\":%d,\"fmt\":\"0x%08x\","
+                    "\"off\":\"0x%08x\",\"addr\":\"0x%08x\","
+                    "\"ctl0\":\"0x%08x\",\"ctl1\":\"0x%08x\","
+                    "\"fil\":\"0x%08x\",\"img\":\"%p\",\"submit_time\":%u}",
+                    i > 0 ? "," : "", i,
+                    (int)pgraph_is_texture_enabled(pg, i),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL1_0 + i * 4),
+                    pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4),
+                    tb ? (void *)(uintptr_t)tb->image : NULL,
+                    tb ? tb->submit_time : 0u);
+        if (n < 0) {
+            fdump_close("write error");
+            return;
+        }
+        fdump.bytes_written += n;
+    }
+
+    n = fprintf(fdump.fp, "]}\n");
+    if (n < 0) {
+        fdump_close("write error");
+        return;
+    }
+    fdump.bytes_written += n;
+}
+
+/* End of a dumped frame. Runs at flip_stall, after the flip's own
+ * pgraph_vk_finish.
+ *
+ * That finish does NOT put this frame's pixels in guest VRAM, and this used to
+ * say it did. FLIP_STALL is in the deferred set (vk/draw.c), so off the render
+ * thread the caller spin-waits for vkQueueSubmit and not for the fence, and the
+ * copy the flip pre-recorded (pgraph_vk_prerecord_display_download) is still
+ * sitting in the staging buffer: pgraph_vk_complete_staged_downloads() is the
+ * only writer of staging->VRAM and nothing on this path had called it. Reading
+ * d->vram_ptr here therefore returned the most recently COMPLETED display
+ * download -- the previous frame in the steady state, older when the display
+ * thread had not presented -- filed under this frame's draw records, with
+ * nothing in the file saying so. For #77, whose whole method is "decide from
+ * the PPMs which frames show the artifact, then read those frames' draws", a
+ * systematic one-frame shift hands the artifact's state to its neighbour, and
+ * because the lag depends on the display thread it is not even a constant
+ * offset a reader could undo afterwards.
+ *
+ * So when images are on, complete the outstanding download first. It costs one
+ * fence wait per FRAME, at the flip, where a stall already lives -- not a
+ * finish per draw: nothing here submits, and cb_draws/submits are untouched.
+ * Under `noimages` it costs nothing, because nothing calls it.
+ *
+ * THE COMPLETION IS NOT ITSELF THE PAIRING. It completes whatever downloads
+ * were outstanding, and the display surface is among them only when the flip's
+ * pgraph_vk_prerecord_display_download() recorded one. That call has early
+ * returns which are ordinary per-frame events rather than corner cases: an
+ * eviction, a shelving or a non-TCG flush earlier in the frame leaves
+ * num_deferred_downloads non-zero (vk/surface.c), and a finish that ended the
+ * command buffer with no draw since leaves !in_command_buffer. On such a frame
+ * the completion runs, waits a real fence, writes somebody else's copy into
+ * VRAM, and the display surface's pixels never left its VkImage -- which is
+ * exactly the one-frame-behind image above, in a narrower state, and the
+ * earlier version of this code recorded a fence slot for it as though the
+ * pairing had been established.
+ *
+ * The test costs nothing and is exact: a download that landed clears its
+ * surface's draw_dirty (vk/surface.c, both the batched entries and the display
+ * pre-download). So after the completion, draw_dirty on the display surface IS
+ * the question "does VRAM hold this frame". Still dirty means it does not, and
+ * the frame writes NO image -- `"image": null`, `img_sync: FDUMP_IMG_STALE`,
+ * counted for the close line. Deliberately not fixed by forcing a download
+ * here: that is a pgraph_vk_finish(SURFACE_DOWN) at every flip, a cost the
+ * headline claim must not quietly acquire.
+ *
+ * So `img_sync` on a frame that names an image is the pairing, checkable from
+ * the artifact rather than from this comment: >= 0 is the fence slot waited on
+ * before the display surface came back clean, and -1 (FDUMP_IMG_NO_WAIT) means
+ * nothing was outstanding and the surface was already clean, so VRAM held the
+ * frame either way. -2 (FDUMP_IMG_STALE) appears only on frames with no
+ * image. */
+static void fdump_end_frame(NV2AState *d)
+{
+    PGRAPHState *pg = &d->pgraph;
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    char image[128] = "";
+    unsigned int iw = 0, ih = 0;
+    int img_sync = FDUMP_IMG_NO_WAIT;
+
+    if (fdump.images) {
+        if (r->num_deferred_downloads > 0) {
+            /* Which fence the completion below will wait on, read before the
+             * call clears it. The same two cases the callee distinguishes. */
+            img_sync = r->display_predownload_pending
+                           ? r->display_predownload_frame_index
+                           : r->deferred_downloads_frame;
+        }
+        pgraph_vk_download_surface_complete_deferred(d);
+
+        VGADisplayParams vdp;
+        d->vga.get_params(&d->vga, &vdp);
+        SurfaceBinding *disp =
+            pgraph_vk_surface_get_within(d, d->pcrtc.start + vdp.line_offset);
+        if (disp && disp->width && disp->height && disp->draw_dirty) {
+            /* The completion above did not cover this surface -- the flip's
+             * pre-record bailed -- so VRAM still holds an older frame. See the
+             * header comment: write nothing rather than a picture the record
+             * would claim belongs to these draws. */
+            img_sync = FDUMP_IMG_STALE;
+            fdump.images_stale++;
+            if (!fdump.stale_warned) {
+                fdump.stale_warned = true;
+                FDUMP_LOG("framedump: no image for f%d and any later frame "
+                          "like it: the display surface was still dirty after "
+                          "the download completion, so VRAM holds an older "
+                          "frame. Count is in the close line.\n",
+                          fdump.frame_index);
+            }
+        } else if (disp && disp->width && disp->height) {
+            char name[128];
+            snprintf(name, sizeof(name), "%s%u_f%03d.ppm", FDUMP_PREFIX,
+                     fdump.session, fdump.frame_index);
+            char path[800];
+            snprintf(path, sizeof(path), "%s/%s", fdump.base, name);
+            /* Only name the file if it was actually written: the record used
+             * to carry the name and charge iw*ih*3 to the cap whether or not
+             * the write happened, so a failed dump shortened itself for bytes
+             * that do not exist and pointed at a file that is not there. */
+            if (dump_surface_ppm(d, disp, path)) {
+                snprintf(image, sizeof(image), "%s", name);
+                iw = disp->width;
+                ih = disp->height;
+                fdump.bytes_written += (uint64_t)iw * ih * 3;
+            } else {
+                /* On the tag a dispatched run keeps, unlike the callee's own
+                 * DIAG_LOG line. The record below carries "image": null. */
+                FDUMP_LOG("framedump: image %s not written\n", path);
+            }
+        }
+    }
+
+    uint32_t submits = qatomic_read(&r->submit_count);
+    int n = fprintf(fdump.fp,
+                    "{\"t\":\"frame\",\"f\":%d,\"draws\":%d,"
+                    "\"submits_in_frame\":%u,\"submits\":%u,"
+                    "\"nv2a_frame\":%u,\"image\":%s%s%s,\"w\":%u,\"h\":%u,"
+                    "\"img_sync\":%d,"
+                    "\"diag_active\":%d,\"wall\":%lld}\n",
+                    fdump.frame_index, fdump.draw_index,
+                    submits - fdump.submit_at_frame_start, submits,
+                    g_nv2a_stats.frame_count,
+                    image[0] ? "\"" : "null", image, image[0] ? "\"" : "",
+                    iw, ih, img_sync, qatomic_read(&diag_frame_active),
+                    (long long)time(NULL));
+    if (n > 0) {
+        fdump.bytes_written += n;
+    }
+    fflush(fdump.fp);
+
+    fdump.submit_at_frame_start = submits;
+    fdump.frame_index++;
+    fdump.draw_index = 0;
+    fdump.frames_remaining--;
+
+    if (fdump.frames_remaining <= 0) {
+        fdump_close("all frames dumped");
+    } else if (fdump.bytes_written >= fdump.byte_limit) {
+        fdump_close("byte cap reached");
+    }
+}
+
 static void pgraph_vk_flip_stall(NV2AState *d)
 {
     if (qatomic_read(&diag_frame_pending) || qatomic_read(&diag_frame_active)) {
@@ -1653,6 +2499,17 @@ static void pgraph_vk_flip_stall(NV2AState *d)
                      pending, diag_frame_num);
         }
     }
+
+    /* The live frame dump closes the frame here, after the flip's own
+     * pgraph_vk_finish above, and then looks for a new arm. With images on
+     * that costs ONE FENCE WAIT per frame -- the completion of the download
+     * the flip pre-recorded, see fdump_end_frame -- and none under `noimages`.
+     * Neither call submits or records Vulkan work, and nothing here is per
+     * draw, which is the claim the dump exists to make. */
+    if (fdump.fp) {
+        fdump_end_frame(d);
+    }
+    fdump_poll_marker(d);
 
     pgraph_vk_debug_frame_terminator();
 }
