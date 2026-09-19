@@ -14,10 +14,27 @@ recorded only in conversation. The orchestrator had asserted "every issue has
 a lane or a blocker" and was wrong by one. A claim like that should be checked,
 not asserted, which is the rule the rest of this campaign runs on.
 
-An issue is covered if EITHER:
+An issue is covered if ANY of:
 
   - some lane in territory.toml lists it in `issues`, or
-  - its nv2a_issues.toml entry carries a non-empty `blocked_on`.
+  - its nv2a_issues.toml entry carries a non-empty `blocked_on`, or
+  - its entry carries `dispatch_state = "available"`.
+
+THE THIRD ONE IS NEW AND IT IS THE POINT OF THE SCHEMA. For as long as there
+were only two, a backlog's NORMAL condition -- open, unblocked, nobody on it
+yet, waiting for capacity -- could not be expressed at all. This gate makes
+`preflight` red for every lane on the repository, and the board is the only
+writer of the tracker, so the pressure to fill a field was absolute and
+`blocked_on` was the only field that would answer. On 2026-09-18 six open
+issues carried a `blocked_on` whose FIRST WORDS were "NOT BLOCKED", and two
+more (since deleted) carried "Blocked on local dispatch capacity this tick,
+not on anything technical." Honest bookkeeping, in the one field that means
+"do not dispatch this".
+
+So `blocked_on` now means blocked, `dispatch_state = "available"` means
+nothing blocks it, and the two are mutually exclusive and checked to be.
+"Available" is about the OBSTACLE, not about the owner: whether a lane is on
+it is territory.toml's business, and fleet.py combines the two.
 
 FAILS OPEN on no `gh` and no network, deliberately. A blip must not make this
 unpushable, and the same choice is made by backlog-gate.sh for the same
@@ -170,6 +187,37 @@ def main():
     blocked = {k: v["blocked_on"] for k, v in tracker.items()
                if (v.get("blocked_on") or "").strip()}
 
+    # THE THIRD STATE. `dispatch_state` is an explicit enum and the only value
+    # that satisfies this gate on its own is "available". "blocked" is
+    # accepted, and redundant with a non-empty `blocked_on`, because a board
+    # that has classified a row should be able to say so in one place.
+    #
+    # AN UNRECOGNISED VALUE IS A FAILURE, NOT A SHRUG. A typo that fell
+    # through would read as "classified" to a human and as "unclassified" to
+    # every consumer, which is the exact asymmetry this schema exists to
+    # remove.
+    #
+    # "done" IS HERE BECAUSE THE BOARD WROTE IT BEFORE THIS LANE FOLDED, and
+    # that is evidence, not pressure. The first version of this enum was
+    # ("available", "blocked") and rule (3) below tells a board closing a row
+    # that `available` no longer holds -- while giving it no word to put
+    # there instead. Its two options were to delete the field, losing the
+    # record that the row was ever classified, or to invent a word. On
+    # 2026-09-19 it closed #84 and wrote `dispatch_state = "done"`, which is
+    # the right word; refusing it would have made preflight red for every
+    # lane on the repository over a row nobody will ever dispatch.
+    #
+    # It costs the same as the others. "done" satisfies NOTHING on its own --
+    # the coverage gate below counts only `available`, and fleet.py dispatches
+    # only `available` -- and `done` on a `status = "open"` row is a FAIL,
+    # exactly mirroring `available` on a closed one. The two cannot be used to
+    # silence anything, because each contradicts the `status` it is written
+    # against.
+    STATES = ("available", "blocked", "done")
+    state = {k: (v.get("dispatch_state") or "").strip()
+             for k, v in tracker.items()}
+    available = {k for k, v in state.items() if v == "available"}
+
     # A `blocked_on` that describes AVAILABLE WORK is not a blocker, and this
     # gate accepted any non-empty string until it let two through. #54's read
     # "the fix is one site in the texture upload path and wants its own arm"
@@ -233,7 +281,7 @@ def main():
     gaps = []
     for r in issues:
         n = str(r["number"])
-        if n in owned or n in blocked:
+        if n in owned or n in blocked or n in available:
             continue
         gaps.append((n, r["title"]))
 
@@ -256,6 +304,135 @@ def main():
         print("\n  Finished work reading as available is how an issue gets\n"
               "  re-dispatched. Set the real status and the evidence it rests on.",
               file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
+        return 1
+
+    # `dispatch_state` COSTS SOMETHING, and it has to, because it is a value
+    # invented to satisfy a gate and those get used to silence it. Four ways
+    # to write it wrong, all failures:
+    #
+    #   1. a value that is not in STATES -- a typo reads as classified to a
+    #      human and as unclassified to every consumer;
+    #   2. "available" ALONGSIDE a non-empty `blocked_on` -- the contradiction
+    #      this schema exists to end, in one row;
+    #   3. "available" on an entry whose `status` is not `open`.
+    #
+    # (3) IS THE GUARD ON THE OPPOSITE FAILURE, and that one is not
+    # hypothetical: "finished work reading as available is how an issue gets
+    # re-dispatched" is this script's own sentence about #56/#57/#61, and it
+    # cost real sessions. So the moment work is judged done -- any `fixed-*`
+    # status -- "available" stops holding and somebody has to re-classify the
+    # row. Same design as `fixed-unlanded` below: a status that is cheap to
+    # write is worthless.
+    #
+    #   4. "blocked" with an EMPTY `blocked_on` is a claim with no content.
+    bad_state = []
+    for k in sorted(tracker, key=lambda x: int(x) if x.isdigit() else 0):
+        v, s = tracker[k], state[k]
+        if not s:
+            continue
+        if s not in STATES:
+            bad_state.append((k, "dispatch_state = %r is not one of %s"
+                              % (s, ", ".join(STATES))))
+            continue
+        b = (v.get("blocked_on") or "").strip()
+        if s == "available" and b:
+            bad_state.append((k, "`available` with a non-empty `blocked_on`: "
+                              + b[:60]))
+        if s == "available" and (v.get("status") or "") != "open":
+            bad_state.append((k, "`available` with status = %r -- if it is "
+                              "done it is not available"
+                              % (v.get("status") or "")))
+        if s == "blocked" and not b:
+            bad_state.append((k, "`blocked` with no `blocked_on` to say what "
+                              "it is blocked on"))
+        if s == "done" and (v.get("status") or "") == "open":
+            bad_state.append((k, "`done` on a row whose status is still "
+                              "`open` -- close the row or say what state it "
+                              "is really in; a second field that contradicts "
+                              "`status` is how the two drift"))
+    if bad_state:
+        print("FAIL: %d entr%s whose `dispatch_state` does not hold:"
+              % (len(bad_state), "y" if len(bad_state) == 1 else "ies"),
+              file=sys.stderr)
+        for k, why in bad_state:
+            print("  #%-4s %s" % (k, why), file=sys.stderr)
+        print("\n  `dispatch_state` is one of %s. `available` means NOTHING\n"
+              "  BLOCKS IT -- not that nobody owns it, which is\n"
+              "  territory.toml's business -- and it requires an empty\n"
+              "  `blocked_on` and `status = \"open\"`. `done` is its mirror\n"
+              "  and requires a status that is NOT open. Neither satisfies\n"
+              "  this gate by itself: only `available` covers a row, and\n"
+              "  only an open row needs covering." % ", ".join(STATES),
+              file=sys.stderr)
+        if stale:
+            print(stale, file=sys.stderr)
+        return 1
+
+    # A `blocked_on` WHOSE OPENING CLAIM IS THAT IT IS NOT BLOCKED.
+    #
+    # This is the migration's enforcement, and it is anchored at the START of
+    # the field on purpose. A free-text search for the same phrases over the
+    # whole value is wrong in both directions, measured over all 81 rows on
+    # 2026-09-19:
+    #
+    #   - #91 says "#84 AND ITS M1 REMEDIATION ARE EXPLICITLY NOT BLOCKED BY
+    #     THIS", which is about a DIFFERENT issue;
+    #   - #92 says "I had written NOT BLOCKED and then left it unallocated,
+    #     which is the state that reads as coverage and is not" -- the
+    #     board recording that it had already corrected the wording;
+    #   - "CLEARED" matches "test-and-cleared" (#44) and "audit pass 2 cleared
+    #     them" (#91), neither of which is about this field at all.
+    #
+    # fleet.py used exactly that substring search to undo the damage from the
+    # other side, and #92 is the false positive it produced: a row the board
+    # had deliberately written as an assignment was reported dispatchable on
+    # the strength of a sentence describing a wording it no longer used.
+    #
+    # What is load-bearing is whether the field's OWN LEADING CLAIM asserts
+    # non-blockage. That is a position, not a phrase, and it is what all six
+    # real cases had in common.
+    #
+    # LIVE-OPEN ONLY. A closed row's `blocked_on` is history and rewriting it
+    # would destroy the record for no gain; six of the fourteen matching rows
+    # are already closed.
+    # CASE MATTERS FOR EXACTLY ONE OF THESE, and the asymmetry is the point.
+    # "not blocked", "not a blocker" and "unblocked" have no innocent reading as
+    # a blocker's opening claim, whatever their case. "cleared" does: "Blocked
+    # until the audit has cleared the held fold" is a perfectly good blocker,
+    # and #44's "test-and-cleared" and #91's "audit pass 2 cleared them" are
+    # both real. So CLEARED is matched only SHOUTED, which is how the board
+    # writes its own status markers and how #89 wrote this one.
+    LEAD = 90
+    LEAD_ANY_CASE = (r"\bNOT BLOCKED\b", r"\bNOT A BLOCKER\b", r"\bUNBLOCKED\b")
+    LEAD_SHOUTED = (r"\bCLEARED\b", r"\bNO LONGER BLOCKED\b")
+    ANYWHERE_CLAIMS = (r"not on anything technical", r"dispatch capacity")
+    not_blocked = []
+    for k, v in sorted(blocked.items(), key=lambda x: int(x[0])
+                       if x[0].isdigit() else 0):
+        if k not in live:
+            continue
+        lead = " ".join(v.split())[:LEAD]
+        hit = next((p for p in LEAD_ANY_CASE if re.search(p, lead, re.I)), None) \
+            or next((p for p in LEAD_SHOUTED if re.search(p, lead)), None) \
+            or next((p for p in ANYWHERE_CLAIMS
+                     if re.search(p, v, re.I)), None)
+        if hit:
+            not_blocked.append((k, lead))
+    if not_blocked:
+        print("FAIL: %d `blocked_on` that OPENS BY SAYING IT IS NOT BLOCKED:"
+              % len(not_blocked), file=sys.stderr)
+        for k, lead in not_blocked:
+            print("  #%-4s %s" % (k, lead), file=sys.stderr)
+        print("\n  `blocked_on` means blocked. An honest note saying the work\n"
+              "  is available made THIS CHECKER count the row among \"N with a\n"
+              "  written blocker\" and print `coverage ok` over it, and left\n"
+              "  fleet.py undoing it with a substring search on the prose.\n"
+              "  Move the text to `status_note` and write\n"
+              "  `dispatch_state = \"available\"`. That state satisfies this\n"
+              "  gate on its own; there is no longer any reason to reach for\n"
+              "  `blocked_on` to get a green preflight.", file=sys.stderr)
         if stale:
             print(stale, file=sys.stderr)
         return 1
@@ -495,10 +672,16 @@ def main():
               % len(gaps), file=sys.stderr)
         for n, t in gaps:
             print("  #%s  %s" % (n, t[:72]), file=sys.stderr)
-        print("\n  Give it a lane in territory.toml, or write `blocked_on` on\n"
-              "  its nv2a_issues.toml entry saying what it is waiting for.\n"
-              "  A blocker is a claim: state it as the measurement that would\n"
-              "  refute it, not as a reason to stop.", file=sys.stderr)
+        print("\n  THREE WAYS TO CLEAR THIS, and the third is the one that\n"
+              "  used to be missing. Give it a lane in territory.toml; or\n"
+              "  write `blocked_on` saying what it is waiting for -- a\n"
+              "  blocker is a claim, so state it as the measurement that\n"
+              "  would refute it, not as a reason to stop; or, if nothing\n"
+              "  blocks it and it is simply waiting for capacity, write\n"
+              "  `dispatch_state = \"available\"` and leave `blocked_on`\n"
+              "  empty. What is NOT acceptable is an unclassified row: this\n"
+              "  gate exists because finished work reading as available is\n"
+              "  how an issue gets re-dispatched.", file=sys.stderr)
         if stale:
             print(stale, file=sys.stderr)
         return 1
@@ -594,12 +777,30 @@ def main():
         tail = "; UNBRIEFED: " + ", ".join(
             "%s %d unblocked issue(s), last brief %s per %s" % (l, n, h, s)
             for l, n, h, s in stale_brief)
-    print("coverage ok (%d open: %d owned by a lane, %d with a written "
-          "blocker%s)%s%s"
+    # THE AVAILABLE COUNT GOES ON THIS LINE, not in the note block, for the
+    # same reason the UNBRIEFED note does: idle-watchdog.sh takes `sed -n 1p`
+    # of this output as its hint and never shows the notes. A backlog of
+    # unblocked work that only shows up on line two is the defect this schema
+    # was written for, one layer out.
+    #
+    # AND IT IS COUNTED OVER ALL OPEN ISSUES, NOT ONLY THE UNOWNED ONES. The
+    # first version of this line kept the old shape -- owned, then
+    # available-and-not-owned, then blocked-and-not-owned, three buckets
+    # summing to the total -- and printed "0 AVAILABLE" on a board where all
+    # seven available rows existed, because every one of them was also held by
+    # a lane. A number that reads zero exactly when the state is in use is
+    # worse than no number.
+    #
+    # So the counts OVERLAP and the line says so. That costs the sum property,
+    # which carried no information anyway: the gate above FAILS on an
+    # unclassified row, so coverage being complete is already established by
+    # getting here.
+    print("coverage ok (%d open: %d AVAILABLE, %d blocked, %d owned by a lane "
+          "-- available and owned overlap%s)%s%s"
           % (len(issues),
-             sum(1 for r in issues if str(r["number"]) in owned),
-             sum(1 for r in issues if str(r["number"]) in blocked
-                 and str(r["number"]) not in owned), tail,
+             sum(1 for r in issues if str(r["number"]) in available),
+             sum(1 for r in issues if str(r["number"]) in blocked),
+             sum(1 for r in issues if str(r["number"]) in owned), tail,
              fleet_tail(),
              "" if not behind else
              "; STALE CHECKOUT: %d commit(s) behind the campaign tip, so this "
