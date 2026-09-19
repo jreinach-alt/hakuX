@@ -82,6 +82,100 @@ static void android_log_uniform_update_errors(const char *uniform_set,
             uniform_element_type_to_str[info->type], info->count, loc);
     }
 }
+
+static const char *gl_error_name(GLenum err)
+{
+    switch (err) {
+    case GL_INVALID_ENUM: return "GL_INVALID_ENUM";
+    case GL_INVALID_VALUE: return "GL_INVALID_VALUE";
+    case GL_INVALID_OPERATION: return "GL_INVALID_OPERATION";
+    case GL_INVALID_FRAMEBUFFER_OPERATION:
+        return "GL_INVALID_FRAMEBUFFER_OPERATION";
+    case GL_OUT_OF_MEMORY: return "GL_OUT_OF_MEMORY";
+#ifdef GL_STACK_OVERFLOW
+    case GL_STACK_OVERFLOW: return "GL_STACK_OVERFLOW";
+#endif
+#ifdef GL_STACK_UNDERFLOW
+    case GL_STACK_UNDERFLOW: return "GL_STACK_UNDERFLOW";
+#endif
+#ifdef GL_CONTEXT_LOST
+    case GL_CONTEXT_LOST: return "GL_CONTEXT_LOST";
+#endif
+    default: return "GL_ERROR_UNRECOGNISED";
+    }
+}
+
+static bool is_power_of_ten(uint64_t n)
+{
+    while (n >= 10 && n % 10 == 0) {
+        n /= 10;
+    }
+    return n == 1;
+}
+
+/* Report, rather than swallow, the GL errors already pending when a shader
+ * load begins (#86).
+ *
+ * They are not the shader's. glGetError returns the context's backlog, so
+ * everything drained here was raised by whatever ran before the load -- which
+ * is exactly why the desktop build's assert on this spot was the one place an
+ * upstream GL failure ever surfaced, and how #66's 378 attachment-less clears
+ * per run were found. The Android arm drained the same backlog in silence,
+ * which left the shipping renderer with no error-reporting path at all.
+ *
+ * The drain stays: the glGetError after glProgramBinary() below cannot tell a
+ * stale error from its own, so leaving the backlog in place would turn an
+ * unrelated error into a failed binary load and a needless recompile. What
+ * changes is that each error is named on the way out.
+ *
+ * Repeats are counted rather than printed. A shader load happens many times a
+ * frame, so one line per drained error per load would flood logcat, and a log
+ * that floods is read no more than a log that is silent: each distinct enum
+ * prints the first time and then as its running count crosses a power of ten,
+ * which keeps a recurring error visible without it becoming the log.
+ */
+static void android_report_pending_gl_errors(const ShaderBinding *binding)
+{
+    /* Keyed by enum, linear-scanned: GL defines a handful of error codes and
+     * the scan stops at a match, at the first unused slot, or at the last
+     * slot, which is shared. Only a vendor code beyond the eight GL defines
+     * can reach the shared slot, and aggregating those costs a suppression
+     * nobody will miss. */
+    static struct {
+        GLenum err;
+        uint64_t count;
+    } seen[8];
+
+    GLenum err;
+
+    while ((err = glGetError()) != GL_NO_ERROR) {
+        size_t i;
+        uint64_t count;
+
+        for (i = 0; i < ARRAY_SIZE(seen) - 1; i++) {
+            if (seen[i].err == err || seen[i].err == GL_NO_ERROR) {
+                break;
+            }
+        }
+        if (seen[i].err != err) {
+            seen[i].err = err;
+            seen[i].count = 0;
+        }
+        count = ++seen[i].count;
+
+        if (!is_power_of_ten(count)) {
+            continue;
+        }
+
+        __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                            "[glerr] %s (0x%X) was already pending on entry to "
+                            "pgraph_gl_shader_load_from_memory shader=%llx "
+                            "occurrence=%llu",
+                            gl_error_name(err), err,
+                            (unsigned long long)binding->node.hash,
+                            (unsigned long long)count);
+    }
+}
 #endif
 
 static void log_shader_source_with_line_numbers(const char *name,
@@ -406,9 +500,7 @@ void pgraph_gl_shader_write_cache_reload_list(PGRAPHState *pg)
 bool pgraph_gl_shader_load_from_memory(ShaderBinding *binding)
 {
 #ifdef __ANDROID__
-    while (glGetError() != GL_NO_ERROR) {
-        /* Clear any prior GL error to avoid aborting on Android. */
-    }
+    android_report_pending_gl_errors(binding);
 #else
     assert(glGetError() == GL_NO_ERROR);
 #endif
