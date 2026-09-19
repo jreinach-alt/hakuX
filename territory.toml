@@ -529,7 +529,6 @@ files = [
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
          "hw/xbox/mcpx/**",
-         "hw/xbox/nv2a/nv2a.c",
          "hw/xbox/nv2a/nv2a_int.h",
          "hw/xbox/nv2a/nv2a_regs.h",
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
