@@ -585,9 +585,12 @@ def main():
     # this host cannot observe, so neither RUNNING nor LANE CLAIMED WITH NO
     # RUNNING AGENT is the truth about it. It gets a line of its own saying
     # what IS known: its branch, its PR, and that nothing local can wake it.
-    # No FAIL: there is no action a board tick could take from here, and a
-    # standing wake-up the board cannot clear spends a window every twenty
-    # minutes for nothing.
+    # No FAIL FROM THIS SECTION: there is no action a board tick could take
+    # from here, and a standing wake-up the board cannot clear spends a window
+    # every twenty minutes for nothing. Its PR can still raise one through
+    # `unfolded` and `waiting` below, and should -- a remote lane's ready PR
+    # enters the audit pipeline exactly like any other. The line this section
+    # does not want is the permanent one about the lane itself.
     if remote:
         print("\n=== REMOTE LANES (%d) -- no local unit, and that is not a fault"
               % len(remote))
@@ -604,10 +607,18 @@ def main():
     print("\n=== READY, NOT FOLDED (%d)%s"
           % (len(unfolded), "  -- NOT COMPUTED, see PR-BLIND above" if pr_blind else ""))
     for p in unfolded:
+        # `finished` MEANS "the local unit is gone", and a remote lane never
+        # had one -- so the unit test answers a question that was never asked
+        # about it, and always with the one word that reads as "nobody is
+        # working on this". That is what `remote` is for: the row above is the
+        # only other place the distinction is visible, and a reader who stops
+        # at this section would not have got there.
+        if p.get("remote"):
+            where = "elsewhere"
+        else:
+            where = "unit up" if p["lane"] in units else "finished"
         print("  %-12s #%-5d %-9s %s"
-              % (p["lane"], p["number"],
-                 "unit up" if p["lane"] in units else "finished",
-                 (p.get("title") or "")[:60]))
+              % (p["lane"], p["number"], where, (p.get("title") or "")[:60]))
     print("\n=== BLOCKED (labelled `blocked`) (%d)" % len(waiting))
     for p in waiting:
         print("  %-12s #%-5d %s" % (p["lane"], p["number"], (p.get("title") or "")[:70]))

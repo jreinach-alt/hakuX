@@ -258,6 +258,20 @@ EOF
 # someday named `lane/<name>` would otherwise fall into the local arm and be
 # resumed here -- a second agent on a branch a cloud container pushes to, with
 # no lock. `lane.sh` refuses that too; this is not the only guard, on purpose.
+#
+# THE DEPTH IS REAL ONLY BECAUSE THE TWO GUARDS FAIL DIFFERENTLY. This one
+# reads a POSITIVE -- "some row names this branch" -- which the fold-lagged
+# in-tree territory.toml can still answer truthfully; what it cannot answer is
+# the absence, and this arm never asks it to. When the board read is stale and
+# the row is missing, the head falls through to the local arm and reaches the
+# single resume call site below -- where `remote_authoritative` refuses
+# outright (lane.sh's refuse_if_remote). Two guards, two different questions,
+# not one question asked twice.
+#
+# (Not spelling the resume invocation out here is deliberate:
+# `99-handback-draft.sh` counts that exact string to prove there is ONE call
+# site, and a comment quoting it makes the count read 2. A grep anchored on a
+# call matches the prose too.)
 NAME=""; REASON=""
 lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
     NAME=""; REASON=""

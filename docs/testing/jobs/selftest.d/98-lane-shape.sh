@@ -19,7 +19,13 @@
 # TO SEE THESE CHECKS FAIL AGAINST THE CODE THEY REPLACE: unpack master's
 # docs/testing into a scratch tree, copy this file into its selftest.d, and run
 # that tree's selftest.sh. Master has no remote-lane.sh, so every job there is
-# the old one. Measured 2026-09-19 against master@841a38736c: 19 of these fail.
+# the old one. MEASURED 2026-09-19 against master@11ddd94a66: this file holds
+# 61 checks, of which 43 fail there and 18 pass. The 18 are enumerated by name
+# in docs/lanes/laneshape/NOTES.md -- must-not-move legs, the negative half of
+# a pair, and guards for two defects this branch introduced and fixed, whose
+# falsifier is its own tip 8b185a925f rather than master. 43 + 18 = 61: if
+# those three numbers ever stop reconciling, the taxonomy is stale and this
+# comment is the thing to re-measure, not to repair by arithmetic.
 
 echo "== a lane is a branch with an open PR, not a branch named lane/*"
 LS="$T/laneshape"; rm -rf "$LS"; mkdir -p "$LS/bin" "$LS/work"
@@ -60,6 +66,30 @@ check "a row with no \`remote\` names no branch" \
 # to be able to say which happened.
 check "an unreadable board is reported as unreadable, not as no remote lanes" \
     bash -c '. "$1/remote-lane.sh"; ! HAKUX_TERRITORY="$2/nosuch.toml" remote_readable' _ "$HERE" "$LS"
+# AND THE THIRD OUTCOME, WHICH USED TO BE REPORTED AS THE FIRST.
+# board_files.load falls back to the IN-TREE territory.toml when
+# `git show origin/board:territory.toml` fails -- the ref not fetched, a CI
+# checkout, a fresh clone -- and returns it successfully. That copy reaches a
+# tree only when a fold carries it over (31 waves behind on the day this was
+# written), so it is exactly the copy that will be missing a `remote` marker
+# the board has just added. A read that cannot say so makes all three guards
+# below fail in the same direction at the same moment.
+check "a read that fell back to the in-tree copy says \`worktree\`, not \`board\`" \
+    bash -c 'cd "$2" && . "$1/remote-lane.sh" && [ "$(HAKUX_BOARD_REF=refs/nosuch remote_source)" = worktree ]' _ "$HERE" "$TESTING"
+check "  and is NOT authoritative: it cannot answer \"no row names this branch\"" \
+    bash -c 'cd "$2" && . "$1/remote-lane.sh" && ! HAKUX_BOARD_REF=refs/nosuch remote_authoritative' _ "$HERE" "$TESTING"
+check "  while still parsing, so a reporter can use it -- the states are three, not two" \
+    bash -c 'cd "$2" && . "$1/remote-lane.sh" && HAKUX_BOARD_REF=refs/nosuch remote_readable' _ "$HERE" "$TESTING"
+# A HOST THAT SWITCHED THE BOARD BRANCH OFF ON PURPOSE IS NOT THE STALE CASE.
+# HAKUX_BOARD_REF= means the in-tree file IS the board, by configuration; if
+# that read were untrusted too, the refusals above would stop every lane on
+# such a host for a fault that does not exist.
+check "a deliberately disabled board ref reads as \`board\`, not as a stale fallback" \
+    bash -c 'cd "$2" && . "$1/remote-lane.sh" && [ "$(HAKUX_BOARD_REF= remote_source)" = board ]' _ "$HERE" "$TESTING"
+check "an explicit HAKUX_TERRITORY path is authoritative -- nothing fell back to it" \
+    bash -c '. "$1/remote-lane.sh"; HAKUX_TERRITORY="$2/territory.toml" remote_authoritative' _ "$HERE" "$LS"
+check "an unreadable board is not authoritative either" \
+    bash -c '. "$1/remote-lane.sh"; ! HAKUX_TERRITORY="$2/nosuch.toml" remote_authoritative' _ "$HERE" "$LS"
 
 # ------------------------------------------------------------------ arms.sh
 # THE DEVICE PIPELINE, WHICH THIS LANE HAD NEVER REACHED. A bare origin with a
@@ -89,7 +119,17 @@ lsa_pred live.json "$(date -u -d '1 minute ago' '+%FT%TZ')" "$LSA_A" "$LSA_B"
 lsa_pred ancient.json "2020-01-01T00:00:00Z" "$LSA_A" "$LSA_B"
 lsa_pred degenerate.json "$(date -u -d '1 minute ago' '+%FT%TZ')" "$LSA_B" "$LSA_B"
 ag add -A; ag commit -q -m predictions; ag push -q origin claude/elsewhere-u1
+# GITHUB PUBLISHES A PR'S HEAD AT refs/pull/<n>/head, and that -- not
+# refs/heads/<branch> -- is what arms.sh fetches, because a fork's head branch
+# is not a branch on origin at all and a deleted head branch leaves the PR
+# open. The fixture origin has to carry the same ref or it is not the origin
+# this job talks to.
+ag push -q origin claude/elsewhere-u1:refs/pull/777/head
 mkdir -p "$LSA/goldens/Blend_surface"; : > "$LSA/goldens/Blend_surface/TestA.png"
+# TWO open PRs. #778's head branch exists NOWHERE on this origin and neither
+# does its pull ref: it is the fork PR, or the PR whose head branch someone
+# deleted, and GitHub leaves both open indefinitely. See the legs below for
+# what it used to do to the tick.
 cat > "$LS/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 echo "$*" >> "${LS_GH_LOG:?}"
@@ -99,7 +139,7 @@ case "$1 $2" in
         # The tick's one map call, and the per-branch fallback.
         [[ "$args" == *"--head claude/elsewhere-u1"* ]] && { echo 777; exit 0; }
         [[ "$args" == *"--head "* ]] && exit 0
-        [[ "$args" == *"headRefName"* ]] && { printf 'claude/elsewhere-u1\t777\n'; exit 0; }
+        [[ "$args" == *"headRefName"* ]] && { printf 'claude/elsewhere-u1\t777\nvanished-head\t778\n'; exit 0; }
         exit 0 ;;
     "pr comment"|"issue comment") exit 0 ;;
     *) exit 0 ;;
@@ -128,6 +168,53 @@ check "a pre-watermark registration on the newly-visible branch is still history
 check "  so it is not queued" bash -c '! grep -q "WOULD QUEUE .*ancient.json" <<< "$1"' _ "$out"
 check "the degenerate registration is refused, on the branch as anywhere else" \
     grep -q "would skip.*a_ref == b_ref" <<< "$out"
+
+# AN OPEN PR WHOSE HEAD IS NOT ON THIS ORIGIN MUST NOT STALE THE TRUNK.
+# `git fetch` fails the WHOLE invocation when any NAMED refspec matches no
+# remote ref, and updates nothing -- so one fork PR, or one open PR whose head
+# branch somebody deleted, put every ref collect() walks out of date, master
+# included, with one WARNING in a log nobody reads. Every prediction pushed
+# after that moment would have been invisible to the queue for as long as that
+# PR stayed open: a strictly larger outage than the one this lane fixed.
+#
+# #778 above is that PR. The trunk is fetched first and separately, and the PR
+# heads are fetched as refs/pull/<n>/head, which exists for a fork and
+# survives the head branch's deletion.
+LSA_P="$LSA/pusher"
+git -c init.defaultBranch=master clone -q "$LSA/origin.git" "$LSA_P" 2>/dev/null
+pusher_ls() { git -C "$LSA_P" -c user.email=s@t -c user.name=s "$@"; }
+pusher_ls checkout -q master
+mkdir -p "$LSA_P/docs/testing/predictions"
+python3 - "$LSA_P/docs/testing/predictions/trunk.json" "$(date -u -d '1 minute ago' '+%FT%TZ')" \
+         "$LSA_A" "$LSA_B" <<'PY'
+import json, sys
+p, reg, a, b = sys.argv[1:]
+json.dump({"registered_utc": reg, "who": "host", "issue": "34",
+           "prediction": "pushed to the trunk during the broken tick", "a_ref": a, "b_ref": b,
+           "expect": {"Blend_surface/TestA": 0}, "must_not_move": [],
+           "must_not_regress": [], "expect_counts": {}}, open(p, "w"), indent=2)
+PY
+pusher_ls add -A; pusher_ls commit -q -m trunk-prediction; pusher_ls push -q origin master
+LSA_M=$(pusher_ls rev-parse HEAD)
+# The fixture is only the fixture if the consumer is BEHIND when the tick
+# starts: against an already-current tracking ref the leg below is green for a
+# fetch that did nothing at all.
+check "the arms consumer is behind origin/master before the tick (the leg is not free)" \
+    bash -c '[ "$(git -C "$1" rev-parse refs/remotes/origin/master)" != "$2" ]' _ "$LSA/repo" "$LSA_M"
+out=$(arms_ls list)
+check "an open PR whose head is absent from origin does not stale the trunk fetch" \
+    bash -c '[ "$(git -C "$1" rev-parse refs/remotes/origin/master)" = "$2" ]' _ "$LSA/repo" "$LSA_M"
+check "  so a prediction pushed to master in that tick is still collected" \
+    grep -q "master:docs/testing/predictions/trunk.json" <<< "$out"
+check "  and the other open PR's head is collected too, not lost with the bad one" \
+    grep -q "claude/elsewhere-u1:docs/testing/predictions/live.json" <<< "$out"
+check "  and the tick names the head it could not fetch rather than going quiet" \
+    grep -q "PR head unavailable.*refs/pull/778/head" <<< "$out"
+# The head that IS there is reached through refs/pull/<n>/head, not through a
+# branch of that name on origin: there is no refs/heads/claude/elsewhere-u1
+# fetched into this repo's remote namespace by the tick at all.
+check "  a PR head lands in its own ref namespace, not over origin/<branch>" \
+    bash -c 'git -C "$1" rev-parse -q --verify refs/remotes/pr/777 >/dev/null' _ "$LSA/repo"
 
 # WHERE THE VERDICT GOES. pr_for() used to map only `lane/*` to a PR, so this
 # lane's refusals and verdicts fell through to its issue -- graceful, and the
@@ -181,9 +268,9 @@ EOF
 chmod +x "$LS/bin2/"*
 flt_ls=$( ( export PATH="$LS/bin2:$PATH"; cd "$LSF" && HAKUX_BOARD_REF= DISPATCH_DIR="$LS/fleetdisp" \
             python3 "$LSF/fleet.py" ) 2>&1 )
-check "fleet.py counts an open PR on a branch a territory row names" \
+check "fleet.py gives every row carrying \`remote\` a section of its own" \
     grep -q "REMOTE LANES (2)" <<< "$flt_ls"
-check "  naming the branch and the PR, so the report says where the lane is" \
+check "  counting an open PR on a branch a territory row names, not on a lane/* head" \
     grep -q "elsewhere .*claude/elsewhere-u1 .*PR #777 draft" <<< "$flt_ls"
 check "  and a remote row with no PR says so rather than being dropped" \
     grep -q "prefixed .*lane/prefixed .*no open PR" <<< "$flt_ls"
@@ -273,7 +360,22 @@ check "  it reaches its own check instead" grep -q "no worktree at" <<< "$out"
 # holds this branch" must not be answered by starting one.
 out=$(lane_ls "resume alpha" "$LS/nosuch.toml")
 check "lane.sh refuses when territory.toml cannot be read at all" \
-    grep -q "could not be read" <<< "$out"
+    grep -q "board read came back" <<< "$out"
+# AND A BOARD READ THAT SILENTLY FELL BACK TO THE FOLD-LAGGED IN-TREE COPY IS
+# THE SAME REFUSAL. This is the common-mode failure: the board marks a lane
+# remote, the marker lives on origin/board, a checkout without that ref reads
+# the in-tree copy -- which by construction does not carry it yet -- and the
+# guard passes on a map missing the one row it exists for. No HAKUX_TERRITORY
+# here, so the real board_files path runs, with the ref pointed at nothing.
+out=$( ( export PATH="$LSH/bin:$PATH" HAKUX_WORK="$LS/work" HAKUX_REPO_DIR="$LSA/repo" \
+                HAKUX_BOARD_REF=refs/nosuch
+         bash "$TESTING/lane.sh" resume alpha ) 2>&1 ); rc=$?
+check "lane.sh refuses when the board read fell back to the working tree" [ "$rc" -eq 76 ]
+check "  saying which source it got, so the refusal is diagnosable" \
+    grep -q "came back .worktree. rather than origin/board" <<< "$out"
+check "  and naming the one command that cures it" \
+    grep -q "git fetch origin board" <<< "$out"
+check "  and it starts nothing on the way out" [ ! -e "$LS/work/wt/alpha" ]
 # AND SO IS A MISSING READER. There is no `set -e` in lane.sh, so a bare `.` of
 # an absent remote-lane.sh would leave refuse_if_remote undefined,
 # command-not-found would not stop the script, and the one gate above would run
@@ -317,7 +419,20 @@ pg_ls push -q origin master:refs/heads/lane/second
 out=$(fold_ls --apply "$LS/nosuch.toml")
 check "fold.sh keeps every ref when territory.toml cannot be read" \
     git -C "$LSP/origin.git" rev-parse -q --verify refs/heads/lane/second
-check "  and says that is why" grep -q "could not be read" <<< "$out"
+check "  and says that is why" grep -q "board read came back" <<< "$out"
+# AND THE FOLD-LAGGED COPY IS NOT A READ EITHER. A branch marked `remote` on
+# origin/board is invisible to the in-tree territory.toml until some later
+# fold copies the row over -- so a fold tick from a checkout without that ref
+# would have deleted the branch of a live cloud lane, its tracking ref and the
+# local head, on a map that simply had not heard of it. No HAKUX_TERRITORY:
+# board_files runs for real, with the board ref pointed at nothing, and falls
+# back to this tree's territory.toml, which names no `lane/third`.
+pg_ls push -q origin master:refs/heads/lane/third
+out=$( ( export HAKUX_REPO_DIR="$LSP/repo" HAKUX_BOARD_REF=refs/nosuch
+         bash "$HERE/fold.sh" prune --apply ) 2>&1 )
+check "fold.sh prunes nothing when the board read fell back to the working tree" \
+    git -C "$LSP/origin.git" rev-parse -q --verify refs/heads/lane/third
+check "  and names the source it actually got" grep -q "came back .worktree." <<< "$out"
 
 # --------------------------------------------------- against the real board
 # Every check above runs on a fixture. This one runs the default path -- no
@@ -327,3 +442,15 @@ check "  and says that is why" grep -q "could not be read" <<< "$out"
 # board's business and changes without this file.
 check "remote-lane.sh reads the live board without HAKUX_TERRITORY set" \
     bash -c 'cd "$2" && . "$1/remote-lane.sh" && remote_readable' _ "$HERE" "$TESTING"
+# AND IT NAMES WHICH FILE IT GOT, HERE, ON WHATEVER CHECKOUT THIS IS. A CI
+# checkout has origin/master and not origin/board, so this legitimately reads
+# `worktree` in CI and `board` on the host -- both are correct answers and the
+# third is not. `remote_authoritative` must agree with the name, because that
+# agreement is the entire guarantee the three callers rest on: a tree that
+# reported `board` while reading the fold-lagged copy is the bug.
+lsrc=$( bash -c 'cd "$2" && . "$1/remote-lane.sh" && remote_source' _ "$HERE" "$TESTING" )
+check "  and names its source as one of the two live answers (got: ${lsrc:-none})" \
+    bash -c 'case "$1" in board|worktree) exit 0 ;; *) exit 1 ;; esac' _ "$lsrc"
+check "  with remote_authoritative agreeing with that name, not with the read succeeding" \
+    bash -c 'cd "$3" && . "$2/remote-lane.sh"
+             if remote_authoritative; then [ "$1" = board ]; else [ "$1" = worktree ]; fi' _ "$lsrc" "$HERE" "$TESTING"

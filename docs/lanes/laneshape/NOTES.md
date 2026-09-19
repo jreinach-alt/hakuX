@@ -125,12 +125,21 @@ and it is why `remote_map` has a return code and `remote_readable` exists.
 
 ## What this unblocks, concretely
 
-`2026-09-19-gl-pad-bit-write-side.json`, registered 16:48Z on
-`claude/docs-tooling-agentic-coding-u152m1`, after the watermark. One pair, not
-a backlog: everything else on that branch predates the watermark. The arms job
-picks it up on its first tick after this folds **and** after the `remote` row
-lands -- though in fact the arms half does not need the row at all, only the
-open PR, so the queue opens the moment this merges.
+**Superseded 2026-09-19 22:24Z, and the reason is worth reading.** This
+section said the change unblocks `2026-09-19-gl-pad-bit-write-side.json`,
+registered 16:48Z on `claude/docs-tooling-agentic-coding-u152m1` after the
+watermark, and invisible to the arms job for as long as its branch was not
+`lane/*`. PR #162 **merged at 22:24Z**, so that prediction is now on
+`origin/master` and `arms.sh` collects it from the trunk, by the old code, on
+its next tick. The queue that was closed to that lane opened by the fold
+instead.
+
+What did NOT change: the branch `claude/docs-tooling-agentic-coding-u152m1`
+still exists on origin, `lane.remote` still lives there, and its next
+prediction -- pushed to that branch before its next PR merges -- is
+uncollectable again on master's code. The defect is the prefix, not that one
+file; one folded PR does not retire it. The only thing that expired is this
+lane's ready-made example, and it expired by being fixed the slow way.
 
 ## Two sessions on one branch, which this change cannot prevent
 
@@ -177,6 +186,25 @@ lane, not a tracker row.
 
 ## Board request
 
+**Items 1 and 2 have landed; only 3 is open.** Re-read at `origin/board`
+wave 126 (2026-09-19T22:20Z) during the pass-1 remediation:
+
+1. ~~Write `[lane.laneshape]`~~ **DONE.** The row exists and claims
+   `docs/lanes/laneshape/NOTES.md`, `docs/testing/jobs/arms.sh`,
+   `docs/testing/jobs/remote-lane.sh` and
+   `docs/testing/jobs/selftest.d/98-lane-shape.sh`. The other four paths this
+   PR touches (`fold.sh`, `handback.sh`, `lane.sh`, `fleet.py`) stayed with
+   their holders, which is the right answer and is what the surgical diffs
+   were for.
+2. ~~Classify #164~~ **DONE.** `[issue.164]` is in `nv2a_issues.toml` at wave
+   126 with `disposition = "defect"`, so the `coverage` gate is no longer
+   failing for an unclassified row and `[lane.clrpad164]` (PR #172) holds it.
+3. **Still open**, and it is the only one: add
+   `remote = "claude/docs-tooling-agentic-coding-u152m1"` to `[lane.remote]`.
+   That row at wave 126 carries `issues`, `files` and `note` and no `remote`.
+
+The original text of 1 and 2 is kept below for the record.
+
 1. Write `[lane.laneshape]` with these files (or say which to drop and this
    lane will drop them).
 2. Classify **#164** in `nv2a_issues.toml` (opened 18:57Z by the owner, "GL:
@@ -215,34 +243,239 @@ the eight intended paths and force-pushed -- permitted here because no
 prediction names any sha on it and no other agent is on it. **Stage by name in
 a worktree that holds scratch.**
 
+## Remediation after audit pass 1 (2026-09-19)
+
+`docs/audits/2026-09-19-laneshape-pass1.md`: 2 HIGH, 3 MEDIUM, 4 LOW. All five
+HIGH/MEDIUM are fixed here, each with a leg. Both HIGHs were the same species
+of mistake and it is worth naming it before the details: **a widened reach was
+shipped without widening what could go wrong with it.** H1 added named
+refspecs to a fetch that previously could not fail on a name; H2 added three
+guards on top of a read whose third outcome nothing had looked for.
+
+**H1 -- one open PR with an absent head branch aborted the whole fetch.**
+`git fetch` fails the entire invocation when any *named* refspec matches no
+remote ref, and updates **nothing**: not the other named specs, not the
+`lane/*` wildcard, not `$TIP`. One PR from a fork (`headRefName` is a branch
+in the *head* repository, not on origin) or one open PR whose head branch
+somebody deleted would therefore have staled every ref `collect()` walks,
+master included, for as long as that PR stayed open -- every prediction
+registered after that moment invisible to the queue, with one WARNING in
+`$WORK/logs/arms/tick.log` and nothing else. That is a larger outage than the
+one this lane was opened to fix. Three changes, and each is load-bearing:
+
+1. **The PR heads are fetched as `refs/pull/<n>/head`**, not
+   `refs/heads/<branch>`. That ref exists for an open PR from a fork, and it
+   survives the head branch's deletion. The number was already in the map --
+   the same `gh pr list` call carries it for `pr_for()`. It is also now the
+   field that is *validated*, because it is the field that enters a refspec.
+2. **The trunk and `lane/*` are fetched FIRST, in a separate invocation** that
+   contains no name that can be missing. Whatever the PR fetch does, master's
+   tracking ref has already advanced.
+3. **A batch PR fetch that fails retries one spec at a time**, so one bad ref
+   costs its own PR head and not the other seven. The ordinary tick is still
+   one round trip; the N fetches happen only on a tick that has already
+   failed.
+
+The destination is `refs/remotes/pr/<n>`, a namespace of its own, and not
+`refs/remotes/origin/<branch>`: a fork's head branch name is chosen by a
+stranger, and a fork PR whose head is called `board` would otherwise have
+overwritten `refs/remotes/origin/board` -- which is where every job reads the
+board. `collect()` still labels the source with the *branch*, because
+`pr_for()` keys the PR map on it.
+
+Legs: an open PR (#778) whose head exists nowhere on the fixture origin, with
+checks that `refs/remotes/origin/master` still advances to the sha pushed
+during that tick, that the prediction pushed to master in that tick is
+collected, that the *other* PR's head is collected too, and that the tick
+names the ref it could not fetch. Plus the leg that makes those meaningful:
+the consumer is asserted to be *behind* origin/master before the tick, because
+against an already-current tracking ref they are green for a fetch that did
+nothing.
+
+**H2 -- `board_files.load` has three outcomes and this read reported two.**
+When `git show origin/board:territory.toml` fails -- the ref not fetched, a CI
+checkout, a fresh clone, a timeout -- `load()` falls back to the **in-tree**
+copy and returns it *successfully*. That copy is not incidentally stale, it is
+structurally stale: it reaches a tree only when a later fold carries it over,
+and it was 31 waves and a day behind on the day this was written. So it is
+exactly the copy guaranteed **not** to carry a `remote` marker the board has
+just added -- and the old `remote_readable` could not tell it from a clean
+board read. All three guards would have passed, at the same moment, in the
+same unsafe direction, on a map missing the one row they exist for: `fold.sh`
+deleting a live cloud lane's branch, `lane.sh` starting a second agent on it,
+and `handback.sh`'s defence-in-depth (which *is* `lane.sh`) going with it.
+
+`remote_source` now names the outcome -- `board` / `worktree` / `unreadable` --
+and `remote_authoritative` is rc 0 only for the first. `fold.sh` and `lane.sh`
+ask *that*, not `remote_readable`, because their question is about an
+**absence**: "no row names this branch". Three details:
+
+- **A row present in the stale copy is still true.** Only absence is unsafe,
+  which is why `handback.sh` -- which reads a positive, "some row names this
+  branch" -- is left asking the map directly and is still sound. The two
+  guards now fail differently on purpose: one question each.
+- **`HAKUX_BOARD_REF=` reads as `board`.** A host that switched the board
+  branch off deliberately has made the in-tree file the board *by
+  configuration*; refusing there would stop every lane for a fault that does
+  not exist. The state being refused is a board ref configured and not
+  fetched.
+- **The refusal names its cure**, `git fetch origin board`, because a refusal
+  nobody can act on is a refusal somebody deletes. `board.sh` already fetches
+  it before re-execing these jobs (`board.sh:161`), so the host path is
+  unaffected.
+
+Legs: the helper's three states asserted separately (including that the
+fallback still *parses*, so the states really are three); `fold.sh prune
+--apply` with the board ref pointed at nothing keeps `lane/third`, which the
+fold-lagged copy does not name; `lane.sh resume alpha` in the same state exits
+**76** and creates no worktree. And the closing check against the real board
+no longer asserts "the read succeeded" -- it asserts that `remote_source`
+names one of the two live answers and that `remote_authoritative` **agrees
+with that name**, which is the whole guarantee. That check is honest in CI,
+where the checkout legitimately has `origin/master` and not `origin/board` and
+so legitimately reads `worktree`; the old one passed there by quoting a
+fold-lagged read as a live one, which is the defect itself.
+
+**M1** -- merged `origin/master` and resolved `lane.sh` by hand; master had
+moved a `. "$JOBS/window.sh"` onto the same line this branch sources
+`remote-lane.sh`. Both are kept. `refuse_if_remote` is still the first
+statement of `start` and of `resume`, ahead of every side effect.
+
+**M2** -- see the section below; re-measured once, at a named tip, and the
+three places now agree.
+
+**M3** -- the `86-fold-regressed.sh` section is struck through *at its
+heading*, with the commit and the CI runs that make it history.
+
+**L1/L2** -- `p["remote"]` is now read: READY, NOT FOLDED prints `elsewhere`
+for a remote lane's PR instead of `finished`, which is the one word in that
+column meaning "the local unit is gone" and is wrong for a lane that never had
+one. **L3** -- the REMOTE LANES comment now says a remote lane's PR *can*
+still raise a FAIL through `unfolded`/`waiting`, which it should; what the
+section declines is a permanent line about the lane itself. **L4** -- the
+`REMOTE LANES (2)` check is renamed to describe what it asserts.
+
+### The remediation's own falsifier
+
+A leg added to fix a defect has to be shown failing against the code that had
+the defect, and for H1 and H2 that code is **not master** -- master has no
+`remote-lane.sh` and fetches no PR heads, so it cannot exhibit either bug.
+The falsifier is this branch's own pre-audit tip.
+
+Same procedure as the master measurement, `git archive 8b185a925f
+docs/testing` into a scratch tree with this fragment dropped in:
+
+> **Against `8b185a925f`, 16 of the 61 fail; 45 pass.**
+
+All 16 are H1's and H2's, and nothing else moved -- which is the other half of
+the claim, because a remediation that silently changed a fourth job would show
+up here as an unexplained failure. Of the 16:
+
+- **14 are behaviour.** The trunk fetch not being staled by an absent PR head
+  and the prediction pushed to master in that tick being collected; the PR
+  head landing in `refs/remotes/pr/<n>`; the tick naming the ref it could not
+  fetch; the helper's `worktree` / `board` / authoritative distinction in all
+  four of its configurations; `fold.sh` keeping `lane/third` and `lane.sh`
+  exiting 76 on a fold-lagged read; and the closing check that
+  `remote_authoritative` agrees with `remote_source` rather than with the read
+  merely succeeding.
+- **2 moved with the refusal text**, not with behaviour: "lane.sh refuses when
+  territory.toml cannot be read at all" and fold.sh's "and says that is why"
+  now grep for `board read came back`, where the old message said
+  `territory.toml could not be read`. The old code did refuse in that state.
+  Naming which source it got is part of the fix -- a refusal that does not say
+  whether the board was stale or absent cannot be acted on -- but these two
+  are text legs and counting them as new behaviour would be a curve fit.
+
+**One self-inflicted regression, caught by the gate.** The first draft of the
+`handback.sh` comment above quoted `"$LANE_SH" resume` while explaining the
+depth argument, and `99-handback-draft.sh` counts that exact string to prove
+there is **one** call site. The count read 2 and the check went red. A grep
+anchored on a call matches the prose too; the comment now describes the call
+without spelling it, and says why.
+
 ## Checks that do NOT fail against master, and why that is correct
 
-The rule is that each new check must fail against the code it replaces. 25 of
-the 39 do. The other 14 are there on purpose and could not:
+**One number, measured once, at a named tip.** Pass 1 found three mutually
+inconsistent counts here (19, 25-of-39, 25-of-41), reconciled by arithmetic
+rather than by a re-run -- which matters more than a stale number usually
+would, because *the count is the evidence*. It has been re-measured, at
+`origin/master@11ddd94a66` (the current trunk, which is also what this branch
+is merged up to):
 
-- **Must-not-move legs** (6): an ordinary folded `lane/*` branch is still
+> **`98-lane-shape.sh` contains 61 checks. Against master's code, 43 fail and
+> 18 pass.**
+
+Procedure, so it can be repeated: `git archive 11ddd94a66 docs/testing | tar
+-x` into a scratch tree, copy *this branch's* fragment into that tree's
+`selftest.d/`, run that tree's `selftest.sh`, and count the `ok`/`FAIL` lines
+between the `== a lane is a branch...` header and the next fragment's. 43 + 18
+= 61; the enumeration below is of all 18.
+
+The rule is that each new check must fail against the code it replaces. The 18
+that cannot are these, by name:
+
+- **Must-not-move legs** (6). An ordinary folded `lane/*` branch is still
   deleted; a local lane with no unit is still a claim with no agent;
-  `lane.sh resume alpha` still reaches its own "no worktree" answer; a row with
-  no `remote` names no branch; a remote lane's PR started nothing locally on
-  master either (master has no local lane for a `claude/*` head). By
-  construction these pass on both sides -- that is what makes them the control.
-- **The negative half of a pair** (5): "and NOT to its issue instead", "so it
-  is not queued", "it creates no worktree on the way out". Each is paired with
-  a positive check that does discriminate; alone they are green against a build
-  that does nothing at all, which is why none of them stands alone.
-- **The two `arms.sh state` legs**: they discriminate against this lane's own
-  intermediate commit, not against master, because master's `state` makes no
-  gh call either. They are a regression guard for defect 1 above.
-- **"remote-lane.sh reads the live board"**: a new file's checks cannot
-  discriminate against a tree that lacks the file except by content. This one
-  exists so the default path -- `board_files`, `origin/board` -- is exercised
-  at all; every other check runs against a fixture, and a reader tested only
-  against its own fixture has been tested against nothing.
+  `lane.sh resume alpha` is not refused by the remote guard and reaches its
+  own "no worktree" answer; a remote lane's handed-back PR started nothing
+  locally on master either, even with a worktree and a brief on this host
+  (master has no local lane for a `claude/*` head). By construction these pass
+  on both sides -- that is what makes them the control, and without them a
+  widened exemption would look exactly like a working one.
+- **The negative half of a pair** (7). "a row with no `remote` names no
+  branch"; "an unreadable board is reported as unreadable"; "an unreadable
+  board is not authoritative either"; "its b_ref counts as live"; "so it is
+  not queued"; "it creates no worktree on the way out" (twice, in `lane.sh`'s
+  two refusals). Each is paired with a positive check that does discriminate.
+  Alone, every one of them is green against a tree with no `remote-lane.sh` in
+  it at all -- a failed `source` leaves the function undefined,
+  command-not-found returns 127, and `!` turns that into a pass. That is
+  precisely why none of them stands alone.
+- **The two `arms.sh state` legs** (2). They discriminate against this lane's
+  own intermediate commit, not against master, because master's `state` makes
+  no gh call either. Regression guard for defect 1 above.
+- **The two H1 trunk legs and their control** (3). "the arms consumer is
+  behind origin/master before the tick", "an open PR whose head is absent from
+  origin does not stale the trunk fetch", "so a prediction pushed to master in
+  that tick is still collected". Master cannot fail these because master
+  fetches no PR heads at all: H1 was a defect **this branch introduced**, so
+  its falsifier is this branch's own pre-remediation tip `8b185a925f`, not
+  master. The first of the three is a fixture precondition and passes
+  everywhere by design; it is there because without it the other two are green
+  for a fetch that did nothing.
 
-## Not mine: `86-fold-regressed.sh` is red on master
+Both HIGH remediations were therefore measured against the tip that had the
+defect, not only against master -- see the pre-remediation numbers in the
+remediation section above. A leg whose only falsifier is a tree missing the
+file it tests has been tested against very little, and saying which legs those
+are is the difference between 61 checks and 61 claims.
 
-`selftest.sh` reports 11 failures on this branch. **10 of them are master's**,
-in `86-fold-regressed.sh`, and reproduce exactly when master's own
+## ~~Not mine: `86-fold-regressed.sh` is red on master~~ -- SUPERSEDED 2026-09-19, FIXED
+
+**This section is history, not a live blocker, and nothing below it is asking
+anybody for anything.** `lane.selftest86` took the defect and fixed it exactly
+where this section said it lived -- one line in the fixture, recreating the
+local ref `fr_reset` assumed survived the fold. It folded as `bb4b78689e`
+(PR #167, 19:47Z) and master's `jobs selftest` workflow has concluded
+`success` on every head since: `bb4b78689e`, `3b27da7a3e`, `f5d40ca778`,
+`6675e6414b`. The last red master head was `f7be6e68cb` at 18:42Z.
+
+The sentence at the end of this section -- "CI is the gate of record, so this
+holds up every fold until someone owns it, including this PR's" -- was true
+when it was written and stopped being true at 19:47Z the same day. It is
+struck through in place below rather than withdrawn in a footnote, because a
+withdrawal at the bottom of a long file leaves the claim at the top still
+asserting itself, and a reader acting on this one would dispatch a lane at a
+defect that is already fixed.
+
+The diagnosis is kept because it is the record of what happened and it is what
+`lane.selftest86` confirmed; only the tense is wrong.
+
+---
+
+`selftest.sh` reported 11 failures on this branch. **10 of them were
+master's**, in `86-fold-regressed.sh`, and reproduced exactly when master's own
 `docs/testing` is unpacked into a scratch tree and run there -- which is how
 they were separated from this lane's, rather than assumed to be somebody
 else's.
@@ -268,8 +501,10 @@ The fix is one line in the fixture (recreate the local branch in `fr_reset`,
 e.g. `git branch -f lane/foldreg <sha>` before the push), not in `fold.sh` --
 the prune is doing exactly what it was written to do. `fold.sh` is
 `[lane.branchprune]`'s and `86-fold-regressed.sh` is `[lane.foldregress]`'s,
-so this is reported here, not fixed here. **CI is the gate of record, so this
-holds up every fold until someone owns it, including this PR's.**
+so this is reported here, not fixed here. ~~**CI is the gate of record, so
+this holds up every fold until someone owns it, including this PR's.**~~
+**No longer true as of 19:47Z on 2026-09-19: `bb4b78689e` fixed it, in the
+fixture, in that one line. See the heading.**
 
 The 11th failure was this lane's and is fixed; see above.
 

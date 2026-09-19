@@ -157,8 +157,16 @@ prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 
     # TARGET NARROWED, NEVER WIDENED: this can only ever refuse. And a board it
     # cannot read is also a refusal -- an un-pruned ref costs a few bytes, and
     # "I could not check" is not "it is safe to delete".
-    if ! remote_readable; then
-        say "  NOT pruning '$branch': territory.toml could not be read, so whether it belongs to a remote lane is unknown"
+    #
+    # `remote_authoritative`, NOT `remote_readable`: the question here is
+    # whether NO row names this branch, and the fold-lagged in-tree copy
+    # board_files falls back to cannot answer it -- that copy gets a marker
+    # only when some later fold carries it over, so it is precisely the one
+    # missing the row the board wrote this morning. board.sh fetches
+    # `origin/board` before re-execing this job (board.sh:161); a checkout
+    # where that has not happened gets this refusal and one fetch fixes it.
+    if ! remote_authoritative; then
+        say "  NOT pruning '$branch': the board read came back \`$(remote_source)\` (not origin/board), so whether it belongs to a remote lane is unknown. \`git fetch origin board\` in this checkout."
         return 1
     fi
     if is_remote_branch "$branch"; then

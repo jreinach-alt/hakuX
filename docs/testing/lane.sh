@@ -83,12 +83,23 @@ cmd="${1:-}"; name="${2:-}"
 # not parse, this script cannot tell whether the lane it was handed is remote,
 # and the safe answer to "I do not know whether another agent holds this
 # branch" is to stop. That direction costs a dispatch; the other costs a
-# session's work. board_files falls back to the working tree, so this fires
-# only when the file itself is broken.
+# session's work.
+#
+# AND board_files FALLING BACK TO THE WORKING TREE IS THE SAME ANSWER. The
+# in-tree copy reaches a checkout only when a fold carries it over, so it is
+# structurally behind `origin/board` -- 31 waves behind on the day this was
+# written -- and the row that marks a lane remote is the newest thing on the
+# board, never the oldest. "The stale copy does not mention this lane" is not
+# "this lane is local", and `remote_authoritative` is the predicate that keeps
+# the two apart. A host that has switched the board branch off deliberately
+# (`HAKUX_BOARD_REF=`) reads as `board` and is unaffected; the state this
+# refuses is a board ref configured and not fetched, which `git fetch origin
+# board` cures in one command -- named in the message, because a refusal
+# nobody can act on becomes a refusal somebody deletes.
 refuse_if_remote() {   # <lane name> -- exits when the lane is not this host's to start
     local b
-    if ! remote_readable; then
-        echo "REFUSED: territory.toml could not be read, so this script cannot tell whether lane $1 runs somewhere else. Fix the board file; starting a second agent on another session's branch is not recoverable." >&2
+    if ! remote_authoritative; then
+        echo "REFUSED: the board read came back \`$(remote_source)\` rather than origin/board, so this script cannot tell whether lane $1 runs somewhere else. Run \`git fetch origin board\` in $REPO (or fix territory.toml); starting a second agent on another session's branch is not recoverable." >&2
         exit 76
     fi
     b=$(remote_branch_of "$1") || return 0
