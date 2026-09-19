@@ -312,3 +312,100 @@ one attempt 2 merged, so the resolution had to be redone on top rather than
 just pushed. Attempt 2's merge commit is kept as an ancestor (it is a correct
 resolution of a real conflict and rewriting it would be a rebase, which this
 lane must never do); `origin/master` is merged into it a second time.
+
+Attempt 2's resolution was pushed **first**, on its own, before the second
+merge was attempted — the thing that had been missing was the push, so the push
+went out before anything could go wrong again. The second merge was then
+**clean**: none of the 29 new commits touches any of this lane's six files
+(`git log 6db8217cdb..origin/master -- <my files>` is empty). GitHub now
+reports `mergeable: MERGEABLE` on #153 and `needs-rebase` has been removed.
+The handback is discharged.
+
+## The blocker attempt 3 found: master's own selftest is red, and has been since 15:03Z
+
+`bash docs/testing/jobs/selftest.sh` on this branch is **586 passed, 10
+failed**, and CI on the new head is RED for the same 10. None of them is this
+lane's. The attribution is measured, not argued:
+
+| tree | passed | failed |
+|---|---|---|
+| pristine `origin/master` @ `732b97e2df` (throwaway worktree) | 516 | **10** |
+| `lane/draftstrand` @ `76b2f486a0` | 586 | **10** |
+
+The two failure sets are **byte-identical** (`diff` of the sorted `FAIL` lines
+is empty). This lane adds 70 passing checks and zero failures. That comparison
+is the point: a bare failure count on my own branch could not have told
+"I broke something" from "I inherited something", and the temptation was to
+read 10 red lines in the fold area as mine because this lane does touch
+`fold.sh`. Diffing the two sets is what settles it — a count cannot show
+inaction.
+
+Nor is it local: `gh run list --branch master --workflow 'jobs selftest'`
+shows master red on **every commit since `4eb641e777`** (15:03Z, the fold of
+PR #145 `lane/foldregress`) and green on the two before it. So the harness has
+not had a green selftest for hours, which means **no PR's CI can be green and
+nothing can fold at all** — a jam strictly worse than the stranded drafts this
+lane was dispatched for.
+
+### The mechanism: two lanes green apart, red together
+
+It is a fold-order collision between two lanes that had both already folded.
+
+- `lane/branchprune` (#137) folded at 14:32Z, green, and added `prune_branch`
+  to `fold.sh`: after a successful fold it runs `git push origin --delete
+  <branch>` and then `git branch -d <branch>` locally.
+- `lane/foldregress` (#145) folded at 15:03Z and brought
+  `selftest.d/86-fold-regressed.sh`, whose fixture creates a `lane/foldreg`
+  branch once at the top and whose `fr_reset()` restores state between ticks
+  with `git push -f origin master lane/foldreg`.
+
+The fragment drives the **real** `fold.sh`. So the first fixture tick that
+actually folds now also *prunes* `lane/foldreg` — from the fixture's origin and
+from its local repo. Every later `fr_reset` then dies with `src refspec
+lane/foldreg does not match any`, every later `rev-parse lane/foldreg` dies
+with `ambiguous argument`, and the ten checks that need a fresh lane branch
+fail. That is exactly where the failures start in the log: everything up to and
+including the first successful fold passes, and the ten that need the branch
+back afterwards do not.
+
+Neither lane is at fault. #145's fixture was written against a `fold.sh` that
+did not delete branches, and #145's own CI was green because its base predated
+#137's fold. This is the shape the selftest split into fragments was meant to
+make *cheap*, and it still catches nobody: both PRs were green on their own
+heads and red only in combination, which no per-PR gate can see.
+
+### The fix, tested but deliberately not applied here
+
+In the throwaway `origin/master` worktree, capturing the lane sha once and
+restoring the ref in `fr_reset` takes the run to **526 passed, 0 failed**:
+
+```sh
+FR_LANE_SHA="$(git -C "$FR/repo" rev-parse lane/foldreg)"   # after the setup push
+# ...and first thing in fr_reset(), before its push:
+git -C "$FR/repo" branch -f lane/foldreg "$FR_LANE_SHA"
+```
+
+**I did not put that on this branch**, and the reason is territory, not
+timidity. `selftest.d/86-fold-regressed.sh` is `lane/foldregress`'s file and is
+not on this PR's `Files:` line; the handback that produced attempt 3 says in
+terms *"do not re-open, re-measure or extend the work this PR already
+carries"*. A lane that quietly widens its diff to a file the board has not
+granted it is the collision the `Files:` line exists to prevent, and this is a
+one-line fix somebody can land in minutes once it is dispatched. The diagnosis
+and the patch are in a `[lane.draftstrand] blocked:` comment on #153 so no one
+has to re-derive them.
+
+### What this costs #153, and why `fold-ready` is set anyway
+
+The handback's last instruction was "once CI is green, rm `needs-rebase`, add
+`fold-ready`". Half of that is discharged and half cannot be: CI on this head
+will stay red for as long as master is red, for a reason that has nothing to do
+with this PR.
+
+`fold-ready` is set regardless, knowingly. `fold.sh` re-gates on `ci_green`
+itself and refuses a head that is not GREEN, so the label cannot cause a bad
+fold — it only means that the moment master's selftest is repaired and this
+PR's checks re-run, the fold job takes it **without another lane session**.
+Leaving it unlabelled would have made #153 a PR in a state with no actor, which
+is the exact defect this lane exists to remove; that it would not have been a
+*draft* is a detail of spelling.
