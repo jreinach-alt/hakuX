@@ -186,6 +186,64 @@ lane, not a tracker row.
    both are the pre-change behaviour, so the marker's absence is safe, just
    not useful.
 
+## Two things this lane got wrong, and how they were caught
+
+**1. `arms.sh state` stopped being read-only.** The first version built the PR
+map in every mode, so on a host where `gh` answers nothing the WARNING line
+landed on stdout *ahead of* the `STATE=` line -- and `94-arms-label-state.sh`
+reads it with `sed -n 1p`. One existing check, "verified and regressed are
+never both live", went red and that is the only reason it was found; reading
+the diff would not have shown it, because the defect is in a mode the diff
+does not mention. `state` now skips the PR map and the fetch, which its own
+header already promised. Two legs in `98-lane-shape.sh` state the invariant
+from this side; verified against the intermediate commit, which makes 1 gh call
+in `state` mode where the fixed one makes 0.
+
+**2. `git add -A` committed 504 scratch files**, including a 4 MB tar of
+master's `docs/testing` built for the old-code verification run. Caught by the
+merge's status output. The branch was rebuilt from `origin/master` with only
+the eight intended paths and force-pushed -- permitted here because no
+prediction names any sha on it and no other agent is on it. **Stage by name in
+a worktree that holds scratch.**
+
+## Checks that do NOT fail against master, and why that is correct
+
+The rule is that each new check must fail against the code it replaces. 25 of
+the 39 do. The other 14 are there on purpose and could not:
+
+- **Must-not-move legs** (6): an ordinary folded `lane/*` branch is still
+  deleted; a local lane with no unit is still a claim with no agent;
+  `lane.sh resume alpha` still reaches its own "no worktree" answer; a row with
+  no `remote` names no branch; a remote lane's PR started nothing locally on
+  master either (master has no local lane for a `claude/*` head). By
+  construction these pass on both sides -- that is what makes them the control.
+- **The negative half of a pair** (5): "and NOT to its issue instead", "so it
+  is not queued", "it creates no worktree on the way out". Each is paired with
+  a positive check that does discriminate; alone they are green against a build
+  that does nothing at all, which is why none of them stands alone.
+- **The two `arms.sh state` legs**: they discriminate against this lane's own
+  intermediate commit, not against master, because master's `state` makes no
+  gh call either. They are a regression guard for defect 1 above.
+- **"remote-lane.sh reads the live board"**: a new file's checks cannot
+  discriminate against a tree that lacks the file except by content. This one
+  exists so the default path -- `board_files`, `origin/board` -- is exercised
+  at all; every other check runs against a fixture, and a reader tested only
+  against its own fixture has been tested against nothing.
+
+## Not mine: `86-fold-regressed.sh` is red on master
+
+`selftest.sh` reports 11 failures on this branch. **10 of them are master's**,
+in `86-fold-regressed.sh`, and reproduce exactly when master's own
+`docs/testing` is unpacked and run: `src refspec lane/foldreg does not match
+any`, because a fold tick deletes the local `lane/foldreg` head (the branch
+prune landed on master) and `fr_reset` re-pushes a branch that is no longer
+there. Master's `jobs selftest` workflow has been failing since
+`4eb641e777` (15:03Z on 2026-09-19). The 11th was this lane's and is fixed;
+see above. `fold.sh` is `[lane.branchprune]`'s and
+`selftest.d/86-fold-regressed.sh` is `[lane.foldregress]`'s, so this is
+reported, not fixed here. **It gates CI, so it will hold up every fold until
+someone owns it.**
+
 ## What the next lane should not repeat
 
 - Do not try to fix this by renaming the branch. `fold.sh:141`'s prune path
