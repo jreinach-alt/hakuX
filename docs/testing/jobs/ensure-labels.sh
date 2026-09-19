@@ -20,6 +20,9 @@ mk regressed           b60205 "arms job: registered prediction FAILED on the dev
 mk decision-needed     e99695 "the owner decides; jobs move on"
 mk blocked:needs-owner e99695 "escalated attempt failed too; owner's call"
 mk harness             bfd4f2 "the harness itself (jobs, scripts, hooks)"
+mk harness-status      bfd4f2 "the one issue whose comment is the live status roll-up"
+mk xbox-hardware       0052cc "needs real Xbox silicon; not dispatchable as a device run until a hardware listener exists"
+
 # NOT CREATED HERE, AND THAT IS THE DESIGN: `regression-accepted:<issue>`.
 # fold.sh refuses to fold a PR labelled `regressed` (it folded #102 onto
 # master on 2026-09-19 because nothing read that label), and this is the way
@@ -36,5 +39,3 @@ mk harness             bfd4f2 "the harness itself (jobs, scripts, hooks)"
 #   gh label create regression-accepted:91 --repo "$GH_REPO" --color b60205 \
 #       --description 'owner: the regression on this PR is the trade argued on #91'
 #   bash docs/testing/jobs/gh-label.sh add <pr> regression-accepted:91
-mk harness-status      bfd4f2 "the one issue whose comment is the live status roll-up"
-mk xbox-hardware       0052cc "needs real Xbox silicon; not dispatchable as a device run until a hardware listener exists"
