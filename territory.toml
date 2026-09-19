@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 125
-updated_utc = "2026-09-19T21:00:00Z"
+wave = 126
+updated_utc = "2026-09-19T22:20:00Z"
 
 
 [lane.hilodot10]
@@ -99,14 +99,20 @@ standing = false
 note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #150 draft, attempt 1/opus-5, started 2026-09-19T13:35:46Z) with no territory row at all. Harness defect, no tracker issue: status.sh PATCHes one comment in place, so GitHub renders the comment's created_at and a fresh roll-up reads as eleven hours stale. Files exactly as its own brief's Files: line names; this is the file's PRIMARY claimant among the three lanes that named it tonight (its entire brief is this one file) -- lane.localtime and lane.windowbudget both listed status.sh too and neither holds it here, see their own notes."
 
 
-[lane.windowbudget]
+[retired.windowbudget]
 issues = []
-files = ["docs/testing/lane.sh", "docs/testing/jobs/run-claude-job.sh",
-         "docs/testing/jobs/board.sh",
-         "docs/testing/jobs/selftest.d/95-window-budget.sh",
-         "docs/lanes/windowbudget/NOTES.md"]
+files = []
 standing = false
-note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:24:23Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: the pipeline throttles on LANE_MAX, a session count, when the real constraint is the account's shared five-hour/weekly window -- a lane that hits a closed window burns an attempt and eventually escalates model tier for a reason that has nothing to do with the work. board.sh CLAIMED HERE, not released to lane.localtime, which named it too: windowbudget's reserve-check (deferring dispatch in the last fifth of the weekly window) is the substantive edit to that file; localtime's touch would be a one-line display change and is noted as coordinate-at-fold in [lane.localtime] instead. status.sh DROPPED from this claim though the brief names it as a coordination point, not a file to hold -- it is [lane.statusfresh]'s below, that lane's entire brief. docs/testing/jobs/selftest.d/ narrowed to a named fragment (95-window-budget.sh) for the same reason as [lane.desktopchannel]'s note above."
+note = "RETIRED WAVE 126 (job.board): PR #155 MERGED 2026-09-19T21:53:37Z, unit gone (see fold commit 6675e6414b). Files RELEASED: docs/testing/jobs/run-claude-job.sh, docs/testing/jobs/board.sh and docs/testing/jobs/selftest.d/95-window-budget.sh go to [free] (nothing running names them); docs/testing/lane.sh is granted outright to [lane.turncap] below, whose running brief needs it. PRIOR NOTE: WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:24:23Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: the pipeline throttles on LANE_MAX, a session count, when the real constraint is the account's shared five-hour/weekly window -- a lane that hits a closed window burns an attempt and eventually escalates model tier for a reason that has nothing to do with the work. board.sh CLAIMED HERE, not released to lane.localtime, which named it too: windowbudget's reserve-check (deferring dispatch in the last fifth of the weekly window) is the substantive edit to that file; localtime's touch would be a one-line display change and is noted as coordinate-at-fold in [lane.localtime] instead. status.sh DROPPED from this claim though the brief names it as a coordination point, not a file to hold -- it is [lane.statusfresh]'s below, that lane's entire brief. docs/testing/jobs/selftest.d/ narrowed to a named fragment (95-window-budget.sh) for the same reason as [lane.desktopchannel]'s note above."
+
+
+[lane.turncap]
+issues = []
+files = ["docs/testing/lane.sh", "docs/testing/jobs/cloud.sh",
+         "docs/testing/jobs/selftest.d/101-limits-env-order.sh",
+         "docs/lanes/turncap/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 126 (job.board): lane was RUNNING (briefs/turncap.md, attempt 1/opus-5, no PR yet) with no territory row at all -- invisible to check_territory.py, the recurring defect this file documents. Harness defect, no tracker issue: $WORK/limits.env is sourced AFTER lane.sh:40 and cloud.sh:56 already read LANE_TURNS/CLOUD_TURNS into TURNS, so a raised limits.env value never reaches --max-turns -- nine lanes ended at exactly 151 turns on 2026-09-19 while limits.env said LANE_TURNS=300 since morning. docs/testing/lane.sh released by retiring [retired.windowbudget] above (PR #155 long merged); docs/testing/jobs/cloud.sh released by retiring [retired.cloudterritory] below (PR #147 long merged) -- both granted outright, no collision. selftest.d/101 is the next free fragment number (100 taken by lane.stalecheck)."
 
 
 [lane.remotechannel]
@@ -151,11 +157,11 @@ note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fo
 note = "RETIRED AT WAVE 116 (job.board): PR #128 MERGED 2026-09-19T12:59:28Z (fold commit 6ca12eb803 on this branch's own log), remediation delivered (8a3ee8eb03, 3d8179f341, 3e170e56b7) and cleared by pass 2. Held files = [] (a remediation session edits the PR's own branch, not source files). No release needed."
 
 
-[lane.cloudterritory]
+[retired.cloudterritory]
 issues = []
-files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/**"]
+files = []
 standing = false
-note = "WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, a board-dispatched task lane this time, not an outlet unit. Attempt 1, started 2026-09-19T12:36:12Z, briefed at $WORK/briefs/cloudterritory.md to fix the exact defect it is itself an instance of: jobs/cloud.sh starts units without writing the territory row the way lane.sh does at dispatch, so every audit/remediation unit is invisible to check_territory.py until a board tick notices and back-fills it (five occurrences the night this lane was briefed). Its own brief names its files: docs/testing/jobs/cloud.sh (add the row-write at claim time, same branch/validation/push as the board's own) and docs/testing/jobs/selftest.d/ (a new fragment covering it, e.g. 71-cloud-territory.sh). Harness-only -- touches nothing under hw/, target/, accel/, android/. Issue: none (harness defect, dispatched directly per its brief)."
+note = "RETIRED WAVE 126 (job.board): PR #147 MERGED 2026-09-19T13:30:20Z, unit gone. Files RELEASED to [free]: docs/testing/jobs/selftest.d/** (the glob), and docs/testing/jobs/cloud.sh is granted outright to [lane.turncap] above, whose running brief needs it. PRIOR NOTE: WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, a board-dispatched task lane this time, not an outlet unit. Attempt 1, started 2026-09-19T12:36:12Z, briefed at $WORK/briefs/cloudterritory.md to fix the exact defect it is itself an instance of: jobs/cloud.sh starts units without writing the territory row the way lane.sh does at dispatch, so every audit/remediation unit is invisible to check_territory.py until a board tick notices and back-fills it (five occurrences the night this lane was briefed). Its own brief names its files: docs/testing/jobs/cloud.sh (add the row-write at claim time, same branch/validation/push as the board's own) and docs/testing/jobs/selftest.d/ (a new fragment covering it, e.g. 71-cloud-territory.sh). Harness-only -- touches nothing under hw/, target/, accel/, android/. Issue: none (harness defect, dispatched directly per its brief)."
 
 
 [lane.blendrace50]
