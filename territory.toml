@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 95
-updated_utc = "2026-09-18T23:59:00Z"
+wave = 96
+updated_utc = "2026-09-19T00:39:00Z"
 
 
 
@@ -85,10 +85,10 @@ files = []
 note = "THREE ARMS THAT WERE READY AND UNQUEUED WHILE BOTH DEVICES SAT IDLE. Claims no source files -- it registers and queues, it does not edit hw/. THE OWNER SPOTTED THIS BEFORE I DID: 'I find it odd that neither device appears to have any testing running at the moment.' The cause was not a blocked lane; it was that the orchestrator had not queued work that was already ready. (1) #38's blit pair: arm A is 5 of 5 proven, arm B is 3 of 5, ab_compare REFUSED on MIN_RUNS, and BOTH arms need re-queueing rather than just B -- arm A's runs are sound and that was never the question; the question is whether the pair is one population, and a 09-14 A against a half-09-18 B is not. (2) #59's arm: its 600 lines ARE NOW FOLDED, so its prediction needs re-pointing at the FOLDED shas and then queueing -- and note the fleet cannot verify H1/H3 at all in the default build, because OPT_DYNAMIC_BLEND leaves the static pipeline path dead on Adreno, so an arm here confirms accuracy and NOT the remediation. (3) #89: a full iso_surf1 disc run, which is the only thing that separates renderer from disc composition on Swap_ZB -- 236 captures against the 9-capture narrowed disc. REGISTER AFTER THE LAST REBASE: a rebase silently un-ancestors a b_ref and a reachable-but-stale ref makes the dispatcher build fine and measure the WRONG BINARY. Three occurrences, one of them the orchestrator's."
 
 [lane.fold]
-issues = []
+issues = ["84"]
 standing = true
 files = []
-note = "STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
+note = "#84 IS THIS LANE'S RIGHT NOW AND THE ROW HAD TO SAY SO. The fold job's own fleet row named #84 in `asked` and a previous tick added it to dispatch/fleet/fold.json, but fleet.py builds ownership from THIS file and not from the fleet row -- so for two ticks #84 read as DISPATCHABLE while the fold job was holding it, and a lane dispatched on that reading would have landed in a tree being folded. issues[] is the claim; `asked` is prose. Remove #84 from this row when the fold lands (or when it is handed back), not before. STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
 
 [lane.triage]
 issues = []
