@@ -226,10 +226,14 @@ check "...on the SUMMARY line, which is the only line the idle watchdog prints" 
     grep -q "^coverage ok (1 open:" <<< "$out"
 # A CACHE NOBODY IS REFRESHING STILL PRINTS AN HOURS FIGURE, and that figure
 # is a lower bound on the truth rather than the truth: a delivery posted by
-# hand an hour ago is invisible until the next sweep folds it in. `scanned` is
-# written by every cache write, so it can never be older than `delivered` --
-# which means the honest fixture is a stale scan UNDER a stale delivery, and
-# the note has to say which of the two you are looking at.
+# hand an hour ago is invisible until the next sweep folds it in.
+#
+# `scanned` is written by every cache write, so it cannot be MEANINGFULLY older
+# than `delivered`. Not "cannot be older": `delivered` is GitHub's clock and
+# `scanned` is this host's, and the first live delivery recorded them one
+# second apart in that order. Seconds of skew are not what the three-hour
+# threshold is about, and the honest fixture is therefore a stale scan under a
+# stale delivery -- the note has to say which of the two you are looking at.
 brief_cache 10 9; out="$(cov_d)"
 check "a delivery cache nobody has refreshed for 9h says so rather than reading fresh" \
     grep -q "cache last refreshed 9.0h ago" <<< "$out"
