@@ -3506,6 +3506,21 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
                 if (!color) {
                     surf91_overlap_probe(pg, target.vram_addr);
+                    /*
+                     * #91 ARM SCAFFOLDING, NOT A SHIP DECISION. These two
+                     * lines are 67dc7724ee's decline, restored verbatim and
+                     * withdrawn again three commits later, so that #91's fix
+                     * arm can hold #88's policy CONSTANT in both arms and
+                     * measure the fix as its only variable. The regression
+                     * being fixed is only reachable under this policy, so an
+                     * arm without it in both arms would score an inert
+                     * control and discharge nothing. Whether the policy
+                     * itself ships is #88's owner's call and is untouched
+                     * here: this branch's net diff against master carries no
+                     * part of it.
+                     */
+                    pg_surface->buffer_dirty = false;
+                    return;
                 }
                 unbind_surface(d, !color);
             }
