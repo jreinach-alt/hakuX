@@ -210,9 +210,26 @@ def main():
     # until then; board_files says which was read, so a stale local copy is
     # never quoted as a live one (docs/ORCHESTRATION-DESIGN.md §5).
     sys.path.insert(0, HERE)
-    sys.path.insert(0, os.path.join(HERE, "jobs"))
+    # After HERE, not before it: jobs/ is a supplement to this directory, not
+    # a shadow of it.
+    sys.path.insert(1, os.path.join(HERE, "jobs"))
     import board_files
-    from localtime import say_time
+    try:
+        from localtime import say_time
+    except ImportError:
+        # THIS FILE IS ALSO RUN FROM A COPY OF ITSELF. selftest.d/93's board
+        # fixture copies exactly check_coverage.py, fleet.py and board_files.py
+        # into a scratch directory and runs fleet.py there, so anything this
+        # file imports must either be one of those three or be optional. An
+        # unguarded `from localtime import ...` took out all ten of that
+        # fragment's checks at once.
+        #
+        # Degrade to UTC and SAY UTC. The failure mode this whole change exists
+        # to prevent is a clock that is labelled with a zone it is not in; a
+        # line that reads "UTC" while being UTC costs a reader nothing.
+        def say_time():
+            return datetime.datetime.now(datetime.timezone.utc) \
+                           .strftime("%Y-%m-%d %H:%M UTC")
     terr = board_files.load("territory.toml")
     tracker = board_files.load("nv2a_issues.toml")["issue"]
     # Everything else this report prints is a RELATIVE duration ("4.2h"), which

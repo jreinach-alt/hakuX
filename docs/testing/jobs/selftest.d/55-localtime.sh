@@ -81,6 +81,39 @@ check "localtime.py renders the same instant identically (got '$lt_py')" [ "$lt_
 check "local_ts passes an unparseable value through" [ "$(local_ts 'not-a-time')" = "not-a-time" ]
 check "local_ts renders an empty value as empty" [ -z "$(local_ts '')" ]
 
+# fleet.py IS ALSO RUN FROM A COPY OF ITSELF: selftest.d/93's board fixture
+# copies exactly check_coverage.py, fleet.py and board_files.py into a scratch
+# directory and runs fleet.py there, with no jobs/ beside it. So fleet.py's
+# import of the display helper has to be optional, and an unguarded one is not
+# a theoretical risk -- it took out all ten of that fragment's checks at once
+# on this branch's first CI run. Reproduce that layout here, so the next lane
+# to add an import to fleet.py finds out from its own fragment rather than
+# from somebody else's.
+lt_copy="$T/fleet-copy"; mkdir -p "$lt_copy"
+cp "$(dirname "$HERE")/fleet.py" "$(dirname "$HERE")/board_files.py" "$lt_copy/" 2>/dev/null
+# The two board files 93's fixture also writes; HAKUX_BOARD_REF= makes
+# board_files read them from this directory rather than from origin/board.
+printf 'wave = 1\nupdated_utc = "2026-09-19T00:00:00Z"\n' > "$lt_copy/territory.toml"
+printf '[issue.1]\ntitle = "t"\nstatus = "open"\nblocked_on = "b"\n' > "$lt_copy/nv2a_issues.toml"
+lt_out=$(cd "$lt_copy" && HAKUX_BOARD_REF= HAKUX_REPO=example/none python3 "$lt_copy/fleet.py" 2>&1)
+printf '%s\n' "$lt_out" > "$T/fleet-copy.out"
+check "fleet.py still runs when copied away from jobs/ (no ImportError)" \
+      lt_absent 'ImportError|ModuleNotFoundError' "$T/fleet-copy.out"
+# And it degrades HONESTLY: the line says UTC when it is UTC. A copy that
+# printed "PDT" while running on the fallback would be the exact defect this
+# whole change exists to remove.
+check "fleet.py's generated-at line survives the bare copy, labelled UTC" \
+      grep -qE '^fleet report generated [0-9-]{10} [0-9]{2}:[0-9]{2} UTC$' "$T/fleet-copy.out"
+# ...and in the real tree it reaches the helper, so the line carries the zone.
+check "fleet.py in its own tree renders the generated-at line in the display zone" \
+      grep -qE "^fleet report generated [0-9-]{10} [0-9]{2}:[0-9]{2} $(tz_abbr)$" \
+      <<< "$(python3 -c "
+import os, sys
+HERE = os.path.abspath('$(dirname "$HERE")')
+sys.path.insert(0, HERE); sys.path.insert(1, os.path.join(HERE, 'jobs'))
+from localtime import say_time
+print('fleet report generated %s' % say_time())" 2>&1)"
+
 # ------------------------------------------------- display: the tick logs
 # The real thing, not a grep: arms.sh has already run and written its log.
 lt_log="$HAKUX_WORK/logs/arms/tick.log"
@@ -157,4 +190,4 @@ check "arms.sh still records queued_utc in UTC" \
 # that way by checking the field arms.sh reads is still the UTC one.
 check "arms.sh still reads registered_utc as-is" grep -qF 'reg=$(field "$path" registered_utc)' "$HERE/arms.sh"
 
-unset lt_j lt_iso lt_want lt_abbr lt_off lt_sum lt_win lt_sh lt_py lt_log lt_ts lt_h1 lt_h2 lt_pyzone
+unset lt_j lt_iso lt_want lt_abbr lt_off lt_sum lt_win lt_sh lt_py lt_log lt_ts lt_h1 lt_h2 lt_pyzone lt_copy lt_out
