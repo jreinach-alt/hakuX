@@ -361,3 +361,119 @@ therefore a statement about this container. What is immune to all of it is
 every number #158 actually rests on: GL-before against GL-after, and GL against
 Vulkan, same binary, same disc, same host. Those are deltas on one machine, and
 the host's rasteriser cancels.
+
+---
+
+## Audit pass 1 on PR #162: what was taken, and the one finding that could not be
+
+`job.cloud` returned **1 HIGH, 1 MEDIUM, 4 LOW** on `44b35be1`. It is a good
+audit — it confirms the mechanism, the gating, the format coverage and the
+control argument, so none of that needs re-deriving, and the two findings that
+matter are both real.
+
+### H1, taken — and the audit's cheaper alternative does not work
+
+`GL_SRC1_ALPHA` and `GL_ONE_MINUS_SRC1_ALPHA` are not GLES tokens, and
+`pad_write_color_factor()` named them outside any guard, so **the arm64-v8a
+build did not compile**. Dead code still has to parse. The runtime exclusion
+had landed in `gl/renderer.c` and in both `psh.c` gates; the compile-time one
+had landed nowhere.
+
+**I shipped this and reported the head as green.** The desktop build *was*
+green and `preflight.sh` *was* green end to end — both true, and neither builds
+for Android. I had also just written in the environment report that Desktop
+build was green on this head, which was accurate and incomplete: I tried to
+read the check runs, the tools I have did not expose them, and I moved on
+instead of going after the Actions API. The green I could see is not the green
+that matters.
+
+The audit offers two forms and says either is fine: guard the branch, *or*
+"make `pad_stamped` `false` under `#ifdef __ANDROID__` before the `if`". **The
+second does not work** — a compile-time-false `bool` does not stop
+`pad_write_color_factor(...)` inside the branch from having to be parsed, and
+under the guard that function does not exist. Guarding the whole branch is the
+only one of the two that compiles. Worth recording, because taking a correct
+finding's incorrect remedy on trust is a way to be wrong while doing as you
+were told.
+
+Verified two ways, neither of them the desktop build alone, since the desktop
+build was already green while Android was red:
+
+* **Mechanically** — stripping the `__ANDROID__`-false branches leaves **zero**
+  code references to the SRC1 tokens, while the desktop side still names them
+  at the two lines that should.
+* **Behaviourally** — a full disc run on desktop OpenGL, before and after,
+  **byte-identical on 235 of 236**, the single mover being
+  `Surface_pitch::Swizzle`, the race #71 established. A compile-only fix has to
+  move no pixel, and it moves none.
+
+The check that actually closes H1 is the Android job going green, and that is
+CI's to make: **there is no NDK in this container.**
+
+### M1, NOT taken, and it is a measurement limit rather than a judgement call
+
+#59's write side has two halves and I ported one. `vk/draw.c:894-907` overrides
+the clear colour's alpha per pad mode; the GL clear calls the shared
+`pgraph_get_clear_color()` raw, whose alpha switch has no case for the four pad
+formats and falls to `default: *a = 1.0f`. So as of `7ffcd2bc` a GL
+`X8R8G8B8_Z8R8G8B8` surface holds alpha **0 where the raster drew** and **1
+where the clear wrote**. Hardware holds 0 in both. That internal inconsistency
+is new, even though no individual pixel moved away from hardware — which is
+why the audit rated it MEDIUM and why the result table cannot show it.
+
+The audit's option (a) is to take the fix *with a prediction registered first*,
+bound by `Clear::SCF_X8R8G8B8_Z8R8G8B8` and `Clear::SCF_X1R5G5B5_Z1R5G5B5`, and
+warns that taking it **without** one is the thing to avoid.
+
+**I cannot register that prediction, because the Clear suite is not on this
+disc.** `iso_surf1.iso` carries fourteen suites — Blend_surface,
+Color_Zeta_Disable, Color_mask_blend, Color_zeta_overlap, Image_blit,
+Null_surface, Surface_clip, Surface_format, Surface_pitch,
+Texture_Framebuffer_Blit, Texture_format, Texture_perspective,
+Texture_perspective_enable, Texture_render_target — and **no `Clear`**. A disc
+that has it would have to be built with nxdk, which this container does not
+have (environment report, question 2). So option (a) is not "harder here", it
+is unavailable: I would be shipping a four-line behavioural change to a path I
+have no way to observe, which is the same defect as a number nobody can re-run.
+
+Taken as option (b), but with the work specified rather than merely declined:
+the omission is named in the PR body beside the `sampled_pad_alpha` one, the
+captures it leaves wrong are named, and the fix is filed as its own issue with
+the call site, the Vulkan function to mirror and the two prediction keys, so
+whoever holds a disc with the Clear suite can take it without re-deriving any
+of this.
+
+### L2, taken with the correction it points at
+
+The `GL_SRC_ALPHA_SATURATE` comment had reverted to the argument-from-absence
+that `vk/draw.c`'s own pass-1 audit retired as *its* L2. It now carries the
+derivation instead — `min(As, 1 - Ad)` is 0 for **both** pad variants once the
+stamp lands, so nothing needs substituting whatever a disc contains — with the
+corpus observation kept as the secondary note it is there. A wrong comment on
+right code is believed, which is the whole reason that finding is worth making
+twice.
+
+### L1, taken. L3, taken as prose. L4, noted and not acted on.
+
+**L3** is right: the prediction's prose named `Surface_pitch::Swizzle` in a
+kill condition and no leg bound it, so half of a stated kill condition could
+not have fired. The reason it was unbound is good — Swizzle's GL value is not
+stable run to run, moving within 13,160–15,360, so a machine leg on it would
+fire on the race rather than on the change — and today's two control runs put
+the same number on it again from a third and fourth direction.
+
+**I am not editing the registered artifact to fix this.** That prediction has
+already been measured and its sha256 is cited in the PR body; rewriting it now
+would make the hash in the record disagree with the file, and retrofitting a
+leg onto a spent prediction is exactly the move the whole registration
+discipline exists to prevent. The honest form is the one the audit offers as
+its alternative — say it in prose — so: **`Surface_pitch::Swizzle` was excluded
+from the machine legs deliberately, because its GL value is not stable run to
+run; the kill condition on it was a manual check, and it was made.**
+
+**L4** — the index provenance now records `/home/user/…` where the sweep host
+writes `/home/justin/…`, and will flip back next time it is regenerated there.
+Nothing reads it; `cmd_check()` compares `symbols`, `sites` and `suites`, and
+the gate reads `tests_commit`, which is unchanged. It is churn, and the field
+wants to be relative or dropped rather than an absolute path from whichever
+machine last built it. Not this PR's to change.
