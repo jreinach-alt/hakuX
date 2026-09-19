@@ -16,10 +16,30 @@ after the merge because master moved `selftest.sh` underneath them. The
 attempt-1 host snapshots (the disjoint-sets table, the 40-minute re-run) stand
 as dated snapshots and were not re-taken.
 
-What closed it on attempt 2: merge `origin/master` (one conflict, `selftest.sh`,
-two independent blocks, both kept), move `NOTES.md` to
-`docs/lanes/fleetreg/NOTES.md` per `1f7572a34c`, re-run the gate, push,
-`gh pr ready 133`, `gh-label.sh add 133 harness`.
+What closed it on attempt 2: merge `origin/master` **twice** — master moved
+again between the first merge and the push, and GitHub reported `CONFLICTING`
+after a green local preflight, so the second merge was found by re-reading the
+PR's `mergeable` field rather than by assuming one fetch was enough. Both
+merges conflicted only in `selftest.sh`, both times between two independent
+blocks, both times keeping master's block ahead of this lane's so this one
+stays immediately before the summary. Verified additive, not merely
+syntactically clean: `git diff origin/master -- docs/testing/jobs/selftest.sh |
+grep -c '^-[^-]'` is **0**, i.e. the resolution removed no line master had.
+Then move `NOTES.md` to `docs/lanes/fleetreg/NOTES.md` per `1f7572a34c`, re-run
+the gate (**112 passed, 0 failed** after the second merge; 92 after the first)
+and the falsification, push, `gh pr ready 133`, `gh-label.sh add 133 harness`.
+
+Master touched neither `fleet.py` nor `lane.sh` across all ten commits, so the
+falsification baseline is the same code this PR replaces and the old/new split
+is unchanged: **new 26/0, old 5 passed / 21 failed**.
+
+**Incidental, not mine, not fixed:** master's fold of #129 landed a root
+`NOTES.md` again (lane.blit84's), which is the collision `1f7572a34c` added
+`fold.sh resolve-notes` to prevent. So either that fold predates the resolver
+or the resolver did not fire for it. `docs/lanes/blit84/NOTES.md` does not
+exist, only the root copy. Left untouched — `fold.sh` is not among my files —
+but the next lane to land notes will conflict on the root path exactly as
+before, which is the failure that queued four lanes last time.
 
 **For the next lane:** `gh pr ready` is not the last step of the write-up, it
 is the deliverable. Do it the moment the gate is green, before the tidying.
