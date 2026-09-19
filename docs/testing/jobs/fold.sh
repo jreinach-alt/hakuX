@@ -5,9 +5,15 @@
 #
 #   fold.sh          fold the oldest fold-ready PR whose CI is green
 #   fold.sh list     what it would fold, and why the rest waits
+#   fold.sh prune    what the one-time sweep WOULD delete (a dry run)
+#   fold.sh prune --apply
+#                    sweep every lane ref already fully merged into the trunk
 #   fold.sh resolve-notes <worktree> <branch>
 #                    the one conflict resolution below, on an in-progress
 #                    merge, so the self-test can run it without a fake gh
+#   fold.sh prune-branch <dir> <branch> <proof>
+#                    the branch deletion, on a repository handed in, so the
+#                    self-test can run it against a scratch remote, same reason
 #   fold.sh preflight-verdict <preflight log>
 #                    `board` or `tree`: whose failure that log describes, for
 #                    the same reason -- a decision worth testing on its own
@@ -43,6 +49,10 @@
 # numbers, so a merge of two edits to it is stale by construction. If
 # nv2a_index.py check fails after the merge the index is rebuilt from the
 # test sources and committed on top, in the same push.
+#
+# AND THEN THE BRANCH IS DELETED. See prune_branch below: the fold is the one
+# moment that has just PROVED every commit is on the trunk, and nothing else
+# in the harness ever removed a lane ref.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
@@ -90,6 +100,118 @@ resolve_root_notes() {   # <worktree> <branch> -> 0 when the merge is left fully
 }
 if [ "$mode" = resolve-notes ]; then
     resolve_root_notes "${2:?worktree}" "${3:?branch}"; exit $?
+fi
+
+# ------------------------------------------- deleting a folded lane branch
+# Nothing in the harness ever removed a lane ref. arms.sh's collect() walks
+# refs/remotes/origin/lane/* on every tick, and its fetch refspec
+# (+refs/heads/lane/*:refs/remotes/origin/lane/*) does NOT prune, so the cost
+# of every arms tick and every board tick grew monotonically with the number
+# of lanes the project had ever run -- 25 refs on 2026-09-19, 8 of them long
+# since folded -- and none of that growth is work.
+#
+# THIS IS SAFE FOR A REGISTERED b_ref, AND IT IS CHECKED, NOT ASSUMED. Folds
+# are --no-ff so every commit keeps its sha; deleting a ref whose every commit
+# is already on the trunk orphans nothing, which is exactly what "fully
+# merged" means, and the arms job's "is the b_ref an ancestor of a live tip"
+# test still passes against the trunk afterwards. Getting it wrong silently
+# un-arms predictions, so the ancestry is tested against the commit that was
+# just pushed rather than against a remote-tracking ref that is one fetch
+# stale, and against what origin holds NOW rather than what the fold fetched:
+# a lane that pushed after the merge's fetch has commits the fold never saw,
+# and deleting that ref would destroy them.
+#
+# THREE REFS, AND THEY ARE NOT THE SAME THING:
+#   the remote ref           origin's lane/<name>       deleted here
+#   the remote-tracking ref  refs/remotes/origin/lane/  deleted here -- and it
+#                            is the one that matters, because nothing prunes
+#                            it and IT is what arms.sh walks
+#   the local branch         refs/heads/lane/<name>     `branch -d`, which git
+#                            refuses while a lane worktree holds it. That
+#                            refusal is the wanted answer: the ref is left and
+#                            the log says so. Never -D, never --force. The
+#                            worktree is lane.sh rm's business, not a fold's.
+# $WT is a worktree OF $REPO, so both share one ref store: deleting the
+# tracking ref through either directory deletes it for both.
+prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 0 when the remote ref is gone
+    local d="$1" branch="$2" proof="$3" tracking="refs/remotes/origin/$2" rc remote_sha
+    # lane/* and nothing else, ever: not $TIP, not board, not claude/*.
+    case "$branch" in
+        lane/?*) ;;
+        *) say "  NOT pruning '$branch': only lane/* refs are ever deleted"; return 1 ;;
+    esac
+    # ...and a plain ref path, so nothing in it can read as an option to push
+    # or expand into a second ref. check-ref-format refuses .., ~, ^, :, *, a
+    # trailing lock and a leading dash for us.
+    git check-ref-format "refs/heads/$branch" 2>/dev/null \
+        || { say "  NOT pruning '$branch': check-ref-format refuses that name"; return 1; }
+
+    git -C "$d" ls-remote --exit-code origin "refs/heads/$branch" > "$F/lsremote" 2>/dev/null; rc=$?
+    if [ "$rc" -eq 2 ]; then
+        # Already gone from origin (deleted by hand, or a re-run of the sweep).
+        # The tracking ref is then pointing at nothing live and is pure cost.
+        git -C "$d" update-ref -d "$tracking" 2>/dev/null
+        say "  $branch: origin has no such ref; dropped the stale tracking ref"
+    elif [ "$rc" -ne 0 ]; then
+        say "  $branch: cannot reach origin to read the ref (ls-remote exit $rc); kept"
+        return 1
+    else
+        remote_sha=$(cut -f1 < "$F/lsremote")
+        # Fetch so the object is present locally; then judge the LIVE sha.
+        git -C "$d" fetch -q origin "+refs/heads/$branch:$tracking" 2>/dev/null \
+            || { say "  $branch: fetch failed; kept"; return 1; }
+        if ! git -C "$d" merge-base --is-ancestor "$remote_sha" "$proof" 2>/dev/null; then
+            say "  $branch @ ${remote_sha:0:10} is NOT fully merged into $proof; ref KEPT (pushed after the fold's fetch?)"
+            return 1
+        fi
+        git -C "$d" push -q origin --delete "$branch" 2>"$F/prune.log" \
+            || { say "  $branch: delete on origin rejected: $(tail -1 "$F/prune.log"); kept"; return 1; }
+        git -C "$d" update-ref -d "$tracking" 2>/dev/null
+        say "  deleted origin's $branch @ ${remote_sha:0:10} (every commit is on $proof) and its tracking ref"
+    fi
+
+    # The local branch, last and never forced. It is not what costs a tick
+    # anything -- no job walks refs/heads/lane/* -- so a refusal is logged and
+    # the sweep moves on.
+    if git -C "$d" rev-parse -q --verify "refs/heads/$branch" >/dev/null 2>&1; then
+        if git -C "$d" branch -d "$branch" >"$F/prune.log" 2>&1; then
+            say "  deleted local refs/heads/$branch"
+        else
+            say "  local refs/heads/$branch KEPT: $(tr -d '\n' < "$F/prune.log" | tail -c 160)"
+            say "    (if that lane is finished: lane.sh rm ${branch#lane/})"
+        fi
+    fi
+    return 0
+}
+if [ "$mode" = prune-branch ]; then
+    prune_branch "${2:?dir}" "${3:?branch}" "${4:?proof commit}"; exit $?
+fi
+
+# --------------------------------------------------------------- the sweep
+# One pass over every lane ref, for the backlog that accumulated before the
+# fold job learned to clean up after itself. A dry run by default: this
+# deletes refs on the shared remote, so doing it takes saying so.
+if [ "$mode" = prune ]; then
+    git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/lane/*' 2>/dev/null \
+        || { say "prune: fetch failed; refusing to judge ancestry from a stale object store"; exit 1; }
+    total=0; merged=0
+    for ref in $(git -C "$REPO" for-each-ref --format='%(refname:short)' 'refs/remotes/origin/lane/*'); do
+        branch="${ref#origin/}"; total=$((total+1))
+        if ! git -C "$REPO" merge-base --is-ancestor "$ref" "refs/remotes/origin/$TIP" 2>/dev/null; then
+            [ "${2:-}" = --apply ] || echo "keep       $branch (commits not yet on $TIP)"
+            continue
+        fi
+        merged=$((merged+1))
+        if [ "${2:-}" = --apply ]; then
+            say "pruning $branch"
+            prune_branch "$REPO" "$branch" "refs/remotes/origin/$TIP"
+        else
+            echo "would prune $branch @ $(git -C "$REPO" rev-parse --short "$ref") (fully merged into $TIP)"
+        fi
+    done
+    echo "total lane refs: $total, fully merged into $TIP: $merged"
+    [ "${2:-}" = --apply ] || echo "(a dry run; pass --apply to delete them)"
+    exit 0
 fi
 
 # ------------------------------------ a preflight failure that is not the PR's
@@ -335,6 +457,11 @@ Fix on the lane branch and push; the next green head is re-tried."
 
 Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
     say "  folded #$pr as $merge_sha"
+    # HEAD is the commit the push above just put on $TIP, so it IS the trunk's
+    # tip -- a stronger proof than origin/$TIP, which is one fetch stale here.
+    # Only reached after that push succeeded: a branch deleted on a fold that
+    # failed to push is work destroyed.
+    prune_branch "$WT" "$branch" HEAD
     folded=1
 done <<< "$cands"
 
