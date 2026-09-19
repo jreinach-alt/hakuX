@@ -179,7 +179,16 @@ lane, not a tracker row.
 
 1. Write `[lane.laneshape]` with these files (or say which to drop and this
    lane will drop them).
-2. Add to `[lane.remote]`:
+2. Classify **#164** in `nv2a_issues.toml` (opened 18:57Z by the owner, "GL:
+   the clear half of #59's write side is unported"). It is the only thing
+   failing this branch's `preflight.sh`: `coverage` FAILs on an unclassified
+   row, and `nv2a_issues.toml` is a file no lane may edit, so this is
+   AGENTS.md's "a lane cannot satisfy a gate it is barred from fixing"
+   exactly. `--allow-tracker` does **not** clear it -- that flag licenses a
+   checkout that *edits* the board (a gate this branch already passes); the
+   coverage FAIL is a different step. Every other preflight gate on this
+   branch is green, `territory` included.
+3. Add to `[lane.remote]`:
    `remote = "claude/docs-tooling-agentic-coding-u152m1"`.
    Nothing else on the row changes. Until it lands, `fleet.py` still reports
    `remote` as a claim with no agent and `fold.sh` has nothing to exempt --
