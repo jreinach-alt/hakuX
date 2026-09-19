@@ -356,6 +356,51 @@ def shader_check(golden_dir, lo, hi, tie=1.0 / 256.0):
           "disagree, %d px against the goldens" % (tot, bad, gold))
 
 
+def vs_goldens(golden_dir, cap_dir, lo, hi):
+    """THE ARM LEG.  Whole-capture INK mismatch between a capture set and the
+    goldens, over the 48 non-void Line_* captures.
+
+    Coverage only: it compares the ink MASKS, so the overlap-colour rule --
+    #13's separate and much larger residual -- cannot move it in either
+    direction, and neither can a palette difference.  That is what makes it
+    the right leg for a cap change, and it is the same quantity the extent
+    arm quoted as 72,181 px -> 908 px.
+
+    It is golden-constrained: nothing here is derived from the model, so a
+    patch cannot make it true by construction.
+    """
+    gold = {t: g for t, _w, g in lp.captures(golden_dir, lo, hi)}
+    print("%-14s%8s%12s%12s%12s" % ("test", "w", "ours-only", "gold-only",
+                                    "mismatch"))
+    tot = oo_t = go_t = ink = n = 0
+    missing = []
+    for test, w, g in lp.captures(cap_dir, lo, hi):
+        if test in lep.VOID:
+            continue
+        if test not in gold:
+            missing.append(test)
+            continue
+        glit, gvalid = lep.ink(gold[test])
+        olit, ovalid = lep.ink(g)
+        valid = gvalid & ovalid
+        oo = int((olit & ~glit & valid).sum())
+        go = int((glit & ~olit & valid).sum())
+        tot += oo + go
+        oo_t += oo
+        go_t += go
+        ink += int((glit & gvalid).sum())
+        n += 1
+        print("%-14s%8.3f%12d%12d%12d" % (test, w, oo, go, oo + go))
+    print("\n%s\n  %d captures, %d golden ink px, %d mismatched "
+          "(%d ours-only, %d golden-only) = %.4f%%"
+          % (cap_dir, n, ink, tot, oo_t, go_t, 100.0 * tot / max(ink, 1)))
+    if missing:
+        print("  NO GOLDEN for %d captures: %s" % (len(missing), missing[:6]))
+    if n == 0:
+        print("  READ NOTHING. A capture set this tool cannot find scores a "
+              "perfect zero, so this line is the check on that.")
+
+
 VARIANTS = {
     "perp": dict(cap="perp"),
     "pen": dict(cap="perp", pen=1.0, tie="floor1"),
@@ -383,6 +428,9 @@ def main():
                     help="rasterise emit_line()'s own polygon and compare it "
                          "with the model, pixel for pixel")
     ap.add_argument("--shader-tie", type=float, default=1.0 / 256.0)
+    ap.add_argument("--vs-goldens", metavar="CAPTUREDIR", default=None,
+                    help="THE ARM LEG: whole-capture ink mismatch of a "
+                         "capture set against the goldens, coverage only")
     ap.add_argument("--only", default=None,
                     help="comma-separated subset of the rival names")
     a = ap.parse_args()
@@ -390,6 +438,10 @@ def main():
     if a.anatomy:
         kw = VARIANTS[a.only] if a.only else None
         anatomy(a.goldens, a.min_width, a.max_width, kw)
+        return
+
+    if a.vs_goldens:
+        vs_goldens(a.goldens, a.vs_goldens, a.min_width, a.max_width)
         return
 
     if a.shader:
