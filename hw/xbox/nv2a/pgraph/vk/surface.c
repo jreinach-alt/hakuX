@@ -175,8 +175,12 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
  * NV2A_PERF_LOG because a compile-time gate would also take it out of the
  * device arms, which are the only place it is read.
  *
- * REMOVE ALL FOUR -- surf92_probe, surf91_overlap_probe and dl91_probe here,
+ * REMOVE ALL FIVE -- surf92_probe, surf91_overlap_probe and dl91_probe here,
  * clr89_probe/clr91_probe in vk/draw.c -- WHEN #91 IS CLOSED, and not before.
+ * The numeral is the length of that list and nothing else; it read "FOUR"
+ * over these same five names until audit pass 1 (L1), and the pre-existing
+ * text read "THREE" over four. If you add or remove a probe, move the
+ * numeral in the same edit, or drop it and let the list be the list.
  * dl91_probe is #91's FIX side and was added with the fix; it is named in this
  * list rather than carrying its own lifetime rule so that the set still leaves
  * together, which is the property this block exists to hold. The previous
@@ -310,6 +314,13 @@ static void surf91_overlap_probe(PGRAPHState const *pg, hwaddr addr)
  *  - it is placed after the gate, so a binding the gate would once have
  *    invented is absent by construction; `addr=` is therefore the address
  *    that download would have gone to, which is the number worth having.
+ *    It is target.vram_addr, resolved from the CURRENT registers, which is
+ *    the whole of the complaint: the old code downloaded to it rather than
+ *    to wherever the draw actually went. Comparing it against the address
+ *    the suite expects is what separates "declined a download that would
+ *    have landed wrong" from "declined a harmless one" -- the distinction
+ *    the counter alone cannot settle, per the limit two points above.
+ *    (Until audit pass 1 M2 this field was documented here and not emitted.)
  *
  * frame= is pg->frame_time, monotonic per flip (pgraph.c:2307), so this line
  * joins to [surf91] and [clr91] on the same key and partitions by test in
@@ -326,7 +337,7 @@ static struct {
     bool reported;          /* this frame already printed a line           */
 } g_dl91;
 
-static void dl91_probe(PGRAPHState const *pg, bool color)
+static void dl91_probe(PGRAPHState const *pg, bool color, hwaddr addr)
 {
     g_dl91.n++;
 
@@ -346,8 +357,10 @@ static void dl91_probe(PGRAPHState const *pg, bool color)
         return;
     }
 
-    SURF92_LOG("[dl91] frame=%d declined=%lu f_declined=%lu part=%s",
-               pg->frame_time, g_dl91.n, g_dl91.f_n, color ? "color" : "zeta");
+    SURF92_LOG("[dl91] frame=%d declined=%lu f_declined=%lu part=%s "
+               "addr=0x%08" HWADDR_PRIx,
+               pg->frame_time, g_dl91.n, g_dl91.f_n, color ? "color" : "zeta",
+               addr);
 }
 
 static void surf92_probe(bool color, bool gate_open,
@@ -3455,9 +3468,39 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
     Surface *pg_surface = color ? &pg->surface_color : &pg->surface_zeta;
 
+    /*
+     * #91, AUDIT PASS 1 M1: ONLY AN UPLOAD MAY CONSUME THE DIRTY BITS.
+     *
+     * This loop test-and-CLEARS DIRTY_MEMORY_NV2A over the target's page
+     * range -- it is a destructive read, not a query. `mem_dirty` has exactly
+     * two consumers, `surface->upload_pending |= mem_dirty` on the
+     * compatible-hit path and `surface->upload_pending = shelf_stale ||
+     * mem_dirty` on the unshelve path, and BOTH sit inside the `gate_open`
+     * block, which is now upload-only. Run unconditionally, a download
+     * therefore consumed the guest's CPU writes and handed them to nobody.
+     *
+     * The failure that makes this load-bearing rather than tidy: the guest
+     * CPU writes the surface's VRAM range; a download over that range eats
+     * the bits; the next upload finds the binding absent, opens the gate on
+     * the `!current_binding` term, lands on the unshelve path and computes
+     * `mem_dirty == false`, because this call's test-and-clear already found
+     * and discarded the evidence. `upload_pending` stays false, the host
+     * image is taken as-is, and the guest's write is never uploaded -- which
+     * is verbatim what the comment below the unshelve test says that test
+     * exists to prevent.
+     *
+     * SCOPE, STATED SO PASS 2 NEED NOT INFER IT. This also stops the loss on
+     * a download whose binding is PRESENT, which is a pre-existing bug this
+     * branch did not introduce and is repaired here because it is the same
+     * line. It can only turn `upload_pending` from false to true, i.e. cause
+     * a redundant upload of memory the deferred download has already made
+     * current, never a wrong one. It likewise stops eating the bit out from
+     * under the vertex-RAM sync, the only other consumer of this bitmap
+     * (vk/draw.c), for any palette or vertex array sharing these pages.
+     */
     SURF_TIMER_INIT(_st1);
     bool mem_dirty = false;
-    if (!tcg_enabled()) {
+    if (upload && !tcg_enabled()) {
         ram_addr_t start = r->vram_ram_addr + target.vram_addr;
         unsigned long page = start >> TARGET_PAGE_BITS;
         unsigned long end_page =
@@ -3534,6 +3577,16 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
      * -- "this binding needs re-resolving" is not answered by a download --
      * and costs nothing: the next upload unbinds and re-resolves exactly as
      * it would have.
+     *
+     * WHAT A DECLINED DOWNLOAD IS ALLOWED TO CONSUME, since this comment
+     * previously discussed only the binding (audit pass 1, M1). The draw
+     * flags and nothing else: pg_surface->draw_dirty and
+     * write_enabled_cache, retired in the tail for the reason recorded
+     * there. It consumes NEITHER
+     * pg_surface->buffer_dirty (above) NOR the DIRTY_MEMORY_NV2A bits (see
+     * the block over the scan). Both of those answer an upload's question,
+     * and a download that will not resolve a binding must not be the call
+     * that spends them.
      */
     bool gate_open = upload && (!current_binding ||
                                 pg_surface->buffer_dirty || mem_dirty);
@@ -3900,7 +3953,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             }
             g_nv2a_stats.surf_working.download_count++;
         } else {
-            dl91_probe(pg, color);
+            dl91_probe(pg, color, target.vram_addr);
         }
 
         pg_surface->write_enabled_cache = false;
