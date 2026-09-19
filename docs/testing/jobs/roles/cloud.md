@@ -58,7 +58,9 @@ for issues.
 4. **An open issue labelled `cloud` with no `lane:` label.** This is lane
    work that needs no device: analysis, a falsifier script, a desktop-side
    fix with a registered prediction. Branch `lane/cloud-<short>` from
-   `origin/master`, keep `NOTES.md` in the branch root, open a draft PR
+   `origin/master`, keep your notes in `docs/lanes/cloud-<short>/NOTES.md`
+   (per-lane, never the branch root: root copies collide at fold time and
+   every fold after the first is handed back), open a draft PR
    with the template body immediately, commit as you go, and finish by the
    definition of done in `roles/lane.md`. Label the issue `lane:cloud-<short>`.
    If the issue needs a device to make progress, say exactly what run would

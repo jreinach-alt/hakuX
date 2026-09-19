@@ -2,6 +2,7 @@
 """Which device, if any, a request is pinned to.
 
     affinity.py <dispatch-dir> <request.req>     -> prints a device label, or ""
+    affinity.py <dispatch-dir> --serving         -> prints the live lane labels
 
 With more than one handheld, the scheduler's first duty is not throughput --
 it is making sure the two arms of an A/B land on the SAME device.
@@ -70,6 +71,17 @@ def serving(d):
     split pair, which `ab_compare` still scores. The alternative failure,
     hashing over a lane that has stopped serving, pins a request nobody will
     ever claim, and a queued request with no claimant is silent.
+
+    Failing open is still right and it is no longer SILENT: `_note_blind`
+    below records every claim made while this returns nothing, because on
+    2026-09-19 it returned nothing for five hours and every line of this file
+    went on executing exactly as written over an input that was gone.
+
+    Note that `lanes/` is shared with `check_coverage.py`, which stamps
+    `lanes/<lane>.lastbrief` there for an unrelated feature with an unrelated
+    meaning of "lane". Those survive only because a brief stamp does not parse
+    as an int and is skipped by the ValueError below. Nothing may write a
+    NUMERIC file into that directory without this inventing a device.
     """
     live = set()
     ldir = os.path.join(d, "lanes")
@@ -121,6 +133,39 @@ def _note_split(d, reqname, key, dead):
         pass  # never fail a claim over a note
 
 
+def _note_blind(d, reqname, key):
+    """Record that no pin was even ATTEMPTED, because no lane is registered.
+
+    `_note_split` covers the case where the scheduler knew where a sibling ran
+    and let the request go anyway. This covers the worse one, because it is
+    invisible from every angle: `serving()` returned nothing, so rule 2's
+    `_live()` was false for a device that was in fact serving, and rule 3 had
+    no devices to hash over. The pin was not overridden. It was ABSENT, and an
+    absent pin prints exactly what a request with no sibling prints -- "".
+
+    Measured 2026-09-19: something emptied `$D/lanes/` ten minutes after the
+    workers started and nothing rewrote it for five hours, because the worker
+    wrote that file only at startup. #89's arm A ran on the thor and arm B on
+    the nova. `ab_compare` caught the split at judge time, as designed, and
+    the cost was the run rather than the conclusion -- but nothing between the
+    queue and the judge had said a word, and the scheduler was the one actor
+    that knew it had stopped scheduling.
+
+    Written into `splits/` next to `_note_split`'s notes, under a distinct
+    `.blind.txt` suffix so one cannot clobber the other, and so the status
+    roll-up can render both with one glob.
+    """
+    try:
+        os.makedirs(os.path.join(d, "splits"), exist_ok=True)
+        with open(os.path.join(d, "splits", reqname + ".blind.txt"), "w") as f:
+            f.write("no device lane is registered in %s, so %s could not be "
+                    "pinned at all; if this is one arm of an A/B its partner "
+                    "may land on the other handheld\n"
+                    % (os.path.join(d, "lanes"), key))
+    except OSError:
+        pass  # never fail a claim over a note
+
+
 def _live(d, label):
     """Is that device serving RIGHT NOW?
 
@@ -157,6 +202,14 @@ def load(p):
 
 def main():
     d, reqpath = sys.argv[1], sys.argv[2]
+    # `serving()` is the one input every rule here is decided over, and until
+    # now nothing outside this file could ask for it. The dispatcher log and
+    # the status roll-up both need the answer to say "pairs are not being
+    # pinned right now", so expose it rather than have two callers each
+    # reimplement a pid check that took three attempts to get right.
+    if reqpath == "--serving":
+        print(" ".join(serving(d)))
+        return
     req = load(reqpath)
 
     explicit = (req.get("device") or "").strip()
@@ -258,6 +311,12 @@ def main():
         h = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
         print(devs[h % len(devs)])
         return
+    # One serving device needs no pin -- everything lands there anyway, which
+    # is the same answer the hash would give. NO serving device is different
+    # in kind: it means this file's only input is missing and every rule above
+    # was decided over an empty set. Say so.
+    if not devs:
+        _note_blind(d, me, key)
     print("")
 
 
