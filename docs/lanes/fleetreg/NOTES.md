@@ -1,5 +1,29 @@
 # lane.fleetreg — the board's sensor now asks systemd
 
+## Why attempt 1 did not finish (recorded on resume, 2026-09-19T07:20Z)
+
+The work was complete and the PR body was written; **the PR was never taken out
+of draft.** Attempt 1 ended with #133 at `isDraft: true`, no `harness` label,
+`NOTES.md` still at the retired branch-root path, and `origin/master` six
+commits ahead and unmerged. The fold job only considers non-draft PRs, so the
+lane's output was finished-looking and invisible to every consumer — the same
+failure mode as the defect it was fixing, one level up: a result nobody can
+read is not a result.
+
+Nothing measured in attempt 1 was wrong, and nothing below was re-derived on
+this attempt except the selftest and falsification runs, which were re-run
+after the merge because master moved `selftest.sh` underneath them. The
+attempt-1 host snapshots (the disjoint-sets table, the 40-minute re-run) stand
+as dated snapshots and were not re-taken.
+
+What closed it on attempt 2: merge `origin/master` (one conflict, `selftest.sh`,
+two independent blocks, both kept), move `NOTES.md` to
+`docs/lanes/fleetreg/NOTES.md` per `1f7572a34c`, re-run the gate, push,
+`gh pr ready 133`, `gh-label.sh add 133 harness`.
+
+**For the next lane:** `gh pr ready` is not the last step of the write-up, it
+is the deliverable. Do it the moment the gate is green, before the tidying.
+
 ## What was wrong
 
 `fleet.py` is the board's only wake-up: `board.sh:51` greps its output for
