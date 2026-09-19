@@ -13,7 +13,7 @@ set -u
 REPO="${HAKUX_REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 UNITS="$HOME/.config/systemd/user"
-mkdir -p "$UNITS" "$WORK"/{wt,briefs,predictions,attempts,arms,fold,status,logs/board,logs/lane,logs/arms,logs/fold,logs/status,dispatch/logs}
+mkdir -p "$UNITS" "$WORK"/{wt,briefs,predictions,attempts,arms,fold,status,logs/board,logs/lane,logs/arms,logs/fold,logs/status,logs/cloud,dispatch/logs}
 # The arms job runs predictions registered after this watermark; history
 # stays history. Move it back (ISO-8601 UTC) to re-run older ones.
 [ -f "$WORK/arms/since" ] || date -u +%FT%TZ > "$WORK/arms/since"
@@ -25,7 +25,7 @@ for u in "$REPO"/docs/testing/systemd/*.service "$REPO"/docs/testing/systemd/*.t
 done
 systemctl --user daemon-reload
 loginctl enable-linger "$USER" 2>/dev/null || echo "note: enable-linger needs a password; run: sudo loginctl enable-linger $USER"
-systemctl --user enable --now hakux-board.timer hakux-arms.timer hakux-fold.timer hakux-status.timer hakux-nightly.timer hakux-comments.timer hakux-dx.timer
+systemctl --user enable --now hakux-board.timer hakux-arms.timer hakux-fold.timer hakux-status.timer hakux-cloud.timer hakux-nightly.timer hakux-comments.timer hakux-dx.timer
 systemctl --user enable --now hakux-dispatcher.service
 
 # The labels every job reads and writes; gh silently no-ops on a missing one.

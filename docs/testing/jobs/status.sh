@@ -84,12 +84,14 @@ fi
 echo
 
 # ---------------------------------------------------------------- cloud
-echo "### Cloud sessions (last 24h, from their \`[job.cloud]\` comments)"
+echo "### Cloud-class sessions (hourly, on the host; last 24h from their \`[job.cloud]\` comments)"
 echo
 if [ $have_gh = 1 ]; then
     c=$(gh api "repos/$GH_REPO/issues/comments?since=$(since_iso)&per_page=100" \
           --jq '.[] | select(.body | startswith("[job.cloud]")) | "- \(.created_at | .[5:16]) \(.html_url | sub(".*/(issues|pull)/"; "#") | sub("#issuecomment.*"; "")) \(.body | split("\n")[0] | .[11:120])"' 2>/dev/null | tail -10)
-    [ -n "$c" ] && echo "$c" || echo "none. The cloud Routine fires hourly and claims one \`needs-audit-*\` PR or one \`cloud\` issue per firing; a firing with nothing to claim leaves no comment."
+    [ -n "$c" ] && echo "$c" || echo "none. cloud.sh runs hourly and claims one \`needs-audit-*\` PR or one \`cloud\` issue per tick; a tick with nothing to claim leaves no comment."
+    [ $have_sd = 1 ] && echo "- running now: $(systemctl --user list-units 'hakux-cloud-*' --state=active,activating --no-legend --plain 2>/dev/null | awk '{printf "%s ", $1}' | sed 's/hakux-//g; s/.service//g')"
+    [ -f "$WORK/logs/cloud/index.tsv" ] && { echo; echo '```'; tail -4 "$WORK/logs/cloud/index.tsv" | awk -F'\t' '{printf "%s %s %s turns=%s %ss %s %s\n",$1,$2,$3,$4,$5,$7,substr($9,1,80)}'; echo '```'; }
 else
     echo "(gh not available here)"
 fi
