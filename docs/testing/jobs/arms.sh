@@ -52,8 +52,14 @@ say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
 QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait
-[ -f "$A/since" ] || date -u '+%FT%TZ' > "$A/since"
+# Default watermark: two days back, not "now". Seeded at "now" on the first
+# install, it made every prediction the lanes had pushed THAT DAY read as
+# history, and the first tick queued nothing while PR #102's live arm sat
+# there. The expect_sha check is what stops a re-run; the watermark only
+# keeps the job from walking a week of old registrations.
+[ -f "$A/since" ] || date -u -d '2 days ago' '+%FT%TZ' > "$A/since"
 SINCE=$(cat "$A/since")
+history=0
 mode="${1:-run}"
 
 # ----------------------------------------------------------------- collect
@@ -145,7 +151,7 @@ while read -r sha path src; do
     already_ran "$sha" && continue
     reg=$(field "$path" registered_utc)
     for k in amended_utc amended_utc_2; do v=$(field "$path" $k); [ -n "$v" ] && [ "$v" \> "$reg" ] && reg=$v; done
-    [ -n "$reg" ] && [ "$reg" \< "$SINCE" ] && continue      # history; not a refusal, so not recorded
+    [ -n "$reg" ] && [ "$reg" \< "$SINCE" ] && { history=$((history+1)); continue; }   # history; not a refusal, so not recorded
     a=$(field "$path" a_ref); b=$(field "$path" b_ref); who=$(field "$path" who); issue=$(field "$path" issue)
     [ -n "$a" ] && [ -n "$b" ] || { skip "$sha" "$src: no a_ref/b_ref (a soak or a hand-read prediction)"; continue; }
     [ "$a" != "$b" ] || { skip "$sha" "$src: a_ref == b_ref, nothing to compare"; continue; }
@@ -184,7 +190,7 @@ PY
     say "  queued base $ida fix $idb"
     queued=$((queued + 1)); waiting=$((waiting + 2))
 done < <(collect)
-[ "$mode" = list ] && { echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(cat "$f")"; done; exit 0; }
+[ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(cat "$f")"; done; exit 0; }
 
 # ------------------------------------------------------------------- judge
 # The PR a verdict belongs on: the open PR whose head is the branch the

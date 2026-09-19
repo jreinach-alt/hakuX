@@ -70,7 +70,7 @@ if [ -f "$WORK/logs/lane/index.tsv" ]; then
     if [ -n "$rows" ]; then
         echo "| when (UTC) | lane | model | turns | min | result | PR | said |"; echo "|---|---|---|---|---|---|---|---|"
         while IFS=$'\t' read -r ts job model turns secs cost ok log head; do
-            n=${job#lane-}; mins=$(( ${secs:-0} / 60 )) 2>/dev/null
+            n=${job#lane-}; if [[ "${secs:-}" =~ ^[0-9]+$ ]]; then mins=$(( secs / 60 )); else mins="?"; fi   # a "?" from an unparsed log is not a number, and an arithmetic error here aborted the whole page
             echo "| ${ts:5:11} | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(echo "$head" | cut -c1-90 | sed 's/|/\\|/g') |"
         done <<< "$rows"
     else

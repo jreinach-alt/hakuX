@@ -16,7 +16,7 @@ UNITS="$HOME/.config/systemd/user"
 mkdir -p "$UNITS" "$WORK"/{wt,briefs,predictions,attempts,arms,fold,status,logs/board,logs/lane,logs/arms,logs/fold,logs/status,logs/cloud,dispatch/logs}
 # The arms job runs predictions registered after this watermark; history
 # stays history. Move it back (ISO-8601 UTC) to re-run older ones.
-[ -f "$WORK/arms/since" ] || date -u +%FT%TZ > "$WORK/arms/since"
+[ -f "$WORK/arms/since" ] || date -u -d '2 days ago' +%FT%TZ > "$WORK/arms/since"
 
 for u in "$REPO"/docs/testing/systemd/*.service "$REPO"/docs/testing/systemd/*.timer \
          "$REPO"/docs/testing/hakux-comments.service "$REPO"/docs/testing/hakux-comments.timer \
