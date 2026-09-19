@@ -141,6 +141,34 @@ PY
 
 field() { python3 -c "import json,sys;v=json.load(open(sys.argv[1])).get(sys.argv[2],'');print(v if not isinstance(v,(list,dict)) else json.dumps(v))" "$1" "$2"; }
 
+# The PR a verdict belongs on: the open PR whose head is the branch the
+# prediction came from. A host-registered or master prediction goes to its
+# issue instead.
+pr_for() {   # <source>  -> PR number or empty
+    case "$1" in
+        lane/*) gh pr list --repo "$GH_REPO" --head "${1%%:*}" --state open --json number --jq '.[0].number' 2>/dev/null ;;
+    esac
+}
+post() {   # <pr> <issue> <body-file>
+    if [ -n "$1" ]; then gh pr comment "$1" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
+    if [ -n "$2" ]; then gh issue comment "$2" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
+    return 1
+}
+# A REFUSAL FROM request.sh IS TOLD TO THE LANE, ONCE. request.sh's gates
+# (every key must name a golden, the composition rules, the ref must resolve)
+# are the project's own; when they refuse a lane's prediction the lane has to
+# hear it on its PR, not in a file on the host it cannot read. The skipped
+# marker keeps it to one comment; a fixed prediction is a new sha.
+refused() {   # <sha> <source> <issue> <which arm> <stderr file>
+    local sha=$1 src=$2 issue=$3 arm=$4 err=$5 body="$A/log/$sha.refused.md"
+    skip "$sha" "$src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
+    {
+        echo "[job.arms] REFUSED: request.sh would not queue the $arm arm of \`${src#*:}\` (sha256 \`${sha:0:12}\`). The prediction is not on the device until this is fixed."
+        echo; echo '```'; tail -40 "$err"; echo '```'; echo
+        echo "Fix the prediction (a changed file is a new registration and is picked up on the next arms tick, every 30 min), or say on this PR why the refusal is wrong."
+    } > "$body"
+    post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the refusal for $sha anywhere"
+}
 skip() { if [ "$mode" = list ]; then echo "  would skip $1: $2"; else echo "$2" > "$A/skipped/$1"; say "  skip $1: $2"; fi; }
 
 # ------------------------------------------------------------------- queue
@@ -178,10 +206,10 @@ while read -r sha path src; do
     say "queue $src: $name #$issue a=$a b=$b suites=[$suites] runs=$runs"
     qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
-        || { skip "$sha" "$src: request.sh refused the base arm: $(tail -3 "$A/log/$sha.base.err" | tr '\n' ' ')"; continue; }
+        || { refused "$sha" "$src" "$issue" base "$A/log/$sha.base.err"; continue; }
     qb=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-fix" --ref "$b" --suites "$suites" --runs "$runs" \
             --expect "$path" --purpose "FIX arm ${issue:+#$issue }$who at $b, queued by the arms job from $src" 2>"$A/log/$sha.fix.err") \
-        || { skip "$sha" "$src: request.sh refused the fix arm (base ${qa##* } is queued and will run unpaired): $(tail -3 "$A/log/$sha.fix.err" | tr '\n' ' ')"; continue; }
+        || { refused "$sha" "$src" "$issue" "fix (the base arm ${qa##* } is queued and will run unpaired)" "$A/log/$sha.fix.err"; continue; }
     ida="${qa##* }"; idb="${qb##* }"
     python3 - "$A/pairs/$sha.json" "$sha" "$ida" "$idb" "$path" "$src" "$who" "$issue" "$a" "$b" "$suites" <<'PY'
 import json, sys, datetime
@@ -197,19 +225,6 @@ done < <(collect)
 [ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(cat "$f")"; done; exit 0; }
 
 # ------------------------------------------------------------------- judge
-# The PR a verdict belongs on: the open PR whose head is the branch the
-# prediction came from. A host-registered or master prediction goes to its
-# issue instead.
-pr_for() {   # <source>  -> PR number or empty
-    case "$1" in
-        lane/*) gh pr list --repo "$GH_REPO" --head "${1%%:*}" --state open --json number --jq '.[0].number' 2>/dev/null ;;
-    esac
-}
-post() {   # <pr> <issue> <body-file>
-    if [ -n "$1" ]; then gh pr comment "$1" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
-    if [ -n "$2" ]; then gh issue comment "$2" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
-    return 1
-}
 for pair in "$A"/pairs/*.json; do
     [ -f "$pair" ] || continue
     sha=$(field "$pair" sha); [ -f "$A/judged/$sha" ] && continue
