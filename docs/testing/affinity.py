@@ -46,11 +46,46 @@ Three rules, in order:
    modulus.
 
 A request naming no prediction is free and any idle device may take it.
+
+NOT EVERY LANE IS A HANDHELD. `desktop` is this host's own xemu build, and it
+is reachable ONLY through rule 1. See OFFPOOL below.
 """
 import hashlib
 import json
 import os
 import sys
+
+# Lanes that serve requests but must never be CHOSEN for a request.
+#
+# The desktop channel is an execution target with no serial: this host's own
+# xemu build, running the OpenGL renderer that neither handheld can. It
+# registers `lanes/desktop` like any other worker, so `serving()` sees it and
+# the status roll-up can say it is alive -- and that is exactly the problem
+# rule 3 would have had. Rule 3 hashes an A/B pair over the live lanes, so
+# with nova, thor and desktop all serving, one A/B pair in three would have
+# been sent to a renderer nobody asked for, and BOTH ARMS WOULD HAVE GONE
+# THERE TOGETHER -- the hash is deterministic, so the pair stays paired and
+# the result looks entirely healthy. It would have been scored against
+# goldens captured on an Adreno running Vulkan, and every capture that
+# differs for renderer reasons would have read as a defect this lane had
+# introduced. That is the failure mode with no symptom.
+#
+# So the pool that rule 3 hashes over is the HANDHELDS, and rule 1 -- an
+# explicit `device` field, which only a human or a script that means it can
+# set -- is the only route onto the desktop.
+#
+# Rule 2 is deliberately NOT restricted. It pins to where a sibling ACTUALLY
+# RAN, and a sibling can only have run on the desktop because someone asked
+# for the desktop; following it there keeps the pair on one renderer, which
+# is the whole point of rule 2.
+#
+# Kept here as a constant rather than read out of devices.sh: this is the
+# scheduler, it runs on every claim, and a lane that cannot be classified
+# because a file was unreadable would fall back to the behaviour above with
+# no symptom. `selftest.d/55-affinity-offpool.sh` checks that this set and
+# `devices.sh device_offpool_labels` still agree, so the duplication cannot
+# drift in silence.
+OFFPOOL = frozenset({"desktop"})
 
 def serving(d):
     """Labels of the device lanes that are alive right now.
@@ -98,6 +133,17 @@ def serving(d):
             continue
         live.add(name)
     return sorted(live)
+
+
+def pooled(d):
+    """The live lanes that an unpinned request may be assigned to.
+
+    `serving()` answers "who is alive", which is what an observer wants.
+    This answers "who may be chosen", which is what rule 3 needs, and the two
+    are not the same question the moment a non-handheld lane exists. See
+    OFFPOOL.
+    """
+    return [x for x in serving(d) if x not in OFFPOOL]
 
 
 def _note_split(d, reqname, key, dead):
@@ -158,10 +204,12 @@ def _note_blind(d, reqname, key):
     try:
         os.makedirs(os.path.join(d, "splits"), exist_ok=True)
         with open(os.path.join(d, "splits", reqname + ".blind.txt"), "w") as f:
-            f.write("no device lane is registered in %s, so %s could not be "
-                    "pinned at all; if this is one arm of an A/B its partner "
-                    "may land on the other handheld\n"
-                    % (os.path.join(d, "lanes"), key))
+            f.write("no poolable device lane is registered in %s, so %s could "
+                    "not be pinned at all; if this is one arm of an A/B its "
+                    "partner may land on the other handheld. (Lanes alive but "
+                    "not poolable: %s.)\n"
+                    % (os.path.join(d, "lanes"), key,
+                       ", ".join(sorted(set(serving(d)) & OFFPOOL)) or "none"))
     except OSError:
         pass  # never fail a claim over a note
 
@@ -209,6 +257,13 @@ def main():
     # reimplement a pid check that took three attempts to get right.
     if reqpath == "--serving":
         print(" ".join(serving(d)))
+        return
+    # The pool rule 3 actually hashes over. A reader asking "why did this pair
+    # not get pinned" needs THIS set, not the one above: with only the desktop
+    # lane alive, `--serving` prints a lane and `--serving-pooled` prints
+    # nothing, and the second is the one that explains the empty pin.
+    if reqpath == "--serving-pooled":
+        print(" ".join(pooled(d)))
         return
     req = load(reqpath)
 
@@ -306,7 +361,7 @@ def main():
     # one. sha256 rather than hash() because hash() of a str is salted per
     # process -- two workers would compute different answers for the same
     # name, which is the race again wearing a hat.
-    devs = serving(d)
+    devs = pooled(d)
     if len(devs) > 1:
         h = int(hashlib.sha256(key.encode()).hexdigest()[:8], 16)
         print(devs[h % len(devs)])
