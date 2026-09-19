@@ -70,6 +70,8 @@ if [ -f "$WORK/logs/lane/index.tsv" ]; then
     if [ -n "$rows" ]; then
         echo "| when (UTC) | lane | model | turns | min | result | PR | said |"; echo "|---|---|---|---|---|---|---|---|"
         while IFS=$'\t' read -r ts job model turns secs cost ok log head; do
+            # Rows written before the model column existed have eight fields; shift them.
+            if [[ "$model" =~ ^[0-9?]+$ ]]; then head="$log"; log="$ok"; ok="$cost"; cost="$secs"; secs="$turns"; turns="$model"; model="-"; fi
             n=${job#lane-}; if [[ "${secs:-}" =~ ^[0-9]+$ ]]; then mins=$(( secs / 60 )); else mins="?"; fi   # a "?" from an unparsed log is not a number, and an arithmetic error here aborted the whole page
             echo "| ${ts:5:11} | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(echo "$head" | cut -c1-90 | sed 's/|/\\|/g') |"
         done <<< "$rows"
@@ -130,6 +132,11 @@ if [ -d "$A" ]; then
         for f in $v; do sha=$(basename "$f"); src=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('source',''))" "$A/pairs/$sha.json" 2>/dev/null); echo "- \`${sha:0:10}\` $src: $(head -1 "$f" | cut -c1-120)"; done
     fi
     [ -f "$WORK/logs/arms/tick.log" ] && { echo; echo '```'; tail -4 "$WORK/logs/arms/tick.log" | cut -c1-160; echo '```'; }
+    sk=$(ls -t "$A"/skipped/* 2>/dev/null | head -3)
+    if [ -n "$sk" ]; then
+        echo; echo "last refusals, in full (a refusal is recorded once; delete the file under \`\$WORK/arms/skipped/\` to retry):"; echo
+        for f in $sk; do echo "- \`$(basename "$f" | cut -c1-10)\` $(cat "$f" | cut -c1-600)"; done
+    fi
 else
     echo "- arms job: not installed yet"
 fi
