@@ -3484,9 +3484,12 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * pg->surface_zeta.buffer_dirty cleared, on the argument that "no
              * zeta binding means nothing was drawn into a zeta image, so the
              * download tail below is correctly skipped". True for that call
-             * and false one call later: the early return also skips :3724,
-             * which is the only place pg->surface_zeta.draw_dirty is cleared.
-             * It therefore stays set, and pgraph_vk_surface_update()'s
+             * and false one call later: the early return also skips this
+             * function's own download tail -- the trailing
+             * `if (!upload && pg_surface->draw_dirty)`, cited by its condition
+             * rather than by a line number because L4 caught that habit twice
+             * -- which is the only place pg->surface_zeta.draw_dirty is
+             * cleared. It therefore stays set, and pgraph_vk_surface_update()'s
              * download branch re-enters update_surface_part(d, false, false)
              * on the strength of it. There the gate is open BECAUSE the
              * binding is absent, so once colour has moved off the overlap

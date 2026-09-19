@@ -749,21 +749,28 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  * is what makes this narrowing safe rather than a trade. Read against the tip
  * rather than against the state #59 was written in:
  *
- *   - surface.c:3500, the compatible-reuse path, assigns
- *     `surface->drawn_format = target.drawn_format` AND `surface->host_fmt =
- *     target.host_fmt` together, both from the live target -- so a reused
- *     binding no longer carries the format that created it, and the SAMPLE
- *     side tracks the live format through the same assignment. That refresh
- *     is part of #59's own landed work.
+ *   EVERY surface.c CITATION BELOW IS BY SYMBOL, NOT BY LINE. The by-line
+ *   forms this block used to carry (:3500, :3215, :3675-3681, :1931, :121-124)
+ *   were all correct when written and all wrong within a day, because this
+ *   lane's own probes moved surface.c by about eighty lines. That is audit
+ *   pass 1's L4 -- the same drift, five more times, in the block that fixed it
+ *   once.
+ *
+ *   - update_surface_part()'s compatible-reuse path (the `is_compatible`
+ *     branch) assigns `surface->drawn_format = target.drawn_format` AND
+ *     `surface->host_fmt = target.host_fmt` together, both from the live
+ *     target -- so a reused binding no longer carries the format that created
+ *     it, and the SAMPLE side tracks the live format through the same
+ *     assignment. That refresh is part of #59's own landed work.
  *   - target.drawn_format IS pg->surface_shape.color_format
- *     (populate_surface_binding_target_sized, surface.c:3215).
+ *     (populate_surface_binding_target_sized(), surface.c).
  *   - a colour-format change reaches that refresh on the next
  *     pgraph_vk_surface_update(upload=true). SET_SURFACE_FORMAT does not set
  *     surface_color.buffer_dirty for a format-only change (pgraph.c:2461-2524),
  *     but framebuffer_dirty() compares the whole SurfaceShape, colour format
- *     included, and sets BOTH buffer_dirty flags when it differs
- *     (surface.c:3675-3681); unbind_surface() NULLs the binding
- *     (surface.c:1931), and the `!current_binding` term re-resolves it.
+ *     included, and pgraph_vk_surface_update() sets BOTH buffer_dirty flags
+ *     when it differs; unbind_surface() NULLs the binding, and the
+ *     `!current_binding` term in update_surface_part() re-resolves it.
  *   - pgraph_vk_clear_surface() calls that surface_update before every clear
  *     -- its sole `pgraph_vk_surface_update(d, true, write_color, write_zeta)`
  *     -- and this function is reached from nowhere else. Cited by callee and
@@ -778,7 +785,8 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  *
  * THE WORLD IN WHICH THAT LEG FAILS, named before the arm runs:
  * framebuffer_dirty() returns false on a CHANGED shape when
- * `!color_format && !zeta_format` (surface.c:121-124). In that one state a
+ * `!color_format && !zeta_format` (its early return, surface.c). In that one
+ * state a
  * colour-format change is not propagated, the binding keeps the previous
  * format, and the two expressions diverge. The hole is framebuffer_dirty()'s
  * -- i.e. #92's -- and is deliberately not closed here: that function is
