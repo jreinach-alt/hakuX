@@ -71,6 +71,43 @@ tail downloads what it just bound over guest VRAM. The address it resolves
 comes from the **current registers**, not from wherever the draw went.
 `TestSwap()` is the test that trades the two addresses.
 
+### GL already has the fixed form, and #88's prediction saw the difference and read it as benign
+
+The strongest independent evidence, found after the fix was written and not
+used to derive it. `pgraph/gl/surface.c:2956`:
+
+```c
+if (upload && (surface->buffer_dirty || no_binding)) {
+```
+
+That is exactly the shape this change gives Vulkan. **GL has gated the
+absent-binding term on `upload` all along**, so on GL a download has never
+been able to resolve a binding.
+
+And this was *noticed*. #88's own registered prediction says, in terms:
+
+> Vulkan's gate is already `!current_binding || (upload && (pg_surface->buffer_dirty || mem_dirty))` [...] and it is **strictly MORE permissive** than GL's fixed form because it is not gated on `upload`. So ONLY THE POLICY IS PORTED.
+
+The observation is exact and the inference from it is the defect: "strictly
+more permissive" was read as harmless breadth, and the conclusion drawn was
+that the gate needed no porting. The half of #66's chain that was skipped is
+the half that mattered here. **A renderer difference that has been written
+down and dismissed is worth re-reading before it is worth re-deriving.**
+
+This citation is deliberately **not** added to the code comment in
+`vk/surface.c`. It was found after `7980d1caa2` was written, and that commit is
+the arm's `b_ref`; leaving the tree byte-identical to the binary the arm
+measures is worth more than a comment, which is why it lives here and in #148
+instead. It belongs in the code the next time that function is edited for a
+reason.
+
+One thing this comparison does *not* license, stated so it is not carried
+further: GL's `unbind_surface()` does not clear `draw_dirty` either, so GL's
+own tail (`gl/surface.c:3212`) can in principle reach `surface_download(d,
+NULL, true)`. Whether that is reachable or guarded downstream was **not**
+established here -- `gl/surface.c` is not this lane's file and was read only
+for the gate. It is an observation for whoever owns that file, not a finding.
+
 ### This resolves blitsafe's impasse rather than picking a side of it
 
 blitsafe established by reading that the decline **cannot fire inside `Swap`**
