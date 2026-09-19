@@ -320,6 +320,11 @@ fi
 echo
 [ -n "$cid" ] && echo "The full roll-up is [in the comment below](https://github.com/$GH_REPO/issues/$issue#issuecomment-$cid), rewritten in place every tick."
 echo "GitHub shows a comment's *posted* time, not its edited time, and never moves an edited comment -- so read the clock in this body and in the title above it, never the timestamp beside the comment."
+echo
+# Carried forward from the body this header replaces. It is the page's only
+# standing instruction and the first tick after this landed would have been the
+# last anyone saw of it.
+echo "_Pin this issue. Do not comment here: the roll-up is the only content, and it is regenerated from the host each tick._"
 } > "$HDR" 2>/dev/null
 gh api -X PATCH "repos/$GH_REPO/issues/$issue" -F body=@"$HDR" --silent >/dev/null 2>&1 \
     && echo "updated #$issue body" || echo "could not update the #$issue body"

@@ -61,6 +61,10 @@ check "the body header warns that a comment's rendered time is its posted time" 
     grep -q "posted\* time, not its edited time" "$HDR"
 check "the body header links the roll-up comment" \
     grep -q 'issues/107#issuecomment-5738613782' "$HDR"
+# The header REPLACES the body that used to hold this, so a tick that dropped
+# it would quietly make the page's only standing instruction disappear.
+check "the body header keeps the do-not-comment instruction" \
+    grep -q 'Do not comment here' "$HDR"
 check "a tick one minute after the last one reports no lapse" sf_unlapsed
 # The fixture value must be GONE: asserting the file is merely non-empty is
 # satisfied by the line this fragment wrote itself a moment ago.
