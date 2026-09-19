@@ -206,22 +206,57 @@ def main():
     # every blocker reports UNTESTED, which is accurate -- none of them has
     # ever been recorded as tested -- and is listed separately from the
     # genuinely unblocked so it cannot be mistaken for a dispatch queue.
+    #
+    # DISPATCHABLE IS NOW A STRUCTURED FIELD TOO, AND THE PROSE SNIFF IS GONE.
+    # This section used to read `"NOT BLOCKED" in blocked_on.upper()`, which
+    # was the right instinct against the wrong schema: check_coverage.py
+    # accepted ANY non-empty `blocked_on` as coverage and nothing else, so the
+    # board's only way to satisfy preflight for an issue it could not dispatch
+    # this tick was to write into the field that means "do not dispatch this" --
+    # and six open rows on 2026-09-18 duly opened with the words "NOT BLOCKED".
+    # The sniff undid that from this side and cost a false positive to do it:
+    # #92's field says "I had written NOT BLOCKED and then left it
+    # unallocated", the board recording a wording it had ALREADY corrected,
+    # and the substring search reported the row as dispatchable on the
+    # strength of that sentence.
+    #
+    # `dispatch_state = "available"` is now the third state check_coverage.py
+    # accepts, so the prose has no job left. "Available" is about the
+    # OBSTACLE; whether a lane is on it is territory.toml's, which is why the
+    # running-lane skip above still applies on top of it.
+    #
+    # AN UNCLASSIFIED ROW IS REPORTED SEPARATELY AND STILL SETS rc. No
+    # blocker, no `dispatch_state`, no running lane: an empty row is not a
+    # dispatch queue, and calling it dispatchable would assert the board is
+    # sitting on work it can start -- a stronger claim than an empty row
+    # supports, and exactly the "available by default" direction that got
+    # finished work re-dispatched before.
+    #
+    # BUT IT MUST NOT COST A FAIL, and that took a second pass to see. The old
+    # code called such a row dispatchable, which was the wrong description AND
+    # a non-zero exit; moving it to a note would have been the right
+    # description and a SILENT one. #34 and #62 are in exactly this state on
+    # the live board today (owned by lane.remote, no blocker, nothing else), so
+    # the hole would have opened the moment that lane stopped running. Separate
+    # section, accurate words, same exit code.
     dispatchable = []
     untested = []
+    unclassified = []
     for n in sorted(live, key=int):
         lane = owned.get(n)
         if lane and lane in lanes_with_agent:
             continue
         ent = tracker.get(n, {})
         b = (ent.get("blocked_on") or "").strip()
-        why = "no blocker" if not b else None
-        if b and "NOT BLOCKED" in b.upper():
-            why = "blocker says NOT BLOCKED"
-        if why:
-            dispatchable.append((n, lane, why, titles.get(n, "")[:52]))
+        st = (ent.get("dispatch_state") or "").strip()
+        if st == "available":
+            dispatchable.append((n, lane, "dispatch_state=available",
+                                 titles.get(n, "")[:52]))
         elif b and not (ent.get("blocker_tested") or "").strip():
             untested.append((n, lane, (ent.get("blocker_falsifier") or "").strip(),
                              titles.get(n, "")[:52]))
+        elif not b and st != "blocked":
+            unclassified.append((n, lane, titles.get(n, "")[:52]))
 
     print("=== RUNNING (%d)" % len(running))
     for f in running:
@@ -271,6 +306,17 @@ def main():
                  ("falsifier: " + fals[:24]) if fals else "NO FALSIFIER WRITTEN",
                  title))
 
+    # NOT A DISPATCH QUEUE, BUT STILL PART OF THE EXIT CODE (see above). These
+    # rows say nothing at all: no blocker, no `dispatch_state`, no running
+    # lane.
+    print("\n=== NEITHER BLOCKED NOR MARKED AVAILABLE (%d)" % len(unclassified))
+    if unclassified:
+        print("  An empty row is not a dispatch queue -- write "
+              "`dispatch_state = \"available\"` if nothing blocks it, or the "
+              "blocker if something does. check_coverage.py fails on these.")
+    for n, lane, title in unclassified:
+        print("  #%-4s %-12s %s" % (n, lane or "-", title))
+
     # SAME LIVE-PLUS-DISK MIX AS check_coverage.py, SO THE SAME QUALIFIER.
     # This reads open issues live from GitHub and territory.toml/
     # nv2a_issues.toml from whatever checkout it is standing in. Run from a
@@ -297,6 +343,15 @@ def main():
         rc = 1
     if dispatchable:
         print("FAIL: %d issue(s) could be dispatched and are not." % len(dispatchable),
+              file=sys.stderr)
+        rc = 1
+    if unclassified:
+        print("FAIL: %d open issue(s) are NEITHER BLOCKED NOR MARKED "
+              "AVAILABLE and no lane is running on them -- %s. An empty row "
+              "is not a dispatch queue and it is not coverage either: write "
+              "the blocker, or `dispatch_state = \"available\"`."
+              % (len(unclassified),
+                 ", ".join("#" + n for n, _, _ in unclassified)),
               file=sys.stderr)
         rc = 1
     if unfolded:
