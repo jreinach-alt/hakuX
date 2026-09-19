@@ -125,6 +125,12 @@ weeks and outside our control, which is exactly why the integer is worth
 getting right the first time -- a variant at 34 would come back six weeks later
 having fused two of the three rules.
 
+**There is no fork to stage it in.** Both `/home/justin/nxdk_pgraph_tests` and
+`/home/justin/goldens` are direct clones of `abaire/*` with `push` pointing at
+upstream and no second remote, so this is a pull request to a third party's
+repository and a person's call, not a lane's. The patch is committed here so
+that call is a review rather than a rewrite.
+
 ## Ready for the capture
 
 `wbuf_anchor_recover.py`'s `PRIMS` already lists `ClipF-150-035`. The entry is
