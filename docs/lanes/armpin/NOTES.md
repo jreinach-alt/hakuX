@@ -139,9 +139,13 @@ file count there would report devices that do not exist.
 Old code restored with `git show origin/master:<file> > <file>` for
 `affinity.py`, `dispatcher.sh` and `status.sh` together, re-run, restored.
 
+Measured before merging `origin/master`, which brought `lane/notespath`'s 19
+further checks in:
+
 ```
-new code:  selftest: 66 passed,  0 failed
-old code:  selftest: 49 passed, 17 failed
+before the merge   new code:  selftest: 66 passed,  0 failed
+                   old code:  selftest: 49 passed, 17 failed
+after the merge    new code:  selftest: 85 passed,  0 failed
 ```
 
 All 17 failures are mine; no pre-existing check broke. The three that pass both
