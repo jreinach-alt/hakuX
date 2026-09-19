@@ -106,12 +106,70 @@ live data and not only on fixtures.
 was already stale; the code reads `$WORK/limits.env`, so this needs no change,
 but anyone reasoning from "4" should re-read the file.
 
-## Falsification against the code being replaced
+Re-run on the **merged** tree (attempt 3, after `origin/master` came in), which
+is the only version of this measurement that describes the code being reviewed:
 
-`.scratch/drive.sh` (scratch, not committed) ran the six gate cases against
-`git show origin/master:docs/testing/jobs/board.sh`. Every case printed
-`cannot create .../board-wt` and `rc=1`: no `#120`, no `0/2 lanes running`, no
-`no positive trigger`. All thirteen new checks go red.
+```
+capacity: 5/11 lanes running, startable issues:
+#93 #92 #91 #89 #88 #86 #85 #84 #79 #77 #65 #62 #60 #59 #53 #50 #43 #38 #34 #31 #13 #10
+ready PRs with no state label:
+#134 #122 #117 #115
+```
+
+Same 22 issues; the lane count and the PR list both moved, as they should on a
+live fleet. #129 and #128 have since been labelled and are correctly gone;
+#134 is new and correctly present. The trigger tracks state rather than
+reporting a fixed list.
+
+## Falsification, in two layers
+
+The block is **14** checks, not the thirteen an earlier commit message and an
+earlier draft of these notes both said.
+
+### Layer 1 — against the code being replaced
+
+`.scratch/falsify.sh` (scratch, not committed) extracts the block from the real
+`selftest.sh` by its section header — so the falsification cannot drift from
+what CI runs — and executes it twice against two directories of symlinks to
+`jobs/`, one with this branch's `board.sh` and one with
+`git show origin/master:…`. Result: **14 passed / 0 failed** on this branch,
+**0 passed / 14 failed** against master. Every check flips.
+
+**This layer is weaker than its 14/14 looks, and the weakness is worth
+naming.** All 14 go red for the *same* reason: master's `board.sh` has no
+`gate` argument, so it falls through to a board worktree it cannot create and
+dies. That shows the checks need the new code. It does **not** show that any
+individual check pins the behaviour its name claims — 14 checks that only
+detected "board.sh is the old one" would produce an identical table.
+
+### Layer 2 — one mutant per invariant
+
+So `.scratch/mutants.sh` breaks the **new** `board.sh` one invariant at a time
+and requires the named check to go red *and the other thirteen to stay green*:
+
+| mutant | named check goes red | other checks |
+|---|---|---|
+| drop `needs-rebase` from `STATE` | yes | all green |
+| drop the `isDraft` skip | yes | all green |
+| stop sourcing `$WORK/limits.env` | yes | all green |
+| `lanes < LANE_MAX` → `true` | yes | **one more**, see below |
+| `SKIP_PREFIX` loses `blocked:` | yes | all green |
+| `SKIP` gains `harness`/`dispatchable` | yes | all green |
+| the no-gh `NOTE:` becomes a bland line | yes | all green |
+
+The cap mutant trips two checks, and that is correct rather than sloppy: two
+checks assert the cap is honoured, one at the default and one at a raised
+`LANE_MAX`, so a cap that is ignored must fail both. The script refuses to
+score a mutant whose `sed` matched nothing, because a mutant that changed no
+bytes passes everything for free and reads exactly like a specific check.
+
+### How the falsification is run, which is the part attempt 2 got wrong
+
+`falsify.sh` and `mutants.sh` **never write to `docs/testing/jobs/board.sh`**.
+They build a directory of symlinks to `jobs/` and swap the one file inside it.
+Both scripts end by printing `git status --porcelain` for the real path, which
+must be empty. Attempt 2 instead redirected `git show origin/master:…` over the
+real file and ended before restoring it — see the section at the top.
 
 ## Not done / out of scope
 
