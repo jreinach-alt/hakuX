@@ -66,6 +66,7 @@ T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"          # docs/testing
 LANE_SH="${HAKUX_LANE_SH:-$T/lane.sh}"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone
+. "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh" # remote_lane_of: a branch a lane owns from somewhere this host cannot see
 H="$WORK/handback"
 mkdir -p "$H/done" "$H/cause" "$H/strand" "$WORK/attempts" "$WORK/logs/handback"
 LOG="$WORK/logs/handback/tick.log"
@@ -245,9 +246,40 @@ EOF
 # runs the function in a command-substitution subshell, so the REASON it sets
 # on the refusing paths is discarded and the PR gets a comment that stops
 # mid-sentence at the colon -- which is the whole content of the answer.
+#
+# A REMOTE LANE IS ELSEWHERE, NOT ABSENT, and that is a different answer. The
+# `*)` arm below used to catch `lane.remote`'s `claude/...` head and tell its PR
+# "whoever owns this branch merges origin/master into it by hand" -- true of a
+# person's branch and wrong about a lane that has been contributing for days.
+# The routine that wakes that session picks the handback up on its next fire;
+# saying so is the whole fix, because nothing local should act.
+#
+# IT IS TESTED FIRST, BEFORE THE `lane/*` ARMS. A remote lane whose branch is
+# someday named `lane/<name>` would otherwise fall into the local arm and be
+# resumed here -- a second agent on a branch a cloud container pushes to, with
+# no lock. `lane.sh` refuses that too; this is not the only guard, on purpose.
+#
+# THE DEPTH IS REAL ONLY BECAUSE THE TWO GUARDS FAIL DIFFERENTLY. This one
+# reads a POSITIVE -- "some row names this branch" -- which the fold-lagged
+# in-tree territory.toml can still answer truthfully; what it cannot answer is
+# the absence, and this arm never asks it to. When the board read is stale and
+# the row is missing, the head falls through to the local arm and reaches the
+# single resume call site below -- where `remote_authoritative` refuses
+# outright (lane.sh's refuse_if_remote). Two guards, two different questions,
+# not one question asked twice.
+#
+# (Not spelling the resume invocation out here is deliberate:
+# `99-handback-draft.sh` counts that exact string to prove there is ONE call
+# site, and a comment quoting it makes the count read 2. A grep anchored on a
+# call matches the prose too.)
 NAME=""; REASON=""
 lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
     NAME=""; REASON=""
+    local rl; rl=$(remote_lane_of "$1")
+    if [ -n "$rl" ]; then
+        REASON="\`$1\` is \`lane.$rl\`'s branch, and that lane runs somewhere this host cannot see (\`remote\` in \`territory.toml\`). Nothing local resumes it and nothing local should: its routine picks this up on its next fire. The work is unchanged -- merge \`origin/$TIP\` into the branch, resolve, push, then re-apply \`fold-ready\`."
+        return 1
+    fi
     case "$1" in
         lane/cloud-*)
             REASON="\`$1\` is a cloud session's branch: it has no local worktree, and cloud lanes remediate themselves (\`jobs/roles/cloud.md\`). Nothing local can resume it."
