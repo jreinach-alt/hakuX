@@ -3264,3 +3264,12 @@ blocker_tested = "CONFIRMED BY READING 2026-09-18: the issue body says 'Nothing 
 status = "open"
 status_note = "Owner is acquiring a physical Xbox. Nothing here is dispatchable as a device run until a hardware listener exists; each experiment's prediction and falsifier can be written now, per the issue text."
 blocked_on = "Blocked on real Xbox hardware and a hardware listener (a way to boot a disc and capture the framebuffer), per the issue text. Every listed experiment's prediction/falsifier is lane-writable now -- labelled cloud."
+
+[issue.138]
+title = "decision-needed: lane.remote holds 10 issues, 74+ unfolded commits, no PR, and lane.sh has no worktree to resume"
+disposition = "harness"
+suites = []
+no_suites = "a board/tracker-state question, not a suite result."
+status = "open"
+status_note = "Filed 2026-09-19 by job.board: territory.toml's [lane.remote] claims 12 files and issues 34,39,51,60,62,66,71,72,82,86 with 74+ unfolded commits described in its note, but `lane.sh resume remote` reports no worktree at $WORK/wt/remote, and no `lane/remote` branch exists on origin -- it was never a lane.sh-managed lane."
+blocked_on = "Blocked on the owner naming where lane.remote's actual commits live (an unmanaged worktree under ~/hakuX/.claude/worktrees/agent-* or a hakuX-wt-* sibling checkout, per the issue body) -- until then #34,39,51,60,62,66,71,72,82,86 stay claimed in territory.toml but cannot be resumed or safely re-dispatched without risking duplicate or orphaned work."
