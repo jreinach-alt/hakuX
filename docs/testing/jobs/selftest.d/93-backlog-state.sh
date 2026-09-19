@@ -50,12 +50,26 @@ BD="$T/board"; BDD="$T/board-dispatch"
 # coupling was invisible; a fragment that leaves fixtures in a shared
 # directory for a later fragment to trip over is the failure mode the split
 # was done to remove.
-mkdir -p "$BD" "$T/bin2" "$BDD/fleet" "$BDD/deliveries"
+mkdir -p "$BD" "$T/bin2" "$BDD/fleet" "$BDD/delivery-cache"
 cp "$BSRC/check_coverage.py" "$BSRC/fleet.py" "$BSRC/board_files.py" "$BD/"
 check "the three board modules were copied from $BSRC" \
     bash -c '[ -s "$1/check_coverage.py" ] && [ -s "$1/fleet.py" ] && [ -s "$1/board_files.py" ]' _ "$BD"
 printf '{"lane":"alpha","agent":"a","issues":["1"],"dispatched_utc":"2026-09-19T00:00:00Z","asked":"the running lane"}\n' > "$BDD/fleet/alpha.json"
-: > "$BDD/deliveries/alpha.md"     # so the UNBRIEFED tail stays out of line 1
+# So the UNBRIEFED tail stays out of line 1, which every check below asserts on.
+# It was an empty `deliveries/alpha.md` until the delivery channel moved to
+# GitHub comments (#154): a fresh delivery is now a cached comment timestamp,
+# and it has to be generated rather than written literally, because "fresh"
+# is measured against the clock this run happens on.
+python3 - "$BDD/delivery-cache/alpha.json" <<'PY'
+import datetime, json, sys
+now = datetime.datetime.now(datetime.timezone.utc)
+iso = lambda d: d.strftime("%Y-%m-%dT%H:%M:%SZ")
+json.dump({"lane": "alpha",
+           "delivered": iso(now - datetime.timedelta(minutes=20)),
+           "delivered_thread": 1,
+           "delivered_url": "https://example.invalid/1#issuecomment-1",
+           "scanned": iso(now)}, open(sys.argv[1], "w"))
+PY
 cat > "$T/bin2/gh" <<'EOF'
 #!/usr/bin/env bash
 # Four open issues, which is what a board fixture needs and all it needs.
