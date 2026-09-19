@@ -122,6 +122,38 @@ fi
 echo "- queue: $(ls "$D"/queue/*.req 2>/dev/null | wc -l) waiting, $(ls "$D"/running/*.req 2>/dev/null | wc -l) running; holds: $(ls "$D"/hold 2>/dev/null | grep -v '\.why$' | grep -v '^lifted$' | tr '\n' ' ')"
 for r in "$D"/running/*.req; do [ -f "$r" ] || continue; echo "  - running: $(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(d.get('requester',''),d.get('ref','')[:10],'--',(d.get('purpose') or '')[:90])" "$r" 2>/dev/null)"; done
 [ -f "$D/logs/dispatcher.log" ] && echo "- dispatcher last line: \`$(tail -1 "$D/logs/dispatcher.log" | cut -c1-140)\`"
+
+# ---- affinity: which handheld a pair is pinned to, and when it was not.
+#
+# `affinity.py`'s whole job is keeping the two arms of an A/B on ONE device,
+# and when it cannot it writes a note into `$D/splits/`. Until this section
+# NOTHING READ THAT DIRECTORY. On 2026-09-19 #89's pair ran base on the thor
+# and fix on the nova; the note saying so was written correctly and was found
+# only by someone who already suspected it and knew the path. The note's own
+# docstring says it exists "so the DECISION is discoverable rather than
+# reconstructed from a pace difference" -- which requires a reader.
+#
+# Asking affinity.py for `serving` rather than counting files: `$D/lanes/` is
+# shared with check_coverage.py's `<lane>.lastbrief` stamps, a different
+# feature and a different meaning of "lane", so a file count there would
+# report devices that do not exist.
+if aff_live=$(python3 "$(dirname "$J")/affinity.py" "$D" --serving 2>/dev/null); then
+    if [ -n "$aff_live" ]; then
+        echo "- affinity: lanes serving \`$aff_live\` -- an A/B pair queued now is pinned to one of them"
+    else
+        echo "- affinity: **no device lane is registered** in \`$D/lanes\`. Pinning is inert: an A/B pair queued now can split across two handhelds, and \`ab_compare\` will refuse to attribute the result. Check that \`hakux-dispatcher.service\` is up."
+    fi
+else
+    echo "- affinity: (could not read \`$D/lanes\`)"
+fi
+sp=$(find "$D/splits" -maxdepth 1 -name '*.txt' -mmin -1440 -printf '%T@ %p\n' 2>/dev/null | sort -rn | head -5 | cut -d' ' -f2-)
+if [ -n "$sp" ]; then
+    echo "- affinity notes, last 24h (a pair named here may span two devices and cannot isolate run-to-run variation):"
+    while read -r f; do
+        [ -n "$f" ] || continue
+        echo "  - \`$(basename "$f" | sed 's/\.req\.\(blind\.\)\?txt$//' | cut -c1-48)\`: $(tr '\n' ' ' < "$f" | cut -c1-220 | sed 's/|/\\|/g')"
+    done <<< "$sp"
+fi
 A="$WORK/arms"
 if [ -d "$A" ]; then
     pend=0; for p in "$A"/pairs/*.json; do [ -f "$p" ] || continue; sha=$(basename "$p" .json); [ -f "$A/judged/$sha" ] || pend=$((pend+1)); done
