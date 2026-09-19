@@ -97,7 +97,7 @@ to something other than a human eye.
 
 ## Proof
 
-`selftest.d/87-fold-stale-ci.sh`, 30 checks, drives the real `fold.sh` and the
+`selftest.d/87-fold-stale-ci.sh`, 42 checks, drives the real `fold.sh` and the
 real `handback.sh` against its own shims and its own `HAKUX_WORK`. The two
 halves **share** that `HAKUX_WORK`: the cause file the fold half writes is the
 one the handback half reads, so the join is what is tested, not two fixtures
