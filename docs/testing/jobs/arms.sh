@@ -125,7 +125,26 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
             return 0
         fi
     fi
-    grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req "$D"/results/*/request.json 2>/dev/null
+    grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req 2>/dev/null && return 0
+    # A RESULT THAT ERRORED IS NOT A RUN. The ARM ERROR comment tells the lane
+    # to "delete $WORK/arms/judged/<sha> and $WORK/arms/pairs/<sha>.json to
+    # have the job queue it again", and that advice could not work: the errored
+    # result's request.json still carries the expect_sha, so this test matched
+    # it forever and the arm was unqueueable no matter what was deleted.
+    # Measured 2026-09-19, when #89's arm failed to build on BOTH sides for a
+    # reason that was the host's and not the code's.
+    #
+    # This does not re-queue in a loop. The pair marker stops the next tick
+    # while the pair is in flight, and the judge writes judged/<sha>=ERROR as
+    # soon as it sees the ERROR arm; both are checked above. Deleting them is
+    # still a deliberate act, and now it does what it says.
+    local rj
+    for rj in "$D"/results/*/request.json; do
+        [ -f "$rj" ] || continue
+        [ -f "$(dirname "$rj")/ERROR" ] && continue
+        grep -q "\"expect_sha\": *\"$sha\"" "$rj" && return 0
+    done
+    return 1
 }
 
 live_ancestor() {   # is $1 an ancestor of the trunk or of any lane tip?
