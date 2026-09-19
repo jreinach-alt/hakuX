@@ -273,11 +273,22 @@ def main(argv=None):
           % (region or "whole frame", len(flagged), len(rows),
              100.0 * len(flagged) / len(rows),
              [r["dump_frame"] for r in flagged]))
+    # Direction and PERSISTENCE are reported, not gated -- same treatment, same
+    # reason.  Persistence is here because a SCENE CUT also produces an HF step
+    # and the registered classifier cannot tell one from the artifact: the
+    # artifact is reported as lasting a frame or two and a cut does not end, so
+    # the neighbouring ratios say which shape a flag has without the threshold
+    # being quietly rewritten to exclude cuts after the fact.
+    by_idx = {r["dump_frame"]: i for i, r in enumerate(rows)}
     for r in flagged:
+        i = by_idx[r["dump_frame"]]
+        neigh = [("%.2f" % rows[j]["ratio"]) if 0 <= j < len(rows) else "--"
+                 for j in (i - 2, i - 1, i + 1, i + 2)]
         print("    f%-4d HF %6.2f  base %6.2f  ratio %5.2f  d1/d2 %5.2f "
-              "(local %5.2f, dev %5.2f)"
+              "(local %5.2f, dev %5.2f)  neighbours %s | %s"
               % (r["dump_frame"], r["hf"], r["base"], r["ratio"],
-                 r["d_ratio"], r["d_base"], r["d_dev"]))
+                 r["d_ratio"], r["d_base"], r["d_dev"],
+                 " ".join(neigh[:2]), " ".join(neigh[2:])))
 
     labels = np.array([r["stipple"] for r in rows], dtype=bool)
     out = dict(dump=os.path.basename(args.dump), session=session.get("id"),
