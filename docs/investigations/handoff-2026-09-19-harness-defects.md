@@ -163,6 +163,47 @@ pair marker stops the next tick while a pair is in flight, and the judge writes
 
 ## Found, NOT fixed -- for you to weigh
 
+### 0. THE ONE THAT STOPPED EVERYTHING: a healthy board dispatches nothing
+
+Found last, and it is the reason the fleet was idle rather than merely slow.
+At 05:35Z, all of these at the same instant:
+
+| | |
+|---|---|
+| `fleet.py` FAIL lines | none |
+| `check_coverage.py` | clean |
+| open issues labelled `dispatchable` | 0 |
+| lanes running / `LANE_MAX` | 0 / 2 |
+| device requests queued or running | 0 / 0 |
+| open issues | 29 |
+
+Six consecutive board ticks logged `nothing actionable` with both handhelds
+attached and idle. `board.sh`'s gate is the whole of it:
+
+```bash
+if [ -z "$fails" ] && [ -z "$cov" ]; then
+    say "nothing actionable"; exit 0
+fi
+```
+
+`fails` is `fleet.py`'s FAIL lines; `cov` is the coverage gate. **Both inputs
+are error reports.** Neither can ever say *"there is capacity and there is
+work"*. So a healthy board dispatches nothing — and the board job is the only
+actor permitted to label an issue `dispatchable` or call `lane.sh start`.
+
+It feeds itself: no lane runs, so no prediction is pushed, so the arms job has
+nothing to queue, so the handhelds idle. **Idleness is not a failure any gate
+reports**, so nothing anywhere says the fleet has stopped. The status roll-up
+shows it accurately and reads as calm.
+
+`script-first, model-second` is right and is not the problem. The problem is
+that the script half only knows how to detect breakage.
+
+Dispatched as `lane.boardgate` with a positive trigger to build: wake when
+`lanes_running < LANE_MAX` and an open issue is startable, and again when a
+ready PR carries no state label (#101 and #102 both sat ready and unlabelled
+through a tick that logged `nothing actionable`).
+
 ### 6. An A/B pair split across two handhelds, and `serving()` was empty
 
 #89's first pair went base->`thor`, fix->`nova`. `affinity.py`'s rule 2 pins a
@@ -244,13 +285,41 @@ and every lane after that conflicts with whatever landed. Either the path
 should be per-lane (`docs/lanes/<name>/NOTES.md`) or it should not be folded at
 all.
 
+## A note on how these were dispatched, because the first attempt was wrong
+
+Three of these were filed as GitHub issues (#119-#121) and dispatched through
+the board's state machine. That was a mistake and the owner stopped it. Within
+the hour the three issues had produced: three `nv2a_issues.toml` rows, two
+briefs on the `board` branch, one `territory.toml` lane, a board tick that hit
+its 70-turn cap writing them, and **a red coverage gate that failed the fold of
+an unrelated PR** — because an open issue with no lane recorded fails
+`check_coverage.py`, and a red coverage gate fails `preflight` for every fold
+and every lane on the repository.
+
+The fixes themselves are twenty-minute script edits. Deleting the three issues
+required removing every one of those artefacts by hand.
+
+**An issue per harness defect buys a tracker row, a brief, a territory lane and
+a coverage-gate dependency, and none of that survives contact with a fix that
+lands the same evening.** The tracker exists for renderer work, where an issue
+outlives many lanes and carries measurements nobody should re-derive. Harness
+defects are dispatched straight to a lane with a self-contained brief; this
+document is their record.
+
 ## What is verified working, end to end, as of this writing
 
 - `selftest.sh`: 27 -> 46 checks, green. Every fix above ships with a check that
   **fails against the code it replaces** -- verified by running the new tests
   against the old script, not by assuming.
 - The fold job folded its first PR (#116 -> `05e25ca29b`) unattended.
-- The arms job queued #89's arm, both sides, and the dispatcher is building
-  them -- past the CMake configure that failed twice, on one handheld, pinned.
-  The verdict is not in at the time of writing; this line will read as a
-  measurement or it will not, and it is written so the difference is visible.
+- The fold job folded its first two PRs unattended (#116 -> `05e25ca29b`,
+  #118 -> `a1691ae68e`).
+- The arms job queued #89's arm, both sides; the dispatcher built both
+  (`808a74e96fee`, `4912782893cd`) and ran them on one handheld, pinned. 42
+  captures each, all scored against goldens. **`VERDICT: PASS -- all 44
+  registered checks hold`**, posted on PR #102. That is the whole pipeline --
+  registration, queue, build, device, judge, comment -- moving without a person
+  in it, which it had never done before tonight.
+- The cloud outlet claimed PR #102 for audit pass 1 and is running it.
+- Four lanes are running on the four unfixed defects above:
+  `boardgate` (0), `foldci` (7), `armsskip` (9), `armpin` (6).
