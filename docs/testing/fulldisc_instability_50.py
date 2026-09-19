@@ -142,33 +142,61 @@ def classify(runs, keys):
     RACE needs one device to disagree with itself.  Nothing else does, and in
     particular a disagreement BETWEEN devices does not, which is the whole
     correction this function exists to make.
+
+    CLASSIFIED ON THE CAPTURE BYTES, DISPLAYED WITH THE COUNTS.  The
+    `differing` column is produced by score_sweep.py, and `scorer_rev` is NOT
+    constant across the runs on disk -- the three original full-disc runs
+    carry (absent), 4a6a98dce4 and 027fa3d552.  Classifying on that column
+    would make a scorer change look like a device difference or a race, which
+    is this file's own error class one level down.  The PNG is what the
+    device produced and no scorer touches it, so the split is taken there.
+
+    The counts are still printed, because they are the numbers #50 is written
+    in and a reader has to be able to check one against the other.  Where the
+    two instruments disagree the row is flagged rather than silently resolved.
     """
-    race, device, stable = [], [], []
+    race, device, stable, mismatch = [], [], [], []
     for t in sorted(keys):
-        per_dev = collections.OrderedDict()
+        per_dev = collections.OrderedDict()      # device -> [count, ...]
+        hash_dev = collections.OrderedDict()     # device -> [hash, ...]
         for r in runs:
             per_dev.setdefault(r["device"], []).append(int(r["rows"][t]["differing"]))
-        within = {d: sorted(set(v)) for d, v in per_dev.items()}
-        all_vals = set()
-        for v in per_dev.values():
-            all_vals |= set(v)
+            hash_dev.setdefault(r["device"], []).append(capture_hash(r, t))
+        # if any capture is missing from disk, fall back to the count for that
+        # capture and say so rather than dropping it
+        have_all = all(h is not None for v in hash_dev.values() for h in v)
+        basis = hash_dev if have_all else per_dev
+        within = {d: set(v) for d, v in basis.items()}
+        allv = set()
+        for v in basis.values():
+            allv |= set(v)
+        if have_all:
+            moved_count = len(set(x for v in per_dev.values() for x in v)) > 1
+            moved_hash = len(allv) > 1
+            if moved_count != moved_hash:
+                mismatch.append((t, moved_count, moved_hash))
+        rec = (t, per_dev, hash_dev, have_all)
         if any(len(v) > 1 for v in within.values()):
-            race.append((t, per_dev))
-        elif len(all_vals) > 1:
-            device.append((t, per_dev))
+            race.append(rec)
+        elif len(allv) > 1:
+            device.append(rec)
         else:
             stable.append(t)
-    return race, device, stable
+    return race, device, stable, mismatch
 
 
 def show(title, items, runs):
     print()
     print("=== %s: %d" % (title, len(items)))
-    for t, per_dev in items:
-        print("  %-24s" % t)
+    for t, per_dev, hash_dev, have_all in items:
+        print("  %-24s%s" % (t, "" if have_all else "   (no PNGs; counts only)"))
         for dev, vals in per_dev.items():
-            flag = "  <-- disagrees with itself" if len(set(vals)) > 1 else ""
-            print("      %-6s %s%s" % (dev, vals, flag))
+            hv = hash_dev.get(dev) or []
+            basis = hv if have_all else vals
+            flag = "  <-- disagrees with itself" if len(set(basis)) > 1 else ""
+            print("      %-6s counts %s%s" % (dev, vals, flag))
+            if have_all:
+                print("      %-6s bytes  %s" % ("", [h[:8] for h in hv]))
 
 
 def main():
@@ -206,10 +234,22 @@ def main():
         print("  so nothing it alone shows can be called a race. That is exactly")
         print("  how 'instability is RUN-SCOPED' was read off one nova run.")
 
-    race, device, stable = classify(fruns, full)
+    scorers = sorted(set(r["scorer"] for r in fruns))
+    if len(scorers) > 1:
+        print("  scorer_rev is NOT constant across these runs: %s" % scorers)
+        print("  -> the split below is taken on the capture BYTES, which no")
+        print("     scorer touches; the counts are printed alongside to check.")
+
+    race, device, stable, mismatch = classify(fruns, full)
     print()
     print("  moved at all: %d of %d   (race %d, device-only %d, stable %d)"
           % (len(race) + len(device), len(full), len(race), len(device), len(stable)))
+    if mismatch:
+        print("  INSTRUMENTS DISAGREE on %d capture(s): %s"
+              % (len(mismatch), [m[0] for m in mismatch[:10]]))
+        print("  (capture, count-says-moved, bytes-say-moved) -- trust the bytes")
+        for m in mismatch[:10]:
+            print("     %-24s count=%s bytes=%s" % m)
 
     show("RACE -- one device disagrees with ITSELF, same binary, same disc",
          race, fruns)
@@ -219,7 +259,7 @@ def main():
     # CROSS-CHECK: capture bytes vs the score column, on the movers plus a
     # sample of the "stable" set.  A capture the count calls stable and the
     # bytes call unstable is the failure mode the count cannot see.
-    movers = [t for t, _ in race] + [t for t, _ in device]
+    movers = [r[0] for r in race] + [r[0] for r in device]
     print()
     print("=== INSTRUMENT CROSS-CHECK (sha256 of the capture PNG)")
     missing = 0
