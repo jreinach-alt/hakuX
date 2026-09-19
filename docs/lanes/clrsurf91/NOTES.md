@@ -211,6 +211,14 @@ sha256 `dfcf84103eb3`, three-suite disc. Not queued by this lane.
    suite**, was never solo, and read 165,447 -> 304,750 like the other disc.
    The exoneration does not stand, and the `status_note` has not been updated.
    A board request should correct it; this lane may not edit the tracker.
+   **Filed in attempt 2 to `$DISPATCH_DIR/board-requests/clrsurf91.md`.**
+   Attempt 1 wrote both corrections into the PR body and this file and filed
+   nothing -- the record is not the delivery, and a correction that exists only
+   in a PR body reaches no one who edits the tracker. Re-verified before
+   filing rather than carried forward: `grep -n "only.tests"
+   docs/testing/jobs/arms.sh` has no match on master at `415dcc6997`, and
+   `arms.sh:519,522` pass `--suites` alone. Note `board-requests/blitsafe.md`
+   carries the same exoneration claim in its own #91 section.
 2. **The brief says the two diagnosis arms "found the regression intrinsic, not
    contamination from ColorIntoZeta".** Cross-suite composition is excluded;
    *within*-suite contamination is exactly what those comments say **remains**
