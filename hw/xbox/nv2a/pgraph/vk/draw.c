@@ -732,29 +732,69 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  * readback half of #48 was never wired up, so changing it there would be a
  * half-change on a renderer this arm does not measure.
  *
- * KEYED ON THE BINDING, NOT THE REGISTER, AND THAT IS THE WHOLE POINT.
+ * NARROWED TO THE SHAPE AT WAVE 93, #89. A NARROWING OF THIS STAMP AND NOT A
+ * REVERT OF IT: per the paragraph above, the clear ALWAYS wrote 1.0 before
+ * #59, so a revert restores a different defect.
  *
- * This stamp exists to agree with the sample-side override in
- * vk/texture.c (surface_sampled_pad_alpha), which reads
- * surface->host_fmt.sampled_pad_alpha. Keying this side on
- * pg->surface_shape.color_format -- the LIVE guest format -- made the two
- * sides answer from different state, and they can differ: A8R8G8B8,
- * X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one VkFormat, so
- * check_surface_compatibility() reuses one binding across a change between
- * them. drawn_format and host_fmt are assigned together from the same
- * `target` on BOTH the create path (surface.c:3215) and the
- * compatible-reuse path (surface.c:3500), so taking this side from
- * drawn_format makes the two sides derive from one color_format value by
- * construction rather than by the register happening to be current.
+ * WHAT IT USED TO READ, AND WHY. `pgraph_vk_surface_drawn_format(
+ * r->color_binding)` -- what the surface was LAST DRAWN WITH -- so that this
+ * side and the sample-side override in vk/texture.c
+ * (surface_sampled_pad_alpha, reading surface->host_fmt.sampled_pad_alpha)
+ * could not answer from different state. They can differ in principle:
+ * A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one
+ * VkFormat, so check_surface_compatibility() reuses one binding across a
+ * change between them.
  *
- * Before the #59 stamp this could not bite: the clear always wrote 1.0, so
- * only the sampler had an opinion and there was nothing to disagree with.
+ * THE INVARIANT THAT DEFENCE PROTECTS IS NOW MAINTAINED AT ITS SOURCE, which
+ * is what makes this narrowing safe rather than a trade. Read against the tip
+ * rather than against the state #59 was written in:
  *
- * Every caller already guards on r->color_binding; the register fallback is
- * for the no-binding case only, where nothing is sampled either.
+ *   - surface.c:3500, the compatible-reuse path, assigns
+ *     `surface->drawn_format = target.drawn_format` AND `surface->host_fmt =
+ *     target.host_fmt` together, both from the live target -- so a reused
+ *     binding no longer carries the format that created it, and the SAMPLE
+ *     side tracks the live format through the same assignment. That refresh
+ *     is part of #59's own landed work.
+ *   - target.drawn_format IS pg->surface_shape.color_format
+ *     (populate_surface_binding_target_sized, surface.c:3215).
+ *   - a colour-format change reaches that refresh on the next
+ *     pgraph_vk_surface_update(upload=true). SET_SURFACE_FORMAT does not set
+ *     surface_color.buffer_dirty for a format-only change (pgraph.c:2461-2524),
+ *     but framebuffer_dirty() compares the whole SurfaceShape, colour format
+ *     included, and sets BOTH buffer_dirty flags when it differs
+ *     (surface.c:3675-3681); unbind_surface() NULLs the binding
+ *     (surface.c:1931), and the `!current_binding` term re-resolves it.
+ *   - pgraph_vk_clear_surface() calls that surface_update before every clear
+ *     (draw.c:6751), and this function is reached from nowhere else.
  *
- * WHETHER THE TWO EXPRESSIONS CAN STILL DISAGREE IS #89's QUESTION, and the
- * probe below counts it rather than arguing it.
+ * So the two expressions agree by construction in every state the suite can
+ * reach, and THIS NARROWING IS PREDICTED TO BE INERT -- predicted, not hoped:
+ * see docs/testing/predictions/issue89-clear-pad-alpha-shape.json, whose
+ * must_not_move names Color_mask_blend and all 32 Blend_surface captures for
+ * exactly that reason.
+ *
+ * THE WORLD IN WHICH THAT LEG FAILS, named before the arm runs:
+ * framebuffer_dirty() returns false on a CHANGED shape when
+ * `!color_format && !zeta_format` (surface.c:121-124). In that one state a
+ * colour-format change is not propagated, the binding keeps the previous
+ * format, and the two expressions diverge. The hole is framebuffer_dirty()'s
+ * -- i.e. #92's -- and is deliberately not closed here: that function is
+ * duplicated verbatim in gl/surface.c:997 and editing it moves surface
+ * identity on BOTH renderers, which is #55 and #60's ground.
+ *
+ * WHY THE SHAPE IS THE RIGHT SOURCE WHERE THEY DO DIFFER. Hardware stamps the
+ * pad constant of the format in the surface format register AT THE TIME OF
+ * THE CLEAR, which is the shape. drawn_format is a host-side field that
+ * tracks that register; taking the decision from the tracker rather than the
+ * tracked is what made this site look like #89's mechanism. It is not:
+ * #89's arms D, E and F each put one Blend surface test of one pad-alpha
+ * class -- including the _O format, the only shape that reaches
+ * rgba[3] = 1.0f -- ahead of the suite, and all three read 0. That mechanism
+ * is withdrawn on the issue; this change is a correctness narrowing, NOT a
+ * fix for the 141,125.
+ *
+ * Every caller already guards on r->color_binding; the register was the
+ * fallback for the no-binding case and is now the only source.
  */
 
 /*
@@ -819,15 +859,11 @@ static void clr89_probe(PGRAPHState *pg, unsigned int shape_format)
 
 static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
 {
-    PGRAPHVkState *r = pg->vk_renderer_state;
-
     pgraph_get_clear_color(pg, rgba);
 
-    unsigned int color_format =
-        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
-                           pg->surface_shape.color_format;
+    unsigned int color_format = pg->surface_shape.color_format;
 
-    clr89_probe(pg, pg->surface_shape.color_format);
+    clr89_probe(pg, color_format);
 
     switch (pgraph_glsl_surface_pad_alpha_mode(color_format)) {
     case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
