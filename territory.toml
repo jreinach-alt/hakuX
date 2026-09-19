@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 106
-updated_utc = "2026-09-19T09:40:00Z"
+wave = 107
+updated_utc = "2026-09-19T10:20:00Z"
+
+
+[lane.armlabel]
+issues = []
+files = ["docs/testing/jobs/arms.sh", "docs/testing/jobs/selftest.d/94-arms-label-state.sh", "docs/lanes/armlabel/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 107 (job.board) -- lane was RUNNING (PR #144 draft, attempt 1/opus-5) with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback/ciskip/cloud-audit2-102 before it. No tracker issue (harness defect, dispatched directly): arms.sh labelled a PR from the LAST verdict judged rather than from the full set, so PR #102 (lane.blitsafe) flipped regressed -> verified at 10:03Z with an outstanding FAIL on #88 still live and nothing superseding it. Files per the PR's own brief header. Not started or managed by anything but lane.sh; this row exists so check_territory.py can see it."
 
 
 [lane.cloud-remediate-102]
