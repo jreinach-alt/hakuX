@@ -98,369 +98,47 @@ date -u -d '1 minute ago' '+%FT%TZ' > "$HAKUX_WORK/arms/since"   # fences every 
 # Make our registration look like it came from a lane branch, so the verdict/refusal path targets a PR.
 mkdir -p "$HAKUX_WORK/arms"
 
-echo "== arms.sh list"
-out=$(bash "$HERE/arms.sh" list 2>&1)
-check "list names the live prediction as WOULD QUEUE" grep -q "WOULD QUEUE .*selftest-live.json.*suites=\[Blend surface,Color mask blend\]" <<< "$out"
-check "list fences the committed history behind the watermark" grep -q "older than the watermark" <<< "$out"
-
-echo "== arms.sh run: queue"
-bash "$HERE/arms.sh" >/dev/null 2>&1
-pairs=$(ls "$HAKUX_WORK"/arms/pairs/*.json 2>/dev/null | wc -l)
-reqs=$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)
-check "one pair recorded" [ "$pairs" -eq 1 ]
-check "two requests in the dispatcher queue" [ "$reqs" -eq 2 ]
-if [ "$reqs" -eq 2 ]; then
-    for r in "$DISPATCH_DIR"/queue/*.req; do
-        python3 - "$r" "$EXP" <<'PY' && ok "request $(basename "$r") parses, runs is an int, expect_sha bound" || bad "request $(basename "$r") malformed"
-import json, sys, hashlib
-d = json.load(open(sys.argv[1]))
-assert isinstance(d["runs"], int) and d["runs"] >= 1, d["runs"]
-assert d["expect_sha"] == hashlib.sha256(open(sys.argv[2], "rb").read()).hexdigest(), "expect_sha"
-assert d["suites"] == ["Blend surface", "Color mask blend"], d["suites"]
-PY
-    done
-fi
-check "nothing was skipped for the live prediction" bash -c '! ls "$HAKUX_WORK"/arms/skipped/* 2>/dev/null | xargs -r grep -l selftest-live'
-check "a second run does not queue it again" bash -c 'bash "$HERE/arms.sh" >/dev/null 2>&1; [ "$(ls "$DISPATCH_DIR"/queue/*.req | wc -l)" -eq 2 ]'
-
-echo "== arms.sh run: judge the ERROR path"
-pair=$(ls "$HAKUX_WORK"/arms/pairs/*.json | head -1)
-idb=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['id_b'])" "$pair")
-sha=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['sha'])" "$pair")
-mkdir -p "$DISPATCH_DIR/results/$idb"; echo "simulated device failure" > "$DISPATCH_DIR/results/$idb/ERROR"
-bash "$HERE/arms.sh" >/dev/null 2>&1
-check "an ERROR arm is judged as ARM ERROR" grep -q ERROR "$HAKUX_WORK/arms/judged/$sha"
-check "the ARM ERROR was posted somewhere" grep -qE '^(pr|issue) comment' "$SELFTEST_GH_LOG"
-
-echo "== arms.sh: a request.sh refusal reaches the lane, and is retried when arms.sh changes"
-EXP2="$DISPATCH_DIR/expect/selftest-badkey.json"
-python3 - "$EXP2" "$A" "$B" <<'PY'
-import json, sys, datetime
-p, a, b = sys.argv[1:]
-json.dump({"registered_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-           "who": "lane.selftest", "issue": "1", "prediction": "a key that binds no golden",
-           "a_ref": a, "b_ref": b, "expect": {"Blend_surface/NoSuchCapture": 0},
-           "must_not_move": [], "must_not_regress": [], "expect_counts": {}}, open(p, "w"), indent=2)
-PY
-: > "$SELFTEST_GH_LOG"
-bash "$HERE/arms.sh" >/dev/null 2>&1
-sha2=$(sha256sum "$EXP2" | cut -d' ' -f1)
-check "the bad key is recorded as skipped with request.sh's reason" grep -q "request.sh refused" "$HAKUX_WORK/arms/skipped/$sha2"
-check "the refusal was posted as a comment" grep -qE '^(pr|issue) comment' "$SELFTEST_GH_LOG"
-check "the refusal comment names REFUSED" grep -q REFUSED "$HAKUX_WORK/arms/log/$sha2.refused.md"
-check "the skipped marker carries the arms.sh version" grep -q '^arms=' "$HAKUX_WORK/arms/skipped/$sha2"
-
-# The retry must reach the markers written BEFORE the stamp existed -- which is
-# every marker that was already on the host when the retry shipped, including
-# the single refusal (#89's, 02:56Z) the retry was written for. The first
-# version tested `grep -q '^arms='` first, so an unstamped marker took the
-# `else` and was skipped forever: the guard exempted exactly the backlog it was
-# meant to clear. Reproduce the host's marker by stripping the stamp.
-sed -i 's/^arms=[^ ]* //' "$HAKUX_WORK/arms/skipped/$sha2"
-: > "$SELFTEST_GH_LOG"
-out=$(bash "$HERE/arms.sh" 2>&1)
-check "an unstamped refusal (written before the stamp existed) is reconsidered" grep -q "reconsidering $sha2" <<< "$out"
-check "the rewritten marker carries the stamp, so it is not retried every tick" grep -q '^arms=' "$HAKUX_WORK/arms/skipped/$sha2"
-check "a stamped refusal at this version is left alone" bash -c 'out2=$(bash "$HERE/arms.sh" 2>&1); ! grep -q "reconsidering" <<< "$out2"'
-
-# ...and must NOT reach a structural skip. No edit to arms.sh turns "this
-# prediction names no suite with goldens" into a run, so retrying it every time
-# the script changes is a comment on a PR that says nothing new. The
-# discriminator is the refusal text; both marker kinds are unstamped here, so
-# this is the case that tells them apart.
-EXP3="$DISPATCH_DIR/expect/selftest-nosuite.json"
-python3 - "$EXP3" "$A" "$B" <<'PY2'
-import json, sys, datetime
-p, a, b = sys.argv[1:]
-json.dump({"registered_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-           "who": "lane.selftest", "issue": "1", "prediction": "a suite with no goldens on this host",
-           "a_ref": a, "b_ref": b, "expect": {"No_such_suite/Test": 0},
-           "must_not_move": [], "must_not_regress": [], "expect_counts": {}}, open(p, "w"), indent=2)
-PY2
-sha3=$(sha256sum "$EXP3" | cut -d' ' -f1)
-bash "$HERE/arms.sh" >/dev/null 2>&1
-check "a prediction naming no suite with goldens is skipped" grep -q "no suite with goldens" "$HAKUX_WORK/arms/skipped/$sha3"
-check "that structural skip carries no stamp" bash -c '! grep -q "^arms=" "$HAKUX_WORK/arms/skipped/$sha3"'
-check "and it is not reconsidered on the next tick" bash -c 'out3=$(bash "$HERE/arms.sh" 2>&1); ! grep -q "reconsidering $sha3" <<< "$out3"'
-
-echo "== arms.sh: an errored arm can be queued again, which is what the ARM ERROR comment promises"
-# The ARM ERROR comment tells the lane to delete the pair and judged markers to
-# have the job queue the arm again. It could not work: the errored result's
-# request.json still carried the expect_sha, so already_ran matched it forever.
-# Measured 2026-09-19, when #89's arm failed to build on both sides because
-# meson was not on the daemon's PATH -- a host fault the lane could do nothing
-# about and could not retry past either.
-clear_markers() { rm -f "$HAKUX_WORK"/arms/judged/* "$HAKUX_WORK"/arms/pairs/*.json; }
-finish_queue() {   # <marker-file-or-"">: turn the queue into results, erroring them or not
-    local q id d
-    for q in "$DISPATCH_DIR"/queue/*.req; do
-        [ -f "$q" ] || continue
-        id=$(basename "$q" .req); d="$DISPATCH_DIR/results/$id"
-        mkdir -p "$d"; mv "$q" "$d/request.json"
-        [ -n "$1" ] && echo simulated > "$d/$1"
-    done
-}
-clear_markers; rm -f "$DISPATCH_DIR"/queue/*.req
-bash "$HERE/arms.sh" >/dev/null 2>&1          # queue the pair afresh
-finish_queue ERROR                            # both arms ran and ERRORed
-clear_markers
-bash "$HERE/arms.sh" >/dev/null 2>&1
-check "an ERROR result is not a run, so the pair can be queued again" \
-    [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -ge 2 ]
-finish_queue ""                               # this time both arms completed
-clear_markers
-bash "$HERE/arms.sh" >/dev/null 2>&1
-check "a completed result IS a run, so the pair is not queued again" \
-    [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -eq 0 ]
-
-echo "== status.sh"
-printf '2026-09-19T01:00:00Z\tlane-x\t?\t?\t?\tERR\tx.json\t\n2026-09-19T01:10:00Z\tlane-y\tclaude-opus-5\t41\t1300\t0\tERR\ty.json\tsaid a thing\n' > "$HAKUX_WORK/logs/lane/index.tsv"
-sout=$(bash "$HERE/status.sh" --print 2>&1); src=$?
-check "status.sh exits 0" [ "$src" -eq 0 ]
-for h in "### Lanes running" "### Lane sessions finished" "### Cloud-class sessions" "### Board job" "### Handhelds and arms" "### Fold job" "### Open lane PRs" "### Host"; do
-    check "status has '$h'" grep -q "^$h" <<< "$sout"
-done
-check "status renders the eight-column row without dying" grep -q '| y | opus-5 | 41 | 21 | ERR' <<< "$sout"
-check "status shows the arms refusal in full" grep -q 'last refusals' <<< "$sout"
-
-echo "== fold.sh list, cloud.sh list"
-check "fold.sh list runs with nothing labelled" bash -c 'bash "$HERE/fold.sh" list 2>&1 | grep -q "nothing labelled fold-ready"'
-check "cloud.sh list runs with nothing to claim" bash -c 'bash "$HERE/cloud.sh" list 2>&1 | grep -q "nothing to claim"'
-
-echo "== cloud.sh: the audit path cannot hold a branch a lane worktree already holds"
-# Every local lane keeps its branch checked out under $WORK/wt, and git refuses
-# one branch in two worktrees, so `worktree add -B "$branch"` failed for every
-# PR a local lane had opened -- exit 5, before the first say(): no tick log, no
-# comment, no label. A shim cannot reproduce git's refusal against the real
-# lane worktrees, so this pins the mechanism.
-check "the audit worktree is detached, not -B <branch>" \
-    grep -q 'worktree add --quiet --detach "$wt" "origin/$branch"' "$HERE/cloud.sh"
-check "the audit brief tells the session to push HEAD:<branch>" \
-    grep -q 'git push origin HEAD:\$branch' "$HERE/cloud.sh"
-check "no claim path exits without saying why" bash -c '! grep -nE "\|\| exit [0-9]" "$HERE/cloud.sh"'
-
-echo "== nv2a_index.py: the fold job regenerates the index, so the tree it reads matters"
-# The fold job runs `nv2a_index.py check` after a merge and, if it fails,
-# `build` -- from whatever nxdk_pgraph_tests checkout the host holds. On
-# 2026-09-19 that checkout was five commits behind the one the committed index
-# came from, so the regeneration would have DELETED a suite (Surface as vertex
-# array) and pushed the deletion to master. The gate checks the DIRECTION of
-# the difference. Two throwaway repos are enough to test that; no suite parsing
-# is involved.
-GT="$T/gate"; mkdir -p "$GT/tests"
-git -C "$GT/tests" init -q 2>/dev/null
-git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m one
-c1=$(git -C "$GT/tests" rev-parse HEAD)
-git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m two
-c2=$(git -C "$GT/tests" rev-parse HEAD)
-printf '{"provenance": {"tests_commit": "%s"}}\n' "$c2" > "$GT/index.json"
-gate() {   # <checkout-at> <allow_older> -> the gate's return code
-    git -C "$GT/tests" checkout -q "$1"
-    python3 - "$REPO/docs/testing/nv2a_index.py" "$GT/index.json" "$GT/tests" "$2" 2>"$GT/gate.err" <<'PYGATE'
-import importlib.util, sys
-spec = importlib.util.spec_from_file_location("nv2a_index", sys.argv[1])
-m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
-m.INDEX_PATH = sys.argv[2]
-print(m.tests_provenance_gate(sys.argv[3], sys.argv[4] == "1"))
-PYGATE
-}
-check "a tests tree OLDER than the index refuses the rebuild" [ "$(gate "$c1" 0)" = 3 ]
-check "the same tree with --allow-older-tests proceeds" [ "$(gate "$c1" 1)" = 0 ]
-check "a tests tree AT the index's commit builds" [ "$(gate "$c2" 0)" = 0 ]
-git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m three
-check "a tests tree NEWER than the index builds" [ "$(gate HEAD 0)" = 0 ]
-printf '{"provenance": {"tests_commit": "%s"}}\n' "0123456789012345678901234567890123456789" > "$GT/index.json"
-check "a provenance commit this checkout has never seen refuses" [ "$(gate HEAD 0)" = 3 ]
-
-echo "== labels: the state machine's only actuator"
-# `gh pr edit --add-label` exits 1 on gh 2.45 (Projects-classic project cards)
-# and applies nothing; every job called it with stderr discarded, so for a day
-# no PR label the harness set ever took -- fold-ready, folded, needs-rebase,
-# verified, regressed, claimed:cloud. The shim cannot reproduce a real gh's
-# failure, so this pins the MECHANISM: no job may reach for that call, and the
-# helper must go through the REST endpoint that works for issues and PRs alike.
-check "no job script labels through 'gh pr edit'" bash -c '! grep -rn "^[^#]*gh pr edit[^|]*--\(add\|remove\)-label" "$HERE"/*.sh'
-: > "$SELFTEST_GH_LOG"
-( . "$HERE/gh-label.sh"; label_add 102 verified folded ) >/dev/null 2>&1
-check "label_add posts to the REST labels endpoint" grep -q 'api -X POST repos/example/hakux/issues/102/labels' "$SELFTEST_GH_LOG"
-check "label_add sends every label in one call" grep -q 'labels\[\]=verified.*labels\[\]=folded' "$SELFTEST_GH_LOG"
-: > "$SELFTEST_GH_LOG"
-( export SELFTEST_LABELS="fold-ready"; . "$HERE/gh-label.sh"; label_rm 102 fold-ready ) >/dev/null 2>&1
-check "label_rm deletes a label that is present" grep -q 'api -X DELETE repos/example/hakux/issues/102/labels/fold-ready' "$SELFTEST_GH_LOG"
-: > "$SELFTEST_GH_LOG"
-( export SELFTEST_LABELS="fold-ready"; . "$HERE/gh-label.sh"; label_rm 102 regressed ) >/dev/null 2>&1
-check "label_rm does not DELETE a label that is absent (a 404 is not a failure)" bash -c '! grep -q "DELETE" "$SELFTEST_GH_LOG"'
-check "label_rm reports success when there was nothing to remove" bash -c '( export SELFTEST_LABELS="fold-ready"; . "$HERE/gh-label.sh"; label_rm 102 regressed ) >/dev/null 2>&1'
-
-echo "== fold.sh: a root NOTES.md is the one conflict it may resolve"
-# roles/lane.md used to ask every lane for NOTES.md in the branch ROOT. master
-# had none, so the first fold landed one and every fold after it conflicted on
-# that exact path -- for good, since master then held lane A's notes and lane
-# B's were a conflicting rewrite of them. Four lanes were queued behind that.
-# The instruction is now docs/lanes/<lane>/NOTES.md, but the lanes already
-# running never saw it, so fold.sh moves an incoming root copy to the lane's
-# own path. What this pins is the BOUNDARY: that move happens only when root
-# NOTES.md is the whole conflict, and any source file in the list still sends
-# the PR back untouched.
-FD="$T/foldnotes"
-fixture() {   # <dir> [extra file both sides change] -> a repo mid-merge, conflicted
-    local d="$1" also="${2:-}"; rm -rf "$d"; mkdir -p "$d"
-    git -c init.defaultBranch=master init -q "$d"
-    git -C "$d" config user.email s@t; git -C "$d" config user.name s
-    echo base > "$d/src.c"; git -C "$d" add -A; git -C "$d" commit -q -m base
-    git -C "$d" checkout -q -b lane/fixture
-    echo "lane B measured the thing" > "$d/NOTES.md"
-    [ -n "$also" ] && echo "lane B code" > "$d/$also"
-    git -C "$d" add -A; git -C "$d" commit -q -m lane
-    git -C "$d" checkout -q master
-    echo "lane A measured the other thing" > "$d/NOTES.md"
-    [ -n "$also" ] && echo "master code" > "$d/$also"
-    git -C "$d" add -A; git -C "$d" commit -q -m master
-    git -C "$d" merge --no-ff --no-edit -m "fold: PR #1 lane/fixture -- t" lane/fixture >/dev/null 2>&1
-}
-unmerged() { git -C "$1" diff --name-only --diff-filter=U | tr '\n' ' '; }
-
-fixture "$FD/only"
-check "the fixture really conflicts, and only in NOTES.md" [ "$(unmerged "$FD/only")" = "NOTES.md " ]
-bash "$HERE/fold.sh" resolve-notes "$FD/only" lane/fixture >"$FD/only.log" 2>&1; rc=$?
-check "resolve-notes accepts a NOTES.md-only conflict" [ "$rc" = 0 ]
-check "nothing is left unmerged" [ -z "$(unmerged "$FD/only")" ]
-check "the lane's notes are kept, at the lane's own path" \
-    bash -c 'grep -q "lane B measured" "$1/docs/lanes/fixture/NOTES.md"' _ "$FD/only"
-check "master's root copy is untouched" \
-    bash -c 'grep -q "lane A measured" "$1/NOTES.md"' _ "$FD/only"
-check "the move is staged, not left dirty" \
-    bash -c '[ -z "$(git -C "$1" diff --name-only)" ]' _ "$FD/only"
-git -C "$FD/only" commit -q -m "fold: PR #1 lane/fixture -- t" >/dev/null 2>&1
-check "the result is still a merge commit (both parents)" git -C "$FD/only" rev-parse -q --verify HEAD^2
-
-fixture "$FD/code" src.c
-check "the second fixture conflicts in a source file too" bash -c '[ "$(git -C "$1" diff --name-only --diff-filter=U | tr "\n" " ")" = "NOTES.md src.c " ]' _ "$FD/code"
-bash "$HERE/fold.sh" resolve-notes "$FD/code" lane/fixture >"$FD/code.log" 2>&1; rc=$?
-check "resolve-notes REFUSES when a source file conflicts as well" [ "$rc" != 0 ]
-check "  and leaves the conflict exactly as it found it" [ "$(unmerged "$FD/code")" = "NOTES.md src.c " ]
-check "  and writes no per-lane notes file" [ ! -e "$FD/code/docs/lanes/fixture/NOTES.md" ]
-
-fixture "$FD/taken"
-mkdir -p "$FD/taken/docs/lanes/fixture"; echo "an earlier record" > "$FD/taken/docs/lanes/fixture/NOTES.md"
-bash "$HERE/fold.sh" resolve-notes "$FD/taken" lane/fixture >"$FD/taken.log" 2>&1; rc=$?
-check "resolve-notes REFUSES when the destination is occupied (that would be a content decision)" [ "$rc" != 0 ]
-check "  and does not overwrite what is there" grep -q "an earlier record" "$FD/taken/docs/lanes/fixture/NOTES.md"
-
-check "roles/lane.md asks for the per-lane path, not the branch root" \
-    grep -q 'docs/lanes/<your lane name>/NOTES.md' "$HERE/roles/lane.md"
-check "roles/cloud.md asks for the same" grep -q 'docs/lanes/cloud-<short>/NOTES.md' "$HERE/roles/cloud.md"
-check "no role file still asks for NOTES.md in the branch root" \
-    bash -c '! grep -rn "NOTES.md\` in the branch root\|NOTES.md in the branch root" "$HERE/roles/"'
-
-echo "== affinity: the lane registration, and saying so when there is none"
-# WHY. On 2026-09-19 #89's A/B pair ran base on the `thor` and fix on the
-# `nova`. affinity.py exists to stop exactly that, and it was INERT: $D/lanes/
-# was empty, so serving() returned [], so rule 2's _live() was false for a
-# device that was in fact serving and rule 3 had no devices to hash over. The
-# lane pid file was written once per worker process, so a single `rm` by
-# anyone disabled pinning until the dispatcher was restarted -- and no log
-# line, no status field and no note reachable by a reader said a word.
+# --------------------------------------------------------------- the checks
+# Every check lives in its own file under selftest.d/, sourced here in sorted
+# order with everything above already built: $T, $HERE, $REPO, the shims on
+# PATH, ok/bad/check, the live prediction and its goldens.
 #
-# These checks pin the three things that were missing, not the remover, which
-# is still unidentified (NOTES.md on lane/armpin has the refuted hypotheses).
-export AD="$T/aff"; mkdir -p "$AD"/{lanes,running,results,splits,queue,logs}
-export TESTING AFF="$TESTING/affinity.py"
-sleep 600 & export LIVEPID=$!               # a pid that is certainly alive
-sleep 0   & DEADPID=$!; wait $DEADPID 2>/dev/null   # and one that certainly is not
-disp() {   # run shell inside a sourced dispatcher.sh, as the nova, against $AD
-    ( export DISPATCH_DIR="$AD" SERIAL=ee317437 DISPATCH_TREE="$REPO" DISPATCH_REPO="$REPO"
-      . "$TESTING/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1
-      eval "$1" )
+# WHY IT IS NOT ONE FILE. This is the gate every change under jobs/ must pass,
+# so a lane that fixes something here also adds the check that proves it: on
+# 2026-09-19 nine harness lanes ran and all nine appended to this file. The
+# fold job folds one PR per tick and each fold moves master, so the conflict
+# rate on this one path was not high, it was ~100% -- two of the first three
+# folds attempted were handed back on selftest.sh alone, each costing a full
+# lane.sh resume to re-land work that was already finished and green. A
+# fragment is separately ownable; two lanes adding checks now touch two paths.
+#
+# ADDING A CHECK: write, or edit, selftest.d/NN-<concern>.sh.
+#   - NN is exactly two digits. A three-digit prefix would sort before every
+#     two-digit one, so the loop below refuses a name that is not NN-*.sh
+#     rather than silently never sourcing it.
+#   - The number fixes the order, and order matters: fragments 10..50 drive
+#     arms.sh over one shared dispatcher queue in sequence, and 60 reads what
+#     they left. Each fragment's header says what it depends on.
+#   - Fragments are sourced, not executed: no shebang, no exit. `pass`, `fail`
+#     and the fixtures are shared state, so a failing check in a fragment
+#     fails the whole run, which is the point.
+frags=()
+while IFS= read -r f; do                         # LC_ALL=C: the runner's
+    [ -e "$f" ] || continue                      # collation is not this box's
+    case "${f##*/}" in
+        [0-9][0-9]-*.sh) frags+=("$f") ;;
+        *.md|*~)         ;;                      # a README, an editor backup
+        *) echo "selftest: $f is not selftest.d/NN-<concern>.sh and would never be sourced" >&2
+           exit 2 ;;
+    esac
+done < <(printf '%s\n' "$HERE/selftest.d/"* | LC_ALL=C sort)
+[ "${#frags[@]}" -gt 0 ] || {
+    echo "selftest: no fragments under $HERE/selftest.d -- nothing would be checked" >&2
+    exit 2
 }
-
-# --- serving(): the single input every rule above is decided over.
-printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"
-printf '%s\n' "$DEADPID" > "$AD/lanes/thor"
-printf '%s\n' "2026-09-14" > "$AD/lanes/remote.lastbrief"   # check_coverage.py's stamp
-check "serving lists the lane whose pid is alive and not the one whose pid is dead" \
-    [ "$(python3 "$AFF" "$AD" --serving 2>/dev/null)" = "nova" ]
-# Counted, not grepped for absence: "no lastbrief in the output" is also true
-# of no output at all, and a check that a missing feature satisfies has
-# measured nothing. Three files in lanes/, exactly one device.
-check "a <lane>.lastbrief stamp sharing the directory is not mistaken for a device" \
-    [ "$(python3 "$AFF" "$AD" --serving 2>/dev/null | wc -w)" = 1 ]
-
-# --- the two behaviours the brief says must stay true. CONTROLS: these pass
-# against the old file too, and are here to show the fix did not buy its
-# visibility by making a pin block a claim.
-mkdir -p "$AD/results/r-old"
-printf '{"expect":"/p/e7d2.json"}\n' > "$AD/results/r-old/request.json"
-printf '{"device_label":"thor"}\n'   > "$AD/results/r-old/result.json"
-printf '{"requester":"arms-x-fix","expect":"/p/e7d2.json"}\n' > "$AD/q.req"
-check "CONTROL: a pin to a device that is NOT serving falls through rather than stalling" \
-    [ -z "$(python3 "$AFF" "$AD" "$AD/q.req" 2>/dev/null)" ]
-printf '{"device_label":"nova"}\n' > "$AD/results/r-old/result.json"
-check "CONTROL: a pin to a device that IS serving is still honoured" \
-    [ "$(python3 "$AFF" "$AD" "$AD/q.req" 2>/dev/null)" = "nova" ]
-
-# --- the fallthrough must stop being silent. This is the defect: every rule
-# ran over an empty device set and printed the same "" a request with no
-# sibling prints.
-rm -rf "$AD/lanes" "$AD/splits"; mkdir -p "$AD/lanes" "$AD/splits"
-python3 "$AFF" "$AD" "$AD/q.req" >/dev/null 2>&1
-check "a request that could not be pinned AT ALL leaves a note" \
-    bash -c '[ -n "$(ls "$AD"/splits/*.blind.txt 2>/dev/null)" ]'
-check "the note names the prediction whose pair may now split" \
-    bash -c 'grep -q "e7d2.json" "$AD"/splits/*.blind.txt'
-printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"; printf '%s\n' "$LIVEPID" > "$AD/lanes/thor"
-rm -f "$AD"/splits/*.blind.txt
-python3 "$AFF" "$AD" "$AD/q.req" >/dev/null 2>&1
-check "CONTROL: a request pinned normally leaves no blind note" \
-    bash -c '[ -z "$(ls "$AD"/splits/*.blind.txt 2>/dev/null)" ]'
-
-# --- the lane file itself. It was written once per process; that permanence,
-# not the removal, is what cost five hours.
-# Chained with && throughout, never `;`. Sequenced with `;` these all pass
-# against a file that has no lane_claim in it at all -- the missing function
-# fails, nothing is ever created, and "the file is absent" comes out true.
-check "lane_claim restores a registration removed from outside, so a removal costs a tick not a restart" \
-    disp 'lane_claim && rm -f "$D/lanes/nova" && lane_claim && [ "$(cat "$D/lanes/nova")" = "$$" ]'
-check "lane_release drops my own registration" \
-    disp 'lane_claim && [ -e "$D/lanes/nova" ] && lane_release && [ ! -e "$D/lanes/nova" ]'
-printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"
-check "lane_release SUCCEEDS and leaves a registration holding ANOTHER pid (a dead predecessor cannot evict its live successor)" \
-    disp 'lane_release && [ "$(cat "$D/lanes/nova")" = "'"$LIVEPID"'" ]'
-check "no lane file is removed by name anywhere; every removal goes through lane_release" \
-    bash -c '! grep -q "rm -f \"\$D/lanes/" "$TESTING/dispatcher.sh"'
-check "the registration is re-asserted after the hold check, not only at worker startup" \
-    python3 -c 'import sys; s=open(sys.argv[1]).read(); i=s.index("$D/hold/$DEVICE_LABEL"); sys.exit(0 if "lane_claim" in s[i:] else 1)' "$TESTING/dispatcher.sh"
-check "a held device does not re-register itself thirty seconds later" \
-    python3 -c 'import sys; s=open(sys.argv[1]).read(); h=s.index("$D/hold/$DEVICE_LABEL"); sys.exit(0 if s.index("lane_claim", h) > s.index("lane_release", h) else 1)' "$TESTING/dispatcher.sh"
-
-# --- the dispatcher must say it out loud, once, not per claim.
-rm -rf "$AD/lanes"; mkdir -p "$AD/lanes"; : > "$AD/logs/dispatcher.log"
-disp 'lane_blind_check one; lane_blind_check two' >/dev/null 2>&1
-check "claiming with no lane registered logs AFFINITY BLIND" \
-    grep -q "AFFINITY BLIND" "$AD/logs/dispatcher.log"
-check "it is logged once per outage, not once per claim (the sweep queues one request per suite)" \
-    [ "$(grep -c 'AFFINITY BLIND' "$AD/logs/dispatcher.log")" = 1 ]
-: > "$AD/logs/dispatcher.log"
-check "the outage has an END as well as a start: coming back is logged too" \
-    disp 'lane_blind_check one && printf "%s\n" "'"$LIVEPID"'" > "$D/lanes/nova" && lane_blind_check two &&
-          grep -q "AFFINITY BLIND" "$D/logs/dispatcher.log" && grep -q "lanes registered again" "$D/logs/dispatcher.log"'
-: > "$AD/logs/dispatcher.log"
-printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"
-check "a claim made with a lane registered logs nothing at all" \
-    disp 'lane_blind_check one && lane_blind_check two && [ ! -s "$D/logs/dispatcher.log" ]'
-
-# --- $D/splits/ gets a reader. The note was always written correctly; it was
-# discoverable only by someone who already suspected it and knew the path.
-mkdir -p "$DISPATCH_DIR/splits" "$DISPATCH_DIR/lanes"
-printf 'prediction e7d2d739.json was pinned to thor, which is not serving; freed this request\n' \
-    > "$DISPATCH_DIR/splits/1789793572-arms-blitsafe-fix-3718905.req.txt"
-sout=$(bash "$HERE/status.sh" --print 2>&1)
-check "status.sh reports what affinity is doing at all" grep -q '^- affinity:' <<< "$sout"
-check "status.sh warns when no lane is registered and pinning is inert" \
-    grep -q 'no device lane is registered' <<< "$sout"
-check "status.sh surfaces a recent split note, with the prediction in it" \
-    grep -q 'e7d2d739.json was pinned to thor' <<< "$sout"
-kill "$LIVEPID" 2>/dev/null; wait "$LIVEPID" 2>/dev/null
+for f in "${frags[@]}"; do
+    . "$f"
+done
 
 echo "== handback.sh: the actor for a PR a job handed back"
 # `needs-rebase` was set by fold.sh, shown by status.sh and acted on by nothing,

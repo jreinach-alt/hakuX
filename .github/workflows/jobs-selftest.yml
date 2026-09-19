@@ -10,6 +10,10 @@ on:
     branches: [master]
     paths:
       - 'docs/testing/jobs/**'
+      # jobs/** already covers the fragments; named anyway, because a gate
+      # that silently stops running is worse than the collision the split
+      # removed, and the next person to narrow jobs/** should trip over this.
+      - 'docs/testing/jobs/selftest.d/**'
       - 'docs/testing/request.sh'
       - 'docs/testing/lane.sh'
       - 'docs/testing/nv2a_index.py'
@@ -17,6 +21,7 @@ on:
   pull_request:
     paths:
       - 'docs/testing/jobs/**'
+      - 'docs/testing/jobs/selftest.d/**'
       - 'docs/testing/request.sh'
       - 'docs/testing/lane.sh'
       - 'docs/testing/nv2a_index.py'

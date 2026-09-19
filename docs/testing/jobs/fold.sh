@@ -103,6 +103,55 @@ ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (o
           else "PENDING" end' 2>/dev/null
 }
 
+# ------------------------------------------------- reporting a stopped fold
+# A fold that stops must say so ON THE PR, exactly once per head and state.
+# Until 2026-09-18 only RED spoke. A head with NO run at all mapped to NONE,
+# waited forever and left no trace off this host: #102 sat a full day that way,
+# its only record a line in $WORK/logs/fold/tick.log that no lane can read.
+# None of this folds anything -- NONE is still a gate, and folding a head
+# nothing built would be the worse bug.
+#
+# The marker is a LEDGER of states already reported, not a boolean, because a
+# NONE seen first must not silence the RED that follows it -- that would move
+# the silence one state over instead of closing it. An EMPTY marker is one the
+# pre-09-18 job touched, and it only ever touched it for RED.
+PENDING_STUCK_SECS="${PENDING_STUCK_SECS:-7200}"   # 4 ticks; below this a pending run is just running
+ci_report() {   # <pr> <head> <state>
+    local pr=$1 head=$2 ci=$3 m="$F/failed/$1-$2-ci" body='' seen now
+    case "$ci" in RED|NONE|PENDING) ;; *) return ;; esac
+    [ -f "$m" ] && [ ! -s "$m" ] && echo RED > "$m"
+    now=$(date +%s)
+    if [ "$ci" = PENDING ]; then
+        # A run in flight is not news; ticks are 30 minutes and the Android
+        # build is long. Only a pending that outlives $PENDING_STUCK_SECS from
+        # its first sighting is stuck, and only that is worth a comment.
+        seen=$(awk '$1=="PENDING-seen"{print $2; exit}' "$m" 2>/dev/null)
+        [ -n "$seen" ] || { printf 'PENDING-seen %s\n' "$now" >> "$m"; return; }
+        [ $((now - seen)) -ge "$PENDING_STUCK_SECS" ] || return
+    fi
+    grep -qxF "$ci" "$m" 2>/dev/null && return
+    printf '%s\n' "$ci" >> "$m"
+    case "$ci" in
+    RED)  body="[job.fold] Not folded: CI is red on \`${head:0:10}\`. The fold waits for a green head; push a fix and the next tick picks it up." ;;
+    NONE) body="[job.fold] Not folded: **no CI run exists** on \`${head:0:10}\`. This is not a failure -- nothing has built this head at all, so the fold cannot verify it. The PR keeps its \`fold-ready\` label and keeps waiting; it will fold as soon as a green run appears, and it will not fold unverified.
+
+The usual cause is a \`[skip ci]\` marker in the head commit's message, left over from a standing instruction that \`AGENTS.md\`'s transition note retired (CI runs on every PR now: it is free on this public repository). It is *not* a path-filter gap -- \`android.yml\` and \`desktop.yml\` both trigger on \`pull_request:\` with no \`paths:\`, so every PR gets them.
+
+To unblock, push a new head whose message does not carry the marker:
+
+\`\`\`
+git commit --allow-empty -m 'ci: build this head' && git push
+\`\`\`
+
+**Do not quote the marker in that message.** GitHub matches it anywhere in the commit message, body included, so an empty commit that explains the problem by naming the marker suppresses the very run it was pushed to trigger. That cost a cycle on 2026-09-18." ;;
+    PENDING) body="[job.fold] Not folded: CI has been **pending** on \`${head:0:10}\` for more than $((PENDING_STUCK_SECS / 3600))h -- long enough that it is stuck rather than running. The fold gate waits for a green head, so this PR is parked until it resolves.
+
+Check \`gh pr checks $pr\`: a job queued with no runner, or held on a workflow approval, never concludes by itself. Re-run it or push a new head. This is the only comment this job will make about this head." ;;
+    esac
+    say "  #$pr: reported $ci on ${head:0:10}"
+    comment "$pr" "$body"
+}
+
 folded=0
 while IFS=$'\t' read -r pr branch head draft title; do
     [ -n "$pr" ] || continue
@@ -117,10 +166,7 @@ while IFS=$'\t' read -r pr branch head draft title; do
     if [ "$ci" != GREEN ]; then
         [ "$mode" = list ] && echo "#$pr $branch: CI $ci"
         say "#$pr $branch: CI is $ci on $head; waiting"
-        if [ "$ci" = RED ] && [ ! -f "$F/failed/$pr-$head-ci" ]; then
-            touch "$F/failed/$pr-$head-ci"
-            comment "$pr" "[job.fold] Not folded: CI is red on \`${head:0:10}\`. The fold waits for a green head; push a fix and the next tick picks it up."
-        fi
+        ci_report "$pr" "$head" "$ci"
         continue
     fi
     if [ -f "$F/failed/$pr-$head" ]; then

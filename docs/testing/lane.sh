@@ -9,6 +9,8 @@
 #   lane.sh attempts | reset <name> # the per-lane attempt counter behind the escalation
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
+#   lane.sh fleet-end <name> [rc]   # clear the registry entry (the unit calls this)
+#   lane.sh fleet-gc                # drop registry entries whose unit is gone
 #
 # WHY THE WORKTREE IS MADE HERE AND NOT BY --worktree. Claude Code's own
 # worktree base is origin/HEAD, which is right now that master is the trunk,
@@ -45,6 +47,56 @@ LANE_MAX=2
 . "$JOBS/models.env"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
+
+# ---------------------------------------------------------------- the registry
+#
+# $DISPATCH_DIR/fleet/<lane>.json used to be written by the orchestrator, and
+# when ORCHESTRATION-DESIGN.md §4 deleted that role nothing took over: the
+# files froze, and fleet.py -- the board's only sensor -- went on reporting
+# them. On 2026-09-19 it named four running lanes, two of which were not
+# running and one of which had been merged, while eight real units went
+# unmentioned. See the header of fleet.py.
+#
+# fleet.py derives the running set from systemd now, so THIS FILE NO LONGER
+# CARRIES STATE. It carries only what this script knows first-hand at the
+# moment it starts a unit: the brief it handed over, the issue, the attempt,
+# the model, the branch and worktree. There is no `state` field to go stale,
+# and fleet.py ignores any entry whose unit is not active -- so the worst a
+# crashed lane can leave behind is a file that costs disk.
+#
+# WHAT A MISSING ENTRY COSTS: the `asked` prose and the issue list. A lane
+# whose entry is missing still appears in RUNNING, with its issue unlisted --
+# so its issue can show up as DISPATCHABLE and the board takes a second look
+# at work already in hand. Over-claiming would hide work; this errs the other
+# way on purpose.
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/$(basename "${BASH_SOURCE[0]}")"
+FLEETD="${DISPATCH_DIR:-$WORK/dispatch}/fleet"
+
+fleet_write() {   # <name> <branch> <worktree> <brief> <issue> <attempt> <model>
+    mkdir -p "$FLEETD" 2>/dev/null || return 0
+    # Built and serialised by json.dump, never by pasting strings into a
+    # heredoc: a brief with a quote or a backslash in it would otherwise
+    # write a file fleet.py reports as UNREADABLE, and the failure would be
+    # invisible until the next board tick.
+    python3 - "$FLEETD/$1.json" "$@" <<'PYFLEET' || true
+import datetime, json, os, re, sys
+path, lane, branch, wt, brief, issue, attempt, model = sys.argv[1:9]
+asked = ""
+try:
+    asked = re.sub(r"\s+", " ", open(brief, encoding="utf-8", errors="replace")
+                   .read()).strip()[:400]
+except OSError:
+    pass
+json.dump({"lane": lane, "unit": "hakux-lane-%s.service" % lane,
+           "branch": branch, "worktree": wt, "brief": brief,
+           "issues": [issue] if issue else [],
+           "asked": asked, "attempt": attempt, "model": model,
+           "started_utc": datetime.datetime.now(datetime.timezone.utc)
+                                  .strftime("%Y-%m-%dT%H:%M:%SZ")},
+          open(path + ".tmp", "w"), indent=1)
+os.replace(path + ".tmp", path)
+PYFLEET
+}
 
 # ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
 # its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
@@ -90,6 +142,10 @@ case "$cmd" in
     fi
     next_attempt "$name" || exit 75
     cp "$brief" "$WORK/briefs/$name.md"
+    # `resume` takes no issue argument and the registry entry is gone by then,
+    # so the issue has to outlive the unit somewhere. One line beside the brief.
+    printf '%s\n' "$issue" > "$WORK/briefs/$name.issue"
+    fleet_write "$name" "$branch" "$wt" "$WORK/briefs/$name.md" "$issue" "$ATTEMPT" "$MODEL"
     # local.properties is gitignored and the Android build needs it.
     [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
@@ -99,7 +155,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -117,6 +173,8 @@ case "$cmd" in
         exit 75
     fi
     next_attempt "$name" || exit 75
+    fleet_write "$name" "$branch" "$wt" "$WORK/briefs/$name.md" \
+                "$(cat "$WORK/briefs/$name.issue" 2>/dev/null)" "$ATTEMPT" "$MODEL"
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
@@ -124,13 +182,55 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
     wt="$WORK/wt/${name:?name}"
     systemctl --user stop "hakux-lane-$name" 2>/dev/null
     git -C "$REPO" worktree remove --force "$wt" && echo "removed $wt"
+    ;;
+  fleet-end)
+    # Called by the unit's own command line after summarise_run.py, so the
+    # entry describes a lane that exists and nothing else. The final shape
+    # goes to history.jsonl -- fleet.py reads only *.json, so it never sees
+    # it -- and answers "what was this lane asked, and how did it end?" after
+    # the entry is gone. A SIGKILLed unit skips this; that is precisely why
+    # fleet.py asks systemd rather than this directory who is running.
+    f="$FLEETD/${name:?name}.json"
+    [ -f "$f" ] || exit 0
+    python3 - "$f" "$FLEETD/history.jsonl" "${3:-}" <<'PYEND' || true
+import datetime, json, sys
+src, hist, rc = sys.argv[1:4]
+try:
+    e = json.load(open(src))
+except Exception:
+    e = {}
+e["ended_utc"] = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+e["rc"] = rc
+with open(hist, "a") as fh:
+    fh.write(json.dumps(e) + "\n")
+PYEND
+    rm -f "$f"
+    ;;
+  fleet-gc)
+    # The entries the deleted orchestrator left behind (37 on the host on
+    # 2026-09-19), and anything a killed unit drops. The count is not pinned
+    # here because it is whatever `fleet.py` last reported, not a constant.
+    # REFUSES if systemd cannot be reached: an empty
+    # active set would otherwise read as "nothing is running" and delete the
+    # live fleet's entries -- the same mistake, in the other direction.
+    units=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend --plain 2>/dev/null) \
+        || { echo "REFUSED: systemctl --user did not answer; an empty active set is not an idle fleet." >&2; exit 1; }
+    active=" $(echo "$units" | awk '{print $1}' | sed 's/^hakux-lane-//; s/\.service$//' | tr '\n' ' ')"
+    n=0
+    for f in "$FLEETD"/*.json; do
+        [ -f "$f" ] || continue
+        l=$(basename "$f" .json)
+        case "$active" in *" $l "*) continue ;; esac
+        rm -f "$f" && n=$((n+1))
+    done
+    echo "fleet-gc: removed $n entries with no active unit; kept$active"
     ;;
   attempts)
     for f in "$WORK"/attempts/*; do [ -e "$f" ] || { echo "none"; break; }; printf '%-16s %s\n' "$(basename "$f")" "$(cat "$f")"; done
@@ -142,5 +242,5 @@ case "$cmd" in
     git -C "$REPO" worktree list
     systemctl --user list-units 'hakux-lane-*' --no-legend 2>/dev/null
     ;;
-  *) sed -n '3,11p' "$0" ;;
+  *) sed -n '3,13p' "$0" ;;
 esac
