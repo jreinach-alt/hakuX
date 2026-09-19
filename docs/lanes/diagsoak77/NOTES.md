@@ -261,4 +261,122 @@ the cap) plus ~134 KB of draw records, so ~1.06 MB per frame with images and
 
 # Results
 
-(to be filled in as the runs land; nothing above this line changes afterwards)
+Nothing above the `---` has been changed since it was committed. Where a run
+made a registered choice look wrong, that is recorded here rather than by
+editing the registration.
+
+## The arms, as taken
+
+All on the Thor, `Galleon (USA).xiso.iso`, built from `732b97e2df`
+(`apk_sha f326072aa6c8`), driver `PurpleVK 26.3.0-devel (git-62ac221a33)`,
+`draw_merge=false draw_reorder=false surface_scale=1 submit_frames=2`.
+
+| arm | run id | spec | frames | draws | images |
+|---|---|---|---|---|---|
+| A1 | `1789844339-diagsoak77-A1-31125` | `150,after120,cap200` | 150 | 19,252 | 12 (8.0%) |
+| B1 | `1789844343-diagsoak77-B1-32023` | `600,after40,noimages,cap120` | 600 | 117,248 | -- |
+| C1 | `1789844674-diagsoak77-C1-97491` | `600,after120,cap200` | 600 | 82,288 | 78 (13.0%) |
+
+Every one reads NOT SERIALISED on both columns, so PR #143's headline claim
+replicates on three more runs and on 218,788 further draws.
+
+## R1. The soak's timeline, from the dump's own pictures
+
+C1's 600 frames (t≈120..145 s) catch the whole arc and settle the reachability
+question from pixels:
+
+- **frames 0..~485 -- the title screen.** "GALLEON / Please press the START
+  button to begin", the logo fading in over a cliff-and-sea backdrop with
+  Rhama performing a sword flourish. A1 and the recon run both landed here.
+- **frames ~486..~500 -- `Loading...`**, a progress bar, then black.
+- **frames ~500..600 -- the attract demo**, watermarked `Demo`: a lava cave,
+  the character walking across a rock floor.
+
+So an unattended soak DOES reach the attract demo, at about **t = 141 s**, and
+`after120` straddles the transition. Neither the deck nor the town path is
+among what it renders -- both founding sets are gameplay -- but the cave floor
+is a textured ground surface, which is the nearest thing a soak can reach.
+
+## R2. F0 PASSES, and which counters carry it
+
+Over B1's 600 frames and 117,248 draws -- the widest sample, spanning boot,
+menu and a transition:
+
+| counter | verdict |
+|---|---|
+| `max_dq`, `max_dq_active`, `max_rw`, `max_rw_active` | **excluded, CONSTANT BY CONSTRUCTION** -- `draw_merge`/`draw_reorder` gate them shut and no queueable request opens them |
+| `frac_not_in_rp` | excluded, constant (0.0) over every frame |
+| `submits_in_frame` | **scored**, 35 distinct values, 2..105 |
+| `cb_resets`, `cb_resets_per_draw` | **scored**, 34 / 351 distinct values |
+| `frac_color_clean` | **scored**, 178 distinct values |
+| `max_submit_lag`, `mean_submit_lag` | **scored**, `submits - tex.submit_time` takes 0, 1 and 2 |
+
+That last row matters: over the recon window and over A1 the texture reuse key
+was **0 on every one of 22,098 enabled-stage samples**, and F0 would have
+excluded it. Over B1 it moves. So the reuse key is not a constant of the
+build; it is a constant of the *scene*, and a correlation arm has to be taken
+somewhere it varies or that leg is inert there.
+
+**So the honest answer to "is it visible to this instrument" is: partly.**
+Merging is not -- not flat, but shut. Deferred submission, command-buffer
+batching, surface dirtiness and the texture reuse key are.
+
+## R3. An instrument result PR #143 marked unmeasured: the image yield is 8-13%
+
+PR #143's N1 remediation -- write no image when the display surface is still
+`draw_dirty` after the download completion -- was committed with **Unmeasured:
+no device ran this**. These are the first device runs of it, and the rate is
+not a corner case:
+
+| arm | frames | images written | refused as stale |
+|---|---|---|---|
+| A1 | 150 | 12 (8.0%) | 138 |
+| C1 | 600 | 78 (13.0%) | 522 |
+
+A1's gaps between imaged frames are `{1, 9, 10, 18}` -- a period of about ten
+frames, not a scatter. So on this title the flip pre-records the display
+download roughly once in ten flips, and the other nine frames' pixels never
+leave their `VkImage`.
+
+This is the instrument behaving **correctly and honestly** -- the old code
+wrote a picture on all of them and said nothing -- but it is a hard limit on
+#77's method, which is "pick the frames that show the artifact, then read those
+frames' draws". One frame in ten can be picked from. `framedump_check.py`
+already warns "a dump where this is most of the frames is not a dump to pick
+frames from"; on this title that is every dump.
+
+## R4. C1's four flagged frames are scene cuts, and the registered classifier cannot tell
+
+C1, region `R_lower` (0,288,640,480): **4 / 78 = 5.1 per 100**, frames 489,
+495, 566, 576.
+
+```
+  f489  HF 2.74  base 1.33  ratio 2.06  d1/d2 0.95 (local 0.94, dev 1.01)  neighbours 0.01 1.25 | 1.67 1.37
+  f495  HF 2.19  base 1.32  ratio 1.67  d1/d2 0.97 (local 0.94, dev 1.03)  neighbours 1.25 2.06 | 1.37 1.20
+  f566  HF 3.90  base 1.08  ratio 3.62  d1/d2 1.14 (local 0.95, dev 1.21)  neighbours 1.03 0.99 | 2.33 0.80
+  f576  HF 2.53  base 1.09  ratio 2.33  d1/d2 0.95 (local 1.00, dev 0.94)  neighbours 0.99 3.62 | 0.80 0.80
+```
+
+All four sit in or after the `Loading...` transition R1 describes, and the
+neighbour ratios say so plainly: f489 is preceded by a frame at **0.01** -- a
+black frame. The `draws` leg then "SEPARATES" at p=0.012, +41.3 draws on the
+flagged class, which is the same fact wearing a different hat: a frame with 41
+more draws is different CONTENT.
+
+**This is the confound the persistence descriptor was added to make visible,
+and it did its job.** The registered classifier is not changed to exclude cuts
+-- rewriting the bar after seeing the data is exactly the curve fit it exists
+to refuse. What changes is the WINDOW: arms C3 and C4 are queued at
+`600,after165`, which R1 places entirely inside the attract demo, so the
+classifier sees one content regime instead of a transition. C1's flags are
+recorded here as **not stipple** and are not carried into any correlation.
+
+## R5. A1 had no power, and says so
+
+A1 classified 12 frames and flagged none. At the class size #77's own
+documented 12 per 100 would have produced (k=1 of 12), the minimum difference
+it could have separated from a permutation null was **0.91 on
+`submits_in_frame`** -- nearly the counter's whole observed range -- and
+`cb_resets` had **zero spread among the imaged frames** despite varying across
+all 150. That is not a null result. It is an arm with no power, and it is
+reported as one.
