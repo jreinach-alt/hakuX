@@ -3202,3 +3202,48 @@ blocker_tested = "CONFIRMED BY READING at HEAD and by counting the files on disk
 status = "fixed-part"
 status_note = "TRACKER SYNC 2026-09-18 (job.board): GitHub closed #95 as completed; lane.toolsmith reported step (1) of the suggested shape already in master as baa5b32698 -- --disc-from / --disc-suites|--disc-skip-tests|--disc-only-tests write a disc block, and composition_notes() refuses an absolute / downgrades a delta on a composition mismatch (ancestor of origin/master). Steps (2)/(3) (rejecting composition mismatches at judge time more broadly, and un-overloading disc_id) and the grandfathering rule for the 106 of 107 predictions still lacking the field are NOT landed; reopen as its own issue if that scope is wanted. FOUND BY lane.disc89 while auditing all 107 files in docs/testing/predictions/ for #89. THE TWO HALVES ARE ONE GAP SEEN FROM TWO SIDES: the comparability rule this project relies on is REMEMBERED RATHER THAN ENFORCED. ab_compare catches the easy case, two arms of one pair disagreeing, and is STRUCTURALLY UNABLE to catch the case that actually bites -- an absolute registered on one composition and later judged against an arm run on another -- because there is no field to compare against. AND disc_id CANNOT SUBSTITUTE: it encodes composition AND the skip list in one string, so a scan grouping by it reports the known RenderTextureLoop poison test as a composition effect, which cost the lane a wrong classification of 24 Texture_render_target/TexFmt_* captures; it is also truncated to ~60 chars, so the 9-suite and 14-suite discs at the centre of #89 are indistinguishable from their prefixes. NOT AN EMERGENCY, AND THE REASSURING HALF IS MEASURED: 31 predictions register an absolute on a narrowed disc with no arm-A reproduction condition and NONE touches Color_zeta_overlap/Swap_ZB, the only capture known to be composition-sensitive. Three files name it and ALL THREE handle it correctly as a delta -- blend-stack-c-aliasing.json is a live demonstration of the delta protecting the claim, since both its refs are 9-suite runs reading 141,125 and its registered delta was correctly zero. So this is a latent gap with one near-miss. THE ARGUMENT FOR FIXING IT NOW is that the 13 indeterminate files cannot be audited at all without the field and that number only grows. SUGGESTED SHAPE, independently landable in order: (1) add disc_id -- ideally decomposed into suites + skip_tests -- to what --register writes, populated from the arm's own request record; (2) at judge time compare registered composition against each arm's and REFUSE OR DOWNGRADE an absolute whose composition does not match, as a b_ref mismatch already is; (3) stop overloading disc_id, since composition and skip list are different axes and one of them is a DEFECT WORKAROUND. Step (1) alone converts 13 unauditable files into auditable ones."
 blocked_on = "NOT BLOCKED. docs/testing/ab_compare.py and docs/testing/request.sh are both held by the instruments standing lane, per the owner's division of labour on dispatch scripts. Needs no device and no build. Note the ordering constraint if it lands while arms are live: adding a field is backward-compatible, but step (2)'s refusal is NOT -- it would invalidate every prediction registered without the field, which is 106 of 107, so (2) needs a grandfathering rule decided BEFORE it ships."
+
+[issue.107]
+title = "harness: live status (auto-updated)"
+disposition = "harness"
+suites = []
+no_suites = "the harness's own live status roll-up, rewritten by docs/testing/jobs/status.sh at the end of every job tick and every 30 minutes; not a renderer question and not a suite question."
+status = "open"
+status_note = "Pinned meta-issue. Its body says not to comment there; the first comment is regenerated from the host each time."
+blocked_on = "Not actionable as work: docs/testing/jobs/status.sh owns this issue's content and rewrites it on its own schedule. No fix to write, no lane to run, no suite to score."
+
+[issue.109]
+title = "Undersized surface pitch: hardware copes, our shared swizzle layout does not (absent; a lead on #87)"
+disposition = "unknown-semantics"
+suites = []
+no_suites = "a hardware capture question (pitch-vs-width behaviour on real silicon), not yet a suite result; #87's Surface_pitch::Swizzle residual is the pgraph capture this would inform."
+status = "open"
+status_note = "State in tree is absent: zero hits for a pitch-vs-width rule anywhere under hw/xbox/nv2a/. Filed as a candidate mechanism for #87's 10,240px residual, unconfirmed either way."
+blocked_on = "Blocked on real Xbox hardware (being acquired) and a hardware listener; issue text: 'Not dispatchable to a lane until a hardware listener exists.' The prediction and falsifier against docs/testing/swizzle_morton_fit.py can be written now by a lane -- labelled cloud for that."
+
+[issue.110]
+title = "PVIDEO overlay: no size cap and no pitch handling (pvideo.c is 77 lines of register stubs)"
+disposition = "unknown-semantics"
+suites = []
+no_suites = "PVIDEO overlay composition has no pgraph golden at all; the goldens are framebuffer captures and never exercise the overlay path."
+status = "open"
+status_note = "hw/xbox/nv2a/pvideo.c is 77 lines of register read/write stubs: no overlay size cap, no pitch handling, no composition. Inherited upstream gap, not a regression, and there is no capture path for it in the current harness."
+blocked_on = "Blocked on real Xbox hardware and a capture path for overlay output, per the issue text; neither exists yet. A lane can write the expected-clipping prediction now, ahead of the capture -- labelled cloud."
+
+[issue.111]
+title = "Alpha is dropped at video output on hardware: unmodelled here, and it changes what #89's alpha-only residual is worth"
+disposition = "unknown-semantics"
+suites = []
+no_suites = "a video-output question, not a framebuffer-golden one; the goldens are framebuffer captures, so this bears on #89's severity rather than its score."
+status = "open"
+status_note = "No alpha handling in the video output path in either direction. If confirmed, #89's 141,125-pixel alpha-only residual is invisible to a player and matters only where a later draw reads the surface back as a texture."
+blocked_on = "Blocked on real Xbox hardware, per the issue text; the severity note on #89 can be written now without it. Labelled cloud for the write-up and prediction."
+
+[issue.112]
+title = "xbox-hardware: the experiments that need real silicon, in the order they pay"
+disposition = "harness"
+suites = []
+no_suites = "a roadmap issue ordering five hardware experiments (the viewport 9/16 boundary sweep, radial-fog carryover, vsh goldens, two inherited vsh behaviours, and #109-111), not itself a suite result."
+status = "open"
+status_note = "Owner is acquiring a physical Xbox. Nothing here is dispatchable as a device run until a hardware listener exists; each experiment's prediction and falsifier can be written now, per the issue text."
+blocked_on = "Blocked on real Xbox hardware and a hardware listener (a way to boot a disc and capture the framebuffer), per the issue text. Every listed experiment's prediction/falsifier is lane-writable now -- labelled cloud."
