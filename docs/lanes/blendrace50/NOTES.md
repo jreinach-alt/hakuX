@@ -390,15 +390,72 @@ that failed to fire. No other mover shows one. Finding 5's discrimination
 rule (disjoint, not merely unequal) is what keeps `1-srcRGB_SADD_0` out of
 this list.
 
+### Finding 16: the one named candidate site is excluded by these runs' own config
+
+The brief asks which candidate site, if any, explains the difference. There
+is exactly one named anywhere in this issue, and it can be excluded without
+spending a minute of device time.
+
+`hw/xbox/nv2a/pgraph/vk/surface.c:1025-1034` names it: *"a draw sitting in
+the reorder window has not set that flag, because vk/draw.c's reorder path
+returns before its `post_draw` label and only `flush_reorder_window_internal()`
+calls `pgraph_vk_set_surface_dirty()`. A surface whose only pending writes
+are in the window therefore reads CLEAN and no download is attempted... That
+hole is the real one, it is in the reorder path's bookkeeping rather than
+here, and it is unfixed."*
+
+Two things bear on it:
+
+1. **771c8eb4f1 is in this binary.** `git merge-base --is-ancestor
+   771c8eb4f1 49afee8889` succeeds, so all 13 runs carry the flush it added
+   to `download_surface_to_buffer()`. Its own comment already retracts it as
+   a fix for #50 -- *"it is a latent-hazard guard, not a measured fix, and it
+   must not be cited as one"* -- so this is confirmation, not news, but it
+   means the path is not simply unpatched.
+
+2. **Both the flush and the bookkeeping hole are gated on
+   `g_xemu_draw_reorder` / `g_xemu_draw_merge`, and both were OFF in every
+   run.** The prefs are read at `xemu_android.cpp:949-957` and logged; all
+   ten new runs' logcats print `draw reorder: OFF` and `draw merge: OFF`.
+
+So the reorder window was never filled, no draw was ever held in it, and the
+named hole cannot have produced any of the 22 departures. **The only
+candidate site on record for #50 is refuted for the race**, though it remains
+open for the structural defect under a configuration nobody runs.
+
+Stating what the instrument could have shown, because a refutation resting
+on an absent log line would be worth nothing: the line is *present* in all
+ten logcats and reads `OFF`. Had the pref been on it would read `ON` in the
+same place. This is an observation of the value, not an inference from
+silence.
+
 ### What this pass does NOT name
 
-**No candidate site.** Four doors are now closed (the alpha channel, any
-golden, any capture from the same run, the clock excursion) and a fifth is
-ajar (the sibling-column relation, Finding 15). The geometry narrows the
-search to the stack draw/blit path and the frequency difference narrows it to
-something timing-dependent that fired 2-6 times in every nova run and once
-across seven thor runs -- stated as counts, because a single rate is the
-shape this issue withdrew once already -- but neither of those is a line of
-code, and
-saying otherwise would be the escalation this issue has already been burnt
-by twice. Per the brief and #89's precedent, remediation is a separate pass.
+**No candidate site survives.** Five doors are now closed (the alpha channel,
+any golden, any capture from the same run, the clock excursion, the reorder
+path) and one is ajar (the sibling-column relation, Finding 15).
+
+The geometry narrows the search to the stack render-target path, and the
+frequency difference narrows it to something timing-dependent that fired 2-6
+times in every nova run and once across seven thor runs -- stated as counts,
+because a single rate is the shape this issue withdrew once already. Neither
+of those is a line of code, and saying otherwise would be the escalation this
+issue has already been burnt by twice. Per the brief and #89's precedent,
+remediation is a separate pass.
+
+### What the next lane should do, in order
+
+1. **`1-srcRGB_SADD_1` first.** It is the only non-grey event, the only one
+   under 14,000 px, and the only one whose departing run matches hardware on
+   the same zero pixels the mode does. A single capture that breaks both
+   universals is worth more than twenty that confirm them.
+2. **Finding 15's sibling-column numbers**, which are already computed per
+   event -- why 54% and not 6% or 100%.
+3. **Enumerate the surface reads that can race in the DEFAULT config.** The
+   reorder path is gated off (Finding 16), so whatever is happening is on a
+   path that runs with `draw reorder: OFF`. That is a source question and
+   needs no device.
+4. **Do not spend device time on more full-disc repeats for the rate.** 13
+   runs is enough for the classification; a 14th would refine a number the
+   issue has already been misled by twice. Device time is better spent on a
+   discriminating arm once a site is named.
