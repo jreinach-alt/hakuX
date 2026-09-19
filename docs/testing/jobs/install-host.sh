@@ -26,7 +26,14 @@ done
 systemctl --user daemon-reload
 loginctl enable-linger "$USER" 2>/dev/null || echo "note: enable-linger needs a password; run: sudo loginctl enable-linger $USER"
 systemctl --user enable --now hakux-board.timer hakux-arms.timer hakux-fold.timer hakux-status.timer hakux-cloud.timer hakux-nightly.timer hakux-comments.timer hakux-dx.timer
-systemctl --user enable --now hakux-dispatcher.service
+# hakux-desktop.service is the `desktop` device lane -- this host's own xemu
+# build, serving requests pinned with `--device desktop`. Named HERE and not
+# only in the copy loop above, because the loop installs a unit and does not
+# start it: PR #149 folded the whole desktop channel and it served nothing for
+# a day, and a unit file sitting un-enabled in ~/.config is the same shape of
+# invisible. An explicit --device desktop request is unclaimable until this
+# line has run.
+systemctl --user enable --now hakux-dispatcher.service hakux-desktop.service
 
 # The labels every job reads and writes; gh silently no-ops on a missing one.
 bash "$REPO/docs/testing/jobs/ensure-labels.sh"
