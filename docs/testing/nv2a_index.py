@@ -541,6 +541,64 @@ def build_index(repo, tests_root, support_dirs=None):
     }
 
 
+def tests_provenance_gate(tests_root, allow_older):
+    """Refuse a `build` from a tests tree OLDER than the one the index came from.
+
+    MEASURED 2026-09-19 on the host. `nxdk_pgraph_tests` sat five commits
+    behind the checkout that built the committed index, so `check` reported
+    "suites differ (committed 103, tests tree 102)" -- and the remedy `check`
+    itself prints, `build --tests DIR`, would have DELETED the 103rd suite
+    (Surface as vertex array, added by tests #314) and committed the deletion.
+    The fold job does precisely that unattended: index stale after the merge ->
+    build -> commit -> push, on whatever tests tree the host happens to hold.
+    The first fold would have landed a smaller index on master.
+
+    A stale checkout never announces itself as a stale checkout. It announces
+    itself as a stale INDEX, which reads as "regenerate me" -- and regenerating
+    is how the information is lost. So the DIRECTION of the difference is
+    checked before anything is written: newer or equal, build; older or
+    divergent, refuse and name the command that fixes the tree instead.
+    """
+    if not tests_root or not os.path.exists(INDEX_PATH):
+        return 0
+    try:
+        with open(INDEX_PATH) as fh:
+            was = (json.load(fh).get("provenance") or {}).get("tests_commit")
+    except Exception:
+        return 0
+    now = sh(["git", "rev-parse", "HEAD"], tests_root)
+    if not was or not now or was == now:
+        return 0
+    # sh() returns "" on success and None on a non-zero exit, so both probes
+    # below are `is None` tests, not truthiness tests.
+    if sh(["git", "cat-file", "-e", was + "^{commit}"], tests_root) is None:
+        why = ("that commit is not in this checkout at all -- it may simply "
+               "be unfetched")
+        fix = "git -C %s fetch --all" % tests_root
+    elif sh(["git", "merge-base", "--is-ancestor", was, now], tests_root) is None:
+        behind = sh(["git", "rev-list", "--count", "%s..%s" % (now, was)], tests_root)
+        why = ("this checkout is %s commit(s) BEHIND it (or on another "
+               "branch), so rebuilding drops whatever those commits added"
+               % (behind or "?"))
+        fix = "git -C %s merge --ff-only @{u}" % tests_root
+    else:
+        return 0
+    lines = ["WARNING: rebuilding from a tests tree older than the committed"
+             " index, because --allow-older-tests was given."
+             if allow_older else
+             "REFUSING to rebuild the index from an older tests tree.",
+             "  committed index built from: %s" % was[:12],
+             "  this checkout is at:        %s" % now[:12],
+             "  %s" % why,
+             "  Fix the tree, not the index: %s" % fix]
+    if not allow_older:
+        lines += ["  Then re-run the build. If the older tree really is the one",
+                  "  you want recorded, pass --allow-older-tests."]
+    for line in lines:
+        print(line, file=sys.stderr)
+    return 0 if allow_older else 3
+
+
 def load_index():
     if not os.path.exists(INDEX_PATH):
         sys.exit("no index at %s - run: nv2a_index.py build --tests DIR" % INDEX_PATH)
@@ -1018,6 +1076,10 @@ def main():
     b.add_argument("--support", action="append", default=[],
                    help="helper-library checkout holding shared tables "
                         "(e.g. pbkitplusplus); repeatable")
+    b.add_argument("--allow-older-tests", action="store_true",
+                   help="build even though the tests checkout is older "
+                        "than the one the committed index came from "
+                        "(this DELETES whatever the newer commits added)")
     c = sub.add_parser("check", help="fail if the committed index is stale")
     c.add_argument("--tests", help="path to an nxdk_pgraph_tests checkout")
     c.add_argument("--support", action="append", default=[])
@@ -1036,6 +1098,9 @@ def main():
         [d for d in os.environ.get("PGRAPH_SUPPORT", "").split(os.pathsep) if d])
 
     if args.cmd == "build":
+        rc = tests_provenance_gate(tests, args.allow_older_tests)
+        if rc:
+            return rc
         index = build_index(REPO, tests, support)
         with open(INDEX_PATH, "w") as fh:
             json.dump(index, fh, indent=1, sort_keys=True)

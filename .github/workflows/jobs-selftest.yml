@@ -12,12 +12,14 @@ on:
       - 'docs/testing/jobs/**'
       - 'docs/testing/request.sh'
       - 'docs/testing/lane.sh'
+      - 'docs/testing/nv2a_index.py'
       - '.github/workflows/jobs-selftest.yml'
   pull_request:
     paths:
       - 'docs/testing/jobs/**'
       - 'docs/testing/request.sh'
       - 'docs/testing/lane.sh'
+      - 'docs/testing/nv2a_index.py'
       - '.github/workflows/jobs-selftest.yml'
 
 jobs:

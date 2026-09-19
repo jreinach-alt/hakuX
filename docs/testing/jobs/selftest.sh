@@ -146,6 +146,39 @@ check "the refusal was posted as a comment" grep -qE '^(pr|issue) comment' "$SEL
 check "the refusal comment names REFUSED" grep -q REFUSED "$HAKUX_WORK/arms/log/$sha2.refused.md"
 check "the skipped marker carries the arms.sh version" grep -q '^arms=' "$HAKUX_WORK/arms/skipped/$sha2"
 
+# The retry must reach the markers written BEFORE the stamp existed -- which is
+# every marker that was already on the host when the retry shipped, including
+# the single refusal (#89's, 02:56Z) the retry was written for. The first
+# version tested `grep -q '^arms='` first, so an unstamped marker took the
+# `else` and was skipped forever: the guard exempted exactly the backlog it was
+# meant to clear. Reproduce the host's marker by stripping the stamp.
+sed -i 's/^arms=[^ ]* //' "$HAKUX_WORK/arms/skipped/$sha2"
+: > "$SELFTEST_GH_LOG"
+out=$(bash "$HERE/arms.sh" 2>&1)
+check "an unstamped refusal (written before the stamp existed) is reconsidered" grep -q "reconsidering $sha2" <<< "$out"
+check "the rewritten marker carries the stamp, so it is not retried every tick" grep -q '^arms=' "$HAKUX_WORK/arms/skipped/$sha2"
+check "a stamped refusal at this version is left alone" bash -c 'out2=$(bash "$HERE/arms.sh" 2>&1); ! grep -q "reconsidering" <<< "$out2"'
+
+# ...and must NOT reach a structural skip. No edit to arms.sh turns "this
+# prediction names no suite with goldens" into a run, so retrying it every time
+# the script changes is a comment on a PR that says nothing new. The
+# discriminator is the refusal text; both marker kinds are unstamped here, so
+# this is the case that tells them apart.
+EXP3="$DISPATCH_DIR/expect/selftest-nosuite.json"
+python3 - "$EXP3" "$A" "$B" <<'PY2'
+import json, sys, datetime
+p, a, b = sys.argv[1:]
+json.dump({"registered_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+           "who": "lane.selftest", "issue": "1", "prediction": "a suite with no goldens on this host",
+           "a_ref": a, "b_ref": b, "expect": {"No_such_suite/Test": 0},
+           "must_not_move": [], "must_not_regress": [], "expect_counts": {}}, open(p, "w"), indent=2)
+PY2
+sha3=$(sha256sum "$EXP3" | cut -d' ' -f1)
+bash "$HERE/arms.sh" >/dev/null 2>&1
+check "a prediction naming no suite with goldens is skipped" grep -q "no suite with goldens" "$HAKUX_WORK/arms/skipped/$sha3"
+check "that structural skip carries no stamp" bash -c '! grep -q "^arms=" "$HAKUX_WORK/arms/skipped/$sha3"'
+check "and it is not reconsidered on the next tick" bash -c 'out3=$(bash "$HERE/arms.sh" 2>&1); ! grep -q "reconsidering $sha3" <<< "$out3"'
+
 echo "== status.sh"
 printf '2026-09-19T01:00:00Z\tlane-x\t?\t?\t?\tERR\tx.json\t\n2026-09-19T01:10:00Z\tlane-y\tclaude-opus-5\t41\t1300\t0\tERR\ty.json\tsaid a thing\n' > "$HAKUX_WORK/logs/lane/index.tsv"
 sout=$(bash "$HERE/status.sh" --print 2>&1); src=$?
@@ -159,6 +192,39 @@ check "status shows the arms refusal in full" grep -q 'last refusals' <<< "$sout
 echo "== fold.sh list, cloud.sh list"
 check "fold.sh list runs with nothing labelled" bash -c 'bash "$HERE/fold.sh" list 2>&1 | grep -q "nothing labelled fold-ready"'
 check "cloud.sh list runs with nothing to claim" bash -c 'bash "$HERE/cloud.sh" list 2>&1 | grep -q "nothing to claim"'
+
+echo "== nv2a_index.py: the fold job regenerates the index, so the tree it reads matters"
+# The fold job runs `nv2a_index.py check` after a merge and, if it fails,
+# `build` -- from whatever nxdk_pgraph_tests checkout the host holds. On
+# 2026-09-19 that checkout was five commits behind the one the committed index
+# came from, so the regeneration would have DELETED a suite (Surface as vertex
+# array) and pushed the deletion to master. The gate checks the DIRECTION of
+# the difference. Two throwaway repos are enough to test that; no suite parsing
+# is involved.
+GT="$T/gate"; mkdir -p "$GT/tests"
+git -C "$GT/tests" init -q 2>/dev/null
+git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m one
+c1=$(git -C "$GT/tests" rev-parse HEAD)
+git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m two
+c2=$(git -C "$GT/tests" rev-parse HEAD)
+printf '{"provenance": {"tests_commit": "%s"}}\n' "$c2" > "$GT/index.json"
+gate() {   # <checkout-at> <allow_older> -> the gate's return code
+    git -C "$GT/tests" checkout -q "$1"
+    python3 - "$REPO/docs/testing/nv2a_index.py" "$GT/index.json" "$GT/tests" "$2" 2>"$GT/gate.err" <<'PYGATE'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("nv2a_index", sys.argv[1])
+m = importlib.util.module_from_spec(spec); spec.loader.exec_module(m)
+m.INDEX_PATH = sys.argv[2]
+print(m.tests_provenance_gate(sys.argv[3], sys.argv[4] == "1"))
+PYGATE
+}
+check "a tests tree OLDER than the index refuses the rebuild" [ "$(gate "$c1" 0)" = 3 ]
+check "the same tree with --allow-older-tests proceeds" [ "$(gate "$c1" 1)" = 0 ]
+check "a tests tree AT the index's commit builds" [ "$(gate "$c2" 0)" = 0 ]
+git -C "$GT/tests" -c user.email=s@t -c user.name=s commit -q --allow-empty -m three
+check "a tests tree NEWER than the index builds" [ "$(gate HEAD 0)" = 0 ]
+printf '{"provenance": {"tests_commit": "%s"}}\n' "0123456789012345678901234567890123456789" > "$GT/index.json"
+check "a provenance commit this checkout has never seen refuses" [ "$(gate HEAD 0)" = 3 ]
 
 echo
 echo "selftest: $pass passed, $fail failed (fake host in $T)"

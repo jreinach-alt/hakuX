@@ -100,13 +100,26 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
     [ -f "$A/judged/$sha" ] && return 0
     [ -f "$A/pairs/$sha.json" ] && return 0
     if [ -f "$A/skipped/$sha" ]; then
-        # A refusal recorded by an OLDER arms.sh is reconsidered once this
-        # script changes: the first real refusal (#89, 02:56Z) was this
-        # script's own bug, and the fix should not need a human to rm a file
-        # on the host. Other skips (a ref that does not resolve, no suite)
-        # stand until the prediction changes.
-        if grep -q '^arms=' "$A/skipped/$sha" && ! grep -q "^arms=$ARMS_VERSION" "$A/skipped/$sha"; then
-            say "  reconsidering $sha: refused by an older arms.sh"; rm -f "$A/skipped/$sha"
+        # A request.sh refusal recorded by an OLDER arms.sh is reconsidered
+        # once this script changes: the first real refusal (#89, 02:56Z) was
+        # this script's own bug, and the fix should not need a human to rm a
+        # file on the host.
+        #
+        # WHAT IDENTIFIES ONE IS THE REFUSAL TEXT, NOT THE "arms=" STAMP. The
+        # first version of this retry tested `grep -q '^arms='` first, and the
+        # stamp was introduced by the same commit as the retry -- so the one
+        # marker the retry was written for, #89's, already sitting on the host
+        # with no stamp, took the `else` and was skipped forever. A guard keyed
+        # on a field only the new writer emits exempts exactly the backlog it
+        # was meant to clear. The stamp still does its job: it makes the retry
+        # once per version, not every tick.
+        #
+        # Structural skips (no a_ref, a_ref == b_ref, a ref that does not
+        # resolve, a stale b_ref, a soak, no suite with goldens) never carry
+        # that text and stand until the prediction itself changes, because no
+        # edit to this script can turn one of them into a run.
+        if grep -q 'request\.sh refused' "$A/skipped/$sha" && ! grep -q "^arms=$ARMS_VERSION" "$A/skipped/$sha"; then
+            say "  reconsidering $sha: request.sh refusal recorded by an older arms.sh"; rm -f "$A/skipped/$sha"
         else
             return 0
         fi
