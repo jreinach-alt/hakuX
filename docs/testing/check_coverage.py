@@ -292,7 +292,7 @@ def main():
         return 1
 
     # `dispatch_state` COSTS SOMETHING, and it has to, because it is a value
-    # invented to satisfy a gate and those get used to silence it. Three ways
+    # invented to satisfy a gate and those get used to silence it. Four ways
     # to write it wrong, all failures:
     #
     #   1. a value that is not in STATES -- a typo reads as classified to a
@@ -393,10 +393,11 @@ def main():
               % len(not_blocked), file=sys.stderr)
         for k, lead in not_blocked:
             print("  #%-4s %s" % (k, lead), file=sys.stderr)
-        print("\n  `blocked_on` means blocked, and an honest note saying the\n"
-              "  work is available is what removed these from fleet.py's\n"
-              "  DISPATCHABLE NOW section -- the board's own dispatch\n"
-              "  trigger. Move the prose to `status_note` and write\n"
+        print("\n  `blocked_on` means blocked. An honest note saying the work\n"
+              "  is available made THIS CHECKER count the row among \"N with a\n"
+              "  written blocker\" and print `coverage ok` over it, and left\n"
+              "  fleet.py undoing it with a substring search on the prose.\n"
+              "  Move the text to `status_note` and write\n"
               "  `dispatch_state = \"available\"`. That state satisfies this\n"
               "  gate on its own; there is no longer any reason to reach for\n"
               "  `blocked_on` to get a green preflight.", file=sys.stderr)

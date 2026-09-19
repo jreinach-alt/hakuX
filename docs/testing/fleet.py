@@ -232,7 +232,7 @@ def main():
     # supports, and exactly the "available by default" direction that got
     # finished work re-dispatched before.
     #
-    # BUT IT MUST NOT COST A FAIL, and that took a second pass to see. The old
+    # AND IT MUST NOT STOP COSTING A FAIL, which took a second pass to see. The old
     # code called such a row dispatchable, which was the wrong description AND
     # a non-zero exit; moving it to a note would have been the right
     # description and a SILENT one. #34 and #62 are in exactly this state on

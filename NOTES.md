@@ -58,13 +58,30 @@ still applies on top of it.
 - a `blocked_on` whose **opening claim** asserts non-blockage is now a FAIL,
   scoped to live-open issues.
 - `fleet.py`: `DISPATCHABLE NOW` is exactly the `available` rows not held by a
-  running lane. The prose sniff is deleted. A new non-fatal section, `NEITHER
-  BLOCKED NOR MARKED AVAILABLE`, shows rows that say nothing — coverage owns
-  failing on those, and calling them dispatchable would assert more than an
-  empty row supports.
+  running lane. The prose sniff is deleted. A new section, `NEITHER BLOCKED NOR
+  MARKED AVAILABLE`, shows rows that say nothing, because calling them
+  dispatchable asserts more than an empty row supports.
 - `docs/testing/jobs/selftest.sh`: a whole fake board (`$T/board` with copies of
   the three modules plus two toml files; `HAKUX_BOARD_REF=` makes board_files
-  fall back to it) and 13 checks over seven variants of one row.
+  fall back to it) and 17 checks over eight variants of one row.
+
+## Two things I got wrong on the first pass, both caught by measuring
+
+**The AVAILABLE count read 0 on a board with seven available rows.** I kept the
+old summary-line shape — owned, then available-and-*not*-owned, then
+blocked-and-not-owned, three buckets summing to the total — and every migrated
+row is *also* held by a lane, so the new state's count was zero exactly when the
+state was in use. The counts now overlap and the line says so; the sum property
+carried no information anyway, since the gate above fails on an unclassified row.
+Pinned by the `ownedavail` selftest variant.
+
+**Moving the empty-row case to a note would have dropped a FAIL.** The old
+`fleet.py` called a row with no blocker "dispatchable" — wrong description,
+non-zero exit. Describing it accurately as unclassified and printing it as a
+note would have been right and *silent*. #34 and #62 are in exactly that state
+on the live board (owned by lane.remote, no blocker, nothing else), so the hole
+opens the moment that lane stops running. It is now a separate section with
+accurate words and the same exit code.
 
 ## Why the detector is anchored at the start of the field
 
@@ -89,22 +106,46 @@ matched anywhere.
 
 ## Verified against the code being replaced, not reasoned about
 
-`SELFTEST_BOARD_SRC` points the new section at a directory of scripts. Run
-against `origin/master:docs/testing/{check_coverage,fleet,board_files}.py`,
-**4 of the 13 checks fail** and every one of those four is the defect:
+`SELFTEST_BOARD_SRC` points the new section at a directory of scripts.
 
-```
-  FAIL an explicitly AVAILABLE row is covered -- the third state
-  FAIL fleet calls exactly the available row dispatchable
-  FAIL a mid-text 'NOT BLOCKED' about another row is NOT dispatchable
-  FAIL fleet does not call an unclassified row dispatchable
-  FAIL a blocked_on that OPENS with NOT BLOCKED fails        (see below)
-```
+| scripts | result |
+|---|---|
+| this branch | 17 passed, 0 failed |
+| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **1 passed, 16 failed** |
+
+The one that passes against the old code is
+`an UNCLASSIFIED row still fails -- the gate is not weakened`, which is the
+assertion that behaviour was *preserved*. Every other check fails, which is the
+point: a new check that passes against the code it replaces is testing nothing.
 
 Every assertion is on the **output words**, never on the exit code: the old
 `check_coverage.py` exits 1 on most of these variants too, for the wrong reason
 (the available row reads as an uncovered gap). rc is far too coarse to tell the
 fix from the defect here.
+
+Reproduce with `.scratch/run-old.sh` / `.scratch/run-new.sh` (uncommitted
+drivers; they just extract the section and set `SELFTEST_BOARD_SRC`).
+
+## What actually moves, as a differential
+
+All seven rows are held by a running lane today, so `DISPATCHABLE NOW` is 0
+before *and* after. That 0 proves nothing. With blitsafe's fleet row set to
+`retired` against the real board:
+
+```
+OLD scripts, OLD tracker:  DISPATCHABLE (4)  #88 #89 #91 #92  "blocker says NOT BLOCKED"
+                           coverage ok (29 open: 12 owned by a lane, 17 with a written blocker)
+
+NEW scripts, MIGRATED:     DISPATCHABLE (4)  #88 #89 #91 #92  "dispatch_state=available"
+                           coverage ok (29 open: 7 AVAILABLE, 20 blocked, 12 owned by a lane)
+```
+
+`fleet.py`'s count is unchanged and I am not going to dress that up: the old
+sniff did catch those four, one of them (#92) by a false positive that happened
+to land on the right answer. What moves is (a) line 1 of the checker — which
+`idle-watchdog.sh` reads as `sed -n 1p` — no longer calling seven unblocked rows
+blocked, and (b) the board being able to write "waiting for capacity" without
+lying, which is the shape that was invisible to *both* consumers.
 
 ## The migration (7 rows, on the `board` branch only)
 
@@ -148,11 +189,20 @@ only considers rows with a non-empty blocker).
   and #52 mid-text) are **deliberately left alone**. The new check is scoped to
   live-open issues; a closed row's `blocked_on` is history and rewriting it
   destroys the record for no gain.
+- **#34 and #62 are unclassified on the live board** — owned by lane.remote, no
+  blocker, no `dispatch_state`. They pass coverage on ownership alone today and
+  will fail `fleet.py` the moment remote stops running. They are not in this
+  lane's migration set (remote is mid-queue on them), but somebody should write
+  a state on them.
 - Ordering hazard I checked rather than assumed: between pushing the board
   migration and this PR folding, `master` carries the old `check_coverage.py`
   against a migrated board. All seven migrated rows are owned by a lane in
   `territory.toml`, so the old gate still passes on ownership — verified by
-  running `origin/master`'s `check_coverage.py` against the migrated tracker.
+  running `origin/master`'s `check_coverage.py` against the migrated tracker
+  (`coverage ok (29 open: 12 owned by a lane, 17 with a written blocker)`).
   If a lane retires in that window before the fold, the old gate would fail on
   a row that *is* classified. Fold this before retiring blitsafe, swizzle87,
   remote or fold.
+- The migration is `63e7141f10` on `board`; the tip it was written against was
+  `0458dc53a0`. If board has moved since, `.scratch/push-board.sh` re-derives
+  from the fresh tip rather than forcing.
