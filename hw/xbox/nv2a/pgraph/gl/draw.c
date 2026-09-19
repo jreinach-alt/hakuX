@@ -123,6 +123,40 @@ static bool surface_color_format_dst_alpha_is_one(unsigned int color_format)
 }
 
 /*
+ * #158/#59's GL half. psh.c stamps the format's pad constant into the
+ * fragment's alpha, so GL_SRC_ALPHA -- which is output index 0's alpha --
+ * stops being the combiner's alpha and becomes the constant. Index 1 carries
+ * the combiner's alpha unchanged (psh.c copies it after the alpha test and
+ * after #43's fold, so it is exactly the value the blend unit would have
+ * consumed), and GL_SRC1_ALPHA reads it.
+ *
+ * The substitution is therefore a NO-OP IN INTENT: a draw that does not stamp
+ * is untouched, and a draw that does gets the same colour it would have got
+ * before the stamp existed. This mirrors pad_write_color_factor() in
+ * vk/draw.c, which the Vulkan side measured at eight Blend_surface Add_SrcA
+ * captures, four of them from bit-exact, with no exceptions to the rule
+ * `moved = {format has pad bits} AND {colour factor is SRC_ALPHA}`.
+ *
+ * COLOUR ONLY: the alpha half is forced to ONE/ZERO/ADD by the caller so that
+ * result.a is the stamp itself, which is the whole point of stamping.
+ *
+ * GL_SRC_ALPHA_SATURATE is left alone, as it is on the Vulkan side. There is
+ * no GL_SRC1_ALPHA_SATURATE to substitute, and no capture on this fleet
+ * reaches it on a stamping format.
+ */
+static GLenum pad_write_color_factor(GLenum factor)
+{
+    switch (factor) {
+    case GL_SRC_ALPHA:
+        return GL_SRC1_ALPHA;
+    case GL_ONE_MINUS_SRC_ALPHA:
+        return GL_ONE_MINUS_SRC1_ALPHA;
+    default:
+        return factor;
+    }
+}
+
+/*
  * Fold a known Ad = 1.0 into a blend factor. SRC_ALPHA_SATURATE is min(As,
  * 1 - Ad) and so is also 0 here, but is left alone: no capture exercises it on
  * an alpha-less surface, and changing it would be unmeasured.
@@ -366,11 +400,44 @@ void pgraph_gl_draw_begin(NV2AState *d)
 
         assert(sfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
         assert(dfactor < ARRAY_SIZE(pgraph_blend_factor_gl_map));
-        glBlendFunc(pgraph_blend_factor_gl_map[sfactor],
-                    pgraph_blend_factor_gl_map[dfactor]);
-
         assert(equation < ARRAY_SIZE(pgraph_blend_equation_gl_map));
-        glBlendEquation(pgraph_blend_equation_gl_map[equation]);
+
+        GLenum gl_sfactor = pgraph_blend_factor_gl_map[sfactor];
+        GLenum gl_dfactor = pgraph_blend_factor_gl_map[dfactor];
+
+        /*
+         * #158: when psh.c stamps this surface's pad constant into the
+         * fragment alpha, the colour factors read the combiner's alpha from
+         * index 1 instead, and the alpha half is forced so the stamp is what
+         * lands in memory. Read from the same expression psh.c stages its
+         * uniform from -- one derivation read twice rather than two
+         * derivations of one per-format fact, which is how #48's clear and
+         * sampler halves came apart (audit M3/P4).
+         *
+         * The Ad = 1.0 fold above STAYS, and that is not an oversight. It is
+         * about what the blend unit substitutes for a missing destination
+         * alpha, which #48 measured as one for BOTH suffixes; the stamp is
+         * about what the texture unit reads back, which is zero for _Z and
+         * one for _O. Different questions about the same bits -- see the
+         * comment on surface_color_format_dst_alpha_is_one() above. Once the
+         * stamp lands, memory holds the pad constant, so without this fold a
+         * _Z surface's DST_ALPHA would read zero where hardware reads one.
+         */
+        bool pad_stamped =
+            pgraph_glsl_dual_src_pad_supported() &&
+            pgraph_glsl_surface_pad_alpha_mode(
+                pg->surface_shape.color_format) != PSH_PAD_ALPHA_NONE;
+
+        if (pad_stamped) {
+            glBlendFuncSeparate(pad_write_color_factor(gl_sfactor),
+                                pad_write_color_factor(gl_dfactor),
+                                GL_ONE, GL_ZERO);
+            glBlendEquationSeparate(pgraph_blend_equation_gl_map[equation],
+                                    GL_FUNC_ADD);
+        } else {
+            glBlendFunc(gl_sfactor, gl_dfactor);
+            glBlendEquation(pgraph_blend_equation_gl_map[equation]);
+        }
 
         uint32_t blend_color = pgraph_reg_r(pg, NV_PGRAPH_BLENDCOLOR);
         float gl_blend_color[4];
