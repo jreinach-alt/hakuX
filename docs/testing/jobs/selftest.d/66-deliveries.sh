@@ -320,6 +320,18 @@ check "...and names where the whole page is" \
     grep -q "unread.md" "$DD/posted/body-107.md"
 check "the on-disk page is NOT truncated; only the comment is" \
     bash -c '! grep -q "Truncated to fit one comment" "$1"' _ "$DSWEEP/unread.md"
+# "SHORT ENOUGH, NOTHING TO DO" AND "THIS BLEW UP" ARE DIFFERENT FACTS. An
+# uncaught exception in the truncator exits 1, so if that shared the
+# nothing-to-do code the oversized page would go to a POST that then fails for
+# length -- silently, and exactly the outcome the cap exists to prevent. A
+# non-numeric POST_MAX is the cheapest real way to reach that path.
+: > "$DELIVER_GH_LOG"; rm -f "$DSWEEP/comment-id"
+out="$(env PATH="$DBIN:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" \
+       HAKUX_SWEEP_DIR="$DSWEEP" POST_MAX=notanumber bash "$DSRC/comment_sweep.sh" 2>&1)"
+check "a truncator that fails says so instead of quietly posting the whole page" \
+    grep -q "the truncator failed" <<< "$out"
+check "...and the report still goes out, degraded rather than lost" \
+    grep -q "issues/107/comments" "$DELIVER_GH_LOG"
 
 # ------------------------------------------------------- the retired watcher
 #

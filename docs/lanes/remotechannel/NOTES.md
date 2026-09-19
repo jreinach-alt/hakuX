@@ -174,14 +174,14 @@ UNBRIEFED path is quiet either way. The change adds no noise to a live board.
 
 ## The self-test, and what it is worth
 
-`docs/testing/jobs/selftest.d/66-deliveries.sh`, 41 checks, and the whole
+`docs/testing/jobs/selftest.d/66-deliveries.sh`, 43 checks, and the whole
 fragment can be pointed at another copy of the scripts with
 `SELFTEST_DELIVER_SRC`. Full run: **347 passed, 0 failed** (313 before this
 lane).
 
 Falsified against `origin/master` (extract `comment_sweep.sh`,
 `watch_remote_lane.sh`, `check_coverage.py`, `board_files.py` into a tree and
-set that variable): **32 of 41 fail**, for six independent reasons — no
+set that variable): **34 of 43 fail**, for six independent reasons — no
 `deliver.sh` at all; `check_coverage.py` reading a file mtime; the sweep
 enumerating issues so PR #45's comment is invisible; the sweep having no
 destination; no length cap on what it posts; the watcher still looping. The 9
@@ -200,6 +200,7 @@ session to a swap-by-redirect that left the old code in the tree:
 | the sweep's table trusts the feed order | the 1 newest-delivery-in-the-table check |
 | an empty window and a failed call share one exit path | the quiet-hour check |
 | a failed feed returns 0 | the unreadable-feed check |
+| the truncator's crash shares the no-op exit code | the truncator-failed check |
 
 The second and third are worth spelling out, because the first attempt at them
 was **tautological**. `scan` originally took the first matching row, on the
@@ -212,8 +213,12 @@ the last. A reader that takes the first match records #60; one that lets the
 last row overwrite records #71; only one that compares timestamps records #62.
 With the older row merely appended, both mutants passed.
 
-The last two mutants are the two halves of one defect this lane shipped and
-then found: `scan` first returned 3 whenever the feed came back empty. The
+The last three mutants are all one shape: **an exit code carrying two facts.**
+The truncator exits non-zero both for "short enough, nothing to do" and for an
+uncaught exception, so sharing that code would send an oversized page to a POST
+that then fails for length — silently, and exactly the outcome the cap exists
+to prevent. Reserving 3 for the no-op splits them. The other two are the two
+halves of one defect this lane shipped and then found: `scan` first returned 3 whenever the feed came back empty. The
 sweep runs hourly and most hours are quiet, so that would have printed a
 failure warning every hour — and the one hour the API was really down would
 have read exactly like the other twenty-three. **The discriminator is gh's

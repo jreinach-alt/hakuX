@@ -208,8 +208,13 @@ python3 - "$REPORT" "$REPORT.post" "$POST_MAX" "$REPORT" <<'PY'
 import sys
 src, dst, cap, where = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
 text = open(src).read()
+# 3, NOT 1, AND THE DIFFERENCE IS THE WHOLE POINT. "Short enough, nothing to
+# do" and "this blew up" are different facts, and an uncaught exception here
+# also exits 1 -- so sharing that code would send a report that is over the
+# limit to a POST that then fails for length, which is the exact outcome this
+# block exists to prevent. The caller distinguishes them.
 if len(text) <= cap:
-    sys.exit(1)                       # nothing to do; the caller posts the original
+    sys.exit(3)
 # Cut on a thread boundary so the last entry shown is a whole one.
 head = text[:cap]
 cut = head.rfind("\n### ")
@@ -222,7 +227,11 @@ open(dst, "w").write(
     "report that silently stops at the character limit reads exactly like a "
     "quiet day._\n" % (dropped, where))
 PY
-[ $? -eq 0 ] && BODY="$REPORT.post"
+case $? in
+    0) BODY="$REPORT.post" ;;
+    3) ;;                     # short enough; the whole page goes
+    *) echo "SWEEP: the truncator failed; posting the full $(wc -c < "$REPORT") byte page, which may be refused for length" >&2 ;;
+esac
 
 # THE DESTINATION. One comment, edited in place, on the issue labelled
 # `harness-status` -- the same single URL status.sh writes to, for the same
