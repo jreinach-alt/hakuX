@@ -217,6 +217,20 @@ a fragment header added. `selftest.sh` is byte-identical to `origin/master`
 again (`git diff origin/master -- docs/testing/jobs/selftest.sh` is empty),
 which is the check that the move was a move.
 
+Re-measured in the new position, because a moved check is not a checked check
+until it has been run where it now lives:
+
+```
+ours                     selftest: 135 passed, 0 failed
+origin/master's arms.sh  selftest: 129 passed, 6 failed   (exit 1)
+```
+
+The six are the same six as before the move — *posted as a comment*, *says
+SKIPPED not REFUSED*, *carries the marker's reason*, *records `told=`*, and both
+halves of *a marker written before `told=` existed is announced, and stamped*.
+The count rose from 76 to 135 because the merge brought in every other lane's
+fragments, not because anything here grew.
+
 **92** is the number because the fragment is not self-contained: it reads
 `$sha2`, the `request.sh` refusal that `40-arms-refusal.sh` leaves standing, to
 assert that a refusal does not also get a structural-skip comment. It must
