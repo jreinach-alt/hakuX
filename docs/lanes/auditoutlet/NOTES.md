@@ -1,8 +1,51 @@
 # lane.auditoutlet — one dispatch path for audits and remediation
 
-Base: `master` @ bdeab36f75. Files: `docs/testing/jobs/cloud.sh`,
-`docs/testing/jobs/board.sh`, `docs/testing/jobs/roles/board.md`,
-`docs/testing/jobs/selftest.sh`, `NOTES.md`.
+Base: `master` @ bdeab36f75, merged forward twice since. Files:
+`docs/testing/jobs/cloud.sh`, `docs/testing/jobs/board.sh`,
+`docs/testing/jobs/roles/board.md`,
+`docs/testing/jobs/selftest.d/98-audit-outlet.sh`, this file.
+
+## Why attempts 1 and 2 did not finish, and what changed underneath them
+
+The fix itself was written and green on attempt 1 and has not been touched
+since. Both later attempts were spent on the same path, `selftest.sh`:
+
+- **Attempt 1** ended with the work pushed and `fold-ready` set. The fold at
+  07:13:27Z reported `CONFLICT in: docs/testing/jobs/selftest.sh` — #131 and
+  #135 had folded between the push and the tick, both appending to the same
+  file.
+- **Attempt 2** merged `origin/master` at 07:38Z, kept both blocks, and set
+  `fold-ready` again. The fold at 07:55Z conflicted **on the same file a
+  second time**: #136 had folded in between and replaced `selftest.sh`
+  wholesale, splitting the checks into `selftest.d/` fragments. Nothing
+  attempt 2 did was wrong; a merge that is correct at push time is stale by
+  the next tick when nine lanes share one path and the fold moves master once
+  per tick.
+
+That is the defect #136 fixed, and this attempt is the first that can land,
+because the block below now lives in a file no other lane touches.
+
+**Attempt 3 (this one) is a move, not a rewrite.** The sixteen checks went
+across verbatim into `docs/testing/jobs/selftest.d/98-audit-outlet.sh`; after
+the move `docs/testing/jobs/selftest.sh` is byte-identical to `origin/master`
+(`git diff origin/master -- docs/testing/jobs/selftest.sh` is empty), so this
+lane no longer holds the contended path at all. 98 keeps the block's position
+as the last one appended; it builds its own `gh` shim on its own `$AOPATH` and
+depends on no other fragment, so the sort order is not load-bearing for it.
+
+One other thing the merge carried that was not mine: `NOTES.md` at the
+repository root is `lane.blit84`'s, folded by #129 before #131's per-lane
+convention reached master. An earlier attempt's merge resolution moved it to
+`docs/lanes/blit84/NOTES.md`. I put it back at the root, unchanged, so this
+branch's diff against master is exactly this lane's five files. Whoever owns
+`blit84` — or the next fold that touches it — should move it; a lane silently
+relocating another lane's file is a collision the board's `Files:` line cannot
+see.
+
+The fix's own files (`board.sh`, `cloud.sh`, `roles/board.md`) merged clean
+against `69bacdeea9`, `ae3712aae1` and `6b54c1f88b`; the dispatch line still
+sits at `board.sh:67`, ahead of `say "nothing actionable"` at `:89`, which is
+the ordering the check pins.
 
 ## The defect, restated
 
@@ -94,9 +137,9 @@ one. The refusal runs before any git or worktree work: it costs nothing.
 
 ## What I checked, and what the checks would have missed
 
-Sixteen checks in `selftest.sh`, appended immediately before the summary
-line. Against `origin/master`'s `cloud.sh` and `board.sh`, **14 of the 16
-fail**. The two that pass are paired guards — "a session that set no
+Sixteen checks, written as an append to `selftest.sh` and now carried
+unchanged in `selftest.d/98-audit-outlet.sh`. Against `origin/master`'s
+`cloud.sh` and `board.sh`, **14 of the 16 fail**. The two that pass are paired guards — "a session that set no
 successor does *not* get the label cleared" and "no session is started for a
 refused PR" are both true of code that does nothing at all — and each sits
 beside a discriminating partner asserting on the *output words* (the PR
