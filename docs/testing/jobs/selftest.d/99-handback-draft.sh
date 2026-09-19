@@ -72,9 +72,12 @@ hd_unsaid()  { ! grep -qF -- "$1" "$HD/comments.log"; }
 hd_notin()   { ! grep -q "$1" <<< "$got"; }
 hd_in()      { grep -q "$1" <<< "$got"; }
 # <pr> <branch> <head> <labels> <isDraft> <ci> <quiet-secs>: one row exactly as
-# the --jq emits it. The query itself is exercised against real jq at the end.
-hd_draft() { printf '%s\t%s\t%s\t%s\tisDraft=%s ci=%s quiet=%s\n' \
-                "$1" "$2" "$3" "${4:-}" "${5:-true}" "${6:-GREEN}" "${7:-9000}" > "$HD/drafts.tsv"; }
+# the --jq emits it -- state BEFORE labels, because tab is IFS whitespace and an
+# empty field in the middle of a `read` is not a field at all. Most lane PRs
+# carry no labels, so this is the common row, not the corner. The query's own
+# field order is pinned by the round-trip at the end of this fragment.
+hd_draft() { printf '%s\t%s\t%s\tisDraft=%s ci=%s quiet=%s\t%s\n' \
+                "$1" "$2" "$3" "${5:-true}" "${6:-GREEN}" "${7:-9000}" "${4:-}" > "$HD/drafts.tsv"; }
 
 mkdir -p "$HAKUX_WORK/wt/selftesthd"; echo "# the original brief" > "$HAKUX_WORK/briefs/selftesthd.md"
 rm -f "$HAKUX_WORK/attempts/selftesthd" "$HAKUX_WORK/handback/strand/selftesthd"
@@ -83,6 +86,9 @@ rm -f "$HAKUX_WORK/attempts/selftesthd" "$HAKUX_WORK/handback/strand/selftesthd"
 # THE MEASUREMENT IT RESTORES. A draft lane PR, green, quiet for hours, unit
 # not running: before this, no job in the harness asked both halves of that
 # question and the PR was unreachable by anything but a person.
+# This row carries NO labels, which is the common case and was the bug: with
+# labels in the middle of the TSV, `IFS=$'\t' read` collapsed the empty field
+# and every unlabelled stranded draft was refused as an unfiltered row.
 D1=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa1
 hd_draft 301 lane/selftesthd "$D1"
 out=$(hd list)
@@ -122,7 +128,7 @@ check "and says on the PR that the call stays with the lane" hd_said "does **not
 # because CI takes ten minutes has failed at nothing, so the count goes back.
 check "a strand resume does not spend one of the lane's attempts" \
     [ "$(cat "$HAKUX_WORK/attempts/selftesthd" 2>/dev/null || echo 0)" = 0 ]
-check "and the PR is told so, so the counter is not a mystery" hd_said "did **not** spend one of the lane's attempts"
+check "and the PR is told so, so the counter is not a mystery" hd_said "This did not spend one of the lane's attempts"
 
 # ONCE PER CAUSE. A lane resumed every 30 minutes because its CI is still
 # pending is worse than a stranded PR.
@@ -151,7 +157,7 @@ D3=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa3
 # The strand count IS incremented by a resume -- that is what makes the cap
 # below reachable at all -- so each block that needs a resume clears it first.
 check "a strand resume is counted towards the cap" \
-    [ "$(cat "$HAKUX_WORK/handback/strand/selftesthd")" = 1 ]
+    [ "$(cat "$HAKUX_WORK/handback/strand/selftesthd" 2>/dev/null)" = 1 ]
 rm -f "$HAKUX_WORK/handback/strand/selftesthd"
 hd_reset; hd_draft 301 lane/selftesthd "$D3" "" true GREEN 600
 out=$(hd list); hd >/dev/null
@@ -183,7 +189,7 @@ check "  and that a regressed PR is not fold-ready" grep -q "regressed\` PR is n
 # else must: a lane handed the resolved state DRAFT_STRAND_MAX times and still
 # in draft is not waiting on anything this job can see.
 D5=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa5
-hd_reset; echo 3 > "$HAKUX_WORK/handback/strand/selftesthd"
+hd_reset; mkdir -p "$HAKUX_WORK/handback/strand"; echo 3 > "$HAKUX_WORK/handback/strand/selftesthd"
 rm -f "$HAKUX_WORK/handback/done/strandmax-301"
 hd_draft 301 lane/selftesthd "$D5" "" true GREEN 9000
 out=$(hd list); hd >/dev/null
@@ -201,8 +207,14 @@ rm -f "$HAKUX_WORK/handback/strand/selftesthd" "$HAKUX_WORK/handback/done/strand
 # person. Acting on one of those here is two sessions on one cause.
 D6=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa6
 for stale in needs-rebase needs-audit-1 needs-remediation blocked:needs-owner folded; do
-    hd_reset; hd_draft 301 lane/selftesthd "$D6" "$stale" true GREEN 9000; hd >/dev/null
+    hd_reset; hd_draft 301 lane/selftesthd "$D6" "$stale" true GREEN 9000
+    out=$(hd list); hd >/dev/null
     check "a draft carrying $stale is left to its own actor" hd_no_run
+    # ...and left alone BY THE STALE RULE. Without this the check is green
+    # against a build that has no draft pickup at all, which is the one it
+    # replaces: a negative alone cannot tell "guarded" from "inert".
+    check "  and says so, rather than never having seen the PR" \
+        grep -q "$stale; already moved on" <<< "$out"
 done
 
 # AN IMPOSSIBLE ROW IS THE CHECK. Both halves of the draft filter live in the
@@ -224,7 +236,9 @@ hd_reset; hd_draft 301 claude/hakux-something "$D7" "" true GREEN 9000
 out=$(hd list); hd >/dev/null
 check "a row from the draft pickup on a non-lane branch resumes nobody" \
     hd_no_run
-check "  and is refused as unfiltered, not commented on a person's PR" \
+check "  refused for the shape it is in, not by never having been picked up" \
+    grep -q "which is not lane/\*; the filter did not happen" <<< "$out"
+check "  and is not commented on a person's PR" \
     hd_quiet
 
 # A lane/cloud-* draft reaches the lane-naming rule, which is the right place
@@ -237,6 +251,24 @@ check "  and is told cloud lanes remediate themselves" hd_said "cloud lanes reme
 check "  in words, not by naming a label the PR does not carry" \
     hd_unsaid '`draft-strand'
 check "  saying what it actually observed" hd_said "unit is not running"
+
+# THE ACTOR HAS TO RUN ON THE DAY IT IS NEEDED. handback.sh has no timer of its
+# own: fold.sh calls it at the end of every tick. fold.sh used to `exit 0` the
+# moment nothing carried `fold-ready` -- and NONE of handback's causes is that
+# label. A handed-back PR has had `fold-ready` removed; a stranded draft never
+# had it. So the one state in which nothing folds is exactly the state in which
+# every PR that needs this actor is waiting, and the actor did not run.
+hd_fold() { ( export PATH="$HD/bin:$PATH"; bash "$HERE/fold.sh" "$@" 2>&1 ); }
+hd_reset; rm -f "$HD/drafts.tsv" "$HD/prs.fold-ready.tsv"
+out=$(hd_fold list)
+check "with nothing to fold, the fold tick still says so" \
+    grep -q "nothing labelled fold-ready" <<< "$out"
+# Anchored on a call ONLY handback.sh makes. `isDraft` was the first thing
+# reached for and it is in fold.sh's own candidate query, so the check was
+# green against the build it was written to falsify -- the grep matched the
+# caller, not the callee.
+check "  and still runs the handback actor" \
+    grep -q -- "--label needs-rebase" "$HD_LOG"
 
 # BOTH PICKUPS SHARE ONE BODY -- the lane name, the once-per-cause key, the
 # worktree check, the liveness check, the cap, the counter, the comment are
@@ -279,17 +311,22 @@ PYQ
                "labels":[],"updatedAt":"2020-01-01T00:00:00Z",
                "statusCheckRollup":[{"conclusion":null,"state":"PENDING"}]}]'
     got=$(printf '%s' "$fixture" | jq -r "$q" 2>&1)
-    check "the draft query yields number/branch/head/labels/state" \
-        grep -q "^9	lane/x	ab	verified	isDraft=true ci=GREEN quiet=[0-9][0-9]*$" <<< "$got"
+    check "the draft query yields number/branch/head/state/labels" \
+        grep -q "^9	lane/x	ab	isDraft=true ci=GREEN quiet=[0-9][0-9]*	verified$" <<< "$got"
     check "  a non-draft PR is not in the pickup at all" hd_notin "^10	"
     check "  nor a PR whose head is not a lane/ branch" hd_notin "^11	"
-    check "  a failing check reads RED" grep -q "^12	lane/w	gh		isDraft=true ci=RED " <<< "$got"
-    check "  no runs at all reads NONE, never GREEN" grep -q "^13	lane/v	ij		isDraft=true ci=NONE " <<< "$got"
-    check "  an unconcluded check reads PENDING, never GREEN" grep -q "^14	lane/u	kl		isDraft=true ci=PENDING " <<< "$got"
+    check "  a failing check reads RED" grep -q "^12	lane/w	gh	isDraft=true ci=RED " <<< "$got"
+    check "  no runs at all reads NONE, never GREEN" grep -q "^13	lane/v	ij	isDraft=true ci=NONE " <<< "$got"
+    check "  an unconcluded check reads PENDING, never GREEN" grep -q "^14	lane/u	kl	isDraft=true ci=PENDING " <<< "$got"
+    # The empty field goes LAST or `read` eats it. A PR with no labels must
+    # still end in a delimiter with nothing after it, never carry its state one
+    # column to the right.
+    check "  a PR with no labels ends the row, it does not shift the state left" \
+        grep -q "^13	lane/v	ij	isDraft=true ci=NONE quiet=[0-9][0-9]*	$" <<< "$got"
     # The quiet clock is GitHub's updatedAt, not a file on this host: a job
     # redeployed at noon must not restart every stranded PR's clock at noon.
     check "  quiet is seconds since the PR last changed, and 2020 is a long time" \
-        [ "$(sed -n '1s/.*quiet=//p' <<< "$got")" -gt 100000000 ]
+        [ "$(sed -n '1s/.*quiet=\([0-9]*\).*/\1/p' <<< "$got")" -gt 100000000 ]
 else
     echo "  note: jq not on PATH; the draft pickup query was not exercised"
 fi

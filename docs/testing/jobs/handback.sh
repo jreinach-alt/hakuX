@@ -275,7 +275,15 @@ prs_for() {   # <label> -> "num<TAB>headRefName<TAB>headRefOid<TAB>labels,comma,
 # survives a restart of the timer and does not start over when a job is
 # redeployed. The unit-liveness half of the join is below, per row: it is a
 # systemd question and gh cannot answer it.
-stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>labels<TAB>isDraft=<b> ci=<STATE> quiet=<secs>"
+# LABELS GO LAST, AND THAT IS NOT COSMETIC. `IFS=$'\t' read` treats tab as IFS
+# WHITESPACE, so a run of tabs collapses to one delimiter and an EMPTY INTERIOR
+# FIELD silently disappears -- every field after it shifts left by one. Most
+# lane PRs carry no labels at all, so with labels in the middle this pickup read
+# `isDraft=true ci=...` as the label list and the state as empty, and every
+# stranded draft was refused as an unfiltered row. Only the LAST field may be
+# empty (a trailing delimiter is dropped harmlessly), so the one field that
+# routinely is goes there.
+stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>isDraft=<b> ci=<STATE> quiet=<secs><TAB>labels"
     gh pr list --repo "$GH_REPO" --state open --limit 100 \
         --json number,headRefName,headRefOid,isDraft,labels,updatedAt,statusCheckRollup \
         --jq 'sort_by(.number)[] | select(.isDraft) | select(.headRefName | startswith("lane/"))
@@ -284,7 +292,7 @@ stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>labels<TAB>isDraft=<b> c
                  elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
                  elif ($c | any(. == "FAILURE" or . == "ERROR" or . == "CANCELLED" or . == "TIMED_OUT")) then "RED"
                  else "PENDING" end) as $ci
-              | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.labels | map(.name) | join(","))\tisDraft=\(.isDraft) ci=\($ci) quiet=\((now - (.updatedAt | fromdateiso8601)) | floor)"' 2>/dev/null
+              | "\(.number)\t\(.headRefName)\t\(.headRefOid)\tisDraft=\(.isDraft) ci=\($ci) quiet=\((now - (.updatedAt | fromdateiso8601)) | floor)\t\(.labels | map(.name) | join(","))"' 2>/dev/null
 }
 
 # ONE STREAM, ONE BODY. The two pickups ask GitHub different questions and
@@ -293,15 +301,19 @@ stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>labels<TAB>isDraft=<b> c
 # attempt counter, the comment -- is written once. `$stale` holds spaces, which
 # is why the stream is tab-separated and the rows are built before the loop:
 # `while ... | read` would run the body in a subshell and lose `$resumed`.
+#
+# The same empty-interior-field rule applies here: `labels` is last, and a
+# label row's `extra` is "-" rather than "", because tab is IFS whitespace and
+# an empty field between two others is not a field at all after `read`.
 rows=""
 for row in "${HANDBACK_ROWS[@]}"; do
     read -r label action stale <<< "$row"
     while IFS=$'\t' read -r pr branch head labels; do
         [ -n "${pr:-}" ] || continue
-        rows+="$label"$'\t'"$action"$'\t'"$stale"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$labels"$'\t'$'\n'
+        rows+="$label"$'\t'"$action"$'\t'"$stale"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"-"$'\t'"$labels"$'\n'
     done <<< "$(prs_for "$label")"
 done
-while IFS=$'\t' read -r pr branch head labels extra; do
+while IFS=$'\t' read -r pr branch head extra labels; do
     [ -n "${pr:-}" ] || continue
     # WHICH WAIT RESOLVED decides the cause, and the cause is the marker key.
     # `verified`/`regressed` is `arms.sh` saying a verdict landed, which is
@@ -310,11 +322,11 @@ while IFS=$'\t' read -r pr branch head labels extra; do
         *,verified,*|*,regressed,*) strand_cause=draft-strand-arm ;;
         *)                          strand_cause=draft-strand-quiet ;;
     esac
-    rows+="$strand_cause"$'\t'"resume_strand"$'\t'"$STRAND_STALE"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$labels"$'\t'"$extra"$'\n'
+    rows+="$strand_cause"$'\t'"resume_strand"$'\t'"$STRAND_STALE"$'\t'"$pr"$'\t'"$branch"$'\t'"$head"$'\t'"$extra"$'\t'"$labels"$'\n'
 done <<< "$(stranded_drafts)"
 
 resumed=0; seen=0
-while IFS=$'\t' read -r label action stale pr branch head labels extra; do
+while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         [ -n "${pr:-}" ] || continue
 
         # THE ROW MUST PROVE THE FILTER HAPPENED. Neither pickup is re-checked
@@ -413,7 +425,7 @@ while IFS=$'\t' read -r label action stale pr branch head labels extra; do
             [ "$mode" = list ] && { echo "#$pr $branch: $label, lane $name has no worktree or brief on this host"; continue; }
             echo "no worktree or brief for lane $name" > "$marker"
             say "#$pr: lane $name has no worktree ($WORK/wt/$name) or brief; cannot resume"
-            comment "$pr" "[job.handback] \`$label\` is set and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's."
+            comment "$pr" "[job.handback] $said and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's."
             continue
         fi
 
@@ -429,7 +441,7 @@ while IFS=$'\t' read -r label action stale pr branch head labels extra; do
 
         # ------------------------------------------ the strand's own two gates
         uncounted=""
-        if [ "${label#draft-strand}" != "$label" ]; then
+        case "$label" in draft-strand-*)
             # WAITING IS NOT STRANDED. `draft-strand-quiet` fires on a clock and
             # nothing else, so before it does, the clock has to have run long
             # enough that the thing the lane was waiting for would have landed.
@@ -462,8 +474,8 @@ It wants a person now. Either the lane is waiting on something this job cannot s
                 fi
                 continue
             fi
-            uncounted=1
-        fi
+            uncounted=1 ;;
+        esac
 
         if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD RESUME lane.$name ($label)"; continue; fi
         [ "$resumed" -eq 0 ] || { say "#$pr waits: one resume per tick"; continue; }
@@ -492,10 +504,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         [ "$rc" -eq 0 ] || truncate -s "$size" "$WORK/briefs/$name.md"
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
             printf '%s\n' "$attempts_before" > "$WORK/attempts/$name"
-            mkdir -p "$H/strand"
             printf '%s\n' "$(( $(cat "$H/strand/$name" 2>/dev/null || echo 0) + 1 ))" > "$H/strand/$name"
-        fi
-        if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
             echo "resumed (strand, attempt not counted): $out" > "$marker"
             say "#$pr: resumed lane.$name on $label -- $out"
             comment "$pr" "[job.handback] Resumed \`lane.$name\`: $said, so nothing else could act on it -- \`board.sh\`, \`fleet.py\` and \`fold.sh\` all skip drafts, and that is right while a lane is working.
