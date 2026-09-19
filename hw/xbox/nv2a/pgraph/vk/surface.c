@@ -125,6 +125,101 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
     return true;
 }
 
+/*
+ * #92 PROBE: CAN AN ADDRESS CHANGE GO UNSEEN?
+ *
+ * #92 says SurfaceShape carries no address, so framebuffer_dirty() cannot see
+ * a DMA-context swap, and asks for that function's VERDICT to be logged across
+ * TestSwap()'s SET_CONTEXT_DMA_COLOR writes. THE VERDICT ALONE CANNOT ANSWER
+ * IT, and that is why this probe logs something else.
+ *
+ * The premise is true and is not in question: the struct is formats, geometry
+ * and anti-aliasing, and memcmp of it is blind to where the surface lives. But
+ * a verdict of `false` at a swap is consistent with TWO different worlds:
+ *
+ *   (a) the swap went unseen and the stale binding was kept -- the defect; and
+ *   (b) the swap was seen by the OTHER signal, one line below the verdict:
+ *       SET_CONTEXT_DMA_COLOR sets pg->surface_color.buffer_dirty directly
+ *       (pgraph.c:2381-2388), as do SET_SURFACE_COLOR_OFFSET (:2539) and
+ *       SET_SURFACE_PITCH (:2526) -- the three methods that can move a colour
+ *       surface. buffer_dirty is the address-change signal; the shape is the
+ *       SHAPE-change signal, and it exists to make the OTHER target rebind.
+ *
+ * An instrument that cannot separate (a) from (b) reads the same either way,
+ * so this one counts the discriminating event instead: an upload-side
+ * update_surface_part() whose target address differs from the address of the
+ * binding it already holds, WHILE the gate that would re-resolve it is shut.
+ * That is exactly "the memory moved and nothing noticed"; it cannot occur in
+ * world (b) and must occur in world (a).
+ *
+ * missed=0 over a run containing TestSwap() refutes #92's consequence while
+ * leaving its premise standing. missed>0 confirms it and names the caller.
+ *
+ * There is a third route the counter would also catch, and it is the one
+ * worth watching: target->vram_addr is `dma.address + surface->offset` with
+ * dma.address read out of the DMA OBJECT IN INSTANCE MEMORY by nv_dma_load()
+ * on every call. A guest that rewrites that object in place moves the surface
+ * without touching any of the three methods above, so nothing sets
+ * buffer_dirty and the shape is unchanged -- unseen by BOTH signals rather
+ * than by the shape alone. Whether the suite does this is a measurement, not
+ * a reading; it is what `missed` counts.
+ *
+ * Printed under "hakuX" with a [surf92] prefix, on the heartbeat as well as on
+ * the event, so an absent line means the tag was filtered rather than the
+ * condition never occurring -- dispatcher.sh:934, "SILENCE IS VOID".
+ */
+#ifdef __ANDROID__
+#define SURF92_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define SURF92_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static struct {
+    unsigned long updates;      /* upload-side update_surface_part() calls   */
+    unsigned long shape_dirty;  /* framebuffer_dirty() said true             */
+    unsigned long addr_change;  /* target address != held binding's address  */
+    unsigned long missed;       /* ...and the re-resolve gate was shut       */
+    bool shape_dirty_this_update;
+} g_surf92;
+
+static void surf92_probe(bool color, bool gate_open,
+                         SurfaceBinding const *current_binding,
+                         SurfaceBinding const *target)
+{
+    g_surf92.updates++;
+
+    bool addr_change =
+        current_binding && current_binding->vram_addr != target->vram_addr;
+    if (addr_change) {
+        g_surf92.addr_change++;
+        if (!gate_open) {
+            g_surf92.missed++;
+        }
+    }
+
+    /*
+     * Every miss, the first sixty-four address changes, then a heartbeat. A
+     * whole-disc run switches surfaces constantly and an unbounded line per
+     * switch would be a flood; a miss is the event the probe exists for and
+     * is never suppressed.
+     */
+    bool missed_now = addr_change && !gate_open;
+    if (!(missed_now || (addr_change && g_surf92.addr_change <= 64) ||
+          g_surf92.updates % 2048 == 0)) {
+        return;
+    }
+
+    SURF92_LOG("[surf92] updates=%lu shapedirty=%lu addrchg=%lu missed=%lu "
+               "%s fbdirty=%d gate=%d held=0x%08" HWADDR_PRIx
+               " want=0x%08" HWADDR_PRIx,
+               g_surf92.updates, g_surf92.shape_dirty, g_surf92.addr_change,
+               g_surf92.missed, color ? "color" : "zeta",
+               (int)g_surf92.shape_dirty_this_update, (int)gate_open,
+               current_binding ? current_binding->vram_addr : (hwaddr)0,
+               target->vram_addr);
+}
+
 static void memcpy_image(void *dst, void const *src, int dst_stride,
                          int src_stride, int height)
 {
@@ -3210,8 +3305,14 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     SurfaceBinding *current_binding = color ? r->color_binding
                                             : r->zeta_binding;
 
-    if (!current_binding ||
-        (upload && (pg_surface->buffer_dirty || mem_dirty))) {
+    bool gate_open = !current_binding ||
+                     (upload && (pg_surface->buffer_dirty || mem_dirty));
+
+    if (upload) {
+        surf92_probe(color, gate_open, current_binding, &target);
+    }
+
+    if (gate_open) {
         SURF_TIMER_INIT(_gt0);
         // FIXME: We don't need to be so aggressive flushing the command list
         // pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_CREATE);
@@ -3572,6 +3673,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
+        g_surf92.shape_dirty_this_update = fb_dirty;
+        g_surf92.shape_dirty += fb_dirty ? 1 : 0;
         if (fb_dirty) {
             memcpy(&pg->last_surface_shape, &pg->surface_shape,
                    sizeof(SurfaceShape));

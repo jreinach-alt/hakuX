@@ -742,17 +742,81 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  * X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one VkFormat, so
  * check_surface_compatibility() reuses one binding across a change between
  * them. drawn_format and host_fmt are assigned together from the same
- * `target` on BOTH the create path (surface.c:3120/3123) and the
- * compatible-reuse path (3340/3342), so taking this side from drawn_format
- * makes the two sides derive from one color_format value by construction
- * rather than by the register happening to be current.
+ * `target` on BOTH the create path (surface.c:3215) and the
+ * compatible-reuse path (surface.c:3500), so taking this side from
+ * drawn_format makes the two sides derive from one color_format value by
+ * construction rather than by the register happening to be current.
  *
  * Before the #59 stamp this could not bite: the clear always wrote 1.0, so
  * only the sampler had an opinion and there was nothing to disagree with.
  *
  * Every caller already guards on r->color_binding; the register fallback is
  * for the no-binding case only, where nothing is sampled either.
+ *
+ * WHETHER THE TWO EXPRESSIONS CAN STILL DISAGREE IS #89's QUESTION, and the
+ * probe below counts it rather than arguing it.
  */
+
+/*
+ * #89 PROBE. Counts how often the two expressions above actually disagree at
+ * a clear -- `diverged` -- and prints often enough that SILENCE IS
+ * DISTINGUISHABLE FROM ZERO, which is dispatcher.sh's own rule about its
+ * allow-list (:934, "SILENCE IS VOID"). A periodic line with
+ * `diverged=0` says the instrument ran and saw none; no line at all says the
+ * tag was filtered or the path never ran, and those are different facts.
+ *
+ * Tag "hakuX" and not the reserved "hakuX-lane", for the reason measured at
+ * draw.c:7820: a dispatcher instance started before the reservation landed
+ * applies a spec with no hakuX-lane in it, and `hakuX` is in every spec this
+ * project has ever had. The [clr89] prefix is what makes it greppable out of
+ * a shared tag.
+ */
+#ifdef __ANDROID__
+#define CLR89_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define CLR89_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static struct {
+    unsigned long clears;
+    unsigned long no_binding;
+    unsigned long diverged;
+} g_clr89;
+
+static void clr89_probe(PGRAPHState *pg, unsigned int shape_format)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    unsigned int drawn_format =
+        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
+                           shape_format;
+
+    g_clr89.clears++;
+    if (!r->color_binding) {
+        g_clr89.no_binding++;
+    }
+
+    bool diverged = drawn_format != shape_format;
+    if (diverged) {
+        g_clr89.diverged++;
+    }
+
+    /* Every divergence for the first twenty, then a heartbeat. */
+    if (!(diverged ? g_clr89.diverged <= 20 : g_clr89.clears % 512 == 0)) {
+        return;
+    }
+
+    CLR89_LOG("[clr89] clears=%lu nobind=%lu diverged=%lu "
+              "shape_fmt=0x%02x drawn_fmt=0x%02x shape_pad=%d drawn_pad=%d "
+              "addr=0x%08" HWADDR_PRIx,
+              g_clr89.clears, g_clr89.no_binding, g_clr89.diverged,
+              shape_format, drawn_format,
+              (int)pgraph_glsl_surface_pad_alpha_mode(shape_format),
+              (int)pgraph_glsl_surface_pad_alpha_mode(drawn_format),
+              r->color_binding ? r->color_binding->vram_addr : (hwaddr)0);
+}
+
 static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
@@ -762,6 +826,8 @@ static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
     unsigned int color_format =
         r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
                            pg->surface_shape.color_format;
+
+    clr89_probe(pg, pg->surface_shape.color_format);
 
     switch (pgraph_glsl_surface_pad_alpha_mode(color_format)) {
     case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
