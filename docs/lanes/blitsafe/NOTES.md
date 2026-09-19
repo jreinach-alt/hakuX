@@ -181,6 +181,39 @@ was withdrawn on the issue by its own arms D/E/F. The narrowing is correct and
 inert; the 141,125 is a disc-composition effect and belongs to whoever picks up
 `Swap_ZB`.
 
+### The one leg that was supposed to be more than a tripwire, and wasn't
+
+`Swap_ZB` was registered `must_not_move`, and the prediction gave it a second
+job:
+
+> on this disc it should read 141,125 in BOTH arms (33 captures in two
+> preceding suites, above the measured threshold of 2), so it doubles as a
+> positive control that the composition effect is present and untouched.
+
+**It read 0 in both arms.** (`scores1.tsv`: `Swap_ZB` 0/0, `Swap`
+304,750/304,750.) The `must_not_move` leg passes — 0 → 0 does not move — but
+the *control* did not fire: the composition effect it was meant to witness was
+absent, so it confirmed nothing.
+
+The error was in the threshold reasoning, and #88's own analysis had already
+established why: `Swap_ZB` scores **0 on six handheld Vulkan runs** across six
+`apk_sha`s, bit-exact on three. The 141,125 is a *desktop-lane / `iso_surf1`*
+figure. Predicting it on a handheld three-suite disc carried an absolute across
+platforms — which that same prediction's section (b) explicitly warns against,
+one paragraph earlier.
+
+**What the next lane should not repeat:** a `must_not_move` leg given a
+second, positive-control job needs its expected value derived on *the platform
+and disc it will run on*. Here the leg's two jobs disagreed and only the weak
+one was scored, so a PASS looked like it had confirmed composition when it had
+confirmed nothing. An inert control is not a measurement, and it is hardest to
+spot when it is bolted onto a leg that passes for other reasons.
+
+Unplanned corroboration from the same table: `Swap` reads 304,750 in both arms
+here, and both refs carry #88's policy (`67dc7724ee` is an ancestor of each).
+That independently reproduces the arm-B value of the 165,447 → 304,750 move
+#91 is about, on a different disc and a different pair.
+
 ---
 
 ## #88 and #91 — patch and arm registered; no verdict yet
