@@ -1,0 +1,131 @@
+[
+  {
+    "pass1_id": "H1",
+    "pass2_id": null,
+    "severity": "HIGH",
+    "verdict": "CLOSED",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "0",
+    "scenario": "Pass 1's scenario cannot occur as registered. It said the arm, queued on a desktop GL build with surface_scale_factor != 1, aborts on assert(surface->pitch >= width*bpp) -- the assert keyed on the lane's own subject -- so expect_counts.better=1 fails for a reason that is neither model, in a prediction claiming 'either outcome settles it'. Both refs now read '4129a349e6 with xemu.toml [display] renderer = OpenGL|Vulkan, [display.quality] surface_scale = 1'. The key path is real: config_spec.yml:226-239 gives display.renderer as an enum and display.quality.surface_scale as an integer defaulting to 1. With the scale at 1, gl/surface.c:2322 'downscale &= (pg->surface_scale_factor != 1)' clears downscale and the assert at :2473 lives inside 'if (downscale)'. Path C is unreachable under the registration.",
+    "evidence": "Re-derived the A/B/C table against origin/master rather than taking it. Path A: gl/surface.c:2394 gate, :2424-2432 android_surface_rgba8_to_guest(..., linear_guest, surface->pitch) then swizzle_rect at the same pitch into g_malloc(surface->size), branch ends 'goto cleanup' at :2436 so C is unreachable behind it as claimed. Path B: :2460-2467 glo_readpixels with pg->surface_scale_factor * surface->pitch. Path C: :2472-2473. surface_download() passes downscale=true at :2524; populate_surface_binding_entry_sized checks the DMA limit (:2850) and pitch % bpp (:2851), never the width relation, so C is live in the tree and the pin is what excludes it. The Path C assert is in the crash-path list in both the prediction ('(3) IS NOT THE ONLY CRASH PATH AND IS THE LESS URGENT ONE') and the investigation doc.",
+    "note": "No artifact can enforce that whoever builds the renderer override honours the pin; the prediction, the doc and the PR body all state it in the imperative, which is the strongest form available for a registration that is deliberately not queueable. See N3."
+  },
+  {
+    "pass1_id": "M1",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": "0",
+    "scenario": "Pass 1's scenario cannot occur. It said a reader following vk/surface.c:650 on master finds vkCmdCopyBuffer and concludes the over-read was fixed or fabricated, and worse, that :858 -- published as 'no pitch anywhere' -- lands inside the deferred CPU swizzle, the one block in the file that does take pitch. grep -rn 'vk/surface\\.c:[0-9]' over all three lane files now returns nothing: every citation is by symbol.",
+    "evidence": "Every replacement symbol resolves in hw/xbox/nv2a/pgraph/vk/surface.c at origin/master and says what it is cited for. download_surface_to_buffer() at :1064 initialises use_compute_to_swizzle = surface->swizzle && bytes_per_pixel == 4 && !use_compute_to_convert_depth_stencil_format, and its compute branch at :1400 sizes the copy surface->width * surface->height * bytes_per_pixel -- no pitch, so the 'Model H by construction' claim reads correctly at the pointer now given. download_surface_record_deferred sets dl->use_compute_to_swizzle = false at :793 and pgraph_vk_complete_staged_downloads still does g_malloc(dl->pitch * dl->height) at :856, so the over-read is alive and findable. Two by-line gl/surface.c citations remain (:2872 entry->size = height * MAX(...), :1545 inside the #87 comment); both are still correct and pass 1 scoped that file out as unmodified."
+  },
+  {
+    "pass1_id": "M2",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "5",
+    "scenario": "Pass 1's scenario cannot occur. It said a lane takes 'seven sites' as the fix list, patches seven, reads the arm as confirmation, and leaves the extent bug alive on the synchronous download path and three further dirty-range pairs, with a list saying the work is done. The artifacts now publish the grep that produces the list instead of a count, and the enumeration behind it is complete.",
+    "evidence": "Ran the published grep at origin/master: git grep -n 'pitch \\* .*height' -- gl/surface.c vk/surface.c -> 18 lines. Mapped each to its enclosing function: two DMA-limit asserts (populate_surface_binding_entry_sized gl:2850, populate_surface_binding_target_sized vk:3315); two surface_vram_written under-reports, download_surface_record_deferred vk:800 AND download_surface vk:1549 -- the synchronous path, the site pass 1 named as the one that mattered, and it is called out as such in both artifacts; the g_malloc in pgraph_vk_complete_staged_downloads vk:856; and twelve memory_region_set_client_dirty calls, ten in vk (871/874, 948/951, 1551/1554, 1749/1752, 1833/1836) and two in gl (2528/2531 surface_download). A lane patching from this list cannot leave the bug alive.",
+    "note": "See N1 for the counts written beside the grep."
+  },
+  {
+    "pass1_id": "M3",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "NOTES.md",
+    "line": "1",
+    "scenario": "Pass 1's scenario cannot occur. It said folding #115 is a clean add of a root NOTES.md (fold.sh's resolve_root_notes() fires only on an unmerged path), so cloud-109's notes land at the repository root permanently and the next lane's copy gets moved aside instead -- the steady state the notespath lane was opened to remove. There is no root NOTES.md on the branch to fold.",
+    "evidence": "ls NOTES.md -> absent. docs/lanes/cloud-109/NOTES.md present, 210 lines. git diff --stat origin/master...HEAD is five files, +1,099, and matches the PR body's Files: line exactly."
+  },
+  {
+    "pass1_id": "M4",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/audits/2026-09-19-cloud-109-pass1.md",
+    "line": "0",
+    "scenario": "Pass 1's scenario cannot occur at this tip. It said the PR reaches fold-ready with an empty check rollup, fold.sh has no green head to fold, and the PR sits in silence until a person pushes over it -- the #101/#123/#129/#139 stall. gh pr view 115 --json statusCheckRollup on head 3f84203bff returns two runs, both SUCCESS: Android/build and Desktop build/build, completed 2026-09-19T11:32Z.",
+    "evidence": "mergeable = MERGEABLE, isDraft = false, headRefOid = 3f84203bff15f44d9e2a90398835be35a7775a4c. The two original commits still carry the retired marker in their own subjects, but GitHub's gate is the rollup on the head and the head has one; the remediation commit and the audit commit carry no marker."
+  },
+  {
+    "pass1_id": "M5",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": "208",
+    "scenario": "Pass 1's scenario cannot occur. It said the board reads 'the rule predicts an asymmetry that was measured and is not there', drops #109's link to #87 and closes the lead, on the strength of a Vulkan capture that could not have shown the asymmetry. The instruction is now the opposite and is consistent across all four artifacts: the PR body carries a quoted retraction ending 'Do not close that lead on the strength of this PR', and the doc, the prediction's falsifier paragraph and NOTES.md say the falsifier returns UNMEASURED rather than REFUTED. The split the finding asked for is made -- the golden confirms #109's hardware rule at the one-half ratio; our capture is Vulkan and discriminates nothing.",
+    "evidence": "Checked the supporting facts, not the wording. nv2a_issues.toml #87's status_note says verbatim what is quoted: at HEAD with no bound the VULKAN renderer reproduces digest 15845fa9e1e40032 unaided and 'GL on the same binary and disc gives 15,360 with a different digest every run'. gl-vs-vulkan-surf1-2026-09-13.tsv:144 is 'Surface_pitch Swizzle 15360 10240 5120', so the 10,240 is the Vulkan column as claimed. The load-bearing claim is that post-fix GL is unmeasured: c807592d02 is dated 2026-09-18 and the only cross-renderer record on disk is dated 2026-09-13, with no post-fix GL number for this capture anywhere in docs/testing/. The claim holds on the record.",
+    "note": "See N2 for one sentence in the supporting survey that overstates this without changing the conclusion."
+  },
+  {
+    "pass1_id": "L1",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/lanes/cloud-109/NOTES.md",
+    "line": "0",
+    "scenario": "grep 'seven-suite' returns nothing across the lane's files; every mention is 'eight-suite' and disc.suites has eight entries.",
+    "evidence": "grep -rn over NOTES.md, the investigation doc and the prediction. The remaining 'seven sites' hits are retrospective references to the M2 finding itself."
+  },
+  {
+    "pass1_id": "L2",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "5",
+    "scenario": "The prediction now records that all four 0/0 controls are forced, with the reason per suite, rather than leaving the stated rule and the list in tension.",
+    "evidence": "Confirmed against gl-vs-vulkan-surf1-2026-09-13.tsv: Null_surface and Color_Zeta_Disable have one capture each on this disc (XemuBug893, MaskOff_ZB, both 0/0) and Surface_clip has no nonzero cross-renderer-equal row."
+  },
+  {
+    "pass1_id": "L3",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "5",
+    "scenario": "The expectation that a first run may need the ten nonzero controls re-scoped from must_not_move to must_not_regress is registered in the prediction, the doc and the PR body, in the terms the finding asked for -- including the instruction not to read the strictness clause as licence to explain a violation away.",
+    "evidence": "Re-verified all fifteen keys resolve against the tsv: ten controls nonzero-and-equal (4,419 .. 32,667), four 0/0, and Surface_pitch/Swizzle 15,360 vs 10,240. The PR body's sha256 d1b07db0... matches the committed file. preflight.sh --allow-tracker passes on this tip."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N1",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "5",
+    "summary": "The remediation replaced 'seven sites' with the grep and then wrote three hand counts beside it: 'seventeen', 'fourteen in vk/surface.c and three in gl/surface.c', 'eight functions'. The grep returns eighteen lines, four in gl/surface.c, across nine distinct functions.",
+    "scenario": "A reader runs the published grep, gets eighteen lines where the prose says seventeen, and re-derives the list to find the discrepancy. The extra gl line is :2247, 'swizzle_buf = g_malloc(output_pitch * output_height)' inside android_surface_download_z24s8_to_guest -- a local scaled-download buffer, not a surface-extent site -- so 'three' is the right count of sites and the grep over-returns by one. The ninth function is arithmetic: the artifacts name nine distinct functions and then say eight. This cannot reproduce M2: the direction is over-return, so nothing can be missed.",
+    "remediation": "Drop the three numbers, or say 'eighteen lines, seventeen sites; the gl :2247 hit is a local scaled buffer, not a surface extent'. One clause.",
+    "evidence": "git grep -n 'pitch \\* .*height' -- hw/xbox/nv2a/pgraph/gl/surface.c hw/xbox/nv2a/pgraph/vk/surface.c -> 18 lines, 4 in gl (2247, 2528, 2531, 2850), 14 in vk; enclosing functions counted distinct -> 9."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N2",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": "211",
+    "summary": "'The only GL numbers (13,160 / 14,848 / 15,360) predate c807592d02 and are race-affected', and 'Every clean number on this capture is from the path that does not [use pitch]', omit a race-free GL number recorded in the same tracker row the paragraph quotes.",
+    "scenario": "A reader checks 'the only GL numbers' against nv2a_issues.toml #87 and finds its status_note opening with '#39's skew-bound run recorded BOTH RENDERERS at 10,240 px with one digest, 15845fa9e1e40032' -- a GL number on this capture, race-free because the bound made it so, byte-identical to Vulkan's, under a row titled 'a swizzled render-target layout both renderers share'. The reader concludes the survey behind the 'unmeasured' verdict was careless. The verdict is right: that run also predates c807592d02, so GL was still on the surface-to-texture fast path and never reached the pitch-using CPU download, and it is not a measurement of Model E either. The true premise is the narrower one the artifacts also state a bullet later -- every clean number predates the commit that routes GL into the pitch-using code.",
+    "remediation": "Replace 'every clean number on this capture is Vulkan' with 'every clean number predates c807592d02, the commit that routes GL into the pitch-using code', and name #39's skew-bound GL 10,240 as the one that would otherwise look like a counter-example. One clause.",
+    "evidence": "nv2a_issues.toml #87 status_note, first sentence of 'HOW A RACE-FREE IMAGE WAS OBTAINED WITHOUT THE BOUND'; c807592d02 dated 2026-09-18; gl-vs-vulkan-surf1-2026-09-13.tsv is the only cross-renderer record on disk and predates the fix."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N3",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": "6",
+    "summary": "Both refs spell the renderer 'OpenGL' / 'Vulkan'; config_spec.yml:227-230 is an enum over \"NULL\", OPENGL, VULKAN.",
+    "scenario": "Nothing acts on the string today -- the refs are deliberately unresolvable prose and the arm is bound, not queueable -- but the person wiring the renderer override copies the ref verbatim into an xemu.toml write and gets a rejected or ignored value. One edit now, a five-minute confusion later.",
+    "remediation": "Spell the values as the enum does, in both refs.",
+    "evidence": "config_spec.yml:226-230; the a_ref and b_ref strings in the prediction."
+  }
+]
