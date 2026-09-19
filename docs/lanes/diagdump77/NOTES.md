@@ -106,3 +106,84 @@ queued soak.
 the audio marker's own shape, including deleting the previous dump first. That
 makes the marker trigger reachable from the queue and lets a dump be armed on
 a scene rather than on a stopwatch.
+
+## Why attempt 1 did not finish
+
+It ran out with the whole instrument built, AGENTS.md written, PR #143 open
+and the first #77 comment posted -- and stopped roughly four minutes before
+the run it had queued landed. The soak
+`1789811606-diagdump77-4099630` finished at 02:57 with a 4 MB dump and 30
+PPMs on disk. Nobody read it. So the lane ended with its falsifier **queued
+but unevaluated**, the PR still in draft, and one uncommitted edit in the
+tree (the log-tag fix below), which is what a resume costs: not the work,
+the last ten minutes of it.
+
+The lesson worth carrying is narrow and mechanical: *a queued run is not a
+finished step*. The run was the only thing standing between "built" and
+"done", and waiting on it is exactly when a session is most likely to end.
+Commit the in-flight edit before the wait, not after.
+
+## Attempt 2: the falsifier, read
+
+### The measured result
+
+`framedump_check.py` on run `1789811606-diagdump77-4099630` --
+`pulled/framedump_1789811749.jsonl`, 3,847 draws over 30 frames, armed by
+`--env XEMU_FRAME_DUMP=30,after120` at `fbf3b3f5ee` on the Thor:
+
+```
+cb_draws  max=132  mean=65.6
+submits   0.0078 per draw
+NOT SERIALISED by cb_draws: command buffers held up to 132 draws.
+NOT SERIALISED by submits: 0.0078 submits per draw.
+```
+
+Two details make the reading sharper than the headline:
+
+- `cb_draws == 1` occurs **exactly 30 times in 3,847 draws, and that set is
+  exactly the first draw of each frame** -- the flip's own finish, which was
+  already there. Every other draw in the run went into a command buffer that
+  already held between 1 and 131 earlier draws.
+- `submit_count` advanced **29 across the whole dump**, one per frame
+  boundary. The button path would have advanced it 3,847 times.
+
+So the instrument's headline claim is not a near miss or a ratio to argue
+about; it is off by two orders of magnitude from the serialising path, in
+both columns independently, and the session header carries
+`per_draw_finish: false` as a third statement of the same thing.
+
+### The control arm is measured, not only synthetic
+
+`framedump_check_selftest.py` builds a serialising dump synthetically and
+asserts the check trips on it, which is what makes "NOT SERIALISED" a
+non-free verdict. But a synthetic mutant proves the *checker* separates the
+two arms; it does not prove the *device* produces the serialising arm when
+asked. Run `1789812074-diagdump77-4109990` closes that: same title, same
+device, same binary, spec `30,after120,diag`, where the `diag` token fires
+`nv2a_dbg_trigger_diag_frames` alongside the live dump. Its numbers are in
+the results section below.
+
+### The instrument was invisible in the record of its own run -- fixed
+
+Worth stating separately because it is the kind of thing that costs a later
+lane a day. The dump's armed/held/closed/failed lines went through
+`DIAG_LOG`, tagged `hakuX-diag`. **Neither** logcat spec that serves a
+dispatched run lists that tag (`dispatcher.sh:1089`, `soak_title.sh:32`,
+both ending `*:S`), so all of them were filtered out before reaching the
+record.
+
+This is measured, not inferred: the run above pulled a 4,026,766-byte dump,
+and its 1,268-line logcat contains **zero** occurrences of `framedump` and
+zero of `hakuX-diag`. A dump that armed perfectly, a dump that never armed,
+and a dump whose `fopen` failed all left exactly the same log. The artifact
+was the only witness that the instrument had run at all.
+
+`FDUMP_LOG` now goes to `hakuX`, which is in both specs, at WARN because
+`soak_title`'s fallback keeps `hakuX` at `:W`. The lines are four and rare by
+construction. Both spec strings are in files this lane does not hold, or the
+tag would have been added there instead.
+
+**For the next lane:** before trusting a log to tell you an instrument ran,
+check your tag against the run's own `result.json` `logcat.spec`. A spec
+ending `*:S` is an allowlist, and silence from an unlisted tag is
+indistinguishable from silence from a broken instrument.
