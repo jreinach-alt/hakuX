@@ -24,6 +24,10 @@ echo "== status.sh freshness"
 # which every one of these files has. The assertions below that must find
 # nothing go through this instead, in this shell, so they see the fixtures.
 sf_nogrep() { ! grep -q "$@"; }
+# ...and an absence in a file that does not exist is not evidence of anything:
+# against the code this fragment replaces there IS no header, and a bare
+# "no lapse warning here" passed on the strength of the missing file.
+sf_unlapsed() { [ -s "$HDR" ] && ! grep -q 'roll-up lapsed' "$HDR"; }
 
 # A comment id the shim will confirm exists, so the PATCH-in-place branch runs
 # rather than the create-if-missing one.
@@ -32,7 +36,8 @@ SF_LOG="$T/gh-freshness.log"
 HDR="$HAKUX_WORK/status/HEADER.md"
 
 # ---- 1. a tick that follows a recent one: no lapse, and both PATCHes happen.
-printf '%s\n' "$(( $(date +%s) - 60 ))" > "$HAKUX_WORK/status/last-run"
+SF_RECENT=$(( $(date +%s) - 60 ))
+printf '%s\n' "$SF_RECENT" > "$HAKUX_WORK/status/last-run"
 : > "$SF_LOG"; rm -f "$HDR"
 sout=$(SELFTEST_GH_LOG="$SF_LOG" bash "$HERE/status.sh" 2>&1); src=$?
 check "status.sh exits 0 on the GitHub path" [ "$src" -eq 0 ]
@@ -56,10 +61,11 @@ check "the body header warns that a comment's rendered time is its posted time" 
     grep -q "posted\* time, not its edited time" "$HDR"
 check "the body header links the roll-up comment" \
     grep -q 'issues/107#issuecomment-5738613782' "$HDR"
-check "a tick one minute after the last one reports no lapse" \
-    sf_nogrep 'roll-up lapsed' "$HDR"
-check "status.sh stamps its own run for the next tick to compare against" \
-    [ -s "$HAKUX_WORK/status/last-run" ]
+check "a tick one minute after the last one reports no lapse" sf_unlapsed
+# The fixture value must be GONE: asserting the file is merely non-empty is
+# satisfied by the line this fragment wrote itself a moment ago.
+check "status.sh stamps its own run over the last one" \
+    sf_nogrep -x "$SF_RECENT" "$HAKUX_WORK/status/last-run"
 
 # ---- 2. the page must say when the roll-up itself stopped.
 #

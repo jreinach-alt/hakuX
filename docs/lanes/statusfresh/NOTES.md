@@ -104,6 +104,15 @@ is outside this lane's files and was not attempted.
   the query having *succeeded*. A network blip must not fork the one page the
   owner reads into two.
 
+## One thing left deliberately untouched
+
+`docs/ORCHESTRATION-DESIGN.md` describes the roll-up as *"rewriting one comment
+on the `harness-status` issue"* (the table at §168, and §734). That is now one
+of three surfaces. The line is not wrong about the comment and nothing reads it
+as a gate, but it is incomplete, and the design doc is not in this lane's
+files -- editing it would put a lane's claim on a path several other lanes
+touch. Left for the board to fold into whichever lane owns that file next.
+
 ## What the next lane should not repeat
 
 - **Do not test freshness with `grep -vq`.** It exits 0 the moment one line
