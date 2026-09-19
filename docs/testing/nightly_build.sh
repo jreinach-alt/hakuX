@@ -76,9 +76,15 @@ DIRTY=$(git status --porcelain | grep -v '^??' | wc -l)
 # is reverse-chronological, so that is not a sample of the day: it is the most
 # recent forty commits, whatever churned last. On 2026-09-18 a burst of
 # harness folds in the hours before 00:30 took all forty slots, and the
-# 2026-09-19 release notes showed 0 of the day's 29 emulator commits -- with
-# every one of them in the "…and 219 more" tail. The owner read the notes and
-# asked whether any emulator work had happened at all.
+# 2026-09-19 release notes named 0 emulator commits -- every one of them was
+# in the "…and N more commits" tail. The owner read the notes and asked
+# whether any emulator work had happened at all.
+#
+# (How many were in that window depends on when you ask, because a lane
+# branch folds after 00:30 and joins the window retroactively: the nightly
+# logged 239 commits, a reconstruction at 06:40 the same morning found 310.
+# The time-invariant fact is the one above -- 0 of the 40 listed touched an
+# emulator directory, on every reconstruction. docs/lanes/nightlynotes.)
 #
 # It was not a one-off. The harness folds on a 30-minute timer, so the busier
 # a day is the more completely it erases the emulator work from the record,
@@ -86,10 +92,11 @@ DIRTY=$(git status --porcelain | grep -v '^??' | wc -l)
 # explicit that passing the tests is not the goal; notes that cannot show a
 # target/i386 FIST rounding fix are reporting against the wrong thing.
 #
-# The areas are the ones every brief and gate already uses. A commit touching
-# both sides counts as emulator: that is the side a reader cares about.
-EMU_DIRS='hw target accel ui audio'          # documentation only; see area_of()
-HARN_DIRS='docs/testing .github'
+# The areas are the ones every brief and gate already uses -- emulator is
+# hw/ target/ accel/ ui/ audio/, harness is docs/testing/ and .github/, and
+# the patterns in the loop below are the only definition of that. A commit
+# touching both sides counts as emulator: that is the side a reader cares
+# about.
 EMU_CAP=60          # a high cap: this is the point of the project
 HARN_CAP=8          # a handful, then a count
 OTHER_CAP=8
