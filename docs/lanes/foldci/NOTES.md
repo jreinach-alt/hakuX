@@ -1,7 +1,34 @@
 # lane.foldci — a stopped fold that never reaches the PR
 
 Issue: none (harness defect, dispatched directly). Files: `docs/testing/jobs/fold.sh`,
-`docs/testing/jobs/selftest.sh`. Prediction: none — harness script, no pixels claimed.
+`docs/testing/jobs/selftest.sh`, this file. Prediction: none — harness script, no
+pixels claimed.
+
+## Why this took three attempts (the fix itself took one)
+
+Attempt 1 built and proved the fix. Attempts 2 and 3 were both **lost races on
+`selftest.sh`**, and nothing about the fix changed in either.
+
+Attempt 2 merged `origin/master` at `bdeab36f75` (2026-09-18 23:18 -0700) and
+pushed. That merge was correct when it was made. PR #131 (`lane/notespath`)
+folded as `1f7572a34c` **after** it, appending its own block to the same place in
+`selftest.sh`, and the fold job hit the conflict at 07:07:30Z and handed #127
+back as `needs-rebase`. So attempt 2 did not fail to do the merge; it did the
+merge against a `master` that moved again before the fold job reached it.
+
+The lesson is not "merge harder": with six lanes appending to one file, a merge
+is only valid for as long as the queue in front of you takes. What made this
+cheap to redo is that both blocks are *appends* — the resolution is "keep both,
+delete the three markers", not a content decision. Attempt 3 did exactly that
+again, plus the one thing attempt 2 could not have known about:
+
+**`NOTES.md` moved.** #131 retired root `NOTES.md` (`roles/lane.md` item 3 now
+says `docs/lanes/<lane>/NOTES.md`), and `master` has no root copy at all. Leaving
+this file at the root would have landed the very file #131's fold removed, so it
+is now at `docs/lanes/foldci/NOTES.md`. `fold.sh`'s new `resolve-notes` path
+would have rescued it, but only by reacting to a conflict this lane can simply
+not create. If you are resumed on an old branch, check where your notes are
+supposed to live before you push.
 
 ## What was wrong
 
