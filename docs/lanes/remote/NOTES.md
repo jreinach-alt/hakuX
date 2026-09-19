@@ -517,12 +517,30 @@ Verified rather than asserted:
 note asked for `#elif` to stop the following `#else` inverting a value that was
 never derived; the fix does that, but nothing exercised it, and an invariant
 with no failing case has not been tested. Fixture
-`else-after-elif-on-an-android-frame` added. It expects **1 finding, which is a
-false positive** -- on Android the `#ifndef` arm is skipped and the `#elif`
-chain is compiled, so that `#else` really is dead there. Expecting it anyway is
-the contract's chosen direction stated as a test rather than as prose. Against
-a mutant that drops the `decided = False` on `#elif`, that fixture alone goes
-red.
+`else-after-elif-on-an-android-frame` added. Against a mutant that drops the
+`decided = False` on `#elif`, that fixture alone goes red -- verified here, not
+taken from the commit that added it.
+
+**Its expectation of 1 was recorded as a deliberate FALSE positive, and that is
+wrong; it is a true positive.** The claim was that on Android the `#ifndef` arm
+is skipped and "the `#elif` chain is what gets compiled, so this `#else` really
+is dead there". That silently assumes `SOME_OTHER_THING` is defined. It is not
+-- it is a made-up token in a synthetic fixture -- so the `#elif` is not taken
+and the `#else` arm is precisely what an Android build compiles. Settled with
+the real preprocessor rather than by argument:
+
+    $ gcc -E -D__ANDROID__ fixture.c
+    static GLenum c(void) { return GL_SRC1_ALPHA; }
+
+    $ gcc -E -D__ANDROID__ -DSOME_OTHER_THING=1 fixture.c
+    static int b(void) { return 0; }
+
+The code and the expectation were right; only the reasoning attached to them
+was wrong. **That is pass 1's L2 recurring one level up** -- a wrong
+justification on correct code, which is believed -- and here it was load
+bearing in a way L2 was not: a reader told this finding is a known false
+positive would be right to "correct" the fixture to expect 0, and that reopens
+the `#elif` half of N1 with the fixture still green.
 
 ### N2 -- `pgraph_capture_run.sh` named the mislabelled-renderer hazard and then did not fail on it
 

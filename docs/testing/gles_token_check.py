@@ -158,10 +158,21 @@ static GLenum b(void) { return GL_SRC1_ALPHA; }
     # The #elif half of N1, which the finding named and the fix handles but
     # nothing exercised. An __ANDROID__ frame is `decided`; the #elif turns it
     # undecided, and the #else after it must therefore NOT invert a value that
-    # no longer means anything. Expecting 1 here is expecting a FALSE POSITIVE
-    # -- on Android the #ifndef arm is skipped and the #elif chain is what gets
-    # compiled, so this #else really is dead there. That is the contract's
-    # chosen direction: report a line another guard excludes, never hide one.
+    # no longer means anything.
+    #
+    # Expecting 1 here is expecting a TRUE POSITIVE, and the record said the
+    # opposite until it was checked against a real preprocessor. SOME_OTHER_THING
+    # is undefined, so on Android the #ifndef arm is skipped, the #elif is NOT
+    # taken, and the #else arm is exactly what compiles:
+    #
+    #   $ gcc -E -D__ANDROID__ fixture.c
+    #   static GLenum c(void) { return GL_SRC1_ALPHA; }
+    #
+    # Only -DSOME_OTHER_THING makes the #elif arm win. So this is the contract
+    # working, not the contract's over-reporting direction being exercised --
+    # and the distinction matters, because a reader told this was a knowing
+    # false positive would be right to "fix" the fixture to expect 0, which
+    # reopens the #elif half of N1.
     ('else-after-elif-on-an-android-frame', """
 #ifndef __ANDROID__
 static int a(void) { return 0; }
