@@ -203,7 +203,8 @@ note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fo
 
 [lane.remote]
 issues = ["34", "60", "62", "158"]
-files = ["hw/xbox/nv2a/pgraph/gl/blit.c", "hw/xbox/nv2a/pgraph/gl/draw.c",
+files = ["hw/xbox/nv2a/pgraph/gl/surface.c",
+         "hw/xbox/nv2a/pgraph/gl/blit.c", "hw/xbox/nv2a/pgraph/gl/draw.c",
          "hw/xbox/nv2a/pgraph/gl/texture.c",
          "hw/xbox/nv2a/pgraph/gl/renderer.c", "hw/xbox/nv2a/pgraph/gl/debug.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.c",
@@ -554,7 +555,6 @@ files = [
 # release. None of the three had a running agent; all three still showed
 # as claimed-with-no-agent in fleet.py before this tick.
          "hw/xbox/nv2a/pgraph/vk/texture.c",
-         "hw/xbox/nv2a/pgraph/gl/surface.c",
 # roles/lane.md NAMED OUT AT WAVE 119 (job.board): granted to lane.draftstrand,
 # which is fixing item 5's unachievable wording as part of its own brief.
          "docs/testing/jobs/roles/cloud.md",
