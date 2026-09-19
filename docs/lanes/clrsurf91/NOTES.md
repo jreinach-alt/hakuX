@@ -4,6 +4,25 @@
 Files touched: `hw/xbox/nv2a/pgraph/vk/surface.c` only. `vk/draw.c` was granted
 and is **not** edited; why is below, because it is the substantive finding.
 
+## Why attempt 1 did not finish (recorded per the resume)
+
+Nothing was missing from the work. The fix, the prediction, the arm
+scaffolding and this file were all committed and pushed at `b119c43a72`, and CI
+went green on that head. **The session ended waiting for that CI result with
+the PR still in draft**, and a draft is invisible to every actor here --
+`board.sh:107` skips drafts, `fleet.py`'s READY-NOT-FOLDED counts only
+non-drafts, `fold.sh` folds only non-drafts, `handback.sh` does not look at
+them. So a finished, green PR sat unfoldable and indistinguishable from an
+abandoned one, and cost a whole resume.
+
+The lesson is the ordering, not the vigilance: **mark ready when the head is
+green and current, not after some later re-merge**. Waiting for CI is not a
+reason to stay in draft -- a red check on a ready PR is visible and
+actionable; a green check on a draft is not visible at all. Attempt 2 did only
+this: merged `origin/master` (clean, 5 commits, no conflict with the index),
+re-verified both prediction refs are still ancestors of the merged head, ran
+the selftest, and marked ready.
+
 ## What this lane changed
 
 `update_surface_part()`'s gate was
