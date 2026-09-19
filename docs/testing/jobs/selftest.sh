@@ -189,6 +189,21 @@ done
 check "status renders the eight-column row without dying" grep -q '| y | opus-5 | 41 | 21 | ERR' <<< "$sout"
 check "status shows the arms refusal in full" grep -q 'last refusals' <<< "$sout"
 
+echo "== lane.sh: the fleet registry is written by start, closed by ended, and healed by reconcile"
+export LANE="selftest-$$"; printf '# lane.%s -- selftest brief\nFiles: NONE\n' "$LANE" > "$T/brief.md"
+lout=$(bash "$TESTING/lane.sh" start "$LANE" "$T/brief.md" 1 2>&1); lrc=$?
+check "lane.sh start succeeds under the shims" [ "$lrc" -eq 0 ]
+check "start writes a running fleet row" grep -q '"state": "running"' "$DISPATCH_DIR/fleet/$LANE.json"
+check "the row carries the issue and the brief's first line" bash -c 'grep -q "\"1\"" "$DISPATCH_DIR/fleet/$LANE.json" && grep -q "selftest brief" "$DISPATCH_DIR/fleet/$LANE.json"'
+check "the unit wrapper is told to call lane.sh ended" grep -q "lane.sh' ended $LANE" "$SELFTEST_GH_LOG"
+bash "$TESTING/lane.sh" ended "$LANE" >/dev/null 2>&1
+check "ended marks the row reported with a timestamp" bash -c 'grep -q "\"state\": \"reported\"" "$DISPATCH_DIR/fleet/$LANE.json" && grep -q reported_utc "$DISPATCH_DIR/fleet/$LANE.json"'
+printf '{"lane":"deadlane","agent":"x","issues":["84"],"asked":"old","dispatched_utc":"2026-09-19T00:00:00Z","state":"running","waiting_on":""}\n' > "$DISPATCH_DIR/fleet/deadlane.json"
+rout=$(bash "$TESTING/lane.sh" reconcile 2>&1)
+check "reconcile closes a running row with no live unit" grep -q '"state": "reported"' "$DISPATCH_DIR/fleet/deadlane.json"
+check "reconcile says what it closed" grep -q 'deadlane was running with no live unit' <<< "$rout"
+bash "$TESTING/lane.sh" rm "$LANE" >/dev/null 2>&1; git -C "$REPO" branch -D "lane/$LANE" >/dev/null 2>&1; git -C "$REPO" worktree prune 2>/dev/null
+
 echo "== fold.sh list, cloud.sh list"
 check "fold.sh list runs with nothing labelled" bash -c 'bash "$HERE/fold.sh" list 2>&1 | grep -q "nothing labelled fold-ready"'
 check "cloud.sh list runs with nothing to claim" bash -c 'bash "$HERE/cloud.sh" list 2>&1 | grep -q "nothing to claim"'

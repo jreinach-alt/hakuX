@@ -9,6 +9,8 @@
 #   lane.sh attempts | reset <name> # the per-lane attempt counter behind the escalation
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
+#   lane.sh ended <name>            # (called by the unit) mark the fleet row reported
+#   lane.sh reconcile               # any fleet row 'running' with no live unit -> reported
 #
 # WHY THE WORKTREE IS MADE HERE AND NOT BY --worktree. Claude Code's own
 # worktree base is origin/HEAD, which is right now that master is the trunk,
@@ -45,6 +47,43 @@ LANE_MAX=2
 . "$JOBS/models.env"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
+
+# THE FLEET REGISTRY, $DISPATCH_DIR/fleet/<lane>.json, IS WRITTEN HERE.
+#
+# fleet.py -- and through it the board tick's script-first gate -- decides
+# what is dispatchable from this registry: an issue owned by a lane whose row
+# says `running` is never dispatchable, and a lane whose row never says
+# `reported` is never "reported, not folded". The old orchestrator wrote the
+# rows; nothing in the job harness did. Measured 2026-09-19: every lane the
+# board started at 00:00Z was still `running` at 05:00Z with its unit long
+# gone, every unblocked issue on the board sat behind one of them, and the
+# board logged "nothing actionable" for six hours with both handhelds idle.
+# So the script that starts a lane writes `running`, the unit writes
+# `reported` when the session ends, and `reconcile` (run by every board
+# tick) closes any row whose unit has died without saying so.
+FLEET="${DISPATCH_DIR:-$WORK/dispatch}/fleet"
+registry() {   # <name> <state> [issue] [brief] [worktree]
+    mkdir -p "$FLEET"
+    python3 - "$FLEET/$1.json" "$1" "$2" "${3:-}" "${4:-}" "${5:-}" <<'PY2'
+import json, sys, os, datetime
+p, lane, state, issue, brief, wt = sys.argv[1:]
+now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+d = json.load(open(p)) if os.path.exists(p) else {}
+d.update({"lane": lane, "agent": "hakux-lane-" + lane, "state": state, "waiting_on": d.get("waiting_on", "")})
+if issue:
+    d["issues"] = sorted(set([str(i) for i in (d.get("issues") or [])] + [str(issue)]))
+d.setdefault("issues", [])
+if brief and os.path.exists(brief):
+    d["asked"] = open(brief).readline().lstrip("# ").strip()[:200]
+if wt:
+    d["worktree"] = wt
+if state == "running":
+    d["dispatched_utc"] = now; d.pop("reported_utc", None)
+if state == "reported":
+    d["reported_utc"] = now
+json.dump(d, open(p, "w"), indent=2)
+PY2
+}
 
 # ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
 # its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
@@ -99,7 +138,8 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$JOBS/../lane.sh' ended $name; exit \$rc"
+    registry "$name" running "$issue" "$brief" "$wt"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -124,7 +164,8 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$JOBS/../lane.sh' ended $name; exit \$rc"
+    registry "$name" running "" "$WORK/briefs/$name.md" "$wt"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
@@ -138,9 +179,32 @@ case "$cmd" in
   reset)
     rm -f "$WORK/attempts/${name:?name}" && echo "attempts for $name reset"
     ;;
+  ended)
+    registry "${name:?name}" reported
+    echo "fleet: $name reported"
+    ;;
+  reconcile)
+    # Every row that says running while no unit of that name is active is a
+    # lane that ended without saying so (a crash, a kill, a wind-down, or a
+    # start that predates `ended`). Mark it reported now, so fleet.py shows
+    # it as "reported, not folded" and its issues stop reading as owned.
+    active=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend --plain 2>/dev/null | awk '{print $1}')
+    n=0
+    for f in "$FLEET"/*.json; do
+        [ -f "$f" ] || continue
+        st=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('state',''))" "$f" 2>/dev/null)
+        [ "$st" = running ] || continue
+        ln=$(basename "$f" .json)
+        grep -qx "hakux-lane-$ln.service" <<< "$active" && continue
+        registry "$ln" reported
+        echo "fleet: $ln was running with no live unit; now reported"
+        n=$((n+1))
+    done
+    echo "reconcile: $n row(s) closed"
+    ;;
   list)
     git -C "$REPO" worktree list
     systemctl --user list-units 'hakux-lane-*' --no-legend 2>/dev/null
     ;;
-  *) sed -n '3,11p' "$0" ;;
+  *) sed -n '3,13p' "$0" ;;
 esac

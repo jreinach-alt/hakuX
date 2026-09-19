@@ -48,6 +48,9 @@ if [ -z "${HAKUX_BOARD_REEXEC:-}" ] && [ -f "$WT/docs/testing/jobs/board.sh" ]; 
 fi
 JOBS="$WT/docs/testing/jobs"
 
+# Close any fleet row whose lane has died without saying so, BEFORE reading
+# the fleet: a dead lane recorded as running hides every issue it owned.
+bash "$WT/docs/testing/lane.sh" reconcile 2>&1 | grep -v '^reconcile: 0 ' | sed 's/^/  /' | tee -a "$LOG"
 fails=$(cd "$WT" && timeout 60 python3 docs/testing/fleet.py 2>&1 >/dev/null | grep '^FAIL' || true)
 
 # THE COVERAGE GATE IS THE BOARD'S TOO, AND fleet.py CANNOT SEE IT.
