@@ -26,6 +26,28 @@ measured and written up is a **finished** outcome under step 6, and it gets
 marked ready like any other. Draft status is "still typing", not "the answer
 was no".
 
+### `.gitignore` ate the patch, and nothing said so
+
+The deliverable list below claimed `docs/testing/wbuf31_clipf_phase.patch`,
+"verified with `git apply --check` (rc 0)". It was true, and the file was
+**not in the PR**: `.gitignore:20` is `*.patch`, so attempt 1's `git add` was
+a silent no-op. `git status` stayed clean, `git commit` succeeded, the branch
+pushed, CI went green -- every signal a lane normally reads said the work had
+landed, and the one artifact an upstream contributor actually needs existed
+only in this worktree. It would have been lost at fold.
+
+Caught at attempt 2 only by checking the PR body's `Files:` line against
+`git diff --name-only origin/master HEAD` and finding one more path in the
+body than in the diff. Committed now with `git add -f`; git tracks it from
+here regardless of the ignore rule.
+
+**For the next lane: a clean `git status` is not evidence your file is
+committed.** An ignored path is absent from `status` in exactly the same way
+a committed one is. If a deliverable is an artifact rather than source --
+`.patch`, `.gcov`, anything under an ignore rule written for scratch files --
+check it appears in `git diff --name-only origin/master HEAD` before claiming
+it in a PR body. `git check-ignore -v <path>` names the rule and the line.
+
 ### Merge state at attempt 2, and a finding that is not mine
 
 Merged `origin/master` (59 commits behind, clean merge, no conflicts) and
