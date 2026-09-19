@@ -24,7 +24,19 @@
 set -u
 job=${1:?job}; wt=${2:?worktree}; brief=${3:?brief}; turns=${4:-40}
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
-REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
+# Role files, the allowlist and the summariser are taken from beside THIS
+# script, which board.sh runs out of the fetched trunk worktree -- never
+# from the owner's checkout, whose branch is nobody's business here.
+JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Model by role (jobs/models.env, overridden by $WORK/limits.env): the board
+# tick and triage are bookkeeping and run on the bookkeeping model; an audit
+# reads code for defects and runs on the audit model.
+. "$JOBS/models.env"
+[ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
+case "$job" in
+    audit*) MODEL="${HAKUX_MODEL:-$MODEL_AUDIT}" ;;
+    *)      MODEL="${HAKUX_MODEL:-$MODEL_BOOKKEEPING}" ;;
+esac
 log="$WORK/logs/$job/$(date -u +%Y%m%dT%H%M%SZ).json"
 mkdir -p "$(dirname "$log")"
 cd "$wt" || exit 2
@@ -32,13 +44,14 @@ br=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
 git fetch -q origin && [ -n "$br" ] && git merge -q --ff-only "origin/$br" 2>/dev/null
 HAKUX_ROLE="$job" HAKUX_BRIEF="$brief" \
 timeout "${JOB_TIMEOUT:-50m}" claude -p "$(cat "$brief")" \
+    --model "$MODEL" \
     --max-turns "$turns" \
     --output-format json \
     --permission-mode acceptEdits \
-    --allowedTools "$(cat "$REPO/docs/testing/jobs/allowed-tools.job")" \
-    --append-system-prompt-file "$REPO/docs/testing/jobs/roles/$job.md" \
+    --allowedTools "$(cat "$JOBS/allowed-tools.job")" \
+    --append-system-prompt-file "$JOBS/roles/$job.md" \
     > "$log" 2>&1
 rc=$?
-python3 "$REPO/docs/testing/jobs/summarise_run.py" "$log" "$job" >> "$WORK/logs/$job/index.tsv"
+python3 "$JOBS/summarise_run.py" "$log" "$job" "$MODEL" >> "$WORK/logs/$job/index.tsv"
 grep -qiE '"is_error": *true.*(rate.?limit|usage limit)' "$log" && exit 75
 exit $rc

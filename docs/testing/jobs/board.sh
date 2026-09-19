@@ -28,6 +28,17 @@ fi
 git -C "$WT" fetch -q origin "$TIP" && git -C "$WT" checkout -q --detach FETCH_HEAD
 git -C "$WT" fetch -q origin board 2>/dev/null || true
 
+# RUN THE TRUNK'S COPY OF THIS JOB, NOT THE OWNER'S CHECKOUT'S. The unit's
+# ExecStart names /home/justin/hakuX, which is whatever branch the owner last
+# checked out there; the first evening it was the design branch. Everything
+# after this line -- fleet.py, run-claude-job.sh, the role file, the
+# allowlist, lane.sh -- comes from $WT, which is origin/master as of this
+# tick. The owner's checkout supplies the object store and nothing else.
+if [ -z "${HAKUX_BOARD_REEXEC:-}" ] && [ -f "$WT/docs/testing/jobs/board.sh" ]; then
+    HAKUX_BOARD_REEXEC=1 exec bash "$WT/docs/testing/jobs/board.sh"
+fi
+JOBS="$WT/docs/testing/jobs"
+
 fails=$(cd "$WT" && timeout 60 python3 docs/testing/fleet.py 2>&1 >/dev/null | grep '^FAIL' || true)
 if [ -z "$fails" ]; then
     say "nothing actionable"
@@ -43,4 +54,4 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     printf '%s\n' "$fails"
 } > "$brief"
-exec bash "$REPO/docs/testing/jobs/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-40}"
+exec bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-40}"
