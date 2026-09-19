@@ -190,6 +190,15 @@ only considers rows with a non-empty blocker).
   and #52 mid-text) are **deliberately left alone**. The new check is scoped to
   live-open issues; a closed row's `blocked_on` is history and rewriting it
   destroys the record for no gain.
+- **`docs/ORCHESTRATION-DESIGN.md:222` lists the tracker's rich fields**
+  (`blocked_on`, `blocker_falsifier`, `blocker_tested`, `fixed_by`) and now
+  omits `dispatch_state`. One line, and I did not take it: PR #122 is
+  `claude/hakux-orchestration-design-e663m8` with no `Files:` line, so that
+  document is very likely being rewritten right now and a one-word edit there
+  is a collision nothing can see. The in-band channel does work without it —
+  the coverage FAIL messages name the field, and line 1 now prints
+  `N AVAILABLE`, which is the only channel that reaches a running
+  `idle-watchdog.sh`.
 - **#34 and #62 are unclassified on the live board** — owned by lane.remote, no
   blocker, no `dispatch_state`. They pass coverage on ownership alone today and
   will fail `fleet.py` the moment remote stops running. They are not in this
