@@ -362,6 +362,10 @@ check "fleet-blind raises exactly one FAIL" bash -c '[ "$(grep -c "^FAIL" "$FL/b
 check "and that FAIL is the blindness, not the FAILs an empty fleet implies" grep -q '^FAIL: FLEET-BLIND' "$FL/blind.txt"
 check "fleet-blind raises no RUNNING-WITH-NO-TERRITORY-ROW FAIL" bash -c '! grep -q "^FAIL.*RUNNING with no territory row" "$FL/blind.txt"'
 check "fleet-blind says DISPATCHABLE was not computed rather than printing zero" grep -q 'DISPATCHABLE NOW, NOT DISPATCHED (0).*NOT COMPUTED' "$FL/blind.txt"
+# The one section an empty running set makes maximally WRONG rather than
+# merely silent: every territory row would read as an abandoned claim, and a
+# reader acting on that retires the live fleet's rows.
+check "fleet-blind lists no territory row as abandoned" grep -q 'LANE CLAIMED WITH NO RUNNING AGENT (0).*NOT COMPUTED' "$FL/blind.txt"
 
 # READY, NOT FOLDED, asked of GitHub instead of a `state` field a lane would
 # have had to write about itself.

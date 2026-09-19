@@ -332,8 +332,14 @@ def main():
     # A lane row with no running agent is coverage that does not exist. This is
     # the state territory.toml's own [free] comment warns about, and nothing
     # could detect it before.
-    ghost = sorted(lane for lane in (terr.get("lane") or {})
-                   if lane not in units)
+    #
+    # Empty when fleet-blind, or it would name EVERY territory row: it is the
+    # one section here that an empty running set makes maximally wrong rather
+    # than merely silent. It sets no rc, so this changes no wake-up -- but a
+    # reader acting on a full list of "abandoned" claims would retire the live
+    # fleet's rows, and the FLEET-BLIND line promises it is not computed.
+    ghost = [] if fleet_blind else sorted(
+        lane for lane in (terr.get("lane") or {}) if lane not in units)
 
     # THE OTHER DIRECTION, AND IT IS THE WORSE ONE: an agent that is RUNNING
     # with no row in territory.toml at all.
@@ -468,7 +474,9 @@ def main():
     print("\n=== BLOCKED (labelled `blocked`) (%d)" % len(waiting))
     for p in waiting:
         print("  %-12s #%-5d %s" % (p["lane"], p["number"], (p.get("title") or "")[:70]))
-    print("\n=== LANE CLAIMED WITH NO RUNNING AGENT (%d)" % len(ghost))
+    print("\n=== LANE CLAIMED WITH NO RUNNING AGENT (%d)%s"
+          % (len(ghost),
+             "  -- NOT COMPUTED, see FLEET-BLIND above" if fleet_blind else ""))
     for lane in ghost:
         print("  %-12s holds %d file(s), issues %s"
               % (lane, len((terr["lane"][lane].get("files") or [])),
@@ -492,7 +500,9 @@ def main():
     # not known-dispatchable; they are blockers nobody has recorded testing.
     # Folding them into the FAIL above would say the board is holding work it
     # can start, which is a stronger claim than the evidence supports.
-    print("\n=== BLOCKER NEVER RECORDED AS TESTED (%d)" % len(untested))
+    print("\n=== BLOCKER NEVER RECORDED AS TESTED (%d)%s"
+          % (len(untested),
+             "  -- NOT COMPUTED, see FLEET-BLIND above" if fleet_blind else ""))
     if untested:
         print("  A blocker is a claim. Five were refuted in two days, two of"
               " them the orchestrator's own.")

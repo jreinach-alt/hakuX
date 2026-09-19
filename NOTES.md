@@ -121,6 +121,15 @@ The derived FAILs stay suppressed under blindness either way — "I could not
 ask" must never become "nothing is running". The selftest pins both halves:
 exactly one FAIL, and it is the blindness.
 
+A gap found on the last read-through, worth recording because the code *said*
+it was handled: the FLEET-BLIND line promised that LANE CLAIMED WITH NO RUNNING
+AGENT was suppressed, and it was not — it sets no `rc`, so I had left it
+computing against the empty set. It is the one section an empty running set
+makes *maximally wrong* rather than merely silent: every territory row reads as
+an abandoned claim, and a reader acting on that retires the live fleet's rows.
+Suppressed now, with a check. The lesson generalises — "sets no rc" is not
+"harmless"; a section a human reads and acts on is an output too.
+
 **Net effect on board wake-ups:** the first tick after this lands will be
 actionable rather than `nothing actionable`, and will stay actionable until the
 board writes eight territory rows and labels three PRs. That is roughly two
@@ -128,7 +137,7 @@ ticks of real work, after which the gate goes quiet for the right reason.
 
 ## The checks, and what they measure against the file being replaced
 
-25 checks appended to `jobs/selftest.sh`. To prove they measure something I ran
+26 checks appended to `jobs/selftest.sh`. To prove they measure something I ran
 the same fixture set against `origin/master`'s `fleet.py` and `lane.sh`
 (`bdeab36f75`), via a scratch runner that differs from the selftest block only
 in which pair of scripts it points at. To redo it: `git show
@@ -139,8 +148,8 @@ imports `board_files` from its own directory and `lane.sh` derives `$JOBS` from
 its own.
 
 ```
-falsify[new]: 25 passed,  0 failed
-falsify[old]:  5 passed, 20 failed
+falsify[new]: 26 passed,  0 failed
+falsify[old]:  5 passed, 21 failed
 ```
 
 The five that pass against the old code are the negative controls — "a draft
