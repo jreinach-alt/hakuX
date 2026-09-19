@@ -125,3 +125,31 @@ master's first, ours last; they share only the fixture harness and neither
 reads the other's state. `NOTES.md` moved from the branch root to
 `docs/lanes/armsskip/NOTES.md`, which is the path `1f7572a34c` established and
 the reason that conflict existed at all.
+
+## Measured, both ways, on the merged tree
+
+```
+ours                     selftest: 76 passed, 0 failed
+origin/master's arms.sh  selftest: 70 passed, 6 failed   (exit 1)
+```
+
+The six that fail against the old file are the announcement itself: *posted as
+a comment*, *says SKIPPED not REFUSED*, *carries the marker's reason*, *records
+`told=`*, and both halves of *a marker written before `told=` existed is
+announced, and stamped*.
+
+The other five pass both ways **on purpose**, and it is worth being explicit
+about why rather than mistaking them for dead weight:
+
+| check | what it pins |
+| --- | --- |
+| the prose `a_ref` is recorded as a structural skip | the marker still gets written; telling must not replace recording |
+| a second tick does not tell it again | trivially true on the old file, which never tells at all — it only has teeth on ours |
+| a `request.sh` refusal is not also told as a structural skip | `refused()` keeps its single richer comment |
+| a broken prediction behind the watermark is not skipped | the 38-comments-in-one-tick guard |
+| and nothing is posted for it | same, from the posting side |
+
+So one of them (*a second tick*) is a genuine tautology against the old file
+and is only a test of the new one; the rest are must-not-move guards. Neither
+kind discharges the "your check must fail against the code you replaced"
+requirement on its own — the six above are what does.
