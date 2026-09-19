@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 126
-updated_utc = "2026-09-19T22:20:00Z"
+wave = 127
+updated_utc = "2026-09-19T23:45:00Z"
 
 
 [lane.hilodot10]
@@ -632,6 +632,25 @@ files = ["docs/lanes/glchannel/NOTES.md", "docs/testing/desktop_channel.sh",
          "docs/testing/jobs/selftest.d/99-desktop-serve.sh"]
 standing = false
 note = "WRITTEN 2026-09-19 by the host session; lane RUNNING since 18:56Z with no row (fleet.py FAIL). TO THE LANE: your brief told you to write this row yourself. THAT INSTRUCTION WAS WRONG and is withdrawn -- roles/lane.md:79 forbids a lane from editing territory.toml or nv2a_issues.toml, and it is right. It is written for you. Do not touch this file. Everything else in the brief stands. Files released when [lane.desktopchannel] was retired today (PR #149 MERGED f7be6e68cb, unit gone). CORRECTION TO THE BRIEF'S PREMISE, recorded here because a SendMessage to this lane was held for the recipient's approval and may never arrive: THIS HOST HAS A REAL GPU AND THE CHANNEL IS NOT USING IT. nvidia-smi reports NVIDIA GeForce RTX 2070, driver 591.86, 8192 MiB; /dev/dxg present, mode crw-rw-rw-; /usr/lib/wsl/lib/ holds libcuda.so, libd3d12.so, libd3d12core.so, libdxcore.so; the Mesa DRI directory holds d3d12_dri.so and zink_dri.so beside swrast_dri.so. But docs/lanes/desktopchannel/NOTES.md records what the channel ACTUALLY got: GL_RENDERER llvmpipe (LLVM 20.1.2, 256 bits) -- software, by loader default under xvfb-run, not by limitation. WHY IT MATTERS: the nv2a remote lane's environment report on PR #162 (2026-09-19T18:44Z) shows ITS desktop GL is ALSO llvmpipe (LLVM 20.1.2) on Mesa 25.2.8, the identical stack, and it already runs 236-capture OpenGL+Vulkan pairs unattended. So as shipped the two channels duplicate each other and the remote's is the one at volume. Reached, the RTX 2070 makes this the fleet's ONLY hardware-GL instrument -- the handhelds are Adreno on the Vulkan path, the remote is software, and nothing in the fleet can currently answer a question that turns on a real driver. DELIVERABLES UNCHANGED: the worker mode registering $DISPATCH_DIR/lanes/desktop, the systemd unit with an explicit PATH including /home/justin/.local/bin, and the selftest fragment are the point -- this channel's advantage over the remote's is that it is VISIBLE to affinity.py, the dispatcher, the gates and arms.sh, and the remote has no gh binary at all (gh: command not found, confirmed in its own report) so its GL output reaches no harness path. ADDED ONLY IF CHEAP: make the selected renderer explicit and RECORDED rather than whatever the loader defaults to, so no capture can be attributed to the wrong rasteriser. IF HEADLESS HARDWARE GL FIGHTS BACK, SHIP ON LLVMPIPE, record GL_RENDERER faithfully, and say in the PR body that the hardware path is available and unclaimed. Do not let this expand scope. Fragment 99 reserved here; 98 is lane.laneshape's."
+
+
+[lane.cloudtail]
+issues = []
+files = ["docs/testing/jobs/selftest.d/72-cloud-tail.sh", "docs/lanes/cloudtail/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #175 draft, branch lane/cloudtail) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue (brief only): the cloud unit's tail must run however the unit ends, from a path nothing moves. docs/testing/jobs/cloud.sh DELIBERATELY NOT CLAIMED although the lane's diff touches it: that file is [lane.turncap]'s below (granted outright at wave 126, PR #171 open), and the PR's own body says so -- it read its brief's claim as stale, found the file live instead, and confirmed the two diffs are disjoint hunks (header comment and the systemd-run invocation vs. #171's TURNS line) that share only context lines. This is a fold-order question, not a re-dispatch or a grant: coordinate at fold with turncap, same pattern as localtime/laneshape over files they touch but do not hold. selftest.d/72 is the next free fragment number (71 was cloudterritory's, retired at wave 126) and collides with nothing live."
+
+
+[lane.sweeps]
+issues = []
+files = ["docs/testing/jobs/pr-sweep.sh", "docs/testing/jobs/issue-sweep.sh",
+         "docs/testing/jobs/board.sh", "docs/testing/jobs/install-host.sh",
+         "docs/testing/systemd/hakux-pr-sweep.service", "docs/testing/systemd/hakux-pr-sweep.timer",
+         "docs/testing/systemd/hakux-issue-sweep.service", "docs/testing/systemd/hakux-issue-sweep.timer",
+         "docs/testing/jobs/selftest.d/73-pr-sweep.sh", "docs/testing/jobs/selftest.d/74-issue-sweep.sh",
+         "docs/lanes/sweeps/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #174 draft, branch lane/sweeps) with no territory row at all, invisible to check_territory.py. Harness capability, no tracker issue (brief only): a PR sweep and an issue sweep, periodic checks for the states no existing actor asks about -- 'is anything stuck?'. board.sh is free ([retired.windowbudget] released it at wave 126, nothing live claims it) and taken outright per this lane's own Files: line; the other files are all new (pr-sweep.sh, issue-sweep.sh, install-host.sh, the four systemd unit/timer files, selftest.d/73 and /74) and collide with nothing live. Diff so far is NOTES.md only (WIP per the PR body); the row claims the full declared set now so a later push does not silently exceed an under-claimed row."
 
 
 [lane.cloud-audit2-163]
