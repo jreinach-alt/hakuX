@@ -599,6 +599,139 @@ def tests_provenance_gate(tests_root, allow_older):
     return 0 if allow_older else 3
 
 
+def name_list(names, limit=8):
+    shown = ", ".join(names[:limit])
+    return shown + (" (... and %d more)" % (len(names) - limit)
+                    if len(names) > limit else "")
+
+
+def suite_drift(committed, fresh):
+    """Which SIDE of a suite disagreement is short, and by which suites.
+
+    A count cannot say. `suites differ (committed 103, tests tree 102)` is the
+    same sentence whether the committed index is stale or the CHECKOUT is, and
+    the two have opposite remedies: regenerate, versus update the tree and do
+    NOT regenerate. The name is the whole fix, because a reader who sees
+    "Surface as vertex array" knows instantly which side it belongs to.
+
+    Returns (missing, extra, changed):
+      missing  the index has them, the tests tree does not -> tree is behind
+      extra    the tests tree has them, the index does not -> index is behind
+      changed  same name both sides, different sources or symbols
+    """
+    c, f = committed or {}, fresh or {}
+    return (sorted(set(c) - set(f)),
+            sorted(set(f) - set(c)),
+            sorted(k for k in set(c) & set(f) if c[k] != f[k]))
+
+
+def describe_suite_drift(missing, extra, changed, tests_root):
+    """The check's suite failure, with the direction stated in words."""
+    out = []
+    if missing:
+        out.append(
+            "the tests tree is MISSING %d suite(s) the index has: %s\n"
+            "      Your nxdk_pgraph_tests checkout is probably BEHIND the one\n"
+            "      the committed index was built from. Fix the TREE, not the\n"
+            "      index -- rebuilding from this tree DELETES those suite(s):\n"
+            "          git -C %s fetch --all && git -C %s merge --ff-only @{u}"
+            % (len(missing), name_list(missing), tests_root, tests_root))
+    if extra:
+        out.append(
+            "the tests tree has %d suite(s) the index does NOT: %s\n"
+            "      The committed index is behind the tests tree. This is\n"
+            "      ordinary staleness; regenerate:\n"
+            "          nv2a_index.py build --tests %s --support DIR"
+            % (len(extra), name_list(extra), tests_root))
+    if changed:
+        out.append(
+            "%d suite(s) changed content (same name, different sources or\n"
+            "      symbols): %s\n"
+            "      Ordinary staleness; regenerate."
+            % (len(changed), name_list(changed)))
+    return out
+
+
+def stale_headline(tree_is_short):
+    """The one line at the top of a failed check.
+
+    ONE HEADLINE PER DIRECTION. The old one said "regenerate" for every
+    failure, including the one failure where regenerating is what destroys the
+    information -- which is how #157 was found: a lane doing exactly what this
+    line told it to would have committed a suite's deletion to master. So when
+    the tree is short, this line must NOT name `build`, and the selftest
+    asserts that absence rather than trusting the wording to stay right.
+    """
+    if tree_is_short:
+        return ("STALE INDEX - but DO NOT regenerate yet: the tests tree is\n"
+                "SHORT of the committed index, so a rebuild would DELETE the\n"
+                "suite(s) named below. Update the tests checkout first.")
+    return "STALE INDEX - regenerate with: nv2a_index.py build --tests DIR"
+
+
+def suite_removal_gate(fresh, allow_removal):
+    """Refuse to WRITE an index with fewer suites than the committed one.
+
+    The direction check in tests_provenance_gate asks git whether the checkout
+    is an ancestor of the one the index came from. That is the right question
+    and it is blind in three ordinary cases: a tests tree that is not a git
+    checkout at all, an index whose provenance predates the field (no
+    tests_commit), and a checkout of a DIFFERENT fork whose history simply
+    does not contain the recorded commit in a way ancestry can rank.
+
+    MEASURED 2026-09-19 on this branch: a copy of the host's tests tree with
+    one suite's source removed, with no .git in it, passed the provenance gate
+    (rc 0, because `git rev-parse HEAD` fails there and the gate returns early)
+    and `build` then wrote a 102-suite index over the committed 103-suite one
+    without a word. Provenance ranks the tree; this ranks the RESULT, which is
+    the thing actually being lost, so it catches the event however the tree got
+    that way.
+
+    Suites do get deleted upstream for real -- rarely, and deliberately. That
+    is what the flag is for. It is deliberately NOT implied by
+    --allow-older-tests: "I know this tree is older" and "I mean to delete
+    these named suites" are different claims, and the second is the one worth
+    reading a list before making.
+    """
+    if not os.path.exists(INDEX_PATH):
+        return 0
+    try:
+        with open(INDEX_PATH) as fh:
+            was = json.load(fh).get("suites") or {}
+    except Exception:
+        return 0
+    missing, _, _ = suite_drift(was, fresh.get("suites") or {})
+    if not missing:
+        return 0
+    tests_root = (fresh.get("provenance") or {}).get("tests_root")
+    lines = ["WARNING: writing an index with %d fewer suite(s), because "
+             "--allow-suite-removal was given." % len(missing)
+             if allow_removal else
+             "REFUSING to write an index with %d suite(s) FEWER than the "
+             "committed one." % len(missing),
+             "  would be deleted: %s" % name_list(missing),
+             "  committed index has %d suite(s), this build found %d"
+             % (len(was), len(fresh.get("suites") or {}))]
+    if not allow_removal:
+        if not tests_root:
+            # The 2026-09-13 accident: `build` with no --tests writes an index
+            # whose suite half is EMPTY, and a `check` with no --tests then
+            # passes it, because both sides agree there are no suites.
+            lines += ["  You ran `build` WITHOUT --tests, so no suites were",
+                      "  parsed at all. Pass --tests DIR."]
+        else:
+            lines += ["  A suite disappears when the tests CHECKOUT is behind,",
+                      "  far more often than because it was really deleted.",
+                      "  Check the tree first:",
+                      "      git -C %s fetch --all" % tests_root,
+                      "      git -C %s merge --ff-only @{u}" % tests_root,
+                      "  If those suite(s) really are gone upstream, re-run",
+                      "  with --allow-suite-removal."]
+    for line in lines:
+        print(line, file=sys.stderr)
+    return 0 if allow_removal else 4
+
+
 def load_index():
     if not os.path.exists(INDEX_PATH):
         sys.exit("no index at %s - run: nv2a_index.py build --tests DIR" % INDEX_PATH)
@@ -993,9 +1126,18 @@ def cmd_check(repo, tests_root, support_dirs=None):
                 "\n    gone: " + ", ".join(removed) if removed else "",
                 ("\n    moved: " + "\n           ".join(changed) + extra)
                 if changed else ""))
+    # The tests tree being short of the index is the one failure here whose
+    # remedy is NOT the one the headline prints. Tracked so the headline can
+    # say so, rather than sending the reader to the command that loses the data.
+    tree_is_short = False
     if tests_root and committed.get("suites") != fresh.get("suites"):
+        missing, extra, changed = suite_drift(committed.get("suites"),
+                                              fresh.get("suites"))
+        tree_is_short = bool(missing)
         problems.append("suites differ (committed %d, tests tree %d)"
-                        % (len(committed.get("suites", {})), len(fresh.get("suites", {}))))
+                        % (len(committed.get("suites", {})),
+                           len(fresh.get("suites", {}))))
+        problems += describe_suite_drift(missing, extra, changed, tests_root)
     # A `build` with no --tests writes an index whose suite half is EMPTY, and
     # a `check` with no --tests then passes it, because both sides agree there
     # are no suites. That is a guard satisfied by the absence of the thing it
@@ -1056,7 +1198,7 @@ def cmd_check(repo, tests_root, support_dirs=None):
             if known and suite not in known:
                 problems.append("issue #%s names unknown suite %r" % (num, suite))
     if problems:
-        print("STALE INDEX - regenerate with: nv2a_index.py build --tests DIR\n")
+        print(stale_headline(tree_is_short) + "\n")
         for p in problems:
             print("  " + p)
         return 1
@@ -1080,6 +1222,12 @@ def main():
                    help="build even though the tests checkout is older "
                         "than the one the committed index came from "
                         "(this DELETES whatever the newer commits added)")
+    b.add_argument("--allow-suite-removal", action="store_true",
+                   help="write the index even though it has FEWER suites "
+                        "than the committed one, i.e. the named suites "
+                        "really were deleted upstream. Not implied by "
+                        "--allow-older-tests: that one is about the tree's "
+                        "age, this one about what the result loses")
     c = sub.add_parser("check", help="fail if the committed index is stale")
     c.add_argument("--tests", help="path to an nxdk_pgraph_tests checkout")
     c.add_argument("--support", action="append", default=[])
@@ -1102,6 +1250,11 @@ def main():
         if rc:
             return rc
         index = build_index(REPO, tests, support)
+        # AFTER the build and BEFORE the write: the gate needs the suite table
+        # this build actually produced, and nothing is on disk until it passes.
+        rc = suite_removal_gate(index, args.allow_suite_removal)
+        if rc:
+            return rc
         with open(INDEX_PATH, "w") as fh:
             json.dump(index, fh, indent=1, sort_keys=True)
             fh.write("\n")
