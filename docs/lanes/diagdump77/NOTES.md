@@ -149,8 +149,17 @@ Two details make the reading sharper than the headline:
 
 So the instrument's headline claim is not a near miss or a ratio to argue
 about; it is off by two orders of magnitude from the serialising path, in
-both columns independently, and the session header carries
-`per_draw_finish: false` as a third statement of the same thing.
+both columns independently.
+
+**Do not count the header as a third witness.** `per_draw_finish` in the
+session record was a bare `false` literal in the format string -- it asserted
+the claim instead of measuring it, and would have printed `false` on the
+control arm, the one run where a finish *is* forced on purpose. Nothing was
+invalidated by it (the checker never read the field, and the verdict rests on
+`cb_draws`/`submits` from the scheduler), but it was a row that could not
+come out the interesting way. It now reports `also_diag`, which is the only
+thing that forces a finish in this path, and carries a comment saying it
+describes what was ARMED while the draw records are what was MEASURED.
 
 ### The control arm is measured, not only synthetic
 
@@ -160,8 +169,54 @@ non-free verdict. But a synthetic mutant proves the *checker* separates the
 two arms; it does not prove the *device* produces the serialising arm when
 asked. Run `1789812074-diagdump77-4109990` closes that: same title, same
 device, same binary, spec `30,after120,diag`, where the `diag` token fires
-`nv2a_dbg_trigger_diag_frames` alongside the live dump. Its numbers are in
-the results section below.
+`nv2a_dbg_trigger_diag_frames` alongside the live dump.
+
+It came out the opposite way on both columns, and on a third the lane had not
+thought to predict. Same binary (`ad5d93f489`), same title, same Thor, same
+30-flip window, ~1 s of wall clock each:
+
+| | live arm (1789811606) | control arm (1789812179) |
+|---|---|---|
+| spec | `30,after120` | `30,after120,diag` |
+| frame records | 30 | 30 |
+| **distinct guest frames** | **30** (`nv2a_frame` 3168..3197) | **1** (3127, all thirty) |
+| draws recorded | 3,847 | 1 |
+| `cb_draws` max | 132 | 1 |
+| `submit_count` advance | 29 over 3,847 draws | 2 over 1 draw |
+| verdict | NOT SERIALISED | SERIALISED |
+
+So the checker's `SERIALISED` branch is not a synthetic-only branch any more:
+a real device dump has taken it, and the two arms differ by two orders of
+magnitude in the direction the instrument was built to show.
+
+**The third column is the one to carry forward.** Under the diag capture the
+guest frame counter did not advance *at all* -- thirty consecutive flip_stall
+samples of a single guest frame, 3127. The old path does not merely stop
+draws being merged; during its capture window the title does not progress.
+That is a stronger statement about the button path's intrusiveness than this
+lane set out to make, and it is the clearest answer yet to why a 10-14%
+stipple was never caught under it: the capture does not sample the title
+running, it samples the title stopped.
+
+Two honest limits on that control, neither of which touches the live arm:
+
+- **Its per-draw sample is one draw.** `cb_draws=1` there is a true reading
+  of a real dump, but n=1. The weight of the falsifier is on the live arm's
+  3,847 draws; the control's job is to show the other verdict is reachable on
+  a device, and it does that.
+- **`frames` in a dump counts flip_stall invocations, not distinct guest
+  frames.** The control makes that visible for the first time: thirty
+  "frames" of one. The dump records `nv2a_frame` per frame record, which is
+  the only reason this was noticeable rather than a silent 30x
+  over-count -- **dedupe on `nv2a_frame` before treating frame records as
+  independent samples.** A later reader who counts rows will be wrong by
+  whatever the stall factor was.
+
+The control also produced the new disagreement check's first real firing: it
+ran on `ad5d93f489`, which predates the `per_draw_finish` fix below, so its
+header claims `false` while its records say SERIALISED, and the checker says
+so. The check caught a genuinely stale-provenance dump on its first contact
+with real data, which is the evidence that it is not a branch nothing takes.
 
 ### The instrument was invisible in the record of its own run -- fixed
 

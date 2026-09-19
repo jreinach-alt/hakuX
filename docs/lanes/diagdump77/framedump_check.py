@@ -149,6 +149,22 @@ def main(argv):
     if bad:
         print("\n%d unparseable line(s) skipped (truncation)." % bad)
 
+    # The header's per_draw_finish is a statement about what was ARMED; the two
+    # columns above are what the scheduler did.  They are produced by different
+    # code on different paths, so a disagreement is a broken instrument and is
+    # reported as one rather than being quietly resolved in either direction.
+    # (The field was a bare `false` literal once, which would have printed "no
+    # finish" on the control arm -- hence a check rather than trust.)
+    claimed = session.get("per_draw_finish")
+    if claimed is not None and claimed != bool(verdict):
+        print("\nINSTRUMENT DISAGREES WITH ITSELF: the session header says "
+              "per_draw_finish=%s, the draw records say %s.  Believe the draw "
+              "records -- they are read from the scheduler, the header is "
+              "read from the spec -- and treat this dump's provenance as "
+              "unreliable until that is explained."
+              % (claimed, "SERIALISED" if verdict else "NOT SERIALISED"))
+        verdict = 1
+
     # An instrument that reports a finish-free dump with no merging context is
     # easy to over-read; say what this run could and could not have shown.
     if not session.get("draw_merge"):

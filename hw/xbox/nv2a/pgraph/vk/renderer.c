@@ -1721,7 +1721,20 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     /* The header is the run's own provenance. draw_merge and draw_reorder are
      * in it because a dump taken with them off cannot speak about merging, and
      * the scale factor is in it because a capture upscaled 2.25x was read as a
-     * spectral finding on this very issue. */
+     * spectral finding on this very issue.
+     *
+     * `per_draw_finish` says whether a finish is forced between draws in THIS
+     * run, and it is `also_diag` because that is the only thing that forces
+     * one here: this path issues no Vulkan call at all, and the `diag` token
+     * arms the old capture alongside, which does. It was a bare `false`
+     * literal until it was caught -- which would have printed "no finish" on
+     * the control arm, the one run where a finish is forced on purpose. A
+     * field that cannot say the thing it exists to detect is not a check.
+     *
+     * It is still only a statement about what was ARMED. The measurement is
+     * `cb_draws` and `submits` on every draw record below; if the two ever
+     * disagree with this field, believe the draw records, because they are
+     * read from the scheduler and this is read from the spec. */
     fdump.bytes_written += fprintf(
         fp,
         "{\"t\":\"session\",\"schema\":%d,\"id\":%u,\"armed_by\":\"%s\","
@@ -1729,13 +1742,14 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         "\"after_s\":%d,"
         "\"wall\":%lld,\"uptime_ms\":%lld,\"draw_merge\":%s,"
         "\"draw_reorder\":%s,\"surface_scale\":%d,\"submit_frames\":%d,"
-        "\"per_draw_finish\":false,\"also_diag\":%s,\"driver\":\"%s\"}\n",
+        "\"per_draw_finish\":%s,\"also_diag\":%s,\"driver\":\"%s\"}\n",
         FDUMP_SCHEMA, fdump.session, armed_by, spec ? spec : "", frames,
         images ? "true" : "false", cap_mb, after_s, (long long)time(NULL),
         (long long)(qemu_clock_get_ns(QEMU_CLOCK_REALTIME) / 1000000),
         xemu_get_draw_merge() ? "true" : "false",
         xemu_get_draw_reorder() ? "true" : "false",
         pg->surface_scale_factor, r->num_active_frames,
+        also_diag ? "true" : "false",
         also_diag ? "true" : "false", g_vulkan_driver_info);
 
     FDUMP_LOG("framedump: armed by %s, %d frames, images=%d, cap=%d MB -> %s\n",

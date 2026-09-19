@@ -20,13 +20,19 @@ CHECK = os.path.join(HERE, "framedump_check.py")
 
 
 def write_dump(path, *, serialised, frames=3, draws=40, merge=False,
-               trailer=True):
+               trailer=True, header_finish=None):
+    # header_finish defaults to the truth for this arm.  Passing it explicitly
+    # builds a dump whose header contradicts its own draw records, which is
+    # what the disagreement check exists to catch.
+    if header_finish is None:
+        header_finish = serialised
     recs = [{
         "t": "session", "schema": 1, "id": 1758240000, "armed_by": "marker",
         "spec": "3", "frames": frames, "images": True, "cap_mb": 96,
         "wall": 1758240000, "uptime_ms": 9000, "draw_merge": merge,
         "draw_reorder": False, "surface_scale": 1, "submit_frames": 3,
-        "per_draw_finish": False, "also_diag": False, "driver": "selftest",
+        "per_draw_finish": header_finish, "also_diag": serialised,
+        "driver": "selftest",
     }]
     submits = 100
     for f in range(frames):
@@ -91,6 +97,24 @@ def main():
                 or "SERIALISED by submits" not in out:
             failures.append("the serialising mutant did not trip the check:\n"
                             + out)
+
+        # Neither honest arm may raise the disagreement check, or it would fire
+        # on every real dump and mean nothing.
+        for name, path in (("live", live), ("serialised", ser)):
+            if "INSTRUMENT DISAGREES" in run(path)[1]:
+                failures.append("the %s arm is self-consistent but was "
+                                "reported as disagreeing" % name)
+
+        # The header lying about the run is its own mutant: this is the shape
+        # the field had when it was a bare `false` literal, so a dump that
+        # serialised would still have claimed it did not.  Without this, the
+        # disagreement check is a branch nothing has ever taken.
+        liar = os.path.join(tmp, "liar.jsonl")
+        write_dump(liar, serialised=True, header_finish=False)
+        rc, out = run(liar)
+        if rc != 1 or "INSTRUMENT DISAGREES WITH ITSELF" not in out:
+            failures.append("a header contradicting its own draw records was "
+                            "not caught:\n" + out)
 
         # A truncated dump must be called out rather than silently scored on
         # fewer frames -- a short dump reads as a clean one otherwise.
