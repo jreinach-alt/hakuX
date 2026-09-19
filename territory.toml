@@ -527,7 +527,8 @@ files = [
 # as claimed-with-no-agent in fleet.py before this tick.
          "hw/xbox/nv2a/pgraph/vk/texture.c",
          "hw/xbox/nv2a/pgraph/gl/surface.c",
-         "docs/testing/jobs/roles/lane.md",
+# roles/lane.md NAMED OUT AT WAVE 119 (job.board): granted to lane.draftstrand,
+# which is fixing item 5's unachievable wording as part of its own brief.
          "docs/testing/jobs/roles/cloud.md",
 # RELEASED AT WAVE 110 (job.board) by retiring lane.blitsafe (PR #102 merged
 # 2026-09-19T10:56:48Z): vk/blit.c, vk/surface.c, vk/draw.c, surface.h. #88 and
