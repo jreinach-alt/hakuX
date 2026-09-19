@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 108
-updated_utc = "2026-09-19T10:41:08Z"
+wave = 109
+updated_utc = "2026-09-19T11:05:00Z"
+
+
+[lane.cloud-audit1-115]
+issues = ["109"]
+files = []
+standing = false
+note = "WRITTEN AT WAVE 109 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect as armlabel/branchprune/cloud-audit2-102/cloud-remediate-102 before it. This is the audit outlet's own claimed unit (jobs/cloud.sh), pass-1 diff audit of PR #115 (branch lane/cloud-109, labels needs-audit-1 + claimed:cloud): a bound-not-measured prediction against #109 (the undersized-surface-pitch rule), which the PR's own body concludes does not explain #87's residual and instead narrows a live, unmeasured defect around vk/surface.c's deferred-download path. Claims no source files -- an audit reads and comments, it does not edit the tree it is auditing; the PR's own diff (NOTES.md, docs/investigations/undersized-surface-pitch-two-models.md, docs/testing/predictions/undersized-pitch-swizzle-layout.json) touches nothing under hw/ either. Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
 
 
 [lane.armlabel]
