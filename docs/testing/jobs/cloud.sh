@@ -68,9 +68,11 @@ case "$kind" in
         branch="lane/cloud-$num"
         git -C "$REPO" fetch -q origin "$TIP" board 2>/dev/null
         if git -C "$REPO" rev-parse -q --verify "refs/remotes/origin/$branch" >/dev/null; then
-            git -C "$REPO" fetch -q origin "$branch" && git -C "$REPO" worktree add --quiet "$wt" -B "$branch" "origin/$branch" || exit 5
+            git -C "$REPO" fetch -q origin "$branch" && git -C "$REPO" worktree add --quiet "$wt" -B "$branch" "origin/$branch" \
+                || { say "cannot create $wt for issue #$num on $branch; not claiming"; exit 5; }
         else
-            git -C "$REPO" worktree add --quiet "$wt" -b "$branch" "origin/$TIP" || exit 5
+            git -C "$REPO" worktree add --quiet "$wt" -b "$branch" "origin/$TIP" \
+                || { say "cannot create $wt for issue #$num on a new $branch; not claiming"; exit 5; }
         fi
         {
             echo "# cloud lane: issue #$num -- $title"; echo
@@ -83,8 +85,21 @@ case "$kind" in
         ;;
     *)
         branch="$head"
-        git -C "$REPO" fetch -q origin "$TIP" "$branch" || exit 4
-        git -C "$REPO" worktree add --quiet "$wt" -B "$branch" "origin/$branch" || exit 5
+        git -C "$REPO" fetch -q origin "$TIP" "$branch" || { say "fetch of $branch failed; not claiming #$num"; exit 4; }
+        # DETACHED, and not -B "$branch". Every local lane holds its own branch
+        # in a worktree under $WORK/wt, and git refuses to check one branch out
+        # twice: "fatal: 'lane/blitsafe' is already used by worktree at ...".
+        # So this path exited 5 for every PR a local lane had opened -- which is
+        # all of them -- and it exited BEFORE the first say(): nothing in the
+        # tick log, no comment on the PR, no label moved, no worktree left to
+        # inspect. The only trace was a systemd exit code nobody reads.
+        #
+        # An audit writes one file and pushes it. It does not need the branch
+        # NAME locally, and HEAD:<branch> pushes just as well from a detached
+        # head. The issue path above keeps -B: its worktree path is derived
+        # from the same name, so it removes its own predecessor first.
+        git -C "$REPO" worktree add --quiet --detach "$wt" "origin/$branch" \
+            || { say "cannot create $wt for #$num on $branch; not claiming"; exit 5; }
         case "$kind" in
             audit1) task="Audit PASS 1 of PR #$num: read the DIFF (\`gh pr diff $num --repo $GH_REPO\`), write docs/audits/$(date -u +%F)-${head#lane/}-pass1.md on this branch, commit and push it, post it as a PR review (\`gh pr review $num --repo $GH_REPO --comment --body-file ...\`), then set the labels per your role file (HIGH/MEDIUM → needs-remediation; else needs-audit-2, or fold-ready if there is nothing to verify). Remove needs-audit-1.";;
             audit2) task="Audit PASS 2 of PR #$num: verify each pass-1 scenario in docs/audits/*-${head#lane/}-pass1.md can no longer occur. Write the pass2 file beside it, commit and push, post the review, then: clean → remove needs-audit-2, add fold-ready; not clean → needs-remediation.";;
@@ -92,7 +107,7 @@ case "$kind" in
         esac
         {
             echo "# cloud: $kind PR #$num -- $title"; echo
-            echo "Branch \`$branch\` is checked out here and is the only branch you may push to (and only the audit file, for an audit). The claim is already made (label claimed:cloud); do not re-claim."; echo
+            echo "This worktree is DETACHED at \`origin/$branch\`, because that branch is checked out elsewhere on this host and git will not hold one branch in two worktrees. Commit here and push with \`git push origin HEAD:$branch\`; that is the only branch you may push to (and only the audit file, for an audit). The claim is already made (label claimed:cloud); do not re-claim."; echo
             echo "$task"
         } > "$brief"
         label_add "$num" claimed:cloud || say "  WARNING: could not label PR #$num claimed; another tick may claim it too"
