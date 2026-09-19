@@ -28,8 +28,17 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 118
-updated_utc = "2026-09-19T13:48:10Z"
+wave = 119
+updated_utc = "2026-09-19T13:52:00Z"
+
+
+[lane.draftstrand]
+issues = []
+files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/roles/lane.md",
+         "docs/testing/jobs/selftest.d/96-draft-strand.sh",
+         "docs/lanes/draftstrand/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 119 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:45:52Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: a draft PR whose lane has exited (CI green, nothing running) is invisible to every actor -- board.sh, fleet.py and fold.sh all filter drafts out, and nothing joins isDraft with the unit's liveness. Detects the state and resumes the lane via handback.sh rather than flipping isDraft itself. docs/testing/jobs/fold.sh NAMED IN THE BRIEF BUT NOT CLAIMED HERE -- 'only if the call site needs it', and fold.sh is [lane.branchprune]'s below; if draftstrand's diff needs a call site there it must be small and coordinated with branchprune at fold, the same pattern already applied to localtime/windowbudget/desktopchannel tonight. roles/lane.md is free (released by retiring lane.ciskip at wave 105) and taken outright since item 5's wording is this lane's own thing to fix."
 
 
 [lane.desktopchannel]
