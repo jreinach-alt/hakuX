@@ -24,7 +24,7 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 S="$WORK/status"; mkdir -p "$S"
 OUT="$S/STATUS.md"
-. "$J/models.env" 2>/dev/null; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
+. "$J/models.env" 2>/dev/null; . "$J/window.sh" 2>/dev/null; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 now=$(date +%s)
 ago() { local t=${1:-}; [ -n "$t" ] || { echo "never"; return; }; local s=$(( now - t )); if [ $s -lt 120 ]; then echo "${s}s ago"; elif [ $s -lt 7200 ]; then echo "$(( s / 60 ))m ago"; else echo "$(( s / 3600 ))h $(( (s % 3600) / 60 ))m ago"; fi; }
 since_iso() { date -u -d "${1:-24 hours ago}" +%FT%TZ 2>/dev/null; }
@@ -59,6 +59,36 @@ if [ $have_sd = 1 ]; then
     fi
 else
     echo "(systemd --user not reachable from here)"
+fi
+echo
+
+# ------------------------------------------------- the account's windows
+#
+# A FLEET THAT GOES QUIET FOR BUDGET REASONS LOOKS EXACTLY LIKE A FLEET THAT
+# HAS JAMMED. That is the failure the whole job harness was rebuilt to remove,
+# so the reserve says the same thing in three places: this section, the board's
+# tick log, and the board session's own brief. If dispatch is held, the reason
+# and the resume time are HERE, above the fold, next to the empty lane table
+# that would otherwise be the only visible symptom.
+echo "### Window budget (the account's five-hour and weekly windows)"
+echo
+if declare -f window_check >/dev/null 2>&1; then
+    window_check
+    if [ "${WINDOW_DEFER:-0}" = 1 ]; then
+        echo "- **dispatch DEFERRED until $WINDOW_UNTIL** -- $WINDOW_WHY."
+        echo "- This is a budget decision, not a failure. Folds, arms, labels, sessions already running and this page continue; no lane attempt is counted; nothing here needs investigating."
+    else
+        echo "- dispatching normally. Lanes and audits start as work allows; expanding is the default."
+    fi
+    echo "- $WINDOW_FACTS."
+    if [ -s "$WORK/window/limits.tsv" ]; then
+        echo "- usage-limit refusals recorded (\`\$WORK/window/limits.tsv\`), most recent last:"
+        echo '```'; tail -5 "$WORK/window/limits.tsv"; echo '```'
+    else
+        echo "- no session has ever been refused by the account's window on this host. That is the only first-hand evidence of a closed window there is: **the remaining five-hour and weekly balance cannot be queried from here**, so the weekly reserve arms on that evidence, or on \`WEEK_SPEND_BUDGET\` if the owner declares one in \`\$WORK/limits.env\`. Unknown means open, by design."
+    fi
+else
+    echo "(jobs/window.sh not available here)"
 fi
 echo
 

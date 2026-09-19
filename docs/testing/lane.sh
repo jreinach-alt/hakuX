@@ -9,7 +9,9 @@
 #   lane.sh attempts | reset <name> # the per-lane attempt counter behind the escalation
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
-#   lane.sh fleet-end <name> [rc]   # clear the registry entry (the unit calls this)
+#   lane.sh fleet-end <name> [rc] [run.json]   # the unit's tail: clear the
+#                                   registry entry, and decide the unit's exit
+#                                   code (75 if the account's window closed)
 #   lane.sh fleet-gc                # drop registry entries whose unit is gone
 #
 # WHY THE WORKTREE IS MADE HERE AND NOT BY --worktree. Claude Code's own
@@ -45,6 +47,13 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # when this script refuses.
 LANE_MAX=2
 . "$JOBS/models.env"
+# THE WINDOW IS NOT THE CAP. LANE_MAX only ever binds when there IS work, so
+# it throttles the days with a backlog and does nothing on a day the account's
+# window is already spent; it stays what its comment says it is, a runaway
+# backstop. The account's five-hour and weekly windows are handled by
+# jobs/window.sh: fleet-end below routes a lane that met a closed window to
+# exit 75 and REFUNDS its attempt, and board.sh holds the weekly reserve.
+. "$JOBS/window.sh"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
 
@@ -119,6 +128,22 @@ next_attempt() {   # prints the attempt number this start will be, and the model
     ATTEMPT=$n
 }
 
+# A CLOSED WINDOW IS NOT AN ATTEMPT. The counter above is spent at START, so
+# by the time the session is refused by the account's usage window it has
+# already been charged -- and three of those in a row escalate the lane to the
+# most expensive model, then refuse it entirely and open a decision-needed
+# issue, for a reason that has nothing to do with the work. The refund is what
+# makes that impossible; it is also what makes it safe for anything (the
+# board, handback.sh, the owner) to resume a lane into a window it could not
+# know was closed. It only ever moves the counter down, and never below zero.
+refund_attempt() {   # <lane>
+    local f="$WORK/attempts/${1:?lane}" n
+    n=$(cat "$f" 2>/dev/null || echo 0)
+    case "$n" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$n" -gt 0 ] && echo "$(( n - 1 ))" > "$f"
+    return 0
+}
+
 case "$cmd" in
   start)
     brief="${3:?usage: lane.sh start <name> <brief.md> [issue]}"; issue="${4:-}"
@@ -155,7 +180,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -182,7 +207,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
@@ -197,9 +222,31 @@ case "$cmd" in
     # it -- and answers "what was this lane asked, and how did it end?" after
     # the entry is gone. A SIGKILLed unit skips this; that is precisely why
     # fleet.py asks systemd rather than this directory who is running.
+    #
+    #   fleet-end <name> [rc] [run.json]
+    #
+    # THE UNIT'S EXIT CODE IS DECIDED HERE, which is why the run's log is the
+    # fourth argument. run-claude-job.sh maps a usage-window refusal to 75 for
+    # the board, the arms job and the cloud job; lane.sh did not use it and a
+    # lane has no other tail, so a lane that met a closed window exited with
+    # whatever the CLI returned and was indistinguishable from a lane that
+    # failed at its work: an attempt spent, a model escalation three of those
+    # later, and a resume straight back into the same closed window. The log
+    # argument is optional so that a unit started by the PREVIOUS version of
+    # this script -- already running when it is folded -- still ends cleanly.
+    rc="${3:-0}"; runlog="${4:-}"
+    case "$rc" in ''|*[!0-9]*) rc=0 ;; esac
+    if [ -n "$runlog" ] && window_limit_hit "$runlog"; then
+        window_note_limit "lane-${name:?name}" "$runlog"
+        refund_attempt "$name"
+        rc=75
+        mkdir -p "$WORK/logs/lane" 2>/dev/null
+        echo "$(date -u '+%FT%TZ') lane $name STOPPED ON THE ACCOUNT'S USAGE WINDOW, not on its work: exit 75, and attempt refunded (counter now $(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)) so this costs the lane no escalation. Recorded in \$WORK/window/limits.tsv; the board defers dispatch while it is fresh." \
+            | tee -a "$WORK/logs/lane/tick.log"
+    fi
     f="$FLEETD/${name:?name}.json"
-    [ -f "$f" ] || exit 0
-    python3 - "$f" "$FLEETD/history.jsonl" "${3:-}" <<'PYEND' || true
+    [ -f "$f" ] || exit "$rc"
+    python3 - "$f" "$FLEETD/history.jsonl" "$rc" <<'PYEND' || true
 import datetime, json, sys
 src, hist, rc = sys.argv[1:4]
 try:
@@ -212,6 +259,7 @@ with open(hist, "a") as fh:
     fh.write(json.dumps(e) + "\n")
 PYEND
     rm -f "$f"
+    exit "$rc"
     ;;
   fleet-gc)
     # The entries the deleted orchestrator left behind (37 on the host on

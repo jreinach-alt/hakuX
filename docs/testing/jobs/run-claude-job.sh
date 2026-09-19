@@ -20,7 +20,9 @@
 # EXIT 75 ON A USAGE-WINDOW LIMIT. The account's five-hour and weekly windows
 # are shared by every session, local and cloud. A limit is not a failure to
 # retry into: 75 is EX_TEMPFAIL, the unit's RestartSec grows, and the next
-# tick after the reset succeeds (docs/ORCHESTRATION-DESIGN.md §9.1).
+# tick after the reset succeeds (docs/ORCHESTRATION-DESIGN.md §9.1). The test
+# itself moved to jobs/window.sh, which lane.sh now shares -- a lane meeting
+# a closed window used to read as a lane that failed at its work.
 set -u
 job=${1:?job}; wt=${2:?worktree}; brief=${3:?brief}; turns=${4:-40}
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
@@ -32,6 +34,7 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # tick and triage are bookkeeping and run on the bookkeeping model; an audit
 # reads code for defects and runs on the audit model.
 . "$JOBS/models.env"
+. "$JOBS/window.sh"          # window_limit_hit / window_note_limit
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 case "$job" in
     audit*) MODEL="${HAKUX_MODEL:-$MODEL_AUDIT}" ;;
@@ -53,7 +56,16 @@ timeout "${JOB_TIMEOUT:-50m}" claude -p "$(cat "$brief")" \
     > "$log" 2>&1
 rc=$?
 python3 "$JOBS/summarise_run.py" "$log" "$job" "$MODEL" >> "$WORK/logs/$job/index.tsv"
-grep -qiE '"is_error": *true.*(rate.?limit|usage limit)' "$log" && exit 75
+if window_limit_hit "$log"; then
+    # Recorded, not just returned: the hit is the fleet's only first-hand
+    # evidence that the account's window closed, and board.sh's reserve reads
+    # the record. Saying it here too, because a unit that merely goes orange
+    # with a 75 looks exactly like a unit that is broken.
+    window_note_limit "$job" "$log"
+    echo "$(date -u '+%FT%TZ') $job STOPPED ON THE ACCOUNT'S USAGE WINDOW, not on its work: exit 75 (EX_TEMPFAIL), the unit's RestartSec grows, the next tick after the reset continues. Recorded in \$WORK/window/limits.tsv; the board defers dispatch while it is fresh." \
+        | tee -a "$WORK/logs/$job/tick.log"
+    exit 75
+fi
 
 # A TURN-CAP CUT IS NOT A FAILURE, AND MUST NOT BE REPORTED AS ONE.
 #

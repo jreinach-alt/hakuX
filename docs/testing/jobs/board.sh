@@ -25,6 +25,11 @@ SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 mkdir -p "$WORK/logs/board" "$WORK/briefs"
 LOG="$WORK/logs/board/tick.log"
 say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The account's five-hour and weekly windows: window_check / window_defer_line.
+# Sourced from beside THIS file, which is the fetched trunk's copy after the
+# re-exec below, so the reserve is the trunk's rule and not the owner's
+# checkout's.
+. "$SELF/window.sh"
 
 # ===================================================================
 # THE POSITIVE GATE
@@ -122,11 +127,31 @@ positive_gate() {
     [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
     lanes=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l)
     lanes=${lanes//[^0-9]/}; lanes=${lanes:-0}
+    # THE RESERVE (docs/ORCHESTRATION-DESIGN.md §9.1), and why it lands on
+    # `capacity` rather than on the whole tick. Starting a lane or an audit is
+    # what spends the account's window; labelling a ready PR, reading the two
+    # error gates and rewriting the status page are what keep the fleet
+    # legible, and they cost a Sonnet tick at most. So a deferral takes the
+    # dispatch trigger away and leaves everything else running -- and it takes
+    # it away HERE, in the gate, rather than by telling the model not to
+    # dispatch: a tick that wakes every twenty minutes to be told there is
+    # work it may not start is the expensive half of the thing being deferred.
+    #
+    # window_check fails open: an unknown window leaves WINDOW_DEFER=0.
+    window_check
+    if [ "${WINDOW_DEFER:-0}" = 1 ]; then
+        say "$(window_defer_line "lane and audit dispatch")"
+    elif [ "${WINDOW_ZONE:-0}" = 1 ]; then
+        # In the reserve's own stretch of the week and dispatching anyway,
+        # which is the RIGHT answer when nothing has been measured -- but a
+        # control that is inert and silent cannot be told from one that works.
+        say "NOTE: this is the last fifth of the weekly window, and dispatch is going ahead. $WINDOW_FACTS"
+    fi
     if ! command -v gh >/dev/null 2>&1 || ! timeout 30 gh auth status >/dev/null 2>&1; then
         say "NOTE: no usable gh; the capacity and state-label triggers are blind this tick (they fail quiet by design)"
         return
     fi
-    if [ "$lanes" -lt "${LANE_MAX:-2}" ]; then
+    if [ "$lanes" -lt "${LANE_MAX:-2}" ] && [ "${WINDOW_DEFER:-0}" != 1 ]; then
         capacity=$(board_filter issues "$(timeout 60 gh issue list --repo "$GH_REPO" \
             --state open --limit 200 --json number,title,labels 2>/dev/null)")
     fi
@@ -194,7 +219,18 @@ JOBS="$WT/docs/testing/jobs"
 # cloud.sh claims at most one unit per tick and refuses at LANE_MAX -- the same
 # number and the same hakux-lane-* count as lane.sh, because an audit session
 # IS a lane session.
-bash "$JOBS/cloud.sh" >/dev/null 2>&1 || say "audit outlet (cloud.sh) exited $?"
+#
+# AND IT IS DISPATCH, so the reserve covers it: §9.1 reserves the last fifth
+# of the weekly window from "lanes and audits", and an audit session is a lane
+# session. A claim made here starts a model session immediately, so the check
+# has to be on this side of the call -- cloud.sh has no idea whose timer it is
+# on. An audit already running is left alone; only the claim is deferred.
+window_check
+if [ "${WINDOW_DEFER:-0}" = 1 ]; then
+    say "$(window_defer_line "the audit outlet's next claim")"
+else
+    bash "$JOBS/cloud.sh" >/dev/null 2>&1 || say "audit outlet (cloud.sh) exited $?"
+fi
 
 fails=$(cd "$WT" && timeout 60 python3 docs/testing/fleet.py 2>&1 >/dev/null | grep '^FAIL' || true)
 
@@ -220,7 +256,14 @@ cov=$(cd "$WT" && timeout 60 python3 docs/testing/check_coverage.py 2>&1 | grep 
 positive_gate
 
 if nothing_actionable; then
-    say "nothing actionable ($lanes/${LANE_MAX:-2} lanes, no startable issue, no unlabelled ready PR)"
+    # "no startable issue" would be a lie while the reserve holds -- the
+    # capacity trigger was taken away, not found empty -- and this line is
+    # what the status page shows.
+    if [ "${WINDOW_DEFER:-0}" = 1 ]; then
+        say "nothing actionable ($lanes/${LANE_MAX:-2} lanes, no unlabelled ready PR) AND dispatch is deferred until $WINDOW_UNTIL -- capacity was not consulted"
+    else
+        say "nothing actionable ($lanes/${LANE_MAX:-2} lanes, no startable issue, no unlabelled ready PR)"
+    fi
     bash "$JOBS/status.sh" >/dev/null 2>&1
     exit 0
 fi
@@ -248,6 +291,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     echo "## capacity -- there is room under LANE_MAX and there is startable work"
     echo
+    [ "${WINDOW_DEFER:-0}" = 1 ] && { echo "**START NO LANE AND CLAIM NO AUDIT THIS TICK.** $WINDOW_WHY. Dispatch resumes at $WINDOW_UNTIL and the list below is deliberately empty; do not go looking for startable issues yourself. Everything else in this brief is still yours: labels, the coverage gate, comments, briefs. This is a budget decision, not a failure -- do not open a decision-needed issue about it. ($WINDOW_FACTS)"; echo; }
     echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch AT MOST ONE this tick, by your role file's order (severity bucket, then oldest), and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
     printf '%s\n' "${capacity:-none}"
