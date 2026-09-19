@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 119
-updated_utc = "2026-09-19T13:52:00Z"
+wave = 120
+updated_utc = "2026-09-19T14:10:00Z"
 
 
 [lane.draftstrand]
@@ -86,6 +86,16 @@ files = ["docs/testing/lane.sh", "docs/testing/jobs/run-claude-job.sh",
          "docs/lanes/windowbudget/NOTES.md"]
 standing = false
 note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (attempt 1/opus-5, started 2026-09-19T13:24:23Z, no PR yet) with no territory row at all. Harness defect, no tracker issue: the pipeline throttles on LANE_MAX, a session count, when the real constraint is the account's shared five-hour/weekly window -- a lane that hits a closed window burns an attempt and eventually escalates model tier for a reason that has nothing to do with the work. board.sh CLAIMED HERE, not released to lane.localtime, which named it too: windowbudget's reserve-check (deferring dispatch in the last fifth of the weekly window) is the substantive edit to that file; localtime's touch would be a one-line display change and is noted as coordinate-at-fold in [lane.localtime] instead. status.sh DROPPED from this claim though the brief names it as a coordination point, not a file to hold -- it is [lane.statusfresh]'s below, that lane's entire brief. docs/testing/jobs/selftest.d/ narrowed to a named fragment (95-window-budget.sh) for the same reason as [lane.desktopchannel]'s note above."
+
+
+[lane.remotechannel]
+issues = []
+files = ["docs/testing/jobs/deliver.sh", "docs/testing/comment_sweep.sh",
+         "docs/testing/watch_remote_lane.sh",
+         "docs/testing/jobs/selftest.d/66-deliveries.sh",
+         "docs/lanes/remotechannel/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 120 (job.board) -- lane was RUNNING (PR #154 draft, attempt 1/opus-5, started 2026-09-19T06:59:46Z) with no territory row at all, the same invisible-lane defect this file has documented for six lanes tonight. Harness defect, no tracker issue: the delivery channel ($DISPATCH_DIR/deliveries/<lane>.md) is a file on this host's disk a cloud session cannot open -- moving activation onto a tagged GitHub comment, deriving check_coverage.py's lastbrief stamp from the newest delivery comment via a cache this channel writes, giving watch_remote_lane.sh's orphaned polling loop a destination inside comment_sweep.sh, and retiring the watcher. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- docs/testing/check_coverage.py is dropped; it is lane.toolsmith's (standing lane, owns the instruments). The lastbrief-derivation change the lane's own NOTES.md plans is a small, coordinated touch at fold with lane.toolsmith, not a claim taken outright. docs/testing/jobs/selftest.d/93-backlog-state.sh is ALSO DROPPED: that filename already exists on master (added by the now-folded lane.backlogstate, PR #134) and has nothing to do with this lane's topic -- the brief's own Files: line named a file this lane cannot claim as new. Given 66-deliveries.sh instead, the next free number in the sequence and a name matching its actual new fragment. selftest.d/** is a glob held by lane.cloudterritory but check_territory.py's exact-match rule does not read a named fragment as colliding with it, the same reasoning already applied to [lane.desktopchannel] and [lane.windowbudget] tonight."
 
 
 [retired.cloud-audit1-143]
