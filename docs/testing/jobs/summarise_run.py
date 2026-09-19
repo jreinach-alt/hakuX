@@ -11,6 +11,16 @@ import sys
 
 path, job = sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "?"
 model = sys.argv[3] if len(sys.argv) > 3 else "?"
+# DATA, NOT DISPLAY -- STAYS UTC, and this is the site most likely to be
+# "finished" by mistake. This `ts` is column 1 of logs/<job>/index.tsv, and
+# status.sh selects its 24h window with `awk '$1 >= c'` where c comes from
+# since_iso() in UTC. That is a LEXICAL string comparison: it is correct only
+# because UTC "%FT%TZ" sorts chronologically. Writing local time here would
+# shift every row seven hours against an unchanged cutoff -- rows silently
+# missing from the page -- and across the November fall-back, where
+# 01:00-02:00 happens twice, two distinct instants would compare in the wrong
+# order. status.sh converts this column to the display zone where it PRINTS
+# it (jobs/localtime.sh:local_hm), which is where the conversion belongs.
 ts = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 turns = secs = cost = "?"
 err = "?"

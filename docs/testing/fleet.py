@@ -155,6 +155,9 @@ def age_s(secs):
 
 
 def age(iso):
+    # `iso` is the registry's started_utc, written and kept in UTC. Nothing
+    # here needs converting: the output is a RELATIVE duration, and both sides
+    # of the subtraction are tz-aware, so the answer is the same in any zone.
     try:
         t = datetime.datetime.strptime(iso, "%Y-%m-%dT%H:%M:%SZ") \
             .replace(tzinfo=datetime.timezone.utc)
@@ -207,9 +210,33 @@ def main():
     # until then; board_files says which was read, so a stale local copy is
     # never quoted as a live one (docs/ORCHESTRATION-DESIGN.md §5).
     sys.path.insert(0, HERE)
+    # After HERE, not before it: jobs/ is a supplement to this directory, not
+    # a shadow of it.
+    sys.path.insert(1, os.path.join(HERE, "jobs"))
     import board_files
+    try:
+        from localtime import say_time
+    except ImportError:
+        # THIS FILE IS ALSO RUN FROM A COPY OF ITSELF. selftest.d/93's board
+        # fixture copies exactly check_coverage.py, fleet.py and board_files.py
+        # into a scratch directory and runs fleet.py there, so anything this
+        # file imports must either be one of those three or be optional. An
+        # unguarded `from localtime import ...` took out all ten of that
+        # fragment's checks at once.
+        #
+        # Degrade to UTC and SAY UTC. The failure mode this whole change exists
+        # to prevent is a clock that is labelled with a zone it is not in; a
+        # line that reads "UTC" while being UTC costs a reader nothing.
+        def say_time():
+            return datetime.datetime.now(datetime.timezone.utc) \
+                           .strftime("%Y-%m-%d %H:%M UTC")
     terr = board_files.load("territory.toml")
     tracker = board_files.load("nv2a_issues.toml")["issue"]
+    # Everything else this report prints is a RELATIVE duration ("4.2h"), which
+    # needs no zone. That is also why it never said when "4.2h ago" was counted
+    # back from -- a report pasted into an issue an hour later reads as current.
+    # One absolute line, in the display zone, fixes that.
+    print("fleet report generated %s" % say_time())
     print("board read from: territory.toml <- %s, nv2a_issues.toml <- %s"
           % (board_files.source("territory.toml"),
              board_files.source("nv2a_issues.toml")))
