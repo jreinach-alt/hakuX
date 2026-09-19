@@ -31,6 +31,12 @@ a `[job.cloud] claimed` comment) before you start; the unit removes the
 label when you end. If you were started with no brief, pick by this order
 yourself and make the claim first.
 
+**Setting a label on a PR: `bash docs/testing/jobs/gh-label.sh add <n> <label>`
+and `... rm <n> <label>`.** `gh pr edit --add-label` exits 1 on this host and
+applies nothing, so an audit that ends by moving `needs-audit-1` to
+`needs-audit-2` with `gh pr edit` has not moved it. `gh issue edit` is fine
+for issues.
+
 1. **A PR labelled `needs-remediation` whose head branch starts `lane/cloud-`**
    (your own lanes; a local lane's remediation is the board's to resume).
    Fix every HIGH and MEDIUM from the audit, push, comment what changed,

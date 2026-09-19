@@ -47,6 +47,12 @@ So, every tick, in this order:
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.
+- **Setting a label on a PR: `bash docs/testing/jobs/gh-label.sh add <n>
+  <label>` and `... rm <n> <label>`, never `gh pr edit --add-label`.** That
+  command exits 1 on this host (gh 2.45 asks for Projects-classic cards and
+  GitHub refuses the field), applies nothing, and every job was calling it
+  with stderr discarded -- so for a day no PR label the harness set ever
+  took. `gh issue edit --add-label` is fine for issues.
 - Labels, the pipeline's state machine: a PR that is **not a draft** and has
   no `needs-audit-*`, `needs-remediation`, `fold-ready` or `folded` label
   → `needs-audit-1` (the cloud-class session audits it; pass 2 sets `fold-ready`

@@ -46,6 +46,7 @@ A="$WORK/arms"
 # The scripts a queue and a judge run through are the trunk's, taken from
 # beside this file (board.sh re-execs this from a fetched master worktree).
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 mkdir -p "$A"/{expect,pairs,judged,skipped,log} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
 say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
@@ -292,8 +293,8 @@ for pair in "$A"/pairs/*.json; do
     post "$pr" "$issue" "$body" || say "  could not post the verdict for $sha anywhere"
     if [ -n "$pr" ]; then
         case "$verdict" in
-            *PASS*) gh pr edit "$pr" --repo "$GH_REPO" --add-label verified --remove-label regressed >/dev/null 2>&1 ;;
-            *FAIL*) gh pr edit "$pr" --repo "$GH_REPO" --add-label regressed --remove-label verified >/dev/null 2>&1 ;;
+            *PASS*) label_add "$pr" verified && label_rm "$pr" regressed || say "  WARNING: #$pr judged PASS but could not be labelled verified" ;;
+            *FAIL*) label_add "$pr" regressed && label_rm "$pr" verified || say "  WARNING: #$pr judged FAIL but could not be labelled regressed" ;;
         esac
     fi
     echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr})"

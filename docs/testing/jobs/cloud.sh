@@ -31,6 +31,7 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 TIP="${HAKUX_TIP:-master}"
 TURNS="${CLOUD_TURNS:-120}"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; JOBS="$T/jobs"
+. "$JOBS/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$JOBS/models.env"; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 CLOUD_MAX="${CLOUD_MAX:-1}"
 MODEL="${HAKUX_MODEL:-$MODEL_AUDIT}"
@@ -76,9 +77,9 @@ case "$kind" in
             echo "You are the cloud-class lane for issue #$num, on branch \`$branch\` (already checked out here; it is yours). Read the issue with \`gh issue view $num --repo $GH_REPO --comments\`. The claim is already made (label claimed:cloud); do not re-claim. No device is available to you; if a device run is what settles it, register the prediction and push -- the arms job runs it."; echo
             b=$(git -C "$REPO" show "origin/board:briefs/$num.md" 2>/dev/null) && { echo "## The board's brief"; echo; echo "$b"; }
         } > "$brief"
-        gh issue edit "$num" --repo "$GH_REPO" --add-label claimed:cloud --add-label "lane:cloud-$num" >/dev/null 2>&1
+        label_add "$num" claimed:cloud "lane:cloud-$num" || say "  WARNING: could not label issue #$num claimed; another tick may claim it too"
         gh issue comment "$num" --repo "$GH_REPO" --body "[job.cloud] claimed as a cloud-class lane on the host (unit $unit, branch \`$branch\`, model $MODEL). One session; it opens a draft PR and marks it ready when done." >/dev/null 2>&1
-        unclaim="gh issue edit $num --repo $GH_REPO --remove-label claimed:cloud"
+        unclaim="bash $JOBS/gh-label.sh rm $num claimed:cloud"
         ;;
     *)
         branch="$head"
@@ -94,9 +95,9 @@ case "$kind" in
             echo "Branch \`$branch\` is checked out here and is the only branch you may push to (and only the audit file, for an audit). The claim is already made (label claimed:cloud); do not re-claim."; echo
             echo "$task"
         } > "$brief"
-        gh pr edit "$num" --repo "$GH_REPO" --add-label claimed:cloud >/dev/null 2>&1
+        label_add "$num" claimed:cloud || say "  WARNING: could not label PR #$num claimed; another tick may claim it too"
         gh pr comment "$num" --repo "$GH_REPO" --body "[job.cloud] claimed for $kind (cloud-class session on the host, unit $unit, model $MODEL)." >/dev/null 2>&1
-        unclaim="gh pr edit $num --repo $GH_REPO --remove-label claimed:cloud"
+        unclaim="bash $JOBS/gh-label.sh rm $num claimed:cloud"
         ;;
 esac
 [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
