@@ -1241,43 +1241,43 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:222",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:315",
    "symbols": [],
    "text": "assert(!\"Invalid shader module kind\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:653",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:744",
    "symbols": [],
    "text": "/* FIXME: Make this configurable */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:669",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:760",
    "symbols": [],
    "text": "/* FIXME: Make this configurable */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:689",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:780",
    "symbols": [],
    "text": "pgraph_gl_shader_write_cache_reload_list(pg); // FIXME: also flushes, rename for clarity"
   },
   {
    "kind": "HEDGE",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:784",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:875",
    "symbols": [],
    "text": "/* program_size might be zero on some systems, if no binary formats are supported */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:861",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:952",
    "symbols": [],
    "text": "// FIXME: Dirty tracking"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:862",
+   "loc": "hw/xbox/nv2a/pgraph/gl/shaders.c:953",
    "symbols": [],
    "text": "// FIXME: Consider UBO to align with VK renderer"
   },
@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:209",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:211",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "3c2f6622c50b70ed85be9c6fa1e7ccb332ecaf1d",
+  "emulator_commit": "9921589cbb748ef64707316062f6603e2aa520f7",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2833,
@@ -8901,7 +8901,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:246",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:248",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
