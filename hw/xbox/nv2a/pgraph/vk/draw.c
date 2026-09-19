@@ -6751,6 +6751,117 @@ static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
     }
 }
 
+/*
+ * #91 PROBE: IS A REQUESTED CLEAR SILENTLY DROPPED, AND IN WHICH FRAME?
+ *
+ * #88's arm confirmed its mechanism to the pixel -- ColorIntoZeta_ZB
+ * 131,495 -> 10,766 and ZetaIntoColor 102,255 -> 71,663, both landing on
+ * absolutes derived from the goldens' own histograms before the run -- and
+ * failed on ONE leg: Color_zeta_overlap/Swap, 165,447 -> 304,750. That is #91.
+ *
+ * THE GAP THIS PROBE EXISTS TO CLOSE, stated as the previous attempt left it:
+ * reading update_surface_part() against TestSwap() does not reproduce the
+ * zeta decline firing inside Swap at all, because SET_CONTEXT_DMA_COLOR sets
+ * surface_color.buffer_dirty (pgraph.c:2387) so colour rebinds FIRST and
+ * `surface == other` is then false when zeta asks. If that reading is right
+ * the decline never fires in Swap and #88's policy cannot be the direct
+ * cause; but Swap measurably moved under exactly that policy. One of the two
+ * halves is wrong and reading has not settled which.
+ *
+ * THE CONSEQUENCE IS CHEAPER TO OBSERVE THAN THE CAUSE, and it is observed
+ * here rather than at the decline because THIS is the step that writes
+ * pixels. Both clear paths guard `write_zeta && r->zeta_binding`, so when
+ * zeta's binding is absent a requested depth clear is not issued -- it is
+ * dropped, silently, with no counter and no trace. `zdrop` is that event.
+ * `cdrop` is its colour-side twin, which #88's policy should make impossible
+ * and which is logged so that "it never happened" is a reading and not an
+ * assumption.
+ *
+ * FRAME ATTRIBUTION WITHOUT --only-tests, which is the point of `frame=`.
+ * #91's arm registered only_tests=["Swap"] to get a solo disc and ran the
+ * whole nine-capture suite anyway: jobs/arms.sh builds its request from
+ * disc.suites alone and never passes --only-tests, so the narrowing was
+ * recorded, hashed into the prediction and not applied (see NOTES). Until
+ * that is fixed no arm of this prediction can be narrowed, so the
+ * attribution has to come from inside the run: pg->frame_time is monotonic,
+ * incremented once per flip (pgraph.c:2307), and each test in the suite
+ * flips once, so frame_time partitions the run by test IN ORDER and a
+ * capture index maps onto it. r->current_frame is NOT usable for this -- it
+ * is a ring index over frames-in-flight and is reset to 0 (draw.c:3360).
+ *
+ * WHAT THIS INSTRUMENT CANNOT SEE, established before any zero is read:
+ *  - it is placed AFTER pgraph_vk_surface_update(), so it reports the
+ *    bindings the clear will actually use, not the ones it asked for. That is
+ *    deliberate -- the dropped clear is decided by the post-update state --
+ *    but it means a binding that was resolved and then lost WITHIN the update
+ *    is invisible here and shows up only as the decline counter in surface.c.
+ *  - it says nothing about clears the guest never issued. A test that stops
+ *    asking for a depth clear and one whose depth clear is dropped are
+ *    different worlds and `clears` separates them only in aggregate.
+ *  - zdrop>0 does not by itself prove the dropped clear moved a pixel; it
+ *    proves the drop occurred in that frame. The pixel claim still belongs to
+ *    the A/B.
+ * A frame in which zdrop>0 in the fix arm and zdrop==0 in the base arm is the
+ * discriminating row. If Swap's frame shows zdrop==0 in BOTH arms, the
+ * dropped-depth-clear model is wrong and the regression reaches Swap by some
+ * other route -- which is a refutation worth having and is not forced by
+ * anything this patch does.
+ *
+ * LIFETIME: same as surf92_probe/clr89_probe -- out when #91 has a verdict.
+ */
+static struct {
+    int frame;              /* frame_time this bucket describes (int, pgraph.h:177) */
+    unsigned long clears;   /* clears reaching the probe, cumulative       */
+    unsigned long zdrop;    /* zeta clear asked for, no zeta binding       */
+    unsigned long cdrop;    /* colour clear asked for, no colour binding   */
+    unsigned long f_clears, f_zdrop, f_cdrop;  /* same, within `frame`     */
+    bool reported;          /* this frame already printed an event line    */
+} g_clr91;
+
+static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (pg->frame_time != g_clr91.frame) {
+        g_clr91.frame = pg->frame_time;
+        g_clr91.f_clears = g_clr91.f_zdrop = g_clr91.f_cdrop = 0;
+        g_clr91.reported = false;
+    }
+
+    bool zdrop = write_zeta && !r->zeta_binding;
+    bool cdrop = write_color && !r->color_binding;
+
+    g_clr91.clears++;
+    g_clr91.f_clears++;
+    if (zdrop) { g_clr91.zdrop++; g_clr91.f_zdrop++; }
+    if (cdrop) { g_clr91.cdrop++; g_clr91.f_cdrop++; }
+
+    /*
+     * FIRST drop of each kind in each frame, plus an unconditional heartbeat.
+     * ORed, not an else-arm, for the reason clr89_probe records: once an event
+     * becomes persistent an else-arm heartbeat stops firing and the tag goes
+     * silent, which is indistinguishable from the tag being filtered.
+     * One line per frame per kind is bounded by the frame count, so it cannot
+     * flood however many clears a frame issues.
+     */
+    bool first_event = (zdrop || cdrop) && !g_clr91.reported;
+    if (first_event) {
+        g_clr91.reported = true;
+    }
+    if (!(first_event || g_clr91.clears % 512 == 0)) {
+        return;
+    }
+
+    CLR89_LOG("[clr91] frame=%d clears=%lu zdrop=%lu cdrop=%lu "
+              "f_clears=%lu f_zdrop=%lu f_cdrop=%lu "
+              "wc=%d wz=%d color=0x%08" HWADDR_PRIx " zeta=0x%08" HWADDR_PRIx,
+              g_clr91.frame, g_clr91.clears, g_clr91.zdrop, g_clr91.cdrop,
+              g_clr91.f_clears, g_clr91.f_zdrop, g_clr91.f_cdrop,
+              (int)write_color, (int)write_zeta,
+              r->color_binding ? r->color_binding->vram_addr : (hwaddr)0,
+              r->zeta_binding ? r->zeta_binding->vram_addr : (hwaddr)0);
+}
+
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -6781,6 +6892,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     // FIXME: If doing a full surface clear, mark the surface for full clear
     // and we can just do the clear as part of the surface load.
     pgraph_vk_surface_update(d, true, write_color, write_zeta);
+
+    clr91_probe(pg, write_color, write_zeta);
 
     SurfaceBinding *binding = r->color_binding ?: r->zeta_binding;
     if (!binding) {

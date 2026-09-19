@@ -194,7 +194,70 @@ static struct {
     unsigned long addr_change;  /* target address != held binding's address  */
     unsigned long missed;       /* ...and the re-resolve gate was shut       */
     bool shape_dirty_this_update;
+    /* #91, below: the zeta decline #88 added, attributed to a frame. */
+    unsigned long declines;
+    int decline_frame;          /* pg->frame_time is int (pgraph.h:177)      */
+    unsigned long f_declines;
+    bool decline_reported;
 } g_surf92;
+
+/*
+ * #91 PROBE, CAUSE SIDE: DOES #88's ZETA DECLINE FIRE, AND IN WHICH FRAME?
+ *
+ * The consequence side is clr91_probe() in vk/draw.c and the two are meant to
+ * be read together, joined on `frame=` -- both print pg->frame_time, which is
+ * monotonic per flip (pgraph.c:2307). This one says the decline happened;
+ * that one says a clear was dropped because of it. Either without the other
+ * is a half-answer, which is what #91 has had so far.
+ *
+ * THE READING THIS IS HERE TO TEST, so that a zero is a refutation and not a
+ * silence: SET_CONTEXT_DMA_COLOR sets surface_color.buffer_dirty
+ * (pgraph.c:2387), so in TestSwap() colour should rebind to the new address
+ * BEFORE zeta asks, leaving `surface == other` false and the decline unfired
+ * inside Swap. declines==0 in Swap's frame confirms that reading and REFUTES
+ * the model in which #88's policy reaches Swap directly -- and then the
+ * 165,447 -> 304,750 has to come from state the decline left behind in an
+ * EARLIER frame (ColorIntoZeta and ColorIntoZeta_ZB both run before Swap in
+ * this suite), which is the within-suite contamination that the solo disc was
+ * supposed to test and did not get to. declines>0 in Swap's frame refutes the
+ * reading instead and makes the fix local.
+ *
+ * WHAT IS DELIBERATELY NOT LOGGED, because it would be an impossible row:
+ * the colour binding's address. At the decline `surface == other` and
+ * `surface` was looked up BY target.vram_addr, so other->vram_addr equals
+ * target.vram_addr by construction. Printed side by side they would always
+ * agree and would read as a check that passed; they are one number, and only
+ * that one is printed.
+ */
+static void surf91_decline_probe(PGRAPHState const *pg, hwaddr addr)
+{
+    g_surf92.declines++;
+
+    if (pg->frame_time != g_surf92.decline_frame) {
+        g_surf92.decline_frame = pg->frame_time;
+        g_surf92.f_declines = 0;
+        g_surf92.decline_reported = false;
+    }
+    g_surf92.f_declines++;
+
+    bool first_in_frame = !g_surf92.decline_reported;
+    if (first_in_frame) {
+        g_surf92.decline_reported = true;
+    }
+    /*
+     * First decline of each frame, plus a heartbeat -- ORed, for the reason
+     * clr89_probe() records at length: an else-arm heartbeat stops firing once
+     * the event is persistent, and a silent tag and an absent event are
+     * different facts that would then read the same.
+     */
+    if (!(first_in_frame || g_surf92.declines % 512 == 0)) {
+        return;
+    }
+
+    SURF92_LOG("[surf91] frame=%d declines=%lu f_declines=%lu "
+               "overlap=0x%08" HWADDR_PRIx,
+               pg->frame_time, g_surf92.declines, g_surf92.f_declines, addr);
+}
 
 static void surf92_probe(bool color, bool gate_open,
                          SurfaceBinding const *current_binding,
@@ -3410,6 +3473,7 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                      * NULL binding either, since the only way past this point
                      * binds one.
                      */
+                    surf91_decline_probe(pg, target.vram_addr);
                     pg_surface->buffer_dirty = false;
                     return;
                 }
