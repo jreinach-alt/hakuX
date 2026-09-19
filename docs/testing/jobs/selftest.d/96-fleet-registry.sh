@@ -106,13 +106,20 @@ check "fleet-blind lists no territory row as abandoned" grep -q 'LANE CLAIMED WI
 
 # READY, NOT FOLDED, asked of GitHub instead of a `state` field a lane would
 # have had to write about itself.
+# IN REST'S SHAPE, not `gh pr list --json`'s. fleet.py reads /pulls now
+# (GraphQL is refused in a Claude Code cloud session; see gh_rest.py), and
+# REST spells the same three fields differently: `head.ref` for headRefName,
+# `draft` for isDraft, `updated_at` for updatedAt. `labels` and `number` are
+# already the same. gh_rest.open_prs normalises them back, so every check
+# below reads the spellings it always did -- but the FIXTURE has to be what
+# the endpoint actually sends, or it tests the normaliser against itself.
 cat > "$FL/prs.json" <<'EOF'
-[{"number":9501,"headRefName":"lane/draftlane","isDraft":true,"labels":[],"updatedAt":"2026-09-19T06:00:00Z","title":"still working"},
- {"number":9502,"headRefName":"lane/donelane","isDraft":false,"labels":[],"updatedAt":"2026-09-19T06:00:00Z","title":"ready and unlabelled"},
- {"number":9503,"headRefName":"lane/heldlane","isDraft":false,"labels":[{"name":"fold-ready"}],"updatedAt":"2026-09-19T06:00:00Z","title":"the fold job has it"},
- {"number":9504,"headRefName":"lane/stucklane","isDraft":true,"labels":[{"name":"blocked"}],"updatedAt":"2026-09-19T06:00:00Z","title":"waiting on a file"},
- {"number":9505,"headRefName":"lane/alive","isDraft":true,"labels":[],"updatedAt":"2026-09-19T06:00:00Z","title":"the running lane's own PR"},
- {"number":9506,"headRefName":"board/not-a-lane","isDraft":false,"labels":[],"updatedAt":"2026-09-19T06:00:00Z","title":"not a lane branch"}]
+[{"number":9501,"head":{"ref":"lane/draftlane"},"draft":true,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"still working"},
+ {"number":9502,"head":{"ref":"lane/donelane"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"ready and unlabelled"},
+ {"number":9503,"head":{"ref":"lane/heldlane"},"draft":false,"labels":[{"name":"fold-ready"}],"updated_at":"2026-09-19T06:00:00Z","title":"the fold job has it"},
+ {"number":9504,"head":{"ref":"lane/stucklane"},"draft":true,"labels":[{"name":"blocked"}],"updated_at":"2026-09-19T06:00:00Z","title":"waiting on a file"},
+ {"number":9505,"head":{"ref":"lane/alive"},"draft":true,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"the running lane's own PR"},
+ {"number":9506,"head":{"ref":"board/not-a-lane"},"draft":false,"labels":[],"updated_at":"2026-09-19T06:00:00Z","title":"not a lane branch"}]
 EOF
 fleet_run "$FL/bin" "$FL/prs.txt"
 check "a READY lane PR with no pipeline label FAILs as unfolded" grep -qE '^FAIL: 1 lane PR\(s\) are READY and carry no pipeline label: #9502\.' "$FL/prs.txt"

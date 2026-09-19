@@ -101,7 +101,7 @@ Four mutants, each built in the fixture and each confirmed to trip:
 |---|---|---|
 | the gate runs where it used to fail open | `gh_rest` asking over `gh issue list` again | fails open -- which also proves the shim really refuses GraphQL, so the positive check is not vacuous |
 | an open PR is not an issue | `if r.get("pull_request") is None` → `if True` | goes red naming `#900`, the pull request, by number |
-| a second page is not dropped | `range(1, max_pages + 1)` → `range(1, 2)` | reports a clean board over the row it never saw, and never mentions `#101` |
+| a second page is not dropped | `if len(batch) < per_page:` → `if True:` | reports a clean board over the row it never saw, and never mentions `#101` |
 | `preflight` prints the verdict | `grep -m1 '^coverage '` → `sed -n 1p` | calls a fail-open a pass, and hands over the provenance line on a real verdict |
 
 The pagination mutant is the strongest shape available: **the mutant goes
@@ -184,12 +184,58 @@ pattern this board already uses for cross-lane touches at fold:
 | `selftest.d/93-backlog-state.sh` | unheld (lane.backlogstate retired) | shim → REST; `gh_rest.py` added to the copy list |
 | `selftest.d/66-deliveries.sh` | lane.remotechannel | one `*"/issues?"*` case in a shim that already parsed `gh api`; `gh_rest.py` in the copy list |
 | `selftest.d/55-localtime.sh` | lane.localtime | `gh_rest.py` in the copy list (one filename) |
-| `selftest.d/96-fleet-registry.sh` | unheld | shim → REST |
-| `selftest.d/97-board-gate.sh` | unheld | shim → REST |
+| `selftest.d/96-fleet-registry.sh` | unheld | shim → REST, **and its PR fixture rewritten into REST's shape** |
+| `selftest.d/97-board-gate.sh` | unheld | shim serves **both** transports |
 
-No fixture's **data** changed -- only the question the scripts ask. The
-pull-request and pagination semantics live in this lane's own new fragment
-rather than being folded into somebody else's board fixture.
+In 93, 66 and 55 no fixture **data** changed -- only the question the scripts
+ask. The pull-request and pagination semantics live in this lane's own new
+fragment rather than being folded into somebody else's board fixture.
+
+96 and 97 needed more, and the reason is worth recording because the first
+attempt at each was wrong and the full self-test caught it (13 red):
+
+- **96's `prs.json` was in `gh pr list --json`'s shape.** REST spells the same
+  three fields differently -- `head.ref` for `headRefName`, `draft` for
+  `isDraft`, `updated_at` for `updatedAt`. `gh_rest.open_prs` normalises them
+  back so every check reads the spellings it always did, but the *fixture* has
+  to be what the endpoint actually sends or it tests the normaliser against
+  itself.
+- **97 has two consumers on two transports, from one fixture.** `board.sh`
+  still asks over GraphQL (`gh issue list` / `gh pr list` at `board.sh:132`
+  and `:135`) -- correctly, since it only ever runs on the owner's host -- and
+  it *invokes* `fleet.py` and `check_coverage.py`, which now ask over REST.
+  Replacing the shim's GraphQL arms with REST ones silently starved
+  `board.sh`'s own two calls and took out all 13 of that fragment's checks.
+  The shim now answers both, converting the flat PR fixture to REST's shape on
+  the REST arm only. That conversion deliberately does **not** fall back to
+  `[]` on error: swallowing it would turn a broken fixture into a quietly
+  passing "no PRs" run, which is the exact shape this whole change removes.
+
+## Why attempt 1 did not finish, and the shape of that failure
+
+Attempt 1 ended with PR #170 in draft, CI **red** on `0c3edf5595`, and no
+`[lane.toolsmith] waiting:` comment. Nothing downstream could act: `board.sh`,
+`fold.sh` and `fleet.py` all skip drafts, correctly, because a draft means the
+lane is still working -- and it was not. `jobs/handback.sh` resumed it.
+
+The red was not a mystery and not a new defect. **The 96 and 97 fixes described
+above were made in the working tree and never committed.** CI therefore built
+`0c3edf5595`, which still carried the first, wrong versions of both shims, and
+went red on exactly the 13 checks those two fragments own -- 3 in 96, 10 in 97.
+The local tree was green the whole time. The gap between "green here" and
+"green on the head" was one `git add`.
+
+Two things follow, and they are the transferable part:
+
+- **The self-test that matters is the one CI ran, on the sha CI built.** A
+  local green proves the working tree, and the working tree is not what is
+  pushed. This lane's whole subject is a check that reported success without
+  doing the work; ending the session on an uncommitted fix is the same shape
+  one level up, with the operator's own tree as the thing that swallowed.
+- **Ending while waiting is fine; ending silently is not.** The cost was a
+  full resume, and only because `handback.sh` exists to catch it. A PR comment
+  naming what was being waited for, plus the same line here, is the entire
+  price of that not happening.
 
 ## Board request (a lane cannot write one; it goes here and on the PR)
 

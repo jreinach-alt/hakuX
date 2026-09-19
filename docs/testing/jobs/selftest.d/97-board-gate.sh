@@ -36,13 +36,35 @@ echo "== board.sh: the positive gate, because both of the old gates were error r
 BG="$T/boardgate"; mkdir -p "$BG/bin"
 cat > "$BG/bin/gh" <<'EOF'
 #!/usr/bin/env bash
-[ "$1 $2" = "auth status" ] && { [ -n "${BG_NO_GH:-}" ] && exit 1; exit 0; }
-# REST: fleet.py and check_coverage.py stopped using `gh issue list` /
-# `gh pr list` when those turned out to be GraphQL, which a Claude Code cloud
-# session's proxy refuses (see gh_rest.py). The fixture files are unchanged.
+# BOTH SPELLINGS, AND THAT IS THE POINT RATHER THAN BELT AND BRACES.
+# `board.sh` still asks over GraphQL (`gh issue list` / `gh pr list`, which
+# work on the owner's host where every job runs), while fleet.py and
+# check_coverage.py -- which board.sh invokes, and which also run inside
+# cloud sessions where the proxy refuses GraphQL -- ask over REST. One
+# fixture, two consumers, two transports. Dropping the GraphQL arms here
+# silently starved board.sh's own two calls.
+#
+# THE PR FIXTURE IS SERVED IN WHICHEVER SHAPE WAS ASKED FOR: `gh pr list
+# --json` flattens headRefName/isDraft, REST nests head.ref and spells it
+# `draft`. $BG_PRS is written in the flat shape board.sh reads, and the REST
+# arm converts, so the fixture files stay readable as one thing.
+case "$1 $2" in
+    "auth status") [ -n "${BG_NO_GH:-}" ] && exit 1; exit 0 ;;
+    "issue list")  cat "${BG_ISSUES:-/dev/null}"; exit 0 ;;
+    "pr list")     cat "${BG_PRS:-/dev/null}"; exit 0 ;;
+esac
 case "$*" in
     *"/issues?"*) cat "${BG_ISSUES:-/dev/null}" ;;
-    *"/pulls?"*)  cat "${BG_PRS:-/dev/null}" ;;
+    *"/pulls?"*)
+        # NO `2>/dev/null || echo []` HERE. Swallowing a conversion failure
+        # into an empty list is the fail-open-invisibly shape this whole
+        # change exists to remove: it would turn a broken fixture into a
+        # quietly passing "no PRs" run. An absent fixture is the only empty
+        # answer, and jq's error goes to the log if the shape ever drifts.
+        [ -s "${BG_PRS:-}" ] || { echo '[]'; exit 0; }
+        jq 'map({number, head: {ref: .headRefName}, draft: .isDraft,
+                 labels: (.labels // []), updated_at: (.updatedAt // ""),
+                 title: (.title // "")})' "$BG_PRS" ;;
 esac
 exit 0
 EOF
