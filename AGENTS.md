@@ -821,6 +821,17 @@ reads a dump and says which of the two it is looking at. What the dump cannot
 give you is a per-draw image: reading a surface back mid-frame is exactly what
 forces the finish.
 
+**Dedupe frame records on `nv2a_frame` before treating them as independent
+samples.** A frame record is one `flip_stall`, not one guest frame, and the
+two come apart exactly when something has stalled the guest: the `diag`
+control arm wrote 30 frame records that were all `nv2a_frame: 3127`, one guest
+frame sampled thirty times, while the same spec without `diag` advanced 30
+consecutive frames in the same second. Counting rows there over-counts by the
+stall factor. (That the old capture stops the title advancing at all, rather
+than merely serialising its draws, is measured in
+`docs/lanes/diagdump77/NOTES.md` -- it is the sharpest reason not to hunt an
+intermittent artifact under the button path.)
+
 ## Sharing one device between a long sweep and active work
 
 A full re-baseline is ~1,600 single-test runs, several hours of the only Nova.
