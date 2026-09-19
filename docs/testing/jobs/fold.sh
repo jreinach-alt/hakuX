@@ -195,6 +195,18 @@ while IFS=$'\t' read -r pr branch head draft title; do
         else
             git -C "$WT" merge --abort 2>/dev/null
             say "#$pr CONFLICT in: $files"
+            # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
+            # job, shown by status.sh, and acted on by nothing -- the lane it hands
+            # the PR back to is a transient unit that exited with its session. The
+            # actor is jobs/handback.sh, called at the end of this tick. This job
+            # knows the conflicting files and nothing downstream does, so it writes
+            # them down here; handback.sh works without the file (a PR labelled by
+            # hand, or by a fold from before this line existed) and quotes it when
+            # it is there. Keyed on the head sha, so a lane that pushes produces a
+            # new cause and an unchanged branch does not.
+            mkdir -p "$WORK/handback/cause"
+            printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
+                "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
             label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
             comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
             continue
@@ -237,5 +249,11 @@ Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and 
     folded=1
 done <<< "$cands"
 
+# The handed-back PRs get their actor, on this tick's timer. It is a separate
+# script on purpose: THIS job merges and must never start a model session, and
+# a job that starts model sessions has a cap, an attempt counter and an
+# escalation policy that have nothing to do with merging. `$mode` is passed
+# through so `fold.sh list` stays read-only and resumes nobody.
+[ -f "$T/jobs/handback.sh" ] && bash "$T/jobs/handback.sh" "$mode" >/dev/null 2>&1
 [ -x "$T/jobs/status.sh" ] && bash "$T/jobs/status.sh" >/dev/null 2>&1
 exit 0
