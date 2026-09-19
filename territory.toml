@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 124
-updated_utc = "2026-09-19T20:06:21Z"
+wave = 125
+updated_utc = "2026-09-19T21:00:00Z"
 
 
 [lane.hilodot10]
@@ -253,10 +253,18 @@ standing = true
 files = []
 note = "#84 REMOVED FROM THIS ROW AT WAVE 100: the fold landed (PR #129, lane.blit84, merged as 642b557e77 -- 9db71ddcb2 and 3c4892563b are both ancestors of HEAD) and the lane's own report recommended closing #84 on the mechanism, which the board did this tick (see issue.84 in nv2a_issues.toml). This is exactly the stale-claim failure mode the old note below warned about, reproduced once more before being cleared -- read it as the reason to remove a fold's issue claim the moment it lands rather than as still-live. OLD NOTE: The fold job's own fleet row named #84 in `asked` and a previous tick added it to dispatch/fleet/fold.json, but fleet.py builds ownership from THIS file and not from the fleet row -- so for two ticks #84 read as DISPATCHABLE while the fold job was holding it, and a lane dispatched on that reading would have landed in a tree being folded. issues[] is the claim; `asked` is prose. STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
 
-[lane.branchprune]
+[retired.branchprune]
 issues = []
-files = ["docs/testing/jobs/fold.sh", "docs/lanes/branchprune/NOTES.md"]
-note = "WRITTEN AT WAVE 100 -- lane was RUNNING (PR #137 draft, systemd unit active) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: nothing ever deleted a lane branch, so `arms.sh` walks every `refs/remotes/origin/lane/*` the project has ever run and the cost grows monotonically. Fix (in progress): `fold.sh` deletes the branch once its fold's push succeeds. Files per the PR's own brief header, MINUS selftest.sh -- its PR diff also touches selftest.sh (a check for the deletion), but check_territory.py correctly rejects two rows both claiming it, and lane.selftestsplit is that file's rightful owner of record: its own PR says it will hand-carry any concurrent selftest.sh edits into the right fragment at fold time regardless of source, which is this overlap exactly. Coordinate there, not by re-adding the row here. FLAGGED AT WAVE 101: PR #132 (lane.handback, an invisible-lane running with no territory row until this wave) already carries an 18-line fold.sh hook in the CONFLICT branch of the merge loop, recording the cause for handback.sh to read -- see [lane.handback]. Different region of the file from this lane's branch-cleanup work; expected to merge cleanly, but check at fold time."
+files = ["docs/lanes/branchprune/NOTES.md"]
+standing = false
+note = "RETIRED WAVE 125 (job.board): PR #137 MERGED 2026-09-19T14:32:15Z, unit gone. `docs/testing/jobs/fold.sh` RELEASED -- granted to [lane.stalecheck] below, whose running brief names this row as stale ('lane.branchprune's own PR #137 is MERGED and whose unit is gone') and needs the file to teach fold.sh to distinguish a stale red from a live one. PRIOR NOTE: WRITTEN AT WAVE 100 -- lane was RUNNING (PR #137 draft, systemd unit active) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: nothing ever deleted a lane branch, so `arms.sh` walks every `refs/remotes/origin/lane/*` the project has ever run and the cost grows monotonically. Fix: `fold.sh` deletes the branch once its fold's push succeeds. FLAGGED AT WAVE 101: PR #132 (lane.handback) already carried an 18-line fold.sh hook in the CONFLICT branch of the merge loop, recording the cause for handback.sh to read -- see [lane.handback]."
+
+[lane.stalecheck]
+issues = []
+files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/100-stale-check.sh",
+         "docs/lanes/stalecheck/NOTES.md"]
+standing = false
+note = "WRITTEN AT WAVE 125 (job.board): lane was RUNNING (briefs/stalecheck.md, attempt 1/opus-5, started 2026-09-19T20:43:35Z, no PR yet) with no territory row at all -- invisible to check_territory.py, the recurring defect this file documents. Harness defect, no tracker issue: a PR whose only failing required check ran against a stale master (fixed by #167 at 19:47:52Z) sits fold-ready and refused forever, since GitHub does not re-run a PR's checks when the base moves and fold.sh cannot tell a stale red from a live one -- four PRs (#152, #153, #155, #163) stuck on it today. `docs/testing/jobs/fold.sh` released by retiring [retired.branchprune] above (PR #137 long merged) -- granted outright, no collision. `docs/testing/jobs/handback.sh` NAMED IN THE BRIEF BUT NOT CLAIMED HERE: it is [lane.draftstrand]'s (PR #153, fold-ready but not yet folded); the brief already tells the lane to check whether #153 has folded before touching it and keep the diff small and coordinated at fold, the same pattern used for localtime/windowbudget/branchprune tonight. selftest.d/100-stale-check.sh is the next free fragment number (99 taken by lane.desktopchannel's desktop-serve). Brief forbids folding on a stale verdict and caps any re-run to once per (PR, master-head) pair -- CI minutes are a finite budget."
 
 [lane.triage]
 issues = []
