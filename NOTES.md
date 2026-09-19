@@ -68,12 +68,30 @@ unconditionally over **the same rect the blend just wrote**
 one of the 20, the byte `BLEND_AND` carefully preserved is overwritten a few
 lines later, before anything reads it.
 
+**The alpha channel is not the unscored one** -- I checked, because "the
+scorer ignores alpha" would have been the easy and wrong version of this.
+`score_sweep.py:180` computes `differing = ((rgb > 0) | (alpha > 0)).sum()`
+over `.convert("RGBA")` decodes (`:148-150`), and AGENTS.md:893 makes it a
+project rule ("compare RGBA, never RGB") after an incident where RGB-only
+comparison hid 1,279 differing alpha pixels. So alpha **is** scored, and
+#38's arm B read 0 differing on all 20 BLENDAND captures with it scored.
+
+That makes the statement sharper, not weaker. The fourth byte in the blit rect
+is measured, 20 times, against hardware -- and what it measures is
+`patch_alpha()`, because `patch_alpha()` is the last writer. `BLEND_AND`'s own
+result for that byte is overwritten between being computed and being scored.
+The channel is observed; this operation's contribution to it is not.
+
 The consequence, stated as a limit rather than a result: **the fleet has no
 evidence about BLEND_AND's fourth channel in any format.** The 3-of-4 structure
 is inherited, not measured. Extrapolating it to a 1-byte destination would be
 building an unmeasured rule on top of an unmeasured rule, in the one path #38
-just made exact. That is the concrete reason this lane did not implement Y8,
-and it is a stronger reason than the one in the landed comment.
+just made exact -- and note that `LE_Y8` does *not* set
+`needs_alpha_patching`, so unlike the 20 captures, a Y8 blend's bytes would
+reach the capture exactly as the blend left them. The masking that makes the
+question invisible today would not be there to make a wrong answer invisible
+tomorrow. That is the concrete reason this lane did not implement Y8, and it
+is a stronger reason than the one in the landed comment.
 
 (What this does *not* say: that the 3-of-4 structure is wrong. It is very
 likely right -- it is what xemu has always done and what the operation's name
@@ -148,7 +166,12 @@ This lane changes no code, so there is additionally nothing to be inert about.
    fourth byte is *not* overwritten by `patch_alpha` afterwards. That is a new
    test in `nxdk_pgraph_tests`, not an arm over the existing disc. It would
    pin the 3-of-4 structure, and pinning it is the precondition for ever
-   implementing Y8 rather than refusing it.
+   implementing Y8 rather than refusing it. It is cheap to state what it would
+   show: with `A8R8G8B8` as the blit destination format the renderer runs the
+   blend and then does nothing to byte 3, so the capture's alpha would be the
+   destination's original alpha if the 3-of-4 structure is right and a blended
+   alpha if it is not -- and alpha is scored, so the two are distinguishable at
+   a glance.
 5. **LOW L2 needs the tile lookup hoisted above the `surf_dest` bookkeeping**
    before it can be fixed without reintroducing M1. Separate issue.
 
