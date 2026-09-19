@@ -287,11 +287,25 @@ because a validation error need not move a pixel.
 
 ## For the fold
 
-The `nv2a` index is stale in this lane's own files and **cannot be regenerated
-here**. `nv2a_index.py check` reports moved sites in `vk/draw.c` and
-`vk/surface.c`. The committed index was built from `nxdk_pgraph_tests` at
-`91a0de45`; the checkout on this host is `33e7c6b0` and does **not** contain the
-`Surface as vertex array` suite, so regenerating writes 102 suites where 103 are
-committed — deleting a suite from the issue↔suite map in order to fix line
-numbers. Fold needs
-`nv2a_index.py build --tests <checkout ≥ 91a0de45> --support /home/justin/pbkitplusplus`.
+Nothing outstanding. `preflight.sh` passes on this branch with no
+`--allow-tracker`.
+
+The `nv2a` index **was** regenerated here, and the story is worth keeping
+because it is a blocker that expired. Attempt 1 handed it to the fold as
+unfixable: the committed index was built from `nxdk_pgraph_tests` at
+`91a0de45` while the checkout on this host was `33e7c6b0`, which lacks the
+`Surface as vertex array` suite — so regenerating would have written 102 suites
+where 103 are committed, *deleting a suite from the issue↔suite map in order to
+fix line numbers*.
+
+That was true when written. The checkout is now at `91a0de45`, byte-for-byte
+the `tests_commit` the committed index names, so the precondition for a safe
+regeneration is met. Verified rather than assumed, because the failure being
+avoided is a silent deletion: suite and symbol key sets equal, and every
+provenance count unchanged (103 suites, 951 symbols, 2,833 sites, 498 gaps, 145
+unread). The diff is line numbers.
+
+**The general lesson, and it cost this lane twice over:** a blocker inherited
+from a previous session's notes is a *claim with a date on it*. One comparison
+of `provenance.tests_commit` against the checkout was the entire test of this
+one. Check the blocker before routing around it.
