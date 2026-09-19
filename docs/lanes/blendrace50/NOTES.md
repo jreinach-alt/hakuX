@@ -138,4 +138,83 @@ Finding 2 needs each device to be able to disagree with itself, and because
 **prerequisite** for any cross-device Blend comparison -- the check has never
 run on 64x256 RT blits, which is #50's mechanism.
 
-(results below when they land)
+## Finding 6: the device split and the race deposit the SAME KIND of wrong pixel
+
+`blend_mover_content_50.py`. Over the pixels where the odd run departs:
+
+| capture | odd run | moved px (RGB) | alpha-only | grey (R==G==B) | who matches the golden there |
+|---|---|---|---|---|---|
+| `cA_MIN_srcRGB` | nova-A | 61502 | 0 | 74.9% | thor-B 58183, nova-A **0** |
+| `1-dstRGB_MIN_1` | nova-A | 21504 | 1024 | 90.5% | thor-B 15360, nova-A 1024 |
+| `srcA_REVSUB_1-cA` | nova-A | 14336 | 0 | 71.4% | thor-B 8592, nova-A 1728 |
+| `1-dstA_SUB_1-cRGB` | nova-A | 21504 | 1024 | 90.5% | thor-B 12688, nova-A **0** |
+| `1-srcRGB_SADD_0` | thor-B | 22880 | 0 | 97.3% | thor-2 22272, thor-B **0** |
+
+Two things to take from this:
+
+- **The odd run is always the wrong one.** On the four device captures nova
+  is wrong and thor matches hardware; on the racing capture thor-B is wrong
+  and both nova and thor-2 match hardware *and each other to the byte*.
+- **The wrong content is grey**, 71-97% of it, in the device case and the
+  race case alike. One failure signature with two triggers is the reason to
+  look for one mechanism rather than two.
+
+Spatially, the four device captures diff identically between nova and each
+thor run and are bit-identical thor-to-thor; the racing capture is
+bit-identical nova-to-thor2 with thor-B alone departing. Every diff sits in
+rows 112-367 -- the 256-row band of #50's 64x256 stack -- which is also why
+nearly every `differing` value in this issue is a multiple of 256.
+
+## Finding 7: two mechanisms for that grey, both refuted
+
+1. **It is the alpha channel** (an alpha-stack render landing where a colour
+   stack belongs -- `DrawAlphaStack` draws alpha as greyscale, so this is the
+   obvious first guess). **Refuted: 0** of every grey pixel equals the
+   golden's alpha there, and 0 equals the capture's own alpha. It is not a
+   function of the golden pixel at all -- golden `(0,102,0)` and golden
+   `(41,0,0)` both map to grey 10.
+
+2. **It is another image** -- a predecessor's framebuffer surviving, the
+   RenderTextureLoop class `make_test_iso.py` documents. Searched twice:
+   against all 1,673 **goldens**, and against all 1,673 captures **the odd run
+   itself produced** (the second is the one that matters, since our output
+   differs from the goldens on 1,672 of 1,673, so leaked content would be our
+   render, not hardware's). **Refuted: flat.** Best non-self candidate scores
+   24.9-33.5%, sitting *at* the pool's own p99 in every case. The immediate
+   predecessor scores 0.0% in four of the five.
+
+So the moved pixels hold structured grey content that is not this capture's
+alpha, not any golden, and not any other capture the run produced. **No site
+is named by this pass** -- three doors are closed, which is the honest state.
+
+## Finding 8: when nova fails #507 and #550 it deposits the same content on both
+
+The one score that stands out of the pool. nova's wrong output on
+`1-dstRGB_MIN_1` (#550) reproduces **81.0%** of nova's wrong output on
+`1-dstA_SUB_1-cRGB` (#507), and symmetrically -- against a pool p99 of 33.3%.
+
+Controlled, because two similar tests would score high for free: over the
+same mask, on the run that got **both right**, thor-B's #550 reproduces
+**42.9%** of thor-B's #507. So the failure makes the two captures *more* alike
+than correct rendering does, 81.0% against a 42.9% baseline.
+
+Read narrowly: consistent with both failures depositing shared content rather
+than each being independently wrong. It is n=2 captures and it names no site.
+
+## Finding 9: a periodic clock excursion, tested against the movers and rejected
+
+The per-test progress log carries **negative** durations -- about -24,500 ms
+-- on 38-44 of 1,673 tests per run (2.3-2.6%), on both devices, spaced at a
+constant ~24.5s of wall clock regardless of device pace. (It is the guest test
+binary's own timer; a `(\d+)ms` regex silently drops these rows, which is how
+they were nearly missed.)
+
+Tempting, and wrong: the excursion lands on `1-srcRGB_SADD_0` in **nova-A** --
+the run that reads the *correct* 76032. The odd run, thor-B, has a perfectly
+ordinary 524 ms. **The race is on the run without the clock event**, so this is
+not the mechanism. Recorded so the next lane does not re-find the correlation
+and build on it.
+
+## Results of the ten queued runs
+
+(pending)
