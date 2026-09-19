@@ -175,8 +175,11 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
  * NV2A_PERF_LOG because a compile-time gate would also take it out of the
  * device arms, which are the only place it is read.
  *
- * REMOVE ALL THREE -- surf92_probe, surf91_overlap_probe here and clr89_probe/
- * clr91_probe in vk/draw.c -- WHEN #91 IS CLOSED, and not before. The previous
+ * REMOVE ALL FOUR -- surf92_probe, surf91_overlap_probe and dl91_probe here,
+ * clr89_probe/clr91_probe in vk/draw.c -- WHEN #91 IS CLOSED, and not before.
+ * dl91_probe is #91's FIX side and was added with the fix; it is named in this
+ * list rather than carrying its own lifetime rule so that the set still leaves
+ * together, which is the property this block exists to hold. The previous
  * wording said "when #88's and #91's arms have returned a verdict", naming the
  * two arms on b_ref 67dc7724ee; both returned at 09:01Z on 2026-09-19 and the
  * condition expired the moment it was written, which is what pass 2 caught.
@@ -282,6 +285,69 @@ static void surf91_overlap_probe(PGRAPHState const *pg, hwaddr addr)
     SURF92_LOG("[surf91] frame=%d declines=%lu f_declines=%lu "
                "overlap=0x%08" HWADDR_PRIx,
                pg->frame_time, g_surf92.declines, g_surf92.f_declines, addr);
+}
+
+/*
+ * #91 PROBE, FIX SIDE: HOW OFTEN IS A BINDING-LESS DOWNLOAD DECLINED?
+ *
+ * The fix in update_surface_part() is a removal -- a download no longer
+ * resolves a binding -- and a removal leaves no trace in a score file. If
+ * Color_zeta_overlap/Swap moves and nothing says this path was ever taken,
+ * the attribution is a story. This counts the event the fix exists to stop.
+ *
+ * WHAT IT DOES AND DOES NOT ESTABLISH, before any number is read:
+ *  - n>0 proves the download branch reached a Surface carrying draw_dirty
+ *    with no binding behind it -- the precondition of the old bad write. It
+ *    does NOT prove the old code would have written a WRONG image on that
+ *    call: it would have downloaded whatever sat at the current target
+ *    address, which is only wrong when that address is not where the draw
+ *    went. The pixel claim belongs to the A/B, not here.
+ *  - n==0 over a run containing TestSwap() refutes this fix's mechanism
+ *    outright and is not forced by anything the patch does: the counter is
+ *    incremented on the declined branch, and the declined branch is exactly
+ *    the branch the old code did not have. A score that moves with n==0 means
+ *    the movement came from somewhere else and this patch is a coincidence.
+ *  - it is placed after the gate, so a binding the gate would once have
+ *    invented is absent by construction; `addr=` is therefore the address
+ *    that download would have gone to, which is the number worth having.
+ *
+ * frame= is pg->frame_time, monotonic per flip (pgraph.c:2307), so this line
+ * joins to [surf91] and [clr91] on the same key and partitions by test in
+ * order -- the attribution route those two already use because no arm of this
+ * prediction can be narrowed with --only-tests (see clr91_probe, vk/draw.c).
+ *
+ * LIFETIME: with the other four, when #91 is CLOSED. See the block above
+ * surf92_probe's struct.
+ */
+static struct {
+    unsigned long n;        /* binding-less downloads declined, cumulative */
+    unsigned long f_n;      /* ...within `frame`                           */
+    int frame;              /* pg->frame_time is int (pgraph.h:177)        */
+    bool reported;          /* this frame already printed a line           */
+} g_dl91;
+
+static void dl91_probe(PGRAPHState const *pg, bool color)
+{
+    g_dl91.n++;
+
+    if (pg->frame_time != g_dl91.frame) {
+        g_dl91.frame = pg->frame_time;
+        g_dl91.f_n = 0;
+        g_dl91.reported = false;
+    }
+    g_dl91.f_n++;
+
+    bool first_in_frame = !g_dl91.reported;
+    if (first_in_frame) {
+        g_dl91.reported = true;
+    }
+    /* ORed with the heartbeat, not an else-arm: see surf91_overlap_probe. */
+    if (!(first_in_frame || g_dl91.n % 512 == 0)) {
+        return;
+    }
+
+    SURF92_LOG("[dl91] frame=%d declined=%lu f_declined=%lu part=%s",
+               pg->frame_time, g_dl91.n, g_dl91.f_n, color ? "color" : "zeta");
 }
 
 static void surf92_probe(bool color, bool gate_open,
@@ -3416,8 +3482,61 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     SurfaceBinding *current_binding = color ? r->color_binding
                                             : r->zeta_binding;
 
-    bool gate_open = !current_binding ||
-                     (upload && (pg_surface->buffer_dirty || mem_dirty));
+    /*
+     * #91: A DOWNLOAD MAY NOT RESOLVE A BINDING. The `!current_binding` term
+     * is an UPLOAD term and is now spelled as one.
+     *
+     * The gate below does far more than decide a cache hit: it unbinds, looks
+     * the target address up, evicts or creates a surface there, and BINDS it.
+     * On the upload side that is the point -- an absent binding must be
+     * re-resolved before a draw. On the download side it is a pure side
+     * effect, and a harmful one, because the tail of this function then
+     * downloads whatever it just bound over guest VRAM.
+     *
+     * What made that reachable: pgraph_vk_set_surface_dirty() sets
+     * pg->surface_zeta.draw_dirty from `zeta` ALONE -- the per-binding flag
+     * below it is guarded by `r->zeta_binding`, the Surface-level one is not
+     * (vk/draw.c, pgraph_vk_set_surface_dirty). So the Surface can carry
+     * draw_dirty with no binding behind it, and pgraph_vk_surface_update()'s
+     * download branch re-enters here on the strength of it. With the binding
+     * absent the gate was open BY DEFINITION, so the call resolved a target
+     * from the CURRENT registers -- not from wherever the draw actually went
+     * -- bound it, and wrote its image back over guest memory.
+     *
+     * THAT IS #91's MEASURED BYTE SIGNATURE, and the arithmetic closes with no
+     * free parameter. Color_zeta_overlap/Swap's background reads 0x00000024
+     * against the golden's 0xFE242424, which is the test's own clear colour
+     * from PrepareDraw(0xFE242424, 0). Take a Z24S8 zeta image at an address
+     * whose VRAM held that colour: the upload unpacks it as depth 0xFE2424,
+     * stencil 0x24 (unpack_z24s8_to_d32_sfloat_s8_uint_glsl, vk/
+     * surface-compute.c). The test's own depth clear of 0 -- legitimate, on
+     * the legitimate zeta target -- sets depth to 0 and leaves stencil alone.
+     * Pack it back and pack_*_to_z24s8 writes `depth_value << 8 |
+     * stencil_value` = 0x00000024. Exactly the measured word: bits 8-31
+     * zeroed, bits 0-7 preserved. Nothing clears the colour surface wrongly;
+     * a ZETA IMAGE IS DOWNLOADED OVER A COLOUR ADDRESS, which is why the
+     * three colour populations stayed partitioned identically in both arms
+     * (165,447 / 139,303 / 2,450) while only the background's VALUE moved.
+     *
+     * TestSwap() is where the two addresses trade roles, so the address the
+     * zeta registers name after a swap is the one colour just rendered. That
+     * is also why reading the overlap site did not explain this: it does not
+     * have to. `surface == other` need never fire. The route is this gate,
+     * and #88's colour-wins policy does not create it -- it widens it, by
+     * leaving zeta's binding absent far more often, which is why the
+     * regression showed up when that policy was measured.
+     *
+     * Restricting the gate to `upload` leaves the upload path bit-identical:
+     * `upload && (!current_binding || buffer_dirty || mem_dirty)` is the same
+     * predicate as before whenever upload is true. Only the download side
+     * changes, and only by declining to invent a binding. buffer_dirty is no
+     * longer cleared by a download either, which is correct on its own terms
+     * -- "this binding needs re-resolving" is not answered by a download --
+     * and costs nothing: the next upload unbinds and re-resolves exactly as
+     * it would have.
+     */
+    bool gate_open = upload && (!current_binding ||
+                                pg_surface->buffer_dirty || mem_dirty);
 
     if (upload) {
         surf92_probe(color, gate_open, current_binding, &target);
@@ -3768,19 +3887,40 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
     if (!upload && pg_surface->draw_dirty) {
         SURF_TIMER_INIT(_st3);
-        if (!tcg_enabled()) {
-            // FIXME: Cannot monitor for reads/writes; flush now
-            // Use deferred path to batch downloads across color/zeta.
-            // Completion happens in surface_update via
-            // pgraph_vk_download_surface_complete_deferred() before any upload.
-            download_surface_deferred(
-                d, color ? r->color_binding : r->zeta_binding);
+        SurfaceBinding *drawn = color ? r->color_binding : r->zeta_binding;
+
+        /*
+         * #91: with the gate now upload-only this can be NULL, and it is the
+         * whole point that it can. No binding means no host image took the
+         * draw, so there is nothing here to write back -- the surface that
+         * DID take it, if one did, carries its own surface->draw_dirty and is
+         * downloaded by the eviction, shelve and invalidate paths, which is
+         * where that responsibility already lives.
+         *
+         * The flags are still retired, and that is not a detail. Leaving
+         * draw_dirty set makes pgraph_vk_surface_update() re-enter here on
+         * every download for the rest of the run, so the one call that
+         * eventually finds a stale image at the address takes the bad write
+         * anyway -- skipping without clearing moves the defect rather than
+         * removing it.
+         */
+        if (drawn) {
+            if (!tcg_enabled()) {
+                // FIXME: Cannot monitor for reads/writes; flush now
+                // Use deferred path to batch downloads across color/zeta.
+                // Completion happens in surface_update via
+                // pgraph_vk_download_surface_complete_deferred() before any
+                // upload.
+                download_surface_deferred(d, drawn);
+            }
+            g_nv2a_stats.surf_working.download_count++;
+        } else {
+            dl91_probe(pg, color);
         }
 
         pg_surface->write_enabled_cache = false;
         pg_surface->draw_dirty = false;
         SURF_TIMER_ACC(download_ns, _st3);
-        g_nv2a_stats.surf_working.download_count++;
     }
 }
 
