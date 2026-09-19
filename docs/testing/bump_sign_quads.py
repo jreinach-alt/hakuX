@@ -14,12 +14,35 @@ quad whose flags are clear is the unflagged answer, measured, in the same frame
 as the flagged ones.
 
 That is what localises #10's luminance defect without transferring a floor
-between captures.  Measured at `0026f00534`, quads in (gsigned, bsigned) order:
+between captures.  Measured at `0026f00534`, WHICH IS PRE-FIX -- these are the
+numbers that localised the luminance literal, not current ones -- quads in
+(gsigned, bsigned) order:
 
     BumpEnvLum_A8     310 / 14,241 /   422 / 14,187
     BumpEnvLum_Y16    310 / 13,755 /   422 / 13,645
     BumpEnvLum_Y8   7,139 /  7,441 / 7,301 /  7,501
     BumpMap_A8        310 /    422 /   422 /    422
+
+POST-FIX, at `c866527e03`: A8 and Y16 are at the floor, 310/422/422/422 with
+zero one-step, and Y8 is unchanged at 7,139/7,441/7,301/7,501.
+
+WHAT THIS TOOL CANNOT SEE, learned the expensive way on the classes that were
+left.  A per-quad count answers "does a sign flag move it".  For every class
+still open at `c866527e03` the answer is no -- the counts are flat across the
+four quads -- and reading that as "no mechanism in hand" is a category error:
+the mechanism is in the VALUE, and a count is blind to values.  The whole of
+`Bump env lum` is two flat colours per quad, and comparing the colour SETS
+decides in one step what no per-quad count can:
+
+    BumpEnvLum_A8         gold (143,16,16) (33,32,32)   we agree  (scale 1.0)
+    BumpEnvLum_A8R8G8B8   gold (27,27,26)              we emit (27,27,27)
+    BumpEnvLum_G8B8       gold (24,24,24)              we emit (25,24,24)
+    BumpEnvLum_Y8         gold (23,23,23)              we emit (23,23,23)
+                                                           and  (24,23,23)
+
+One channel, always +1, at four different luminances.  `bump_lum_oracle.py`
+scores that ladder against rival quantisation rules; use it BEFORE reaching
+for a sign model on this suite.
 
 The first two have their damage in exactly the two quads carrying BSIGNED --
 and therefore RSIGNED, which reaches the luminance -- while quad 2, which
