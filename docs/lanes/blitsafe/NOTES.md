@@ -9,6 +9,93 @@ see "blast radius" below for why `surface.h` stayed shut.
 
 ---
 
+## Attempt 4 (remediation of audit pass 2): #88's policy is WITHDRAWN from the tip
+
+**Read this before anything below it — it changes what the branch ships.**
+
+Audit pass 2 raised one HIGH: the branch tip carried the
+`Color_zeta_overlap/Swap` regression (165,447 → 304,750 differing pixels),
+reproduced on two independent A/B pairs on two different discs, against a
+`must_not_move` leg this lane registered itself. It offered two routes and said
+either was enough — **fix `Swap`**, or **split the fold** so #89's and #92's
+work reaches master without the regression.
+
+Fixing `Swap` needs a device. Two arms have been spent on it and neither
+settled the contradiction; a third guess from the same reading would be the
+third guess. This attempt has no device and may push to no branch but this one,
+so it took the second route **in-branch**: the regressing hunk is off the tip.
+
+**What that means concretely.** `hw/xbox/nv2a/pgraph/vk/surface.c` now has **no
+rendering-behaviour difference from master**. Verified rather than asserted —
+`git diff origin/master -- hw/xbox/nv2a/pgraph/vk/surface.c` with comment lines
+stripped is the two probe functions, their counters, the hoisting of the gate
+expression into a named `gate_open` bool (same expression, `framebuffer_dirty()`
+still called once), and two log-only call sites. Everything that moved a pixel
+is gone from this file.
+
+**#89's change is untouched and is the reason the tip is believed clean.** This
+is not an argument, it is that arm: #89's pair (`3f2563d6e9` → `77bd2977cc`)
+ran a three-suite disc that *included* `Color zeta overlap` and reported
+**no movers at all**. So the one behavioural change left on this branch has
+been measured, on the capture in question, and it does not move it.
+
+**This is not a judgement that #88 is wrong, and the auditor's "not a revert"
+is accepted.** The mechanism is confirmed to the pixel — both absolutes derived
+from the goldens' own histograms *before* the run landed exactly, and arm A
+reproduced both pre-fix values, so `ARM A IS THE CHECK` is discharged as
+written. What is **not** established is the blast radius. A confirmed mechanism
+with an unexplained 139,303 px regression attached is not a trade a lane gets
+to make on master's behalf.
+
+**Nothing is lost.** The policy lives at `67dc7724ee`, which is the `b_ref` of
+`issue91-decline-frame-attribution.json`, so the registered diagnosis arm still
+builds it, still runs it and still answers the question it was registered to
+answer. The arm therefore **deliberately measures a sha that is no longer the
+tip** — say that out loud, because an arm whose `b_ref` is not the tip usually
+means somebody rebased. Here it is the point: the diagnosis needs the code that
+regresses. Its PASS has never meant "#91 is resolved"; it means the regression
+replicated.
+
+### The defect in the withdrawn patch that reading *did* find
+
+Recorded in `vk/surface.c` beside the withdrawn hunk so it cannot re-land
+unfixed, and it is the first thing #88's return has to answer.
+
+The decline returned early having cleared `pg->surface_zeta.buffer_dirty`, on
+the argument that "with no zeta binding nothing was drawn into a zeta image, so
+skipping the download tail is the intent rather than a side effect". That is
+true of *that call* and false one call later. The early return is also the only
+thing that skips the tail — and the tail is the only place
+`pg->surface_zeta.draw_dirty` is cleared. So `draw_dirty` stays set, and
+`pgraph_vk_surface_update()`'s download branch re-enters
+`update_surface_part(d, false, false)` on the strength of it. There the gate is
+open **because** the binding is absent, so once colour has moved off the overlap
+address that call creates a fresh zeta surface and the tail downloads it over
+guest VRAM — *"create one and copy a fresh image back over VRAM the guest never
+rendered"*, which is verbatim the failure the decline's own comment claimed to
+prevent.
+
+**What this is and is not.** That it is wrong is a reading and it stands on its
+own. That it is what moves `Swap` is **not claimed** — the route requires the
+overlap address to be one the `Swap` capture is taken from, and that is a
+measurement. It is written down as the first candidate the `[surf91]`/`[clr91]`
+join should be read against, not as the diagnosis.
+
+### What the next attempt should do
+
+1. Read the `issue91-decline-frame-attribution` verdict's device log for
+   `[surf91] frame=` / `[clr91] frame=`, joined on `frame=`. `declines == 0` in
+   `Swap`'s frame → the direct model is refuted and the cause is within-suite
+   contamination from `ColorIntoZeta`/`ColorIntoZeta_ZB`; `declines > 0` → the
+   reading is refuted and the fix is local to `update_surface_part()`.
+2. Re-land `67dc7724ee` (`git revert` of this attempt's commit) **with the
+   `draw_dirty` leak fixed**, and register a prediction whose `must_not_move`
+   includes `Color_zeta_overlap/Swap` at **165,447** — the baseline, not the
+   304,750 the diagnosis arm expects.
+3. Do not read a PASS on the diagnosis arm as permission to fold the policy.
+
+---
+
 ## Why attempt 2 did not finish — it got a verdict, and the verdict was FAIL
 
 Attempt 2 did everything the contract asks: it merged rather than rebased, it
@@ -461,10 +548,19 @@ group leaves together.
 
 Attempt 3 added two more on the same terms — `[surf91]` in `vk/surface.c` and
 `[clr91]` in `vk/draw.c`. **#88's and #92's questions are now answered**, so of
-the four probes only #91's are still owed an answer; all four are removed in
-one commit once `issue91-decline-frame-attribution.json` returns a verdict.
-Four unconditional log sites in a shipping build is more than this path should
-carry indefinitely, and saying so here is the point of the section.
+the four probes only #91's are still owed an answer.
+
+**Attempt 4 re-anchored the removal condition (audit pass 2, N3).** It used to
+read "when #88's and #91's arms have returned a verdict", naming the two arms
+on `b_ref 67dc7724ee` — both of which returned at 09:01Z on 2026-09-19, so the
+condition expired the moment it was written and pass 2 caught it as written-but-
+already-met. Nor is "when `issue91-decline-frame-attribution.json` returns a
+verdict" right: that arm can PASS by *replicating* the regression, which is the
+world in which the probes are most needed. **All four come out in one commit
+when #91 is CLOSED** — that is the question they answer, it cannot be satisfied
+by a replication, and it does not go stale when a ref is superseded. Four
+unconditional log sites in a shipping build is more than this path should carry
+indefinitely, and saying so here is the point of the section.
 
 ## Build status — no longer an open question
 
