@@ -5,6 +5,10 @@
 #
 #   arms.sh            queue what is runnable, judge what has finished
 #   arms.sh list       what it would queue, and why the rest is skipped
+#   arms.sh state lane/<name>
+#                      the label that branch's verdicts add up to, and why:
+#                      which FAIL is outstanding, or which verdict superseded
+#                      which. Reads $WORK/arms only; queues and judges nothing.
 #
 # WHAT IT DOES. Every registered prediction names two refs (a_ref, b_ref) and
 # the captures it expects to move or hold. That is a complete device request:
@@ -309,6 +313,173 @@ skip() {   # <sha> <expect-path> <source> <reason>
     tell_skip "$1" "$2" "$3"
 }
 
+# ------------------------------------------------ the label, from ALL verdicts
+#
+# THE LABEL IS PER-PR; THE VERDICTS ARE PER-PREDICTION. Until 2026-09-19 this
+# job labelled from whichever verdict was in its hand:
+#
+#     *PASS*) label_add "$pr" verified  && label_rm "$pr" regressed
+#     *FAIL*) label_add "$pr" regressed && label_rm "$pr" verified
+#
+# Unconditional, per verdict, so the label reported the most recently judged
+# ARM and not the state of the PR. PR #102 carried four: #89 PASS, #88 FAIL,
+# #91 FAIL, #91 PASS. At 10:03Z the last was judged and flipped the PR to
+# `verified` with #88's failure outstanding and nothing superseding it. It had
+# to be corrected by hand.
+#
+# The DIRECTION is what makes it serious. roles/board.md: a `regressed` PR is
+# not fold-ready and its lane is resumed with the verdict; a `verified` one
+# proceeds through audit as normal. So the failure mode moved a PR with a live
+# regression FORWARD. And it is not rare -- a lane under remediation registers
+# fresh predictions by design, so every remediation could clear its own
+# regression label as a side effect of doing exactly what it was told.
+#
+# SUPERSESSION IS BY ISSUE NUMBER: for each issue the newest registration's
+# verdict counts and the older ones do not, and the PR is `regressed` if any
+# issue's newest verdict is a FAIL. #102's #91 pair is genuinely resolved --
+# issue91-decline-frame-attribution replaced issue91-swap-solo-classification,
+# same issue, later registration -- and its #88 failure is not resolved by
+# anything. The stricter same-file rule is rejected because a lane cannot
+# re-register the same file (a changed file is a new sha and usually a new
+# name, and the ARM ERROR path tells lanes to "register a fresh prediction"),
+# so under it no lane could ever clear a FAIL from its own branch: only a
+# human with shell on the host could. docs/lanes/armlabel/NOTES.md names the
+# case that would make the stricter rule right.
+#
+# A superseded FAIL is never silently dropped: every decision is written to
+# $WORK/arms/pairs/<sha>.label.md, quoted into the [job.arms] comment naming
+# which verdict superseded which, and recomputable from disk at any time with
+#
+#     arms.sh state lane/<name>
+#
+# COST. The index below is ONE pass over pairs/ per tick, built once before
+# the judge loop; each decision then reads it plus the handful of judged/
+# markers on that one branch. Not a walk of judged/* inside the loop over
+# predictions -- bc7ccef95d took two quadratics out of this file and the tick
+# is 11s.
+LABEL_INDEX="$A/log/label-index.tsv"
+build_label_index() {   # sha, branch, issue, prediction, registered, queued
+    python3 - "$A" > "$LABEL_INDEX" <<'PY'
+import glob, json, os, sys
+A = sys.argv[1]
+for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
+    if pj.endswith(".verdict.json"):
+        continue                          # ab_compare's own output, not a pair
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    sha, src = p.get("sha"), p.get("source")
+    if not sha or not src:
+        continue
+    branch, _, pred = src.partition(":")   # lane/x:docs/testing/predictions/y.json
+    reg = ""
+    try:
+        e = json.load(open(p.get("expect") or ""))
+        for k in ("registered_utc", "amended_utc", "amended_utc_2"):
+            v = str(e.get(k) or "")
+            if v > reg:
+                reg = v
+    except Exception:
+        pass                               # a host registration may be overwritten
+    q = str(p.get("queued_utc") or "")
+    print("\t".join([sha, branch, str(p.get("issue") or "").strip(),
+                     pred or src, reg or q, q]))
+PY
+}
+label_decide() {   # <branch> [<sha being judged> <its verdict>] -> STATE=... then markdown
+    python3 - "$A" "$LABEL_INDEX" "$1" "${2:-}" "${3:-}" <<'PY'
+import os, sys
+A, index, branch, ovr_sha, ovr_verdict = sys.argv[1:6]
+rows = []
+try:
+    lines = open(index).read().splitlines()
+except Exception:
+    lines = []
+for line in lines:
+    f = line.split("\t")
+    if len(f) != 6:
+        continue
+    sha, br, issue, pred, when, queued = f
+    if br != branch:
+        continue
+    if sha == ovr_sha:
+        v = ovr_verdict                    # judged this tick, not on disk yet
+    else:
+        try:
+            v = open(os.path.join(A, "judged", sha)).read()
+        except Exception:
+            continue                       # queued or running; no verdict yet
+    # FAIL is tested FIRST. ab_compare prints exactly one of PASS / FAIL /
+    # UNJUDGED, so the order cannot matter today; it is this way round so that
+    # the day a verdict line says both words, the thing that clears a
+    # regression is never a string this job could not read unambiguously.
+    # UNJUDGED, "(none printed)" and the ERROR marker are NOT verdicts: they
+    # set no label and they supersede nothing, which is the same rule the
+    # judge loop has always followed for the label.
+    cls = "FAIL" if "FAIL" in v else ("PASS" if "PASS" in v else None)
+    if cls is None:
+        continue
+    rows.append({"sha": sha, "issue": issue, "pred": pred, "when": when,
+                 "queued": queued, "cls": cls})
+
+groups = {}
+for r in rows:
+    r["key"] = ("#" + r["issue"]) if r["issue"] else r["pred"]
+    groups.setdefault(r["key"], []).append(r)
+for key, rs in groups.items():
+    # Newest registration wins. amended_utc counts as a registration (the
+    # queue loop treats it that way too); queued_utc breaks a tie, the sha
+    # breaks that, so the answer does not depend on directory order.
+    rs.sort(key=lambda r: (r["when"], r["queued"], r["sha"]))
+    rs[-1]["live"] = True
+    for r in rs[:-1]:
+        r["live"] = False
+        r["by"] = rs[-1]
+
+fails = [r for r in rows if r["live"] and r["cls"] == "FAIL"]
+state = "regressed" if fails else ("verified" if rows else "none")
+print("STATE=" + state)
+if state == "none":
+    sys.exit(0)                            # nothing judged on this branch
+
+def name(r):
+    return os.path.basename(r["pred"]) or r["pred"]
+
+out = []
+if state == "regressed":
+    out.append("**PR label: `regressed`** -- %d of the %d judged verdict(s) on `%s` %s a FAIL "
+               "that nothing supersedes. The label is a function of all of them, not of this one."
+               % (len(fails), len(rows), branch, "is" if len(fails) == 1 else "are"))
+else:
+    out.append("**PR label: `verified`** -- every one of the %d judged verdict(s) on `%s` that still "
+               "counts is a PASS." % (len(rows), branch))
+out += ["", "| verdict | prediction | issue | counts? |", "|---|---|---|---|"]
+for r in sorted(rows, key=lambda r: (r["key"], r["when"], r["sha"])):
+    if r["live"]:
+        why = "**yes -- nothing supersedes it**" if r["cls"] == "FAIL" else "yes"
+    else:
+        why = "no: superseded by `%s`" % name(r["by"])
+    out.append("| %s | `%s` | %s | %s |"
+               % (r["cls"], name(r), ("#" + r["issue"]) if r["issue"] else "--", why))
+cleared = [r for r in rows if not r["live"] and r["cls"] == "FAIL"]
+if cleared:
+    out.append("")
+    for r in cleared:
+        out.append("- `%s` FAILED, and does not count: `%s` was registered later against the same "
+                   "%s and supersedes it." % (name(r), name(r["by"]),
+                                              "issue (%s)" % r["key"] if r["issue"] else "prediction"))
+out += ["", "Recompute from the verdicts on disk with `arms.sh state %s`." % branch]
+print("\n".join(out))
+PY
+}
+if [ "$mode" = state ]; then
+    [ -n "${2:-}" ] || { echo "usage: arms.sh state <branch> [<sha> <verdict>]" >&2; exit 2; }
+    build_label_index
+    label_decide "$2" "${3:-}" "${4:-}"
+    exit 0
+fi
+
 # ------------------------------------------------------------------- queue
 queued=0
 waiting=$(ls "$D"/queue/*.req 2>/dev/null | wc -l)
@@ -366,6 +537,7 @@ done < <(collect)
 [ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(tr '\n' ' ' < "$f")"; done; exit 0; }
 
 # ------------------------------------------------------------------- judge
+build_label_index          # once, here: every decision below reads this file
 for pair in "$A"/pairs/*.json; do
     [ -f "$pair" ] || continue
     sha=$(field "$pair" sha); [ -f "$A/judged/$sha" ] && continue
@@ -391,6 +563,12 @@ for pair in "$A"/pairs/*.json; do
     (cd "$REPO" && DISPATCH_DIR="$D" python3 "$T/ab_compare.py" --a "$RA" --b "$RB" --expect "$exp" --json "$A/pairs/$sha.verdict.json") > "$out" 2>&1
     verdict=$(grep -m1 '^VERDICT:' "$out" || echo "VERDICT: (none printed; see the full output)")
     pr=$(pr_for "$src")
+    # The PR's state, from every verdict on its branch and not just this one.
+    # Computed BEFORE the comment is built so the comment carries its own
+    # explanation -- which verdict is outstanding, or which superseded which.
+    dec="$A/pairs/$sha.label.md"
+    label_decide "${src%%:*}" "$sha" "$verdict" > "$dec"
+    state=$(sed -n '1s/^STATE=//p' "$dec")
     {
         echo "[job.arms] $verdict"
         echo
@@ -401,18 +579,21 @@ for pair in "$A"/pairs/*.json; do
         echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
         echo "| suites | $(field "$pair" suites) |"
         echo "| judged | $(date -u '+%FT%TZ') by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+        if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed 1d "$dec"; fi
         echo
         echo "<details><summary>ab_compare output (first 80 lines)</summary>"
         echo; echo '```'; head -80 "$out"; echo '```'; echo "</details>"
     } > "$body"
     post "$pr" "$issue" "$body" || say "  could not post the verdict for $sha anywhere"
     if [ -n "$pr" ]; then
-        case "$verdict" in
-            *PASS*) label_add "$pr" verified && label_rm "$pr" regressed || say "  WARNING: #$pr judged PASS but could not be labelled verified" ;;
-            *FAIL*) label_add "$pr" regressed && label_rm "$pr" verified || say "  WARNING: #$pr judged FAIL but could not be labelled regressed" ;;
+        # verified and regressed are mutually exclusive, and only one of the
+        # two arms of this case can run, so they cannot both end up applied.
+        case "$state" in
+            verified)  label_add "$pr" verified  && label_rm "$pr" regressed || say "  WARNING: #$pr has no unsuperseded FAIL but could not be labelled verified" ;;
+            regressed) label_add "$pr" regressed && label_rm "$pr" verified  || say "  WARNING: #$pr has an unsuperseded FAIL but could not be labelled regressed" ;;
         esac
     fi
-    echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr})"
+    echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr -> ${state:-no label}})"
 done
 
 [ -x "$T/jobs/status.sh" ] && bash "$T/jobs/status.sh" >/dev/null 2>&1
