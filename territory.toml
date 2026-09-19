@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 107
-updated_utc = "2026-09-19T10:20:00Z"
+wave = 108
+updated_utc = "2026-09-19T10:41:08Z"
 
 
 [lane.armlabel]
@@ -93,14 +93,6 @@ files = ["hw/xbox/nv2a/pgraph/vk/blit.c", "hw/xbox/nv2a/pgraph/vk/surface.c",
 note = "#84, the BLEND_AND 32bpp overrun, and it is dispatched WHILE THE FLEET IS HELD DELIBERATELY rather than for want of anything else to do. This is the one defect on the board whose evidence is COMPLETE WITHOUT A DEVICE and whose evidence could never be completed WITH one: all 20 ImgBlt_BLENDAND_* captures are XRGB/ZRGB, both 32bpp, so no arm on this or any fleet could exercise the narrow-format path. Audit pass 1 over the blit fix found it, pre-existing, and explicitly recommended it not hold that fold. perform_blit indexes s[x*4+ch] and loads 16 bytes per 4 pixels while the caller admits LE_Y8 (1 byte) and LE_R5G6B5 (2); bytes_per_pixel is threaded into perform_blit_tiled() and never into perform_blit(). The overrun is BOUNDED -- CORRECTED AT WAVE 81, and the wrong word was the orchestrator's in all three places it appeared. max_row_pixels divides by bytes_per_pixel and clamps row_pixels, so the surplus is 3 extra pitches at Y8, 1 at R5G6B5, 0 at 32bpp -- swept over pitches 256-4096 x widths 1-65535 by lane.blitsafe, independently of the audit that found the overstatement. nv_dma_map()'s end-of-object assert IS commented out at nv2a.c:96 and the caller DOES check only dest_offset < dest_dma_len, and neither fact is about extent: they mean nothing CATCHES it. The surplus is still outside the download range and the invalidate, so it is still silent. THIS ROW WAS THE LAST SURFACE CARRYING 'unbounded' after the issue body and the tracker were corrected, and the lane flagged it precisely because a row is what someone reads when they pick the work up. TWO REFERENCE IMPLEMENTATIONS EXIST, which is why this is a small job rather than a design one: pgraph_vk_solid_line() at blit.c:637 answers the identical narrow-format question at :689-700 with a warn-once early return under a comment refusing to invent an answer for narrow formats -- and note its reasoning, that these are SOFT GUARDS not asserts because an unset destination is reachable GUEST state rather than an internal invariant, which applies here too. And lane.remote has already landed the GL-side equivalent as b9d845d316. ALSO GRANTED: vk/surface.c, for #88 -- 292,446 px Vulkan loses that GL now gets, with the fix direction already decided and evidenced by the goldens. Ordered SECOND and explicitly so: #84 is memory safety and needs no arm, #88 needs an arm this fleet cannot currently run, so do not let the bigger number pull the ordering. vk/draw.c HELD (not started) and surface.h GRANTED at wave 89, both on this lane's own request and framing. It asked for a HOLD on vk/draw.c rather than a start, because #91's fix probably lives there and WHETHER IT IS THE RIGHT FIX DEPENDS ON TWO DIAGNOSIS ARMS NOBODY HAS JUDGED YET -- a conditional need is exactly what a hold is for, and starting would have been a fit. #92 comes with surface.h because this lane FOUND it and is already waiting on its own arms: SurfaceShape carries no address, so framebuffer_dirty() cannot see a DMA-context swap, and that is a plausible mechanism for Swap reading 165,447 on BOTH renderers before any of #88's work. ITS FIRST STEP IS AN INSTRUMENTED RUN, INDEPENDENT OF #91's OUTCOME -- log framebuffer_dirty()'s verdict across TestSwap()'s SET_CONTEXT_DMA_COLOR writes -- so it is not ordered behind anything. BLAST RADIUS BEFORE ANY EDIT: changing that struct changes SURFACE IDENTITY FOR BOTH RENDERERS, and #55 and #60 are both about surface-binding identity. #89 ADDED AT WAVE 91, because its fix site is a file this lane already holds. pgraph_vk_get_clear_color() at vk/draw.c:758-771 takes its pad-alpha decision from pgraph_vk_surface_drawn_format(r->color_binding) -- WHAT THE SURFACE WAS LAST DRAWN WITH -- instead of pg->surface_shape.color_format, so a surface reused across suites carries the previous suite's format into the clear. That is why Blend surface (built from the padded X_O*/X_Z* formats) triggers it and Color mask blend (A8R8G8B8 only) does not. IT IS A NARROWING OF #59's STAMP AND NOT A REVERT: per draw.c:745-751 the clear ALWAYS wrote 1.0 before #59, so reverting restores a different defect. Note the lane now holds FOUR issues in one file cluster, which is deliberate -- #88's policy, #91's stray depth clear, #92's addressless shape and #89's clear format are all the same surface/clear path, and splitting them across lanes would put four agents in vk/draw.c."
 
 
-[lane.swizzle87]
-issues = ["85", "87"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c",
-         "hw/xbox/nv2a/pgraph/gl/surface.c"]
-note = "#87's SWIZZLED RENDER-TARGET LAYOUT, and it is dispatched ANALYSIS-ONLY: files = [] deliberately, with instructions not to implement until it reports the mechanism. The condition recorded at wave 76 for starting this has been met -- both audits have landed -- but ONE OF THEM FOUND 3 HIGH, which is an argument for MORE caution about a third implementation rather than less. Analysis adds no unverifiable compiled code, so it respects the original concern instead of declaring it satisfied. THE EVIDENCE IS ALREADY ON DISK and needs no device: at HEAD with no bound, the VULKAN renderer reproduces the exact digest #39's skew-bound run recorded (15845fa9e1e40032), so Vulkan loses the race the same way every time and its capture IS the race-free image -- a race-free reference obtained WITHOUT the bound, by using the renderer that fails deterministically. Against the golden it has an IDENTICAL COLOUR MULTISET over its 10,240 differing pixels: the right pixels in the wrong places, runs of 16/32/64/80 px, no single translation explaining more than 40%. The run-length signature is itself a constraint on tile geometry. ALSO PLACED AT THIS WAVE: hw/xbox/nv2a/pgraph/swizzle.c was in NO row and not in [free] -- the third file found in that state (after fleet.py at wave 48 and dispatcher.sh at wave 63), and it is the file this issue is most likely to need. Placed in [free] rather than granted, because an analysis lane should not hold a file it has not yet shown it needs. GRANTED BOTH FILES AT WAVE 86, as one claim -- which is what the lane asked for and why it held rather than forking. vk/texture.c came free when lane.padwrite59 retired; gl/surface.c was named out of lane.remote's glob. #85 comes with the file: a small fully-specified decision (delete the dead mem_dirty half, or make it reachable and test it) 1,400 lines from #87's gates, so it costs this lane almost nothing and would otherwise sit behind a lane that has not answered twice. NOW IMPLEMENT -- it was dispatched analysis-only and derived the mechanism without writing a line, so the fix is its to write. Legs 1-6 are drafted, including the CORRECTED control partition: 17 _L captures MAY move, 24 non-_L and all 1,673 Blend_tests must not, and Vertex_shader_rounding has ZERO goldens so it cannot be a leg either way."
-
-
-
 [lane.arms]
 issues = ["38", "59"]
 files = []
@@ -124,11 +116,6 @@ files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
 
-[lane.backlogstate]
-issues = []
-files = ["docs/lanes/backlogstate/NOTES.md"]
-note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). fleet.py and check_coverage.py EXCLUDED though PR #134 edits both (60/5 and 188/12 lines): both are lane.toolsmith's STANDING claim ('it owns the instruments for as long as they need an owner'), and this lane never asked for them -- the unlisted-claim hazard toolsmith's own note already lists twice. NOT a grant: toolsmith is not running but its claim does not go stale (standing), and a finished PR is not the same as a lane asking. Flagged in toolsmith's row below; COORDINATE THERE before folding #134, because toolsmith's note carries live warnings about both files (classify_residuals.py's _ZB trap, the dispatcher.sh snapshot-vs-source split) that this PR's diff needs to be read against. selftest.sh dropped per lane.armsskip's note."
-
 [lane.linecap13]
 issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c"]
@@ -140,10 +127,23 @@ files = ["hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/vk/renderer.c",
          "android/app/src/main/cpp/xemu_android.cpp",
          "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt"]
 note = "DISPATCHED WAVE 104 (job.board). #77's Galleon stipple investigation named its own next step and could go no further without it: 'WHAT WOULD UNBLOCK IT: a marker-file-armed frame dump... Needs a source grant; no lane holds it.' nv2a_dbg_trigger_diag_frames is reachable only from the Debug Capture button (xemu_android.cpp, LauncherActivity.kt reads only rom_path) and inherits the diag capture's per-draw pgraph_vk_finish blindness to merging and barriers -- so the dump this issue needs must be armed by a marker file, the way apu.c arms the PCM capture, and must NOT force a finish per draw. None of these four files are named in any other row or in [free]'s exclusion list -- gl/renderer.c and gl/debug.c (lane.remote's) are different files from vk/renderer.c and debug.h (top-level). Two instrument errors already corrected upstream of this (2.25x upscale in the HF measurement, a USB dialog dimming frames) are NOT this lane's to redo -- see issue.77's status_note for the measurement this dump needs to feed: stipple fires 10-14/100 on deck/ground, hatched-frame anisotropy 0.50-0.92 against 1.68 parked, format/dims/level/pitch/swizzle/texgen all ruled out by measurement already."
-[lane.ciskip]
+[retired.swizzle87]
+issues = ["85", "87"]
+files = []
+retired_utc = "2026-09-19T10:41:08Z"
+note = "RETIRED AT WAVE 108 (job.board): PR #139 MERGED (fold commit 886f7bed84 on this branch's own log) -- #87/#85: audit the landed fix, and give the falsifier a third exit status (both issues were already fixed in master). Both #85 and #87 are closed on GitHub. Held hw/xbox/nv2a/pgraph/vk/texture.c, hw/xbox/nv2a/pgraph/gl/surface.c -- RELEASED TO [free]. gl/surface.c has a history: lane.remote asked for it by name and was told to wait three times before swizzle87 was granted it at wave 86 (see the wave-94 note under [free] below). That history is not a standing grant -- lane.remote has no running agent and its issue claims are the subject of #138, unresolved -- so this release goes to [free] for the next actor to decide, not to lane.remote automatically."
+
+[retired.ciskip]
 issues = []
-files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/cloud.md", "docs/lanes/ciskip/NOTES.md"]
-note = "WRITTEN AT WAVE 103 -- lane was RUNNING (PR #140 draft, attempt 1/opus-5) with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback. Two harness defects, no tracker issue. (1) the retired skip-ci marker is in no role file, so four PRs (#101, #123, #129, #139) stalled on an empty statusCheckRollup and needed a person to push an unblocking commit -- fix adds the marker to roles/lane.md's and roles/cloud.md's Never sections, including not quoting the marker in the unblocking commit message, since GitHub matches it anywhere in the message. (2) fold.sh writes its preflight-failure marker ($F/failed/$pr-$head) on ANY red gate including a board-level one -- coverage and territory read the board, not the PR's tree -- so when #138 opened, the coverage gate went red for every fold and permanently marked #123/#124/#130 failed on heads that had nothing wrong with them. fold.sh EXCLUDED though the PR's own Files: line names it: lane.branchprune already holds fold.sh (branch-deletion-on-fold-success, PR #137) and check_territory.py refuses two rows naming one file -- COORDINATE THERE. This lane's change is the failure-marker/preflight-gate path, branchprune's is the branch-cleanup path; likely different regions but check at fold time. docs/testing/jobs/selftest.d/91-fold-transient.sh EXCLUDED for the same reason: lane.selftestsplit owns docs/testing/jobs/selftest.d/** as sole owner of record and hand-carries concurrent additions into the right fragment at its own fold -- but this is a NEW fragment file rather than an append to selftest.sh, which the existing coordination note does not explicitly cover, so flag it there rather than assume it's included. roles/lane.md and roles/cloud.md were in no other row and not in [free]; free to claim, no collision."
+files = []
+retired_utc = "2026-09-19T10:41:08Z"
+note = "RETIRED AT WAVE 108 (job.board): PR #140 MERGED (fold commit 4a442e1b75, HEAD of this branch's own log) -- ciskip: the retired skip-ci marker is in no role file, and a board gate poisons an innocent head. Held docs/testing/jobs/roles/lane.md, docs/testing/jobs/roles/cloud.md, docs/lanes/ciskip/NOTES.md -- role docs RELEASED TO [free], NOTES.md is lane-local and not re-claimable."
+
+[retired.backlogstate]
+issues = []
+files = []
+retired_utc = "2026-09-19T10:41:08Z"
+note = "RETIRED AT WAVE 108 (job.board): PR #134 MERGED (fold commit 3f9e5edc1c on this branch's own log) -- board: a backlog had no \"available\" state, so honest bookkeeping hid the work. Held only docs/lanes/backlogstate/NOTES.md, lane-local -- nothing to release to [free]."
 
 [retired.armsskip]
 issues = []
@@ -398,4 +398,14 @@ files = [
          "hw/xbox/nv2a/pgraph/vk/command.c",
          "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
          "hw/xbox/nv2a/pramdac.c",
-         "include/exec/**"]
+         "include/exec/**",
+# RELEASED AT WAVE 108 (job.board) by retiring lane.swizzle87 (PR #139
+# merged, #85/#87 both closed): vk/texture.c, gl/surface.c. And by
+# retiring lane.ciskip (PR #140 merged): roles/lane.md, roles/cloud.md.
+# backlogstate (PR #134 merged) held only its own NOTES.md, nothing to
+# release. None of the three had a running agent; all three still showed
+# as claimed-with-no-agent in fleet.py before this tick.
+         "hw/xbox/nv2a/pgraph/vk/texture.c",
+         "hw/xbox/nv2a/pgraph/gl/surface.c",
+         "docs/testing/jobs/roles/lane.md",
+         "docs/testing/jobs/roles/cloud.md"]
