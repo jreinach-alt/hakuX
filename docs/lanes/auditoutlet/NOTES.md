@@ -37,7 +37,12 @@ since. Attempts 2 and 3 were spent on the same path, `selftest.sh`:
 That is the defect #136 fixed, and attempt 4 is the first that can land,
 because the block below now lives in a file no other lane touches. Attempt 4
 did nothing but merge three docs-only commits from master (`912f58a1c1`,
-clean), run the gate to completion, push, and relabel.
+clean), run the gate to completion (140 passed, 0 failed), push, and relabel.
+`preflight.sh --allow-tracker` at that point: nv2a index, territory and board
+files ok; **coverage FAILED on #138** (`lane.remote`'s decision-needed issue,
+no lane and no `blocked_on`). That gate reads `origin/board`'s tracker files,
+which a lane may not edit, and the same failure applies to every open PR
+until the board gives #138 a lane or a blocker. Not this PR's condition.
 
 **Attempt 3's work is a move, not a rewrite.** The sixteen checks went
 across verbatim into `docs/testing/jobs/selftest.d/98-audit-outlet.sh`; after
