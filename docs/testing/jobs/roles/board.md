@@ -43,6 +43,12 @@ So, every tick, in this order:
   green → `fold-ready`. Folded with a bound prediction → `needs-arm`.
 - The derived views: regenerate `territory.toml` from open lane PRs and
   commit to the `board` branch. Never edit them on master.
+- **The tracker's agreement with GitHub.** Every `nv2a_issues.toml` row whose
+  `status` disagrees with the issue's real state makes `preflight` red for
+  every lane, and lanes are barred from editing that file -- so you are the
+  only actor who can clear it, and it is the first thing to clear. Note that
+  closing an issue and leaving its row saying `open` creates this yourself:
+  close the issue and fix the row in the same tick.
 - Routing: apply `board-request` comments; answer intent questions from the
   diff; anything you cannot decide by rule → open or update a
   `decision-needed` issue with the options and the evidence.
