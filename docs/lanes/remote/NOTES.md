@@ -283,3 +283,81 @@ seven alpha bits are real data and whose pad bit is not.
 `X1A7R8G8B8_{Z,O}` should read back and blend with, which is #48/#59's model
 and the one case both of their tables exclude by construction. Recorded so the
 next actor starts from the measurement rather than from the pixel total.
+
+---
+
+## 2026-09-19, later: the environment report, and two things it turned up
+
+The host asked five questions about this container, on the grounds that only
+this session can see the answers and that one of them decides whether a second
+desktop GL channel retires. The full reply is on PR #162. Two findings from
+writing it are worth keeping here, because both correct something that was
+being assumed rather than checked.
+
+### The capture runner is now in the repo, and it reproduces its own history
+
+`extract_results.py` was in the repo; its driver was not. A capture run could
+therefore only be reproduced by someone who already had a container it had been
+run in -- the same defect as a number nobody can re-run, applied to the
+instrument instead of the result. `docs/testing/pgraph_capture_run.sh` is that
+driver.
+
+Writing it down found two bugs that the scratchpad original had carried
+silently, both of which fail as *"the run produced nothing"* when the run was
+fine:
+
+* It `cd`s into the binary's directory, so a **relative** binary or disc path
+  resolved against the wrong directory. Every call site had passed absolute
+  paths, so it had never fired.
+* The results directory on E: is a property of the **disc**, not the harness.
+  `extract_results.py` defaults to `nxdk_pgraph_tests`; `iso_surf1.iso` writes
+  to **`surf1`**. That fourth argument was passed by hand at every call site
+  and written down nowhere, so it would have died with the container.
+  The script now looks instead of guessing, and names what it found.
+
+**Proof it is the same instrument, not a rewrite of it.** A fresh run through
+the committed script -- relative path, no directory argument -- against
+`p158gl`, produced four hours earlier by the scratchpad runner on the same
+binary, same disc, same renderer:
+
+    236 captures both; byte-identical on 235 of 236
+
+The single mover is `Surface_pitch::Swizzle`, which is the texture-memory race
+#71 established and #87 tracks. So the committed runner reproduces the
+scratchpad runner exactly, and the run-to-run instability on this disc is still
+exactly one capture wide -- an independent re-confirmation of #71 that cost
+nothing, since the control was needed anyway.
+
+### The goldens on this container are silicon, not a handheld
+
+`lane.desktopchannel`'s `desktop_channel.sh` declines to score any desktop
+capture against goldens, and `docs/lanes/desktopchannel/NOTES.md:249` gives the
+reason: *"those goldens came off an Adreno running Vulkan."* On that premise
+the refusal is right -- a desktop GL capture differing from another emulator's
+output is evidence about renderers before it is evidence about xemu.
+
+**On this container the premise does not hold.** `/tmp/goldens` is a git clone
+of `abaire/nxdk_pgraph_tests_golden_results` at `6e159f1`, whose README reads:
+
+> Output of [abaire/nxdk_pgraph_tests](...) on **XBOX 1.0 hardware**.
+
+Those are real silicon captures -- the target, not a second emulator. Scoring
+any renderer on any host against them is the accuracy question this campaign
+exists to ask.
+
+I cannot read that lane's disk, so I am not claiming their tree is this tree.
+The check is one command -- `git -C <goldens> remote -v` -- and the layout is a
+tell: `<root>/results/<Suite>/<capture>.png` with `perceptualdiff/` beside
+`results/` is this repository's shape. If it matches, that lane's most
+cautious sentence is its most interesting result: *"the capture produced here
+is bit-identical to its handheld golden"* would read **bit-identical to
+hardware**.
+
+**What survives either way, and what this lane must not over-read.** A
+software rasteriser and a GPU can both be correct xemu and still differ in the
+last bit on filtered or interpolated output, so an **absolute** bit-exact count
+is a property of the host as well as of the code. "GL bit-exact 123 -> 128" is
+therefore a statement about this container. What is immune to all of it is
+every number #158 actually rests on: GL-before against GL-after, and GL against
+Vulkan, same binary, same disc, same host. Those are deltas on one machine, and
+the host's rasteriser cancels.
