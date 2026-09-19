@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 121
-updated_utc = "2026-09-19T14:15:00Z"
+wave = 122
+updated_utc = "2026-09-19T14:27:33Z"
+
+
+[lane.indexcheck]
+issues = ["157"]
+files = ["docs/testing/nv2a_index.py", "docs/lanes/indexcheck/NOTES.md"]
+standing = false
+note = "DISPATCHED WAVE 122 (job.board), briefs/indexcheck.md: #157's nv2a_index.py check reports a suite-count mismatch with no direction, so following its own remedy from a behind checkout silently deletes suites from the committed index. docs/testing/nv2a_index.py was unclaimed -- lane.toolsmith's own row says it DECLINED this file -- so no grant was needed. preflight.sh is explicitly out of scope (lane.toolsmith's)."
 
 
 [lane.wbufclip]
