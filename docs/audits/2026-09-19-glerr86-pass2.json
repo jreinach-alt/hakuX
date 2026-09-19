@@ -1,0 +1,63 @@
+[
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/gl/shaders.c",
+    "line": "146",
+    "verdict": "CLOSED",
+    "summary": "The eight-slot per-enum table and is_power_of_ten are deleted, not repaired. android_report_pending_gl_errors now holds one `static uint64_t printed` (shaders.c:152) with no key, so there is no slot to share and nothing to re-key. Every drained error prints with a monotonic report=<n>, bounded by a process-wide ANDROID_GLERR_MAX_REPORTS (256) plus one line saying reporting stopped. The budget arithmetic is exact and cannot overflow: the guard at :157 returns before :160 can increment again, so `printed` settles at MAX+1 forever and the stop line prints once per process. The comment at :148-151 now describes what the code does, which was the other half of the finding.",
+    "scenario": "Pass 1's scenario -- eight or more distinct GL error enums over a process lifetime, after which two codes alternate through the shared last slot, re-key each other and print occurrence=1 on every shader load forever -- can no longer occur: there is no table and no per-enum state at all.",
+    "evidence": "I compiled the LIVE sliced block against my own stubs (not the lane's harness) and drove pass 1's scenario 25x past the old flood point: 9 distinct enums -> 9 lines; 5000 alternating loads between the two codes that used to share the last slot -> total 257 lines, exactly one stop line, exactly one line reporting index 1, every report index strictly greater than the one before it, and a two-deep backlog after exhaustion still fully drained with no further lines. The same probe against the 7809361a34 block, sliced by the same anchors, prints 5008 lines and no stop line, so the probe separates the two rather than passing for free. Concurrency unchanged and still safe: pgraph_gl_shader_load_from_memory has exactly one caller in the tree (shaders.c:1002; the only other reference is its declaration at gl/renderer.h:379) and that caller runs under qemu_mutex_lock(&r->shader_cache_lock) taken at :994."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/gl/shaders.c",
+    "line": "115",
+    "verdict": "CLOSED",
+    "summary": "Both false premises are corrected in the docstring, docs/lanes/glerr86/NOTES.md and the PR body, and the suppression is re-decided on the true call frequency. shaders.c:115-118 now names android_log_shader_stage_errors, android_log_apply_uniform_entry_errors and android_log_uniform_update_errors as already printing, ungated by DEBUG_NV2A_GL, and says this was the one silent site. :129-135 replaces 'many times a frame' with once per shader-cache miss against a 51200-entry cache, and every occurrence now prints, which keeps the per-load shader hash the old rule discarded. The budget at :137-142 is explicitly not sold as a rate limit for the expected case.",
+    "scenario": "Pass 1's scenario -- a recurring pending error printed once with occurrence=1 and the first load's hash, the other loads and hashes never appearing, because counts live in 1..9 at the real call frequency -- can no longer occur: nothing is suppressed below the budget. The second half of the scenario, the next lane reading an empty [glerr] grep as a statement about the run, is closed by NOTES.md:179-182.",
+    "evidence": "Checked against the file rather than the claim. The three helpers are at :49, :59, :70, each a bare `while ((err = glGetError()) != GL_NO_ERROR) { __android_log_print(...); }` with no gate, called at :1025/:1037, :901 and :944. The stale '(debug-logging-gated)' attribution is gone; NOTES.md:216 now draws the contrast correctly against gl/surface.c:45, :88 and gl/display.c:49, which do return early unless xemu_android_is_debug_logging_enabled(). NOTES.md:179-182 says an empty [glerr] grep 'does not say the run was GL-error-free', names `GL error 0x%X before apply_uniform_updates:` at shaders.c:901 as where an earlier error is reported instead, and says to grep `GL error 0x` as well, always."
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/glerr86/NOTES.md",
+    "line": "1",
+    "verdict": "CLOSED",
+    "summary": "The notes moved from the branch root to docs/lanes/glerr86/NOTES.md, which is the path origin/master's roles/lane.md requires.",
+    "scenario": "Pass 1's scenario -- a clean add of a root NOTES.md onto master, after which fold.sh's resolve_root_notes fires on every later lane and keeps glerr86's copy at the repository root permanently -- can no longer occur. There is no root copy to fold.",
+    "evidence": "`git ls-tree HEAD` has no root NOTES.md. origin/master has none either, and docs/lanes/glerr86/ is not among master's seventeen lane directories, so the fold is a clean add of a new unique path. The steady state the notespath lane removed is not reseeded."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/glerr_report_selftest.c",
+    "line": "160",
+    "verdict": "CLOSED",
+    "summary": "The harness now reaches and exceeds the stateful part: ten distinct codes, a 40-load alternating pair with its report= index asserted, and ANDROID_GLERR_MAX_REPORTS + 8 loads of two errors each that drive the budget past exhaustion and then assert the line count settled at budget-plus-one, that the last line says reporting stopped, and that a two-deep backlog after exhaustion is still drained and silent. 19 legs. The store overflow is handled: log_lines[64] with the count kept outside the store and log_last held separately, so the 257-line budget leg cannot corrupt the count it is checked against.",
+    "scenario": "Pass 1's scenario -- a suite whose legs could not have caught M1 because five distinct enums never reach the state -- can no longer occur.",
+    "evidence": "Ran docs/testing/glerr_report_selftest.sh on this tree: desktop 19/19, gles 19/19, silent fails 14 by name, exit 0. Re-ran the lane's hand falsification rather than accepting it, by building TODAY's harness against the 7809361a34 slice: 7 of 19 fail, and they are the named ones -- 'every occurrence of a repeat prints', 'each line carries its report index', 'ten distinct enums', 'the report index counts up rather than resetting to 1', 'a vendor code is reported too', and both budget legs. The lane's own note that '40 loads alternating between two enums -> 40 lines' passes against the old code, because 40 lines IS the M1 flood, is correct and is the right thing to have recorded."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "docs/lanes/glerr86/NOTES.md",
+    "line": "105",
+    "verdict": "CLOSED",
+    "summary": "NOTES.md:105-112 replaces the 'no NDK, no arm64 build' caveat with what is actually unproven, and names android.yml, ndk;29.0.14206865 and externalNativeBuild as the check that already ran on this head. The PR body's `Needs NDK:` line says the same. What stays listed as unproven is a [glerr] line reaching logcat on a device and the report firing on a real pending error, which is right.",
+    "scenario": "Pass 1's scenario -- the next lane inheriting a 'we have no NDK' caveat the repository stopped being subject to -- can no longer occur.",
+    "evidence": "Read on this head; the Android CI check is SUCCESS on 3e170e56b7."
+  },
+  {
+    "pass2_id": "N1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/shaders.c",
+    "line": "157",
+    "verdict": "OPEN",
+    "summary": "The budget counts lines, not codes, and exhaustion is permanent. One noisy code can spend all 256 reports -- front-loaded into the first seconds, which is exactly when cache misses happen -- so a rarer code arriving later never reaches a [glerr] line. The old per-enum scheme, for all of M1, would have printed the first occurrence of each distinct code.",
+    "scenario": "A device run on a badly-broken renderer leaves GL_INVALID_OPERATION pending at 256 shader loads; the stop line appears; a GL_OUT_OF_MEMORY or GL_CONTEXT_LOST raised later is drained without a [glerr] line. The reader sees a stop line and cannot tell whether what followed was more of the same or something new.",
+    "remediation": "If taken: reserve a few of the budget for first-sightings of a code not yet printed, or state in the docstring that the budget is deliberately enum-blind and why. Not worth holding the fold for.",
+    "evidence": "LOW, not MEDIUM, for two reasons I verified. Nothing the emulator computes is affected: the drain runs past the budget unconditionally (the `continue` at :158 is inside the while), so the glGetError after glProgramBinary() is as honest after exhaustion as before -- driven and confirmed in my probe. And the error is not lost from logcat: android_log_apply_uniform_entry_errors at :901 prints every drained error on every bind, ungated and unbounded, so a later GL_OUT_OF_MEMORY still appears as `GL error 0x505 before apply_uniform_updates:...`. What the budget can cost is the [glerr] framing -- the shader hash and the pending-at-a-load attribution -- not the existence of the error in the log. NOTES.md:192-197 already tells the reader the stop line appearing at all is itself the finding."
+  }
+]

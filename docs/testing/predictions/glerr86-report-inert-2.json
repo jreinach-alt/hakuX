@@ -1,0 +1,21 @@
+{
+  "registered_utc": "2026-09-19T12:25:08Z",
+  "who": "lane.glerr86",
+  "issue": "86",
+  "prediction": "#86 arm B (3d8179f341, the remediated head) against arm A at master\n(a1691ae68e). This re-registers glerr86-report-inert.json, whose arm PASSED\n566/566 bit-exact on b_ref 540b0ec235: audit pass 1 then found M1 and M2, and\nthe remediation rewrote the reporting block, so that PASS is about a binary\nthat is no longer this branch's head. It is not evidence about this one. The\nearlier file stays as the record of that arm.\n\nWHAT CHANGED SINCE THE MEASURED ARM, all inside #ifdef __ANDROID__ in\npgraph_gl_shader_load_from_memory's helper. The eight-slot per-enum table and\nis_power_of_ten are gone. Every drained error now prints one\n__android_log_print line carrying its shader hash and a monotonic report=<n>,\nbounded by a process-wide budget of ANDROID_GLERR_MAX_REPORTS (256) lines plus\none line saying reporting stopped. The drain itself is byte-for-byte the same\nloop and still runs past the budget. No GL call is added, removed or\nreordered, and the non-Android path remains byte-identical, so on any arm that\nis not Android this is not a change at all.\n\nTHE ONLY LEG, AND IT IS AN INERTNESS LEG: better=0 and worse=0 over the\nmust_not_move set -- every scored capture in those five suites the same\ndistance from its golden in both arms.\n\nNAMING THE WORLD IN WHICH IT FAILS, and the remediation makes one leg sharper\nthan it was. (1) The helper stops draining: an error surviving the call is\nread by the glGetError eleven lines below, which deletes the binary and\nrecompiles from source. That recompile produces a working shader, so the\nscores may well not move -- which is why the selftest asserts the drain\ndirectly and this leg is not credited with catching it. (2) The helper is\ncalled somewhere other than shader load, or more than once per load: that\nwould show as timing-sensitive captures moving. (3) COST, the leg this arm can\nreally catch, and the one the change moves. The previous version printed at\nmost a handful of lines per enum per run; this one prints one line per drained\nerror per load, unbounded until 256. If the premise M2 established is wrong --\nif this function runs far more often than once per shader-cache miss, or if\nthe device's run leaves errors pending at most loads -- then logcat writes\ncost real time inside the shader path and captures whose content depends on\nhow much work lands in a frame move. A PASS is therefore evidence for the\ncall-frequency premise as well as for inertness; a WORSE on the render-target\nor window-clip suites, with [glerr] lines in the log, would refute it and the\nbudget would need to be a gate rather than a bound. On healthy code the\nexpected number of lines is zero and the expected cost is zero, which is why\nthis is a must_not_move rather than an expect.\n\nWHAT A PASS DOES NOT LICENSE. Nothing about whether the report works: the\n[glerr] line is not in the golden comparison, and a healthy run emits none,\nwhich at pixel level is indistinguishable from the silent drain it replaced.\nThe evidence that it works is docs/testing/glerr_report_selftest.sh (19 legs,\nboth header sets, a pre-#86 falsification build that must fail by name in 14\nof them) plus, on a device, a deliberately provoked GL error before a shader\nload producing exactly one line.\n\nWHAT NEITHER ARM SHOWS, corrected from the first registration: the arm64 build\nis NOT the missing check. CI's android.yml compiles this file with the\nshipping NDK against the real GLES headers on every PR and passed on this\nhead. What no arm here shows is a line reaching logcat on a device.\n\nSUITE CHOICE, unchanged and for the same reasons: Texture_render_target (40\ncaptures in the 2026-09-12 corpus), Blend_tests (105),\nTexture_shadow_comparator (288), Texture_format (40), Window_clip (92).\nTexture_border stays out: 2D_BorderTex_SZ's ten-run band on one unchanged APK\nis 0 0 0 0 0 146 181 1847 2352 2430 5640, so a single-run leg on it is a coin\nflip.",
+  "a_ref": "a1691ae68e",
+  "b_ref": "3d8179f341",
+  "must_not_move": [
+    "Texture_render_target/*",
+    "Blend_tests/*",
+    "Texture_shadow_comparator/*",
+    "Texture_format/*",
+    "Window_clip/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": []
+}
