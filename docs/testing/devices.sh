@@ -114,6 +114,60 @@ device_default() {
     return 2
 }
 
+# ---------------------------------------------------------------- the labels
+#
+# There are two kinds of execution target and only one of them is a handheld.
+#
+# POOLED labels are the handhelds in the table above. They are interchangeable
+# (within the limits stated at the top of this file), they are what
+# affinity.py's rule 3 hashes an unpinned A/B pair over, and an idle one may
+# take any free request.
+#
+# OFF-POOL labels are execution targets with NO SERIAL that are never chosen
+# for a request -- only rule 1, an explicit `--device`, reaches them. Today
+# that is `desktop`: this host's own xemu build.
+#
+# Why `desktop` is off-pool rather than a third row in the table:
+#
+#   - it has no adb serial, so `device_env` cannot key on one and
+#     `device_list` (which iterates `adb devices`) can never see it;
+#   - it is a DIFFERENT RENDERER. The handhelds run Vulkan on an Adreno 740;
+#     the desktop channel exists to run OpenGL on llvmpipe, which is the whole
+#     reason it is worth having. Two handhelds were measured byte-identical on
+#     62 of 62 captures before they were allowed to share a queue. The desktop
+#     has had no such check against either of them and cannot pass one: its
+#     captures are not expected to match the Adreno goldens at all.
+#
+# So the pooling decision here is not an optimisation, it is the same
+# correctness rule as the rest of this file -- a column that silently mixes
+# two renderers is worse than one that silently mixes two devices.
+
+device_pool_labels() {
+    # Derived from the table above rather than restated, so a third handheld
+    # added to device_env needs no second edit here. Anchored on the actual
+    # `export DEVICE_LABEL=` assignment: request.sh used to do this same sed
+    # with a leading `.*`, which would also match any prose or code mentioning
+    # the variable.
+    sed -n 's/^ *export DEVICE_LABEL="\([a-z0-9]*\)".*/\1/p' "${BASH_SOURCE[0]}"
+}
+
+device_offpool_labels() {
+    # Enumerated, because there is no table to derive them from -- an off-pool
+    # target has no serial by definition. affinity.py carries the same set as
+    # a constant (it must not depend on reading a file at claim time) and
+    # selftest.d/55-affinity-offpool.sh fails if the two disagree.
+    printf 'desktop\n'
+}
+
+device_all_labels() {
+    device_pool_labels
+    device_offpool_labels
+}
+
+device_is_pooled() {
+    device_pool_labels | grep -qx "${1:-}"
+}
+
 device_list() {
     # tr -d '\r' is load-bearing: adb prints CRLF, so without it $2 is
     # "device\r", nothing ever matches, and the list comes back empty rather
@@ -179,6 +233,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     case "${1:-list}" in
         list)   device_list ;;
         titles) device_titles "${2:-}" ;;
+        labels) device_all_labels ;;
+        pool)   device_pool_labels ;;
+        offpool) device_offpool_labels ;;
         *)      device_env "$1" && printf '%s %s %s\n' \
                     "$SERIAL" "$DEVICE_LABEL" "$DEVICE_ISO_ROOT" ;;
     esac
