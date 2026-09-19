@@ -90,4 +90,38 @@ them:
 - `status.sh` prints a skipped marker with `cat`; the appended `told=` line
   joins the preceding line as a lazy markdown continuation, so it reads as one
   row. Nothing to fix there, but do not be surprised by it.
-</content>
+
+## Why attempt 1 did not finish (and the trap it left behind)
+
+It ran out of turns in the middle of the falsification step, and the way that
+step is written is a hazard worth naming.
+
+The brief's recipe is `git show origin/master:<file> > <file>`, run, restore.
+Attempt 1 did that — it copied its finished `arms.sh` aside to `.arms.sh.mine`,
+overwrote `arms.sh` with master's, started the ~4-minute `selftest.sh`, and the
+session ended there. **`git status` then showed `arms.sh` as unmodified**, so
+the branch looked like a lane that had written a test and no fix. The entire
+implementation was sitting in an untracked dotfile that nothing would have
+looked at.
+
+The falsification step destroys your work for the duration of the run, and the
+window is minutes, not seconds, because `selftest.sh` runs `arms.sh` eight
+times and each tick walks every prediction on master and on every live `lane/*`
+branch. Commit before you falsify, and falsify with `git stash`-free mechanics:
+`git show origin/master:<f> > <f>; run; git checkout -- <f>` after the commit
+exists, so the restore is a checkout and not a copy you have to remember.
+
+Attempt 2 recovered `.arms.sh.mine`, confirmed it differed from `HEAD`'s
+`arms.sh` only by the intended change, committed it, and only then merged
+`origin/master`.
+
+## The merge with master (attempt 2)
+
+`arms.sh` auto-merged: `bc7ccef95d` removed two quadratics from `collect()` and
+`live_ancestor()` and touched no line this lane changed. `selftest.sh`
+conflicted with `1f7572a34c`'s `fold.sh` NOTES.md block, as predicted — both
+sides append immediately before the final summary `echo`. Both blocks are kept,
+master's first, ours last; they share only the fixture harness and neither
+reads the other's state. `NOTES.md` moved from the branch root to
+`docs/lanes/armsskip/NOTES.md`, which is the path `1f7572a34c` established and
+the reason that conflict existed at all.
