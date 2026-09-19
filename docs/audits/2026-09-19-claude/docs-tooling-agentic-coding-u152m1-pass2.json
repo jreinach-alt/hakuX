@@ -1,0 +1,102 @@
+[
+  {
+    "pass1_id": "H1",
+    "pass2_id": null,
+    "severity": "HIGH",
+    "verdict": "CLOSED",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": "164",
+    "scenario": "Pass 1's scenario cannot occur at tip e81aaca8ae. It said any Android build of this branch fails at xemu_core.dir/.../gl/draw.c.o and produces no APK, so fold.sh has no green head to fold and a fold would stop master building for Android. The arm64-v8a target now builds. gh run list --commit e81aaca8ae4ecc25fa01fab09f8ac87e428c26c0 returns three runs, all conclusion success on that exact headSha: Android 35463074396, Desktop build 35463074429, NV2A index 35463074388. The Android job log shows the work was done and not skipped: '> Task :app:configureCMakeRelease[arm64-v8a]', '> Task :app:buildCMakeRelease[arm64-v8a]', 'BUILD SUCCESSFUL'.",
+    "evidence": "The guard landed in the only one of pass 1's two offered forms that compiles: #ifndef __ANDROID__ at draw.c:164 around pad_write_color_factor(), closed at :176; the whole pad_stamped branch under #ifdef __ANDROID__ at :459 emitting the two pre-#158 calls, with #else at :467 carrying the desktop path and #endif at :483. grep -rn SRC1 hw/xbox/nv2a/pgraph/gl/ gives seven hits, five of them comment prose; the two code references are :169 and :171, both inside the #ifndef block. The remediation is provably inert on desktop from the diff alone rather than from a run I cannot re-execute: git diff 7ffcd2bce8 e81aaca8ae -- gl/draw.c, comments filtered, is six lines -- the two guards, the two-line Android arm, and `bool pad_stamped` -> `const bool pad_stamped`. The desktop #else arm is character-for-character the pre-remediation code.",
+    "note": "Pass 1's alternative remedy (pad_stamped forced false under #ifdef __ANDROID__ before the if) does not compile, because the call to pad_write_color_factor() inside the branch still has to be parsed against a function that no longer exists. The lane's correction of the audit on this point is right."
+  },
+  {
+    "pass1_id": "M1",
+    "pass2_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": "240",
+    "scenario": "Pass 1's scenario -- a GL _Z surface holding alpha 1 where the clear wrote and 0 where the raster drew -- STILL OCCURS in the emulator, and that is the accepted outcome. Pass 1 offered two remedies and said of the second: 'declaring it out of scope in the PR body and NOTES.md, with the captures it leaves wrong named, is an acceptable resolution and may be the better one for this PR. Either answer closes it; an unstated omission does not.' What pass 2 has to verify is therefore that the omission is no longer unstated, and it is stated in all three places pass 1 asked for.",
+    "evidence": "(1) PR body: a named MEDIUM section beside the sampled_pad_alpha one, giving mechanism, reason and issue number. (2) docs/lanes/remote/NOTES.md:413-444, heading 'M1, NOT taken, and it is a measurement limit rather than a judgement call', which is where a later lane looks. (3) Issue #164, open, carrying the call site, the Vulkan function to mirror with its body, the gating requirement on pgraph_glsl_dual_src_pad_supported() plus the GLES exclusion H1 was about, both prediction keys (Clear::SCF_X8R8G8B8_Z8R8G8B8 and Clear::SCF_X1R5G5B5_Z1R5G5B5), the Blend_surface/* and Surface_format/* must-not-move set, and the failure scenario.",
+    "note": "The justification for choosing (b) over (a) -- that the Clear suite is not on iso_surf1.iso -- is a claim about a binary artifact not in this repository and not inspectable from here. Recorded as unverified; it does not affect the disposition, since pass 1 closed M1 on either answer."
+  },
+  {
+    "pass1_id": "L1",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": "445",
+    "scenario": "The comment at gl/draw.c:445-458 now states the three-site asymmetry, names it as the cause of H1, and gives a real reason for this site using a preprocessor guard rather than an opts.gles term -- 'the tokens themselves are absent on GLES, not merely unwanted'. That is a better answer than the one pass 1 proposed.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:445-458 and the #ifdef/#else at :459/:467.",
+    "note": "The ANGLE half of pass 1's scenario is not closed by a preprocessor guard, and the PR body claims a convergence the code does not make. Downgraded and carried as N3 rather than reopened, for the reason pass 1 itself gave: no GLES-capable non-Android build exists, and gl/shaders.c:357/360 ties gles to __ANDROID__."
+  },
+  {
+    "pass1_id": "L2",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": "143",
+    "scenario": "Pass 1's scenario -- a later reader taking the argument-from-absence at face value and treating the unsubstituted saturate factor as an unmeasured gap -- cannot occur. gl/draw.c:143-152 now carries the derivation: min(As, 1 - Ad) is 0 for BOTH pad variants once the stamp lands, _Z because As is the stamped 0, _O because Ad is folded to 1 by surface_color_format_dst_alpha_is_one(), so there is nothing to substitute whatever a disc contains.",
+    "evidence": "The corpus observation is demoted to a parenthetical secondary note and carries a pointer to vk/draw.c's own pass-1 L2 explaining why the argument-from-absence was retired there. This is what the finding asked for, in the shape it asked for it."
+  },
+  {
+    "pass1_id": "L3",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/testing/predictions/2026-09-19-gl-pad-bit-write-side.json",
+    "line": "5",
+    "scenario": "Taken as prose, which pass 1 offered as its own alternative and called 'honest and costs nothing'. The PR body and docs/lanes/remote/NOTES.md:456-473 both state that Surface_pitch::Swizzle was excluded from the machine legs deliberately, because its GL value is not stable run to run (13,160-15,360), and that the kill condition on it was a manual check that was made. The registered artifact is deliberately not edited, and the reason given is the right one: its sha256 is cited in the record, and retrofitting a leg onto a spent prediction is the move the registration discipline exists to prevent.",
+    "evidence": "The prediction is still intact at this tip, which the two merges of master since pass 1 could have broken. git merge-base --is-ancestor: a_ref dcefe55745 and b_ref 7ffcd2bce8 are both still ancestors of e81aaca8ae (merges, not a rebase, so nothing was un-ancestored). sha256 of the prediction file is 29eb63008be367c497d943d5c7f1d91ca2b08aede2d2523feada4b2bae776cfa, which is what the PR body's Prediction: line carries."
+  },
+  {
+    "pass1_id": "L4",
+    "pass2_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "0",
+    "scenario": "Accepted as churn, as pass 1 allowed: provenance.tests_root and support_dirs[0] still read /home/user/... against master's /home/justin/.... Nothing reads them, and the NV2A index CI check is green on the head.",
+    "evidence": "I re-checked the SECOND regeneration (commit 8c3a2ce9, which pass 1 never saw) for the #157 class, because a second regen is a second chance to lose a suite. Parsed the file at all three refs -- 44b35be1eb, origin/master and e81aaca8ae -- and suites 103, symbols 951, sites 765, gaps 498 and tests_commit 91a0de45ca31fd03ef2b364347f8a827d226f2b3 are identical at all three. Nothing was lost.",
+    "note": "Pass 1's prose reports 'sites (2839)'; the file says 765 at the tip pass 1 read, so that figure counted something else. The counts being equal ACROSS the refs is the property that matters, and they are."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N1",
+    "severity": "MEDIUM",
+    "verdict": "OPEN",
+    "file": "docs/testing/gles_token_check.py",
+    "line": "104",
+    "summary": "The docstring guarantees that non-__ANDROID__ frames are treated as live, 'which is the conservative direction: it can report a line some other guard excludes, never hide one'. The first half is implemented (:96, live = True for an unknown condition); the second is not. The #else handler at :104-106 inverts live unconditionally, including for a frame whose condition was unknown-and-assumed-live, so the #else arm of any conditional the script does not understand is marked dead and never scanned. The guarantee is inverted exactly where it is claimed. This file was added at e81aaca8ae, after 174f50669e wrote the pass-1 audit, so no audit has read it.",
+    "scenario": "A lane adds a desktop-only token inside the #else of a `#if defined(__APPLE__)`, a `#if DEBUG_NV2A_GL`, or a `#ifdef GL_FOO` suffix-fallback chain -- which is the idiomatic place to put a portability fallback, and gl/constants.h:37-69 shows the codebase already does this -- runs gles_token_check.py on a machine with no NDK, reads '0 findings', and pushes. The arm64-v8a job fails, which is H1 again with the check that exists to prevent it reporting clean, and the script's own closing advice never prints because there is no finding. The docstring compounds it: a reader who has read 'never hide one' will not re-derive the coverage, and this repository has already paid twice for a comment that was believed (vk/draw.c L2, quoted in this PR's own diff).",
+    "remediation": "Record on each frame whether __ANDROID__ decided it, and invert on #else only for those frames; leave an unknown frame live in both arms. `stack.append({'live': live, 'known': known, 'tested': tested})` and, in the #else handler, `if stack[-1]['known']: stack[-1]['live'] = not stack[-1]['live']` -- otherwise fall through leaving it live. #elif wants the same treatment: it already forces live = True, which is right, but it must also stop a following #else from inverting a value that was never derived. Then ADD THE MUTANT BELOW AS A FIXTURE AND CONFIRM IT TRIPS -- a check whose new invariant has no failing case is a check that has not been tested -- and confirm the fixed script still gives 0 findings over hw/xbox/nv2a/pgraph/gl, which is the regression guard on the fix. MEDIUM and not HIGH: the failure is a false clean in a pre-push convenience check, the Android CI job is the gate of record and is green on every PR, the script is not wired into preflight.sh, and no emulator behaviour is affected.",
+    "evidence": "MUTANT, four lines, using a token from the script's own DESKTOP_ONLY list: `#if defined(SOME_OTHER_THING)` / `static int a(void) { return 0; }` / `#else` / `static GLenum b(void) { return GL_SRC1_ALPHA; }` / `#endif` -> '1 file scanned, 0 findings', exit 0. The same token at the same place without the conditional is caught. NOT HYPOTHETICAL ON THIS TREE: instrumenting the script's own frame stack over its default target hw/xbox/nv2a/pgraph/gl, 114 non-blank lines in 21 frames sit inside an #else arm marked dead on an unknown condition. Two are ordinary code an Android build compiles -- gl/debug.c:66, `#if defined(__APPLE__) ... #else glEnable(GL_DEBUG_OUTPUT); ... #endif`, where __APPLE__ is undefined on Android so the #else arm is exactly what arm64-v8a compiles; and gl/debug.h:53, `#if DEBUG_NV2A_GL ... #else ... #endif`, whose #else arm is the macro set every non-debug build uses. The other 19 are #ifdef __aarch64__ scalar fallbacks in surface.c/texture.c and the #else tails of the constants.h suffix chains. Nothing in the hidden region trips the curated list today, so the current '0 findings' is a true result -- true by luck, not by the check. The script is otherwise good and its power test is real: run against gl/draw.c at 7ffcd2bc it reports :151 GL_SRC1_ALPHA and :153 GL_ONE_MINUS_SRC1_ALPHA, the same two lines by number the arm64-v8a compiler reported. I re-ran that on the output words, not the exit code."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N2",
+    "severity": "MEDIUM",
+    "verdict": "OPEN",
+    "file": "docs/testing/pgraph_capture_run.sh",
+    "line": "102",
+    "summary": "The comment at :102-104 states the requirement -- 'a request for OPENGL on a host with no usable GL context silently continues on Vulkan, and a run mislabelled that way is worse than no run' -- and the code at :105-107 enforces only that SOME renderer was reported. $got is never compared to $RENDERER. A run that requested OPENGL and came up on Vulkan prints one informational line and exits 0, with captures extracted under the OPENGL tag. This file was added at 645462d08d, after the pass-1 audit commit, so no audit has read it.",
+    "scenario": "A sweep loops the runner over OPENGL and VULKAN on a host whose GL context is unavailable -- a headless container whose xvfb server came up without GLX, a driver change, a build configured without CONFIG_OPENGL. Both arms come up on Vulkan, both exit 0, both produce 236 captures, and the OPENGL arm's captures are Vulkan's. Nothing fails, so the mismatch survives only as one line of stdout in a log nobody re-reads, and the conclusion that reads out of that data is 'GL is now byte-identical to Vulkan' -- which is, to within a few captures, the headline this PR publishes. The instrument's silent-failure mode and the lane's result have the same shape, so the instrument has to be the thing that refuses.",
+    "remediation": "Make it a die, beside the one already there: case \"$(printf '%s' \"$got\" | tr 'A-Z' 'a-z')\" in \"$(printf '%s' \"$RENDERER\" | tr 'A-Z' 'a-z')\") ;; *) die \"requested $RENDERER but the run came up on $got -- see $LOG\" ;; esac. Confirm it trips by running once with RENDERER=OPENGL against a fixture log whose renderer line says Vulkan, and assert on the message rather than the exit code: the script exits non-zero for a dozen other reasons.",
+    "evidence": "Everything the comparison needs is already in hand. pgraph.c:1190 prints 'nv2a: renderer: %s' from renderers[g_config.display.renderer]->name AFTER the fallback chooser at :1141-1153, so it is the selected renderer and not the requested one -- which is what makes the script's chosen signal the right one. The two values are gl/renderer.c:344 .name = \"OpenGL\" and vk/renderer.c:2602 .name = \"Vulkan\", against the script's OPENGL / VULKAN, so a case-insensitive compare is one line. THIS PUTS NO PUBLISHED NUMBER IN DOUBT and I do not claim it does: the runs behind the result table reported differing per-capture values between the two backends, which a both-on-Vulkan pair cannot produce. The defect is in what the committed instrument will permit next time on a machine that is not this one, which is the reason the PR itself gives for committing it."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N3",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": "459",
+    "summary": "The PR body's L1 disposition says 'the call site now expresses the GLES exclusion the way the other two sites do'. It expresses it the way gl/renderer.c does -- #ifndef __ANDROID__ -- and not the way psh.c:2018 and :3568 do, which is the run-time term `&& !ps->opts.gles`. The asymmetry pass 1 named is reduced from three-ways-two to three-ways-two with the membership changed, not removed.",
+    "scenario": "Pass 1's L1 scenario is untouched: on a GLES-capable build that is not Android, gl/renderer.c's setter runs, the psh.c gates suppress the index-1 output, and gl/draw.c still names a SRC1 factor against a shader that has none -- undefined rather than an error, so it arrives as corrupted colour and not as a diagnostic. It stays LOW for the reason pass 1 gave: no such build exists, and gl/shaders.c:357/360 ties gles to __ANDROID__. The finding is only that the PR body claims a convergence the code does not make, and the code comment at :445-458 is honest about the choice while the body is not.",
+    "remediation": "One clause in the PR body: the call site now excludes GLES the way gl/renderer.c does, by preprocessor, because the tokens are absent rather than merely unwanted, while psh.c keeps the run-time term because a shader gate has no token to be absent. The prose fix is enough.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:445-458, :459; hw/xbox/nv2a/pgraph/glsl/psh.c:2018, :3568; hw/xbox/nv2a/pgraph/gl/renderer.c:204-229; hw/xbox/nv2a/pgraph/gl/shaders.c:357,360."
+  }
+]

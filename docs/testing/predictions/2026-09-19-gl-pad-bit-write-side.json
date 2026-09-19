@@ -1,0 +1,27 @@
+{
+  "registered_utc": "2026-09-19T16:48:07Z",
+  "who": "lane.remote",
+  "issue": "158",
+  "prediction": "#158: GL gains the surface pad-bit write side that #59 landed on Vulkan only. psh.c's gate becomes the capability flag rather than ps->opts.vulkan; gl/renderer.c sets it from GL_ARB_blend_func_extended; gl/draw.c substitutes SRC1_ALPHA for the COLOUR factors when the stamp is live and forces the alpha half to ONE/ZERO/ADD. Measured on master, GL trailed Vulkan by 413,790 px across eleven captures where eight days earlier the two were byte-identical on ten of them. EXPECTED YIELD IS 9 OF 11, NOT 11, and that is registered rather than discovered: pgraph_glsl_surface_pad_alpha_mode() covers exactly four formats, so Surface_pitch::Swizzle (not a pad capture at all -- it is #87's layout question plus the guest/pgraph race) and Blend_surface::DstAlpha_XA_O1A7RGB8 (X1A7R8G8B8_O, whose seven alpha bits are REAL DATA and which both backends exclude by design) cannot move under this change and are not claimed. The nine expect-values below are Vulkan's current numbers on the same binary and disc, because the whole claim is that GL should now agree with Vulkan on this family. THE UNCOMFORTABLE OUTCOME, named in advance: if the nine land at Vulkan's values but Swizzle or DstAlpha_XA_O1A7RGB8 also moves, the change reached a path this model says it cannot, and the model is wrong even though the headline improved.",
+  "a_ref": "dcefe557",
+  "b_ref": "7ffcd2bc",
+  "must_not_move": [
+    "Color_zeta_overlap/*",
+    "Image_blit/*",
+    "Texture_format/*"
+  ],
+  "expect": {
+    "Blend_surface/1-DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/1-DstAlpha_X_ORGB8": 0,
+    "Blend_surface/DstAlpha_X_O1RGB5": 0,
+    "Blend_surface/DstAlpha_X_ORGB8": 0,
+    "Blend_surface/DstAlpha_X_ZRGB8": 0,
+    "Surface_format/Fmt_X8R8G8B8_Z8R8G8B8": 31,
+    "Surface_format/Fmt_X8R8G8B8_O8R8G8B8": 62,
+    "Surface_format/Fmt_X1R5G5B5_Z1R5G5B5": 15678,
+    "Surface_format/Fmt_X1R5G5B5_O1R5G5B5": 16483,
+    "Blend_surface/DstAlpha_XA_O1A7RGB8": 90112
+  },
+  "expect_counts": {},
+  "must_not_regress": []
+}
