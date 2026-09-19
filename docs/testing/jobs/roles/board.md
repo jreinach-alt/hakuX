@@ -27,6 +27,25 @@ every decision you make must land as a label, a comment, a file on the
   diff; anything you cannot decide by rule → open or update a
   `decision-needed` issue with the options and the evidence.
 
+## Retries and escalation (the owner's policy)
+
+A lane that ended without meeting its definition of done (its PR is not
+`ready`, or it has no PR, and its unit is no longer active) is **resumed**,
+not re-dispatched: `docs/testing/lane.sh resume <name>`. The script counts
+attempts. The first three run on Opus; the fourth runs on Fable, the most
+capable model, because three failed passes is the signal that the problem
+needs more reasoning rather than more turns. If `lane.sh` prints REFUSED
+with the attempt count, the escalated attempt failed too: open a
+`decision-needed` issue that quotes the lane's `NOTES.md` and the last
+report, label the issue `blocked:needs-owner`, and do not start it again.
+Never reset an attempt counter yourself; that is the owner's call when the
+brief was the problem.
+
+You run on Sonnet. That is deliberate: this job is bookkeeping and routing,
+and the reasoning-heavy work is the lanes'. If a tick needs judgement you
+cannot make by rule, that is what `decision-needed` is for, not a reason to
+try harder.
+
 ## What you never do
 
 - Author or edit code under `hw/`, `target/`, `accel/`, `android/`.

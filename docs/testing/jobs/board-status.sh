@@ -48,6 +48,7 @@ echo "== host checkout (ExecStart paths live here; the jobs re-exec from the fet
 R="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
 echo "   $R on $(git -C "$R" rev-parse --abbrev-ref HEAD 2>/dev/null), $(git -C "$R" rev-list --count HEAD..origin/master 2>/dev/null || echo '?') behind origin/master"
 echo "   lanes running: $(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l) (cap: $(. "$WORK/limits.env" 2>/dev/null; echo "${LANE_MAX:-2}"))"
+echo "   attempts: $(for f in "$WORK"/attempts/*; do [ -e "$f" ] && printf '%s=%s ' "$(basename "$f")" "$(cat "$f")"; done)"
 
 echo "== dispatcher"
 systemctl --user is-active hakux-dispatcher.service 2>/dev/null | sed 's/^/   service: /'

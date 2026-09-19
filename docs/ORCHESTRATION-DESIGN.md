@@ -530,6 +530,15 @@ model turn on something a script could do is spending the fleet's window.
   owner's own interactive sessions come out of the same pool, and an
   autonomous fleet that exhausts it on Thursday is a fleet that stops on
   Friday.
+- **Model by role, and escalation by attempt count** (owner's policy,
+  2026-09-19; `docs/testing/jobs/models.env`). Lanes run on Opus, because
+  this software needs the reasoning. A lane that has not cleared its issue
+  after three attempts is started a fourth time on Fable, the most capable
+  model; if that fails too, `lane.sh` refuses and the board opens a
+  `decision-needed` issue. The board tick and triage are bookkeeping and run
+  on Sonnet; audits run on Opus. The attempt counter lives on the host in
+  `~/hakux-work/attempts/<lane>` and every run's model is a column in the
+  run index.
 - **Accounting that matters.** `summarise_run.py` records turns, tokens and
   wall time per run into `logs/<job>/index.tsv`; the board job posts a
   weekly line on the pinned `harness` issue: runs, turns, issues closed,

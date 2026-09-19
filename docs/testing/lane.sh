@@ -5,7 +5,8 @@
 #
 #   lane.sh start <name> <brief.md> [issue-number]
 #   lane.sh stop  <name>            # stop the unit; keeps the worktree
-#   lane.sh resume <name>           # restart a stopped lane in its own worktree
+#   lane.sh resume <name>           # restart a stopped lane in its own worktree (counts as an attempt)
+#   lane.sh attempts | reset <name> # the per-lane attempt counter behind the escalation
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
 #
@@ -36,8 +37,30 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # without a commit; the board role file tells the job to stop dispatching
 # when this script refuses.
 LANE_MAX=2
+. "$JOBS/models.env"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
+
+# ATTEMPTS AND ESCALATION. Every start or resume of a lane is one attempt at
+# its issue, counted in $WORK/attempts/<name>. The first LANE_ESCALATE_AFTER
+# attempts run on MODEL_LANE; the next one runs on MODEL_LANE_ESCALATED, the
+# most capable model, because three failed passes on Opus is the signal that
+# the problem needs more reasoning, not more turns. After LANE_MAX_ATTEMPTS
+# the script refuses: the board opens a decision-needed issue instead of
+# spending a fifth session. `lane.sh attempts <name>` shows the count;
+# `lane.sh reset <name>` clears it when the brief itself was the problem.
+next_attempt() {   # prints the attempt number this start will be, and the model for it
+    local f="$WORK/attempts/$1" n
+    mkdir -p "$WORK/attempts"
+    n=$(( $(cat "$f" 2>/dev/null || echo 0) + 1 ))
+    if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
+        echo "REFUSED: lane $1 has had $(( n - 1 )) attempts (LANE_MAX_ATTEMPTS=$LANE_MAX_ATTEMPTS), the last on $MODEL_LANE_ESCALATED. Open a decision-needed issue; do not start it again." >&2
+        return 75
+    fi
+    if [ "$n" -gt "$LANE_ESCALATE_AFTER" ]; then MODEL="${HAKUX_MODEL:-$MODEL_LANE_ESCALATED}"; else MODEL="${HAKUX_MODEL:-$MODEL_LANE}"; fi
+    echo "$n" > "$f"
+    ATTEMPT=$n
+}
 
 case "$cmd" in
   start)
@@ -60,6 +83,7 @@ case "$cmd" in
     else
         git -C "$REPO" worktree add --quiet "$wt" -b "$branch" FETCH_HEAD || exit 5
     fi
+    next_attempt "$name" || exit 75
     cp "$brief" "$WORK/briefs/$name.md"
     # local.properties is gitignored and the Android build needs it.
     [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
@@ -70,8 +94,8 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
-    echo "started hakux-lane-$name in $wt on $branch; log $log"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+    echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
   stop)  systemctl --user stop "hakux-lane-${name:?name}" ;;
@@ -87,6 +111,7 @@ case "$cmd" in
         echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env)." >&2
         exit 75
     fi
+    next_attempt "$name" || exit 75
     log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
     systemd-run --user --unit "hakux-lane-$name" --collect \
         --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
@@ -94,17 +119,23 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree: read NOTES.md and git log first, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
-    echo "resumed hakux-lane-$name in $wt; log $log"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+    echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
     wt="$WORK/wt/${name:?name}"
     systemctl --user stop "hakux-lane-$name" 2>/dev/null
     git -C "$REPO" worktree remove --force "$wt" && echo "removed $wt"
     ;;
+  attempts)
+    for f in "$WORK"/attempts/*; do [ -e "$f" ] || { echo "none"; break; }; printf '%-16s %s\n' "$(basename "$f")" "$(cat "$f")"; done
+    ;;
+  reset)
+    rm -f "$WORK/attempts/${name:?name}" && echo "attempts for $name reset"
+    ;;
   list)
     git -C "$REPO" worktree list
     systemctl --user list-units 'hakux-lane-*' --no-legend 2>/dev/null
     ;;
-  *) sed -n '3,10p' "$0" ;;
+  *) sed -n '3,11p' "$0" ;;
 esac
