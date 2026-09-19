@@ -477,3 +477,102 @@ Nothing reads it; `cmd_check()` compares `symbols`, `sites` and `suites`, and
 the gate reads `tests_commit`, which is unchanged. It is churn, and the field
 wants to be relative or dropped rather than an absolute path from whichever
 machine last built it. Not this PR's to change.
+
+## Audit pass 2 on PR #162: both MEDIUMs were in the instruments, not the renderer
+
+Pass 2 closed all six pass-1 scenarios and did not reopen `hw/`. Its two new
+findings (N1, N2) were both in tooling added *after* pass 1 read the diff, and
+both were the same defect wearing different clothes: **an instrument that
+states a guarantee in prose and does not implement it.** That is the failure
+mode this repository has paid for most often, so the remediation is not just
+the fix -- it is a fixture per invariant, and a mutant per fixture.
+
+### N1 -- `gles_token_check.py` hid the `#else` arm of every conditional it did not understand
+
+The frame stack inverted `live` on `#else` even for a frame whose condition was
+unknown-and-assumed-live, so that arm was marked dead and never scanned. The
+docstring promised the exact opposite in as many words: it "can report a line
+some other guard excludes, **never hide one**."
+
+Fixed by recording per frame whether `__ANDROID__` decided it and inverting on
+`#else` only for those; an unknown condition now leaves both arms live.
+
+Verified rather than asserted:
+
+* `--selftest` is **9/9**, and against a scratch copy with the one-line fix
+  removed the N1 fixture **FAILS and the other eight are unmoved** -- so it
+  catches that defect and is specific to it.
+* The two lines pass 2 named as invisible are now scanned: `gl/debug.c:67-68`
+  (the `glEnable(GL_DEBUG_OUTPUT)` arm of `#if defined(__APPLE__)`) and
+  `gl/debug.h:55-61` (the macro arm of `#if DEBUG_NV2A_GL`). Both are what an
+  Android build compiles. 7,341 non-blank lines are visible on the default
+  target now.
+* The check has not lost power: `gl/draw.c` at `7ffcd2bc` still reports
+  **:151 and :153**, the two lines by number that the arm64-v8a compiler
+  reported, and `hw/xbox/nv2a/pgraph/gl` is still `13 files scanned, 0
+  findings` -- which is the regression guard on a fix that makes *more* code
+  visible.
+
+**The `#elif` half had no failing case, and now does.** Pass 2's remediation
+note asked for `#elif` to stop the following `#else` inverting a value that was
+never derived; the fix does that, but nothing exercised it, and an invariant
+with no failing case has not been tested. Fixture
+`else-after-elif-on-an-android-frame` added. It expects **1 finding, which is a
+false positive** -- on Android the `#ifndef` arm is skipped and the `#elif`
+chain is compiled, so that `#else` really is dead there. Expecting it anyway is
+the contract's chosen direction stated as a test rather than as prose. Against
+a mutant that drops the `decided = False` on `#elif`, that fixture alone goes
+red.
+
+### N2 -- `pgraph_capture_run.sh` named the mislabelled-renderer hazard and then did not fail on it
+
+It checked that *some* renderer was reported and never compared it to the one
+requested, so a run that asked for OPENGL and came up on Vulkan printed one
+informational line, exited 0, and extracted captures under the OPENGL tag.
+Worth fixing on this lane rather than later because **the instrument's
+silent-failure mode and this lane's headline have the same shape**: "GL is now
+byte-identical to Vulkan" is both the result and what a both-on-Vulkan sweep
+would manufacture. The instrument has to be the thing that refuses.
+
+The fix is six lines and was already on the branch. What was missing is that it
+had been proven **once, in a commit message** -- and a commit message is not a
+fixture. `docs/testing/pgraph_capture_run_selftest.sh` now holds three cases
+with every external part stubbed (no emulator, no firmware, no disc, no X
+server), so it runs on a cloud container in a second:
+
+| case | stub reports | RENDERER | must |
+|---|---|---|---|
+| 1 | Vulkan | OPENGL | die, naming both renderers, before extracting |
+| 2 | OpenGL | OPENGL | **not** fire, and reach the extractor |
+| 3 | nothing | VULKAN | hit the pre-existing never-reported-a-renderer die |
+
+13 assertions, all pass. They are a mutant/control set on purpose: case 1 needs
+the comparison to fire and case 2 needs it not to, so a blanket `die` -- the
+cheapest way to pass case 1 -- fails case 2. Confirmed by deleting the six
+lines from a scratch copy and pointing the fixtures at it with `RUNNER=`:
+**case 1's three message assertions go red, cases 2 and 3 unmoved.**
+
+Every assertion is on **words in the message, not the exit status**, because
+the runner exits non-zero for a dozen other reasons and an exit code cannot
+say which refusal happened -- or whether any did.
+
+### Two things writing those fixtures taught, both worth not repeating
+
+1. **The harness reproduced the runner's own `cd` bug against itself.** The
+   stub directory went on `PATH` as a relative path, and the runner `cd`s into
+   the binary's directory before launching, so `xvfb-run` stopped resolving.
+   The runner absolutises `BIN` and `ISO` at :56 for exactly this reason; the
+   fixtures now absolutise `$T` for exactly this reason too.
+2. **Case 3 was green for the wrong reason first.** With `xvfb-run` missing,
+   no renderer was reported, so "the emulator never reported a renderer" fired
+   -- the assertion passed while nothing under test had run. Every case now
+   also asserts the stub itself ran (`nv2a: init` in the log). A refusal you
+   cannot distinguish from a broken harness is not evidence.
+
+### Not done, deliberately
+
+`gles_token_check.py` is still **not wired into `preflight.sh`**. That is part
+of why N1 is MEDIUM and not HIGH -- the Android CI job is the gate of record
+and runs on every PR -- and `preflight.sh` is not this lane's file. A later
+lane that owns it should add the call; the script's `--selftest` is there to
+make that safe.

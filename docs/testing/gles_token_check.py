@@ -155,6 +155,22 @@ static GLenum b(void) { return GL_SRC1_ALPHA; }
 static GLenum b(void) { return GL_SRC1_ALPHA; }
 #endif
 """, 1),
+    # The #elif half of N1, which the finding named and the fix handles but
+    # nothing exercised. An __ANDROID__ frame is `decided`; the #elif turns it
+    # undecided, and the #else after it must therefore NOT invert a value that
+    # no longer means anything. Expecting 1 here is expecting a FALSE POSITIVE
+    # -- on Android the #ifndef arm is skipped and the #elif chain is what gets
+    # compiled, so this #else really is dead there. That is the contract's
+    # chosen direction: report a line another guard excludes, never hide one.
+    ('else-after-elif-on-an-android-frame', """
+#ifndef __ANDROID__
+static int a(void) { return 0; }
+#elif defined(SOME_OTHER_THING)
+static int b(void) { return 0; }
+#else
+static GLenum c(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 1),
     ('excluded-by-ifndef-android', """
 #ifndef __ANDROID__
 static GLenum b(void) { return GL_SRC1_ALPHA; }
