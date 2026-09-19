@@ -334,6 +334,11 @@ files = [
 # RELEASED AT WAVE 97 by retiring lane.tier81fix: its two issues are closed and the
 # files were claimed by a lane with no agent. #90's second contributor is unimplemented
 # and lives in translate-all.c -- see [retired.tier81fix].
+#
+# NAMED OUT AT WAVE 102: glsl/geom.c, granted to lane.linecap13 for #13's
+# cap/join residual (job.board). It had sat here unreclaimed since lane.lineext
+# retired at wave ~32; check_territory.py caught the duplicate the moment the
+# new row was pushed.
     "accel/tcg/cpu-exec.c",
     "accel/tcg/translate-all.c",
 "accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
@@ -344,7 +349,6 @@ files = [
          "hw/xbox/nv2a/pfifo.c",
          "hw/xbox/nv2a/pgraph/profile.c",
          "hw/xbox/nv2a/pgraph/vk/shaders.c",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c",
          "hw/xbox/mcpx/**",
          "hw/xbox/nv2a/nv2a.c",
          "hw/xbox/nv2a/nv2a_int.h",
