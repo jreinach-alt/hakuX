@@ -27,8 +27,10 @@ vertex, which is exactly where the residual was.
   --anatomy     every residual pixel in edge coordinates, with the distance
                 to each candidate boundary -- how the rule was read
   --rivals      candidate cap rules scored on whole-capture coverage
-  --controls    what the instrument cannot see: how many pixels each rule can
-                possibly touch, and the tie population that picks the phase
+  --controls    what the instrument cannot see: how many pixels the SHIPPED
+                rule can possibly touch, and the two tie populations
+  --depth       the cut vertex's synthesised depth against the parallelogram
+                it replaces -- the one quantity no golden here reads
 """
 import argparse
 import os
@@ -73,9 +75,9 @@ def edge_mask(e, w, cap="perp", clip=None, tie="low_open", pen=None,
         clo, chi = min(m0, m1) - clip * w / 2, max(m0, m1) + clip * w / 2
     if pen is not None:
         plo = int(np.floor(min(m0, m1) - pen * w / 2 + lep.EPS))
-        if tie == "floor1":                 # the measured rule
+        if tie == "floor1":                 # floor + 1; the nearest rival
             phi = int(np.floor(max(m0, m1) + pen * w / 2 + lep.EPS)) + 1
-        elif tie == "ceil":
+        elif tie == "ceil":                 # THE SHIPPED RULE (geom.c)
             phi = int(np.ceil(max(m0, m1) + pen * w / 2 - lep.EPS))
         else:                               # symmetric floor
             phi = int(np.floor(max(m0, m1) + pen * w / 2 + lep.EPS))
@@ -424,6 +426,9 @@ def main():
     ap.add_argument("--rivals", action="store_true")
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--corners", action="store_true")
+    ap.add_argument("--depth", action="store_true",
+                    help="check the cut vertex's synthesised depth against "
+                         "the parallelogram it replaces; no goldens needed")
     ap.add_argument("--shader", action="store_true",
                     help="rasterise emit_line()'s own polygon and compare it "
                          "with the model, pixel for pixel")
@@ -434,6 +439,9 @@ def main():
     ap.add_argument("--only", default=None,
                     help="comma-separated subset of the rival names")
     a = ap.parse_args()
+
+    if a.depth:
+        sys.exit(depth_check())
 
     if a.anatomy:
         kw = VARIANTS[a.only] if a.only else None
@@ -476,22 +484,40 @@ def main():
 def controls(golden_dir, lo, hi):
     """What the instrument cannot see.
 
+    IT MUST MEASURE THE SHIPPED RULE, `pen=1.0, tie="ceil"`.  It used to
+    measure `clip=1.0` -- the centre-sampled band, listed in VARIANTS as
+    "pen, centre band" and REJECTED at 645 px against the shipped rule's 102
+    -- so both figures below described a rule nobody adopted (audit finding
+    M3).
+
     1. How many pixels the clip can touch at all: if that population were
        empty the goldens could not select it, and a score that did not move
        would say nothing.
     2. Of those, how many the goldens actually agree with -- so a rule that
        merely removes disputed pixels is told apart from one that removes the
        right ones.
-    3. The tie population: clip boundaries landing exactly on a pixel centre,
-       which is what separates low-open from closed.
+    3. The tie population, and there are two of them, for two different
+       questions:
+
+         integer   m_min - w/2 or m_max + w/2 landing on a whole pixel INDEX.
+                   This is what separates the shipped outward rounding from
+                   its nearest rival tie="floor1": ceil(v) and floor(v) + 1
+                   differ by one exactly when v is an integer.  If this count
+                   is ZERO the goldens do not select the outward rounding at
+                   all, and saying so is the point of running this.
+         centre    the same boundaries landing on a pixel CENTRE, which is
+                   what separated low-open from closed for the rejected
+                   centre-sampled band.  Kept so the rejected rival's
+                   population can still be read, and labelled as its own.
     """
-    touch = agree = wrong = ties = 0
+    touch = agree = wrong = 0
+    ties_int = ties_centre = bounds = 0
     for test, w, g in lp.captures(golden_dir, lo, hi):
         if test in lep.VOID:
             continue
         lit, valid = lep.ink(g)
         a_ = union(w, cap="perp")
-        b_ = union(w, cap="perp", clip=1.0)
+        b_ = union(w, cap="perp", pen=1.0, tie="ceil")
         removed = a_ & ~b_ & valid
         touch += int(removed.sum())
         agree += int((removed & ~lit).sum())
@@ -500,14 +526,87 @@ def controls(golden_dir, lo, hi):
             ax, ay, bx, by, dx, dy = geo(e)
             m0, m1 = (ay, by) if abs(dx) >= abs(dy) else (ax, bx)
             for v in (min(m0, m1) - w / 2, max(m0, m1) + w / 2):
+                bounds += 1
+                if abs(v - np.round(v)) < 1e-9:
+                    ties_int += 1
                 if abs(v - np.floor(v) - 0.5) < 1e-9:
-                    ties += 1
-    print(f"pixels the w/2 clip removes from the perpendicular footprint: "
-          f"{touch}")
+                    ties_centre += 1
+    print(f"pixels the SHIPPED cap rule (pen=1.0, tie=ceil) removes from the "
+          f"perpendicular footprint: {touch}")
     print(f"  of those, golden-dark (the clip was right):   {agree}")
     print(f"  of those, golden-lit  (the clip was wrong):   {wrong}")
-    print(f"clip boundaries landing exactly on a pixel centre "
-          f"(the tie population that separates low-open from closed): {ties}")
+    print(f"\n{bounds} cap boundaries (m_min - w/2, m_max + w/2) over the same "
+          f"captures")
+    print(f"  landing on a whole pixel INDEX -- the population that separates "
+          f"tie=ceil from tie=floor1: {ties_int}")
+    if ties_int == 0:
+        print("    ZERO: these goldens CANNOT distinguish the shipped outward "
+              "rounding\n    from floor + 1.  The rule is selected by the "
+              "low-side corners and by\n    --rivals' 102 vs 115, not by this "
+              "population.")
+    print(f"  landing on a pixel CENTRE -- the population that separated "
+          f"low-open from\n    closed for the REJECTED centre-sampled band: "
+          f"{ties_centre}")
+
+
+def depth_check():
+    """H1's check: does the cut vertex carry the depth the parallelogram had?
+
+    No goldens and no device.  `line_clip_lerp()` in glsl/geom.c synthesises
+    gl_Position for a vertex the cap clip cuts on a long edge, and NOTHING
+    else in this campaign reads depth -- the model above scores ink masks, so
+    --rivals, --shader and --vs-goldens are all blind to a wrong z.
+
+    The ground truth is not this shader: window-space depth is what the
+    rasteriser interpolates LINEARLY across a primitive, so the depth at
+    screen fraction t of the unclipped parallelogram is mix(za/wa, zb/wb, t)
+    and the cut vertex has to reproduce exactly that.
+
+    `shipped` transliterates what geom.c emits today; `perspective` is the
+    pre-remediation expression, kept as the mutant that must trip this check.
+    A check that passes on both would be testing nothing.
+    """
+    def shipped(za, wa, zb, wb, t):
+        ia, ib = 1.0 / wa, 1.0 / wb
+        w = 1.0 / ((1.0 - t) * ia + t * ib)
+        z = ((1.0 - t) * (za * ia) + t * (zb * ib)) * w
+        return z / w
+
+    def perspective(za, wa, zb, wb, t):       # the mutant: audit H1's code
+        ia, ib = 1.0 / wa, 1.0 / wb
+        w = 1.0 / ((1.0 - t) * ia + t * ib)
+        z = ((1.0 - t) * (za * ia * ia) + t * (zb * ib * ib)) * w * w
+        return z / w
+
+    def truth(za, wa, zb, wb, t):             # linear in SCREEN space
+        return (1.0 - t) * (za / wa) + t * (zb / wb)
+
+    cases = []
+    for wa, wb in ((1.0, 1.0), (1.0, 4.0), (4.0, 1.0), (0.5, 7.5),
+                   (2.0, 2.0000001)):
+        for zn_a, zn_b in ((0.2, 0.8), (0.0, 1.0), (0.9, 0.1)):
+            for t in (0.1, 0.25, 0.5, 0.75, 0.9):
+                cases.append((zn_a * wa, wa, zn_b * wb, wb, t))
+
+    print("the cases the mutant gets wrong (|mutant - truth| > 1e-6):")
+    print("%-28s%10s%10s%10s" % ("case", "truth", "shipped", "mutant"))
+    worst_ship = worst_mut = 0.0
+    for c in cases:
+        tr, sh, mu = truth(*c), shipped(*c), perspective(*c)
+        worst_ship = max(worst_ship, abs(sh - tr))
+        worst_mut = max(worst_mut, abs(mu - tr))
+        if abs(mu - tr) > 1e-6:
+            print("wa=%-7.4g wb=%-7.4g t=%-5.2f%10.4f%10.4f%10.4f"
+                  % (c[1], c[3], c[4], tr, sh, mu))
+    print("\n%d cases.  shipped worst |error| %.3g, mutant worst |error| %.3g"
+          % (len(cases), worst_ship, worst_mut))
+    ok = worst_ship <= 1e-12
+    trips = worst_mut > 1e-3
+    print("shipped expression reproduces the parallelogram's depth: %s"
+          % ("PASS" if ok else "FAIL"))
+    print("the pre-remediation expression trips this check: %s"
+          % ("PASS" if trips else "FAIL -- the check discriminates nothing"))
+    return 0 if (ok and trips) else 1
 
 
 if __name__ == "__main__":
