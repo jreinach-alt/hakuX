@@ -174,26 +174,41 @@ UNBRIEFED path is quiet either way. The change adds no noise to a live board.
 
 ## The self-test, and what it is worth
 
-`docs/testing/jobs/selftest.d/66-deliveries.sh`, 38 checks, and the whole
+`docs/testing/jobs/selftest.d/66-deliveries.sh`, 39 checks, and the whole
 fragment can be pointed at another copy of the scripts with
 `SELFTEST_DELIVER_SRC`. Full run: **347 passed, 0 failed** (313 before this
 lane).
 
 Falsified against `origin/master` (extract `comment_sweep.sh`,
 `watch_remote_lane.sh`, `check_coverage.py`, `board_files.py` into a tree and
-set that variable): **29 of 38 fail**, for six independent reasons — no
+set that variable): **30 of 39 fail**, for six independent reasons — no
 `deliver.sh` at all; `check_coverage.py` reading a file mtime; the sweep
 enumerating issues so PR #45's comment is invisible; the sweep having no
 destination; no length cap on what it posts; the watcher still looping. The 9
 that pass are the positive control, the both-directions pins, and four that are
 vacuous against code lacking the feature.
 
-Falsified again per-invariant, because "26 reds" can be one reason counted
-twice: a **mutant tree** (symlinks to the real files, one copy with
-`if len(text) <= cap:` forced to `if True:`) fails exactly the three truncation
-checks and nothing else. Built as symlinks and never by editing the real path,
-which is how a lane lost a session to a swap-by-redirect that left the old code
-in the tree.
+Falsified again **per-invariant**, because "29 reds" can be one reason counted
+many times. Three mutant trees, each symlinks to the real files with exactly
+one file replaced — never by editing the real path, which is how a lane lost a
+session to a swap-by-redirect that left the old code in the tree:
+
+| mutant | trips |
+|---|---|
+| the length cap forced off | the 3 truncation checks, nothing else |
+| `scan` takes the first match instead of the max | the 2 newest-delivery checks |
+| the sweep's table trusts the feed order | the 1 newest-delivery-in-the-table check |
+
+The second and third are worth spelling out, because the first attempt at them
+was **tautological**. `scan` originally took the first matching row, on the
+grounds that the feed is newest-first — which makes the answer depend on a
+`sort=` parameter in a URL two functions away. Both now take the max by
+timestamp. The fixture that catches either has to be built for it: the feed
+carries **three** deliveries to `lane.remote` — 08:00 on #60, 09:00 on #62,
+08:30 on #71, **in that order** — so the newest is neither the first row nor
+the last. A reader that takes the first match records #60; one that lets the
+last row overwrite records #71; only one that compares timestamps records #62.
+With the older row merely appended, both mutants passed.
 
 Two traps it is built around:
 

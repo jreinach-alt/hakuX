@@ -69,6 +69,18 @@ REPORT_RE='^\[lane\.([A-Za-z0-9_.-]+)\]'
 
 usage() { sed -n '3,9p' "$0" | sed 's/^# \?//'; exit 2; }
 die() { echo "deliver: $*" >&2; exit 1; }
+# ONE PLACE THAT DECIDES WHAT A LANE NAME IS, and it is the same character set
+# the two markers above match. A name is pasted into a jq program by `inbox`
+# and into a path by the cache, so an unchecked one is both a broken filter and
+# a directory escape. Lane names here are `lane/<name>` branch components; if a
+# name ever needs more than this, widen the markers with it or they stop
+# agreeing.
+lane_ok() {
+    case "${1:-}" in
+        ""|*[!A-Za-z0-9_.-]*) die "not a lane name: '${1:-}'" ;;
+        .|..) die "not a lane name: '$1'" ;;
+    esac
+}
 need_gh() {
     command -v gh >/dev/null 2>&1 || die "no gh on PATH"
     timeout 30 gh auth status >/dev/null 2>&1 || die "gh is not authenticated"
@@ -140,6 +152,8 @@ PY
 cmd_send() {
     local lane="${1:-}" thread="${2:-}"; shift 2 || usage
     [ -n "$lane" ] && [ -n "$thread" ] || usage
+    lane_ok "$lane"
+    case "$thread" in ""|*[!0-9]*) die "not an issue or PR number: '$thread'" ;; esac
     local text="" file=""
     while [ $# -gt 0 ]; do
         case "$1" in
@@ -216,19 +230,43 @@ cmd_scan() {
     # read as a clean scan -- the shape comment_sweep.sh's own header calls the
     # worst outcome there is.
     [ -n "$rows" ] || { echo "deliver: scan found no comments since $since (API unreachable, or the repository really is quiet)" >&2; return 3; }
+    # ONE MERGE PER (lane, kind), AND THE MAX IS TAKEN HERE, NOT BY THE FEED'S
+    # ORDER. Each merge is a python process, and a thirty-day cold scan is
+    # hundreds of rows against at most two per lane, so the cost of `scan`
+    # should be set by how many LANES there are and not by how talkative the
+    # repository was.
+    #
+    # The obvious way to get that is "the feed is newest-first, so take the
+    # first match and skip the rest" -- and it makes the answer depend on a
+    # `sort=` parameter in a URL two functions away, which is the kind of
+    # coupling that survives right up until somebody edits the URL. Comparing
+    # ISO-8601 UTC strings costs nothing and is correct whatever order the rows
+    # arrive in; that is the reason this project writes timestamps that way.
     local n=0
+    declare -A newest=() at=()
     while IFS=$'\t' read -r iso thread url first; do
         [ -n "$iso" ] || continue
-        local lane=""
+        local lane="" kind="" key=""
         if [[ "$first" =~ $DELIVER_RE ]]; then
-            lane="${BASH_REMATCH[1]}"
-            cache_merge "$lane" delivered "$iso" "$thread" "$url" && n=$((n+1))
+            lane="${BASH_REMATCH[1]}"; kind=delivered
         elif [[ "$first" =~ $REPORT_RE ]]; then
-            lane="${BASH_REMATCH[1]}"
-            cache_merge "$lane" reported "$iso" "$thread" "$url" && n=$((n+1))
+            lane="${BASH_REMATCH[1]}"; kind=reported
+        else
+            continue
+        fi
+        key="$kind:$lane"
+        if [[ -z "${newest[$key]:-}" || "$iso" > "${newest[$key]}" ]]; then
+            newest[$key]="$iso"
+            at[$key]="$thread	$url"
         fi
     done <<< "$rows"
-    echo "scanned since $since: $n delivery/report comment(s) folded into $CACHE"
+    local key kind lane thread url
+    for key in "${!newest[@]}"; do
+        kind="${key%%:*}"; lane="${key#*:}"
+        IFS=$'\t' read -r thread url <<< "${at[$key]}"
+        cache_merge "$lane" "$kind" "${newest[$key]}" "$thread" "$url" && n=$((n+1))
+    done
+    echo "scanned since $since: $n newest delivery/report comment(s) folded into $CACHE"
 }
 
 # ----------------------------------------------------------------- inbox
@@ -238,6 +276,7 @@ cmd_scan() {
 cmd_inbox() {
     local lane="${1:-}"; shift || true
     [ -n "$lane" ] || usage
+    lane_ok "$lane"
     local since=""
     while [ $# -gt 0 ]; do
         case "$1" in --since) since="${2:-}"; shift 2 ;; *) usage ;; esac
@@ -257,6 +296,7 @@ cmd_inbox() {
 # "briefed a long time ago" -- the two must not be confused by a consumer.
 cmd_last() {
     local lane="${1:-}"; [ -n "$lane" ] || usage
+    lane_ok "$lane"
     local p; p="$(cache_path "$lane")"
     [ -f "$p" ] || { echo "no delivery on record for lane.$lane" >&2; return 3; }
     python3 - "$p" <<'PY'

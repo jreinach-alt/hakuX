@@ -142,9 +142,16 @@ by_thread = collections.OrderedDict()
 for r in sorted(rest, key=lambda r: r[0]):
     by_thread.setdefault(r[1], []).append(r)
 
-deliveries = {m.group(1): r for r in rows for m in [DELIVER.match(r[4])] if m}
-reports = {}
+# Both dicts keep the NEWEST per lane, and both sort first rather than trusting
+# the feed's order: the URL above asks for newest-first, and an answer that
+# depends on a `sort=` parameter two functions away is wrong the day somebody
+# edits the URL. Sorting ascending and letting the later row win is the same
+# rule in both directions, which is the point.
+deliveries, reports = {}, {}
 for r in sorted(rows, key=lambda r: r[0]):
+    m = DELIVER.match(r[4])
+    if m:
+        deliveries[m.group(1)] = r
     m = LANE.match(r[4])
     if m:
         reports[m.group(1)] = r

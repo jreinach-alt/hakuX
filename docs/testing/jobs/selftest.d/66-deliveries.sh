@@ -42,9 +42,15 @@ export DELIVER_GH_LOG="$DD/gh.log"; : > "$DELIVER_GH_LOG"
 # open issues that could only ever see one of the two.
 cat > "$DD/feed.json" <<'EOF'
 [
+ {"created_at":"2026-09-19T08:00:00Z","issue_url":"https://api.github.com/repos/example/hakux/issues/60",
+  "html_url":"https://github.com/example/hakux/issues/60#issuecomment-0","user":{"login":"owner"},
+  "body":"[job.deliver] lane.remote\n\nAn EARLIER delivery to the same lane, on a different thread, placed FIRST on purpose. This array is deliberately NOT in the order the live endpoint returns: the URL asks for newest-first, and if somebody drops that parameter GitHub's default for this endpoint is oldest-first. A scan that took the first match it saw would record this one and name #60."},
  {"created_at":"2026-09-19T09:00:00Z","issue_url":"https://api.github.com/repos/example/hakux/issues/62",
   "html_url":"https://github.com/example/hakux/issues/62#issuecomment-1","user":{"login":"owner"},
   "body":"[job.deliver] lane.remote\n\nTake #62 next; the blocker is refuted."},
+ {"created_at":"2026-09-19T08:30:00Z","issue_url":"https://api.github.com/repos/example/hakux/issues/71",
+  "html_url":"https://github.com/example/hakux/issues/71#issuecomment-0b","user":{"login":"owner"},
+  "body":"[job.deliver] lane.remote\n\nA third delivery to the same lane, older than #62's and placed AFTER it. THE THREE ROWS ARE THE FIXTURE: one older BEFORE the newest and one older AFTER it, so the newest is neither first nor last. A reader that takes the first match it sees records #60; one that lets the last row overwrite records #71; only one that compares the timestamps records #62. Both of those shapes existed in this change and each is now a mutant that trips."},
  {"created_at":"2026-09-19T10:00:00Z","issue_url":"https://api.github.com/repos/example/hakux/issues/62",
   "html_url":"https://github.com/example/hakux/issues/62#issuecomment-2","user":{"login":"bot"},
   "body":"[lane.remote] triaged in full on this thread; needs a direction."},
@@ -130,7 +136,12 @@ check "deliver.sh scan folds the feed into the delivery cache" \
 jget() { python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$1" "$2" 2>/dev/null; }
 check "the recorded brief time is GITHUB'S created_at for the delivery comment" \
     test "$(jget "$DDISP/delivery-cache/remote.json" delivered)" = "2026-09-19T09:00:00Z"
-check "...and it remembers which thread it was routed on" \
+# The feed carries TWO deliveries to this lane, 09:00 on #62 and 08:00 on #60,
+# with the older one placed last. Naming #62 is the assertion that the scan
+# compares timestamps rather than trusting the `sort=` parameter in a URL two
+# functions away -- a coupling that survives right up until somebody edits the
+# URL, and that nothing else here would notice.
+check "...and it remembers which thread the NEWEST one was routed on, not the last row read" \
     test "$(jget "$DDISP/delivery-cache/remote.json" delivered_thread)" = "62"
 check "the lane's own report is recorded separately from what was routed to it" \
     test "$(jget "$DDISP/delivery-cache/remote.json" reported)" = "2026-09-19T10:00:00Z"
@@ -244,6 +255,10 @@ check "a job's own output is filtered, and the report SAYS how many it dropped" 
     grep -qE "[0-9]+ written by a job" "$rep"
 check "the report carries the routed-in/reported-out table the watcher was for" \
     grep -q "last report from it" "$rep"
+# Same order-independence as the scan, in the other renderer: the feed holds two
+# deliveries to lane.remote and the older one is first.
+check "...naming the NEWEST delivery to a lane, not whichever row came last" \
+    grep -qE '^\| .lane.remote. \| \[2026-09-19T09:00:00Z\]' "$rep"
 # THE DESTINATION. A sweep that writes a file nobody opens is the defect, not
 # the fix: this one ends at the single `harness-status` comment the owner reads
 # from a phone.
