@@ -732,36 +732,172 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  * readback half of #48 was never wired up, so changing it there would be a
  * half-change on a renderer this arm does not measure.
  *
- * KEYED ON THE BINDING, NOT THE REGISTER, AND THAT IS THE WHOLE POINT.
+ * NARROWED TO THE SHAPE AT WAVE 93, #89. A NARROWING OF THIS STAMP AND NOT A
+ * REVERT OF IT: per the paragraph above, the clear ALWAYS wrote 1.0 before
+ * #59, so a revert restores a different defect.
  *
- * This stamp exists to agree with the sample-side override in
- * vk/texture.c (surface_sampled_pad_alpha), which reads
- * surface->host_fmt.sampled_pad_alpha. Keying this side on
- * pg->surface_shape.color_format -- the LIVE guest format -- made the two
- * sides answer from different state, and they can differ: A8R8G8B8,
- * X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one VkFormat, so
- * check_surface_compatibility() reuses one binding across a change between
- * them. drawn_format and host_fmt are assigned together from the same
- * `target` on BOTH the create path (surface.c:3120/3123) and the
- * compatible-reuse path (3340/3342), so taking this side from drawn_format
- * makes the two sides derive from one color_format value by construction
- * rather than by the register happening to be current.
+ * WHAT IT USED TO READ, AND WHY. `pgraph_vk_surface_drawn_format(
+ * r->color_binding)` -- what the surface was LAST DRAWN WITH -- so that this
+ * side and the sample-side override in vk/texture.c
+ * (surface_sampled_pad_alpha, reading surface->host_fmt.sampled_pad_alpha)
+ * could not answer from different state. They can differ in principle:
+ * A8R8G8B8, X8R8G8B8_{Z,O}8R8G8B8 and X1A7R8G8B8_{Z,O} all map to one
+ * VkFormat, so check_surface_compatibility() reuses one binding across a
+ * change between them.
  *
- * Before the #59 stamp this could not bite: the clear always wrote 1.0, so
- * only the sampler had an opinion and there was nothing to disagree with.
+ * THE INVARIANT THAT DEFENCE PROTECTS IS NOW MAINTAINED AT ITS SOURCE, which
+ * is what makes this narrowing safe rather than a trade. Read against the tip
+ * rather than against the state #59 was written in:
  *
- * Every caller already guards on r->color_binding; the register fallback is
- * for the no-binding case only, where nothing is sampled either.
+ *   EVERY surface.c CITATION BELOW IS BY SYMBOL, NOT BY LINE. The by-line
+ *   forms this block used to carry (:3500, :3215, :3675-3681, :1931, :121-124)
+ *   were all correct when written and all wrong within a day, because this
+ *   lane's own probes moved surface.c by about eighty lines. That is audit
+ *   pass 1's L4 -- the same drift, five more times, in the block that fixed it
+ *   once.
+ *
+ *   - update_surface_part()'s compatible-reuse path (the `is_compatible`
+ *     branch) assigns `surface->drawn_format = target.drawn_format` AND
+ *     `surface->host_fmt = target.host_fmt` together, both from the live
+ *     target -- so a reused binding no longer carries the format that created
+ *     it, and the SAMPLE side tracks the live format through the same
+ *     assignment. That refresh is part of #59's own landed work.
+ *   - target.drawn_format IS pg->surface_shape.color_format
+ *     (populate_surface_binding_target_sized(), surface.c).
+ *   - a colour-format change reaches that refresh on the next
+ *     pgraph_vk_surface_update(upload=true). SET_SURFACE_FORMAT does not set
+ *     surface_color.buffer_dirty for a format-only change (pgraph.c:2461-2524),
+ *     but framebuffer_dirty() compares the whole SurfaceShape, colour format
+ *     included, and pgraph_vk_surface_update() sets BOTH buffer_dirty flags
+ *     when it differs; unbind_surface() NULLs the binding, and the
+ *     `!current_binding` term in update_surface_part() re-resolves it.
+ *   - pgraph_vk_clear_surface() calls that surface_update before every clear
+ *     -- its sole `pgraph_vk_surface_update(d, true, write_color, write_zeta)`
+ *     -- and this function is reached from nowhere else. Cited by callee and
+ *     not by line: the number was :6751 when this was written, was already
+ *     :6757 by audit pass 1, and moves again with every edit above it.
+ *
+ * So the two expressions agree by construction in every state the suite can
+ * reach, and THIS NARROWING IS PREDICTED TO BE INERT -- predicted, not hoped:
+ * see docs/testing/predictions/issue89-clear-pad-alpha-shape.json, whose
+ * must_not_move names Color_mask_blend and all 32 Blend_surface captures for
+ * exactly that reason.
+ *
+ * THE WORLD IN WHICH THAT LEG FAILS, named before the arm runs:
+ * framebuffer_dirty() returns false on a CHANGED shape when
+ * `!color_format && !zeta_format` (its early return, surface.c). In that one
+ * state a
+ * colour-format change is not propagated, the binding keeps the previous
+ * format, and the two expressions diverge. The hole is framebuffer_dirty()'s
+ * -- i.e. #92's -- and is deliberately not closed here: that function is
+ * duplicated verbatim in gl/surface.c:997 and editing it moves surface
+ * identity on BOTH renderers, which is #55 and #60's ground.
+ *
+ * WHY THE SHAPE IS THE RIGHT SOURCE WHERE THEY DO DIFFER. Hardware stamps the
+ * pad constant of the format in the surface format register AT THE TIME OF
+ * THE CLEAR, which is the shape. drawn_format is a host-side field that
+ * tracks that register; taking the decision from the tracker rather than the
+ * tracked is what made this site look like #89's mechanism. It is not:
+ * #89's arms D, E and F each put one Blend surface test of one pad-alpha
+ * class -- including the _O format, the only shape that reaches
+ * rgba[3] = 1.0f -- ahead of the suite, and all three read 0. That mechanism
+ * is withdrawn on the issue; this change is a correctness narrowing, NOT a
+ * fix for the 141,125.
+ *
+ * Every caller already guards on r->color_binding; the register was the
+ * fallback for the no-binding case and is now the only source.
  */
-static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
+
+/*
+ * #89 PROBE. Counts how often the two expressions above actually disagree at
+ * a clear -- `diverged` -- and prints often enough that SILENCE IS
+ * DISTINGUISHABLE FROM ZERO, which is dispatcher.sh's own rule about its
+ * allow-list (:934, "SILENCE IS VOID"). A periodic line with
+ * `diverged=0` says the instrument ran and saw none; no line at all says the
+ * tag was filtered or the path never ran, and those are different facts.
+ *
+ * Tag "hakuX" and not the reserved "hakuX-lane", for the reason measured at
+ * draw.c:7820: a dispatcher instance started before the reservation landed
+ * applies a spec with no hakuX-lane in it, and `hakuX` is in every spec this
+ * project has ever had. The [clr89] prefix is what makes it greppable out of
+ * a shared tag.
+ */
+#ifdef __ANDROID__
+#define CLR89_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define CLR89_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static struct {
+    unsigned long clears;
+    unsigned long no_binding;
+    unsigned long diverged;
+} g_clr89;
+
+static void clr89_probe(PGRAPHState *pg, unsigned int shape_format)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
 
+    unsigned int drawn_format =
+        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
+                           shape_format;
+
+    g_clr89.clears++;
+    if (!r->color_binding) {
+        g_clr89.no_binding++;
+    }
+
+    bool diverged = drawn_format != shape_format;
+    if (diverged) {
+        g_clr89.diverged++;
+    }
+
+    /*
+     * Every divergence for the first twenty, AND a heartbeat regardless.
+     *
+     * The heartbeat is ORed rather than being the else-arm of the event, and
+     * the difference is the whole value of the probe. As a ternary -- print if
+     * `diverged ? diverged <= 20 : clears % 512 == 0` -- the heartbeat is only
+     * ever evaluated on a clear that did NOT diverge, so once divergence
+     * becomes persistent the twenty-first clear returns and the tag goes
+     * silent forever. That is dispatcher.sh:934's SILENCE IS VOID arriving in
+     * exactly the world the probe was built to detect: twenty divergences and
+     * twenty thousand would read identically, and both would read as a
+     * filtered tag. surf92_probe() ORs its three conditions for this reason.
+     */
+    bool flood_capped_event = diverged && g_clr89.diverged <= 20;
+    if (!(flood_capped_event || g_clr89.clears % 512 == 0)) {
+        return;
+    }
+
+    /*
+     * nobind is labelled structural-0 in the line itself because it IS one:
+     * every caller of pgraph_vk_get_clear_color() is guarded on
+     * r->color_binding (the inline path at the SET_COLOR_CLEAR_VALUE site, and
+     * both branches of the fall-through path), so the `: shape_format`
+     * fallback above is an unreachable backstop. Unlabelled, a constant of the
+     * call graph sits beside three counters that are measurements and reads as
+     * "the no-binding case never occurred" -- this project's impossible-row
+     * class, arriving in a log line instead of in a prediction leg.
+     */
+    CLR89_LOG("[clr89] clears=%lu nobind=%lu(structural-0) diverged=%lu "
+              "shape_fmt=0x%02x drawn_fmt=0x%02x shape_pad=%d drawn_pad=%d "
+              "addr=0x%08" HWADDR_PRIx,
+              g_clr89.clears, g_clr89.no_binding, g_clr89.diverged,
+              shape_format, drawn_format,
+              (int)pgraph_glsl_surface_pad_alpha_mode(shape_format),
+              (int)pgraph_glsl_surface_pad_alpha_mode(drawn_format),
+              r->color_binding ? r->color_binding->vram_addr : (hwaddr)0);
+}
+
+static void pgraph_vk_get_clear_color(PGRAPHState *pg, float rgba[4])
+{
     pgraph_get_clear_color(pg, rgba);
 
-    unsigned int color_format =
-        r->color_binding ? pgraph_vk_surface_drawn_format(r->color_binding) :
-                           pg->surface_shape.color_format;
+    unsigned int color_format = pg->surface_shape.color_format;
+
+    clr89_probe(pg, color_format);
 
     switch (pgraph_glsl_surface_pad_alpha_mode(color_format)) {
     case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
@@ -6623,6 +6759,132 @@ static void mark_clear_drawn(PGRAPHState *pg, bool write_color, bool write_zeta)
     }
 }
 
+/*
+ * #91 PROBE: IS A REQUESTED CLEAR SILENTLY DROPPED, AND IN WHICH FRAME?
+ *
+ * #88's arm confirmed its mechanism to the pixel -- ColorIntoZeta_ZB
+ * 131,495 -> 10,766 and ZetaIntoColor 102,255 -> 71,663, both landing on
+ * absolutes derived from the goldens' own histograms before the run -- and
+ * failed on ONE leg: Color_zeta_overlap/Swap, 165,447 -> 304,750. That is #91.
+ *
+ * THE GAP THIS PROBE EXISTS TO CLOSE, stated as the previous attempt left it:
+ * reading update_surface_part() against TestSwap() does not reproduce the
+ * zeta decline firing inside Swap at all, because SET_CONTEXT_DMA_COLOR sets
+ * surface_color.buffer_dirty (pgraph.c:2387) so colour rebinds FIRST and
+ * `surface == other` is then false when zeta asks. If that reading is right
+ * the decline never fires in Swap and #88's policy cannot be the direct
+ * cause; but Swap measurably moved under exactly that policy. One of the two
+ * halves is wrong and reading has not settled which.
+ *
+ * THE CONSEQUENCE IS CHEAPER TO OBSERVE THAN THE CAUSE, and it is observed
+ * here rather than at the decline because THIS is the step that writes
+ * pixels. Both clear paths guard `write_zeta && r->zeta_binding`, so when
+ * zeta's binding is absent a requested depth clear is not issued -- it is
+ * dropped, silently, with no counter and no trace. `zdrop` is that event.
+ * `cdrop` is its colour-side twin, which #88's policy should make impossible
+ * and which is logged so that "it never happened" is a reading and not an
+ * assumption.
+ *
+ * FRAME ATTRIBUTION WITHOUT --only-tests, which is the point of `frame=`.
+ * #91's arm registered only_tests=["Swap"] to get a solo disc and ran the
+ * whole nine-capture suite anyway: jobs/arms.sh builds its request from
+ * disc.suites alone and never passes --only-tests, so the narrowing was
+ * recorded, hashed into the prediction and not applied (see NOTES). Until
+ * that is fixed no arm of this prediction can be narrowed, so the
+ * attribution has to come from inside the run: pg->frame_time is monotonic,
+ * incremented once per flip (pgraph.c:2307), and each test in the suite
+ * flips once, so frame_time partitions the run by test IN ORDER and a
+ * capture index maps onto it. r->current_frame is NOT usable for this -- it
+ * is a ring index over frames-in-flight and is reset to 0 (draw.c:3360).
+ *
+ * WHAT THIS INSTRUMENT CANNOT SEE, established before any zero is read:
+ *  - it is placed AFTER pgraph_vk_surface_update(), so it reports the
+ *    bindings the clear will actually use, not the ones it asked for. That is
+ *    deliberate -- the dropped clear is decided by the post-update state --
+ *    but it means a binding that was resolved and then lost WITHIN the update
+ *    is invisible here and shows up only as the decline counter in surface.c.
+ *  - it says nothing about clears the guest never issued. A test that stops
+ *    asking for a depth clear and one whose depth clear is dropped are
+ *    different worlds and `clears` separates them only in aggregate.
+ *  - zdrop>0 does not by itself prove the dropped clear moved a pixel; it
+ *    proves the drop occurred in that frame. The pixel claim still belongs to
+ *    the A/B.
+ * A frame in which zdrop>0 in the fix arm and zdrop==0 in the base arm is the
+ * discriminating row. If Swap's frame shows zdrop==0 in BOTH arms, the
+ * dropped-depth-clear model is wrong and the regression reaches Swap by some
+ * other route -- which is a refutation worth having and is not forced by
+ * anything this patch does.
+ *
+ * LIFETIME: same as surf92_probe/clr89_probe -- out when #91 has a verdict.
+ */
+static struct {
+    int frame;              /* frame_time this bucket describes (int, pgraph.h:177) */
+    unsigned long clears;   /* clears reaching the probe, cumulative       */
+    unsigned long zdrop;    /* zeta clear asked for, no zeta binding       */
+    unsigned long cdrop;    /* colour clear asked for, no colour binding   */
+    unsigned long f_clears, f_zdrop, f_cdrop;  /* same, within `frame`     */
+    /*
+     * ONE FLAG PER KIND, not one for both (audit pass 2, N2). With a single
+     * flag, a frame whose first drop is a cdrop suppresses that frame's first
+     * zdrop line entirely: the zdrop then reaches the log only at the next
+     * `clears % 512` heartbeat, and because f_zdrop is reset per frame that
+     * heartbeat can land in a later frame and print ITS zero. A reader joining
+     * [surf91] to [clr91] on frame= would read "no zeta clear was dropped in
+     * this frame", which is the exact inference #91 turns on.
+     */
+    bool reported_z;        /* this frame already printed a zdrop line     */
+    bool reported_c;        /* this frame already printed a cdrop line     */
+} g_clr91;
+
+static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
+{
+    PGRAPHVkState *r = pg->vk_renderer_state;
+
+    if (pg->frame_time != g_clr91.frame) {
+        g_clr91.frame = pg->frame_time;
+        g_clr91.f_clears = g_clr91.f_zdrop = g_clr91.f_cdrop = 0;
+        g_clr91.reported_z = g_clr91.reported_c = false;
+    }
+
+    bool zdrop = write_zeta && !r->zeta_binding;
+    bool cdrop = write_color && !r->color_binding;
+
+    g_clr91.clears++;
+    g_clr91.f_clears++;
+    if (zdrop) { g_clr91.zdrop++; g_clr91.f_zdrop++; }
+    if (cdrop) { g_clr91.cdrop++; g_clr91.f_cdrop++; }
+
+    /*
+     * FIRST drop of each kind in each frame, plus an unconditional heartbeat.
+     * ORed, not an else-arm, for the reason clr89_probe records: once an event
+     * becomes persistent an else-arm heartbeat stops firing and the tag goes
+     * silent, which is indistinguishable from the tag being filtered.
+     * One line per frame per kind is bounded by the frame count, so it cannot
+     * flood however many clears a frame issues.
+     */
+    bool first_z = zdrop && !g_clr91.reported_z;
+    bool first_c = cdrop && !g_clr91.reported_c;
+    bool first_event = first_z || first_c;
+    if (first_z) {
+        g_clr91.reported_z = true;
+    }
+    if (first_c) {
+        g_clr91.reported_c = true;
+    }
+    if (!(first_event || g_clr91.clears % 512 == 0)) {
+        return;
+    }
+
+    CLR89_LOG("[clr91] frame=%d clears=%lu zdrop=%lu cdrop=%lu "
+              "f_clears=%lu f_zdrop=%lu f_cdrop=%lu "
+              "wc=%d wz=%d color=0x%08" HWADDR_PRIx " zeta=0x%08" HWADDR_PRIx,
+              g_clr91.frame, g_clr91.clears, g_clr91.zdrop, g_clr91.cdrop,
+              g_clr91.f_clears, g_clr91.f_zdrop, g_clr91.f_cdrop,
+              (int)write_color, (int)write_zeta,
+              r->color_binding ? r->color_binding->vram_addr : (hwaddr)0,
+              r->zeta_binding ? r->zeta_binding->vram_addr : (hwaddr)0);
+}
+
 void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -6653,6 +6915,8 @@ void pgraph_vk_clear_surface(NV2AState *d, uint32_t parameter)
     // FIXME: If doing a full surface clear, mark the surface for full clear
     // and we can just do the clear as part of the surface load.
     pgraph_vk_surface_update(d, true, write_color, write_zeta);
+
+    clr91_probe(pg, write_color, write_zeta);
 
     SurfaceBinding *binding = r->color_binding ?: r->zeta_binding;
     if (!binding) {

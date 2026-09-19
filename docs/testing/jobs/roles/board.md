@@ -35,15 +35,21 @@ So, every tick, in this order:
   `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its cap: stop
   dispatching locally, do not retry, do not start a session any other way.
   Eleven dispatchable issues is eleven ticks of work, not one.
-- **The cloud outlet.** An hourly cloud-class session (`jobs/cloud.sh`, on
-  the host today) claims one issue labelled `cloud` per tick
-  (`jobs/roles/cloud.md`). Label `cloud` any dispatchable
-  issue whose brief needs no device and no NDK -- analysis, a falsifier
-  script, a desktop-side reading -- and every dispatchable issue you could
-  not start because the local cap refused, so the cloud takes the overflow.
-  Write its brief to `briefs/<issue>.md` on the `board` branch as usual;
-  the cloud session reads the issue and the brief. Do not label `cloud` an
-  issue that needs a handheld to make progress; a device run is the host's.
+- **The audit outlet, which is not yours to start.** `jobs/board.sh` runs
+  `jobs/cloud.sh` at the top of every tick, before either gate below is read,
+  and it claims one unit: a `needs-remediation` PR, a `needs-audit-2` PR, a
+  `needs-audit-1` PR, or an issue labelled `cloud` -- in that order, under
+  `LANE_MAX`, in a `hakux-lane-*` unit your lane count already sees. **Do not
+  start an audit, a remediation or a cloud session yourself**, and do not
+  resume a lane to do one; that is the second mechanism this replaced. Your
+  part is the labels.
+  Label `cloud` any dispatchable issue whose brief needs no device and no NDK
+  -- analysis, a falsifier script, a desktop-side reading -- and every
+  dispatchable issue you could not start because the local cap refused, so the
+  outlet takes the overflow. Write its brief to `briefs/<issue>.md` on the
+  `board` branch as usual; the session reads the issue and the brief. Do not
+  label `cloud` an issue that needs a handheld to make progress; a device run
+  is the host's.
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.
@@ -67,10 +73,14 @@ So, every tick, in this order:
   itself). A ready PR whose diff touches nothing under `hw/`, `target/`,
   `accel/`, `android/` needs no audit: check CI is green on its head and
   label it `fold-ready` directly, saying so in a comment. The fold job folds
-  from `fold-ready` on its own timer; you never merge. `needs-remediation`
-  on a PR whose branch is a local lane's → `lane.sh resume <name>` (it
-  counts as an attempt) with a comment pointing the lane at the audit;
-  cloud lanes (`lane/cloud-*`) remediate themselves.
+  from `fold-ready` on its own timer; you never merge. `needs-audit-*` and
+  `needs-remediation` are the audit outlet's to act on, whoever opened the PR
+  and whatever its branch is called: leave the label alone and let the outlet
+  claim it. A PR that sits at one of them across several ticks has a unit that
+  keeps ending unfinished; the outlet counts the attempts and labels it
+  `blocked:needs-owner` itself. Do not resume the lane to remediate its own
+  audit, and do not clear a `needs-*` label to unstick a PR -- clearing it is
+  how a finding stops existing.
 - **`needs-rebase` is not yours: `jobs/handback.sh` has it.** The fold job
   conflicts, records the cause, and labels; `handback.sh` runs at the end of
   every fold tick, derives the lane from the head branch, and calls
