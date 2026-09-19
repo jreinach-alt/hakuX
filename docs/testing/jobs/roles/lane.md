@@ -64,6 +64,18 @@ A path you edit that is not on that line is a collision nothing can see.
 
 ## Never
 
+- Put the retired **skip-ci marker** in a commit message. It is not a hint to
+  CI, it is the absence of CI: GitHub creates no workflow run at all, the PR's
+  check rollup comes back empty, and the fold job cannot fold a head that
+  nothing has built -- so the PR waits, silently, until a person pushes over
+  it. That is what stalled #101, #123, #129 and #139. `AGENTS.md`'s transition
+  note retired the marker; CI is free on this public repository and now runs
+  on every PR, and it is the gate of record.
+- **Quote** that marker, in a commit message, for any reason -- including
+  explaining this rule. GitHub matches it anywhere in the message, body
+  included, so the empty commit pushed to restore a missing run suppressed
+  that very run on 2026-09-18 and cost another cycle. Name it in prose, as
+  this file does, or push `git commit --allow-empty -m 'ci: build this head'`.
 - Edit `docs/testing/nv2a_issues.toml` or `territory.toml`.
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.

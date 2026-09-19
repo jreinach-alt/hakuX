@@ -69,7 +69,20 @@ check "a lane systemd calls active is RUNNING even with no registry entry" grep 
 check "a registry entry whose unit is gone is not reported as running" bash -c '! grep -q ghostlane "$FL/live.txt"'
 check "the ignored entry is counted, not hidden" grep -q 'registry entr.*no active unit, ignored' "$FL/live.txt"
 check "a running lane with no territory row FAILs, naming the live lane" grep -qE '^FAIL: 1 lane\(s\) are RUNNING with no territory row -- alive\.' "$FL/live.txt"
-check "an issue no running lane owns FAILs as dispatchable" grep -qE '^FAIL: .*could be dispatched and are not' "$FL/live.txt"
+# RETARGETED, NOT DELETED, by #134 (lane/backlogstate). This check read
+# `^FAIL: .*could be dispatched and are not`, and it was true: fleet.py called
+# any open issue with no blocker dispatchable. #134 gave the board a third
+# state and split that section in two, because "no blocker" and "somebody
+# looked and nothing blocks it" are not the same claim -- #9401 has no tracker
+# row at all, so the second is one the fixture does not support. What this
+# fragment is actually about is PROVENANCE: an issue no lane systemd calls
+# active owns must still reach board.sh as a '^FAIL' naming the issue. That
+# holds, in the section that now describes it correctly, and both halves are
+# asserted so a future change cannot satisfy this by moving it back.
+check "an issue no running lane owns still FAILs, naming the issue" \
+    grep -qE '^FAIL: .*NEITHER BLOCKED NOR MARKED AVAILABLE.*#9401' "$FL/live.txt"
+check "...and is not called dispatchable, which its empty row cannot support" \
+    bash -c '! grep -qE "^FAIL: .*could be dispatched and are not" "$FL/live.txt"'
 
 # THE BLIND RUN. Same fixtures, a systemctl that cannot answer.
 fleet_run "$FL/blind" "$FL/blind.txt"

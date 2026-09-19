@@ -1,0 +1,92 @@
+[
+  {
+    "id": "H1",
+    "severity": "HIGH",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": 0,
+    "summary": "Model E is derived by quoting `dst_row = linear_guest + y * surface->pitch`, which occurs once in the GL renderer at hw/xbox/nv2a/pgraph/gl/surface.c:2075, inside android_surface_download_depth16_to_guest() -- an #ifdef __ANDROID__ DEPTH16 function that cannot run for the A8R8G8B8 colour target the document is about and does not exist in a desktop build. surface_download_to_buffer() (:2310) has three shapes for a swizzled download and the PR treats them as one: (A) Android RGBA8 at :2394, gated on android_surface_uses_rgba8_transfer() (:154-168, true for A8R8G8B8), which does apply Model E via android_surface_rgba8_to_guest(..., surface->pitch) at :2424; (B) generic unscaled, Model E via glo_readpixels(..., surface->pitch, ...) at :2465; (C) generic scaled, which executes `assert(surface->pitch >= (surface->width * surface->fmt.bytes_per_pixel));` at :2473. Path C is reachable: pgraph_gl_surface_download() passes downscale=true unconditionally at :2524 and the only thing disabling it is `downscale &= (pg->surface_scale_factor != 1);` at :2322. Nothing in surface creation forbids pitch < width*bpp -- :2850 checks the DMA limit and :2851 checks pitch % bpp, neither checks the width relation. The document enumerates crash paths deliberately (it lists :2851 as 'a crash path if silicon accepts it') and omits :2473, the assert keyed on this lane's own subject. The registered arm is a DESKTOP pair (a_ref/b_ref are '4129a349e6 with xemu.toml [display] renderer = OpenGL|Vulkan'), where path A is compiled out entirely.",
+    "scenario": "Someone lands the one-line renderer override this PR asks for and queues the arm on a desktop build whose surface_scale_factor is not 1 -- the default for anyone who has touched the scale setting, and pinned nowhere in the registration. The GL arm aborts inside pgraph_gl_surface_download_to_buffer on the Surface_pitch/Swizzle capture instead of returning a nonzero score. expect_counts.better=1 fails, for a reason unrelated to either model. The prediction states flatly 'Either outcome settles it; there is no result that leaves the question open, which is the point of registering it this way.' A third result exists, is reachable from the arm as registered, and is not excluded. Separately, on the desktop build the quoted derivation source is not compiled at all, so a reader verifying the mechanism at the cited code finds nothing.",
+    "remediation": "State which of paths A/B/C the derivation models and which the arm runs. Pin surface_scale_factor = 1 in the registration, or declare the arm an Android-device arm -- in which case path A holds and the xemu.toml refs are the wrong refs. Quote android_surface_rgba8_to_guest's `dst_row = dst + y * dst_stride` (gl/surface.c:816, called with surface->pitch at :2424) rather than the depth16 function's line, since that is the write that actually serves this surface on Android. Add gl/surface.c:2473 to the crash-path list beside :2851.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/surface.c:154-168, :816, :2075, :2310, :2322, :2394, :2424, :2465, :2473, :2524, :2850-2851; enclosing function of :2075 is android_surface_download_depth16_to_guest, declared :1961; docs/testing/predictions/undersized-pitch-swizzle-layout.json a_ref/b_ref and the 'no result that leaves the question open' sentence."
+  },
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": 0,
+    "summary": "All ten by-line citations into hw/xbox/nv2a/pgraph/vk/surface.c are already wrong on origin/master. That file changed +283/-4 between this lane's base 4129a349e6 and current master, entirely above the cited region, so every citation is out by about 206 lines: :587 (claimed dl->use_compute_to_swizzle = false) is now vkCmdCopyImageToBuffer and the real line is 793; :593 -> 800; :650 (claimed g_malloc(dl->pitch * dl->height)) is now a VkBufferCopy/vkCmdCopyBuffer and the real line is 856; :858 (claimed the use_compute_to_swizzle gate, 'no pitch anywhere') now lands INSIDE the deferred CPU swizzle_rect(..., dl->pitch, ...) block and the real line is 1064; :664-669 and :741-746 are now :1551/1554 and :1749/1752. origin/master carries 3c2f6622c5, 'nv2a/vk: cite surface.c by symbol -- L4's drift, five more times', committed 2026-09-19 03:05Z, 67 minutes before this prediction's registered_utc of 04:12:36Z, whose message says all five previous by-line citations into this same file 'were correct when written and all five were wrong within a day'. The gl/surface.c citations are unaffected -- that file is unmodified since the base.",
+    "scenario": "The tracker row this PR recommends is opened and someone follows vk/surface.c:650 on master to confirm the over-read. They find vkCmdCopyBuffer and conclude the finding was fixed or fabricated, when it is alive at :856 exactly as described. Worse for :858: the document's load-bearing claim is that the synchronous Vulkan download uses no pitch, cited to :858; on master that line is inside the one block in the file that does take pitch, and is the block the same document flags for the tracker row. The pointer now reads as a contradiction of the claim it labels.",
+    "remediation": "Cite by symbol, as 3c2f6622c5 did for the neighbouring citations: name pgraph_vk_complete_staged_downloads' dl->swizzle branch, the use_compute_to_swizzle initialiser in the synchronous download, and download_surface_record_deferred's assignment. Merging origin/master and re-numbering would fix today's drift and reintroduce tomorrow's.",
+    "evidence": "git diff --stat HEAD origin/master -- hw/xbox/nv2a/pgraph/vk/surface.c -> 283 insertions, 4 deletions; grep -n over origin/master:hw/xbox/nv2a/pgraph/vk/surface.c -> 793, 800, 856, 1064; git log -1 --format=%B 3c2f6622c5."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": 5,
+    "summary": "The prediction says 'This is the claim behind SEVEN SITES that use pitch*height as the surface extent: gl/surface.c:2850 and vk/surface.c:3109 ..., vk/surface.c:593 ... and THE FOUR memory_region_set_client_dirty calls at vk/surface.c:664-669 and :741-746.' Both 'seven' and 'the four' read as exhaustive and are not. At the lane's own base, the extent expression appears at thirteen sites in vk/surface.c alone: 594, 650, 665, 668, 742, 745, 1343, 1345, 1348, 1543, 1546, 1627, 1630. The seven unlisted ones are not incidental. :1343 is `surface_vram_written(r, surface->vram_addr, surface->pitch * surface->height, surface);` immediately after download_surface_to_buffer() -- the same call, the same expression and the same under-report as the enumerated :593/:594, but on the SYNCHRONOUS download path, which this document elsewhere calls 'Model H by construction'. :1345/1348, :1543/1546 and :1627/1630 are three further pairs of memory_region_set_client_dirty(..., pitch * height, ...), so the dirty range misses the second half in six places, not two.",
+    "scenario": "A remediation lane takes 'seven sites' as the fix list -- which is how the prediction frames it, as the claim hardware leg 1 is written to settle. It patches the seven, the arm confirms Model H, and the fold is reported as closing the extent question. The synchronous download path's surface_vram_written and three further dirty-range pairs are left under-reporting by the missing half, so a shelved overlapping surface is still not marked vram_newer on the path that serves most downloads. The next reader has a list that says the work is done.",
+    "remediation": "Enumerate all thirteen vk/surface.c sites plus the gl/surface.c ones, or replace the count with the grep that produces it so the list cannot drift from the code. At minimum call out :1343 explicitly -- it is on the path the document treats as clean.",
+    "evidence": "grep -n 'pitch \\* s->height|pitch \\* surface->height|pitch \\* dl->height' hw/xbox/nv2a/pgraph/vk/surface.c at HEAD -> 13 lines; hw/xbox/nv2a/pgraph/vk/surface.c:1338-1350 and :1538-1548 read in full."
+  },
+  {
+    "id": "M3",
+    "severity": "MEDIUM",
+    "file": "NOTES.md",
+    "line": 1,
+    "summary": "NOTES.md is added at the branch root. origin/master:docs/testing/jobs/roles/lane.md:48 already requires docs/lanes/<lane>/NOTES.md, and origin/master:docs/lanes/notespath/NOTES.md is the record of the lane that changed it: 'roles/lane.md item 3 used to ask for NOTES.md in the branch root, and the first lane to fold landed one on master, after which every fold conflicted on that exact path.' Master now carries fourteen docs/lanes/<name>/NOTES.md including the sibling docs/lanes/cloud-110/, and no root NOTES.md. This worktree is 128 commits behind and read the stale local copy of roles/lane.md, which still says 'branch root' -- so the lane followed a written rule; the consequence is a property of the fold, not of the intent.",
+    "scenario": "fold.sh's resolve_root_notes() (origin/master:docs/testing/jobs/fold.sh:69-90) fires only when root NOTES.md is an UNMERGED path (:72). Master has no root NOTES.md, so folding #115 is a clean add and the guard never runs: lane/cloud-109's notes land at the repository root permanently. The next lane that still carries a root NOTES.md then conflicts, resolve_root_notes fires, and :84-85 keeps MASTER's copy -- cloud-109's -- at the root while moving the newcomer's to docs/lanes/. That is the exact steady state the notespath lane was opened to remove, seeded by this PR and thereafter permanent, with a lane-specific record occupying a repository-root path.",
+    "remediation": "git mv NOTES.md docs/lanes/cloud-109/NOTES.md and update the PR body's Files: line. One commit, no content change.",
+    "evidence": "git ls-tree origin/master (no root NOTES.md) and origin/master docs/lanes/ (14 entries incl. cloud-110, notespath); origin/master:docs/testing/jobs/roles/lane.md:48-50; origin/master:docs/lanes/notespath/NOTES.md; origin/master:docs/testing/jobs/fold.sh:69-90."
+  },
+  {
+    "id": "M4",
+    "severity": "MEDIUM",
+    "file": "NOTES.md",
+    "line": 0,
+    "summary": "Both commits on this branch, ff1d6e524e and 9199f9c0b3, end their subject with the retired skip-ci marker. gh pr view 115 --json statusCheckRollup returns [] -- GitHub created no workflow run for either head. mergeable is MERGEABLE, which rules out the other cause of an empty rollup: a PR whose merge commit cannot be built also gets zero runs, and that is not this case. So this is the #101 / #123 / #129 / #139 stall, and CI is the gate of record on this repository.",
+    "scenario": "The PR completes remediation and pass 2 and reaches fold-ready with an empty check rollup. fold.sh has no green head to fold, so the PR waits in silence until a person pushes over it -- the documented outcome of the four issues above. No step in the audit or remediation chain clears it on its own, because none of them necessarily produces a commit whose message lacks the marker.",
+    "remediation": "git commit --allow-empty -m 'ci: build this head' and push. Any real commit produced by the other findings clears it too, provided the message does not carry the marker anywhere, body included -- GitHub matches it in the body as well as the subject.",
+    "evidence": "gh pr view 115 --json statusCheckRollup,mergeable,commits; git log --oneline -2 HEAD."
+  },
+  {
+    "id": "M5",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": 0,
+    "summary": "The PR's headline -- 'the undersized-pitch rule does not explain #87's residual, and #109 should stop claiming it as a lead' -- rests on three bullets, of which the two that do the work are non-discriminating by the document's own path analysis. The sound one is that the GOLDEN is identical across the pitch-512 and pitch-256 members of the same 128x128 surface: that is hardware, and it establishes hardware ignores pitch at the one-half ratio for a power-of-two width. The other two are observations about OUR capture: 'our capture is identical across that pair, 0 px' and '#87's residual was identical on both 128-wide quads'. The same document establishes, twice and correctly, that every clean number on Surface_pitch/Swizzle is Vulkan, that Vulkan's synchronous download takes the compute swizzle where 'pitch never enters at all', and that 'a Vulkan 0 is consistent with both models and discriminates neither'. On a Model-H path the two quads are identical BY CONSTRUCTION, so the absence of the asymmetry is entailed by the path rather than evidence against the rule. The document never states which renderer produced #87's residual, in a document whose thesis is that the renderer decides which model applies.",
+    "scenario": "The board reads 'the rule predicts an asymmetry between the two quads that was measured and is not there: IT EXPLAINS NOTHING ABOUT #87' and drops #109's link to #87. If the residual capture was Vulkan -- which the document's own survey says every clean one is -- then nothing was measured about Model E at all, and the GL arm this very PR registers exists precisely because that measurement has never been taken. The cross-renderer table the PR cites for its control provenance shows Surface_pitch/Swizzle at GL 15,360 against VK 10,240 on 2026-09-13: the two renderers do differ on this capture, which is the opposite of reassuring for an argument that lets a Vulkan capture stand in for both.",
+    "remediation": "Name the renderer behind #87's residual and behind the 'our capture identical across that pair' observation. If either is Vulkan, narrow the headline to what the golden alone supports: hardware ignores pitch at the 1/2 ratio, so #109's hardware rule is CONFIRMED at that point rather than refuted, and the lead on #87 is unsupported-because-unmeasured rather than falsified. That is a different instruction to the board than the one currently published.",
+    "evidence": "docs/investigations/undersized-surface-pitch-two-models.md, sections \"#109's own falsifier, run offline\" and \"What is nevertheless live, and where\"; docs/testing/gl-vs-vulkan-surf1-2026-09-13.tsv row Surface_pitch/Swizzle -> gl 15360, vk 10240; hw/xbox/nv2a/pgraph/vk/surface.c:858 (base) use_compute_to_swizzle."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "docs/investigations/undersized-surface-pitch-two-models.md",
+    "line": 197,
+    "summary": "disc.suites lists eight suites and the JSON prose says 'this eight-suite disc' once, while NOTES.md:79 and the investigation doc at :197 and :245 say 'seven-suite' three times -- and :197 then enumerates eight. Only the word is wrong; the enumeration is right everywhere.",
+    "scenario": "No dispatch effect: arms.sh reads disc.suites, not the prose. A reader checking the control list against the disc counts a mismatch and has to re-derive which number is authoritative before trusting the provenance section that depends on it ('no capture in this eight-suite disc is on that list except Surface_pitch/Swizzle itself').",
+    "remediation": "Make all four say eight.",
+    "evidence": "grep -n 'seven-suite|eight-suite' over the three added files; disc.suites has 8 entries."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": 435,
+    "summary": "Four of the fourteen must_not_move controls are (gl 0, vk 0) in the cited tsv: Surface_clip/x0y0_w512h384_A8R8G8B8, Surface_clip/x8y16_w632h464_A8R8G8B8, Null_surface/XemuBug893, Color_Zeta_Disable/MaskOff_ZB. The prediction states the rule -- 'nonzero ones preferred because a control at 0 and 0 shows only that both arms ran' -- and then seeds 29% of the list with exactly those.",
+    "scenario": "Those four legs hold in any world where both arms produced captures, including worlds where the arm is void for an unrelated reason, so they add no discriminating power to the control set. Not a failure, but the control count reads stronger than it is.",
+    "remediation": "Say in the provenance paragraph that four controls are 0/0 because their suites offer nothing nonzero, so the number of load-bearing controls is ten rather than fourteen.",
+    "evidence": "docs/testing/gl-vs-vulkan-surf1-2026-09-13.tsv joined against the must_not_move list; all fifteen keys resolve."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/undersized-pitch-swizzle-layout.json",
+    "line": 424,
+    "summary": "must_not_move is bit-identical (ab_compare.py:878, :896-930, byte leg on pixels_moved_attributable), and here it is applied across two different RENDERERS on ten controls that are nonzero on both. Score equality in the 2026-09-13 tsv is not evidence of byte equality. The PR anticipates this and argues a firing would be a finding rather than an excuse, which is why this is LOW.",
+    "scenario": "The first run of the arm comes back with one or more control violations from innocent cross-renderer byte differences at equal scores, and the control failure masks the Surface_pitch/Swizzle discrimination the arm exists for -- costing a second dispatch of the same device time.",
+    "remediation": "Register the expectation that a first run may need the nonzero controls re-scoped to must_not_regress, so the re-scope is a planned step rather than a judgement made after seeing the numbers.",
+    "evidence": "docs/testing/ab_compare.py:878-930; docs/testing/gl-vs-vulkan-surf1-2026-09-13.tsv (score equality only, no byte column)."
+  }
+]

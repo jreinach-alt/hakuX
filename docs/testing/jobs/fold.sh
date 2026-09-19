@@ -9,10 +9,14 @@
 #   fold.sh prune --apply
 #                    sweep every lane ref already fully merged into the trunk
 #   fold.sh resolve-notes <worktree> <branch>
+#                    the one conflict resolution below, on an in-progress
+#                    merge, so the self-test can run it without a fake gh
 #   fold.sh prune-branch <dir> <branch> <proof>
-#                    the one conflict resolution, and the branch deletion,
-#                    each on a repository handed in, so the self-test can run
-#                    them against a scratch remote without a fake gh
+#                    the branch deletion, on a repository handed in, so the
+#                    self-test can run it against a scratch remote, same reason
+#   fold.sh preflight-verdict <preflight log>
+#                    `board` or `tree`: whose failure that log describes, for
+#                    the same reason -- a decision worth testing on its own
 #
 # A FOLD IS A --no-ff MERGE OF THE LANE BRANCH INTO master, so every commit
 # keeps its sha and every prediction's b_ref stays an ancestor forever
@@ -210,6 +214,79 @@ if [ "$mode" = prune ]; then
     exit 0
 fi
 
+# ------------------------------------ a preflight failure that is not the PR's
+# `$F/failed/$pr-$head` is PERMANENT: that head is never tried again. It is the
+# right record for a failure the merged tree causes, and the wrong one for
+# preflight's `coverage` and `territory` gates, which read the BOARD -- both go
+# through docs/testing/board_files.py, which loads from `origin/board` -- and
+# not this PR's changes at all.
+#
+# On 2026-09-19 the board opened a `decision-needed` issue, the coverage gate
+# went red for every fold, and #123, #124 and #130 -- all complete, green and
+# innocent -- were each marked permanently failed on a head with nothing wrong
+# with it. The board fixed its own row one tick later and the gate went green
+# again, so the failure was transient BY CONSTRUCTION and only the marker
+# outlived it; the three PRs folded when a person deleted the markers by hand.
+#
+# So: a failure in ONLY those gates is logged and retried next tick. Any other
+# failed gate, alone or alongside them, still earns the marker, because a mixed
+# failure contains a real one. Note that `board files` is NOT in this set
+# despite its name -- it is a gate about what this checkout edited, which is
+# exactly the thing a lane can cause. (It is also already answered here:
+# preflight runs with --allow-tracker below, because at fold time the tree
+# legitimately carries board edits.)
+#
+# WHICH GATE FAILED IS READ FROM THE COLUMN, NOT FROM PROSE. preflight.sh has
+# no per-gate exit code -- it exits 0, 1 or 2 for the whole run -- and it is
+# not this job's file to give it one. What it does have is `step()` and
+# `bad()`: one line per gate, the gate's name padded to 28 columns, then `ok`
+# or `FAILED` and nothing else on the line. That column IS the report. Keying
+# on a line that begins with the name and ends with FAILED is also what keeps
+# the gates' own indented output -- which quotes the word often enough -- from
+# being read as a gate name.
+BOARD_GATES="${FOLD_BOARD_GATES:-coverage territory}"
+TRACKER_FILES="docs/testing/nv2a_issues.toml docs/testing/territory.toml"
+
+preflight_failed_gates() {   # <preflight log> -> one failed gate's name per line
+    sed -n 's/^\([^[:space:]].*[^[:space:]]\)[[:space:]][[:space:]]*FAILED[[:space:]]*$/\1/p' "$1" 2>/dev/null
+}
+preflight_board_only() {   # <preflight log> -> 0 when every failed gate is the board's
+    local g gates
+    gates=$(preflight_failed_gates "$1")
+    # NO gate line at all is not "nothing failed", it is a log this job cannot
+    # read: preflight died before the gates, or on `exit 2` for a bad argument,
+    # or the run was cut off. An unreadable failure is treated as the tree's --
+    # the marker, and a person, are the conservative direction.
+    [ -n "$gates" ] || return 1
+    while IFS= read -r g; do
+        case " $BOARD_GATES " in *" $g "*) ;; *) return 1 ;; esac
+    done <<< "$gates"
+}
+if [ "$mode" = preflight-verdict ]; then
+    if preflight_board_only "${2:?preflight log}"; then echo board; else echo tree; fi
+    exit 0
+fi
+
+# A board gate that stays red is no longer transient, and a PR parked in
+# silence is the #102 failure again, so it is said on the PR -- once per head,
+# and only after it has outlived the board's own repair time.
+BOARD_GATE_STUCK_SECS="${BOARD_GATE_STUCK_SECS:-7200}"   # 4 ticks
+board_gate_report() {   # <pr> <head> <gates>
+    local pr=$1 head=$2 gates=$3 m="$F/failed/$1-$2-board" seen now
+    now=$(date +%s)
+    seen=$(awk '$1=="first"{print $2; exit}' "$m" 2>/dev/null)
+    [ -n "$seen" ] || { printf 'first %s\n' "$now" >> "$m"; return; }
+    [ $((now - seen)) -ge "$BOARD_GATE_STUCK_SECS" ] || return
+    grep -qx said "$m" 2>/dev/null && return
+    printf 'said\n' >> "$m"
+    say "  #$pr: reported a stuck board gate on ${head:0:10}"
+    comment "$pr" "[job.fold] Not folded, and **this is not your PR's fault**: preflight's board-side gates failed on the merged tree (\`$gates\`). Those gates read the board through \`board_files.py\` (\`origin/board\`), not your diff, so nothing you pushed caused this and nothing you push fixes it.
+
+**Your head is not marked failed.** The fold retries it every tick and folds it as soon as the board's own row is right again; you do not need to push anything, and you do not need to re-apply \`fold-ready\`.
+
+It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which is far longer than the board takes to repair itself, so it wants a person: run \`python3 docs/testing/check_coverage.py\` and \`python3 docs/testing/check_territory.py\` against \`origin/master\` with \`origin/board\` fetched. This is the only comment this job will make about this head."
+}
+
 # ------------------------------------------------------------ candidates
 cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft \
             --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\(.title)"' 2>/dev/null)
@@ -316,6 +393,18 @@ while IFS=$'\t' read -r pr branch head draft title; do
         else
             git -C "$WT" merge --abort 2>/dev/null
             say "#$pr CONFLICT in: $files"
+            # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
+            # job, shown by status.sh, and acted on by nothing -- the lane it hands
+            # the PR back to is a transient unit that exited with its session. The
+            # actor is jobs/handback.sh, called at the end of this tick. This job
+            # knows the conflicting files and nothing downstream does, so it writes
+            # them down here; handback.sh works without the file (a PR labelled by
+            # hand, or by a fold from before this line existed) and quotes it when
+            # it is there. Keyed on the head sha, so a lane that pushes produces a
+            # new cause and an unchanged branch does not.
+            mkdir -p "$WORK/handback/cause"
+            printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
+                "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
             label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
             comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
             continue
@@ -335,7 +424,20 @@ while IFS=$'\t' read -r pr branch head draft title; do
     fi
     # The fast local gates. The tracker gate is the board's, not this PR's.
     if ! (cd "$WT" && bash docs/testing/preflight.sh --allow-tracker >"$F/preflight.log" 2>&1); then
-        echo "preflight failed" > "$F/failed/$pr-$head"
+        gates=$(preflight_failed_gates "$F/preflight.log" | tr '\n' ' '); gates="${gates% }"
+        # The second half of "the PR's own tree cannot cause it": board_files
+        # PREFERS `origin/board` and FALLS BACK to the worktree copy, so for as
+        # long as that transition lasts a PR that edits those two files could
+        # in fact fail these gates by itself. It is barred from editing them
+        # and --allow-tracker has already stopped asking -- so ask here, where
+        # the answer decides whether a head is written off forever.
+        if preflight_board_only "$F/preflight.log" \
+           && [ -z "$(git -C "$WT" diff --name-only "origin/$TIP...origin/$branch" -- $TRACKER_FILES 2>/dev/null)" ]; then
+            say "  preflight: only the board's own gates failed ($gates); NOT marking this head, retrying next tick"
+            board_gate_report "$pr" "$head" "$gates"
+            continue
+        fi
+        echo "preflight failed${gates:+: $gates}" > "$F/failed/$pr-$head"
         say "  preflight FAILED: $(grep -m3 FAILED "$F/preflight.log" | tr '\n' ' ')"
         comment "$pr" "[job.fold] Not folded: preflight fails on the merged tree:
 \`\`\`
@@ -363,5 +465,11 @@ Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and 
     folded=1
 done <<< "$cands"
 
+# The handed-back PRs get their actor, on this tick's timer. It is a separate
+# script on purpose: THIS job merges and must never start a model session, and
+# a job that starts model sessions has a cap, an attempt counter and an
+# escalation policy that have nothing to do with merging. `$mode` is passed
+# through so `fold.sh list` stays read-only and resumes nobody.
+[ -f "$T/jobs/handback.sh" ] && bash "$T/jobs/handback.sh" "$mode" >/dev/null 2>&1
 [ -x "$T/jobs/status.sh" ] && bash "$T/jobs/status.sh" >/dev/null 2>&1
 exit 0
