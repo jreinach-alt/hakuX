@@ -7,6 +7,8 @@ where both halves of the harness can reach it.
 The conversion itself was small. Two of the brief's premises were wrong and
 one data site it does not mention would have been broken by following it, so
 most of the work was establishing those three things rather than editing.
+§4 is a fourth finding that is nobody's premise but my own mistake: an import
+I added took out ten unrelated checks, and the reason is worth the paragraph.
 
 ---
 
