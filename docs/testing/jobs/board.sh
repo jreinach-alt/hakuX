@@ -48,6 +48,24 @@ if [ -z "${HAKUX_BOARD_REEXEC:-}" ] && [ -f "$WT/docs/testing/jobs/board.sh" ]; 
 fi
 JOBS="$WT/docs/testing/jobs"
 
+# THE AUDIT OUTLET IS DISPATCH, AND DISPATCH IS SCRIPT-FIRST.
+#
+# A PR labelled needs-audit-1, needs-audit-2 or needs-remediation is a unit of
+# work whose brief is already written (jobs/roles/cloud.md). Nothing about
+# starting it needs a model: the label IS the decision. It used to hang off
+# hakux-cloud.timer, which the owner disabled on 2026-09-19, and off a rule in
+# roles/board.md that could only run on a tick -- and a tick only starts when
+# one of the two gates below says FAIL. Neither gate counts an unremediated
+# audit, so pass 1 on #102 posted 2 MEDIUM findings, labelled it
+# needs-remediation, and nothing ever picked it up.
+#
+# So it runs here, on the board's timer, and BEFORE the early exit below:
+# a quiet fleet is exactly when the outlet has a window to spend.
+# cloud.sh claims at most one unit per tick and refuses at LANE_MAX -- the same
+# number and the same hakux-lane-* count as lane.sh, because an audit session
+# IS a lane session.
+bash "$JOBS/cloud.sh" >/dev/null 2>&1 || say "audit outlet (cloud.sh) exited $?"
+
 fails=$(cd "$WT" && timeout 60 python3 docs/testing/fleet.py 2>&1 >/dev/null | grep '^FAIL' || true)
 
 # THE COVERAGE GATE IS THE BOARD'S TOO, AND fleet.py CANNOT SEE IT.
