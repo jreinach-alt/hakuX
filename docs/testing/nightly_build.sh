@@ -32,6 +32,19 @@ case "$MODE" in
     build|notes) ;;
     *) echo "usage: ${0##*/} [build|notes [SINCE]]" >&2; exit 64 ;;
 esac
+
+# The display zone, and the reason this file needs it at all: DAY and say()
+# were ALREADY local -- bare `date`, following the host, which is
+# America/Los_Angeles -- they just never said which zone that was, so a
+# reader who knew the rest of the harness printed UTC would read "00:31:12"
+# as UTC and be seven hours out. hakux-nightly.timer's OnCalendar=00:30:00
+# carries no Timezone= and so follows the host too; that is the same 00:30
+# this file's header names, and it stays that way.
+#
+# Sourced by absolute path, so `notes` mode works from any cwd -- and BEFORE
+# the mktemp below, because local_day() names the file that mktemp's OUT holds.
+. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/jobs/localtime.sh"
+
 # notes mode writes nothing into the real nightly directory and never touches
 # the day's log: a test run must not be able to overwrite tonight's record.
 if [ "$MODE" = notes ]; then
@@ -39,13 +52,15 @@ if [ "$MODE" = notes ]; then
 fi
 
 mkdir -p "$OUT"
-DAY=$(date +%Y-%m-%d)
+DAY=$(local_day)
 LOG="$OUT/$DAY.log"
 # In notes mode the body goes to stdout, so progress goes to stderr instead --
-# otherwise say() would corrupt the very thing being generated.
+# otherwise say() would corrupt the very thing being generated. Both arms
+# print say_time_s, which carries the zone: a bare "00:31:12" on a page where
+# everything else ended in Z was being read seven hours out.
 say() {
-    if [ "$MODE" = notes ]; then echo "$(date '+%H:%M:%S') $*" >&2
-    else echo "$(date '+%H:%M:%S') $*" | tee -a "$LOG"; fi
+    if [ "$MODE" = notes ]; then echo "$(say_time_s) $*" >&2
+    else echo "$(say_time_s) $*" | tee -a "$LOG"; fi
 }
 
 cd "$TREE" || { echo "no tree at $TREE"; exit 1; }
@@ -101,6 +116,14 @@ EMU_CAP=60          # a high cap: this is the point of the project
 HARN_CAP=8          # a handful, then a count
 OTHER_CAP=8
 
+# Deliberately bare `date`, i.e. host-local, and NOT one of localtime.sh's
+# helpers: this window has to line up with the timer that started the run, and
+# OnCalendar=00:30:00 with no Timezone= means the timer fires at 00:30 LOCAL.
+# Making this UTC would shift the window seven hours off the boundary it is
+# meant to name. -Iseconds carries the offset ("2026-09-18T00:30:00-07:00"),
+# so the line say() prints below is unambiguous without the display helper.
+# The positional override is for `notes [SINCE]`; it goes to `git log --since=`
+# unchanged, so a fixture can name its own window.
 SINCE="${2:-$(date -d 'yesterday 00:30' -Iseconds 2>/dev/null || date -v-1d -Iseconds)}"
 
 # --no-merges. A `fold: PR #131 lane/notespath -- ...` subject describes the
