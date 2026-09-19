@@ -56,6 +56,7 @@ TIP="${HAKUX_TIP:-master}"
 TURNS="${CLOUD_TURNS:-120}"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; JOBS="$T/jobs"
 . "$JOBS/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$JOBS/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 
 # THE CAP IS ONE NUMBER AND lane.sh OWNS IT. An audit session costs exactly
 # what a lane session costs -- a worktree, a model, the account's shared
@@ -68,7 +69,8 @@ LANE_MAX=$(sed -n 's/^LANE_MAX=\([0-9][0-9]*\).*/\1/p' "$T/lane.sh" 2>/dev/null 
 : "${LANE_MAX:=2}"
 mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/cloud" "$WORK/attempts"
 LOG="$WORK/logs/cloud/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
 
 # ------------------------------------------------------------ the territory row
@@ -409,7 +411,7 @@ case "$kind" in
             *)         succ_human="needs-audit-2, needs-remediation or fold-ready" ;;
         esac
         case "$kind" in
-            audit1) task="Audit PASS 1 of PR #$num: read the DIFF (\`gh pr diff $num --repo $GH_REPO\`), write docs/audits/$(date -u +%F)-${head#lane/}-pass1.md on this branch, commit and push it, post it as a PR review (\`gh pr review $num --repo $GH_REPO --comment --body-file ...\`), then set the labels per your role file (HIGH/MEDIUM → needs-remediation; else needs-audit-2, or fold-ready if there is nothing to verify). Remove needs-audit-1.";;
+            audit1) task="Audit PASS 1 of PR #$num: read the DIFF (\`gh pr diff $num --repo $GH_REPO\`), write docs/audits/$(local_day)-${head#lane/}-pass1.md on this branch, commit and push it, post it as a PR review (\`gh pr review $num --repo $GH_REPO --comment --body-file ...\`), then set the labels per your role file (HIGH/MEDIUM → needs-remediation; else needs-audit-2, or fold-ready if there is nothing to verify). Remove needs-audit-1.";;
             audit2) task="Audit PASS 2 of PR #$num: verify each pass-1 scenario in docs/audits/*-${head#lane/}-pass1.md can no longer occur. Write the pass2 file beside it, commit and push, post the review, then: clean → remove needs-audit-2, add fold-ready; not clean → needs-remediation.";;
             remediate) task="Remediate PR #$num: fix every HIGH and MEDIUM in the latest pass-1/pass-2 audit on this branch, push, comment what changed, move the label from needs-remediation to needs-audit-2.";;
         esac
@@ -488,6 +490,8 @@ territory_row add "$name" "$row_issues" "$row_files" "$row_note" || {
     gh "$cmt" comment "$num" --repo "$GH_REPO" --body "[job.cloud] could not write the \`territory.toml\` row for \`lane.$name\` on the \`$BOARD_BRANCH\` branch (see $LOG). The session is starting anyway; until a board tick writes the row, \`check_territory.py\` cannot see this unit." >/dev/null 2>&1; }
 
 [ -f "$REPO/android/local.properties" ] && cp "$REPO/android/local.properties" "$wt/android/local.properties"
+# UTC in the FILENAME: data. These sort, and `ls -t` aside, the name is how a
+# run is located; a local-time name would jumble across the fall-back.
 log="$WORK/logs/cloud/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
 finish="bash '$JOBS/cloud.sh' finish $kind $num"
 systemd-run --user --unit "$unit" --collect \

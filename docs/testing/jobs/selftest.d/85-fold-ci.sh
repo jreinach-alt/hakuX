@@ -23,8 +23,10 @@ FC="$T/foldci"; mkdir -p "$FC/bin"
 cat > "$FC/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 args="$*"
+# A candidate row is number, branch, head, isDraft, labels, title -- title
+# last, because it is the only free-text field.
 case "$1 $2" in
-    "pr list")    printf '102\tlane/foldci\t%s\tfalse\tfold: a lane\n' "${FC_HEAD:?}" ;;
+    "pr list")    printf '102\tlane/foldci\t%s\tfalse\tfold-ready\tfold: a lane\n' "${FC_HEAD:?}" ;;
     "pr view")    echo "${FC_CI:?}" ;;
     "pr comment") { echo "--- comment on $3"; cat "${args##*--body-file }"; } >> "${FC_LOG:?}" ;;
 esac
