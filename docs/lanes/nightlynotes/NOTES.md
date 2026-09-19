@@ -112,6 +112,21 @@ about a reimplementation of it. It is inert by construction: it redirects
 overwrite tonight's notes or log. The selftest asserts that
 (`notes mode writes nothing into the nightly output directory`).
 
+### A known limitation, stated rather than left to be discovered
+
+The emulator set is exactly the five directories the brief named --
+`hw/ target/ accel/ ui/ audio/` -- because those are the ones every other
+brief and gate already uses, and inventing a sixth here would put the notes
+out of step with them. But it is not a complete description of emulator work.
+A commit touching **only** `include/` -- say `include/exec/target_page.h`, or
+`include/hw/xbox/...` -- is emulator work and lands in "Docs and the rest".
+Same for a change confined to `tests/` or to the meson/build files.
+
+I did not widen it, because the right fix is to change the shared definition
+in one place rather than to let this script drift from the gates. If someone
+does widen it, `86-nightly-notes.sh` will not notice: no check there asserts
+that `include/` is *excluded*, so adding it breaks nothing.
+
 ### For the next lane
 
 - Don't add a source grep for `head -40` here; see above.
@@ -119,6 +134,11 @@ overwrite tonight's notes or log. The selftest asserts that
   `^### Emulator$` and on `/^### Emulator$/,/^### Harness/` ranges. Change both.
 - The caps (60/8/8) are judgement, not measurement. 37 emulator commits was
   the busiest day observed; 60 has headroom but is not a proof of anything.
+- Each of the five new invariants has a mutant that trips it -- drop
+  `--no-merges`, `EMU_CAP=1`, harness-wins-over-emulator, count merges as
+  work, `HARN_CAP=45`. All five were run against a mutated copy at a temp
+  path and confirmed to fail; none of the checks is vacuous. Re-run that
+  sweep if you change the classification.
 
 ## 2. The 78-second nightly: **real build, not a stale APK**
 
