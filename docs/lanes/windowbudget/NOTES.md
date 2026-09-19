@@ -259,17 +259,47 @@ conversion.
     pristine origin/master   500 passed, 11 failed
 
 **All 10 of this branch's failures are master's own**, and every one is in
-`fold.sh`'s `regression-accepted` override -- `lane.foldregress`'s territory
-this cycle. `git diff origin/master -- docs/testing/jobs/fold.sh
-docs/testing/jobs/selftest.d/86-fold-regressed.sh` is empty: this branch's
-copies are byte-identical to master's, so the merge neither caused them nor can
-fix them. They were confirmed by running the *same* `selftest.sh` against a
-`git archive origin/master` export in a scratch directory, which is the check
-worth copying -- "it also fails on master" is a claim, and an untested one is
-how a lane inherits the blame for someone else's red.
+`fold.sh`'s `regression-accepted` override. `git diff origin/master --
+docs/testing/jobs/fold.sh docs/testing/jobs/selftest.d/86-fold-regressed.sh` is
+empty: this branch's copies are byte-identical to master's, so the merge
+neither caused them nor can fix them. They were confirmed by running the *same*
+`selftest.sh` against a `git archive origin/master` export in a scratch
+directory, which is the check worth copying -- "it also fails on master" is a
+claim, and an untested one is how a lane inherits the blame for someone else's
+red.
 
 (Master's eleventh, `nothing was skipped for the live prediction`, passed here.
 It reads on shared `$WORK` state, not on either tree.)
+
+### The red is master-wide, and this PR cannot fold through it
+
+This is the one thing attempt 2 found that is not about the merge, so it is
+stated separately rather than folded into the resolution above.
+
+    jobs selftest on master   baa8b649a5  14:32Z  success
+                              4eb641e777  15:03Z  FAILURE   <- fold of #145 lane/foldregress
+                              a11e6deae1, 234b5366ec, f91aedf740, 6db8217cdb   all FAILURE
+
+Master's own `jobs selftest` check went red at `4eb641e777` -- the fold of PR
+#145, which is where the `regression-accepted` code and its fragment arrived --
+and has been red on every master commit since. `gh run view 35456001861
+--log-failed` on master's latest lists the same 10 names measured locally, so
+the CI red and the local red are one fact, not two.
+
+`fold.sh`'s own `ci_green()` requires **every** check on the head to be
+`SUCCESS`/`SKIPPED`/`NEUTRAL`, so this PR will read `RED`, collect one
+`[job.fold] Not folded: CI is red` comment and wait -- with its `fold-ready`
+label kept, which is the gate behaving correctly. **Every lane branching from
+master is in the same position**; nothing about this one is special, and
+pushing anything here cannot clear it.
+
+It is deliberately not fixed from this lane. `lane.foldregress` has retired
+(no `territory.toml` row, no open PR), so `fold.sh` is unheld rather than
+claimed -- but repairing 10 checks in it is substantial work in two files that
+are not on this PR's `Files:` line, which is the line the board reads to keep
+two lanes off one file. Taking it silently is the collision nothing can see.
+It needs its own lane; a `[lane.windowbudget] blocked:` comment on #155 says
+so with the shas above.
 
 All 15 of this lane's own checks are green on the merged head, including the
 four that drive the two conflicted files -- `board.sh`'s gate and its audit
