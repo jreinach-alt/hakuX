@@ -43,6 +43,14 @@ notification half of the brief's concern is discharged: **renaming notifies
 nobody.** If a collaborator is ever added, this is the fact that expires --
 re-run those two calls before widening the title's cadence.
 
+`gh api notifications --paginate` after the three renames below holds zero
+entries that are not `ci_activity` CheckSuite rows, and nothing at all for
+#150. Say what that instrument cannot see, though: it reads *this* account's
+inbox, and GitHub never notifies you of your own action, so on its own it
+cannot separate "a rename never notifies" from "your own rename never
+notifies you". It is the `subscribers_count: 0` above that closes the gap --
+there is no other inbox for a notification to land in.
+
 **2. A rename is still permanent litter; an unchanged title is free.**
 
 Measured against this lane's own PR #150 (a PR is an issue, so `PATCH
