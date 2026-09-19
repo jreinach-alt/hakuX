@@ -699,9 +699,9 @@ def main():
     # because a lane claim suppresses the gap gate and a missing blocker is
     # only checked for issues WITHOUT a lane.
     #
-    # So: a lane is briefed by writing an ISO-8601 UTC timestamp to
-    # $DISPATCH_DIR/lanes/<lane>.lastbrief when it is sent direction, and this
-    # reports any lane holding unblocked open issues that has not been briefed
+    # So: a lane is briefed by a `[job.deliver] lane.<name>` comment on the
+    # thread the work lives on (docs/testing/jobs/deliver.sh), and this reports
+    # any lane holding unblocked open issues that has not been briefed
     # recently.
     #
     # IT GOES ON THE SUMMARY LINE, not in the NOTE block below. idle-watchdog.sh
@@ -718,55 +718,69 @@ def main():
                                                   .get("blocked_on") or "").strip()]
         if not idle_issues:
             continue
-        # THE LAST-BRIEF TIME IS DERIVED FROM THE DELIVERY FILE, not from a
-        # stamp somebody has to remember.
+        # THE LAST-BRIEF TIME IS THE TIMESTAMP OF AN ACTUAL DELIVERY COMMENT,
+        # not a stamp somebody has to remember and not the mtime of a file the
+        # recipient cannot open.
         #
-        # This warning fired on lane.remote at 3.1h on 2026-09-14 when the
-        # orchestrator had briefed it TWICE in that window. It was not wrong
-        # about the file: `lanes/remote.lastbrief` had not been written,
-        # because writing it is a second thing to remember and it was
-        # forgotten both times. A check that depends on the orchestrator
-        # remembering to update it reads wrong exactly when the orchestrator
-        # is busy, which is when it matters -- the same family as the
-        # `[skip ci]` near-miss, where a derived value was available for free.
+        # It has been both of those. First `$DISPATCH_DIR/lanes/<lane>.lastbrief`,
+        # which fired on lane.remote at 3.1h on 2026-09-14 while the
+        # orchestrator had briefed it TWICE in that window -- writing the stamp
+        # was a second thing to remember and was forgotten both times. Then the
+        # mtime of `$DISPATCH_DIR/deliveries/<lane>.md`, which fixed the
+        # remembering and left the fatal half untouched: that file is on this
+        # host's disk, on no ref and no remote, and ORCHESTRATION-DESIGN.md §5
+        # says in as many words that the cloud sessions cannot see the dispatch
+        # directory. A CHANNEL THE RECIPIENT CANNOT READ MEASURES NOTHING, and
+        # a freshly appended file would have reported this gate green while no
+        # brief had reached anyone at all. Both stamps were four days older
+        # than the delivery files they backed, on both lanes that had one.
         #
-        # `$DISPATCH_DIR/deliveries/<lane>.md` is append-only and ROUTING
-        # WRITES IT (AGENTS.md, "Routing on paper is not routing"), so its
-        # mtime is the last-brief time and cannot drift from reality.
+        # So the channel is a GitHub comment (docs/testing/jobs/deliver.sh) and
+        # the time read here is GitHub's own `created_at` for a comment that
+        # exists, cached at `$DISPATCH_DIR/delivery-cache/<lane>.json` by the
+        # POST that created it and refreshed by comment_sweep.sh's hourly pass.
         #
-        # THE STAMP IS A FALLBACK, NOT A TIEBREAK, and that is deliberate: a
-        # brief that updated the stamp but left no delivery entry is not a
-        # routed brief at all by this project's own rule, so letting the stamp
-        # mask a missing delivery entry would silence the gate on exactly the
-        # failure the delivery file was created to catch. Where both exist the
-        # delivery file wins even if it is older.
+        # THE CACHE IS NOT A SECOND CHANNEL, and this is the distinction that
+        # keeps the old defect from coming back: nothing reads it to learn what
+        # was routed -- `deliver.sh inbox <lane>` reads GitHub for that -- and
+        # no local clock reading ever enters it. It is an index of one field so
+        # that this gate, which runs inside every lane's preflight, costs no
+        # network call. A missing or unreadable cache reads as "never", which
+        # is the safe direction: it reports a lane as unbriefed rather than
+        # reporting a brief nobody sent.
         #
-        # mtime is the right instrument here and a content hash is not: the
-        # question is WHEN routing last wrote, not what it wrote. Two things
-        # that would break an mtime elsewhere do not apply -- these files live
-        # in DISPATCH_DIR, outside the repo, so no checkout or rebase ever
-        # restamps them, and a lane READING its deliveries moves atime, not
-        # mtime.
-        #
-        # WHAT THIS CANNOT SEE: whether the delivery entry said anything
-        # useful, or whether the lane read it. A touched file with no new
-        # entry reads as a fresh brief. It measures routing, not receipt.
-        deliv = os.path.join(dispatch, "deliveries", "%s.md" % lane)
-        stamp = os.path.join(dispatch, "lanes", "%s.lastbrief" % lane)
-        hours, src = None, "no delivery file and no stamp"
-        if os.path.exists(deliv):
-            hours = (now.timestamp() - os.path.getmtime(deliv)) / 3600.0
-            src = "deliveries/%s.md" % lane
-        else:
+        # WHAT THIS CANNOT SEE: whether the delivery said anything useful, or
+        # whether the lane read it. It measures routing, not receipt -- the
+        # same limit the file had, carried forward rather than quietly
+        # dropped. It also cannot see a delivery posted by hand until the next
+        # sweep folds it in, so the note names the cache's own age whenever
+        # that age is old enough to be the thing you are actually looking at.
+        cache = os.path.join(dispatch, "delivery-cache", "%s.json" % lane)
+        hours, src = None, "no delivery comment on record"
+        scanned_h = None
+        try:
+            with open(cache) as fh:
+                blob = json.load(fh)
+            when = datetime.datetime.strptime(blob["delivered"],
+                                              "%Y-%m-%dT%H:%M:%SZ")
+            hours = (now - when.replace(tzinfo=datetime.timezone.utc)) \
+                .total_seconds() / 3600.0
+            src = "the newest [job.deliver] comment, on #%s" % (
+                blob.get("delivered_thread") or "?")
             try:
-                with open(stamp) as fh:
-                    when = datetime.datetime.strptime(fh.read().strip(),
-                                                      "%Y-%m-%dT%H:%M:%SZ")
-                hours = (now - when.replace(tzinfo=datetime.timezone.utc)) \
+                seen = datetime.datetime.strptime(blob["scanned"],
+                                                  "%Y-%m-%dT%H:%M:%SZ")
+                scanned_h = (now - seen.replace(tzinfo=datetime.timezone.utc)) \
                     .total_seconds() / 3600.0
-                src = "lanes/%s.lastbrief (no delivery file)" % lane
             except Exception:
-                hours = None
+                scanned_h = None
+        except Exception:
+            hours = None
+        # A CACHE NOBODY IS REFRESHING CANNOT REPORT A FRESH BRIEF, so say so
+        # rather than letting an hours figure stand on its own. comment_sweep.sh
+        # runs hourly; three times that is stopped, not slow.
+        if scanned_h is not None and scanned_h >= 3.0:
+            src += " (cache last refreshed %.1fh ago -- is hakux-comments.timer running?)" % scanned_h
         if hours is None or hours >= 3.0:
             stale_brief.append((lane, len(idle_issues),
                                 "never" if hours is None else "%.1fh" % hours,

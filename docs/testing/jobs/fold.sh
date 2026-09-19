@@ -5,9 +5,15 @@
 #
 #   fold.sh          fold the oldest fold-ready PR whose CI is green
 #   fold.sh list     what it would fold, and why the rest waits
+#   fold.sh prune    what the one-time sweep WOULD delete (a dry run)
+#   fold.sh prune --apply
+#                    sweep every lane ref already fully merged into the trunk
 #   fold.sh resolve-notes <worktree> <branch>
 #                    the one conflict resolution below, on an in-progress
 #                    merge, so the self-test can run it without a fake gh
+#   fold.sh prune-branch <dir> <branch> <proof>
+#                    the branch deletion, on a repository handed in, so the
+#                    self-test can run it against a scratch remote, same reason
 #   fold.sh preflight-verdict <preflight log>
 #                    `board` or `tree`: whose failure that log describes, for
 #                    the same reason -- a decision worth testing on its own
@@ -21,11 +27,12 @@
 #
 # WHAT MAKES A PR FOLD-READY is the label, and the label is set by the
 # auditor (pass 2 clean) or by the board (a docs/NOTES-only PR needs no
-# audit). This job checks what the label cannot: the PR is not a draft, its
-# head's CI is green, and the merge applies without conflict. A conflict is
-# never resolved here -- the lane gets `needs-rebase` and a comment naming
-# the files, because a merge resolved by a script that does not understand
-# the code is how a working fix was reverted on 2026-09-12.
+# audit). This job checks what the label cannot: the PR is not a draft, it
+# does not carry an unaccepted `regressed` verdict, its head's CI is green,
+# and the merge applies without conflict. A conflict is never resolved here
+# -- the lane gets `needs-rebase` and a comment naming the files, because a
+# merge resolved by a script that does not understand the code is how a
+# working fix was reverted on 2026-09-12.
 #
 # THE ONE EXCEPTION IS A ROOT NOTES.md, AND IT IS A RENAME, NOT A MERGE.
 # roles/lane.md used to ask every lane for `NOTES.md` in the branch root.
@@ -43,6 +50,10 @@
 # numbers, so a merge of two edits to it is stale by construction. If
 # nv2a_index.py check fails after the merge the index is rebuilt from the
 # test sources and committed on top, in the same push.
+#
+# AND THEN THE BRANCH IS DELETED. See prune_branch below: the fold is the one
+# moment that has just PROVED every commit is on the trunk, and nothing else
+# in the harness ever removed a lane ref.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
@@ -52,9 +63,11 @@ WT="$WORK/fold-wt"
 F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
 
 find_repo() { for d in "$HOME/$1" /home/justin/"$1" /home/user/"$1"; do [ -d "$d/.git" ] && { echo "$d"; return; }; done; }
@@ -90,6 +103,118 @@ resolve_root_notes() {   # <worktree> <branch> -> 0 when the merge is left fully
 }
 if [ "$mode" = resolve-notes ]; then
     resolve_root_notes "${2:?worktree}" "${3:?branch}"; exit $?
+fi
+
+# ------------------------------------------- deleting a folded lane branch
+# Nothing in the harness ever removed a lane ref. arms.sh's collect() walks
+# refs/remotes/origin/lane/* on every tick, and its fetch refspec
+# (+refs/heads/lane/*:refs/remotes/origin/lane/*) does NOT prune, so the cost
+# of every arms tick and every board tick grew monotonically with the number
+# of lanes the project had ever run -- 25 refs on 2026-09-19, 8 of them long
+# since folded -- and none of that growth is work.
+#
+# THIS IS SAFE FOR A REGISTERED b_ref, AND IT IS CHECKED, NOT ASSUMED. Folds
+# are --no-ff so every commit keeps its sha; deleting a ref whose every commit
+# is already on the trunk orphans nothing, which is exactly what "fully
+# merged" means, and the arms job's "is the b_ref an ancestor of a live tip"
+# test still passes against the trunk afterwards. Getting it wrong silently
+# un-arms predictions, so the ancestry is tested against the commit that was
+# just pushed rather than against a remote-tracking ref that is one fetch
+# stale, and against what origin holds NOW rather than what the fold fetched:
+# a lane that pushed after the merge's fetch has commits the fold never saw,
+# and deleting that ref would destroy them.
+#
+# THREE REFS, AND THEY ARE NOT THE SAME THING:
+#   the remote ref           origin's lane/<name>       deleted here
+#   the remote-tracking ref  refs/remotes/origin/lane/  deleted here -- and it
+#                            is the one that matters, because nothing prunes
+#                            it and IT is what arms.sh walks
+#   the local branch         refs/heads/lane/<name>     `branch -d`, which git
+#                            refuses while a lane worktree holds it. That
+#                            refusal is the wanted answer: the ref is left and
+#                            the log says so. Never -D, never --force. The
+#                            worktree is lane.sh rm's business, not a fold's.
+# $WT is a worktree OF $REPO, so both share one ref store: deleting the
+# tracking ref through either directory deletes it for both.
+prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 0 when the remote ref is gone
+    local d="$1" branch="$2" proof="$3" tracking="refs/remotes/origin/$2" rc remote_sha
+    # lane/* and nothing else, ever: not $TIP, not board, not claude/*.
+    case "$branch" in
+        lane/?*) ;;
+        *) say "  NOT pruning '$branch': only lane/* refs are ever deleted"; return 1 ;;
+    esac
+    # ...and a plain ref path, so nothing in it can read as an option to push
+    # or expand into a second ref. check-ref-format refuses .., ~, ^, :, *, a
+    # trailing lock and a leading dash for us.
+    git check-ref-format "refs/heads/$branch" 2>/dev/null \
+        || { say "  NOT pruning '$branch': check-ref-format refuses that name"; return 1; }
+
+    git -C "$d" ls-remote --exit-code origin "refs/heads/$branch" > "$F/lsremote" 2>/dev/null; rc=$?
+    if [ "$rc" -eq 2 ]; then
+        # Already gone from origin (deleted by hand, or a re-run of the sweep).
+        # The tracking ref is then pointing at nothing live and is pure cost.
+        git -C "$d" update-ref -d "$tracking" 2>/dev/null
+        say "  $branch: origin has no such ref; dropped the stale tracking ref"
+    elif [ "$rc" -ne 0 ]; then
+        say "  $branch: cannot reach origin to read the ref (ls-remote exit $rc); kept"
+        return 1
+    else
+        remote_sha=$(cut -f1 < "$F/lsremote")
+        # Fetch so the object is present locally; then judge the LIVE sha.
+        git -C "$d" fetch -q origin "+refs/heads/$branch:$tracking" 2>/dev/null \
+            || { say "  $branch: fetch failed; kept"; return 1; }
+        if ! git -C "$d" merge-base --is-ancestor "$remote_sha" "$proof" 2>/dev/null; then
+            say "  $branch @ ${remote_sha:0:10} is NOT fully merged into $proof; ref KEPT (pushed after the fold's fetch?)"
+            return 1
+        fi
+        git -C "$d" push -q origin --delete "$branch" 2>"$F/prune.log" \
+            || { say "  $branch: delete on origin rejected: $(tail -1 "$F/prune.log"); kept"; return 1; }
+        git -C "$d" update-ref -d "$tracking" 2>/dev/null
+        say "  deleted origin's $branch @ ${remote_sha:0:10} (every commit is on $proof) and its tracking ref"
+    fi
+
+    # The local branch, last and never forced. It is not what costs a tick
+    # anything -- no job walks refs/heads/lane/* -- so a refusal is logged and
+    # the sweep moves on.
+    if git -C "$d" rev-parse -q --verify "refs/heads/$branch" >/dev/null 2>&1; then
+        if git -C "$d" branch -d "$branch" >"$F/prune.log" 2>&1; then
+            say "  deleted local refs/heads/$branch"
+        else
+            say "  local refs/heads/$branch KEPT: $(tr -d '\n' < "$F/prune.log" | tail -c 160)"
+            say "    (if that lane is finished: lane.sh rm ${branch#lane/})"
+        fi
+    fi
+    return 0
+}
+if [ "$mode" = prune-branch ]; then
+    prune_branch "${2:?dir}" "${3:?branch}" "${4:?proof commit}"; exit $?
+fi
+
+# --------------------------------------------------------------- the sweep
+# One pass over every lane ref, for the backlog that accumulated before the
+# fold job learned to clean up after itself. A dry run by default: this
+# deletes refs on the shared remote, so doing it takes saying so.
+if [ "$mode" = prune ]; then
+    git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/lane/*' 2>/dev/null \
+        || { say "prune: fetch failed; refusing to judge ancestry from a stale object store"; exit 1; }
+    total=0; merged=0
+    for ref in $(git -C "$REPO" for-each-ref --format='%(refname:short)' 'refs/remotes/origin/lane/*'); do
+        branch="${ref#origin/}"; total=$((total+1))
+        if ! git -C "$REPO" merge-base --is-ancestor "$ref" "refs/remotes/origin/$TIP" 2>/dev/null; then
+            [ "${2:-}" = --apply ] || echo "keep       $branch (commits not yet on $TIP)"
+            continue
+        fi
+        merged=$((merged+1))
+        if [ "${2:-}" = --apply ]; then
+            say "pruning $branch"
+            prune_branch "$REPO" "$branch" "refs/remotes/origin/$TIP"
+        else
+            echo "would prune $branch @ $(git -C "$REPO" rev-parse --short "$ref") (fully merged into $TIP)"
+        fi
+    done
+    echo "total lane refs: $total, fully merged into $TIP: $merged"
+    [ "${2:-}" = --apply ] || echo "(a dry run; pass --apply to delete them)"
+    exit 0
 fi
 
 # ------------------------------------ a preflight failure that is not the PR's
@@ -166,8 +291,12 @@ It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which 
 }
 
 # ------------------------------------------------------------ candidates
-cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft \
-            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\(.title)"' 2>/dev/null)
+# `labels` rides along on the one list call this job makes, and the title stays
+# LAST: it is the only free-text field, and the read below gives the last
+# variable everything after its own tab, so free text in any other position
+# would end up inside a field a gate keys on.
+cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft,labels \
+            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\([.labels[].name] | join(","))\t\(.title)"' 2>/dev/null)
 [ -n "$cands" ] || { [ "$mode" = list ] && echo "nothing labelled fold-ready"; exit 0; }
 
 ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (or was skipped)
@@ -228,8 +357,94 @@ Check \`gh pr checks $pr\`: a job queued with no runner, or held on a workflow a
     comment "$pr" "$body"
 }
 
+# ------------------------------------------------ an unaccepted regression
+# `regressed` is the arms job's verdict that a registered prediction FAILED on
+# the device. Until 2026-09-19 the only thing enforcing it was a sentence in
+# `roles/board.md` -- "a `regressed` PR is not fold-ready" -- which is prose,
+# read by whichever model session decides to set `fold-ready`, and this job is
+# a script that cannot read it. That day PR #102 folded as `3d072c6ea6` with
+# `Color_zeta_overlap/Swap 165,447 -> 304,750` live and its `regressed` label
+# set twenty minutes earlier precisely to stop the fold. It stopped nothing.
+#
+# THIS GATE READS THE LABEL AND DECIDES NOTHING ABOUT IT. What `regressed`
+# means -- which verdicts count, which supersede which -- is arms.sh's
+# (#144), and a second opinion here would be a second state machine over one
+# word. So there is no verdict parsing, no `$WORK/arms` read and no "is the
+# FAIL still live" judgement in this file: the label is the interface.
+# Clearing it is likewise arms.sh's, from the verdicts; this job never
+# touches it.
+#
+# IT IS NOT A REQUIREMENT TO BE `verified`. Most PRs carry no prediction at
+# all and must keep folding; only the FAIL stops one.
+#
+# THE OVERRIDE IS THE OWNER'S, AND IT NAMES AN ISSUE. Some regressions are a
+# measured trade someone accepted -- #91 exists to hold exactly the delta
+# above under #88's colour-wins policy -- and a gate with no way through turns
+# every such trade into a permanently unfoldable PR. `regression-accepted:<issue>`
+# folds it. The number is not decoration: the issue is where the trade is
+# argued, so an override without one is an assertion with no argument and is
+# refused out loud, with the spelling. No job sets a label in this family and
+# `ensure-labels.sh` creates no member of it (see the note there): the owner
+# creates the one they mean, which is what "the owner accepted it" has to
+# mean if it means anything.
+has_label() {   # <labels csv> <label>
+    case ",$1," in *",$2,"*) return 0 ;; esac; return 1
+}
+accepted_issue() {   # <labels csv> -> the issue a well-formed override names
+    local l; local -a ls=()
+    IFS=, read -r -a ls <<< "$1"
+    for l in "${ls[@]:-}"; do
+        [[ "$l" =~ ^regression-accepted:#?([0-9]+)$ ]] && { printf '%s\n' "${BASH_REMATCH[1]}"; return 0; }
+    done
+    return 1
+}
+malformed_accept() {   # <labels csv> -> an override-shaped label that names no issue
+    local l; local -a ls=()
+    IFS=, read -r -a ls <<< "$1"
+    for l in "${ls[@]:-}"; do
+        case "$l" in regression-accepted*) accepted_issue "$l" >/dev/null || { printf '%s\n' "$l"; return 0; } ;; esac
+    done
+    return 1
+}
+
+# Said on the PR, once per head AND per state -- a ledger, like ci_report's,
+# for the same reason: an owner who adds a malformed override after the first
+# comment has acted and must be answered, and a boolean would swallow that
+# answer. Parking a PR in silence is the #102 failure wearing the other face.
+regressed_report() {   # <pr> <head> <labels>
+    local pr=$1 head=$2 labels=$3 m="$F/failed/$1-$2-regressed" state=REGRESSED body bad=''
+    bad=$(malformed_accept "$labels") && state=ACCEPT-MALFORMED
+    grep -qxF "$state" "$m" 2>/dev/null && return
+    printf '%s\n' "$state" >> "$m"
+    case "$state" in
+    REGRESSED) body="[job.fold] Not folded: this PR is labelled \`regressed\` -- the arms job judged a registered prediction **FAILED** on the device. Folding it would put a measured regression on \`$TIP\`, which is how \`3d072c6ea6\` landed on 2026-09-19.
+
+**Your \`fold-ready\` label is kept and your head is not marked failed.** This gate removes nothing and writes off nothing: the fold re-tries every tick and folds the moment the label clears, so there is nothing to re-apply.
+
+Two ways forward, and both are decisions rather than chores:
+
+- **Fix it.** Push the fix and re-register the prediction. The arms job re-judges and clears \`regressed\` itself -- it is computed from the verdicts, so do not remove it by hand; that would clear the label without clearing the regression.
+- **Accept it.** If the regression is a measured trade that someone owns, the **owner** adds a \`regression-accepted:<issue>\` label naming the issue where that trade is argued -- e.g. \`regression-accepted:91\` for the \`Color_zeta_overlap\` trade under #88's colour-wins policy. A lane must not set it and no job sets it.
+
+This is the only comment this job will make about this head." ;;
+    ACCEPT-MALFORMED) body="[job.fold] Still not folded, and this one is a spelling: the PR carries \`$bad\`, which is override-shaped but names no issue, so the \`regressed\` gate does not take it.
+
+The override is \`regression-accepted:<issue>\` -- the issue number is the point of it. An accepted regression is a trade, the issue is where the trade is argued, and an override with no issue is an assertion with no argument; a year from now the label is all that is left to read. For the \`Color_zeta_overlap\` trade that is #91:
+
+\`\`\`
+gh label create regression-accepted:91 --repo $GH_REPO --color b60205 \\
+    --description 'owner: the regression on this PR is the trade argued on #91'
+bash docs/testing/jobs/gh-label.sh add $pr regression-accepted:91
+\`\`\`
+
+Remove \`$bad\` when you add it. This is the only comment this job will make about that." ;;
+    esac
+    say "  #$pr: reported $state on ${head:0:10}"
+    comment "$pr" "$body"
+}
+
 folded=0
-while IFS=$'\t' read -r pr branch head draft title; do
+while IFS=$'\t' read -r pr branch head draft labels title; do
     [ -n "$pr" ] || continue
     if [ "$draft" = true ]; then
         say "#$pr is a draft: not folding; label removed"
@@ -237,6 +452,24 @@ while IFS=$'\t' read -r pr branch head draft title; do
         label_rm "$pr" fold-ready || say "  WARNING: could not remove fold-ready from #$pr; it will be re-tried every tick"
         comment "$pr" "[job.fold] Not folded: the PR is still a draft. Mark it ready (\`gh pr ready $pr\`) and re-apply \`fold-ready\`."
         continue
+    fi
+    # The regression gate, before the CI call: it costs nothing (the labels
+    # came with the candidate list) and a PR stopped here needs no `pr view`.
+    # `accepted` is an override that is actually overriding something: a
+    # stray `regression-accepted:` on a PR with no verdict accepts nothing,
+    # and must not make the fold comment announce a regression there is no
+    # record of.
+    accepted=""
+    if has_label "$labels" regressed; then
+        accepted=$(accepted_issue "$labels") || accepted=""
+        if [ -z "$accepted" ]; then
+            # `list` stays read-only here: the state it would report is on the
+            # PR already, as the label it is reading.
+            [ "$mode" = list ] && { echo "#$pr $branch: REGRESSED (a registered prediction FAILED; the owner may accept it with regression-accepted:<issue>)"; continue; }
+            say "#$pr $branch: labelled regressed and not accepted; not folding (fold-ready kept)"
+            regressed_report "$pr" "$head" "$labels"
+            continue
+        fi
     fi
     ci=$(ci_green "$pr")
     if [ "$ci" != GREEN ]; then
@@ -249,11 +482,12 @@ while IFS=$'\t' read -r pr branch head draft title; do
         [ "$mode" = list ] && echo "#$pr $branch: failed before on this head ($(cat "$F/failed/$pr-$head"))"
         continue
     fi
-    if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD FOLD"; continue; fi
+    if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD FOLD${accepted:+ (regression accepted on #$accepted)}"; continue; fi
     [ "$folded" -eq 0 ] || { say "#$pr waits: one fold per tick"; continue; }
 
     # ---------------------------------------------------------- the fold
     say "folding #$pr $branch @ ${head:0:10}: $title"
+    [ -n "$accepted" ] && say "  it is labelled regressed; folding on regression-accepted:#$accepted"
     if [ ! -e "$WT/.git" ]; then
         git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD || { say "cannot create $WT"; exit 1; }
     fi
@@ -281,6 +515,9 @@ while IFS=$'\t' read -r pr branch head draft title; do
             # it is there. Keyed on the head sha, so a lane that pushes produces a
             # new cause and an unchanged branch does not.
             mkdir -p "$WORK/handback/cause"
+            # at=: UTC. A recorded field in a host state file, like queued_utc
+            # -- handback.sh reads only files= from here and never shows this
+            # line to anyone, so it stays in the zone the records are kept in.
             printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
                 "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
             label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
@@ -331,10 +568,17 @@ Fix on the lane branch and push; the next green head is re-tried."
     merge_sha=$(git -C "$WT" rev-parse --short HEAD)
     git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
     label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
-    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${notes_moved:+
+    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${accepted:+
+
+This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** -- a \`regression-accepted\` label naming that issue -- and not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
 
 Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
     say "  folded #$pr as $merge_sha"
+    # HEAD is the commit the push above just put on $TIP, so it IS the trunk's
+    # tip -- a stronger proof than origin/$TIP, which is one fetch stale here.
+    # Only reached after that push succeeded: a branch deleted on a fold that
+    # failed to push is work destroyed.
+    prune_branch "$WT" "$branch" HEAD
     folded=1
 done <<< "$cands"
 

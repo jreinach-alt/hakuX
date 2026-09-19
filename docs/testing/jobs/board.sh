@@ -22,9 +22,11 @@ REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
 TIP="${HAKUX_TIP:-master}"
 WT="$WORK/board-wt"
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+. "$SELF/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 mkdir -p "$WORK/logs/board" "$WORK/briefs"
 LOG="$WORK/logs/board/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 
 # ===================================================================
 # THE POSITIVE GATE
@@ -230,6 +232,8 @@ say "actionable:"
 [ -n "$capacity" ] && { say "capacity: $lanes/${LANE_MAX:-2} lanes running and $(printf '%s\n' "$capacity" | wc -l | tr -d ' ') startable issue(s):"; printf '%s\n' "$capacity" | sed 's/^/  /' | tee -a "$LOG"; }
 [ -n "$unlabelled" ] && { say "ready PRs with no state label:"; printf '%s\n' "$unlabelled" | sed 's/^/  /' | tee -a "$LOG"; }
 
+# UTC in the FILENAME: data. These sort, and `ls` ordering is how a stack of
+# them is read back; a local-time name would jumble across the fall-back.
 brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
 {
     echo "# board tick"

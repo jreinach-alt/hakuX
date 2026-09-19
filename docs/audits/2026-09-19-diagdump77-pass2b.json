@@ -1,0 +1,52 @@
+[
+  {
+    "pass2_id": "N1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2185",
+    "verdict": "CLOSED",
+    "summary": "fdump_end_frame() now tests disp->draw_dirty immediately after pgraph_vk_download_surface_complete_deferred() (renderer.c:2185). Still dirty writes NO image: \"image\": null, img_sync = FDUMP_IMG_STALE (-2), one WARN on the first occurrence, fdump.images_stale++, and the count in both the close line and the trailer's new images_stale field. No pgraph_vk_finish(SURFACE_DOWN) was added at the flip, which is what pass 2 instructed. Schema bumped to 3; framedump_check.py refuses to pair a schema-2 dump's images with a draw record, flags the impossible combination (an image named alongside img_sync -2), and reports the stale-frame rate. renderer.c:1556-1560 and renderer.c:2153-2161 now document -1 as \"nothing was outstanding AND the surface was already clean\", not as a pairing that was not checked.",
+    "scenario": "Pass 2's scenario -- flip N where an eviction, a shelving or the non-TCG flush left a deferred download outstanding, so prerecord bails at surface.c:1614 and the display surface's pixels stay in its VkImage while the completion waits a real fence for somebody else's copy, the PPM being written anyway under a non-negative img_sync (or -1 on the !in_command_buffer variant) -- can no longer occur. On such a frame the surface is still draw_dirty after the completion and no image is written at all.",
+    "evidence": "Same-surface check: fdump_end_frame selects disp with pgraph_vk_surface_get_within(d, d->pcrtc.start + vdp.line_offset) (renderer.c:2183-2184) and prerecord_display_download selects it with the same expression over the same VGADisplayParams (surface.c:1618-1622), both inside one pgraph_vk_flip_stall, so nothing moves pcrtc.start or line_offset between them. Two attacks on the implication 'draw_dirty false => VRAM holds this frame', both failed: (1) the display block at surface.c:944-963 clears draw_dirty with no draw_generation guard, unlike the batched loop at surface.c:892-897 whose guard exists for the Depth-buffer-fixed-function scar at surface.c:878-891 -- but the pre-record (renderer.c:2296) and the completion (renderer.c:2179) are separated only by pgraph_vk_finish(FLIP_STALL) and the diag block, neither of which issues a draw, so the generation cannot advance; (2) the display block computes was_partial from s->download_row_count at surface.c:955-956 after the batched loop has already zeroed it at surface.c:877, which would clear draw_dirty over a partial download -- unreachable, because the only producer of a partial row range is dead code, `if (false && ...)` at surface.c:1893, so download_row_count is always surface->height and `partial` at surface.c:444 is always false. Falsifier columns confirmed untouched rather than assumed: the submit-issuing else branch at surface.c:937 is unreachable from fdump_end_frame, since complete_deferred returns at surface.c:911 unless num_deferred_downloads > 0, and whenever that holds pgraph_vk_finish(FLIP_STALL) has just executed draw.c:3459-3460 and set deferred_downloads_frame >= 0, so control takes surface.c:918 or surface.c:928 -- both fence waits. Nothing records a new deferred download in between: the diag block's only surface work is pgraph_vk_surface_download_if_dirty, which is the synchronous download_surface(d, surface, true) at surface.c:2725-2731. diag interaction: with diag armed the diag block at renderer.c:2373-2376 downloads the display surface synchronously first, so draw_dirty is false, the completion early-returns, and the record carries img_sync -1 meaning exactly what it is documented to mean. LIMIT STATED: this is a code-path argument, not a measurement; no device ran it. Sound for this tree, not for one that re-enables surface.c:1893."
+  },
+  {
+    "pass2_id": "N2",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/diagdump77/framedump_check.py",
+    "line": "211",
+    "verdict": "CLOSED",
+    "summary": "The refusal is now `thin and max_cb <= 1` (framedump_check.py:211), so a dump that has demonstrated batching gets its NOT SERIALISED by cb_draws verdict and the submits median is printed as context explicitly marked as carrying no weight (framedump_check.py:239-247), kept out of the verdict. SERIALISED stays refused on a thin sample, which is M2 and is the asymmetry the instrument needs.",
+    "scenario": "Pass 2's scenario -- a 30-frame x 3-draw dump with cb_draws: 3 throughout, refused with 'Neither column can distinguish the two paths on this dump', which is false of it, sending an operator back to the device for an answer already in hand -- can no longer occur. Re-driven at this head: exit 0, 'NOT SERIALISED by cb_draws: command buffers held up to 3 draws', and 'submits carries no weight here'.",
+    "evidence": "Five dumps re-driven against this head with the selftest's own generator: pass 2's 30x3 cb_draws=3 -> exit 0 NOT SERIALISED (was exit 3); pass 1's M2 30x1 cb_draws=1 -> exit 3 INSUFFICIENT SAMPLE, unchanged; 30x40 cb_draws=1 header per_draw_finish=true -> exit 1 SERIALISED on both columns; the liar (same, header false) -> exit 1 SERIALISED plus INSTRUMENT DISAGREES; 30x40 cb_draws=17 -> exit 0 NOT SERIALISED. The disagreement check is newly reachable in the thin-plus-batching state and is sound there: built 3 frames x 3 draws cb_draws=3 with header per_draw_finish=true, got NOT SERIALISED by cb_draws + submits marked weightless + INSTRUMENT DISAGREES, exit 1 -- correct, because the verdict it contradicts rests on cb_draws alone, which needs one command buffer and not a sample. Six checker invariants mutated one at a time in a scratch tree (never the real path); each tripped the selftest with its OWN message, so this is six gates and not one: drop `and max_cb <= 1` (restores N2 exactly) -> 'the submits column was not marked as carrying no weight on a thin dump'; let the submits median back into a thin verdict -> 'a thin dump's submits median was still read as a verdict'; SCHEMA_IMAGES_PAIRABLE = 2 -> 'a schema-2 dump's images were not flagged as unchecked against the display surface'; never flag image + img_sync -2 -> 'a record naming an image while claiming the surface was dirty was accepted'; never flag a schema-3 image with no img_sync -> 'a schema-3 image with no img_sync was accepted'; never report the stale rate -> 'frames with no image were not reported'. framedump_check selftest: ok on the unmutated tree. The selftest's `short` case now asserts NOT SERIALISED as pass 2 required, and the new `flat` case (same 15 draws, cb_draws pinned at 1) asserts the refusal still fires."
+  },
+  {
+    "pass2_id": "N3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2503",
+    "verdict": "CLOSED",
+    "summary": "flip_stall's call-site comment (renderer.c:2503-2509) states the true and stronger claim: one fence wait per frame with images on, none under `noimages`, nothing per draw.",
+    "scenario": "Pass 2's scenario -- a reader standing in flip_stall being told by the last survivor of H1's old belief that neither call waits on Vulkan work -- can no longer occur.",
+    "evidence": "grep over the tree for 'already in guest VRAM', 'synchronises nothing' and 'waits on Vulkan work' returns only the two audit files quoting the old comment and the NOTES.md paragraph describing the fix. No survivor asserts it."
+  },
+  {
+    "pass2_id": "N4",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1681",
+    "verdict": "CLOSED",
+    "summary": "fdump_end_armed_diag()'s two lines are on FDUMP_LOG (renderer.c:1681 and renderer.c:1688), so a dispatched run can see the control arm's teardown and can see when a UI capture prevented it.",
+    "scenario": "Pass 2's scenario -- M3's teardown being as invisible to a dispatched run as the unbounded control arm it fixed, because it reported on `hakuX-diag` -- can no longer occur.",
+    "evidence": "renderer.c:1681, renderer.c:1688. The DIAG_LOG calls remaining in the file all belong to the pre-existing diag capture, not to the dump's lifecycle; dump_surface_ppm's own DIAG_LOG at renderer.c:468 is covered by the caller's FDUMP_LOG at renderer.c:2218, which is L1's closure."
+  },
+  {
+    "pass2_id": "N5",
+    "severity": "LOW",
+    "file": "docs/lanes/diagdump77/framedump_check.py",
+    "line": "300",
+    "verdict": "NEW",
+    "summary": "A dump whose PPM writes failed reads as a complete dump. L1's fix records \"image\": null with img_sync left at the fence slot that was waited on -- correct, the pairing was established and only the write failed -- but the checker's two image reports cover only frames naming an image while carrying img_sync -2 (impossible, flagged) and frames with img_sync == IMG_STALE (the stale rate). Neither covers the failed-write shape, and the trailer's images_stale does not count it either, correctly, because those frames were not stale.",
+    "scenario": "A soak fills the output filesystem, or hits a permission failure, part-way through: dump_surface_ppm() returns false for 12 of 30 frames, each record carrying \"image\": null with a real img_sync. REPRODUCED at this head by taking a healthy 30-frame schema-3 dump and rewriting 12 frames to that shape: the checker prints its verdicts and the scope note, says nothing at all about the image column, and exits 0. The reader is told 30 frames were recorded and is not told 40% of them have no picture -- which is what #77's method picks frames from.",
+    "evidence": "framedump_check.py:276-326 (the imaged/wrong/stale blocks) and renderer.c:2210-2219 (the caller that records null and logs on FDUMP_LOG). Why LOW and not MEDIUM: nothing false is asserted -- no record claims a picture that is absent, \"image\": null is in every such record for a reader who counts, and the event is logged per occurrence on FDUMP_LOG (renderer.c:2218), the tag a dispatched run does keep, so the information reaches the operator by another route. It is a gap in the tool that reads the artifact, not in the artifact. Remediation: one more list beside the stale one -- frames where \"image\" is null and img_sync != IMG_STALE -- reported as the PPM write having failed, with a selftest case of that shape asserting the line so it is a gate rather than a print."
+  }
+]
