@@ -92,6 +92,18 @@ So, every tick, in this order:
   `lane/cloud-*` one) has no local lane, so route it or merge it as a person
   would; a lane it reports as `blocked:needs-owner` has used every attempt
   and gets the `decision-needed` issue below.
+- **A draft whose unit has exited is not yours either: `jobs/handback.sh`
+  has it.** You cannot see this state anyway -- `board.sh` skips `isDraft`
+  and `fleet.py` counts only non-draft lane PRs -- and on 2026-09-19 that
+  blind spot left five finished, CI-green PRs (#137, #141, #145, #146, #148)
+  in draft with no actor. That job now joins `isDraft` to unit liveness and
+  resumes the lane with the resolved state: CI green on the head, or the arm
+  verdict. It does **not** mark the PR ready, because the definition of done
+  is not checkable by a script, and it does **not** spend the lane's
+  attempts, because waiting on a ten-minute CI run is not a failed pass.
+  What IS yours is what it reports in a `[job.handback]` comment: a PR it
+  labels `blocked:needs-owner` after `DRAFT_STRAND_MAX` strand resumes has a
+  lane that is not converging, and gets the `decision-needed` issue below.
 - Arms: **you never queue them.** The arms job runs every committed
   prediction whose refs are live and posts `[job.arms] VERDICT` on the PR,
   labelling it `verified` or `regressed`. Your part: a `regressed` PR is not
@@ -111,9 +123,14 @@ So, every tick, in this order:
 
 ## Retries and escalation (the owner's policy)
 
-A lane that ended without meeting its definition of done (its PR is not
-`ready`, or it has no PR, and its unit is no longer active) is **resumed**,
-not re-dispatched: `docs/testing/lane.sh resume <name>`. The script counts
+A lane that ended without meeting its definition of done (it has no PR, and
+its unit is no longer active) is **resumed**, not re-dispatched:
+`docs/testing/lane.sh resume <name>`. A lane that HAS a PR and left it in
+draft is the case above: `jobs/handback.sh` owns it, resumes it once per
+head sha per cause, and does not spend its attempts -- so do not resume a
+draft lane yourself, and do not count its strand resumes as failures. (This
+paragraph used to say "its PR is not `ready`", which you could not act on:
+`board.sh` filters drafts out before you ever see one.) The script counts
 attempts. The first three run on Opus; the fourth runs on Fable, the most
 capable model, because three failed passes is the signal that the problem
 needs more reasoning rather than more turns. If `lane.sh` prints REFUSED

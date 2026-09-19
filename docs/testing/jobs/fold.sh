@@ -168,7 +168,17 @@ It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which 
 # ------------------------------------------------------------ candidates
 cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft \
             --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\(.title)"' 2>/dev/null)
-[ -n "$cands" ] || { [ "$mode" = list ] && echo "nothing labelled fold-ready"; exit 0; }
+# NOTHING TO FOLD IS NOT NOTHING TO DO. This used to `exit 0` here, which also
+# skipped the `handback.sh` tail call at the bottom of this file -- and none of
+# handback's causes is the `fold-ready` label. A PR handed back carries
+# `needs-rebase` and has had `fold-ready` REMOVED; a lane stranded in draft
+# never had it. So the one state in which nothing folds -- every open PR is
+# handed back, or waiting, or a draft nobody will touch -- was exactly the
+# state in which the actor for all of them did not run either. Fall through:
+# the loop below reads an empty `$cands` as zero candidates and the tail runs.
+if [ -z "$cands" ]; then
+    [ "$mode" = list ] && echo "nothing labelled fold-ready"
+fi
 
 ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (or was skipped)
     gh pr view "$1" --repo "$GH_REPO" --json statusCheckRollup --jq '
