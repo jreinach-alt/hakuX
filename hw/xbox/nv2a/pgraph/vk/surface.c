@@ -167,6 +167,19 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
  * Printed under "hakuX" with a [surf92] prefix, on the heartbeat as well as on
  * the event, so an absent line means the tag was filtered rather than the
  * condition never occurring -- dispatcher.sh:934, "SILENCE IS VOID".
+ *
+ * LIFETIME -- CHOSEN, NOT LEFT TO OMISSION (audit pass 1, L2). This probe is
+ * unconditional in the shipping Android build on purpose: it is the only
+ * instrument that can close #91's open gap (whether the zeta decline fires
+ * inside TestSwap() at all), and #88's and #91's arms have not run yet. It is
+ * NOT gated behind NV2A_PERF_LOG because a compile-time gate would also take
+ * it out of the device arms, which are the only place it is read.
+ *
+ * REMOVE IT when #88's and #91's arms have returned a verdict -- both are
+ * registered against a_ref 55bc6c6c2b / b_ref 67dc7724ee -- and not before.
+ * After that it measures nothing this project still asks. Same for clr89_probe
+ * in vk/draw.c, whose question #89's arm has ALREADY answered (diverged=0 over
+ * 33,280 clears); it is kept only so the two probes leave together.
  */
 #ifdef __ANDROID__
 #define SURF92_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
@@ -210,7 +223,17 @@ static void surf92_probe(bool color, bool gate_open,
         return;
     }
 
-    SURF92_LOG("[surf92] updates=%lu shapedirty=%lu addrchg=%lu missed=%lu "
+    /*
+     * shapedirty NAMES ITS OWN DENOMINATOR because it does not share the
+     * others'. updates, addrchg and missed are all per update_surface_part();
+     * shape_dirty is incremented once per pgraph_vk_surface_update(), of which
+     * there are up to TWO parts per call. Printed bare beside updates it
+     * invites shapedirty/updates read as "the fraction of updates that saw a
+     * dirty shape", which is wrong by up to 2x in a direction that varies with
+     * how often colour and zeta are written in the same update.
+     */
+    SURF92_LOG("[surf92] updates=%lu shapedirty=%lu(per-surface_update) "
+               "addrchg=%lu missed=%lu "
                "%s fbdirty=%d gate=%d held=0x%08" HWADDR_PRIx
                " want=0x%08" HWADDR_PRIx,
                g_surf92.updates, g_surf92.shape_dirty, g_surf92.addr_change,

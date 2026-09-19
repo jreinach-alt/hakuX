@@ -765,7 +765,10 @@ static VkBlendFactor pad_write_color_factor(VkBlendFactor factor)
  *     (surface.c:3675-3681); unbind_surface() NULLs the binding
  *     (surface.c:1931), and the `!current_binding` term re-resolves it.
  *   - pgraph_vk_clear_surface() calls that surface_update before every clear
- *     (draw.c:6751), and this function is reached from nowhere else.
+ *     -- its sole `pgraph_vk_surface_update(d, true, write_color, write_zeta)`
+ *     -- and this function is reached from nowhere else. Cited by callee and
+ *     not by line: the number was :6751 when this was written, was already
+ *     :6757 by audit pass 1, and moves again with every edit above it.
  *
  * So the two expressions agree by construction in every state the suite can
  * reach, and THIS NARROWING IS PREDICTED TO BE INERT -- predicted, not hoped:
@@ -842,12 +845,35 @@ static void clr89_probe(PGRAPHState *pg, unsigned int shape_format)
         g_clr89.diverged++;
     }
 
-    /* Every divergence for the first twenty, then a heartbeat. */
-    if (!(diverged ? g_clr89.diverged <= 20 : g_clr89.clears % 512 == 0)) {
+    /*
+     * Every divergence for the first twenty, AND a heartbeat regardless.
+     *
+     * The heartbeat is ORed rather than being the else-arm of the event, and
+     * the difference is the whole value of the probe. As a ternary -- print if
+     * `diverged ? diverged <= 20 : clears % 512 == 0` -- the heartbeat is only
+     * ever evaluated on a clear that did NOT diverge, so once divergence
+     * becomes persistent the twenty-first clear returns and the tag goes
+     * silent forever. That is dispatcher.sh:934's SILENCE IS VOID arriving in
+     * exactly the world the probe was built to detect: twenty divergences and
+     * twenty thousand would read identically, and both would read as a
+     * filtered tag. surf92_probe() ORs its three conditions for this reason.
+     */
+    bool flood_capped_event = diverged && g_clr89.diverged <= 20;
+    if (!(flood_capped_event || g_clr89.clears % 512 == 0)) {
         return;
     }
 
-    CLR89_LOG("[clr89] clears=%lu nobind=%lu diverged=%lu "
+    /*
+     * nobind is labelled structural-0 in the line itself because it IS one:
+     * every caller of pgraph_vk_get_clear_color() is guarded on
+     * r->color_binding (the inline path at the SET_COLOR_CLEAR_VALUE site, and
+     * both branches of the fall-through path), so the `: shape_format`
+     * fallback above is an unreachable backstop. Unlabelled, a constant of the
+     * call graph sits beside three counters that are measurements and reads as
+     * "the no-binding case never occurred" -- this project's impossible-row
+     * class, arriving in a log line instead of in a prediction leg.
+     */
+    CLR89_LOG("[clr89] clears=%lu nobind=%lu(structural-0) diverged=%lu "
               "shape_fmt=0x%02x drawn_fmt=0x%02x shape_pad=%d drawn_pad=%d "
               "addr=0x%08" HWADDR_PRIx,
               g_clr89.clears, g_clr89.no_binding, g_clr89.diverged,
