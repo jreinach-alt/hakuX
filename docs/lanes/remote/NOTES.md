@@ -594,3 +594,82 @@ of why N1 is MEDIUM and not HIGH -- the Android CI job is the gate of record
 and runs on every PR -- and `preflight.sh` is not this lane's file. A later
 lane that owns it should add the call; the script's `--selftest` is there to
 make that safe.
+
+---
+
+## Audit pass 2b: the marker check reported `clean` without scanning anything
+
+Pass 2b closed N1 and N2 by building mutants rather than by reading the commit
+messages that claimed them, and confirmed `cb141001`'s preprocessor correction.
+It then found a **MEDIUM in the file that had landed after pass 2 and that no
+audit had read** — `skip_ci_marker_check.sh`, 117 lines old at the time.
+
+### P1 — `clean`, exit 0, having read nothing
+
+`git log --format='%H' "$range" 2>/dev/null` sent its error to `/dev/null`, so
+an unresolvable range produced no commits, the loop ran zero times, `found`
+stayed 0, and the caller printed **`clean` and exited 0**. Nothing in the output
+told `"I read 24 bodies and none carried it"` apart from `"I read nothing"`,
+because the count was never printed. The default range's left endpoint is
+`origin/master`, which a single-branch clone or a worktree off a bare mirror
+need not have.
+
+**This is the fourth instrument in one day to report success without having
+done the work** — after the desktop build standing in for Android, the GLES
+checker hiding the arms it could not resolve, and the capture runner scoring a
+mislabelled run. Same shape every time, and this one was written in the commit
+that was *about* preventing silent failure.
+
+Fixed by resolving the range first and reporting the count, so a clean verdict
+now states how many bodies it read.
+
+**The first fix for it did not work, and the way it failed is worth more than
+the fix.** `resolve()` called `exit 2`, and the caller ran it as
+`N=$(resolve "$RANGE")` — where the `exit` killed the **command-substitution
+subshell** and the script carried on to print `clean` and exit 0. The guard
+fired and the code proceeded anyway, which is P1's own shape reproduced inside
+P1's remedy. It was caught by **re-running the reproduction after fixing**,
+not by reading the patch. `resolve` now returns a status and sets a global;
+the caller checks it.
+
+### P2 — `pipefail` plus `grep -q` loses a marker in a large body
+
+`git log … | grep -qF` looks equivalent to a string test and is not: `grep -q`
+exits at the first match and closes the pipe, `git log` is killed by SIGPIPE,
+the pipeline's status becomes 141, and `set -o pipefail` propagates it — so a
+body past the 64 KB pipe buffer reports NOT FOUND **for the one reason that it
+WAS found.** Reproduced before fixing: 4/16/32/60/64 KB found, 128 KB missed.
+Replaced with a `case` on a captured string: no pipe, no buffer, no SIGPIPE.
+
+Pass 2b rated it LOW on a measurement worth keeping: the largest commit-message
+body in this repository's last 3,000 commits is **10,919 bytes**, six times
+under the threshold, so no commit that exists today can hit it. A latent hazard
+in a new instrument, not a live miss.
+
+### Both now have failing cases, and the fixtures are specific
+
+`--selftest` is 7/7. Against a mutant that restores the unresolved-range
+behaviour, the two P1 fixtures go red and the rest are unmoved; against one
+that restores the pipe, only the large-body fixture goes red.
+
+One fixture failed on its first run for a reason worth recording: the assertion
+`grep -q 'clean'` matched the **refusal** text, which contains the sentence
+*"This is not a clean result"*. The fixture was right to fail and the assertion
+was wrong. Anchored to `^clean`, the verdict being the only line that starts
+with it.
+
+### P3 — the file was on no `Files:` line and in no lane record
+
+Corrected: `skip_ci_marker_check.sh` is now on the PR's `Files:` line, and this
+section is its lane record. It is **deliberately not wired into
+`preflight.sh`**, which is not this lane's file — it is a standalone for
+whoever owns that gate, exactly like `gles_token_check.py`.
+
+### P4 — pass 2's record said this branch carries no marker; it does
+
+Pass 2's "checked and did not find wrong" list stated that none of the branch's
+commit bodies carries the retired marker. `14312cb34f` does, and **the
+instrument this branch added is what shows it**. Already recorded on the PR
+before pass 2b raised it; it stays unfixed, because both registered prediction
+refs are descendants of that commit and rewording it would rewrite history a
+live prediction depends on.

@@ -45,15 +45,51 @@ set -uo pipefail
 MARKER="[skip""ci]"
 MARKER="${MARKER/skipci/skip ci}"
 
+# Resolve the range before scanning it. `git log <bad-range>` writes to stderr
+# and produces no commits, so a loop over it runs zero times and a `found`
+# counter stays 0 -- which reads as "clean" and is really "scanned nothing".
+# Audit pass 2b, P1.
+#
+# Sets RANGE_COUNT and returns non-zero on failure. It does NOT exit: the first
+# attempt at this fix had `resolve` call `exit 2` and the caller invoke it as
+# `N=$(resolve ...)`, where the exit killed the COMMAND SUBSTITUTION SUBSHELL
+# and the script carried on to print "clean" and exit 0 -- the guard firing and
+# the code proceeding anyway, which is the very shape P1 is. Caught by re-running
+# the reproduction after fixing rather than by reading the patch.
+RANGE_COUNT=""
+resolve() {
+    local range="$1" n
+    if ! n=$(git rev-list --count "$range" 2>&1); then
+        printf 'cannot resolve range %s: %s\n' "$range" "$n" >&2
+        printf 'nothing was scanned. This is not a clean result.\n' >&2
+        return 2
+    fi
+    RANGE_COUNT="$n"
+    return 0
+}
+
+# NO PIPE. `git log … | grep -q` looks equivalent and is not: grep exits at the
+# first match and closes the pipe, git is killed by SIGPIPE, the pipeline's
+# status becomes 141, and `set -o pipefail` propagates that -- so a body larger
+# than the 64 KB pipe buffer reports NOT FOUND for the one reason that it WAS
+# found. Measured before fixing: 4/16/32/60/64 KB found, 128 KB missed 10 runs
+# out of 10. Audit pass 2b, P2. A shell case on a captured string has no pipe
+# and no buffer.
 scan() {
-    local range="$1" found=0 c
+    local range="$1" found=0 c msg
     while read -r c; do
         [ -n "$c" ] || continue
-        if git log -1 --format='%B' "$c" | grep -qF -- "$MARKER"; then
-            printf '  %s\n' "$(git log -1 --format='%h %s' "$c")"
-            found=1
+        if ! msg=$(git log -1 --format='%B' "$c"); then
+            printf 'cannot read the message of %s\n' "$c" >&2
+            exit 2
         fi
-    done < <(git log --format='%H' "$range" 2>/dev/null)
+        case "$msg" in
+            *"$MARKER"*)
+                printf '  %s\n' "$(git log -1 --format='%h %s' "$c")"
+                found=1
+                ;;
+        esac
+    done < <(git rev-list "$range")
     return $found
 }
 
@@ -89,6 +125,49 @@ selftest() {
     else
         echo "FAIL reported something on a clean range"; rc=1
     fi
+
+    # P1. Exercises the SCRIPT, not scan(), because the defect was the main
+    # body treating an unresolved range as an empty one -- and the first fix
+    # for it was itself swallowed by a command-substitution subshell, which
+    # scan() alone would never have shown.
+    local self out2 st
+    self=$(cd "$(dirname "$0")" && pwd)/$(basename "$0")
+    out2=$(cd "$td" && bash "$self" main..nosuchref 2>&1); st=$?
+    if [ $st = 2 ]; then
+        echo "ok   an unresolvable range exits 2"
+    else
+        echo "FAIL unresolvable range exited $st, expected 2"; rc=1
+    fi
+    # Anchored: the refusal text itself contains the word "clean" in the
+    # sentence "This is not a clean result", so a loose grep matches the
+    # refusal and reports a failure that is not there. The verdict is the only
+    # line that STARTS with it.
+    if ! printf '%s\n' "$out2" | grep -q '^clean'; then
+        echo "ok   and never gives the clean verdict for it"
+    else
+        echo "FAIL gave the clean verdict for a range it could not resolve"; rc=1
+    fi
+    out2=$(cd "$td" && bash "$self" main..topic 2>&1)
+    if printf '%s' "$out2" | grep -qE 'scanning [0-9]+ commit bodies'; then
+        echo "ok   reports how many bodies it read"
+    else
+        echo "FAIL did not report a commit count -- 'read 24' and 'read 0' look alike"; rc=1
+    fi
+
+    # P2. A body past the 64 KB pipe buffer. This passed with `git log | grep -q`
+    # only because the pipeline's SIGPIPE status was read as "not found".
+    (
+        cd "$td" && git checkout -q -b big main &&
+        { printf 'subject\n\n%s in the body\n' "$MARKER"; head -c 131072 /dev/zero | tr '\0' 'x'; echo; } > big.txt &&
+        git commit -q --allow-empty -F big.txt
+    ) || { echo "FAIL could not build the large-body fixture"; rc=1; }
+    out2=$(cd "$td" && bash "$self" main..big 2>&1); st=$?
+    if [ $st = 1 ]; then
+        echo "ok   finds a marker in a body past the pipe buffer"
+    else
+        echo "FAIL a 128 KB body exited $st, expected 1 (the marker is in it)"; rc=1
+    fi
+
     rm -rf "$td"
     [ $rc = 0 ] && echo "all fixtures pass" || echo "FIXTURES FAILED"
     return $rc
@@ -99,9 +178,10 @@ selftest() {
 RANGE="${1:-origin/master..HEAD}"
 git rev-parse --git-dir >/dev/null 2>&1 || { echo "not a git repository" >&2; exit 2; }
 
-echo "scanning every commit body in $RANGE for the retired CI-skip marker"
+resolve "$RANGE" || exit 2
+echo "scanning $RANGE_COUNT commit bodies in $RANGE for the retired CI-skip marker"
 if scan "$RANGE"; then
-    echo "clean"
+    echo "clean: $RANGE_COUNT commit bodies read, none carried it"
     exit 0
 fi
 cat <<MSG
