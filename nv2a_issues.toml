@@ -2810,7 +2810,6 @@ blocker_tested = "confirmed, with a positive control. Across 154 nova result dir
 suites = []
 no_suites = "Nothing in a framebuffer records when it was produced. A title steps its simulation off VBLANK and draws the same pixels at the wrong rate, so the corpus is blind to every part of this."
 status = "fixed-part"
-dispatch_state = "available"
 status_note = "The rate half landed (0edf4f2f0d, one token at nv2a.c:845) and all five registered legs hold on re-judging: def>20 mean 19,159,610 -> 16,701,985 ns, whole-soak 56.587 -> 59.816 Hz, the def==0 control moved 5,467 ns, gfps median unchanged at 29.0, defers per window 15.8 -> 28.2. This is NOT an ab_compare verdict and cannot be -- a soak writes no captures, result.json records runs: 0, and ab_compare would refuse the arms -- it is vblank_ab.py against a prediction bound by commit date, which catches a prediction written late but not one widened on time, and it is one run per arm against the runs>=2 rule. Four defects remain: phase (p99 25.15 ms, and FLIP_STALL's timer_mod(now) lets the flip pull the VBLANK to itself), unlock_framerate still abandoning the grid and defaulting true so that half is unmeasured, simple_vblank running two VBLANK sources at 150-180 assertions/s, and PCRTC coalescing at 1.35-1.56%. The HD 50 Hz guard split to #64 and is closed."
 
 # ---------------------------------------------------------------------------

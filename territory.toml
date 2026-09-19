@@ -569,3 +569,8 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-148, remediation of PR #148 on branch lane/clrsurf91, attempt 1 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 148` removes this row when the unit ends."
+
+[lane.vblank65]
+issues = ["65"]
+files = ["hw/xbox/nv2a/nv2a.c", "docs/testing/vblank_report.py", "docs/testing/vblank_ab.py"]
+note = "DISPATCHED 2026-09-19 by the host session for #65's REMAINING four defects, after deciding the defer_cap question on the issue (stays 12; falsifier is a nova run entering unlock mode, and the row's blocker_tested already carries the positive control across 154 nova result directories). The rate half landed in 0edf4f2f0d. What is left, from the issue's own status_note: phase (p99 25.15 ms, and FLIP_STALL's timer_mod(now) lets the flip pull the VBLANK to itself); unlock_framerate abandoning the grid and defaulting true, so that half is unmeasured; simple_vblank running two VBLANK sources at 150-180 assertions/s; and PCRTC coalescing at 1.35-1.56%. NOT an ab_compare arm: a soak writes no captures and result.json records runs: 0, so ab_compare refuses these arms -- the instrument is vblank_ab.py against a prediction bound by commit date, and the existing measurement is one run per arm against the runs>=2 rule, which is itself worth fixing."
