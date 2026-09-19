@@ -84,7 +84,7 @@ fi
 #
 # It runs BEFORE the report and its failure is not fatal to the report: two
 # destinations, and one being unreachable must not take the other with it.
-if [ -x "$SELF/jobs/deliver.sh" ] || [ -f "$SELF/jobs/deliver.sh" ]; then
+if [ -f "$SELF/jobs/deliver.sh" ]; then
     GH_REPO="$REPO" bash "$SELF/jobs/deliver.sh" scan --since "$since" \
         || echo "SWEEP: delivery cache not refreshed (deliver.sh scan exited $?)" >&2
 else
@@ -189,6 +189,34 @@ rm -f "$FEED"
 mv "$REPORT.tmp" "$REPORT"
 
 
+# A COMMENT HAS A CEILING AND THIS PAGE DOES NOT. Measured on the first live
+# run: a 24-hour window produced 232 comments and a 44 KB page, against
+# GitHub's 65536-character limit -- comfortable until a busy day, and a POST
+# that fails for being too long would lose the whole report while every gate
+# here still reported a clean sweep. So the POSTED copy is bounded and the
+# truncation SAYS SO and says where the rest is; the on-disk page stays whole.
+POST_MAX=${POST_MAX:-58000}
+BODY="$REPORT"
+python3 - "$REPORT" "$REPORT.post" "$POST_MAX" "$REPORT" <<'PY'
+import sys
+src, dst, cap, where = sys.argv[1], sys.argv[2], int(sys.argv[3]), sys.argv[4]
+text = open(src).read()
+if len(text) <= cap:
+    sys.exit(1)                       # nothing to do; the caller posts the original
+# Cut on a thread boundary so the last entry shown is a whole one.
+head = text[:cap]
+cut = head.rfind("\n### ")
+if cut > 0:
+    head = head[:cut + 1]
+dropped = text[len(head):].count("\n### ")
+open(dst, "w").write(
+    head + "\n---\n\n_**Truncated to fit one comment.** %d further thread(s) "
+    "are in the full page on the host at `%s`. This notice is here because a "
+    "report that silently stops at the character limit reads exactly like a "
+    "quiet day._\n" % (dropped, where))
+PY
+[ $? -eq 0 ] && BODY="$REPORT.post"
+
 # THE DESTINATION. One comment, edited in place, on the issue labelled
 # `harness-status` -- the same single URL status.sh writes to, for the same
 # reason: the owner reads it from a phone and never has to find it twice. It is
@@ -203,11 +231,11 @@ else
     cid="$(cat "$CID" 2>/dev/null)"
     posted=""
     if [ -n "$cid" ] && timeout 30 gh api "repos/$REPO/issues/comments/$cid" --silent >/dev/null 2>&1; then
-        timeout 60 gh api -X PATCH "repos/$REPO/issues/comments/$cid" -F body=@"$REPORT" --silent >/dev/null 2>&1 \
+        timeout 60 gh api -X PATCH "repos/$REPO/issues/comments/$cid" -F body=@"$BODY" --silent >/dev/null 2>&1 \
             && posted="updated #$issue comment $cid"
     fi
     if [ -z "$posted" ]; then
-        cid="$(timeout 60 gh api -X POST "repos/$REPO/issues/$issue/comments" -F body=@"$REPORT" --jq .id 2>/dev/null)"
+        cid="$(timeout 60 gh api -X POST "repos/$REPO/issues/$issue/comments" -F body=@"$BODY" --jq .id 2>/dev/null)"
         [ -n "$cid" ] && { echo "$cid" > "$CID"; posted="created #$issue comment $cid"; }
     fi
     echo "swept $now: $found thread(s) with new comments -> $REPORT (${posted:-NOT POSTED: gh refused})"

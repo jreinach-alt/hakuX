@@ -106,6 +106,16 @@ growing — not discussion, which is what that sentence is guarding against. If
 the owner disagrees, the destination is four lines at the bottom of
 `comment_sweep.sh`.
 
+*A ceiling the page does not have.* The first live run produced **44 KB** from
+a 24-hour window (232 comments, 155 of them a job's own output) against
+GitHub's 65536-character limit. Comfortable today and not on a busy day, and a
+POST that failed for length would lose the whole report while every check in
+the script still reported a clean sweep. So the **posted copy is bounded**
+(`POST_MAX`, default 58000), cut on a thread boundary, and the truncation says
+how many threads are missing and names the host path that has them — a report
+that silently stops at the limit reads exactly like a quiet day. The on-disk
+page stays whole.
+
 **`watch_remote_lane.sh`** — retired in place, not deleted: it is named in
 `ORCHESTRATION-DESIGN.md`, `ORCHESTRATION-WIND-DOWN.md` and two hand-offs, none
 of which this lane owns, and a stub answers in four lines what a deletion sends
@@ -144,6 +154,19 @@ A live `scan --since 2026-09-17` folded **48** comments and found **zero**
 deliveries and 20 lanes' reports. That is break #1 measured rather than
 asserted: in three days, every lane reported and nothing was ever routed.
 
+A live `comment_sweep.sh` run (temporary sweep dir, so the hourly timer's
+watermark was untouched) swept 232 comments across 40 threads, refreshed the
+cache and posted to the `harness-status` issue as comment `5742597501`. **That
+comment was deleted afterwards**: the proof was that it posts and edits in
+place, and an orphan roll-up on a shared issue before the PR folds is residue,
+not evidence.
+
+`preflight.sh` fails on one gate, `coverage`, for `#157` — an issue opened
+today with no lane and no `blocked_on` in the tracker. It is the board's to
+clear and no lane may edit `nv2a_issues.toml`. Confirmed not this lane's by
+running `origin/master`'s own `check_coverage.py` against the same live board:
+byte-identical FAIL. Every other preflight gate is green.
+
 `check_coverage.py` prints byte-identical summary lines before and after on the
 real board (23 open, 0 AVAILABLE, 23 blocked, 12 owned), because every open
 issue currently carries a `blocked_on`, so no lane has an idle issue and the
@@ -151,17 +174,26 @@ UNBRIEFED path is quiet either way. The change adds no noise to a live board.
 
 ## The self-test, and what it is worth
 
-`docs/testing/jobs/selftest.d/66-deliveries.sh`, 34 checks, and the whole
-fragment can be pointed at the old scripts with `SELFTEST_DELIVER_SRC`.
+`docs/testing/jobs/selftest.d/66-deliveries.sh`, 38 checks, and the whole
+fragment can be pointed at another copy of the scripts with
+`SELFTEST_DELIVER_SRC`. Full run: **347 passed, 0 failed** (313 before this
+lane).
 
 Falsified against `origin/master` (extract `comment_sweep.sh`,
 `watch_remote_lane.sh`, `check_coverage.py`, `board_files.py` into a tree and
-set that variable): **26 of 34 fail**, for five independent reasons — no
+set that variable): **29 of 38 fail**, for six independent reasons — no
 `deliver.sh` at all; `check_coverage.py` reading a file mtime; the sweep
 enumerating issues so PR #45's comment is invisible; the sweep having no
-destination; the watcher still looping. The 8 that pass are the positive
-control, the both-directions pins, and three that are vacuous against code
-lacking the feature.
+destination; no length cap on what it posts; the watcher still looping. The 9
+that pass are the positive control, the both-directions pins, and four that are
+vacuous against code lacking the feature.
+
+Falsified again per-invariant, because "26 reds" can be one reason counted
+twice: a **mutant tree** (symlinks to the real files, one copy with
+`if len(text) <= cap:` forced to `if True:`) fails exactly the three truncation
+checks and nothing else. Built as symlinks and never by editing the real path,
+which is how a lane lost a session to a swap-by-redirect that left the old code
+in the tree.
 
 Two traps it is built around:
 

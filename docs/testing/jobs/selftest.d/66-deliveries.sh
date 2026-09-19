@@ -260,6 +260,25 @@ check "...and does not post a second" \
 check "the sweep refreshed the delivery cache on the way past" \
     test -f "$DDISP/delivery-cache/remote.json"
 
+# A COMMENT HAS A CEILING AND THE PAGE DOES NOT. The first live run produced 44
+# KB from a 24-hour window against GitHub's 65536-character limit. A POST that
+# fails for length loses the whole report while every gate here still says
+# "swept". POST_MAX is the same knob the script reads, turned down until the
+# fixture's own report is over it, which is the mutant: at the real 58000 the
+# body below is a few kilobytes and this check fails, so it is measuring the
+# truncation and not the fixture.
+: > "$DELIVER_GH_LOG"; rm -f "$DSWEEP/comment-id"
+env PATH="$DBIN:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" \
+    HAKUX_SWEEP_DIR="$DSWEEP" POST_MAX=500 bash "$DSRC/comment_sweep.sh" >/dev/null 2>&1
+check "an over-long report is truncated before it is posted" \
+    bash -c 'test "$(wc -c < "$1")" -lt "$(wc -c < "$2")"' _ "$DD/posted/body-107.md" "$DSWEEP/unread.md"
+check "...and SAYS it was truncated, because a page that stops at the limit reads like a quiet day" \
+    grep -q "Truncated to fit one comment" "$DD/posted/body-107.md"
+check "...and names where the whole page is" \
+    grep -q "unread.md" "$DD/posted/body-107.md"
+check "the on-disk page is NOT truncated; only the comment is" \
+    bash -c '! grep -q "Truncated to fit one comment" "$1"' _ "$DSWEEP/unread.md"
+
 # ------------------------------------------------------- the retired watcher
 #
 # ASSERT ON THE WORDS, NOT THE EXIT CODE. The old file exits non-zero here too
