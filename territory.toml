@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 101
-updated_utc = "2026-09-19T08:20:00Z"
+wave = 102
+updated_utc = "2026-09-19T08:53:03Z"
 
 
 
@@ -134,6 +134,11 @@ note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). Named ri
 issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/lanes/handback/NOTES.md"]
 note = "WRITTEN AT WAVE 101, invisible-lane defect (see lane.armsskip). fold.sh EXCLUDED though PR #132 already carries an 18-line hook there (recording the conflict cause for handback.sh to read): lane.branchprune's row has reserved fold.sh since before this wave for a DIFFERENT feature (deleting a lane branch once its fold's push succeeds) and that PR is draft with no diff yet, so this is a claim-vs-not-yet-implemented-work collision rather than a live double-edit -- named branchprune's file of record because it asked first and check_territory.py would fail on two rows naming it. COORDINATE AT FOLD TIME: whichever of the two branches folds first carries the other's fold.sh hunk forward; they touch different regions of the file (handback's hook is inside the CONFLICT branch of the merge loop, branchprune's will be in the branch-cleanup path) so this is very likely a clean textual merge, not a semantic conflict. roles/board.md EXCLUDED though PR #132 appends to it -- see lane.auditoutlet's note, which is the file's owner of record for this wave and needs this lane's addition hand-carried in. docs/lanes/blit84/NOTES.md stray-artifact note also applies here; see lane.auditoutlet. selftest.sh dropped per lane.armsskip's note."
+
+[lane.linecap13]
+issues = ["13"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c"]
+note = "DISPATCHED WAVE 102 (job.board). #13's Vulkan extent phase already landed exact (47.8178% -> 99.5838%+ vs silicon, predictions/line-extent-phase-exact.json PASS). glsl/geom.c was FREE (released 2026-09-14 by lane.lineext retiring, never reclaimed) and the issue's own tracker note says the residual is cap/join geometry -- 493 of ~908 px, ours-only, 98.8% within w/2+2 of a vertex -- not the extent rule, so this claims only geom.c and not vk/draw.c (still lane.blitsafe's) or gl/shaders.c (lane.remote's, GL parity out of scope per the issue's own note)."
 
 [retired.tier81fix]
 issues = ["81", "90"]
