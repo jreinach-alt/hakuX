@@ -142,7 +142,11 @@ These are the rest of Finding 3's sweep. Each is a *report*, not an edit:
 `roles/lane.md:79` and this lane's own row keep it out of files other lanes
 hold, and this lane's standing rule has always been to ask rather than take.
 
-1. **`docs/testing/jobs/board.sh:218`** (lane.windowbudget). It runs
+Line numbers below are as of the merge of `origin/master` at wave 122, and
+they move: this lane's first pass wrote `board.sh:218` and that merge shifted
+the same line to `:254`. Grep the quoted code, not the number.
+
+1. **`docs/testing/jobs/board.sh:254`** (lane.windowbudget). It runs
    `check_coverage.py 2>&1 | grep -E '^(FAIL|  #)'` -- which **drops the
    `coverage NOT CHECKED` line entirely**, so a fail-open is indistinguishable
    from a clean board in the board's own status report. This is Finding 2 in a
@@ -201,8 +205,8 @@ attempt at each was wrong and the full self-test caught it (13 red):
   to be what the endpoint actually sends or it tests the normaliser against
   itself.
 - **97 has two consumers on two transports, from one fixture.** `board.sh`
-  still asks over GraphQL (`gh issue list` / `gh pr list` at `board.sh:132`
-  and `:135`) -- correctly, since it only ever runs on the owner's host -- and
+  still asks over GraphQL (`gh issue list` / `gh pr list` at `board.sh:157`
+  and `:160`) -- correctly, since it only ever runs on the owner's host -- and
   it *invokes* `fleet.py` and `check_coverage.py`, which now ask over REST.
   Replacing the shim's GraphQL arms with REST ones silently starved
   `board.sh`'s own two calls and took out all 13 of that fragment's checks.
