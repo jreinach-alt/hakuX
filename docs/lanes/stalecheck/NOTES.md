@@ -97,7 +97,7 @@ to something other than a human eye.
 
 ## Proof
 
-`selftest.d/87-fold-stale-ci.sh`, 42 checks, drives the real `fold.sh` and the
+`selftest.d/87-fold-stale-ci.sh`, 43 checks, drives the real `fold.sh` and the
 real `handback.sh` against its own shims and its own `HAKUX_WORK`. The two
 halves **share** that `HAKUX_WORK`: the cause file the fold half writes is the
 one the handback half reads, so the join is what is tested, not two fixtures
@@ -155,6 +155,19 @@ each (everything was committed first, so the revert is exact and checkable).
 | M4 | the `action=` override in `handback.sh` | 5 reds across the brief and the PR comment |
 | M5 | the `action=` whitelist | `an action the cause file invents is refused` + the fallback |
 | M6 | `blocked:needs-owner` on the gone-lane path | `its PR is labelled blocked:needs-owner` |
+| M8 | the comparison inverted (`-lt` → `-ge`) | 19, including `it is not handed back`, which no other mutant could move |
+
+M8 exists because of that last row. `it is not handed back` was green under
+every mutant above -- correctly, and therefore without evidence. A check no
+mutant can move is a check that has not been shown to check anything, so it
+got one of its own.
+
+The two negations in the fragment (`it is not handed back`, and the NONE
+check's second clause) are now functions rather than `bash -c '! grep ...
+"$VAR"'`. Both were in fact safe -- `SC_LOG` and `SC_COMMENTS` are exported --
+but `85-fold-ci.sh`'s header records a mutant that caught exactly that shape
+when the variable was not, and "safe because of an export three screens up" is
+not a property worth depending on.
 
 **M5 is why the fixture's invalid action is inert.** The obvious value to
 write there is `rm -rf /`, and under M5 -- which is the mutant this very check
