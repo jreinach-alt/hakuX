@@ -16,9 +16,11 @@ bits 0-7 (stencil) preserved, exactly the signature of a depth-only clear of
 0 landing on the COLOUR surface. The inline clear path is already confirmed
 correctly guarded (`write_zeta && r->zeta_binding` at vk/draw.c:6774 and
 :6870) -- look at the fall-through PIPELINE clear path instead. Two
-diagnosis arms already ran (solo `Color zeta overlap::Swap` at #88's own arm
-refs) and found the regression intrinsic, not contamination from
-ColorIntoZeta -- do not re-run that arm, read its result in the status_note.
+diagnosis arms already ran (registered as solo `Color zeta overlap::Swap` at
+#88's own arm refs, but `jobs/arms.sh` never passes `--only-tests` so they
+ran the full suite) and excluded cross-suite composition as the cause;
+within-suite contamination from ColorIntoZeta/ColorIntoZeta_ZB remains open
+-- do not re-run that arm, read its result in the status_note.
 
 Goal: find and fix the site where a depth clear reaches the colour
 attachment when zeta's binding is declined (the #88 colour-wins policy:
