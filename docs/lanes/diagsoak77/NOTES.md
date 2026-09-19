@@ -371,6 +371,39 @@ to refuse. What changes is the WINDOW: arms C3 and C4 are queued at
 classifier sees one content regime instead of a transition. C1's flags are
 recorded here as **not stipple** and are not carried into any correlation.
 
+## R4b. C2 replicated R4's false positive, which is what makes it worth a guard
+
+C2 (`600,after120`, the C1 replicate) flagged 11 of 115 imaged frames, and
+**three legs separated: `draws` +48.2 (p 0.0000), `submits_in_frame` +2.77
+(p 0.0041), `cb_resets` +2.21 (p 0.0076)** -- the same three as C1, the same
+sign, in an independent run. That is precisely the criterion F1-F4 registered
+for implicating a leg, and it is wrong.
+
+The split says so: **6 of C2's 9 attract-demo frames are flagged, against 5 of
+its 106 title-screen frames.** The classification is mostly *"is this a demo
+frame"*, and the counters that separate are the ones that tell a 216-draw cave
+apart from a 127-draw title screen.
+
+**A permutation test cannot catch this and it is important to say why.** It
+guards against *random* structure by reshuffling the labels; the scene is a
+property of the frame, so every reshuffle carries the scene along with the
+label. The null it builds is the right null for "did some subset separate by
+chance" and the wrong one for "is the subset a different scene".
+
+So `framedump_correlate.py` now reports the flag rate by draw-count bucket
+**before** any leg and marks them all `DESCRIPTIVE ONLY` when it is not flat.
+On C2: `0.0, 0.0, 16.7, 20.0` per 100, monotone in draw count, with
+`spearman(HF, draws) = +0.413`.
+
+Writing the guard's selftest then found a defect **in the guard**: Spearman via
+`argsort(argsort(x))` breaks ties by index, so a *constant* column ranks
+`0..n-1` in frame order and correlates with anything that trends. A one-scene
+fixture scored `rho +0.665` and tripped the warning it exists to stay silent
+for. Ties are averaged now and a constant column returns 0, pinned in both
+directions. The same one-liner also had `np.percentile` return four identical
+bucket edges on a small-integer column -- three empty buckets and one holding
+everything, which reads as a flat rate and is no reading at all.
+
 ## R5. A1 had no power, and says so
 
 A1 classified 12 frames and flagged none. At the class size #77's own
@@ -380,3 +413,34 @@ it could have separated from a permutation null was **0.91 on
 `cb_resets` had **zero spread among the imaged frames** despite varying across
 all 150. That is not a null result. It is an arm with no power, and it is
 reported as one.
+
+## R6. `--frames-every` returns pure black on this device, and the dump does not
+
+Arm D1 asked for a screen frame every 5 s over a 300 s soak to map the
+timeline. It returned 58 PNGs and **every one is exactly black: max pixel 0,
+0.0000% non-zero, on all 58.** `start_frame_capture` deletes empty files, so
+these are `adb exec-out screencap -p` calls that succeeded and returned an
+all-zero image.
+
+Bounded honestly, because this artifact cannot tell the candidates apart:
+
+- **What is established.** On the Thor, on this title, at this moment, the
+  dispatcher's screen-frame path yields no signal at all. D1 is the **only**
+  soak in the whole results archive that has ever set `--frames-every` (1 of 1),
+  so there is no earlier run showing it working and **nothing published rests
+  on it** -- this is not a regression anyone can point at, it is a first use
+  that came back empty.
+- **What is not established.** Whether this is the screen fault the fleet was
+  held for, whether `screencap` cannot read this app's surface, or something
+  else. Three candidates, one all-zero artifact, and no way to separate them
+  without touching the device -- which this lane may not do.
+
+**What matters for #77 either way:** the frame dump reads the display surface
+out of **guest VRAM**, not off the screen, and C1 and C2 returned real pictures
+from the same handheld in the same minutes. So whatever blacks out `screencap`
+does not touch the dump, and on this device the dump is currently the only
+working way to see what the emulator renders. Every screen-derived measurement
+this issue has accumulated -- the 2.25x upscale, the 0.40 modal scrim, the
+25-75% detection bracket -- belongs to an instrument that is now returning
+zeros here; the dump's PPMs are native, uncomposited and unaffected by all
+three.
