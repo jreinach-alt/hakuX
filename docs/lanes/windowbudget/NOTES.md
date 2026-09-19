@@ -255,8 +255,20 @@ conversion.
 
 ### What the selftest says about the merged head
 
-    this branch, merged      551 passed, 10 failed
-    pristine origin/master   500 passed, 11 failed
+Locally, and then again in CI -- which is the better of the two comparisons,
+because both runs are the same clean runner and neither can see this host's
+shared `$WORK`:
+
+    local    this branch, merged           551 passed, 10 failed
+             pristine origin/master        500 passed, 11 failed
+    CI       this branch  (35456734694)    551 passed, 10 failed
+             master       (35456001861)    501 passed, 10 failed
+
+Same 10 names in all four, and they are the same 10: **this branch adds 50
+passing checks and zero failures.** (The local master run's eleventh,
+`nothing was skipped for the live prediction`, reads on this host's shared
+`$WORK` and not on either tree -- which is exactly why the CI pair is the row
+to quote.)
 
 **All 10 of this branch's failures are master's own**, and every one is in
 `fold.sh`'s `regression-accepted` override. `git diff origin/master --
@@ -267,9 +279,6 @@ neither caused them nor can fix them. They were confirmed by running the *same*
 directory, which is the check worth copying -- "it also fails on master" is a
 claim, and an untested one is how a lane inherits the blame for someone else's
 red.
-
-(Master's eleventh, `nothing was skipped for the live prediction`, passed here.
-It reads on shared `$WORK` state, not on either tree.)
 
 ### The red is master-wide, and this PR cannot fold through it
 
@@ -287,11 +296,12 @@ and has been red on every master commit since. `gh run view 35456001861
 the CI red and the local red are one fact, not two.
 
 `fold.sh`'s own `ci_green()` requires **every** check on the head to be
-`SUCCESS`/`SKIPPED`/`NEUTRAL`, so this PR will read `RED`, collect one
-`[job.fold] Not folded: CI is red` comment and wait -- with its `fold-ready`
-label kept, which is the gate behaving correctly. **Every lane branching from
-master is in the same position**; nothing about this one is special, and
-pushing anything here cannot clear it.
+`SUCCESS`/`SKIPPED`/`NEUTRAL`. Measured on this head, not predicted: both
+`build` checks are `SUCCESS` and `selftest` is `FAILURE`, so the PR reads
+`RED`, collects one `[job.fold] Not folded: CI is red` comment and waits --
+with its `fold-ready` label kept, which is the gate behaving correctly.
+**Every lane branching from master is in the same position**; nothing about
+this one is special, and pushing anything here cannot clear it.
 
 It is deliberately not fixed from this lane. `lane.foldregress` has retired
 (no `territory.toml` row, no open PR), so `fold.sh` is unheld rather than
