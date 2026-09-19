@@ -111,10 +111,22 @@ old position above the source and re-running:
   FAIL cloud.sh has exactly one TURNS= assignment and it is below the source
 ```
 
-and the log shows `--max-turns 150` / `--max-turns 120`. The two
-"with no dial set, the default is what is spawned" checks stay green under the
-mutant, which is correct and is the point of including them: they pin the
-default so "always 317" and "reads the file" are not the same green.
+The two "with no dial set, the default is what is spawned" checks stay green
+under the mutant, which is correct and is the point of including them: they
+pin the default so "always 317" and "reads the file" are not the same green.
+
+**The reds are not all one reason.** The `--max-turns` the mutant actually
+spawned, per log:
+
+| run | lane.sh | cloud.sh | why |
+|---|---|---|---|
+| override (`limits.env` only) | 150 | 120 | the file was ignored; the default won |
+| default (no dial) | 150 | 120 | correct — these two stay green |
+| precedence (`limits.env` **and** env) | 999 | 999 | the **process environment** won |
+
+Three distinct mechanisms, and the third is the live host mitigation's own
+mechanism — which is why the precedence check is worth its line rather than
+being a restatement of the first.
 
 The static ordering check is anchored on `^TURNS=`, not on `TURNS=`: the
 comments I added quote the broken line verbatim, so an unanchored grep matches
@@ -179,5 +191,7 @@ at line 40 is exactly why it works. I did not clear it. Note that
 
 ## Status
 
-- `bash docs/testing/jobs/selftest.sh`: **676 → 686 passed, 0 failed.**
+- `bash docs/testing/jobs/selftest.sh`: **676 passed, 0 failed** (666 before
+  this branch; the ten new checks are all mine). Under the mutant: 668 passed,
+  8 failed.
 - Prediction: none (harness change, no pixels).
