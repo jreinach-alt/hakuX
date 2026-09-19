@@ -372,9 +372,16 @@ def main():
     # LIVE-OPEN ONLY. A closed row's `blocked_on` is history and rewriting it
     # would destroy the record for no gain; six of the fourteen matching rows
     # are already closed.
+    # CASE MATTERS FOR EXACTLY ONE OF THESE, and the asymmetry is the point.
+    # "not blocked", "not a blocker" and "unblocked" have no innocent reading as
+    # a blocker's opening claim, whatever their case. "cleared" does: "Blocked
+    # until the audit has cleared the held fold" is a perfectly good blocker,
+    # and #44's "test-and-cleared" and #91's "audit pass 2 cleared them" are
+    # both real. So CLEARED is matched only SHOUTED, which is how the board
+    # writes its own status markers and how #89 wrote this one.
     LEAD = 90
-    LEAD_CLAIMS = (r"\bNOT BLOCKED\b", r"\bNOT A BLOCKER\b", r"\bUNBLOCKED\b",
-                   r"\bCLEARED\b")
+    LEAD_ANY_CASE = (r"\bNOT BLOCKED\b", r"\bNOT A BLOCKER\b", r"\bUNBLOCKED\b")
+    LEAD_SHOUTED = (r"\bCLEARED\b", r"\bNO LONGER BLOCKED\b")
     ANYWHERE_CLAIMS = (r"not on anything technical", r"dispatch capacity")
     not_blocked = []
     for k, v in sorted(blocked.items(), key=lambda x: int(x[0])
@@ -382,8 +389,8 @@ def main():
         if k not in live:
             continue
         lead = " ".join(v.split())[:LEAD]
-        hit = next((p for p in LEAD_CLAIMS
-                    if re.search(p, lead, re.I)), None) \
+        hit = next((p for p in LEAD_ANY_CASE if re.search(p, lead, re.I)), None) \
+            or next((p for p in LEAD_SHOUTED if re.search(p, lead)), None) \
             or next((p for p in ANYWHERE_CLAIMS
                      if re.search(p, v, re.I)), None)
         if hit:

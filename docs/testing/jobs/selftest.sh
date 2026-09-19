@@ -370,6 +370,15 @@ two = {
     # the waiting-for-a-slot shape, in the field that means the opposite
     "capacity":   'status = "open"\nblocked_on = "Blocked on local dispatch '
                   'capacity this tick, not on anything technical."\n',
+    # a REAL blocker that happens to use the word "cleared" in its first
+    # sentence: must pass, or the gate punishes honest prose
+    "honest":     'status = "open"\nblocker_tested = "2026-09-19"\n'
+                  'blocked_on = "Blocked until the audit has cleared the held '
+                  'fold, which is not this lane\'s to do."\n',
+    # the same word SHOUTED as a status marker, which is how #89 wrote it
+    "shouted":    'status = "open"\nblocker_tested = "2026-09-19"\n'
+                  'blocked_on = "CLEARED 2026-09-19: the device run this was '
+                  'blocked on is done."\n',
     # finished work reading as available is how an issue gets re-dispatched
     "done":       'status = "fixed-verified"\ndispatch_state = "available"\n'
                   'blocked_on = ""\n',
@@ -438,6 +447,12 @@ check "a blocked_on that OPENS with NOT BLOCKED fails" \
     grep -q "FAIL: 1 .blocked_on. that OPENS BY SAYING IT IS NOT BLOCKED" <<< "$out"
 board capacity; out=$(cov)
 check "'blocked on dispatch capacity, not on anything technical' fails" \
+    grep -q "OPENS BY SAYING IT IS NOT BLOCKED" <<< "$out"
+board honest; out=$(cov)
+check "a real blocker using the word 'cleared' in prose is NOT flagged" \
+    grep -q "^coverage ok (4 open: 0 AVAILABLE, 3 blocked" <<< "$out"
+board shouted; out=$(cov)
+check "...but CLEARED shouted as a status marker is" \
     grep -q "OPENS BY SAYING IT IS NOT BLOCKED" <<< "$out"
 board done; out=$(cov)
 check "AVAILABLE on work that is no longer open fails" \
