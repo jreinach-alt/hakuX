@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 96
-updated_utc = "2026-09-19T00:39:00Z"
+wave = 97
+updated_utc = "2026-09-19T01:05:00Z"
 
 
 
@@ -97,10 +97,11 @@ files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
 
-[lane.tier81fix]
+[retired.tier81fix]
 issues = ["81", "90"]
-files = ["accel/tcg/cpu-exec.c", "accel/tcg/translate-all.c"]
-note = "#81's FIX AND #90, granted OUTRIGHT because check_coverage told me #81's blocker names files NOBODY HOLDS -- 'a grant request rather than a wall'. That is the psh.c deadlock exactly, and it cost 77 commits several hours today, so this one is not waiting to be asked. THE MEASUREMENT IS DONE AND IT DECIDES THE FIX: the tier-1 mechanism FIRES and is STARVED, not dead. Eight of the first ten promotion requests name ONE pc inside ONE millisecond; cflags goes 0xff020000 -> 0xff024000 between promote #0 and #1, so the block kept CF_INVALID set and was re-promoted seven more times; exec_count climbs 64..71 past thresh=64 and a later request reads exec=128, the clamp ceiling, so the promotion test is TRUE FOREVER for such a block. Saturation in 2.2-2.7 s on four of four runs. SO THE FIX IS THE AUDIT'S M2 -- dedup plus reset-or-latch exec_count in tb_request_tier1_promotion() -- AND NOT unmasking the two CF_INVALID comparisons: the numbers point at eight duplicate requests for one pc, not at the lookup. #90 comes with translate-all.c because it is the same file and a candidate SECOND contributor: the anti-churn tier-hint restore at :659-688, whose own comment says it prevents 'endless re-promotion churn', sits inside #ifndef __ANDROID__ with its __android_log_print nested in an #ifdef __ANDROID__ INSIDE it -- dead preprocessor on the only platform that ships. CHANGE THEM SEPARATELY AND MEASURE SEPARATELY: #81's own entry says doing both at once makes either unattributable. AND THERE IS NO SPEC FOR THE TIER-1 MECHANISM, so the audit's remediation is the auditor's reading of intent from comments -- agree the intent before implementing. COORDINATE ON tb-maint.c, which is NOT granted: 937848c9e7 (#68's range-test restoration, ~200 lines) is HELD UNFOLDED pending its own arm."
+retired_utc = "2026-09-19T01:05:00Z"
+files = []
+note = "RETIRED AT WAVE 97: BOTH ITS ISSUES ARE CLOSED. #81 and #90 were closed 2026-09-19T00:20Z by the board (the fix is folded as 7dfa94c403 via 4d3edc563d; rev-list --left-right prints 109 0), and the fleet row has read `retired` since the 00:16Z tick -- but this row still claimed two files, so fleet.py listed the lane as a claim with no agent and the files were held by nobody. accel/tcg/cpu-exec.c and accel/tcg/translate-all.c ARE RELEASED TO [free] AT THIS WAVE. The old note is kept below the retirement line because #90's second contributor (the anti-churn tier-hint restore at translate-all.c:659-688, dead preprocessor on the only platform that ships) and the tb-maint.c coordination note are still the next reader's starting point. ORIGINAL NOTE: #81's FIX AND #90, granted OUTRIGHT because check_coverage told me #81's blocker names files NOBODY HOLDS -- 'a grant request rather than a wall'. That is the psh.c deadlock exactly, and it cost 77 commits several hours today, so this one is not waiting to be asked. THE MEASUREMENT IS DONE AND IT DECIDES THE FIX: the tier-1 mechanism FIRES and is STARVED, not dead. Eight of the first ten promotion requests name ONE pc inside ONE millisecond; cflags goes 0xff020000 -> 0xff024000 between promote #0 and #1, so the block kept CF_INVALID set and was re-promoted seven more times; exec_count climbs 64..71 past thresh=64 and a later request reads exec=128, the clamp ceiling, so the promotion test is TRUE FOREVER for such a block. Saturation in 2.2-2.7 s on four of four runs. SO THE FIX IS THE AUDIT'S M2 -- dedup plus reset-or-latch exec_count in tb_request_tier1_promotion() -- AND NOT unmasking the two CF_INVALID comparisons: the numbers point at eight duplicate requests for one pc, not at the lookup. #90 comes with translate-all.c because it is the same file and a candidate SECOND contributor: the anti-churn tier-hint restore at :659-688, whose own comment says it prevents 'endless re-promotion churn', sits inside #ifndef __ANDROID__ with its __android_log_print nested in an #ifdef __ANDROID__ INSIDE it -- dead preprocessor on the only platform that ships. CHANGE THEM SEPARATELY AND MEASURE SEPARATELY: #81's own entry says doing both at once makes either unattributable. AND THERE IS NO SPEC FOR THE TIER-1 MECHANISM, so the audit's remediation is the auditor's reading of intent from comments -- agree the intent before implementing. COORDINATE ON tb-maint.c, which is NOT granted: 937848c9e7 (#68's range-test restoration, ~200 lines) is HELD UNFOLDED pending its own arm."
 
 
 [retired.blit83]
@@ -109,10 +110,17 @@ files = []
 retired_utc = "2026-09-19T00:45:00Z"
 note = "RETIRED AT WAVE 96: the lane RAN AND REPORTED (00:00:56Z to 00:12:47Z, 62 turns, issuecomment-5737707468) and its fleet row has said `retired` since the 00:16Z tick -- but the live row here still claimed #83, so fleet.py listed the lane as a claim with no agent AND #83 as dispatchable, which is two symptoms of one stale row. It answered its brief: the control on #38's BLEND_AND arm is SOUND BUT INERT, #38's PASS stands, and #83's premise is a COLUMN MISREAD -- the '1 px' is the max_rgb column and the differing-pixel counts on disk are 1,573 to 1,701. Analysis only, no commits, nothing to fold. WHAT IS LEFT is one offline measurement the lane could not reach from inside its worktree: briefs/blit83b.md, ready to dispatch the moment the fleet is under LANE_MAX. The old note, for the record: #83's EIGHT ONE-PIXEL-LOW SRCCOPY CAPTURES, dispatched ANALYSIS-ONLY -- files = [] deliberately. vk/blit.c is lane.blitsafe's and stays there: this lane does not get it, because four issues in that file cluster are already one lane's and a fifth agent in perform_blit() is the collision this file exists to prevent. What it CAN do without the file is the whole of the first step. The magnitude is fixed at exactly 1 px on eight captures and OURS IS ALWAYS LOW, which is a sign, not a rounding spread -- so the question is which of the three candidate one-low mechanisms it is, and reading answers that. IT IS ALSO THE MUST-NOT-MOVE CONTROL on #84's BLEND_AND arm, which is in fold now: if those eight move when the divide lands, this issue's own blocker_falsifier fires and the control leg is void. Say which, in writing, before the fold's arm is judged. If the answer needs an edit, it comes back for the file rather than taking it."
 
-[lane.stencil99]
-issues = ["99"]
+[retired.blit83b]
+issues = ["83"]
 files = []
-note = "#99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
+retired_utc = "2026-09-19T01:05:00Z"
+note = "RETIRED AT WAVE 97, AND IT ANSWERED ITS BRIEF EXACTLY. lane.blit83b ran analysis-only with files = [] (it was told not to ask for vk/blit.c and it did not), measured the device capture the first pass could not reach, and posted issuecomment-5737991240 with the date, the ref, the count and the location relative to the blit rect -- which is what briefs/blit83b.md said DONE WHEN. THE FALSIFIER CAME OUT NEGATIVE FOR THE BLIT: 0 of 8 blitted destination pixels differ at 71c7bd1d7d and 24a75d6e3c on device thor, 2026-09-18 captures against 2026-09-09 goldens; the one differing pixel is (176,180) B ours-low-by-one, the same pixel in all eight captures and all ten runs while the blit destination varies over eight coordinates. #83 IS CLOSED into #38 mechanism 1 on that measurement. IT HAD NO FLEET ROW AND NO TERRITORY ROW while it ran -- the invisible-lane hazard fleet.py documents and cannot see, and the reason #83 read as dispatchable-and-undispatched on this tick when it had in fact just been answered. Both rows exist now. WHAT IS LEFT OF IT: PR #104, whose entire diff is a root NOTES.md the lane was never granted (files = [] means no file was its to commit) and which master does not carry. The board did not route it to fold -- the report is preserved verbatim on the issue and in this file, and moving the measurement into docs/investigations/ is a lane's write, not the board's. The PR is closed with that said on it; the branch is kept."
+
+[retired.stencil99]
+issues = ["99"]
+retired_utc = "2026-09-19T01:05:00Z"
+files = []
+note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #75 (itself a duplicate of #39). The lane held no files and produced no commits, so there is nothing to fold and nothing to release; the row was the only thing left asserting coverage that does not exist. ORIGINAL NOTE: #99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the issue is a title with an empty body and no tracker entry: three Stencil ZERO captures reading 0 -> 100,000 px between 2501f35211 and 0026f00534. #79 SAYS NINE OF SIXTEEN STENCIL CAPTURES CHANGE VALUE BETWEEN RUNS ON ONE BUILD, so a two-sha delta over that suite is not evidence of a regression until the three are shown to be outside #79's nine -- that separation is the first step and it is offline. Then date the goldens and the captures against both shas before attributing anything to code: a golden newer than the run, or a capture older than the fix, reads exactly like a live defect and has cost this project a suite twice. It writes the tracker entry the issue never got. No files, no arm; if a bisect is warranted it comes back and asks for one."
 
 [free]
 #
@@ -279,7 +287,13 @@ note = "#99, dispatched ANALYSIS-ONLY and with a WARNING ATTACHED, because the i
 # #52) now carry written blockers instead of a lane -- which is the honest
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
-files = ["accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
+files = [
+# RELEASED AT WAVE 97 by retiring lane.tier81fix: its two issues are closed and the
+# files were claimed by a lane with no agent. #90's second contributor is unimplemented
+# and lives in translate-all.c -- see [retired.tier81fix].
+    "accel/tcg/cpu-exec.c",
+    "accel/tcg/translate-all.c",
+"accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
          "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
