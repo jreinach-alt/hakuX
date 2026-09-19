@@ -101,6 +101,17 @@ correct `fold.sh` and go red on a mutant. That is the difference between
   (PR #152, fold-ready). That is a **second fragment numbered 86**; both will
   source, `86-fold-regressed.sh` first by `LC_ALL=C sort`. Nothing breaks, but
   the numbering is no longer unique and a reader who greps for "86" gets two.
+- **The same trap is latent in `91-fold-transient.sh`.** It also drives the
+  real `fold.sh` with `HAKUX_REPO_DIR` pointed at its own fixture repo
+  (`lane/foldtr`, `lane/foldtr-board`), and its `ft_reset` restores nothing at
+  all. It is green today only because every tick in it is *meant* to fail a
+  preflight gate, so nothing ever folds and `prune_branch()` never runs. The
+  day 91 grows one successful-fold case it inherits this bug exactly. Not
+  fixed here: 91 is not this lane's file and changing it would be a claim on
+  somebody else's fragment for a failure that does not exist yet. Whoever adds
+  that case should capture the sha at setup the way `fr_reset` now does.
+  Checked the rest: no other fragment force-pushes a lane ref it assumes
+  survived a tick.
 - Do not chase this class of failure by reading the check names. The run
   printed plausible check names for forty lines while measuring a fixture that
   had already collapsed; what identified it was the git stderr line nothing
