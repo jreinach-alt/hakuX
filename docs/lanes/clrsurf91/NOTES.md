@@ -237,3 +237,160 @@ sha256 `dfcf84103eb3`, three-suite disc. Not queued by this lane.
   capture in this very suite moving 141,125 px on composition alone, so
   composition can violate the leg and read as a refutation of the mechanism.
   This prediction uses #88's three-suite disc for that reason.
+
+---
+
+# Attempt 3 (2026-09-19, job.cloud): audit pass 1 remediated -- and the arm came back FAIL
+
+Two separate things happened between attempt 2 and this one, and they must not
+be read as one. Audit pass 1 landed (0 HIGH, 3 MEDIUM, 1 LOW) and is
+remediated below. **Independently, `[job.arms]` returned a FAIL at 16:18Z that
+the audit never saw** -- it was written from the diff at 16:08Z, ten minutes
+earlier. The audit's MEDIUMs are fixed. The FAIL is not something remediation
+can fix, and this section exists so nobody folds this branch believing the
+measurement went the other way.
+
+## The arm FAILED, and the interesting part is not the failed leg
+
+```
+predicted Color_zeta_overlap/Swap = 165447, measured 304750
+predicted better = 1, measured 0
+```
+
+Read past those two lines to the body of the comparison, because that is where
+the information is:
+
+| | |
+|---|---|
+| movers | **none** -- no capture moved outside its band |
+| counts | better 0, worse 0, **same 11** of 11 |
+| byte check | hashed 11 of 11 shared captures; **every one byte-identical between the arms** |
+
+**Arm A reproduced 304,750.** The prediction registered "ARM A IS THE CHECK"
+as a real condition -- if A does not reproduce, the base or disc does not carry
+the regression and the absolute is unearned. It *did* reproduce. So the base
+and the three-suite disc are sound, and the arm is not void. That check
+passing is what makes the rest of the result mean something.
+
+**Arm B is bit-identical to arm A on all eleven captures.** The fix is not
+"less effective than predicted" and did not land "a third value between the
+two", which is the shape of failure the prediction said to expect if the stray
+download were only part of the 139,303 px. It moved **nothing at all**.
+
+### What that does and does not refute
+
+It refutes, cleanly: **`update_surface_part()`'s gate is not the route by
+which anything reaches `Color_zeta_overlap/Swap`'s background.** Restricting
+the gate to `upload` changes no pixel in that suite, on the very policy that
+was supposed to widen the route.
+
+It does **not** refute the byte arithmetic. `0xFE242424 -> 0x00000024` is still
+`depth << 8 | stencil` with stencil preserved, both clear paths are still
+correctly guarded, and "a zeta image is downloaded over a colour address" is
+still the only reading of that word anyone has produced. What has been
+falsified is the **route**: some other path performs that download, and this
+gate is not it. Do not let the next lane throw away the arithmetic along with
+the route -- that was the part with no free parameter, and it is untouched.
+
+Stated as a limit rather than talked past: this says nothing about the fix
+under master's policy, because neither arm is master. Both arms carry the
+decline, exactly as registered.
+
+### Falsifier (5) is unreadable as registered -- the instrument is not in the arm it names
+
+The prediction's leg (5) says: *"n>0 in arm A over a run containing TestSwap()
+proves the download branch reached a Surface carrying draw_dirty with no
+binding behind it"*, and *"n==0 REFUTES THIS FIX'S MECHANISM OUTRIGHT"*.
+
+**Arm A's binary contains no `dl91_probe`.** Verified, not assumed:
+
+```
+git show aec524681e:hw/xbox/nv2a/pgraph/vk/surface.c | grep -c 'static void dl91_probe'   -> 0
+git show 7980d1caa2:hw/xbox/nv2a/pgraph/vk/surface.c | grep -c 'static void dl91_probe'   -> 1
+```
+
+The probe was added *with the fix*, so it exists only in arm B. Leg (5) names
+a counter in an arm whose binary cannot emit it: it could never have returned
+either n>0 or n==0, and it discharged nothing. A leg that names no capture and
+no reachable instrument is bound, not measured -- it was stamped
+`PRE-REGISTERED` along with the ten real ones and reads in the verdict like a
+leg that held.
+
+**The readable version, and it is one grep for whoever has `$WORK`.** This
+session is sandboxed to its worktree and cannot read the run directories, so
+this is left as a stated open read rather than a guess:
+
+```
+grep -h '\[dl91\]' <arm-B run dir>/**/logcat*        # 1789825274-arms-clrsurf91-fix-1110297
+```
+
+- **`n == 0`** -- the declined branch never fired. The precondition of the
+  whole model never occurred in this suite, the mechanism is refuted outright
+  on its own registered terms, and the byte-identical arms are explained
+  entirely: the fix could not act because there was nothing to decline.
+- **`n > 0` with arms still byte-identical** -- the branch fired and every
+  declined download would have written bytes already at the address. The
+  precondition occurs and is harmless here, which is a different and more
+  interesting finding, and it is where `addr=` (added in this attempt, M2)
+  earns its place: it says which address those declines were for.
+
+**These two are not the same result and the next actor should not proceed
+without separating them.** One grep decides it and needs no device.
+
+## Audit pass 1 remediation (commit `5953a80814`)
+
+| | what changed |
+|---|---|
+| **M3** | merged `origin/master`; regenerated `nv2a_index.json` on the merged tree |
+| **M1** | the `DIRTY_MEMORY_NV2A` test-and-clear is now upload-only |
+| **M2** | `dl91_probe` takes and prints `addr=` |
+| **L1** | "REMOVE ALL FOUR" over five names -> "REMOVE ALL FIVE" |
+
+**M3.** The conflict was the shared generated index, and taking either side
+whole was wrong: the branch's copy predated master's `renderer.c` growth, so
+its `renderer.c` locs ran *backwards* (1096->1071, 1297->1272, 1370->1345) and
+it carried 2833 sites against master's 2839. Regenerated instead.
+`--tests /home/justin/nxdk_pgraph_tests` was checked to be at `91a0de45ca`
+first -- the same `tests_commit` master's copy names -- because an older tests
+checkout silently deletes suites while fixing line numbers. **A bare
+`nv2a_index.py build` with no `--tests` writes `0 suites` and says so only in
+one line of output; it was run and discarded.** Result: 951 symbols / 2839
+sites / 103 suites / 498 gaps, every count equal to master, and the whole
+remaining diff against master is this branch's own `surface.c` locs. Both
+prediction refs re-verified as ancestors after the merge (`aec524681e`,
+`7980d1caa2`); nothing re-registered, and no rebase.
+
+**M1** is the one with teeth. The dirty-bitmap loop is a *destructive* read --
+`bitmap_test_and_clear_atomic` -- and `mem_dirty`'s only two consumers
+(`upload_pending |= mem_dirty`, `upload_pending = shelf_stale || mem_dirty`)
+both sit inside the gate block, which this branch made upload-only. So a
+download consumed the guest's CPU writes and handed them to nobody, and the
+next upload computed `mem_dirty == false` because this call had already eaten
+the evidence, took the host image as-is, and lost the write. Checked rather
+than inherited from the audit: `grep -n mem_dirty` gives exactly those uses
+and the gate. The scan is now `if (upload && !tcg_enabled())`.
+
+Two scope facts recorded so pass 2 need not infer them. This **also** repairs
+the pre-existing loss on a binding-*present* download, which this branch did
+not introduce -- same line, and it is flagged here rather than smuggled. And
+it can only turn `upload_pending` from false to true, i.e. cause a redundant
+upload of memory the deferred download has already made current, never a wrong
+one. It additionally stops the bit being eaten out from under the vertex-RAM
+sync, the only other consumer of this bitmap.
+
+**M2.** The probe's own comment called `addr=` "the number worth having" and
+the probe did not emit it -- the one field that separates "declined a download
+that would have landed wrong" from "declined a harmless one". As the section
+above shows, that distinction is now exactly the open question, so this was
+not cosmetic.
+
+## What the next actor should do, in order
+
+1. **Grep arm B's log for `[dl91]`.** One command, no device, and it decides
+   between "mechanism refuted outright" and "precondition fires but is
+   harmless here". Everything else waits on it.
+2. Do not re-register this prediction as-is. Leg (5) must name an instrument
+   present in **both** arms, or be dropped; a probe added with the fix cannot
+   measure the baseline.
+3. Do not re-read the clear paths, and do not discard the byte arithmetic.
+   The route is refuted; the signature is not.
