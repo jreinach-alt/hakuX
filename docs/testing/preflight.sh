@@ -38,6 +38,27 @@ fail=0
 step() { printf '%-28s' "$1"; }
 ok()   { echo "ok"; }
 bad()  { echo "FAILED"; fail=1; }
+# A THIRD VERDICT, BECAUSE THERE ARE THREE OUTCOMES AND THERE WERE TWO WORDS.
+#
+# A gate that could not reach the thing it checks has not passed and has not
+# failed; it has not run. Every such gate here FAILS OPEN on purpose -- a
+# network blip must not make the repository unpushable -- so it exits 0, and
+# with only `ok` and `FAILED` available that exit was rendered as `ok`. The
+# operator then read "preflight green" over a check that did no work.
+#
+# That is not hypothetical and it is not rare. `check_coverage.py` reaches
+# GitHub through `gh`, and in a Claude Code cloud session the proxy refuses
+# GraphQL wholesale -- so on 2026-09-19 (lane.remote, PR #162) EVERY coverage
+# gate run from such a session took the fail-open branch, printed its reason,
+# and was reported here as `ok`. The REST conversion in check_coverage.py
+# fixes the cause; this word fixes the class, because the next gate to lose
+# its network will print this instead of a pass.
+#
+# IT DOES NOT SET `fail`. The fail-open is deliberate and stays; what was
+# missing was a way to say so out loud. `fold.sh` keys a failed gate on a
+# line ENDING in the word FAILED (`preflight_failed_gates`), so this word is
+# invisible to it by construction and a fold is not blocked by a blip.
+unchecked() { echo "DID NOT RUN"; }
 
 # 1. psh_differ, as .github/workflows/desktop.yml runs it. carve.py refuses to
 #    carve a function it was not told about, so a new PGRAPHState reader in
@@ -186,10 +207,34 @@ fi
 #    not know what a lane is -- but it belongs here for the same reason: the
 #    state it guards changes at exactly the moment someone folds work and
 #    pushes. It FAILS OPEN without `gh`, so an offline preflight still passes.
+#
+#    AND THE VERDICT IS PRINTED, NOT LINE 1. This read `sed -n 1p`, which was
+#    right until check_coverage.py grew a provenance line ("board read from:
+#    territory.toml <- origin/board, ...") and that became line 1. From then
+#    on the operator saw where the board was read from and NOTHING about what
+#    was checked -- including, on a run that failed open, nothing about the
+#    fact that it had failed open. The verdict is the line beginning
+#    `coverage `, which is the interface check_coverage.py's own comments
+#    promise, so key on that and not on a position.
+#
+#    A MISSING VERDICT LINE IS ALSO `DID NOT RUN`. If the script printed
+#    nothing matching, it died somewhere it does not report from, and an
+#    empty grep rendered as `ok` is the same bug one layer down.
 step "coverage"
 if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; then
-    ok
-    sed -n 1p /tmp/preflight-coverage.log | sed 's/^/  /'
+    cov_verdict=$(grep -m1 '^coverage ' /tmp/preflight-coverage.log || true)
+    case "$cov_verdict" in
+        "coverage NOT CHECKED"*|"")
+            unchecked
+            # The WHOLE log, not one line: on this path the reason is the
+            # only thing of value, and it is a handful of lines.
+            sed 's/^/  /' /tmp/preflight-coverage.log
+            echo "  ^^ THE COVERAGE GATE DID NOT RUN. It exits 0 by design so"
+            echo "     a blip cannot block a push; that 0 is not a pass."
+            ;;
+        *)  ok
+            printf '  %s\n' "$cov_verdict" ;;
+    esac
 else
     bad
     sed 's/^/  /' /tmp/preflight-coverage.log
