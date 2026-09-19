@@ -9,6 +9,74 @@ see "blast radius" below for why `surface.h` stayed shut.
 
 ---
 
+## Why attempt 2 did not finish — it got a verdict, and the verdict was FAIL
+
+Attempt 2 did everything the contract asks: it merged rather than rebased, it
+re-bound both arms onto live refs, it wrote this file, it gave the PR a header
+block, and it marked the PR ready. The arms then ran, and **that is where it
+stopped**, because a lane cannot mark its own regression resolved:
+
+- **#88's arm: FAIL, 2 of 13 checks.** The mechanism is *confirmed* — see
+  below, both absolutes landed exactly — and the two violated checks are one
+  capture counted twice: `Color_zeta_overlap/Swap` 165,447 → 304,750 on a
+  `must_not_move`, and the `worse=0` count that capture alone breaks.
+- **#91's arm: FAIL, 1 of 1.** The same capture, the same numbers.
+- The board labelled the PR `needs-remediation` → `needs-audit-2` + `regressed`
+  and resumed the lane. So attempt 2's ending is not a bookkeeping failure like
+  attempt 1's; it is the ordinary outcome of an arm that measured a real
+  regression. The brief's step 3 predicted this dependency in advance: *"#91
+  regresses under #88's change."*
+
+So the honest one-line version: **attempt 2 finished its work and its work
+found a regression.** What it did *not* do — and this is the part that cost the
+lane a third attempt rather than a fold — is notice that the arm which was
+supposed to *explain* the regression never ran the disc it registered.
+
+### The defect attempt 2 could not have seen from its own verdict: `arms.sh` drops the narrowing
+
+**`jobs/arms.sh` never passes `--only-tests` or `--skip-tests`.** Verified, not
+inferred:
+
+- `suites_for()` reads `disc.suites` and nothing else.
+- the two `request.sh` invocations pass `--suites` and `--runs`, full stop.
+- `grep -c 'only_tests\|only-tests\|skip_tests\|skip-tests' docs/testing/jobs/arms.sh` → **0**.
+- `request.sh` *does* implement `--only-tests` (`:111`) and gates it on the
+  serving dispatcher's snapshot (`:685`). The job simply never calls it.
+
+#91's whole point was a **solo disc**: solo-correct means contamination,
+solo-wrong means a state distinction we do not implement, and *those need
+opposite fixes*. It registered `only_tests: ["Swap"]`, and ran the full
+nine-capture suite. `ab_compare` reported `COMPOSITION DIFFERS … registered
+1: Swap / arm A ran (none)` — **after** the device time was spent.
+
+This is the `tests`-field defect reintroduced one layer up. `dispatcher.sh`'s
+own comment describes the original in exactly these terms: *"a field this
+dispatcher accepted, recorded and never read, so a requester narrowing an arm
+to three captures silently measured hundreds."* That was fixed in
+`dispatcher.sh` and `request.sh`; the job that queues re-created it.
+
+**What the next lane should not repeat:** a composition registered in a
+prediction is *not* a composition requested. The registration, the sha binding
+and the `PRE-REGISTERED` stamp all pass on a narrowing that nothing applies —
+every audit surface says the prediction is sound, and the disc is still wrong.
+Until `arms.sh` carries the field, **narrow from inside the run** (this attempt
+uses `pg->frame_time`) or queue by hand with `request.sh --only-tests`.
+
+`arms.sh` is not in this lane's grant, so it is reported to the board rather
+than patched here.
+
+### What the mis-run arm did establish, unplanned
+
+Not nothing. The "solo" arm ran `Color zeta overlap` **alone** (9 captures)
+while #88's ran it inside a three-suite disc (11), and `Swap` read
+165,447 → 304,750 in *both*. So **cross-suite composition is excluded** as the
+explanation: narrowing three suites to one moved that capture by zero. What
+remains untested is **within-suite** contamination — `ColorIntoZeta` and
+`ColorIntoZeta_ZB` run before `Swap` in this suite and both fire the decline.
+That is exactly what `only_tests` would have isolated.
+
+---
+
 ## Why attempt 1 did not finish, in the terms the next reader needs
 
 It finished the *work* and failed the *bookkeeping*, and the bookkeeping was
@@ -216,26 +284,46 @@ That independently reproduces the arm-B value of the 165,447 → 304,750 move
 
 ---
 
-## #88 and #91 — patch and arm registered; no verdict yet
+## #88 — arm ran, mechanism CONFIRMED to the pixel, one leg failed (that leg is #91)
 
-Both arms are now queueable for the first time (see the trap above). Both are
-`55bc6c6c2b → 67dc7724ee`, differing in `vk/surface.c` alone — verified by
-patch-id `4e14c872b095…` on both the old and new pair, so the re-bind preserved
-the property rather than merely claiming to.
+Pair `55bc6c6c2b → 67dc7724ee`, differing in `vk/surface.c` alone (patch-id
+`4e14c872b095…` on both the old and the new pair). Ran 2026-09-19 on the
+three-suite disc `3-suites:e0a8f913`.
 
 **#88.** `update_surface_part()`: when the surface at the target address is the
 other role's current binding, colour still takes it and zeta now declines. GL's
 policy, ported; the gate half of GL's `fada1d89` was already present in Vulkan
 (`9161e3e14a`, 2024) and is strictly more permissive, so only the policy
-crossed. Absolutes (`ColorIntoZeta_ZB → 10,766`, `ZetaIntoColor → 71,663`) are
-derived from the goldens' own histograms. **They are conditioned, not
-re-derived:** the pair now sits on 109 further commits of master and nothing
-this session re-measured them. `ARM A IS THE CHECK` governs — a miss on an
-absolute with the delta intact is a base/composition effect, not the mechanism
-failing.
+crossed.
 
-**#91 — no patch, deliberately, and this is the written statement of what is
-missing.** The issue attributes the `Swap` regression to the missing depth
+**The two absolutes were derived from the goldens' own histograms before the
+device ran, and both landed exactly:**
+
+| capture | predicted | arm A | arm B | |
+|---|---|---|---|---|
+| `Color_zeta_overlap/ColorIntoZeta_ZB` | 10,766 | 131,495 | **10,766** | hit |
+| `Color_zeta_overlap/ZetaIntoColor` | 71,663 | 102,255 | **71,663** | hit |
+
+Arm A reproduced both pre-fix values, so the `ARM A IS THE CHECK` condition the
+prediction wrote against itself is **discharged as written** — the absolutes
+stand as absolutes rather than falling back to the deltas. Two independently
+derived figures landing dead on is about as strong as this project's evidence
+gets, and it is worth saying plainly because the arm's overall verdict is FAIL
+and a reader skimming labels would take the opposite impression.
+
+**VERDICT: FAIL — 2 of 13.** Both violations are one capture:
+`Color_zeta_overlap/Swap` 165,447 → 304,750 on a `must_not_move`, plus the
+`worse=0` count that same capture breaks. Everything else held: `better 2
+worse 1 same 8`, `exact 8 → 8`, and both out-of-suite controls
+(`Color_Zeta_Disable/MaskOff_ZB`, `Null_surface/XemuBug893`) unmoved.
+
+So **#88's change is right and incomplete**, and the incompleteness is #91.
+
+---
+
+## #91 — no patch, deliberately; this is the written statement of what is missing
+
+The issue attributes the `Swap` regression to the missing depth
 attachment. **The captures refute that.** The three colour populations are
 partitioned *identically* in both arms (165,447 / 139,303 / 2,450), which a
 change to depth *testing* cannot do. Only the background's value moved:
@@ -262,6 +350,74 @@ even the right *shape*.
 
 Note also: neither 165,447 nor 304,750 is correct. Even at 165,447 the quad is
 `#E91A24` against the golden's `#E91624`.
+
+### Attempt 3: still no patch, and now an instrument instead of an argument
+
+Two arms have been spent on #91 and neither settled which half of that
+contradiction is wrong. A third arm asking the same question the same way
+would be a third guess. **So this attempt built the instrument rather than
+fitting a fix**, which is also what the "#91 regresses under #88's change"
+dependency in the brief actually needs: an attribution, not a patch written
+against the half that could not be established.
+
+Two probes, logging only, no behavioural change, read together and joined on
+`frame=`:
+
+| probe | file | what it records |
+|---|---|---|
+| `[surf91]` | `vk/surface.c` | #88's zeta decline **fired**, with `pg->frame_time` |
+| `[clr91]` | `vk/draw.c` | a requested clear was **dropped** for want of a binding — `zdrop` (depth) / `cdrop` (colour) — same frame |
+
+**Frame attribution is the whole design, and it exists because the narrowing
+does not work** (see the `arms.sh` defect above). `pg->frame_time` is
+monotonic, incremented once per flip (`pgraph.c:2307`), and every test in the
+suite flips once — so it partitions the run by test *in order* and a capture
+index maps onto it. `r->current_frame` cannot serve: it is a ring index over
+frames-in-flight and is reset to 0 (`draw.c:3360`). Checked, because the
+obvious-looking field is the wrong one.
+
+**Both answers are real, which is the point:**
+
+- `declines == 0` in `Swap`'s frame → the control-flow reading is right, the
+  *direct* model is refuted, and the regression must come from state an
+  **earlier** frame's decline left behind. `ColorIntoZeta` and
+  `ColorIntoZeta_ZB` both run before `Swap` in this suite and both fire the
+  decline — that is the within-suite contamination the solo disc was meant to
+  isolate and did not get to.
+- `declines > 0` in `Swap`'s frame → the reading is refuted and the fix is
+  local to `update_surface_part()`.
+
+Neither is forced by this patch: the probes are counters, and the decline they
+watch was already in `67dc7724ee`.
+
+**What the instrument cannot see, written down before any zero is read:**
+
+- **Arm A carries no probes.** `a_ref` is plain `origin/master`, which has
+  neither the decline nor the probes, so this arm does **not** measure the
+  baseline rate of dropped clears. Absence of `[clr91]` lines in arm A is the
+  *code* being absent, not the event. Within `Swap`'s frame the baseline is a
+  *reading* and is offered as one — under the old policy zeta unbinds colour
+  and binds itself, so `zeta_binding` is non-NULL and `zdrop` would be 0. If
+  arm B shows `zdrop > 0` there, the follow-up needs a probes-without-policy
+  base to measure that rather than argue it.
+- `[clr91]` sits **after** `pgraph_vk_surface_update()`, so it reports the
+  bindings the clear will use, not the ones it asked for. A binding resolved
+  and then lost *within* the update shows only as `[surf91]`.
+- `zdrop > 0` proves a drop in that frame, **not** that it moved a pixel. The
+  pixel claim stays with the A/B.
+- Neither probe logs the colour binding's address at the decline. `surface ==
+  other` and `surface` was looked up *by* `target.vram_addr`, so the two agree
+  by construction; printed side by side they would read as a check that
+  passed. They are one number and one is printed.
+
+**Registered:** `docs/testing/predictions/issue91-decline-frame-attribution.json`,
+`55bc6c6c2b → bb0ddde27d`, `runs_per_arm: 3`. The three movers are registered
+as **expected values at their measured numbers** (10,766 / 71,663 / **304,750**
+— the *unfixed* Swap figure), so a PASS means the regression replicated and the
+log exists; it does **not** mean #91 is resolved. `runs_per_arm: 3` discharges a
+limit the previous arm stated in its own words — *"one run per arm cannot tell a
+change from device nondeterminism … Requeue with --runs 3"* — and nothing has
+yet established whether these three movers are deterministic.
 
 ---
 
@@ -301,7 +457,14 @@ remove them from the device arms, which are the only place they are ever read.
 **They stay until #88's and #91's arms return a verdict, and come out after.**
 The condition is written into the comment at `vk/surface.c` so the fold cannot
 lose it. #89's probe has already answered its question and is kept only so the
-two leave together.
+group leaves together.
+
+Attempt 3 added two more on the same terms — `[surf91]` in `vk/surface.c` and
+`[clr91]` in `vk/draw.c`. **#88's and #92's questions are now answered**, so of
+the four probes only #91's are still owed an answer; all four are removed in
+one commit once `issue91-decline-frame-attribution.json` returns a verdict.
+Four unconditional log sites in a shipping build is more than this path should
+carry indefinitely, and saying so here is the point of the section.
 
 ## Build status — no longer an open question
 
@@ -318,9 +481,30 @@ pipeline are exactly its class. Reading was substituted and is recorded in
 #88's prediction; reading is not a run, and no capture can stand in for it
 because a validation error need not move a pixel.
 
+**Attempt 3 re-tested that blocker rather than inheriting it**, because a
+blocker carried forward from a previous session's notes is a claim with a date
+on it: `curl.h` is still absent, so it still holds. Attempt 3's own code was
+checked instead by extracting both new probe functions into a standalone
+translation unit with stub types and compiling under `-Wall -Wextra -Wformat
+-Wsign-compare` — clean. **What that check cannot see**, said so the green is
+not over-read: it verifies syntax, format-string/argument agreement and
+sign-compare *only*. The struct field names (`frame_time`, `color_binding`,
+`zeta_binding`, `vram_addr`) were stubbed, so they were confirmed separately
+against the real headers — `pg->frame_time` is `int` (`pgraph/pgraph.h:177`),
+which is why both probes store `int` and print `%d` rather than the `uint32_t`
+they were first written with.
+
 ## For the fold
 
-Nothing outstanding. `preflight.sh` passes on this branch with no
+**One thing outstanding, and it is not this lane's to fix:** `jobs/arms.sh`
+never passes `--only-tests`/`--skip-tests`, so any `disc.only_tests` or
+`disc.skip_tests` in *any* prediction on this project is recorded, hashed,
+stamped `PRE-REGISTERED` — and not applied. It cost #91 an arm and it will
+cost the next lane one silently. Detail and verification under "Why attempt 2
+did not finish" above. Reported to the board; `arms.sh` is outside this lane's
+grant.
+
+Otherwise nothing outstanding. `preflight.sh` passes on this branch with no
 `--allow-tracker`.
 
 The `nv2a` index **was** regenerated here, and the story is worth keeping
