@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 120
-updated_utc = "2026-09-19T14:10:00Z"
+wave = 121
+updated_utc = "2026-09-19T14:15:00Z"
+
+
+[lane.wbufclip]
+issues = ["31"]
+files = ["docs/lanes/wbufclip/NOTES.md"]
+standing = false
+note = "DISPATCHED WAVE 121 (job.board), briefs/wbufclip.md: #31's ClipF degeneracy has a named, cheap next step per issue.31's own audit note -- every clip_top the corpus generates is 0 mod 4, so the two candidate anchor rules ('clip_top+2' and 'the absolute 4-grid at phase 2') have never been separated. One new WBuf24D ClipF variant at a non-0-mod-4 clip_top, a disc rebuild and one device capture decide between them. wbuf31_blocker_audit.py and wbuf_anchor_recover.py are NOT claimed here -- lane.toolsmith's own row already exempts analysis scripts written by a lane for its own issue ('they belong to whoever is measuring with them'), and these were written for #31 already. docs/investigations/wbuffer-31-blocker-audit.md and wbuffer-slope-offset.md are read-only references, not claimed. The nxdk_pgraph_tests source tree (wbuf_tests.cpp) is outside this repo and outside this file's tracking, same as lane.toolsmith's dispatcher.sh note describes for out-of-repo files. nv2a_issues.toml explicitly NOT claimed -- no lane may edit it."
 
 
 [lane.draftstrand]
