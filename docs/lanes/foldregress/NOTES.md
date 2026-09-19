@@ -36,6 +36,9 @@ Blocked is not the same as handed back:
   override that names no issue turns up later. A boolean there would have
   moved the silence one state over — an owner who adds a malformed label has
   acted and must be answered.
+- The override is only read on a PR that is actually `regressed`. A stray
+  `regression-accepted:91` on a PR with no verdict folds it silently, rather
+  than announcing a regression the PR has no record of.
 - `fold.sh list` reports it and posts nothing. (Note that `list` is not
   read-only in general — the CI path comments from it and always has; see
   `docs/lanes/foldci/NOTES.md`. This gate does not add to that.)
@@ -106,10 +109,11 @@ it is written down here rather than edited.
 
 ## Verification
 
-- `bash docs/testing/jobs/selftest.sh` → **312 passed, 0 failed**.
+- `bash docs/testing/jobs/selftest.sh` → **314 passed, 0 failed**;
+  `preflight.sh --allow-tracker` passes on the branch.
 - The new fragment run against the pre-change `fold.sh`,
   `ensure-labels.sh` and `roles/board.md` (a copy in a scratch tree, never
-  the real path): **30 of its 44 checks FAIL**. The 14 that pass are the
+  the real path): **30 of its 46 checks FAIL**. The 16 that pass are the
   must-not-move legs — a PR with no verdict still folds, a `verified` PR
   folds, `list` writes nothing — which is what they are for.
 - Two mutants of the *new* gate, because a check that cannot fail is not a

@@ -331,7 +331,14 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
     fi
     # The regression gate, before the CI call: it costs nothing (the labels
     # came with the candidate list) and a PR stopped here needs no `pr view`.
-    accepted=$(accepted_issue "$labels") || accepted=""
+    # `accepted` is an override that is actually overriding something: a
+    # stray `regression-accepted:` on a PR with no verdict accepts nothing,
+    # and must not make the fold comment announce a regression there is no
+    # record of.
+    accepted=""
+    if has_label "$labels" regressed; then
+        accepted=$(accepted_issue "$labels") || accepted=""
+    fi
     if has_label "$labels" regressed && [ -z "$accepted" ]; then
         # `list` stays read-only here: the state it would report is on the PR
         # already, as the label it is reading.

@@ -127,6 +127,9 @@ check "  and the fold really removed fold-ready, so the DELETE check above can f
 check "  a plain fold says nothing about regressions" fr_unsaid 'regression'
 fr_reset; fr_tick "fold-ready,verified"
 check "a verified PR folds" fr_folded
+fr_reset; fr_tick "fold-ready,regression-accepted:91"
+check "an override on a PR with no verdict folds it, quietly" fr_folded
+check "  and claims no regression the PR has no record of" fr_unsaid 'accepted on #91'
 
 # ------------------------------------------------------------ the override
 fr_reset; fr_tick "fold-ready,regressed,regression-accepted:91"
