@@ -331,7 +331,7 @@ check "master's root copy is untouched" \
     bash -c 'grep -q "lane A measured" "$1/NOTES.md"' _ "$FD/only"
 check "the move is staged, not left dirty" \
     bash -c '[ -z "$(git -C "$1" diff --name-only)" ]' _ "$FD/only"
-git -C "$FD/only" commit -q -m "fold: PR #1 lane/fixture -- t" 2>/dev/null
+git -C "$FD/only" commit -q -m "fold: PR #1 lane/fixture -- t" >/dev/null 2>&1
 check "the result is still a merge commit (both parents)" git -C "$FD/only" rev-parse -q --verify HEAD^2
 
 fixture "$FD/code" src.c

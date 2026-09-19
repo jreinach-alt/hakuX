@@ -79,6 +79,16 @@ restoring. Recorded below.
   one-line fix by whoever holds those files next. `docs/ORCHESTRATION-DESIGN.md`
   mentions it in three places (:310, :495, :594) and `roles/board.md:92` quotes
   "the lane's `NOTES.md`" — all prose, none of them a path a program opens.
+- **`gh pr edit --body-file` does not work on this host.** It fails exactly
+  like `gh pr edit --add-label` does — `GraphQL: Projects (classic) is being
+  deprecated ... (repository.pullRequest.projectCards)`, exit non-zero, and
+  **the body is unchanged**; I confirmed the body was still the old one after
+  the "error". `gh-label.sh` documents the label half of this; the body half is
+  the same bug and matters as much, because the board reads `Files:` out of the
+  PR body. What works:
+  `gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>`
+  (`-F name=@file` reads the file; `-f body="$(cat …)"` also works but is
+  awkward to quote).
 - **No program consumes `NOTES.md`.** `grep -rn "NOTES.md" docs/ .github/` is
   in the brief; the answer is that `fleet.py` and `check_coverage.py` do not
   read it and neither does any workflow. `precompact.sh`, which
