@@ -159,7 +159,7 @@ for row in "${HANDBACK_ROWS[@]}"; do
         name="$NAME"
 
         # RESUME ONLY ON A NEW CAUSE. Keyed on the head sha the handback was
-        # found at, the way fold.sh already keys \$F/failed/\$pr-\$head: a lane
+        # found at, the way fold.sh already keys $F/failed/$pr-$head: a lane
         # resumed twice for the same head has been given no new information,
         # and the second session re-reads the same NOTES.md and the same diff.
         # When the lane pushes, the head moves and a fresh conflict is a fresh

@@ -166,6 +166,18 @@ the comment still posted, the tick still green. Two checks caught it: "naming
 the shape it needed" and "and is told cloud lanes remediate themselves". The
 function now sets `NAME` and `REASON` and returns a status.
 
+### What has not been shown
+
+No open PR carried `needs-rebase` while I worked (checked against the live
+repository: 15 open PRs, labels `harness`, `needs-audit-1`,
+`needs-remediation,verified`, and nothing else). So every claim here rests on
+the selftest and on reading `lane.sh`; **no handback has been observed
+end to end on the real host.** The first live one is the test that matters, and
+the thing to check on it is the one path the shims cannot reproduce: that
+`systemd-run --unit hakux-lane-<name>` actually starts in a worktree whose
+branch is mid-conflict, and that the session reads the appended brief section
+rather than only the original. `$WORK/logs/handback/tick.log` is where to look.
+
 ### What is checked by grep, and why
 
 Three checks on `fold.sh` are `grep`s and say so: the cause file is written
@@ -181,6 +193,29 @@ internally, so the shim never exercises it and a typo in it would make this job
 silently find nothing — the exact failure mode it exists to fix. The last check
 extracts the query out of the script and runs it through `jq` (the same program
 `gh` embeds) over canned JSON, and skips with a printed note if `jq` is absent.
+
+## One thing I found on the way, and fixed in the file I own
+
+`gh pr edit --body-file` fails exactly the way `gh pr edit --add-label` does —
+measured here updating this PR's own body:
+
+```
+$ gh pr edit 132 --repo jreinach-alt/hakuX --body-file .pr-body.md
+GraphQL: Projects (classic) is being deprecated ... (repository.pullRequest.projectCards)
+$ echo $?
+1
+```
+
+PR #118 fixed this for labels and `gh-label.sh` documents it thoroughly, but
+only for labels. `roles/board.md` tells the board to grant a blocked lane its
+file by **editing the lane PR's `Files:` line** — written with `gh pr edit`
+that applies nothing, exits 1, and leaves the grant looking granted while the
+board's own collision view never changes. It is the same silent state-machine
+loss, one field over. I added the REST form and the measurement to that bullet,
+since `roles/board.md` is one of my files. I did **not** write a
+`gh-body.sh` helper: no job does this today (it is a model session's action,
+not a script's), and a second helper nobody calls is the kind of thing the next
+lane deletes.
 
 ## For the next lane
 

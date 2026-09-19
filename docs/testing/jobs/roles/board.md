@@ -47,6 +47,14 @@ So, every tick, in this order:
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.
+- **Editing a PR body needs the REST endpoint too, for the same reason a
+  label does.** `gh pr edit --body-file` fails exactly like `--add-label`:
+  measured 2026-09-19 updating #132, `GraphQL: Projects (classic) ...
+  (repository.pullRequest.projectCards)`, exit 1, nothing applied. So the
+  `Files:` grant above is a no-op written that way, and the grant looks
+  granted while the board's own collision view never changes. Use
+  `gh api -X PATCH repos/$GH_REPO/pulls/<n> --input -` with `{"body": ...}`
+  on stdin, and read the response back before you believe it.
 - **Setting a label on a PR: `bash docs/testing/jobs/gh-label.sh add <n>
   <label>` and `... rm <n> <label>`, never `gh pr edit --add-label`.** That
   command exits 1 on this host (gh 2.45 asks for Projects-classic cards and
