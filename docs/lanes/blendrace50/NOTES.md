@@ -46,6 +46,11 @@ nothing in the comparison had established that.
 
 ## Finding 2: split on the device and 4 of the 5 movers stop being movers
 
+> **SUPERSEDED by Finding 10.** All four DEVICE classifications below are
+> refuted by nova's five later runs. Kept because the reasoning is still the
+> right reasoning on three runs, and because what fired here was this file's
+> own named falsifier -- not because the conclusion stands.
+
 Same three runs, same five captures, regrouped by device. Values are the
 `differing` column; each list is one value per run on that device:
 
@@ -140,6 +145,10 @@ run on 64x256 RT blits, which is #50's mechanism.
 
 ## Finding 6: the device split and the race deposit the SAME KIND of wrong pixel
 
+> **PARTLY SUPERSEDED by Findings 10 and 12.** There is no device split --
+> every event here is a race. "The odd run is always the wrong one" and "the
+> wrong content is grey" each have a counterexample at 22 events.
+
 `blend_mover_content_50.py`. Over the pixels where the odd run departs:
 
 | capture | odd run | moved px (RGB) | alpha-only | grey (R==G==B) | who matches the golden there |
@@ -215,6 +224,181 @@ ordinary 524 ms. **The race is on the run without the clock event**, so this is
 not the mechanism. Recorded so the next lane does not re-find the correlation
 and build on it.
 
+## Why attempt 1 did not finish
+
+It queued the ten runs (~28 min each, two devices in parallel) and the unit
+exited before they landed. Everything above was written from the three runs
+that already existed; the section below was left `(pending)` and the PR was
+left in draft. Nothing was wrong with the work -- the lane simply ended in
+the middle of the wait, and a draft PR is invisible to `board.sh`, `fold.sh`
+and `handback.sh` alike, so it sat.
+
+**For the next lane in this position: a request with `--runs 5` on a
+1,673-capture disc is ~85 minutes of device time per device.** Write the
+analysis script and commit it BEFORE the wait, so the resumed session is one
+command from the answer. That is what made this attempt cheap.
+
 ## Results of the ten queued runs
 
-(pending)
+Both landed: `1789819556-blendrace50-thor-414959` and
+`1789819561-blendrace50-nova-415002`, 5 runs each, 1,673 captures each, all
+at `apk_sha b0cba34acef7`, all at `scorer_rev 027fa3d552`, `only_tests`
+empty. With the three pre-existing runs that is **13 full-disc runs on one
+binary: 6 nova, 7 thor.**
+
+`blend_race_perrun_50.py` is the new file; `docs/lanes/blendrace50/perrun-13runs.txt` is its output.
+
+### Finding 10: there is no DEVICE-only capture. All 22 movers are races
+
+| | |
+|---|---|
+| captures that ever moved, 13 runs | **22** of 1,673 |
+| classified RACE (a device disagrees with itself) | **22** |
+| classified DEVICE-only (each device constant, devices differ) | **0** |
+| bit-identical across all 13 runs | 1,651 |
+
+**This refutes Finding 2 of this file.** Four captures were called DEVICE
+there -- `cA_MIN_srcRGB`, `1-dstRGB_MIN_1`, `srcA_REVSUB_1-cA`,
+`1-dstA_SUB_1-cRGB` -- on the evidence that nova read one value and two thor
+runs read another. nova had exactly one run. With five more, nova agrees
+with thor on all four in every one of them, and the single nova value that
+disagreed belongs to `blendstack-A` alone.
+
+It is worth being exact about what went wrong, because the shape recurs: the
+classification was not unsupported, it was **underdetermined**, and the run
+that resolved it was the sixth. `fulldisc_instability_50.py`'s header names
+this outcome as its own falsifier -- *"a capture called DEVICE would be
+refuted by either device disagreeing with itself on a later run"* -- and that
+is what happened. A falsifier that fires is the cheapest thing in this
+issue's history so far.
+
+So: the nova/thor asymmetry recorded in Finding 2, Finding 6 and the PR body
+is **not a device difference in the rendered output**. It is a difference in
+how often the race fires, which is the next finding.
+
+### Finding 11: departures per run -- nova every run, thor once in seven
+
+The brief asks for a table and not a rate, and the table is the finding: a
+departure is a run whose capture BYTES are not that device's modal bytes for
+that capture.
+
+| run | device | departures | captures |
+|---|---|---|---|
+| blendstack-A#1 | nova | 4 | 1-dstA_SUB_1-cRGB, 1-dstRGB_MIN_1, cA_MIN_srcRGB, srcA_REVSUB_1-cA |
+| blendrace50-nova#1 | nova | 6 | 1-cRGB_SADD_1-dstA, 1-dstA_SADD_1-srcRGB, 1-srcRGB_SADD_1, 1_ADD_1, 1_REVSUB_cRGB, srcA_MAX_cA |
+| blendrace50-nova#2 | nova | 3 | 1-cA_ADD_1-dstA, 1-dstRGB_MAX_1-cA, dstA_MIN_1-cRGB |
+| blendrace50-nova#3 | nova | 2 | srcA_MAX_1-dstA, srcAsat_SUB_srcAsat |
+| blendrace50-nova#4 | nova | 2 | 1_MIN_dstRGB, srcAsat_SADD_0 |
+| blendrace50-nova#5 | nova | 4 | 1-cA_SADD_1-srcA, 1-srcRGB_ADD_1-srcRGB, srcA_MAX_cRGB, srcRGB_ADD_0 |
+| blendstack-B#1 | thor | 1 | 1-srcRGB_SADD_0 |
+| blendstack-thor2#1 | thor | **0** | |
+| blendrace50-thor#1..#5 | thor | **0** each | |
+
+Read it as:
+
+- **nova never produced a clean run.** Six runs, 2-6 departures each, 21
+  events.
+- **thor produced six clean runs out of seven.** The five consecutive runs
+  inside one request are bit-identical to each other on all 1,673 captures --
+  8,365 captures, one hash each, no departures at all.
+- **thor is not immune.** `blendstack-B` has one. One event on one device is
+  thin, and it is the reason this is a frequency difference rather than a
+  device property; do not let it be dropped again the way the `devices.sh`
+  caveat was.
+- **No capture departed twice**, 22 events over 22 distinct captures. Under a
+  uniform per-capture event at this rate a repeat has ~12% probability over
+  22 draws from 1,673, so "no repeats" is unsurprising and is NOT evidence
+  that particular captures are singled out.
+
+Every capture's value on every run is in `docs/lanes/blendrace50/perrun-13runs.txt` under "PER CAPTURE".
+No mean is computed anywhere in the file, deliberately.
+
+### Finding 12: two claims from the 5-event pass do not survive 22
+
+Both were recorded in Finding 6 above and both are now wrong as stated.
+
+1. **"The odd run is always the wrong one."** Over the moved mask, the
+   departing run matches hardware on FEWER pixels than the mode on 19 of 22
+   events -- but on MORE in 2 (`1-cA_SADD_1-srcA` 3,064 vs 0;
+   `1-cRGB_SADD_1-dstA` 2,048 vs 0) and equal in 1. In both exceptions the
+   mode matches hardware on **zero** pixels there, so the departure is not a
+   correction of anything; it lands on pixels hardware happens to share.
+   Still: "always" is refuted, and a fix evaluated against "the odd run is
+   the wrong one" would mis-score those two.
+
+2. **"The wrong content is grey."** 21 of 22 events are >=50% grey
+   (R==G==B), but `1-srcRGB_SADD_1` is **0.0%** grey -- and it is also by far
+   the smallest event, 1,470 px against 14,336-61,502 for the rest. One event
+   in 22 is not a second mechanism on this evidence; it is a counterexample
+   to the universal, and the next lane should look at it first precisely
+   because it is the one that does not fit.
+
+### Finding 13: the clock excursion is refuted at 22 events, not 1
+
+Finding 9 rejected the ~-24,500 ms progress-log excursion on a single event.
+With 22: **0 coincide**, against 0.56 expected under independence (each run
+carries 38-44 negative durations in 1,673, 2.27-2.63%). The departing tests
+have ordinary 524-648 ms durations in every case. The excursion is real and
+is not this.
+
+### Finding 14: every departure is confined to the test's own drawn geometry
+
+The sharpest structural fact in this pass, and it holds on all 22:
+
+- **The first moved row is 112. Every time.** Not 111, not 113, on either
+  device, across 22 independent events.
+- Moved columns are drawn from a fixed set of runs: `(16,64)` and `(560,64)`
+  in every event, plus `(192,256)` in the seven full-height ones. The
+  distinct column-run starts over all 22 events are `[16, 24, 56, 192, 560,
+  568, 600]` and the lengths `[16, 24, 56, 64, 256]`.
+- Heights are `[12, 128, 160, 192, 208, 256]` -- 256 is the stack's own
+  height and the maximum observed.
+
+So nothing lands outside the region this test draws. That forecloses "a
+stray write anywhere in the framebuffer" and points at the stack draw/blit
+path itself.
+
+**One guard against over-reading it**: the moved rows are NOT a contiguous
+prefix. 10 of the 22 events have gaps -- e.g. `1-cA_ADD_1-dstA` is rows
+`(112,128) (256,16) (288,32) (336,16)`. The bounding box alone would have
+read as "the top N rows of the band", which is a mechanism (an interrupted
+scanline transfer) that the row-run structure refutes. The contiguity check
+in `blend_race_perrun_50.py` exists because the box version of this claim was
+the first thing the data appeared to say.
+
+### Finding 15: not a block copy from the sibling column
+
+The earlier whole-image searches (Finding 7) compare candidates at the SAME
+position, so a block copied from elsewhere *within* the image is invisible to
+them. The two 64-wide columns at x=16 and x=560 are the obvious pair.
+
+Measured: on the mode, the two columns agree on 6.2% of pixels over the band.
+On the odd run that rises -- to 19-54% on 11 of 18 applicable events -- but
+**never approaches 100%**, which is what an actual copy would give. A whole-
+block copy is refuted. The partial elevation is not fully explained by "the
+same grey landed in both columns" either (`1-cA_SADD_1-srcA` has every row
+corrupted and still only reaches 54.2%), and it is the cleanest open lead
+this pass produces. It is one number per event in `docs/lanes/blendrace50/perrun-13runs.txt`; the next
+lane should start there rather than repeating the whole-image search.
+
+### The composition axis, unchanged
+
+`1-dstA_SUB_1-cRGB` remains the one capture with a genuine composition
+effect: thor reads 12,512 on the 5-test disc in 5 runs and 16,384 on the full
+disc in all 7. Disjoint sets, so it is a real narrowing effect and not a race
+that failed to fire. No other mover shows one. Finding 5's discrimination
+rule (disjoint, not merely unequal) is what keeps `1-srcRGB_SADD_0` out of
+this list.
+
+### What this pass does NOT name
+
+**No candidate site.** Four doors are now closed (the alpha channel, any
+golden, any capture from the same run, the clock excursion) and a fifth is
+ajar (the sibling-column relation, Finding 15). The geometry narrows the
+search to the stack draw/blit path and the frequency difference narrows it to
+something timing-dependent that fired 2-6 times in every nova run and once
+across seven thor runs -- stated as counts, because a single rate is the
+shape this issue withdrew once already -- but neither of those is a line of
+code, and
+saying otherwise would be the escalation this issue has already been burnt
+by twice. Per the brief and #89's precedent, remediation is a separate pass.
