@@ -307,6 +307,25 @@ def main(argv=None):
               "-- not evidence for or against the merge/barrier hypothesis.  "
               "F0's varying counters stand and are reported above."
               % args.ratio)
+        # The null still owes its power.  There is no observed class size to
+        # compute one from, so use the size #77's own documented rate would
+        # have produced on this many classified frames: what this dump COULD
+        # have separated had the artifact fired at its recorded rate.
+        k = max(1, int(round(0.12 * len(rows))))
+        rng = np.random.default_rng(args.seed)
+        print("\n  had the artifact fired at its documented 12 per 100, these "
+              "%d classified frames would have held about %d of it.  At that "
+              "class size this dump could have separated:" % (len(rows), k))
+        hypo = np.zeros(len(rows), dtype=bool)
+        hypo[:k] = True
+        for key, _, _ in varying:
+            vals = [counters[r["dump_frame"]][key] for r in rows]
+            _, _, mdd = permutation_test(vals, hypo, min(args.perms, 2000), rng)
+            spread = float(np.std(vals))
+            print("    %-22s a difference of %.4f (the counter's own sd over "
+                  "these frames is %.4f)" % (key, mdd, spread))
+            out["legs"][key] = dict(observed=None, p=None, mdd=mdd,
+                                    hypothetical_k=k, sd=spread)
         if args.json:
             json.dump(out, open(args.json, "w"), indent=1)
         return 0

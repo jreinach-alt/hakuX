@@ -192,6 +192,12 @@ try:
     check("no stipple frame: refuses to read it as evidence about the "
           "hypothesis",
           "not evidence for or against" in txt)
+    # A null with no power attached is not a result, and the zero-flagged case
+    # is the one where it is easiest to forget: there is no observed class size
+    # to compute a minimum detectable difference from.
+    check("no stipple frame: still states what it COULD have separated",
+          "could have separated" in txt
+          and "documented 12 per 100" in txt)
 
     # ------------------------- sparse images, the shape arm A1 came back in
     d = os.path.join(tmp, "sparse")
