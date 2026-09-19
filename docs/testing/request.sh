@@ -4,7 +4,7 @@
 #
 #   request.sh --who bump-agent --purpose "bump map baseline" \
 #              --suites "Bump map,Bump env lum" [--ref HEAD] [--runs 1] [--wait] \
-#              [--skip-tests "Suite::Test,..."] [--device nova|thor] \
+#              [--skip-tests "Suite::Test,..."] [--device nova|thor|desktop] \
 #              (--expect predictions/x.json | --no-expect "why not")
 #
 #   request.sh --who audio --purpose "baseline" --title "Galleon (USA).xiso.iso" \
@@ -62,6 +62,23 @@
 # quietly: an unpinned repeat is free, so it lands wherever is idle, and a level
 # measured on the Nova then gets compared against one from the Thor while being
 # reported as a repeat of the same experiment.
+#
+# --device desktop IS NOT A HANDHELD. It names this host's own xemu build,
+# running the OpenGL renderer, and it is the only spelling that reaches it:
+# affinity.py's OFFPOOL keeps `desktop` out of the pool rule 3 hashes over, so
+# nothing is ever sent there by accident. Two things follow, and both matter
+# more than the convenience:
+#
+#   - A DESKTOP RESULT IS NOT COMPARABLE WITH A HANDHELD RESULT. The goldens
+#     under /home/justin/goldens/results were captured from the Adreno Vulkan
+#     path. A desktop GL capture that differs from them is evidence of a
+#     different renderer, driver and rasteriser before it is evidence of
+#     anything about xemu. ab_compare.py already refuses a pair whose arms ran
+#     on different devices and says the FAIL is not attributable; that refusal
+#     covers this case and must keep covering it.
+#   - So BOTH ARMS of a desktop A/B must carry --device desktop. One arm
+#     pinned and one free is a pair that spans two renderers, which measures
+#     the renderer and reports it as the commit.
 set -u
 D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=""
@@ -154,8 +171,15 @@ fi
 # request is simply never claimed and sits in the queue looking queued. Check
 # it against the device table rather than against a hardcoded pair, so adding a
 # third handheld to devices.sh does not silently start rejecting it here.
+#
+# Ask devices.sh rather than sed its source. The sed this replaces was
+# `.*DEVICE_LABEL="\([a-z0-9]*\)"` -- an unanchored match over the whole file,
+# which would have picked a label out of a comment or a code line that merely
+# mentions the variable. It also could not see `desktop`, which is an
+# execution target with NO SERIAL and so has no row in the serial-keyed table
+# for any such regex to find. `devices.sh labels` enumerates both kinds.
 if [ -n "$DEVICE" ]; then
-    KNOWN=$(sed -n 's/.*DEVICE_LABEL="\([a-z0-9]*\)".*/\1/p' "$(dirname "$0")/devices.sh")
+    KNOWN=$(bash "$(dirname "$0")/devices.sh" labels)
     printf '%s\n' "$KNOWN" | grep -qx "$DEVICE" || {
         echo "unknown --device '$DEVICE'; devices.sh knows:" >&2
         printf '  %s\n' $KNOWN >&2
