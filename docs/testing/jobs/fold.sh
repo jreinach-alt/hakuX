@@ -23,10 +23,10 @@
 # auditor (pass 2 clean) or by the board (a docs/NOTES-only PR needs no
 # audit). This job checks what the label cannot: the PR is not a draft, it
 # does not carry an unaccepted `regressed` verdict, its head's CI is green,
-# and the merge applies without conflict. A conflict is
-# never resolved here -- the lane gets `needs-rebase` and a comment naming
-# the files, because a merge resolved by a script that does not understand
-# the code is how a working fix was reverted on 2026-09-12.
+# and the merge applies without conflict. A conflict is never resolved here
+# -- the lane gets `needs-rebase` and a comment naming the files, because a
+# merge resolved by a script that does not understand the code is how a
+# working fix was reverted on 2026-09-12.
 #
 # THE ONE EXCEPTION IS A ROOT NOTES.md, AND IT IS A RENAME, NOT A MERGE.
 # roles/lane.md used to ask every lane for `NOTES.md` in the branch root.
@@ -338,14 +338,14 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
     accepted=""
     if has_label "$labels" regressed; then
         accepted=$(accepted_issue "$labels") || accepted=""
-    fi
-    if has_label "$labels" regressed && [ -z "$accepted" ]; then
-        # `list` stays read-only here: the state it would report is on the PR
-        # already, as the label it is reading.
-        [ "$mode" = list ] && { echo "#$pr $branch: REGRESSED (a registered prediction FAILED; the owner may accept it with regression-accepted:<issue>)"; continue; }
-        say "#$pr $branch: labelled regressed and not accepted; not folding (fold-ready kept)"
-        regressed_report "$pr" "$head" "$labels"
-        continue
+        if [ -z "$accepted" ]; then
+            # `list` stays read-only here: the state it would report is on the
+            # PR already, as the label it is reading.
+            [ "$mode" = list ] && { echo "#$pr $branch: REGRESSED (a registered prediction FAILED; the owner may accept it with regression-accepted:<issue>)"; continue; }
+            say "#$pr $branch: labelled regressed and not accepted; not folding (fold-ready kept)"
+            regressed_report "$pr" "$head" "$labels"
+            continue
+        fi
     fi
     ci=$(ci_green "$pr")
     if [ "$ci" != GREEN ]; then
@@ -443,7 +443,7 @@ Fix on the lane branch and push; the next green head is re-tried."
     label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
     comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${accepted:+
 
-This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** (\`regression-accepted:$accepted\`), not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
+This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** -- a \`regression-accepted\` label naming that issue -- and not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
 
 Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
     say "  folded #$pr as $merge_sha"
