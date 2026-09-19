@@ -3273,3 +3273,14 @@ no_suites = "a board/tracker-state question, not a suite result."
 status = "open"
 status_note = "Filed 2026-09-19 by job.board: territory.toml's [lane.remote] claims 12 files and issues 34,39,51,60,62,66,71,72,82,86 with 74+ unfolded commits described in its note, but `lane.sh resume remote` reports no worktree at $WORK/wt/remote, and no `lane/remote` branch exists on origin -- it was never a lane.sh-managed lane."
 blocked_on = "Blocked on the owner naming where lane.remote's actual commits live (an unmanaged worktree under ~/hakuX/.claude/worktrees/agent-* or a hakuX-wt-* sibling checkout, per the issue body) -- until then #34,39,51,60,62,66,71,72,82,86 stay claimed in territory.toml but cannot be resumed or safely re-dispatched without risking duplicate or orphaned work."
+
+[issue.142]
+title = "decision-needed: #65's defer_cap value is an owner trade, not a measurement"
+disposition = "harness"
+suites = []
+no_suites = "an owner decision, not a renderer or suite question."
+blocker_falsifier = "if this were not an owner decision, a measurement would settle it; #65's own issue says the value is a trade between unlock-mode loss and a guest-visible cost, and no run can pick a point on that curve."
+blocker_tested = "CONFIRMED BY READING 2026-09-19: the board opened this issue itself, labelled decision-needed, precisely because the rules it dispatches by cannot choose the value."
+status = "open"
+status_note = "Opened by the board job 2026-09-19. Awaiting the owner."
+blocked_on = "Blocked on the owner. A decision-needed issue is blocked BY DEFINITION -- that is what the label means -- and the coverage gate requires every open issue to carry a lane or a blocker, so without this row the gate is red and preflight fails for EVERY fold on the repository. Three complete PRs (#134, #139, #140) were queued to fold when this was opened."
