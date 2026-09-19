@@ -175,8 +175,12 @@ Three things about the fragment that are load-bearing and easy to undo:
 `516 passed, 10 failed`, all ten in `selftest.d/86-fold-regressed.sh`, which
 fails because `fold.sh`'s `prune_branch()` deletes the `lane/foldreg` branch
 its fixture reuses. That is `lane.selftest86`'s and is not caused by anything
-here. My own result is judged against that number and is recorded in the PR
-body.
+here.
+
+**With this branch: `544 passed, 10 failed`** -- byte-for-byte the same ten.
+516 + 28 = 544, so the 28 new checks are the entire delta and all 28 pass.
+`docs/testing/preflight.sh` passes with no flags; the territory gate is green
+as it stands.
 
 ## What is deliberately NOT done
 
@@ -184,7 +188,20 @@ body.
   flight. The routing rule (a prediction whose config names
   `renderer = OpenGL` gets `--device desktop` on **both** arms) is real and
   needed; it is written out as a concrete patch with line numbers in the PR
-  body for coordination at fold, and not applied.
+  body for coordination at fold, and not applied. Two things the next reader
+  should not have to rediscover:
+  - The patch keys on a **`device` field**, not on a grep of the prose in
+    `a_ref`. I drafted the grep form the brief describes and it is the worse of
+    the two: the prose it would match is exactly what makes `a_ref`
+    unresolvable, so `arms.sh:511` skips that prediction before ever reaching
+    the routing code.
+  - **Nothing can write that field today.** `ab_compare.py`'s `register()`
+    (`:1238`) builds a prediction from a fixed key set with no `--device` or
+    `--renderer-a/-b` flag, so the arms.sh patch alone is half a change: its
+    other half is three `add_argument` lines and three `exp[...]` assignments
+    in `ab_compare.py`, a third lane's file. Applying only the arms half gives
+    a rule keyed on a field nothing produces -- inert, and inert in a way that
+    reads as done.
 - `affinity.py`'s OFFPOOL semantics -- unchanged. `affinity.py` is on the
   `Files:` line because the lane claimed it and read it, not because it
   changed: `git diff` shows no edit to that file.
