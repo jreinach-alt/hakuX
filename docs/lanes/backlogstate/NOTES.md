@@ -220,12 +220,14 @@ only considers rows with a non-empty blocker).
   new shape of dishonest `blocked_on` turns up, extend the *position*-anchored
   check in `check_coverage.py`, which fails loudly, rather than a consumer that
   silently reinterprets.
-- **`idle-watchdog.sh:226` still says "Give it a lane in territory.toml or
-  write blocked_on on its tracker entry."** That advice is now incomplete — it
-  omits the third state. I did not touch it: it is not in this lane's files,
-  and a running `while` loop holds the version it started with, so editing it
-  would change nothing tonight anyway. Worth a line when someone next restarts
-  the watchdog.
+- **`docs/testing/idle-watchdog.sh:226`** (note the path — it is *not* under
+  `jobs/`, which cost me a minute) **still says "Give it a lane in
+  territory.toml or write blocked_on on its tracker entry."** That advice is now
+  incomplete — it omits the third state. I did not touch it: it is not in this
+  lane's files, and a running `while` loop holds the version it started with, so
+  editing it would change nothing tonight anyway. Worth a line when someone next
+  restarts the watchdog. Re-verified at line 226 after merging
+  `origin/master@bc7ccef95d`.
 - The closed rows that also open with "NOT BLOCKED" (#82, #87, #90, #94, #95
   and #52 mid-text) are **deliberately left alone**. The new check is scoped to
   live-open issues; a closed row's `blocked_on` is history and rewriting it
