@@ -28,10 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 103
-updated_utc = "2026-09-19T09:11:17Z"
+wave = 104
+updated_utc = "2026-09-19T09:31:16Z"
 
 
+[lane.cloud-audit2-102]
+issues = ["88", "89", "91", "92"]
+files = []
+standing = false
+note = "WRITTEN AT WAVE 104 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect as armsskip/auditoutlet/backlogstate/boardgate/handback/ciskip before it. This is the audit outlet's own claimed unit (jobs/cloud.sh), pass-2 verification of PR #102 (lane.blitsafe, needs-audit-2, claimed:cloud, regressed): a worktree at the same head as wt/blitsafe (f0a344dadd), no NOTES.md of its own. Claims no source files -- an audit reads and comments, it does not edit the tree it is auditing. Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
 
 
 [lane.remote]
@@ -140,6 +145,12 @@ issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c"]
 note = "DISPATCHED WAVE 102 (job.board). #13's Vulkan extent phase already landed exact (47.8178% -> 99.5838%+ vs silicon, predictions/line-extent-phase-exact.json PASS). glsl/geom.c was FREE (released 2026-09-14 by lane.lineext retiring, never reclaimed) and the issue's own tracker note says the residual is cap/join geometry -- 493 of ~908 px, ours-only, 98.8% within w/2+2 of a vertex -- not the extent rule, so this claims only geom.c and not vk/draw.c (still lane.blitsafe's) or gl/shaders.c (lane.remote's, GL parity out of scope per the issue's own note)."
 
+[lane.diagdump77]
+issues = ["77"]
+files = ["hw/xbox/nv2a/debug.h", "hw/xbox/nv2a/pgraph/vk/renderer.c",
+         "android/app/src/main/cpp/xemu_android.cpp",
+         "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt"]
+note = "DISPATCHED WAVE 104 (job.board). #77's Galleon stipple investigation named its own next step and could go no further without it: 'WHAT WOULD UNBLOCK IT: a marker-file-armed frame dump... Needs a source grant; no lane holds it.' nv2a_dbg_trigger_diag_frames is reachable only from the Debug Capture button (xemu_android.cpp, LauncherActivity.kt reads only rom_path) and inherits the diag capture's per-draw pgraph_vk_finish blindness to merging and barriers -- so the dump this issue needs must be armed by a marker file, the way apu.c arms the PCM capture, and must NOT force a finish per draw. None of these four files are named in any other row or in [free]'s exclusion list -- gl/renderer.c and gl/debug.c (lane.remote's) are different files from vk/renderer.c and debug.h (top-level). Two instrument errors already corrected upstream of this (2.25x upscale in the HF measurement, a USB dialog dimming frames) are NOT this lane's to redo -- see issue.77's status_note for the measurement this dump needs to feed: stipple fires 10-14/100 on deck/ground, hatched-frame anisotropy 0.50-0.92 against 1.68 parked, format/dims/level/pitch/swizzle/texgen all ruled out by measurement already."
 [lane.ciskip]
 issues = []
 files = ["docs/testing/jobs/roles/lane.md", "docs/testing/jobs/roles/cloud.md", "docs/lanes/ciskip/NOTES.md"]
