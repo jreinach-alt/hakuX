@@ -144,6 +144,18 @@ share no file, and this gate still reads the label that lane now computes.
   `preflight.sh --allow-tracker` passes on the branch.
 - After the attempt-2 merge of `origin/master`: **359 passed, 0 failed**
   (the one red seen first was the `92-arms-skip-told.sh` flake above).
+- `preflight.sh --allow-tracker` on the merged head: every gate `ok` except
+  **`coverage`**, which is red for a reason this lane cannot touch and did
+  not cause — issue **#157** ("nv2a_index check cannot tell a stale index
+  from a stale test checkout") has neither a lane nor a `blocked_on` in
+  `territory.toml`. That gate reads the board's files from `origin/board`,
+  not from my tree, so it is red on *every* branch right now and no commit
+  of mine can clear it: `territory.toml` is the board's and lanes must not
+  edit it. Note that `--allow-tracker` does **not** cover this — it licenses
+  editing the tracker files, not the coverage classification
+  (`allow-tracker-misses-territory`). **The board must classify #157**, or
+  `fold.sh` will hand this PR back on preflight for a row that has nothing
+  to do with it. Said on the PR as well, so it is not only in here.
 - The new fragment run against the pre-change `fold.sh`,
   `ensure-labels.sh` and `roles/board.md` (a copy in a scratch tree, never
   the real path): **30 of its 46 checks FAIL**. The 16 that pass are the
