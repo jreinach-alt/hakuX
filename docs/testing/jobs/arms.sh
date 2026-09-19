@@ -170,7 +170,11 @@ while read -r sha path src; do
     [ "$queued" -lt "$MAX_PAIRS" ] || { say "pair cap $MAX_PAIRS reached this tick; $src waits"; continue; }
     [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting (ARMS_QUEUE_MAX=$QUEUE_MAX); $src waits"; continue; }
     name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
-    runs=$(field "$path" runs_per_arm); [ "${runs:-1}" -ge 1 ] 2>/dev/null || runs=1
+    # runs_per_arm is optional. The first version tested "${runs:-1}" and never
+    # assigned it, so a prediction without the field handed request.sh
+    # --runs "" and its JSON writer died on int(""): the very first arm the
+    # job ever queued (#89, 02:56Z) was refused for that and nothing else.
+    runs=$(field "$path" runs_per_arm); [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
     say "queue $src: $name #$issue a=$a b=$b suites=[$suites] runs=$runs"
     qa=$(cd "$REPO" && DISPATCH_DIR="$D" bash "$T/request.sh" --who "arms-$name-base" --ref "$a" --suites "$suites" --runs "$runs" \
             --expect "$path" --purpose "BASE arm ${issue:+#$issue }$who at $a, queued by the arms job from $src" 2>"$A/log/$sha.base.err") \
