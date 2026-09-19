@@ -35,8 +35,9 @@ So, every tick, in this order:
   `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its cap: stop
   dispatching locally, do not retry, do not start a session any other way.
   Eleven dispatchable issues is eleven ticks of work, not one.
-- **The cloud outlet.** An hourly cloud Routine claims one issue labelled
-  `cloud` per firing (`jobs/roles/cloud.md`). Label `cloud` any dispatchable
+- **The cloud outlet.** An hourly cloud-class session (`jobs/cloud.sh`, on
+  the host today) claims one issue labelled `cloud` per tick
+  (`jobs/roles/cloud.md`). Label `cloud` any dispatchable
   issue whose brief needs no device and no NDK -- analysis, a falsifier
   script, a desktop-side reading -- and every dispatchable issue you could
   not start because the local cap refused, so the cloud takes the overflow.
@@ -48,7 +49,7 @@ So, every tick, in this order:
   "Ask and I will grant it" is a deadlock; grant.
 - Labels, the pipeline's state machine: a PR that is **not a draft** and has
   no `needs-audit-*`, `needs-remediation`, `fold-ready` or `folded` label
-  → `needs-audit-1` (the cloud Routine audits it; pass 2 sets `fold-ready`
+  → `needs-audit-1` (the cloud-class session audits it; pass 2 sets `fold-ready`
   itself). A ready PR whose diff touches nothing under `hw/`, `target/`,
   `accel/`, `android/` needs no audit: check CI is green on its head and
   label it `fold-ready` directly, saying so in a comment. The fold job folds

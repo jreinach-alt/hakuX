@@ -731,9 +731,16 @@ gated by device time, which no orchestration design manufactures.
 **Phase 1 (built 2026-09-19, the same evening, because Phase 0 alone left
 the devices and the cloud idle):** the arms job (`jobs/arms.sh`, prediction-
 driven, no labels needed), the fold job (`jobs/fold.sh`), the status roll-up
-(`jobs/status.sh` and the `harness-status` issue), the cloud Routine and its
-role (`jobs/roles/cloud.md`: audits pass 1 and 2, `cloud`-labelled lanes,
-its own remediation), the lane role file (`jobs/roles/lane.md`: PR template
+(`jobs/status.sh` and the `harness-status` issue), the cloud-class session
+and its role (`jobs/roles/cloud.md`: audits pass 1 and 2, `cloud`-labelled
+lanes, its own remediation) -- **run on the host by `jobs/cloud.sh`, not as
+a cloud Routine**: a Routine created from a session fires a session with no
+repository, no GitHub tooling, and a permission prompt nobody answers, and a
+session created directly with the repo attached had its commit and push
+refused by the auto-mode classifier (four diagnostic sessions, no branch
+pushed, 2026-09-19). A Routine created from the claude.ai Routines UI with
+the repo, a GitHub connector and a non-prompting permission mode would run
+the same role file unchanged, the lane role file (`jobs/roles/lane.md`: PR template
 and the definition of done), `run-trunk.sh` so every unit runs the fetched
 trunk, and `ensure-labels.sh`. Still Phase 1: the triage Routine, the lane
 Stop hook, the device-health timer, the bot account (§14, Q8).

@@ -1,0 +1,11 @@
+[Unit]
+Description=hakuX cloud-class lane -- one no-device unit of work (audit, remediation, cloud issue) per hour
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/cloud.sh
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/run-trunk.sh cloud
+SuccessExitStatus=75
+TimeoutStartSec=600
+StandardOutput=append:/home/justin/hakux-work/logs/cloud/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/cloud/systemd.log
