@@ -76,7 +76,7 @@ sc_tick() {   # <ci word> <head> <tip sha> <tip epoch>: one tick of the real fol
     PATH="$SC/bin:$PATH" HAKUX_WORK="$SC/work" HAKUX_REPO_DIR="$REPO" \
         bash "$HERE/fold.sh" >/dev/null 2>&1
 }
-sc_list() {   # the same tick in `list` mode, whose whole contract is read-only
+sc_list() {   # the same tick in `list` mode: it decides nothing, and must not
     SC_PR=301 SC_CI="$1" SC_HEAD="$2" FOLD_TIP_SHA="$3" FOLD_TIP_EPOCH="$4" \
     PATH="$SC/bin:$PATH" HAKUX_WORK="$SC/work" HAKUX_REPO_DIR="$REPO" \
         bash "$HERE/fold.sh" list 2>/dev/null

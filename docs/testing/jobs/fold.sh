@@ -379,6 +379,13 @@ STALE_LABEL="${FOLD_STALE_LABEL:-needs-rebase}"
 
 # `$TIP`'s head, read once per tick and only when a red candidate exists: a
 # tick with nothing red must not pay for a fetch.
+#
+# THIS MAKES `list` FETCH, which nothing else in `list` did. That is the one
+# thing `list` now costs, and it is deliberate: without the trunk's head there
+# is no answer to give, and "CI RED" where the truth is "CI RED but STALE" is
+# the wrong answer in the one report a person reads when something is jammed.
+# A fetch writes refs and nothing else -- no label, no comment, no session --
+# so `list` remains read-only in every sense that decides anything.
 TIP_SHA=""; TIP_EPOCH=""
 tip_state() {   # -> 0 with TIP_SHA and TIP_EPOCH set for origin/$TIP
     [ -n "$TIP_EPOCH" ] && return 0
