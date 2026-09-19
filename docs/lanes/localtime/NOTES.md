@@ -211,6 +211,53 @@ today and exist to go red when a later lane "finishes the job". Each was
 confirmed to trip by mutating its target in a scratch copy -- converting
 `summarise_run.py`'s `ts` to local makes the hour check fail by seven.
 
+## 4. `fleet.py` is run from a copy of itself, so its imports must be optional
+
+Found by CI, not by reasoning, and worth writing down because nothing in
+`fleet.py` says it.
+
+The first CI run on this branch failed with **ten** red checks, all in
+`selftest.d/93-backlog-state.sh`, none of them about timezones:
+
+```
+FAIL fleet calls exactly the available row dispatchable
+FAIL ...and it is #2, by its structured field and not by its prose
+FAIL nothing is unclassified on a fully classified board
+...
+selftest: 330 passed, 10 failed
+```
+
+`93-backlog-state.sh` builds a board fixture by copying **exactly three
+files** — `check_coverage.py`, `fleet.py`, `board_files.py` — into a scratch
+directory and running `fleet.py` there. There is no `jobs/` beside it. So the
+`from localtime import say_time` I added raised `ModuleNotFoundError`, and
+`fleet.py` died before its first `print`. Ten checks that assert on output
+words all went red at once for a reason that had nothing to do with what they
+test.
+
+`board_files.py` is copied alongside *precisely because* `fleet.py` imports
+it — that is the existing convention, and it is invisible unless you go
+looking. **Anything `fleet.py` imports must either be one of those three
+files or be optional.**
+
+The fix guards the import and degrades to UTC, **labelled UTC**:
+
+```
+fleet.py in its own tree : fleet report generated 2026-09-19 07:04 PDT
+fleet.py in a bare copy  : fleet report generated 2026-09-19 14:04 UTC
+pre-fix, in a bare copy  : ModuleNotFoundError: No module named 'localtime'
+```
+
+A fallback that printed `PDT` while running on UTC would have been the exact
+defect §1 is about, reintroduced by the fix for it. `jobs/` also goes *after*
+`HERE` on `sys.path` rather than before it — it is a supplement to that
+directory, not a shadow of it.
+
+`55-localtime.sh` now reproduces the bare-copy layout, so the next lane to add
+an import to `fleet.py` learns it from its own fragment instead of from a
+CI run on somebody else's checks. Confirmed to discriminate: the pre-fix file
+in that layout raises and prints no generated-at line.
+
 ## For the next lane
 
 - The rule is *convert at the point of printing*. If you find a `date -u` and
@@ -227,3 +274,13 @@ confirmed to trip by mutating its target in a scratch copy -- converting
 - `timedatectl` was not runnable in this session's permission set. If the host
   zone is ever in question, `readlink -f /etc/localtime` answers the same
   question and is permitted.
+- Before adding an `import` to `docs/testing/fleet.py`, `check_coverage.py` or
+  `board_files.py`, read §4. Those three travel together into a scratch
+  directory and nothing else goes with them.
+- A full `selftest.sh` run takes roughly 40 minutes on this box — each
+  fragment that drives an `arms.sh` tick walks all 116 committed predictions,
+  several times over. CI's `timeout-minutes: 15` holds because a clean runner
+  is faster, but it is not a large margin. If you are iterating on one
+  fragment, source it alone against a minimal fixture (`$HERE`, `$T`,
+  `$HAKUX_WORK`, `ok`/`bad`/`check`) rather than paying for the whole run;
+  that turned a 40-minute loop into a 3-second one here.
