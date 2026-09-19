@@ -555,3 +555,10 @@ files = [
          "hw/xbox/nv2a/pgraph/vk/blit.c",
          "hw/xbox/nv2a/pgraph/surface.h",
          "hw/xbox/nv2a/pgraph/gl/shaders.c"]
+
+
+[lane.cloud-audit2-143]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-143, audit pass 2 of PR #143 on branch lane/diagdump77, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 143` removes this row when the unit ends."
