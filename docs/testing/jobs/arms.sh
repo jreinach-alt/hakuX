@@ -34,7 +34,10 @@
 # branch (a reachable-but-stale ref is the one that measures the wrong
 # binary and looks like success), and a prediction naming no suite that has
 # goldens. request.sh's own gate (every key must name a golden capture) runs
-# too, and a refusal there is recorded once and not retried.
+# too, and a refusal there is recorded once and not retried. Every one of
+# those refusals -- structural or request.sh's -- is posted on the lane's PR
+# (or its issue) exactly once: a refusal the lane cannot read is a lane that
+# thinks it has an arm running.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"          # the object store the dispatcher builds from
@@ -118,7 +121,9 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
         # Structural skips (no a_ref, a_ref == b_ref, a ref that does not
         # resolve, a stale b_ref, a soak, no suite with goldens) never carry
         # that text and stand until the prediction itself changes, because no
-        # edit to this script can turn one of them into a run.
+        # edit to this script can turn one of them into a run. They are still
+        # ANNOUNCED once -- tell_skip below, called on this path too, so that a
+        # marker written before it existed reaches its lane.
         if grep -q 'request\.sh refused' "$A/skipped/$sha" && ! grep -q "^arms=$ARMS_VERSION" "$A/skipped/$sha"; then
             say "  reconsidering $sha: request.sh refusal recorded by an older arms.sh"; rm -f "$A/skipped/$sha"
         else
@@ -206,7 +211,7 @@ post() {   # <pr> <issue> <body-file>
 # marker keeps it to one comment; a fixed prediction is a new sha.
 refused() {   # <sha> <source> <issue> <which arm> <stderr file>
     local sha=$1 src=$2 issue=$3 arm=$4 err=$5 body="$A/log/$sha.refused.md"
-    skip "$sha" "arms=$ARMS_VERSION $src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
+    mark "$sha" "arms=$ARMS_VERSION $src: request.sh refused the $arm arm: $(tail -3 "$err" | tr '\n' ' ')"
     {
         echo "[job.arms] REFUSED: request.sh would not queue the $arm arm of \`${src#*:}\` (sha256 \`${sha:0:12}\`). The prediction is not on the device until this is fixed."
         echo; echo '```'; tail -40 "$err"; echo '```'; echo
@@ -214,29 +219,94 @@ refused() {   # <sha> <source> <issue> <which arm> <stderr file>
     } > "$body"
     post "$(pr_for "$src")" "$issue" "$body" || say "  could not post the refusal for $sha anywhere"
 }
-skip() { if [ "$mode" = list ]; then echo "  would skip $1: $2"; else echo "$2" > "$A/skipped/$1"; say "  skip $1: $2"; fi; }
+# mark() records; skip() records AND tells. Keep the two apart: refused() has
+# its own, richer comment to post and must not get a second one.
+mark() { if [ "$mode" = list ]; then echo "  would skip $1: $2"; else echo "$2" > "$A/skipped/$1"; say "  skip $1: $2"; fi; }
+
+# A STRUCTURAL SKIP IS TOLD TO THE LANE TOO, ONCE. Until 2026-09-19 only a
+# request.sh refusal reached a PR; the six structural refusals (no a_ref/b_ref,
+# a_ref == b_ref, a ref that does not resolve, a stale b_ref, a soak, no suite
+# with goldens) wrote a marker under $WORK/arms/skipped and said nothing at
+# all. The lane believed it had registered an arm, the arm would never run, and
+# the only actor that knew was a file on a host the lane cannot read -- a cloud
+# lane has no host disk whatsoever. Measured on PR #115, whose registration had
+# English prose where the a_ref belonged and which the job had been silently
+# refusing since 04:29Z.
+#
+# The asymmetry had it backwards: a structural skip is MORE the lane's to fix
+# than a request.sh refusal, because "your a_ref is not a sha" is a one-line
+# correction and this job already knows exactly what is wrong.
+#
+# WHY told= IS A SEPARATE STAMP AND NOT THE MARKER ITSELF. The obvious design
+# -- the marker's existence is the record that it has been said -- makes every
+# marker already on the host count as said, which is exactly the two markers
+# this was written for, including #115's. This file has made that mistake once
+# before (see already_ran: a retry keyed on an `arms=` stamp that the same
+# commit introduced exempted the single refusal it existed to clear). So the
+# marker holds the reason and a `told=` line holds the announcement, and a
+# marker written before this existed is announced on the next tick.
+#
+# Once-only still holds: the stamp is written when the comment lands, and a
+# fixed prediction is a new sha and therefore a new marker. That is "once per
+# registration", not "once ever", which is the behaviour a lane wants.
+#
+# WHAT BOUNDS THE BACKLOG. Not the 131 predictions on disk and not the 38
+# behind the watermark -- those are history, counted and skipped before any
+# skip() runs, and they have no marker to announce. The backlog is exactly the
+# files in $WORK/arms/skipped, which is everything skip() and refused() have
+# ever written: two of them on the day this shipped.
+tell_skip() {   # <sha> <expect-path> <source>
+    [ "$mode" = list ] && return 0
+    local sha=$1 path=$2 src=$3 m="$A/skipped/$sha" body="$A/log/$sha.skipped.md" issue pr
+    [ -f "$m" ] || return 0
+    grep -q '^told=' "$m" && return 0
+    grep -q 'request\.sh refused' "$m" && return 0   # refused() posts its own
+    issue=$(field "$path" issue); pr=$(pr_for "$src")
+    if [ -z "$pr" ] && [ -z "$issue" ]; then
+        echo "told=nowhere (no open PR for $src and no issue field)" >> "$m"
+        say "  skip $sha has nowhere to be told: no open PR for $src and no issue"; return 0
+    fi
+    {
+        echo "[job.arms] SKIPPED: the arms job will not queue \`${src#*:}\` (sha256 \`${sha:0:12}\`), and no arm will run for it."
+        echo; echo '```'; grep -v '^told=' "$m"; echo '```'; echo
+        echo "This is a structural refusal, not a device failure: nothing ran, and nothing will until the registration itself changes. A prediction is bound by the sha256 of its file, so correcting the file is a new registration and the next arms tick (every 30 min) picks it up on its own -- there is nothing to delete on the host."
+        echo; echo "If the skip is wrong, say so here."
+    } > "$body"
+    if post "$pr" "$issue" "$body"; then
+        echo "told=$(date -u '+%FT%TZ')" >> "$m"
+    else
+        say "  could not post the skip for $sha anywhere; will try again next tick"
+    fi
+}
+skip() {   # <sha> <expect-path> <source> <reason>
+    mark "$1" "$3: $4"
+    tell_skip "$1" "$2" "$3"
+}
 
 # ------------------------------------------------------------------- queue
 queued=0
 waiting=$(ls "$D"/queue/*.req 2>/dev/null | wc -l)
 while read -r sha path src; do
     [ -n "$sha" ] || continue
-    already_ran "$sha" && continue
+    # A marker already on the host may predate tell_skip; announce it once.
+    # (already_ran is true for judged/queued/run predictions too, which have no
+    # marker at all -- tell_skip returns immediately for those.)
+    already_ran "$sha" && { tell_skip "$sha" "$path" "$src"; continue; }
     reg=$(field "$path" registered_utc)
     for k in amended_utc amended_utc_2; do v=$(field "$path" $k); [ -n "$v" ] && [ "$v" \> "$reg" ] && reg=$v; done
     [ -n "$reg" ] && [ "$reg" \< "$SINCE" ] && { history=$((history+1)); continue; }   # history; not a refusal, so not recorded
     a=$(field "$path" a_ref); b=$(field "$path" b_ref); who=$(field "$path" who); issue=$(field "$path" issue)
-    [ -n "$a" ] && [ -n "$b" ] || { skip "$sha" "$src: no a_ref/b_ref (a soak or a hand-read prediction)"; continue; }
-    [ "$a" != "$b" ] || { skip "$sha" "$src: a_ref == b_ref, nothing to compare"; continue; }
-    git -C "$REPO" rev-parse -q --verify "$a^{commit}" >/dev/null || { skip "$sha" "$src: a_ref $a does not resolve"; continue; }
-    git -C "$REPO" rev-parse -q --verify "$b^{commit}" >/dev/null || { skip "$sha" "$src: b_ref $b does not resolve"; continue; }
-    live_ancestor "$b" || { skip "$sha" "$src: b_ref $b is not an ancestor of $TIP or any lane branch (stale registration; re-register on live refs)"; continue; }
+    [ -n "$a" ] && [ -n "$b" ] || { skip "$sha" "$path" "$src" "no a_ref/b_ref (a soak or a hand-read prediction)"; continue; }
+    [ "$a" != "$b" ] || { skip "$sha" "$path" "$src" "a_ref == b_ref, nothing to compare"; continue; }
+    git -C "$REPO" rev-parse -q --verify "$a^{commit}" >/dev/null || { skip "$sha" "$path" "$src" "a_ref $a does not resolve"; continue; }
+    git -C "$REPO" rev-parse -q --verify "$b^{commit}" >/dev/null || { skip "$sha" "$path" "$src" "b_ref $b does not resolve"; continue; }
+    live_ancestor "$b" || { skip "$sha" "$path" "$src" "b_ref $b is not an ancestor of $TIP or any lane branch (stale registration; re-register on live refs)"; continue; }
     title=$(field "$path" title)
     if [ -n "$title" ]; then
-        skip "$sha" "$src: soak predictions (title=$title) are hand-read; queue with request.sh --title yourself"; continue
+        skip "$sha" "$path" "$src" "soak predictions (title=$title) are hand-read; queue with request.sh --title yourself"; continue
     fi
     suites=$(suites_for "$path")
-    [ -n "$suites" ] || { skip "$sha" "$src: no suite with goldens in its keys or disc"; continue; }
+    [ -n "$suites" ] || { skip "$sha" "$path" "$src" "no suite with goldens in its keys or disc"; continue; }
     if [ "$mode" = list ]; then
         echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]"; continue
     fi
@@ -267,7 +337,7 @@ PY
     say "  queued base $ida fix $idb"
     queued=$((queued + 1)); waiting=$((waiting + 2))
 done < <(collect)
-[ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(cat "$f")"; done; exit 0; }
+[ "$mode" = list ] && { echo "--- $history prediction(s) older than the watermark $SINCE were not considered (edit $A/since to move it)"; echo "--- skipped (delete $A/skipped/<sha> to reconsider):"; for f in "$A"/skipped/*; do [ -e "$f" ] && echo "  $(basename "$f") $(tr '\n' ' ' < "$f")"; done; exit 0; }
 
 # ------------------------------------------------------------------- judge
 for pair in "$A"/pairs/*.json; do
