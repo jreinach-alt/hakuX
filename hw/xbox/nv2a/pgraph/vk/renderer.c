@@ -1492,6 +1492,25 @@ void nv2a_diag_log_draw_call(NV2AState *d, PGRAPHState *pg,
  * gets a byte cap for the same reason the PCM one has.
  */
 
+/*
+ * The dump's own lifecycle lines go to the tag the harness actually keeps.
+ * DIAG_LOG above uses `hakuX-diag`, and neither logcat spec that serves a
+ * dispatched run lists it (dispatcher.sh:1089, soak_title.sh:32, both ending
+ * `*:S`), so every line the diag capture prints about itself is dropped from
+ * the record of the run that produced it -- which is how a dump that never
+ * armed and a dump whose file could not be opened look identical afterwards.
+ * `hakuX` is in both specs, but soak_title's fallback keeps it at :W, so the
+ * handful of lifecycle lines here are WARN on purpose. They are rare: armed,
+ * held, closed, failed. Both spec strings live in files this lane does not
+ * hold, or the tag would have been added there instead.
+ */
+#ifdef __ANDROID__
+#define FDUMP_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define FDUMP_LOG(...) fprintf(stderr, "xemu-framedump: " __VA_ARGS__)
+#endif
+
 /* Both are prefs with no header of their own (vk/draw.c:987-995); the Android
  * entry point declares them the same way. g_vulkan_driver_info is instance.c's
  * one-line driver identity, recorded so a dump is attributable to a driver
@@ -1585,7 +1604,7 @@ static void fdump_close(const char *why)
     g_free(fdump.buf);
     fdump.buf = NULL;
 
-    DIAG_LOG("framedump: closed (%s) after %d frames, %" PRIu64 " draws, %"
+    FDUMP_LOG("framedump: closed (%s) after %d frames, %" PRIu64 " draws, %"
              PRIu64 " bytes\n", why, fdump.frame_index, fdump.draws_total,
              fdump.bytes_written);
 }
@@ -1692,7 +1711,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
              fdump.session);
     FILE *fp = fopen(path, "wb");
     if (!fp) {
-        DIAG_LOG("framedump: cannot open %s (errno=%d)\n", path, errno);
+        FDUMP_LOG("framedump: cannot open %s (errno=%d)\n", path, errno);
         return;
     }
     fdump.buf = g_malloc(FDUMP_BUF_BYTES);
@@ -1719,7 +1738,7 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
         pg->surface_scale_factor, r->num_active_frames,
         also_diag ? "true" : "false", g_vulkan_driver_info);
 
-    DIAG_LOG("framedump: armed by %s, %d frames, images=%d, cap=%d MB -> %s\n",
+    FDUMP_LOG("framedump: armed by %s, %d frames, images=%d, cap=%d MB -> %s\n",
              armed_by, frames, (int)images, cap_mb, path);
 
     if (also_diag) {
@@ -1754,7 +1773,7 @@ static void fdump_arm(NV2AState *d, const char *armed_by, const char *spec,
     snprintf(fdump.pending_spec, sizeof(fdump.pending_spec), "%s",
              spec ? spec : "");
     snprintf(fdump.pending_by, sizeof(fdump.pending_by), "%s", armed_by);
-    DIAG_LOG("framedump: armed by %s, holding %d s before the first frame\n",
+    FDUMP_LOG("framedump: armed by %s, holding %d s before the first frame\n",
              armed_by, after_s);
 }
 
