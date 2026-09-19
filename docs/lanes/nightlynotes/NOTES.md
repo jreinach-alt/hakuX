@@ -3,6 +3,18 @@
 Two things: the release notes that reported the harness instead of the
 emulator, and the 78-second nightly the brief asked me to check.
 
+## 0. Why attempt 1 did not finish, and what attempt 2 did
+
+Attempt 1 finished the work. It did not finish the *lane*: the PR was open,
+green and marked ready at `4293c8ffb0`, and then `master` moved 62 commits
+underneath it and `8613ae0ae1` ("harness: show Pacific to the reader, keep
+UTC in the data") edited `nightly_build.sh` in exactly the region this lane
+rewrote. fold.sh could not merge, labelled the PR `needs-rebase`, and handed
+it back. Nothing was wrong with the work; the merge base moved. Sections 1
+and 2 below are attempt 1's and stand unchanged.
+
+Attempt 2 is the merge, and nothing else. See §3.
+
 ## 1. The notes
 
 ### What was wrong
@@ -207,3 +219,115 @@ a clean bill:
 Neither gap weakens the conclusion that a real compile and a real package
 happened in that 78 seconds. Per the brief I have not changed anything about
 the build path.
+
+## 3. Attempt 2: the merge with `master`
+
+### What conflicted, and how both sides were kept
+
+One file, `docs/testing/nightly_build.sh`, against master's `8613ae0ae1`
+("harness: show Pacific to the reader, keep UTC in the data"). The two changes
+are not rivals -- that commit converts the file's *display* timestamps to the
+display zone, this lane rewrites the file's *notes block* -- they simply landed
+within a few lines of each other three times.
+
+| hunk | resolution |
+|---|---|
+| the header | both. `localtime.sh` is sourced **above** the `notes` mktemp, because `local_day()` names the file `OUT` then holds. |
+| `say()` | this lane's two arms, each stamping through master's `say_time_s`. |
+| `SINCE` | this lane's `${2:-...}` override, carrying master's comment for why the bare host-local `date` there is deliberate. |
+| `SINCE`/`TOTAL`/`head -40` | gone -- that trio is what this lane exists to replace. |
+
+The `SINCE` comment is worth keeping rather than dropping as a merge artefact:
+it is the one place that records why this line must *not* become a
+`localtime.sh` helper. The window has to line up with `OnCalendar=00:30:00`,
+which carries no `Timezone=` and so fires at 00:30 local; making it UTC would
+slide the window seven hours off the boundary it names.
+
+### One check of master's had to change, and it is not in my Files: line
+
+`selftest.d/55-localtime.sh:136` pinned nightly_build.sh's `say()` on its
+whole one-line form:
+
+```bash
+grep -q 'say() { echo "$(say_time_s) \$\*" | tee -a "\$LOG"; }' .../nightly_build.sh
+```
+
+`say()` here has two arms and cannot match that, so the merged file failed a
+check it in fact satisfies. The fragment's own comment three lines above says
+the four sibling checks are "pinned on the call itself -- `$(say_time_s)`
+inside the `say()` body -- rather than on any word in the surrounding prose";
+the grep was stricter than that sentence. I made it match the sentence, for
+nightly_build.sh only -- the other four sites are still one-liners and keep
+the original grep:
+
+- `say()` stamps through `say_time_s` **in both arms** (`grep -c` = 2, so
+  converting one arm back is caught, not just both);
+- and the file keeps **no bare clock stamp** -- the half a positive grep
+  cannot state.
+
+Neither check is vacuous. Run against two mutants at a temp path:
+
+| file | two-arms | no-bare-stamp |
+|---|---|---|
+| the merged file | PASS | PASS |
+| this lane at `4293c8ffb0` (two arms, `date '+%H:%M:%S'`) | **FAIL** (0) | **FAIL** |
+| `origin/master` (one arm, `say_time_s`) | **FAIL** (1) | PASS |
+
+Each check is tripped by a mutant the other lets through, which is why it is
+two checks and not one.
+
+`docs/testing/jobs/selftest.d/55-localtime.sh` is therefore a fourth file on
+this PR, added to the body's `Files:` line. It is one check in another lane's
+fragment, loosened to what that fragment says it is testing; the localtime
+lane's invariant is intact.
+
+### The selftest is not green, and 10 of the 11 failures are master's
+
+Measured, not assumed. `origin/master` at `6db8217cdb` fails its own `jobs
+selftest` workflow in CI (run `35456001861`) with exactly these ten, all in
+`selftest.d/86-fold-regressed.sh`, which exercises `fold.sh`:
+
+```
+FAIL   and the fold comment names the issue the trade is argued on
+FAIL   it says the failing verdict still stands as measured
+FAIL a bare regression-accepted does NOT fold
+FAIL `regression-accepted:` is not an override
+FAIL `regression-accepted:none` is not an override
+FAIL `regression-accepted:91x` is not an override
+FAIL `regression-accepted-later` is not an override
+FAIL   the spelling is said once as well
+FAIL   list stays read-only: it folds nothing
+FAIL   but list folded nothing
+```
+
+This branch touches neither `fold.sh` nor that fragment, and `86-fold-` sorts
+before `86-nightly-`, so nothing of this lane's has even been sourced when
+they run. The eleventh failure was the `say_time_s` grep above and is fixed.
+**This lane adds no failure and removes none**; the fold-regressed ten are a
+live defect on master and belong to whoever owns `86-fold-regressed.sh`. I did
+not touch them: guessing at another lane's fold semantics from a red check is
+how one lane's bug becomes two lanes' bugs.
+
+### A hazard that cost this attempt a full redo
+
+At 09:50:09 and 09:50:28 something outside this session ran `git reset` in
+this worktree -- twice, 19 seconds apart, both recorded in the reflog as
+`reset: moving to HEAD`. The first merge resolution was uncommitted at the
+time, so `MERGE_HEAD` and every resolved hunk went with it and the tree came
+back clean at `4293c8ffb0` as though nothing had happened. It was silent: no
+error, no output, and `git status` looked like a lane that had simply not
+started.
+
+I did not identify the actor and am not going to guess at one. What I can say
+is bounded: it was not `fold.sh`, whose reset is `git -C "$WT"` with
+`WT="$WORK/fold-wt"`, and nothing under `docs/testing/` contains another
+`git reset`. It did not recur on the second and third selftest runs, so
+"the selftest did it" is not established either -- only that the window
+overlapped one.
+
+**The working practice that survives this, and is in `AGENTS.md` already for a
+different reason: commit a conflict resolution before running anything long.**
+The second resolution was committed and pushed within a minute of being
+finished, and the two selftest runs after that left it alone. A lane that
+resolves a merge and then runs a 10-minute gate over it is holding the only
+copy in the working tree for ten minutes.
