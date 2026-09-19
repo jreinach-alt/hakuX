@@ -5,6 +5,9 @@
 #
 #   fold.sh          fold the oldest fold-ready PR whose CI is green
 #   fold.sh list     what it would fold, and why the rest waits
+#   fold.sh resolve-notes <worktree> <branch>
+#                    the one conflict resolution below, on an in-progress
+#                    merge, so the self-test can run it without a fake gh
 #
 # A FOLD IS A --no-ff MERGE OF THE LANE BRANCH INTO master, so every commit
 # keeps its sha and every prediction's b_ref stays an ancestor forever
@@ -20,6 +23,18 @@
 # never resolved here -- the lane gets `needs-rebase` and a comment naming
 # the files, because a merge resolved by a script that does not understand
 # the code is how a working fix was reverted on 2026-09-12.
+#
+# THE ONE EXCEPTION IS A ROOT NOTES.md, AND IT IS A RENAME, NOT A MERGE.
+# roles/lane.md used to ask every lane for `NOTES.md` in the branch root.
+# master has none, so the first fold lands one and EVERY fold after it
+# conflicts on that exact path -- permanently, since master then holds lane
+# A's notes and lane B's are a conflicting rewrite of the same file. The
+# instruction is now `docs/lanes/<lane>/NOTES.md`, but the lanes that were
+# already running never saw it. So: when the ONLY unmerged path is root
+# NOTES.md, the incoming copy is moved to the lane's own path and the fold
+# continues. There is no content decision in that -- both sides are kept,
+# each at its own path, and nothing is discarded. Any other conflicting
+# path, alone or alongside NOTES.md, still returns the PR to its lane.
 #
 # THE INDEX IS REGENERATED, NEVER MERGED. nv2a_index.json records line
 # numbers, so a merge of two edits to it is stale by construction. If
@@ -43,6 +58,36 @@ find_repo() { for d in "$HOME/$1" /home/justin/"$1" /home/user/"$1"; do [ -d "$d
 TESTS="${TESTS:-$(find_repo nxdk_pgraph_tests)}"; SUPPORT="${SUPPORT:-$(find_repo pbkitplusplus)}"
 
 comment() { printf '%s\n' "$2" > "$F/comment.md"; gh pr comment "$1" --repo "$GH_REPO" --body-file "$F/comment.md" >/dev/null 2>&1; }
+
+# ------------------------------------------------- the one resolution
+notes_path() {   # <branch> -> the per-lane notes path roles/lane.md asks for
+    local b="${1#lane/}"; printf 'docs/lanes/%s/NOTES.md' "${b//\//-}"
+}
+resolve_root_notes() {   # <worktree> <branch> -> 0 when the merge is left fully staged
+    local wt="$1" branch="$2" dest; dest=$(notes_path "$branch")
+    # ONLY a root NOTES.md. One unmerged path, and that path exactly.
+    [ "$(git -C "$wt" diff --name-only --diff-filter=U)" = "NOTES.md" ] || return 1
+    # The lane's copy is moved, never dropped: its record is the point. If
+    # the destination is already occupied -- the lane wrote both paths, or
+    # folded once before -- then moving it WOULD be a content decision, and
+    # this job does not make those: hand it back like any other conflict.
+    [ ! -e "$wt/$dest" ] || return 1
+    git -C "$wt" cat-file -e MERGE_HEAD:NOTES.md 2>/dev/null || return 1
+    mkdir -p "$wt/$(dirname "$dest")" || return 1
+    git -C "$wt" show MERGE_HEAD:NOTES.md > "$wt/$dest" || return 1
+    git -C "$wt" add -- "$dest" || return 1
+    # The root path takes master's side unchanged -- this end of the merge
+    # decides nothing about content it did not write.
+    if git -C "$wt" cat-file -e HEAD:NOTES.md 2>/dev/null; then
+        git -C "$wt" checkout HEAD -- NOTES.md && git -C "$wt" add -- NOTES.md || return 1
+    else
+        git -C "$wt" rm -q -f -- NOTES.md || return 1
+    fi
+    [ -z "$(git -C "$wt" diff --name-only --diff-filter=U)" ] || return 1
+}
+if [ "$mode" = resolve-notes ]; then
+    resolve_root_notes "${2:?worktree}" "${3:?branch}"; exit $?
+fi
 
 # ------------------------------------------------------------ candidates
 cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft \
@@ -92,25 +137,34 @@ while IFS=$'\t' read -r pr branch head draft title; do
     fi
     git -C "$WT" fetch -q origin "$TIP" "$branch" || { say "fetch failed"; continue; }
     git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "origin/$TIP"
+    notes_moved=""
     if ! git -C "$WT" merge --no-ff --no-edit -m "fold: PR #$pr $branch -- $title" "origin/$branch" >"$F/merge.log" 2>&1; then
         files=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
-        git -C "$WT" merge --abort 2>/dev/null
-        say "#$pr CONFLICT in: $files"
-        # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
-        # job, shown by status.sh, and acted on by nothing -- the lane it hands
-        # the PR back to is a transient unit that exited with its session. The
-        # actor is jobs/handback.sh, called at the end of this tick. This job
-        # knows the conflicting files and nothing downstream does, so it writes
-        # them down here; handback.sh works without the file (a PR labelled by
-        # hand, or by a fold from before this line existed) and quotes it when
-        # it is there. Keyed on the head sha, so a lane that pushes produces a
-        # new cause and an unchanged branch does not.
-        mkdir -p "$WORK/handback/cause"
-        printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
-            "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
-        label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
-        comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
-        continue
+        if resolve_root_notes "$WT" "$branch"; then
+            notes_moved=$(notes_path "$branch")
+            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
+                -m "The lane's root NOTES.md conflicted with master's and nothing else did; its copy is at $notes_moved (roles/lane.md item 3). No content was merged or dropped." \
+                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr NOTES.md resolved but the merge would not commit"; continue; }
+            say "  only root NOTES.md conflicted; the lane's copy is at $notes_moved"
+        else
+            git -C "$WT" merge --abort 2>/dev/null
+            say "#$pr CONFLICT in: $files"
+            # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
+            # job, shown by status.sh, and acted on by nothing -- the lane it hands
+            # the PR back to is a transient unit that exited with its session. The
+            # actor is jobs/handback.sh, called at the end of this tick. This job
+            # knows the conflicting files and nothing downstream does, so it writes
+            # them down here; handback.sh works without the file (a PR labelled by
+            # hand, or by a fold from before this line existed) and quotes it when
+            # it is there. Keyed on the head sha, so a lane that pushes produces a
+            # new cause and an unchanged branch does not.
+            mkdir -p "$WORK/handback/cause"
+            printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
+                "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
+            label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
+            comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
+            continue
+        fi
     fi
     # The index: regenerate if the merge moved it, never hand-merge it.
     if [ -n "$TESTS" ] && [ -n "$SUPPORT" ]; then
@@ -142,7 +196,9 @@ Fix on the lane branch and push; the next green head is re-tried."
     merge_sha=$(git -C "$WT" rev-parse --short HEAD)
     git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
     label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
-    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries."
+    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${notes_moved:+
+
+Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
     say "  folded #$pr as $merge_sha"
     folded=1
 done <<< "$cands"
