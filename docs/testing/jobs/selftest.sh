@@ -353,7 +353,14 @@ check "an issue no running lane owns FAILs as dispatchable" grep -qE '^FAIL: .*c
 # THE BLIND RUN. Same fixtures, a systemctl that cannot answer.
 fleet_run "$FL/blind" "$FL/blind.txt"
 check "a systemctl that cannot answer says FLEET-BLIND" grep -q 'FLEET-BLIND' "$FL/blind.txt"
-check "fleet-blind raises no FAIL at all -- 'I could not ask' is not 'nothing is running'" bash -c '! grep -q "^FAIL" "$FL/blind.txt"'
+# Exactly one, and it is the blindness. Not zero -- board.sh keeps only '^FAIL'
+# and drops everything else, so a blindness announced any other way is
+# announced to nobody, which is how this file reported calm for five days. And
+# not the FAILs an empty running set implies: "I could not ask" is not
+# "nothing is running", and the difference is the whole defect.
+check "fleet-blind raises exactly one FAIL" bash -c '[ "$(grep -c "^FAIL" "$FL/blind.txt")" = 1 ]'
+check "and that FAIL is the blindness, not the FAILs an empty fleet implies" grep -q '^FAIL: FLEET-BLIND' "$FL/blind.txt"
+check "fleet-blind raises no RUNNING-WITH-NO-TERRITORY-ROW FAIL" bash -c '! grep -q "^FAIL.*RUNNING with no territory row" "$FL/blind.txt"'
 check "fleet-blind says DISPATCHABLE was not computed rather than printing zero" grep -q 'DISPATCHABLE NOW, NOT DISPATCHED (0).*NOT COMPUTED' "$FL/blind.txt"
 
 # READY, NOT FOLDED, asked of GitHub instead of a `state` field a lane would

@@ -268,12 +268,30 @@ def main():
               file=sys.stderr)
     running = sorted(units)
 
+    # AND IT IS ITS OWN FAIL, unlike the gh blindness below. board.sh keeps
+    # only the lines matching '^FAIL' and drops the rest, so anything said any
+    # other way is said to nobody -- which is how this whole file came to
+    # report calm for five days. The two are not treated alike on purpose:
+    #
+    #   gh unreachable   transient, retried in twenty minutes, nothing a board
+    #                    tick can do about it. Fails open, as it always has.
+    #   systemctl --user unreachable FROM A PROCESS WHOSE JOB IS TO MANAGE
+    #                    USER UNITS is a configuration defect. It does not
+    #                    self-heal and nobody finds out any other way.
+    if fleet_blind:
+        print("FAIL: FLEET-BLIND -- systemctl --user did not answer, so this "
+              "report cannot say what is running. No other FAIL below was "
+              "computed. Check the user manager on the host "
+              "(`systemctl --user list-units`); the fleet is unobservable "
+              "until it answers.", file=sys.stderr)
+
     prs = lane_prs()
     pr_blind = prs is None
     if pr_blind:
         prs = []
         print("PR-BLIND: gh pr list did not answer, so READY NOT FOLDED and "
-              "BLOCKED were not computed.", file=sys.stderr)
+              "BLOCKED were not computed. Fails open like the issue list "
+              "above: a network blip is not a board item.", file=sys.stderr)
 
     # An entry for a lane whose unit is not active is garbage by construction:
     # lane.sh writes one at start and unlinks it at exit. Counted, never shown
@@ -507,7 +525,7 @@ def main():
     # '^FAIL' and starts a model session on any hit, so a FAIL that cannot be
     # cleared by the board spends a window every twenty minutes for nothing.
     # Each one names the actor and the action that clears it.
-    rc = 0
+    rc = 1 if fleet_blind else 0   # the FLEET-BLIND FAIL was printed above
     if waiting:
         print("\nFAIL: %d lane PR(s) labelled `blocked`: %s. Grant the file or "
               "answer the question and remove the label -- 'ask and I will "

@@ -22,6 +22,12 @@ merged. The sets are disjoint, so the sensor was not merely lagging — it was
 describing a fleet that no longer existed. Six consecutive board ticks logged
 `nothing actionable`, and would have logged it with the fleet idle too.
 
+Re-run 40 minutes later without touching anything: `RUNNING` 8 → 4 as `blit84`,
+`glerr86`, `armsskip`, `boardgate` and `notespath` ended, and `READY, NOT
+FOLDED` 3 → 5 as two of them marked their PRs ready. The old sensor would have
+printed the same frozen four both times. Every number in this file is a dated
+snapshot, not a constant — that is the point of deriving them.
+
 ## What it reads now
 
 | section | old source | new source |
@@ -98,6 +104,23 @@ conditions were already dead — that is the defect. In principle, if the
 orchestrator role were restored and started writing `state`/`waiting_on` again,
 those two derivations are gone for good.
 
+**One more that can fire: `FAIL: FLEET-BLIND`.** I first wrote the blind path
+to raise *no* FAIL — reasoning that a board tick cannot fix a broken user
+manager, so waking a model session every twenty minutes would be pure cost.
+That was wrong for this file specifically: `board.sh` keeps only `^FAIL` and
+drops every other line, so a blindness announced any other way is announced to
+nobody, which is precisely how this file reported calm for five days. It is
+its own FAIL now, and `gh` blindness is deliberately *not*:
+
+| condition | FAIL? | why |
+|---|---|---|
+| `gh` unreachable | no | transient, retried in twenty minutes, nothing a tick can do |
+| `systemctl --user` unreachable **from a process whose job is to manage user units** | **yes** | a configuration defect; it does not self-heal and nobody finds out otherwise |
+
+The derived FAILs stay suppressed under blindness either way — "I could not
+ask" must never become "nothing is running". The selftest pins both halves:
+exactly one FAIL, and it is the blindness.
+
 **Net effect on board wake-ups:** the first tick after this lands will be
 actionable rather than `nothing actionable`, and will stay actionable until the
 board writes eight territory rows and labels three PRs. That is roughly two
@@ -105,14 +128,19 @@ ticks of real work, after which the gate goes quiet for the right reason.
 
 ## The checks, and what they measure against the file being replaced
 
-23 checks appended to `jobs/selftest.sh`. To prove they measure something I ran
+25 checks appended to `jobs/selftest.sh`. To prove they measure something I ran
 the same fixture set against `origin/master`'s `fleet.py` and `lane.sh`
-(`bdeab36f75`), via a scratch `.falsify.sh` that differs only in which pair of
-scripts it points at:
+(`bdeab36f75`), via a scratch runner that differs from the selftest block only
+in which pair of scripts it points at. To redo it: `git show
+origin/master:docs/testing/fleet.py > docs/testing/fleet.old.py` (and the same
+for `lane.sh`), then run the block's `fleet_run`/`lane.sh` invocations against
+those paths — they must sit **inside `docs/testing/`**, because `fleet.py`
+imports `board_files` from its own directory and `lane.sh` derives `$JOBS` from
+its own.
 
 ```
-falsify[new]: 23 passed,  0 failed
-falsify[old]:  5 passed, 18 failed
+falsify[new]: 25 passed,  0 failed
+falsify[old]:  5 passed, 20 failed
 ```
 
 The five that pass against the old code are the negative controls — "a draft
@@ -145,6 +173,23 @@ Both are now stated so they cannot pass vacuously: `fleet-end` must leave a
   execute. What it does *not* exercise is systemd actually running the command
   line — the `systemd-run` shim logs it, and the check greps that log for the
   `fleet-end` call.
+
+## Incidental, and it cost a few minutes
+
+**`gh pr edit --body-file` fails on this host too**, not just `--add-label`:
+
+```
+$ gh pr edit 133 --body-file .pr-body.md
+GraphQL: Projects (classic) is being deprecated ... (repository.pullRequest.projectCards)
+```
+
+`AGENTS.md` and `roles/board.md` document the breakage for `--add-label` only,
+so the natural reading is that the rest of `gh pr edit` is fine. It is not —
+the failing field is `projectCards`, which `gh pr edit` requests on *every*
+invocation regardless of which flag you pass. The working call is
+`gh api -X PATCH repos/<owner>/<repo>/pulls/<n> -F body=@<file>`, the same REST
+route `gh-label.sh` already takes for labels. Worth widening the rule from "the
+label flags" to "`gh pr edit`" wherever it is written down.
 
 ## For the next lane
 

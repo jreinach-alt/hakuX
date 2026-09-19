@@ -214,8 +214,10 @@ PYEND
     rm -f "$f"
     ;;
   fleet-gc)
-    # The 38 entries the deleted orchestrator left behind, and anything a
-    # killed unit drops. REFUSES if systemd cannot be reached: an empty
+    # The entries the deleted orchestrator left behind (37 on the host on
+    # 2026-09-19), and anything a killed unit drops. The count is not pinned
+    # here because it is whatever `fleet.py` last reported, not a constant.
+    # REFUSES if systemd cannot be reached: an empty
     # active set would otherwise read as "nothing is running" and delete the
     # live fleet's entries -- the same mistake, in the other direction.
     units=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend --plain 2>/dev/null) \
@@ -228,7 +230,7 @@ PYEND
         case "$active" in *" $l "*) continue ;; esac
         rm -f "$f" && n=$((n+1))
     done
-    echo "fleet-gc: removed $n entr(y|ies) with no active unit; kept$active"
+    echo "fleet-gc: removed $n entries with no active unit; kept$active"
     ;;
   attempts)
     for f in "$WORK"/attempts/*; do [ -e "$f" ] || { echo "none"; break; }; printf '%-16s %s\n' "$(basename "$f")" "$(cat "$f")"; done
