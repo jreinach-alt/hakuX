@@ -1,6 +1,45 @@
 # lane.handback — an actor for a PR a job handed back
 
-Base: `master` @ bdeab36f75. PR #132.
+Base: `master` @ bdeab36f75, then merged forward three times. PR #132.
+
+## Why this lane ran three times, which is the defect measuring itself
+
+The fix was written and green in attempt 1. Attempts 2 and 3 were the
+hand-back this lane exists to fix, applied to this lane, twice:
+
+| when | what happened | left behind |
+| --- | --- | --- |
+| attempt 1 | the fix: `handback.sh`, the `fold.sh` cause record, the board rule, the checks | `38513ca6c8`, `3757960021`, `12e06ad68c` |
+| 07:09Z | fold: `CONFLICT in: fold.sh selftest.sh` — #131 folded under it | `needs-rebase` |
+| attempt 2 | merged `1f7572a34c`, resolved both, pushed, re-applied `fold-ready` | `ab1f7e67ad` |
+| 07:42Z | fold: `CONFLICT in: selftest.sh` — #136 folded under it | `needs-rebase` |
+| attempt 3 (this one) | merged `f53f3f66c2`, moved the checks into `selftest.d/99-handback.sh` | this section |
+
+**Neither resumed attempt failed.** Attempt 2 did every step of its brief —
+the 07:42Z hand-back is the fold job re-deriving the same verdict against a
+master that had moved once more, not a defect in what attempt 2 did. That is
+the reading to avoid, and the reason to write it down: `$WORK/attempts/handback`
+reads `3`, and nothing in it distinguishes three dispatches from three
+failures.
+
+Two things follow that are worth more than this lane's own history.
+
+The attempt counter counts *dispatches*, not *failures*, and `lane.sh`
+escalates the model on the fourth. This lane is at 3 of 4 with nothing wrong
+in it; one more fold under it and the actor I am adding would resume it onto
+the escalated model, and the one after that would refuse and open a
+`decision-needed` issue about a PR that has been correct throughout. That is
+`lane.sh`'s policy and I did not change it — changing it is a different
+lane's brief, and it should be one: **an attempt spent re-merging is not
+evidence the lane needs a bigger model.** What was available to me is the
+head-sha key, which at least charges each cause once rather than once a tick.
+
+And the conflict was always on one path. #136 split `selftest.sh` into
+`selftest.d/` fragments **because of these three hand-backs** — the causes
+are in `$WORK/handback/cause/` and on this PR — and that split is the actual
+fix for the rate. `handback.sh` is the fix for what happens *after* a
+hand-back, which is a smaller and more permanent problem: conflicts will
+still occur on files that cannot be split.
 
 ## The defect, restated
 
@@ -110,6 +149,41 @@ A fourth case is upstream of all three: a lane whose unit is **still active** is
 not stalled, and `systemd-run --unit` on a live unit fails *after* `lane.sh` has
 already counted the attempt. That guard is worth one of the four attempts, not
 tidiness. No marker; the next tick looks again.
+
+## The row that came back without the label it was filtered on
+
+Attempt 3's merge turned up a defect in attempt 1's work, and it was the
+`selftest.d` split that turned it up — so it is worth recording how, not just
+what.
+
+`fold.sh` now calls `handback.sh` at the end of every tick. `selftest.d/85-fold-ci.sh`
+drives the real `fold.sh` through its own `gh` shim, and that shim answers
+**every** `pr list` with one fixed row (`102 lane/foldci …`), because before my
+change the only `pr list` in a fold tick was the candidate query. So every
+`fold_tick` in that fragment now also ran a handback tick, which took the
+fixture's row at face value and **resumed `lane.foldci` and commented on #102**.
+Three of that fragment's checks went red: "it is said exactly once", "a run
+still in flight is not commented on", "and that too is said exactly once".
+
+The shim's indifference to `--label` is a fixture artefact. What it exposed is
+not. `handback.sh` asked `gh pr list --label needs-rebase` and then trusted
+that every row it got back carried that label — a server-side filter, never
+re-checked. The failure mode if that filter does not happen is not an empty
+list, which would be visible and harmless; it is **resuming, by name, whichever
+lane owns the first open PR on the repository, against that lane's four-attempt
+escalation budget.** A `--jq` typo is the live way to get there, and the NOTES
+below already flag that `--jq` as the one surface no shim exercises.
+
+So the fix is in `handback.sh`, not in the fixture: a row that comes back for
+`--label X` without `X` in its labels is refused and logged with the labels it
+did carry. `85-fold-ci.sh` is another lane's file and I did not touch it.
+
+The check for this is the one place I had to think about what a negative
+proves. Written with the row labelled `harness,fold-ready`, two of its four
+checks passed against a build with the guard deleted — the *stale-label* rule
+refused the row first and the guard never did any work. With the row labelled
+`harness` alone, all four fail on that build. Measured both ways; the numbers
+are in the table below.
 
 ## Evidence
 
@@ -240,3 +314,20 @@ lane deletes.
   tick: a tick can create at most one new conflict, so the rates are matched.
   If a backlog ever needs draining faster, that is a loop bound to change, not a
   cap — `LANE_MAX` is the cap and it is `lane.sh`'s.
+- **A fragment's `gh` shim now sees traffic its author never sent.** Every
+  fragment under `selftest.d/` that drives `fold.sh` is also, since this PR,
+  driving `handback.sh`, because `fold.sh` calls it at the end of a tick. A
+  shim written as "answer every `pr list` with my row" was correct when a tick
+  made one such call and is a trap now. If you add a job to the tail of another
+  job's tick, run the whole suite and read the *other* fragments' failures as
+  yours — the three that went red here were the only evidence of a real defect
+  in this PR.
+- **A mutant worktree made with `git worktree add --detach . HEAD` carries the
+  committed file, not your working tree.** Mine ran the handback section twice
+  — once from `selftest.d/99-handback.sh` and once from the copy still inline
+  in `selftest.sh` at HEAD — and the second pass inherited the first pass's
+  markers and briefs, so it failed for reasons that had nothing to do with the
+  mutant. Twenty-two failures, none of them the discriminator. Copy the
+  working-tree files in after `worktree add`, or commit first. The tell is a
+  section header appearing twice in the output; the driver's fragment loop
+  prints nothing, so grep the headers, not the counts.

@@ -136,6 +136,22 @@ for row in "${HANDBACK_ROWS[@]}"; do
     read -r label action stale <<< "$row"
     while IFS=$'\t' read -r pr branch head labels; do
         [ -n "${pr:-}" ] || continue
+
+        # THE ROW MUST CARRY THE LABEL IT WAS ASKED FOR. `gh pr list --label`
+        # does the filtering server-side and this job never re-checks it, so a
+        # row that comes back without the label means the filter did not
+        # happen -- a `--jq` that stopped emitting the labels field, a gh that
+        # ignored the flag, a shim. The failure mode is not "nothing found",
+        # which would be visible; it is resuming the FIRST OPEN PR on the
+        # repository, by name, against its lane's attempt budget. Found by the
+        # fold-ci checks, whose gh shim answers every `pr list` with one row:
+        # every fold tick ran a resume of lane.foldci and commented on #102.
+        case ",$labels," in
+            *",$label,"*) ;;
+            *) say "#${pr:-?} came back for --label $label without it (labels=${labels:-none}); the filter did not happen, so acting on it would resume the wrong lane"
+               continue ;;
+        esac
+
         seen=$((seen+1))
         skip=""
         for s in $stale; do case ",$labels," in *",$s,"*) skip="$s" ;; esac; done
