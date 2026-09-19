@@ -251,7 +251,8 @@ where to look.
 
 Reading `update_surface_part()` against `TestSwap()` does **not** reproduce the
 decline firing inside `Swap`. `SET_CONTEXT_DMA_COLOR` sets
-`surface_color.buffer_dirty` (`pgraph.c:2386`), so colour rebinds to the zeta
+`surface_color.buffer_dirty` (`pgraph.c:2387`; `:2386` is
+`pg->dma_color = parameter;`, the line before), so colour rebinds to the zeta
 address first; zeta then asks for the colour address and finds an object that is
 no longer `r->color_binding`, so `surface == other` is false and the decline
 does not fire. `SurfaceShape` carries no address, so `framebuffer_dirty()`

@@ -6815,7 +6815,17 @@ static struct {
     unsigned long zdrop;    /* zeta clear asked for, no zeta binding       */
     unsigned long cdrop;    /* colour clear asked for, no colour binding   */
     unsigned long f_clears, f_zdrop, f_cdrop;  /* same, within `frame`     */
-    bool reported;          /* this frame already printed an event line    */
+    /*
+     * ONE FLAG PER KIND, not one for both (audit pass 2, N2). With a single
+     * flag, a frame whose first drop is a cdrop suppresses that frame's first
+     * zdrop line entirely: the zdrop then reaches the log only at the next
+     * `clears % 512` heartbeat, and because f_zdrop is reset per frame that
+     * heartbeat can land in a later frame and print ITS zero. A reader joining
+     * [surf91] to [clr91] on frame= would read "no zeta clear was dropped in
+     * this frame", which is the exact inference #91 turns on.
+     */
+    bool reported_z;        /* this frame already printed a zdrop line     */
+    bool reported_c;        /* this frame already printed a cdrop line     */
 } g_clr91;
 
 static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
@@ -6825,7 +6835,7 @@ static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
     if (pg->frame_time != g_clr91.frame) {
         g_clr91.frame = pg->frame_time;
         g_clr91.f_clears = g_clr91.f_zdrop = g_clr91.f_cdrop = 0;
-        g_clr91.reported = false;
+        g_clr91.reported_z = g_clr91.reported_c = false;
     }
 
     bool zdrop = write_zeta && !r->zeta_binding;
@@ -6844,9 +6854,14 @@ static void clr91_probe(PGRAPHState *pg, bool write_color, bool write_zeta)
      * One line per frame per kind is bounded by the frame count, so it cannot
      * flood however many clears a frame issues.
      */
-    bool first_event = (zdrop || cdrop) && !g_clr91.reported;
-    if (first_event) {
-        g_clr91.reported = true;
+    bool first_z = zdrop && !g_clr91.reported_z;
+    bool first_c = cdrop && !g_clr91.reported_c;
+    bool first_event = first_z || first_c;
+    if (first_z) {
+        g_clr91.reported_z = true;
+    }
+    if (first_c) {
+        g_clr91.reported_c = true;
     }
     if (!(first_event || g_clr91.clears % 512 == 0)) {
         return;

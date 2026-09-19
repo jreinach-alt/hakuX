@@ -133,8 +133,10 @@ invariant that defence protects is now maintained at its source:
    (`pgraph.c:2461-2524`), but `framebuffer_dirty()` compares the whole shape,
    colour format included, and forces the re-resolve above.
 4. `pgraph_vk_clear_surface()` calls that `surface_update` before every clear
-   (`vk/draw.c:6751`), and `pgraph_vk_get_clear_color()` is reached from
-   nowhere else.
+   (`vk/draw.c`, cited **by callee** rather than by line: the number was
+   `:6751` when this was written, was `:6894` by audit pass 2 and has moved
+   again since, because every probe added to this file shifts it), and
+   `pgraph_vk_get_clear_color()` is reached from nowhere else.
 
 So the old and new expressions agree by construction in every state the suite
 can reach, **except** the `!color_format && !zeta_format` hole above.
