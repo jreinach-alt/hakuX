@@ -176,3 +176,65 @@ quietly expired, and nothing in the tooling flags it.
 
 Filed as #158 rather than started: the fix crosses into #59's model, so it is a
 routing question. The target is registered per capture if it comes back here.
+
+## #158 implemented and measured: 9 of 9, and the Vulkan control held
+
+Territory released #158 to this lane at wave 122, with `glsl/psh.c`,
+`gl/renderer.c` and `gl/draw.c` — the three files the patch-shape analysis had
+named. Implemented as that analysis specified, and **without** the constants-
+table column it warned against.
+
+Prediction registered before the run
+(`docs/testing/predictions/2026-09-19-gl-pad-bit-write-side.json`), naming nine
+targets at Vulkan's values, two captures pinned as **not** moving, and the
+uncomfortable outcome in advance.
+
+| capture | GL before | GL after | registered | verdict |
+|---|---:|---:|---:|---|
+| `1-DstAlpha_X_O1RGB5` | 65,536 | **0** | 0 | pass |
+| `1-DstAlpha_X_ORGB8` | 65,536 | **0** | 0 | pass |
+| `DstAlpha_X_O1RGB5` | 65,536 | **0** | 0 | pass |
+| `DstAlpha_X_ORGB8` | 65,536 | **0** | 0 | pass |
+| `DstAlpha_X_ZRGB8` | 65,536 | **0** | 0 | pass |
+| `Fmt_X8R8G8B8_Z8R8G8B8` | 32,774 | **31** | 31 | pass |
+| `Fmt_X8R8G8B8_O8R8G8B8` | 16,413 | **62** | 62 | pass |
+| `Fmt_X1R5G5B5_Z1R5G5B5` | 30,197 | **15,678** | 15,678 | pass |
+| `Fmt_X1R5G5B5_O1R5G5B5` | 18,564 | **16,483** | 16,483 | pass |
+| `DstAlpha_XA_O1A7RGB8` | 90,112 | **90,112** | 90,112 (pinned) | pass |
+
+**Nine moved, and exactly the nine predicted. Nothing else on the disc moved at
+all** — 227 of 236 captures byte-identical to the pre-fix run, 0 worse.
+**393,374 px recovered.**
+
+### The control that makes this readable
+
+`glsl/psh.c` is shared, so Vulkan is not automatically a control — but the gate
+change is algebraically a no-op there (`opts.vulkan && flag` becomes
+`flag && !gles`, and for Vulkan `gles` is false), and the measurement confirms
+it: **Vulkan is byte-identical on all 236 captures.** A shared-file change that
+moves one backend and provably not the other is the strongest form this
+evidence takes.
+
+GL's bit-exact count goes **123 → 128, which is Vulkan's exactly.**
+
+### Where the renderers now stand
+
+Differing captures between the two backends: **18 → 9**, and GL now *leads* on
+six of the nine. GL trails on exactly two, and both are the captures registered
+in advance as unreachable by this change:
+
+- `Surface_pitch::Swizzle` (12,224) — not a pad capture; #87's layout question
+  plus the guest/pgraph race.
+- `Blend_surface::DstAlpha_XA_O1A7RGB8` (8,192) — `X1A7R8G8B8_O`, whose seven
+  alpha bits are real data, excluded by design on both backends. This is #60's
+  residual and it is now the *only* pad-family capture where GL trails.
+
+12,224 + 8,192 = 20,416, and 413,790 − 393,374 = 20,416. The arithmetic closes.
+
+### One correction to my own figure
+
+The #158 analysis and its issue comment said the yield would be "~397,000 px".
+The exact derived figure was **393,374** — the sum of the nine gaps — and I
+rounded it upward in prose while the registered *values* were exact. The
+registration is what was measured against; the prose estimate was loose and is
+corrected here.
