@@ -23,7 +23,7 @@ ancestors of master and nothing was carried forward.
 |---|---|
 | #34 | not this lane's: four findings in `vk/*`, and the device confirmation is APK packaging in `android/` |
 | #60 | **the subject of this note** — see below |
-| #62 | finding 2 only, and it needs `gl/surface.c` **and an NDK**; the other five are fixed and verified in master |
+| #62 | finding 2 **implemented on `a5fdb6a7`** once `gl/surface.c` was granted; the other five were already fixed and verified in master. The device half is the host's, by the split agreed on the issue — see below |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
 
 ## #60: the fix landed while the issue stayed open
@@ -673,3 +673,71 @@ instrument this branch added is what shows it**. Already recorded on the PR
 before pass 2b raised it; it stays unfixed, because both registered prediction
 refs are descendants of that commit and rewording it would rewrite history a
 live prediction depends on.
+
+## #62 finding 2, landed on `a5fdb6a7` — and what no audit has read yet
+
+Written by the remediation pass, not by the commit's author, because the commit
+landed **three minutes before this PR was claimed for remediation** and after
+the lane's own "nothing under `hw/`" status comment. So it is recorded here
+rather than left to be re-derived.
+
+**The grant is real, and checking it needs the right copy of the file.** The
+`docs/testing/territory.toml` in this worktree is **wave 94 (2026-09-18)**: it
+does not list `gl/surface.c` under `[lane.remote]`, it names the file *out* of
+the glob and grants it to `lane.swizzle87` at wave 86. Read that copy and this
+commit looks like a territory violation. It is not one — that copy is
+fold-lagged by thirty waves.
+
+The live board is **`origin/board:territory.toml`** (repository root, not under
+`docs/testing/`), and `check_territory.py` reads it from there rather than from
+the tree. At **wave 124, 2026-09-19T20:06:21Z** it has
+`hw/xbox/nv2a/pgraph/gl/surface.c` first in `[lane.remote].files`, absent from
+`[free]`, and `lane.swizzle87` retired out of the file entirely. So the grant
+is on the **machine-read field**, not only in prose, and
+`check_territory.py` reports `territory ok (wave 124, 29 lanes, 75 files
+claimed)` against this tree.
+
+The decision behind it is `[host.session]` on **#62 at 19:24:28Z**:
+*"`hw/xbox/nv2a/pgraph/gl/surface.c` is GRANTED. Outright"* — made after
+checking that `swizzle87` had retired with PR #139 merged, and **removed from
+`[free]` in the same commit**, so the file is never listed both free and
+claimed (the #161 repo-wide outage). Two lessons for the next reader: ask the
+live board, and a grant that does not also release is not half a grant.
+
+**The change.** One condition at `gl/surface.c:1331`: a surface whose drawn
+format is `LE_R5G6B5` no longer takes the Android `render_surface_to()` blit,
+because the driver's normalized conversion is the exact ratio
+`round(v * 255 / (2^b - 1))` where silicon replicates bits. Excluded, it falls
+through to `android_surface_guest_to_rgba8()`, whose R5G6B5 case at `:552`
+already replicates. The gate is minimal and it is the right one:
+`android_surface_to_texture_rgba8_compatible()` switches on
+`pgraph_gl_surface_drawn_format(surface)` and admits `LE_R5G6B5` through
+exactly one arm (the case at `:887`, whose only `true` returns are the
+`LU_IMAGE_R5G6B5`/`SZ_R5G6B5` textures), so the new term removes that arm and
+nothing else.
+
+**What this change is NOT covered by, stated so nobody mistakes a green head
+for evidence.** The whole block is `#ifdef __ANDROID__`. The desktop build
+cannot execute it and the 236-capture run cannot exercise it; the Android CI
+job compiles it and no more. That is H1's lesson in this same PR — the desktop
+build standing in for Android — and it applies to the *behaviour* here even
+though the *compile* is now gated. Behaviour on a device is unverified and is
+the host's by the split agreed on the issue.
+
+### An adjacent path the same argument reaches, NOT taken here
+
+`rgba8_compatible()` also admits **`LE_X1R5G5B5_Z1R5G5B5`** (the case at
+`:877`), and `gl/constants.h:388-391` maps both `X1R5G5B5_Z` and `_O` to
+**`GL_RGB5_A1`** — read at the table itself, not from the prose comment at
+`gl/surface.c:3082` that says the same thing. `GL_RGB5_A1` is
+5 bits per colour channel, so `render_surface_to()` hands the driver the same
+ratio expansion this commit just excluded R5G6B5 for, and on the face of it the
+identical one-step error remains on X1R5G5B5 surface-to-texture on Android.
+
+**It is recorded rather than fixed, deliberately.** #62 finding 2 is R5G6B5;
+this is a different format on a path nothing in this container can build or
+measure, and widening an Android-only fix on inference — the same inference
+that produced the ratio/replicate model, not a measurement of this path — is
+how a cheap correct change becomes an unverifiable one. It belongs to whoever
+takes #62's device half. Flagged on the PR for the auditor to rate rather than
+quietly taken.
