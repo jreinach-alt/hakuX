@@ -63,7 +63,7 @@ still applies on top of it.
   dispatchable asserts more than an empty row supports.
 - `docs/testing/jobs/selftest.sh`: a whole fake board (`$T/board` with copies of
   the three modules plus two toml files; `HAKUX_BOARD_REF=` makes board_files
-  fall back to it) and 17 checks over eight variants of one row.
+  fall back to it) and 18 checks over eight variants of one row.
 
 ## Two things I got wrong on the first pass, both caught by measuring
 
@@ -110,10 +110,11 @@ matched anywhere.
 
 | scripts | result |
 |---|---|
-| this branch | 17 passed, 0 failed |
-| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **1 passed, 16 failed** |
+| this branch | 18 passed, 0 failed |
+| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **2 passed, 16 failed** |
 
-The one that passes against the old code is
+The two that pass against the old code are the fixture's own sanity check (the
+three modules were copied) and
 `an UNCLASSIFIED row still fails -- the gate is not weakened`, which is the
 assertion that behaviour was *preserved*. Every other check fails, which is the
 point: a new check that passes against the code it replaces is testing nothing.

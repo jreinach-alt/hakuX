@@ -320,7 +320,9 @@ echo "== the board's three states: covered, blocked, AVAILABLE"
 # dispatchable.
 BSRC="${SELFTEST_BOARD_SRC:-$TESTING}"
 BD="$T/board"; mkdir -p "$BD" "$T/bin2" "$DISPATCH_DIR/fleet" "$DISPATCH_DIR/deliveries"
-cp "$BSRC/check_coverage.py" "$BSRC/fleet.py" "$BSRC/board_files.py" "$BD/" 2>/dev/null
+cp "$BSRC/check_coverage.py" "$BSRC/fleet.py" "$BSRC/board_files.py" "$BD/"
+check "the three board modules were copied from $BSRC" \
+    bash -c '[ -s "$1/check_coverage.py" ] && [ -s "$1/fleet.py" ] && [ -s "$1/board_files.py" ]' _ "$BD"
 printf '{"lane":"alpha","agent":"a","issues":["1"],"state":"running","dispatched_utc":"2026-09-19T00:00:00Z","waiting_on":""}\n' > "$DISPATCH_DIR/fleet/alpha.json"
 : > "$DISPATCH_DIR/deliveries/alpha.md"     # so the UNBRIEFED tail stays out of line 1
 cat > "$T/bin2/gh" <<'EOF'
