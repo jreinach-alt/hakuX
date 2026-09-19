@@ -219,7 +219,96 @@ that nobody writes is worse than the poll that needs nobody.
   build they were written to falsify. Each now also asserts the *reason* the
   tick gives in `list` mode, which is what tells "guarded" from "inert".
 
-## The irony, discharged
+## The irony, undischarged — attempt 1 stranded its own PR
 
-This lane's own PR is the one that must not strand. Marked ready at the end of
-the session, not left for the detector it just built.
+Attempt 1 ended having written the paragraph above as if it had already
+happened. It had not. The session wrote "Marked ready at the end of the
+session" and then ended without running `gh pr ready 153`, so **the lane that
+exists to fix stranded drafts left its own PR a green draft with no unit
+running** — the exact state, on the exact day, that this job detects. The
+owner's resume note is a hand-run of the detector on the detector's author.
+
+Two things are worth keeping from that, because neither is "be more careful":
+
+- **A note written in the future tense is not a record.** "Marked ready at the
+  end of the session" was a plan phrased as an outcome, and it read as done to
+  the next reader — including to me at the start of attempt 2, until I checked
+  `isDraft` on the PR. NOTES.md should say what happened; a step still to come
+  belongs in the PR body or nowhere.
+- **The last step of a lane is the one with no actor behind it.** Everything
+  before `gh pr ready` is caught by something — preflight, CI, the selftest,
+  the fold. The ready flip is the single action whose omission is silent, and
+  it is at the end, where a session is most likely to be cut. That asymmetry is
+  the whole reason this job exists, and attempt 1 is a clean instance of it.
+
+Nothing about the code changed as a result: the detector would have caught this
+PR (draft, `lane/draftstrand`, unit inactive, CI GREEN, stale set empty) and
+resumed it with `ci=GREEN`, which is what the owner's note said by hand.
+
+## Attempt 2 — the merge, and what moved under it
+
+Master had moved 59 commits. `docs/testing/jobs/fold.sh` conflicted in exactly
+one hunk, the candidate query at the early exit, and it conflicted **with a
+change of the same shape**: master now carries `labels` on that one `pr list`
+call and keeps the free-text title last, for the same tab-field reason this
+lane recorded above. The two changes are orthogonal — theirs is the query and
+the field order, mine is what happens when the result is empty — so the
+resolution keeps master's query verbatim and replaces its `exit 0` with the
+fall-through. The loop below it already guards an empty `$pr` with
+`[ -n "$pr" ] || continue`, so a `<<< ""` heredoc reads as zero candidates and
+the `handback.sh` tail call at the bottom still runs.
+
+lane.branchprune's `prune_branch` (the territory overlap flagged above) folded
+into master and sits at the bottom of the same file, untouched by this hunk.
+
+## The irony, discharged for real
+
+This lane's own PR is the one that must not strand. Marked ready in attempt 2,
+by hand, before the session ended — not left for the detector it built. PR #153
+has been non-draft since; the strand this lane detects is not the state it is
+in now.
+
+## Why attempt 2 did not finish: the merge was committed and never pushed
+
+Attempt 3 opened on a worktree whose `git log` showed `7c99d91291
+lane/draftstrand: merge origin/master` at HEAD and a section above this one
+describing that merge in the past tense. Both were true of *this host* and
+neither was true of the repository. `git rev-parse origin/lane/draftstrand`
+was still `033d927723` — the pre-merge head, the one the 11:43 handback could
+not fold — and `docs/lanes/draftstrand/NOTES.md` was still **uncommitted**, 46
+lines of the section above sitting in the working tree.
+
+So attempt 2 resolved the conflict correctly, wrote up the resolution, and
+ended between `git commit` and `git push`. Everything after that followed from
+one missing command: `needs-rebase` stayed on the PR because from GitHub's side
+nothing had been rebased, the fold job kept reading the same unmergeable head,
+and the NOTES section claiming the merge was done was visible to nobody but the
+next session in this worktree.
+
+Three things are worth keeping, and again none of them is "be more careful":
+
+- **A local commit is not a delivered commit.** This is the same defect as
+  attempt 1 one step later in the pipeline. Attempt 1 did the work and did not
+  flip `isDraft`; attempt 2 did the merge and did not push it. Both times the
+  omitted action was the last one, both times it was the only action with no
+  actor behind it, and both times the tree looked finished from inside.
+- **NOTES.md written but not committed is the future-tense failure wearing a
+  different coat.** Attempt 1's lesson was that a note must say what happened,
+  not what is about to. Attempt 2's note said what happened and was accurate —
+  and was still invisible, because an uncommitted file is a plan by another
+  means. The lane contract's "commit NOTES.md before any long step" is the rule
+  that covers both; attempt 2 wrote the notes *after* the long step instead.
+- **Verify against the pushed head, never the local one.** `git log` answers a
+  question about this disk. The questions that decide whether a lane is done —
+  does it merge, is CI green, is it still a draft — are all about `origin`.
+  Attempt 3 started with `git rev-parse HEAD origin/lane/draftstrand` and
+  `git rev-list --left-right --count`, and the disagreement between them was
+  the entire diagnosis.
+
+## Attempt 3 — the second merge, and the detector's own verdict on itself
+
+By the time attempt 3 fetched, master had moved a further 29 commits past the
+one attempt 2 merged, so the resolution had to be redone on top rather than
+just pushed. Attempt 2's merge commit is kept as an ancestor (it is a correct
+resolution of a real conflict and rewriting it would be a rebase, which this
+lane must never do); `origin/master` is merged into it a second time.
