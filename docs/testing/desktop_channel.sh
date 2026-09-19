@@ -26,6 +26,8 @@
 #   desktop_channel.sh deps            bootstrap the build dependencies
 #   desktop_channel.sh build [<ref>]   build qemu-system-i386 (default: HEAD)
 #   desktop_channel.sh smoke           start the built binary headless
+#   desktop_channel.sh run <S::T> [tag] [OPENGL|VULKAN]
+#                                      one test, one capture, one result.json
 #   desktop_channel.sh env             print the environment the above use
 #
 # Everything lands under $DC_ROOT (default $WORK/desktop). Nothing is written
@@ -368,6 +370,154 @@ cmd_smoke() {
     grep -q 'xemu_version' "$log" || { say "no version banner"; tail -20 "$log"; return 1; }
 }
 
+# -------------------------------------------------------------------- run
+#
+# One test, one run, one capture, scored only against other desktop runs.
+#
+# THE HDD IS RAW, AND THAT IS NOT AN OVERSIGHT. `desktop-runs.md` says to use
+# qcow2 because QEMU probes a raw image's format and restricts writes, so the
+# run "completes and extracts nothing". That was worth testing rather than
+# accepting, because xemu's own qemu-img cannot make a qcow2 on this host --
+# it aborts on startup with
+# `qemu-thread-posix.c:127: qemu_mutex_unlock_impl: Assertion
+# 'mutex->initialized' failed`, the standalone tools not having survived the
+# fork. Measured here: a raw copy of the Android backup's hdd.img runs, the
+# guest writes land, and extract_results.py pulls the capture out. No probe
+# warning appears in the run log at all. So the qcow2 requirement is not a
+# property of raw images in general; treat that line in desktop-runs.md as
+# scoped to the freshly-generated blank image it was measured on.
+#
+# A FRESH COPY OF THE DISK PER RUN. The guest writes its captures into it, so
+# a reused disk means run N can extract run N-1's output and look perfectly
+# healthy doing it. The copy costs about a second.
+
+cmd_run() {
+    local test="${1:?usage: $0 run <Suite::Test> [tag] [renderer]}"
+    local tag="${2:-$(printf '%s' "$test" | tr -c 'A-Za-z0-9' '_')}"
+    local renderer="${3:-OPENGL}"
+    local rundir="$DC_ROOT/runs/$tag"
+    local x1="${DC_X1BOX:-/home/justin/hakuX/hakux-backup/x1box}"
+    local goldens="${GOLDENS:-/home/justin/goldens}/results"
+    local base_iso="${DC_BASE_ISO:-/home/justin/nxdk_pgraph_tests_xiso.iso}"
+    local testing; testing="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+    [ -x "$BUILD/qemu-system-i386" ] || die "no binary; run '$0 build' first"
+    local f
+    for f in "$x1/mcpx.bin" "$x1/flash.bin" "$x1/eeprom.bin" "$x1/hdd.img" "$base_iso"; do
+        [ -f "$f" ] || die "missing $f"
+    done
+    [ -d "$goldens" ] || die "no goldens at $goldens"
+    dc_export_env
+
+    rm -rf "$rundir"; mkdir -p "$rundir/empty-results" "$rundir/disc" || die "cannot create $rundir"
+    cp "$x1/hdd.img" "$rundir/hdd.img"   || die "cannot copy the disk image"
+    cp "$x1/eeprom.bin" "$rundir/eeprom.bin" || die "cannot copy the eeprom"
+
+    say "--- building a disc that runs exactly $test ---"
+    local plan
+    plan="$(python3 "$testing/make_isolation_discs.py" /dev/null \
+        --results "$rundir/empty-results" --goldens "$goldens" \
+        --base "$base_iso" --out-dir "$rundir/disc" --build-one "$test")" \
+        || die "could not build the disc"
+    say "$plan"
+    local guest iso
+    guest="$(printf '%s' "$plan" | python3 -c 'import json,sys;print(json.load(sys.stdin)["guest_dir"])')"
+    iso="$(printf '%s' "$plan" | python3 -c 'import json,sys;print(json.load(sys.stdin)["iso"])')"
+
+    # XDG_DATA_HOME scopes the config to this run. Without it xemu writes to
+    # ~/.local/share/xemu/xemu/xemu.toml, which two runs would share and a
+    # human's own xemu would inherit.
+    export XDG_DATA_HOME="$rundir/xdg"
+    mkdir -p "$XDG_DATA_HOME/xemu/xemu"
+    cat >"$XDG_DATA_HOME/xemu/xemu/xemu.toml" <<TOML
+[general]
+show_welcome = false
+skip_boot_anim = true
+
+[display]
+renderer = '$renderer'
+
+[net]
+enable = false
+
+[sys.files]
+bootrom_path = '$x1/mcpx.bin'
+flashrom_path = '$x1/flash.bin'
+eeprom_path = '$rundir/eeprom.bin'
+hdd_path = '$rundir/hdd.img'
+dvd_path = '$iso'
+TOML
+
+    say "--- running ($renderer) ---"
+    local t0; t0=$(date +%s)
+    SDL_VIDEODRIVER=offscreen SDL_AUDIODRIVER=dummy \
+        timeout -k 5 "${DC_TIMEOUT:-420}" "$BUILD/qemu-system-i386" \
+        -machine xbox -display none >"$rundir/run.log" 2>&1
+    local rc=$?
+    say "RUN_EXIT=$rc  (0 = the guest powered off on completion)  $(( $(date +%s) - t0 ))s"
+    if [ "$rc" -ne 0 ]; then
+        tail -20 "$rundir/run.log"
+        die "the run did not complete"
+    fi
+
+    # WHICH RENDERER ACTUALLY RAN. Asking for one and silently getting the
+    # other is #29, and it cost a set of results that were believed to be
+    # Vulkan. nv2a names the renderer it used; compare it, do not assume.
+    local got; got="$(grep -m1 '^nv2a: renderer:' "$rundir/run.log" | cut -d' ' -f3-)"
+    say "renderer in use: ${got:-<none>}"
+    case "$renderer:$got" in
+        OPENGL:OpenGL|VULKAN:Vulkan) ;;
+        *) die "asked for $renderer and got '${got:-nothing}'" ;;
+    esac
+    grep -E '^GL_(VENDOR|RENDERER|VERSION):' "$rundir/run.log" | sed 's/^/  /'
+
+    say "--- extracting e:/$guest ---"
+    python3 "$testing/extract_results.py" "$rundir/hdd.img" \
+        -o "$rundir/out" -d "$guest" 2>&1 | tail -5
+
+    # THE PROGRESS LOG IS THE ONLY PROOF THE ASKED-FOR TEST IS WHAT RAN. A
+    # disc that ran a different set answers a different question and the
+    # mistake is invisible in the images.
+    local plog="$rundir/out/pgraph_progress_log.txt"
+    [ -f "$plog" ] || die "no progress log: the run wrote nothing extractable"
+    say "--- progress log ---"
+    sed 's/^/  /' "$plog"
+    grep -q "Testing completed normally" "$plog" \
+        || die "the progress log does not say the suite completed normally"
+
+    say "--- captures ---"
+    ( cd "$rundir/out" && for f in *.png; do
+        [ -e "$f" ] || continue
+        printf '  %s  %s  %s bytes\n' "$(sha256sum "$f" | cut -c1-16)" "$f" "$(stat -c %s "$f")"
+      done )
+
+    # A machine-readable record, with the two fields that decide whether this
+    # result may be compared with anything: the renderer, and device_label.
+    # device_label is `desktop` so that ab_compare.py's cross-device check
+    # sees a desktop/handheld pair for what it is.
+    python3 - "$rundir" "$test" "$renderer" "$got" "$guest" <<'PY'
+import hashlib, json, os, subprocess, sys
+rundir, test, asked, got, guest = sys.argv[1:6]
+out = os.path.join(rundir, "out")
+caps = {}
+for n in sorted(os.listdir(out)):
+    if n.endswith(".png"):
+        caps[n[:-4]] = hashlib.sha256(open(os.path.join(out, n), "rb").read()).hexdigest()
+log = open(os.path.join(rundir, "run.log"), errors="replace").read()
+def line(pfx):
+    for l in log.splitlines():
+        if l.startswith(pfx):
+            return l.split(":", 1)[1].strip()
+    return ""
+json.dump({"device_label": "desktop", "renderer_asked": asked,
+           "renderer_used": got, "test": test, "guest_dir": guest,
+           "xemu_commit": line("xemu_commit"), "gl_renderer": line("GL_RENDERER"),
+           "gl_version": line("GL_VERSION"), "captures": caps},
+          open(os.path.join(rundir, "result.json"), "w"), indent=2, sort_keys=True)
+print("wrote %s/result.json (%d capture(s))" % (rundir, len(caps)))
+PY
+}
+
 cmd_env() {
     dc_export_env
     say "DC_ROOT         = $DC_ROOT"
@@ -384,6 +534,7 @@ case "${1:-}" in
     deps)  shift; cmd_deps  "$@" ;;
     build) shift; cmd_build "$@" ;;
     smoke) shift; cmd_smoke "$@" ;;
+    run)   shift; cmd_run   "$@" ;;
     env)   shift; cmd_env   "$@" ;;
     *) sed -n '/^# Usage:/,/^$/p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; exit 2 ;;
 esac
