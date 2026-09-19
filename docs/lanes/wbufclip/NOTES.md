@@ -67,6 +67,13 @@ So "an integer anchor plus one step along the gradient" is not exactly right for
 against the bare interval and reported "0 rules survive" -- that was the
 instrument, not a finding, and it is the trap to avoid here.
 
+Then I swept it rather than leaving it as a caveat: `--tol` from 0.002 (just
+above the worst miss) to 1.0, a 500x range, gives 63 survivors and 33: 4/7,
+34: 3/6, 35: 4/7 at **every** value. The tolerance is a real weakness of the
+model form and carries none of the verdict. Keep both statements -- the first
+is what the next person needs if they try to fit `ClipF` exactly, the second is
+why they can use 35 anyway.
+
 ## Delivered
 
 * `docs/testing/wbuf_clip_phase_choice.py` -- the chooser, writes nothing.

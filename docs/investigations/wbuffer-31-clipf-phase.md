@@ -58,6 +58,14 @@ therefore not exactly right for `ClipF` either, and no choice of `clip_top`
 fixes that. It is the same shape of reading that, taken silently, made `TriV`'s
 refuted column look measured.
 
+**And then checked, rather than left as a caveat.** Sweeping `--tol` from 0.002
+(just above the worst miss, 1.35e-3) to 1.0 — a 500x range — the survivor count
+stays 63 and the scores stay 33: 4/7, 34: 3/6, 35: 4/7 at every value. So the
+tolerance is a real weakness of the *model form* and carries none of the
+verdict below. Both statements are worth having: the first is what the next
+person needs if they try to fit `ClipF` exactly, the second is why they can use
+35 anyway.
+
 ## Result 2 -- 35, and **not** 34
 
 The audit prescribed "a `clip_top` that is not 0 mod 4 (33, 34 or 35)". Scored,
