@@ -145,6 +145,37 @@ def permutation_test(values, labels, perms, rng):
     return obs, p, mdd
 
 
+def spearman(a, b):
+    """Rank correlation, with TIES AVERAGED.
+
+    `argsort(argsort(x))` is the one-liner for ranks and it is wrong here: on a
+    column with ties it breaks them by index, so a CONSTANT column comes back
+    ranked 0..n-1 in frame order and correlates with anything that trends.
+    Measured on this lane's own selftest, a constant `draws` column scored
+    rho = +0.665 against HF and tripped the confound warning on a dump with one
+    scene in it.  Both columns here are tie-heavy -- `draws` is a small integer
+    -- so ties are averaged, and a column with no variation returns 0.
+    """
+    def rank(x):
+        x = np.asarray(x, dtype=float)
+        order = np.argsort(x, kind="mergesort")
+        r = np.empty(len(x), dtype=float)
+        i = 0
+        while i < len(x):
+            j = i
+            while j + 1 < len(x) and x[order[j + 1]] == x[order[i]]:
+                j += 1
+            r[order[i:j + 1]] = 0.5 * (i + j)
+            i = j + 1
+        return r
+
+    ra, rb = rank(a), rank(b)
+    ra = ra - ra.mean()
+    rb = rb - rb.mean()
+    denom = np.sqrt((ra ** 2).sum() * (rb ** 2).sum())
+    return 0.0 if denom == 0 else float((ra * rb).sum() / denom)
+
+
 def texture_state_map(draws):
     """guest texture state -> set of host VkImage handles, over enabled stages.
 
@@ -330,9 +361,71 @@ def main(argv=None):
             json.dump(out, open(args.json, "w"), indent=1)
         return 0
 
+    # ------------------------------------------------- the scene confound
+    #
+    # A permutation test over frame labels guards against RANDOM structure.  It
+    # cannot guard against a CONFOUND, because the scene is a property of the
+    # frame and reshuffling the labels reshuffles the scene with them.  On a
+    # dump that spans two scenes this matters more than anything below it: a
+    # frame from a busier scene has more high-frequency content AND more draws
+    # AND more submits, so the classifier flags it and every leg "separates" at
+    # once, in the same direction, reproducibly across runs.  That is what two
+    # arms of this lane did before the window was moved.
+    #
+    # So: report the flag rate by draw-count quartile before the legs, and say
+    # plainly when it is not flat.  Draw count is the available proxy for "how
+    # much is being drawn"; it is crude and it is stated as such, but a
+    # classification that concentrates in one quartile is not a classification
+    # of the artifact whatever the p-values below say.
+    dvals = np.array([counters[r["dump_frame"]]["draws"] for r in rows])
+    hfv = np.array([r["hf"] for r in rows])
+    print("\n== the scene confound, before any leg is read ==")
+    # Buckets, not fixed quartiles: `draws` is a small-integer column with heavy
+    # ties, and np.percentile happily returns four identical edges for it.  The
+    # first version did exactly that and printed three empty buckets and one
+    # holding everything, which reads as a flat rate and is no reading at all.
+    edges = sorted(set(float(x) for x in np.percentile(dvals, [0, 25, 50, 75,
+                                                               100])))
+    rates = []
+    if len(edges) < 2:
+        print("  draws is constant at %.0f over every classified frame: this "
+              "dump spans one content regime by that measure." % edges[0])
+        rates = [float(labels.mean())]
+    else:
+        for q in range(len(edges) - 1):
+            lo, hi = edges[q], edges[q + 1]
+            last = q == len(edges) - 2
+            m = (dvals >= lo) & ((dvals <= hi) if last else (dvals < hi))
+            k, n = int(labels[m].sum()), int(m.sum())
+            if not n:
+                continue
+            rates.append(k / n)
+            print("  draws %6.0f..%-6.0f  n=%-4d flagged %-3d = %5.1f per 100"
+                  % (lo, hi, n, k, 100.0 * k / n))
+    rho = spearman(hfv, dvals)
+    print("  spearman(HF, draws per frame) = %+.3f%s"
+          % (rho, "" if len(set(dvals.tolist())) > 1
+             else "   (undefined: draws is constant)"))
+    spread = max(rates) - min(rates)
+    confounded = spread >= 0.20 or abs(rho) >= 0.40
+    out["confound"] = dict(quartile_rates=rates, spearman_hf_draws=rho,
+                           confounded=bool(confounded))
+    if confounded:
+        print("\n  CONFOUNDED WITH SCENE.  The flag rate is not flat across "
+              "draw-count quartiles (%.0f to %.0f per 100) and/or HF tracks "
+              "draw count (rho %+.3f).  Every leg below compares a busier "
+              "scene against a quieter one, so a separation in ANY of them -- "
+              "including a large one that replicates across runs -- is "
+              "consistent with the dump spanning two scenes and says nothing "
+              "about the artifact.  Read the legs as descriptive only, and "
+              "re-arm on a window with one content regime."
+              % (100 * min(rates), 100 * max(rates), rho))
+
     # --------------------------------------------------------- F1 .. F4
     print("\n== legs, against a %d-permutation null (class sizes held) =="
           % args.perms)
+    if confounded:
+        print("  (DESCRIPTIVE ONLY -- see the confound block above)")
     rng = np.random.default_rng(args.seed)
     order = [r["dump_frame"] for r in rows]
     for k, _, _ in varying:

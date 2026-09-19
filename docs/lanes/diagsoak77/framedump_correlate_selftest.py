@@ -43,7 +43,7 @@ def check(name, ok, detail=""):
 
 def write_dump(d, n_frames=60, stipple_every=7, schema=3,
                submits_of=None, constant=False, stale_img_on_stipple=False,
-               image_every=1, rng=None):
+               image_every=1, busy_from=None, rng=None):
     """Synthesise a dump whose frames are known to be stipple or clean.
 
     The images are noise at one amplitude for clean frames and a higher one for
@@ -61,8 +61,12 @@ def write_dump(d, n_frames=60, stipple_every=7, schema=3,
         is_stip = (stipple_every is not None
                    and f % stipple_every == 0 and f % image_every == 0)
         imaged = (f % image_every == 0)
+        busy = busy_from is not None and f >= busy_from
         if imaged:
-            amp = 24.0 if is_stip else 12.0
+            # `busy` is the second scene: more high-frequency content AND more
+            # draws, the way a real one is, so the confound is built from the
+            # same fact rather than planted twice.
+            amp = 24.0 if (is_stip or busy) else 12.0
             arr = np.clip(128 + base * amp, 0, 255).astype(np.uint8)
             name = "framedump_1_f%03d.ppm" % f
             Image.fromarray(arr, "L").convert("RGB").save(
@@ -76,7 +80,7 @@ def write_dump(d, n_frames=60, stipple_every=7, schema=3,
         else:
             submits, resets = (1 + rng.integers(0, 3)), 0
 
-        ndraws = 20
+        ndraws = 60 if busy else 20
         for i in range(ndraws):
             cbd = i + 1
             img = "0xAA"
@@ -151,6 +155,54 @@ try:
           bool(line) and "no separation" in line[0], line[0] if line else "absent")
     check("unplanted: a minimum detectable difference is printed with it",
           "minimum detectable difference" in txt)
+
+    # ------------------------------------------- the scene confound guard
+    #
+    # The case this guard exists for, reproduced: a dump spanning two scenes,
+    # where the busier one has more draws AND more high-frequency content.  The
+    # classifier flags the busier scene, every leg separates at once, and the
+    # permutation test is powerless because the scene rides along with the
+    # label.  Two arms of this lane produced exactly this before the window was
+    # moved, and both replicated, which is what makes it dangerous.
+    d = os.path.join(tmp, "twoscene")
+    os.makedirs(d)
+    # The busy scene must be a MINORITY of the dump, as it was in the real
+    # arms (9 demo frames among 115): that is what leaves the local baseline
+    # made of quiet frames, so the busy ones clear the ratio bar.  A dump that
+    # is half one scene and half the other hides the confound instead of
+    # showing it, which is itself worth knowing.
+    p, _ = write_dump(d, n_frames=70, stipple_every=None,
+                      submits_of=lambda f, s: (3 if f >= 64 else 1, 0),
+                      busy_from=64)
+    rc, txt = run(p)
+    check("two scenes: the confound is named before any leg is read",
+          "CONFOUNDED WITH SCENE" in txt)
+    check("two scenes: the legs are marked descriptive only",
+          "DESCRIPTIVE ONLY" in txt)
+    idx_c = txt.find("CONFOUNDED WITH SCENE")
+    idx_l = txt.find("== legs,")
+    check("two scenes: the warning precedes the legs in the output",
+          idx_c != -1 and idx_l != -1 and idx_c < idx_l)
+
+    # ...and the converse, or the warning is free: one regime, no warning.
+    d = os.path.join(tmp, "onescene")
+    os.makedirs(d)
+    p, _ = write_dump(d, submits_of=lambda f, s: (4 if s else 1, 0))
+    rc, txt = run(p)
+    check("one scene: no confound warning, legs are read normally",
+          "CONFOUNDED WITH SCENE" not in txt and "SEPARATES" in txt,
+          " | ".join(l.strip() for l in txt.splitlines()
+                     if "spearman" in l or "draws " in l))
+
+    # The tie bug this caught, pinned directly: `argsort(argsort(x))` ranks a
+    # constant column 0..n-1 in frame order, so it correlates with anything
+    # that trends.  A constant column must score exactly 0.
+    check("spearman: a constant column scores 0, not an index correlation",
+          fc.spearman(list(range(50)), [7.0] * 50) == 0.0,
+          "got %.3f" % fc.spearman(list(range(50)), [7.0] * 50))
+    check("spearman: ties are averaged, not broken by index",
+          abs(fc.spearman([1, 1, 2, 2, 3, 3], [1, 1, 2, 2, 3, 3]) - 1.0) < 1e-9
+          and abs(fc.spearman([1, 1, 2, 2], [9, 9, 9, 9])) < 1e-9)
 
     # ------------------------------------------------------ F2 both ways
     d = os.path.join(tmp, "stale")
