@@ -1,0 +1,62 @@
+[
+  {
+    "id": "H1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 151,
+    "summary": "pad_write_color_factor() is compiled unconditionally and names GL_SRC1_ALPHA (:151) and GL_ONE_MINUS_SRC1_ALPHA (:153), which the GLES headers do not define -- they carry an _EXT suffix there, from EXT_blend_func_extended, which is not core in GLES 3.0. The GLES exclusion landed in the two places that decide behaviour (gl/renderer.c:204-229 wraps the setter in #ifndef __ANDROID__; psh.c:2018 and :3568 add `&& !ps->opts.gles`) and in neither place that decides compilation. The function body is dead code on Android, but dead code still has to parse. CI proves it rather than predicting it: run 35459540297 job 105940793656, the arm64-v8a xemu target, `error: use of undeclared identifier 'GL_SRC1_ALPHA'` at draw.c:151 and 'GL_ONE_MINUS_SRC1_ALPHA' at :153, `ninja: build stopped`, BUILD FAILED in 2m 23s. The PR's check rollup is build FAILURE, build SUCCESS, check SUCCESS -- desktop green, Android red, the shape a desktop-only token produces. The definition-of-done claim that preflight.sh was green end to end is true and does not cover this, because preflight.sh does not build for Android.",
+    "scenario": "Any Android build of this branch fails at xemu_core.dir/.../gl/draw.c.o and produces no APK. fold.sh folds a head whose checks are green; this head's are not, so the PR cannot fold as it stands, and if it were folded master would stop building for Android until someone pushed over it. The comment at gl/renderer.c:217-222 says Android is excluded deliberately and not by omission -- true of the flag, and the omission is the token.",
+    "remediation": "Guard the helper and its call site the way the setter is guarded, so the GLES exclusion is one fact expressed consistently in three places: #ifndef __ANDROID__ around pad_write_color_factor(), and the pad_stamped branch at :426-440 inside the same guard (or pad_stamped forced false under #ifdef __ANDROID__). Do NOT fix it by defining the tokens locally -- that makes the Android build compile a path whose shader has no index-1 output. Confirm by the Android CI job going green, not by the desktop build.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:147-155, :426-440; hw/xbox/nv2a/pgraph/gl/renderer.c:204-229; hw/xbox/nv2a/pgraph/glsl/psh.c:2018, :3568; hw/xbox/nv2a/pgraph/gl/shaders.c:357,360; gh run view --job 105940793656 --log-failed; gh pr view 162 --json statusCheckRollup."
+  },
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 240,
+    "summary": "Only half of #59's write side was ported. vk/draw.c:705-733 states the other half in its own heading -- THE CLEAR STAMPS THE PAD CONSTANT TOO -- with the goldens that measured it: Clear::TestSurfaceFmt gives SCF_X8R8G8B8_O8R8G8B8 against _Z8R8G8B8 at 98,342 px differing, RGB identical, alpha 255 against 0, and the 1555 pair at 49,274 px, every difference exactly the bit-15 constant. Vulkan implements it in pgraph_vk_get_clear_color() (vk/draw.c:894-907), overriding alpha to 0.0 for PSH_PAD_ALPHA_ZERO and 1.0 for PSH_PAD_ALPHA_ONE. The GL clear at gl/draw.c:240 calls the shared pgraph_get_clear_color() raw, whose alpha switch (pgraph.c:4650-4675) has no case for the four pad formats and falls to `default: *a = 1.0f`. That was tolerable while GL stamped nothing; as of 7ffcd2bc a GL X8R8G8B8_Z8R8G8B8 surface holds alpha 0 where the raster drew and alpha 1 where the clear wrote, in one surface, and hardware holds 0 in both. The PR body names one deliberate omission (sampled_pad_alpha, correctly cited to vk/texture.c:1367/:1378) and not this one, while describing the change as the GL renderer gaining the surface pad-bit write side -- a scope that covers the clear. vk/draw.c:729-733 says the fix went into vk/draw.c rather than the shared pgraph.c precisely because GL's half was never wired up; this PR is the event that retires that reason.",
+    "scenario": "A guest sets X8R8G8B8_Z8R8G8B8, issues CLEAR_SURFACE with the colour and alpha write bits, draws over part of the surface, then binds it as a texture through a stage that reads alpha -- which is what Clear::TestSurfaceFmt does: clear, a 4x4 centre mark, then sample the whole surface through LU_IMAGE_A8B8G8R8 with the final combiner taking alpha from TEX0. GL returns 255 over the cleared area and 0 over the drawn area; hardware and the Vulkan renderer return 0 over both. The renderer-divergence figure the PR reports (18 -> 9) is measured on a disc where this path did not move, so it is not evidence that the two renderers now agree on the clear.",
+    "remediation": "Either (a) add the GL equivalent of pgraph_vk_get_clear_color() -- a four-line override at gl/draw.c:240 reading the same pgraph_glsl_surface_pad_alpha_mode() expression the raster side now reads, so the two halves cannot disagree -- and register a prediction before running it, with Clear/SCF_X8R8G8B8_Z8R8G8B8 and Clear/SCF_X1R5G5B5_Z1R5G5B5 as the keys that bind it; or (b) state in the PR body and in docs/lanes/remote/NOTES.md, beside the sampled_pad_alpha paragraph, that the clear half is deliberately not taken here and why, naming the captures it leaves wrong. MEDIUM rather than HIGH because it is an unfixed defect and not a new one: every drawn pixel moved toward hardware and none away, which is why 227 of 236 captures were byte-identical.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:240; hw/xbox/nv2a/pgraph/pgraph.c:4650-4675; hw/xbox/nv2a/pgraph/vk/draw.c:705-733, :894-907; hw/xbox/nv2a/pgraph/glsl/psh.c:254-265."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 426,
+    "summary": "pad_stamped gates on pgraph_glsl_dual_src_pad_supported() alone, while both psh.c gates now read `g_dual_src_pad_supported && !ps->opts.gles`. It cannot diverge today -- gl/shaders.c:357/360 makes gles a compile-time true exactly when __ANDROID__ is defined, and gl/renderer.c only calls the setter when it is not -- so this is LOW. It is the same asymmetry H1 is: three sites do not agree on how GLES is excluded, and the one that disagreed is the one that broke.",
+    "scenario": "If the GLES exclusion ever becomes a run-time decision (a GLES-capable desktop build, ANGLE), this is the site that names a SRC1 factor against a shader with no index-1 output. The GL spec leaves that undefined rather than erroring, so it arrives as corrupted colour and not as a diagnostic.",
+    "remediation": "Fold it into H1's fix: whatever expresses the GLES exclusion should be read by all three sites rather than restated at two of them.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:426-429; hw/xbox/nv2a/pgraph/glsl/psh.c:2018, :3568, :3859-3862; hw/xbox/nv2a/pgraph/gl/shaders.c:357,360."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 143,
+    "summary": "The new GL_SRC_ALPHA_SATURATE paragraph says the factor is left alone because 'no capture on this fleet reaches it on a stamping format'. vk/draw.c:675-694 records that this is the wording audit pass 1 corrected as its finding L2: 'This paragraph used to say the opposite and audit pass 1 corrected it (L2): the code was right and the justification was wrong, which is worth fixing precisely because a wrong comment is believed.' The derivation that replaced it is that min(As, 1 - Ad) evaluates to 0 for BOTH pad variants once the stamp lands -- _Z because As is 0, _O because Ad is folded to 1 by surface_color_format_dst_alpha_is_one() -- so nothing needs substituting whatever the corpus contains. The GL copy reverts to the argument from absence. The code is correct either way.",
+    "scenario": "A later reader takes the comment at face value and treats the unsubstituted saturate factor as an unmeasured gap to be closed, or as a reason to distrust the pad path on a title that does reach it. The repo has already paid for this once, three files from here.",
+    "remediation": "Copy the derivation rather than the retired sentence, keeping the corpus observation as the secondary note it is in vk/draw.c.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:143-145; hw/xbox/nv2a/pgraph/vk/draw.c:675-694; hw/xbox/nv2a/pgraph/gl/draw.c:109-123."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/2026-09-19-gl-pad-bit-write-side.json",
+    "line": 5,
+    "summary": "The registered prose ends with the kill condition 'if the nine land at Vulkan's values but Swizzle or DstAlpha_XA_O1A7RGB8 also moves, the change reached a path this model says it cannot'. DstAlpha_XA_O1A7RGB8 is bound -- it is the tenth expect key, pinned at 90,112, which is the right way to say it. Surface_pitch/Swizzle appears in no expect, no must_not_move and no must_not_regress; must_not_move holds three suite globs (Color_zeta_overlap/*, Image_blit/*, Texture_format/*), none covering Surface_pitch. Half the named kill condition could not have fired.",
+    "scenario": "Swizzle moves on the arm and the machine verdict is PASS, because nothing binds it. Here the check was in fact made by hand and in the open -- NOTES.md reports Swizzle at 12,224 and the full-disc comparison at 227 of 236 byte-identical -- and the earlier #60 section records Swizzle moving within 13,160-15,360 on GL regardless, which is a good reason to leave it unbound. The gap is that the registered artifact does not say so, so a reader of the prediction alone reads a kill condition stronger than the file enforces.",
+    "remediation": "A must_not_regress entry, or one sentence in the prose saying Swizzle is excluded from the machine legs because its GL value is not stable run to run, so the kill condition on it is a manual check. The second is honest and costs nothing.",
+    "evidence": "docs/testing/predictions/2026-09-19-gl-pad-bit-write-side.json (prediction, expect, must_not_move, must_not_regress); docs/lanes/remote/NOTES.md kill-condition 4 and the results table."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/nv2a_index.json",
+    "line": 0,
+    "summary": "Three of the 304 changed index lines are not a \"loc\": emulator_commit (expected), and tests_root and support_dirs[0], which move from /home/justin/... to /home/user/..., so the index was rebuilt somewhere with a different home. The committed provenance now names two paths that do not exist on the host the sweeps run on, and the next regeneration there flips them back. Nothing breaks: cmd_check() (nv2a_index.py:1065-1130) compares symbols, sites and suites and never provenance, and tests_provenance_gate() reads only tests_commit, which is unchanged at 91a0de45ca. The regeneration itself is clean -- suites 103, sites 2839, gaps 498, symbols 951 all unchanged -- so this is not the #157 class.",
+    "scenario": "No gate effect. A reader using provenance.tests_root to find the tests checkout the index was built from is sent to a path that does not exist, and the field churns on every regeneration performed on a different machine.",
+    "remediation": "Nothing required for this PR. If it recurs, the field wants to be relative or omitted rather than an absolute path from whichever machine last built it.",
+    "evidence": "docs/testing/nv2a_index.json provenance block; docs/testing/nv2a_index.py:511-542, :544-600, :1065-1130; the non-loc lines of the index hunk in gh pr diff 162."
+  }
+]
