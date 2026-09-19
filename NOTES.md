@@ -82,6 +82,15 @@ would otherwise produce an empty active set, which reads as an idle fleet and
 would delete the *live* lanes' entries. That is the same confusion as the one
 being fixed, pointed the other way, and there is a selftest check for it.
 
+**I did not run it on the host, and the ordering matters.** Deleting live
+shared state under four running lanes is an outward action this brief did not
+ask for, and `fleet.py` no longer reads those entries as current anyway. More
+importantly, `check_coverage.py:fleet_tail()` (below) is *still* reading them:
+today it says something wrong and loud; with them gone it says nothing at all.
+So **fix `fleet_tail()` first, then `fleet-gc`** — running the collection first
+trades a loud wrong answer for a silent missing one, which is a worse trade
+and exactly the kind that looks like progress.
+
 ## FAIL lines: which can fire now that could not, and vice versa
 
 **Can fire now, could not before:**
