@@ -103,6 +103,18 @@ it is written down here rather than edited.
 - **PR #137 (lane.branchprune) also edits `fold.sh`.** Unavoidable — both
   briefs name the file. This diff is two functions, a report and a nine-line
   block in the candidate loop, all in one place, to keep that merge cheap.
+- **`92-arms-skip-told.sh`'s "a second tick does not tell it again" flakes
+  under load, and it is not this lane's.** On the attempt-2 merge run it was
+  the single red in `358 passed, 1 failed`; an immediate rerun of the *same
+  tree* gave `359 passed, 0 failed`, and pristine `origin/master`
+  (`415dcc6997`) in a scratch worktree gave `313 passed, 0 failed`. So it is
+  neither my diff nor a master regression — 313 + this lane's 46 = 359 either
+  way. The box was at load ~18 on 8 cores with a dozen lanes running
+  selftests at once. Worth knowing because the check is a **negative**
+  (`! grep -qE "^(pr|issue) comment"` over the whole shim log, not over this
+  sha's comment): anything that posts for any other reason on the second tick
+  reds it, so it is sensitive to state no other check pins. Rerun before
+  debugging it, and do not conclude from one red that the merge broke arms.
 - Do not run `fold.sh` or `fold.sh list` against the real host to try
   something out: the tick ends by calling `handback.sh` and `status.sh`, and
   `status.sh` rewrites the live status issue. The fixture is the way.
@@ -130,6 +142,8 @@ share no file, and this gate still reads the label that lane now computes.
 
 - `bash docs/testing/jobs/selftest.sh` → **314 passed, 0 failed**;
   `preflight.sh --allow-tracker` passes on the branch.
+- After the attempt-2 merge of `origin/master`: **359 passed, 0 failed**
+  (the one red seen first was the `92-arms-skip-told.sh` flake above).
 - The new fragment run against the pre-change `fold.sh`,
   `ensure-labels.sh` and `roles/board.md` (a copy in a scratch tree, never
   the real path): **30 of its 46 checks FAIL**. The 16 that pass are the
