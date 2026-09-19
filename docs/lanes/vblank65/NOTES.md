@@ -13,12 +13,23 @@ describes the tree as it stood six days ago. What follows is the check, item by
 item, with the commit or the measurement that closes each. Nothing here is a
 new fix, because none was needed.
 
-This is the second time this lane's inputs asserted something the tree
-contradicts. The other: the brief says "the territory row `[lane.vblank65]`
-names exactly these" three files. **There is no `[lane.vblank65]` row in
-`docs/testing/territory.toml` at wave 94.** All three files are in `[free]`, so
-nothing collided and no harm came of it, but a brief that cites a row as a
-claim should cite one that exists. Board request at the end.
+The brief's territory claim is correct and I checked the wrong file first:
+`docs/testing/territory.toml` on `master` is a fold-lagged copy at wave 94 with
+no `[lane.vblank65]` row, while the live allocation is `territory.toml` at the
+root of `origin/board`, wave 122, whose `[lane.vblank65]` names exactly the
+three files. `board_files.load()` reads the latter, which is what
+`check_territory.py` uses, and it is the one to read.
+
+**`preflight.sh --allow-tracker` is red on this branch and not for anything on
+it.** `check_territory.py` reports `hw/xbox/nv2a/nv2a.c is listed FREE but
+claimed by vblank65`: the board's `territory.toml` lists that path at line 532
+inside `[free].files` *and* at line 575 in `[lane.vblank65].files`. That checker
+reads only `origin/board` — it never opens this branch or its diff — so the gate
+is red for every lane right now, and `--allow-tracker` does not cover it
+(`--allow-tracker` licenses editing the tracker files, not the two-lane file
+claim). Every other preflight step is green. A lane may not edit
+`territory.toml`, so this is a board request: drop `hw/xbox/nv2a/nv2a.c` from
+`[free].files`, since wave 122 granted it here.
 
 ### 1. Phase — closed, and its named suspect is exonerated by reading
 
@@ -191,6 +202,18 @@ The judge now:
 
 `--selftest` builds a mutant per gate; all fourteen checks trip, and it needs
 no device and no results on disk.
+
+## Board requests (a lane may not make these edits itself)
+
+1. **`territory.toml`**: drop `hw/xbox/nv2a/nv2a.c` from `[free].files`. It is
+   granted to `[lane.vblank65]` at wave 122 and listed free in the same file,
+   which fails `check_territory.py` for every lane's preflight.
+2. **`nv2a_issues.toml` #65**: the `status_note` is six days stale and is what
+   this brief was generated from. All four named defects are closed; the
+   remaining open question on #65 is the `unlock_framerate` default, which is an
+   owner's call in `android/app/src/main/cpp/xemu_android.cpp`.
+3. **One lane for `vblank_phase_ab.py` and `vblank_defercap_ab.py`**, to do to
+   them what this PR does to `vblank_ab.py`.
 
 ## For the next lane: do not repeat these
 
