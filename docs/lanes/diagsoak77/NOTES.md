@@ -444,3 +444,141 @@ this issue has accumulated -- the 2.25x upscale, the 0.40 modal scrim, the
 25-75% detection bracket -- belongs to an instrument that is now returning
 zeros here; the dump's PPMs are native, uncomposited and unaffected by all
 three.
+
+---
+
+# R7. The correlation, in the window where it can be read
+
+C1 and C2 straddled the title/demo transition and were refused by the confound
+guard. Four more arms were taken at `600,after165,cap200`, which R1 places
+entirely inside the attract demo -- one content regime, no cut.
+
+| arm | run id | session | images | R_full stipple | R_lower stipple |
+|---|---|---|---|---|---|
+| C3 | `1789845130-diagsoak77-C3-244939` | 1789845820 | 73 / 600 | 7 = **9.6 per 100** | 20 = 27.4 |
+| C4 | `1789845134-diagsoak77-C4-245190` | 1789846077 | 73 / 600 | 5 = **6.8 per 100** | 22 = 30.1 |
+| C5 | `1789846228-diagsoak77-C5-310205` | 1789846406 | 73 / 600 | 12 = **16.4 per 100** | 17 = 23.3 |
+| C6 | `1789846232-diagsoak77-C6-310227` | 1789846663 | 76 / 600 | 5 = **6.6 per 100** | 17 = 22.4 |
+
+`R_full` is unconfounded in all four. `R_lower` is unconfounded in C3 and C4
+and **refused by the guard in C5 and C6**, so its legs there are descriptive
+only. The whole-frame rate runs **6.6 to 16.4 per 100 over four runs of the
+same spec** -- which is the run-to-run spread this issue has been burned by,
+measured: a single run reporting 6.6 and a single run reporting 16.4 are the
+same experiment.
+
+## R7a. The artifact is in the dump, with its draws
+
+The frames `stipple_classify.py` flags carry a **hard regular high-frequency
+hatch across the cave floor** that their unflagged neighbours do not. C3 f314,
+f259, f382, f457 and C4 f245, f375, f382 show it plainly by eye at native
+resolution; the unflagged neighbours f443, f472, f383 carry it only on a narrow
+band near the horizon, if at all.
+
+So #77's artifact class is now captured **in a frame dump, in a soak-reachable
+scene, with per-draw records paired to it** -- which is the thing this issue
+has been blocked on since before PR #143.
+
+**Bounded.** That this is the SAME defect as the founding deck stipple is *not*
+established here. The founding sets are a different surface (ship planking, a
+town dirt path), a parked camera and a hand-driven scene; this is a moving
+camera over a grazing-angle rock floor, which is also where ordinary texture
+aliasing lives. What is established is narrower and still worth having: the
+registered classifier, validated on the founding mosaics, flags frames a human
+can see the hatch in, and does not flag their neighbours.
+
+## R7b. No schedule counter separates a stipple frame from a clean one
+
+`leg_verdict.py` over the four `R_full` sessions:
+
+```
+leg                    C3              C4              C5              C6
+cb_resets              +1.4719 ~       +1.1441 ~       -0.1230 ~       +0.7944 ~
+cb_resets_per_draw     +0.0101 *       +0.0137 *       -0.0008 ~       +0.0104 *
+draws                  -7.2100 ~       -6.1765 ~       -2.1530 ~      -12.3606 ~
+frac_color_clean       -0.0016 ~       -0.0007 ~       +0.0001 ~       -0.0012 ~
+max_submit_lag         +0.1948         -0.1176 ~       +0.1175         +0.3296
+mean_submit_lag        +0.0084 ~       -0.0097 ~       +0.0078 ~       +0.0014 ~
+submits_in_frame       +1.8355 ~       +1.3794 ~       -0.2268 ~       +1.1183 ~
+   * p<0.05     ~ |observed| below that session's own mdd: no direction resolved
+```
+
+Six of seven resolve no direction in any session, or flip. **The seventh,
+`cb_resets_per_draw`, meets the registered rule** -- same sign in all three
+sessions that resolve one, `p<0.05` in three of four.
+
+**And it does not survive the graded companion.** Asked as a rank correlation
+against the classifier's continuous ratio over all ~75 classified frames --
+no threshold, about six times the sample -- it reads:
+
+| | C3 | C4 | C5 | C6 |
+|---|---|---|---|---|
+| thresholded (5-12 flagged) | +0.0101 p.037 | +0.0137 p.011 | -0.0008 p.815 | +0.0104 p.031 |
+| graded rho (73-76 frames) | +0.141 p.243 | +0.139 p.243 | **-0.182** p.141 | +0.079 p.492 |
+
+Mean graded rho **+0.044**, nothing significant, one session strongly negative.
+A counter genuinely elevated on stipple frames by +0.010 against a spread of
+~0.010 would show a substantial and consistent graded trend over 73 frames. It
+does not. The thresholded result lives entirely on 5-12 frames and is a
+small-sample artifact -- which the power-inconsistency check had already
+flagged before C5 and C6 were taken, from the better-powered `R_lower`
+analysis of C3 and C4 measuring it at a quarter of the size.
+
+## R7c. F2 is clean in every arm
+
+In all six dumps: **every guest texture state that appears in both classes was
+answered by the same host `VkImage`**, and no guest state was answered by more
+than one image on a stipple frame. `0` differing states out of 41-80 shared, in
+every arm. No stale-binding signature.
+
+---
+
+# THE VERDICT
+
+**The merge/barrier hypothesis is not supported, and the parts of it this
+instrument can see are refuted.** Stated in the three pieces the brief asked
+for, because they are not the same claim:
+
+1. **MERGING: NOT VISIBLE TO THIS INSTRUMENT, and not for want of looking.**
+   `draw_merge` and `draw_reorder` are `GetPrefBool` reads of
+   `x1box_prefs.xml`; `dispatcher.sh`'s `apply_env_pref` writes only the
+   `env_vars` key. **No request any lane can queue can turn merging on.** So
+   `dq`, `dq_active`, `rw`, `rw_active` were `0` on all 337,000+ draws this
+   lane recorded -- excluded by F0 as *constant by construction*, not as
+   measured-and-flat. Closing this needs a harness change, not device time.
+
+2. **DEFERRED SUBMISSION, COMMAND-BUFFER BATCHING, SURFACE DIRTINESS AND THE
+   TEXTURE REUSE KEY: REFUTED, at the sensitivity stated.** These do vary
+   (F0 passes on all of them), the artifact is present and classified, and
+   none of them separates a stipple frame from a clean one across four
+   independent sessions under both a thresholded and a graded test. The
+   sensitivities are published with the nulls: `submits_in_frame` to within
+   ~1.0-2.0, `cb_resets_per_draw` to ~0.006-0.010, `max_submit_lag` to
+   ~0.15-0.31, `draws` to ~23-45.
+
+3. **STALE HOST BINDING: REFUTED for the draws this dump can see.** Zero
+   differing guest-state -> `VkImage` mappings in six dumps.
+
+**So the artifact is upstream of anything this instrument can see.** The dump
+records host state and schedule per draw; it does not record texture CONTENT,
+sampler state beyond the raw registers, or the clear and blit paths (gated at
+call sites in `vk/draw.c` and `vk/blit.c` that PR #143 did not hook). The
+remaining candidates live in exactly those places, and this lane's evidence
+points at them only by elimination.
+
+## What a follow-up should do, and what it should not
+
+- **Do not re-run this correlation.** Four sessions, two regions, a thresholded
+  and a graded test each: it is measured.
+- **The harness ask is the live one.** A way to set a named pref per request --
+  `_set_driver_pref.py` already sets one -- would make the merging half of #77
+  measurable for the first time. Until then no lane can test it on any device.
+- **The next instrument is content, not schedule.** The per-draw record already
+  carries `TEXFMT/TEXOFFSET/TEXADDRESS/TEXCTL0/TEXCTL1/TEXFILTER` per stage and
+  the host image handle, and they do not move with the artifact. What is not
+  recorded is what is IN those textures at the moment of the draw, and which
+  mip the sampler resolved. That is the next hook.
+- **The image yield caps the method.** 8-13% of frames write a pairable image
+  on this title, periodically, roughly one in ten. A follow-up that needs
+  consecutive classified frames cannot have them without a change to the flip's
+  pre-record path.
