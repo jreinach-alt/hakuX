@@ -41,8 +41,8 @@ calm.
 So every fact that decides a FAIL is now derived from the thing itself:
 
   RUNNING            systemctl --user list-units 'hakux-lane-*'
-  READY, NOT FOLDED  gh pr list: an open lane PR that is not a draft
-  BLOCKED            gh pr list: an open lane PR labelled `blocked`
+  READY, NOT FOLDED  REST /pulls: an open lane PR that is not a draft
+  BLOCKED            REST /pulls: an open lane PR labelled `blocked`
   territory rows     board_files.load("territory.toml")
 
 A unit that is active is running; there is no state for it to be in that a

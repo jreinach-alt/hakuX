@@ -47,9 +47,12 @@ EOF
 # READY-NOT-FOLDED paths run instead of falling into their blind branches.
 cat > "$FL/bin/gh" <<'EOF'
 #!/usr/bin/env bash
-case "$1 $2" in
-    "issue list") echo '[{"number":9401,"title":"selftest: an open issue no lane owns"}]' ;;
-    "pr list")    cat "${SELFTEST_FLEET_PRS:?}" ;;
+# REST, because fleet.py's two list calls were GraphQL and a Claude Code
+# cloud session's proxy refuses GraphQL outright (see gh_rest.py). Same data,
+# different door -- and `pulls` is the REST spelling of `pr list`.
+case "$*" in
+    *"/issues?"*) echo '[{"number":9401,"title":"selftest: an open issue no lane owns"}]' ;;
+    *"/pulls?"*)  cat "${SELFTEST_FLEET_PRS:?}" ;;
     *) exit 0 ;;
 esac
 exit 0

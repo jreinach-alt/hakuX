@@ -30,6 +30,13 @@ while [ $# -gt 0 ]; do
         --allow-tracker) ALLOW_TRACKER=1; shift ;;
         --tests) TESTS="$2"; shift 2 ;;
         --support) SUPPORT="$2"; shift 2 ;;
+        # Render the `coverage` step's verdict from a check_coverage.py log
+        # and exit. THIS EXISTS SO THE SELF-TEST DRIVES THIS FILE rather than
+        # a paraphrase of it: the defect being pinned is entirely in how this
+        # script READS that log, and a fixture that reimplemented the reading
+        # would pass against the broken version for free. fold.sh's
+        # `preflight-verdict` mode is the same pattern for the same reason.
+        --render-coverage) RENDER_COVERAGE="$2"; shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -59,6 +66,37 @@ bad()  { echo "FAILED"; fail=1; }
 # line ENDING in the word FAILED (`preflight_failed_gates`), so this word is
 # invisible to it by construction and a fold is not blocked by a blip.
 unchecked() { echo "DID NOT RUN"; }
+
+render_coverage() {   # <check_coverage.py log> -> the step's verdict and detail
+    # THE VERDICT IS THE `^coverage ` LINE, NOT LINE 1. This read `sed -n 1p`,
+    # which was right until check_coverage.py grew a provenance line ("board
+    # read from: territory.toml <- origin/board, ...") and that became line 1.
+    # From then on the operator saw where the board was read from and NOTHING
+    # about what was checked -- including, on a run that failed open, nothing
+    # about the fact that it had failed open. check_coverage.py's own comments
+    # promise that prefix as an interface; a line number is not one.
+    #
+    # A MISSING VERDICT LINE IS ALSO `DID NOT RUN`. If the script printed
+    # nothing matching, it died somewhere it does not report from, and an
+    # empty grep rendered as `ok` is the same bug one layer down.
+    local v
+    v=$(grep -m1 '^coverage ' "$1" 2>/dev/null || true)
+    case "$v" in
+        "coverage NOT CHECKED"*|"")
+            unchecked
+            # The WHOLE log, not one line: on this path the reason is the only
+            # thing of value, and it is a handful of lines.
+            sed 's/^/  /' "$1" 2>/dev/null
+            echo "  ^^ THE COVERAGE GATE DID NOT RUN. It exits 0 by design so"
+            echo "     a blip cannot block a push; that 0 is not a pass." ;;
+        *)  ok
+            printf '  %s\n' "$v" ;;
+    esac
+}
+
+if [ -n "${RENDER_COVERAGE:-}" ]; then
+    step "coverage"; render_coverage "$RENDER_COVERAGE"; exit 0
+fi
 
 # 1. psh_differ, as .github/workflows/desktop.yml runs it. carve.py refuses to
 #    carve a function it was not told about, so a new PGRAPHState reader in
@@ -208,33 +246,12 @@ fi
 #    state it guards changes at exactly the moment someone folds work and
 #    pushes. It FAILS OPEN without `gh`, so an offline preflight still passes.
 #
-#    AND THE VERDICT IS PRINTED, NOT LINE 1. This read `sed -n 1p`, which was
-#    right until check_coverage.py grew a provenance line ("board read from:
-#    territory.toml <- origin/board, ...") and that became line 1. From then
-#    on the operator saw where the board was read from and NOTHING about what
-#    was checked -- including, on a run that failed open, nothing about the
-#    fact that it had failed open. The verdict is the line beginning
-#    `coverage `, which is the interface check_coverage.py's own comments
-#    promise, so key on that and not on a position.
-#
-#    A MISSING VERDICT LINE IS ALSO `DID NOT RUN`. If the script printed
-#    nothing matching, it died somewhere it does not report from, and an
-#    empty grep rendered as `ok` is the same bug one layer down.
+#    THE SUCCESS PATH IS `render_coverage`, defined above with the reasoning:
+#    check_coverage.py exits 0 both when it checked and when it failed open,
+#    so the exit code cannot tell those apart and the WORDS have to.
 step "coverage"
 if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; then
-    cov_verdict=$(grep -m1 '^coverage ' /tmp/preflight-coverage.log || true)
-    case "$cov_verdict" in
-        "coverage NOT CHECKED"*|"")
-            unchecked
-            # The WHOLE log, not one line: on this path the reason is the
-            # only thing of value, and it is a handful of lines.
-            sed 's/^/  /' /tmp/preflight-coverage.log
-            echo "  ^^ THE COVERAGE GATE DID NOT RUN. It exits 0 by design so"
-            echo "     a blip cannot block a push; that 0 is not a pass."
-            ;;
-        *)  ok
-            printf '  %s\n' "$cov_verdict" ;;
-    esac
+    render_coverage /tmp/preflight-coverage.log
 else
     bad
     sed 's/^/  /' /tmp/preflight-coverage.log

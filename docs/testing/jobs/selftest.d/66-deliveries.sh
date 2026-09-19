@@ -102,6 +102,10 @@ emit() {   # <json>
     if [ -n "$jqx" ]; then printf '%s' "$1" | jq -r "$jqx"; else printf '%s\n' "$1"; fi
 }
 case "$url" in
+    # The board fixture's open-issue list. check_coverage.py reads this over
+    # REST now (GraphQL is refused in a cloud session; see gh_rest.py); the
+    # single issue it returns is the same one `issue list` returns above.
+    *"/issues?"*)           emit '[{"number":1,"title":"the only issue"}]' ;;
     *"issues/comments?"*)   emit "$(cat "${DELIVER_FEED:?}")" ;;
     *"issues/comments/"*)   # the "does this comment still exist" probe, then PATCH
         [ "$method" = PATCH ] && { cp "${bodyfile:-/dev/null}" "$DELIVER_POSTS/patched.md" 2>/dev/null; exit 0; }
@@ -214,7 +218,7 @@ check "deliver.sh inbox reads the channel back from GitHub, where the lane can r
 # ago. The old check_coverage.py read the file's mtime and reported the lane
 # briefed; the truth is that nothing has been routed to it since yesterday, and
 # nothing ever could be, because the file is on a disk the lane cannot see.
-cp "$DSRC/check_coverage.py" "$DSRC/board_files.py" "$DBOARD/"
+cp "$DSRC/check_coverage.py" "$DSRC/board_files.py" "$DSRC/gh_rest.py" "$DBOARD/"
 printf '[lane.alpha]\nfiles = []\nissues = [1]\n\n[free]\nnote = "x"\n' > "$DBOARD/territory.toml"
 printf '[issue.1]\ntitle = "t"\nstatus = "open"\nstatus_note = "n"\nblocked_on = ""\n' > "$DBOARD/nv2a_issues.toml"
 mkdir -p "$DDISP/deliveries"

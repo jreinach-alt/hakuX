@@ -36,10 +36,13 @@ echo "== board.sh: the positive gate, because both of the old gates were error r
 BG="$T/boardgate"; mkdir -p "$BG/bin"
 cat > "$BG/bin/gh" <<'EOF'
 #!/usr/bin/env bash
-case "$1 $2" in
-    "auth status") [ -n "${BG_NO_GH:-}" ] && exit 1; exit 0 ;;
-    "issue list")  cat "${BG_ISSUES:-/dev/null}" ;;
-    "pr list")     cat "${BG_PRS:-/dev/null}" ;;
+[ "$1 $2" = "auth status" ] && { [ -n "${BG_NO_GH:-}" ] && exit 1; exit 0; }
+# REST: fleet.py and check_coverage.py stopped using `gh issue list` /
+# `gh pr list` when those turned out to be GraphQL, which a Claude Code cloud
+# session's proxy refuses (see gh_rest.py). The fixture files are unchanged.
+case "$*" in
+    *"/issues?"*) cat "${BG_ISSUES:-/dev/null}" ;;
+    *"/pulls?"*)  cat "${BG_PRS:-/dev/null}" ;;
 esac
 exit 0
 EOF
