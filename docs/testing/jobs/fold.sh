@@ -21,8 +21,9 @@
 #
 # WHAT MAKES A PR FOLD-READY is the label, and the label is set by the
 # auditor (pass 2 clean) or by the board (a docs/NOTES-only PR needs no
-# audit). This job checks what the label cannot: the PR is not a draft, its
-# head's CI is green, and the merge applies without conflict. A conflict is
+# audit). This job checks what the label cannot: the PR is not a draft, it
+# does not carry an unaccepted `regressed` verdict, its head's CI is green,
+# and the merge applies without conflict. A conflict is
 # never resolved here -- the lane gets `needs-rebase` and a comment naming
 # the files, because a merge resolved by a script that does not understand
 # the code is how a working fix was reverted on 2026-09-12.
@@ -166,8 +167,12 @@ It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which 
 }
 
 # ------------------------------------------------------------ candidates
-cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft \
-            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\(.title)"' 2>/dev/null)
+# `labels` rides along on the one list call this job makes, and the title stays
+# LAST: it is the only free-text field, and the read below gives the last
+# variable everything after its own tab, so free text in any other position
+# would end up inside a field a gate keys on.
+cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft,labels \
+            --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\([.labels[].name] | join(","))\t\(.title)"' 2>/dev/null)
 [ -n "$cands" ] || { [ "$mode" = list ] && echo "nothing labelled fold-ready"; exit 0; }
 
 ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (or was skipped)
@@ -228,14 +233,111 @@ Check \`gh pr checks $pr\`: a job queued with no runner, or held on a workflow a
     comment "$pr" "$body"
 }
 
+# ------------------------------------------------ an unaccepted regression
+# `regressed` is the arms job's verdict that a registered prediction FAILED on
+# the device. Until 2026-09-19 the only thing enforcing it was a sentence in
+# `roles/board.md` -- "a `regressed` PR is not fold-ready" -- which is prose,
+# read by whichever model session decides to set `fold-ready`, and this job is
+# a script that cannot read it. That day PR #102 folded as `3d072c6ea6` with
+# `Color_zeta_overlap/Swap 165,447 -> 304,750` live and its `regressed` label
+# set twenty minutes earlier precisely to stop the fold. It stopped nothing.
+#
+# THIS GATE READS THE LABEL AND DECIDES NOTHING ABOUT IT. What `regressed`
+# means -- which verdicts count, which supersede which -- is arms.sh's
+# (#144), and a second opinion here would be a second state machine over one
+# word. So there is no verdict parsing, no `$WORK/arms` read and no "is the
+# FAIL still live" judgement in this file: the label is the interface.
+# Clearing it is likewise arms.sh's, from the verdicts; this job never
+# touches it.
+#
+# IT IS NOT A REQUIREMENT TO BE `verified`. Most PRs carry no prediction at
+# all and must keep folding; only the FAIL stops one.
+#
+# THE OVERRIDE IS THE OWNER'S, AND IT NAMES AN ISSUE. Some regressions are a
+# measured trade someone accepted -- #91 exists to hold exactly the delta
+# above under #88's colour-wins policy -- and a gate with no way through turns
+# every such trade into a permanently unfoldable PR. `regression-accepted:<issue>`
+# folds it. The number is not decoration: the issue is where the trade is
+# argued, so an override without one is an assertion with no argument and is
+# refused out loud, with the spelling. No job sets a label in this family and
+# `ensure-labels.sh` creates no member of it (see the note there): the owner
+# creates the one they mean, which is what "the owner accepted it" has to
+# mean if it means anything.
+has_label() {   # <labels csv> <label>
+    case ",$1," in *",$2,"*) return 0 ;; esac; return 1
+}
+accepted_issue() {   # <labels csv> -> the issue a well-formed override names
+    local l; local -a ls=()
+    IFS=, read -r -a ls <<< "$1"
+    for l in "${ls[@]:-}"; do
+        [[ "$l" =~ ^regression-accepted:#?([0-9]+)$ ]] && { printf '%s\n' "${BASH_REMATCH[1]}"; return 0; }
+    done
+    return 1
+}
+malformed_accept() {   # <labels csv> -> an override-shaped label that names no issue
+    local l; local -a ls=()
+    IFS=, read -r -a ls <<< "$1"
+    for l in "${ls[@]:-}"; do
+        case "$l" in regression-accepted*) accepted_issue "$l" >/dev/null || { printf '%s\n' "$l"; return 0; } ;; esac
+    done
+    return 1
+}
+
+# Said on the PR, once per head AND per state -- a ledger, like ci_report's,
+# for the same reason: an owner who adds a malformed override after the first
+# comment has acted and must be answered, and a boolean would swallow that
+# answer. Parking a PR in silence is the #102 failure wearing the other face.
+regressed_report() {   # <pr> <head> <labels>
+    local pr=$1 head=$2 labels=$3 m="$F/failed/$1-$2-regressed" state=REGRESSED body bad=''
+    bad=$(malformed_accept "$labels") && state=ACCEPT-MALFORMED
+    grep -qxF "$state" "$m" 2>/dev/null && return
+    printf '%s\n' "$state" >> "$m"
+    case "$state" in
+    REGRESSED) body="[job.fold] Not folded: this PR is labelled \`regressed\` -- the arms job judged a registered prediction **FAILED** on the device. Folding it would put a measured regression on \`$TIP\`, which is how \`3d072c6ea6\` landed on 2026-09-19.
+
+**Your \`fold-ready\` label is kept and your head is not marked failed.** This gate removes nothing and writes off nothing: the fold re-tries every tick and folds the moment the label clears, so there is nothing to re-apply.
+
+Two ways forward, and both are decisions rather than chores:
+
+- **Fix it.** Push the fix and re-register the prediction. The arms job re-judges and clears \`regressed\` itself -- it is computed from the verdicts, so do not remove it by hand; that would clear the label without clearing the regression.
+- **Accept it.** If the regression is a measured trade that someone owns, the **owner** adds a \`regression-accepted:<issue>\` label naming the issue where that trade is argued -- e.g. \`regression-accepted:91\` for the \`Color_zeta_overlap\` trade under #88's colour-wins policy. A lane must not set it and no job sets it.
+
+This is the only comment this job will make about this head." ;;
+    ACCEPT-MALFORMED) body="[job.fold] Still not folded, and this one is a spelling: the PR carries \`$bad\`, which is override-shaped but names no issue, so the \`regressed\` gate does not take it.
+
+The override is \`regression-accepted:<issue>\` -- the issue number is the point of it. An accepted regression is a trade, the issue is where the trade is argued, and an override with no issue is an assertion with no argument; a year from now the label is all that is left to read. For the \`Color_zeta_overlap\` trade that is #91:
+
+\`\`\`
+gh label create regression-accepted:91 --repo $GH_REPO --color b60205 \\
+    --description 'owner: the regression on this PR is the trade argued on #91'
+bash docs/testing/jobs/gh-label.sh add $pr regression-accepted:91
+\`\`\`
+
+Remove \`$bad\` when you add it. This is the only comment this job will make about that." ;;
+    esac
+    say "  #$pr: reported $state on ${head:0:10}"
+    comment "$pr" "$body"
+}
+
 folded=0
-while IFS=$'\t' read -r pr branch head draft title; do
+while IFS=$'\t' read -r pr branch head draft labels title; do
     [ -n "$pr" ] || continue
     if [ "$draft" = true ]; then
         say "#$pr is a draft: not folding; label removed"
         [ "$mode" = list ] && { echo "#$pr $branch: DRAFT"; continue; }
         label_rm "$pr" fold-ready || say "  WARNING: could not remove fold-ready from #$pr; it will be re-tried every tick"
         comment "$pr" "[job.fold] Not folded: the PR is still a draft. Mark it ready (\`gh pr ready $pr\`) and re-apply \`fold-ready\`."
+        continue
+    fi
+    # The regression gate, before the CI call: it costs nothing (the labels
+    # came with the candidate list) and a PR stopped here needs no `pr view`.
+    accepted=$(accepted_issue "$labels") || accepted=""
+    if has_label "$labels" regressed && [ -z "$accepted" ]; then
+        # `list` stays read-only here: the state it would report is on the PR
+        # already, as the label it is reading.
+        [ "$mode" = list ] && { echo "#$pr $branch: REGRESSED (a registered prediction FAILED; the owner may accept it with regression-accepted:<issue>)"; continue; }
+        say "#$pr $branch: labelled regressed and not accepted; not folding (fold-ready kept)"
+        regressed_report "$pr" "$head" "$labels"
         continue
     fi
     ci=$(ci_green "$pr")
@@ -249,11 +351,12 @@ while IFS=$'\t' read -r pr branch head draft title; do
         [ "$mode" = list ] && echo "#$pr $branch: failed before on this head ($(cat "$F/failed/$pr-$head"))"
         continue
     fi
-    if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD FOLD"; continue; fi
+    if [ "$mode" = list ]; then echo "#$pr $branch @ ${head:0:10}: WOULD FOLD${accepted:+ (regression accepted on #$accepted)}"; continue; fi
     [ "$folded" -eq 0 ] || { say "#$pr waits: one fold per tick"; continue; }
 
     # ---------------------------------------------------------- the fold
     say "folding #$pr $branch @ ${head:0:10}: $title"
+    [ -n "$accepted" ] && say "  it is labelled regressed; folding on regression-accepted:#$accepted"
     if [ ! -e "$WT/.git" ]; then
         git -C "$REPO" fetch -q origin "$TIP" && git -C "$REPO" worktree add --quiet --detach "$WT" FETCH_HEAD || { say "cannot create $WT"; exit 1; }
     fi
@@ -331,7 +434,9 @@ Fix on the lane branch and push; the next green head is re-tried."
     merge_sha=$(git -C "$WT" rev-parse --short HEAD)
     git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
     label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
-    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${notes_moved:+
+    comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries.${accepted:+
+
+This PR is labelled \`regressed\`, and it folded **because the regression is accepted on #$accepted** (\`regression-accepted:$accepted\`), not because the gate missed it. The failing verdict above stands as measured; #$accepted is where the trade it is part of is argued.}${notes_moved:+
 
 Your branch's root \`NOTES.md\` conflicted with the one already on \`$TIP\` and nothing else did, so it was moved to \`$notes_moved\` rather than merged -- both lanes' records are on $TIP, each at its own path. That is where \`roles/lane.md\` item 3 now asks for it; write it there next time and no fold has to touch it.}"
     say "  folded #$pr as $merge_sha"

@@ -20,5 +20,21 @@ mk regressed           b60205 "arms job: registered prediction FAILED on the dev
 mk decision-needed     e99695 "the owner decides; jobs move on"
 mk blocked:needs-owner e99695 "escalated attempt failed too; owner's call"
 mk harness             bfd4f2 "the harness itself (jobs, scripts, hooks)"
+# NOT CREATED HERE, AND THAT IS THE DESIGN: `regression-accepted:<issue>`.
+# fold.sh refuses to fold a PR labelled `regressed` (it folded #102 onto
+# master on 2026-09-19 because nothing read that label), and this is the way
+# through for a regression that is a measured trade someone owns -- e.g.
+# `regression-accepted:91` for Color_zeta_overlap/Swap under #88's
+# colour-wins policy. Every other label in this file exists because a JOB
+# sets it and a label a job sets that does not exist is a silent no-op. No
+# job sets this one and none may: it is the owner saying "I accept this
+# regression", which is a sentence only a person can mean. It names its
+# issue, so there is one label per accepted trade and no reusable blanket
+# pass -- which is also why it cannot be pre-created. The owner creates the
+# one they mean, at the moment they mean it:
+#
+#   gh label create regression-accepted:91 --repo "$GH_REPO" --color b60205 \
+#       --description 'owner: the regression on this PR is the trade argued on #91'
+#   bash docs/testing/jobs/gh-label.sh add <pr> regression-accepted:91
 mk harness-status      bfd4f2 "the one issue whose comment is the live status roll-up"
 mk xbox-hardware       0052cc "needs real Xbox silicon; not dispatchable as a device run until a hardware listener exists"

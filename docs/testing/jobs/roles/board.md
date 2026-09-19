@@ -97,6 +97,25 @@ So, every tick, in this order:
   labelling it `verified` or `regressed`. Your part: a `regressed` PR is not
   fold-ready; resume its lane with the verdict in the comment. A `verified`
   PR proceeds through audit as normal.
+- **`regressed` is now a gate in `fold.sh`, not a rule you keep.** It used to
+  be this paragraph and nothing else, so it held only for as long as the
+  session setting `fold-ready` remembered it — and on 2026-09-19 PR #102
+  folded as `3d072c6ea6` carrying `regressed`, its label set twenty minutes
+  earlier precisely to stop that. The job now reads the label off the
+  candidate list and refuses. Two consequences for you: **resuming the lane
+  is still yours** (the gate stops a fold, it starts no session), and
+  **`fold-ready` on a `regressed` PR is no longer a mistake that lands** —
+  the gate keeps the label, says so on the PR once, and folds the moment the
+  regression clears, so do not strip `fold-ready` to hold a PR back.
+  Clearing `regressed` itself is `arms.sh`'s, computed from the verdicts;
+  removing it by hand clears the label without clearing the regression.
+- **An accepted regression is the owner's, never yours.** The way through the
+  gate is a `regression-accepted:<issue>` label naming the issue that argues
+  the trade (`regression-accepted:91` for `Color_zeta_overlap/Swap` under
+  #88's colour-wins policy). You do not set it, no job sets it, and no lane
+  sets it: it is a person accepting a measured loss. A `regressed` PR whose
+  lane says the regression is intended is a `decision-needed` issue with the
+  verdict and the trade in it — the owner's answer is the label.
 - The derived views: regenerate `territory.toml` from open lane PRs and
   commit to the `board` branch. Never edit them on master.
 - **The tracker's agreement with GitHub.** Every `nv2a_issues.toml` row whose

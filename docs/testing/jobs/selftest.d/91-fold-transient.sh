@@ -24,9 +24,11 @@ FT="$T/foldtr"; mkdir -p "$FT/bin"
 cat > "$FT/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 args="$*"
+# A candidate row is number, branch, head, isDraft, labels, title -- title
+# last, because it is the only free-text field.
 case "$1 $2" in
     "pr list")    [[ "$args" == *"--label fold-ready"* ]] \
-                      && printf '150\t%s\t%s\tfalse\tfoldtr: a lane\n' "${FT_BRANCH:?}" "${FT_HEAD:?}" ;;
+                      && printf '150\t%s\t%s\tfalse\tfold-ready\tfoldtr: a lane\n' "${FT_BRANCH:?}" "${FT_HEAD:?}" ;;
     "pr view")    echo GREEN ;;
     "pr comment") { echo "--- comment on $3"; cat "${args##*--body-file }"; } >> "${FT_LOG:?}" ;;
 esac
