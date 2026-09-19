@@ -166,6 +166,49 @@ and `fleet-gc drops the entry` (the `cp` that set it up had failed silently).
 Both are now stated so they cannot pass vacuously: `fleet-end` must leave a
 `history.jsonl` *and* remove the entry, and the gc fixtures `mkdir -p` first.
 
+## The other two consumers of this registry — checked, and one is still lying
+
+Grepping for `$DISPATCH_DIR/fleet/` found two readers besides `fleet.py`.
+
+**`backlog-gate.sh` — no interaction, verified, not assumed.** It is a Stop
+hook that refuses to end a turn while `fleet.py` has FAIL lines, with a release
+valve after six blocks. My change makes those FAILs far more common *and*
+global — "eight lanes with no territory row" is not something a lane can clear,
+since a lane may not edit `territory.toml`. If that hook were live for lanes,
+every lane session would be trapped for six blocks on work it is forbidden to
+do. It is not live: it gates only a session whose id matches a claim file, and
+`jobs/install-host.sh:36` deletes that claim. Checked rather than reasoned:
+
+```
+$ bash docs/testing/backlog-gate.sh status
+orchestrator: unclaimed -- the gate is inert for every session
+```
+
+**If anyone ever re-claims it, re-read this.** The gate was written when the
+FAILs were the orchestrator's own to clear; they are the board's now.
+
+**`check_coverage.py:fleet_tail()` — the same defect, still live, not my
+file.** It reads `state` and `waiting_on` straight off the registry and feeds
+the idle-watchdog's hint line — the watchdog re-invokes it fresh on every poll,
+so it is the only channel that reaches a running watchdog. Run today:
+
+```
+'; 4 lane(s) RUNNING (blitsafe, fold, remote, swizzle87) -- do not claim
+   their files or advise folding them'
+```
+
+That is the identical lie `fleet.py` was telling: two of those are not running
+and one is merged, while eight real lanes go unnamed. My change does not make
+it worse, but it does change its failure *shape*: once the entries carry no
+`state`, and certainly after `fleet-gc`, `fleet_tail()` returns the empty
+string and the watchdog loses the advice entirely — wrong becomes silent.
+Neither is acceptable and I did not touch it, because it is outside my four
+files.
+
+**The fix is two lines and the machinery is now importable:**
+`from fleet import lane_units`, then report `sorted(lane_units() or {})` and
+say so when it is `None`. Flagged as a PR comment on #133 for whoever owns it.
+
 ## Limits, stated rather than discovered later
 
 - **A `[lane.<n>] blocked:` comment with no `blocked` label is invisible here.**
