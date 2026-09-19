@@ -3286,3 +3286,25 @@ blocker_tested = "CONFIRMED BY READING 2026-09-19: the board opened this issue i
 status = "open"
 status_note = "Opened by the board job 2026-09-19. Awaiting the owner."
 blocked_on = "Blocked on the owner. A decision-needed issue is blocked BY DEFINITION -- that is what the label means -- and the coverage gate requires every open issue to carry a lane or a blocker, so without this row the gate is red and preflight fails for EVERY fold on the repository. Three complete PRs (#134, #139, #140) were queued to fold when this was opened."
+
+[issue.157]
+title = "nv2a_index check cannot tell a stale index from a stale test checkout, and its remedy silently deletes suites when it is the latter"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "a check/tooling defect in docs/testing/nv2a_index.py, not a renderer or suite question."
+status = "open"
+dispatch_state = "available"
+status_note = "Filed 2026-09-19 by lane.remote: `nv2a_index.py check --tests DIR` reports only 'suites differ (committed 103, tests tree 102)' with no sign, so following its own remedy (`build --tests DIR`) from a checkout that is BEHIND regenerates a 102-suite index and commits a silent regression -- the 103rd suite (Surface_as_vertex_array, added by nxdk_pgraph_tests 0a441e0) is deleted from master with nothing downstream to flag it. Fix is naming which side is behind (or refusing to shrink the committed suite count without an explicit --allow-suite-removal), both scoped to docs/testing/nv2a_index.py. The issue body says the file 'is lane.toolsmith's, so this is filed rather than fixed' -- checked against territory.toml 2026-09-19 and that is STALE: [lane.toolsmith]'s own note says it 'DECLINED nv2a_index.py, score_sweep.py and collect_sweep.sh with a reason for each', and the file is in neither lane.toolsmith's list nor any other row nor [free]'s exclusions -- it is simply unclaimed. DISPATCHED 2026-09-19 (job.board) as lane.indexcheck, files = [\"docs/testing/nv2a_index.py\"] only (the issue's optional preflight.sh wording line is lane.toolsmith's and out of scope for this brief)."
+blocked_on = ""
+
+[issue.158]
+title = "GL has diverged from Vulkan by 413,790 px in eight days, all of it the surface pad-bit family -- and \"both renderers agree\" is no longer safe evidence"
+component = "pgraph"
+disposition = "defect"
+suites = ["Blend surface", "Surface format", "Surface pitch"]
+blocker_falsifier = "if the fix sites named below were actually free, they would show in territory.toml's [free] section or in a row with no running agent; checking that before re-dispatching is what would refute this blocker."
+blocker_tested = "CONFIRMED BY READING territory.toml 2026-09-19: the write-side fix site glsl/psh.c (dualSrcBlend gate, glsl/psh.c:225) is [lane.remote]'s (granted wave 87), and the readback-override column site hw/xbox/nv2a/pgraph/vk/draw.c (the #59 clear-side pad alpha in 77bd2977) is [lane.clrsurf91]'s (issues 91, 88). Both lanes are running. A fresh task lane cannot claim either file this tick without a grant from an active lane, which is a bigger action than one dispatch."
+status = "open"
+status_note = "Filed 2026-09-19 by lane.remote, re-measuring #60: GL trails Vulkan by 413,790 px across 11 iso_surf1 captures, all but one in the pad-bit family (X_O/X_Z/X1R5G5B5_{Z,O}/X8R8G8B8_{Z,O}/X1A7R8G8B8_O), up from a 4,608 px gap eight days ago when the same captures were byte-identical. Root cause already named by the filer: #59's pad-alpha work (77bd2977) landed on vk/draw.c only, the readback override is a Vulkan-only column (kelvin_surface_color_format_vk_map's sampled_pad_alpha, vk/constants.h:441/475 -- gl/renderer.h:361 states GL has no host_fmt), and the GL write side never sets dualSrcBlend (glsl/psh.c:225) so GL emits the same GLSL it always has. `Surface_pitch::Swizzle` is the same story from #59's other lane: Vulkan is now byte-exact at 0 where GL still misses by 12,224. NOT DISPATCHED THIS TICK: both named fix sites are held by running lanes (see blocked_on); an analysis-only lane (files = []) confirming the exact GL-side patch shape without touching either file would be a candidate for the next capacity slot, or `board-request` a grant from lane.remote/lane.clrsurf91 if the owner wants this ahead of their current work."
+blocked_on = "Blocked on files: the write-side fix (glsl/psh.c) is lane.remote's and the readback-override fix (vk/draw.c) is lane.clrsurf91's, both running. Grant one or both, or scope a lane to the GL-only half that needs neither (gl/renderer.h's host_fmt gap), before dispatching a task lane here."
