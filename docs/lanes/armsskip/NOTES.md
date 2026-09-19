@@ -183,7 +183,13 @@ Every head of this branch, correlated against the master tip of its own moment:
 | `0e591da552` (NOTES only, PR opened 05:56Z) | clean (`a1691ae68e`) | Android + Desktop build |
 | `997e28b235` (the fix + the selftest block) | **conflict** (`1f7572a34c`) | none |
 | `d8db6092cf` (`ci: build this head`, empty) | **conflict** (`ae3712aae1`) | none |
-| `fa69c61d34` (this one, after the merge below) | clean (`912f58a1c1`) | see below |
+| `584b8fdcfd` (this one, after the merge below) | clean (`912f58a1c1`) | **Android + Desktop + jobs selftest, at 08:12:39Z, seconds after the push** |
+
+That last row is the test, not a restatement: the hypothesis said a
+conflict-free head would produce runs with no other change, and it did — three
+of them, including `jobs selftest`, which had never run on this branch because
+the only earlier head that *could* run touched nothing under
+`docs/testing/jobs/`. Nothing was done to the commit messages.
 
 Reproduce it without pushing anything:
 `git merge-tree --write-tree --name-only <head> <master>` exits 1 on exactly
