@@ -262,6 +262,100 @@ def corners(golden_dir, lo, hi):
             print(f"  {k:>8}  {c2[k]}")
 
 
+def shader_poly(e, w, tie=1.0 / 256.0):
+    """A transliteration of what emit_line() now emits, corner for corner.
+
+    This is NOT the model above.  It is the geometry-shader code path -- the
+    same four corners, the same tie bias, the same two cap_clip() calls on the
+    same bounds, in the same order -- so comparing the pixels it covers with
+    the model's is what says the shader draws the rule that was derived rather
+    than something next to it.  A rule measured offline and a shader that does
+    not implement it is the failure this catches, and nothing else here would.
+    """
+    ax, ay, bx, by, dx, dy = geo(e)
+    l2 = dx * dx + dy * dy
+    if l2 == 0.0:
+        return []
+    adx, ady = abs(dx), abs(dy)
+    k = (w / 2.0) * (max(adx, ady) + 0.5 * min(adx, ady)) / l2
+    nx, ny = -dy * k, dx * k
+    tx, ty = (0.0, tie) if adx >= ady else (tie, 0.0)
+    P = [(ax + nx + tx, ay + ny + ty), (bx + nx + tx, by + ny + ty),
+         (bx - nx + tx, by - ny + ty), (ax - nx + tx, ay - ny + ty)]
+    xmaj = adx >= ady
+    m0, m1 = (ay, by) if xmaj else (ax, bx)
+    lo = float(np.floor(min(m0, m1) - w / 2.0))
+    hi = float(np.ceil(max(m0, m1) + w / 2.0)) + 1.0
+
+    def clip(poly, bound, dirn):
+        out = []
+        for i in range(len(poly)):
+            a, b = poly[i], poly[(i + 1) % len(poly)]
+            da = dirn * ((a[1] if xmaj else a[0]) - bound)
+            db = dirn * ((b[1] if xmaj else b[0]) - bound)
+            if da >= 0.0 and len(out) < 6:
+                out.append(a)
+            if (da < 0.0) != (db < 0.0) and len(out) < 6:
+                f = da / (da - db)
+                out.append((a[0] + (b[0] - a[0]) * f,
+                            a[1] + (b[1] - a[1]) * f))
+        return out
+
+    return clip(clip(P, lo, 1.0), hi, -1.0)
+
+
+def shader_mask(e, w, tie=1.0 / 256.0):
+    """The pixels that polygon covers, sampled at pixel centres."""
+    poly = shader_poly(e, w, tie)
+    if len(poly) < 3:
+        return np.zeros((lp.H, lp.W), bool)
+    area = 0.0
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        area += x0 * y1 - x1 * y0
+    sgn = 1.0 if area >= 0 else -1.0
+    m = np.ones((lp.H, lp.W), bool)
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        side = (x1 - x0) * (lp.PY - y0) - (y1 - y0) * (lp.PX - x0)
+        m &= (sgn * side) >= 0.0
+    return m
+
+
+def shader_check(golden_dir, lo, hi, tie=1.0 / 256.0):
+    """Does the emitted polygon cover exactly the model's pixels?
+
+    At the shipping tie bias of one subpixel quantum the two differ by a few
+    pixels per capture BY CONSTRUCTION -- the bias exists to push a band edge
+    off a pixel centre, and the analytic model has no bias in it.  Pass
+    --shader-tie 1e-9 to take the bias out and leave only the geometry, which
+    is the comparison that says the shader draws the derived rule.
+    """
+    hdr = ("test", "w", "model", "shader", "differ", "vs gold")
+    print("%-14s%8s%10s%10s%8s%9s" % hdr)
+    bad = tot = gold = 0
+    for test, w, g in lp.captures(golden_dir, lo, hi):
+        if test in lep.VOID:
+            continue
+        lit, valid = lep.ink(g)
+        um = np.zeros((lp.H, lp.W), bool)
+        us = np.zeros((lp.H, lp.W), bool)
+        for e in lp.EDGES:
+            um |= edge_mask(e, w, cap="perp", pen=1.0, tie="ceil")
+            us |= shader_mask(e, w, tie)
+        d = int((um ^ us).sum())
+        vg = int(((us ^ lit) & valid).sum())
+        bad += d
+        gold += vg
+        tot += 1
+        print("%-14s%8.3f%10d%10d%8d%9d" %
+              (test, w, int(um.sum()), int(us.sum()), d, vg))
+    print("\n%d captures, %d px where the emitted polygon and the model "
+          "disagree, %d px against the goldens" % (tot, bad, gold))
+
+
 VARIANTS = {
     "perp": dict(cap="perp"),
     "pen": dict(cap="perp", pen=1.0, tie="floor1"),
@@ -285,6 +379,10 @@ def main():
     ap.add_argument("--rivals", action="store_true")
     ap.add_argument("--controls", action="store_true")
     ap.add_argument("--corners", action="store_true")
+    ap.add_argument("--shader", action="store_true",
+                    help="rasterise emit_line()'s own polygon and compare it "
+                         "with the model, pixel for pixel")
+    ap.add_argument("--shader-tie", type=float, default=1.0 / 256.0)
     ap.add_argument("--only", default=None,
                     help="comma-separated subset of the rival names")
     a = ap.parse_args()
@@ -292,6 +390,10 @@ def main():
     if a.anatomy:
         kw = VARIANTS[a.only] if a.only else None
         anatomy(a.goldens, a.min_width, a.max_width, kw)
+        return
+
+    if a.shader:
+        shader_check(a.goldens, a.min_width, a.max_width, a.shader_tie)
         return
 
     if a.corners:

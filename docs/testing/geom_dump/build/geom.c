@@ -24,45 +24,45 @@
 #include "hw/xbox/nv2a/pgraph/prim_rewrite.h"
 #include "geom.h"
 
-void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
-{
-    state->polygon_front_mode = (enum ShaderPolygonMode)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),
-        NV_PGRAPH_SETUPRASTER_FRONTFACEMODE);
-    state->polygon_back_mode = (enum ShaderPolygonMode)GET_MASK(
-        pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),
-        NV_PGRAPH_SETUPRASTER_BACKFACEMODE);
 
-    state->primitive_mode = pgraph_prim_rewrite_get_output_mode(
-        (enum ShaderPrimitiveMode)pg->primitive_mode,
-        state->polygon_front_mode);
 
-    state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
-                                     NV_PGRAPH_CONTROL_3_SHADEMODE) ==
-                            NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
 
-    state->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
-                           NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
-    state->noperspective = !(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
-                             NV_PGRAPH_CONTROL_0_TEXTUREPERSPECTIVE);
-    for (int i = 0; i < 4; i++) {
-        /* The bit only takes effect on an axis in WRAP address mode:
-         * TextureWrapMode's CYLWRAP tile wraps U (WRAP) and leaves V
-         * (MIRROR) interpolated the long way round. */
-        uint32_t a = pgraph_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);
-        bool u = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRU) ==
-                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
-        bool v = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRV) ==
-                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
-        bool p = GET_MASK(a, NV_PGRAPH_TEXADDRESS0_ADDRP) ==
-                 NV_PGRAPH_TEXADDRESS0_ADDRU_WRAP;
-        state->cylinder_wrap[i] =
-            ((u && (a & NV_PGRAPH_TEXADDRESS0_WRAP_U)) ? 1 : 0) |
-            ((v && (a & NV_PGRAPH_TEXADDRESS0_WRAP_V)) ? 2 : 0) |
-            ((p && (a & NV_PGRAPH_TEXADDRESS0_WRAP_P)) ? 4 : 0) |
-            ((a & NV_PGRAPH_TEXADDRESS0_WRAP_Q) ? 8 : 0);
-    }
-}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 bool pgraph_glsl_need_geom(const GeomState *state)
 {
