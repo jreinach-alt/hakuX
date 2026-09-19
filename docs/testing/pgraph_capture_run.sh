@@ -106,6 +106,16 @@ got=$(grep -m1 '^nv2a: renderer:' "$LOG" | cut -d' ' -f3-)
 echo "$TAG: exit=$rc in ${elapsed}s, renderer requested=$RENDERER got=${got:-UNKNOWN}"
 [ -n "$got" ] || { tail -20 "$LOG" >&2; die "the emulator never reported a renderer -- see $LOG"; }
 
+# ...and ENFORCE it. The paragraph above used to state this hazard and then let
+# the run proceed anyway, which is the failure it warns about: a mislabelled
+# run does not look wrong, it looks like a measurement. Audit pass 2, N2.
+want=$(printf '%s' "$RENDERER" | tr 'A-Z' 'a-z')
+have=$(printf '%s' "$got" | tr 'A-Z' 'a-z')
+if [ "$want" != "$have" ]; then
+    tail -20 "$LOG" >&2
+    die "renderer mismatch: asked for $RENDERER, ran $got. Captures from this run would be attributed to the wrong renderer, so it is discarded rather than scored. See $LOG"
+fi
+
 EXTRACT="$(dirname "$0")/extract_results.py"
 SCORE="$OUTDIR/score_$TAG"
 rm -rf "$SCORE"; mkdir -p "$SCORE"

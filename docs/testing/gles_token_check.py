@@ -27,6 +27,7 @@ machine without an NDK has no GLES header to derive it from. Extend it when a
 new one bites; a check that overstates its coverage is worse than none.
 
     usage: gles_token_check.py [path ...]      (default: the GL renderer)
+           gles_token_check.py --selftest     (fixtures for the contract)
     exit 0 clean, 1 finding, 2 bad usage
 """
 import os
@@ -88,21 +89,34 @@ def gles_visible_lines(path):
         s = line.strip()
         if ANY_IF.match(s):
             m = ANDROID_IF.match(s)
+            md = ANDROID_IF_DEFINED.match(s)
             if m:
-                live = (m.group(1) == 'ifdef')
-            elif ANDROID_IF_DEFINED.match(s):
-                live = not ANDROID_IF_DEFINED.match(s).group(1)
+                live, decided = (m.group(1) == 'ifdef'), True
+            elif md:
+                live, decided = (not md.group(1)), True
             else:
-                live = True                     # unknown condition: assume taken
+                # Unknown condition. BOTH arms are live, because we do not know
+                # which one the compiler takes -- see the #else handling below.
+                live, decided = True, False
             tested = set(DEFINED_TOK.findall(s)) | set(IFDEF_TOK.findall(s))
-            stack.append({'live': live, 'tested': tested})
+            stack.append({'live': live, 'decided': decided, 'tested': tested})
             continue
         if stack and re.match(r'#\s*elif\b', s):
             stack[-1]['live'] = True            # unknown arm: assume taken
+            stack[-1]['decided'] = False
             stack[-1]['tested'] |= set(DEFINED_TOK.findall(s))
             continue
         if stack and re.match(r'#\s*else\b', s):
-            stack[-1]['live'] = not stack[-1]['live']
+            # Flip ONLY for a frame __ANDROID__ decided. Flipping an
+            # unknown-and-assumed-live frame marks its #else arm dead and stops
+            # it being scanned at all -- which is hiding a line, the one thing
+            # this function's contract says it must never do. Audit pass 2, N1:
+            # 114 non-blank lines in 21 frames of the default target were
+            # invisible that way, among them the #else arms of
+            # `#if defined(__APPLE__)` and `#if DEBUG_NV2A_GL`, both of which an
+            # Android build compiles.
+            if stack[-1]['decided']:
+                stack[-1]['live'] = not stack[-1]['live']
             continue
         if stack and re.match(r'#\s*endif\b', s):
             stack.pop()
@@ -123,7 +137,80 @@ def sources(paths):
                     yield os.path.join(root, name)
 
 
+# Fixtures for --selftest. Each is (name, source, expected finding count).
+# N1 is the first one: audit pass 2 found that a token in the #else arm of a
+# conditional this script does not understand was never scanned, so the script
+# returned a clean result by luck. An invariant with no failing case has not
+# been tested, so the case lives here rather than in a comment.
+SELFTEST = [
+    ('n1-else-of-unknown-conditional', """
+#if defined(SOME_OTHER_THING)
+static int a(void) { return 0; }
+#else
+static GLenum b(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 1),
+    ('if-arm-of-unknown-conditional', """
+#if defined(SOME_OTHER_THING)
+static GLenum b(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 1),
+    ('excluded-by-ifndef-android', """
+#ifndef __ANDROID__
+static GLenum b(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 0),
+    ('reached-under-ifdef-android', """
+#ifdef __ANDROID__
+static GLenum b(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 1),
+    ('else-of-ifdef-android-is-desktop', """
+#ifdef __ANDROID__
+static int a(void) { return 0; }
+#else
+static GLenum b(void) { return GL_SRC1_ALPHA; }
+#endif
+""", 0),
+    ('guarded-by-its-own-existence-test', """
+#ifdef GL_CLAMP_TO_BORDER
+#define NV2A_CLAMP GL_CLAMP_TO_BORDER
+#endif
+""", 0),
+    ('mentioned-only-in-a-comment', """
+/* GL_SRC1_ALPHA is not available on GLES. */
+static int a(void) { return 0; }
+""", 0),
+    ('mentioned-only-in-a-string', """
+static const char *s = "GL_SRC1_ALPHA";
+""", 0),
+]
+
+
+def selftest():
+    import tempfile
+    failed = 0
+    with tempfile.TemporaryDirectory() as td:
+        for name, src, want in SELFTEST:
+            f = os.path.join(td, name + '.c')
+            with open(f, 'w') as fh:
+                fh.write(src)
+            got = 0
+            for _, line, guarded in gles_visible_lines(f):
+                for tok in DESKTOP_ONLY:
+                    if tok not in guarded and re.search(r'\b%s\b' % re.escape(tok), line):
+                        got += 1
+            ok = (got == want)
+            failed += not ok
+            print('%-4s %-36s expected %d, got %d'
+                  % ('ok' if ok else 'FAIL', name, want, got))
+    print('%d/%d fixtures pass' % (len(SELFTEST) - failed, len(SELFTEST)))
+    return 1 if failed else 0
+
+
 def main(argv):
+    if '--selftest' in argv:
+        return selftest()
     paths = argv[1:] or list(DEFAULT_PATHS)
     missing = [p for p in paths if not os.path.exists(p)]
     if missing:
