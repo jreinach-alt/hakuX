@@ -76,3 +76,69 @@ source.
 
 **Not predicted:** Vulkan's values. The refresh is GL-only, so Vulkan is a
 control for everything except the pad-alpha change, which moves both.
+
+## Result: the prediction is REFUTED, kill condition 1 fired
+
+Binary built from `master` at `415dcc69`; `iso_surf1`, one run per renderer,
+236 captures each, zero assert lines.
+
+| capture | GL | Vulkan | registered as |
+|---|---:|---:|---|
+| `Blend_surface::DstAlpha_XA_O1A7RGB8` | **90,112** | **81,920** | 81,920 predicted; **90,112 was kill condition 1** |
+| `Blend_surface::ARGB8_Add_SrcA_1-SrcA` | 9,547 | 9,547 | control, held |
+| `Blend_surface::ARGB8_Add_SrcA_DstA` | 11,521 | 11,521 | control, held |
+
+**The regression is live in master, and it is GL-only.** Both controls hold at
+the values registered before the run, so the comparison is not confounded, and
+Vulkan reads the pre-refresh value on the same binary and the same disc.
+
+### Why the prediction was wrong, precisely
+
+It assumed #59's landed write side reaches both backends. It does not, and the
+tree says so in its own words:
+
+- `glsl/psh.c:225` — *"The GL renderer never calls the setter, so it keeps
+  false and generates exactly the GLSL it generates today."* `g_dual_src_pad_supported`
+  is a device property, and #59's write side is gated on `dualSrcBlend`, which
+  `vk/instance.c` enables and the GL renderer never does.
+- `gl/renderer.h:361` — *"GL has no host_fmt"*, so GL has no
+  `sampled_pad_alpha` column at all; the Vulkan readback override lives in
+  `kelvin_surface_color_format_vk_map`.
+
+So the mechanism I named on 2026-09-13 was right and the remedy never reached
+this backend. **#59's write side is Vulkan-only by construction.**
+
+### What moved, measured rather than inferred
+
+GL and Vulkan disagree on exactly **16,384 px**, one 128×128 region at
+x[32..159] y[92..219]:
+
+| | first half (8,192 px) | second half (8,192 px) |
+|---|---|---|
+| golden | `#2A2A2ABF` | `#000000FF` |
+| Vulkan | `#555555FF` | `#000000FF` — **matches** |
+| GL | `#6C6C6CE2` | `#FFFFFFFF` — **destination alpha read as one** |
+
+GL differs from the golden on all 16,384; Vulkan on 8,192. The extra 8,192 is
+exactly the half where the golden is black and GL paints white — the
+destination-alpha-goes-to-one signature this lane described in September and
+could not then attribute.
+
+Worth noting against `psh.c:205`: the pad-alpha table has **no override for
+`X1A7R8G8B8_{Z,O}`**, *"whose readback is not a constant"*, and this capture is
+exactly that format. So this is not a missing table row; it is the case the
+table deliberately excludes.
+
+### Disposition
+
+**#60's own fix is correct and landed.** `gl/draw.c:351` still reads the
+guest-declared `pg->surface_shape.color_format` for the blend-side fold, which
+is right, and the refresh repairs the surface-to-texture decisions that were
+being made on a stale format. The 8,192 px it exposes are **#59's GL half**,
+not #60's defect: the refresh made the decision correct, and a correct decision
+reaches a path GL has never had the fix for.
+
+That is the same shape as the question the board is already holding on #88 —
+ship a correction that exposes a pre-existing defect, or hold it — with one
+difference: here the correction is **already shipped** in master, so the choice
+is only whether the exposed 8,192 px are chased or recorded.
