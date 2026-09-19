@@ -1,0 +1,47 @@
+One ClipF variant at a clip_top that is not a multiple of 4.
+
+Against abaire/nxdk_pgraph_tests @ 91a0de45ca31fd03ef2b364347f8a827d226f2b3
+("Reenables PVIDEO surface formats that crash xemu. (#316)", 2026-09-18).
+
+This is the whole of #31's missing measurement.  clip_top is read from
+kVertSampleCoords, which holds only multiples of 32, so every ClipF capture
+that exists has clip_top == 0 (mod 4) -- and on those, 63 different anchoring
+rules predict the same anchor.  35 splits them seven ways.  The integer is
+chosen, not picked: docs/testing/wbuf_clip_phase_choice.py scores every
+candidate, and 34 is strictly weaker than 33 or 35.
+
+It adds one test and changes no existing one: i < 3 reproduces the three
+current clip_tops exactly, so WBuf24D_ClipF-150-032/-128/-224 are untouched.
+The new test is WBuf24D_ClipF-150-035_V1_ZB0_ZS1.
+
+--- a/src/tests/wbuf_tests.cpp
++++ b/src/tests/wbuf_tests.cpp
+@@ -332,17 +332,26 @@
+             return kVertSampleCoords;
+           });
+         };
+   }
+ 
+-  for (int i = 0; i < 3; i++) {
++  for (int i = 0; i < 4; i++) {
+     int depthf = 6;
+     bool zbias = false;
+     bool zslope = true;
+     bool vsh = true;
+     uint32_t clip_left = kClipLeft;
+-    uint32_t clip_top = kVertSampleCoords[3 + 6 * i];
++    // i < 3 reproduces the three existing captures exactly.  The fourth is
++    // deliberately not a multiple of 4: kVertSampleCoords holds only multiples
++    // of 32, so on every ClipF capture that exists today "anchor = clip_top +
++    // 2", "anchor = the absolute 4-grid at phase 2" and "anchor = the first
++    // covered row snapped to the 2x2 quad, plus 2" are the same prediction,
++    // and the slope-scaled polygon offset this suite measures cannot be
++    // attributed to any one of them.  At 35 they predict 37, 34 and 36.  35
++    // also keeps the quad's first triangle covered (~15,800 px), which
++    // clip_top 128 and 224 do not.
++    uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : 35;
+ 
+     tests_[MakeTestName(kPrimFloorClip, depthf, zbias, zslope, vsh, clip_left, clip_top)] =
+         [this, depthf, zbias, zslope, vsh, clip_left, clip_top]() {
+           this->Test(
+               depthf, zbias, zslope, vsh, kPrimFloorClip,
