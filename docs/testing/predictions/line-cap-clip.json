@@ -1,0 +1,51 @@
+{
+  "registered_utc": "2026-09-19T14:06:43Z",
+  "who": "lane.linecap13",
+  "issue": "13",
+  "prediction": "#13, the wide-line CAP rule.\n\nWHAT THIS IS.  #13's extent phase landed exact and left ~908 px of\nwhole-capture coverage residual over the 48 non-void Line_* captures -- 493\nours-only, 98.8% of it within w/2 + 2 px of a vertex.  That class is the CAP,\nand line-extent-phase-exact.json explicitly declined to predict it (\"WHAT I DO\nNOT PREDICT: the cap and join phase\").  This file predicts it.  It cites\nline-extent-phase-exact.json as the arm-specification it inherits the\ntripwires from.\n\nTHE RULE, derived from the goldens, no fitted constant.  The E-band and the\nperpendicular butt cap are both right; the missing constraint is axis-aligned\non the MINOR axis.  The footprint never reaches past the endpoints' own minor\ncoordinates extended by w/2 -- the WIDTH, not the widened extent E -- with\nboth bounds rounded OUTWARD to whole pixel indices:\n\n    minor index i is lit only if  floor(m_min - w/2) <= i <= ceil(m_max + w/2)\n\non the same 1/16 grid the extent rule already uses.  It bites only at the two\ntips of the parallelogram, which is exactly where the residual was: inside the\nsegment the E-band and the perpendicular slab are both tighter.  Clipping by\nthose two planes turns the parallelogram into a hexagon, so max_vertices goes\n4 -> 6 and 12 -> 18.\n\nThe outward rounding is forced by the data, not chosen: at one width and one\n|slope| the low side stops 31.5 px past its endpoint and the high side reaches\n32.5 (Line_0063.7, LLoop4 vs LLoop0).  A centre-sampled +-w/2 band scores 497\npx, WORSE than the 412 px it was meant to fix.\n\nWHAT IS PREDICTED, AND WHY IT IS A BOUND AND NOT A VALUE.\n\nThe clip is scored offline by rasterising the polygon emit_line() emits and\nXORing it against the golden ink.  That rasterisation takes a TIE BIAS, and\nthe choice of bias moves the answer by more than the effect being measured:\n\n    tie = 1e-9    before the clip  414 px    after   21 px\n    tie = 1/256   before the clip  935 px    after  544 px\n\n1/256 is the bias the DEVICE pushes: vk/draw.c's geom_line_params() sets\nlineTieBias = 1/(2^subPixelPrecisionBits * surface_scale_factor), and Adreno\nreports 8 bits.  So 21 px is a clean measurement of the geometry alone and is\nNOT a device prediction; quoting it as one would be off by 25x.  The offline\nmodel at 1/256 predicts arm A at 935 px against ~908 px measured on a real\ndevice arm by the extent lane -- within 3%, from an independent instrument,\nwhich is why that column is the one trusted here.\n\nThe residual above 544 px is the tie bias interacting with the rasteriser's\nown vertex quantisation.  It is deliberately NOT chased: the bias is pinned by\nthe extent legs (1,911 of 41,892 golden band edges land exactly on a pixel\ncentre, worth 550-580 of the 8,890 fit-set cuts) and by subPixelPrecisionBits.\nTrading those away to win coverage pixels would be a bad trade made blind.\n\nLEG C1 -- THE CAP LEG.  Golden-constrained, coverage only, so it reads nothing\nfrom the model and a patch cannot make it true by construction; and because it\ncompares ink MASKS, #13's separate and much larger overlap-COLOUR residual\ncannot move it in either direction.\n\n  docs/testing/line_cap_phase.py --vs-goldens <armB captures>\n\nPREDICTED: at most 600 mismatched px over the 48 non-void Line_* captures.\nARM A: ~908 px (extent fix, no cap clip).\nFAILS IF: above 600 px.\n\nWHY 600 IS A DISCRIMINATOR AND NOT A FORMALITY, stated before the arm so it\ncannot be read back afterwards.  The bound is set so that it holds under\nEITHER modelling of the tie -- 21 px and 544 px both clear it -- while arm A's\nown 908 px does not.  So the leg separates \"the cap clip is drawn and works\"\nfrom \"nothing happened\", which is the only distinction the offline model is\nentitled to make given the tie uncertainty.  A bound is honest here and an\nexact value would not be: registering 544 as a value would turn the ordinary\ndevice-vs-model gap into a violated check.\n\nLEG C2 -- NOTHING GETS WORSE.  ab_compare per capture over Line_width and\nBlend_tests: 0 captures classed worse.  Blend_tests is on the disc because the\ngeometry push-constant range is declared on EVERY graphics pipeline, whether\nor not it has a geometry shader (two layouts are compatible for a descriptor\nset only if their push-constant ranges match), so a mistake there shows up on\na suite that draws no wide lines at all.  That is the point of including it.\nFAILS IF: any capture in either suite is classed worse.\n\nLEG C3 -- THE TRIPWIRES, inherited from line-extent-phase-exact.json, must not\nmove at all:\n  Line_width/Fill_0000.0, Fill_0001.0, Fill_0032.0 -- fill mode; a line change\n    must not touch them\n  Line_width/Line_0000.0 -- the suite's only pixel-exact capture; a zero-width\n    line covers no pixel centre and the draw is dropped\n  Line_width/Line_0064.0 .. Line_0064.7, Line_FFFFFFFF -- VOID: the width\n    register holds nine bits of eighths, 64.0 does not fit, hardware drew all\n    nine at 1.0, and their golden ink masks are byte-identical to\n    Line_0001.0's.  A fix that draws them at 64 makes them worse.\nFAILS IF: any of these moves at all.\n\nWHAT I DO NOT PREDICT.  The COLOUR at an overlap -- #13's separate priority\nrule and 76.3% of the issue's residual; this is a coverage measurement.  The\n~544 px tie-bias residual, for the reason above.  The GL renderer, which is\nlane.remote's territory and untouched here.  Any total for Point size, Point\nparams, Swath width, Smoothing control, Stipple tests or 2D Lines.\n\nA CAVEAT ON THE OFFLINE MODEL.  It rasterises with exact-float half-plane\ntests at exact pixel centres; the real rasteriser quantises vertices to the\n1/256 grid first and then applies its own fill rule.  The truth lies between\nthe two tie columns above, which is precisely why C1 is a bound spanning\nboth and not a point estimate at either end.",
+  "a_ref": "415dcc6997",
+  "b_ref": "c8d2c22e14",
+  "must_not_move": [
+    "Line_width/Fill_*",
+    "Line_width/Line_0000.0",
+    "Line_width/Line_0064.*",
+    "Line_width/Line_FFFFFFFF",
+    "Blend_tests/*"
+  ],
+  "expect": {
+    "C1_coverage_mismatch_px_max": 600
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend_tests",
+      "Line_width"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "kind": "offline-derivation + device arm",
+  "tool": "docs/testing/line_cap_phase.py",
+  "cites": {
+    "file": "docs/testing/predictions/line-extent-phase-exact.json",
+    "note": "the extent phase this builds on; its 'WHAT I DO NOT PREDICT' names the cap as unpredicted, and LEG C3's tripwires are its must_not_move list carried forward unchanged."
+  },
+  "measured": {
+    "captures_scored": 48,
+    "golden_ink_px": 1967133,
+    "offline_tie_eps_before_px": 414,
+    "offline_tie_eps_after_px": 21,
+    "offline_tie_256_before_px": 935,
+    "offline_tie_256_after_px": 544,
+    "offline_captures_worse_after": 0,
+    "device_armA_whole_capture_px_extent_lane": 908,
+    "rival_centre_sampled_band_px": 497,
+    "reconstruct_derived_mismatch_px": 495,
+    "reconstruct_derived_ours_only_px": 493,
+    "reconstruct_derived_near_vertex_pct": 98.8,
+    "device_tie_bias": "1/(2**subPixelPrecisionBits * surface_scale_factor)",
+    "device_tie_bias_adreno_scale1": 0.00390625
+  }
+}
