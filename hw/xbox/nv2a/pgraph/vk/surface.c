@@ -125,6 +125,212 @@ static bool framebuffer_dirty(PGRAPHState const *pg)
     return true;
 }
 
+/*
+ * #92 PROBE: CAN AN ADDRESS CHANGE GO UNSEEN?
+ *
+ * #92 says SurfaceShape carries no address, so framebuffer_dirty() cannot see
+ * a DMA-context swap, and asks for that function's VERDICT to be logged across
+ * TestSwap()'s SET_CONTEXT_DMA_COLOR writes. THE VERDICT ALONE CANNOT ANSWER
+ * IT, and that is why this probe logs something else.
+ *
+ * The premise is true and is not in question: the struct is formats, geometry
+ * and anti-aliasing, and memcmp of it is blind to where the surface lives. But
+ * a verdict of `false` at a swap is consistent with TWO different worlds:
+ *
+ *   (a) the swap went unseen and the stale binding was kept -- the defect; and
+ *   (b) the swap was seen by the OTHER signal, one line below the verdict:
+ *       SET_CONTEXT_DMA_COLOR sets pg->surface_color.buffer_dirty directly
+ *       (pgraph.c:2381-2388), as do SET_SURFACE_COLOR_OFFSET (:2539) and
+ *       SET_SURFACE_PITCH (:2526) -- the three methods that can move a colour
+ *       surface. buffer_dirty is the address-change signal; the shape is the
+ *       SHAPE-change signal, and it exists to make the OTHER target rebind.
+ *
+ * An instrument that cannot separate (a) from (b) reads the same either way,
+ * so this one counts the discriminating event instead: an upload-side
+ * update_surface_part() whose target address differs from the address of the
+ * binding it already holds, WHILE the gate that would re-resolve it is shut.
+ * That is exactly "the memory moved and nothing noticed"; it cannot occur in
+ * world (b) and must occur in world (a).
+ *
+ * missed=0 over a run containing TestSwap() refutes #92's consequence while
+ * leaving its premise standing. missed>0 confirms it and names the caller.
+ *
+ * There is a third route the counter would also catch, and it is the one
+ * worth watching: target->vram_addr is `dma.address + surface->offset` with
+ * dma.address read out of the DMA OBJECT IN INSTANCE MEMORY by nv_dma_load()
+ * on every call. A guest that rewrites that object in place moves the surface
+ * without touching any of the three methods above, so nothing sets
+ * buffer_dirty and the shape is unchanged -- unseen by BOTH signals rather
+ * than by the shape alone. Whether the suite does this is a measurement, not
+ * a reading; it is what `missed` counts.
+ *
+ * Printed under "hakuX" with a [surf92] prefix, on the heartbeat as well as on
+ * the event, so an absent line means the tag was filtered rather than the
+ * condition never occurring -- dispatcher.sh:934, "SILENCE IS VOID".
+ *
+ * LIFETIME -- CHOSEN, NOT LEFT TO OMISSION (audit pass 1, L2; RE-ANCHORED for
+ * audit pass 2, N3). This probe is unconditional in the shipping Android build
+ * on purpose: it is the only instrument that can close #91's open gap (where
+ * Color_zeta_overlap/Swap's 139,303 px come from). It is NOT gated behind
+ * NV2A_PERF_LOG because a compile-time gate would also take it out of the
+ * device arms, which are the only place it is read.
+ *
+ * REMOVE ALL THREE -- surf92_probe, surf91_overlap_probe here and clr89_probe/
+ * clr91_probe in vk/draw.c -- WHEN #91 IS CLOSED, and not before. The previous
+ * wording said "when #88's and #91's arms have returned a verdict", naming the
+ * two arms on b_ref 67dc7724ee; both returned at 09:01Z on 2026-09-19 and the
+ * condition expired the moment it was written, which is what pass 2 caught.
+ * #91 being CLOSED is the right anchor because it is the question the probes
+ * answer, it cannot be satisfied by an arm that merely replicates the
+ * regression, and it does not go stale when a ref is superseded. The open arm
+ * against them is issue91-decline-frame-attribution (b_ref bb0ddde27d), and a
+ * PASS there means the regression reproduced, NOT that #91 is resolved.
+ *
+ * clr89_probe's own question #89's arm has ALREADY answered (diverged=0 over
+ * 33,280 clears); it is kept only so the set leaves together.
+ */
+#ifdef __ANDROID__
+#define SURF92_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define SURF92_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+static struct {
+    unsigned long updates;      /* upload-side update_surface_part() calls   */
+    unsigned long shape_dirty;  /* framebuffer_dirty() said true             */
+    unsigned long addr_change;  /* target address != held binding's address  */
+    unsigned long missed;       /* ...and the re-resolve gate was shut       */
+    bool shape_dirty_this_update;
+    /* #91, below: the zeta decline #88 added, attributed to a frame. */
+    unsigned long declines;
+    int decline_frame;          /* pg->frame_time is int (pgraph.h:177)      */
+    unsigned long f_declines;
+    bool decline_reported;
+} g_surf92;
+
+/*
+ * #91 PROBE, CAUSE SIDE: DOES THE COLOUR/ZETA OVERLAP RESOLVE INSIDE Swap's
+ * FRAME, AND HOW OFTEN?
+ *
+ * WHAT THE FIELD NAMES MEAN AT THIS TIP, since #88's policy is withdrawn
+ * above. The probe sits at the one site where the overlap is resolved --
+ * `surface == other` with zeta asking -- and that site exists under BOTH
+ * policies. Under 67dc7724ee (the b_ref of #91's registered diagnosis arm)
+ * reaching it means zeta declines; here it means zeta evicts colour, which is
+ * master's behaviour. So `declines=` counts the OPPORTUNITY at this tip and
+ * the ACTION at that one. The field names and the [surf91] tag are
+ * deliberately left byte-identical between the two so the arm's two logs can
+ * be diffed line for line; renaming them would buy accuracy in one log at the
+ * cost of comparing the two, which is the whole point of the instrument.
+ *
+ * It also buys something the registered arm explicitly cannot see: that arm's
+ * A side is plain master and carries NO probes, so it cannot say how often the
+ * overlap resolves under the baseline policy. This tip can, because it is the
+ * baseline policy WITH the probe.
+ *
+ * The consequence side is clr91_probe() in vk/draw.c and the two are meant to
+ * be read together, joined on `frame=` -- both print pg->frame_time, which is
+ * monotonic per flip (pgraph.c:2307). This one says the overlap resolved;
+ * that one says a clear was dropped for want of a binding in the same frame.
+ * Either without the other is a half-answer, which is what #91 has had so far.
+ *
+ * THE READING THIS IS HERE TO TEST, so that a zero is a refutation and not a
+ * silence: SET_CONTEXT_DMA_COLOR sets surface_color.buffer_dirty
+ * (pgraph.c:2387), so in TestSwap() colour should rebind to the new address
+ * BEFORE zeta asks, leaving `surface == other` false and this site unreached
+ * inside Swap. declines==0 in Swap's frame confirms that reading and REFUTES
+ * the model in which #88's policy reaches Swap directly -- and then the
+ * 165,447 -> 304,750 has to come from state the decline left behind in an
+ * EARLIER frame (ColorIntoZeta and ColorIntoZeta_ZB both run before Swap in
+ * this suite), which is the within-suite contamination that the solo disc was
+ * supposed to test and did not get to. declines>0 in Swap's frame refutes the
+ * reading instead and makes the fix local.
+ *
+ * WHAT IS DELIBERATELY NOT LOGGED, because it would be an impossible row:
+ * the colour binding's address. At this site `surface == other` and
+ * `surface` was looked up BY target.vram_addr, so other->vram_addr equals
+ * target.vram_addr by construction. Printed side by side they would always
+ * agree and would read as a check that passed; they are one number, and only
+ * that one is printed.
+ */
+static void surf91_overlap_probe(PGRAPHState const *pg, hwaddr addr)
+{
+    g_surf92.declines++;
+
+    if (pg->frame_time != g_surf92.decline_frame) {
+        g_surf92.decline_frame = pg->frame_time;
+        g_surf92.f_declines = 0;
+        g_surf92.decline_reported = false;
+    }
+    g_surf92.f_declines++;
+
+    bool first_in_frame = !g_surf92.decline_reported;
+    if (first_in_frame) {
+        g_surf92.decline_reported = true;
+    }
+    /*
+     * First resolution of each frame, plus a heartbeat -- ORed, for the reason
+     * clr89_probe() records at length: an else-arm heartbeat stops firing once
+     * the event is persistent, and a silent tag and an absent event are
+     * different facts that would then read the same.
+     */
+    if (!(first_in_frame || g_surf92.declines % 512 == 0)) {
+        return;
+    }
+
+    SURF92_LOG("[surf91] frame=%d declines=%lu f_declines=%lu "
+               "overlap=0x%08" HWADDR_PRIx,
+               pg->frame_time, g_surf92.declines, g_surf92.f_declines, addr);
+}
+
+static void surf92_probe(bool color, bool gate_open,
+                         SurfaceBinding const *current_binding,
+                         SurfaceBinding const *target)
+{
+    g_surf92.updates++;
+
+    bool addr_change =
+        current_binding && current_binding->vram_addr != target->vram_addr;
+    if (addr_change) {
+        g_surf92.addr_change++;
+        if (!gate_open) {
+            g_surf92.missed++;
+        }
+    }
+
+    /*
+     * Every miss, the first sixty-four address changes, then a heartbeat. A
+     * whole-disc run switches surfaces constantly and an unbounded line per
+     * switch would be a flood; a miss is the event the probe exists for and
+     * is never suppressed.
+     */
+    bool missed_now = addr_change && !gate_open;
+    if (!(missed_now || (addr_change && g_surf92.addr_change <= 64) ||
+          g_surf92.updates % 2048 == 0)) {
+        return;
+    }
+
+    /*
+     * shapedirty NAMES ITS OWN DENOMINATOR because it does not share the
+     * others'. updates, addrchg and missed are all per update_surface_part();
+     * shape_dirty is incremented once per pgraph_vk_surface_update(), of which
+     * there are up to TWO parts per call. Printed bare beside updates it
+     * invites shapedirty/updates read as "the fraction of updates that saw a
+     * dirty shape", which is wrong by up to 2x in a direction that varies with
+     * how often colour and zeta are written in the same update.
+     */
+    SURF92_LOG("[surf92] updates=%lu shapedirty=%lu(per-surface_update) "
+               "addrchg=%lu missed=%lu "
+               "%s fbdirty=%d gate=%d held=0x%08" HWADDR_PRIx
+               " want=0x%08" HWADDR_PRIx,
+               g_surf92.updates, g_surf92.shape_dirty, g_surf92.addr_change,
+               g_surf92.missed, color ? "color" : "zeta",
+               (int)g_surf92.shape_dirty_this_update, (int)gate_open,
+               current_binding ? current_binding->vram_addr : (hwaddr)0,
+               target->vram_addr);
+}
+
 static void memcpy_image(void *dst, void const *src, int dst_stride,
                          int src_stride, int height)
 {
@@ -3210,8 +3416,14 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     SurfaceBinding *current_binding = color ? r->color_binding
                                             : r->zeta_binding;
 
-    if (!current_binding ||
-        (upload && (pg_surface->buffer_dirty || mem_dirty))) {
+    bool gate_open = !current_binding ||
+                     (upload && (pg_surface->buffer_dirty || mem_dirty));
+
+    if (upload) {
+        surf92_probe(color, gate_open, current_binding, &target);
+    }
+
+    if (gate_open) {
         SURF_TIMER_INIT(_gt0);
         // FIXME: We don't need to be so aggressive flushing the command list
         // pgraph_vk_finish(pg, VK_FINISH_REASON_SURFACE_CREATE);
@@ -3224,12 +3436,77 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
         SURF_TIMER_INIT(_gt1);
         SurfaceBinding *surface = pgraph_vk_surface_get(d, target.vram_addr);
         if (surface != NULL) {
-            // FIXME: Support same color/zeta surface target? In the mean time,
-            // if the surface we just found is currently bound, just unbind it.
+            /*
+             * FIXME: Support same color/zeta surface target? One VkImage
+             * cannot be the colour and the depth attachment of one
+             * framebuffer, so when the guest points both at one address --
+             * which Color zeta overlap does on purpose -- one of them has to
+             * lose. Which one is not arbitrary. Hardware lets both units write
+             * and races them sub-word; a single-attachment model can only pick
+             * a winner, and the goldens say pick colour: in ColorIntoZeta_ZB,
+             * the only capture that discriminates, the colour write takes
+             * 120,729 of the quad's 131,495 pixels.
+             *
+             * So colour should take a surface zeta holds, and zeta should
+             * decline one colour holds -- the POLICY half of #66's chain. The
+             * gate half ("the binding is stale OR ABSENT", which is what makes
+             * zeta's decline temporary rather than permanent) has been on this
+             * side since 9161e3e14a (2024-07-27, upstream) as the
+             * `!current_binding` term above, so only the policy needs porting.
+             * That is also why ColorIntoZeta_ZB sat at exactly 131,495 here:
+             * the value GL produced with its gate fixed and its policy still
+             * symmetric, i.e. the depth write winning the whole quad. Issue
+             * #88; GL's half is fada1d89d4, record in
+             * docs/investigations/color-zeta-same-surface.md.
+             *
+             * THE POLICY IS WITHDRAWN FROM THIS TIP, NOT ABANDONED. It was
+             * written at 67dc7724ee, it went to the device, and its two
+             * pre-registered absolutes landed to the pixel:
+             * ColorIntoZeta_ZB 131,495 -> 10,766 and ZetaIntoColor 102,255 ->
+             * 71,663, both predicted from the goldens' own histograms before
+             * the run. The mechanism is confirmed. What is NOT confirmed is
+             * its blast radius: on the same two A/B pairs
+             * Color_zeta_overlap/Swap went 165,447 -> 304,750 differing pixels
+             * against a must_not_move leg, reproduced across two independent
+             * discs, and no reading of this file explains it -- the decline
+             * cannot fire inside TestSwap(), which points colour and zeta at
+             * DIFFERENT addresses, so `surface == other` is false there.
+             *
+             * Shipping a confirmed mechanism with an unexplained 139,303 px
+             * regression attached is not a trade this lane gets to make, so
+             * the behaviour here is master's until #91's diagnosis arm
+             * (55bc6c6c2b -> bb0ddde27d, which still carries the policy and
+             * both probes) says where the 139,303 comes from.
+             *
+             * ONE DEFECT IN THE WITHDRAWN PATCH IS ALREADY KNOWN, found by
+             * reading rather than by the device, and it has to be fixed before
+             * it re-lands. The decline returned early with
+             * pg->surface_zeta.buffer_dirty cleared, on the argument that "no
+             * zeta binding means nothing was drawn into a zeta image, so the
+             * download tail below is correctly skipped". True for that call
+             * and false one call later: the early return also skips this
+             * function's own download tail -- the trailing
+             * `if (!upload && pg_surface->draw_dirty)`, cited by its condition
+             * rather than by a line number because L4 caught that habit twice
+             * -- which is the only place pg->surface_zeta.draw_dirty is
+             * cleared. It therefore stays set, and pgraph_vk_surface_update()'s
+             * download branch re-enters update_surface_part(d, false, false)
+             * on the strength of it. There the gate is open BECAUSE the
+             * binding is absent, so once colour has moved off the overlap
+             * address the call creates a fresh zeta surface and the tail
+             * downloads it over guest VRAM -- "create one and copy a fresh
+             * image back over VRAM the guest never rendered", which is
+             * verbatim the failure the decline's own comment claimed to
+             * prevent. Whether that is what moves Swap is a measurement, not a
+             * reading; that it is wrong is a reading.
+             */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (surface == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
+                if (!color) {
+                    surf91_overlap_probe(pg, target.vram_addr);
+                }
                 unbind_surface(d, !color);
             }
         }
@@ -3513,6 +3790,8 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
 
     if (upload) {
         bool fb_dirty = framebuffer_dirty(pg);
+        g_surf92.shape_dirty_this_update = fb_dirty;
+        g_surf92.shape_dirty += fb_dirty ? 1 : 0;
         if (fb_dirty) {
             memcpy(&pg->last_surface_shape, &pg->surface_shape,
                    sizeof(SurfaceShape));

@@ -1,0 +1,72 @@
+[
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/testing/predictions/issue88-vk-same-offset-colour-wins.json",
+    "line": 0,
+    "summary": "#88's and #91's registered arms name a_ref f343580647 / b_ref 4726557b0f, which this PR's rebase left reachable from NO ref at all (git branch -a --contains returns nothing for either; merge-base --is-ancestor against HEAD exits 1). arms.sh:213 refuses any prediction whose b_ref fails live_ancestor() (:130-135), and already_ran() (:99-127) states in its own words that a stale-b_ref skip is structural and 'stands until the prediction itself changes, because no edit to this script can turn one of them into a run'. So both predictions are permanently unqueueable. issue91-swap-solo-classification.json is ADDED by this PR on the same already-dead pair, so it is dead on arrival and has never been runnable. This is 2026-09-18-blitsafe-pass2's M3 after exactly the event pass 2 predicted: at pass 2 the pair were ancestors of the lane branch, and the rebase rewrote them without moving the registration.",
+    "scenario": "The arms job ticks. It collects both prediction files from refs/remotes/origin/lane/blitsafe, computes their sha256, resolves b_ref 4726557b0f (which still exists in the object database, so the 'does not resolve' guard at :212 passes), then fails live_ancestor at :213 and writes a structural skip. The skip is never reconsidered, because it carries no 'request.sh refused' text. Consequence 1: audit pass 2 cannot re-verify #88's or #91's arms, and the #88 policy commit (67dc7724ee) is the only code in this PR with a device-measured justification. Consequence 2: git gc eventually deletes both objects, after which even a manual ab_run.sh fails; before that, a manual ab_run.sh SUCCEEDS against a tree 109 commits behind master and reports a clean, confident measurement of it. Nothing announces which of those three worlds the reader is in.",
+    "remediation": "Re-bind both prediction files to a_ref 55bc6c6c2b (origin/master, which is 67dc7724ee^) and b_ref 67dc7724ee. Verified rather than assumed: git diff --stat for both pairs is vk/surface.c only, +61 -2, and the patch-id of the vk/surface.c diff is 4e14c872b0957eb185a4f7075393ad3581e7087e for BOTH pairs -- so the property both predictions rest on (the arms differ in vk/surface.c alone) is preserved by patch-id, not by assertion. TWO COSTS THE LANE SHOULD WEIGH, and this is a claim rather than an instruction: (1) changing the bytes changes the sha256 and hence arms.sh's candidate identity, so both arms are queued again -- 5 runs x 2 arms x 2 predictions of device time for results already obtained; (2) the new pair sits on 109 further commits of master, so the ABSOLUTES need not reproduce. #88's own prediction already conditions on this ('ARM A IS THE CHECK ... If arm A comes back at other values, then the claim is the DELTAS'), so a re-run is readable, but it is not the same measurement and a miss on an absolute must not be read as the mechanism failing. If the lane judges the re-run not worth it, the alternative that also closes this finding is to record IN THE FILE that the verdict is historical and the refs unrepeatable. What must not remain is a prediction that looks live, is silently skipped forever, and names a binary nobody can rebuild.",
+    "evidence": "docs/testing/jobs/arms.sh:130-135 (live_ancestor), :213 (the refusal), :117-124 (structural skips stand); git branch -a --contains f343580647 -> empty; git branch -a --contains 4726557b0f -> empty; git merge-base --is-ancestor f343580647 HEAD -> 1; git patch-id --stable over both pairs' vk/surface.c diffs -> 4e14c872b0957eb185a4f7075393ad3581e7087e twice; docs/audits/2026-09-18-blitsafe-pass2.json M3."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 846,
+    "summary": "clr89_probe()'s print gate is `if (!(diverged ? g_clr89.diverged <= 20 : g_clr89.clears % 512 == 0)) return;`. The two arms of the ternary are alternatives, not alternatives-plus-a-floor: the heartbeat is evaluated ONLY on a clear that did not diverge. In a run where divergence becomes persistent, the probe prints twenty lines and then nothing at all, so the `diverged=` total the prediction file names as the answer is never printed and the run is indistinguishable from a filtered tag. surf92_probe() at vk/surface.c:208-209 ORs its three conditions and does not have this defect; the contrast is the evidence that the ternary is an error rather than a choice.",
+    "scenario": "A run enters the state docs/investigations/surface-shape-has-no-address.md describes -- framebuffer_dirty() returning false on a changed shape under `!color_format && !zeta_format` (vk/surface.c:121-123) -- which that document describes as a state a surface STAYS in. Every subsequent clear then takes drawn_format != shape_format. Clears 1..20 print `[clr89] ... diverged=1..20`. Clear 21 onwards takes the diverged arm, fails `diverged <= 20`, and returns; the heartbeat branch is never evaluated because diverged is true. Logcat shows the tag stopping. Under dispatcher.sh:934 ('SILENCE IS VOID, never pass. An absent line means the capture failed, not that the condition did not occur') and the prediction file's own restatement of that rule, the reader must score the run VOID -- in exactly the world the probe was written to detect, and with twenty divergences and twenty thousand reading identically.",
+    "remediation": "Make the heartbeat independent of the event, as surf92_probe() already does: `if (!((diverged && g_clr89.diverged <= 20) || g_clr89.clears % 512 == 0)) return;`. That keeps the twenty-line flood cap on divergence lines and restores a periodic `diverged=` total in every world.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/draw.c:845-848 against hw/xbox/nv2a/pgraph/vk/surface.c:206-210; docs/testing/dispatcher.sh:934; docs/testing/predictions/issue89-clear-pad-alpha-shape.json ('the probe counters are OUTPUT ... SILENCE IS VOID rather than pass'); hw/xbox/nv2a/pgraph/vk/surface.c:121-123."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 836,
+    "summary": "g_clr89.no_binding (draw.c:836-838) and the `: shape_format` fallback at :831-833 are both structurally unreachable. Every call site of pgraph_vk_get_clear_color() is guarded on the binding: draw.c:6864 for the inline path, and draw.c:6946 for the fall-through path, inside which both the all-channels branch (:6958) and the blend-constants branch (:6963) sit. The function's own new comment says so. `nobind=` therefore always prints 0.",
+    "scenario": "No failure -- the fallback is a correct backstop and costs nothing. The risk is a misreading: `nobind=0` appears in the log line beside three counters that ARE measurements, so a reader totting up the verdict credits 'the no-binding case never occurred' as an observation when it is a constant of the call graph. That is this project's impossible-row class, arriving in a log line rather than in a prediction leg.",
+    "remediation": "Either drop the field, or mark it structural in the format string (e.g. nobind=%lu(structural-0)), so the log line does not offer a constant alongside measurements.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/draw.c:829-838, :6864, :6946, :6958, :6963; the comment at draw.c:812-813."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": 3311,
+    "summary": "Both probes are unconditional in the shipping Android build's hot path and nothing on the branch removes them. surf92_probe() is called from update_surface_part() on every upload-side call (vk/surface.c:3311-3313); clr89_probe() from pgraph_vk_get_clear_color() on every clear (draw.c:866). Neither is behind #if NV2A_PERF_LOG, a config flag or a runtime toggle, unlike vaf_stats_log_and_reset() and opt_stats_log_and_reset() in the same file.",
+    "scenario": "The finding is not the per-call cost, which is a call and three increments and is negligible against a surface update. It is that the fold has no step that takes them out: the PR body, NOTES.md and the investigation record all describe them as instruments for one arm, and permanent instrumentation entering master by omission is how a temporary probe becomes a permanent one. The project has precedent for permanent hakuX probes, so 'they stay' is a legitimate outcome -- but it has to be chosen.",
+    "remediation": "Log a decision either way. If they stay, say so and why. If they go, name the commit or the fold step that removes them. Gating them behind an existing compile-time switch is the cheapest middle option.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/surface.c:3311-3313, hw/xbox/nv2a/pgraph/vk/draw.c:866; contrast vaf_stats_log_and_reset() (draw.c:876) and opt_stats_log_and_reset()'s #if NV2A_PERF_LOG (draw.c:893)."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": 213,
+    "summary": "The [surf92] log line prints `updates` and `shapedirty` adjacent, on different denominators. g_surf92.updates is incremented once per update_surface_part() (:190), of which there are up to two per pgraph_vk_surface_update(); g_surf92.shape_dirty is incremented once per pgraph_vk_surface_update() (:3677). addrchg and missed share updates' denominator and are fine.",
+    "scenario": "A reader computes shapedirty/updates as 'the fraction of updates that saw a dirty shape' and is wrong by up to 2x, in a direction that varies with how often colour and zeta are both written in the same update. The probe's other three counters are commensurable, which makes the fourth harder to spot rather than easier.",
+    "remediation": "Either count shape_dirty per part (increment it where the probe reads shape_dirty_this_update), or name the denominator in the format string.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/surface.c:190, :213-219, :3676-3677, :3685-3693."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "line": 806,
+    "summary": "Citation drift in three artifacts. 'pgraph_vk_clear_surface() calls that surface_update before every clear' is cited as draw.c:6751 in all three places it is made -- the code comment at draw.c:806, issue89-clear-pad-alpha-shape.json, and docs/investigations/surface-shape-has-no-address.md -- but :6751 is the write_zeta assignment and the call is at :6757. Separately, issue91-swap-solo-classification.json and the #92 record cite pgraph.c:2386 for surface_color.buffer_dirty = true, which is at :2387 (:2386 is pg->dma_color = parameter). The #92 record's prose gets this right -- 'one line below the dma_color write itself' -- while its table's number does not.",
+    "scenario": "No failure. A later reader follows the citation, lands six lines short on a line that looks unrelated, and either re-derives the claim from scratch or doubts a claim that is true. Filed because this lane's citations are otherwise exact -- I spot-checked ten and eight were on the nose -- and the stated purpose of citing a line here is that the next lane can refute it in a minute rather than re-derive it.",
+    "remediation": "Correct draw.c:6751 to :6757 in the three artifacts, and pgraph.c:2386 to :2387 in the two.",
+    "evidence": "grep -n 'pgraph_vk_surface_update(d, true, write_color, write_zeta)' hw/xbox/nv2a/pgraph/vk/draw.c -> 6757; pgraph.c:2386 is 'pg->dma_color = parameter;' and :2387 is 'pg->surface_color.buffer_dirty = true;'."
+  },
+  {
+    "id": "L5",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": 172,
+    "summary": "The branch is uncompiled and the PR body says so, which is the right disclosure. I read for the two failure modes the body names as most likely and found neither. (1) <android/log.h>: vk/surface.c had no __android_log_print before this commit, but renderer.h:41 includes debug.h, which includes <android/log.h> at :26 under #ifdef __ANDROID__, and both edited files include renderer.h. (2) The desktop fprintf fallbacks (surface.c:174-176, draw.c:817-819) use only HWADDR_PRIx, %lu, %d, %s and %02x, all matching their arguments -- vram_addr is hwaddr (renderer.h:290) -- and stdio.h arrives via qemu/osdep.h.",
+    "scenario": "Reading is not a build, and no build has run on this branch in any session. Any compile or link error outside the two classes above is undetected. This is the open item the PR body already identifies as the most important next step, restated here so it is in the audit record rather than only in the body.",
+    "remediation": "Build Android on a host that can, before the fold. No code change is proposed.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/renderer.h:41; hw/xbox/nv2a/pgraph/vk/debug.h:25-26; hw/xbox/nv2a/pgraph/vk/renderer.h:290; hw/xbox/nv2a/pgraph/vk/surface.c:171-177; hw/xbox/nv2a/pgraph/vk/draw.c:814-820."
+  }
+]
