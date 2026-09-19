@@ -385,6 +385,14 @@ FR_LANE_SHA="$(git -C "$FR/repo" rev-parse lane/foldreg)"   # after the setup pu
 git -C "$FR/repo" branch -f lane/foldreg "$FR_LANE_SHA"
 ```
 
+A lane may already be on it: `git worktree list` shows
+`/home/justin/hakux-work/wt/selftest86` on `lane/selftest86`, sitting at
+exactly `732b97e2df` (current master, no commits yet), with no remote branch
+and no PR. That is what a just-dispatched lane looks like, and the name matches
+the fragment. I could not confirm the unit state from inside this worktree, so
+treat it as likely rather than certain — but whoever reads this next should
+check for `lane/selftest86` before starting a second lane on the same file.
+
 **I did not put that on this branch**, and the reason is territory, not
 timidity. `selftest.d/86-fold-regressed.sh` is `lane/foldregress`'s file and is
 not on this PR's `Files:` line; the handback that produced attempt 3 says in
@@ -401,6 +409,17 @@ The handback's last instruction was "once CI is green, rm `needs-rebase`, add
 `fold-ready`". Half of that is discharged and half cannot be: CI on this head
 will stay red for as long as master is red, for a reason that has nothing to do
 with this PR.
+
+`preflight.sh --allow-tracker` on this head fails on exactly one gate, and it
+is not this lane's either: `coverage`, because issue **#164** has neither a
+lane nor a `blocked_on` in `territory.toml`. Every other gate (`psh_differ`
+build and report, `aci_vmstate`, `nv2a index`, `territory`, `board files`) is
+`ok`. Preflight prints where it read the board from — `territory.toml <-
+origin/board` — and that file is one this lane is forbidden to edit and one no
+lane owns; `--allow-tracker` licenses the tracker files, not this. So the
+redness belongs to the board, the same way the ten selftest failures belong to
+master. Two of the three gates this session had to clear were already failing
+before it started, for two unrelated reasons, on two files outside its grant.
 
 `fold-ready` is set regardless, knowingly. `fold.sh` re-gates on `ci_green`
 itself and refuses a head that is not GREEN, so the label cannot cause a bad
