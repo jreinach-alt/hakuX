@@ -140,6 +140,42 @@ mistakes:
 - **an `action=` the cause file invents is refused**, named in the log, and
   the row's own action runs instead.
 
+### The mutants, run
+
+A check that cannot go red tests nothing, so each was run against a build with
+the thing it names removed. Every mutant was applied to the real file, run,
+and reverted with `git checkout --`, with `git status` confirmed clean after
+each (everything was committed first, so the revert is exact and checkable).
+
+| mutant | what was removed | reds |
+|---|---|---|
+| M1 | the "no failing check in the rollup" guard | `a rollup with NO failing check in it is never judged stale` |
+| M3 | newest-failing → first-failing | `a stale failure ALONGSIDE a live one is still a live red` |
+| M7 | the once-per-(PR, trunk head) ledger | 3 reds: the second tick, the new pair, and the second tick at the new pair |
+| M4 | the `action=` override in `handback.sh` | 5 reds across the brief and the PR comment |
+| M5 | the `action=` whitelist | `an action the cause file invents is refused` + the fallback |
+| M6 | `blocked:needs-owner` on the gone-lane path | `its PR is labelled blocked:needs-owner` |
+
+**M5 is why the fixture's invalid action is inert.** The obvious value to
+write there is `rm -rf /`, and under M5 -- which is the mutant this very check
+demands -- that string becomes the command word of a real invocation in
+whoever's checkout runs the self-test. A name that is merely not a function
+proves the same thing and cannot do anything. I wrote the dangerous one first
+and changed it when I worked out what its own mutant would do.
+
+### One bug the checks did not catch, and one the shell hid
+
+`bash -n` caught an unterminated string: inside `"${cause:+... \`$TIP\`'s
+head}"`, the apostrophe opens a single quote that runs to EOF. Bash is happy
+with the same apostrophe in an ordinary double-quoted string; inside a
+`${var:+word}` it is not. Reworded rather than escaped.
+
+And `grep -c` prints `0` **and exits 1** when nothing matches, so
+`grep -c ... || echo 0` appends a second zero and the comparison reads
+`"0\n0"`. The fragment's comment-count helper had it; `85-fold-ci.sh`'s has
+the same shape and gets away with it only because it never compares against
+zero.
+
 ## Territory, stated rather than edited
 
 Both files I changed are held by other rows on `origin/board`, and
@@ -183,3 +219,13 @@ conflict. Mine is additive in both files.
 - `handback.sh` resumes **one lane per tick**, so four stranded PRs take four
   ticks (~2h) to clear. That is by design and is not worth changing; it was
   ~forever before.
+- **Do not read the trunk head from `FETCH_HEAD`.** `$REPO` is the shared
+  checkout and several jobs fetch in it; `FETCH_HEAD` is one file they all
+  overwrite. A gate whose entire job is comparing a timestamp must not read
+  that timestamp from a file another process can replace between the fetch and
+  the read. Explicit refspec, then read the tracking ref by name.
+- The self-test now does a real `git fetch` per `fold.sh` tick that sees a RED
+  head (`85`, `86`, `91` all do), because those fixtures do not set
+  `FOLD_TIP_SHA`/`FOLD_TIP_EPOCH`. That is a few seconds, not a defect, but it
+  is why the run got slower. A fragment that drives a red head and does not
+  want the fetch should set both.

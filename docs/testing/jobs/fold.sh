@@ -457,7 +457,7 @@ stale_handback() {   # <pr> <branch> <head> <run>
         > "$WORK/handback/cause/$pr-$head"
     label_rm "$pr" fold-ready
     label_add "$pr" "$STALE_LABEL" || say "  WARNING: could not label #$pr $STALE_LABEL"
-    comment "$pr" "[job.fold] Not folded, and **the red is not yours**: the only failing check on \`${head:0:10}\` is \`$run\`, which ran **before** \`$TIP\`'s current head \`${TIP_SHA:0:10}\` was committed. That verdict is about a base that has since moved, and GitHub does not re-run a PR's checks when its base moves.
+    comment "$pr" "[job.fold] Not folded, and **the red is not yours**: **every** failing check on \`${head:0:10}\` ran **before** \`$TIP\`'s current head \`${TIP_SHA:0:10}\` was committed -- the most recent of them is \`$run\`. That verdict is about a base that has since moved, and GitHub does not re-run a PR's checks when its base moves.
 
 Do not go looking for a defect of your own here -- re-read the failing run's date above first. Re-running it would not help either: the workflows check out this PR's own head, not \`refs/pull/$pr/merge\`, so the branch's own copy of whatever broke is still the copy that runs.
 

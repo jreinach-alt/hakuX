@@ -128,10 +128,11 @@ resume_stale_ci() {
 ## Handed back $(say_time_s): PR #$1's red is about a base that has moved
 
 The fold job did not fold \`$2\` at \`${3:0:10}\`, and **not because of
-anything you pushed**. Its only failing check${5:+ is \`$5\`, which} ran before
-\`$TIP\`'s current head was committed. GitHub does not re-run a pull request's
-checks when its base branch moves, so that FAILURE is a verdict about a tree
-that no longer exists, and it would have been refused every tick forever.
+anything you pushed**. **Every** failing check on that head ran before
+\`$TIP\`'s current head was committed${5:+; the most recent of them is \`$5\`}.
+GitHub does not re-run a pull request's checks when its base branch moves, so
+that FAILURE is a verdict about a tree that no longer exists, and it would
+have been refused every tick forever.
 
 **Do not open the failing job and start debugging it.** Read its date first.
 Re-running it does not help either: the workflows check out this PR's own
