@@ -38,13 +38,6 @@ files = []
 retired_utc = "2026-09-19T13:20:55Z"
 note = "RETIRED AT WAVE 117 (job.board): the pass-1 audit this row tracked has finished -- PR #143 now carries needs-remediation (audit found HIGH/MEDIUM), not needs-audit-1, and the outlet has already claimed the next unit against it (see [lane.cloud-remediate-143] below). Held files = [] throughout (an audit reads, it does not edit)."
 
-[lane.cloud-remediate-143]
-issues = ["77"]
-files = []
-standing = false
-note = "WRITTEN AT WAVE 117 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect this file has now documented for cloud-audit1-143, cloud-audit1/2-128, cloud-remediate-128, cloud-audit1/2-115 and cloud-remediate-115 before it. This is the audit outlet's own claimed unit (jobs/cloud.sh), remediating PR #143 (branch lane/diagdump77, labels needs-remediation + claimed:cloud) against #77's HIGH/MEDIUM audit findings. Claims files = [] rather than duplicating a claim: the files it edits, hw/xbox/nv2a/pgraph/vk/renderer.c and android/app/src/main/cpp/xemu_android.cpp, are the same two the board's own audit-routing comment named on this PR and are already held by [lane.diagdump77] below (debug.h, vk/renderer.c, xemu_android.cpp, LauncherActivity.kt) pending #143's fold -- this row exists only so check_territory.py can see the running unit itself, per the outlet's own division of labour, not to claim territory a second time under a second name."
-
-
 [lane.clrsurf91]
 issues = ["91", "88"]
 files = ["hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c"]
@@ -488,3 +481,10 @@ files = [
          "hw/xbox/nv2a/pgraph/vk/blit.c",
          "hw/xbox/nv2a/pgraph/surface.h",
          "hw/xbox/nv2a/pgraph/gl/shaders.c"]
+
+
+[lane.cloud-remediate-143]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-143, remediation of PR #143 on branch lane/diagdump77, attempt 2 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 143` removes this row when the unit ends."
