@@ -35,10 +35,12 @@ TIP="${HAKUX_TIP:-master}"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"          # docs/testing
 LANE_SH="${HAKUX_LANE_SH:-$T/lane.sh}"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone
 H="$WORK/handback"
 mkdir -p "$H/done" "$H/cause" "$WORK/logs/handback"
 LOG="$WORK/logs/handback/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
 comment() { printf '%s\n' "$2" > "$H/comment.md"; gh pr comment "$1" --repo "$GH_REPO" --body-file "$H/comment.md" >/dev/null 2>&1; }
 
@@ -63,7 +65,7 @@ resume_rebase() {
 
 ---
 
-## Handed back $(date -u '+%FT%TZ'): PR #$1 no longer merges into \`$TIP\`
+## Handed back $(say_time_s): PR #$1 no longer merges into \`$TIP\`
 
 The fold job could not merge \`$2\` into \`$TIP\` at \`${3:0:10}\`${5:+, conflicting in: $5}.
 It resolves nothing itself, on purpose. Resolving it is now the whole task:

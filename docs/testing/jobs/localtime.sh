@@ -102,6 +102,18 @@ local_hm() {
     echo "${out:-$t}"
 }
 
+# Today's date in the display zone, for something a person dates by their own
+# day -- an audit filename, a nightly's log name. The host runs America/
+# Los_Angeles, so `date -u +%F` past 17:00 local already names TOMORROW; an
+# audit written on Tuesday evening filed under Wednesday is a small lie that
+# costs someone a search. Unlike a clock time this is DST-safe to sort on: the
+# fall-back repeats an hour, never a day, so %F stays monotonic.
+local_day() {
+    if [ "$HAKUX_TZ_OK" = 1 ]; then TZ="$HAKUX_TZ" date '+%F'
+    else                            date -u '+%F'
+    fi
+}
+
 # The zone abbreviation alone ("PDT"), for a table header or a section title
 # that names the zone once instead of on every row.
 tz_abbr() {

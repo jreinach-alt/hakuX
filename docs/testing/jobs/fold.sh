@@ -52,9 +52,11 @@ WT="$WORK/fold-wt"
 F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
 
 find_repo() { for d in "$HOME/$1" /home/justin/"$1" /home/user/"$1"; do [ -d "$d/.git" ] && { echo "$d"; return; }; done; }
@@ -281,6 +283,9 @@ while IFS=$'\t' read -r pr branch head draft title; do
             # it is there. Keyed on the head sha, so a lane that pushes produces a
             # new cause and an unchanged branch does not.
             mkdir -p "$WORK/handback/cause"
+            # at=: UTC. A recorded field in a host state file, like queued_utc
+            # -- handback.sh reads only files= from here and never shows this
+            # line to anyone, so it stays in the zone the records are kept in.
             printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
                 "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
             label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"

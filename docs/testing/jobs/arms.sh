@@ -54,9 +54,11 @@ A="$WORK/arms"
 # beside this file (board.sh re-execs this from a fetched master worktree).
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 mkdir -p "$A"/{expect,pairs,judged,skipped,log} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
 QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait
@@ -65,6 +67,12 @@ QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many reques
 # history, and the first tick queued nothing while PR #102's live arm sat
 # there. The expect_sha check is what stops a re-run; the watermark only
 # keeps the job from walking a week of old registrations.
+# DATA, NOT DISPLAY -- STAYS UTC. $SINCE is compared to registered_utc with
+# `\<` below, a LEXICAL string comparison that is correct only because UTC
+# "%FT%TZ" sorts chronologically. In local time the November fall-back makes
+# 01:00-02:00 happen twice, so two distinct instants compare in the wrong
+# order and the watermark silently re-runs or skips a prediction -- once a
+# year, at night, leaving no trace. Do not "finish the job" here.
 [ -f "$A/since" ] || date -u -d '2 days ago' '+%FT%TZ' > "$A/since"
 SINCE=$(cat "$A/since")
 history=0
@@ -303,6 +311,10 @@ tell_skip() {   # <sha> <expect-path> <source>
         echo; echo "If the skip is wrong, say so here."
     } > "$body"
     if post "$pr" "$issue" "$body"; then
+        # UTC: a stamp in a host state file, alongside queued_utc, not a line
+        # a reader is shown. tell_skip probes it with `grep -q '^told='` and
+        # never compares the value, so this is provenance -- keep it in the
+        # same zone as every other recorded field.
         echo "told=$(date -u '+%FT%TZ')" >> "$m"
     else
         say "  could not post the skip for $sha anywhere; will try again next tick"
@@ -528,6 +540,10 @@ import json, sys, datetime
 p, sha, ida, idb, path, src, who, issue, a, b, suites = sys.argv[1:]
 json.dump({"sha": sha, "id_a": ida, "id_b": idb, "expect": path, "source": src, "who": who, "issue": issue,
            "a_ref": a, "b_ref": b, "suites": suites,
+           # queued_utc: DATA, stays UTC. It breaks the tie when two
+           # registrations carry the same timestamp (see "Newest registration
+           # wins" above) -- another lexical comparison that needs a zone
+           # whose strings sort chronologically.
            "queued_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
 PY
@@ -578,7 +594,7 @@ for pair in "$A"/pairs/*.json; do
         echo "| a_ref (base) | \`$(field "$pair" a_ref)\` result \`$ida\` |"
         echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
         echo "| suites | $(field "$pair" suites) |"
-        echo "| judged | $(date -u '+%FT%TZ') by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+        echo "| judged | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
         if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed 1d "$dec"; fi
         echo
         echo "<details><summary>ab_compare output (first 80 lines)</summary>"

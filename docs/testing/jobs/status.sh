@@ -25,9 +25,31 @@ J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 S="$WORK/status"; mkdir -p "$S"
 OUT="$S/STATUS.md"
 . "$J/models.env" 2>/dev/null; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
-now=$(date +%s)
+. "$J/localtime.sh"   # say_time/local_ts/tz_abbr: this page is read by a person, so it is shown in the display zone
+now=$(date +%s)       # epoch: zone-free by construction, only ever subtracted (see ago())
 ago() { local t=${1:-}; [ -n "$t" ] || { echo "never"; return; }; local s=$(( now - t )); if [ $s -lt 120 ]; then echo "${s}s ago"; elif [ $s -lt 7200 ]; then echo "$(( s / 60 ))m ago"; else echo "$(( s / 3600 ))h $(( (s % 3600) / 60 ))m ago"; fi; }
+# DATA, NOT DISPLAY -- STAYS UTC, for two independent reasons. It is handed
+# to the GitHub API as `since=`, which is specified in UTC; and it is the
+# right-hand side of the lexical `$1 >= c` awk comparison below against
+# logs/*/index.tsv column 1, which summarise_run.py writes in UTC for exactly
+# this reason. Making either side local silently drops or duplicates rows,
+# and across the November fall-back it does so in the wrong order.
 since_iso() { date -u -d "${1:-24 hours ago}" +%FT%TZ 2>/dev/null; }
+# The tail of a logs/*/index.tsv, for a fenced block. Column 1 is written in
+# UTC by summarise_run.py (it is what since_iso() filters on) and converted
+# here, at the point of printing -- a fenced block on this page is still
+# something a person reads, and a UTC line inside a page whose header says
+# "every time here is PDT" is the two-zones-in-one-view the conversion exists
+# to remove.
+tsv_tail() {
+    local f=$1 n=$2 ts rest
+    tail -n "$n" "$f" | while IFS= read -r line; do
+        ts=${line%%$'\t'*}; rest=${line#*$'\t'}
+        printf '%s %s\n' "$(local_hm "$ts")" \
+            "$(printf '%s' "$rest" | awk -F'\t' '{printf "%s %s turns=%s %ss %s %s",$1,$2,$3,$4,$6,substr($8,1,80)}')"
+    done
+}
+
 have_gh=0; command -v gh >/dev/null 2>&1 && gh auth status >/dev/null 2>&1 && have_gh=1
 have_sd=0; systemctl --user list-units >/dev/null 2>&1 && have_sd=1
 
@@ -37,7 +59,7 @@ issue_of_brief() { grep -o -m1 '#[0-9]\+' "$WORK/briefs/$1.md" 2>/dev/null | hea
 {
 echo "## hakuX harness -- live status"
 echo
-echo "_Rewritten $(date -u '+%F %H:%M UTC') by \`status.sh\` on the host. Sections that could not be computed say so._"
+echo "_Rewritten $(say_time) by \`status.sh\` on the host. Every time on this page is $(tz_abbr). Sections that could not be computed say so._"
 echo
 
 # ---------------------------------------------------------------- lanes
@@ -68,12 +90,15 @@ if [ -f "$WORK/logs/lane/index.tsv" ]; then
     cut=$(since_iso)
     rows=$(awk -F'\t' -v c="$cut" '$1 >= c' "$WORK/logs/lane/index.tsv" | tail -12)
     if [ -n "$rows" ]; then
-        echo "| when (UTC) | lane | model | turns | min | result | PR | said |"; echo "|---|---|---|---|---|---|---|---|"
+        echo "| when ($(tz_abbr)) | lane | model | turns | min | result | PR | said |"; echo "|---|---|---|---|---|---|---|---|"
         while IFS=$'\t' read -r ts job model turns secs cost ok log head; do
             # Rows written before the model column existed have eight fields; shift them.
             if [[ "$model" =~ ^[0-9?]+$ ]]; then head="$log"; log="$ok"; ok="$cost"; cost="$secs"; secs="$turns"; turns="$model"; model="-"; fi
             n=${job#lane-}; if [[ "${secs:-}" =~ ^[0-9]+$ ]]; then mins=$(( secs / 60 )); else mins="?"; fi   # a "?" from an unparsed log is not a number, and an arithmetic error here aborted the whole page
-            echo "| ${ts:5:11} | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(echo "$head" | cut -c1-90 | sed 's/|/\\|/g') |"
+            # $ts is UTC on disk and converted HERE, at the point of printing.
+            # The column it comes from is what since_iso() filters on above,
+            # so the stored field must stay UTC; only the reader sees local.
+            echo "| $(local_hm "$ts") | $n | ${model#claude-} | $turns | $mins | $ok | $(pr_for_branch "lane/$n") | $(echo "$head" | cut -c1-90 | sed 's/|/\\|/g') |"
         done <<< "$rows"
     else
         echo "none in the window."
@@ -89,11 +114,22 @@ echo
 echo "### Cloud-class sessions (hourly, on the host; last 24h from their \`[job.cloud]\` comments)"
 echo
 if [ $have_gh = 1 ]; then
+    # created_at comes back in UTC (the API's own zone, which is also why
+    # since= above must stay UTC). It is emitted whole and converted below
+    # rather than sliced in jq, so the reader gets the same zone as the rest
+    # of the page.
     c=$(gh api "repos/$GH_REPO/issues/comments?since=$(since_iso)&per_page=100" \
-          --jq '.[] | select(.body | startswith("[job.cloud]")) | "- \(.created_at | .[5:16]) \(.html_url | sub(".*/(issues|pull)/"; "#") | sub("#issuecomment.*"; "")) \(.body | split("\n")[0] | .[11:120])"' 2>/dev/null | tail -10)
-    [ -n "$c" ] && echo "$c" || echo "none. cloud.sh runs hourly and claims one \`needs-audit-*\` PR or one \`cloud\` issue per tick; a tick with nothing to claim leaves no comment."
+          --jq '.[] | select(.body | startswith("[job.cloud]")) | "\(.created_at)\t\(.html_url | sub(".*/(issues|pull)/"; "#") | sub("#issuecomment.*"; "")) \(.body | split("\n")[0] | .[11:120])"' 2>/dev/null | tail -10)
+    if [ -n "$c" ]; then
+        while IFS=$'\t' read -r cts crest; do
+            [ -n "$cts" ] || continue
+            echo "- $(local_hm "$cts") $crest"
+        done <<< "$c"
+    else
+        echo "none. cloud.sh runs hourly and claims one \`needs-audit-*\` PR or one \`cloud\` issue per tick; a tick with nothing to claim leaves no comment."
+    fi
     [ $have_sd = 1 ] && echo "- running now: $(systemctl --user list-units 'hakux-cloud-*' --state=active,activating --no-legend --plain 2>/dev/null | awk '{printf "%s ", $1}' | sed 's/hakux-//g; s/.service//g')"
-    [ -f "$WORK/logs/cloud/index.tsv" ] && { echo; echo '```'; tail -4 "$WORK/logs/cloud/index.tsv" | awk -F'\t' '{printf "%s %s %s turns=%s %ss %s %s\n",$1,$2,$3,$4,$5,$7,substr($9,1,80)}'; echo '```'; }
+    [ -f "$WORK/logs/cloud/index.tsv" ] && { echo; echo '```'; tsv_tail "$WORK/logs/cloud/index.tsv" 4; echo '```'; }
 else
     echo "(gh not available here)"
 fi
@@ -104,7 +140,7 @@ echo "### Board job (every 20 min)"
 echo
 if [ -f "$WORK/logs/board/tick.log" ]; then
     echo '```'; tail -6 "$WORK/logs/board/tick.log" | cut -c1-160; echo '```'
-    [ -f "$WORK/logs/board/index.tsv" ] && { echo; echo "last model ticks:"; echo '```'; tail -3 "$WORK/logs/board/index.tsv" | awk -F'\t' '{printf "%s %s %s turns=%s %ss %s %s\n",$1,$2,$3,$4,$5,$7,substr($9,1,80)}'; echo '```'; }
+    [ -f "$WORK/logs/board/index.tsv" ] && { echo; echo "last model ticks:"; echo '```'; tsv_tail "$WORK/logs/board/index.tsv" 3; echo '```'; }
     echo; echo "board branch: $(git -C "$REPO" log -1 --format='%h %cr -- %s' origin/board 2>/dev/null | cut -c1-120)"
 else
     echo "no tick log."
@@ -157,7 +193,7 @@ fi
 A="$WORK/arms"
 if [ -d "$A" ]; then
     pend=0; for p in "$A"/pairs/*.json; do [ -f "$p" ] || continue; sha=$(basename "$p" .json); [ -f "$A/judged/$sha" ] || pend=$((pend+1)); done
-    echo "- arms job: $pend pair(s) queued or running and not yet judged; $(ls "$A"/judged 2>/dev/null | wc -l) judged; $(ls "$A"/skipped 2>/dev/null | wc -l) skipped (see \`arms.sh list\`); watermark $(cat "$A/since" 2>/dev/null)"
+    echo "- arms job: $pend pair(s) queued or running and not yet judged; $(ls "$A"/judged 2>/dev/null | wc -l) judged; $(ls "$A"/skipped 2>/dev/null | wc -l) skipped (see \`arms.sh list\`); watermark \`$(cat "$A/since" 2>/dev/null)\` (UTC -- arms.sh compares it to registered_utc as a string, so it is not shown in local time)"
     v=$(ls -t "$A"/judged/* 2>/dev/null | head -5)
     if [ -n "$v" ]; then
         echo; echo "last verdicts:"; echo

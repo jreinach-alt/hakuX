@@ -17,10 +17,19 @@ OUT="${NIGHTLY_OUT:-/home/justin/hakux-work/nightly}"
 export JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}"
 export PATH="/home/justin/Android/Sdk/cmake/3.30.3/bin:$PATH"
 
+# The display zone, and the reason this file needs it at all: DAY and say()
+# were ALREADY local -- bare `date`, following the host, which is
+# America/Los_Angeles -- they just never said which zone that was, so a
+# reader who knew the rest of the harness printed UTC would read "00:31:12"
+# as UTC and be seven hours out. hakux-nightly.timer's OnCalendar=00:30:00
+# carries no Timezone= and so follows the host too; that is the same 00:30
+# this file's header names, and it stays that way.
+. "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/jobs/localtime.sh"
+
 mkdir -p "$OUT"
-DAY=$(date +%Y-%m-%d)
+DAY=$(local_day)
 LOG="$OUT/$DAY.log"
-say() { echo "$(date '+%H:%M:%S') $*" | tee -a "$LOG"; }
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 
 cd "$TREE" || { echo "no tree at $TREE"; exit 1; }
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
@@ -42,6 +51,12 @@ DIRTY=$(git status --porcelain | grep -v '^??' | wc -l)
 [ "$DIRTY" -gt 0 ] && say "WARNING: $DIRTY tracked file(s) modified; build is not the commit"
 
 # The day's work, for the notes. Subjects only -- bodies are long here.
+# Deliberately bare `date`, i.e. host-local: this window has to line up with
+# the timer that started the run, and OnCalendar=00:30:00 with no Timezone=
+# means the timer fires at 00:30 LOCAL. Making this UTC would shift the
+# window seven hours off the boundary it is meant to name. -Iseconds carries
+# the offset ("2026-09-18T00:30:00-07:00"), so the line say() prints below is
+# unambiguous without going through the display helper.
 SINCE=$(date -d 'yesterday 00:30' -Iseconds 2>/dev/null || date -v-1d -Iseconds)
 TOTAL=$(git log --since="$SINCE" --oneline | wc -l)
 mapfile -t SUBJECTS < <(git log --since="$SINCE" --format='- %s' | head -40)
