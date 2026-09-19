@@ -246,7 +246,7 @@ at `apk_sha b0cba34acef7`, all at `scorer_rev 027fa3d552`, `only_tests`
 empty. With the three pre-existing runs that is **13 full-disc runs on one
 binary: 6 nova, 7 thor.**
 
-`blend_race_perrun_50.py` is the new file; `docs/lanes/blendrace50/perrun-13runs.txt` is its output.
+`blend_race_perrun_50.py` is the new file; `docs/lanes/blendrace50/perrun-13runs.md` is its output.
 
 ### Finding 10: there is no DEVICE-only capture. All 22 movers are races
 
@@ -310,7 +310,7 @@ Read it as:
   22 draws from 1,673, so "no repeats" is unsurprising and is NOT evidence
   that particular captures are singled out.
 
-Every capture's value on every run is in `docs/lanes/blendrace50/perrun-13runs.txt` under "PER CAPTURE".
+Every capture's value on every run is in `docs/lanes/blendrace50/perrun-13runs.md` under "PER CAPTURE".
 No mean is computed anywhere in the file, deliberately.
 
 ### Finding 12: two claims from the 5-event pass do not survive 22
@@ -378,7 +378,7 @@ On the odd run that rises -- to 19-54% on 11 of 18 applicable events -- but
 block copy is refuted. The partial elevation is not fully explained by "the
 same grey landed in both columns" either (`1-cA_SADD_1-srcA` has every row
 corrupted and still only reaches 54.2%), and it is the cleanest open lead
-this pass produces. It is one number per event in `docs/lanes/blendrace50/perrun-13runs.txt`; the next
+this pass produces. It is one number per event in `docs/lanes/blendrace50/perrun-13runs.md`; the next
 lane should start there rather than repeating the whole-image search.
 
 ### The composition axis, unchanged
