@@ -307,8 +307,11 @@ printf '%s\n' "$DEADPID" > "$AD/lanes/thor"
 printf '%s\n' "2026-09-14" > "$AD/lanes/remote.lastbrief"   # check_coverage.py's stamp
 check "serving lists the lane whose pid is alive and not the one whose pid is dead" \
     [ "$(python3 "$AFF" "$AD" --serving 2>/dev/null)" = "nova" ]
+# Counted, not grepped for absence: "no lastbrief in the output" is also true
+# of no output at all, and a check that a missing feature satisfies has
+# measured nothing. Three files in lanes/, exactly one device.
 check "a <lane>.lastbrief stamp sharing the directory is not mistaken for a device" \
-    bash -c '! python3 "$AFF" "$AD" --serving 2>/dev/null | grep -q lastbrief'
+    [ "$(python3 "$AFF" "$AD" --serving 2>/dev/null | wc -w)" = 1 ]
 
 # --- the two behaviours the brief says must stay true. CONTROLS: these pass
 # against the old file too, and are here to show the fix did not buy its
@@ -340,14 +343,16 @@ check "CONTROL: a request pinned normally leaves no blind note" \
 
 # --- the lane file itself. It was written once per process; that permanence,
 # not the removal, is what cost five hours.
+# Chained with && throughout, never `;`. Sequenced with `;` these all pass
+# against a file that has no lane_claim in it at all -- the missing function
+# fails, nothing is ever created, and "the file is absent" comes out true.
 check "lane_claim restores a registration removed from outside, so a removal costs a tick not a restart" \
-    disp 'lane_claim; rm -f "$D/lanes/nova"; lane_claim; [ "$(cat "$D/lanes/nova")" = "$$" ]'
+    disp 'lane_claim && rm -f "$D/lanes/nova" && lane_claim && [ "$(cat "$D/lanes/nova")" = "$$" ]'
 check "lane_release drops my own registration" \
-    disp 'lane_claim; lane_release; [ ! -e "$D/lanes/nova" ]'
+    disp 'lane_claim && [ -e "$D/lanes/nova" ] && lane_release && [ ! -e "$D/lanes/nova" ]'
 printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"
-disp 'lane_release' >/dev/null 2>&1
-check "lane_release leaves a registration that holds ANOTHER pid (a dead predecessor cannot evict its successor)" \
-    [ -e "$AD/lanes/nova" ]
+check "lane_release SUCCEEDS and leaves a registration holding ANOTHER pid (a dead predecessor cannot evict its live successor)" \
+    disp 'lane_release && [ "$(cat "$D/lanes/nova")" = "'"$LIVEPID"'" ]'
 check "no lane file is removed by name anywhere; every removal goes through lane_release" \
     bash -c '! grep -q "rm -f \"\$D/lanes/" "$TESTING/dispatcher.sh"'
 check "the registration is re-asserted after the hold check, not only at worker startup" \
@@ -363,10 +368,13 @@ check "claiming with no lane registered logs AFFINITY BLIND" \
 check "it is logged once per outage, not once per claim (the sweep queues one request per suite)" \
     [ "$(grep -c 'AFFINITY BLIND' "$AD/logs/dispatcher.log")" = 1 ]
 : > "$AD/logs/dispatcher.log"
+check "the outage has an END as well as a start: coming back is logged too" \
+    disp 'lane_blind_check one && printf "%s\n" "'"$LIVEPID"'" > "$D/lanes/nova" && lane_blind_check two &&
+          grep -q "AFFINITY BLIND" "$D/logs/dispatcher.log" && grep -q "lanes registered again" "$D/logs/dispatcher.log"'
+: > "$AD/logs/dispatcher.log"
 printf '%s\n' "$LIVEPID" > "$AD/lanes/nova"
-disp 'lane_blind_check one; lane_blind_check two' >/dev/null 2>&1
-check "CONTROL: a claim made with a lane registered logs nothing" \
-    bash -c '! grep -q AFFINITY "$AD/logs/dispatcher.log"'
+check "a claim made with a lane registered logs nothing at all" \
+    disp 'lane_blind_check one && lane_blind_check two && [ ! -s "$D/logs/dispatcher.log" ]'
 
 # --- $D/splits/ gets a reader. The note was always written correctly; it was
 # discoverable only by someone who already suspected it and knew the path.
