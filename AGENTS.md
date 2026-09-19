@@ -28,7 +28,11 @@ public repository, so `[skip ci]` is no longer required. Where a rule below
 names the campaign branch, read `master`. Where it says "ask the
 orchestrator", write a board request and carry on. The measurement
 discipline below -- predictions registered before the run, per-capture
-verdicts, two audit passes -- is unchanged.
+verdicts, two audit passes -- is unchanged. Two things are new since the
+jobs landed: **committing a registered prediction and pushing your branch
+queues its arms** (the arms job on the host runs every prediction whose refs
+are live and posts the verdict on your PR), and the live state of the whole
+harness is one comment on the issue labelled `harness-status`.
 
 ## Start here
 

@@ -162,9 +162,10 @@ killed at any moment and the next tick picks up where the board says it is.
 | **board job** | local, timer every 20 min | one run, `--max-turns` bounded | dispatch, grants, labels, the derived TOML views, `fleet` state files, queueing ready arms | author code; edit `hw/`; hold a device |
 | **lane** | local worktree or cloud session, one per issue | until its PR is `ready` or it reports `blocked` | its branch, its files (declared in the PR body), its predictions, its device requests | edit the board; push to any branch but its own; run git in the shared tree |
 | **auditor (pass 1 / pass 2)** | cloud, one fresh session per PR, claimed by label | one run | `docs/audits/<pr>-pass{1,2}.{md,json}` posted as a PR review | fix what it finds; claim files |
-| **fold job** | local, triggered by label `fold-ready` | one run | merging a lane PR into `master` with `--no-ff`, regenerating the index, running preflight, pushing, re-pointing that PR's predictions at the merge sha | resolve a code conflict (returns it to the lane); edit the board |
+| **fold job** | local, timer every 30 min, a script; acts on label `fold-ready` | one run | merging a lane PR into `master` with `--no-ff`, regenerating the index, running preflight, pushing, re-pointing that PR's predictions at the merge sha | resolve a code conflict (returns it to the lane); edit the board |
 | **dispatcher** | local daemon, one worker per device | forever, self-supervising (exists today) | the device queue, builds in private worktrees, results | read `/home/justin/hakuX` |
-| **arms job** | local, timer every 30 min | one run | queueing A/B arms for merged candidates; judging results; posting verdicts to the PR/issue | change a prediction |
+| **arms job** | local, timer every 30 min, a script | one run | queueing both arms of every registered prediction whose refs are live (on master, on any lane branch, or host-registered); judging finished pairs with `ab_compare`; posting `[job.arms]` verdicts on the PR/issue; `verified`/`regressed` labels | change a prediction; start a model session |
+| **status roll-up** | local, after every job tick and every 30 min | one run | rewriting one comment on the `harness-status` issue: lanes running/finished, cloud firings, board ticks, queue and devices, verdicts, folds, open PRs | decide anything |
 | **triage job** | cloud Routine hourly, fresh session | one run | reading new issue/PR comments since its watermark; turning them into labels, board requests or `decision-needed` issues | close issues; edit the tracker |
 | **nightly job** | local timer 00:30 | one run | prerelease build from `master` tip (exists today) | run tests; touch a device |
 | **release-check job** | local timer, after the nightly | one run | evaluating the release criteria (§11) and opening the release-candidate PR when met | publish a release itself |
@@ -727,10 +728,15 @@ gated by device time, which no orchestration design manufactures.
    `release-published.yml`. (§8.2)
 8. Write `oracle.lock` and install the backup timer. (§14, Q6 and Q11)
 
-**Phase 1, next week:** fold job, arms job, triage Routine, the cloud
-lane/auditor Routine, the lane Stop hook, `SessionStart` context injection,
-`run-claude-job.sh` with window-aware back-off (§9.1), the device-health
-timer, the bot account and comment-tag convention (§14, Q8).
+**Phase 1 (built 2026-09-19, the same evening, because Phase 0 alone left
+the devices and the cloud idle):** the arms job (`jobs/arms.sh`, prediction-
+driven, no labels needed), the fold job (`jobs/fold.sh`), the status roll-up
+(`jobs/status.sh` and the `harness-status` issue), the cloud Routine and its
+role (`jobs/roles/cloud.md`: audits pass 1 and 2, `cloud`-labelled lanes,
+its own remediation), the lane role file (`jobs/roles/lane.md`: PR template
+and the definition of done), `run-trunk.sh` so every unit runs the fetched
+trunk, and `ensure-labels.sh`. Still Phase 1: the triage Routine, the lane
+Stop hook, the device-health timer, the bot account (§14, Q8).
 
 **Phase 2:** release-check job and criteria, the status page and SLO report
 (§14, Q9), the title frame-digest oracle (§14, Q7), the upstream ledger
