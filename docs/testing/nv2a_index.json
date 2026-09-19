@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "23445c158d5bafcf38c084b972e3f13585371289",
+  "emulator_commit": "bf0e9b55bac85b8a84edf900578fc2be1ae4d75a",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2839,
@@ -18784,7 +18784,7 @@
     "text": "uint32_t tex_addr = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2057",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2090",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXADDRESS0 + i * 4),"
    },
@@ -18999,7 +18999,7 @@
     "text": "uint32_t ctl_0 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2058",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2091",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4),"
    },
@@ -19119,7 +19119,7 @@
     "text": "uint32_t ctl_1 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL1_0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2059",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2092",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXCTL1_0 + i * 4),"
    },
@@ -19219,7 +19219,7 @@
     "text": "* NV_PGRAPH_TEXFILTER0) has to be applied *before* filtering: the hardware"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2060",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2093",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFILTER0 + i * 4),"
    },
@@ -19651,7 +19651,7 @@
     "text": "uint32_t tex_fmt = pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2055",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2088",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4),"
    },
@@ -19965,7 +19965,7 @@
     "text": "hwaddr offset = pgraph_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i*4);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2056",
+    "loc": "hw/xbox/nv2a/pgraph/vk/renderer.c:2089",
     "role": "REF",
     "text": "pgraph_vk_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4),"
    },
