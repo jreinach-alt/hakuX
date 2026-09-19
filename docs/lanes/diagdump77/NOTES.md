@@ -45,8 +45,12 @@ finish, and takes one run with it. It does **not** diagnose the stipple.
   counts), plus each stage's bound `VkImage` handle, which is what a stale
   binding would show up in.
 - **Per frame:** the display surface, read out of guest VRAM at flip_stall
-  *after* the flip's own `pgraph_vk_finish` has already run, so it adds no
-  synchronisation. One PPM per frame, named next to the records.
+  after the flip's own `pgraph_vk_finish` **and after the download that finish
+  only pre-recorded has been completed into VRAM** -- one fence wait per
+  frame, and only when images are on. The first version skipped that
+  completion and so wrote a picture one completed download old; see
+  "Attempt 3" below. One PPM per frame, named next to the records, with the
+  fence slot it waited on in the frame record as `img_sync`.
 - **Output:** `framedump_<id>.jsonl` + `framedump_<id>_fNNN.ppm` in the files
   dir, so `--pull 'framedump_*'` collects the lot.
 
@@ -85,10 +89,12 @@ instrument, not a pass.
   merged draws. What it *does* show with them off is deferred submission and
   command-buffer batching, which are on by default -- and those are enough to
   break the "one submit per draw" schedule the old capture imposes.
-- **Its own timing cost.** One buffered `fprintf` per draw and one ~900 KB
-  PPM write per frame, on the pgraph thread, to FUSE-backed storage. That is
-  far cheaper than a fence wait per draw but it is not free; a frame-time
-  measurement taken during a dump describes the dump.
+- **Its own timing cost.** One buffered `fprintf` per draw and, with images
+  on, one fence wait plus one ~900 KB PPM write per frame, on the pgraph
+  thread, to FUSE-backed storage. That is far cheaper than a fence wait per
+  *draw* and it does not move `cb_draws` or `submits` (a fence wait is not a
+  submission), but it is not free; a frame-time measurement taken during a
+  dump describes the dump. `noimages` removes both the wait and the write.
 
 ## The gap that is left, and who can close it
 
@@ -242,3 +248,137 @@ tag would have been added there instead.
 check your tag against the run's own `result.json` `logcat.spec`. A spec
 ending `*:S` is an allowlist, and silence from an unlisted tag is
 indistinguishable from silence from a broken instrument.
+
+## Attempt 3: remediating the pass-1 audit
+
+`docs/audits/2026-09-19-diagdump77-pass1.md` read the diff and found 1 HIGH,
+3 MEDIUM, 5 LOW. Its clean results are worth as much as its findings and are
+not repeated here; what follows is what changed and why, in the audit's own
+numbering. Every fix is to the *second* half of the instrument -- the image,
+the directory, the control arm and the checker. The headline claim and the
+falsifier columns are untouched by all of it, deliberately: nothing added
+here submits, so `cb_draws` and `submits` mean exactly what they meant in the
+live arm above.
+
+### H1 -- the per-frame image was one completed download old
+
+The per-frame PPM was read from `d->vram_ptr + surface->vram_addr` at
+flip_stall, on the belief that the flip's `pgraph_vk_finish` had already put
+the frame there. It had not. `FLIP_STALL` is in the deferred set, so off the
+render thread the caller spin-waits for *vkQueueSubmit* and not for the
+fence; the copy `pgraph_vk_prerecord_display_download()` recorded is still in
+the staging buffer, and `pgraph_vk_complete_staged_downloads()` -- the only
+writer of staging into VRAM -- is skipped on every branch that path takes.
+So each image held the most recently *completed* display download: the
+previous frame in the steady state, older when the display thread had not
+presented, filed under this frame's draw records with nothing saying so.
+
+This never reached a published number -- the live arm's 3,847 draws and 30
+distinct `nv2a_frame` values are read from the records, and nothing in the PR
+rests on a PPM -- which is exactly why it was worth fixing before #77 uses
+the images: the method the instrument was built for is "decide from the PPMs
+which frames show the artifact, then read those frames' draws", and a
+display-thread-dependent lag assigns the artifact's state to its neighbour
+without ever looking wrong.
+
+Fix: the audit's option (a). `fdump_end_frame()` calls
+`pgraph_vk_download_surface_complete_deferred(d)` before reading VRAM, inside
+`if (fdump.images)`. That waits `frame_fences[display_predownload_frame_index]`
+-- the fence for the submission the spin-wait above already guaranteed had
+happened -- and then memcpys. One fence wait per frame, at the flip, where a
+stall already lives; nothing at all under `noimages`; **no** per-draw finish
+and no new submission, so the falsifier columns cannot have moved. Options
+(b) and (c) were rejected: (b) leaves the pairing in the reader's head as
+well as in the filename, and (c) gives up the only thing that makes the dump
+usable for an artifact hunt.
+
+The mechanism is now checkable from the artifact rather than from a comment.
+Frame records carry `img_sync`, the fence slot that was waited on (`-1` =
+nothing was outstanding, VRAM already held the frame), the schema is bumped
+to 2, and `framedump_check.py` refuses to pair a schema-1 dump's images with
+its records and flags a schema-2 record that names an image without naming a
+fence.
+
+**Still unmeasured, and it should be the next arm.** No device ran this. The
+cheap settling run is the one the audit named: a title with a moving camera,
+images on, and a check that `framedump_<id>_fNNN.ppm` matches the scene at
+that frame's `nv2a_frame` rather than the one before it. The same run should
+re-read `cb_draws`/`submits` rather than assume they held: the claim that a
+per-frame fence wait cannot move a per-draw column is an argument from the
+code, and this lane's own history says a plausible argument is what the
+columns are there to check.
+
+### M1 -- the Android fallback armed into a directory nobody can read
+
+`fdump_base_dir()` ended in `xemu_settings_get_base_path()`, which on Android
+is `SDL_GetPrefPath` -- internal storage, the exact thing the entry point's
+comment refuses ("a dump written there is a dump nobody can pull"). The
+marker branch was inert there anyway, but an env-armed soak would have opened
+the file, logged `armed ... -> <path>` at WARN, written 30 frames and ~27 MB
+of PPMs, and come back with no dump and a log saying one was written.
+
+Fix: under `__ANDROID__` the fallback is gone -- `fdump_base_dir()` returns
+NULL, `fdump_poll_marker()` says so once per run on the tag a dispatched run
+keeps and stays unarmed, and `fdump_begin()` refuses. Desktop keeps the
+settings-base-path fallback, where it is the right answer. The entry point's
+two failure branches (no write state, and an external path that is NULL or
+empty) are now one `else` with one WARN, which is L2.
+
+### M2 -- the checker gave a confident verdict on a sample that cannot carry one
+
+`max_cb <= 1` was the whole `SERIALISED` test, with no minimum sample. The
+live arm's own measurement says `cb_draws == 1` at the first draw of every
+frame, so any dump whose frames drew once satisfies the serialised test
+exactly -- and `submits_in_frame / draws` degrades on the same frames, so the
+two "independent readings" fail together precisely where a verdict is least
+warranted. A dump armed by `afterNN` onto a loading screen, a pause menu or a
+video cut would have reported the falsification of this PR's whole thesis and
+then called the instrument self-contradictory, from an instrument that
+behaved correctly.
+
+Fix: refuse rather than invert. The submits median is taken over the frames
+that carry at least `MIN_FRAME_DRAWS` (4) draws and says so in the line; if
+no frame does, or the dump holds fewer than `MIN_TOTAL_DRAWS` (30) draws
+total, the checker prints `INSUFFICIENT SAMPLE`, suppresses both verdicts and
+the disagreement check, and exits **3** -- a status of its own, not 0 and not
+1. Two selftest cases cover the two legs (30 frames of one draw; 3 frames of
+five), one asserts the refusal carries no verdict text, and one asserts the
+serialising mutant is *not* swallowed by the threshold.
+
+### M3 -- the control arm outlived the dump it is the control for
+
+`diag` passed the dump's frame count straight to
+`nv2a_dbg_trigger_diag_frames()`, and the two count different things: this
+dump's number is flip_stall invocations, the diag session's is guest frames.
+The control-arm table above is the measurement of that gap -- 30 frame
+records, one distinct guest frame -- so `30,diag` closed the dump after about
+a second and left the serialising capture running until the title advanced 29
+more guest frames, on the order of 900 flip_stalls, under which every other
+measurement that soak was queued for was taken. `DIAG_MAX_FRAMES` bounds the
+session's arrays, not its duration.
+
+Fix: `fdump_close()` tears down the capture it armed, through
+`fdump_end_armed_diag()`, which mirrors flip_stall's existing abort path and
+writes partial data rather than discarding it. It cancels only its own arm
+(`qatomic_cmpxchg` against the value it set, clamped the way the trigger
+clamps), so a Debug Capture armed from the UI in the meantime is left alone.
+The number in the spec is now an upper bound and the spec comment says so.
+
+### The LOWs
+
+L1: `dump_surface_ppm()` returns whether it wrote. The frame record names the
+image and charges `w*h*3` to the byte cap only on true, so a failed write no
+longer shortens the dump for bytes that do not exist or names a file that is
+not there, and the failure is reported on `FDUMP_LOG`'s tag. L2: above.
+L3: `max()` over an empty generator is gone; a dump with no `cb_draws` column
+is reported as unreadable, with its schema. L4: `fdump_clear_previous()` runs
+*after* the output has been opened, so an arm that cannot open its file no
+longer deletes the previous run's dump first -- it takes the new file's name
+to skip, since that file now exists when the clear runs. L5: the `noimages`
+comment said "~1 MB instead of ~1 MB per frame"; it now says what it meant.
+
+### What the fold should know
+
+`docs/testing/nv2a_index.json` conflicted with master and is resolved by
+regenerating it after this merge, never by merging it -- `fold.sh:42` says
+the same thing.

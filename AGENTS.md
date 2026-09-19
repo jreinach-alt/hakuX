@@ -788,7 +788,11 @@ to press it anyway. #77 was blocked on precisely that.
 
 The live frame dump is the same per-draw records with neither problem. It is
 armed by a marker file, the way `apu.c` arms the PCM capture, and adds no
-Vulkan work at all -- no finish, no command buffer, no fence wait:
+Vulkan work **per draw** -- no finish, no command buffer, no fence wait, which
+is the whole claim. With images on it costs one fence wait per *frame*, at the
+flip: the flip only pre-records the display download, so without completing it
+the PPM holds the previous completed download and not the frame whose draw
+records it is filed under. `noimages` removes that too:
 
 ```bash
 # 30 frames, one display PPM each, dropped once the title is in the scene
@@ -797,12 +801,21 @@ adb -s <serial> shell \
 ```
 
 The marker's first line is a spec: a frame count, plus any of `noimages`
-(records only), `capNN` (byte cap in MB, default 96), `afterNN` (start NN
-seconds after the arm is seen), and `diag` (**also** run the old serialising
-capture, as the control arm). The marker is unlinked the
-moment it is read and the previous dump's files are deleted when a new one is
-armed -- a stale marker armed eight unrelated soaks on the audio side, and a
-stale capture was once pulled and measured as a later run's data.
+(records only, and no per-frame fence wait), `capNN` (byte cap in MB, default
+96), `afterNN` (start NN seconds after the arm is seen), and `diag` (**also**
+run the old serialising capture, as the control arm -- the frame count is an
+upper bound on it, not its duration, since that capture counts guest frames
+while the dump counts flip_stalls; it is torn down when the dump closes). The
+marker is unlinked the moment it is read and the previous dump's files are
+deleted when a new one is armed -- a stale marker armed eight unrelated soaks
+on the audio side, and a stale capture was once pulled and measured as a later
+run's data.
+
+On Android there is **no fallback directory**. If the app has no writable
+external storage path the dump is unarmed for the whole run and says so once
+on tag `hakuX` at WARN: internal storage is unreadable to `adb` on a
+production build, so arming into it would write 30 frames somewhere
+`--pull 'framedump_*'` cannot reach while logging that a dump was written.
 
 `XEMU_FRAME_DUMP=<same spec>` arms it at startup instead, which is what a
 queued soak can set today (`request.sh --env`) -- nothing in the dispatch path
@@ -820,6 +833,14 @@ and `submits` is flat between flips. `docs/lanes/diagdump77/framedump_check.py`
 reads a dump and says which of the two it is looking at. What the dump cannot
 give you is a per-draw image: reading a surface back mid-frame is exactly what
 forces the finish.
+
+**Neither column can separate the two paths on a frame that drew once**, so
+the checker refuses rather than guesses: a dump whose frames barely drew --
+`afterNN` landing on a loading screen, a pause menu or a video cut -- exits 3
+with `INSUFFICIENT SAMPLE` and no verdict, because a per-draw finish and a
+one-draw frame produce the same `cb_draws` and the same submits-per-draw. A
+`SERIALISED` verdict from such a dump would have falsified the whole thesis
+from an instrument that behaved correctly.
 
 **Dedupe frame records on `nv2a_frame` before treating them as independent
 samples.** A frame record is one `flip_stall`, not one guest frame, and the

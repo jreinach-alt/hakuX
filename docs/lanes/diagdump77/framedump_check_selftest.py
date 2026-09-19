@@ -20,14 +20,15 @@ CHECK = os.path.join(HERE, "framedump_check.py")
 
 
 def write_dump(path, *, serialised, frames=3, draws=40, merge=False,
-               trailer=True, header_finish=None):
+               trailer=True, header_finish=None, schema=2, img_sync=0,
+               drop_cb=False):
     # header_finish defaults to the truth for this arm.  Passing it explicitly
     # builds a dump whose header contradicts its own draw records, which is
     # what the disagreement check exists to catch.
     if header_finish is None:
         header_finish = serialised
     recs = [{
-        "t": "session", "schema": 1, "id": 1758240000, "armed_by": "marker",
+        "t": "session", "schema": schema, "id": 1758240000, "armed_by": "marker",
         "spec": "3", "frames": frames, "images": True, "cap_mb": 96,
         "wall": 1758240000, "uptime_ms": 9000, "draw_merge": merge,
         "draw_reorder": False, "surface_scale": 1, "submit_frames": 3,
@@ -45,23 +46,31 @@ def write_dump(path, *, serialised, frames=3, draws=40, merge=False,
                 submits += 1
             else:
                 cb_draws = n
-            recs.append({
+            rec = {
                 "t": "draw", "f": f, "n": n, "kind": "draw_arrays",
                 "count": 12, "cb": 1, "cb_draws": cb_draws,
                 "submits": submits, "vkframe": f % 3, "in_rp": 1,
                 "dq": 0, "dq_active": 0, "rw": 0, "rw_active": 0,
                 "prim": 4, "shader": "%016x" % (n * 7), "pipeline": "0x1",
                 "color": None, "tex": [],
-            })
+            }
+            if drop_cb:
+                # The shape a build predating the falsifier columns, or a file
+                # that is not a frame dump at all, would have.
+                del rec["cb_draws"]
+            recs.append(rec)
         if not serialised:
             submits += 1  # the flip's own submission
-        recs.append({
+        frame = {
             "t": "frame", "f": f, "draws": draws,
             "submits_in_frame": submits - first, "submits": submits,
             "nv2a_frame": 1000 + f, "image": "framedump_1_f%03d.ppm" % f,
             "w": 640, "h": 480, "diag_active": 1 if serialised else 0,
             "wall": 1758240001 + f,
-        })
+        }
+        if img_sync is not None:
+            frame["img_sync"] = img_sync
+        recs.append(frame)
     if trailer:
         recs.append({"t": "end", "why": "all frames dumped", "frames": frames,
                      "draws": frames * draws, "bytes": 123456,
@@ -135,6 +144,65 @@ def main():
         if "SCOPE: draw_merge was OFF" in out:
             failures.append("merge-on dump still claimed merge was off:\n"
                             + out)
+
+        # A correct live dump of a scene that is barely drawing -- a loading
+        # screen, a pause menu, the tail of a title that stopped issuing
+        # geometry, all of which `afterNN` can land on.  One draw per frame
+        # degrades BOTH columns at once, so the checker used to report
+        # SERIALISED (the falsification of the instrument's whole thesis) and
+        # then call the instrument self-contradictory, from a dump that
+        # behaved correctly.  It must refuse instead, on its own status.
+        thin = os.path.join(tmp, "thin.jsonl")
+        write_dump(thin, serialised=False, frames=30, draws=1)
+        rc, out = run(thin)
+        if rc != 3 or "INSUFFICIENT SAMPLE" not in out:
+            failures.append("a one-draw-per-frame live dump did not get the "
+                            "insufficient-sample refusal:\n" + out)
+        if "SERIALISED" in out or "INSTRUMENT DISAGREES" in out:
+            failures.append("the refused dump still carried a verdict:\n"
+                            + out)
+
+        # The other leg of the refusal: frames drew enough, but there are not
+        # enough draws in the whole dump to rest anything on.
+        short = os.path.join(tmp, "short.jsonl")
+        write_dump(short, serialised=False, frames=3, draws=5)
+        rc, out = run(short)
+        if rc != 3 or "INSUFFICIENT SAMPLE" not in out:
+            failures.append("a 15-draw dump did not get the "
+                            "insufficient-sample refusal:\n" + out)
+
+        # ...and the refusal must not swallow a dump that CAN be read: the
+        # serialising mutant is the case where a wrongly-drawn threshold would
+        # hide the falsifier firing.
+        rc, out = run(ser)
+        if "INSUFFICIENT SAMPLE" in out:
+            failures.append("the serialising mutant was refused for sample "
+                            "size:\n" + out)
+
+        # The images are a separate claim.  A schema-1 dump's PPMs are one
+        # completed download behind the records they are filed under, and a
+        # schema-2 record that names an image without naming the fence it
+        # waited on cannot show that it was written after one.
+        old = os.path.join(tmp, "schema1.jsonl")
+        write_dump(old, serialised=False, schema=1, img_sync=None)
+        rc, out = run(old)
+        if "IMAGES: schema 1" not in out:
+            failures.append("a schema-1 dump's images were not flagged as "
+                            "lagging their records:\n" + out)
+        blind = os.path.join(tmp, "blind.jsonl")
+        write_dump(blind, serialised=False, schema=2, img_sync=None)
+        rc, out = run(blind)
+        if rc != 1 or "no img_sync" not in out:
+            failures.append("a schema-2 image with no img_sync was accepted:\n"
+                            + out)
+
+        # The column every verdict rests on, absent.
+        nocb = os.path.join(tmp, "nocb.jsonl")
+        write_dump(nocb, serialised=False, drop_cb=True)
+        rc, out = run(nocb)
+        if rc != 1 or "no draw record carries cb_draws" not in out:
+            failures.append("a dump with no cb_draws column was not "
+                            "reported:\n" + out)
 
     for f in failures:
         print("FAIL " + f)

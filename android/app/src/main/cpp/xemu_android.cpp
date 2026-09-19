@@ -1133,17 +1133,27 @@ extern "C" int xemu_android_main(int argc, char** argv) {
    * Internal storage is NOT a fallback here. It is unreadable to adb on a
    * production build, so a dump written there is a dump nobody can pull and a
    * marker nobody can drop; better to leave the feature unarmed and say so. */
-  if (SDL_AndroidGetExternalStorageState() & SDL_ANDROID_EXTERNAL_STORAGE_WRITE) {
-    const char *files_dir = SDL_AndroidGetExternalStoragePath();
+  {
+    const char *files_dir = NULL;
+    if (SDL_AndroidGetExternalStorageState() & SDL_ANDROID_EXTERNAL_STORAGE_WRITE) {
+      files_dir = SDL_AndroidGetExternalStoragePath();
+    }
     if (files_dir && files_dir[0]) {
       nv2a_dbg_set_framedump_dir(files_dir);
       __android_log_print(ANDROID_LOG_INFO, "hakuX",
                           "frame dump: marker %s/frame_dump.on", files_dir);
+    } else {
+      /* One branch for both failures. The state check and an external path
+       * that comes back NULL or empty leave the feature in the same place,
+       * and the second used to log nothing at all on any tag -- a dump that
+       * is silently unarmed reads exactly like one that was never asked
+       * for. The renderer refuses to fall back to internal storage on
+       * Android, so this line is the whole explanation of an empty pull. */
+      __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                          "frame dump: no writable external storage path; "
+                          "the frame dump is unarmed this run (env and "
+                          "marker arming both)");
     }
-  } else {
-    __android_log_print(ANDROID_LOG_WARN, "hakuX",
-                        "frame dump: no writable external storage; "
-                        "marker-file arming is unavailable this run");
   }
 
 #if XEMU_OPT_TB_CACHE_HINTS
