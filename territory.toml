@@ -28,8 +28,22 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 114
-updated_utc = "2026-09-19T12:15:00Z"
+wave = 115
+updated_utc = "2026-09-19T12:40:00Z"
+
+
+[lane.cloud-audit2-128]
+issues = ["86"]
+files = []
+standing = false
+note = "WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect [lane.cloud-remediate-128]/[lane.cloud-audit1-128] below document for their own passes. This is the audit outlet's own claimed unit (jobs/cloud.sh): PR #128 (branch lane/glerr86, #86) carries needs-audit-2 + claimed:cloud + verified, having moved past needs-remediation since [lane.cloud-remediate-128] was written, and jobs/cloud.sh claims one needs-audit-2 PR ahead of needs-audit-1 in its own priority order. Same PR, same issue as [lane.cloud-remediate-128]/[lane.cloud-audit1-128] below -- no file collision, all three claim files = [] (an audit reads and comments, it does not edit the tree it is auditing). Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
+
+
+[lane.cloudterritory]
+issues = []
+files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/**"]
+standing = false
+note = "WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, a board-dispatched task lane this time, not an outlet unit. Attempt 1, started 2026-09-19T12:36:12Z, briefed at $WORK/briefs/cloudterritory.md to fix the exact defect it is itself an instance of: jobs/cloud.sh starts units without writing the territory row the way lane.sh does at dispatch, so every audit/remediation unit is invisible to check_territory.py until a board tick notices and back-fills it (five occurrences the night this lane was briefed). Its own brief names its files: docs/testing/jobs/cloud.sh (add the row-write at claim time, same branch/validation/push as the board's own) and docs/testing/jobs/selftest.d/ (a new fragment covering it, e.g. 71-cloud-territory.sh). Harness-only -- touches nothing under hw/, target/, accel/, android/. Issue: none (harness defect, dispatched directly per its brief)."
 
 
 [lane.cloud-remediate-128]
