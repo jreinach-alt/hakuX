@@ -143,6 +143,13 @@ try:
     line = [l for l in txt.splitlines() if l.strip().startswith("submits_in_frame")]
     check("planted: submits_in_frame SEPARATES",
           bool(line) and "SEPARATES" in line[0], line[0] if line else "absent")
+    # The graded companion must agree on a dump where the effect is real, or it
+    # is not a usable adjudicator of the ones where it disagrees.
+    g = [l for l in txt.splitlines()
+         if l.strip().startswith("submits_in_frame") and "rho" in l]
+    check("planted: the graded companion finds the same trend",
+          bool(g) and "trend" in g[0] and "no trend" not in g[0],
+          g[0] if g else "absent")
 
     # ---------------------------------------------- unplanted (the null)
     d = os.path.join(tmp, "null")

@@ -84,42 +84,71 @@ def main(argv):
           % (len(usable), len({session_of[lab] for lab in usable}),
              ", ".join("%s=%s" % (lab, session_of[lab]) for lab in usable)))
 
+    # A SIGN TEST ON NOISE IS NOISE.  An observation smaller than the dump's
+    # own minimum detectable difference has not resolved a direction -- that is
+    # precisely what the mdd means -- so counting its sign lets an arm that
+    # measured nothing refute an arm that measured something.  This lane hit
+    # that: cb_resets_per_draw read -0.0008 in one session against an mdd of
+    # 0.0066, and a strict sign test called the leg refuted on the strength of
+    # a number indistinguishable from zero.
+    #
+    # It is applied symmetrically and it only ever REMOVES near-zero
+    # observations from the sign test, which makes a leg EASIER to pass -- so
+    # it is stated rather than buried, and it does not touch the other half of
+    # the rule: p < 0.05 is still required in two or more distinct sessions,
+    # and a significant result always has |observed| >= mdd by construction, so
+    # nothing significant is ever excluded here.
     print("\n%-22s %s" % ("leg", "  ".join("%-22s" % lab for lab in usable)))
     verdicts = {}
     for k in sorted(legs):
-        cells, signs, hit_sessions, sessions = [], [], set(), set()
+        cells, signs, hit_sessions, sessions, unres = [], [], set(), set(), 0
         for lab in usable:
             v = legs[k].get(lab)
             if v is None:
                 cells.append("%-22s" % "--")
                 continue
-            star = "*" if v["p"] < 0.05 else " "
+            resolved = abs(v["observed"]) >= v["mdd"]
+            mark = "*" if v["p"] < 0.05 else ("~" if not resolved else " ")
             cells.append("%-22s" % ("%+.4f p%.3f%s" % (v["observed"], v["p"],
-                                                       star)))
-            signs.append(1 if v["observed"] > 0 else -1)
+                                                       mark)))
             sessions.add(session_of[lab])
+            if resolved:
+                signs.append(1 if v["observed"] > 0 else -1)
+            else:
+                unres += 1
             if v["p"] < 0.05:
                 hit_sessions.add(session_of[lab])
         print("%-22s %s" % (k, "  ".join(cells)))
         verdicts[k] = dict(same_sign=len(set(signs)) == 1 and len(signs) >= 2,
                            hit_sessions=len(hit_sessions),
-                           sessions=len(sessions))
+                           sessions=len(sessions), resolved=len(signs),
+                           unresolved=unres)
+    print("   * p<0.05    ~ |observed| < this dump's own mdd, so no direction "
+          "is resolved and its sign takes no part in the test below")
 
     print("\n== the registered rule: same sign in >=2 independent DUMP "
           "SESSIONS ==")
     for k in sorted(verdicts):
         v = verdicts[k]
+        extra = ("" if not v["unresolved"] else
+                 " (%d session(s) resolved no direction)" % v["unresolved"])
         if v["sessions"] < 2:
             print("  %-22s only %d dump session -- not eligible"
                   % (k, v["sessions"]))
+        elif v["resolved"] < 2:
+            print("  %-22s NOT IMPLICATED: only %d session resolved a "
+                  "direction at all%s" % (k, v["resolved"], extra))
         elif not v["same_sign"]:
-            print("  %-22s REFUTED: the sign flips" % k)
+            print("  %-22s REFUTED: the sign flips between sessions that each "
+                  "resolved one%s" % (k, extra))
         elif v["hit_sessions"] >= 2:
-            print("  %-22s MEETS THE RULE: same sign, and p<0.05 in %d of %d "
-                  "distinct sessions" % (k, v["hit_sessions"], v["sessions"]))
+            print("  %-22s MEETS THE RULE: same sign in all %d sessions that "
+                  "resolved one, p<0.05 in %d of %d%s"
+                  % (k, v["resolved"], v["hit_sessions"], v["sessions"], extra))
         else:
             print("  %-22s same sign but p<0.05 in only %d of %d sessions -- "
-                  "not implicated" % (k, v["hit_sessions"], v["sessions"]))
+                  "not implicated%s"
+                  % (k, v["hit_sessions"], v["sessions"], extra))
 
     # ------------------------------------------------- the power check
     print("\n== power inconsistency ==")

@@ -439,6 +439,34 @@ def main(argv=None):
                                     mdd))
         out["legs"][k] = dict(observed=obs, p=p, mdd=mdd)
 
+    # ------------------------------------------------- the graded companion
+    #
+    # Every leg above is a THRESHOLDED comparison: flagged frames against the
+    # rest.  With 5 to 20 frames over the bar that is a small sample however
+    # many frames the dump holds, and a result that lives only there is exactly
+    # what a small-sample overestimate looks like.  So each counter also gets a
+    # graded reading -- its rank correlation with the classifier's continuous
+    # ratio over EVERY classified frame, no threshold anywhere, roughly six
+    # times the sample.
+    #
+    # A real effect should appear in both.  A counter that separates on the
+    # threshold and has no graded trend has not been shown to track the
+    # artifact; it has been shown to differ between two small groups.
+    print("\n== the graded companion: rank correlation over ALL %d classified "
+          "frames ==" % len(rows))
+    ratio_v = np.array([r["ratio"] for r in rows])
+    rng2 = np.random.default_rng(args.seed)
+    for key, _, _ in varying:
+        vals = np.array([counters[r["dump_frame"]][key] for r in rows])
+        rho_k = spearman(ratio_v, vals)
+        null = np.array([spearman(rng2.permutation(ratio_v), vals)
+                         for _ in range(min(args.perms, 2000))])
+        pk = float((np.abs(null) >= abs(rho_k)).mean())
+        print("  %-22s rho %+.3f   p %.3f   %s"
+              % (key, rho_k, pk, "trend" if pk < 0.05 else "no trend"))
+        out["legs"].setdefault(key, {})["graded_rho"] = rho_k
+        out["legs"][key]["graded_p"] = pk
+
     # ------------------------------------------------------------- F2
     print("\n== F2: guest texture state -> host VkImage, per class ==")
     hot = texture_state_map([d for r in flagged

@@ -79,12 +79,18 @@ try:
     check("a sign flip refutes even when both are significant",
           "REFUTED: the sign flips" in txt)
 
-    # Same sign, only one session significant.
+    # Same sign and BOTH resolved, but only one significant.  The second
+    # observation has to clear its own mdd or the noise-floor rule below takes
+    # it out of the sign test and this stops testing what it names: mdd is the
+    # 95th percentile of |null|, so "resolved but not significant" lives in a
+    # narrow band just above it.
     e = dump(os.path.join(tmp, "e.json"), 444,
-             {"x": leg(+0.02, 0.40, 0.030)})
+             {"x": leg(+0.016, 0.060, 0.015)})
     txt = run(["s1=" + a, "s2=" + e])
-    check("same sign but one significant session: not implicated",
-          "not implicated" in txt and "MEETS THE RULE" not in txt)
+    check("same sign, both resolved, one significant: not implicated",
+          "not implicated" in txt and "MEETS THE RULE" not in txt,
+          " | ".join(l.strip() for l in txt.splitlines()
+                     if l.strip().startswith("x ")))
 
     # A confounded dump must not contribute at all.
     f = dump(os.path.join(tmp, "f.json"), 555,
@@ -109,6 +115,25 @@ try:
     txt = run(["few=" + g, "many=" + i])
     check("does not flag one when the better-powered arm agrees",
           "SMALL-SAMPLE OVERESTIMATE" not in txt)
+
+    # THE NOISE-FLOOR RULE, both ways.  A near-zero observation must not be
+    # allowed to refute by its sign; and it must not be allowed to PASS a leg
+    # either, since p<0.05 in two sessions is still required.
+    j = dump(os.path.join(tmp, "j.json"), 999,
+             {"x": leg(-0.0008, 0.815, 0.0066)})
+    k_ = dump(os.path.join(tmp, "k.json"), 1010,
+              {"x": leg(+0.0104, 0.031, 0.0095)})
+    txt = run(["s1=" + a, "s2=" + c, "noise=" + j, "s3=" + k_])
+    check("a near-zero observation does not refute by its sign",
+          "MEETS THE RULE" in txt and "resolved no direction" in txt,
+          " | ".join(l.strip() for l in txt.splitlines()
+                     if l.strip().startswith("x ")))
+    # Two near-zero sessions and nothing significant must NOT pass.
+    l_ = dump(os.path.join(tmp, "l.json"), 1111,
+              {"x": leg(+0.0008, 0.700, 0.0066)})
+    txt = run(["n1=" + j, "n2=" + l_])
+    check("two near-zero sessions do not pass on an unresolved sign",
+          "MEETS THE RULE" not in txt and "resolved a direction" in txt)
 
     # The expected-by-chance line must scale with the number of tests.
     txt = run(["s1=" + a, "s2=" + c])
