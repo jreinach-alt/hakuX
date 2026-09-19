@@ -498,8 +498,12 @@ def run(a_paths, b_paths, expect_path):
     print("  registered %s by %s, issue #%s"
           % (exp.get("registered_utc"), exp.get("who"), exp.get("issue")))
     print("  a_ref %s  b_ref %s" % (exp.get("a_ref"), exp.get("b_ref")))
+    # `judge` is sometimes a bare path and sometimes a sentence naming a path
+    # and the helper to run beside it (issue65-defercap-12.json does), so match
+    # on this file's name appearing anywhere rather than on basename equality,
+    # which would split that sentence on its last slash.
     judge = exp.get("judge")
-    if judge and os.path.basename(judge) != os.path.basename(__file__):
+    if judge and os.path.basename(__file__) not in str(judge):
         sys.exit("REFUSED: this prediction names %s as its judge, and this is "
                  "%s.\n  Two judges on this stream carry different legs; "
                  "running the wrong one\n  reports a verdict about a "
