@@ -234,15 +234,35 @@ the 39 do. The other 14 are there on purpose and could not:
 
 `selftest.sh` reports 11 failures on this branch. **10 of them are master's**,
 in `86-fold-regressed.sh`, and reproduce exactly when master's own
-`docs/testing` is unpacked and run: `src refspec lane/foldreg does not match
-any`, because a fold tick deletes the local `lane/foldreg` head (the branch
-prune landed on master) and `fr_reset` re-pushes a branch that is no longer
-there. Master's `jobs selftest` workflow has been failing since
-`4eb641e777` (15:03Z on 2026-09-19). The 11th was this lane's and is fixed;
-see above. `fold.sh` is `[lane.branchprune]`'s and
-`selftest.d/86-fold-regressed.sh` is `[lane.foldregress]`'s, so this is
-reported, not fixed here. **It gates CI, so it will hold up every fold until
-someone owns it.**
+`docs/testing` is unpacked into a scratch tree and run there -- which is how
+they were separated from this lane's, rather than assumed to be somebody
+else's.
+
+The diagnosis, since it is two commits and nobody has written it down:
+
+- `a4fcced05a` (`lane.branchprune`, 01:07) added
+  `prune_branch "$WT" "$branch" HEAD` at `fold.sh:603`, so a successful fold
+  now deletes the lane branch -- on origin, the tracking ref, **and the local
+  head**.
+- `4eb641e777` (08:03) is the fold of PR #145, `lane.foldregress`, which added
+  `86-fold-regressed.sh`. Its fixture's `fr_reset` re-pushes with
+  `git push -f origin master lane/foldreg` after every tick. That branch no
+  longer exists locally once a tick has folded, so `fr_reset` fails with
+  `src refspec lane/foldreg does not match any` and every later check in the
+  fragment runs against a fixture that was never reset.
+- `a4fcced05a` is an ancestor of `4eb641e777`, so the fragment was written
+  against a `fold.sh` that pruned nothing and went red on its first run on
+  master. Master's `jobs selftest` workflow has been failing since that
+  commit.
+
+The fix is one line in the fixture (recreate the local branch in `fr_reset`,
+e.g. `git branch -f lane/foldreg <sha>` before the push), not in `fold.sh` --
+the prune is doing exactly what it was written to do. `fold.sh` is
+`[lane.branchprune]`'s and `86-fold-regressed.sh` is `[lane.foldregress]`'s,
+so this is reported here, not fixed here. **CI is the gate of record, so this
+holds up every fold until someone owns it, including this PR's.**
+
+The 11th failure was this lane's and is fixed; see above.
 
 ## What the next lane should not repeat
 
