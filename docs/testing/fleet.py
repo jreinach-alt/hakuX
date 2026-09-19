@@ -21,15 +21,48 @@ for a whole session on a claim -- "Galleon lives only on that handheld" --
 that one read-only `device_titles thor` refutes. Nothing on disk could say
 "these are dispatchable and nobody has dispatched them", so nobody asked.
 
-THE REGISTRY is $DISPATCH_DIR/fleet/<lane>.json, written by the ORCHESTRATOR
-when it dispatches and updated when a report lands. It is deliberately not
-written by agents: an agent cannot be trusted to record that it is stuck, and
-the whole point is to make the orchestrator's own bookkeeping checkable.
+WHERE THE FACTS COME FROM, AND WHY NOT FROM A REGISTRY ANY MORE.
 
-  lane, agent, issues[], asked, dispatched_utc, state, waiting_on, worktree
+Until 2026-09-19 every section below was computed from $DISPATCH_DIR/fleet/
+<lane>.json, "written by the ORCHESTRATOR when it dispatches and updated when
+a report lands". ORCHESTRATION-DESIGN.md §4 then deleted that role, and
+nothing took over this piece: `lane.sh` had never written a registry entry,
+so the file set froze on 09-14/09-18 and stayed frozen.
 
-  state: running | reported | folded | retired
-  waiting_on: "" or one line naming what the ORCHESTRATOR owes it
+Measured 2026-09-19T06:20Z, with eight lanes running as systemd units: this
+script reported four lanes RUNNING, of which two were not running at all and
+one had been folded and merged twenty minutes earlier. Not one of the eight
+appeared. Because the board wakes on the FAIL lines at the bottom of this
+file, and all four were computed from that registry, six consecutive board
+ticks logged `nothing actionable` -- and would have logged it just the same
+with the fleet idle or with eight lanes in flight. A blind sensor reports
+calm.
+
+So every fact that decides a FAIL is now derived from the thing itself:
+
+  RUNNING            systemctl --user list-units 'hakux-lane-*'
+  READY, NOT FOLDED  gh pr list: an open lane PR that is not a draft
+  BLOCKED            gh pr list: an open lane PR labelled `blocked`
+  territory rows     board_files.load("territory.toml")
+
+A unit that is active is running; there is no state for it to be in that a
+file could disagree with. A lane that has finished is one whose unit is gone,
+and whether its work landed is a question about its PR, which GitHub answers.
+Neither fact can go stale, because neither is recorded anywhere.
+
+THE REGISTRY SURVIVES, DEMOTED. $DISPATCH_DIR/fleet/<lane>.json is now
+written by `lane.sh` at start and cleared by it at exit, and holds only what
+lane.sh knows first-hand: the brief it was handed (`asked`), the issues, the
+attempt, the model, the branch and worktree. It carries NO `state` field,
+because state is the thing that went stale. Here it is decoration on a lane
+that systemd already says is running, plus the issue list that keeps a
+running lane's issue out of DISPATCHABLE. An entry whose unit is not active
+is ignored outright -- it can never create a lane, revive one, or suppress
+work -- so the 38 pre-2026-09-19 entries are inert. `lane.sh fleet-gc`
+deletes them; leaving them costs only disk.
+
+  lane, unit, branch, worktree, brief, asked, issues[], attempt, model,
+  started_utc   (and ended_utc/rc for the moment between exit and unlink)
 """
 import datetime, json, os, subprocess, sys, tomllib
 
@@ -41,17 +74,84 @@ REPO = os.environ.get("HAKUX_REPO", "jreinach-alt/hakuX")
 
 
 def load_fleet():
-    out = []
+    """The registry, keyed by lane. Decoration only -- see the header."""
+    out = {}
     fdir = os.path.join(D, "fleet")
     if not os.path.isdir(fdir):
         return out
     for fn in sorted(os.listdir(fdir)):
-        if fn.endswith(".json"):
-            try:
-                out.append(json.load(open(os.path.join(fdir, fn))))
-            except Exception as e:
-                print("  UNREADABLE %s: %s" % (fn, e), file=sys.stderr)
+        if not fn.endswith(".json"):
+            continue
+        try:
+            e = json.load(open(os.path.join(fdir, fn)))
+        except Exception as e2:
+            print("  UNREADABLE %s: %s" % (fn, e2), file=sys.stderr)
+            continue
+        if isinstance(e, dict) and e.get("lane"):
+            out[e["lane"]] = e
     return out
+
+
+def sc(*args, timeout=15):
+    """systemctl --user, or None if the user manager cannot be reached.
+
+    None is NOT an empty fleet. Every caller distinguishes them, because
+    reporting "nothing is running" when the question could not be asked is
+    exactly the failure this file was rewritten to end: it would empty
+    RUNNING, fill LANE CLAIMED WITH NO RUNNING AGENT, and hand DISPATCHABLE
+    every issue a live lane already owns.
+    """
+    try:
+        r = subprocess.run(["systemctl", "--user"] + list(args),
+                           capture_output=True, text=True, timeout=timeout)
+    except Exception:
+        return None
+    return r.stdout if r.returncode == 0 else None
+
+
+def lane_units():
+    """{lane: seconds-running-or-None}, or None if systemd could not answer.
+
+    Two cheap calls, both under 50ms measured on the host: list-units to
+    discover the names, then ONE keyed `show` for all of their start times.
+    The board runs this file every twenty minutes under a 60s timeout, so a
+    per-lane call is not affordable and is not made.
+    """
+    out = sc("list-units", "hakux-lane-*", "--state=active,activating",
+             "--no-legend", "--plain")
+    if out is None:
+        return None
+    names = [ln.split()[0] for ln in out.splitlines() if ln.split()]
+    lanes = {n[len("hakux-lane-"):-len(".service")]: None for n in names
+             if n.startswith("hakux-lane-") and n.endswith(".service")}
+    if not names:
+        return lanes
+    # ActiveEnterTimestampMonotonic, not ActiveEnterTimestamp: the latter is
+    # local time with a tz ABBREVIATION ("PDT"), which strptime %Z cannot be
+    # trusted to read, and --timestamp=utc needs systemd 247.
+    show = sc("show", *names, "--property=Id,ActiveEnterTimestampMonotonic")
+    try:
+        up = float(open("/proc/uptime").read().split()[0])
+    except Exception:
+        up = None
+    if show and up is not None:
+        ident = None
+        for ln in show.splitlines():
+            k, _, v = ln.partition("=")
+            if k == "Id":
+                ident = v
+            elif k == "ActiveEnterTimestampMonotonic" and ident:
+                lane = ident[len("hakux-lane-"):-len(".service")]
+                try:
+                    if lane in lanes and int(v) > 0:
+                        lanes[lane] = up - int(v) / 1e6
+                except ValueError:
+                    pass
+    return lanes
+
+
+def age_s(secs):
+    return "?" if secs is None else "%.1fh" % (secs / 3600.0)
 
 
 def age(iso):
@@ -62,6 +162,43 @@ def age(iso):
         return "%.1fh" % h
     except Exception:
         return "?"
+
+
+# A PR the machine has already picked up is not the board's to act on. These
+# are exactly the labels roles/board.md names in its own rule: "a PR that is
+# not a draft and has no needs-audit-*, needs-remediation, fold-ready or
+# folded label -> needs-audit-1". `needs-rebase` and `claimed:cloud` are here
+# for the same reason -- another job holds it.
+IN_FLIGHT = {"needs-audit-1", "needs-audit-2", "needs-remediation",
+             "fold-ready", "folded", "needs-rebase", "claimed:cloud"}
+
+
+def lane_prs():
+    """Open PRs on lane/* branches, or None if gh could not answer.
+
+    One call. Everything the READY-NOT-FOLDED and BLOCKED sections need comes
+    out of it, so neither section costs a call per lane.
+    """
+    try:
+        r = subprocess.run(["gh", "pr", "list", "--repo", REPO, "--state", "open",
+                            "--limit", "60", "--json",
+                            "number,headRefName,isDraft,labels,updatedAt,title"],
+                           capture_output=True, text=True, timeout=30)
+        if r.returncode != 0:
+            return None
+        rows = json.loads(r.stdout or "[]")
+    except Exception as e:
+        print("gh pr list did not answer (%s)" % e, file=sys.stderr)
+        return None
+    out = []
+    for p in rows:
+        ref = p.get("headRefName") or ""
+        if not ref.startswith("lane/"):
+            continue
+        p["lane"] = ref[len("lane/"):]
+        p["labelset"] = {l.get("name") for l in (p.get("labels") or [])}
+        out.append(p)
+    return out
 
 
 def main():
@@ -106,27 +243,79 @@ def main():
               file=sys.stderr)
         live, titles = set(), {}
     else:
-        rows = json.loads(r.stdout)
+        try:
+            rows = json.loads(r.stdout or "[]")
+        except ValueError:
+            rows, ok = [], False
+            print("gh issue list returned something that is not JSON; the "
+                  "DISPATCHABLE section is EMPTY BECAUSE IT WAS NOT COMPUTED",
+                  file=sys.stderr)
         live = {str(x["number"]) for x in rows}
         titles = {str(x["number"]): x["title"] for x in rows}
+
+    # ---------------------------------------------------- the derived fleet
+    units = lane_units()
+    fleet_blind = units is None
+    if fleet_blind:
+        units = {}
+        print("FLEET-BLIND: systemctl --user did not answer, so the RUNNING "
+              "set could not be computed. RUNNING below is EMPTY BECAUSE IT "
+              "WAS NOT ASKED, which is not the same as an idle fleet -- and "
+              "the sections that subtract it (DISPATCHABLE, LANE CLAIMED "
+              "WITH NO RUNNING AGENT, RUNNING WITH NO TERRITORY ROW, BLOCKER "
+              "NEVER RECORDED AS TESTED) are suppressed rather than computed "
+              "against an empty set.",
+              file=sys.stderr)
+    running = sorted(units)
+
+    prs = lane_prs()
+    pr_blind = prs is None
+    if pr_blind:
+        prs = []
+        print("PR-BLIND: gh pr list did not answer, so READY NOT FOLDED and "
+              "BLOCKED were not computed.", file=sys.stderr)
+
+    # An entry for a lane whose unit is not active is garbage by construction:
+    # lane.sh writes one at start and unlinks it at exit. Counted, never shown
+    # as a lane, never able to suppress a dispatch. See the header.
+    stale_reg = sorted(k for k in fleet if k not in units)
 
     owned = {}
     for lane, meta in (terr.get("lane") or {}).items():
         for i in meta.get("issues", []):
             owned[str(i)] = lane
-    lanes_with_agent = {f["lane"] for f in fleet if f.get("state") == "running"}
+    # A RUNNING lane's own issues, from the registry lane.sh wrote at start.
+    # This is the one place the registry can withhold work, and it can only do
+    # so for a lane systemd says is live this second.
+    for lane in running:
+        for i in (fleet.get(lane, {}).get("issues") or []):
+            owned.setdefault(str(i), lane)
+    lanes_with_agent = set(running)
 
-    running = [f for f in fleet if f.get("state") == "running"]
-    unfolded = [f for f in fleet if f.get("state") == "reported"]
-    waiting = [f for f in fleet if (f.get("waiting_on") or "").strip()]
+    # REPORTED, NOT FOLDED, asked of GitHub instead of a `state` field: an
+    # open lane PR that is not a draft is a lane that has said it is done.
+    # Carrying one of IN_FLIGHT means a job already holds it, and that is the
+    # pipeline working, not an item for the board.
+    unfolded = [p for p in prs
+                if not p.get("isDraft") and not (p["labelset"] & IN_FLIGHT)]
+
+    # WAITING. The old section read the registry's `waiting_on` and printed it
+    # under "WAITING ON THE ORCHESTRATOR"; there is no orchestrator, nothing
+    # has written that field since 09-14, and papercuts.toml bit 245 records
+    # that the field conflated four different waiters anyway. A lane that is
+    # stuck now says so with the `blocked` label and a `[lane.<n>] blocked:`
+    # comment (roles/lane.md), and the board's step 5 acts on the label.
+    #
+    # WHAT THIS CANNOT SEE: a blocked: COMMENT with no label. Reading comments
+    # is a call per PR and the budget here is two calls total, so the label is
+    # the contract. A lane that only comments is invisible to the board.
+    waiting = [p for p in prs if "blocked" in p["labelset"]]
 
     # A lane row with no running agent is coverage that does not exist. This is
     # the state territory.toml's own [free] comment warns about, and nothing
     # could detect it before.
     ghost = sorted(lane for lane in (terr.get("lane") or {})
-                   if lane not in {f["lane"] for f in fleet}
-                   or next((f for f in fleet if f["lane"] == lane), {})
-                   .get("state") in ("reported", "retired"))
+                   if lane not in units)
 
     # THE OTHER DIRECTION, AND IT IS THE WORSE ONE: an agent that is RUNNING
     # with no row in territory.toml at all.
@@ -154,15 +343,17 @@ def main():
     # be visible to the board, and requiring files would re-create the third
     # variant exactly.
     #
-    # WHAT THIS CANNOT SEE: a lane running with no fleet row EITHER. Both
-    # sides of this cross-check are written by the orchestrator, so an agent
-    # dispatched without touching either file is as invisible here as it is to
-    # check_territory.py. That is the residual hole, it is not closable from
-    # this side, and it is why AGENTS.md orders the steps "write the row,
-    # validate, commit, PUSH, then dispatch".
-    unclaimed = sorted(f["lane"] for f in fleet
-                       if f.get("state") == "running"
-                       and f["lane"] not in (terr.get("lane") or {}))
+    # THE RESIDUAL HOLE IS NOW CLOSED, AND THAT IS WHY THIS SECTION FILLED UP.
+    # Until 2026-09-19 both sides of this cross-check were orchestrator-written
+    # files, so "a lane running with no fleet row EITHER" was invisible here as
+    # well -- and after the role was deleted that was EVERY lane. The running
+    # side is systemd now. The first run of this version against the live host
+    # found nine active units and eleven territory rows with no unit among
+    # them: an entirely disjoint pair of sets, six of the nine editing
+    # docs/testing/jobs/selftest.sh at the same time. This FAIL is cleared by
+    # the board writing the rows, which is AGENTS.md's ordering anyway.
+    unclaimed = sorted(lane for lane in running
+                       if lane not in (terr.get("lane") or {}))
 
     # DISPATCHABLE: open, not owned by a lane with a running agent, and with
     # no blocker -- or a blocker that has never been tested. A blocker is a
@@ -208,7 +399,7 @@ def main():
     # genuinely unblocked so it cannot be mistaken for a dispatch queue.
     dispatchable = []
     untested = []
-    for n in sorted(live, key=int):
+    for n in ([] if fleet_blind else sorted(live, key=int)):
         lane = owned.get(n)
         if lane and lane in lanes_with_agent:
             continue
@@ -223,20 +414,42 @@ def main():
             untested.append((n, lane, (ent.get("blocker_falsifier") or "").strip(),
                              titles.get(n, "")[:52]))
 
-    print("=== RUNNING (%d)" % len(running))
-    for f in running:
-        print("  %-12s %-18s #%-14s %s" % (f["lane"], f.get("agent", "")[:18],
-                                           ",".join(f.get("issues") or []) or "-",
-                                           age(f.get("dispatched_utc", ""))))
-        print("      asked: %s" % (f.get("asked", "")[:96]))
-    print("\n=== REPORTED, NOT FOLDED (%d)" % len(unfolded))
-    for f in unfolded:
-        print("  %-12s #%-14s reported %s" % (f["lane"],
-                                              ",".join(f.get("issues") or []),
-                                              age(f.get("reported_utc", ""))))
-    print("\n=== WAITING ON THE ORCHESTRATOR (%d)" % len(waiting))
-    for f in waiting:
-        print("  %-12s %s" % (f["lane"], f["waiting_on"][:100]))
+    pr_of = {}
+    for p in prs:
+        pr_of.setdefault(p["lane"], p)
+
+    print("=== RUNNING (%d)%s" % (len(running),
+                                  "  -- NOT COMPUTED, see FLEET-BLIND above"
+                                  if fleet_blind else ""))
+    for lane in running:
+        f = fleet.get(lane, {})
+        p = pr_of.get(lane)
+        print("  %-12s %-18s #%-10s %-7s %s"
+              % (lane,
+                 ("attempt %s/%s" % (f.get("attempt", "?"),
+                                     (f.get("model") or "?").replace("claude-", "")))[:18],
+                 ",".join(str(i) for i in (f.get("issues") or [])) or "-",
+                 age_s(units.get(lane)),
+                 ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
+                 if p else "no PR yet"))
+        print("      asked: %s" % ((f.get("asked") or
+                                    "(no registry entry -- started before "
+                                    "lane.sh wrote one, or not by lane.sh)")[:96]))
+    if stale_reg:
+        print("  (%d registry entr%s for lanes with no active unit, ignored; "
+              "`lane.sh fleet-gc` deletes them)"
+              % (len(stale_reg), "y" if len(stale_reg) == 1 else "ies"))
+
+    print("\n=== READY, NOT FOLDED (%d)%s"
+          % (len(unfolded), "  -- NOT COMPUTED, see PR-BLIND above" if pr_blind else ""))
+    for p in unfolded:
+        print("  %-12s #%-5d %-9s %s"
+              % (p["lane"], p["number"],
+                 "unit up" if p["lane"] in units else "finished",
+                 (p.get("title") or "")[:60]))
+    print("\n=== BLOCKED (labelled `blocked`) (%d)" % len(waiting))
+    for p in waiting:
+        print("  %-12s #%-5d %s" % (p["lane"], p["number"], (p.get("title") or "")[:70]))
     print("\n=== LANE CLAIMED WITH NO RUNNING AGENT (%d)" % len(ghost))
     for lane in ghost:
         print("  %-12s holds %d file(s), issues %s"
@@ -245,15 +458,15 @@ def main():
     print("\n=== RUNNING WITH NO TERRITORY ROW (%d)" % len(unclaimed))
     if unclaimed:
         print("  Invisible to every guard: check_territory.py cannot see a "
-              "lane that is not in the file.")
+              "lane that is not in the file. A row with files = [] still "
+              "counts as claimed.")
     for lane in unclaimed:
-        f = next(x for x in fleet if x["lane"] == lane)
-        print("  %-12s %-18s #%-14s %s"
-              % (lane, f.get("agent", "")[:18],
-                 ",".join(f.get("issues") or []) or "-",
-                 age(f.get("dispatched_utc", ""))))
-        print("      asked: %s" % (f.get("asked", "")[:96]))
-    print("\n=== DISPATCHABLE NOW, NOT DISPATCHED (%d)" % len(dispatchable))
+        f = fleet.get(lane, {})
+        print("  %-12s %-7s %s" % (lane, age_s(units.get(lane)),
+                                   (f.get("asked") or "(no registry entry)")[:70]))
+    print("\n=== DISPATCHABLE NOW, NOT DISPATCHED (%d)%s"
+          % (len(dispatchable),
+             "  -- NOT COMPUTED, see FLEET-BLIND above" if fleet_blind else ""))
     for n, lane, why, title in dispatchable:
         print("  #%-4s %-12s %-26s %s" % (n, lane or "-", why, title))
 
@@ -290,9 +503,16 @@ def main():
               "issue list above is live and the two toml files are from this "
               "tree, so rebase before acting on any of it." % behind)
 
+    # EVERY LINE BELOW IS A BOARD WAKE-UP. board.sh greps stdout+stderr for
+    # '^FAIL' and starts a model session on any hit, so a FAIL that cannot be
+    # cleared by the board spends a window every twenty minutes for nothing.
+    # Each one names the actor and the action that clears it.
     rc = 0
     if waiting:
-        print("\nFAIL: %d lane(s) are blocked on the orchestrator." % len(waiting),
+        print("\nFAIL: %d lane PR(s) labelled `blocked`: %s. Grant the file or "
+              "answer the question and remove the label -- 'ask and I will "
+              "grant it' is a deadlock (roles/board.md)."
+              % (len(waiting), ", ".join("#%d" % p["number"] for p in waiting)),
               file=sys.stderr)
         rc = 1
     if dispatchable:
@@ -300,8 +520,11 @@ def main():
               file=sys.stderr)
         rc = 1
     if unfolded:
-        print("FAIL: %d lane(s) have reported and been left unfolded -- their "
-              "claim still reads as coverage." % len(unfolded), file=sys.stderr)
+        print("FAIL: %d lane PR(s) are READY and carry no pipeline label: %s. "
+              "A ready PR with no needs-audit-*/needs-remediation/fold-ready/"
+              "folded label is stalled -- nothing else will pick it up."
+              % (len(unfolded), ", ".join("#%d" % p["number"] for p in unfolded)),
+              file=sys.stderr)
         rc = 1
     # NON-ZERO, LIKE THE OTHERS. `ghost` is printed and deliberately does not
     # set rc, because a stale claim OVER-reports coverage and that errs safe.
@@ -311,8 +534,8 @@ def main():
     if unclaimed:
         print("FAIL: %d lane(s) are RUNNING with no territory row -- %s. "
               "Nothing can see them: check_territory.py cannot detect a "
-              "collision with a lane that is not in the file. Write the row, "
-              "validate, commit, PUSH."
+              "collision with a lane that is not in the file. Write the row "
+              "(files = [] is a valid claim), validate, commit, PUSH."
               % (len(unclaimed), ", ".join(unclaimed)), file=sys.stderr)
         rc = 1
     return rc
