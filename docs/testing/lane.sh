@@ -5,6 +5,7 @@
 #
 #   lane.sh start <name> <brief.md> [issue-number]
 #   lane.sh stop  <name>            # stop the unit; keeps the worktree
+#   lane.sh resume <name>           # restart a stopped lane in its own worktree
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
 #
@@ -74,6 +75,28 @@ case "$cmd" in
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
   stop)  systemctl --user stop "hakux-lane-${name:?name}" ;;
+  resume)
+    # A stopped lane keeps its worktree, its branch and its NOTES.md. Start a
+    # fresh session there with the same brief; the SessionStart hook prints
+    # the base check and the lane reads its own git log and notes first.
+    wt="$WORK/wt/${name:?name}"; branch="lane/$name"
+    [ -d "$wt" ] || { echo "no worktree at $wt; use lane.sh start" >&2; exit 3; }
+    [ -f "$WORK/briefs/$name.md" ] || { echo "no brief at $WORK/briefs/$name.md" >&2; exit 3; }
+    active=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null | wc -l)
+    if [ "$active" -ge "$LANE_MAX" ]; then
+        echo "REFUSED: $active lane(s) already running and LANE_MAX=$LANE_MAX ($WORK/limits.env)." >&2
+        exit 75
+    fi
+    log="$WORK/logs/lane/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
+    systemd-run --user --unit "hakux-lane-$name" --collect \
+        --setenv=HAKUX_ROLE=lane --setenv=HAKUX_BRIEF="$WORK/briefs/$name.md" \
+        --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
+        --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
+        --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
+        --working-directory="$wt" \
+        bash -c "claude -p \"Resuming lane $name in an existing worktree: read NOTES.md and git log first, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --max-turns $TURNS --output-format json --permission-mode acceptEdits --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name >> '$WORK/logs/lane/index.tsv'; exit \$rc"
+    echo "resumed hakux-lane-$name in $wt; log $log"
+    ;;
   rm)
     wt="$WORK/wt/${name:?name}"
     systemctl --user stop "hakux-lane-$name" 2>/dev/null
@@ -83,5 +106,5 @@ case "$cmd" in
     git -C "$REPO" worktree list
     systemctl --user list-units 'hakux-lane-*' --no-legend 2>/dev/null
     ;;
-  *) sed -n '3,9p' "$0" ;;
+  *) sed -n '3,10p' "$0" ;;
 esac
