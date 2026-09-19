@@ -733,7 +733,9 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  */
 #define PGRAPH_GEOM_MAX_OUTPUT_VERTICES 18
 #define PGRAPH_GEOM_VTX_COMPONENTS 48
-/* gl_Position (4) + gl_PointSize (1); both are written by emit_vertex(). */
+/* gl_Position (4) + gl_PointSize (1); both are written by every vertex
+ * emitter in glsl/geom.c (emit_vertex()/emit_vertex_fs(),
+ * emit_line_vertex()). */
 #define PGRAPH_GEOM_BUILTIN_COMPONENTS 5
 #define PGRAPH_GEOM_COMPONENTS_PER_VERTEX \
     (PGRAPH_GEOM_VTX_COMPONENTS + PGRAPH_GEOM_BUILTIN_COMPONENTS)
@@ -748,8 +750,8 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  * problem before a device does.
  *
  * This is deliberately not a runtime assert on the same numbers.  A runtime
- * `assert(limits.maxGeometryOutputVertices >= 12)` is unfireable on any
- * conformant device -- 12 is far below the 256 every device must report --
+ * `assert(limits.maxGeometryOutputVertices >= 18)` is unfireable on any
+ * conformant device -- 18 is far below the 256 every device must report --
  * which is the shape audit pass 2 caught in H1's first remediation: an assert
  * implied by a condition it sits under.  The build-time checks below fire on
  * the case that actually bites: someone adding a varying to

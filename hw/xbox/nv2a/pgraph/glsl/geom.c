@@ -315,16 +315,34 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * point on the LONG side sits a fraction t of the way down the line,
          * so it has no source vertex to take z and w from.
          *
-         * Interpolating w as 1/w linear in screen space, and z as its
-         * perspective-correct value at that point, is what makes the
-         * subdivision invisible: perspective-correct interpolation is affine
-         * in (a/w, 1/w), so a vertex carrying the true (a/w, 1/w) leaves
-         * every varying over both sub-polygons exactly as the unclipped
-         * parallelogram had it.  Getting this wrong would tilt the colour
-         * ramp along the line near the cap, which is a fresh defect in
-         * exactly the pixels this change exists to fix.  At w0 == w1 -- all
-         * 2D content, the Line_width suite included -- it collapses to the
-         * plain screen-space lerp.
+         * TWO QUANTITIES, AND BOTH ARE LINEAR IN SCREEN SPACE -- this is not
+         * the perspective-correct rule the varyings follow.  1/w is affine in
+         * window coordinates, and so is window-space depth, which is what the
+         * rasteriser interpolates across a primitive.  So the cut vertex must
+         * carry
+         *
+         *     1/w    = mix(1/wa, 1/wb, t)
+         *     z_clip = w * mix(za/wa, zb/wb, t)
+         *
+         * -- one factor of 1/w inside the mix and one w outside, not two of
+         * each.  A vertex carrying those leaves the depth over both
+         * sub-polygons exactly as the unclipped parallelogram had it, and,
+         * because 1/w is then right, leaves every perspective-correct varying
+         * right as well.
+         *
+         * Interpolating z perspective-correctly instead -- which is what this
+         * did until audit finding H1 -- agrees only when wa == wb.  At
+         * wa = 1, wb = 4 with endpoint NDC depths 0.2 and 0.8 it reads 0.32 at
+         * the screen midpoint where the true value is 0.50, so the cap of a
+         * wide line sorts against other geometry differently from the body of
+         * the same line, and z can leave [-w, w] and invoke clipping the
+         * parallelogram never met.  Nothing here reads depth -- the offline
+         * model scores ink coverage -- so the check is explicit:
+         * `line_cap_phase.py --depth`, which evaluates this expression
+         * against the screen-space lerp and trips on the old one.
+         *
+         * At w0 == w1 -- all 2D content, the Line_width suite included -- it
+         * collapses to the plain screen-space lerp.
          */
         mstring_append(output,
                        "vec4 line_clip_lerp(int i0, int i1, float t,\n"
@@ -335,25 +353,48 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                        "  float ib = 1.0 / pb.w;\n"
                        "  float q = mix(ia, ib, t);\n"
                        "  float w = 1.0 / q;\n"
-                       "  float z = mix(pa.z * ia * ia, pb.z * ib * ib, t) *\n"
-                       "            w * w;\n"
+                       "  float z = mix(pa.z * ia, pb.z * ib, t) * w;\n"
                        "  return vec4((screen * lineNdcScale - 1.0) * w,\n"
                        "              z, w);\n"
                        "}\n"
-                       "\n"
+                       "\n");
+        if (!state->noperspective) {
+            mstring_append(output,
                        /* The perspective-correct line parameter for the same
-                        * point, which is what the varyings interpolate by. */
+                        * point, which is what the varyings interpolate by
+                        * while they carry the default `smooth` qualifier.
+                        * Under NOPERSPECTIVE they do not, and this is not
+                        * emitted: see emit_line_vertex(). */
                        "float line_lerp_t(int i0, int i1, float t) {\n"
                        "  float ia = 1.0 / gl_in[i0].gl_Position.w;\n"
                        "  float ib = 1.0 / gl_in[i1].gl_Position.w;\n"
                        "  return (t * ib) / mix(ia, ib, t);\n"
                        "}\n");
+        }
     }
 
-    mstring_append(
+    /*
+     * vtxFogSpecial is `flat` in EVERY shade mode (glsl/common.c), so the
+     * value that reaches the fragment shader is the one the provoking output
+     * vertex carried -- and the cap clip below moves which vertex that is.
+     * The widened-line path therefore emits through emit_vertex_fs(), whose
+     * second argument names the flat source separately from the vertex being
+     * emitted, and gives every vertex of one footprint the same source; then
+     * no output convention can be observed.  Everything else is unchanged,
+     * and the non-widened path still generates the three-argument
+     * emit_vertex() verbatim.
+     */
+    const char *emit_vertex_sig =
+        widen_lines ? "void emit_vertex_fs(int index, int fs, mat4 pz,\n"
+                      "                    vec4 pos) {\n"
+                    : "void emit_vertex(int index, mat4 pz, vec4 pos) {\n";
+    const char *fog_special_index = widen_lines ? "fs" : "index";
+
+    mstring_append_fmt(
         output,
-        "void emit_vertex(int index, mat4 pz, vec4 pos) {\n"
-        "  gl_Position = pos;\n");
+        "%s"
+        "  gl_Position = pos;\n",
+        emit_vertex_sig);
     if (!opts.gles) {
         mstring_append(output,
             "  gl_PointSize = gl_in[index].gl_PointSize;\n");
@@ -365,7 +406,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         "  vtxB0 = v_vtxB0[%s];\n"
         "  vtxB1 = v_vtxB1[%s];\n"
         "  vtxFog = v_vtxFog[index];\n"
-        "  vtxFogSpecial = v_vtxFogSpecial[index];\n"
+        "  vtxFogSpecial = v_vtxFogSpecial[%s];\n"
         "%s%s%s%s"
         "  vtxPos0 = pz[0];\n"
         "  vtxPos1 = pz[1];\n"
@@ -378,6 +419,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         provoking_index,
         provoking_index,
         provoking_index,
+        fog_special_index,
         tex_lines[0], tex_lines[1], tex_lines[2], tex_lines[3]);
 
     if (widen_lines) {
@@ -385,29 +427,60 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * A vertex of the widened footprint that is not one of the line's two
          * endpoints.  Only the cap clip's cut point on the long side is one,
          * and only when the clip bites: at t == 0 or t == 1 this hands
-         * straight back to emit_vertex() with the endpoint's own index, so
+         * straight back to emit_vertex_fs() with the endpoint's own index, so
          * the unclipped four-corner case emits exactly what it emitted
          * before, bit for bit, rather than an arithmetically-equal mix().
          *
-         * EVERY FLAT VARYING HERE COMES FROM i0.  Under flat shading that is
-         * all of them, and it is what the four-corner strip already produced:
-         * both of its triangles took their provoking vertex from the i0 side.
-         * The hexagon's strip does not -- two of its four triangles are
-         * provoked by a vertex on the i1 side -- so taking the flat values
-         * from the emitted vertex instead would make a flat-shaded wide line
-         * change colour at the cap depending on how many corners the clip
-         * happened to cut.  This keeps that decision out of the geometry.
+         * WHICH VARYINGS ARE INTERPOLATED IS THE QUALIFIER TABLE IN
+         * glsl/common.c, NOT THE SHADE MODE.  Only vtxD0/D1/B0/B1 follow the
+         * shade mode; vtxFog, vtxT0..T3 and vtxPointSize carry `smooth` (or
+         * `noperspective`) unconditionally and are interpolated even under
+         * flat shading, so the cut vertex must carry their interpolated value
+         * in BOTH arms below.  Pinning them to an endpoint -- which is what
+         * this did until audit finding H2 -- hands a flat-shaded textured wide
+         * line the texture coordinate from the far end of the line over the
+         * two triangles that touch the cap, and drops the cylWrap()
+         * adjustment with it.
+         *
+         * THE FLAT SOURCE IS DECIDED ONCE FOR THE WHOLE FOOTPRINT, on both
+         * paths.  vtxD0/D1/B0/B1 under flat shading come from gl_in[0], which
+         * prim_rewrite.c has already made the guest's provoking vertex
+         * (needs_rewrite() rewrites a LINES draw exactly when it is flat and
+         * PROVOKING_VERTEX_LAST).  vtxFogSpecial is `flat` in every shade mode
+         * and comes from i0 here and from emit_vertex_fs()'s `fs` argument
+         * there.  Since every vertex of one footprint then carries the same
+         * value, the pipeline's own provoking convention -- first-vertex,
+         * because nothing in vk/ enables VK_EXT_provoking_vertex -- cannot be
+         * observed, and a flat-shaded wide line does not change colour
+         * depending on how many corners the clip happened to cut.  The
+         * four-corner strip got that by accident (both its triangles provoked
+         * from the i0 side); the hexagon's does not, which is audit finding
+         * M1.
+         *
+         * THE INTERPOLATION PARAMETER FOLLOWS THE SAME TABLE.  Under
+         * state->noperspective the rasteriser interpolates those varyings
+         * linearly in SCREEN space, so the value the unclipped parallelogram
+         * produced at the cut point is the one at the screen fraction tl;
+         * otherwise it is the perspective-correct value at
+         * line_lerp_t(tl).  Using the perspective-correct parameter under
+         * NOPERSPECTIVE is audit finding M2: at wa = 1, wb = 4 a cut at screen
+         * fraction 0.5 would be given the value for parameter 0.8.
          */
-        mstring_append(
+        mstring_append_fmt(
             output,
             "void emit_line_vertex(int i0, int i1, float tl, mat4 pz,\n"
             "                      vec2 screen) {\n"
-            "  if (tl <= 0.0) { emit_vertex(i0, pz, line_clip(i0, screen));\n"
-            "                   return; }\n"
-            "  if (tl >= 1.0) { emit_vertex(i1, pz, line_clip(i1, screen));\n"
-            "                   return; }\n"
-            "  float t = line_lerp_t(i0, i1, tl);\n"
-            "  gl_Position = line_clip_lerp(i0, i1, tl, screen);\n");
+            "  if (tl <= 0.0) {\n"
+            "    emit_vertex_fs(i0, i0, pz, line_clip(i0, screen));\n"
+            "    return;\n"
+            "  }\n"
+            "  if (tl >= 1.0) {\n"
+            "    emit_vertex_fs(i1, i0, pz, line_clip(i1, screen));\n"
+            "    return;\n"
+            "  }\n"
+            "  float t = %s;\n"
+            "  gl_Position = line_clip_lerp(i0, i1, tl, screen);\n",
+            state->noperspective ? "tl" : "line_lerp_t(i0, i1, tl)");
         if (!opts.gles) {
             mstring_append(
                 output,
@@ -415,37 +488,33 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                 "                     gl_in[i1].gl_PointSize, t);\n");
         }
         if (state->smooth_shading) {
-            mstring_append_fmt(
+            mstring_append(
                 output,
                 "  vtxD0 = mix(v_vtxD0[i0], v_vtxD0[i1], t);\n"
                 "  vtxD1 = mix(v_vtxD1[i0], v_vtxD1[i1], t);\n"
                 "  vtxB0 = mix(v_vtxB0[i0], v_vtxB0[i1], t);\n"
-                "  vtxB1 = mix(v_vtxB1[i0], v_vtxB1[i1], t);\n"
-                "  vtxFog = mix(v_vtxFog[i0], v_vtxFog[i1], t);\n"
-                "%s%s%s%s"
-                "  vtxPointSize = mix(v_vtxPointSize[i0],\n"
-                "                     v_vtxPointSize[i1], t);\n",
-                tex_lerp[0], tex_lerp[1], tex_lerp[2], tex_lerp[3]);
+                "  vtxB1 = mix(v_vtxB1[i0], v_vtxB1[i1], t);\n");
         } else {
-            /* Flat: the provoking vertex decides every one of these, so an
-             * interpolated value would be discarded.  gl_in[0] for the four
-             * the generator already pins there, i0 for the rest. */
+            /* Flat: these four, and only these four, are decided by the
+             * provoking vertex, so an interpolated value would be discarded.
+             * gl_in[0] is where the generator already pins them. */
             mstring_append(
                 output,
                 "  vtxD0 = v_vtxD0[0];\n"
                 "  vtxD1 = v_vtxD1[0];\n"
                 "  vtxB0 = v_vtxB0[0];\n"
-                "  vtxB1 = v_vtxB1[0];\n"
-                "  vtxFog = v_vtxFog[i0];\n"
-                "  vtxT0 = v_vtxT0[i0];\n"
-                "  vtxT1 = v_vtxT1[i0];\n"
-                "  vtxT2 = v_vtxT2[i0];\n"
-                "  vtxT3 = v_vtxT3[i0];\n"
-                "  vtxPointSize = v_vtxPointSize[i0];\n");
+                "  vtxB1 = v_vtxB1[0];\n");
         }
+        mstring_append_fmt(
+            output,
+            "  vtxFog = mix(v_vtxFog[i0], v_vtxFog[i1], t);\n"
+            "%s%s%s%s"
+            "  vtxPointSize = mix(v_vtxPointSize[i0],\n"
+            "                     v_vtxPointSize[i1], t);\n"
+            "  vtxFogSpecial = v_vtxFogSpecial[i0];\n",
+            tex_lerp[0], tex_lerp[1], tex_lerp[2], tex_lerp[3]);
         mstring_append(
             output,
-            "  vtxFogSpecial = v_vtxFogSpecial[i0];\n"
             "  vtxPos0 = pz[0];\n"
             "  vtxPos1 = pz[1];\n"
             "  vtxPos2 = pz[2];\n"
@@ -460,6 +529,13 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * are for the floating-point case where a near-degenerate polygon
          * would otherwise index past the array, which in GLSL is undefined
          * rather than an error.
+         *
+         * A cut on one of the two SHORT edges has T[i] == T[j] -- both ends of
+         * a cap edge sit at the same point along the line -- and that exact
+         * endpoint parameter is taken rather than mix()ed, because mix(1, 1,
+         * f) is (1 - f) + f and is not required to be exactly 1.  A T of
+         * 1 - eps misses emit_line_vertex()'s endpoint early-out and
+         * synthesises a vertex where an endpoint's own values were available.
          */
         mstring_append(
             output,
@@ -478,7 +554,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
             "    if (((da < 0.0) != (db < 0.0)) && nq < 6) {\n"
             "      float f = da / (da - db);\n"
             "      Q[nq] = mix(P[i], P[j], f);\n"
-            "      S[nq] = mix(T[i], T[j], f);\n"
+            "      S[nq] = (T[i] == T[j]) ? T[i] : mix(T[i], T[j], f);\n"
             "      nq++;\n"
             "    }\n"
             "  }\n"
@@ -639,18 +715,36 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  * so the geometry has to cover those pixels' centres and no
                  * others, which is the half-open span [floor(...),
                  * ceil(...) + 1) in coordinates.  Derived offline from the
-                 * goldens, no device: docs/testing/line_cap_phase.py and
-                 * docs/investigations/line-cap-phase.md.  Over the 48
-                 * non-void Line_* captures it takes whole-capture coverage
-                 * from 495 mismatched px to 102, no capture worse, and it is
-                 * inert below w = 24 where E/2 - w/2 is under a pixel.
+                 * goldens, no device: docs/testing/line_cap_phase.py, with
+                 * the corner table it was read off in
+                 * docs/lanes/linecap13/NOTES.md.  It is inert below w = 24,
+                 * where E/2 - w/2 is under a pixel.
+                 *
+                 * EVERY NUMBER BELOW NAMES THE INSTRUMENT THAT PRODUCED IT,
+                 * because two instruments score this rule and they do not
+                 * agree, over the same 48 non-void Line_* captures and their
+                 * 1,967,133 golden ink px:
+                 *
+                 *   --rivals  the ANALYTIC MODEL, no tie bias.  Whole-capture
+                 *             coverage 495 mismatched px without this clip,
+                 *             102 with it, no capture worse.
+                 *   --shader  emit_line()'s OWN polygon, rasterised at pixel
+                 *             centres with the tie bias the device pushes
+                 *             (1/256 at subPixelPrecisionBits = 8): 935 px
+                 *             without the clip, 544 with it.  At an epsilon
+                 *             bias, which isolates the geometry from the
+                 *             quantisation, 414 and 21.
+                 *
+                 * The device sees the second instrument's world, so ~544 --
+                 * not 21 and not 102 -- is what the registered prediction
+                 * bounds.
                  *
                  * The outward rounding is measured, not assumed: the low and
                  * the high side of the same capture disagree by exactly one
                  * pixel at the same width and slope (LLoop0 reaches 32.5 px
-                 * past its endpoint where LLoop4 stops at 31.5), and a
-                 * centre-sampled w/2 band -- the obvious reading -- scores
-                 * 497 px, worse than the 495 it was meant to fix.
+                 * past its endpoint where LLoop4 stops at 31.5), and the
+                 * obvious reading -- a centre-sampled w/2 band -- scores 645
+                 * px on --rivals, worse than the 495 it was meant to fix.
                  *
                  * The clip planes are computed from v_vtxPos, NOT from the
                  * tie-shifted corners: they are silicon's grid, and they land
