@@ -153,3 +153,66 @@ So one of them (*a second tick*) is a genuine tautology against the old file
 and is only a test of the new one; the rest are must-not-move guards. Neither
 kind discharges the "your check must fail against the code you replaced"
 requirement on its own — the six above are what does.
+
+## Why attempt 2 did not finish, which is not what the resume assumed
+
+Attempt 2 finished the brief's checklist. It merged, ran the gate green, pushed,
+marked the PR ready at 07:35:38Z and labelled it `harness` and `fold-ready` by
+07:38:49Z — the timeline says so. It did not stop in draft, and turns were not
+what stopped it.
+
+What it did not do is diagnose why the PR would not fold. `fold.sh` said, twice,
+that **no CI run exists** on the head, and both that comment and the 08:07Z
+resume read the missing run as a `[skip ci]` marker — which is what `fold.sh`'s
+own comment names as "the usual cause". So the response was an empty
+`ci: build this head` commit, which produced no run either. That is the real
+reason a third attempt was needed, and the cause was never the commit message.
+
+## The finding: a PR that conflicts with master gets no CI run at all
+
+GitHub builds a `pull_request` event against the *merge* of head and base. When
+that merge conflicts, there is no merge commit to build, so **no workflow run is
+created** — not a failed one, not a skipped one, none. `fold.sh` then reads
+`NONE` and correctly refuses to fold, and its advice sends the lane after a
+`[skip ci]` marker that is not there.
+
+Every head of this branch, correlated against the master tip of its own moment:
+
+| head | merges with then-master | runs created |
+| --- | --- | --- |
+| `0e591da552` (NOTES only, PR opened 05:56Z) | clean (`a1691ae68e`) | Android + Desktop build |
+| `997e28b235` (the fix + the selftest block) | **conflict** (`1f7572a34c`) | none |
+| `d8db6092cf` (`ci: build this head`, empty) | **conflict** (`ae3712aae1`) | none |
+| `fa69c61d34` (this one, after the merge below) | clean (`912f58a1c1`) | see below |
+
+Reproduce it without pushing anything:
+`git merge-tree --write-tree --name-only <head> <master>` exits 1 on exactly
+the heads that got no run, and 0 on the two that did. The conflict was always
+`selftest.sh` — every harness lane appended to the same spot, which is the
+collision `#136`'s split was folded to end.
+
+So the diagnosis order for "no CI run" is: **check mergeability first**, and
+only then the commit message. An empty commit cannot fix a conflict, and
+pushing one hides the cause behind a new head. This is worth saying in
+`fold.sh`'s comment, which is not this lane's file — it is in a PR comment on
+#123 for whoever owns `fold.sh` next.
+
+## Attempt 3: the merge, and the block moved into a fragment
+
+`#136` folded as `f53f3f66c2` between attempt 2's push and this attempt:
+`selftest.sh` now keeps only the fixtures, shims and tally and sources
+`selftest.d/NN-*.sh` in sorted order. The merge of `origin/master` (37 commits)
+auto-resolved — master's side deleted every inline block and ours was the only
+one left standing — so the whole of this lane's section survived in
+`selftest.sh`, where it no longer belonged.
+
+Moved verbatim to `docs/testing/jobs/selftest.d/92-arms-skip-told.sh`, with only
+a fragment header added. `selftest.sh` is byte-identical to `origin/master`
+again (`git diff origin/master -- docs/testing/jobs/selftest.sh` is empty),
+which is the check that the move was a move.
+
+**92** is the number because the fragment is not self-contained: it reads
+`$sha2`, the `request.sh` refusal that `40-arms-refusal.sh` leaves standing, to
+assert that a refusal does not also get a structural-skip comment. It must
+therefore run after 40, and after 50, which clears markers and drives the whole
+queue itself. Nothing after it reads anything it leaves.
