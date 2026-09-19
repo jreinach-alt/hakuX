@@ -48,9 +48,12 @@ finish, and takes one run with it. It does **not** diagnose the stipple.
   after the flip's own `pgraph_vk_finish` **and after the download that finish
   only pre-recorded has been completed into VRAM** -- one fence wait per
   frame, and only when images are on. The first version skipped that
-  completion and so wrote a picture one completed download old; see
-  "Attempt 3" below. One PPM per frame, named next to the records, with the
-  fence slot it waited on in the frame record as `img_sync`.
+  completion and so wrote a picture one completed download old; the second
+  completed it without checking it had covered the display surface. See
+  "Attempt 3" and "Attempt 4" below. One PPM per frame **except** the frames
+  where the flip did not pre-record this surface, which write none at all --
+  the frame record carries `img_sync: -2` and `"image": null` there, and
+  `img_sync` otherwise names the fence slot the picture waited on.
 - **Output:** `framedump_<id>.jsonl` + `framedump_<id>_fNNN.ppm` in the files
   dir, so `--pull 'framedump_*'` collects the lot.
 
@@ -299,6 +302,12 @@ to 2, and `framedump_check.py` refuses to pair a schema-1 dump's images with
 its records and flags a schema-2 record that names an image without naming a
 fence.
 
+**Superseded by attempt 4 (N1): this was not enough.** The completion covers
+whatever was outstanding and this code never checked the display surface was
+among it, so a schema-2 `img_sync` records a fence that may have had nothing
+to do with the picture. Schema is 3 and a schema-2 dump's images are refused
+the same way a schema-1's are.
+
 **Still unmeasured, and it should be the next arm.** No device ran this. The
 cheap settling run is the one the audit named: a title with a moving camera,
 images on, and a check that `framedump_<id>_fNNN.ppm` matches the scene at
@@ -345,6 +354,10 @@ the disagreement check, and exits **3** -- a status of its own, not 0 and not
 five), one asserts the refusal carries no verdict text, and one asserts the
 serialising mutant is *not* swallowed by the threshold.
 
+**Half-superseded by attempt 4 (N2): the second leg was too wide.** A dump can
+be thin and still unambiguous, and the 3-frames-of-five case was one -- it
+demonstrates batching. The refusal now also requires `max_cb <= 1`.
+
 ### M3 -- the control arm outlived the dump it is the control for
 
 `diag` passed the dump's frame count straight to
@@ -376,6 +389,105 @@ is reported as unreadable, with its schema. L4: `fdump_clear_previous()` runs
 longer deletes the previous run's dump first -- it takes the new file's name
 to skip, since that file now exists when the clear runs. L5: the `noimages`
 comment said "~1 MB instead of ~1 MB per frame"; it now says what it meant.
+
+## Attempt 4: remediating the pass-2 audit
+
+`docs/audits/2026-09-19-diagdump77-pass2.md` closed all nine pass-1 findings
+and raised two new MEDIUM and two new LOW, both MEDIUMs in the code attempt 3
+wrote and both the same shape as the findings they replaced: **an artifact
+making a claim its mechanism does not support.** That is the lesson to carry
+out of this lane, because the remediation reproduced the defect it was fixing
+one layer down.
+
+### N1 -- completing the download is not the same as having downloaded THIS surface
+
+H1's fix calls `pgraph_vk_download_surface_complete_deferred()` before reading
+VRAM. That completes **whatever was outstanding**; it never tested that the
+display surface was among it.
+`pgraph_vk_prerecord_display_download()` has four early returns, and two of
+them leave the display surface dirty and un-recorded on paths that run every
+frame: `num_deferred_downloads != 0` (an eviction, a shelving or the non-TCG
+flush earlier in the frame) and `!r->in_command_buffer` (a finish ended the CB
+and no draw reopened it). On such a frame the completion waits a real fence for
+somebody else's copy, the display surface's pixels never leave its `VkImage`,
+and attempt 3 wrote the PPM anyway and recorded a **non-negative fence slot**
+for it -- H1's failure in a narrower state, with a field now asserting it had
+not happened. In the `!in_command_buffer` variant `img_sync` was `-1`, whose
+documented meaning was the exact opposite.
+
+Fix: **test it, do not force it.** A download that lands clears its surface's
+`draw_dirty` (`vk/surface.c`, for the batched entries and for the display
+pre-download separately), so `disp->draw_dirty` read straight after the
+completion is exactly "does VRAM hold this frame". Still dirty → write no
+image: `"image": null`, `img_sync: -2` (`FDUMP_IMG_STALE`), one WARN on the
+first occurrence, and a count in the close line and in the trailer's new
+`images_stale`. The audit's own instruction not to fix it by forcing a
+download here is right and was followed: that would be a
+`pgraph_vk_finish(SURFACE_DOWN)` at every flip, which is the cost the headline
+claim exists to avoid.
+
+Schema goes to **3**, and `framedump_check.py` now refuses to pair a schema-2
+dump's images with a draw record for the same reason it already refused a
+schema-1's -- schema 2 completed the download but never checked it, so which
+of its images are their own frames' is unknowable from the file. The checker
+also reports the count of frames that wrote no image (those records are sound;
+they simply have no picture) and flags the combination the emulator cannot
+produce: a record naming an image *and* carrying `img_sync: -2`.
+
+**A dump with fewer pictures than frames is the instrument working.** Say that
+to whoever reads the next one, because the reflex is to treat a missing PPM as
+a failure and re-arm.
+
+### N2 -- the refusal was written on sample size, and the question is ambiguity
+
+M2's `INSUFFICIENT SAMPLE` gate was `not usable or len(draws) < 30`. Neither
+term looks at `max_cb`, and `max_cb >= 2` means a command buffer held two
+draws -- which a per-draw finish cannot produce at **any** sample size. So the
+audit's 30-frames x 3-draws dump (an `afterNN` landing on a light scene, a
+menu with some geometry, a title between loads) was refused with the sentence
+"Neither column can distinguish the two paths on this dump", which is false of
+it, and its operator was told to spend another device slot on a question the
+artifact in hand had already answered in the direction the lane exists to
+establish.
+
+Fix: the refusal is now `thin and max_cb <= 1`. Above that the `cb_draws`
+verdict prints and the `submits` median is explicitly marked as carrying no
+weight -- it is the column the sample size really does govern -- and is kept
+out of the verdict rather than being allowed to contradict a conclusion it has
+no power over. `SERIALISED` stays refused in the low-draw case, which is M2
+and is right.
+
+**The selftest was pinning the wrong behaviour, not missing it.** Its `short`
+case (3 frames x 5 draws) has `cb_draws` running 0..4, so `max_cb` is 4 -- it
+asserted that the checker refuses to draw the only conclusion those records
+support. It now asserts `NOT SERIALISED by cb_draws` and exit 0, and a new
+`flat` case (same 15 draws, `cb_draws` pinned at 1) asserts the refusal still
+fires. That **pair** is the gate: both dumps are equally thin and they differ
+only in the column that settles the question, so the test can no longer pass
+by measuring the draw count.
+
+### N3, N4 -- the LOWs, both fixed
+
+N3: `flip_stall`'s call-site comment still said "nothing in either call
+submits, records or waits on Vulkan work". With images on, `fdump_end_frame()`
+waits a fence. It now says one fence wait per frame with images on, none under
+`noimages`, and nothing per draw -- the true and stronger claim. This was the
+last survivor of H1's old belief in the tree.
+
+N4: `fdump_end_armed_diag()`'s two lines went out on `DIAG_LOG`
+(`hakuX-diag`), which no logcat spec serving a dispatched run keeps -- so M3's
+teardown was as invisible as the unbounded control arm it fixed. Both are on
+`FDUMP_LOG` now.
+
+### Still unmeasured, and N1 makes the run more valuable rather than less
+
+No device has run anything since attempt 2. The settling run is unchanged --
+images on, a title with a moving camera, check `framedump_<id>_fNNN.ppm`
+against its own `nv2a_frame` rather than the one before it, and re-read
+`cb_draws`/`submits` under the fence wait -- with one addition that is free:
+`images_stale` in the trailer says how often the flip's pre-record bailed on a
+real title, which is a number nobody here has and which decides whether the
+images are a usable sampling of the frames or an occasional one.
 
 ### What the fold should know
 

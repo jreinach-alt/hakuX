@@ -1536,10 +1536,28 @@ extern char g_vulkan_driver_info[256];
 #define FDUMP_DEFAULT_MB      96
 #define FDUMP_POLL_NS         (1000LL * 1000 * 1000)
 #define FDUMP_BUF_BYTES       (256 * 1024)
-/* 2: frame records carry `img_sync`, the fence slot the per-frame image waited
- * on (-1 = nothing outstanding). A schema-1 dump's images are one completed
- * download behind the records they are filed under; see fdump_end_frame. */
-#define FDUMP_SCHEMA          2
+/*
+ * 2: frame records carry `img_sync`, the fence slot the per-frame image waited
+ *    on.
+ * 3: the completion is CHECKED to have covered the display surface, and a
+ *    frame where it did not writes no image at all (`img_sync` is
+ *    FDUMP_IMG_STALE and `"image"` is null).
+ *
+ * The images of a schema-1 or schema-2 dump must not be paired with the draw
+ * records they are filed under. Schema 1 never completed the flip's
+ * pre-recorded download, so every PPM is one completed download old. Schema 2
+ * completed whatever was outstanding but never tested that the display surface
+ * was among it, so a PPM is this frame's only on the frames where the flip's
+ * pre-record succeeded -- and `img_sync` said nothing about which those were.
+ * See fdump_end_frame.
+ */
+#define FDUMP_SCHEMA          3
+
+/* `img_sync` on a frame record: >= 0 is the fence slot the image waited on
+ * before the display surface came back clean, and these two are the cases
+ * where no wait happened or where waiting was not enough. */
+#define FDUMP_IMG_NO_WAIT     (-1) /* nothing outstanding, VRAM already current */
+#define FDUMP_IMG_STALE       (-2) /* display surface still dirty; no image */
 
 /* Set from the Android entry point to the app's external files dir, which is
  * both adb-writable (so the marker can be dropped) and adb-readable (so the
@@ -1563,6 +1581,13 @@ static struct {
     bool env_checked;
     bool no_dir_warned;
     char base[600];
+
+    /* Frames whose display surface was still draw_dirty after the completion,
+     * so no image was written. Counted rather than only logged per frame: the
+     * per-frame line is emitted once and the total goes in the close line and
+     * the trailer, so a dispatched run can see the rate without the PPMs. */
+    int images_stale;
+    bool stale_warned;
 
     /* Non-zero when THIS dump armed the diag capture (the `diag` token), and
      * the value it asked for, so the teardown in fdump_close cannot cancel a
@@ -1648,14 +1673,19 @@ static void fdump_end_armed_diag(void)
      * ours and it is not this dump's to cancel. */
     int prev = qatomic_cmpxchg(&diag_frame_pending, armed, 0);
     if (prev != armed && prev != 0) {
-        DIAG_LOG("framedump: leaving a pending diag arm (%d) it did not "
-                 "make\n", prev);
+        /* FDUMP_LOG, not DIAG_LOG: `hakuX-diag` is absent from both logcat
+         * specs that serve a dispatched run, and the whole point of tearing
+         * the control arm down here is that its lifetime stopped being
+         * invisible. A run that could not see the teardown -- or that a UI
+         * capture prevented it -- is back where it started. */
+        FDUMP_LOG("framedump: leaving a pending diag arm (%d) it did not "
+                  "make\n", prev);
     }
 
     if (!qatomic_read(&diag_frame_active)) {
         return;
     }
-    DIAG_LOG("framedump closed: ending the diag control arm it armed\n");
+    FDUMP_LOG("framedump closed: ending the diag control arm it armed\n");
     diag_total_frames = diag_current_frame_index;
     if (diag_total_frames > 0) {
         diag_write_session_json();
@@ -1679,16 +1709,17 @@ static void fdump_close(const char *why)
      * on this project before. */
     fprintf(fp,
             "{\"t\":\"end\",\"why\":\"%s\",\"frames\":%d,\"draws\":%" PRIu64
-            ",\"bytes\":%" PRIu64 ",\"wall\":%lld}\n",
+            ",\"bytes\":%" PRIu64 ",\"images_stale\":%d,\"wall\":%lld}\n",
             why, fdump.frame_index, fdump.draws_total, fdump.bytes_written,
-            (long long)time(NULL));
+            fdump.images_stale, (long long)time(NULL));
     fclose(fp);
     g_free(fdump.buf);
     fdump.buf = NULL;
 
     FDUMP_LOG("framedump: closed (%s) after %d frames, %" PRIu64 " draws, %"
-             PRIu64 " bytes\n", why, fdump.frame_index, fdump.draws_total,
-             fdump.bytes_written);
+             PRIu64 " bytes, %d frame(s) with no image (display surface still "
+             "dirty)\n", why, fdump.frame_index, fdump.draws_total,
+             fdump.bytes_written, fdump.images_stale);
 
     /* The control arm ends with the dump it is the control for. */
     fdump_end_armed_diag();
@@ -1807,6 +1838,8 @@ static void fdump_begin(NV2AState *d, const char *armed_by, const char *spec)
     fdump.bytes_written = 0;
     fdump.byte_limit = (uint64_t)cap_mb * 1024 * 1024;
     fdump.submit_at_frame_start = qatomic_read(&r->submit_count);
+    fdump.images_stale = 0;
+    fdump.stale_warned = false;
 
     char self[64];
     snprintf(self, sizeof(self), "%s%u.jsonl", FDUMP_PREFIX, fdump.session);
@@ -2096,11 +2129,36 @@ static void fdump_log_draw(NV2AState *d, PGRAPHState *pg, const char *type,
  * So when images are on, complete the outstanding download first. It costs one
  * fence wait per FRAME, at the flip, where a stall already lives -- not a
  * finish per draw: nothing here submits, and cb_draws/submits are untouched.
- * Under `noimages` it costs nothing, because nothing calls it. The fence slot
- * that was waited on is recorded as `img_sync` on the frame record so the
- * pairing is checkable from the artifact rather than from this comment;
- * `img_sync: -1` means nothing was outstanding and VRAM already held the
- * frame. */
+ * Under `noimages` it costs nothing, because nothing calls it.
+ *
+ * THE COMPLETION IS NOT ITSELF THE PAIRING. It completes whatever downloads
+ * were outstanding, and the display surface is among them only when the flip's
+ * pgraph_vk_prerecord_display_download() recorded one. That call has early
+ * returns which are ordinary per-frame events rather than corner cases: an
+ * eviction, a shelving or a non-TCG flush earlier in the frame leaves
+ * num_deferred_downloads non-zero (vk/surface.c), and a finish that ended the
+ * command buffer with no draw since leaves !in_command_buffer. On such a frame
+ * the completion runs, waits a real fence, writes somebody else's copy into
+ * VRAM, and the display surface's pixels never left its VkImage -- which is
+ * exactly the one-frame-behind image above, in a narrower state, and the
+ * earlier version of this code recorded a fence slot for it as though the
+ * pairing had been established.
+ *
+ * The test costs nothing and is exact: a download that landed clears its
+ * surface's draw_dirty (vk/surface.c, both the batched entries and the display
+ * pre-download). So after the completion, draw_dirty on the display surface IS
+ * the question "does VRAM hold this frame". Still dirty means it does not, and
+ * the frame writes NO image -- `"image": null`, `img_sync: FDUMP_IMG_STALE`,
+ * counted for the close line. Deliberately not fixed by forcing a download
+ * here: that is a pgraph_vk_finish(SURFACE_DOWN) at every flip, a cost the
+ * headline claim must not quietly acquire.
+ *
+ * So `img_sync` on a frame that names an image is the pairing, checkable from
+ * the artifact rather than from this comment: >= 0 is the fence slot waited on
+ * before the display surface came back clean, and -1 (FDUMP_IMG_NO_WAIT) means
+ * nothing was outstanding and the surface was already clean, so VRAM held the
+ * frame either way. -2 (FDUMP_IMG_STALE) appears only on frames with no
+ * image. */
 static void fdump_end_frame(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -2108,7 +2166,7 @@ static void fdump_end_frame(NV2AState *d)
 
     char image[128] = "";
     unsigned int iw = 0, ih = 0;
-    int img_sync = -1;
+    int img_sync = FDUMP_IMG_NO_WAIT;
 
     if (fdump.images) {
         if (r->num_deferred_downloads > 0) {
@@ -2124,7 +2182,22 @@ static void fdump_end_frame(NV2AState *d)
         d->vga.get_params(&d->vga, &vdp);
         SurfaceBinding *disp =
             pgraph_vk_surface_get_within(d, d->pcrtc.start + vdp.line_offset);
-        if (disp && disp->width && disp->height) {
+        if (disp && disp->width && disp->height && disp->draw_dirty) {
+            /* The completion above did not cover this surface -- the flip's
+             * pre-record bailed -- so VRAM still holds an older frame. See the
+             * header comment: write nothing rather than a picture the record
+             * would claim belongs to these draws. */
+            img_sync = FDUMP_IMG_STALE;
+            fdump.images_stale++;
+            if (!fdump.stale_warned) {
+                fdump.stale_warned = true;
+                FDUMP_LOG("framedump: no image for f%d and any later frame "
+                          "like it: the display surface was still dirty after "
+                          "the download completion, so VRAM holds an older "
+                          "frame. Count is in the close line.\n",
+                          fdump.frame_index);
+            }
+        } else if (disp && disp->width && disp->height) {
             char name[128];
             snprintf(name, sizeof(name), "%s%u_f%03d.ppm", FDUMP_PREFIX,
                      fdump.session, fdump.frame_index);
@@ -2428,8 +2501,11 @@ static void pgraph_vk_flip_stall(NV2AState *d)
     }
 
     /* The live frame dump closes the frame here, after the flip's own
-     * pgraph_vk_finish above, and then looks for a new arm. Nothing in either
-     * call submits, records or waits on Vulkan work. */
+     * pgraph_vk_finish above, and then looks for a new arm. With images on
+     * that costs ONE FENCE WAIT per frame -- the completion of the download
+     * the flip pre-recorded, see fdump_end_frame -- and none under `noimages`.
+     * Neither call submits or records Vulkan work, and nothing here is per
+     * draw, which is the claim the dump exists to make. */
     if (fdump.fp) {
         fdump_end_frame(d);
     }

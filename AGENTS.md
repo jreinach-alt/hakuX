@@ -794,6 +794,19 @@ flip: the flip only pre-records the display download, so without completing it
 the PPM holds the previous completed download and not the frame whose draw
 records it is filed under. `noimages` removes that too:
 
+**And completing the download is not the same as having downloaded THIS
+surface.** The flip's pre-record has early returns that fire on ordinary
+frames -- an eviction or a shelving earlier in the frame, or a command buffer
+no draw has reopened -- and on those the completion waits a real fence for
+somebody else's copy while the display surface's pixels stay in its `VkImage`.
+So the dump **tests** it, by the surface's own `draw_dirty` after the
+completion, and a frame that fails the test writes **no image**: `"image":
+null`, `img_sync: -2`, and a count in the close line and the trailer. A frame
+dump that hands you fewer pictures than frames is working; one that hands you a
+picture per frame and no way to tell which of them are this frame's is the
+defect that was there before (schema 2, and schema 1 before it -- the checker
+refuses to pair either one's images with a draw record).
+
 ```bash
 # 30 frames, one display PPM each, dropped once the title is in the scene
 adb -s <serial> shell \
@@ -841,6 +854,21 @@ with `INSUFFICIENT SAMPLE` and no verdict, because a per-draw finish and a
 one-draw frame produce the same `cb_draws` and the same submits-per-draw. A
 `SERIALISED` verdict from such a dump would have falsified the whole thesis
 from an instrument that behaved correctly.
+
+**But that refusal is about ambiguity, not about sample size, and writing it as
+a sample-size test made it wrong in the other direction.** `max_cb >= 2` means
+a command buffer held two draws, which no per-draw finish produces at *any*
+sample size -- a 30x3-draw dump has already answered the question, and the
+checker was telling its operator "neither column can distinguish the two paths
+on this dump" and sending them back to the device for it. The refusal now also
+requires `max_cb <= 1`; above that the `cb_draws` verdict is printed and the
+`submits` median is marked as carrying no weight, which is the column the
+sample size really does govern. The asymmetry is the point: a cheap
+`NOT SERIALISED` survives a thin sample because one command buffer settles it,
+and `SERIALISED` stays refused because nothing settles that cheaply. The
+general form is in this file already -- *establish what your instrument cannot
+see* -- with the half that is easy to miss: a guard written on a proxy for
+ambiguity refuses the cases the proxy happens to cover, not the ambiguous ones.
 
 **Dedupe frame records on `nv2a_frame` before treating them as independent
 samples.** A frame record is one `flip_stall`, not one guest frame, and the
