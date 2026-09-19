@@ -33,7 +33,7 @@ echo "== the delivery channel: a comment the recipient can read"
 DSRC="${SELFTEST_DELIVER_SRC:-$TESTING}"
 DD="$T/deliver"; DBIN="$DD/bin"; DDISP="$DD/dispatch"; DSWEEP="$DD/sweep"
 DBOARD="$DD/board"
-mkdir -p "$DBIN" "$DDISP" "$DSWEEP" "$DBOARD" "$DD/posted"
+mkdir -p "$DBIN" "$DDISP" "$DSWEEP" "$DBOARD" "$DD/posted" "$DD/bin-dead"
 export DELIVER_GH_LOG="$DD/gh.log"; : > "$DELIVER_GH_LOG"
 
 # ------------------------------------------------------------------ the feed
@@ -153,6 +153,27 @@ check "the lane's own report is recorded separately from what was routed to it" 
 # was grepping for.
 check "a comment merely QUOTING the marker does not manufacture a delivery" \
     bash -c '! test -e "$1/delivery-cache/ghost.json"' _ "$DDISP"
+
+# A FAILED CALL AND A QUIET HOUR ARE DIFFERENT FACTS. The sweep runs hourly and
+# most hours are quiet; if that reported a failure, the one hour the API was
+# actually down would read exactly like the other twenty-three. Both directions
+# are pinned, on the WORDS and on the exit code, because either alone is
+# satisfied by the wrong behaviour.
+qfeed="$DD/empty.json"; printf '[]\n' > "$qfeed"
+out="$(env PATH="$DBIN:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" \
+       DELIVER_FEED="$qfeed" bash "$DSRC/jobs/deliver.sh" scan --since 2026-09-01T00:00:00Z 2>&1; echo "rc=$?")"
+check "a window with no comments is a quiet hour, not a failure" \
+    bash -c 'grep -q "rc=0" <<< "$1" && grep -q "the call succeeded" <<< "$1"' _ "$out"
+cat > "$DD/bin-dead/gh" <<'EOF'
+#!/usr/bin/env bash
+[ "$1 $2" = "auth status" ] && exit 0
+exit 1
+EOF
+chmod +x "$DD/bin-dead/gh"
+out="$(env PATH="$DD/bin-dead:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" \
+       bash "$DSRC/jobs/deliver.sh" scan --since 2026-09-01T00:00:00Z 2>&1; echo "rc=$?")"
+check "...and an unreadable feed is loud, so a frozen cache is never read as a clean scan" \
+    bash -c '! grep -q "rc=0" <<< "$1" && grep -q "could NOT read the comments feed" <<< "$1"' _ "$out"
 
 # --------------------------------------------------------------------- send
 out="$(dgh bash "$DSRC/jobs/deliver.sh" send remote 62 -b 'Take #34; the GL arm is the only one that can see it.' 2>&1)"

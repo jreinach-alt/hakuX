@@ -231,12 +231,27 @@ cmd_scan() {
     done
     [ -n "$since" ] || since="$(iso_ago '30 days ago')"
     need_gh
-    local rows; rows="$(feed "$since")"
-    # FAIL LOUD, NOT EMPTY. An unreachable API that returned "no deliveries"
-    # would freeze every lane's brief age at whatever the cache last held and
-    # read as a clean scan -- the shape comment_sweep.sh's own header calls the
-    # worst outcome there is.
-    [ -n "$rows" ] || { echo "deliver: scan found no comments since $since (API unreachable, or the repository really is quiet)" >&2; return 3; }
+    local rows rc
+    rows="$(feed "$since")"; rc=$?
+    # A FAILED CALL AND A QUIET HOUR ARE DIFFERENT FACTS AND MUST NOT SHARE AN
+    # EXIT CODE.
+    #
+    # A call that FAILED returning "no deliveries" would freeze every lane's
+    # brief age at whatever the cache last held and read as a clean scan --
+    # the shape comment_sweep.sh's own header calls the worst outcome there is.
+    # So that is loud, and the sweep that calls this reports it.
+    #
+    # An empty window from a call that SUCCEEDED is the normal condition of an
+    # hourly sweep on a repository where nobody commented, and reporting it as
+    # a failure every hour is how a real warning stops being read. The
+    # discriminator is gh's exit status, not the emptiness -- which is the
+    # whole point: "what would this show if the thing were present" has two
+    # different answers here and the code has to hold both.
+    if [ "$rc" -ne 0 ]; then
+        echo "deliver: scan could NOT read the comments feed (gh exited $rc); the cache is unchanged and every lane's brief age is now a lower bound" >&2
+        return 3
+    fi
+    [ -n "$rows" ] || { echo "scanned since $since: the feed was empty -- no comments at all in the window, and the call succeeded"; return 0; }
     # ONE MERGE PER (lane, kind), AND THE MAX IS TAKEN HERE, NOT BY THE FEED'S
     # ORDER. Each merge is a python process, and a thirty-day cold scan is
     # hundreds of rows against at most two per lane, so the cost of `scan`
