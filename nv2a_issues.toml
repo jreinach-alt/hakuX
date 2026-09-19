@@ -3257,3 +3257,25 @@ blocker_tested = "CONFIRMED BY READING 2026-09-18: the issue body says 'Nothing 
 status = "open"
 status_note = "Owner is acquiring a physical Xbox. Nothing here is dispatchable as a device run until a hardware listener exists; each experiment's prediction and falsifier can be written now, per the issue text."
 blocked_on = "Blocked on real Xbox hardware and a hardware listener (a way to boot a disc and capture the framebuffer), per the issue text. Every listed experiment's prediction/falsifier is lane-writable now -- labelled cloud."
+
+[issue.120]
+title = "fold: a PR with no CI run at all waits forever and is never told (statusCheckRollup empty reads as NONE)"
+disposition = "harness"
+suites = []
+no_suites = "a fold-job mechanism defect (docs/testing/jobs/fold.sh), not a renderer or suite question."
+blocker_falsifier = "if this were dispatchable this tick, it would carry a lane in territory.toml or be labelled cloud with a claim; it carries neither yet."
+blocker_tested = "CONFIRMED BY READING 2026-09-19: not a technical blocker -- the fix is fully specified in the issue body (fold.sh:51-79) and needs no device. Not owned: territory.toml wave 99 gives this tick's one local lane slot to #119 (docs/testing/jobs/board.sh, the same file family and the higher-leverage fix: #119 unblocks the board waking for #120 and #121 in the first place)."
+status = "open"
+status_note = "Measured 2026-09-19 in the issue: gh pr view 101/102 --json statusCheckRollup both return length 0, from [skip ci] in the head commit; #101 was unblocked by an empty commit, the per-PR workaround."
+blocked_on = "Not blocked on anything technical: capacity only. The board dispatches at most one lane per tick (LANE_MAX=2, two lanes already running); #119 took this tick's slot. Labelled `cloud`: docs/testing/jobs/fold.sh needs no device and no NDK, so jobs/roles/cloud.md's priority-4 pickup (an open issue labelled cloud with no lane: label) can claim it directly; brief at briefs/120.md. Falls back to a local lane next tick if cloud has not claimed it by then."
+
+[issue.121]
+title = "arms: a structural skip is recorded only on the host, so the lane never learns its prediction will not run"
+disposition = "harness"
+suites = []
+no_suites = "an arms-job mechanism defect (docs/testing/jobs/arms.sh), not a renderer or suite question."
+blocker_falsifier = "if this were dispatchable this tick, it would carry a lane in territory.toml or be labelled cloud with a claim; it carries neither yet."
+blocker_tested = "CONFIRMED BY READING 2026-09-19: not a technical blocker -- the fix is fully specified in the issue body (arms.sh's skip()/refused()) and needs no device. Not owned: territory.toml wave 99 gives this tick's one local lane slot to #119."
+status = "open"
+status_note = "Measured 2026-09-19T04:29:32Z in the issue: a malformed a_ref on lane/cloud-109's prediction (PR #115) was recorded only at $WORK/arms/skipped/<sha> on the host; the lane has no way to read it."
+blocked_on = "Not blocked on anything technical: capacity only. The board dispatches at most one lane per tick (LANE_MAX=2, two lanes already running); #119 took this tick's slot. Labelled `cloud`: docs/testing/jobs/arms.sh needs no device and no NDK, so jobs/roles/cloud.md's priority-4 pickup (an open issue labelled cloud with no lane: label) can claim it directly; brief at briefs/121.md. Falls back to a local lane next tick if cloud has not claimed it by then."

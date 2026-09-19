@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 98
-updated_utc = "2026-09-19T01:30:00Z"
+wave = 99
+updated_utc = "2026-09-19T05:47:39Z"
 
 
 
@@ -89,6 +89,11 @@ issues = ["84"]
 standing = true
 files = []
 note = "#84 IS THIS LANE'S RIGHT NOW AND THE ROW HAD TO SAY SO. The fold job's own fleet row named #84 in `asked` and a previous tick added it to dispatch/fleet/fold.json, but fleet.py builds ownership from THIS file and not from the fleet row -- so for two ticks #84 read as DISPATCHABLE while the fold job was holding it, and a lane dispatched on that reading would have landed in a tree being folded. issues[] is the claim; `asked` is prose. Remove #84 from this row when the fold lands (or when it is handed back), not before. STANDING LANE. It owns FOLDING: cherry-pick, preflight, push, fast-forward. Created 2026-09-18 at the owner's direction after the orchestrator's own folds caused three distinct defects -- the shared tree went dirty twice and stalled every uncached build in the fleet, and a prediction was folded ahead of its own code, breaking the binding it exists for. The owner had asked whether this lane was needed once before and the orchestrator did not act on it. FOLD IN THE SCRATCH WORKTREE at /home/justin/hakux-work/fold and fast-forward the shared tree, so the dirty window is one ref update rather than several minutes -- AGENTS.md carries the procedure. CLAIMS NO SOURCE FILES: it moves commits, it does not author them, and a merge conflict in compiled code it does not hold goes BACK to the authoring lane rather than being resolved here. A generated file (the nv2a index) is REGENERATED, never hand-merged."
+
+[lane.boardwake]
+issues = ["119"]
+files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/selftest.sh"]
+note = "DISPATCHED WAVE 99 for #119: a healthy fleet dispatches nothing, because board.sh's gate (lines 69-74) only wakes on a FAIL from fleet.py or check_coverage.py -- both negative reports, so idle capacity plus startable work never wakes a tick. Fix adds a positive trigger: lanes_running < LANE_MAX and an open unlabelled issue exists, plus a ready-PR-with-no-state-label trigger. See briefs/boardwake.md. #120 and #121, filed at the same minute and the same shape of harness fix, went to the cloud outlet instead of a second local lane -- LANE_MAX is 2 and the board dispatches at most one lane per tick; both need no device and no NDK. Briefs at briefs/120.md and briefs/121.md; blocked_on on their nv2a_issues.toml rows says so."
 
 [lane.triage]
 issues = []
