@@ -1,5 +1,43 @@
 # lane.boardgate
 
+## Why attempt 3 did not finish, and what attempt 4 did
+
+Attempt 3 **did** finish its brief: selftest green, master merged, pushed,
+`gh pr ready 124`, `harness` label on. What stopped the PR was the fold job,
+not the lane. Between attempt 3's merge and the fold, PR #136 landed as
+`f53f3f66c2` and split `selftest.sh` into `selftest.d/NN-*.sh` fragments, so
+the 128-line block this lane had appended to `selftest.sh` conflicted with a
+file that no longer held any checks at all. The fold job resolves nothing and
+handed #124 back as `needs-rebase`. The resume brief for that state was
+written after attempt 3 ended, so attempt 4 is the first to see it.
+
+Attempt 4 is a **move, not a rewrite**:
+
+- `git merge origin/master` conflicted only in `selftest.sh`. Resolution:
+  master's `selftest.sh` verbatim (the fixtures, the shims, the fragment
+  loader, the tally) and the 128-line block carried **byte-identical** into
+  `docs/testing/jobs/selftest.d/97-board-gate.sh` behind a header in the
+  other fragments' shape. Verified by extracting the block from the HEAD
+  side of the conflict and `diff`-ing it against the `+` lines of
+  `git diff <merge-base> HEAD -- selftest.sh`: identical, 128 lines.
+- Master moved three commits (`912f58a1c1`, the #117 fold) *during* the
+  merge, which made `git diff --cached origin/master` show two doc files as
+  deleted. Nothing was deleted; a second `git merge origin/master` brought
+  them in and the diff against master is exactly this lane's three files.
+- `board.sh` did not conflict: master has not touched it since the
+  merge-base.
+- `.scratch/falsify.sh` and `.scratch/mutants.sh` (still uncommitted scratch)
+  now extract the block from the fragment instead of `selftest.sh`. Both
+  layers reproduce the tables below unchanged: 14/14 flip against
+  `origin/master`'s `board.sh`, and every mutant trips its named check with
+  the cap mutant tripping two.
+- Full `selftest.sh` on the merged tree: **138 passed, 0 failed**, the 14 in
+  the last section.
+
+The lesson this time is the one #136 already drew: a check appended to a
+shared file is a hand-back waiting to happen. New checks go in their own
+fragment, and the PR body's `Files:` line has to name the fragment.
+
 ## Why attempt 2 did not finish, and what it left behind
 
 Attempt 2 did essentially all of the work and then ended **inside the
