@@ -1,0 +1,13 @@
+[Unit]
+Description=hakuX arms job -- queue registered predictions on the handhelds, judge finished pairs
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/arms.sh
+
+[Service]
+Type=oneshot
+# run-trunk.sh keeps a private worktree of origin/master and runs the job
+# from it, so a stale owner checkout cannot run a stale job.
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/run-trunk.sh arms
+SuccessExitStatus=75
+TimeoutStartSec=1800
+StandardOutput=append:/home/justin/hakux-work/logs/arms/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/arms/systemd.log

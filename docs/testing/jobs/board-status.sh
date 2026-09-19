@@ -57,6 +57,17 @@ echo "   queue: $(ls "$D"/queue/*.req 2>/dev/null | wc -l) waiting, running: $(l
 holds=$(ls "$D"/hold 2>/dev/null | grep -v '\.why$' | grep -v '^lifted$' | tr '\n' ' ')
 echo "   holds: ${holds:-none}"
 
+echo "== arms job (queues registered predictions; judges pairs)"
+A="$WORK/arms"
+if [ -d "$A" ]; then
+    pend=0; for p in "$A"/pairs/*.json; do [ -f "$p" ] || continue; [ -f "$A/judged/$(basename "$p" .json)" ] || pend=$((pend+1)); done
+    echo "   $pend pair(s) awaiting a verdict, $(ls "$A"/judged 2>/dev/null | wc -l) judged, $(ls "$A"/skipped 2>/dev/null | wc -l) skipped; watermark $(cat "$A/since" 2>/dev/null)"
+    [ -f "$WORK/logs/arms/tick.log" ] && tail -3 "$WORK/logs/arms/tick.log" | sed 's/^/   /'
+else echo "   not installed (install-host.sh)"; fi
+echo "== fold job"
+[ -f "$WORK/logs/fold/tick.log" ] && tail -3 "$WORK/logs/fold/tick.log" | sed 's/^/   /' || echo "   no fold tick yet"
+echo "== status roll-up: $WORK/status/STATUS.md ($( [ -f "$WORK/status/STATUS.md" ] && ago "$(stat -c %Y "$WORK/status/STATUS.md")" || echo never )); the same text is the comment on the harness-status issue"
+
 echo "== what the board changed on GitHub (needs gh)"
 if command -v gh >/dev/null 2>&1; then
     gh api 'repos/jreinach-alt/hakuX/issues/comments?since='"$(date -u -d '24 hours ago' +%FT%TZ)"'&per_page=100' \

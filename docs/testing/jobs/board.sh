@@ -69,6 +69,7 @@ cov=$(cd "$WT" && timeout 60 python3 docs/testing/check_coverage.py 2>&1 | grep 
 
 if [ -z "$fails" ] && [ -z "$cov" ]; then
     say "nothing actionable"
+    bash "$JOBS/status.sh" >/dev/null 2>&1
     exit 0
 fi
 say "actionable:"; printf '%s\n' "$fails" | sed 's/^/  /' | tee -a "$LOG"
@@ -92,4 +93,8 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when both lists are empty or every item has a label, a comment, or an issue."
 } > "$brief"
-exec bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"
+bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"; rc=$?
+# The roll-up after every tick, model or not: the status comment is how the
+# owner sees this job at all (jobs/status.sh).
+bash "$JOBS/status.sh" >/dev/null 2>&1
+exit $rc

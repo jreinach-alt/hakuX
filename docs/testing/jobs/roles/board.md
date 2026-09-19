@@ -33,14 +33,34 @@ So, every tick, in this order:
   oldest), write its brief to `briefs/<lane>.md` on the `board` branch, start
   it with `docs/testing/lane.sh start <name> <brief> <issue>`, label the issue
   `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its cap: stop
-  dispatching, do not retry, do not start a session any other way. There is
-  no cloud Routine yet; do not label `cloud`. Eleven dispatchable issues is
-  eleven ticks of work, not one.
+  dispatching locally, do not retry, do not start a session any other way.
+  Eleven dispatchable issues is eleven ticks of work, not one.
+- **The cloud outlet.** An hourly cloud Routine claims one issue labelled
+  `cloud` per firing (`jobs/roles/cloud.md`). Label `cloud` any dispatchable
+  issue whose brief needs no device and no NDK -- analysis, a falsifier
+  script, a desktop-side reading -- and every dispatchable issue you could
+  not start because the local cap refused, so the cloud takes the overflow.
+  Write its brief to `briefs/<issue>.md` on the `board` branch as usual;
+  the cloud session reads the issue and the brief. Do not label `cloud` an
+  issue that needs a handheld to make progress; a device run is the host's.
 - Grants: a lane blocked on a file nobody holds gets it now. Edit the lane
   PR's `Files:` line, comment `[job.board] granted <path>`, remove `blocked`.
   "Ask and I will grant it" is a deadlock; grant.
-- Labels: `ready` PR with no audit → `needs-audit-1`. Audit-2 clean and CI
-  green → `fold-ready`. Folded with a bound prediction → `needs-arm`.
+- Labels, the pipeline's state machine: a PR that is **not a draft** and has
+  no `needs-audit-*`, `needs-remediation`, `fold-ready` or `folded` label
+  → `needs-audit-1` (the cloud Routine audits it; pass 2 sets `fold-ready`
+  itself). A ready PR whose diff touches nothing under `hw/`, `target/`,
+  `accel/`, `android/` needs no audit: check CI is green on its head and
+  label it `fold-ready` directly, saying so in a comment. The fold job folds
+  from `fold-ready` on its own timer; you never merge. `needs-remediation`
+  on a PR whose branch is a local lane's → `lane.sh resume <name>` (it
+  counts as an attempt) with a comment pointing the lane at the audit;
+  cloud lanes (`lane/cloud-*`) remediate themselves.
+- Arms: **you never queue them.** The arms job runs every committed
+  prediction whose refs are live and posts `[job.arms] VERDICT` on the PR,
+  labelling it `verified` or `regressed`. Your part: a `regressed` PR is not
+  fold-ready; resume its lane with the verdict in the comment. A `verified`
+  PR proceeds through audit as normal.
 - The derived views: regenerate `territory.toml` from open lane PRs and
   commit to the `board` branch. Never edit them on master.
 - **The tracker's agreement with GitHub.** Every `nv2a_issues.toml` row whose
@@ -75,8 +95,11 @@ try harder.
 ## What you never do
 
 - Author or edit code under `hw/`, `target/`, `accel/`, `android/`.
-- Queue device arms on a lane's behalf, or edit the instruments.
+- Queue device arms (the arms job does), or edit the instruments.
 - Fold or merge. The fold job does that from the `fold-ready` label.
+- Post a status summary. `jobs/status.sh` rewrites the roll-up comment on the
+  `harness-status` issue after every tick; your comments go on the issue or
+  PR they are about.
 - Wait. If something needs a human, write the issue and move on.
 - Push to any branch but `board`.
 
