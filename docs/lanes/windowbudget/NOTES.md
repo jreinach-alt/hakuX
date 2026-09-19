@@ -221,6 +221,62 @@ there is something there to be negative about.
 - The detection's real adversary is the model's own prose, not the JSON. Any
   future test of it belongs on fields.
 
+## Attempt 2 (2026-09-19): why attempt 1 did not finish, and the merge
+
+**It finished its work.** Everything above was built, audited and green, and
+PR #155 was marked ready. What it did not survive was the *base moving*: while
+#155 sat ready, `lane/localtime` folded into `master` (`234b5366ec`, and the
+three commits under it), and the fold job could no longer merge
+`lane/windowbudget` -- conflicting in `docs/testing/jobs/board.sh` and
+`docs/testing/jobs/status.sh`. The lane was handed back with resolving that as
+the whole task. So: not a failed attempt, a stale one. Nothing above was
+re-opened or re-measured.
+
+**The conflict was the same collision in both files, and it is benign.**
+`lane/localtime` introduced `jobs/localtime.sh` and routed every *display*
+timestamp through it; this lane added `jobs/window.sh` and sourced it. Both
+lanes edited the same two lines -- the `say()` definition at the top of
+`board.sh`, and `status.sh`'s source-and-`now=` preamble -- because that is
+simply where a job's preamble lives. Both sides' intent is kept whole:
+
+| file | resolution |
+|---|---|
+| `board.sh` | master's `say() { echo "$(say_time_s) ..." }` (the tick log is read by hand, so it is local) **and** this lane's `. "$SELF/window.sh"` under it. `localtime.sh` was already sourced three lines above and merged cleanly. |
+| `status.sh` | both sources on the preamble -- `window.sh` *and* `localtime.sh` -- plus master's `now=` comment. Order does not matter: `window.sh` sources `$WORK/limits.env` itself. |
+
+One line beyond the mechanical resolution, and it is the merge's own business
+rather than new work: master's page header now promises *"every time on this
+page is PDT"*, so the **`dispatch DEFERRED until ...`** line -- the one line on
+that page a person acts on -- is converted with `local_ts`. The UTC instants
+embedded inside `$WINDOW_WHY` and `$WINDOW_FACTS` keep their `Z` and stay data;
+`local_ts` falls back to UTC, and then to its own argument, when the zone or
+the parse is unavailable, so the section cannot lose its resume time to a
+conversion.
+
+### What the selftest says about the merged head
+
+    this branch, merged      551 passed, 10 failed
+    pristine origin/master   500 passed, 11 failed
+
+**All 10 of this branch's failures are master's own**, and every one is in
+`fold.sh`'s `regression-accepted` override -- `lane.foldregress`'s territory
+this cycle. `git diff origin/master -- docs/testing/jobs/fold.sh
+docs/testing/jobs/selftest.d/86-fold-regressed.sh` is empty: this branch's
+copies are byte-identical to master's, so the merge neither caused them nor can
+fix them. They were confirmed by running the *same* `selftest.sh` against a
+`git archive origin/master` export in a scratch directory, which is the check
+worth copying -- "it also fails on master" is a claim, and an untested one is
+how a lane inherits the blame for someone else's red.
+
+(Master's eleventh, `nothing was skipped for the live prediction`, passed here.
+It reads on shared `$WORK` state, not on either tree.)
+
+All 15 of this lane's own checks are green on the merged head, including the
+four that drive the two conflicted files -- `board.sh`'s gate and its audit
+outlet, and `status.sh`'s window-budget section. `fold.sh` tail-calls
+`status.sh` (line 591) with its output discarded, so the fold fixtures drive
+this lane's `window_check` now; they do, and the reds above are not it.
+
 ## Dials (all in `$WORK/limits.env`, none in a commit)
 
     WINDOW_COOLDOWN_MIN=30     re-probe interval after a refusal with no named reset

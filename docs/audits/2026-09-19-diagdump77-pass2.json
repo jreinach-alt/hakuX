@@ -1,0 +1,136 @@
+[
+  {
+    "pass1_id": "H1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2113",
+    "verdict": "CLOSED",
+    "summary": "Option (a). fdump_end_frame() calls pgraph_vk_download_surface_complete_deferred(d) before the VRAM read, inside if (fdump.images) (renderer.c:2113-2121). Mechanism traced on the live tree rather than read off the diff: prerecord_display_download leaves num_deferred_downloads >= 1 (surface.c:781 via surface.c:1628) with display_predownload_pending true and display_predownload_frame_index = current_frame (surface.c:1651-1652); pgraph_vk_finish sets deferred_downloads_frame = current_frame at draw.c:3459, which runs BEFORE the deferred/immediate branch and so happens on the deferred path too, then spin-waits frame_submitted[deferred_frame] (draw.c:3581-3585); the new call therefore takes surface.c:918-927, waits frame_fences[display_predownload_frame_index] -- guarded by frame_submitted[fi], which that spin-wait has already set for that exact slot -- and runs pgraph_vk_complete_staged_downloads (surface.c:942), whose dest_ptr is d->vram_ptr + surface->vram_addr (surface.c:784, the pointer prerecord passed at surface.c:1629), the same pointer dump_surface_ppm reads. Schema bumped to 2, img_sync recorded, and the checker refuses to pair a schema-1 dump's images with its records.",
+    "scenario": "Pass 1's scenario -- a 30,after120 soak on a normal 3D title where the display surface is draw_dirty at every flip, prerecord returns true each time, and every PPM holds the most recently COMPLETED download rather than the frame whose records it is filed under -- can no longer occur: on that path the pixels are memcpy'd into VRAM before the read, after a fence wait naming the frame slot this frame's draws were submitted under. The narrower states where prerecord does NOT return true are still open and are filed as N1.",
+    "evidence": "renderer.c:2104-2160 (fdump_end_frame), renderer.c:2113-2121 (the completion and img_sync), renderer.c:2077-2103 (the corrected comment). surface.c:906-972 (download_surface_complete_deferred; :911 the early return, :918-927 the predownload branch, :942 the memcpy, :944-966 the display surface's flags), surface.c:1601-1657 (prerecord), surface.c:842-904 (complete_staged_downloads). draw.c:3459 (deferred_downloads_frame set before the branch), draw.c:3581-3585 (the spin-wait), draw.c:3663 (rotation completes only for next_frame). Falsifier columns untouched by construction: the surface.c:937 pgraph_vk_finish(SURFACE_DOWN) branch requires deferred_downloads_frame < 0 and draw.c:3459 has just set it, so no submit is issued. Safe where it sits: flip_stall already calls pgraph_vk_finish(SURFACE_DOWN) and surface_download_if_dirty at renderer.c:2275-2302 in the same function on the same thread, and process_pending_downloads calls the identical function from the same pfifo/pgraph thread (surface.c:1692). Not device-verified: a code-path argument, stated as one. CI at a8515c65f7: Android build SUCCESS, Desktop build SUCCESS, NV2A index check SUCCESS."
+  },
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1612",
+    "verdict": "CLOSED",
+    "summary": "fdump_base_dir() returns NULL under __ANDROID__ (renderer.c:1612-1616) instead of falling through to xemu_settings_get_base_path(); desktop keeps the fallback. Both consumers refuse: fdump_begin() returns with a FDUMP_LOG line before opening anything (renderer.c:1792-1799), and fdump_poll_marker() returns early with a one-time WARN (renderer.c:1924-1935) placed above the pending/env-arm handling, so the env arm -- the only arm that reached the old fallback -- is covered and not only the marker. XEMU_FRAME_DUMP_DIR is still read first, so an explicit override works on Android.",
+    "scenario": "Pass 1's scenario -- --env XEMU_FRAME_DUMP=30,after120 on a device without writable external storage, the env arm opening a jsonl under internal storage, FDUMP_LOG printing a success line naming a path nobody can pull, 30 records and ~27 MB of PPMs written where --pull 'framedump_*' cannot see them -- can no longer occur. There is no code path by which an Android run opens a dump file under the settings base path.",
+    "evidence": "renderer.c:1592-1617 (fdump_base_dir and its comment), renderer.c:1792-1799 (fdump_begin's refusal), renderer.c:1924-1935 (fdump_poll_marker's one-time WARN, above the pending and env-arm blocks), renderer.c:1958-1959 (the marker path reuses the checked base rather than calling fdump_base_dir again). grep confirms these are the only two callers. L2 closed with it: android/app/src/main/cpp/xemu_android.cpp:1136-1156 is one else covering both the storage-state failure and a NULL/empty external path, at WARN on hakuX."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/diagdump77/framedump_check.py",
+    "line": "177",
+    "verdict": "CLOSED",
+    "summary": "The verdict is refused, not inverted. The submits median is taken only over frames with >= MIN_FRAME_DRAWS (4) draws and says so in its own line (framedump_check.py:160-171); if no frame qualifies or the dump holds fewer than MIN_TOTAL_DRAWS (30) draws, the checker prints INSUFFICIENT SAMPLE and returns 3 BEFORE both verdicts and before the header-vs-records disagreement check (framedump_check.py:177-192), which is what pass 1 asked for -- the disagreement check rests on the same independence that fails at low draw counts.",
+    "scenario": "Pass 1's scenario, rebuilt to its stated shape (per_draw_finish false, 30 frames, one cb_draws=1 draw and one submit each) and run against this head: 'cb_draws max=1 distribution={1: 30}', 'submits no frame carried both a draw count and a submit delta with >=4 draws', then INSUFFICIENT SAMPLE, exit 3. No SERIALISED line and no INSTRUMENT DISAGREES line. It can no longer occur. What the new gate does to a dump whose cb_draws column DOES settle the question is filed as N2.",
+    "evidence": "Driven against this head, four dumps I built: 30x1 draw cb_draws=1 -> exit 3, refusal, no verdict; 30x40 draws cb_draws=1 per_draw_finish=true -> exit 1, SERIALISED on both columns; the same with per_draw_finish=false -> exit 1, SERIALISED plus INSTRUMENT DISAGREES; 30x40 draws cb_draws=17 -> exit 0, NOT SERIALISED. So the threshold does not buy the refusal by hiding the falsifier. framedump_check_selftest.py passes on this tree (framedump_check selftest: ok) and carries both refusal legs plus the not-swallowed assertion at :174-179."
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1619",
+    "verdict": "CLOSED",
+    "summary": "The second shape pass 1 recommended: fdump_close() calls fdump_end_armed_diag() (renderer.c:1693-1694, body 1619-1663), so the control arm ends with the dump it is the control for and the frame count is only ever an upper bound. It cancels only its own arm: fdump.diag_armed_frames is MIN(frames, DIAG_MAX_FRAMES) (renderer.c:1877), exactly what nv2a_dbg_trigger_diag_frames writes into diag_frame_pending (renderer.c:571-578) for every frames >= 1, and fdump_parse_spec only assigns frames from a token with v >= 1 (renderer.c:1771-1775), so the clamps cannot disagree; the qatomic_cmpxchg leaves a UI-armed capture alone and logs when it finds one.",
+    "scenario": "Pass 1's scenario -- 30,diag closing the dump after 30 flip_stalls while the guest-frame-counting diag capture keeps its per-draw finish running for on the order of 900 more, serialising every other measurement the soak was queued for -- can no longer occur: the capture is torn down in fdump_close.",
+    "evidence": "The teardown body mirrors the abort path at renderer.c:2408-2416 line for line (diag_total_frames = diag_current_frame_index, write the session JSON if anything was captured, diag_cleanup_session, clear diag_frame_active), so partial data is written rather than discarded as claimed. Ordering within a flip checked: the diag block runs at renderer.c:2256 and fdump_end_frame -> fdump_close at renderer.c:2434, so the closing frame is captured by the diag arm before the teardown. Spec comment renderer.c:1731-1737 and AGENTS.md both now say the frame count is an upper bound and not a duration. Residue filed as N4."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2133",
+    "verdict": "CLOSED",
+    "summary": "dump_surface_ppm() returns bool (renderer.c:446-497), covering the bytes_per_pixel == 0 return the caller's width/height test did not, the fopen failure, and ferror/fclose as well. The caller names the image and charges w*h*3 only on success and reports the failure through FDUMP_LOG (renderer.c:2133-2146).",
+    "scenario": "Pass 1's scenario -- storage filling mid-dump, every PPM fopen failing from frame k while the jsonl keeps naming images and charging ~900 KB per frame to the cap, with nothing on a kept tag -- can no longer occur: the record carries \"image\": null, nothing is charged, and the failure is announced on the tag a dispatched run keeps.",
+    "evidence": "renderer.c:446-497 (the bool and its comment; :461 the bpp return, :494-497 the ferror/fclose check), renderer.c:2131-2146 (the caller's success-only name and charge, and the FDUMP_LOG line)."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "android/app/src/main/cpp/xemu_android.cpp",
+    "line": "1136",
+    "verdict": "CLOSED",
+    "summary": "One else covers both failures, at WARN on hakuX, naming both arming routes.",
+    "scenario": "Pass 1's scenario -- the storage state reporting WRITE while SDL_AndroidGetExternalStoragePath() returns NULL or empty, producing no line on any tag -- can no longer occur.",
+    "evidence": "android/app/src/main/cpp/xemu_android.cpp:1136-1156."
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "docs/lanes/diagdump77/framedump_check.py",
+    "line": "131",
+    "verdict": "CLOSED",
+    "summary": "The max() is guarded (framedump_check.py:131-140) and the missing column is reported by name with the dump's schema and the checker's known schema; session['schema'] is now read in three places, which was L3's other half.",
+    "scenario": "Pass 1's scenario -- a dump with no cb_draws column exiting on a ValueError traceback -- can no longer occur. Verified by running it: such a dump prints 'no draw record carries cb_draws: this dump cannot be read by this checker (schema=2, known=2)' and exits 1.",
+    "evidence": "framedump_check.py:128-141, :43-49 (SCHEMA_KNOWN), :100-102 (the schema in the session line), :231-252 (the images/schema branch). Run against a hand-built dump with the column deleted."
+  },
+  {
+    "pass1_id": "L4",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1811",
+    "verdict": "CLOSED",
+    "summary": "fdump_clear_previous() runs after the fopen succeeds (renderer.c:1811-1822) and takes a keep argument for this run's own file, which exists by then and matches FDUMP_PREFIX like any other.",
+    "scenario": "Pass 1's scenario -- an arm that cannot open its output having already deleted the previous dump, leaving the device with nothing -- can no longer occur: the clear is not reached unless the new file is open.",
+    "evidence": "renderer.c:1805-1822 (fopen, the failure return, then the clear with self), renderer.c:1698-1719 (fdump_clear_previous and its keep skip)."
+  },
+  {
+    "pass1_id": "L5",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1725",
+    "verdict": "CLOSED",
+    "summary": "The noimages comment gives both figures and the fence-wait difference.",
+    "scenario": "Pass 1's scenario -- a reader of the spec comment being told the token changes nothing -- can no longer occur.",
+    "evidence": "renderer.c:1722-1730."
+  },
+  {
+    "id": "N1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2113",
+    "verdict": "OPEN",
+    "summary": "H1's fix completes whatever download was outstanding and never tests that the display surface was one of them. The test exists and is one line: after pgraph_vk_complete_staged_downloads a surface whose download landed has draw_dirty == false (surface.c:892-897 for the batched entries, surface.c:944-963 for the display pre-download), and disp is fetched immediately after the completion, so disp->draw_dirty at renderer.c:2127 is exactly 'does VRAM hold this frame'. pgraph_vk_prerecord_display_download has four early returns (surface.c:1606-1626) and two of them leave the display surface dirty and un-recorded: num_deferred_downloads != 0 (surface.c:1614), and !in_command_buffer (surface.c:1610). The first is an ordinary per-frame state -- surface eviction (surface.c:3654), shelving (surface.c:3761) and the non-TCG flush (surface.c:2195) all call download_surface_deferred.",
+    "scenario": "A soak arms 30,after120. On flip N an eviction earlier in the frame left one deferred download outstanding, so prerecord returns false at surface.c:1614 and the display surface's pixels stay in its VkImage. fdump_end_frame sees num_deferred_downloads > 0, records img_sync = r->deferred_downloads_frame -- a non-negative fence slot, and an OLDER slot if that field was already set from an earlier frame -- waits that fence, completes the evicted surface's copy, and reads the display surface out of VRAM, which still holds the last completed display download. The PPM is frame N-1's or older, filed under frame N's records, with a fence slot a reader and framedump_check.py are told means the pairing was established. The !in_command_buffer variant is worse in one way: num_deferred_downloads is 0, so img_sync is -1, whose documented meaning (renderer.c:1539-1541, renderer.c:2100-2102) is 'nothing was outstanding and VRAM already held the frame'. This is H1's failure mode in a narrower state, with the artifact now asserting the opposite -- and intermittent rather than systematic, which for #77's method (decide from the PPMs which frames show the artifact, then read those frames' draws) is the harder kind to undo afterwards.",
+    "remediation": "After the completion, test it: if disp->draw_dirty is still true the image is not this frame's -- either do not write it (record \"image\": null with a FDUMP_LOG line saying why) or write it with a distinct img_sync value meaning 'stale, the flip did not pre-record this surface', and teach framedump_check.py to flag that value the way it already flags a schema-1 dump's images. Do NOT fix it by forcing a download here: that is a pgraph_vk_finish(SURFACE_DOWN) at the flip, a cost the headline claim should not quietly acquire. Either way renderer.c:1539-1541 and renderer.c:2100-2102 must stop saying -1 means VRAM held the frame.",
+    "evidence": "renderer.c:2113-2127 (the completion, img_sync and the disp fetch), renderer.c:1536-1541 (the schema-2 comment), renderer.c:2077-2103 (the function comment's -1 claim). surface.c:1606-1626 (the four early returns), surface.c:1614 and surface.c:1610 (the two that matter), surface.c:3654, surface.c:3761, surface.c:2195 (callers of download_surface_deferred), surface.c:892-897 and surface.c:944-963 (where draw_dirty is cleared, i.e. the test that is missing). LIMIT, STATED: a code-path argument like H1 before it. I cannot say how often prerecord bails on a real title; I can say both early returns are reachable from paths that run every frame, and that nothing in the artifact distinguishes the two cases."
+  },
+  {
+    "id": "N2",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/diagdump77/framedump_check.py",
+    "line": "177",
+    "verdict": "OPEN",
+    "summary": "The refusal is `if not usable or len(draws) < MIN_TOTAL_DRAWS` and neither term looks at max_cb. But max_cb >= 2 means a command buffer held two draws, which a per-draw finish cannot produce at ANY sample size -- it is precisely the inference the checker itself prints at :200-203 ('NOT SERIALISED by cb_draws: command buffers held up to N draws, so no finish ran between them'). The sample-size argument is sound for the submits median and for distinguishing max_cb == 1; it does not apply to a dump that has already demonstrated batching, and the refusal text asserts it does.",
+    "scenario": "REPRODUCED against this head. A dump of 30 frames x 3 draws with cb_draws: 3 throughout -- a queued soak whose afterNN landed on a light scene, a menu with some geometry, a title between loads -- prints 'cb_draws max=3 distribution={3: 90}' and then 'INSUFFICIENT SAMPLE: 90 draws over 30 frames, 0 of them with >=4 draws. Neither column can distinguish the two paths on this dump', exit 3. The first sentence is false of that dump: cb_draws distinguishes them, in the direction the lane exists to establish. The operator reads 're-arm with afterNN onto a scene that is drawing' and spends another device slot on a question the artifact in hand already answered. The selftest pins the wrong behaviour rather than missing it: the second refusal case (framedump_check_selftest.py:166-172) writes frames=3 draws=5 with serialised=False, whose draw records carry cb_draws = n for n in 0..4 (framedump_check_selftest.py:48) so max_cb is 4, and asserts exit 3 on the len(draws) < 30 leg.",
+    "remediation": "Refuse only when the columns are actually ambiguous: add `and max_cb <= 1` to the condition, so a dump that demonstrates batching gets its NOT SERIALISED by cb_draws verdict, with the submits line still suppressed or explicitly marked as carrying no weight at this sample size. A SERIALISED claim must stay refused in the low-draw case -- that is M2 and it is right -- so the `thin` selftest case (cb_draws 0 throughout) keeps its exit 3. Change the `short` case to assert NOT SERIALISED by cb_draws instead of the refusal, and add one with cb_draws: 1 at the same small draw count asserting the refusal still fires; that pair separates 'too few draws' from 'too few draws to tell'.",
+    "evidence": "framedump_check.py:158-192 (usable, the submits line and the refusal), :53-54 (MIN_FRAME_DRAWS, MIN_TOTAL_DRAWS), :141 (max_cb), :199-207 (the cb_draws verdict the refusal pre-empts). framedump_check_selftest.py:22 (write_dump signature), :44-48 (cb_draws = n when not serialised), :166-172 (the short case). Reproduced by running the checker at this head against dumps I built."
+  },
+  {
+    "id": "N3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "2430",
+    "verdict": "OPEN",
+    "summary": "The flip_stall call site still carries 'Nothing in either call submits, records or waits on Vulkan work.' With images on, fdump_end_frame now waits a fence. The function's own comment, NOTES.md, AGENTS.md and the PR body were all corrected; this one was not, and it is the comment a reader standing in flip_stall sees.",
+    "scenario": "Not a defect in behaviour. Filed because it is the same class of claim H1 was about and grep finds no other survivor in the tree: a later lane reading the call site takes 'waits on no Vulkan work' as the invariant and prices a change against it.",
+    "remediation": "Say 'one fence wait per frame when images are on, none under noimages, and nothing per draw' -- the true and stronger claim.",
+    "evidence": "renderer.c:2430-2436. grep over *.c *.h *.md *.py for the phrases pass 1 named returns only AGENTS.md:791, which is corrected."
+  },
+  {
+    "id": "N4",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/renderer.c",
+    "line": "1651",
+    "verdict": "OPEN",
+    "summary": "fdump_end_armed_diag() reports both 'leaving a pending diag arm it did not make' (renderer.c:1651) and 'framedump closed: ending the diag control arm it armed' (renderer.c:1658) through DIAG_LOG -- hakuX-diag, the tag this PR's own commit ad5d93f489 established is absent from both logcat specs that serve a dispatched run.",
+    "scenario": "M3's point is that the control arm's lifetime was invisible and unbounded. After a 30,diag soak a dispatched run's log still cannot show when the arm ended, or that a UI-armed capture prevented the teardown and the arm outlived the dump after all -- which is the one case where the operator needs to know.",
+    "remediation": "FDUMP_LOG for both, as the rest of the dump's lifecycle uses. This is L1's finding applied to the code L1's sibling wrote.",
+    "evidence": "renderer.c:1649-1658, against renderer.c's FDUMP_LOG definition and the lifecycle lines at renderer.c:1689-1691 and renderer.c:1856-1862."
+  }
+]
