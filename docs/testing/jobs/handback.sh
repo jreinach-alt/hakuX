@@ -275,6 +275,7 @@ prs_for() {   # <label> -> "num<TAB>headRefName<TAB>headRefOid<TAB>labels,comma,
 # survives a restart of the timer and does not start over when a job is
 # redeployed. The unit-liveness half of the join is below, per row: it is a
 # systemd question and gh cannot answer it.
+#
 # LABELS GO LAST, AND THAT IS NOT COSMETIC. `IFS=$'\t' read` treats tab as IFS
 # WHITESPACE, so a run of tabs collapses to one delimiter and an EMPTY INTERIOR
 # FIELD silently disappears -- every field after it shifts left by one. Most
