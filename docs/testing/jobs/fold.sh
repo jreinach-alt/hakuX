@@ -385,9 +385,14 @@ tip_state() {   # -> 0 with TIP_SHA and TIP_EPOCH set for origin/$TIP
     if [ -n "${FOLD_TIP_SHA:-}" ] && [ -n "${FOLD_TIP_EPOCH:-}" ]; then
         TIP_SHA="$FOLD_TIP_SHA"; TIP_EPOCH="$FOLD_TIP_EPOCH"; return 0
     fi
-    git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null || return 1
-    TIP_SHA=$(git -C "$REPO" rev-parse FETCH_HEAD 2>/dev/null)
-    TIP_EPOCH=$(git -C "$REPO" log -1 --format=%ct FETCH_HEAD 2>/dev/null)
+    # The TRACKING REF, not FETCH_HEAD. `$REPO` is the shared checkout and
+    # several jobs fetch in it; FETCH_HEAD is one file they all overwrite, so
+    # another job's fetch landing between this one and the read below would
+    # silently hand this gate a different commit's timestamp. An explicit
+    # refspec writes the ref this then reads by name.
+    git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null || return 1
+    TIP_SHA=$(git -C "$REPO" rev-parse "refs/remotes/origin/$TIP" 2>/dev/null)
+    TIP_EPOCH=$(git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$TIP" 2>/dev/null)
     [ -n "$TIP_SHA" ] && [ -n "$TIP_EPOCH" ]
 }
 
