@@ -429,6 +429,42 @@ ten logcats and reads `OFF`. Had the pref been on it would read `ON` in the
 same place. This is an observation of the value, not an inference from
 silence.
 
+### Finding 17: the race breaks a region that is otherwise BIT-EXACT, and that explains Finding 12's exceptions
+
+`blend_race_column_oracle_50.py`. #50's entry records *"at 16-76 ours matches
+hardware exactly. Only 560-620 is reversed"* -- but that was measured on the
+TestDetailed oracle set (`iso_oldbt.iso`), and the 22 events are release-disc
+captures. Two different capture sets, so it had to be measured again where
+the race happens. Modal capture against the golden, rows 112-367:
+
+| | left col 16-79 | right col 560-623 |
+|---|---|---|
+| movers with a bit-exact column | **16 of 22** | 0 of 22 |
+
+So on 16 of the 22, **the race corrupts pixels the emulator otherwise gets
+exactly right.** That is what makes it separable from the structural defect,
+which owns the right stack, and it hands any future fix a free regression
+oracle: those left columns must stay at 0 differing.
+
+**The six without an oracle are exactly the six SADD captures** --
+`1-cA_SADD_1-srcA`, `1-cRGB_SADD_1-dstA`, `1-dstA_SADD_1-srcRGB`,
+`1-srcRGB_SADD_0`, `1-srcRGB_SADD_1`, `srcAsat_SADD_0`. That is not a
+coincidence fitted after the fact: the tracker's own note records stack A as
+a clean oracle for the signed equations *except* SADD and SREVSUB, 224/224
+differing on both. The split falls exactly where the entry says it should,
+and it could have come out otherwise.
+
+**This retires Finding 12's first exception.** The two events where the
+departing run matched hardware on MORE pixels than the mode --
+`1-cA_SADD_1-srcA` and `1-cRGB_SADD_1-dstA` -- are both SADD, i.e. both in
+the group where the mode matches hardware on zero pixels across the whole
+band. With the mode at zero, any perturbation can only tie or improve. So
+"the odd run is always the wrong one" fails only where there is nothing to
+be right about, which is a much narrower correction than the raw 19/2/1
+count suggested. `1-srcRGB_SADD_1`, the non-grey outlier, is in the same
+group -- the recommendation to look at it first stands, and now with a
+reason.
+
 ### What this pass does NOT name
 
 **No candidate site survives.** Five doors are now closed (the alpha channel,
@@ -445,10 +481,11 @@ remediation is a separate pass.
 
 ### What the next lane should do, in order
 
-1. **`1-srcRGB_SADD_1` first.** It is the only non-grey event, the only one
-   under 14,000 px, and the only one whose departing run matches hardware on
-   the same zero pixels the mode does. A single capture that breaks both
-   universals is worth more than twenty that confirm them.
+1. **`1-srcRGB_SADD_1` first.** It is the only non-grey event and the only
+   one under 14,000 px. Finding 17 says why it is different from the other
+   21 -- it is SADD, so the modal capture is wrong across the whole band and
+   there is no bit-exact region for the race to break. A single capture that
+   breaks a universal is worth more than twenty that confirm it.
 2. **Finding 15's sibling-column numbers**, which are already computed per
    event -- why 54% and not 6% or 100%.
 3. **Enumerate the surface reads that can race in the DEFAULT config.** The
