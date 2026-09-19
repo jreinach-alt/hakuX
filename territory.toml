@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 112
-updated_utc = "2026-09-19T12:00:00Z"
+wave = 113
+updated_utc = "2026-09-19T12:05:00Z"
+
+
+[lane.blendrace50]
+issues = ["50"]
+files = []
+standing = false
+note = "DISPATCHED WAVE 113 (job.board). #50's withdrawn 7.7% race rate pooled three incomparable disc compositions as one population (disc_id omitted only_tests, fixed in 63db4e4211); the tracker's own blocked_on says the cheapest honest next step is 5 runs on the FULL 1,673-capture disc, which the narrowed discs were meant to avoid and cannot substitute for. Claims no source files -- the mechanism and site are unnamed, so nothing is held speculatively; this is a measurement pass, not a fix."
 
 
 [lane.cloud-audit1-128]
