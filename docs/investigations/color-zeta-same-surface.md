@@ -193,3 +193,142 @@ here: #85, the `mem_dirty` half of the gate, which `tcg_enabled()` makes dead on
 every build this project runs; and #86, the Android arm of
 `pgraph_gl_shader_load_from_memory()`, which still drains every GL error
 silently now that the error it was added to hide is gone.
+
+## The Vulkan port, and the third capture it moved (#88, #91)
+
+The policy half of the chain above was ported to `pgraph/vk/surface.c` and
+measured. **The gate half was never missing on Vulkan:** `!current_binding` has
+sat outside the `upload` condition since `9161e3e14a`, 2024-07-27, upstream —
+so only the policy needed porting, and Vulkan's gate is strictly *more*
+permissive than GL's fixed form. That is also why Vulkan's `ColorIntoZeta_ZB`
+sat at exactly 131,495: gate-correct-with-a-symmetric-policy is the state GL
+passed through between `fada1d89`'s two halves.
+
+The arm (`PRE-REGISTERED`, 5 runs per arm, arms differing in `vk/surface.c`
+alone, three-suite disc `3-suites:e0a8f913`):
+
+| capture | arm A | arm B | |
+|---|---:|---:|---|
+| `ColorIntoZeta_ZB` | 131,495 | **10,766** | predicted absolute, exact |
+| `ZetaIntoColor` | 102,255 | **71,663** | predicted absolute, exact |
+| `Swap` | 165,447 | **304,750** | +139,303, regressed |
+
+Both absolutes were derived from the goldens' own colour histograms rather than
+copied from GL's score file, and both landed to the digit. **The policy is
+confirmed.** All four values are deterministic 5/5 in both arms.
+
+### `Swap`'s regression is a stray DEPTH CLEAR, not a missing depth test
+
+`[issue.91]` attributes it to the missing depth attachment — no zeta binding,
+`pDepthStencilState == NULL`, so the quad draws with no depth test. **The
+captures refute that, and it can be settled without a device.**
+
+The three colour populations are partitioned *identically* in both arms —
+165,447 quad, 139,303 background, 2,450 text. A change to depth testing moves
+the boundary between populations. Nothing moved; only the background's **value**
+changed:
+
+| | R,G,B,A as read | bytes in memory (BGRA) | as a word |
+|---|---|---|---|
+| golden / arm A | `#242424` a`FE` | `24 24 24 FE` | `0xFE242424` |
+| arm B | `#000024` a`00` | `24 00 00 00` | `0x00000024` |
+
+`0xFE242424` is the test's own clear colour. Arm B holds that value with **bits
+8–31 zeroed and bits 0–7 preserved** — which is precisely a `Z24S8`
+**depth-only clear of 0** written over it: the depth field is bits 8–31, the
+stencil byte is bits 0–7 and is left alone, and the surviving `0x24` is the
+clear colour's own low byte. `PrepareDraw(0xFE242424, 0)` clears colour to that
+value and depth to 0.
+
+So in arm B the depth clear reached the **colour** surface. That is a clear
+landing on the wrong attachment, not a test being skipped, and the distinction
+matters because it points at `pgraph_vk_clear_surface()` rather than at the
+pipeline. Note the inline-clear path in `vk/draw.c` guards correctly
+(`if (write_zeta && r->zeta_binding)`), so the fall-through pipeline clear is
+where to look.
+
+### What is NOT established, and the arm that settles it
+
+Reading `update_surface_part()` against `TestSwap()` does **not** reproduce the
+decline firing inside `Swap`. `SET_CONTEXT_DMA_COLOR` sets
+`surface_color.buffer_dirty` (`pgraph.c:2387`; `:2386` is
+`pg->dma_color = parameter;`, the line before), so colour rebinds to the zeta
+address first; zeta then asks for the colour address and finds an object that is
+no longer `r->color_binding`, so `surface == other` is false and the decline
+does not fire. `SurfaceShape` carries no address, so `framebuffer_dirty()`
+cannot see a DMA swap at all — that is worth knowing separately.
+
+**Which leaves two candidates, and they are separable by one cheap arm.**
+`ColorIntoZeta` and `ColorIntoZeta_ZB` run before `Swap` in the suite, and the
+decline changes the pg-level state they leave behind — it clears
+`surface_zeta.buffer_dirty` and leaves `zeta_binding` absent. So:
+
+| `Swap` run SOLO on arm B | meaning |
+|---|---|
+| back to arm A's value | contamination — an earlier test's decline leaking forward |
+| still +139,303 | intrinsic to `Swap`, and the control-flow reading above is wrong |
+
+That is `make_test_iso.py`'s solo/pair classification, and it is the right next
+step rather than a fix: the mechanism is half-established, and a fix fitted to
+the unestablished half would be a fit. **Predict the arm-A-to-arm-B
+relationship, not an absolute** — #89 measured a 141,125 px composition swing on
+this very suite, so a solo disc's own numbers are not comparable with the
+three-suite ones in either direction.
+
+## #91 judged: `Swap`'s 304,750 is a COMPOSITION value, and the policy is inert on it
+
+The solo arms ran. `Color_zeta_overlap/Swap` on a disc containing only that
+test, five runs each, **byte-identical between the two arms**:
+
+| disc | captures preceding `Color zeta overlap` | arm A (no policy) | arm B (policy) |
+|---|---:|---:|---:|
+| solo (`Swap` only) | **0** | **304,750** | **304,750** |
+| 3-suite `e0a8f913` | **1** | 165,447 | **304,750** |
+
+Verdict `PASS`, `PRE-REGISTERED`, one leg, deterministic 5/5 in all four arms.
+
+**304,750 is not the policy's value. It is `Swap`'s value when the disc does
+not supply a preceding capture** — both refs reach it with none. So the
+registered `must_not_move` violation on the three-suite disc was the policy
+*removing a compensation the disc was supplying*, not the policy creating a
+defect.
+
+The preceding-capture count is 1 and not 2: the disc orders
+`Color Zeta Disable, Color zeta overlap, Null surface`, so only
+`Color_Zeta_Disable/MaskOff_ZB` runs before the suite —
+`Null_surface/XemuBug893` runs after it. That matters because it puts these
+numbers on #89's own ladder.
+
+### `Swap` and `Swap_ZB` respond to composition in OPPOSITE directions
+
+#89 established the invariant for `Swap_ZB`: **≥2 captures in preceding
+suites**, own-suite captures not counting. Its ladder is 0 → 0, 1 → 0,
+2 → 141,125 — *more* preceding captures make it worse. Both of my discs sit at
+0 and 1, and `Swap_ZB` read 0 on both, which is #89's ladder reproduced on two
+further discs and two further binaries.
+
+`Swap` goes the other way: 0 preceding → 304,750, 1 preceding → 165,447. *More*
+preceding captures make it better.
+
+Two captures of the same test, over the same two surfaces, with opposite
+composition sensitivity, and one defect that the colour-wins policy can also
+trigger on its own. That is a strong argument they are two faces of one
+aliasing defect rather than three issues — and it is consistent with the
+byte signature recorded above, which is a `Z24S8` depth field zeroed inside a
+**colour** surface.
+
+### What this changes
+
+- **#91 is not a defect in #88's policy.** The policy is exact on its two
+  targets and inert on `Swap` once the composition confound is removed. What
+  remains is that it cancels a compensation, which is a decision about whether
+  to ship a policy that exposes a pre-existing defect — an owner's call, not a
+  lane's.
+- **Neither 165,447 nor 304,750 is a correct value.** Even at 165,447 the quad
+  is `#E91A24` against the golden's `#E91624`, off by 4 in green. The
+  "regression" is one wrong value replaced by a worse one.
+- **The probe #89 wants should log `Swap`, not only `Swap_ZB`**, and should
+  record whether the colour binding was a cache hit or a fresh create *and*
+  whether the zeta decline fired, because the policy reaches the same end state
+  that zero preceding captures reach. A probe written to the older picture
+  would miss the one input that is now known to matter.

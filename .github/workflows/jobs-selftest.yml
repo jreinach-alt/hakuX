@@ -1,0 +1,42 @@
+# The job scripts under docs/testing/jobs run only on the owner's host, and
+# the sessions that write them cannot execute them. selftest.sh runs the real
+# scripts against a fake host (shimmed gh/systemctl/adb, a generated goldens
+# tree, the real request.sh). It is the check that would have caught the
+# three defects of 2026-09-19 before they reached the host.
+name: jobs selftest
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'docs/testing/jobs/**'
+      # jobs/** already covers the fragments; named anyway, because a gate
+      # that silently stops running is worse than the collision the split
+      # removed, and the next person to narrow jobs/** should trip over this.
+      - 'docs/testing/jobs/selftest.d/**'
+      - 'docs/testing/request.sh'
+      - 'docs/testing/lane.sh'
+      - 'docs/testing/nv2a_index.py'
+      - '.github/workflows/jobs-selftest.yml'
+  pull_request:
+    paths:
+      - 'docs/testing/jobs/**'
+      - 'docs/testing/jobs/selftest.d/**'
+      - 'docs/testing/request.sh'
+      - 'docs/testing/lane.sh'
+      - 'docs/testing/nv2a_index.py'
+      - '.github/workflows/jobs-selftest.yml'
+
+jobs:
+  selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          submodules: false
+      - name: Fetch the trunk and the lane branches the arms job reads
+        run: git fetch origin master '+refs/heads/lane/*:refs/remotes/origin/lane/*'
+      - name: Run the self-test
+        run: bash docs/testing/jobs/selftest.sh

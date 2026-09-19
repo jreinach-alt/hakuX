@@ -414,12 +414,117 @@ _build_ref_locked() {
        && [ -f "$TREE/android/local.properties" ]; then
         cp "$TREE/android/local.properties" "$BUILD_TREE/android/local.properties"
     fi
+    BUILD_LOG="$D/logs/build-$sha$suffix.log"   # not local: serve_one reads it for the cause
+    # A MISSING BUILD TOOL IS THE ONE FAILURE THAT LOOKS LIKE A CODE DEFECT AND
+    # IS NOT. meson lives in ~/.local/bin on this host, and a systemd user unit
+    # does not inherit the login shell's PATH -- so every uncached build from
+    # this daemon died at CMake configure with "meson not found in PATH;
+    # required to build glib for Android", while the same build by hand
+    # succeeded. It stayed invisible for as long as every requested ref was
+    # already in the APK cache; the first uncached one was #89's arm, and both
+    # sides of the pair failed identically, which reads like the branch.
+    #
+    # Two seconds here against 1m54s and a 1,200-line Gradle stack trace whose
+    # one useful line is 80 lines in.
+    local missing="" tool
+    for tool in meson; do
+        command -v "$tool" >/dev/null 2>&1 || missing="$missing $tool"
+    done
+    if [ -n "$missing" ]; then
+        { echo "build tool not on PATH:$missing"
+          echo "PATH=$PATH"
+          echo "This is the daemon's environment, not the code: a systemd user unit"
+          echo "does not inherit the login shell's PATH. See the Environment=PATH line"
+          echo "in docs/testing/systemd/hakux-dispatcher.service, and re-install the"
+          echo "units with docs/testing/jobs/install-host.sh."
+        } > "$BUILD_LOG"
+        log "  BUILD TOOL MISSING:$missing -- not starting gradle"
+        return 4
+    fi
     (cd "$BUILD_TREE/android" && ./gradlew assembleDebug ${gradle_args:+$gradle_args}) \
-        >>"$D/logs/build-$sha$suffix.log" 2>&1
+        >>"$BUILD_LOG" 2>&1
     local rc=$?
     [ "$rc" -eq 0 ] || return 4
     cp "$BUILD_TREE/android/app/build/outputs/apk/debug/app-debug.apk" "$apk"
     echo "$apk"
+}
+
+# ------------------------------------------------------------ the lane file
+#
+# `lanes/<label>` holds a live worker's pid and is the ONLY input to
+# affinity.py's serving(). Everything below exists because that file used to be
+# written exactly twice in a worker's whole life -- once at startup, once on a
+# hold release -- so ANY removal, by any actor, was PERMANENT until the
+# dispatcher was restarted.
+#
+# It cost a measurement on 2026-09-19. Something emptied $D/lanes/ ten minutes
+# after both workers started; serving() returned [] for the next five hours;
+# rule 2's _live() was therefore false for a device that was in fact serving
+# and rule 3 had no devices to hash over; #89's pair ran base on the thor and
+# fix on the nova. affinity.py was not wrong, it was inert.
+#
+# WHAT REMOVED THEM IS STILL UNRESOLVED, and this deliberately does not chase
+# it. The hold path is the obvious suspect and it is refuted by reading --
+# held_logged is assigned on the same line-run as its `rm`, so a worker that
+# starts under a hold does set it and does restore the file. (Also checked and
+# killed: EXIT-trap leakage into `$(...)`, which bash does not do, and a third
+# remover elsewhere in the tree, of which there is none.) The full forensics
+# are in NOTES.md on lane/armpin; do not re-derive them.
+#
+# The whodunnit is not what made it expensive. PERMANENCE is. So:
+#
+#   lane_claim    re-asserts the registration every tick, so a removal by
+#                 anyone costs one tick instead of one restart;
+#   lane_release  removes the file only if it still holds MY pid.
+#
+# The second is not hypothetical tidiness. Workers are `&` children of the
+# supervisor, so a supervisor killed with SIGKILL leaves them running; the next
+# supervisor starts fresh workers under the same labels, which register
+# themselves; and when an old worker finally exits, its EXIT trap removes the
+# file its live successor owns. A trap that removes by NAME cannot tell those
+# two cases apart, and the survivor never writes the file again. That is the
+# one mechanism that fits every observation -- files present at start, gone ten
+# minutes later, never restored, and correct again after a restart -- and this
+# closes it without having to prove it was the one.
+lane_file() { echo "$D/lanes/$DEVICE_LABEL"; }
+
+lane_claim() {
+    local f; f="$(lane_file)"
+    # Cheap enough to call every tick: one read, and a write only when the
+    # registration is missing or is somebody else's.
+    [ "$(cat "$f" 2>/dev/null)" = "$$" ] && return 0
+    mkdir -p "$D/lanes" 2>/dev/null
+    printf '%s\n' "$$" > "$f" 2>/dev/null
+}
+
+lane_release() {
+    local f; f="$(lane_file)"
+    [ "$(cat "$f" 2>/dev/null)" = "$$" ] || return 0
+    rm -f "$f"
+}
+
+# AN EMPTY serving() DEMOTES "PAIRS ARE PINNED" TO "PAIRS ARE RANDOM", AND DID
+# IT SILENTLY. affinity.py fails open on purpose and that is the right call: a
+# pin to a device that is not serving is a request nobody ever claims, and a
+# silent stall costs more than a split pair. What it must not do is fail open
+# with NO SIGN, which is how #89's arms ran on two handhelds for five hours
+# with every actor behaving exactly as documented.
+#
+# Announced on the TRANSITION, not per claim. The corpus sweep enqueues one
+# request per suite, and a line each would bury the log this exists to make
+# readable. `blind_logged` is deliberately not `local`: it is the worker's
+# state across claims, and the whole point is to say it once.
+lane_blind_check() {
+    local id="$1" live
+    live=$(python3 "$HERE/affinity.py" "$D" --serving 2>/dev/null)
+    if [ -z "$live" ]; then
+        [ "${blind_logged:-0}" = 1 ] || \
+            log "AFFINITY BLIND: no device lane is registered in $D/lanes, so nothing can be pinned; claiming $id unpinned -- an A/B queued now can split across handhelds"
+        blind_logged=1
+    elif [ "${blind_logged:-0}" = 1 ]; then
+        log "affinity: lanes registered again ($live); pairs are pinned"
+        blind_logged=0
+    fi
 }
 
 serve_one() {
@@ -441,6 +546,8 @@ serve_one() {
     mv "$req" "$D/running/$id.req" 2>/dev/null || return 1
     printf '%s\n' "$DEVICE_LABEL" > "$D/running/$id.owner"
     req="$D/running/$id.req"
+    # Say so if that `want` above was decided over an empty device set.
+    lane_blind_check "$id"
     local requester purpose ref arm runs
     requester=$(jq_get "$req" requester unknown)
     purpose=$(jq_get "$req" purpose "")
@@ -472,7 +579,16 @@ serve_one() {
     [ -z "$perflog" ] || log "  diagnostic build requested: -Pperflog=true"
     apk=$(build_ref "$ref" "$perflog"); rc=$?
     if [ "$rc" != 0 ]; then
-        echo "build failed for ref $ref (code $rc)" > "$rdir/ERROR"
+        # The arms job puts the first lines of this file on the lane's PR as
+        # "[job.arms] ARM ERROR", and "code 4" tells a lane nothing it can act
+        # on. The first line that names a cause in a Gradle log is typically 80
+        # lines in and everything after it is a stack trace, so pull the lines
+        # that name one rather than the head or the tail.
+        { echo "build failed for ref $ref (code $rc)"
+          grep -m3 -hE "CMake Error|not on PATH|not found in PATH|error:|FAILED: |What went wrong" \
+               "${BUILD_LOG:-/dev/null}" 2>/dev/null | cut -c1-200 | sed 's/^/  /'
+          echo "  full log: ${BUILD_LOG:-none}"
+        } > "$rdir/ERROR"
         log "  BUILD FAILED (code $rc)"; mv "$req" "$rdir/request.json"; return 0
     fi
     if [ ! -f "$apk" ]; then
@@ -1062,9 +1178,12 @@ case "${1:-status}" in
     # about itself: a supervisor's list outlives the worker it describes, and a
     # timestamp cannot tell a dead lane from one 20 minutes into a 26-minute
     # A/B arm. A pid can, and needs no refreshing.
-    mkdir -p "$D/lanes"
-    printf '%s\n' "$$" > "$D/lanes/$DEVICE_LABEL"
-    trap 'rm -f "$D/lanes/$DEVICE_LABEL"' EXIT
+    # Registering here is no longer the only time it happens -- lane_claim runs
+    # every tick below, because this file being written once per process is
+    # exactly what turned a transient `rm` into a five-hour outage of the whole
+    # pinning mechanism. See the lane_file block above.
+    lane_claim
+    trap lane_release EXIT
 
     for orphan in "$D"/running/*.req; do
         [ -e "$orphan" ] || continue
@@ -1118,15 +1237,24 @@ case "${1:-status}" in
         if [ -e "$D/hold/$DEVICE_LABEL" ]; then
             [ "$held_logged" = 1 ] || log "HELD by $D/hold/$DEVICE_LABEL; claiming nothing until it is removed"
             held_logged=1
-            rm -f "$D/lanes/$DEVICE_LABEL"   # affinity must not pin a pair here
+            lane_release   # affinity must not pin a pair to a device on hold
             sleep 30
             continue
         fi
         if [ "$held_logged" = 1 ]; then
             log "hold released; serving again"
             held_logged=0
-            printf '%s' "$$" > "$D/lanes/$DEVICE_LABEL"
         fi
+        # Re-assert the registration on EVERY tick, not only after a hold.
+        # held_logged is now purely a log-once flag: the restore no longer
+        # depends on this process having been the one that observed the hold,
+        # which was the brief's suspected defect even though the code did in
+        # fact set the flag alongside its `rm`. Restoring unconditionally is
+        # cheaper than arguing about which process saw what.
+        #
+        # AFTER the hold check, never before, or a held device would re-register
+        # itself thirty seconds after taking itself out of service.
+        lane_claim
         # Served in glob order, which is ASCII order, and that is the whole
         # priority mechanism. Normal requests are named with an epoch prefix so
         # they sort by arrival. Two conventions ride on top:

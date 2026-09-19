@@ -45,8 +45,12 @@ A path you edit that is not on that line is a collision nothing can see.
 1. Your branch is pushed and `preflight.sh` passes on it (the tracker gate
    is the board's; `--allow-tracker` is fine when only that fails).
 2. The PR body's `Files:` matches `git diff --stat origin/master...HEAD`.
-3. `NOTES.md` in the branch root records what you tried, what you measured,
-   and what the next lane should not repeat.
+3. `docs/lanes/<your lane name>/NOTES.md` records what you tried, what you
+   measured, and what the next lane should not repeat. **Not the branch
+   root**: every lane writing root `NOTES.md` means the first fold lands one
+   on master and every fold after it conflicts on that exact path forever.
+   One file per lane cannot collide, and the whole set stays readable after
+   the folds.
 4. The prediction, if any, is registered and committed with its refs, or
    the body says `Prediction: none` and why.
 5. Then **mark the PR ready**: `gh pr ready <number>`. A draft is "still
@@ -54,12 +58,24 @@ A path you edit that is not on that line is a collision nothing can see.
    without marking it ready, the board resumes you (attempts are counted,
    and the fourth runs on the escalated model), so do not end a session on
    a finished PR still in draft.
-6. If the brief cannot be done as written, say so in `NOTES.md` and in a
+6. If the brief cannot be done as written, say so in your `NOTES.md` and in a
    PR comment starting `[lane.<name>] blocked:`, with the measurement or
    decision that would unblock it. That is a finished outcome.
 
 ## Never
 
+- Put the retired **skip-ci marker** in a commit message. It is not a hint to
+  CI, it is the absence of CI: GitHub creates no workflow run at all, the PR's
+  check rollup comes back empty, and the fold job cannot fold a head that
+  nothing has built -- so the PR waits, silently, until a person pushes over
+  it. That is what stalled #101, #123, #129 and #139. `AGENTS.md`'s transition
+  note retired the marker; CI is free on this public repository and now runs
+  on every PR, and it is the gate of record.
+- **Quote** that marker, in a commit message, for any reason -- including
+  explaining this rule. GitHub matches it anywhere in the message, body
+  included, so the empty commit pushed to restore a missing run suppressed
+  that very run on 2026-09-18 and cost another cycle. Name it in prose, as
+  this file does, or push `git commit --allow-empty -m 'ci: build this head'`.
 - Edit `docs/testing/nv2a_issues.toml` or `territory.toml`.
 - Push to `master` or to any branch but your own.
 - Run git in a tree that is not your worktree.
