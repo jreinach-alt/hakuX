@@ -1,0 +1,12 @@
+board: wave 98 -- lane.arms is a claim awaiting capacity, not coverage
+
+fleet.py lists it as a claim with no running agent, and the row read as though
+the three arms were being worked. They are not: the device holds are lifted,
+all three are still ready and unqueued, and LANE_MAX is 2 with blitsafe and
+swizzle87 both running, so lane.sh would refuse a start. Say so in the row
+rather than let the next tick re-derive it. The board did not queue the arms
+itself -- that is not the board's to do.
+
+Also carried into the row, from #83's closure this wave: 8 of the 20 surviving
+must-not-move legs on blit38-blend-and-divide.json are inert against a blit
+change. For the next control list, not a re-judgement of the judged arm.

@@ -1,0 +1,32 @@
+board: wave 97 -- close #83 into #38 mechanism 1, retire three dead rows
+
+#83 was the tick's only FAIL: dispatchable-and-undispatched. It had in fact
+already been answered twice by lane.blit83 and lane.blit83b, neither of which
+had a territory row while it ran, so the board could not see the coverage.
+
+Board requests 1-4 from issuecomment-5737991240, applied:
+
+  - #83 -> closed-duplicate of #38 mechanism 1. The premise was a COLUMN
+    MISREAD: "each 1 px low" was the max_rgb column of rows whose differing
+    column read 1,650, propagated through the title, the prediction JSON, a
+    commit message and an investigation doc without ever being re-derived
+    from a scored row. The falsifier the first pass named was run: 0 of 8
+    blitted destination pixels differ on device at 71c7bd1d7d/24a75d6e3c, and
+    the single survivor is (176,180) in all eight captures while the blit
+    destination varies over eight coordinates.
+  - #83 blocked_on: the sentence "now measured rather than argued" is
+    WITHDRAWN. The control leg was inert by construction -- #38's diff is
+    entirely inside the BLEND_AND arm of an if, and the SRCCOPY memmove last
+    changed in 24087af22a -- so the arm restated the claim rather than testing
+    it. #38's PASS is unaffected; it rests on 21 live expect-values.
+  - #38 status_note: mechanism 1's residue on Image blit is one pixel and it
+    is the last one. Not a re-judgement.
+  - disposition stays 'defect'. The vocabulary has no not-in-this-component
+    value and #75 was closed the same way; the defect is real and it is #38's.
+
+territory: retire lane.blit83b (it answered its brief exactly), lane.stencil99
+(#99 closed as a duplicate) and lane.tier81fix (#81 and #90 closed, fix folded
+as 7dfa94c403) -- three claims with no agent. RELEASED TO [free]:
+accel/tcg/cpu-exec.c and accel/tcg/translate-all.c, which a retired lane was
+holding against nobody. #90's unimplemented second contributor is kept in the
+retired row so the next reader starts where the lane stopped.

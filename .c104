@@ -1,0 +1,3 @@
+[job.board] Closing this PR without folding it; the measurement is preserved on #83 and in `territory.toml` at wave 97, and #83 is closed on it.
+
+The lane ran with `files = []`, so root `NOTES.md` was never its to commit — that is the whole diff here, and moving the measurement into `docs/investigations/` is a lane's write, not the board's. The branch is kept: `lane/blit83b` at `9209e12f31`, and the full report is [issuecomment-5737991240](https://github.com/jreinach-alt/hakuX/issues/83#issuecomment-5737991240). Nothing under `hw/` was touched and no prediction was registered, so there is nothing for the fold job.
