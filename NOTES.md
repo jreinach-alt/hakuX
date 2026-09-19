@@ -190,6 +190,16 @@ only considers rows with a non-empty blocker).
   and #52 mid-text) are **deliberately left alone**. The new check is scoped to
   live-open issues; a closed row's `blocked_on` is history and rewriting it
   destroys the record for no gain.
+- **`gh pr edit --body-file` fails here too, not just `--add-label`.** Updating
+  this PR's body with it printed the Projects-classic GraphQL refusal and
+  changed nothing; `gh api -X PATCH repos/O/R/pulls/<n> -F body=@file` worked.
+  Nothing in `docs/testing/jobs/` writes a PR body today, so no live defect —
+  but `docs/ORCHESTRATION-DESIGN.md:218` plans the grant mechanism as "a comment
+  `/grant path` from the board job that **edits the PR body**", and `gh-label.sh`
+  already knows the general cause ("`gh pr edit` asks for project cards on every
+  edit"). Whoever builds `/grant` should go through REST from the start.
+  `selftest.sh:282`'s check is scoped to `--add|remove-label` and would not
+  catch a `--body` regression.
 - **`docs/ORCHESTRATION-DESIGN.md:222` lists the tracker's rich fields**
   (`blocked_on`, `blocker_falsifier`, `blocker_tested`, `fixed_by`) and now
   omits `dispatch_state`. One line, and I did not take it: PR #122 is
