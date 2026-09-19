@@ -1123,6 +1123,29 @@ extern "C" int xemu_android_main(int argc, char** argv) {
   /* qemu_init's cleanup_add_fd already closed the original fd */
   g_dvd_fd = -1;
 
+  /* Where the frame dump looks for its marker and writes its output: the
+   * app's external files dir, the same directory the APU capture's marker
+   * lives in and the one `adb shell` can write to without root. Deliberately
+   * OUTSIDE the TB-cache-hints block below -- that block happens to set the
+   * rt dump path too, so turning an unrelated build option off would silently
+   * take the dump's directory with it.
+   *
+   * Internal storage is NOT a fallback here. It is unreadable to adb on a
+   * production build, so a dump written there is a dump nobody can pull and a
+   * marker nobody can drop; better to leave the feature unarmed and say so. */
+  if (SDL_AndroidGetExternalStorageState() & SDL_ANDROID_EXTERNAL_STORAGE_WRITE) {
+    const char *files_dir = SDL_AndroidGetExternalStoragePath();
+    if (files_dir && files_dir[0]) {
+      nv2a_dbg_set_framedump_dir(files_dir);
+      __android_log_print(ANDROID_LOG_INFO, "hakuX",
+                          "frame dump: marker %s/frame_dump.on", files_dir);
+    }
+  } else {
+    __android_log_print(ANDROID_LOG_WARN, "hakuX",
+                        "frame dump: no writable external storage; "
+                        "marker-file arming is unavailable this run");
+  }
+
 #if XEMU_OPT_TB_CACHE_HINTS
   /* Load translation block cache hints for pre-warming */
   const char *storage_load = SDL_AndroidGetInternalStoragePath();

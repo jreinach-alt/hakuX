@@ -776,6 +776,50 @@ Hard-won operational facts, each of which cost real time:
 | A run cut off by your wait loop is not a completed run | The emulator does not exit on guest power-off (#20), so waiting for the process to die always hits your timeout. Confirm completion from the progress log's "Testing completed normally", never from the run's duration. |
 | A mashed skip sequence can end the run without crashing | Mashing A, B and Start through a title's intro once ended at the game library. B is **not** the cause and is not a crash: pressed alone it leaves the emulator running, same pid, nothing in the crash buffer. The likely path is the guest itself being powered off from its own menu, which the emulator handles by exiting the process (#20's fix). Treat "we are suddenly at the library" as the guest exiting, not as a fault, and confirm with `pidof <pkg>:xemu` before chasing it. |
 | Emulator `stderr` reaches logcat under tag `hakuX-stderr` | nv2a prints the offending value before aborting. Read the log before reaching for a disassembler. |
+| The Debug Capture button is not the only frame dump any more | `adb shell 'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/frame_dump.on'` arms a per-draw dump mid-run, with **no** per-draw `pgraph_vk_finish`. See below. |
+
+### Arming a frame dump without a button
+
+The Debug Capture button (`nativeDumpDiagFrames`) calls
+`pgraph_vk_finish` before **every** draw so it can read the surface back, which
+flushes the draw queue and the reorder window: under it, no draw is ever
+merged, nothing is ever in flight across a draw boundary, and a soak has nobody
+to press it anyway. #77 was blocked on precisely that.
+
+The live frame dump is the same per-draw records with neither problem. It is
+armed by a marker file, the way `apu.c` arms the PCM capture, and adds no
+Vulkan work at all -- no finish, no command buffer, no fence wait:
+
+```bash
+# 30 frames, one display PPM each, dropped once the title is in the scene
+adb -s <serial> shell \
+  'echo 30 > /sdcard/Android/data/com.jreinach.hakux.debug/files/frame_dump.on'
+```
+
+The marker's first line is a spec: a frame count, plus any of `noimages`
+(records only), `capNN` (byte cap in MB, default 96), `afterNN` (start NN
+seconds after the arm is seen), and `diag` (**also** run the old serialising
+capture, as the control arm). The marker is unlinked the
+moment it is read and the previous dump's files are deleted when a new one is
+armed -- a stale marker armed eight unrelated soaks on the audio side, and a
+stale capture was once pulled and measured as a later run's data.
+
+`XEMU_FRAME_DUMP=<same spec>` arms it at startup instead, which is what a
+queued soak can set today (`request.sh --env`) -- nothing in the dispatch path
+can touch a file on the device mid-run, which is what `afterNN` is for:
+`--env XEMU_FRAME_DUMP=30,after100` dumps 30 frames starting 100 s in, once a
+title is past its boot. Output is
+`framedump_<id>.jsonl` plus `framedump_<id>_fNNN.ppm` in the app's external
+files dir, so `--pull 'framedump_*'` collects it.
+
+Every draw record carries `cb_draws` and `submits`, which is how the dump
+proves its own headline claim: a per-draw finish submits the command buffer at
+each draw, so under the button path `cb_draws` cannot exceed 1 and `submits`
+rises once per draw, while under this path `cb_draws` climbs across the frame
+and `submits` is flat between flips. `docs/lanes/diagdump77/framedump_check.py`
+reads a dump and says which of the two it is looking at. What the dump cannot
+give you is a per-draw image: reading a surface back mid-frame is exactly what
+forces the finish.
 
 ## Sharing one device between a long sweep and active work
 
