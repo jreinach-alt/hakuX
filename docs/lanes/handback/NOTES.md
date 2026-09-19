@@ -195,16 +195,22 @@ with `active`, which are exactly the two answers that make this job do nothing.
 logged), `systemctl` (`$HB/active` is the set of running units) and
 `systemd-run` (logs and exits).
 
-| `jobs/` under test | result |
-| --- | --- |
-| this branch | **42 passed, 0 failed** |
-| `origin/master`, with only `selftest.sh` replaced by this branch's | 14 passed, **28 failed** |
+The fragment holds 46 checks. Measured after the `selftest.d` move, all three
+runs on the same host within the hour:
 
-The falsification run is a real worktree at `origin/master` with this branch's
-`selftest.sh` copied in, so the checks run against master's `fold.sh`, master's
-`roles/board.md`, and no `handback.sh` at all.
+| `jobs/` under test | whole suite | this fragment |
+| --- | --- | --- |
+| this branch | **170 passed, 0 failed** | 46 / 46 |
+| `origin/master` + only `selftest.d/99-handback.sh` | 140 passed, **30 failed** | 16 / 46 |
+| this branch, unfiltered-row guard deleted | — | 40 / 46 |
 
-**The 14 that "pass" against master pass for nothing**, and it is worth being
+Every one of the 30 failures against master is in this fragment; master's own
+124 checks pass under it, which is the claim that the move changed nothing but
+the file the checks live in. The falsification run is a real worktree at
+`origin/master` with only this fragment copied in, so the checks run against
+master's `fold.sh`, master's `roles/board.md`, and no `handback.sh` at all.
+
+**The 16 that "pass" against master pass for nothing**, and it is worth being
 explicit about that rather than counting them: they are the negative halves —
 "a `claude/*` head starts nothing", "at `LANE_MAX` nothing is resumed", "an
 exhausted lane is not started again". A script that does not exist starts
@@ -225,6 +231,7 @@ plausible wrong implementations of the four decisions above, each one line:
 | no stale-label column — the head sha is the only key | "a PR that also carries `fold-ready` is left alone", "list says why it was left alone" |
 | no is-active guard | "a lane whose unit is still active is not resumed" |
 | the brief is appended and never rolled back | "a capped tick rolls its handback back out of the brief" |
+| the unfiltered-row guard deleted | all four of "a row that came back WITHOUT the label…" |
 
 Each trips the check written for it and no other, except the two
 `grep -c` brief-count checks, which are cumulative and therefore trip for any
