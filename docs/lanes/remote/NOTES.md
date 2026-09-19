@@ -238,3 +238,48 @@ The exact derived figure was **393,374** — the sum of the nine gaps — and I
 rounded it upward in prose while the registered *values* were exact. The
 registration is what was measured against; the prose estimate was loose and is
 corrected here.
+
+## #60's residual, characterised after #158 landed
+
+`Blend_surface::DstAlpha_XA_O1A7RGB8` is now the **only** pad-family capture
+where GL trails Vulkan. #158 did not touch it and was registered in advance not
+to: `X1A7R8G8B8_O` returns `PSH_PAD_ALPHA_NONE`, so `pad_stamped` is false and
+`gl/draw.c` takes its unchanged path. The capture read 90,112 before and after,
+which is the pin holding.
+
+**Both backends are far from the golden, and that is the larger half.** GL is
+90,112 px from it and Vulkan 81,920. The 8,192 between them is the part that
+belongs to this renderer; the ~82,000 they share is a model question about this
+format and is not GL's to answer alone.
+
+Where the two renderers differ, one 128×128 region at x[32..159] y[92..219],
+16,384 px:
+
+| | 8,192 px | the other 8,192 px |
+|---|---|---|
+| golden | `#000000FF` | `#2A2A2ABF` |
+| Vulkan | `#000000FF` — **exact** | `#555555FF` |
+| GL | `#FFFFFFFF` | `#6C6C6CE2` |
+
+GL matches the golden on **0** of the 16,384; Vulkan on 8,192. So the whole
+GL-minus-Vulkan gap is the half where hardware writes black and GL writes white
+— destination alpha read as one, the signature this lane first described on
+09-13.
+
+**The structural finding, which is stronger than the pixel count.** Four
+colours the golden holds appear **nowhere in our frame on either backend**:
+`#2A2A2A`, `#4A4A4A`, `#818181`, `#B6B6B6`. Those are blend *results*, not
+quantisation neighbours. A rounding or precision difference cannot produce a
+frame that is missing four output values entirely; this is an equation or an
+operand that is wrong, not a value that is slightly off.
+
+Note also GL's alpha on the second row: `0xE2`, against the golden's `0xBF` and
+Vulkan's `0xFF`. GL is producing a *varying* alpha where Vulkan produces a
+constant — so the two backends disagree about what the alpha channel even
+carries here, which is exactly what one would expect on the one format whose
+seven alpha bits are real data and whose pad bit is not.
+
+**Not this lane's to fix alone.** The remaining question is what
+`X1A7R8G8B8_{Z,O}` should read back and blend with, which is #48/#59's model
+and the one case both of their tables exclude by construction. Recorded so the
+next actor starts from the measurement rather than from the pixel total.
