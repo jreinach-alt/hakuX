@@ -111,9 +111,16 @@ PRIMS = {
     "TriH": (_trih(), 150, 0, "TriH"),
     "TriV": (_triv(), 150, 0, "TriV"),
 }
-for _ct in (32, 128, 224):
+for _ct in (32, 35, 128, 224):
     # ClipF/ClipW exist only with zslope set, so their ZS0 baseline is the
     # unclipped quad: identical geometry, and floor(w) does not see the clip.
+    #
+    # 35 has no golden yet.  It is the variant `wbuf31_clipf_phase.patch` adds
+    # upstream and the only clip_top that separates the rules #31's ClipF
+    # residual rests on -- see `wbuf_clip_phase_choice.py`.  The entry sits
+    # here so that the day the golden lands, reading it is one command and not
+    # a patch to this file: a missing capture is skipped below, so listing it
+    # early costs nothing and changes no current output.
     PRIMS["ClipF-150-%03d" % _ct] = (FLOOR, 150, _ct, "FloorQuad")
 for _cl in (159, 261, 363):
     PRIMS["ClipW-%03d-000" % _cl] = (WALL, _cl, 0, "WallQuad")

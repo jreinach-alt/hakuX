@@ -12,6 +12,15 @@ minus `ZS0`, both with the depth buffer stored as `floor(w)`.
 > and `TriV` is a **refuted model family**, not an unfitted one — 0 of 32 rules
 > land inside its intervals and a three-free-parameter fit misses the held-out
 > residue by 418 interval widths.
+>
+> **2026-09-19, on the `ClipF` limb** — see
+> [`wbuffer-31-clipf-phase.md`](wbuffer-31-clipf-phase.md). `clip_top+2` is not
+> one of two rules that fit, it is one of **63**, seven of them on a grid of 4
+> or finer; and no `clip_top` this suite can generate separates any two. The
+> variant that does is `clip_top=35` (**not** 34, which fuses two of the three
+> plausible rules), `docs/testing/wbuf31_clipf_phase.patch`. It needs a golden,
+> i.e. NV2A silicon — our own devices run the emulator under test, so a capture
+> from them reads back the rule we shipped.
 
 ## What the hardware does
 
