@@ -87,9 +87,11 @@ sc_said()  { grep -qF -- "$1" "$SC_COMMENTS"; }
 # grep fails, the negation succeeds and the check can never fail (85's header
 # records the mutant that caught exactly that).
 sc_unsaid() { ! grep -qF -- "$1" "$SC_COMMENTS"; }
-sc_ncomments() { grep -c '^--- comment on 301' "$SC_COMMENTS" 2>/dev/null || echo 0; }
-sc_labelled()  { grep -q "api -X POST repos/example/hakux/issues/301/labels.*$1" "$SC_LOG"; }
-sc_unlabelled(){ grep -q "api -X DELETE repos/example/hakux/issues/301/labels/$1" "$SC_LOG"; }
+# `grep -c` prints 0 AND exits 1 when nothing matches, so `|| echo 0` appends a
+# SECOND zero and the comparison reads "0\n0". Piped instead, so the count is
+# the count and the exit status is the pipe's last stage.
+sc_ncomments() { grep -c '^--- comment on 301' "$SC_COMMENTS" 2>/dev/null | head -1; }
+sc_untouched() { ! grep -q 'issues/301/labels' "$SC_LOG"; }
 sc_reset() { rm -rf "$SC/work/fold" "$SC/work/handback"; : > "$SC_LOG"; : > "$SC_COMMENTS"; }
 
 HEAD_A=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
@@ -101,7 +103,7 @@ TIPSHA2=2222222222222222222222222222222222222222
 sc_reset; sc_rows selftest FAILURE "$FAIL_OLD" build SUCCESS "$FAIL_OLD"
 out=$(sc_list RED "$HEAD_A" "$TIPSHA1" "$TIP_1")
 check "list calls a red that predates the trunk head STALE" grep -q 'CI RED but STALE' <<< "$out"
-check "  and list is still read-only: it labels nothing" sc_unlabelled fold-ready
+check "  and list is still read-only: it touches no label" sc_untouched
 check "  and says nothing on the PR" [ "$(sc_ncomments)" = 0 ]
 
 sc_tick RED "$HEAD_A" "$TIPSHA1" "$TIP_1"
@@ -253,9 +255,15 @@ check "  and its comment still names the conflicting files" sc_said 'conflicting
 # `action=` comes out of a FILE and becomes the command word of an
 # invocation. An unknown value falls back to the row's own action -- which is
 # the label's meaning and is never wrong about what to DO -- and says so.
+#
+# THE VALUE IS INERT ON PURPOSE, and `rm -rf /` -- the obvious thing to reach
+# for -- would be exactly wrong here. The mutant for this check is "delete the
+# whitelist", and under that mutant this string becomes the command word of a
+# real invocation in whoever's checkout runs the self-test. A name that is
+# merely not a function proves the same thing and cannot do anything.
 : > "$SC_LOG"; : > "$SC_COMMENTS"
 HEAD_C=cccccccccccccccccccccccccccccccccccccccc
-printf 'label=needs-rebase\naction=rm -rf /\nbranch=lane/staleci\nhead=%s\nfiles=a.sh\n' "$HEAD_C" \
+printf 'label=needs-rebase\naction=resume_nothing_at_all\nbranch=lane/staleci\nhead=%s\nfiles=a.sh\n' "$HEAD_C" \
     > "$SC/work/handback/cause/301-$HEAD_C"
 hbs_row 301 staleci "$HEAD_C"; out=$(hbs)
 check "an action the cause file invents is refused and named in the log" \
