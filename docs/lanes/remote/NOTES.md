@@ -23,7 +23,7 @@ ancestors of master and nothing was carried forward.
 |---|---|
 | #34 | not this lane's: four findings in `vk/*`, and the device confirmation is APK packaging in `android/` |
 | #60 | **the subject of this note** — see below |
-| #62 | finding 2 **implemented on `a5fdb6a7`** once `gl/surface.c` was granted; the other five were already fixed and verified in master. The device half is the host's, by the split agreed on the issue — see below |
+| #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
 
 ## #60: the fix landed while the issue stayed open
@@ -674,7 +674,15 @@ before pass 2b raised it; it stays unfixed, because both registered prediction
 refs are descendants of that commit and rewording it would rewrite history a
 live prediction depends on.
 
-## #62 finding 2, landed on `a5fdb6a7` — and what no audit has read yet
+## #62 finding 2, landed on `a5fdb6a7` — and what no audit had read yet
+
+> **SUPERSEDED — read this section as the record of what was believed on
+> 2026-09-19 at 19:16Z, not as the state of the tree.** `a5fdb6a7` was
+> **reverted** in `d7ef9820` after audit pass 2c found its condition
+> unreachable; the correction, the chain that refutes it and the arithmetic
+> that survives are in *"Audit pass 2c, A1"* at the end of this file. Every
+> reachability claim below is wrong. The *territory* paragraph immediately
+> following, and the format-table readings, are unaffected and still correct.
 
 Written by the remediation pass, not by the commit's author, because the commit
 landed **three minutes before this PR was claimed for remediation** and after
