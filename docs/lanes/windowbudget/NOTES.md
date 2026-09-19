@@ -317,6 +317,42 @@ outlet, and `status.sh`'s window-budget section. `fold.sh` tail-calls
 `status.sh` (line 591) with its output discarded, so the fold fixtures drive
 this lane's `window_check` now; they do, and the reds above are not it.
 
+### A second inherited blocker: `territory.toml` contradicts itself
+
+Found by re-running `preflight.sh` on the final head after it had **passed**
+on the head before it. Only `NOTES.md` changed between the two, so the move
+was not in this tree at all -- `preflight.sh` reads `territory.toml` from
+`origin/board`, and that branch advanced in between (`f497b85c81`, "board: #65
+gets a lane for its four remaining defects"):
+
+    territory                   FAILED
+      FAIL: territory.toml
+        hw/xbox/nv2a/nv2a.c is listed FREE but claimed by vblank65
+
+Both rows are really there on `origin/board:territory.toml` -- the path is in
+the `[free]` block at line 532 **and** in `[lane.vblank65]`'s `files` at line
+575. The dispatch that created the lane did not take the file out of `[free]`.
+This fails `preflight.sh` for **every** lane, and no lane can fix it: the
+contract forbids editing `territory.toml`, and `--allow-tracker` does not
+cover it (that flag licenses the tracker-file step, not the two-lane file
+claim -- a distinction worth keeping, because it is easy to assume the flag
+covers anything with "tracker" in the name).
+
+**The board request** (AGENTS.md's mechanism for exactly this: "a wall that
+looks like the lane's problem and is actually the orchestrator's"):
+
+> Remove `hw/xbox/nv2a/nv2a.c` from the `[free]` block of `territory.toml`;
+> `[lane.vblank65]` claims it. Either row alone is fine -- it is holding both
+> at once that `check_territory.py` refuses, and it refuses it for every lane's
+> preflight, not just the one that noticed.
+
+It could not be dropped in `$DISPATCH_DIR/board-requests/windowbudget.md`: this
+session's sandbox permits writes only inside the worktree. So it is delivered
+the two ways that were open -- a `[lane.windowbudget] blocked:` comment on
+#155, and a direct message to the host session that arbitrates the tracker.
+Recording it here alone would have been the "routing on paper" failure: a
+record is not a delivery.
+
 ## Dials (all in `$WORK/limits.env`, none in a commit)
 
     WINDOW_COOLDOWN_MIN=30     re-probe interval after a refusal with no named reset
