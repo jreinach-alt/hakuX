@@ -46,6 +46,7 @@ A="$WORK/arms"
 # The scripts a queue and a judge run through are the trunk's, taken from
 # beside this file (board.sh re-execs this from a fetched master worktree).
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 mkdir -p "$A"/{expect,pairs,judged,skipped,log} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
 say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
@@ -124,7 +125,26 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
             return 0
         fi
     fi
-    grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req "$D"/results/*/request.json 2>/dev/null
+    grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req 2>/dev/null && return 0
+    # A RESULT THAT ERRORED IS NOT A RUN. The ARM ERROR comment tells the lane
+    # to "delete $WORK/arms/judged/<sha> and $WORK/arms/pairs/<sha>.json to
+    # have the job queue it again", and that advice could not work: the errored
+    # result's request.json still carries the expect_sha, so this test matched
+    # it forever and the arm was unqueueable no matter what was deleted.
+    # Measured 2026-09-19, when #89's arm failed to build on BOTH sides for a
+    # reason that was the host's and not the code's.
+    #
+    # This does not re-queue in a loop. The pair marker stops the next tick
+    # while the pair is in flight, and the judge writes judged/<sha>=ERROR as
+    # soon as it sees the ERROR arm; both are checked above. Deleting them is
+    # still a deliberate act, and now it does what it says.
+    local rj
+    for rj in "$D"/results/*/request.json; do
+        [ -f "$rj" ] || continue
+        [ -f "$(dirname "$rj")/ERROR" ] && continue
+        grep -q "\"expect_sha\": *\"$sha\"" "$rj" && return 0
+    done
+    return 1
 }
 
 live_ancestor() {   # is $1 an ancestor of the trunk or of any lane tip?
@@ -292,8 +312,8 @@ for pair in "$A"/pairs/*.json; do
     post "$pr" "$issue" "$body" || say "  could not post the verdict for $sha anywhere"
     if [ -n "$pr" ]; then
         case "$verdict" in
-            *PASS*) gh pr edit "$pr" --repo "$GH_REPO" --add-label verified --remove-label regressed >/dev/null 2>&1 ;;
-            *FAIL*) gh pr edit "$pr" --repo "$GH_REPO" --add-label regressed --remove-label verified >/dev/null 2>&1 ;;
+            *PASS*) label_add "$pr" verified && label_rm "$pr" regressed || say "  WARNING: #$pr judged PASS but could not be labelled verified" ;;
+            *FAIL*) label_add "$pr" regressed && label_rm "$pr" verified || say "  WARNING: #$pr judged FAIL but could not be labelled regressed" ;;
         esac
     fi
     echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr})"

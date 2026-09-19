@@ -33,6 +33,7 @@ TIP="${HAKUX_TIP:-master}"
 WT="$WORK/fold-wt"
 F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
 say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
@@ -63,7 +64,7 @@ while IFS=$'\t' read -r pr branch head draft title; do
     if [ "$draft" = true ]; then
         say "#$pr is a draft: not folding; label removed"
         [ "$mode" = list ] && { echo "#$pr $branch: DRAFT"; continue; }
-        gh pr edit "$pr" --repo "$GH_REPO" --remove-label fold-ready >/dev/null 2>&1
+        label_rm "$pr" fold-ready || say "  WARNING: could not remove fold-ready from #$pr; it will be re-tried every tick"
         comment "$pr" "[job.fold] Not folded: the PR is still a draft. Mark it ready (\`gh pr ready $pr\`) and re-apply \`fold-ready\`."
         continue
     fi
@@ -95,7 +96,7 @@ while IFS=$'\t' read -r pr branch head draft title; do
         files=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
         git -C "$WT" merge --abort 2>/dev/null
         say "#$pr CONFLICT in: $files"
-        gh pr edit "$pr" --repo "$GH_REPO" --remove-label fold-ready --add-label needs-rebase >/dev/null 2>&1
+        label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
         comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
         continue
     fi
@@ -128,7 +129,7 @@ Fix on the lane branch and push; the next green head is re-tried."
     fi
     merge_sha=$(git -C "$WT" rev-parse --short HEAD)
     git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null
-    gh pr edit "$pr" --repo "$GH_REPO" --remove-label fold-ready --add-label folded >/dev/null 2>&1
+    label_rm "$pr" fold-ready; label_add "$pr" folded || say "  WARNING: #$pr is folded but could not be labelled folded; remove fold-ready by hand or the next tick folds it again"
     comment "$pr" "[job.fold] Folded as \`$merge_sha\` on \`$TIP\` (--no-ff; every commit keeps its sha, so registered refs stay bound). CI now runs on $TIP; the arms job picks up any prediction this PR carries."
     say "  folded #$pr as $merge_sha"
     folded=1
