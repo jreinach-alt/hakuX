@@ -94,7 +94,16 @@ code commits and committed on top of them, `a_ref` master `a1691ae68e`,
 `Texture_render_target/*`, `Blend_tests/*`, `Texture_format/*`,
 `Window_clip/*`, `Texture_shadow_comparator/*`, with `better=0, worse=0`.
 This change cannot move a pixel: it adds no GL call, removes none, and leaves
-the drained set identical. A leg that moved would mean the helper is being
+the drained set identical.
+
+No `disc` block is recorded, deliberately, and `--register` nudges about it.
+The field records the composition the *arm* runs, which this lane does not
+choose; writing the five suites above into it would state a composition I
+cannot know and would make the judge print a mismatch note against whatever
+disc the arm actually uses. The field's teeth are on absolutes (`expect`), and
+this prediction has none -- `must_not_move` and `expect_counts` are
+arm-to-arm differences and survive a composition the registrar did not
+foresee. Left absent on purpose rather than filled in with a guess. A leg that moved would mean the helper is being
 called somewhere it should not be, or that draining and reporting are not the
 same drain.
 
