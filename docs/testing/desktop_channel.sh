@@ -708,6 +708,11 @@ dc_serve_one() {   # <queued request path> ; 0 = served, 1 = not mine
     runs="$(dc_get "$req" runs 1)"
     title="$(dc_get "$req" title "")"
     renderer="$(dc_renderer "$req")"
+    # `runs` decides a loop bound, so it is validated rather than trusted. The
+    # arms job's very first queued arm died because request.sh was handed
+    # --runs "" and its JSON writer called int(""); the same field reaching
+    # `seq 1 ""` here would abort the tick instead of the request.
+    [[ "$runs" =~ ^[0-9]+$ ]] && [ "$runs" -ge 1 ] || runs=1
     local only=(); mapfile -t only < <(dc_list "$req" only_tests)
     dc_log "request $id from $requester: $purpose (ref=$ref renderer=$renderer runs=$runs)"
 
@@ -893,7 +898,23 @@ PYRES
         echo "the result writer failed; the per-run dirs under $rdir are the evidence" \
             >> "$rdir/ERROR"
     fi
-    dc_log "  done: $failed of $((runs * ${#only[@]})) run(s) failed -> $rdir"
+    # EVERY RUN FAILING MUST NOT LOOK LIKE A RESULT. `result.json` is written
+    # either way -- it is the record of what happened and it carries
+    # `runs_failed` -- but a result directory with no ERROR reads as a served
+    # request everywhere upstream, and a desktop result already carries no
+    # scores by design, so "0 captures because the runs died" and "0 captures
+    # because this channel does not score" are one line apart in the artifact
+    # and mean opposite things. cmd_run's own die() messages are in the
+    # per-run logs named here.
+    local total=$((runs * ${#only[@]}))
+    if [ "$failed" -ge "$total" ]; then
+        { echo "all $total desktop run(s) failed (renderer=$renderer ref=$ref xemu=$xemusha)"
+          echo "  per-run logs: $rdir/$id.r*.log"
+          grep -m3 -hE 'REFUSING:|RUN_EXIT|asked for|no progress log|did not complete' \
+               "$rdir"/*.log 2>/dev/null | cut -c1-200 | sed 's/^/  /'
+        } >> "$rdir/ERROR"
+    fi
+    dc_log "  done: $failed of $total run(s) failed -> $rdir"
     dc_finish "$id" "$rdir" "$req"
     return 0
 }
