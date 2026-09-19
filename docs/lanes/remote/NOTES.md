@@ -741,3 +741,83 @@ that produced the ratio/replicate model, not a measurement of this path — is
 how a cheap correct change becomes an unverifiable one. It belongs to whoever
 takes #62's device half. Flagged on the PR for the auditor to rate rather than
 quietly taken.
+
+---
+
+## Audit pass 2c, A1: the #62 finding-2 fix could not execute, and the finding was stale when I filed it
+
+Pass 2c closed P1–P4, each against a mutant it built rather than against the
+commit message claiming them, and then read the one code commit no pass had
+seen — `a5fdb6a7`, which I had flagged as the only unaudited code on the head.
+**Its condition is unreachable and its central claim is false.**
+
+### The chain, verified here rather than accepted
+
+`a5fdb6a7` rested on: *"Both gates in front of the blit admit R5G6B5 … so the
+blit is taken."* Both readings are correct. **There is a third gate in front of
+both of them, and it refuses.**
+
+| step | site | fact |
+|---|---|---|
+| the only call site | `gl/texture.c:927` | `pgraph_gl_render_surface_to_texture()` is called nowhere else in the tree |
+| its guard | `gl/texture.c:801` | `surf_to_tex = pgraph_gl_check_surface_to_texture_compatibility(...)` |
+| the refusal | `gl/surface.c:1543` | `if (pgraph_texture_format_is_converted(texture_fmt)) return false;` |
+| ordering | `:1543` before `:1587` | the refusal precedes **every** `return true`, including the `__ANDROID__` early one |
+| why R5G6B5 is caught | `pgraph/texture.c:143` | `is_converted()` falls through to `expands_by_replication()`, true for both `R5G6B5` spellings |
+| why no pair escapes | `rgba8_compatible()` | an R5G6B5 **surface** is accepted only for `LU_IMAGE_R5G6B5` / `SZ_R5G6B5` **textures**, and both are converted |
+
+So for every surface/texture pair that could have reached my condition,
+`surf_to_tex` is false and `render_surface_to_texture_slow()` is never entered.
+The four lines could not run.
+
+### What I actually did wrong, which is not "missed a gate"
+
+I re-verified the two gates the issue named, at the tip, on the day I wrote the
+fix — and **never asked whether the function containing them is reached.** Local
+facts checked, reachability assumed. That is the day's pattern in its purest
+form: not a wrong measurement, but a correct measurement of something that does
+not run.
+
+Worse, **the finding was already dead when I filed it.** The `is_converted`
+refusal landed in `c234c1cc` and `f0095555` on **2026-09-12**; #62 was filed
+**2026-09-13**. So finding 2 described a path that had been closed the day
+before, and neither the filing nor six days of subsequent passes over the issue
+caught it. Finding 1's abort is in the same position — the `default:
+g_assert_not_reached()` it fixed is equally unreachable through this route — so
+that fix is inert too, though harmless.
+
+### The decision on the four lines: REVERTED
+
+Pass 2c offered keep-as-documented-guard or revert, and said the choice is the
+lane's. Reverted, byte-identical to the pre-commit file, because **a guard that
+cannot execute cannot be tested.** There is no fixture for it, no run that
+exercises it, and no way to show it does the right thing when it becomes live.
+Keeping untested unreachable code because it might be correct later is the same
+claim-without-evidence this branch has spent the day removing from its own
+instruments; relabelling it "defensive" would make the comment honest and the
+code no more verifiable.
+
+`packed-texel-expansion.md` calls the `is_converted` refusal its *"least
+certain point"*, so the gate may well be relaxed. Whoever relaxes it will be
+running the tests that make this path live, and can write the exclusion then
+with a measurement attached — which is strictly better than inheriting four
+lines written blind.
+
+### What survives, and it is the larger half
+
+The arithmetic is correct and is about the model, not the route:
+
+* 5-bit channel: 4 of 32 values differ, max one step
+* 6-bit channel: 10 of 64 differ
+* whole pixel: **23,200 of 65,536 (35.4%)** — R 8,192, G 10,240, B 8,192
+* endpoints agree in both rules, so it never shows as a black or white shift
+* the 09-13 figure of 30,720 (46.9%) is reconciled: that was against the old
+  **truncating** scalar tail; the GPU **rounds**. 30/64 truncating, 10/64
+  rounding. Both right for what they measured.
+
+Ratio-versus-replication is still a real divergence from silicon wherever a
+5/6-bit surface is decoded by the host. It is the *surface-to-texture blit*
+route that does not exist, not the discrepancy.
+
+**The device ask is withdrawn.** #62 finding 2 has nothing for a device lane to
+confirm, and the offer should not have stood after this was known.

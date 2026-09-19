@@ -1329,29 +1329,7 @@ static void render_surface_to_texture_slow(NV2AState *d,
     glBindTexture(texture->gl_target, texture->gl_texture);
 
 #ifdef __ANDROID__
-    /*
-     * R5G6B5 is excluded from this blit deliberately. render_surface_to() hands
-     * a GL_RGB565 surface texture to the driver, whose normalized conversion is
-     * round(v * 255 / (2^b - 1)) -- the exact ratio. Silicon REPLICATES bits,
-     * which is what #59 measured, and the two disagree on 23,200 of the 65,536
-     * representable pixels, always by one step, with the endpoints agreeing. So
-     * this is the fast path being the wrong path; see #62 finding 2.
-     *
-     * Falling through reaches android_surface_guest_to_rgba8(), whose R5G6B5
-     * case at :552 already expands by replication through
-     * android_expand_5_to_8() / android_expand_6_to_8(). Nothing else is
-     * needed, which is why this is a condition and not a new code path.
-     *
-     * DO NOT instead make android_surface_to_texture_needs_guest_reinterpretation()
-     * return true for R5G6B5. That looks tidier and is wrong: it would route to
-     * android_surface_guest_to_texture_rgba8(), the REINTERPRETATION converter,
-     * rather than to the plain one, and would also change the second
-     * __ANDROID__ block below. That predicate answers a different question and
-     * should keep answering it.
-     */
-    if (pgraph_gl_surface_drawn_format(surface) !=
-            NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5 &&
-        android_surface_to_texture_rgba8_compatible(surface, texture_shape) &&
+    if (android_surface_to_texture_rgba8_compatible(surface, texture_shape) &&
         !android_surface_to_texture_needs_guest_reinterpretation(surface,
                                                                  texture_shape) &&
         texture->gl_target == GL_TEXTURE_2D) {
