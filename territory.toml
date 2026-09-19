@@ -28,8 +28,15 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 123
-updated_utc = "2026-09-19T14:27:33Z"
+wave = 124
+updated_utc = "2026-09-19T20:06:21Z"
+
+
+[lane.hilodot10]
+issues = ["10"]
+files = ["docs/testing/bump_sign_quads.py", "docs/lanes/hilodot10/NOTES.md"]
+standing = false
+note = "DISPATCHED WAVE 124 (job.board), briefs/hilodot10.md: #10's own blocked_on says NO MECHANISM IN HAND for YUV, Y8/AY8/A8Y8 or BumpEnvLum_R16B16 -- exploratory measurement work, not a queued fix. bump_sign_quads.py was unclaimed (last used ad hoc to separate the luminance-literal mechanism from HILO's) and is the instrument this brief asks the lane to reuse. Does not touch gl/draw.c or any file #164/lane.remote holds."
 
 
 [lane.indexcheck]
