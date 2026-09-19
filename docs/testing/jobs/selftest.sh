@@ -227,6 +227,18 @@ echo "== fold.sh list, cloud.sh list"
 check "fold.sh list runs with nothing labelled" bash -c 'bash "$HERE/fold.sh" list 2>&1 | grep -q "nothing labelled fold-ready"'
 check "cloud.sh list runs with nothing to claim" bash -c 'bash "$HERE/cloud.sh" list 2>&1 | grep -q "nothing to claim"'
 
+echo "== cloud.sh: the audit path cannot hold a branch a lane worktree already holds"
+# Every local lane keeps its branch checked out under $WORK/wt, and git refuses
+# one branch in two worktrees, so `worktree add -B "$branch"` failed for every
+# PR a local lane had opened -- exit 5, before the first say(): no tick log, no
+# comment, no label. A shim cannot reproduce git's refusal against the real
+# lane worktrees, so this pins the mechanism.
+check "the audit worktree is detached, not -B <branch>" \
+    grep -q 'worktree add --quiet --detach "$wt" "origin/$branch"' "$HERE/cloud.sh"
+check "the audit brief tells the session to push HEAD:<branch>" \
+    grep -q 'git push origin HEAD:\$branch' "$HERE/cloud.sh"
+check "no claim path exits without saying why" bash -c '! grep -nE "\|\| exit [0-9]" "$HERE/cloud.sh"'
+
 echo "== nv2a_index.py: the fold job regenerates the index, so the tree it reads matters"
 # The fold job runs `nv2a_index.py check` after a merge and, if it fails,
 # `build` -- from whatever nxdk_pgraph_tests checkout the host holds. On
