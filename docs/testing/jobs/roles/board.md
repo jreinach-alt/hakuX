@@ -63,6 +63,17 @@ So, every tick, in this order:
   on a PR whose branch is a local lane's → `lane.sh resume <name>` (it
   counts as an attempt) with a comment pointing the lane at the audit;
   cloud lanes (`lane/cloud-*`) remediate themselves.
+- **`needs-rebase` is not yours: `jobs/handback.sh` has it.** The fold job
+  conflicts, records the cause, and labels; `handback.sh` runs at the end of
+  every fold tick, derives the lane from the head branch, and calls
+  `lane.sh resume` once per head sha, under the same `LANE_MAX`. Do not
+  resume a `needs-rebase` lane yourself and do not merge for it — two
+  resumes for one cause is two sessions reading the same diff. What IS yours
+  is what that job cannot do, and it says so in a `[job.handback]` comment:
+  a PR whose head branch is not `lane/<name>` (a `claude/*` branch, or a
+  `lane/cloud-*` one) has no local lane, so route it or merge it as a person
+  would; a lane it reports as `blocked:needs-owner` has used every attempt
+  and gets the `decision-needed` issue below.
 - Arms: **you never queue them.** The arms job runs every committed
   prediction whose refs are live and posts `[job.arms] VERDICT` on the PR,
   labelling it `verified` or `regressed`. Your part: a `regressed` PR is not
@@ -93,6 +104,14 @@ with the attempt count, the escalated attempt failed too: open a
 report, label the issue `blocked:needs-owner`, and do not start it again.
 Never reset an attempt counter yourself; that is the owner's call when the
 brief was the problem.
+
+`jobs/handback.sh` reaches the same wall on your behalf and cannot open an
+issue: when it labels a PR `blocked:needs-owner` and comments that the lane
+has used every attempt, that is this paragraph's REFUSED, already spent.
+Open the `decision-needed` issue from the PR's `[job.handback]` comment and
+the lane's `NOTES.md`. A REFUSED you see for `LANE_MAX` instead (the fleet
+cap, not the attempt count) is not this: nothing was spent, the next tick
+retries by itself, and you do nothing.
 
 You run on Sonnet. That is deliberate: this job is bookkeeping and routing,
 and the reasoning-heavy work is the lanes'. If a tick needs judgement you
