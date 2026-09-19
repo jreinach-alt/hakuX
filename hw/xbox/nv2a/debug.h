@@ -500,6 +500,20 @@ void nv2a_dbg_trigger_diag_frame(void);
 bool nv2a_dbg_diag_frame_active(void);
 bool nv2a_dbg_diag_frame_pending(void);
 
+/*
+ * The live frame dump: the same per-draw records, armed from a marker file
+ * instead of a button, and WITHOUT the per-draw pgraph_vk_finish the diag
+ * capture needs for its per-draw surface reads. Vulkan only; see the header
+ * comment in pgraph/vk/renderer.c for what it can and cannot see.
+ *
+ * nv2a_dbg_set_framedump_dir names the directory holding both the marker
+ * (frame_dump.on) and the output (framedump_*). On Android that must be the
+ * app's external files dir, which is the only one adb can write to without
+ * root -- a marker nobody can drop arms nothing.
+ */
+void nv2a_dbg_set_framedump_dir(const char *dir);
+bool nv2a_dbg_framedump_active(void);
+
 typedef struct NV2AState NV2AState;
 typedef struct PGRAPHState PGRAPHState;
 
