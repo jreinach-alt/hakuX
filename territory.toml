@@ -609,12 +609,6 @@ issues = []
 files = ["docs/testing/jobs/selftest.d/86-fold-regressed.sh", "docs/lanes/selftest86/NOTES.md"]
 note = "WRITTEN 2026-09-19 by job.board -- lane was RUNNING with no territory row (fleet.py FAIL, same defect as laneshape/armlabel/desktopchannel/draftstrand/localtime before it). Harness defect, no tracker issue. Brief: selftest.d/86-fold-regressed.sh fails every run because fold.sh's prune_branch() deletes the local lane/foldreg ref the fixture assumes survives between ticks; fr_reset() must recreate it from a saved sha rather than assume. Blocks PR #152 and #155 (both fold-ready, CI-green, cannot fold) and every future harness PR. Both files were free; this row exists so check_territory.py can see the lane, which was itself told to write this row first and had not yet by the time this tick ran."
 
-[lane.cloud-remediate-148]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-148, remediation of PR #148 on branch lane/clrsurf91, attempt 1 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 148` removes this row when the unit ends."
-
 [retired.vblank65]
 issues = ["65"]
 retired_utc = "2026-09-19T18:50:00Z"
