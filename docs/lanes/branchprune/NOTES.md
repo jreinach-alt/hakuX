@@ -1,5 +1,44 @@
 # lane.branchprune — nothing deletes a lane branch, and two jobs walk them all
 
+## Why attempt 1 did not finish
+
+It finished the work and did not say so. Every part of the brief was built,
+the self-test was green, and CI went green on `f567c9cf18` — and the session
+ended with **PR #137 still a draft**, because it ended *waiting* for that CI
+rather than returning to mark the PR ready once it passed.
+
+A draft is invisible to every actor here: `board.sh` skips drafts, `fleet.py`'s
+READY-NOT-FOLDED does not count them, `fold.sh` folds only non-drafts, and
+`handback.sh` never looks at them. So the cost of not typing `gh pr ready 137`
+was not a delay, it was a PR that would have sat there until a person noticed —
+and a whole resumed session to type one command. From outside, silence and
+unfinished look identical.
+
+What attempt 2 did: merged the 120 commits `master` had moved (one real
+conflict in `fold.sh`, resolved by keeping both additions — see below), moved
+the checks out of `selftest.sh` into `selftest.d/97-fold-branch-prune.sh` now
+that the split had landed, re-ran the gate, and marked the PR ready. No part of
+attempt 1's design was redone.
+
+**The rule this lane pays for:** mark ready when the work is green and current,
+not after the last possible re-merge. A ready PR that needs one more merge is a
+visible task; a draft that needs nothing is not a task at all.
+
+## The merge attempt 2 had to resolve
+
+`master` moved 120 commits under this branch (through `415dcc6997`). One
+conflict, both sides pure additions to `fold.sh`:
+
+| side | added |
+| --- | --- |
+| this lane | `prune_branch()`, the `prune` sweep, the `prune-branch` hidden mode |
+| `origin/master` (`lane/foldci`) | `preflight_board_only()`, `preflight-verdict`, `board_gate_report()` |
+
+Kept both, mine first, and the same in the usage header. The fold-path call
+site — `prune_branch "$WT" "$branch" HEAD`, after the push to `$TIP` — merged
+cleanly and is still below that push (`fold.sh:449` push, `fold.sh:464` prune),
+which is the line-order check in the fragment.
+
 ## The measurement, and it moved while the lane ran
 
 | when | lane refs | fully merged into `origin/master` |
