@@ -3,6 +3,35 @@
 Issue: none (harness defect, dispatched directly).
 Prediction: none: harness script, no pixels claimed.
 
+## Why attempt 1 did not finish (written at the start of attempt 2)
+
+The work was done; the *publication* was not. Attempt 1 ran out of turns at the
+old `LANE_TURNS=150` in the middle of its final full `selftest.sh` run — the
+truncated `.scratch/selftest2.out` stops mid-section at "arms.sh run: judge the
+ERROR path", which is where the process was cut. What it had already done: the
+code change, the board migration pushed to `origin/board` as `63e7141f10`, the
+draft PR #134 opened with a full body (written through the REST PATCH, because
+`gh pr edit --body-file` fails here), and the section-level verification against
+`origin/master`'s scripts.
+
+What it had **not** done, all of it after the selftest gate: merge
+`origin/master`, move this file off the branch root, push, and
+`gh pr ready`. So the lane read as finished and was invisible to the fold job,
+which only considers non-draft PRs.
+
+The cause is worth naming precisely, because it is not "ran out of time". The
+last four steps are cheap — a merge, a rename, a push, one `gh` call — and they
+were left until after a ~10-minute gate run that had already been satisfied at
+the section level. **Ordering the expensive confirmation before the cheap
+publication is what made a finished lane invisible.** A lane with a green
+section-level verification can push and mark ready, then run the full gate: a
+ready PR that turns out red is a visible problem, a draft PR that is green is
+not a problem anyone can see.
+
+Attempt 2 changed one thing on the substance (below: `CLEARED` is matched only
+shouted, so an honest blocker whose prose uses the word is not punished) and
+otherwise did those four steps.
+
 ## What the defect actually is, and one correction to the brief
 
 The brief says `fleet.py` treats any non-empty `blocked_on` as blocked, and
@@ -63,7 +92,7 @@ still applies on top of it.
   dispatchable asserts more than an empty row supports.
 - `docs/testing/jobs/selftest.sh`: a whole fake board (`$T/board` with copies of
   the three modules plus two toml files; `HAKUX_BOARD_REF=` makes board_files
-  fall back to it) and 18 checks over eight variants of one row.
+  fall back to it) and 20 checks over ten variants of one row.
 
 ## Two things I got wrong on the first pass, both caught by measuring
 
@@ -104,14 +133,25 @@ leading claim. So the check looks at the first 90 characters. Two idioms that
 cannot occur innocently ("not on anything technical", "dispatch capacity") are
 matched anywhere.
 
+**Case carries meaning for exactly one of the claims, and I got this wrong on
+the first pass.** "not blocked", "not a blocker" and "unblocked" have no
+innocent reading as a blocker's *opening* claim, in any case. "cleared" does:
+`Blocked until the audit has cleared the held fold` is a perfectly good
+blocker, and matching it case-insensitively in the opening would have made the
+new gate fail an honest row — the same pressure that produced this defect,
+pointed the other way. So `CLEARED` and `NO LONGER BLOCKED` are matched only
+SHOUTED, which is how the board writes its own status markers and how #89 wrote
+this one. Both sides are pinned by selftest variants (`honest`, `shouted`); the
+first would have been a FAIL under the first pass's regex.
+
 ## Verified against the code being replaced, not reasoned about
 
 `SELFTEST_BOARD_SRC` points the new section at a directory of scripts.
 
 | scripts | result |
 |---|---|
-| this branch | 18 passed, 0 failed |
-| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **2 passed, 16 failed** |
+| this branch | 20 passed, 0 failed |
+| `origin/master:docs/testing/{check_coverage,fleet,board_files}.py` | **2 passed, 18 failed** |
 
 The two that pass against the old code are the fixture's own sanity check (the
 three modules were copied) and
