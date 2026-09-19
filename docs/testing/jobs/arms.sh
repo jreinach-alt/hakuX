@@ -76,16 +76,28 @@ git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/la
 tips="refs/remotes/origin/$TIP $(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/remotes/origin/lane/*')"
 
 collect() {   # prints: <sha256> <exported-path> <source>, first sighting wins (trunk before lanes)
-    local ref f blob sha out; declare -A seen
+    local ref blob f sha out; declare -A seen; declare -A blobsha
     for ref in $tips; do
-        for f in $(git -C "$REPO" ls-tree -r --name-only "$ref" -- docs/testing/predictions/ 2>/dev/null | grep '\.json$'); do
-            blob=$(git -C "$REPO" rev-parse -q --verify "$ref:$f") || continue
-            sha=$(git -C "$REPO" cat-file -p "$blob" | sha256sum | cut -d' ' -f1)
+        # ONE cat-file per unique BLOB, not one per (ref, path). 23 lane refs
+        # times 110 predictions is 2,530 pairs of git spawns, and almost all of
+        # them are the same hundred blobs -- the identical prediction file is
+        # reachable from every branch cut after it landed. The tick's cost grew
+        # with the NUMBER OF LANE BRANCHES, which nothing prunes, and
+        # selftest.sh runs this eight times: the gate every harness lane must
+        # pass went to eight minutes against a fifteen-minute CI timeout.
+        while read -r blob f; do
+            [ -n "$blob" ] || continue
+            sha="${blobsha[$blob]:-}"
+            if [ -z "$sha" ]; then
+                sha=$(git -C "$REPO" cat-file -p "$blob" | sha256sum | cut -d' ' -f1)
+                blobsha[$blob]=$sha
+            fi
             [ -n "${seen[$sha]:-}" ] && continue; seen[$sha]=1
             out="$A/expect/$sha.json"
             [ -f "$out" ] || git -C "$REPO" cat-file -p "$blob" > "$out"
             echo "$sha $out ${ref#refs/remotes/origin/}:$f"
-        done
+        done < <(git -C "$REPO" ls-tree -r "$ref" -- docs/testing/predictions/ 2>/dev/null \
+                     | awk -F'\t' '$2 ~ /\.json$/ {split($1,a," "); print a[3], $2}')
     done
     for f in "$D"/expect/*.json; do
         [ -f "$f" ] || continue
@@ -126,26 +138,40 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
         fi
     fi
     grep -lq "\"expect_sha\": *\"$sha\"" "$D"/queue/*.req "$D"/running/*.req 2>/dev/null && return 0
-    # A RESULT THAT ERRORED IS NOT A RUN. The ARM ERROR comment tells the lane
-    # to "delete $WORK/arms/judged/<sha> and $WORK/arms/pairs/<sha>.json to
-    # have the job queue it again", and that advice could not work: the errored
-    # result's request.json still carries the expect_sha, so this test matched
-    # it forever and the arm was unqueueable no matter what was deleted.
-    # Measured 2026-09-19, when #89's arm failed to build on BOTH sides for a
-    # reason that was the host's and not the code's.
-    #
-    # This does not re-queue in a loop. The pair marker stops the next tick
-    # while the pair is in flight, and the judge writes judged/<sha>=ERROR as
-    # soon as it sees the ERROR arm; both are checked above. Deleting them is
-    # still a deliberate act, and now it does what it says.
-    local rj
-    for rj in "$D"/results/*/request.json; do
-        [ -f "$rj" ] || continue
-        [ -f "$(dirname "$rj")/ERROR" ] && continue
-        grep -q "\"expect_sha\": *\"$sha\"" "$rj" && return 0
-    done
+    [ -n "${RAN[$sha]:-}" ] && return 0
     return 1
 }
+
+# EVERY expect_sha THAT ACTUALLY RAN, READ ONCE.
+#
+# A result that ERRORED is not a run: the ARM ERROR comment tells the lane to
+# delete judged/<sha> and pairs/<sha>.json to have the arm queued again, and
+# that could not work while an errored result's request.json still matched it.
+# #89's arm hit exactly that when it failed to build on both sides for a reason
+# that was the host's and not the branch's.
+#
+# The first version of that fix tested it PER CANDIDATE -- a grep per result
+# directory, inside the loop over predictions. On this host that is 916 result
+# directories times 117 candidates. The tick went from 17 seconds to over ten
+# minutes and had to be killed. A per-item test inside a per-item loop is a
+# quadratic that nobody notices until the corpus is real, and this corpus grew
+# to 916 results without anyone watching it.
+#
+# So the results are read ONCE, here, into a set.
+declare -A RAN
+while IFS= read -r s; do [ -n "$s" ] && RAN[$s]=1; done < <(python3 - "$D" <<'PYRAN'
+import glob, json, os, sys
+for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
+    if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
+        continue                       # an ERRORed result is not a run
+    try:
+        sha = json.load(open(rj)).get("expect_sha")
+    except Exception:
+        continue
+    if sha:
+        print(sha)
+PYRAN
+)
 
 live_ancestor() {   # is $1 an ancestor of the trunk or of any lane tip?
     local ref
