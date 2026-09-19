@@ -64,6 +64,7 @@ F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
+. "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh" # is_remote_branch: a branch this host must never delete
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
@@ -143,6 +144,27 @@ prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 
         lane/?*) ;;
         *) say "  NOT pruning '$branch': only lane/* refs are ever deleted"; return 1 ;;
     esac
+    # ...AND NOT A REMOTE LANE'S, even when it is named lane/*. A row marked
+    # `remote` in territory.toml belongs to a session in a container this host
+    # cannot see, which pushes to that branch about once an hour. Deleting the
+    # ref of a long-lived cloud lane is not the recoverable kind of mistake:
+    # the branch comes back on its next push carrying whatever that container's
+    # local copy holds, and anything folded in the meantime is a conflict
+    # nobody is watching for. No remote lane is named `lane/*` today, so this
+    # is the exemption for the day one is -- which is exactly when nobody will
+    # be thinking about it.
+    #
+    # TARGET NARROWED, NEVER WIDENED: this can only ever refuse. And a board it
+    # cannot read is also a refusal -- an un-pruned ref costs a few bytes, and
+    # "I could not check" is not "it is safe to delete".
+    if ! remote_readable; then
+        say "  NOT pruning '$branch': territory.toml could not be read, so whether it belongs to a remote lane is unknown"
+        return 1
+    fi
+    if is_remote_branch "$branch"; then
+        say "  NOT pruning '$branch': it is lane.$(remote_lane_of "$branch")'s, marked \`remote\` in territory.toml -- a session this host cannot see pushes to it"
+        return 1
+    fi
     # ...and a plain ref path, so nothing in it can read as an option to push
     # or expand into a second ref. check-ref-format refuses .., ~, ^, :, *, a
     # trailing lock and a leading dash for us.

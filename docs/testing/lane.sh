@@ -45,8 +45,48 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # when this script refuses.
 LANE_MAX=2
 . "$JOBS/models.env"
+# NOT A BARE `.`. Without the guard a missing file leaves refuse_if_remote
+# undefined, `refuse_if_remote remote` is a command-not-found the script does
+# not stop for (there is no `set -e` here), and the one gate below runs to
+# completion having checked nothing -- the loudest possible failure turned
+# into the quietest.
+. "$JOBS/remote-lane.sh" || { echo "REFUSED: could not load $JOBS/remote-lane.sh, so this script cannot tell a remote lane from a local one." >&2; exit 76; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
+
+# ------------------------------------------------- a lane that is not ours
+#
+# THE MOST EXPENSIVE THING THIS SCRIPT COULD DO. `lane.remote` is a cloud
+# session that pushes to `claude/docs-tooling-agentic-coding-u152m1` about once
+# an hour. Nothing stopped `lane.sh resume remote` from making $WORK/wt/remote,
+# starting a local headless session and pointing it at the same branch: two
+# agents, one branch, no lock, and the loser's commits are whatever the last
+# push happened to contain. It is not hypothetical -- two routines firing in
+# the same minute already put two sessions on that branch once today, and the
+# host session had to disable one by hand.
+#
+# So the refusal is here rather than only in the callers. handback.sh has its
+# own (it never derives a local lane name for a remote branch), and that is
+# deliberate duplication: this is the last gate before `systemd-run`, and it is
+# reached by a person typing the command as well as by a job.
+#
+# A BOARD THAT CANNOT BE READ IS A REFUSAL, NOT A PASS. If territory.toml does
+# not parse, this script cannot tell whether the lane it was handed is remote,
+# and the safe answer to "I do not know whether another agent holds this
+# branch" is to stop. That direction costs a dispatch; the other costs a
+# session's work. board_files falls back to the working tree, so this fires
+# only when the file itself is broken.
+refuse_if_remote() {   # <lane name> -- exits when the lane is not this host's to start
+    local b
+    if ! remote_readable; then
+        echo "REFUSED: territory.toml could not be read, so this script cannot tell whether lane $1 runs somewhere else. Fix the board file; starting a second agent on another session's branch is not recoverable." >&2
+        exit 76
+    fi
+    b=$(remote_branch_of "$1") || return 0
+    [ -n "$b" ] || return 0
+    echo "REFUSED: lane.$1 is marked \`remote\` in territory.toml and lives on \`$b\`, a branch this host does not drive. Starting it here would put a second agent on a branch its own session pushes to, with no lock. Wake it through its routine instead (\`/schedule\`, or the cloud session's own trigger); nothing local resumes it." >&2
+    exit 76
+}
 
 # ---------------------------------------------------------------- the registry
 #
@@ -122,6 +162,7 @@ next_attempt() {   # prints the attempt number this start will be, and the model
 case "$cmd" in
   start)
     brief="${3:?usage: lane.sh start <name> <brief.md> [issue]}"; issue="${4:-}"
+    refuse_if_remote "${name:?name}"
     [ -f "$brief" ] || { echo "no such brief: $brief" >&2; exit 2; }
     wt="$WORK/wt/$name"; branch="lane/$name"
     mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/lane"
@@ -164,6 +205,7 @@ case "$cmd" in
     # A stopped lane keeps its worktree, its branch and its NOTES.md. Start a
     # fresh session there with the same brief; the SessionStart hook prints
     # the base check and the lane reads its own git log and notes first.
+    refuse_if_remote "${name:?name}"
     wt="$WORK/wt/${name:?name}"; branch="lane/$name"
     [ -d "$wt" ] || { echo "no worktree at $wt; use lane.sh start" >&2; exit 3; }
     [ -f "$WORK/briefs/$name.md" ] || { echo "no brief at $WORK/briefs/$name.md" >&2; exit 3; }

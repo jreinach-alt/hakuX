@@ -43,7 +43,16 @@ So every fact that decides a FAIL is now derived from the thing itself:
   RUNNING            systemctl --user list-units 'hakux-lane-*'
   READY, NOT FOLDED  gh pr list: an open lane PR that is not a draft
   BLOCKED            gh pr list: an open lane PR labelled `blocked`
+  REMOTE LANES       a territory row carrying `remote`
   territory rows     board_files.load("territory.toml")
+
+AND A LANE PR IS NOT DEFINED BY ITS BRANCH NAME. `lane/*` was a proxy for "a
+branch a lane owns" and it failed on the one real lane that does not use the
+prefix: `lane.remote`, a cloud session on `claude/...`, was counted in no PR
+section and listed as a claim with no agent on every tick. Its liveness is not
+a systemd unit and never can be, so subtracting the unit set says nothing about
+it -- and this section is what a reader uses to decide a claim is stale, on a
+row whose files a live session pushes to hourly.
 
 A unit that is active is running; there is no state for it to be in that a
 file could disagree with. A lane that has finished is one whose unit is gone,
@@ -176,12 +185,39 @@ IN_FLIGHT = {"needs-audit-1", "needs-audit-2", "needs-remediation",
              "fold-ready", "folded", "needs-rebase", "claimed:cloud"}
 
 
-def lane_prs():
-    """Open PRs on lane/* branches, or None if gh could not answer.
+def remote_lanes(terr):
+    """{branch: lane} for every territory row marked `remote`.
 
+    A LANE IS A ROW IN territory.toml, NOT A BRANCH NAME. `lane.remote` is a
+    cloud session on `claude/docs-tooling-agentic-coding-u152m1`; before this
+    it was counted in no PR section and reported in LANE CLAIMED WITH NO
+    RUNNING AGENT every tick, because its liveness is not a `hakux-lane-*`
+    unit and never can be. The board could therefore dispatch a local lane
+    onto files that lane holds, with territory.toml the only thing in the way.
+
+    The marker's VALUE is the branch (`remote = "claude/..."`); `remote = true`
+    means the conventional `lane/<row name>`. See jobs/remote-lane.sh, which is
+    the same rule for the shell jobs -- a boolean alone cannot answer the
+    question this function is asked, which is "whose branch is this?".
+    """
+    out = {}
+    for lane, meta in (terr.get("lane") or {}).items():
+        r = meta.get("remote")
+        if r is True:
+            out["lane/" + lane] = lane
+        elif isinstance(r, str) and r.strip():
+            out[r.strip()] = lane
+    return out
+
+
+def lane_prs(remote=None):
+    """Open PRs a lane owns, or None if gh could not answer.
+
+    A `lane/*` head, or a head some territory row names as its remote lane's.
     One call. Everything the READY-NOT-FOLDED and BLOCKED sections need comes
     out of it, so neither section costs a call per lane.
     """
+    remote = remote or {}
     try:
         r = subprocess.run(["gh", "pr", "list", "--repo", REPO, "--state", "open",
                             "--limit", "60", "--json",
@@ -196,9 +232,14 @@ def lane_prs():
     out = []
     for p in rows:
         ref = p.get("headRefName") or ""
-        if not ref.startswith("lane/"):
+        if ref in remote:
+            p["lane"] = remote[ref]
+            p["remote"] = True
+        elif ref.startswith("lane/"):
+            p["lane"] = ref[len("lane/"):]
+            p["remote"] = False
+        else:
             continue
-        p["lane"] = ref[len("lane/"):]
         p["labelset"] = {l.get("name") for l in (p.get("labels") or [])}
         out.append(p)
     return out
@@ -312,7 +353,8 @@ def main():
               "(`systemctl --user list-units`); the fleet is unobservable "
               "until it answers.", file=sys.stderr)
 
-    prs = lane_prs()
+    remote = remote_lanes(terr)
+    prs = lane_prs(remote)
     pr_blind = prs is None
     if pr_blind:
         prs = []
@@ -365,8 +407,16 @@ def main():
     # than merely silent. It sets no rc, so this changes no wake-up -- but a
     # reader acting on a full list of "abandoned" claims would retire the live
     # fleet's rows, and the FLEET-BLIND line promises it is not computed.
+    #
+    # A REMOTE LANE IS NEVER A GHOST. Its liveness is not a `hakux-lane-*`
+    # unit and never can be -- it runs in a cloud container this host cannot
+    # see -- so subtracting the unit set says nothing about it. Listing it here
+    # was not merely noise: this section is the evidence a reader uses to
+    # retire a claim, and retiring `lane.remote`'s row would free files a live
+    # session pushes to hourly. It is reported under REMOTE LANES instead.
     ghost = [] if fleet_blind else sorted(
-        lane for lane in (terr.get("lane") or {}) if lane not in units)
+        lane for lane in (terr.get("lane") or {})
+        if lane not in units and lane not in remote.values())
 
     # THE OTHER DIRECTION, AND IT IS THE WORSE ONE: an agent that is RUNNING
     # with no row in territory.toml at all.
@@ -530,6 +580,26 @@ def main():
         print("  (%d registry entr%s for lanes with no active unit, ignored; "
               "`lane.sh fleet-gc` deletes them)"
               % (len(stale_reg), "y" if len(stale_reg) == 1 else "ies"))
+
+    # ELSEWHERE, NOT GONE. A lane whose row carries `remote` runs somewhere
+    # this host cannot observe, so neither RUNNING nor LANE CLAIMED WITH NO
+    # RUNNING AGENT is the truth about it. It gets a line of its own saying
+    # what IS known: its branch, its PR, and that nothing local can wake it.
+    # No FAIL: there is no action a board tick could take from here, and a
+    # standing wake-up the board cannot clear spends a window every twenty
+    # minutes for nothing.
+    if remote:
+        print("\n=== REMOTE LANES (%d) -- no local unit, and that is not a fault"
+              % len(remote))
+        for branch, lane in sorted(remote.items(), key=lambda kv: kv[1]):
+            p = pr_of.get(lane)
+            print("  %-12s %-44s %s"
+                  % (lane, branch,
+                     ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
+                     if p else "no open PR"))
+        print("  Its routine wakes it; `lane.sh resume` refuses these by name "
+              "(two agents, one branch, no lock). fold.sh never prunes their "
+              "branches.")
 
     print("\n=== READY, NOT FOLDED (%d)%s"
           % (len(unfolded), "  -- NOT COMPUTED, see PR-BLIND above" if pr_blind else ""))
