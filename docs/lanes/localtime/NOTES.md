@@ -203,13 +203,25 @@ against `origin/master`'s files (see the PR for the transcript):
   literal) and the summer/winter abbreviations both read `Pacific`, the offset
   reads `+0000`, and the sh/py renderings disagree (`13:32 Pacific` vs
   `13:32 UTC`). 5 reds.
+- **the data guards, against mutants rather than against history** -- these
+  are green today by design, so the falsifier is a mutated copy: a
+  `summarise_run.py` converted to local writes `2026-09-19T06:55:12Z` while
+  the UTC hour is `13`, and a `since_iso` with the `-u` removed no longer
+  matches. 2 reds.
 
-Fifteen reds across five distinct causes, not one cause counted fifteen times.
+**18 reds across 5 distinct causes, and no check that stayed green** -- the
+reds are not one cause counted eighteen times.
 
-The **data-site** checks are guards rather than falsifiers: they are green
-today and exist to go red when a later lane "finishes the job". Each was
-confirmed to trip by mutating its target in a scratch copy -- converting
-`summarise_run.py`'s `ts` to local makes the hour check fail by seven.
+A sixth cause was added later, for §4's `fleet.py` import, and falsified the
+same way: the pre-fix file in the bare-copy layout raises
+`ModuleNotFoundError` and prints no generated-at line, while the fixed one
+prints `... 14:04 UTC`.
+
+The distinction worth keeping: the **display** checks are falsifiers, proved
+against the code they replace. The **data** checks are guards, proved against
+mutants, because there is no "old code" for them -- they exist to go red when
+a later lane "finishes the job". A guard that was never shown to trip is
+decoration, so each was mutated rather than assumed.
 
 ## 4. `fleet.py` is run from a copy of itself, so its imports must be optional
 
@@ -257,6 +269,23 @@ directory, not a shadow of it.
 an import to `fleet.py` learns it from its own fragment instead of from a
 CI run on somebody else's checks. Confirmed to discriminate: the pre-fix file
 in that layout raises and prints no generated-at line.
+
+## Result
+
+| check | result |
+|---|---|
+| `bash docs/testing/jobs/selftest.sh` (local) | 340 passed, 0 failed, exit 0 |
+| `bash docs/testing/jobs/selftest.sh` (CI, final code) | **343 passed, 0 failed** |
+| `bash docs/testing/preflight.sh` | passed, exit 0, no `--allow-tracker` |
+| falsification vs `origin/master` | 18 red / 5 causes / 0 non-discriminating |
+
+The local run is 340 and CI's is 343 because the three `fleet.py` bare-copy
+checks of §4 were added after the local run had already passed fragment 55.
+They were verified by running fragment 55 alone (30/30) and then by CI.
+
+CI also settles a question this host cannot: the runner resolves
+`America/Los_Angeles` and renders the fixed instant as `06:32 PDT`, so the
+helper does not depend on the owner's box having an unusual tzdata.
 
 ## For the next lane
 
