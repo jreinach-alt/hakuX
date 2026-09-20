@@ -49,7 +49,7 @@ every polygon mode, so `rewrite_triangle_fan()` behaves exactly as before on
 every flat-shaded draw. This is not an argument; it is the first term of the
 predicate, and the all-states A/B below measures it.
 
-## Three things worth the next lane's time
+## Four things worth the next lane's time
 
 ### 1. The falsifier the brief named was measuring a renderer two folds old
 
@@ -78,13 +78,52 @@ silently wrong baseline.
 ### 2. "32,628 decisive pixels" is a population, not a residual
 
 #13's comments and this lane's brief both call the residue "32,628 decisive
-pixels". That is `9,731 + 22,897` -- the **size of the two classes**. The
-pixels actually naming the wrong edge are `2,884` (TFan) + `5,228`
-(QStrip/TFan) = **8,112**, which is also exactly the gap between the two rule
-columns (`198,731 - 190,619`). Registering 32,628 as the expected movement
-would have been wrong by 4x.
+pixels". That is `9,731 + 22,897` -- the **size of the two classes** under the
+perpendicular model. The pixels actually naming the wrong edge are `2,884` +
+`5,228` = **8,112** there, and `3,119` + `5,801` = **8,920** under the
+footprint we draw. Registering 32,628 as the expected movement would have
+been 3-4x out either way.
 
-### 3. The offline model reproduces the device arm exactly, once the window matches
+### 3. The judged instrument's DEFAULT footprint is stale, and it changes the numbers
+
+Caught after the first registration and before any device run, which is the
+only time it is fixable. `line_priority_arms.py` builds its decisive set from
+a model of **our own** footprint — the question is which edge *our* capture's
+colour names, so an edge our render covers but the model excludes reads as
+`unm` rather than as agreement. Its default is the perpendicular rectangle,
+justified in its docstring as "the footprint our renderer actually draws …
+[the wider rule is] what we do not yet implement".
+
+**That expired on 2026-09-13.** `80c23dcabe` landed the derived extent in
+`geom.c`'s `widen_lines` path the same day the docstring was written, and
+`7ce57a799b`/`e0c0a9974b` refined its cap on 2026-09-19. On Vulkan — every
+device arm — we draw the wider width now, so `--extent-rule` is the accurate
+model and the default is the stale one.
+
+It is not a rounding difference:
+
+| | perpendicular (default) | derived extent (`--extent-rule`) |
+|---|---:|---:|
+| decisive px, w 8–63.875 | 198,880 | **225,558** |
+| `opp_abc`, the derived rule | 99.93%, 98–100% per class | **100.00%, and 100.00% in each of eleven classes** |
+| TFan | 9,731 px @ 70.36% | 11,636 px @ **73.20%** |
+| QStrip/TFan | 22,897 px @ 77.17% | 24,009 px @ **75.84%** |
+| LLoop | 99.53% | **100.00%** |
+
+225,558 is exactly the figure `prim_rewrite.c`'s own file comment carries from
+#13's original derivation, phrasing and all ("100.00% of 225,558 decisive
+pixels, in each of eleven candidate classes separately"). So the *first* #13
+fold used the extent model and the *geom.c* fold used the perpendicular
+default — the two folds were judged on different instruments, and only one of
+them still describes the renderer.
+
+The docstring is fixed to say so and to tell a new arm to pass `--extent-rule`.
+**The default is deliberately left alone**, so the already-judged geom.c arm
+(198,880 px) stays reproducible. The prediction was re-registered against the
+extent model with the perpendicular values kept alongside each leg, so it is
+judgeable either way.
+
+### 4. The offline model reproduces the device arm exactly, once the window matches
 
 `line_priority.py --rules` on its defaults does *not* reproduce the arm: it
 gives ALL = 203,023 px and Tri = 98.05%. The difference is entirely the width
@@ -116,15 +155,23 @@ predicted column below a prediction.
 patch makes our emission the derived rule exactly -- and identical to `ours`
 for every block but `TFan`. Machine-checked, not asserted.
 
-| class | before | after | |
-|---|---:|---:|---|
-| TFan | 70.36% | **100.00%** | leg 1 |
-| QStrip/TFan | 77.17% | **100.00%** | leg 2 |
-| nine others | -- | unchanged | leg 3 |
-| ALL | 95.85% | **99.93%** | advisory |
+Under `--extent-rule`, the footprint we actually draw (the judged column):
 
-The 149 px left at 99.93% is `LLoop`'s known 99.53% (about 148 of it); this
-patch cannot touch it and does not claim to.
+| class | n | before | after | |
+|---|---:|---:|---:|---|
+| TFan | 11,636 | 73.20% | **100.00%** | leg 1 |
+| QStrip/TFan | 24,009 | 75.84% | **100.00%** | leg 2 |
+| nine others | 189,913 | 100.00% | 100.00% | leg 3 |
+| **ALL** | **225,558** | **96.05%** | **100.00%** | advisory |
+
+Under the perpendicular default (registered alongside, so the prediction is
+judgeable either way): TFan 9,731 px 70.36% -> 100.00%, QStrip/TFan 22,897 px
+77.17% -> 100.00%, ALL 198,880 px 95.85% -> 99.93%, the 149 px left being
+`LLoop`'s known 99.53%.
+
+Pixels that actually change their answer: 3,119 (TFan) + 5,801 (QStrip/TFan)
+= **8,920** under the extent model, 2,884 + 5,228 = 8,112 under the
+perpendicular one. Both are the `moved` floors in leg 4.
 
 ## Scope, measured rather than asserted
 
@@ -184,8 +231,13 @@ unpredicted rather than claimed inert.
 
 `docs/testing/predictions/line-prim-rewrite-fan-provoking.json`,
 a_ref `4955050b31` -> b_ref `40ca2bcb22`, sha256
-`d62d2817409eb451dd897d16a0d2ceb3e78d68f168015ded87371e40046470f3`.
-Registered before any device run and committed with the refs it names. Legs
+`f101bda3a82d333cb71a9d2003fa8e787c457b94f119dfd76f5f7ad0d2ad3a75`.
+Registered before any device run and committed with the refs it names.
+Re-registered once, also before any device run, to correct the footprint
+model described in finding 3 -- the superseded values are restated inside the
+new file alongside each leg, so the change is auditable rather than quiet.
+The judged command is
+`line_priority_arms.py --a <A> --b <B> --extent-rule --min-width 8 --max-width 63.875`. Legs
 1-4 are the class measurements from `line_priority_arms.py`; legs 5 and 6 are
 `must_not_move` globs covering 154 of `Shade_model`'s 168 captures -- all but
 the 14 `*_TriFan_Smooth_*` that may legitimately move. Leg 5

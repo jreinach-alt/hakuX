@@ -20,13 +20,27 @@ outcomes a total cannot:
   * arm B names a different edge, not golden's -> it executed and is wrong
   * arm B names the golden's edge              -> it executed and is right
 
-The decisive set is built with the PERPENDICULAR footprint by default, because
-that is the footprint our renderer actually draws; `--extent-rule` builds it
-with silicon's wider hypot-approximation width instead, which is what the
-goldens want and what we do not yet implement.
+WHICH FOOTPRINT: PASS `--extent-rule`.  The decisive set is built from a model
+of OUR OWN footprint, not silicon's, because the question is which edge OUR
+capture's colour names -- an edge our render covers but the model excludes
+reads as `unm` rather than as agreement.  The default here is the
+PERPENDICULAR footprint and the reason given was "that is the footprint our
+renderer actually draws".  THAT REASON EXPIRED ON 2026-09-13: `80c23dcabe`
+landed the derived extent in geom.c's `widen_lines` path that same day and
+`7ce57a799b`/`e0c0a9974b` refined its cap on 2026-09-19, so on Vulkan -- which
+is every device arm -- we now draw the WIDER hypot-approximation width, and
+`--extent-rule` is the accurate model of our own coverage.
+
+The default is left alone rather than flipped, so that arms already judged
+against it (#13's geom.c arm, 198,880 decisive px) stay reproducible.  But a
+new arm should pass `--extent-rule`, and the two are not interchangeable: over
+widths 8-63.875 the perpendicular set is 198,880 px and the derived-extent set
+is 225,558 -- the latter being the population #13's own derivation quotes, and
+the one on which the derived rule scores 100.00% in each of eleven classes
+separately rather than 98-99%.
 
     line_priority_arms.py --a RESULTDIR [--b RESULTDIR] [--goldens DIR] \
-        --min-width 8 --max-width 63.875
+        --extent-rule --min-width 8 --max-width 63.875
 
 Captures are resolved with `captures.py`, never by globbing: a falsifier that
 reports its own evidence MISSING on an arm that contains it reads exactly like
