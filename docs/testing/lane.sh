@@ -37,7 +37,6 @@ set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"      # the object store only
 TIP="${HAKUX_TIP:-master}"
-TURNS="${LANE_TURNS:-150}"
 JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summariser: this tree's
 # THE CAP. Every lane is a model session drawing on the account's shared
 # five-hour and weekly windows (docs/ORCHESTRATION-DESIGN.md §9.1), and the
@@ -61,6 +60,33 @@ LANE_MAX=2
 # into the quietest.
 . "$JOBS/remote-lane.sh" || { echo "REFUSED: could not load $JOBS/remote-lane.sh, so this script cannot tell a remote lane from a local one." >&2; exit 76; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
+
+# EVERY $WORK/limits.env DIAL IS READ BELOW THIS LINE, AND THE TWO SHAPES ARE
+# NOT INTERCHANGEABLE. `LANE_MAX=2` above is the very name limits.env assigns,
+# so the source overwrites it and the override has always worked. `TURNS`
+# used to sit up at line 40 as `TURNS="${LANE_TURNS:-150}"` -- an expansion of
+# a DIFFERENT name, evaluated once, before anything had set LANE_TURNS. The
+# source then set LANE_TURNS for nobody: `grep -n 'TURNS=' lane.sh` returns
+# one line, and that line had already run. LANE_TURNS in limits.env had never
+# had any effect on a lane, for the whole life of the file.
+#
+# MEASURED 2026-09-19: nine lanes (backlogstate blendrace50 desktopchannel
+# diagdump77 fleetreg linecap13 selftestsplit toolsmith windowbudget) ended at
+# exactly 151 turns -- --max-turns 150 plus the final turn -- while limits.env
+# had said LANE_TURNS=300 since that morning. Several of them are the
+# finished-looking draft PRs the harness spent that day unsticking; a lane cut
+# off at half its budget leaves exactly that.
+#
+# So: a `VAR="${OTHER:-default}"` placed above the source is always this bug.
+# Keep them here. WORK is the one that cannot move -- it is what FINDS
+# limits.env -- and REPO/TIP are host paths that come from the process
+# environment and from systemd-run's --setenv, not from this file.
+#
+# PRECEDENCE, now that it works: the file wins over the process environment,
+# which is what it already did for LANE_MAX and for every name in models.env.
+# `$WORK/limits.env is the host's dial` (jobs/window.sh) means one dial.
+TURNS="${LANE_TURNS:-150}"
+
 cmd="${1:-}"; name="${2:-}"
 
 # ------------------------------------------------- a lane that is not ours
