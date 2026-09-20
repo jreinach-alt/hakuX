@@ -161,9 +161,41 @@ the ten** `X1A7` captures diverges between the backends. `1-DstAlpha_XA_O1A7RGB8
 has a first swatch at background alpha `0x00` too, same format, and GL matches
 Vulkan there exactly.
 
-Next step for whoever takes it: vary the ordering rather than the format —
-a single-suite disc, or the same suite run twice — and see whether the anomaly
-moves. Do not start from the format tables; that ground is exhausted above.
+### The ordering, measured — and the obvious ordering hypothesis is also wrong
+
+`pgraph_progress_log.txt` ships in every capture run and gives the execution
+order for nothing. The suite runs alphabetically, 32 tests:
+
+| # | test | GL vs golden |
+|---|---|---|
+| 12 | `DstAlpha_R5G6B5` | fine |
+| **13** | **`DstAlpha_XA_O1A7RGB8`** | **the anomaly** |
+| 14 | `DstAlpha_XA_Z1A7RGB8` | fine |
+
+So the broken test is immediately preceded by `R5G6B5` — the one format in the
+suite whose host surface (`GL_RGB565`) has **no alpha component at all**, and
+the format `surface_color_format_dst_alpha_is_one()` names as its control. A
+binding surviving that switch would read destination alpha as 1.0 exactly as
+observed, and the `_Z` twin at 14 is preceded by `X1A7` rather than by
+`R5G6B5`, which would explain why it is clean.
+
+**It does not hold.** `1-DstAlpha_XA_O1A7RGB8` is test 3, immediately preceded
+by `1-DstAlpha_R5G6B5` at 2 — the same predecessor, the same format, the same
+first swatch at background alpha `0x00` — and GL matches Vulkan there exactly.
+With the sfactor `1 - DST_ALPHA`, a destination alpha wrongly read as 1 would
+paint black where the golden is white (`0xFF` at bg `0x00`, from the model), so
+the capture would have diverged loudly. It did not.
+
+So "preceded by a format with no host alpha" is **not sufficient**, and that is
+the fifth hypothesis this anomaly has killed. Whatever distinguishes test 13
+from test 3 is not the format, not the predecessor's format, and not the
+blend factor alone.
+
+Next step for whoever takes it: the state is real but its trigger is not yet
+named. Vary the ordering directly — a disc carrying only `Blend surface`, or
+only tests 12 and 13 — and see whether the anomaly survives isolation. Do not
+start from the format tables or from the predecessor's format; both are
+exhausted above. A capture run here is 44 s under GL, so this is cheap.
 
 ## #60: the fix landed while the issue stayed open
 
