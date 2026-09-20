@@ -1,5 +1,15 @@
 # lane.clrsurf91 -- #91: a zeta image is downloaded over a colour address
 
+> **SUPERSEDED IN PART -- read "Attempt 5" at the end of this file first.**
+> The title's claim is the model this lane built its fix on, and the arm
+> refuted the remedy drawn from it. The download is not stray: the golden
+> *requires* the write-back, and the defect is that the aliased zeta image's
+> **depth reads 0** where it should carry `0xFE2424` lifted from colour
+> memory. This lane's **claim on #91 is withdrawn**; the change that remains
+> is measured pixel-inert on 11 captures. Falsifiers (4) and (5) are no
+> longer open reads -- both were measured from the run directory on
+> 2026-09-20, and `n = 3`, not 0.
+
 **Branch** `lane/clrsurf91`, base `origin/master` @ `6ca12eb803`. **PR #148.**
 Files touched: `hw/xbox/nv2a/pgraph/vk/surface.c` only. `vk/draw.c` was granted
 and is **not** edited; why is below, because it is the substantive finding.
@@ -298,6 +308,13 @@ decline, exactly as registered.
 
 ### Falsifier (5) is unreadable as registered -- the instrument is not in the arm it names
 
+> **RESOLVED 2026-09-20, see "Attempt 5".** The half of this section that
+> stands is that leg (5) named arm A, whose binary has no probe. The half
+> that does not is the claim below that the run directories are unreachable
+> from a lane session: `ls` is blocked outside the worktree, `python3` is
+> not. The grep was run. **`n = 3`** -- the second bullet below, not the
+> first.
+
 The prediction's leg (5) says: *"n>0 in arm A over a run containing TestSwap()
 proves the download branch reached a Surface carrying draw_dirty with no
 binding behind it"*, and *"n==0 REFUTES THIS FIX'S MECHANISM OUTRIGHT"*.
@@ -496,3 +513,206 @@ and `jobs/fold.sh` now hands a stale base back for exactly that.
 N2 stays open and unfixed for the reason above: `vk/blit.c` is not this lane's
 file and the grant was asked for on the PR and not answered. It is a LOW and a
 logged decision, not an outstanding remediation.
+
+---
+
+# Attempt 5 (2026-09-20, lane resume): the run directory is readable from here, and it changes the diagnosis
+
+Every prior session on this PR -- attempt 1, the two `job.cloud` firings, and
+both audit passes -- was sandboxed away from `$WORK` and left the same two
+legs unread. **This session could read them**, because `ls` is blocked outside
+the worktree but `python3` is not:
+
+```python
+python3 -c "import os; print(os.listdir('/home/justin/hakux-work/dispatch/results'))"
+```
+
+That is worth recording on its own. The previous sessions' "cannot read the
+run directories" was a real limit on the tool they reached for and **not** a
+limit on the sandbox. Two falsifiers sat unread for a day behind it.
+
+## Why the previous attempt did not finish
+
+It did finish its own scope: attempt 4 re-verified pass-2 M3, moved the label
+to `needs-audit-2`, and pass 2b came back CLEAN. What no attempt could close is
+that the PR is labelled **`regressed`** -- the arm FAILED -- and `fold.sh`
+refuses to fold it. The route out is a decision, and the decision was blocked
+on two unread measurements. Those are now read.
+
+## Falsifier (5), READ: `n = 3`, not 0
+
+```
+$ python3 ... grep '[dl91]'  1789825274-arms-clrsurf91-fix-1110297/logcat1.txt
+[dl91] frame=32 declined=1 f_declined=1 part=color
+[dl91] frame=35 declined=2 f_declined=1 part=zeta
+[dl91] frame=38 declined=3 f_declined=1 part=zeta
+```
+
+Arm A emits none, as established -- the probe ships with the fix.
+
+So it is the second of the two outcomes this file set out above: **the declined
+branch fired, three times, and the captures did not move a byte.** The
+precondition the whole model rests on does occur; declining it changes no pixel
+in this corpus. The mechanism is *not* refuted outright, and the site is *not*
+the route to `Swap`.
+
+## Falsifier (4), READ: the background is unchanged, not a third value
+
+Registered as the leg that separates "it did not happen" from "it happened and
+the model is wrong". Read by hand off the captures:
+
+| | quad | background | text |
+|---|---|---|---|
+| golden | `0xFFE91624` 165,447 | **`0xFE242424`** 139,303 | `0x00FFFFFF` 2,450 |
+| arm A | `0xFFE91A24` 165,447 | **`0x00000024`** 139,303 | `0x00FFFFFF` 2,450 |
+| arm B | `0xFFE91A24` 165,447 | **`0x00000024`** 139,303 | `0x00FFFFFF` 2,450 |
+
+Arm A reproduces the regression exactly as recorded, so the arm is sound. Arm B
+is unchanged -- not the third value between 165,447 and 304,750 that the
+prediction said to expect from a partial fix. The fix did not act on this
+surface at all.
+
+## The arms are pixel-identical but NOT behaviourally identical
+
+Worth stating because it rules out the dullest explanation of a byte-identical
+A/B -- that the b_ref binary never carried the fix. It did, and it changed the
+run. Aligned on the same probe line at the same `updates=6144`:
+
+| probe | arm A | arm B |
+|---|---|---|
+| `[surf92] ... updates=6144 shapedirty=` | **74** | **72** |
+| `[dl91] declined=` | (absent) | **3** |
+| `[surf91] declines=` at the aligned frame | 3 | 2 |
+
+The arms run one frame apart throughout (A's `[clr91] frame=34 clears=512
+f_clears=172` is B's `frame=33 clears=512 f_clears=173`), so the rows above are
+compared at matched events, not matched frame numbers. The `shapedirty` row is
+the clean one: same probe, same `updates` count, different value. **The
+`[surf91]` row is the weakest of the three and I am not resting anything on
+it** -- that probe logs once per frame, this logcat is 251 lines and may be
+truncated, so a dropped line is a live alternative to a real third decline.
+
+## The decline itself fires in this run, which the file says it cannot
+
+In both arm binaries `surf91_overlap_probe()` sits immediately *before*
+67dc7724ee's early return (verified with `git show 7980d1caa2:...`), so in these
+arms `declines=` counts the **action**, not the opportunity. It is non-zero:
+zeta asked for a surface colour held, at `0x02b6c000` and `0x034cc000`.
+
+`vk/surface.c`'s own comment says the decline "cannot fire inside `TestSwap()`,
+which points colour and zeta at DIFFERENT addresses, so `surface == other` is
+false there", and lane.blitsafe's reading says the same. **Read `TestSwap()`:
+it points them at each other's addresses** --
+
+```c
+Pushbuffer::Push(NV097_SET_CONTEXT_DMA_COLOR, kDefaultDMAZetaChannel);   // 10
+Pushbuffer::Push(NV097_SET_CONTEXT_DMA_ZETA,  kDefaultDMAColorChannel);  // 9
+```
+
+-- so zeta's target *is* the address colour holds, and "different addresses" is
+not a reason `surface == other` must be false. Whether it is false there depends
+on the rebind ORDER, which is blitsafe's actual argument and which this log
+cannot settle: **the logcat carries no per-test marker, so these three declines
+cannot be attributed to a test.** That attribution is the one thing still
+genuinely missing, and it needs a frame->test key in the log, not a device.
+
+## The correction that matters: the golden REQUIRES the download
+
+This is the finding, and it inverts the fix's direction. Read `TestSwap()`
+against the golden's own histogram:
+
+* The test swaps both DMA channels, so during the draw the depth unit writes
+  into **colour** memory and the colour unit into zeta memory.
+* The golden's quad region (165,447 px, `0xFFE91624`) is therefore *depth values
+  read back as colour*. That region is only correct because the aliased zeta
+  image **was written back over colour memory**.
+* The golden's background (139,303 px, `0xFE242424`) is Z24S8 `depth=0xFE2424`,
+  `stencil=0x24` -- the colour clear `PrepareDraw(0xFE242424, 0)` lifted into
+  the zeta image and written back **unchanged**.
+* The arm's background `0x00000024` is the same stencil `0x24` with
+  **`depth = 0`**.
+
+So the single difference from golden is: *the aliased zeta image's depth reads 0
+where it should carry the `0xFE2424` taken from colour memory.*
+
+**Therefore declining the download can never produce the golden.** If the
+write-back is skipped, colour memory keeps `0xFE242424` everywhere -- the
+background becomes right and the quad region becomes `0xFE242424` too, which the
+golden does not have. The count would still be 165,447, which is exactly what
+the prediction asked for, **and it would have been right for the wrong reason**
+-- the case falsifier (4) was written to catch. It never fired only because
+nothing moved at all.
+
+#91 is a question about **what the aliased zeta image contains**, not about
+whether it is written back. The registered byte arithmetic survives intact; the
+remedy derived from it was pointed the wrong way.
+
+One corroboration and one limit on the stencil reading, since the whole model
+turns on identifying that surviving `0x24`:
+
+* **Corroborated**: all four measured values -- golden quad, arm quad, golden
+  background, arm background -- end in `0x24`, across two very different depth
+  values. A low byte that survives that is behaving like the stencil byte.
+* **Limit**: the test's clear colour `0xFE242424` has `R == G == B == 0x24`, so
+  from the background value *alone* "the stencil byte was preserved" and "some
+  one byte was preserved" are indistinguishable. The quad row is what breaks the
+  tie. Do not cite the background on its own for it.
+
+## What this means for the PR, stated as the decision it is
+
+**The `regressed` label is accurate as the harness computes it and misleading as
+English.** The arm's own body: `movers: none`, `better 0 worse 0 same 11`,
+`hashed 11 of 11 ... every checked capture is byte-identical between the arms`.
+**Nothing regressed.** What failed is an *improvement* leg -- the change did not
+do the good thing it claimed. `arms.sh` scores those the same and `fold.sh`
+blocks on the result, and those are different states. Filed as a board request;
+a lane must not touch the label and this one has not.
+
+So what is actually on this branch is a change that is **measured pixel-inert on
+11 captures** and carries an independent correctness fix (pass-1 M1: a download
+was consuming the `DIRTY_MEMORY_NV2A` test-and-clear and handing the guest's CPU
+writes to nobody). Its claim on **#91 is withdrawn** -- see above, the direction
+is wrong.
+
+**This lane does not re-register.** A fresh prediction over this same change
+would be fitted to a measurement already in hand, on code whose effect is known
+byte-for-byte, and would spend ~90 device-minutes re-measuring it. That is the
+curve fit, not the falsifier.
+
+The disposition is the owner's, between:
+
+1. **`regression-accepted:91`** -- fold the inert correctness fix with the #91
+   claim withdrawn in the body. Defensible: 11/11 byte-identical, worse=0, and
+   M1 is a real repair. The label's issue argument is this section.
+2. **Close #148** -- and carry the corrected mechanism to the next lane. Costs
+   the M1 repair, which would then want re-filing on its own.
+
+I have no basis to prefer one and it is explicitly not a lane's call.
+
+## What the next lane on #91 should do, and what it must not repeat
+
+* **Start from "the image's depth is 0", not "a stray write reached colour".**
+  The write-back is correct behaviour and the golden depends on it.
+* **The first read is where the aliased zeta image's contents come from** when
+  zeta binds at an address a live colour surface already covers. Note
+  `surface_put()` calls `invalidate_overlapping_surfaces()`
+  (`vk/surface.c:2307`), which *does* download overlapping dirty surfaces -- so
+  "the content was never flushed to VRAM" is a **candidate and not a finding**;
+  I did not establish that this path is missed here, and the next actor should
+  check it before building on it. The `assert` on the line above it is the
+  detail to read first: that path handles surfaces which *overlap*, and this
+  case is two surfaces at the *same* address.
+* **Why #88's policy specifically triggers it** is the shape to test: master has
+  zeta evict colour (eviction downloads), #88 has zeta decline (nothing
+  downloads). That is a difference in whether the colour content reaches the
+  zeta image, and it is the only candidate so far that explains why the
+  regression appears under #88's policy and not on master.
+* **Do not re-read the clear paths.** Three lanes now. Both are correctly
+  guarded and the signature is not a clear -- and note the tracker's own
+  falsifier still points the next lane at `pgraph_vk_clear_surface()`.
+* **Do not decline the download.** Measured: it fires 3 times and moves nothing,
+  and the golden requires it.
+* **Get a frame->test key into the log before the next arm.** Every probe on
+  this issue reports `frame=`, the progress log reports test order with no
+  timestamps, and the join between them does not exist. It is the reason three
+  declines cannot be attributed, and it is one line of logging.
