@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 127
-updated_utc = "2026-09-19T23:45:00Z"
+wave = 128
+updated_utc = "2026-09-20T03:20:00Z"
 
 
 [lane.hilodot10]
@@ -641,16 +641,15 @@ standing = false
 note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #175 draft, branch lane/cloudtail) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue (brief only): the cloud unit's tail must run however the unit ends, from a path nothing moves. docs/testing/jobs/cloud.sh DELIBERATELY NOT CLAIMED although the lane's diff touches it: that file is [lane.turncap]'s below (granted outright at wave 126, PR #171 open), and the PR's own body says so -- it read its brief's claim as stale, found the file live instead, and confirmed the two diffs are disjoint hunks (header comment and the systemd-run invocation vs. #171's TURNS line) that share only context lines. This is a fold-order question, not a re-dispatch or a grant: coordinate at fold with turncap, same pattern as localtime/laneshape over files they touch but do not hold. selftest.d/72 is the next free fragment number (71 was cloudterritory's, retired at wave 126) and collides with nothing live."
 
 
-[lane.sweeps]
+[retired.sweeps]
 issues = []
-files = ["docs/testing/jobs/pr-sweep.sh", "docs/testing/jobs/issue-sweep.sh",
-         "docs/testing/jobs/board.sh", "docs/testing/jobs/install-host.sh",
-         "docs/testing/systemd/hakux-pr-sweep.service", "docs/testing/systemd/hakux-pr-sweep.timer",
-         "docs/testing/systemd/hakux-issue-sweep.service", "docs/testing/systemd/hakux-issue-sweep.timer",
-         "docs/testing/jobs/selftest.d/73-pr-sweep.sh", "docs/testing/jobs/selftest.d/74-issue-sweep.sh",
-         "docs/lanes/sweeps/NOTES.md"]
-standing = false
-note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #174 draft, branch lane/sweeps) with no territory row at all, invisible to check_territory.py. Harness capability, no tracker issue (brief only): a PR sweep and an issue sweep, periodic checks for the states no existing actor asks about -- 'is anything stuck?'. board.sh is free ([retired.windowbudget] released it at wave 126, nothing live claims it) and taken outright per this lane's own Files: line; the other files are all new (pr-sweep.sh, issue-sweep.sh, install-host.sh, the four systemd unit/timer files, selftest.d/73 and /74) and collide with nothing live. Diff so far is NOTES.md only (WIP per the PR body); the row claims the full declared set now so a later push does not silently exceed an under-claimed row."
+files = []
+note = "RETIRED AT WAVE 128 (job.board): PR #174 MERGED 2026-09-20T03:10:08Z (fold commit 20e4708d50, visible in this branch's own log), unit gone. All eleven files formerly held here RELEASED TO [free]. See [lane.sweepremote] below: the two sweeps this lane shipped call a live remote lane dead, because issue-sweep.sh and pr-sweep.sh both predate lane.laneshape's remote-lane.sh (folded 2026-09-19T23:59Z) and neither sweep was wired to it."
+
+[lane.sweepremote]
+issues = []
+files = ["docs/testing/jobs/pr-sweep.sh", "docs/testing/jobs/issue-sweep.sh"]
+note = "WRITTEN AT WAVE 128 (job.board): lane was RUNNING (branch lane/sweepremote, no open PR yet) with no territory row at all, invisible to check_territory.py -- the same defect this file has now recorded for eight lanes. Harness defect, no tracker issue (brief only, docs/lanes/sweepremote via briefs/sweepremote.md): lane.remote is a cloud session on a claude/* branch with no local systemd unit BY DESIGN and, between PRs, no open PR either -- issue-sweep.sh's dead-lane test ('no unit and no open PR') and pr-sweep.sh:189's lane extraction ('lane/' prefix or empty string) both misread it as dead/unnamed, which is how a live claim on #34/#60/#62 gets handed to the board as stale and how the next lane.remote PR would get routed to handback.sh for a resume that would put two agents on one branch. The fix already exists and just isn't called: lane.laneshape's remote-lane.sh (remote_lane_of/remote_branch_of/is_remote_branch/remote_source/remote_authoritative), sourced not edited -- needs no claim here. FILES NARROW TO THE TWO SWEEPS: board.sh, install-host.sh, the systemd units and selftest.d/73-74 from the old [lane.sweeps] claim are DONE work sitting in the folded PR and are not this lane's to reopen; they stay in [free]. Constraint carried from the brief: remote_authoritative must gate both sweeps' outward actions -- an unreadable board must make them fail safe and act on nothing, not silently report 'no remote lanes exist'."
 
 
 [lane.cloud-audit2-163]
