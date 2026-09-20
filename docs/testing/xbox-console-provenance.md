@@ -24,12 +24,12 @@ cite, and nothing else.
 | Kernel | `1.0.5003.67` | console system-info screen |
 | GPU (NV2A) revision | 163 (`0xA3`) | console system-info screen |
 | MCP revision | 212 (`0xD4`) | console system-info screen |
-| RAM | 64 MB | stock for this board class; see pending |
+| RAM | 64 MB | ConfigMagic, from the running kernel |
 | Video standard | NTSC-M | console system-info screen |
 | XBE region | 1 | console system-info screen |
 | Manufacture date | 2003-08-24 | case sticker |
-| HDD | 2 TB upgrade, **unlocked** (HDD key all zeros) | owner; drive is not the factory unit |
-| DVD drive model | *pending* | requires the EEPROM dump's info file |
+| HDD | `HITACHI HUA723020ALA641` (2 TB Ultrastar), **unlocked** — HDD key all zeros | EEPROM dump; not the factory unit |
+| DVD drive model | `SAMSUNG DVD-ROM SDG-605B` | EEPROM dump |
 | Dashboard | UnleashX (`C:\evoxdash.xbe`) | XBE title `UnleashX Xbox Launcher`; FTP banner `220 UnleashX FTP ready.` |
 | Partitions | C E F G X Y Z | FTP enumeration |
 
@@ -41,24 +41,29 @@ say what it ran on. Those are read directly off the hardware. The friendly
 lossy: dashboard-level detection does not cleanly separate the v1.1–v1.5
 boards, which share the PCI revision IDs the check keys on.
 
-There is an open question worth flagging rather than smoothing over: a
+A question was flagged before the dump and the dump has now narrowed it. A
 manufacture date of 2003-08-24 is late for a v1.1, which was largely a 2002
-board. Either the sticker and the board disagree (a refurbished or swapped
-mainboard is common on a 20-year-old console), or the detection is reporting
-v1.1 for a later board. **The DVD drive model discriminates between them** —
-drive vendor tracks board revision fairly tightly — which is one more reason
-the pending row above matters. Until it is resolved, treat `V1.1` as a label,
-not a measurement, and cite the revisions.
+board, so either the sticker and the board disagree — a swapped or refurbished
+mainboard is unremarkable on a twenty-year-old console — or the detection was
+reporting v1.1 for a later board.
+
+The DVD drive settles the second half. This console has a **Samsung SDG-605B**,
+an early-production drive, and emphatically not the Philips J5-class unit that
+shipped with late boards. The contrast case is in hand and needs no outside
+source: the foreign backup on this very drive pairs its V1.6 with a Philips J5
+3235C. So the drive corroborates an early board and is inconsistent with the
+console being a late revision misreported as v1.1.
+
+That narrows it without closing it — the sticker date remains mildly late for
+the board, which a case or mainboard swap would explain, and drive vendor
+tracks revision only loosely. So the guidance stands unchanged: treat `V1.1` as
+a label, cite GPU revision 163 and MCP revision 212, and if an experiment turns
+on the distinction between v1.1 and its neighbours, measure the thing directly
+rather than inferring it from the version string.
 
 ## How the EEPROM backup was produced
 
-> **Status: the dump has not been taken yet.** Everything below that is
-> written in the past tense has happened; the three steps marked PENDING need
-> the owner at the console with a controller, because launching an application
-> cannot be done over the network. This block is removed once the dump
-> verifies.
-
-Date produced: *pending.*
+Date produced: **2026-09-19**, and verified the same day.
 
 The console runs UnleashX, which has **no EEPROM backup function**. That is not
 a recollection: the dashboard's action table was read out of the XBE and is
@@ -85,29 +90,33 @@ except the foreign artifact described below.
 
 So ConfigMagic v1.0 (Team Assembly) is the tool. All 18 files of the package
 were downloaded and verified against their published MD5s — all matched — and
-are staged on the host for upload to `E:\Apps\ConfigMagic\`. UnleashX
-auto-populates its Applications menu from `E:\Apps`, so no dashboard
-configuration change is needed. *(PENDING: the upload itself.)* The
-`Data\` folder of the package is **deliberately not installed**: it contains
+were uploaded to `E:\Apps\ConfigMagic\`, then read back off the console and
+re-hashed — 15 of 15 matched. UnleashX auto-populates its Applications menu
+from `E:\Apps`, so no dashboard configuration change was needed. The
+`Data\` folder of the package was **deliberately not installed**: it contains
 only a template `.cfg` and two blank EEPROM images, which feed the *write*
 paths and would have added two more 256-byte files to confuse later
 verification.
 
-*(PENDING)* The backup is to be taken with `Load XBOX EEPROM` followed by
-`Create Backup Files`, which are read-only; the adjacent `Update XBOX EEPROM`,
-`Load EEPROM from .BIN File` and `Lock HDD` must not be touched. `Lock HDD` in particular would have
+The backup was taken with `Load XBOX EEPROM` followed by `Create Backup
+Files`, which are read-only; the adjacent `Update XBOX EEPROM`, `Load EEPROM
+from .BIN File` and `Lock HDD` were not touched. `Lock HDD` in particular would have
 locked a drive whose unlocked state is worth preserving.
 
-Verification to be applied to the result: the image must be exactly 256 bytes, and its
+Verification applied to the result: the image is exactly 256 bytes, and its
 serial and MAC are decoded straight out of the image (the serial is plaintext
-ASCII at offset `0x34`, the MAC at `0x40`) and must match the console's own
-system-info screen. Decoding the image directly means verification does not
+ASCII at offset `0x34`, the MAC at `0x40`) and matched the console's own
+system-info screen and case sticker. Decoding the image directly means verification does not
 depend on trusting the tool's own text output — a decoder that reads the
 correct serial and MAC out of the *foreign* image was used to confirm the
 decoder itself works before it was trusted on ours.
 
-Copies will be held in two places on the host, outside this repository, plus
-one off-machine copy.
+The image is distinct from the foreign one described below, and ConfigMagic's
+own info file independently reports the expected serial, `V1.1` and kernel
+`1.0.5003.67`, with no trace of the foreign console's identity.
+
+Copies are held in two places on the host, outside this repository and under
+different parents so one cleanup cannot take both, plus an off-machine copy.
 
 ## A stale artifact that reads as authoritative
 
@@ -147,14 +156,14 @@ repository and renamed to carry its own warning. Being 256 bytes and parsing
 cleanly is not evidence of whose console it is; it is only evidence that it is
 an EEPROM.
 
-**Renaming comes before the dump, not after.** *(PENDING)* The files on the
-console are to be renamed to `FOREIGN-CONSOLE-DO-NOT-RESTORE.{bin,cfg,TXT}`
-*before* ConfigMagic is installed — renamed, not deleted, because they are the
-evidence for this finding. The ordering is the point. ConfigMagic writes its output to the same
+**Renaming came before the dump, not after.** The files on the console were
+renamed to `FOREIGN-CONSOLE-DO-NOT-RESTORE.{bin,cfg,TXT}` *before* ConfigMagic
+was installed — renamed, not deleted, because they are the evidence for this
+finding. The ordering is the point. ConfigMagic writes its output to the same
 directory those files occupied, so with them still in place, a run that
 silently failed to produce anything would leave a plausible, correctly-named,
-correctly-sized EEPROM backup in exactly the spot the new one is expected, and
-re-reading the stale file would look like success. Clearing the
+correctly-sized EEPROM backup in exactly the spot the new one was expected,
+and re-reading the stale file would have looked like success. Clearing the
 namespace first converts that failure from *detectable* to *impossible*: after
 the rename, no file of that name exists, so anything found there afterwards is
 new by construction.
