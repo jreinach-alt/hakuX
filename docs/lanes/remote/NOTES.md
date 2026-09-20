@@ -127,8 +127,43 @@ Ruled out, each by reading master rather than by argument:
 - **Not #158's stamp.** `pgraph_glsl_surface_pad_alpha_mode()` returns
   `PSH_PAD_ALPHA_NONE` for both `X1A7` suffixes, so no stamp is emitted.
 
-Unresolved, and narrower than it was. Do not guess at it from the shape; the
-three hypotheses above were each plausible and each wrong.
+- **Not the blend-side stamp gate.** `gl/draw.c:468` computes `pad_stamped`
+  from `pgraph_glsl_surface_pad_alpha_mode(...) != PSH_PAD_ALPHA_NONE` — the
+  *same expression* `psh.c` stages the uniform from, so the shader and the
+  blend state cannot disagree about which draws stamp. For `X1A7` both say no.
+- **Not the guest.** `TextureFormatForSurfaceFormat()`
+  (`pbkitplusplus/src/texture_format.cpp:102`) maps `X1A7R8G8B8_Z` and `_O` to
+  **the same** texture format, `SZ_A8R8G8B8`, in one fallthrough group. The
+  disc does not distinguish them either.
+
+### And that is the finding: the format cannot be the cause
+
+Enumerate every site outside `vk/` that names either suffix — `grep -rn
+"X1A7R8G8B8_[ZO]" hw/` — and there are exactly six, none of which separates
+them:
+
+| site | what it is |
+|---|---|
+| `gl/surface.c:3059`, `gl/renderer.h:350` | comments |
+| `gl/constants.h:403`, `:405` | two rows, byte-identical |
+| `pgraph.c:4620-4621`, `:4658-4659` | both suffixes as **adjacent fallthrough cases** |
+| `nv2a_regs.h:973-974` | the enum values, `0x06` and `0x07` |
+
+**No code on the GL path treats `_Z` differently from `_O`.** So a difference
+in GL's output between the two cannot be caused by the format, and every
+format-shaped hypothesis is dead on arrival — which is what the four above
+have in common. What remains is **state carried into the test**: the two
+captures differ in when they run and in what the surface at that address held
+beforehand, and the `_O` test is where it lands rather than what causes it.
+
+Corroborating, and the reason not to call this an `_O` defect: only **one of
+the ten** `X1A7` captures diverges between the backends. `1-DstAlpha_XA_O1A7RGB8`
+has a first swatch at background alpha `0x00` too, same format, and GL matches
+Vulkan there exactly.
+
+Next step for whoever takes it: vary the ordering rather than the format —
+a single-suite disc, or the same suite run twice — and see whether the anomaly
+moves. Do not start from the format tables; that ground is exhausted above.
 
 ## #60: the fix landed while the issue stayed open
 
