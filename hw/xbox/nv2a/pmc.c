@@ -61,6 +61,26 @@ uint64_t pmc_read(void *opaque, hwaddr addr, unsigned int size)
         /* Selects which functional units can cause IRQs */
         r = d->pmc.enabled_interrupts;
         break;
+    case NV_PMC_ENABLE:
+        /* Measured on real NV2A silicon (#188): two independent read-only
+         * sweeps, with a reboot between them, both read 0x01110000 here --
+         * 1,024 of 1,024 PMC dwords reproducible. We returned 0.
+         *
+         * A bare constant, deliberately. The bit semantics are NOT
+         * established: this header puts _PFIFO at bit 8 and _PGRAPH at bit
+         * 12, while the measured value sets bits 16, 20 and 24. Those header
+         * positions are the generic NVIDIA ones and may not be NV2A's, and a
+         * different bit-position claim from the same sweep has already been
+         * retracted as an endian artefact. Splitting this into fields would
+         * be asserting a layout nobody has cross-referenced.
+         *
+         * Nor is the write side modelled, for a blunter reason: writing 0 to
+         * this register halted the physical console outright -- no ICMP, ARP
+         * FAILED, power cycle. Writes stay a silent no-op via pmc_write's
+         * `default` until someone establishes what each bit gates.
+         */
+        r = 0x01110000;
+        break;
     default:
         break;
     }
