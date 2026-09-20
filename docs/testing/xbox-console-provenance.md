@@ -182,11 +182,23 @@ Two things that cost time here, recorded so they do not cost it again:
   nothing. Use `CWD` and then a bare `LIST`. The tell is a keyword sweep that
   returns zero hits when you already know a matching file is present — which is
   why a sweep like that should always carry a positive control.
-- **There are only two FTP session slots, and the server leaks them.** A client
-  that dies mid-transfer leaves its slot consumed with no timeout and no way to
-  reclaim it from the network side; every later connection gets `421 Too many
-  users`. It is cleared from the dashboard: `System > Misc > Reset FTP`. Close
-  sessions properly, and do not run two walks at once.
+- **FTP concurrency is capped, and an abandoned session is not reclaimed
+  promptly.** `Config.xml` shipped with `MaxUsers = 2` (since raised to 25 —
+  note the on-disk value may still read 2, so the change may not survive a
+  reboot). After a recursive walk died mid-transfer, every connection was
+  refused with `421 Too many users` for roughly fifteen minutes. The mechanism
+  was *not* established, and the tidy explanation is recorded here as refuted
+  rather than quietly dropped: the theory that the rejected retries were
+  themselves holding the slots was tested directly — two sessions held, three
+  unclosed rejected attempts outstanding, then the two good sessions closed —
+  and a new connection was admitted immediately, so rejected attempts hold
+  nothing. What is established is only that the cap is real and that recovery
+  is not instant. Close sessions in a `finally`, and do not run two walks at
+  once. `System > Misc > Reset FTP` clears it from the dashboard.
+
+  The wider point cost about twenty minutes here: a retry loop reports *that*
+  you are blocked, never *why*, and it is easy to start explaining a blocker to
+  someone else before testing whether the explanation is true.
 
 The console's clock is wrong — files date to December 20 — so **no timestamp on
 anything pulled off this drive is evidence of anything**.
