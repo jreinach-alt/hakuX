@@ -1,0 +1,43 @@
+[
+  {
+    "pass2_id": "N1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "585",
+    "verdict": "CLOSED",
+    "summary": "cap_clip() measures the polygon's deepest violation of the plane (deep = max over vertices of -dir * ((xmaj ? P[i].y : P[i].x) - bound)) and returns np with P and T untouched when deep < 0.5. The expression matches both call sites: call 1 passes bound = floor(min(m) - w/2), dir = +1 and keeps coord >= bound, so the violation is bound - coord; call 2 passes bound = ceil(max(m) + w/2) + 1, dir = -1 and keeps coord <= bound, so the violation is coord - bound. Both bounds are integers by construction, and the early-out is the identity.",
+    "scenario": "Pass 2's scenario -- the clip biting on 3 to 20 of each capture's 57 edges down to w = 0.625, re-quantising exact corners where every offline instrument said no pixel could change, and the device scoring eight captures between w = 4 and w = 14 worse for it -- can no longer occur. line_cap_phase.py --quantise run here reports ZERO bites on every capture below w = 24 (against 3 to 20 with the deadband at 0), so no cut vertex is synthesised there at all. Verified structurally as well as numerically: geom_dump was built a second time against origin/master's glsl/geom.c and the emitted GLSL diffed case by case. The widened strip at np == 4 visits j = 0, 3, 1, 2 = P0, P3, P1, P2, which is master's own emission order (i0+n+tie, i0-n+tie, i1+n+tie, i1-n+tie); the per-vertex body is one shared format string with master's, differing only in vtxFogSpecial's index, and under first-vertex provoking both triangles provoke from P0 and P3, which are i0 vertices, so master delivered v_vtxFogSpecial[i0] to fragments too. Below the deadband the device is handed master's geometry and cannot score it differently.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:548-559 (the derivation), :579-585 (the deadband), :586-606 (the clip and its call sites at :827-833), :434-441 and :764-779 (both corrected comments); docs/testing/line_cap_phase.py:310-315 (the transliterated deadband), :435-537 (quant_check and its three legs); `python3 line_cap_phase.py --quantise --goldens ~/goldens/results` -- 3 legs PASS, mutant moves 4 px over 4 captures, bites below w = 24 all zero; geom_dump built against origin/master and against 3beca48079, tri_fill_smooth_vk / lines_smooth_gl / tri_polymode_line_smooth_gl byte-identical; all six *_vk cases through NDK 29.0.14206865 glslc, six OK."
+  },
+  {
+    "pass2_id": "N2",
+    "severity": "LOW",
+    "file": "docs/testing/line_cap_phase.py",
+    "line": "677",
+    "verdict": "CLOSED",
+    "summary": "controls() splits the integer-boundary population into low and high side, prints both, and rests the tie=ceil vs tie=floor1 claim on the high side alone -- the low bound is np.floor() under every tie, so only m_max + w/2 can separate the two rules. The zero guard now tests ties_int_hi rather than the total, so it fires on the population the sentence names.",
+    "scenario": "Pass 2's scenario -- the figure quoted on the PR being 2.3x the population it names -- can no longer occur. Run here: 5472 boundaries, 1104 on a whole pixel index, 617 low side and 487 high side, with the high side labelled as the separating population. 617 + 487 = 1104 and 487 is the number pass 2 computed independently. Both halves are carried in the prediction's cites block as controls_integer_boundaries_low_side / _high_side.",
+    "evidence": "docs/testing/line_cap_phase.py:650-657 (the docstring's N2 paragraph), :674-700 (the split and the guard); docs/testing/predictions/line-cap-clip.json cites; `python3 line_cap_phase.py --controls --goldens ~/goldens/results`."
+  },
+  {
+    "pass2_id": "N3",
+    "severity": "LOW",
+    "file": "PR #141 body",
+    "line": "25",
+    "verdict": "CLOSED",
+    "summary": "The body's derivation paragraph now retracts 497 and 412 at the point of assertion rather than only in an appendix sixty lines below: it reads '...scores 645 px on --rivals, worse than the 495 it was meant to fix. (An earlier version of this paragraph said 497 against 412...)'.",
+    "scenario": "Pass 2's scenario -- a reader who stops at the derivation coming away with the retired number -- can no longer occur, because the correction is in the same sentence. Neither 497 nor 412 survives as a live figure in geom.c or docs/lanes/linecap13/NOTES.md.",
+    "evidence": "`gh pr view 141 --json body` line 25 and the appendix at line 117; grep for 497 and 412 over hw/xbox/nv2a/pgraph/glsl/geom.c and docs/lanes/linecap13/NOTES.md."
+  },
+  {
+    "pass2b_id": "A1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "585",
+    "verdict": "OPEN",
+    "summary": "The deadband's 0.5 is half a GUEST pixel, but the rasteriser samples DEVICE pixels. geom_line_params() (vk/draw.c:2756-2786) states in its own comment that the geometry stage works in guest pixels and that one guest pixel is surface_scale_factor device pixels, and divides by that factor to produce lineTieBias; out[2] = line_width / 8.0f is guest pixels too, and glsl/vsh.c uses surface_scale_factor only to scale oPts, never the vertex position. Device sample centres are therefore 1/scale apart in guest coordinates and the nearest one to an integer guest bound is 0.5 / scale guest pixels away, not 0.5. The comment at :548-559 states 'The nearest centre to an integer bound is half a pixel away, so the removed sliver of a shallower cut provably contains no sample' as a proof, without the surface_scale_factor == 1 hypothesis it needs. The shader does not read the scale, which is available -- lineTieBias already carries it.",
+    "scenario": "g_config.display.quality.surface_scale is the user-facing Rendering Scale (vk/surface.c:92-100, menu at ui/xui/main-menu.cc:749-762). Set it to 2 and draw the Line_width suite. A cap overhang of 0.4 guest pixels past the low bound is skipped by the deadband (0.4 < 0.5), so the footprint keeps the corner and lights the device sample at guest coordinate bound - 0.25, which lies in guest pixel index bound - 1 -- the pixel the derived cap rule says must be dark. Measured over the same 48 non-void captures by counting plane violations in [0.5/scale, 0.5), the clips the shipped deadband skips and a device at that scale would have sampled: 191 plane-clips over 26 captures at scale 2, 293 over 29 at scale 3, 338 over 30 at scale 4. At scale 2 the affected captures run from Line_0010.0 to Line_0063.7, including every capture from Line_0024.0 up where the clip is the point of the change. MEDIUM and not HIGH because the error is one-directional: 0.5 > 0.5/scale for every scale >= 1, so the deadband only ever suppresses too much clipping, never too little; a suppressed clip emits master's own four corners, so no configuration is made worse than master, N1's re-quantisation cannot return through this, and there is no crash or unsafety. What is lost is part of #13's improvement at Rendering Scale > 1, silently, under a comment saying it cannot be lost.",
+    "remediation": "Either: (1) scale the deadband to 0.5 / surface_scale_factor in guest units -- the shader lacks the scale today and lineParams is a full vec4, so this costs a push-constant component, and instance.c warns that the range is declared on every graphics pipeline; or (2) keep 0.5, since the direction is safe, and state the precondition in geom.c -- half a guest pixel, exact at surface_scale_factor == 1 and conservative above it, with the cost above it being the table in the pass-2b record. docs/testing/line_extent_subpixel.py already takes a --scale argument documented as 'surface_scale_factor; one guest px is this many ...', so the lane's own toolbox has the fact the derivation missed. Neither option need cost the pending arm: the harness pins surface_scale = 1 (desktop_channel.sh:454), so option 1 reduces to 0.5 at the scale the arm runs at and option 2 touches no code. If the fix is provably a no-op there, say so on the PR and let the queued arm on 36e85c96c9 stand rather than re-registering, which would restart a ~90-minute arm for a change the device cannot see.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:548-559, :581-585; hw/xbox/nv2a/pgraph/vk/draw.c:2756-2786 (geom_line_params and its guest-pixel comment); hw/xbox/nv2a/pgraph/glsl/vsh.c:620-632 (surface_scale_factor scales oPts only); hw/xbox/nv2a/pgraph/vk/surface.c:92-100 (pgraph_vk_reload_surface_scale_factor reads g_config.display.quality.surface_scale); ui/xui/main-menu.cc:749-762; docs/testing/desktop_channel.sh:454; docs/testing/line_extent_subpixel.py:187; the scale table computed with cap_clip()'s own violation expression over ~/goldens/results."
+  }
+]
