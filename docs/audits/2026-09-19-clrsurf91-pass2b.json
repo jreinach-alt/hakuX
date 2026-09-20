@@ -1,0 +1,83 @@
+[
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "1",
+    "verdict": "CLOSED",
+    "summary": "Both halves closed at f3ea0760c7. Mergeability: `git merge-tree --write-tree origin/master HEAD` reports no conflict (tree ba30b96d13) and GitHub reports mergeable MERGEABLE / mergeStateStatus CLEAN; rev-list --left-right --count origin/master...HEAD is 29/19. Content: `nv2a_index.py check --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus` prints \"index matches the tree (951 symbols, 2839 sites, 103 suites)\", and parsing both committed copies gives identical counts on every field -- sites 2839, suites 103, symbols 951, gaps 498, tests_commit 91a0de45ca -- with array lengths equal too (103/951/498/765). The only diff against master is emulator_commit (master e239097c61 -> branch be2208ffcf) plus forward loc motion inside hw/xbox/nv2a/pgraph/vk/surface.c, which is the ~200 lines this branch adds to that file; no entry is added, dropped or re-keyed.",
+    "scenario": "Pass 2's scenario -- the index conflicts and whichever side the resolver takes is wrong, the branch side landing locs that point at the wrong lines for every file master has moved and master's side discarding the surface.c locs the change actually moved -- can no longer occur. There is no conflict to resolve.",
+    "evidence": "Checked the way a clean merge-tree can still be a wrong answer: a JSON both sides regenerate can merge without conflict and blend two generations, because the hunks are disjoint and git would not object. `git log origin/master --not HEAD -- docs/testing/nv2a_index.json` is EMPTY -- master has not touched the file in any of the 29 commits it is ahead -- so the merge takes the branch's regeneration whole and there is no second generation to blend with. (The lane asserted this at 13 commits; re-run at 29 rather than carried forward.) Spot-checked the regenerated locs against the file rather than trusting the tool: the index puts `// FIXME: Cannot monitor for reads/writes; flush now` at surface.c:3959 and line 3959 is that comment. Note the direction the finding has inverted: the branch's index is FRESHER than master's own, whose emulator_commit e239097c61 is 29 commits behind master's tip. Both prediction refs survived -- `git merge-base --is-ancestor` succeeds for aec524681e and 7980d1caa2 at f3ea0760c7 -- and the committed prediction still hashes to dfcf84103eb3287dd23d171d2765607b7acdb4ac0d6378fbecf2b5f19f08f533, which is the sha256 in the PR body and the sha the [job.arms] comment says it judged."
+  },
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "3515",
+    "verdict": "CLOSED",
+    "summary": "Re-derived at the new line numbers rather than carried forward from pass 2, because the branch absorbed a 130-commit master merge in between and a merge is exactly the event that can quietly undo a verified finding. The scan is `if (upload && !tcg_enabled())` at :3515, so no call with upload == false reaches bitmap_test_and_clear_atomic at :3530. The gate is `bool gate_open = upload && (!current_binding || pg_surface->buffer_dirty || mem_dirty)` at :3603; `if (gate_open) {` opens at :3610 and closes at :3934; both consumers -- `surface->upload_pending |= mem_dirty` at :3812 and `surface->upload_pending = shelf_stale || mem_dirty` at :3883 -- are inside it. A producer that only runs when upload is true cannot starve a consumer that only runs when upload is true.",
+    "scenario": "Pass 1's scenario -- a binding-absent download eats the guest's CPU-write bits, the next upload opens the gate on !current_binding, computes mem_dirty == false because this call already consumed the evidence, leaves upload_pending false and takes the stale host image -- still cannot occur. A download performs no scan at all.",
+    "evidence": "Re-checked the one way the widening could be wrong rather than merely redundant, because 130 commits of master arrived since pass 2 checked it: if a download set DIRTY_MEMORY_NV2A, a retained bit would no longer mean a real CPU write and the following upload would push guest RAM over a possibly-newer host image. Re-grepped the whole writer set in hw/: vk/blit.c:757, vk/blit.c:924, gl/blit.c:686 -- guest-visible blit writes, which is what the bit is for -- plus the guest's own stores via memory_region_set_log(d->vram, true, DIRTY_MEMORY_NV2A) at nv2a.c:1283. Unchanged, no new writer anywhere. Also established that master brought no competing change to this code: `git log origin/master --not HEAD -- hw/xbox/nv2a/pgraph/vk/` is EMPTY, so the merge could not have silently reshaped the gate, the tail or the probes -- a mergeable merge is also a semantically quiet one here, stated explicitly rather than inferred from the absence of a conflict marker. The comment pair the finding asked for is intact and accurate: :3471-3499 on what the scan costs, :3588-3602 on what a declined download may consume (\"the draw flags and nothing else\"), matching the tail at :3971-3972 which clears write_enabled_cache and draw_dirty and nothing else."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "360",
+    "verdict": "CLOSED",
+    "summary": "Survives the merge unchanged. Signature at :340 is `dl91_probe(PGRAPHState const *pg, bool color, hwaddr addr)`; the format at :360-363 is \"[dl91] frame=%d declined=%lu f_declined=%lu part=%s \" \"addr=0x%08\" HWADDR_PRIx; the sole call site is :3968, `dl91_probe(pg, color, target.vram_addr)`, on the else arm of `if (drawn)` -- precisely the declined download.",
+    "scenario": "Pass 1's scenario -- an operator reads the arm log, is told by the code that addr= is the number worth having, greps for it and finds no such field -- still cannot occur. The field is emitted on every line the probe prints.",
+    "evidence": "Read the live signature, format string and call site at f3ea0760c7. hwaddr against HWADDR_PRIx, and both CI builds are SUCCESS on this exact head, which is where a -Wformat mismatch would surface."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "178",
+    "verdict": "CLOSED",
+    "summary": ":178 still reads \"REMOVE ALL FIVE\" and there are still five probes.",
+    "scenario": "Pass 1's scenario -- whoever closes #91 removes probes by the heading's count, removes four, and ships the fifth as an always-on SURF92_LOG on a per-draw surface path in a release build -- still cannot occur.",
+    "evidence": "Counted definitions in the tree rather than names in the sentence: surf91_overlap_probe (surface.c:264), dl91_probe (surface.c:340), surf92_probe (surface.c:366), clr89_probe (draw.c:838), clr91_probe (draw.c:6839). Five."
+  },
+  {
+    "pass1_id": "N1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "3501",
+    "verdict": "CLOSED",
+    "summary": ":3501-3511 now opens \"WHERE THIS IS REACHABLE, because every measurement in this project is taken where it is NOT\", states that the scan is behind !tcg_enabled() and mem_dirty is unconditionally false on an arm, says the fix repairs a non-TCG host and elsewhere tightens an invariant nothing can currently violate, tells the reader not to go looking in a [surf92]/[dl91] log or in a score, and adds the operational form -- the gate is \"a two-term condition on every arm\". That answers the second half of the scenario as well as the first.",
+    "scenario": "Pass 2's scenario -- a later lane reads the M1 block, takes the lost write for a defect the arms could have caught, and spends a capture set or an arm looking for it where the instrument is blind by construction -- can no longer occur.",
+    "evidence": "Read the cited lines rather than accepting the citation, because a cross-file line citation is the kind that rots silently across a merge. vk/draw.c:115-121 says exactly what is claimed: \"The surface upload read ... is deliberately NOT instrumented: nothing on the device clears DIRTY_MEMORY_NV2A over a surface range -- the only clearer is the vertex sync below, for its own ranges, and update_surface_part's own scan is behind !tcg_enabled() and therefore dead here.\" Same file, same line range, same claim."
+  },
+  {
+    "pass1_id": "N3",
+    "severity": "LOW",
+    "file": "PR #148 body",
+    "line": "1",
+    "verdict": "CLOSED",
+    "summary": "The body now reads 2839 sites, names the --support argument as non-optional and says why (omitting it reads exactly like a stale index), and `Base:` names 151dc05954 with the merge at be2208ffcf and how the conflict was resolved.",
+    "scenario": "Pass 2's scenario -- a fold reader or the owner compares the body's 2833 against the index's 2839 and either re-regenerates the file that is already the conflict, or re-opens the \"a suite was silently dropped\" question the number existed to close -- can no longer occur.",
+    "evidence": "Re-derived the Files: line rather than eyeballing it. The body's eight paths are exactly `git diff --stat origin/master...HEAD`: docs/audits/2026-09-19-clrsurf91-pass1.{json,md}, docs/audits/2026-09-19-clrsurf91-pass2.{json,md}, docs/lanes/clrsurf91/NOTES.md, docs/testing/nv2a_index.json, docs/testing/predictions/issue91-download-may-not-resolve-a-binding.json, hw/xbox/nv2a/pgraph/vk/surface.c. This record adds ...-pass2b.{md,json}; the lane could not list a file that did not exist, and audit records are per-pass and uniquely named, so they are not a collision surface and the Files: line does not need chasing for them."
+  },
+  {
+    "pass1_id": "N2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/blit.c",
+    "line": "778",
+    "verdict": "OPEN-DEFERRED",
+    "summary": "Not fixed, and the deferral is accepted. blit.c:778-786 still justifies pgraph_vk_solid_line()'s direct upload_pending write with a reason this PR makes false -- \"their scans test-and-clear it before the guard that consumes it, and with upload == false on a live binding the bit is cleared and discarded\" -- when with the scan upload-only, upload == false now clears nothing. vk/blit.c is in [free] and is not this lane's file, so fixing it is a territory claim this lane does not hold.",
+    "scenario": "Unchanged from pass 2: a lane sent to simplify pgraph_vk_solid_line(), or the lane that closes #91 and reads every DIRTY_MEMORY_NV2A site, checks the comment against vk/surface.c, finds the scan upload-only and GL with no surface term at all, concludes the hazard is gone, and replaces the direct upload_pending write with a memory_region_set_client_dirty(..., DIRTY_MEMORY_NV2A). On the device that route is dead under !tcg_enabled(), so the solid line's write reaches no surface and the VkImage keeps stale content.",
+    "remediation": "The board owes this a one-line territory answer: either grant vk/blit.c to this lane or route it to whoever takes that file next. The conclusion -- keep the direct write -- is still right and the reason is now stronger, so it is a two-sentence rewrite, not a change of decision. It is a LOW and must not hold this PR, and it must not be dropped either: the comment's conclusion is right while its stated reason is now wrong, which is the configuration a future simplification lane deletes.",
+    "evidence": "The hazard is not left silent -- it is written down at docs/lanes/clrsurf91/NOTES.md:433-496, and the PR body asks the board directly whether this lane may have the file. That is the documented handling for a defect outside a lane's grant."
+  },
+  {
+    "pass1_id": "-",
+    "severity": "NOTE",
+    "file": "PR #148 labels",
+    "line": "1",
+    "verdict": "NOT-AN-AUDIT-FINDING",
+    "summary": "The PR carries `regressed`: [job.arms] judged the registered prediction FAIL at 16:18Z with arm B byte-identical to arm A on all 11 captures. jobs/fold.sh:503-513 reads that label and declines to fold. fold-ready is still the correct label to set -- fold.sh's own comment says \"Your fold-ready label is kept and your head is not marked failed ... the fold re-tries every tick and folds the moment the label clears\" -- so setting it is not a claim that this will fold.",
+    "scenario": "Not a scenario. The two ways forward are the owner's regression-accepted:<issue> label or a fix that makes the arms job re-judge (it computes the label from the verdicts and clears it itself; it must not be removed by hand). That is an owner decision about whether to take a correctness-only change that moves no pixels, and an audit does not rule on it.",
+    "evidence": "Recorded here rather than left to the fold comment because pass 2 recorded it and the next reader needs it in the same place as the verdict."
+  }
+]
