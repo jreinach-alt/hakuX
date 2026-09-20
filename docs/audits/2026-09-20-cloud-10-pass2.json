@@ -1,0 +1,115 @@
+[
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "129",
+    "verdict": "CLOSED",
+    "summary": "The '~200 byte units' figure is gone from all three places it was read (investigation, NOTES.md, PR body) and survives only as two explicit withdrawals, bump-y16-class.md:155 and NOTES.md:62-73. The replacement does not repair the toggle-count derivation; it changes instrument. Per row, count each image's own checker boundaries and difference them: each colour change is one step of that image's cell index, so the cumulative movement of k = idx16 - idx8 is at least n16 - n8, which is the total-variation triangle inequality. That gives >= 19 cells, 19 * 13.33 = 253 byte units, printed as ~250. The document now names the bounded quantity (cumulative movement), states that the excursion is not bounded by this data at all, and tells the reader to size a rival by the former. --parity computes every input to it.",
+    "scenario": "Pass 1's scenario -- the next lane carries an unlicensed ~200 byte-unit figure into a rival sieve -- can no longer occur: no text on the branch asserts it, and the figure that replaces it is derived once, in one place, with its quantity named.",
+    "evidence": "Re-derived without the lane's code over all four quads: max(n16-n8) in columns 44..102 is 19 in every quad, attained in 150 of 168 rows in every quad, min 11 (g0b0, g1b0) and 12 (g0b1, g1b1). None of the 150 attaining rows in any quad is touched by the text overlay of M3 (0 of 150, four times), so the bound is measured on clean rows. grep over the branch finds '200 byte' only at bump-y16-class.md:155 and NOTES.md:67, both withdrawals."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": "219",
+    "verdict": "CLOSED",
+    "summary": "The 'about half a checker cell' paragraph is deleted. --columns now prints that the horizontal cell index differs by an odd number of whole cells, that half a cell is not the threshold for inverting a column but a shift that inverts whichever columns have their phase in the upper half of a cell, and it points at --parity for the size. The tool's prose and the document's now state the same mechanism, and the sub-band evidence pass 1 asked for is added and measured in both texts.",
+    "scenario": "Pass 1's scenario -- a reader runs --columns, never opens the markdown, and takes ~6.7 byte units per toggle as the minimum offset movement -- can no longer occur: that sentence does not exist in the tool, and what replaces it agrees with the document.",
+    "evidence": "Ran the live tool: the --columns output at bump_y16_class.py:219-233 was verified by execution, not by reading the diff. Re-measured the sub-band independently: the gold Y8 quad has no horizontal boundary in columns 78..102 in 150 of 168 rows of every quad; the gold Y16 quad has 9..12 in every row; the inversion toggles exactly ten times there (runs 78-79, 82-83, 87-88, 92-93, 96-98, 101-102)."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": "213",
+    "verdict": "CLOSED",
+    "summary": "report_columns() now prints '0 px  <- identical to the Y16 golden in this quad' instead of reducing an empty array. The guard is a conditional expression, so nz.min() is never evaluated when nz is empty.",
+    "scenario": "Pass 1's scenario -- a capture set in which this class and #38's positional floor are both fixed in quad g0 b0 gives a traceback instead of the 0 px it is asking about -- can no longer occur.",
+    "evidence": "Falsification run on the same input, a capture directory built from the Bump_map goldens so that BumpMap_Y16 IS the golden: ba7a10e2e4 raises 'ValueError: zero-size array to reduction operation minimum which has no identity' out of nz.min(); ec9bbfc1e4 prints the 0 px line. Discriminated on the output words, not the exit code."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "20",
+    "verdict": "CLOSED",
+    "summary": "--parity exists, is included in --all, and computes the whole of what used to be prose: per-quad differing column count, per-column vertical-phase identity, the swap fraction, the per-column differing-pixel range, the 15-run decomposition and its 30 toggles, the per-row checker boundary counts for both spans, and the cell arithmetic with the bound.",
+    "scenario": "Pass 1's scenario -- the next reader finds --all silent on every input to the size claim and rebuilds the instrument by hand -- can no longer occur.",
+    "evidence": "Ran --all and --parity on the committed defaults; every quantitative figure in the investigation, NOTES.md and the PR body appears in the output."
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "108",
+    "verdict": "CLOSED",
+    "summary": "Both readings are now stated: every differing pixel swaps red for grey (5,340 of 5,340 in quad g0 b0 and the same in the other three), and 152 to 168 of each column's 168 pixels differ, 90.5%-100%. Both reproduce. The explanatory clause the remediation appended to that sentence does not -- that is M3, filed separately rather than as a reopening of L3, because the numbers pass 1 asked for are correct.",
+    "scenario": "Pass 1's scenario -- a reader takes '>95% of its pixels' under the wrong one of its two readings -- can no longer occur; the sentence gives both numbers.",
+    "evidence": "Re-ran --parity: swaps 5340/5340, 5398/5398, 5336/5336, 5398/5398; per-column differing pixels 152..168 in all four quads."
+  },
+  {
+    "pass1_id": "L4",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "187",
+    "verdict": "CLOSED",
+    "summary": "The eight-bit rival is now refuted by duty cycle: the document says a sub-half-byte shift CAN invert whole columns, that it inverts only ~1/26 of the band's columns (about two of 59) against 33 observed, and that saying otherwise is the same reasoning error as M2's. It adds the second form -- ~1/26 of a cell of accumulated k against the 19 cells measured.",
+    "scenario": "Pass 1's scenario -- the refutation carries M2's reasoning error into a text that outlives the tool -- can no longer occur.",
+    "evidence": "bump-y16-class.md:187-201 read against pass 1's statement of the error; both forms of the refutation are arithmetically correct."
+  },
+  {
+    "pass1_id": "L5",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "10",
+    "verdict": "CLOSED",
+    "summary": "The currency argument now states its own scope: one file of the 23 under hw/xbox/nv2a that moved by ~4,800 lines, the others named and explicitly not checked, no newer Bump_map capture on this host -- and why the conclusion does not rest on it, which is that our half is derivable from current master and every claim about hardware compares two goldens no emulator commit can move.",
+    "scenario": "Pass 1's scenario -- a reader takes a one-file diff as evidence that the whole capture set is current -- can no longer occur.",
+    "evidence": "bump-y16-class.md:10-24; the file list and the ~4,800 line figure match pass 1's own measurement of git diff c866527e03 origin/master -- hw/xbox/nv2a."
+  },
+  {
+    "pass1_id": "L6",
+    "severity": "LOW",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": "148",
+    "verdict": "CLOSED",
+    "summary": "The family filter is a suffix match (:148-151) and the dead 'if c else -1' arms are gone.",
+    "scenario": "Pass 1's scenario -- BumpMap_A8R8G8B8 and BumpMap_A8B8G8R8 appearing under a header reading 'the Y family' -- can no longer occur.",
+    "evidence": "Ran --identity: the table holds nine rows, all Y-family plus _A8/_A8_L; neither A8R8G8B8 nor A8B8G8R8 appears."
+  },
+  {
+    "pass2_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "111",
+    "verdict": "OPEN",
+    "summary": "Each quad contains a block of (255,255,255,0) pixels that renders as glyphs -- the test's own on-screen label, drawn over the quad at rows 84..99, columns 44..90 of quad g0 b0, 360 px there and 1,400 px across the four quads, identical in the gold Y8, the gold Y16 and our captures. It sits inside the measured band, and two statements added by this remediation attribute its pixels to checker structure. (a) 'the survivors being the rows sitting on a checker boundary' (md:111), printed by the tool as 'the rows on a checker boundary agree' (py:307): measured, 0 of the 704 surviving pixels across the four quads is a checker-boundary row and 704 of 704 are overlay pixels, and the 90.5% floor is exactly 168-16, the 16 rows the glyphs occupy. (b) 'the 18 that do are the rows lying on the quad's own vertical checker seam' (md:163-164, py:352-356): those 18 rows are 84..99 plus 52 and 73, so 16 of the 18 are text and only two are the seam at column 83. The truth is stronger than both claims: outside the overlay, every pixel of every differing column inverts.",
+    "scenario": "The document instructs that 'a candidate mechanism is scored by computing its own k'. The next lane builds that scorer against the published structure and gets two false targets. (a) It takes '152 to 168 of each column's 168 pixels differ, the survivors being the rows sitting on a checker boundary' as a structural constraint, so the correct mechanism -- which inverts 168 of 168 -- scores as over-inverting while one that spares boundary rows scores as matching. (b) It tries to reproduce a base-texture seam feature in columns 78..102 for 18 rows, which no bump mechanism can produce because 16 of those rows are a glyph. Both targets are artifacts of a UI overlay, and this is M2's own failure mode -- the tool printing a mechanism the data does not support -- recurring in the report that replaced it.",
+    "remediation": "Name the overlay once where the quad geometry is defined (py:55-76 and the document's first table), exclude it or say it is excluded wherever per-column extent is reported, and correct the two sentences: the survivors are the glyph pixels, every non-overlay pixel in a differing column inverts, and the rows with a base boundary in the flat sub-band are the two seam rows plus the sixteen glyph rows. Nothing else moves -- the 22,374/1,576/0/21,472 table is untouched because the overlay is identical in both images and contributes zero differing pixels, and the 19-cell bound is attained only on rows the overlay does not touch.",
+    "evidence": "Measured over all four quads: survivors in differing columns / of which overlay = 204/204, 146/146, 208/208, 146/146; rows with a base boundary in columns 78..102 = {52, 73, 84..99} in every quad against glyph rows {84..99}; white px per quad 360, 350, 350, 340, identical in the goldens and in z-repeat-c866527e03-011-Bump_map; an ASCII render of rows 84..99, columns 44..91 of the gold Y8 quad shows glyph shapes."
+  },
+  {
+    "pass2_id": "L7",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "129",
+    "verdict": "OPEN",
+    "summary": "'Each colour change along a row is one step of that image's cell index, so the cumulative movement of k ... is at least (Y16's changes - Y8's)' (md:129-134, py:363-370). The first term is sound -- a colour change needs |d idx| >= 1, so n16 is a lower bound on TV(idx16). The second needs the opposite: subtracting TV(idx8) requires n8 to be an UPPER bound on the base's traversal, and a count of colour changes is prima facie a lower bound, since the base could step two cells between adjacent columns and show no change.",
+    "scenario": "A reader checking the bound -- which the document exists to hand forward, and which it tells the next lane to score rivals against -- finds the one inequality it rests on cited in the wrong direction, and either rebuilds the justification or distrusts the number. The bound itself is correct; what is missing is the measured fact that licenses it.",
+    "remediation": "One sentence: the base's boundaries sit at columns 2, 7, 13, 18, 23, 28, 34, 39, 44, 49, 55, 60, 65, 70, 76, minimum gap five columns, about 0.19 cells of base index per column, so the base cannot skip a cell and n8 = TV(idx8) exactly. --parity already has the boundary positions in reach and could print the minimum gap.",
+    "evidence": "Measured gold BumpMap_Y8 quad g0 b0 row 20: boundary columns as listed, gaps 5,6,5,5,5,6,5,5,5,6,5,5,5,6, minimum 5."
+  },
+  {
+    "pass2_id": "L8",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": "164",
+    "verdict": "OPEN",
+    "summary": "'every row of the gold Y16 quad has 11 boundaries there' (md:164-165, NOTES.md:34, PR body) promotes a median to a universal. The tool is careful and prints 'the median row of the gold Y16 quad has 11 there'; the prose is not. Measured per row in columns 78..102 the count is 9..12.",
+    "scenario": "A reader re-runs --parity, sees a distribution rather than a constant, and has to work out whether the argument depended on the constant. It does not -- the minimum is 9 against a base with 0 in 150 rows -- but the document does not say so.",
+    "remediation": "Say '9..12, median 11', or 'at least nine'.",
+    "evidence": "Per-row boundary counts in columns 78..102 of the gold Y16 quads: g0b0 {10:4, 11:154, 12:10}, g0b1 {9:6, 10:4, 11:158}, g1b0 {10:8, 11:158, 12:2}, g1b1 {9:6, 10:4, 11:158}."
+  }
+]
