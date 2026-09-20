@@ -86,25 +86,76 @@ PX, PY = XX + 0.5, YY + 0.5
 # --------------------------------------------------------------------------
 # geometry
 # --------------------------------------------------------------------------
-def our_edges(block, n):
-    """The index pairs OUR renderer emits, in OUR order (prim_rewrite.c)."""
-    if block == "LLoop":
-        return [(i, (i + 1) % n) for i in range(n)]
-    if block == "Tri":
-        return [e for t in range(0, n - 2, 3)
-                for e in ((t, t+1), (t+1, t+2), (t+2, t))]
-    if block == "TFan":
-        return [e for t in range(1, n - 1)
-                for e in ((0, t), (t, t+1), (t+1, 0))]
-    if block == "QStrip":
-        return [e for i in range(0, n - 3, 2)
-                for e in ((i, i+1), (i+1, i+3), (i+3, i+2), (i+2, i))]
-    if block == "Poly":
-        return [(i, i + 1) for i in range(n - 1)] + [(n - 1, 0)]
-    if block == "Quad":
-        return [e for i in range(0, n - 3, 4)
-                for e in ((i, i+1), (i+1, i+2), (i+2, i+3), (i+3, i))]
+GEOM_TRI_EDGES = ((1, 2), (2, 0), (0, 1))   # glsl/geom.c, POLY_MODE_LINE
+
+
+def prim_rewrite(block, n, fan_pv_rotate=True):
+    """What prim_rewrite.c hands the geometry stage, in emission order.
+
+    Each item is ("L", pair) for an edge that is already a LINES index pair,
+    or ("T", triple) for a triangle the geometry stage still has to split.
+
+    `Line width` draws under POLY_MODE_LINE with SHADEMODE_SMOOTH and
+    PROVOKING_VERTEX_LAST, which is what picks the branches below:
+
+      * QUADS / QUAD_STRIP / POLYGON reach rewrite_*_line() and come out as
+        LINES with the derived edge order already in them;
+      * TRIANGLES is not rewritten AT ALL -- needs_rewrite() is
+        `last_provoking && flat_shading` and this suite is smooth -- so its
+        triples arrive at the geometry stage unrotated;
+      * TRIANGLE_FAN is always rewritten (it is a topology change), and
+        emit_tri_pv() additionally ROTATES the provoking vertex to index 0.
+        `fan_pv_rotate` is that rotation, which is the only thing this lane's
+        patch removes.
+    """
+    if block == "LLoop":            # rewrite_line_loop
+        return [("L", (i, (i + 1) % n)) for i in range(n)]
+    if block == "Tri":              # pass-through; see needs_rewrite()
+        return [("T", (t, t + 1, t + 2)) for t in range(0, n - 2, 3)]
+    if block == "TFan":             # rewrite_triangle_fan
+        out = []
+        for t in range(1, n - 1):
+            tri = (0, t, t + 1)                 # (hub, v1, v2)
+            if fan_pv_rotate:                   # emit_tri_pv(..., pv = v2)
+                tri = (tri[2], tri[0], tri[1])
+            out.append(("T", tri))
+        return out
+    if block == "QStrip":           # rewrite_quad_strip_line
+        return [("L", e) for i in range(0, n - 3, 2)
+                for e in ((i+2, i), (i, i+1), (i+1, i+3), (i+3, i+2))]
+    if block == "Quad":             # rewrite_quads_line
+        return [("L", e) for i in range(0, n - 3, 4)
+                for e in ((i+1, i+2), (i, i+1), (i+2, i+3), (i+3, i))]
+    if block == "Poly":             # rewrite_polygon_line
+        out = []
+        for t in range(1, n - 1):
+            out.append(("L", (t, t + 1)))
+            if t == n - 2:
+                out.append(("L", (n - 1, 0)))
+            if t == 1:
+                out.append(("L", (0, 1)))
+        return out
     raise KeyError(block)
+
+
+def our_edges(block, n, fan_pv_rotate=True):
+    """The index pairs OUR renderer emits, in OUR order.
+
+    DERIVED from the two files that decide it rather than listed, because
+    listing it is what went stale: this table was written before either half
+    of #13's edge-order work landed and still described the pre-fold order
+    for Tri, QStrip, Poly and Quad -- so the `ours` column scored a renderer
+    we stopped being two folds ago.  Composing prim_rewrite() with geom.c's
+    three emit_line() calls means the next edit to either file shows up here
+    as a changed score instead of as a silently wrong baseline.
+    """
+    out = []
+    for kind, v in prim_rewrite(block, n, fan_pv_rotate):
+        if kind == "L":
+            out.append(v)
+        else:
+            out += [(v[i], v[j]) for i, j in GEOM_TRI_EDGES]
+    return out
 
 
 def all_edges():
@@ -118,6 +169,7 @@ def all_edges():
 
 
 EDGES = all_edges()
+NVERT = {name: len(blk) for name, blk in BLOCKS}
 NEDGE = Counter(e[0] for e in EDGES)
 BASE = {}
 for _i, _e in enumerate(EDGES):
@@ -163,49 +215,93 @@ def _perm(ab, bc, ca, which):
             "tri_acb": [ab, ca, bc]}[which]
 
 
+def silicon_tris(block, n):
+    """(triangle, edge count) per group, in OUR emission order.  n is VERTICES.
+
+    Silicon's FILL tessellation -- QUADS on the v0-v2 diagonal, QUAD_STRIP on
+    v1-v2, POLYGON and TRIANGLE_FAN as a fan from v0 -- paired with how many
+    consecutive entries of `our_edges()` came out of that triangle.  Our own
+    emission is contiguous per triangle in every block, which is what lets a
+    scheme's answer be matched back to our edge indices GROUP-LOCALLY instead
+    of by a global pair lookup: a fan's internal spokes and a quad strip's
+    shared edge are each drawn twice, so a global lookup would alias them.
+    """
+    if block == "LLoop":
+        return [(None, 1)] * n
+    if block == "Tri":
+        return [((t, t + 1, t + 2), 3) for t in range(0, n - 2, 3)]
+    if block == "TFan":
+        return [((0, t, t + 1), 3) for t in range(1, n - 1)]
+    if block == "Quad":
+        return [g for i in range(0, n - 3, 4)
+                for g in (((i, i+1, i+2), 2), ((i, i+2, i+3), 2))]
+    if block == "QStrip":
+        return [g for i in range(0, n - 3, 2)
+                for g in (((i, i+1, i+2), 2), ((i+2, i+1, i+3), 2))]
+    if block == "Poly":
+        return [((0, t, t + 1), 1 + (t == n - 2) + (t == 1))
+                for t in range(1, n - 1)]
+    raise KeyError(block)
+
+
 def order_for(block, which):
     """OUR edge indices, in the order `which` says silicon submits them.
 
-    Every scheme but `ours`/`reverse` triangulates exactly as the FILL path
-    does (`prim_rewrite.c`: QUADS on the v0-v2 diagonal, QUAD_STRIP on
-    v1-v2, POLYGON as a fan from v0), drops the tessellation's internal
-    edges -- which the goldens confirm are absent at width 1 -- and orders
-    each triangle's surviving edges by `_perm`.
+    Every scheme but `ours`/`ours_patched`/`reverse` triangulates as the FILL
+    path does, drops the tessellation's internal edges -- which the goldens
+    confirm are absent at width 1 -- and orders each triangle's surviving
+    edges by `_perm`.  A slot counts as internal exactly when its pair is not
+    among the edges we emitted for that triangle, so the drop is read off the
+    emission rather than tabulated beside it; tabulating it beside is how the
+    old index arithmetic here silently went stale when the emission moved.
     """
     n = NEDGE[block]
     if which == "ours":
         return list(range(n))
+    if which == "ours_patched":
+        return patched_order(block)
     if which == "reverse":
         return list(range(n))[::-1]
-    if block == "LLoop":
-        return list(range(n))
-    if block in ("Tri", "TFan"):
-        return [e for t in range(n // 3) for e in _perm(3*t, 3*t+1, 3*t+2, which)]
-    if block == "Quad":
-        out = []
-        for q in range(n // 4):
-            b = 4 * q
-            out += [e for e in _perm(b+0, b+1, None, which) if e is not None]
-            out += [e for e in _perm(None, b+2, b+3, which) if e is not None]
-        return out
-    if block == "QStrip":
-        out = []
-        for q in range(n // 4):
-            b = 4 * q
-            out += [e for e in _perm(b+0, None, b+3, which) if e is not None]
-            out += [e for e in _perm(None, b+1, b+2, which) if e is not None]
-        return out
-    if block == "Poly":
-        out = []
-        for t in range(1, n - 1):
-            ab = 0 if t == 1 else None
-            ca = n - 1 if t == n - 2 else None
-            out += [e for e in _perm(ab, t, ca, which) if e is not None]
-        return out
-    raise KeyError(block)
+    cur = our_edges(block, NVERT[block], True)
+    out, pos = [], 0
+    for tri, size in silicon_tris(block, NVERT[block]):
+        grp = {frozenset(cur[pos + j]): pos + j for j in range(size)}
+        assert len(grp) == size, (block, tri)
+        if tri is None:
+            out += range(pos, pos + size)
+        else:
+            a, b, c = tri
+            slots = _perm(frozenset((a, b)), frozenset((b, c)),
+                          frozenset((c, a)), which)
+            out += [grp[e] for e in slots if e in grp]
+        pos += size
+    assert sorted(out) == list(range(n)), (block, which)
+    return out
 
 
-SCHEMES = ["ours", "reverse", "opp_abc", "opp_acb",
+def patched_order(block):
+    """OUR edge indices in the order the fan-rotation patch would emit them.
+
+    Same edges, same directions, different rank -- so it scores as a
+    permutation of `ours` and needs no second EDGES table.  Matching is done
+    INSIDE each triangle's three-edge group: globally the pairs are ambiguous,
+    because a fan's internal spokes are drawn once from each side, and a
+    .index() over the whole block would silently alias them.
+    """
+    cur = our_edges(block, NVERT[block], True)
+    new = our_edges(block, NVERT[block], False)
+    if cur == new:
+        return list(range(len(cur)))
+    assert len(cur) % 3 == 0, block      # only all-triangle blocks can differ
+    out = []
+    for g in range(0, len(cur), 3):
+        grp = cur[g:g + 3]
+        assert len(set(grp)) == 3, block
+        out += [g + grp.index(e) for e in new[g:g + 3]]
+    return out
+
+
+SCHEMES = ["ours", "ours_patched", "reverse", "opp_abc", "opp_acb",
            "tri_rev", "tri_rot", "tri_id", "tri_acb"]
 GEOMETRIC = ["nearest_centre", "farthest_centre", "longest_edge",
              "shortest_edge", "highest_index", "lowest_index", "nearest_vertex"]
@@ -391,12 +487,12 @@ def report_rules(pixels, label=""):
     for win, c in pixels:
         byblk["/".join(sorted({EDGES[e[0]][0] for e in c}))].append((win, c))
     print(f"\n{'candidates in':<18}{'n':>8}" +
-          "".join(f"{r:>12}" for r in ("opp_abc", "opp_acb", "ours", "nearest_centre")))
+          "".join(f"{r:>12}" for r in ("opp_abc", "ours", "ours_patched", "nearest_centre")))
     for b in sorted(byblk, key=lambda b: -len(byblk[b])):
         px = byblk[b]
         cells = "".join(
             f"{sum(1 for w,c in px if pick(c,r)==w)/len(px)*100:>11.2f}%"
-            for r in ("opp_abc", "opp_acb", "ours", "nearest_centre"))
+            for r in ("opp_abc", "ours", "ours_patched", "nearest_centre"))
         print(f"{b:<18}{len(px):>8}{cells}")
 
 

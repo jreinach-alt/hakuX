@@ -84,6 +84,49 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
     }
 }
 
+/*
+ * Does anything downstream actually READ index 0 of a rewritten triangle?
+ *
+ * Both renderers rasterise first-vertex-provoking -- gl/draw.c sets
+ * GL_FIRST_VERTEX_CONVENTION and nothing in vk/ enables
+ * VK_EXT_provoking_vertex -- and glsl/geom.c spells its provoking_index as
+ * the literal "0" exactly when the shade mode is FLAT, as "index" otherwise.
+ * So under SMOOTH shading the rotation buys nothing.  needs_rewrite() above
+ * already says as much for PRIM_TYPE_TRIANGLES, which it declines to rewrite
+ * AT ALL unless the draw is flat and last-provoking; the strip and the fan
+ * have to be rewritten regardless, because that is a topology change, and
+ * the provoking placement rode along with it.
+ *
+ * Under POLY_MODE_LINE the rotation is not merely useless, it is wrong.
+ * geom.c splits a triangle (A, B, C) into the edges (B,C), (C,A), (A,B) in
+ * that order, so rotating the triple is a pure ROTATION OF THE EDGE LIST:
+ * every edge keeps both endpoints and its direction, and only the paint
+ * order changes.  That paint order is the rule #13 derived from the `Line
+ * width` goldens, and a TRIANGLE_FAN was arriving pre-rotated by one
+ * relative to the TRIANGLES draw beside it -- which geom.c cannot
+ * compensate for, because GeomState::primitive_mode is the REWRITTEN mode
+ * and cannot tell a fan triangle from a list triangle.  That was 32,628 of
+ * #13's decisive pixels: TFan 70.36% and QStrip/TFan 77.17% where every
+ * other class had reached 100.00%.
+ *
+ * Dropping the rotation costs nothing on that path.  vtxFogSpecial is `flat`
+ * in EVERY shade mode (glsl/common.c), but each emit_line() takes it from
+ * that EDGE's own first endpoint rather than from the triangle's index 0,
+ * and rotating the triple does not change any edge's own endpoints -- so
+ * every edge carries the value it carried before, in a different order.
+ *
+ * POLY_MODE_FILL and POLY_MODE_POINT keep it, because there the rotation is
+ * NOT a reorder: it decides the triangle's provoking output vertex outright,
+ * and with it the flat colour and vtxFogSpecial.
+ *
+ * So #13's trade is not abolished, it is narrowed to its one real corner --
+ * a flat-shaded wireframe, where the colour must win over the paint order.
+ */
+static inline bool pv_placement_observable(PrimAssemblyState mode)
+{
+    return mode.flat_shading || mode.polygon_mode != POLY_MODE_LINE;
+}
+
 static unsigned int max_output_indices(enum ShaderPrimitiveMode mode,
                                        enum ShaderPolygonMode polygon_mode,
                                        unsigned int input_count)
@@ -230,6 +273,17 @@ static void rewrite_triangles(PrimRewrite *r, const uint32_t *idx,
     }
 }
 
+/*
+ * DELIBERATELY NOT given the pv_placement_observable() treatment the fan gets
+ * below, though the same reasoning reaches it: under POLY_MODE_LINE a strip
+ * triangle is pre-rotated relative to a list triangle too, and geom.c cannot
+ * tell them apart either.  The difference is evidence.  The odd-i case below
+ * is a REFLECTION (v1, v0, v2), not a rotation, so its composition with
+ * geom.c's edge order is a different derivation from the fan's -- and the
+ * `Line width` corpus, which is what pins these orders to the pixel, draws no
+ * TRIANGLE_STRIP at all under POLY_MODE_LINE.  Changing it here would be a
+ * guess scored by nothing.  See docs/lanes/primpv13/NOTES.md.
+ */
 static void rewrite_triangle_strip(PrimRewrite *r, const uint32_t *idx,
                                    uint32_t base, unsigned int count,
                                    bool last_provoking)
@@ -248,9 +302,17 @@ static void rewrite_triangle_strip(PrimRewrite *r, const uint32_t *idx,
     }
 }
 
+/*
+ * `place_pv` is pv_placement_observable(): with it false the fan triangle is
+ * handed on in its natural (hub, v1, v2) order, which is the same order a
+ * TRIANGLES draw arrives in, so geom.c's one derived edge order fits both.
+ * The emission COUNT is identical either way, so -- exactly as for the three
+ * rewrite_*_line() functions below -- no counter can tell the two apart and
+ * only the captures can.
+ */
 static void rewrite_triangle_fan(PrimRewrite *r, const uint32_t *idx,
                                  uint32_t base, unsigned int count,
-                                 bool last_provoking)
+                                 bool last_provoking, bool place_pv)
 {
     if (count < 3) {
         return;
@@ -261,9 +323,13 @@ static void rewrite_triangle_fan(PrimRewrite *r, const uint32_t *idx,
     for (unsigned int i = 0; i + 2 < count; i++) {
         uint32_t v1 = idx_at(idx, i + 1, base);
         uint32_t v2 = idx_at(idx, i + 2, base);
-        uint32_t pv = last_provoking ? v2 : v1;
 
-        emit_tri_pv(r, hub, v1, v2, pv);
+        if (!place_pv) {
+            emit_tri(r, hub, v1, v2);
+            continue;
+        }
+
+        emit_tri_pv(r, hub, v1, v2, last_provoking ? v2 : v1);
     }
 }
 
@@ -462,7 +528,8 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         rewrite_triangle_strip(r, idx, base, num_indices, mode->last_provoking);
         break;
     case PRIM_TYPE_TRIANGLE_FAN:
-        rewrite_triangle_fan(r, idx, base, num_indices, mode->last_provoking);
+        rewrite_triangle_fan(r, idx, base, num_indices, mode->last_provoking,
+                             pv_placement_observable(*mode));
         break;
     case PRIM_TYPE_QUADS:
         if (mode->polygon_mode == POLY_MODE_LINE) {
