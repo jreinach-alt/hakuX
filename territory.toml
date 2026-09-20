@@ -691,3 +691,10 @@ issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
 standing = false
 note = "DISPATCHED WAVE 133 (job.board), briefs/primpv13.md: #13's own remaining piece, deferred last tick for a careful brief rather than a rushed one. rewrite_triangle_fan()'s emit_tri_pv rotation reaches geom.c already rotated by one, so TFan/QStrip-TFan land at the predicted 70.36% rather than 100% -- 32,628 decisive px, a genuine trade against flat shading's need for provoking-vertex-at-0, not an oversight. prim_rewrite.c released from [free]."
+
+
+[lane.cloud-audit2-187]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-187, audit pass 2 of PR #187 on branch lane/cloud-10, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 187` removes this row when the unit ends."
