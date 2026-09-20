@@ -319,6 +319,15 @@ static void serve(void)
             cmd_status();
         } else if (line[0] == 'P' && line[1] == 0) {
             send_line("OK P");
+        } else if (line[0] == 'Q' && line[1] == 0) {
+            /* The host finished this run on purpose. Without this the probe
+             * cannot tell a clean end from a link failure and prints
+             * "disconnected; redialling" either way, which reads like a fault
+             * to whoever is watching the screen. */
+            send_line("BYE run complete");
+            g_watchdog_armed = false;
+            debugPrint("host finished the run; waiting for the next one\n");
+            return;
         } else if (line[0] == 'X' && line[1] == 0) {
             send_line("BYE soft reset");
             Sleep(250);

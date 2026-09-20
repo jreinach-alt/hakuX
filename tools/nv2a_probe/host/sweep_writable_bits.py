@@ -228,7 +228,7 @@ def main() -> int:
                 continue
     finally:
         if sess:
-            sess.close()
+            sess.end_run()
         srv.close()
 
     print("\nswept %d registers, %d sessions, %d suspected hangs"

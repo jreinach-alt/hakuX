@@ -205,6 +205,19 @@ class Session:
         except Exception:
             pass
 
+    def end_run(self) -> None:
+        """Tell the probe this run ended on purpose, then close.
+
+        Without it the probe reports every close as "disconnected; redialling",
+        which looks identical to a failure on the console's screen.
+        """
+        try:
+            self._send("Q")
+            self._recv_line()
+        except Exception:
+            pass
+        self.close()
+
     def close(self):
         try:
             self.conn.close()
