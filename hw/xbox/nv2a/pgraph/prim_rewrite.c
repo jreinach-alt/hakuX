@@ -105,9 +105,13 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
  * width` goldens, and a TRIANGLE_FAN was arriving pre-rotated by one
  * relative to the TRIANGLES draw beside it -- which geom.c cannot
  * compensate for, because GeomState::primitive_mode is the REWRITTEN mode
- * and cannot tell a fan triangle from a list triangle.  That was 32,628 of
- * #13's decisive pixels: TFan 70.36% and QStrip/TFan 77.17% where every
- * other class had reached 100.00%.
+ * and cannot tell a fan triangle from a list triangle.  That left the TFan
+ * and QStrip/TFan classes at 73.20% and 75.84% where every other class had
+ * reached 100.00% -- 8,920 decisive pixels naming the wrong edge, over the
+ * 35,645 the two classes hold.  (#13's comments call the residue "32,628
+ * decisive pixels"; that figure is the POPULATION of the two classes under
+ * the perpendicular footprint model this emulator stopped drawing in
+ * 80c23dcabe, not the pixels that are wrong inside it.)
  *
  * Dropping the rotation costs nothing on that path.  vtxFogSpecial is `flat`
  * in EVERY shade mode (glsl/common.c), but each emit_line() takes it from
