@@ -3497,6 +3497,18 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
      * current, never a wrong one. It likewise stops eating the bit out from
      * under the vertex-RAM sync, the only other consumer of this bitmap
      * (vk/draw.c), for any palette or vertex array sharing these pages.
+     *
+     * WHERE THIS IS REACHABLE, because every measurement in this project is
+     * taken where it is NOT. The scan is behind `!tcg_enabled()` and the
+     * device build runs TCG, so on an arm it never executes and `mem_dirty`
+     * is unconditionally false -- vk/draw.c:115-121 already states this and
+     * declines to instrument the read for that reason. Everything above
+     * describes a non-TCG host: that is where the lost write was reachable
+     * and where this repairs it. On the device it tightens an invariant that
+     * nothing can currently violate, so do not go looking for the loss in a
+     * [surf92]/[dl91] log or in a score -- the instrument is blind there by
+     * construction, and the gate `upload && (!current_binding ||
+     * buffer_dirty || mem_dirty)` is a two-term condition on every arm.
      */
     SURF_TIMER_INIT(_st1);
     bool mem_dirty = false;

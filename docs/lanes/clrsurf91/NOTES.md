@@ -394,3 +394,68 @@ not cosmetic.
    measure the baseline.
 3. Do not re-read the clear paths, and do not discard the byte arithmetic.
    The route is refuted; the signature is not.
+
+## Audit pass 2 remediation (this commit)
+
+Pass 2 (`docs/audits/2026-09-19-clrsurf91-pass2.md`) closed M1, M2 and L1
+against the live file and re-opened **M3's mergeability half only**: the
+content half is closed for good and is not re-derived here. Three new LOWs.
+
+**M3 (the only open MEDIUM) -- closed the way pass 2 asked.** Merged
+`origin/master` (130/16 at the time; **merge, not rebase** -- both prediction
+refs `aec524681e` and `7980d1caa2` re-verified as ancestors *after* the merge),
+resolved the single conflict in `docs/testing/nv2a_index.json` by
+**regenerating** rather than hand-merging either side, and confirmed
+`nv2a_index.py check --tests /home/justin/nxdk_pgraph_tests --support
+/home/justin/pbkitplusplus` prints "index matches the tree (951 symbols, 2839
+sites, 103 suites)". The `--support` argument is not optional: without it the
+same command reports five suites changed, which reads exactly like a stale
+index. `git merge-tree` now reports no conflict.
+
+**One thing about that file the next regeneration should expect, because it
+guarantees this conflict recurs.** `provenance.tests_root` and
+`support_dirs` are absolute paths of whichever host generated the index.
+Master's copy says `/home/user/...`; every regeneration on this host writes
+`/home/justin/...`. Those two lines differ from master permanently and will
+conflict again on any master touch of the file. They are not wrong -- they
+record where this index actually came from, and CI clones the test sources to
+a third path (`$RUNNER_TEMP`) and passes, so `check` is path-agnostic. Do not
+"fix" them by hand-editing master's paths in: that fabricates provenance.
+Regenerate, as this commit did.
+
+**N1 (LOW, fixed).** The M1 comment block described the lost write in the
+present tense with no mention that the scan is behind `!tcg_enabled()` and so
+has never executed on a device arm. Added a paragraph saying where the failure
+is reachable (a non-TCG host) and that the gate is a two-term condition on
+every arm, citing `vk/draw.c:115-121` rather than re-deriving it. The fix
+itself is unchanged and correct.
+
+**N2 (LOW, NOT fixed -- out of this lane's territory, and it needs a grant).**
+`vk/blit.c:778-786` justifies `pgraph_vk_solid_line()`'s direct
+`upload_pending` write with "their scans test-and-clear it *before* the guard
+that consumes it, and with `upload == false` on a live binding the bit is
+cleared and discarded". **This PR makes that false for the Vulkan renderer**
+(with the scan upload-only, `upload == false` clears nothing), and it was
+already false for GL (`gl/surface.c`, #85). The conclusion -- keep the direct
+write -- is still right and the reason is now *stronger*, so the fix is a
+two-sentence rewrite, not a decision change. It is not made here because
+`vk/blit.c` sits in `[free]` (released at wave 110 when `lane.blitsafe`
+retired) and this lane holds only `vk/draw.c` and `vk/surface.c`; a released
+file is not an assignment. **Asked for on the PR.** If it is not granted
+before fold, the next actor in that file must not read the stale comment as
+licence to replace the direct write with a `DIRTY_MEMORY_NV2A` mark: on the
+device that route is dead (N1), and the symptom is a stale `VkImage` with
+nothing in the log.
+
+**N3 (LOW, fixed).** The PR body asserted 2833 sites and a clean base; both
+were stale. Patched via the REST API (`gh pr edit` applies nothing on this
+host) with the post-merge counts, and `Files:` re-derived from
+`git diff --stat origin/master...HEAD`.
+
+**Unchanged by this pass, and it is the thing that decides the PR.** The
+`regressed` label stands: `[job.arms]` judged the prediction FAIL with arm B
+byte-identical to arm A on all 11 captures. `jobs/fold.sh` refuses to fold a
+`regressed` PR without `regression-accepted:<issue>`, so clearing the conflict
+did **not** make this PR foldable. That is an owner decision about taking a
+correctness-only change that moves no pixels -- not a remediation, and not
+mine to make.
