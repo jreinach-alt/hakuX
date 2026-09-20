@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:211",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:224",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,10 +4652,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "f2bd66fb4475a849ec5a361233a40980fc2c953f",
+  "emulator_commit": "0dc61c5bee12823f52e3fc87ca6166315dd32650",
   "gaps": 498,
   "resolved_tables": 1,
-  "sites": 2839,
+  "sites": 2840,
   "suites": 103,
   "support_dirs": [
    "/home/justin/pbkitplusplus"
@@ -6625,6 +6625,11 @@
    }
   ],
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:129",
+    "role": "COMMENT",
+    "text": "* set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3123",
     "role": "DISPATCH",
@@ -8901,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:248",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:261",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
