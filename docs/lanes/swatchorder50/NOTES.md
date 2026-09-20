@@ -68,12 +68,30 @@ the render target, to the digit. Readings 1 and 2 both predict 255.
 
 ## Scores
 
-`swatchorder50_readings.py --score`, stack C region, all four models. See the
-PR body for the table; the shape is that readings 1 and 2 score identically to
-each other and near zero, the aliasing model takes essentially everything, and
-the goldens (control) invert it -- they match the correct-stack-C model and
-nothing else, which is what says the models are right rather than that the
-comparison is loose.
+`swatchorder50_readings.py --score --unsigned`, stack C region, captures
+bit-exact over the 1,120 unsigned captures (the 448 signed ones excluded so #43
+cannot contaminate either stack):
+
+| model | ours (xemu) | goldens (control) |
+|---|---:|---:|
+| reading 1: reversed y positions | 9 | 251 |
+| reading 2: reversed colour order | 9 | 251 |
+| reading 3: stack A's render target | **1119** | **0** |
+| control: stack C drawn correctly | 1 | **1120** |
+
+By channel, ours against aliasing is 73,346,400 / 73,400,320 (99.9265%) and
+against either reading 28,563,936 / 73,400,320 (38.92%).
+
+The goldens column is the part that matters. It says the models are right
+rather than the comparison loose: silicon matches correct-stack-C on 1120/1120,
+73,400,320 of 73,400,320 channels, and the aliasing model on 0. Ours inverts it
+exactly. Without that column a high score for aliasing would only mean the
+comparison was easy to satisfy.
+
+The 251 the goldens score on readings 1 and 2 are the degenerate captures where
+the blend makes 221 and 255 indistinguishable; they discriminate nothing and
+carry no weight either way. Over all 1,568 including the signed set the shape is
+unchanged: ours 1119 / 9 / 9 / 1, goldens 0 / 251 / 251 / 1568.
 
 ## What the next lane should not repeat
 
