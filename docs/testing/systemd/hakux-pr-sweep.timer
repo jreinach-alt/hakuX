@@ -1,0 +1,28 @@
+[Unit]
+Description=hakuX PR sweep, every three hours at :13
+
+[Timer]
+# OnCalendar AND NOT OnUnitActiveSec, unlike the arms/fold/board/status
+# timers. Those tick every 20-30 minutes and their phase does not matter; this
+# one runs every three hours, so a phase that drifts with each boot makes
+# "when did the last sweep run?" unanswerable without reading journald, and
+# two consecutive sweeps can land either 3 hours or most of a day apart across
+# a WSL2 shutdown. A fixed calendar slot is also what the interactive stopgap
+# used (`13 */3 * * *`), so this is the same cadence in a form that survives
+# the session that created it.
+#
+# :13 IS OFF THE HOUR DELIBERATELY. Six hakux timers already land on this
+# host, all of them phased from OnBootSec offsets at :03 to :08 plus the
+# nightly at :30, and the dispatcher serves device requests continuously. A
+# sweep that fires in the same minute as a board tick reads a PR the board is
+# mid-way through labelling.
+OnCalendar=*-*-* 00/3:13:00
+# WSL2 is shut down whenever the owner closes it, so a slot missed while the
+# box was off is indistinguishable from a sweep that found nothing. Catch up
+# once on the next boot.
+Persistent=true
+RandomizedDelaySec=60
+Unit=hakux-pr-sweep.service
+
+[Install]
+WantedBy=timers.target
