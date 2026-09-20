@@ -109,7 +109,8 @@ def main(argv=None):
         sys.exit("--region takes X0,Y0,X1,Y1")
 
     outs = []
-    print("region %s" % (region or "whole frame"))
+    # str() first: a 4-tuple in a %s would be unpacked as four arguments.
+    print("region %s" % str(region or "whole frame"))
     print("%-42s %-46s %5s %6s %7s" %
           ("run", "driver (read from the dump, not typed)", "imgs", "stip", "per100"))
     for d in args.dirs:

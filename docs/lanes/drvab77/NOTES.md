@@ -130,6 +130,43 @@ effect at *roughly a factor of 1.7*; it does **not** say the driver effect is
 zero, and nothing downstream may quote it as if it did. Buying a tighter
 bound means more runs per arm, and the cost is ~11 min of device time each.
 
+## P5. The second region, registered while the first arm was still running
+
+Timed honestly: this section was written after `t30-1` was queued and while it
+was in flight, and **before any result of this lane existed** -- no PPM of
+this lane had been scored, and `t30-1`'s result dir held no `DONE`. It is an
+addendum to P2's "both regions are reported", not a choice made after seeing a
+number.
+
+`R_lower` (`--region 0,288,640,480`, the bottom 40% where ground and deck sit)
+over the same four runs, again reproducing PR #165's figures exactly:
+
+| arm | R_lower stipple | per 100 |
+|---|---|---|
+| C3 | 20 / 73 | 27.4 |
+| C4 | 22 / 73 | 30.1 |
+| C5 | 17 / 73 | 23.3 |
+| C6 | 17 / 76 | 22.4 |
+
+**The T30 `R_lower` band is 22.4-30.1 per 100, and it is a 1.34x spread
+against `R_full`'s 2.5x.** That makes it the more sensitive of the two reads
+-- on the same four runs it would notice an effect less than half the size.
+It is registered here as a **secondary** read, with the same rule and the
+same arithmetic as P4: driver-dependence needs both runs of an arm clearly
+outside 22.4-30.1 on the same side, which is `>=1.15x` or `<=0.85x` the T30
+mean of ~25.8.
+
+**Neither region is promoted over the other after the fact.** If the two
+disagree -- `R_full` null and `R_lower` outside its band, or the reverse --
+the verdict reported is the one from `R_full` (the pre-registered primary,
+and the band the brief names), and the disagreement is reported as a
+disagreement. PR #165's own caveat is carried with it: `R_lower` was refused
+by that lane's confound guard on C5 and C6, so its *correlation legs* there
+were descriptive only. That guard is about pairing frames with draw records
+and does not touch the rate, which is measured from pixels alone -- but a
+reader who wants to lean on `R_lower` should know the guard has fired on this
+region before.
+
 ---
 
 # Results
