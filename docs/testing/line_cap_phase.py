@@ -31,6 +31,9 @@ vertex, which is exactly where the residual was.
                 rule can possibly touch, and the two tie populations
   --depth       the cut vertex's synthesised depth against the parallelogram
                 it replaces -- the one quantity no golden here reads
+  --quantise    the device's world: every emitted vertex snapped to the 1/256
+                grid before coverage, which is the only way this file can see
+                a clip that moves a vertex without moving a pixel centre
 """
 import argparse
 import os
@@ -264,7 +267,10 @@ def corners(golden_dir, lo, hi):
             print(f"  {k:>8}  {c2[k]}")
 
 
-def shader_poly(e, w, tie=1.0 / 256.0):
+DEADBAND = 0.5
+
+
+def shader_poly(e, w, tie=1.0 / 256.0, deadband=DEADBAND, quant=None):
     """A transliteration of what emit_line() now emits, corner for corner.
 
     This is NOT the model above.  It is the geometry-shader code path -- the
@@ -273,6 +279,20 @@ def shader_poly(e, w, tie=1.0 / 256.0):
     the model's is what says the shader draws the rule that was derived rather
     than something next to it.  A rule measured offline and a shader that does
     not implement it is the failure this catches, and nothing else here would.
+
+    `deadband` is cap_clip()'s own: a plane the polygon violates by less than
+    this is not clipped at all, and the four corners are handed back
+    untouched.  0.5 is the shipped value and is not a tuning constant -- the
+    clip planes land on whole pixel INDICES and the rasteriser samples pixel
+    CENTRES, so a sliver shallower than half a pixel provably contains no
+    sample.  Pass 0.0 for the pre-deadband shader, which is the mutant
+    --quantise scores against.
+
+    `quant` snaps every emitted vertex to that grid, which is what the device
+    does at subPixelPrecisionBits = 8 (1/256) before it tests coverage.  The
+    default None is the exact-arithmetic rasterisation the rest of this file
+    scores with -- and is blind, by construction, to a clip that moves a
+    vertex without moving a sample.  That blindness is audit finding N1.
     """
     ax, ay, bx, by, dx, dy = geo(e)
     l2 = dx * dx + dy * dy
@@ -290,6 +310,11 @@ def shader_poly(e, w, tie=1.0 / 256.0):
     hi = float(np.ceil(max(m0, m1) + w / 2.0)) + 1.0
 
     def clip(poly, bound, dirn):
+        deep = 0.0
+        for p in poly:
+            deep = max(deep, -dirn * ((p[1] if xmaj else p[0]) - bound))
+        if deep < deadband:
+            return poly
         out = []
         for i in range(len(poly)):
             a, b = poly[i], poly[(i + 1) % len(poly)]
@@ -303,12 +328,16 @@ def shader_poly(e, w, tie=1.0 / 256.0):
                             a[1] + (b[1] - a[1]) * f))
         return out
 
-    return clip(clip(P, lo, 1.0), hi, -1.0)
+    poly = clip(clip(P, lo, 1.0), hi, -1.0)
+    if quant is not None:
+        poly = [(np.round(x / quant) * quant, np.round(y / quant) * quant)
+                for x, y in poly]
+    return poly
 
 
-def shader_mask(e, w, tie=1.0 / 256.0):
+def shader_mask(e, w, tie=1.0 / 256.0, **kw):
     """The pixels that polygon covers, sampled at pixel centres."""
-    poly = shader_poly(e, w, tie)
+    poly = shader_poly(e, w, tie, **kw)
     if len(poly) < 3:
         return np.zeros((lp.H, lp.W), bool)
     area = 0.0
@@ -403,6 +432,110 @@ def vs_goldens(golden_dir, cap_dir, lo, hi):
               "perfect zero, so this line is the check on that.")
 
 
+def quant_check(golden_dir, lo, hi, tie=1.0 / 256.0, quant=1.0 / 256.0):
+    """N1's check: does the clip move geometry where it cannot move a sample?
+
+    THE FAILURE THIS EXISTS FOR.  Every other instrument in this file
+    rasterises in double precision at exact pixel centres, so it scores the
+    clip as inert on every capture below w = 24 -- and the device scored eight
+    of those captures WORSE (`[job.arms] VERDICT: FAIL`, 2026-09-19, w = 4 to
+    14).  The clip was biting on 9 to 20 of each capture's 57 edges down to
+    w = 0.625, cutting slivers a few hundredths of a pixel deep: too shallow to
+    move a sample in float64, deep enough to re-quantise a vertex on silicon,
+    where the cut fraction is computed in float32 and every emitted vertex is
+    snapped to 1/256 of a pixel.  An instrument blind to that cannot clear a
+    change that causes it, which is why this one snaps the vertices too.
+
+    THE THREE LEGS, scored against the UNCLIPPED parallelogram -- master's own
+    geometry, the arm's A side:
+
+      1. The deadband costs no pixel the exact model scores.  Exact coverage
+         of the shipped polygon equals the pre-deadband polygon's on every
+         capture, so --rivals' 102 and --shader's 544 and 21 are untouched by
+         it and the comment in geom.c that quotes them stays true.
+      2. Where the clip is a no-op to the exact model, it is a no-op to the
+         QUANTISED one too: on every capture whose exact coverage the clip
+         does not change, the quantised polygon covers exactly what master's
+         quantised parallelogram covers.  This is the leg the device failed.
+      3. The mutant.  Re-run with the deadband at 0 -- the geometry this
+         branch shipped until this remediation -- and leg 2 must FAIL, or it
+         is a check that discriminates nothing.
+    """
+    cache = {}
+
+    def mask_of(poly):
+        if len(poly) < 3:
+            return np.zeros((lp.H, lp.W), bool)
+        key = tuple(poly)
+        m = cache.get(key)
+        if m is None:
+            area = 0.0
+            for i in range(len(poly)):
+                x0, y0 = poly[i]
+                x1, y1 = poly[(i + 1) % len(poly)]
+                area += x0 * y1 - x1 * y0
+            sgn = 1.0 if area >= 0 else -1.0
+            m = np.ones((lp.H, lp.W), bool)
+            for i in range(len(poly)):
+                x0, y0 = poly[i]
+                x1, y1 = poly[(i + 1) % len(poly)]
+                side = ((x1 - x0) * (lp.PY - y0) - (y1 - y0) * (lp.PX - x0))
+                m &= (sgn * side) >= 0.0
+            cache[key] = m
+        return m
+
+    variants = (("base", float("inf")), ("new", DEADBAND), ("old", 0.0))
+    print("%-14s%8s%9s%9s%10s%10s%10s" %
+          ("test", "w", "bite new", "bite old", "exact new", "quant new",
+           "quant old"))
+    leg1 = leg2 = True
+    mutant_px = fired = 0
+    tot_new = tot_old = 0
+    for test, w, g in lp.captures(golden_dir, lo, hi):
+        if test in lep.VOID:
+            continue
+        ex = {k: np.zeros((lp.H, lp.W), bool) for k, _ in variants}
+        qu = {k: np.zeros((lp.H, lp.W), bool) for k, _ in variants}
+        bites = {"new": 0, "old": 0}
+        for e in lp.EDGES:
+            for k, db in variants:
+                p = shader_poly(e, w, tie, deadband=db)
+                ex[k] |= mask_of(p)
+                qu[k] |= mask_of(shader_poly(e, w, tie, deadband=db,
+                                             quant=quant))
+                if k != "base" and len(p) > 4:
+                    bites[k] += 1
+        e_new = int((ex["new"] ^ ex["base"]).sum())
+        e_old = int((ex["old"] ^ ex["base"]).sum())
+        q_new = int((qu["new"] ^ qu["base"]).sum())
+        q_old = int((qu["old"] ^ qu["base"]).sum())
+        if e_new != e_old:
+            leg1 = False
+        if e_new == 0:
+            tot_new += q_new
+            tot_old += q_old
+            if q_new != 0:
+                leg2 = False
+            if q_old != 0:
+                mutant_px += q_old
+                fired += 1
+        print("%-14s%8.3f%9d%9d%10d%10d%10d" %
+              (test, w, bites["new"], bites["old"], e_new, q_new, q_old))
+
+    print("\nover the captures where the clip changes NO pixel of the exact "
+          "model:\n  the shipped deadband moves %d quantised px; the "
+          "pre-deadband geometry moves %d, on %d captures"
+          % (tot_new, tot_old, fired))
+    print("the deadband costs no pixel the exact model scores: %s"
+          % ("PASS" if leg1 else "FAIL"))
+    print("where the clip cannot move a sample it moves no quantised px: %s"
+          % ("PASS" if leg2 else "FAIL"))
+    print("the pre-deadband geometry trips that leg: %s"
+          % ("PASS" if mutant_px > 0
+             else "FAIL -- the check discriminates nothing"))
+    return 0 if (leg1 and leg2 and mutant_px > 0) else 1
+
+
 VARIANTS = {
     "perp": dict(cap="perp"),
     "pen": dict(cap="perp", pen=1.0, tie="floor1"),
@@ -433,6 +566,11 @@ def main():
                     help="rasterise emit_line()'s own polygon and compare it "
                          "with the model, pixel for pixel")
     ap.add_argument("--shader-tie", type=float, default=1.0 / 256.0)
+    ap.add_argument("--quantise", action="store_true",
+                    help="THE DEVICE'S WORLD: snap every emitted vertex to "
+                         "the 1/256 grid before testing coverage, and check "
+                         "the clip moves nothing where it cannot move a "
+                         "sample (audit finding N1)")
     ap.add_argument("--vs-goldens", metavar="CAPTUREDIR", default=None,
                     help="THE ARM LEG: whole-capture ink mismatch of a "
                          "capture set against the goldens, coverage only")
@@ -455,6 +593,10 @@ def main():
     if a.shader:
         shader_check(a.goldens, a.min_width, a.max_width, a.shader_tie)
         return
+
+    if a.quantise:
+        sys.exit(quant_check(a.goldens, a.min_width, a.max_width,
+                             a.shader_tie))
 
     if a.corners:
         corners(a.goldens, a.min_width, a.max_width)
@@ -505,13 +647,20 @@ def controls(golden_dir, lo, hi):
                    differ by one exactly when v is an integer.  If this count
                    is ZERO the goldens do not select the outward rounding at
                    all, and saying so is the point of running this.
+
+                   ONLY THE HIGH SIDE COUNTS FOR THAT QUESTION, which is
+                   audit finding N2.  edge_mask() computes the low bound with
+                   np.floor() whatever `tie` says; the `tie` switch reaches
+                   m_max + w/2 alone.  Both halves are printed, and it is the
+                   high one the claim rests on -- the total is over twice the
+                   population it used to be quoted as.
          centre    the same boundaries landing on a pixel CENTRE, which is
                    what separated low-open from closed for the rejected
                    centre-sampled band.  Kept so the rejected rival's
                    population can still be read, and labelled as its own.
     """
     touch = agree = wrong = 0
-    ties_int = ties_centre = bounds = 0
+    ties_int = ties_int_hi = ties_centre = bounds = 0
     for test, w, g in lp.captures(golden_dir, lo, hi):
         if test in lep.VOID:
             continue
@@ -525,10 +674,12 @@ def controls(golden_dir, lo, hi):
         for e in lp.EDGES:
             ax, ay, bx, by, dx, dy = geo(e)
             m0, m1 = (ay, by) if abs(dx) >= abs(dy) else (ax, bx)
-            for v in (min(m0, m1) - w / 2, max(m0, m1) + w / 2):
+            for hi_side, v in ((False, min(m0, m1) - w / 2),
+                               (True, max(m0, m1) + w / 2)):
                 bounds += 1
                 if abs(v - np.round(v)) < 1e-9:
                     ties_int += 1
+                    ties_int_hi += int(hi_side)
                 if abs(v - np.floor(v) - 0.5) < 1e-9:
                     ties_centre += 1
     print(f"pixels the SHIPPED cap rule (pen=1.0, tie=ceil) removes from the "
@@ -537,9 +688,12 @@ def controls(golden_dir, lo, hi):
     print(f"  of those, golden-lit  (the clip was wrong):   {wrong}")
     print(f"\n{bounds} cap boundaries (m_min - w/2, m_max + w/2) over the same "
           f"captures")
-    print(f"  landing on a whole pixel INDEX -- the population that separates "
-          f"tie=ceil from tie=floor1: {ties_int}")
-    if ties_int == 0:
+    print(f"  landing on a whole pixel INDEX: {ties_int}"
+          f"  ({ties_int - ties_int_hi} low side, {ties_int_hi} high side)")
+    print(f"    the population that separates tie=ceil from tie=floor1 is the "
+          f"HIGH side\n    alone -- the low bound is np.floor() under every "
+          f"tie: {ties_int_hi}")
+    if ties_int_hi == 0:
         print("    ZERO: these goldens CANNOT distinguish the shipped outward "
               "rounding\n    from floor + 1.  The rule is selected by the "
               "low-side corners and by\n    --rivals' 102 vs 115, not by this "

@@ -431,6 +431,14 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * the unclipped four-corner case emits exactly what it emitted
          * before, bit for bit, rather than an arithmetically-equal mix().
          *
+         * That is a statement about the case where the clip does not bite,
+         * NOT about narrow lines: until the half-pixel deadband in cap_clip()
+         * the clip bit on lines as narrow as w = 0.625, where the offline
+         * model says no pixel can change, and the device disagreed with the
+         * model eight captures' worth.  The deadband is what ties the two
+         * together; read it before trusting this paragraph about any
+         * particular width.
+         *
          * WHICH VARYINGS ARE INTERPOLATED IS THE QUALIFIER TABLE IN
          * glsl/common.c, NOT THE SHADE MODE.  Only vtxD0/D1/B0/B1 follow the
          * shade mode; vtxFog, vtxT0..T3 and vtxPointSize carry `smooth` (or
@@ -536,11 +544,45 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * f) is (1 - f) + f and is not required to be exactly 1.  A T of
          * 1 - eps misses emit_line_vertex()'s endpoint early-out and
          * synthesises a vertex where an endpoint's own values were available.
+         *
+         * THE HALF-PIXEL DEADBAND, and why it is not a fudge factor.  A plane
+         * the polygon pokes past by less than half a pixel is not clipped at
+         * all: the four corners are handed straight back, unrounded and in
+         * their original order.  The bounds below are WHOLE PIXEL INDICES --
+         * floor() and ceil() + 1 of the endpoints' extended minor coordinate
+         * -- and this renderer rasterises at one sample per pixel, at the
+         * pixel CENTRE (every rasterizationSamples in pgraph/vk/ is
+         * VK_SAMPLE_COUNT_1_BIT).  The nearest centre to an integer bound is
+         * half a pixel away, so the removed sliver of a shallower cut
+         * provably contains no sample and the clip can only re-quantise
+         * geometry that was previously exact.
+         *
+         * Which is not free, and the device said so.  Without this deadband
+         * the clip bit on 9 to 20 of each capture's 57 edges all the way down
+         * to w = 0.625, cutting slivers a few hundredths of a pixel deep;
+         * every offline instrument in docs/testing/line_cap_phase.py scored
+         * that as inert because it rasterises in double precision at exact
+         * centres, and the device scored EIGHT captures at w = 4 to 14 worse
+         * ([job.arms] VERDICT: FAIL on PR #141, 2026-09-19).  Silicon cuts at
+         * f = da / (da - db) in float32 from a sliver-sized da and then snaps
+         * the result to 1/256 of a pixel, so a centre a thousandth of a pixel
+         * inside the cut edge goes one way here and the other there.
+         *
+         * `line_cap_phase.py --quantise` is the instrument that can see this
+         * -- the same polygon with its vertices snapped to the 1/256 grid
+         * before the coverage test -- and it carries the deadband-at-zero
+         * mutant inside it, so a check that stopped discriminating would say
+         * so.
          */
         mstring_append(
             output,
             "int cap_clip(inout vec2 P[6], inout float T[6], int np,\n"
             "             bool xmaj, float bound, float dir) {\n"
+            "  float deep = 0.0;\n"
+            "  for (int i = 0; i < np; i++) {\n"
+            "    deep = max(deep, -dir * ((xmaj ? P[i].y : P[i].x) - bound));\n"
+            "  }\n"
+            "  if (deep < 0.5) { return np; }\n"
             "  vec2 Q[6];\n"
             "  float S[6];\n"
             "  int nq = 0;\n"
@@ -717,8 +759,21 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  * ceil(...) + 1) in coordinates.  Derived offline from the
                  * goldens, no device: docs/testing/line_cap_phase.py, with
                  * the corner table it was read off in
-                 * docs/lanes/linecap13/NOTES.md.  It is inert below w = 24,
-                 * where E/2 - w/2 is under a pixel.
+                 * docs/lanes/linecap13/NOTES.md.
+                 *
+                 * WHERE IT BITES, AND WHERE IT MUST NOT.  The first capture
+                 * whose COVERAGE this changes is w = 24, because below that
+                 * every sliver it would remove is shallower than the half
+                 * pixel between an integer bound and the nearest sample.  It
+                 * does not follow that the change cannot reach a narrower
+                 * line, and an earlier version of this comment said it did:
+                 * the clip still BIT there, on up to 20 of a capture's 57
+                 * edges down to w = 0.625, re-quantising exact corners for no
+                 * modelled gain, and the device scored eight captures between
+                 * w = 4 and w = 14 worse for it.  cap_clip()'s half-pixel
+                 * deadband is what makes the inertness a property of the
+                 * emitted geometry and not only of the offline model; see the
+                 * derivation there, and `--quantise` for the check.
                  *
                  * EVERY NUMBER BELOW NAMES THE INSTRUMENT THAT PRODUCED IT,
                  * because two instruments score this rule and they do not

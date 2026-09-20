@@ -211,14 +211,21 @@ both of its populations described a rule nobody adopted.  It now scores
       golden-lit  (the clip was wrong)                                  0
 
     5,472 cap boundaries over the same captures
-      landing on a whole pixel INDEX  (ceil vs floor1)               1,104
+      landing on a whole pixel INDEX  (ceil vs floor1)   1,104 = 617 low
+                                                                 + 487 high
       landing on a pixel CENTRE       (the rejected band's question) 1,038
 
 393 closes against `--rivals` (495 - 102), and every removed pixel is one the
 goldens agree should be dark -- the clip removes no lit pixel anywhere.  The
 audit left open whether any golden edge can distinguish the outward rounding
 from `floor + 1`, since every corner in the table above is non-integer; **it
-can, on 1,104 boundaries**, which is what the 102-vs-115 gap is decided on.
+can, on 487 boundaries**, which is what the 102-vs-115 gap is decided on.
+
+That 487 was quoted as 1,104 until the pass-2 audit's N2: `edge_mask()`
+computes the LOW bound with `np.floor()` whatever `tie` says, so only the
+high side separates `ceil` from `floor + 1`.  The conclusion is the same one
+-- 487 is not zero, so the goldens do select the outward rounding -- and the
+number is now 2.3x smaller.  `--controls` prints both halves.
 
 Also fixed, from the LOWs: the missing `docs/investigations/line-cap-phase.md`
 citation now points at this file (L1); the comment numbers now name their
@@ -247,6 +254,93 @@ refs moved too: `a_ref` is now master's own tip, so arm A and arm B differ by
 this lane's commits and nothing else, and `b_ref` names the remediated shader
 rather than the pre-audit one.
 
+## Attempt 4: the device FAIL, and the half-pixel deadband (pass-2 audit N1)
+
+The arm ran while attempt 3 was being audited and came back
+`VERDICT: FAIL` -- 32 better, **10 worse**, 124 same, against a prediction
+whose machine leg is `expect_counts: {"worse": 0}`.  Eight of the ten worse
+sat between `w = 4` and `w = 14`, where every instrument in this lane said not
+one pixel could change, and `Line_0064.*`/`Line_FFFFFFFF` (the VOID captures
+the device draws at 1.0) each moved `1,402 -> 1,401` under a `must_not_move`
+glob.
+
+**The offline model was right about pixels and wrong about geometry.**
+`E/2 - w/2` being under a pixel does not stop the clip BITING: the bounds are
+`floor(m_min - w/2)` and `ceil(m_max + w/2) + 1`, arbitrary reals rounded to
+integers, so an overhang of a hundredth of a pixel still crosses one.  The
+clip was cutting 3 to 20 of each capture's 57 edges all the way down to
+`w = 0.625`, removing slivers far too shallow to contain a pixel centre.  In
+double precision that is exactly inert.  On silicon the cut fraction is
+`f = da / (da - db)` in float32 over a sliver-sized `da`, every emitted vertex
+is then snapped to 1/256 of a pixel, and an exact corner that used to be
+emitted verbatim comes back re-quantised.  That is what the eight captures
+measured.
+
+**The fix is a deadband in `cap_clip()`, and 0.5 is derived, not tuned.**  A
+plane the polygon violates by less than half a pixel is not clipped at all --
+the four corners are handed straight back.  The clip planes land on whole
+pixel INDICES; this renderer rasterises one sample per pixel at the pixel
+CENTRE (every `rasterizationSamples` under `pgraph/vk/` is
+`VK_SAMPLE_COUNT_1_BIT`, and nothing in `pgraph/gl/` enables multisampling),
+so the nearest sample to any bound is half a pixel away and a shallower cut
+provably removes no sample.  The threshold is a property of where the
+rasteriser samples, not a number fitted to these captures -- and it explains,
+after the fact, why the model's first moving capture is `Line_0024.0`: the
+deepest sliver per capture crosses 0.5 px between `w = 16` (0.468) and
+`w = 24` (0.704).
+
+**`--quantise` is the instrument that can see this, because every other one
+here cannot.**  It rasterises the same polygon with each emitted vertex
+snapped to the 1/256 grid, and scores three legs against the UNCLIPPED
+parallelogram -- master's own geometry, the arm's A side.  Run on this tree:
+
+| | bites (of 57 edges) | exact px moved | quantised px moved |
+|---|---:|---:|---:|
+| every capture `w < 24`, before the deadband | 3 - 20 | 0 | 4 on 4 captures |
+| every capture `w < 24`, after | **0** | 0 | **0** |
+| `Line_0063.7` before / after | 32 / 26 | 40 / 40 | 41 / 41 |
+
+    the deadband costs no pixel the exact model scores: PASS
+    where the clip cannot move a sample it moves no quantised px: PASS
+    the pre-deadband geometry trips that leg: PASS
+
+The mutant lives inside the check, as `--depth`'s does: run with the deadband
+at 0 and leg 2 must fail, or the check discriminates nothing.
+
+**Read the 4 px honestly.**  The offline quantiser reproduces the CLASS of the
+device's failure and not its size: it flags `Line_0000.5`, `Line_0001.0`,
+`Line_0007.0` and `Line_0009.0`, and three of those four are on the device's
+own mover list (`Line_0001.0` -1, `Line_0007.0` +2, `Line_0009.0` +1, and
+`Line_0000.5` is one of the three captures the arm reported as PIXELS MOVED at
+an unchanged score).  It does not model float32 cut arithmetic or the
+rasteriser's fill rule, so it under-counts: 4 px offline against 13 captures
+moved on the device.  It is a tripwire for "the clip touched geometry it had
+no business touching", not a predictor of the device delta.
+
+**What the deadband does NOT fix, stated before the next arm.**  Two of the
+ten worse captures were at the wide end -- `Line_0063.0` (+2) and
+`Line_0063.1` (+6) -- where the clip legitimately bites and `--quantise`
+reports the same numbers with the deadband as without.  Those are the tie-bias
+residual this derivation has said from the start it will not chase.  So
+`expect_counts: {"worse": 0}` is retired as this prediction's machine leg and
+replaced by something sharper where the remediation actually acts: every
+capture below `w = 24`, plus the VOID ones the device draws at 1.0, must not
+MOVE AT ALL.  Below the deadband `emit_line()` emits master's four corners in
+master's order with master's values, so those captures must be byte-identical,
+and `runs_per_arm: 2` is now set so `ab_compare` can tell a byte difference
+from device nondeterminism -- which also answers the audit's "noise 0 is one
+run per arm, not a measured zero".
+
+**One thing the next arm should settle that this lane cannot.**
+`Line_width/Fill_0032.0` moved `26,721 -> 26,715` on the failing arm, under a
+`must_not_move` glob, and nothing in this lane's diff can reach it: with
+`widen_lines` false the generator emits the byte-identical fill shader it
+emitted before (`max_vertices = 3`, `emit_vertex()` unrenamed).  With one run
+per arm there is no noise estimate to weigh that against.  Two runs per arm
+will say whether it is the device or something real; the glob stays in the
+prediction either way, because dropping a tripwire that fired is how a gate
+stops being one.
+
 ## What the next lane should not repeat
 
 - **Do not quote the epsilon-tie score as a device prediction.**  It is a
@@ -270,3 +364,12 @@ rather than the pre-audit one.
 - [x] `master` merged forward (the PR was CONFLICTING, so no CI had run at all)
 - [x] prediction re-registered on live refs, past `request.sh`'s key gate
       (`docs/testing/predictions/line-cap-clip.json`)
+- [x] pass-2 audit remediated: N1 (the half-pixel deadband + `--quantise`),
+      N2 (`--controls` splits the boundary population), N3 (the PR body no
+      longer asserts the two figures its own appendix retires)
+- [x] all six Vulkan cases `geom_dump` emits compile with the NDK's `glslc`
+      after the deadband; `--shader` still reads 935 -> 544 at 1/256 and
+      414 -> 21 at 1e-9, `--rivals` still 495 -> 102, `--depth` PASS/PASS
+- [ ] the re-judged arm: two runs per side, `a_ref` master's tip, `b_ref` the
+      deadbanded shader.  The FAIL of 2026-09-19 16:50 is answered by the
+      remediation above and by nothing else until that verdict lands.
