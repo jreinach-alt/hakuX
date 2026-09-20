@@ -142,22 +142,26 @@ def days(sec):
     return "%.1fd" % (sec / 86400.0) if sec is not None else "unknown"
 
 
-def lane_exists(name):
-    """Three independent ways a lane can still exist; any one of them is enough.
+def lane_live(name):
+    """The two facts that are NOT a board file: a running unit, or an open PR.
 
-    A lane is a running unit, a territory row, or an open PR on its branch
-    (docs/ORCHESTRATION-DESIGN.md's definition, and the one fleet.py had to
-    relearn: liveness comes from systemd and the rest from GitHub, never from
-    a file that records what was true once). Only when all three are absent is
-    the name a ghost.
+    fleet.py had to relearn this one: liveness comes from systemd and the rest
+    from GitHub, never from a file that records what was true once.
     """
-    return (("hakux-lane-%s" % name) in units
-            or name in lanes
-            or ("lane/%s" % name) in heads)
+    return ("hakux-lane-%s" % name) in units or ("lane/%s" % name) in heads
 
 
-import re
-LANE_RE = re.compile(r"\blane[./]([A-Za-z0-9][A-Za-z0-9_-]*)")
+def lane_exists(name):
+    """Three independent ways a lane can still exist; any one is enough.
+
+    A territory row counts HERE because a row is the board's live allocation:
+    an issue labelled for a lane the board still has a row for is allocated,
+    not orphaned. It deliberately does NOT count for the territory-row shape
+    below, where the row is the thing under suspicion -- a claim cannot be the
+    evidence for itself, and letting it be made that whole class unreportable.
+    """
+    return lane_live(name) or name in lanes
+
 
 unclassified, ghost, closable, norow, unpicked = [], [], [], [], []
 
@@ -180,7 +184,6 @@ for r in issues:
 
     status = (row.get("status") or "").strip()
     disp = (row.get("disposition") or "").strip()
-    blocked_on = (row.get("blocked_on") or "").strip()
     dstate = (row.get("dispatch_state") or "").strip()
 
     # 2. UNTRIAGED. `unclassified` is a legal disposition and check_coverage.py
@@ -191,26 +194,47 @@ for r in issues:
     if disp in ("", "unclassified"):
         unclassified.append((n, title, disp or "(absent)", quiet))
 
-    # 3. AN OWNER THAT NO LONGER EXISTS. Three shapes, one meaning: the row or
+    # 3. AN OWNER THAT NO LONGER EXISTS. Two shapes, one meaning: the row or
     #    the label says somebody holds this and nobody does.
     #
     #    The `lane:` LABEL is the dangerous one. board_filter's SKIP_PREFIX
     #    drops every issue carrying one, so an issue labelled for a lane that
     #    has exited is invisible to the board's capacity trigger FOREVER --
     #    the same shape as an orphaned `claimed:cloud`, and with no `finish`
-    #    to run. Nothing else on this host looks at it.
+    #    to run. `cloud.sh finish` does not remove it either: the issue path
+    #    adds `lane:cloud-<n>` at claim and clears only `claimed:cloud`.
+    #
+    #    A THIRD SHAPE WAS ASKED FOR AND IS DELIBERATELY NOT HERE: a
+    #    `blocked_on` that NAMES a lane which no longer exists. It was
+    #    implemented, then measured against the live board on 2026-09-19, and
+    #    it is a false-positive generator: it produced 11 of 16 findings and
+    #    every one of them was the field doing its job. #91's reads "PR #102
+    #    (lane.blitsafe, folded into master 3d072c6ea6) did NOT deliver a fix
+    #    here"; #13's records a tracker note written at lane.lows' request;
+    #    #68's attributes a three-arm re-run. A blocker NAMES the lane that
+    #    established it, and that lane having finished is the normal case --
+    #    naming it is history, not a claim of ownership.
+    #
+    #    Narrowing it to "waiting on lane.X" rather than dropping it was the
+    #    obvious alternative and was rejected: there is not one positive
+    #    example on the live board to calibrate such a phrase list against, so
+    #    it would be a classifier whose only tested case is the negative one.
+    #    A gate that is wrong eleven times out of sixteen on its first real
+    #    run teaches its reader to skip the section, which costs more than the
+    #    shape is worth.
     ghosts = []
     for lbl in names:
         if lbl.startswith("lane:") and not lane_exists(lbl[5:]):
             ghosts.append("label `%s` (no unit, no territory row, no open PR on lane/%s)"
                           % (lbl, lbl[5:]))
     for lane in owned.get(n, []):
-        if not lane_exists(lane):
+        # `standing` rows are a deliberate long-lived reservation and are not
+        # tied to a session at all, so "no unit" says nothing about them.
+        if (lanes.get(lane) or {}).get("standing"):
+            continue
+        if not lane_live(lane):
             ghosts.append("territory row `lane.%s` claims it and that lane has no unit and no open PR"
                           % lane)
-    for m in set(LANE_RE.findall(blocked_on)):
-        if not lane_exists(m):
-            ghosts.append("`blocked_on` names lane `%s`, which no longer exists" % m)
     if ghosts:
         ghost.append((n, title, ghosts, quiet))
 

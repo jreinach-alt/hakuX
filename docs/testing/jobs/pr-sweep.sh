@@ -64,12 +64,10 @@ CLAIM_GRACE_SECS="${PR_SWEEP_CLAIM_GRACE_SECS:-1800}"
 QUIET_SECS="${PR_SWEEP_QUIET_SECS:-21600}"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 
-fail_soft() { say "$*"; }
-
 if ! command -v gh >/dev/null 2>&1 || ! timeout 30 gh auth status >/dev/null 2>&1; then
     # FAILS QUIET, like every other gate here. A gh outage that made this file
     # report every PR as stuck would be worse than the silence it replaces.
-    fail_soft "no usable gh; this tick is blind and repairs nothing"
+    say "no usable gh; this tick is blind and repairs nothing"
     exit 0
 fi
 
@@ -249,7 +247,7 @@ PY
 prs=$(timeout 60 gh pr list --repo "$GH_REPO" --state open --limit 100 \
         --json number,headRefName,headRefOid,isDraft,mergeable,labels,updatedAt,statusCheckRollup,title 2>/dev/null)
 if [ -z "$prs" ]; then
-    fail_soft "gh returned nothing for the open PR list; this tick is blind and repairs nothing"
+    say "gh returned nothing for the open PR list; this tick is blind and repairs nothing"
     exit 0
 fi
 rows=$(classify "$prs" "$units" "$trunk_time")
