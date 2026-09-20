@@ -51,8 +51,16 @@ check "  and the swatch alpha is still its fixed point" \
       x1a7has "the swatch alpha 0x22 is its fixed point                   ok" "$X1A7"
 check "  so the suite is stated as unable to validate the implementation" \
       x1a7has "cannot distinguish them" "$X1A7"
-check "no --proposed mode is advertised" \
-      x1a7hasnt "scoring the PROPOSED implementation" "$X1A7"
+# AUDIT M1-R: this check used to grep $X1A7 -- the --selftest output -- for
+# "scoring the PROPOSED implementation", a string only score() ever printed,
+# on the --proposed path. It was green against the exact code it forbids and
+# always had been: a guard that cannot fail. Grep the SOURCE for the wiring,
+# and separately prove the flag changes no behaviour.
+X1A7SRC=$(cat "$REPO/docs/testing/x1a7_forward_model.py")
+check "no --proposed mode is wired into argv" \
+      x1a7hasnt "'--proposed' in sys.argv" "$X1A7SRC"
+check "  and no separate prediction set exists for it to score" \
+      x1a7hasnt "def proposed_predictions" "$X1A7SRC"
 
 check "the selftest's own verdict is a pass" x1a7has "all checks pass" "$X1A7"
 
@@ -81,3 +89,11 @@ check "with no image stack it still REPORTS rather than dying on the import" \
       x1a7has "NOT compared -- this is a FAILURE, not agreement" "$X1A7I"
 check "  and does not leak a traceback instead of a verdict" \
       x1a7hasnt "Traceback (most recent call last)" "$X1A7I"
+
+# AUDIT M1-R, behavioural half: passing --proposed must select nothing. If a
+# distinct mode is ever reinstated, these two outputs diverge. Needs neither
+# goldens nor an image stack, so it runs on the runner too.
+X1A7P=$(python3 "$REPO/docs/testing/x1a7_forward_model.py" --proposed \
+        "$T/x1a7-no-such-goldens" 2>&1)
+check "passing --proposed selects no different mode" \
+      [ "$X1A7P" = "$X1A7N" ]

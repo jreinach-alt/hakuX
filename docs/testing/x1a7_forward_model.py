@@ -230,15 +230,21 @@ def selftest():
     # the swatch alpha is its fixed point, so this suite cannot tell the
     # implementation from the model at all.
     print('\nwhy there is no --proposed mode (audit M1)')
-    _, total, same_fn, fixed = coincidence()
+    differ, total, same_fn, fixed = coincidence()
     for label, got in (
             ('the write transform is r1_blend_dst_alpha on all 256 values',
              same_fn),
             ('the swatch alpha 0x22 is its fixed point', fixed)):
         bad += not got
         print('  %-58s %s' % (label, 'ok' if got else 'NO LONGER TRUE'))
-    print('  so TestDstAlpha cannot distinguish them over any of %d inputs'
-          % total)
+    # Audit L-new: this number is the SWEEP's result, not a product of
+    # constants. coincidence() scores all `total` inputs and `differ` is what
+    # it found; printing `total` alone put a figure in prose where a measured
+    # count belongs.
+    bad += differ != 0
+    print('  substituting the write transform changes %d of %d inputs  %s'
+          % (differ, total, 'ok' if not differ else 'UNEXPECTED'))
+    print('  so TestDstAlpha cannot distinguish them at all')
     print('  -- validating the implementation needs XA_*_Add_SrcA_DstA,')
     print('     the capture where alpha blending is live.')
 
@@ -266,15 +272,23 @@ def score(goldens):
     # assertion satisfied for a reason other than the one it names, which is
     # the very shape H1 was. Resolve first, report first, import only to
     # compare.
-    resolved = {}
+    resolved, why = {}, {}
     for name in names:
         hits = sorted(glob.glob(os.path.join(goldens, '*', name + '.png')))
         if len(hits) == 1:
             resolved[name] = hits[0]
+        elif not hits:
+            why[name] = 'no golden under %s' % goldens
+        else:
+            # Audit L-new-2: when EVERY capture is ambiguous, `resolved` is
+            # empty and the old code reported "no golden" under a root that
+            # holds several -- the opposite of what happened.
+            why[name] = ('%d candidate goldens, ambiguous -- %s'
+                         % (len(hits), ', '.join(hits)))
 
     if not resolved:
         for name in names:
-            problems.append('%s: no golden under %s' % (name, goldens))
+            problems.append('%s: %s' % (name, why[name]))
         missing = expected
         for p in problems:
             print('PROBLEM: %s' % p)
