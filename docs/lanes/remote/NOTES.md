@@ -215,6 +215,13 @@ background. Both variants regress that capture, so neither ships.
 
 ### The conclusion, and it is a design statement rather than a hypothesis
 
+> **HALF OF THIS IS WITHDRAWN — see “A CLEAR writes the pad bit too”
+> at the end of this file (2026-09-20, fourth judgement).** The word
+> *raster* is too narrow by 98,208 pixels of 98,304: `NV097_CLEAR_SURFACE`
+> writes the pad bit as well, and a design that gates on draw coverage
+> alone is worse than one that gates on nothing. The rest of the section
+> stands.
+
 **The pad bit is not a property of the memory that a reader applies. It is
 written by the raster, per pixel, and is absent where the raster never
 wrote.** Blend surface draws two full-surface quads so every pixel carries
@@ -1373,3 +1380,106 @@ route that does not exist, not the discrepancy.
 
 **The device ask is withdrawn.** #62 finding 2 has nothing for a device lane to
 confirm, and the offer should not have stood after this was known.
+
+
+## A CLEAR writes the pad bit too, and the two "rival mechanisms" are one (2026-09-20, fourth judgement)
+
+**What the section above got wrong, in its own words:**
+
+> The pad bit … is written by the raster, per pixel, and is absent where the
+> raster never wrote.
+
+The word *raster* is wrong, and wrong in the direction that costs most. A
+`NV097_CLEAR_SURFACE` writes it too.
+
+### The instrument, and why only this one can say so
+
+`Clear::SCF_X1A7R8G8B8_{Z,O}`. `ClearTests::TestSurfaceFmt` renders a 128×128
+surface of the format under test, fills it with `NV097_CLEAR_SURFACE`, draws
+**one** 4×4 centre mark (`kBlackCenterMarkSize = 2.f`) and nothing else, then
+samples that memory back as a **linear `A8B8G8R8`** texture with blending off
+on the left half. The texture unit is never told the memory was X1A7, so
+anything X1A7-shaped in the result **is in the bytes**. Every other X1A7
+capture composites the surface and shows a function of them — which is why
+`x1a7_forward_model.py` needs a model of the composition and this does not.
+
+| | |
+|---|---:|
+| surface pixels, six solid 128×128 rects, zero holes | 98,304 |
+| covered by the one 4×4 draw | **96** |
+| written by `NV097_CLEAR_SURFACE` and nothing else | **98,208** |
+| where `_O == _Z \| 0x80` | **98,304 — every one, no exceptions** |
+| inside a surface without it | **0** |
+| cleared-only pixels with alpha `0x00` that still carry it | 32,736 |
+
+The 96 drawn pixels read `0x7f` in `_Z` and `0xff` in `_O`: the 7-bit
+quantisation visible directly rather than inferred.
+
+### Why the earlier reading was reasonable and still wrong
+
+Both of its observations hold. Blend surface *does* draw two full-surface
+quads, so every pixel there carries the bit. Surface format's background
+*is* unstamped. What was wrong is the inference joining them. That background
+is not "a region the raster never touched" — it is memory the **guest CPU**
+memset (`surface_format_tests.cpp:216` memsets the whole texture region
+before the pad format is bound), which the GPU then never wrote at all. A
+clear is a GPU write and does stamp; a CPU memset is not and does not. Two
+different facts wearing one sentence.
+
+### What that does to the next step
+
+The section above says to carry the guest representation "for pixels the
+raster writes — which only the fragment path can know". **The fragment path
+cannot see a clear**, and on this capture that is 98,208 of 98,304 pixels. So
+that next step, implemented literally, would leave almost the whole surface
+unconverted — worse than converting all of it, which is what was measured and
+reverted.
+
+And the two options recorded as rivals — *a separate per-surface channel* and
+*drawn-coverage tracking* — are **one mechanism**. The channel is an
+implementation of the tracking, not an alternative to it. There is one open
+question, not two: how the download learns which bytes the GPU wrote,
+clears included.
+
+### It is not an X1A7 quirk either
+
+`X8R8G8B8_{Z,O}` and `X1R5G5B5_{Z,O}` carry the same story on the same
+capture, each in its own terms — X8R8G8B8's X field is the whole alpha byte,
+so `_Z` reads `0x00` and `_O` reads `0xff` on all 98,304, and the 1555 pair
+is sampled two words to a texel so its bit 15 lands in a colour channel.
+**For those two the blend unit has no destination alpha to lose**
+(`vk/draw.c:surface_color_format_dst_alpha_is_one()`), so the host alpha byte
+is free to carry the X constant. Only X1A7 has seven real alpha bits under
+the pad, and therefore only X1A7 has the one-byte-two-readers conflict.
+
+### What did not change
+
+A download still sees only bytes and still cannot tell a GPU-written one from
+a guest-written one. Storing the guest byte in the host alpha is still
+refuted — and now on a corrected model: `compose()` had been applying the
+write side to the swatch pass only, not to the background pass, so a design
+that changes the stored byte was scored against a surface that changed
+behaviour halfway through the test. Fixing that left `guest byte in the host
+surface` at 23 of 32 and took `guest byte stored, blend still reads expand7`
+from a spurious **0 of 32** to **23 of 32**. Correcting the blend's read does
+not buy anything, because the byte the blend reads is the stored one either
+way. The 7-bit quantisation is still carried forward.
+
+### Where the numbers live now
+
+`docs/testing/x1a7_forward_model.py`'s `DESIGNS` table prices the four whole
+designs end to end (18 / 0 / 23 / 23 of 32), with `today` and the model as
+asserted controls. `docs/testing/x1a7_clear_bytes.py` re-derives every count
+in this section from the goldens, and scores a run directory against them.
+Both self-test without a disc, because the CI runner has neither goldens nor
+numpy.
+
+### The coverage gap this exposed, which is the part worth carrying
+
+**The `Clear` suite is in none of the six suites `[job.arms]` scores and not
+among the 236 captures of `iso_surf1`.** The one capture in the corpus that
+reads the X-format bytes directly has been outside every instrument this lane
+has used, on both renderers, for the whole campaign. It is also where #164's
+clear-half fix is measurable: desktop OpenGL, `SCF_X8R8G8B8_Z8R8G8B8`
+98,208 → 0 and `SFC_X1R5G5B5_Z1R5G5B5` 49,104 → 0, with `iso_surf1` 0 better
+/ 0 worse / 236 same beside it and a same-binary control at 0 / 0 / 236.
