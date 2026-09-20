@@ -90,14 +90,14 @@ def quad_of(img, qx, qy):
 
 # ------------------------------------------------------------------ --stored
 def luminance8(r, g, b):
-    """`texture_stage.cpp:220/237/274` -- a float32 sum, then a C cast."""
+    """`texture_stage.cpp:220/237/274-277` -- a float32 sum, then a C cast."""
     f = np.float32
     v = f(0.299) * f(r) + f(0.587) * f(g) + f(0.114) * f(b)
     return int(v)
 
 
 def stored_y16(y8):
-    """`texture_stage.cpp:275` -- trunc(Y8 / 255 * 65535), in float32."""
+    """`texture_stage.cpp:270-277` -- trunc(Y8 / 255 * 65535), in float32."""
     f = np.float32
     return int(f(f(y8) / f(255.0)) * f(65535.0))
 
@@ -169,7 +169,7 @@ def report_columns(capdir):
     g16, g8 = gold(suite, "BumpMap_Y16"), gold(suite, "BumpMap_Y8")
     print("""`Bump map`: where the hardware Y16/Y8 difference sits in the quad.
 
-The draw sets TEXCOORD0 to 1/w..3/w (bump_map_tests.cpp:119), so the quad
+The draw sets TEXCOORD0 to 1/w..3/w (bump_map_tests.cpp:124), so the quad
 spans bump texels 1..3 and crosses GenerateBumpMapSurface's x >= 2 seam at
 its midpoint, column 84 of 168.  Columns are counted from the quad's left.
 """)
