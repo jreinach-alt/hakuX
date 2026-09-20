@@ -18,67 +18,151 @@ that constant, and the low byte `0xA3` is 163 — the GPU revision the console's
 own system-info screen reports. Three independent sources agree, which is what
 makes the disagreements below worth reading.
 
-## Disagreements with the tree
+## WITHDRAWN: two "disagreements" that were an endian flip
+
+**`NV_PMC_INTR_0` bit 7 and `NV_PMC_INTR_EN_0` bits 24-25 are not findings.**
+They were reported as silicon disagreeing with `nv2a_regs.h`. They are the same
+declared bits, read through a byte swap that the sweep itself caused.
+
+`0x000004` is **`NV_PMC_BOOT_1`**, whose low bit is the MMIO endian switch on
+NVIDIA parts of this generation. The write sweep wrote `0xFFFFFFFF` to it at
+the second register it touched, and every access afterwards was byte-swapped.
+
+The evidence is not an argument from plausibility:
+
+| check | result |
+|---|---|
+| `0x000` BOOT_0, read *before* `0x004` is written | `02A000A3` in both runs — the control holds |
+| the 126 offsets after `0x004`, write-run vs clean read-run | **124 identical, 2 byte-swap related, 0 unexplained** |
+| `NV_PMC_INTR_0` writable `00000080` byte-swapped | `80000000` = `NV_PMC_INTR_0_SOFTWARE`, declared |
+| `NV_PMC_INTR_EN_0` writable `03000000` byte-swapped | `00000003` = `HARDWARE|SOFTWARE`, the declared union exactly |
+
+So silicon implements precisely the bits the header declares, in the positions
+it declares them. The earlier claim that it implemented bits 24-25 "and none of
+the two it does" was wrong, and it was wrong because the instrument had
+silently changed underneath the measurement.
+
+`0x000004` also did **not** "latch a value and refuse to restore". The restore
+wrote the correct bits to a register that was by then addressed in the other
+endianness. The power cycle did not repair a stuck register; it reset the
+endian switch.
+
+Two things follow that are worth more than the retracted findings.
+
+**The tree does not model `NV_PMC_BOOT_1` at all.** `nv2a_regs.h` names
+`BOOT_0`, `INTR_0`, `INTR_EN_0` and `ENABLE` in PMC, and nothing at `0x004`. So
+this emulator has no model of the MMIO endian switch, and a guest that flips it
+would diverge from hardware on every subsequent register access. Whether that
+matters depends on whether any real title touches it, which is a separate
+question from whether it is modelled.
+
+**A name-based hazard list could never have caught this.** `BOOT_1` does not
+contain `ENABLE`, `RESET`, `PLL` or anything else a pattern would match. It is
+hazardous because of its *semantics* — a register whose write changes how every
+later access is interpreted. See "classifying hazards by semantics" below.
+
+## Disagreements that survive
 
 ### `NV_PMC_ENABLE` (0x200) — the emulator models nothing at all
 
-`nv2a_regs.h` declares it with `PFIFO` (bit 8) and `PGRAPH` (bit 12). `pmc.c`
-has **neither a read case nor a write case**: it falls through to `default:`,
-so reads return 0 and writes are dropped.
+`pmc.c` has **neither a read case nor a write case**: it falls through to
+`default:`, so reads return 0 and writes are dropped. The clean read sweep —
+no writes, therefore no endian flip, and `BOOT_0` verified correct in the same
+run — reads **`0x01110000`**.
 
-Silicon reads **`0x01110000`** — bits 16, 20 and 24, none of which the header
-names. A guest that reads this register to check engine state sees `0` here and
-`0x01110000` on hardware.
+Writing `0` to it **stopped the console dead**: no ICMP, ARP `FAILED`, power
+cycle required. The register is live, it gates something the machine cannot run
+without, and the emulator neither reports nor honours it.
 
-Writing `0` to it **stopped the console dead** — no ICMP afterwards, ARP
-`FAILED`, power cycle required. So the register is live, it gates something the
-machine cannot run without, and the emulator neither reports nor honours it.
+*Open, and deliberately not asserted:* the header declares `PFIFO` at bit 8 and
+`PGRAPH` at bit 12, while the measured value has bits 16, 20 and 24 set. Those
+header positions are the generic NVIDIA ones and may simply not be NV2A's. That
+is a question for envytools, not something to conclude from one read — and
+given the endian lesson above, a bit-position claim from this sweep has earned
+some scepticism.
 
-### `NV_PMC_INTR_EN_0` (0x140) — declared bits and implemented bits disagree
+### `0x000160` reads `0x00000001` where the emulator returns 0
 
-| | |
-|---|---|
-| declared in `nv2a_regs.h` | `HARDWARE` (bit 0), `SOFTWARE` (bit 1) → `0x00000003` |
-| measured writable on silicon | `0x03000000` — bits 24 and 25 |
-| what `pmc.c` does | `enabled_interrupts = val`, latching all 32 bits |
+Undeclared and unmodelled. Value taken from the clean read sweep. (The write
+sweep saw `0x01000000` here, which is the same value through the endian flip —
+consistent, and another confirmation of the mechanism.)
 
-Bits 0 and 1 did not latch; bits 24 and 25 did. Write `0xFFFFFFFF` and read
-back: the emulator returns `0xFFFFFFFF`, silicon returns `0x03000000`.
+### A 63-dword region after `PMC_ENABLE`
 
-### `NV_PMC_INTR_0` (0x100) — an undocumented writable bit
+`0x000204`-`0x0002FC` all read `0x00000001` where the emulator returns 0.
+**Reported as one region, not 63 findings**: a solid contiguous run of a single
+value directly after a live register is the signature of address aliasing or a
+fixed unimplemented-read pattern. Telling that apart needs a write next to the
+register that already stopped the machine, so it has not been attempted.
 
-Measured writable mask `0x00000080`: **bit 7 latches**, and no field in
-`nv2a_regs.h` names it.
+The remaining 957 of 1,024 PMC dwords read `0` on silicon, as the emulator
+returns for them too.
 
-The register's *declared* bits behave correctly and are **not** a finding. It
-is write-1-to-clear (`pending_interrupts &= ~val`), and the sweep measures
-latching, so declared status bits legitimately read back 0. Across the two runs
-the register read `0x00000001` once and `0x01000000` (bit 24, the declared
-`PCRTC` field) the other — a pending-interrupt register is volatile, and seeing
-a declared bit appear as status is the expected behaviour rather than a defect.
+### `NV_PMC_INTR_0` is not a finding, and was nearly filed as two
 
-### Registers the emulator returns 0 for, and silicon does not
+Its declared bits read back 0 because it is write-1-to-clear and the sweep
+measures latching — that false positive was caught and suppressed. Its
+"undocumented bit 7" was the endian artefact above. The same register produced
+two spurious findings by two different mechanisms, which is a reasonable
+argument for treating any single-run register claim as provisional.
 
-`0x000160` reads a constant `0x00000001`. Undeclared, unmodelled.
+## Reproducibility
 
-`0x000204`–`0x0002FC` — 63 consecutive dwords immediately after `PMC_ENABLE` —
-all read `0x00000001`. **This is reported as one region, not 63 findings.** A
-solid contiguous run of a single value directly after a live register is the
-signature of address aliasing or a fixed unimplemented-read pattern, not of 63
-distinct registers each holding 1. Distinguishing the two needs a write, and
-the region sits next to the register that already stopped the machine once, so
-it has not been attempted.
+Two independent read sweeps, with a reboot between them, returned **1,024 of
+1,024 identical values**. `BOOT_0`, `PMC_ENABLE` and the `0x160` constant all
+reproduce exactly. The surviving findings are deterministic.
 
-The remaining 957 of 1,024 PMC dwords read `0` on silicon, which is what the
-emulator returns for them too.
+## A read-only survey of every modelled block
+
+19,456 dwords across 17 blocks, **no write issued**, canary verified before and
+after each block, 7 seconds. Breadth is affordable precisely because reads
+cannot perturb anything.
+
+| block | non-zero | distinct | dominant value | reading |
+|---|---:|---:|---|---|
+| PVPE | 1024/1024 | 1 | `00000025` | one constant for a whole 4 KiB block |
+| PTV | 1024/1024 | 1 | `00000025` | identical to PVPE |
+| PRMCIO | 1024/1024 | 11 | `00048328` ×764 | large repeated regions |
+| PCRTC | 1014/1024 | 11 | `000D8328` ×766 | large repeated regions |
+| PTIMER | 992/1024 | 138 | `00001DCD` ×128 | structured repeats |
+| PCOUNTER | 752/1024 | 45 | — | |
+| PFIFO | 382/2048 | 9 | — | |
+| PGRAPH | **0**/2048 | 1 | `00000000` | reads entirely zero |
+| others | sparse | | | PMC 67, PRAMDAC 68, PBUS 65, PRMVIO 64, PFB 45 |
+
+`stubs.c` generates read handlers that `return 0` for the blocks with no `.c`
+of their own — PCOUNTER, PVPE, PTV, PSTRAPS among them. So the blocks above
+that answer with data are answering where we return nothing.
+
+**These are not 17 defects, and mostly not defects at all.** Three things have
+to be said before any of it is quoted:
+
+- **A whole block returning one value is aliasing, not registers.** PVPE and
+  PTV each return `00000025` for all 1,024 dwords. That is one fact about the
+  block, not 2,048 facts about registers.
+- **Values are state-dependent.** These reads were taken with the console
+  freshly out of the dashboard and the engines idle. PGRAPH reading entirely
+  zero is consistent with the graphics engine simply not being enabled —
+  `NV_PMC_ENABLE` reads `01110000` here — rather than with anything being
+  wrong. A different machine state gives different values.
+- **PTIMER is a clock.** Distinct values across a sweep are the counter
+  advancing, not distinct registers, and the repeats within it look like
+  aliasing again.
+
+What the survey is genuinely good for is a map of which blocks are live on this
+silicon and which are silent, taken cheaply and repeatably. What it is not is a
+specification, and nothing here should be turned into an emulator change
+without a second read in a known state.
 
 ## What this cost, and what the limits are
 
 **One full lockup.** A blind `0` into `NV_PMC_ENABLE` took the processor down
 with the GPU, so the watchdog could not fire and a power cycle was the only way
-back. In the same 128 registers `0x000004` latched `0x01000001` and would not
-restore — the power cycle did return it to `0x00000000`, confirmed by the read
-sweep. **Two of 128 written registers were irreversible in-session.**
+back. In the same 128 registers `0x000004` — `NV_PMC_BOOT_1` — flipped the MMIO
+endian switch, so every access for the rest of that run was byte-swapped and
+two spurious findings were published before anyone noticed. The power cycle
+reset the switch. **Two of 128 written registers did something the sweep could
+not undo, and one of them silently corrupted every measurement after it.**
 
 The soft-reset recovery tier was never exercised. The probe did **not** recover
 from this hang without help.
