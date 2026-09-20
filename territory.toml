@@ -32,25 +32,25 @@ wave = 129
 updated_utc = "2026-09-20T03:40:00Z"
 
 
-[lane.hilodot10]
+[retired.hilodot10]
 issues = ["10"]
-files = ["docs/testing/bump_sign_quads.py", "docs/lanes/hilodot10/NOTES.md"]
-standing = false
-note = "DISPATCHED WAVE 124 (job.board), briefs/hilodot10.md: #10's own blocked_on says NO MECHANISM IN HAND for YUV, Y8/AY8/A8Y8 or BumpEnvLum_R16B16 -- exploratory measurement work, not a queued fix. bump_sign_quads.py was unclaimed (last used ad hoc to separate the luminance-literal mechanism from HILO's) and is the instrument this brief asks the lane to reuse. Does not touch gl/draw.c or any file #164/lane.remote holds."
+retired_utc = "2026-09-20T14:57:11Z"
+files = []
+note = "RETIRED (job.board, board tick): PR #168 MERGED 2026-09-19T23:27:57Z (fold c5f7169e70), unit gone, no open PR left on lane/hilodot10. #10 stays open (status fixed-part) -- its own blocked_on already says NO MECHANISM IN HAND for the three remaining classes and explicitly 'do not read this as queued work', so this is not a re-dispatch candidate, just label/row hygiene. docs/testing/bump_sign_quads.py and docs/lanes/hilodot10/NOTES.md RELEASED TO [free]."
 
 
-[lane.indexcheck]
+[retired.indexcheck]
 issues = ["157"]
-files = ["docs/testing/nv2a_index.py", "docs/lanes/indexcheck/NOTES.md"]
-standing = false
-note = "DISPATCHED WAVE 122 (job.board), briefs/indexcheck.md: #157's nv2a_index.py check reports a suite-count mismatch with no direction, so following its own remedy from a behind checkout silently deletes suites from the committed index. docs/testing/nv2a_index.py was unclaimed -- lane.toolsmith's own row says it DECLINED this file -- so no grant was needed. preflight.sh is explicitly out of scope (lane.toolsmith's)."
+retired_utc = "2026-09-20T14:57:11Z"
+files = []
+note = "RETIRED (job.board, board tick): PR #159 MERGED 2026-09-19T16:46:02Z (fold 6db8217cdb), unit gone. #159 fixed both blocker-direction options per the issue's own last comment, with nothing outstanding -- closed on GitHub this tick and nv2a_issues.toml row moved to status=fixed-verified/dispatch_state=done. docs/testing/nv2a_index.py and docs/lanes/indexcheck/NOTES.md RELEASED TO [free]."
 
 
-[lane.wbufclip]
+[retired.wbufclip]
 issues = ["31"]
-files = ["docs/lanes/wbufclip/NOTES.md"]
-standing = false
-note = "DISPATCHED WAVE 121 (job.board), briefs/wbufclip.md: #31's ClipF degeneracy has a named, cheap next step per issue.31's own audit note -- every clip_top the corpus generates is 0 mod 4, so the two candidate anchor rules ('clip_top+2' and 'the absolute 4-grid at phase 2') have never been separated. One new WBuf24D ClipF variant at a non-0-mod-4 clip_top, a disc rebuild and one device capture decide between them. wbuf31_blocker_audit.py and wbuf_anchor_recover.py are NOT claimed here -- lane.toolsmith's own row already exempts analysis scripts written by a lane for its own issue ('they belong to whoever is measuring with them'), and these were written for #31 already. docs/investigations/wbuffer-31-blocker-audit.md and wbuffer-slope-offset.md are read-only references, not claimed. The nxdk_pgraph_tests source tree (wbuf_tests.cpp) is outside this repo and outside this file's tracking, same as lane.toolsmith's dispatcher.sh note describes for out-of-repo files. nv2a_issues.toml explicitly NOT claimed -- no lane may edit it."
+retired_utc = "2026-09-20T14:57:11Z"
+files = []
+note = "RETIRED (job.board, board tick): PR #156 MERGED 2026-09-19T18:43:45Z (fold 732b97e2df), unit gone. #31 stays fixed-part -- blocked_on already names the real blocker (needs an NV2A silicon capture this lab does not have), so labelled xbox-hardware this tick and the stale 'dispatchable' label dropped (it is not, until hardware exists). docs/lanes/wbufclip/NOTES.md RELEASED TO [free]."
 
 
 [lane.draftstrand]
@@ -170,32 +170,32 @@ standing = false
 note = "RETIRED WAVE 126 (job.board): PR #147 MERGED 2026-09-19T13:30:20Z, unit gone. Files RELEASED to [free]: docs/testing/jobs/selftest.d/** (the glob), and docs/testing/jobs/cloud.sh is granted outright to [lane.turncap] above, whose running brief needs it. PRIOR NOTE: WRITTEN AT WAVE 115 (job.board) -- lane was RUNNING with no territory row at all, a board-dispatched task lane this time, not an outlet unit. Attempt 1, started 2026-09-19T12:36:12Z, briefed at $WORK/briefs/cloudterritory.md to fix the exact defect it is itself an instance of: jobs/cloud.sh starts units without writing the territory row the way lane.sh does at dispatch, so every audit/remediation unit is invisible to check_territory.py until a board tick notices and back-fills it (five occurrences the night this lane was briefed). Its own brief names its files: docs/testing/jobs/cloud.sh (add the row-write at claim time, same branch/validation/push as the board's own) and docs/testing/jobs/selftest.d/ (a new fragment covering it, e.g. 71-cloud-territory.sh). Harness-only -- touches nothing under hw/, target/, accel/, android/. Issue: none (harness defect, dispatched directly per its brief)."
 
 
-[lane.blendrace50]
+[retired.blendrace50]
 issues = ["50"]
+retired_utc = "2026-09-20T14:57:11Z"
 files = []
-standing = false
-note = "DISPATCHED WAVE 113 (job.board). #50's withdrawn 7.7% race rate pooled three incomparable disc compositions as one population (disc_id omitted only_tests, fixed in 63db4e4211); the tracker's own blocked_on says the cheapest honest next step is 5 runs on the FULL 1,673-capture disc, which the narrowed discs were meant to avoid and cannot substitute for. Claims no source files -- the mechanism and site are unnamed, so nothing is held speculatively; this is a measurement pass, not a fix."
+note = "RETIRED (job.board, board tick): PR #146 MERGED 2026-09-19T18:36:50Z (fold 233c87f5f3), unit gone. #50 stays open -- the disc-composition finding is recorded and blocked_on is current -- this is label/row hygiene only. Held files = [] throughout, nothing to release."
 
 
-[lane.cloud-audit2-115]
+[retired.cloud-audit2-115]
 issues = ["109"]
+retired_utc = "2026-09-20T14:57:11Z"
 files = []
-standing = false
-note = "WRITTEN AT WAVE 111 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect [lane.cloud-audit1-115] below documents for its own pass. This is the audit outlet's own claimed unit (jobs/cloud.sh): PR #115 (branch lane/cloud-109, #109) carries needs-audit-2 + claimed:cloud after the pass-1 findings were remediated (see the PR's own remediation table, H1/M1-M5/L1-L3), and jobs/cloud.sh claims one needs-audit-2 PR ahead of needs-audit-1 in its own priority order. Same PR, same issue as [lane.cloud-audit1-115] below -- no file collision, both claim files = [] (an audit reads and comments, it does not edit the tree it is auditing). Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
+note = "RETIRED (job.board, board tick): PR #115 (lane/cloud-109) MERGED, this outlet audit unit long since concluded. Held files = [] throughout (an audit reads, it does not edit). No release needed."
 
 
-[lane.cloud-audit1-115]
+[retired.cloud-audit1-115]
 issues = ["109"]
+retired_utc = "2026-09-20T14:57:11Z"
 files = []
-standing = false
-note = "WRITTEN AT WAVE 109 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect as armlabel/branchprune/cloud-audit2-102/cloud-remediate-102 before it. This is the audit outlet's own claimed unit (jobs/cloud.sh), pass-1 diff audit of PR #115 (branch lane/cloud-109, labels needs-audit-1 + claimed:cloud): a bound-not-measured prediction against #109 (the undersized-surface-pitch rule), which the PR's own body concludes does not explain #87's residual and instead narrows a live, unmeasured defect around vk/surface.c's deferred-download path. Claims no source files -- an audit reads and comments, it does not edit the tree it is auditing; the PR's own diff (NOTES.md, docs/investigations/undersized-surface-pitch-two-models.md, docs/testing/predictions/undersized-pitch-swizzle-layout.json) touches nothing under hw/ either. Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
+note = "RETIRED (job.board, board tick): same PR #115, same outlet unit as [retired.cloud-audit2-115]. Held files = [] throughout. No release needed."
 
 
-[lane.cloud-remediate-115]
+[retired.cloud-remediate-115]
 issues = ["109"]
+retired_utc = "2026-09-20T14:57:11Z"
 files = []
-standing = false
-note = "WRITTEN AT WAVE 110 (job.board) -- lane was RUNNING with no territory row at all, invisible to check_territory.py, the same defect [lane.cloud-audit1-115] above documents for its own pass. This is the audit outlet's own claimed unit (jobs/cloud.sh): PR #115 (branch lane/cloud-109, #109) carries `needs-remediation` after pass-1 found findings against it, and jobs/cloud.sh claims exactly one needs-remediation PR ahead of needs-audit-2/needs-audit-1 in its own priority order. Same PR, same issue as [lane.cloud-audit1-115] above -- no file collision, both claim files = [] (a remediation session edits the PR's own branch in its own worktree, it does not claim source files the way a fresh task lane does). Not started or managed by the board; this row exists so check_territory.py can see it, per the outlet's own division of labour."
+note = "RETIRED (job.board, board tick): same PR #115. Held files = [] throughout. No release needed."
 
 
 [lane.foldregress]
@@ -285,10 +285,11 @@ files = []
 note = "STANDING LANE, scheduled. It owns READING THE ISSUE COMMENTS and routing what they contain. Created 2026-09-18 because the orchestrator had done ZERO of this for a week and the owner had to ask -- and the first pass immediately found five open issues whose comments carry verified results the tracker does not reflect, three of them apparently closable. CLAIMS NOTHING. It reads, it reports, and it routes; it does not edit the tracker -- that stays arbitrated, and a triage lane writing conclusions from comments it read once is how #82's 'read from source, not confirmed against a binary' happened in the first place."
 
 
-[lane.linecap13]
+[retired.linecap13]
 issues = ["13"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c"]
-note = "DISPATCHED WAVE 102 (job.board). #13's Vulkan extent phase already landed exact (47.8178% -> 99.5838%+ vs silicon, predictions/line-extent-phase-exact.json PASS). glsl/geom.c was FREE (released 2026-09-14 by lane.lineext retiring, never reclaimed) and the issue's own tracker note says the residual is cap/join geometry -- 493 of ~908 px, ours-only, 98.8% within w/2+2 of a vertex -- not the extent rule, so this claims only geom.c and not vk/draw.c (still lane.blitsafe's) or gl/shaders.c (lane.remote's, GL parity out of scope per the issue's own note)."
+retired_utc = "2026-09-20T14:57:11Z"
+files = []
+note = "RETIRED (job.board, board tick): PR #141 MERGED 2026-09-20T03:42:17Z (fold, cap rule landed and drawn), unit gone. #13 stays fixed-part. hw/xbox/nv2a/pgraph/glsl/geom.c RELEASED TO [free]."
 
 [retired.diagdump77]
 issues = []
@@ -296,10 +297,11 @@ retired_utc = "2026-09-19T18:50:00Z"
 files = []
 note = "RETIRED AT WAVE 123 (job.board): PR #143 MERGED, unit inactive, and the claim had outlived the lane since wave 104. hw/xbox/nv2a/debug.h, hw/xbox/nv2a/pgraph/vk/renderer.c, android/app/src/main/cpp/xemu_android.cpp and android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt ARE RELEASED TO [free] AT THIS WAVE. The marker-file-armed frame dump landed and needs no further code in these four files; #77's next step (drive the dump on a Thor soak of the Galleon deck and correlate merge/barrier state with the stipple frames) is dispatched at this wave as [lane.diagsoak77], which claims none of them -- see that row."
 
-[lane.diagsoak77]
+[retired.diagsoak77]
 issues = ["77"]
+retired_utc = "2026-09-20T14:57:11Z"
 files = []
-note = "DISPATCHED WAVE 123 (job.board). The capability #77 was blocked on (a marker-file-armed frame dump, no per-draw finish) landed in PR #143 -- see [retired.diagdump77]. This lane claims NO source file: it arms the dump via the marker file on a Thor soak of the Galleon deck scene, and writes a NEW offline analysis script (docs/testing/, name of its choosing) that reads the dump's per-draw merge/barrier records against the stipple-frame timestamps already established by galleon_flash_rate.py (10-14 stipple frames per 100). See briefs/diagsoak77.md."
+note = "RETIRED (job.board, board tick): PR #165 MERGED 2026-09-19T20:19:32Z (fold edcc31d847), unit gone. #77 stays open -- the soak found the artifact captured but the stipple schedule not moving with it, a result, not a close. Held files = [] throughout, nothing to release."
 
 [retired.swizzle87]
 issues = ["85", "87"]
@@ -601,7 +603,16 @@ files = [
          "hw/xbox/nv2a/debug.h",
          "hw/xbox/nv2a/pgraph/vk/renderer.c",
          "android/app/src/main/cpp/xemu_android.cpp",
-         "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt"]
+         "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt",
+# RELEASED (job.board, board tick 2026-09-20T14:57:11Z) by retiring
+# hilodot10 (PR #168 merged), indexcheck (PR #159 merged), wbufclip (PR #156
+# merged) and linecap13 (PR #141 merged): all four folded, no running agent.
+         "docs/testing/bump_sign_quads.py",
+         "docs/lanes/hilodot10/NOTES.md",
+         "docs/testing/nv2a_index.py",
+         "docs/lanes/indexcheck/NOTES.md",
+         "docs/lanes/wbufclip/NOTES.md",
+         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
 
 
 [lane.selftest86]
