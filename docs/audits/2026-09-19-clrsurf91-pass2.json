@@ -1,0 +1,79 @@
+[
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "3503",
+    "verdict": "CLOSED",
+    "summary": "The DIRTY_MEMORY_NV2A test-and-clear is now `if (upload && !tcg_enabled())` at :3503, so no call with upload == false reaches bitmap_test_and_clear_atomic and the bits survive a download untouched. The consumer set is unchanged and still entirely inside the gate: every occurrence of mem_dirty in update_surface_part() is :3502 (init), :3518 (the scan), :3592 (the gate expression), :3800 (`surface->upload_pending |= mem_dirty`) and :3871 (`surface->upload_pending = shelf_stale || mem_dirty`), and the last two are at sixteen spaces of indent inside the `if (gate_open)` block opening at :3598. Making the producer upload-only cannot starve a consumer that only runs when upload is true. The comment the finding asked for is at :3471-3499 (what the scan costs) and :3581-3589 (what a declined download may consume), and the latter is accurate against the tail, which clears write_enabled_cache and draw_dirty at :3959-3960 and nothing else.",
+    "scenario": "Pass 1's scenario -- a binding-absent download eats the guest's CPU-write bits, the next upload opens the gate on !current_binding, computes mem_dirty == false because this call already consumed the evidence, leaves upload_pending false and takes the stale host image -- can no longer occur. A download performs no scan at all.",
+    "evidence": "Re-derived against the live file at 08264445ef rather than the diff. Consumer set re-grepped (five occurrences, listed above) and block membership confirmed by indentation and by the `if (gate_open)` at :3598. Checked the one way the widening could be wrong rather than merely redundant: if a download set the NV2A bit, every download would leave the range CPU-dirty and the next upload would push guest RAM over a possibly-newer host image. It does not -- pgraph_vk_download_surface_complete_deferred() marks DIRTY_MEMORY_VGA and DIRTY_MEMORY_NV2A_TEX (surface.c:1025-1031) and never DIRTY_MEMORY_NV2A; the only writers of that client bit in hw/ are vk/blit.c:757, vk/blit.c:924, gl/blit.c:686 and the guest's own stores via memory_region_set_log(d->vram, true, DIRTY_MEMORY_NV2A) at nv2a.c:1283. So a retained bit means a real CPU write and uploading it is correct. The widening is monotone by construction: `|=` at :3800 and a disjunction at :3871 can only turn upload_pending false -> true. See N1: the scan is also behind !tcg_enabled() and therefore dead on the device, which the new comment does not say."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "358",
+    "verdict": "CLOSED",
+    "summary": "dl91_probe's signature at :340 is (PGRAPHState const *pg, bool color, hwaddr addr) and its format at :358-361 is \"[dl91] frame=%d declined=%lu f_declined=%lu part=%s addr=0x%08\" HWADDR_PRIx. The sole call site at :3956 passes target.vram_addr, the same expression surf91_overlap_probe's call site passes at :3680, and target is populated from the current registers at :3466 so the value is live at the probe. The header at :314-323 now says which address it is, why it is the right one, and records that the field was documented before it was emitted.",
+    "scenario": "Pass 1's scenario -- an operator reading the arm log, told by the code that addr= is the number worth having, greps for it, finds no such field, and either re-runs the arm or concludes the declines were not address-attributable -- can no longer occur. The field is emitted on every line the probe prints.",
+    "evidence": "Read the live signature, format string and call site at 08264445ef. The format is hwaddr against HWADDR_PRIx, matching surf91_overlap_probe's pre-existing line in the same file; both CI builds on this head (Android `build`, Desktop `build`) are SUCCESS, which is where a -Wformat mismatch would surface. The address is correct rather than merely present: the declined download's counterfactual is the old code resolving a binding AT target.vram_addr, so that is exactly the address the removed download would have used."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "178",
+    "verdict": "CLOSED",
+    "summary": ":178 reads \"REMOVE ALL FIVE\" over the same five names, and :180-183 adds that the numeral is the length of the list and must be moved in the same edit as any probe added or removed, or dropped. dl91_probe's own \"with the other four\" at :330 agrees with the heading for the first time.",
+    "scenario": "Pass 1's scenario -- whoever closes #91 removes probes by the count in the heading, removes four, and ships the fifth as an always-on SURF92_LOG on a per-draw surface path in a release build -- can no longer occur.",
+    "evidence": "Counted the probes in the tree rather than in the sentence: surf92_probe (surface.c:366), surf91_overlap_probe (surface.c:264), dl91_probe (surface.c:340), clr89_probe (draw.c:838), clr91_probe (draw.c:6839). Five definitions, five names in the heading."
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "1",
+    "verdict": "OPEN",
+    "summary": "CONTENT HALF CLOSED, MERGEABILITY HALF RE-OPENED. The branch's committed index is now correct for its own tree and agrees with master on every count: sites 2833 -> 2839 (master 2839), suites 103, symbols 951, gaps 498, tests_commit 91a0de45ca, renderer.c locs no longer running backwards. `nv2a_index.py check --tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus` prints \"index matches the tree (951 symbols, 2839 sites, 103 suites)\". But origin/master has advanced 130 commits since the 17:06Z regeneration and has touched this file again (d7ef982090, a5fdb6a7d1, 7ffcd2bce8, 56e86a2a46 among them; its copy names emulator_commit e239097c61d1 against the branch's 17374907d02c), so `git merge-tree --write-tree origin/master HEAD` reports the same single CONTENT conflict on the same path and GitHub reports mergeable CONFLICTING / mergeStateStatus DIRTY. This is not a defect in the lane's work -- the remediation was correct when made and the branch has been regenerated twice -- but the pass-2 question is whether the scenario can occur, and today it can.",
+    "scenario": "Narrowed from pass 1 and still live. The dropped-sites half is gone: both copies carry 2839 sites, so neither resolution loses a site. What survives is the locs -- taking the branch side lands `loc` values pointing at the wrong lines for every file master has moved in 130 commits, and taking master's side discards this branch's surface.c locs, which are the ones the change actually moved. jobs/fold.sh resolves nothing but a root NOTES.md collision (fold.sh:497-527): on any other conflict it aborts the merge, records a handback cause, strips fold-ready, labels needs-rebase and comments. The PR is unfoldable as it stands.",
+    "remediation": "Merge origin/master -- do NOT rebase; aec524681e and 7980d1caa2 are both still ancestors of 08264445ef and a rebase un-ancestors them. Regenerate with `--tests /home/justin/nxdk_pgraph_tests --support /home/justin/pbkitplusplus` and confirm `nv2a_index.py check` prints \"index matches the tree\" before committing. Fold N3's PR-body correction into the same push, since the merge moves the counts again. Then read the regressed note below before reaching for fold-ready.",
+    "evidence": "git merge-tree --write-tree origin/master HEAD -> CONFLICT (content) in docs/testing/nv2a_index.json; gh pr view 148 -> mergeable CONFLICTING, mergeStateStatus DIRTY; git rev-list --left-right --count origin/master...HEAD -> 130/15; json.load of both copies for the count table; nv2a_index.py check run on this worktree. Note for the next reader: run WITHOUT --support the same command reports five suites changed content, which reads exactly like a stale index and is the missing argument -- provenance.support_dirs is ['/home/justin/pbkitplusplus'] and the local tests checkout is at 91a0de4, the commit the provenance names."
+  },
+  {
+    "pass1_id": null,
+    "id": "N1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "line": "3471",
+    "verdict": "OPEN",
+    "summary": "The new M1 comment block at :3471-3499 describes the lost write in the present tense over eleven lines, calls it \"load-bearing rather than tidy\", and says the change \"stops eating the bit out from under the vertex-RAM sync\" -- without saying that the scan it guards is also behind !tcg_enabled() and has therefore never executed on a device arm. vk/draw.c:115-118 already records this: \"update_surface_part's own scan is behind !tcg_enabled() and therefore dead here\". The fix is correct and should stay; the finding is against the comment as it now stands. Pass 1 did not say it either.",
+    "scenario": "A later lane reading this block takes M1 as a defect the arms could have caught, goes looking in the [surf92]/[dl91] logs or in a score for the lost write it describes, and finds nothing -- because on the device the scan never ran and mem_dirty is unconditionally false. That is an arm or a capture set spent proving an instrument blind, the same class of cost vk/draw.c wrote its own paragraph to prevent. A lane that believes mem_dirty is live on the device also reads the gate `upload && (!current_binding || buffer_dirty || mem_dirty)` as a three-term condition when on every arm it is a two-term one.",
+    "remediation": "One sentence in the block: the scan is behind !tcg_enabled() and therefore dead on the device, so this repairs a non-TCG host and tightens an invariant everywhere. Cite vk/draw.c:115-118 rather than re-deriving it.",
+    "evidence": "surface.c:3503 (`if (upload && !tcg_enabled())`); vk/draw.c:115-118, an in-tree assertion by a previous lane; the download tail's own `if (!tcg_enabled())` at :3946."
+  },
+  {
+    "pass1_id": null,
+    "id": "N2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/blit.c",
+    "line": "780",
+    "verdict": "OPEN",
+    "summary": "blit.c:778-786 justifies pgraph_vk_solid_line()'s direct upload_pending write with \"both renderers do read that bit, but their scans test-and-clear it *before* the guard that consumes it, and with upload == false on a live binding the bit is cleared and discarded\". After this PR that is false of the Vulkan renderer: with the scan upload-only, upload == false clears nothing. It was already false of GL -- gl/surface.c:2929 records that \"THE mem_dirty TERM IS GONE\" (#85) -- so both halves of the claim are now stale, one half by this diff.",
+    "scenario": "A lane sent to simplify pgraph_vk_solid_line(), or the lane that closes #91 and reads every DIRTY_MEMORY_NV2A site, checks the comment against vk/surface.c, finds the scan upload-only and GL carrying no surface term at all, concludes the hazard is gone, and replaces the direct upload_pending write with memory_region_set_client_dirty(..., DIRTY_MEMORY_NV2A). On the device that route is dead under !tcg_enabled() (N1), so the solid line's write reaches no surface, the VkImage keeps stale content, and the symptom is a wrong image with nothing in the log -- the exact failure the comment exists to prevent, reintroduced by trusting it.",
+    "remediation": "Correct the comment where it is read. The conclusion -- keep the direct write -- is still right and its reason is now stronger (upload == false reaches no scan at all, and on the device no scan runs either), so this is two sentences, not a change of decision.",
+    "evidence": "vk/blit.c:778-786 (the justification), vk/surface.c:3503 (the scan, now upload-only), gl/surface.c:2929-2942 (GL's mem_dirty term removed under #85), gl/vertex.c:67 (GL's remaining reader, for vertex ranges, not surfaces)."
+  },
+  {
+    "pass1_id": null,
+    "id": "N3",
+    "severity": "LOW",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "1",
+    "verdict": "OPEN",
+    "summary": "The PR body still reads \"the counts are unchanged at 951 symbols / 2833 sites / 103 suites, so no suite was silently dropped\" and \"Base: master @ 415dcc6997 (merged origin/master 2026-09-19; clean)\". The committed index has carried 2839 sites since 5953a80814 and the branch is not clean against master. The finding is on the PR body, recorded against the file whose count it misstates.",
+    "scenario": "That count is exactly the check pass 1 ran to establish no suite was dropped, and it is the first thing a fold reader or the owner compares against the file. Finding 2833 in the body and 2839 in the index they either re-regenerate the index -- churn on the file that is already the conflict -- or re-open the \"a suite was silently dropped\" question the number was put there to close. `Base: ... clean` does the same for mergeability.",
+    "remediation": "gh pr edit applies nothing on this host: use `gh api -X PATCH repos/:owner/:repo/pulls/148 -f body=@file` and read the value back. Fold it into the same push as M3's merge, since the merge moves the counts again.",
+    "evidence": "gh pr view 148 --json body; provenance.sites 2839 in the committed index; git merge-tree conflict against origin/master."
+  }
+]
