@@ -1331,79 +1331,79 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2538",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2444",
    "symbols": [],
    "text": "/* FIXME: Allocate big buffer up front and re-alloc if necessary."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2539",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2445",
    "symbols": [],
    "text": "* FIXME: Consider swizzle in shader"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2565",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2471",
    "symbols": [],
    "text": "/* FIXME: Replace this with a hw accelerated version */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2628",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2520",
    "symbols": [],
    "text": "/* FIXME: Respect write enable at last TOU? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2749",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2641",
    "symbols": [],
    "text": "// FIXME: Don't query GL for texture binding"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2753",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2645",
    "symbols": [],
    "text": "// FIXME: Replace with FBO to not disturb current state"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2773",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2665",
    "symbols": [],
    "text": "/* FIXME: Replace this scaling */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3088",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2961",
    "symbols": [],
    "text": "/* FIXME: Support same color/zeta surface target? One GL texture"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3104",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2977",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3223",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3096",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3286",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3159",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3341",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3214",
    "symbols": [],
    "text": "/* FIXME: Cannot monitor for reads/writes; flush now */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3460",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3333",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE"
    ],
@@ -1411,7 +1411,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3515",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3388",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -4652,10 +4652,10 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "03287f278f75178f028a910b98254ceee3986ef4",
+  "emulator_commit": "aa3648cba2a214ed1d00f70c8d15c8a7a82b473c",
   "gaps": 498,
   "resolved_tables": 1,
-  "sites": 2843,
+  "sites": 2840,
   "suites": 103,
   "support_dirs": [
    "/home/user/pbkitplusplus"
@@ -7873,7 +7873,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2948",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2821",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    },
@@ -8041,16 +8041,6 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2361",
-    "role": "DISPATCH",
-    "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:"
-   },
-   {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2371",
-    "role": "REF",
-    "text": "NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8 ?"
-   },
-   {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4621",
     "role": "DISPATCH",
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:"
@@ -8076,11 +8066,6 @@
     "loc": "hw/xbox/nv2a/pgraph/gl/constants.h:403",
     "role": "TABLE-ENTRY",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8] ="
-   },
-   {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2360",
-    "role": "DISPATCH",
-    "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:"
    },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:4620",
@@ -8337,22 +8322,22 @@
   ],
   "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2994",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2867",
     "role": "REF",
     "text": "(pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3025",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2898",
     "role": "REF",
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3431",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3304",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3464",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3337",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
@@ -17538,7 +17523,7 @@
     "text": "pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3385",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3258",
     "role": "READ",
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
@@ -18338,7 +18323,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_Z_FORMAT": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3386",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3259",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    },
