@@ -343,9 +343,11 @@ if [ "$mode" = finish ]; then
     if grep -qE "^($succ)$" <<< "$have"; then
         label_rm "$num" "$state"
         rm -f "$WORK/attempts/cloud-$kind-$num"
-        [ "$claimed" = 1 ] \
-            && say "finish: #$num moved past $state; cleared it" \
-            || say "finish: #$num moved past $state and carries no claimed:cloud, so an earlier finish already cleared it; this one changed nothing"
+        if [ "$claimed" = 1 ]; then
+            say "finish: #$num moved past $state; cleared it"
+        else
+            say "finish: #$num moved past $state and carries no claimed:cloud, so an earlier finish already cleared it; this one changed nothing"
+        fi
     elif [ "$claimed" = 1 ]; then
         # THE ONE STEP THAT IS NOT SELF-CANCELLING, so it is the one gated on
         # the claim having been live. The rule at the top of this block is
@@ -650,7 +652,13 @@ systemd-run --user --unit "$unit" --collect \
         # attempt is given back for the same reason.
         say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
         territory_row rm "$name" '[]' '[]' ''
-        [ "$kind" = issue ] && label_rm "$num" claimed:cloud "lane:cloud-$num" || label_rm "$num" claimed:cloud
+        # if/else, not `A && x || y`: label_rm returning 1 on the issue path
+        # would otherwise fall through and run the PR-path removal as well.
+        if [ "$kind" = issue ]; then
+            label_rm "$num" claimed:cloud "lane:cloud-$num"
+        else
+            label_rm "$num" claimed:cloud
+        fi
         echo "$(( n - 1 ))" > "$att"
         rm -rf "$SNAP"
     }

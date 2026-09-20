@@ -65,7 +65,9 @@ case "$1 $2" in
         printf '141\tlane/auditme\taudit: the pass-2 verification of #141\n'; exit 0 ;;
     "pr view")
         printf '{"body": "Lane: auditme", "closingIssuesReferences": [], "files": []}\n'; exit 0 ;;
-    "pr comment") echo "COMMENT $3" >> "$TL_LOG"; exit 0 ;;
+    # The BODY is logged, not just the number: cloud.sh comments on this PR at
+    # claim too, so a count of "comments on #141" counts the wrong thing.
+    "pr comment") echo "COMMENT $3 ${*: -1}" >> "$TL_LOG"; exit 0 ;;
     "api "*)
         if [[ "$args" == *"-X POST"* && "$args" == *"/labels"* ]]; then
             for a in "$@"; do [[ "$a" == labels\[\]=* ]] && echo "${a#labels[]=}" >> "${TL_LABELS:?}"; done
@@ -185,7 +187,9 @@ tl_row()       { git -C "$TL/origin.git" show "board:territory.toml" 2>/dev/null
 tl_norow()     { ! tl_row; }
 tl_has()       { grep -qFx "$1" "$TL_LABELS"; }
 tl_hasnt()     { ! grep -qFx "$1" "$TL_LABELS"; }
-tl_comments()  { [ "$(grep -c '^COMMENT 141' "$TL_LOG")" = "$1" ]; }
+# The unfinished-session notice specifically -- the one comment `finish` posts,
+# and the only step of it that does not cancel itself on a second run.
+tl_comments()  { [ "$(grep -c '^COMMENT 141 .*without setting a next state' "$TL_LOG")" = "$1" ]; }
 tl_claimable() { env PATH="$TLPATH" HAKUX_REPO_DIR="$TL/repo" bash "$HERE/cloud.sh" list 2>&1 | grep -q "would claim .* #141"; }
 tl_invisible() { ! tl_claimable; }
 
@@ -288,7 +292,7 @@ tl_claim() {   # a real dispatch, out of the staged board worktree
     rm -rf "$HAKUX_WORK/units" "$TL_UNITS"; mkdir -p "$TL_UNITS"
     git -C "$TL/repo" worktree remove --force "$HAKUX_WORK/wt/cloud-audit2-141" 2>/dev/null
     rm -rf "$HAKUX_WORK/wt/cloud-audit2-141"
-    printf 'needs-audit-2\n' > "$TL_LABELS"
+    printf 'needs-audit-2\n' > "$TL_LABELS"; : > "$TL_LOG"
     env PATH="$TLPATH" HAKUX_REPO_DIR="$TL/repo" \
         bash "$TL/board-wt/docs/testing/jobs/cloud.sh" >> "$TL_LOG" 2>&1
 }
@@ -408,23 +412,35 @@ check "c: a PR claimed a second time gets a live finish, not a suppressed one" t
 # AN UNREADABLE LABEL LIST IS NOT AN ABSENT CLAIM. The guard keys on
 # claimed:cloud, so an API failure at exactly this moment must not be read as
 # "already finished" -- that would rebuild the stranded claim out of the fix's
-# own guard. It retries, then goes on anyway; every step it then takes no-ops
-# if there is nothing to undo.
+# own guard, which is the worst place to put it. It retries three times and
+# then goes on regardless; every step it then takes no-ops if there is nothing
+# to undo, so going on is free and stopping is permanent.
+#
+# WHAT THIS CANNOT RECOVER, stated rather than implied: while the labels
+# endpoint is down, NOTHING can remove the label. gh-label.sh's label_rm reads
+# the current labels first and returns 1 without attempting the DELETE (a
+# DELETE on an absent label is a 404, and swallowing that would swallow every
+# other failure with it). So the property under test here is not "the claim
+# comes off anyway" -- it is that finish takes the long path and the rest of
+# the unclaim still happens, which is what leaves a later finish able to work.
 cp "$TL/bin/gh" "$TL/bin/gh.real"
 cat > "$TL/bin/gh" <<'EOF'
 #!/usr/bin/env bash
 echo "gh $*" >> "${TL_LOG:?}"
 [[ "$*" == *"/labels"* && "$*" != *"-X"* ]] && exit 1     # the read fails, every time
-[[ "$1 $2" == "pr comment" ]] && { echo "COMMENT $3" >> "$TL_LOG"; exit 0; }
+[[ "$1 $2" == "pr comment" ]] && { echo "COMMENT $3 ${*: -1}" >> "$TL_LOG"; exit 0; }
 exit 0
 EOF
 chmod +x "$TL/bin/gh"
-: > "$TL_LOG"
+: > "$TL_LOG"; : > "$HAKUX_WORK/logs/cloud/tick.log"
 env PATH="$TLPATH" HAKUX_REPO_DIR="$TL/repo" bash "$HERE/cloud.sh" finish audit2 141 >/dev/null 2>&1
-check "an unreadable label list is retried three times, not read as 'no claim'" bash -c '
-    [ "$(grep -c "^gh api repos/example/hakux/issues/141/labels$" "$1")" -ge 3 ]' _ "$TL_LOG"
-check "and finish goes on anyway: an unreadable read must not strand the claim" \
-    grep -q "issues/141/labels/claimed%3Acloud" "$TL_LOG"
+# Four reads, not three: the retry loop's three, and then label_rm's own. The
+# fourth is the evidence that the early "already finished" exit was NOT taken
+# -- a count of three alone is equally consistent with retrying and giving up.
+check "an unreadable label list is retried three times, and then finish goes on anyway" bash -c '
+    [ "$(grep -c "^gh api repos/example/hakux/issues/141/labels " "$1")" = 4 ]' _ "$TL_LOG"
+check "and it says which of the two it is doing, rather than exiting 0 quietly" \
+    grep -q "could not read #141's labels in 3 tries" "$HAKUX_WORK/logs/cloud/tick.log"
 mv "$TL/bin/gh.real" "$TL/bin/gh"
 
 # ============================================ the snapshot sweep spares a live one
@@ -457,8 +473,17 @@ check "the tail's environment is set on the unit, so ExecStopPost inherits it" b
 # NO SESSION, NO CLAIM. systemd-run failing is the one path ExecStopPost cannot
 # cover -- there is no unit to stop -- and it used to drop the territory row
 # only, leaving claimed:cloud on a PR that no session was ever started for.
+#
+# Anchored on the failure branch's own extent -- from the say() to the `}`
+# that closes it -- rather than on a fixed line count, which a comment added
+# inside the branch would silently push the claim removal out of.
 check "a dispatch that never starts drops the claim as well as the row" bash -c '
     s=$(grep -n "say \"systemd-run failed" "$1" | cut -d: -f1)
-    [ -n "$s" ] && sed -n "${s},$((s+4))p" "$1" | grep -q "label_rm \"\$num\" claimed:cloud"' _ "$HERE/cloud.sh"
+    [ -n "$s" ] || exit 1
+    e=$(awk -v s="$s" "NR>s && /^    \}$/ {print NR; exit}" "$1")
+    [ -n "$e" ] || exit 1
+    b=$(sed -n "${s},${e}p" "$1")
+    grep -q "label_rm \"\$num\" claimed:cloud" <<< "$b" &&
+    grep -q "territory_row rm" <<< "$b"' _ "$HERE/cloud.sh"
 
 rm -rf "$TL/board-wt"
