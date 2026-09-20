@@ -66,6 +66,58 @@ def swatch(background_alpha, pad_bit, one_minus):
     return round(over), round(surface_rgb)
 
 
+def write_transform(a8):
+    """psh.c's proposed write side: quantise the fragment's alpha to 7 bits.
+
+    Stored losslessly as its own bit-replicated expansion, so the blend unit's
+    identity read of it IS R1 -- which is the point, because a fixed-function
+    blend cannot be made to transform the destination alpha it reads.
+    """
+    return expand7(r2_a7(a8))
+
+
+def expand7(v):
+    return (v << 1) | (v >> 6)
+
+
+def r2_a7(stored8):
+    return stored8 >> 1
+
+
+def proposed(background_alpha, pad_bit, one_minus):
+    """The proposed fix, simulated through TestDstAlpha's real draw sequence.
+
+    Draw 1 has blending OFF, so the write transform lands exactly and the
+    surface holds what R1 wants. Draw 2 blends, and the transform necessarily
+    applies to the SOURCE alpha before the blend rather than to its result --
+    hardware quantises after. That approximation is real and is why this is
+    simulated rather than assumed; here it happens to cost nothing, because
+    write_transform(0x22) == 0x22 and the surface is sampled afterwards rather
+    than blended into again.
+    """
+    stored1 = write_transform(background_alpha)
+    ad = stored1 / 255.0
+    factor = (1.0 - ad) if one_minus else ad
+    rgb = SWATCH_RGB * factor
+    stored2 = round(write_transform(SWATCH_ALPHA) * factor)
+    sampled = r2_sampled_alpha(stored2, pad_bit) / 255.0
+    return (round(rgb * sampled + FRAMEBUFFER_GREY * (1.0 - sampled)),
+            round(rgb))
+
+
+def proposed_predictions():
+    out = {}
+    for pad_bit, suffix in ((0, 'Z'), (1, 'O')):
+        for one_minus in (False, True):
+            name = ('1-DstAlpha_XA_%s1A7RGB8' if one_minus
+                    else 'DstAlpha_XA_%s1A7RGB8') % suffix
+            for bg in BACKGROUND_ALPHAS:
+                top, bottom = proposed(bg, pad_bit, one_minus)
+                out[(name, bg, 'top')] = top
+                out[(name, bg, 'bot')] = bottom
+    return out
+
+
 # The goldens, as <suite>/<capture>.png, and the swatch grid inside them.
 MARGIN, TOP, SPACING, ROW_PITCH, SIZE = 32, 92, 144, 160, 128
 
@@ -158,15 +210,29 @@ def selftest():
         status = 'refuted (%d/16 wrong)' % miss if miss else 'NOT REFUTED'
         bad += miss == 0
         print('  %-46s %s' % (label, status))
+    print('\nthe PROPOSED fix, simulated through the same draw sequence')
+    miss = 0
+    for (name, bg, half), want in sorted(GOLDEN_DSTALPHA.items()):
+        pad_bit = 1 if 'O1A7' in name else 0
+        top, bottom = proposed(bg, pad_bit, one_minus=False)
+        miss += (top if half == 'top' else bottom) != want
+    bad += miss
+    print('  reproduces %d of 16 pinned halves  %s'
+          % (16 - miss, 'ok' if not miss else 'MISMATCH'))
+    lossy = [v for v in range(128) if r2_a7(expand7(v)) != v]
+    bad += bool(lossy)
+    print('  write transform is lossless over all 128 seven-bit values  %s'
+          % ('ok' if not lossy else 'FAILS at %r' % lossy[:5]))
+
     print('\n%s' % ('all checks pass' if not bad else 'FAILED: %d' % bad))
     return 1 if bad else 0
 
 
-def score(goldens):
+def score(goldens, which=predictions):
     import glob
     import numpy as np
     from PIL import Image
-    pred = predictions()
+    pred = which()
     worst = bad = 0
     for name in sorted({k[0] for k in pred}):
         hit = glob.glob(os.path.join(goldens, '*', name + '.png'))
@@ -195,4 +261,9 @@ def score(goldens):
 if __name__ == '__main__':
     if '--selftest' in sys.argv:
         sys.exit(selftest())
-    sys.exit(score(sys.argv[1] if len(sys.argv) > 1 else '/tmp/goldens/results'))
+    args = [a for a in sys.argv[1:] if not a.startswith('--')]
+    root = args[0] if args else '/tmp/goldens/results'
+    if '--proposed' in sys.argv:
+        print('scoring the PROPOSED implementation, not today\'s behaviour')
+        sys.exit(score(root, proposed_predictions))
+    sys.exit(score(root))

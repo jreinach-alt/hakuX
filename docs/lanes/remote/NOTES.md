@@ -92,10 +92,34 @@ right**, and the next lane should not undo it.
 What does work, checked exhaustively over all 128 seven-bit values: store
 `expand7(a >> 1)` — lossless, 128 distinct values, `expand7(v) >> 1 == v` — so
 R1 is correct by identity at the blend, and apply `(X << 7) | (stored >> 1)` at
-the texture read. **Not yet implemented.** The known residual is that hardware
-quantises *after* the blend and fixed-function cannot, so `Add_SrcA_DstA`
-(43,328 px each) is expected to move less than the `DstAlpha` pair; that is a
-prediction to register, not a result.
+the texture read. Identity is the *point* on the blend side: a fixed-function
+blend unit's destination-alpha read cannot be intercepted from a shader, so the
+only place to put R1 is the stored bytes.
+
+### The proposed fix, simulated before any C is written
+
+`x1a7_forward_model.py --proposed` runs that implementation through
+`TestDstAlpha`'s real draw sequence — write transform on the fragment's alpha,
+then the blend, then R2 at the sample — and scores it against the goldens:
+**0 of 32 modelled halves differ, worst |delta| 0**, the held-out `1-DstAlpha`
+pair included. A mutant that drops the quantisation is caught by the gate.
+
+**Predicted yield, stated before implementing: the four `DstAlpha`/`1-DstAlpha`
+captures go to 0, which is 303,104 px** (81,920 + 65,536 + 90,112 + 65,536),
+less whatever the GL-only anomaly below holds back on `DstAlpha_XA_O1A7RGB8`.
+
+**The other six X1A7 captures — 154,938 px — are NOT modelled and nothing here
+predicts them.** `XA_*_Add_SrcA_DstA` (43,328 each) is where the known
+approximation should bite: hardware quantises *after* the blend and
+fixed-function cannot, so the shader gives `expand7(As >> 1) * Fs + Ad * Fd`
+where hardware gives `expand7((As * Fs + Ad * Fd) >> 1)`. In `TestDstAlpha`
+that costs nothing — `write_transform(0x22) == 0x22`, and the surface is
+sampled afterwards rather than blended into again — which is luck, not a
+property of the fix, and the `Add_SrcA` pair has no such luck.
+
+Blast radius: exactly **ten** of the disc's 236 captures name `A7`, and the
+transform is keyed on the target surface format, so the other 226 must not
+move. That is the control to register.
 
 ### Still unexplained, and it is the GL-only 8,192 px
 
