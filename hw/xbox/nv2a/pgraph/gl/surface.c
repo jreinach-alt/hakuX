@@ -2307,6 +2307,100 @@ cleanup:
 }
 #endif
 
+/*
+ * Issue #60: X1A7R8G8B8_{Z,O} is the one colour surface format whose pad bit
+ * sits above SEVEN BITS OF REAL ALPHA, and the only one whose guest
+ * representation differs from the host image by an arithmetic transform
+ * rather than by a constant or a swizzle.
+ *
+ *     guest alpha byte  =  (X << 7) | (host_alpha >> 1),  X = 0 for _Z, 1 for _O
+ *     host alpha byte   =  expand7(guest_alpha & 0x7F)
+ *
+ * MEASURED TWICE, from two suites, and the two derivations are independent.
+ * vk/constants.h's entry pinned the readback on 2026-09-12 over 32,755
+ * invertible px of Surface format, scoring it against five rivals --
+ * truncation as above 2,097 differing, round-to-nearest 20,362, seven-bit
+ * bit-replication 32,570, mask-only 16,194, a Z/O constant 32,447, no pad
+ * handling at all 32,581. docs/testing/x1a7_forward_model.py re-derived it on
+ * 2026-09-19 from Blend surface, where it takes 18 wrong modelled halves to 4.
+ *
+ * WHY HERE AND NOT AT THE SAMPLER. This was first implemented as a fragment
+ * shader uniform applied to the sampled texel, and MEASURED INERT: it was
+ * gated on pgraph_gl_check_surface_to_texture_compatibility(), whose
+ * surface-format switch has no case for 0x06 or 0x07, so 96 of 96 X1A7
+ * lookups were refused and the sampled texel never came from the host surface
+ * at all. It comes from guest VRAM, which this function writes. The rule is
+ * not something the texture unit does to a host image -- it is WHAT THE
+ * RASTER PUT IN MEMORY -- and a guest CPU read of the surface is entitled to
+ * the same bytes, which no sampler-side approximation can give it.
+ *
+ * THE TWO DIRECTIONS MUST LAND TOGETHER. expand7 is lossless over all 128
+ * seven-bit values (expand7(v) >> 1 == v), so download-then-upload is
+ * idempotent after one pass: a -> (X<<7)|(a>>1) -> expand7(a>>1) ->
+ * (X<<7)|(a>>1). With only the download, a surface that round-trips loses a
+ * bit of alpha on EVERY cycle -- (X<<7)|(X<<6)|(a>>2) after two -- so the
+ * inverse is what makes the pair safe rather than a nicety.
+ *
+ * NOT the write side. What the blend unit reads as destination alpha is the
+ * host image, and nothing here changes what the raster stores into it; the
+ * four residual swatch halves at background alpha 0x80 are that, and they are
+ * off by exactly one.
+ *
+ * The pixel is four bytes, GL_BGRA / UNSIGNED_INT_8_8_8_8_REV, so alpha is
+ * byte 3 on a little-endian host -- the same layout the format map gives
+ * A8R8G8B8, and the probe that found this read 0x22ffffff as one word.
+ */
+static bool surface_format_is_x1a7(const SurfaceBinding *surface)
+{
+    if (!surface || !surface->color) {
+        return false;
+    }
+
+    switch (pgraph_gl_surface_drawn_format(surface)) {
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:
+    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:
+        return true;
+    default:
+        return false;
+    }
+}
+
+static uint8_t surface_x1a7_pad_bit(const SurfaceBinding *surface)
+{
+    return pgraph_gl_surface_drawn_format(surface) ==
+                   NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8 ?
+               0x80 :
+               0x00;
+}
+
+/* Host image -> guest bytes, on the way OUT of the surface. */
+static void surface_x1a7_host_to_guest(uint8_t *buf, unsigned int width,
+                                       unsigned int height,
+                                       unsigned int pitch, uint8_t pad)
+{
+    for (unsigned int y = 0; y < height; y++) {
+        uint8_t *row = buf + (size_t)y * pitch;
+        for (unsigned int x = 0; x < width; x++) {
+            row[x * 4 + 3] = pad | (row[x * 4 + 3] >> 1);
+        }
+    }
+}
+
+/* Guest bytes -> host image, on the way IN. The pad bit is dropped: it is not
+ * alpha, and #59's measurement says it does not reach the blend unit. */
+static void surface_x1a7_guest_to_host(uint8_t *buf, unsigned int width,
+                                       unsigned int height,
+                                       unsigned int pitch)
+{
+    for (unsigned int y = 0; y < height; y++) {
+        uint8_t *row = buf + (size_t)y * pitch;
+        for (unsigned int x = 0; x < width; x++) {
+            uint8_t a7 = row[x * 4 + 3] & 0x7F;
+            row[x * 4 + 3] = (uint8_t)((a7 << 1) | (a7 >> 6));
+        }
+    }
+}
+
 static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
                                        bool swizzle, bool flip, bool downscale,
                                        uint8_t *pixels)
@@ -2480,6 +2574,20 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
                   pg->surface_scale_factor;
             out += surface->pitch;
         }
+    }
+
+    /*
+     * #60, READ SIDE. Here rather than after the swizzle because this is the
+     * last point at which the buffer is linear at the guest's own resolution:
+     * rows are surface->pitch with surface->width valid pixels, whether or
+     * not the downscale above ran. The transform is per-pixel, so a Morton
+     * reorder would not invalidate it, but a swizzled buffer's padding is not
+     * ours to write.
+     */
+    if (surface_format_is_x1a7(surface)) {
+        surface_x1a7_host_to_guest(swizzle_buf, surface->width,
+                                   surface->height, surface->pitch,
+                                   surface_x1a7_pad_bit(surface));
     }
 
     if (swizzle) {
@@ -2679,6 +2787,25 @@ void pgraph_gl_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
             src += surface->pitch;
             dst += optimal_pitch;
         }
+    }
+
+    /*
+     * #60, the inverse. On a COPY unconditionally: optimal_buf is guest VRAM
+     * itself whenever the surface is linear and already at its optimal pitch,
+     * and the comment four lines up says why that must not be written --
+     * "This is VRAM so we can't do this inplace!". The old buffer is released
+     * here if it was ours, so the single free at the end still balances.
+     */
+    if (surface_format_is_x1a7(surface)) {
+        size_t sz = (size_t)surface->height * optimal_pitch;
+        uint8_t *conv = (uint8_t *)g_malloc(sz);
+        memcpy(conv, optimal_buf, sz);
+        surface_x1a7_guest_to_host(conv, surface->width, surface->height,
+                                   optimal_pitch);
+        if (optimal_buf != buf) {
+            g_free(optimal_buf);
+        }
+        optimal_buf = conv;
     }
 
     uint8_t *gl_read_buf = optimal_buf;
