@@ -3252,9 +3252,9 @@ suites = []
 no_suites = "a video-output question, not a framebuffer-golden one; the goldens are framebuffer captures, so this bears on #89's severity rather than its score."
 blocker_falsifier = "if the alpha-at-output question could be settled off-device, the harness would already have a video-output capture path; the goldens are framebuffer captures only."
 blocker_tested = "CONFIRMED BY READING 2026-09-18: the issue names its settling measurement as two on-hardware captures, framebuffer vs video output, and the only recorded blocker is 'real Xbox hardware'."
-status = "open"
-status_note = "No alpha handling in the video output path in either direction. If confirmed, #89's 141,125-pixel alpha-only residual is invisible to a player and matters only where a later draw reads the surface back as a texture."
-blocked_on = "Blocked on real Xbox hardware, per the issue text; the severity note on #89 can be written now without it. Labelled cloud for the write-up and prediction."
+status = "closed"
+status_note = "CLOSED 2026-09-20 on GitHub after lane.cloud-111's write-up (PR #173, folded 28a3805b93). The premise held but the inference was too strong: direct scanout is one of five consumers of a colour surface's alpha, and the quirk exempts only that one. Route 1, the blend unit (DST_ALPHA / ONE_MINUS_DST_ALPHA, pgraph.c:2855-2899), reads stored destination alpha upstream of the encoder, so #89's 141,125-px residual (45.9% of the frame) is a guest-visible RGB presence/absence flip on that route, not invisible to a player. See docs/investigations/2026-09-19-alpha-at-video-output-severity.md."
+blocked_on = ""
 
 [issue.112]
 title = "xbox-hardware: the experiments that need real silicon, in the order they pay"
