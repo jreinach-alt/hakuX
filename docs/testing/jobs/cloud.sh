@@ -47,7 +47,21 @@
 # opened it), a needs-audit-2 PR, a needs-audit-1 PR, an issue labelled
 # `cloud` with no lane: label. The claim (label claimed:cloud, a [job.cloud]
 # comment) is made HERE, by the script, before the session starts; the unit's
-# tail calls `cloud.sh finish`, so a stale claim cannot outlive its session.
+# `ExecStopPost=` calls `cloud.sh finish`, so a stale claim cannot outlive its
+# session.
+#
+# THAT LAST CLAUSE WAS FALSE FOR AS LONG AS THE TAIL WAS A TRAILING `;`
+# (measured 2026-09-19). A command appended to the unit's `bash -c` string
+# runs only if that shell reaches it, and the scripts it named lived in
+# $WORK/board-wt, which board.sh re-checkouts every tick. While that worktree
+# sat on the orphan `board` branch for ~100 minutes, cloud-audit2-141 and
+# cloud-remediate-148 both finished SUCCESSFULLY, both set their successor
+# label, and both had their tail die on a path that no longer existed. Neither
+# claim was ever released; pr_by_label excludes a claimed PR, so both were
+# invisible to this outlet for six and a half hours, until a person noticed.
+# Two things had to change and both did: the tail is an ExecStopPost, which
+# systemd runs however the unit ends, and the scripts it names are snapshotted
+# at claim time into $WORK/units/<unit>, which nothing else writes.
 set -u
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
@@ -286,8 +300,38 @@ PY
 #   - it set none -> the unit did NOT finish. LEAVE the label, so the next
 #     tick claims it again, and say so on the PR. The attempt counter bounds
 #     that retry; it is not a loop.
+# IT RUNS TWICE, SO IT IS IDEMPOTENT -- and it was not. The tail below is an
+# `ExecStopPost=`, which systemd runs however the unit ended; the owner also
+# runs this by hand when a unit has stranded a claim (both #141 and #148 were
+# repaired that way on 2026-09-19). Of the five things it does, four already
+# no-op on a second run -- label_rm probes the labels first and skips what is
+# not there, territory_row exits 3 on a row that is absent, `rm -f` is `rm -f`,
+# and say() is a log line. The fifth did not: `gh pr comment` posted the
+# "ended without setting a next state" notice again, every time, and that is
+# the branch a repaired claim lands in once its label is already gone.
+#
+# THE CLAIM LABEL IS THE KEY, not a local marker file. It is the one piece of
+# state that says "a claim is live right now", it lives on the server where
+# every actor can see it, and it is re-applied by the next claim -- so a
+# genuine second claim of the same PR gets a live finish again, which a
+# kind+num marker under $WORK could not distinguish. Read it ONCE, here,
+# BEFORE anything is removed: read after label_rm and the answer is always no.
 if [ "$mode" = finish ]; then
     kind="${2:?usage: cloud.sh finish <kind> <num>}"; num="${3:?}"
+    have=""; read_ok=0
+    for try in 1 2 3; do
+        have=$(gh api "repos/$GH_REPO/issues/$num/labels" --jq '.[].name' 2>/dev/null) && { read_ok=1; break; }
+        sleep 2
+    done
+    claimed=0; grep -qFx 'claimed:cloud' <<< "$have" && claimed=1
+    # AN UNREADABLE LABEL LIST IS NOT AN ABSENT CLAIM. A transient API failure
+    # at exactly this moment would otherwise take the "already finished" exit
+    # and strand the claim -- the defect this whole file is closing, rebuilt
+    # out of its own guard. So it goes on: every step below undoes nothing
+    # when there is nothing to undo, and the asymmetry is total. A claim that
+    # outlives its session is invisible to the outlet forever; a finish that
+    # runs on an already-finished claim costs three API calls.
+    [ "$read_ok" = 1 ] || say "finish: could not read #$num's labels in 3 tries; going on anyway rather than reading that as a finished claim"
     label_rm "$num" claimed:cloud
     # THE ROW GOES WHERE THE CLAIM GOES. `unclaim` already runs on exit, and
     # it is the only place a row written at claim can be removed -- leave it
@@ -302,14 +346,24 @@ if [ "$mode" = finish ]; then
         remediate) state=needs-remediation; succ='needs-audit-2|fold-ready' ;;
         *)         exit 0 ;;   # the issue path has no PR state label to clear
     esac
-    have=$(gh api "repos/$GH_REPO/issues/$num/labels" --jq '.[].name' 2>/dev/null)
     if grep -qE "^($succ)$" <<< "$have"; then
         label_rm "$num" "$state"
         rm -f "$WORK/attempts/cloud-$kind-$num"
-        say "finish: #$num moved past $state; cleared it"
-    else
+        if [ "$claimed" = 1 ]; then
+            say "finish: #$num moved past $state; cleared it"
+        else
+            say "finish: #$num moved past $state and carries no claimed:cloud, so an earlier finish already cleared it; this one changed nothing"
+        fi
+    elif [ "$claimed" = 1 ]; then
+        # THE ONE STEP THAT IS NOT SELF-CANCELLING, so it is the one gated on
+        # the claim having been live. The rule at the top of this block is
+        # untouched: a session that set no successor still keeps its state
+        # label and is still claimed again, bounded by the attempt counter.
+        # What is gated is only saying so a second time about the same claim.
         gh pr comment "$num" --repo "$GH_REPO" --body "[job.cloud] the $kind session for this PR ended without setting a next state, so \`$state\` stays and the outlet will claim it again. If that keeps happening the attempt counter escalates it to the owner." >/dev/null 2>&1
         say "finish: #$num set no successor to $state; left it for the next tick"
+    else
+        say "finish: #$num set no successor to $state and carries no claimed:cloud, so this claim was already finished; left $state alone and posted nothing"
     fi
     exit 0
 fi
@@ -372,6 +426,61 @@ if [ "$n" -gt "$LANE_MAX_ATTEMPTS" ]; then
 fi
 [ "$mode" = list ] && { echo "would claim $kind #$num ${head:+($head) }$title -- attempt $n on $MODEL"; exit 0; }
 echo "$n" > "$att"
+
+# --------------------------------------------- the unit's scripts, snapshotted
+#
+# A UNIT MUST NOT DEPEND ON A DIRECTORY ANOTHER JOB REPARENTS UNDERNEATH IT.
+#
+# $JOBS is $WORK/board-wt/docs/testing/jobs -- the board's private worktree,
+# which board.sh re-checkouts on EVERY tick (`git -C "$WT" checkout --detach
+# FETCH_HEAD`, board.sh:185). Measured 2026-09-19: it spent roughly 100
+# minutes detached on the orphan `board` branch, which has no docs/ at all.
+# Two units that had already started -- cloud-audit2-141 and
+# cloud-remediate-148 -- ran to completion, both sessions SUCCEEDED and both
+# set their successor label, and then their tails hit
+#
+#     python3: can't open file '.../board-wt/docs/testing/jobs/summarise_run.py'
+#
+# and the `cloud.sh finish` after it in the same chain was missing too. So
+# `claimed:cloud` stayed on both PRs, pr_by_label excludes a claimed PR, and
+# both were invisible to this outlet for six and a half hours until a person
+# looked. Those sessions ran 22 and 44 minutes; the tree only has to move once
+# in that window, and every tick moves it.
+#
+# WHY A SNAPSHOT AND NOT THE OTHER TWO OPTIONS. $REPO is no better: it is
+# whatever branch the owner last checked out, which board.sh:188-204 already
+# has its own scar about. A copy installed once under $WORK cannot move, but
+# it drifts from the trunk silently, which is the same class of bug with a
+# longer fuse. A snapshot cannot move BY CONSTRUCTION, and it pins the tail to
+# THE VERSION THAT MADE THE CLAIM -- which is the real invariant here. The
+# shape of a claim (which labels, which territory row, which attempt file) is
+# defined by the script that wrote it, so the script that reverses it must be
+# that same one. A tail read from a $JOBS that merely moved FORWARD is not
+# just a live path; it is a different program undoing this program's work.
+#
+# BEFORE THE CLAIM, so a copy that fails costs nothing: there is no claim yet
+# to strand, and nothing is labelled until the block below.
+SNAP="$WORK/units/$name"
+# Sweep the snapshots whose unit is no longer running -- and only those. A
+# unit's tail EXECUTES from its own snapshot, and bash reads a script lazily
+# by byte offset, so deleting one under a live unit does not tidy a directory,
+# it corrupts the program the tail is in the middle of.
+for d in "$WORK"/units/*; do
+    [ -d "$d" ] || continue
+    systemctl --user is-active --quiet "hakux-lane-$(basename "$d")" 2>/dev/null || rm -rf "$d"
+done
+rm -rf "$SNAP"
+# lane.sh as well as jobs/: the snapshot's own cloud.sh derives $T from its
+# location and reads $T/lane.sh for LANE_MAX, so the layout has to survive the
+# copy, not just the files.
+mkdir -p "$SNAP" && cp -a "$JOBS" "$SNAP/jobs" && cp -a "$T/lane.sh" "$SNAP/lane.sh" || {
+    say "cannot snapshot $JOBS into $SNAP; NOT claiming $kind #$num, because the unit's tail would then depend on a worktree another job moves out from under it"
+    # No session ran, so no attempt was spent. Give the count back: a host
+    # that is out of disk must not also walk the PR towards blocked:needs-owner.
+    echo "$(( n - 1 ))" > "$att"
+    exit 6
+}
+SJOBS="$SNAP/jobs"
 
 # ------------------------------------------------------------- claim and start
 if [ -e "$wt" ]; then git -C "$REPO" worktree remove --force "$wt" 2>/dev/null || { say "worktree $wt busy"; exit 0; }; fi
@@ -499,20 +608,65 @@ territory_row add "$name" "$row_issues" "$row_files" "$row_note" || {
 # UTC in the FILENAME: data. These sort, and `ls -t` aside, the name is how a
 # run is located; a local-time name would jumble across the fall-back.
 log="$WORK/logs/cloud/$name.$(date -u +%Y%m%dT%H%M%SZ).json"
-finish="bash '$JOBS/cloud.sh' finish $kind $num"
+# THE TAIL IS A UNIT PROPERTY, NOT THE LAST COMMAND OF A STRING.
+#
+# `bash -c "...; cloud.sh finish ..."` runs the tail only if that shell
+# REACHES it. It does not when the unit is killed, when the manager restarts,
+# when the shell dies -- or, as on 2026-09-19, when an earlier command in the
+# chain cannot be found, which is precisely how #141 and #148 were stranded:
+# `python3 '$JOBS/summarise_run.py'` failed on a missing path and took the
+# `finish` after it down with it, even though both sessions had SUCCEEDED and
+# set their successor label. systemd runs `ExecStopPost=` however the main
+# process ended -- success, failure, signal, timeout, manager shutdown -- and
+# that is the only place a tail whose whole job is to undo a claim can live.
+# Line 50's invariant ("a stale claim cannot outlive its session") was right;
+# a trailing `;` was never able to hold it.
+#
+# ONE CALL SITE, NOT TWO. finish is idempotent now, but it is still not called
+# both in-band and on stop: two calls would post the "ended without setting a
+# next state" notice about one session twice in the ORDINARY case, and prove
+# nothing extra in the failing one, where the in-band copy is exactly what did
+# not run.
+#
+# AN ABSOLUTE PATH, because systemd requires one for the first word of an
+# Exec* command. A bare `bash` here does not fall back to $PATH, it makes the
+# unit fail to LOAD -- inert in the loudest possible way, and only on the host.
+#
+# $SJOBS, not $JOBS: the snapshot above, which nothing reparents. --setenv
+# reaches ExecStopPost too (it is Environment= on the unit, not on one Exec
+# line), so the tail gets the same $WORK, $GH_REPO and $REPO this tick used --
+# which matters, because the row it removes was written against them.
 systemd-run --user --unit "$unit" --collect \
+    --property=ExecStopPost="/bin/bash $SJOBS/cloud.sh finish $kind $num" \
     --setenv=HAKUX_ROLE=cloud --setenv=HAKUX_BRIEF="$brief" --setenv=HAKUX_BRANCH="$branch" --setenv=HAKUX_TIP="$TIP" \
     --setenv=HAKUX_WORK="$WORK" --setenv=GH_REPO="$GH_REPO" \
+    --setenv=HAKUX_REPO_DIR="$REPO" --setenv=HAKUX_BOARD_BRANCH="$BOARD_BRANCH" \
     --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
     --working-directory="$wt" \
-    bash -c "claude -p \"\$(cat '$brief')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/cloud.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' $name '$MODEL' >> '$WORK/logs/cloud/index.tsv'; $finish >/dev/null 2>&1; exit \$rc" \
-    && say "started $unit: $kind #$num on $branch ($MODEL, attempt $n); log $log" || {
-        # NO SESSION, NO ROW. The unit's tail is what removes the row, so a
-        # unit that never started would leave one behind for good -- a claim
-        # with no agent, which is coverage that does not exist and which
-        # nothing fails on (fleet.py prints `ghost` and sets no rc).
-        say "systemd-run failed for $unit"
+    bash -c "claude -p \"\$(cat '$brief')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$SJOBS/roles/cloud.md' --allowedTools \"\$(cat '$SJOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$SJOBS/summarise_run.py' '$log' $name '$MODEL' >> '$WORK/logs/cloud/index.tsv'; exit \$rc" \
+    && say "started $unit: $kind #$num on $branch ($MODEL, attempt $n); log $log; scripts snapshotted at $SNAP" || {
+        # NO SESSION, NO CLAIM. The unit's tail is what undoes the claim, so a
+        # unit that never started would leave the whole of it behind for good:
+        # a row that is coverage which does not exist and which nothing fails
+        # on (fleet.py prints `ghost` and sets no rc), AND a `claimed:cloud`
+        # that pr_by_label excludes from every future tick -- the same
+        # permanent invisibility as the stranded tail above, reached by the
+        # one path ExecStopPost cannot cover, because there is no unit to stop.
+        #
+        # The STATE label stays: the session never ran, so the PR still needs
+        # what it was claimed for, and the next tick should pick it up. The
+        # attempt is given back for the same reason.
+        say "systemd-run failed for $unit; dropping the claim so the next tick can pick #$num up again"
         territory_row rm "$name" '[]' '[]' ''
+        # if/else, not `A && x || y`: label_rm returning 1 on the issue path
+        # would otherwise fall through and run the PR-path removal as well.
+        if [ "$kind" = issue ]; then
+            label_rm "$num" claimed:cloud "lane:cloud-$num"
+        else
+            label_rm "$num" claimed:cloud
+        fi
+        echo "$(( n - 1 ))" > "$att"
+        rm -rf "$SNAP"
     }
 [ -x "$JOBS/status.sh" ] && bash "$JOBS/status.sh" >/dev/null 2>&1
 exit 0
