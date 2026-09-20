@@ -99,9 +99,15 @@ EMPIRICAL_HAZARDS = {
     0x000200: "NV_PMC_ENABLE: writing 0 stopped the console dead on 2026-09-20 "
               "-- no ICMP, ARP FAILED, watchdog could not help because the CPU "
               "was gone too. Power cycle required.",
-    0x000004: "undeclared PMC register: a blind write latched 0x01000001 and it "
-              "would NOT restore to its original 0x00000000. We do not know what "
-              "it is and we could not put it back.",
+    0x000004: "NV_PMC_BOOT_1: its low bit is the MMIO endian switch. Writing "
+              "ones here byte-swapped every subsequent access, the sweep ran on "
+              "for 120 more registers, and two 'findings' were published that "
+              "were declared bits seen through a byte swap. Note what this one "
+              "proves: a NAME-based list could never have caught it, because "
+              "BOOT_1 is not spelled like anything dangerous. It is hazardous "
+              "for its SEMANTICS -- a write that redefines how every later "
+              "access is interpreted. The general defence is the canary in "
+              "sweep_writable_bits.py, not this entry.",
 }
 
 
