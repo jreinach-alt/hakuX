@@ -1,0 +1,82 @@
+[
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": 98,
+    "summary": "The conversion of 30 parity toggles into \"at least fifteen cells, i.e. hardware's Y16 offset sweeps at least ~200 byte units\" is not derivable, in two independent ways, and the accompanying \"the true swing can only be larger\" is false. (a) Under the document's own model each toggle needs the relative cell index to change by an odd number, so 30 toggles bound CUMULATIVE movement at >= 30 cells ~ 400 byte units; dividing by two is unlicensed. (b) Parity also flips whenever the base texture's own cell boundary is crossed: the gold BumpMap_Y8 quad's horizontal boundaries sit at columns 3,8,14,19,24,29,35,40,45,50,56,61,66,71,77 (period 5.29 columns), contributing ~6 toggles inside columns 44..77 with the offset difference held constant, and the derivation charges all 30 to hardware. (c) A flip count bounds cumulative travel, never an excursion: a difference oscillating between two adjacent cells gives unlimited toggles with a range of one cell ~ 13 byte units. Repeated verbatim in docs/lanes/cloud-10/NOTES.md:28-29 and in the PR body.",
+    "scenario": "The next lane carries the one number the document calls \"the size of the thing\" into a rival sieve. A mechanism with a ~40 byte-unit excursion is discarded as too small, although the data does not exclude it -- it constrains cumulative travel, which an oscillating offset supplies. Conversely a mechanism with a ~200-unit excursion is accepted, although the monotone reading of the same 30 toggles demands ~400. Both errors are invisible because the figure appears identically in three places and the tool computes none of it.",
+    "remediation": "Derive one quantity once and name it: 30 toggles across columns 44..102, ~6 of them the base checkerboard's own 5.29-column period, leave ~24 attributable to the offset difference, hence cumulative movement >= ~24 cells ~ 320 byte units, while the excursion is bounded below only by one cell ~ 13 byte units absent a monotonicity assumption this data does not supply. Then say which one the rival-sizing argument uses. Pair it with L2 so the toggle count and the base period are computed rather than quoted.",
+    "evidence": "docs/investigations/bump-y16-class.md:98-106; docs/lanes/cloud-10/NOTES.md:28-29; measured base checkerboard period 5.29 columns in gold Bump_map/BumpMap_Y8.png quad (146,66)+168, rows 20/90/160; the 15-run structure printed by bump_y16_class.py --columns."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": 199,
+    "summary": "The tool prints \"A whole-column inversion needs the horizontal offset to move by about half a checker cell\", while bump-y16-class.md:92-93 says the inverted columns' horizontal cell index \"differs by an odd number\". These are different mechanisms with different per-toggle costs (~6.7 against ~13.3 byte units) and the tool's is wrong: within a column the sampled u is essentially constant, so the column inverts exactly when floor(p + delta) - floor(p) is odd. A constant half-cell offset would invert only the columns whose phase sits in the upper half of their cell, with exactly the base texture's period and only where that period exists -- and beyond column ~77 the gold Y8 quad has no horizontal colour transitions along a row at all (rows 20 and 160 both stop at column 77), so a constant offset predicts no alternation in columns 78..102, where five inverted runs are observed (82-83, 87-88, 92-93, 96-98, 101-102).",
+    "scenario": "A reader runs `bump_y16_class.py --columns`, which is advertised as the re-runnable form of the whole investigation, and does not open the markdown. The printed conclusion gives ~6.7 byte units as the minimum offset movement per toggle -- half the figure the same PR's body publishes, and 30x smaller than its headline ~200 -- and nothing in either text tells the reader which to believe.",
+    "remediation": "Rewrite the printed paragraph to the document's mechanism (an odd number of whole cells) and add the sub-band fact: columns 78..102 carry no base horizontal boundaries, so the alternation there cannot come from a constant offset difference at all. That is the strongest evidence in the diff and it is currently in neither file.",
+    "evidence": "docs/testing/bump_y16_class.py:197-203; docs/investigations/bump-y16-class.md:87-96; measured horizontal transitions of gold BumpMap_Y8 quad g0 b0 at rows 20/160 = [3,8,14,19,24,29,35,40,45,50,56,61,66,71,77] with nothing beyond 77; inverted-column runs from the tool's own --columns output."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": 193,
+    "summary": "report_columns()'s capdir branch calls nz.min()/nz.max() on np.flatnonzero(p2) with no emptiness guard, so a capture whose BumpMap_Y16 matches the golden inside quad g0 b0 raises ValueError instead of reporting zero. The per-quad loop at :181-185 guards the identical case with `nz.min() if len(nz) else -1`.",
+    "scenario": "Someone re-runs --columns against a capture set from a build where this class and #38's positional floor are both fixed in that quad -- the state the tool exists to recognise -- and gets a zero-size array reduction traceback rather than the 0 px it is asking about.",
+    "remediation": "Reuse the guarded form from :181-185.",
+    "evidence": "docs/testing/bump_y16_class.py:181-185 against :191-196."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": 15,
+    "summary": "\"Re-run any number here with docs/testing/bump_y16_class.py --all\" (and NOTES.md:11) overstates what the tool computes. --all produces the identity table, the per-quad column profile, the differing-column list and the control. The swap fraction, the vertical transition rows, the 15-run decomposition, the toggle count and the cell arithmetic -- the whole of the load-bearing half M1 depends on -- are prose the tool prints but never derives. I verified each by hand and all are true, so the claim is a verifiability defect rather than a false number.",
+    "scenario": "The next reader tries to check or extend the ~200 byte-unit bound, finds --all silent on every input to it, and rebuilds the instrument by hand -- which is exactly how the three model-shaped instruments NOTES.md warns about were built.",
+    "remediation": "Add a --parity report: per-column swap fraction, the run structure, the toggle count, and the measured base checkerboard period. Then the sentence is true and M1 is re-derivable.",
+    "evidence": "docs/investigations/bump-y16-class.md:15, :87-106; docs/lanes/cloud-10/NOTES.md:11; bump_y16_class.py:167-203."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": 88,
+    "summary": "\"more than 95% of its pixels swap red for grey\" is true of the differing pixels (measured: 100% in all 33 columns) and false of the columns (measured: 152..168 differing pixels of 168, i.e. 90.5%-100%, with 15 of the 33 columns below 95%).",
+    "scenario": "A reader checking the inversion claim measures per-column and finds 90.5%, reads it as a discrepancy with the document, and re-opens a settled question.",
+    "remediation": "\"every differing pixel, and 90.5%-100% of each column\".",
+    "evidence": "Per-column differing and swapped counts over gold BumpMap_Y16 vs BumpMap_Y8, quad g0 b0: swapped/differing = 1.000 for all 33 columns; differing counts 152,156,156,158,168,156,154,154,154,156,168,... of 168."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": 117,
+    "summary": "The refutation of \"read the filtered 16-bit value at more than eight bits\" is correct but stated by the wrong mechanism: \"It cannot invert, let alone invert a whole column\" is false -- any nonzero shift inverts whole columns whose base phase lies within the shift of a cell boundary. The sound form is a duty cycle: ~1/26 of a cell inverts ~4% of the band's columns, and 33 of 59 (56%) are inverted.",
+    "scenario": "Someone reusing the argument for another format applies \"a sub-cell shift cannot invert a column\" where the phase happens to line up, and refutes a live rival by a rule that does not hold.",
+    "remediation": "Restate as a duty cycle. It is the same reasoning error M2 is made of, so fixing both together is one edit of one idea.",
+    "evidence": "docs/investigations/bump-y16-class.md:117-124; 33 of 59 columns in 44..102 inverted."
+  },
+  {
+    "id": "L5",
+    "severity": "LOW",
+    "file": "docs/investigations/bump-y16-class.md",
+    "line": 8,
+    "summary": "The currency argument for the 2026-09-13 capture set checks psh.c alone (\"not one of them mentions bump\" -- verified, zero occurrences). Between c866527e03 and origin/master, 23 files under hw/xbox/nv2a changed by ~4,800 lines, including gl/texture.c (+87: texture-cache invalidation and surface writeback), gl/surface.c, gl/draw.c, gl/shaders.c and glsl/common.c. None is obviously in this suite's path and no newer Bump_map capture set exists on this host (six exist; this is the newest, and a lane cannot produce one), so this is a scope statement rather than a re-measurement.",
+    "scenario": "A later reader takes \"the capture set is current for this question\" as covering the whole render path, and a Bump map number drifts for a reason that was never in psh.c.",
+    "remediation": "Name what was checked and what was not, and add the one sentence that makes it moot: the headline is re-derivable from current master -- SZ_Y16 is GL_R16 with {ONE,RED,RED,ONE}, a stored Y8*257 samples to exactly Y8/255, and bump_signed's round(x*255.0) lands on the same byte Y8 gives -- so it does not rest on the capture at all.",
+    "evidence": "git diff --stat c866527e03 origin/master -- hw/xbox/nv2a; hw/xbox/nv2a/pgraph/gl/constants.h:349; vk/constants.h:347; glsl/psh.c:2100, :3045-3046; capture sets under dispatch/results dated 2026-09-12..13."
+  },
+  {
+    "id": "L6",
+    "severity": "LOW",
+    "file": "docs/testing/bump_y16_class.py",
+    "line": 131,
+    "summary": "Two blemishes in report_identity(). The family filter's \"_A8\" key also matches BumpMap_A8R8G8B8 and BumpMap_A8B8G8R8, so four non-Y formats appear under a header reading \"the Y family\" (their rows are informative; the header is wrong). And the `if c else -1` arms at :140-142 are dead, since --cap has a non-empty default and capdir is never falsy; were they reached they would print -1 as a pixel count.",
+    "scenario": "A reader scanning the table treats the A8R8G8B8 rows' 3,895 px as part of the Y family's floor story and mis-states what #38's floor is for this suite.",
+    "remediation": "Match the suffix rather than a substring, or rename the header; drop the dead arms or make capdir genuinely optional.",
+    "evidence": "docs/testing/bump_y16_class.py:129-143; --all output rows BumpMap_A8B8G8R8/_A8R8G8B8 at 3,895."
+  }
+]
