@@ -60,11 +60,24 @@ case "$*" in
         # into an empty list is the fail-open-invisibly shape this whole
         # change exists to remove: it would turn a broken fixture into a
         # quietly passing "no PRs" run. An absent fixture is the only empty
-        # answer, and jq's error goes to the log if the shape ever drifts.
+        # answer, and the converter's error goes to the log if the shape ever
+        # drifts.
+        #
+        # PYTHON3 AND NOT JQ: on the owner's host jq is /snap/bin/jq, and a
+        # snap has a PRIVATE /tmp namespace, while the fake host lives under
+        # /tmp. `[ -s "$f" ]` passes and jq then says "No such file or
+        # directory" for that same path, printing nothing and exiting 2.
+        # Caught in 98-lane-shape.sh, where it made a live fixture read as a
+        # PR-BLIND report. This arm has no consumer today -- board.sh's gate
+        # answers from gh and arithmetic alone -- which is exactly why it had
+        # to be fixed here rather than when it next acquires one.
         [ -s "${BG_PRS:-}" ] || { echo '[]'; exit 0; }
-        jq 'map({number, head: {ref: .headRefName}, draft: .isDraft,
-                 labels: (.labels // []), updated_at: (.updatedAt // ""),
-                 title: (.title // "")})' "$BG_PRS" ;;
+        python3 -c 'import json,sys
+rows = json.load(open(sys.argv[1]))
+json.dump([{"number": p["number"], "head": {"ref": p.get("headRefName")},
+            "draft": p.get("isDraft"), "labels": p.get("labels") or [],
+            "updated_at": p.get("updatedAt") or "",
+            "title": p.get("title") or ""} for p in rows], sys.stdout)' "$BG_PRS" ;;
 esac
 exit 0
 EOF

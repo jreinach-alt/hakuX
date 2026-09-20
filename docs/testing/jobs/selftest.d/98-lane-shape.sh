@@ -244,21 +244,63 @@ check "  and its first line is the STATE= line, unprefixed by any warning" \
     grep -q '^STATE=' <<< "$(head -1 <<< "$out")"
 
 # ----------------------------------------------------------------- fleet.py
-# The board's only sensor. A directory holding the three modules plus two toml
+# The board's only sensor. A directory holding the modules plus two toml
 # files IS a board when HAKUX_BOARD_REF is empty -- the pattern 93's fixture
 # established -- so the real script runs against it unmodified.
+#
+# gh_rest.py IS PART OF THE COPY LIST, not an afterthought: fleet.py asks
+# GitHub over REST (`gh pr list` is GraphQL, which a Claude Code cloud
+# session's proxy refuses outright), and an unguarded import that this
+# scratch directory cannot satisfy takes out every check below at once.
 LSF="$LS/fleet"; mkdir -p "$LSF" "$LS/fleetdisp/fleet"
-cp "$TESTING/fleet.py" "$TESTING/board_files.py" "$LSF/"
+cp "$TESTING/fleet.py" "$TESTING/board_files.py" "$TESTING/gh_rest.py" "$LSF/"
 cp "$LS/territory.toml" "$LSF/territory.toml"
 printf '[issue]\n' > "$LSF/nv2a_issues.toml"
+# The PR fixture, in the flat `gh pr list --json` shape, kept as one readable
+# thing. The shim below serves it on either transport.
+cat > "$LS/lsprs.json" <<'EOF'
+[{"number":777,"headRefName":"claude/elsewhere-u1","isDraft":true,"labels":[],"updatedAt":"2026-09-19T00:00:00Z","title":"the remote lane"}]
+EOF
 cat > "$LS/bin2-gh" <<'EOF'
 #!/usr/bin/env bash
 args="$*"
+# BOTH SPELLINGS, for the reason 97's shim spells out: fleet.py asks over
+# REST while the jobs that invoke it still ask over GraphQL on the owner's
+# host. One fixture, two transports -- and REST nests `head.ref` and spells
+# it `draft`/`updated_at`, so the REST arm CONVERTS rather than being a
+# second hand-written literal that can drift from the first.
 case "$1 $2" in
-    "pr list") printf '[{"number":777,"headRefName":"claude/elsewhere-u1","isDraft":true,"labels":[],"updatedAt":"2026-09-19T00:00:00Z","title":"the remote lane"}]\n'; exit 0 ;;
+    "pr list") cat "$LS_PRS"; exit 0 ;;
     "issue list") echo '[]'; exit 0 ;;
-    *) exit 0 ;;
 esac
+case "$*" in
+    *"/issues?"*) echo '[]'; exit 0 ;;
+    *"/pulls?"*)
+        # No `|| echo []`: swallowing a conversion failure into an empty list
+        # would turn a broken fixture into a quietly passing "no PRs" run,
+        # which is the exact shape this branch exists to remove.
+        # PYTHON3, NOT JQ, AND THAT IS NOT A STYLE CHOICE. On this host jq is
+        # /snap/bin/jq, and a snap has a PRIVATE /tmp namespace: the fake host
+        # lives under /tmp, so `[ -s "$f" ]` says the fixture is there and jq
+        # says "No such file or directory" for the same path. It then exits
+        # non-zero having printed nothing, the shim's own `exit 0` hides that,
+        # and the caller sees an unparseable empty answer -- a broken fixture
+        # reported as a PR-BLIND report. python3 is already required by every
+        # fragment here and is not confined.
+        #
+        # No `|| echo []`: swallowing a conversion failure into an empty list
+        # would turn a broken fixture into a quietly passing "no PRs" run,
+        # which is the exact shape this branch exists to remove. The exit
+        # status is the converter's, so a failure stays a failure.
+        python3 -c 'import json,sys
+rows = json.load(open(sys.argv[1]))
+json.dump([{"number": p["number"], "head": {"ref": p.get("headRefName")},
+            "draft": p.get("isDraft"), "labels": p.get("labels") or [],
+            "updated_at": p.get("updatedAt") or "",
+            "title": p.get("title") or ""} for p in rows], sys.stdout)' "$LS_PRS"
+        exit $? ;;
+esac
+exit 0
 EOF
 mkdir -p "$LS/bin2"; cp "$LS/bin2-gh" "$LS/bin2/gh"
 cat > "$LS/bin2/systemctl" <<'EOF'
@@ -266,8 +308,15 @@ cat > "$LS/bin2/systemctl" <<'EOF'
 case "$*" in *list-units*) exit 0 ;; *) exit 0 ;; esac
 EOF
 chmod +x "$LS/bin2/"*
-flt_ls=$( ( export PATH="$LS/bin2:$PATH"; cd "$LSF" && HAKUX_BOARD_REF= DISPATCH_DIR="$LS/fleetdisp" \
+flt_ls=$( ( export PATH="$LS/bin2:$PATH" LS_PRS="$LS/lsprs.json"; cd "$LSF" && HAKUX_BOARD_REF= DISPATCH_DIR="$LS/fleetdisp" \
             python3 "$LSF/fleet.py" ) 2>&1 )
+# THE SHIM ANSWERED AT ALL. Every check below reads a rendered row, and a row
+# that is absent because the fixture starved renders identically to a row that
+# is absent because fleet.py classified it wrongly -- which is how the snap-jq
+# fault above stayed invisible for a run. PR-BLIND is fleet.py saying it could
+# not see; if it says that here, the fixture is broken, not the code.
+check "the fleet fixture answered -- the report is not PR-BLIND" \
+    bash -c '! grep -q "PR-BLIND" <<< "$1"' _ "$flt_ls"
 check "fleet.py gives every row carrying \`remote\` a section of its own" \
     grep -q "REMOTE LANES (2)" <<< "$flt_ls"
 check "  counting an open PR on a branch a territory row names, not on a lane/* head" \
