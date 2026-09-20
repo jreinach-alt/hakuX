@@ -221,6 +221,24 @@ void pgraph_glsl_get_signed_blend_staged(unsigned long *low,
  * and this never does. The GL renderer never calls the setter, so it keeps
  * false and generates exactly the GLSL it generates today.
  */
+/*
+ * NOT `opts.vulkan && ...` any more (#158). The write side is backend-neutral
+ * in substance -- an index-1 output, a copy, and a stamp -- and the Vulkan
+ * term was standing in for "the backend that has the feature", which was true
+ * only while Vulkan was the only backend that set the flag. Measured cost of
+ * leaving it: GL drifted 413,790 px behind Vulkan across eleven captures in
+ * eight days, on a family where the two renderers had been byte-identical.
+ *
+ * The flag is the authority, and each backend's init decides it:
+ * vk/instance.c from dualSrcBlend, gl/renderer.c from
+ * GL_ARB_blend_func_extended (core in 3.3). `!opts.gles` is defence in depth
+ * rather than the gate -- GLES needs EXT_blend_func_extended, which is not
+ * core in 3.0, and the failure there is a shader that does not compile, the
+ * same split #72's grant was conditioned on. A GLES build never sets the
+ * flag, so this term should never be the thing that decides; it is here so
+ * that if one ever does, the result is today's GLSL rather than a broken
+ * compile.
+ */
 static bool g_dual_src_pad_supported;
 
 void pgraph_glsl_set_dual_src_pad_supported(bool supported)
@@ -1997,7 +2015,7 @@ static MString* psh_convert(struct PixelShader *ps)
      * A pipeline that names no SRC1 factor simply ignores index 1.
      */
     const char *frag_outputs =
-        (ps->opts.vulkan && g_dual_src_pad_supported) ?
+        (g_dual_src_pad_supported && !ps->opts.gles) ?
             "layout(location = 0, index = 0) out vec4 fragColor;\n"
             "layout(location = 0, index = 1) out vec4 fragColorSrc1;\n" :
             "layout(location = 0) out vec4 fragColor;\n";
@@ -3547,7 +3565,7 @@ static MString* psh_convert(struct PixelShader *ps)
      * what a shader whose uniform was never written reads -- leaves fragColor
      * untouched.
      */
-    if (ps->opts.vulkan && g_dual_src_pad_supported) {
+    if (g_dual_src_pad_supported && !ps->opts.gles) {
         mstring_append(
             ps->code,
             "// #59 write-side pad bits: index 1 keeps the combiner's alpha\n"

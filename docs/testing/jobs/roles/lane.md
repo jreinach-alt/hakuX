@@ -54,10 +54,27 @@ A path you edit that is not on that line is a collision nothing can see.
 4. The prediction, if any, is registered and committed with its refs, or
    the body says `Prediction: none` and why.
 5. Then **mark the PR ready**: `gh pr ready <number>`. A draft is "still
-   working"; a ready PR is what the board audits and folds. If you end
-   without marking it ready, the board resumes you (attempts are counted,
-   and the fourth runs on the escalated model), so do not end a session on
-   a finished PR still in draft.
+   working"; a ready PR is what the board audits and folds, and a draft is
+   skipped by `board.sh`, `fleet.py` and `fold.sh` alike. So do not end a
+   session on a finished PR still in draft.
+
+   **If you are waiting, that is a finished session too -- say so and stop.**
+   CI on a head you just pushed is ~10 minutes, a device arm is ~90, an audit
+   is a different session entirely, and you have no way to sleep. Do not burn
+   turns polling until the turn cap cuts you off; do not end silently either,
+   because until 2026-09-19 that left five finished, green PRs in draft with
+   no actor that could ever touch them. Instead: post a PR comment starting
+   `[lane.<name>] waiting:` that names what you are waiting for and what
+   signal will resolve it, write it in `NOTES.md`, and stop.
+
+   `jobs/handback.sh` is the actor for that state. Every fold tick it looks
+   for a draft lane PR whose `hakux-lane-<name>` unit is not running, and
+   resumes you with the resolved state in your brief -- CI is GREEN on this
+   sha, or your arm was judged and the verdict is in a `[job.arms]` comment.
+   **A resume for a wait does not count against your attempts**, so waiting
+   costs you no part of the escalation budget. It resumes once per head sha
+   per cause, and it will never mark your PR ready for you: nothing but you
+   can check items 1-4.
 6. If the brief cannot be done as written, say so in your `NOTES.md` and in a
    PR comment starting `[lane.<name>] blocked:`, with the measurement or
    decision that would unblock it. That is a finished outcome.

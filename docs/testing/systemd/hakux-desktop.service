@@ -1,0 +1,43 @@
+[Unit]
+Description=hakuX desktop execution channel -- the `desktop` device lane (xemu on this host, OpenGL)
+Documentation=file:///home/justin/hakuX/docs/testing/desktop_channel.sh
+After=network.target
+
+[Service]
+Type=simple
+Environment=DISPATCH_DIR=/home/justin/hakux-work/dispatch
+Environment=WORK=/home/justin/hakux-work
+# THE PATH IS THE WHOLE REASON THIS FILE CANNOT BE COPIED WITHOUT READING IT.
+#
+# A systemd user unit does NOT inherit the login shell's PATH. A unit gets
+# /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin and nothing
+# else, while an interactive shell puts ~/.local/bin first. `meson` lives in
+# ~/.local/bin on this host and `ninja` only in the Android SDK's cmake
+# directory, so the SAME BUILD succeeds by hand and fails from the daemon.
+#
+# MEASURED 2026-09-19 on hakux-dispatcher.service, which is where this line is
+# copied from: every uncached Android build from that daemon died at CMake
+# configure with "meson not found in PATH; required to build glib for Android",
+# and it stayed invisible for as long as every requested ref was already in the
+# APK cache. The first uncached one -- #89's arm -- failed on BOTH sides in
+# 1m54s with a 1,200-line Gradle stack trace, which reads like the branch.
+#
+# desktop_channel.sh's find_tool() searches the two known locations before
+# falling back to PATH, so this is belt and braces rather than the only
+# mechanism -- and that is deliberate: find_tool covers meson and ninja, this
+# covers everything else the qemu configure shells out to.
+Environment=PATH=/home/justin/.local/bin:/home/justin/Android/Sdk/cmake/3.30.3/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/desktop_channel.sh serve
+# A LONG TIMEOUT ON STOP. A tick can be inside a qemu run with a DC_TIMEOUT of
+# 420s plus a disc build; SIGKILL at the default 90s would leave a multi-GB
+# hdd.img copy under $DC_ROOT/runs and a half-extracted result. The EXIT trap
+# releases lanes/desktop, so a clean stop also un-registers the lane, which is
+# what affinity.py needs to stop pinning pairs here.
+TimeoutStopSec=600
+Restart=always
+RestartSec=30
+StandardOutput=append:/home/justin/hakux-work/dispatch/logs/desktop-systemd.log
+StandardError=append:/home/justin/hakux-work/dispatch/logs/desktop-systemd.log
+
+[Install]
+WantedBy=default.target

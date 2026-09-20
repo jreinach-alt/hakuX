@@ -133,8 +133,17 @@ for lt_j in board cloud fold handback; do
     check "$lt_j.sh's say() stamps through say_time_s" \
           grep -q 'say() { echo "$(say_time_s) \$\*" | tee -a "\$LOG"; }' "$HERE/$lt_j.sh"
 done
-check "nightly_build.sh's say() stamps through say_time_s" \
-      grep -q 'say() { echo "$(say_time_s) \$\*" | tee -a "\$LOG"; }' "$(dirname "$HERE")/nightly_build.sh"
+# nightly_build.sh's say() is the one that cannot be pinned on the one-line
+# form: it has two arms, because `notes` mode writes the body to stdout and
+# must send progress to stderr or it corrupts the very thing it generates
+# (docs/lanes/nightlynotes). So pin what the comment above actually says --
+# the CALL -- on both arms, and then assert the bare clock stamp it replaced
+# is gone from the file, which is the half a positive grep cannot state.
+lt_nb="$(dirname "$HERE")/nightly_build.sh"
+check "nightly_build.sh's say() stamps through say_time_s, in both arms" \
+      [ "$(grep -c 'echo "$(say_time_s) \$\*"' "$lt_nb")" = 2 ]
+check "nightly_build.sh keeps no bare clock stamp" \
+      lt_absent '\$\(date .\+%H:%M' "$lt_nb"
 
 # ------------------------------------------------ display: the status page
 # One row, dated relative to now so it stays inside the page's own 24h
