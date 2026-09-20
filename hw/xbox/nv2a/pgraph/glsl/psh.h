@@ -149,6 +149,51 @@ enum PshPadAlphaMode {
 int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format);
 
 /*
+ * Issue #60, the READ side of the same per-format fact: what the texture unit
+ * hands the shader when it samples a surface that was DRAWN in
+ * X1A7R8G8B8_{Z,O}.
+ *
+ * Every other pad format's readback is a constant, so the Vulkan renderer
+ * expresses it as a component swizzle (host_fmt.sampled_pad_alpha,
+ * vk/constants.h) and nothing reaches the shader. X1A7R8G8B8 is the one
+ * format whose readback is a FUNCTION of the stored bits:
+ *
+ *     sampled alpha = (X << 7) | (stored_alpha >> 1)
+ *
+ * X = 0 for _Z and 1 for _O. Measured 2026-09-12 over 32,755 invertible px of
+ * Surface format's goldens and scored against five rivals there
+ * (vk/constants.h carries the table); re-derived independently on 2026-09-19
+ * from the whole-golden forward model in docs/testing/x1a7_forward_model.py,
+ * where it is the transform that takes 18 wrong modelled halves to 4.
+ *
+ * A swizzle cannot express it and neither can a host format, so it is applied
+ * in the fragment shader, per stage, right after the sample.
+ *
+ * Returned as a mode rather than a constant because the shader needs to know
+ * BOTH whether to apply the transform and which X bit to fold in: 0 leaves
+ * the sampled alpha alone, 1 is the _Z rule, 2 is the _O rule.
+ *
+ * WHICH guest format to pass is the caller's problem, and for this one it is
+ * NOT pg->surface_shape.color_format -- that is the format the draw is
+ * TARGETING, and what matters here is the format the surface being SAMPLED
+ * was last drawn with. Take it from pgraph_gl_surface_drawn_format() /
+ * pgraph_vk_surface_drawn_format() on the sampled binding, never from
+ * binding->shape.color_format, which is deliberately creation-time state.
+ *
+ * KEEP IN SYNC with pgraph_glsl_surface_pad_alpha_mode() above and with the
+ * sampled_pad_alpha column of kelvin_surface_color_format_vk_map: the three
+ * encode the write side, the read side and the constant-readback side of one
+ * per-format table, and a row added to one and not the others is how #48's
+ * clear and sampler halves came apart (audit M3/P4).
+ */
+enum PshSampledPadAlphaMode {
+    PSH_SAMPLED_PAD_ALPHA_NONE = 0,
+    PSH_SAMPLED_PAD_ALPHA_X1A7_Z = 1,
+    PSH_SAMPLED_PAD_ALPHA_X1A7_O = 2,
+};
+int pgraph_glsl_surface_sampled_pad_alpha_mode(unsigned int color_format);
+
+/*
  * Whether the raster may stamp that constant at all, which is a DEVICE
  * question and the reason #59's write side stood blocked.
  *
@@ -202,6 +247,7 @@ bool pgraph_glsl_dual_src_pad_supported(void);
     DECL(S, fogColor, vec4, 1)      \
     DECL(S, fogParam, vec2, 1)      \
     DECL(S, padAlphaMode, int, 1)   \
+    DECL(S, sampledPadAlpha, int, 4) \
     DECL(S, signedBlendPass, int, 1) \
     DECL(S, stipplePattern, ivec4, 8) \
     DECL(S, surfaceScale, ivec2, 1) \
