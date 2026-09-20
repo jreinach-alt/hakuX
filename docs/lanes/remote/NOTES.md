@@ -36,6 +36,104 @@ to `[lane.clrpad164]` for #164; that lane has PR #172 open. Do not edit it.
 | #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
 
+## The pad bit is written by the raster, not applied by a reader (2026-09-20, third judgement)
+
+**Correction first, because the previous section got a fact wrong.** It said
+`gl/surface.c` is `[lane.swizzle87]`'s and asked for it on #60. **It is this
+lane's.** `[lane.swizzle87]` was retired at wave 108 and released the file;
+the live board — `origin/board:territory.toml` at the repository **root**,
+wave 129 — lists `hw/xbox/nv2a/pgraph/gl/surface.c` as the first entry in
+`[lane.remote]`'s `files`. The in-tree `docs/testing/territory.toml` is at
+wave **94** and is 35 waves stale; I read it instead of the board. The ask on
+#60 is withdrawn — nothing was blocked.
+
+(`gl/shaders.c` moved the other way and is **not** this lane's on the live
+board. The reverted `9e9da01d` touched it; `aa3648cb` restores it
+byte-identically, so the net diff does not, the same shape as #62's
+`d7ef9820`.)
+
+### The measurement
+
+`5df42da3` put the rule where the last section said it belonged — the surface
+download writes `(X << 7) | (host >> 1)`, the upload reads back
+`expand7(guest & 0x7F)`. Registered at
+`docs/testing/predictions/2026-09-20-gl-x1a7-download.json`. **Four of five
+legs held, two of them exactly:**
+
+| capture | a (post-blit-fix) | measured | registered |
+|---|---:|---:|---|
+| `DstAlpha_XA_O1A7RGB8` | 81,920 | **16,384** | 16,384 ✔ exact |
+| `1-DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | 16,384 ✔ exact |
+| `1-DstAlpha_XA_O1A7RGB8` | 81,920 | **32,768** | 16,384 *or* 32,768 ✔ |
+| `DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | 16,384 *or* 32,768 ✔ |
+| `Fmt_X1A7R8G8B8_Z1A7R8G8B8` | 32,774 | **6,311** | must improve ✔ |
+| `Fmt_X1A7R8G8B8_O1A7R8G8B8` | 16,414 | **122,552** | must improve ✘ **KILL** |
+
+The fifth leg said *"both strictly improve. FAILS IF either grows."* It grew
+sevenfold, so the change is reverted in `ad5f43b6`. **An aggregate cannot
+license a capture that gets seven times worse**, which is exactly why that
+condition was registered before the run rather than judged after it.
+
+### Where the regression is, and what it says
+
+Not diffuse: **59,025 px of it are the frame's background**, golden
+`[32,32,32,255]`, which we produced correctly before and now produce as
+`[16,16,16,191]` — a half-opaque composite. Host alpha is `0` there and the
+`_O` rule turns `0` into `0x80`.
+
+On the **drawn swatch** the same rule is right: golden `[240,207,15,255]`,
+matched before and after, while the `_Z` twin's golden is `[120,103,7,191]`
+and this change makes `_Z`'s alpha histogram **byte-identical to its golden**
+— `255 ×271205, 191 ×17081, 0 ×3288, 192 ×1116` — with exactly **one** pixel
+newly wrong.
+
+### The rival, measured on the same instrument
+
+The same code with the pad bit forced to zero for both suffixes:
+
+| capture | a (post-blit-fix) | pad bit | no pad |
+|---|---:|---:|---:|
+| `1-DstAlpha_XA_O1A7RGB8` | 81,920 | **32,768** | 81,920 |
+| `1-DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | **16,384** |
+| `DstAlpha_XA_O1A7RGB8` | 81,920 | **16,384** | 81,920 |
+| `DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | **16,384** |
+| `Fmt_X1A7R8G8B8_O1A7R8G8B8` | 16,414 | 122,552 | 32,799 |
+| `Fmt_X1A7R8G8B8_Z1A7R8G8B8` | 32,774 | **6,311** | **6,311** |
+| ten `A7` total | 449,850 | 316,533 | 341,468 |
+
+So the pad bit is **necessary** for Blend surface's `_O` pair — without it
+they do not move at all — and **harmful** on Surface format's `_O`
+background. Both variants regress that capture, so neither ships.
+
+### The conclusion, and it is a design statement rather than a hypothesis
+
+**The pad bit is not a property of the memory that a reader applies. It is
+written by the raster, per pixel, and is absent where the raster never
+wrote.** Blend surface draws two full-surface quads so every pixel carries
+it; Surface format has a background the raster never touched, and forcing `X`
+there is what breaks it. A download cannot tell those apart — it sees only
+bytes — so **the pad bit belongs on the write side**, and that is the same
+reason one stored byte cannot answer both the blend's read and the texture
+unit's read under identity.
+
+What is not in doubt: **the 7-bit quantisation itself.** `_Z` 32,774 → 6,311,
+alpha exact, one pixel newly wrong. It is reverted only because it cannot be
+separated from the question the `_O` pair raises.
+
+### The next step, stated so nobody re-derives it
+
+Carry the guest representation in the host surface's alpha *for pixels the
+raster writes* — which only the fragment path can know — and make the
+download and upload identity again. That is #59's stamp machinery applied to
+a format it currently excludes, and `psh.h`'s exclusion note will need
+rewriting rather than deleting: it is right that a `PSH_PAD_ALPHA_ONE`-style
+constant would destroy seven real bits, and wrong that nothing else can be
+stamped. **The cost to price first** is what the blend then reads as
+destination alpha: `(X << 7) | A7` where hardware reads `expand7(A7)`, which
+is not an off-by-one — it is roughly a factor of two on `_Z`. Today's
+identity costs 14 of 32 modelled halves; that variant's cost is unmeasured
+and must be measured before it is built.
+
 ## The X1A7 read side is not in the sampler, and one GL-only swatch was never a pad-bit defect (2026-09-20)
 
 Two predictions were registered before the runs and both were judged. One was
@@ -146,7 +244,7 @@ sampled alpha does not enter it. The four residual halves at `bg 0x80` are
 
 ### 4. What #60 still needs, and from whom
 
-- **`gl/surface.c`** (`[lane.swizzle87]`): apply `(X << 7) | (stored >> 1)` in
+- ~~**`gl/surface.c`** (`[lane.swizzle87]`)~~ **— WRONG, see the section above: the file is this lane's on the live board, and the download is not where the pad bit goes.** The superseded text: apply `(X << 7) | (stored >> 1)` in
   the surface download and `expand7(a >> 1)` on upload, for
   `X1A7R8G8B8_{Z,O}`. That is the read side, byte-exact, and it also fixes a
   guest CPU read of the surface, which no sampler-side approximation can.
