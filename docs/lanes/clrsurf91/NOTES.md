@@ -459,3 +459,40 @@ byte-identical to arm A on all 11 captures. `jobs/fold.sh` refuses to fold a
 did **not** make this PR foldable. That is an owner decision about taking a
 correctness-only change that moves no pixels -- not a remediation, and not
 mine to make.
+
+## Attempt 4 (2026-09-19, job.cloud): the pass-2 remediation verified, not redone
+
+The previous firing pushed the pass-2 remediation (`7940e23cf8`) and ended
+without commenting or moving the state label, so the outlet re-claimed the PR
+under `needs-remediation`. **No finding was re-opened and nothing in the fix
+changed.** This attempt re-verified M3 -- the only MEDIUM pass 2 left open --
+against a master that had moved another 13 commits since the regeneration, and
+that is worth recording because M3 is a finding about a moving target:
+
+* `git merge-tree --write-tree origin/master HEAD` writes a tree and reports
+  **no conflict**; GitHub agrees (`MERGEABLE` / `CLEAN`).
+* Those 13 commits do **not** touch `docs/testing/nv2a_index.json` --
+  `git log HEAD..origin/master -- docs/testing/nv2a_index.json` is empty --
+  so the clean merge is not a textual auto-merge of two regenerations that
+  would produce an index matching neither tree. That is the check worth making
+  here: on this file "merged without conflict" and "correct after the merge"
+  are different questions.
+* `nv2a_index.py check --tests /home/justin/nxdk_pgraph_tests --support
+  /home/justin/pbkitplusplus` prints **"index matches the tree (951 symbols,
+  2839 sites, 103 suites)"** on this tree. The `--support` argument is not
+  optional; without it five suites read as changed and the index reads stale.
+* Both prediction refs are still ancestors of the head (`aec524681e`,
+  `7980d1caa2`), the head sha on GitHub equals this tree's, all three CI checks
+  are SUCCESS on it, and `preflight.sh --allow-tracker` passes.
+* `git diff --stat origin/master...HEAD` is still the four paths on `Files:`
+  plus this loop's audit records.
+
+The branch was deliberately **not** re-merged: master's motion did not reach
+any file this branch carries, so a merge commit would buy a CI cycle and a new
+head sha and close nothing. If master later moves `nv2a_index.json`, the
+remediation is the one in pass 2 -- merge (never rebase), regenerate, check --
+and `jobs/fold.sh` now hands a stale base back for exactly that.
+
+N2 stays open and unfixed for the reason above: `vk/blit.c` is not this lane's
+file and the grant was asked for on the PR and not answered. It is a LOW and a
+logged decision, not an outstanding remediation.
