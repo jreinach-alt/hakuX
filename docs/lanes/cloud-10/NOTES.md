@@ -8,7 +8,9 @@ entry. No code change; `glsl/psh.c` is `lane.remote`'s and nothing here names
 an unambiguous fix site anyway.
 
 Full write-up: [`docs/investigations/bump-y16-class.md`](../../investigations/bump-y16-class.md).
-Every number in it re-runs with `python3 docs/testing/bump_y16_class.py --all`.
+Every number in it re-runs with `python3 docs/testing/bump_y16_class.py --all`:
+`--identity`, `--stored` and `--control` for the tables, and `--parity` for
+the inversion's structure and the size bound, which used to be prose.
 
 ## Outcome
 
@@ -27,6 +29,15 @@ much larger problem":
   and every differing column is colour-inverted with its vertical checker
   transitions on identical rows -- a horizontal cell-parity flip that toggles
   30 times across the band.
+- **hardware varies the horizontal offset with `u`; it does not shift it by a
+  constant.** In columns 78..102 the base checkerboard has no horizontal
+  boundary in 150 of the quad's 168 rows, and the gold Y16 quad has 11 in
+  every row. A constant shift, of any size, can only invert at the base's own
+  period. Counting both images' boundaries per row bounds the *cumulative*
+  movement of the relative cell index at **>= 19 cells, ~250 byte units** of
+  `b`, against our single 82 -> 83 step. Its *excursion* is not bounded by
+  this data at all (oscillation inside one cell toggles forever), so size a
+  rival by cumulative movement, not by swing.
 - `BumpEnvLum_Y16` is at the floor over the same format, the same seam and the
   same kind of byte-replicated field, with a *larger* bump matrix. That is the
   control that kills the one rival with the right magnitude (reading the low
@@ -51,6 +62,18 @@ much larger problem":
   quad and 77 for ours -- images that differ by 1,576 px in total. The right
   half of each quad carries almost no horizontal information and any threshold
   scan across it answers confidently.
+- **Do not bound a swing with a flip count.** The first draft of this document
+  turned "the inversion toggles 30 times" into "the offset sweeps at least
+  ~200 byte units", by halving the toggles into cells and then claiming the
+  true swing could only be larger. Every step of that is wrong: a count of
+  sign changes bounds *cumulative* travel, never an excursion (oscillation
+  inside one cell toggles arbitrarily often with a range of one cell), the
+  halving had nothing behind it, and some of the toggles belong to the base
+  texture's own 5.29-column period rather than to hardware. The audit on #187
+  caught it. The instrument that answers it honestly counts the two images'
+  own checker boundaries per row and takes the difference -- `--parity` -- and
+  it also says which quantity is bounded, because the next reader is going to
+  use that number as a sieve.
 - **Do not patch `append_bump_channel` on a format test.** Any rule keyed on
   `SZ_Y16` that moves `BumpMap_Y16` also moves `BumpEnvLum_Y16`, which is
   already exact at 1,576. That is a must-not-move leg with a number attached.

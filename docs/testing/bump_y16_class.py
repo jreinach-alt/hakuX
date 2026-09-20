@@ -9,7 +9,7 @@ absolute render cannot separate a 5,000 px effect from that 21,000 px floor.
 Everything below is a comparison between images that were produced by the
 same geometry, which cancels it.
 
-Four things it reports, each a standalone claim:
+Five things it reports, each a standalone claim:
 
   --identity   Which `Bump map` captures are byte-identical to which, in ours
                and in the goldens.  This is the finding: we render Y16 as Y8,
@@ -20,6 +20,10 @@ Four things it reports, each a standalone claim:
                channel-assignment rival without running one.
   --columns    Where in the quad the hardware Y16/Y8 difference lives, column
                by column, against the seam the source steps at.
+  --parity     How much the offset moved: the inversion's run structure, and
+               the two goldens' own checker-boundary counts, which are what
+               the size claim is derived from.  Nothing about the size of the
+               effect should be re-derived by eye; this prints it.
   --control    The `Bump env lum` Y16 row, which is at the #38 floor -- the
                same format, the same bump texture, the same 16-bit field, and
                no disagreement.
@@ -28,6 +32,7 @@ Usage:
   bump_y16_class.py --identity [--cap DIR]
   bump_y16_class.py --stored
   bump_y16_class.py --columns [--cap DIR]
+  bump_y16_class.py --parity
   bump_y16_class.py --control [--cap DIR] [--lumcap DIR]
   bump_y16_class.py --all
 """
@@ -51,6 +56,15 @@ QUAD, STRIDE = 168, 180
 ORIGIN_X, ORIGIN_Y = 146, 66
 RED = np.array([254, 0, 0, 255], np.int16)
 GREY = np.array([33, 32, 32, 191], np.int16)
+
+# The band the hardware Y16/Y8 difference occupies, and the part of it where
+# the base checkerboard itself has no horizontal boundaries -- see --parity.
+BAND_LO, BAND_HI = 44, 102
+FLAT_LO, FLAT_HI = 78, 102
+# One checker cell is 1/32 of the base texture; psh.c puts the horizontal
+# displacement at bumpMat[0][0] * dS with the test's m00 = 0.3 and dS = b/128,
+# so one cell of horizontal movement is this many byte units of `b`.
+CELL_BYTES = (1.0 / 32.0) / (0.3 / 128.0)
 
 # The quad the test draws is 168x168 at (146,66), stride 180; the four are the
 # TEXFILTER sign sweep.  `DrawRectangles` derives these from the framebuffer
@@ -128,28 +142,32 @@ def report_identity(capdir):
     suite = "Bump_map"
     names = sorted(os.path.basename(p)[:-4]
                    for p in glob.glob("%s/%s/*.png" % (GOLD, suite)))
+    # The luminance formats plus A8, whose only channel is the `ONE` literal.
+    # Spelt as a suffix match: "_A8" as a substring also catches A8R8G8B8 and
+    # A8B8G8R8, which are not in this family.
     fam = [n for n in names
-           if any(k in n for k in ("_Y16", "_Y8", "_AY8", "_A8Y8", "_A8"))]
+           if any(n.endswith(k) for k in
+                  ("_Y16", "_Y16_L", "_Y8", "_Y8_L", "_AY8", "_AY8_L",
+                   "_A8Y8", "_A8Y8_L", "_A8", "_A8_L"))]
     g = dict((n, gold(suite, n)) for n in names)
-    c = dict((n, cap(capdir, suite, n)) for n in names) if capdir else {}
+    c = dict((n, cap(capdir, suite, n)) for n in names)
 
     print("`Bump map`: the Y family, differing px inside the four quads\n")
     print("  %-16s %10s %10s %12s" %
           ("test", "ours/gold", "gold/goldY8", "ours/oursY8"))
     for n in fam:
-        row = [n, differing(c[n], g[n]) if c else -1,
-               differing(g[n], g["BumpMap_Y8"]),
-               differing(c[n], c["BumpMap_Y8"]) if c else -1]
-        print("  %-16s %10d %10d %12d" % tuple(row))
+        print("  %-16s %10d %10d %12d"
+              % (n, differing(c[n], g[n]),
+                 differing(g[n], g["BumpMap_Y8"]),
+                 differing(c[n], c["BumpMap_Y8"])))
 
-    if c:
-        print("\n  Everything of ours that is byte-identical to our Y16:")
-        same = [n for n in names if differing(c[n], c["BumpMap_Y16"]) == 0]
-        print("    " + ", ".join(same))
-        print("  Everything of the goldens' that is identical to gold Y16:")
-        same = [n for n in names if differing(g[n], g["BumpMap_Y16"]) == 0]
-        print("    " + ", ".join(same))
-        print("""
+    print("\n  Everything of ours that is byte-identical to our Y16:")
+    same = [n for n in names if differing(c[n], c["BumpMap_Y16"]) == 0]
+    print("    " + ", ".join(same))
+    print("  Everything of the goldens' that is identical to gold Y16:")
+    same = [n for n in names if differing(g[n], g["BumpMap_Y16"]) == 0]
+    print("    " + ", ".join(same))
+    print("""
 Read the first two rows together.  Our Y16 sits at the #38 floor against the
 *Y8* golden and 22,374 px from its own, and it is byte-identical to our Y8 --
 so the defect is not in the geometry, the blend or the combiner, which all
@@ -187,20 +205,182 @@ its midpoint, column 84 of 168.  Columns are counted from the quad's left.
     print("\n  quad g0 b0, columns that differ: " +
           " ".join(str(x) for x in np.flatnonzero(p)))
     print("  columns 0..43 and 103..167: %d differing px"
-          % int(p[:44].sum() + p[103:].sum()))
-    if capdir:
-        c16 = cap(capdir, suite, "BumpMap_Y16")
-        p2 = col_profile(c16, g16, 0, 0)
-        nz = np.flatnonzero(p2)
-        print("  ours vs gold Y16, quad g0 b0: %d px in columns %d..%d"
-              % (int(p2.sum()), nz.min(), nz.max()))
+          % int(p[:BAND_LO].sum() + p[BAND_HI + 1:].sum()))
+    c16 = cap(capdir, suite, "BumpMap_Y16")
+    p2 = col_profile(c16, g16, 0, 0)
+    nz = np.flatnonzero(p2)
+    # A capture that has been fixed in this quad makes nz empty.  That is the
+    # state this tool exists to recognise, so say it rather than raising out of
+    # nz.min() on a zero-size reduction.
+    print("  ours vs gold Y16, quad g0 b0: %d px%s"
+          % (int(p2.sum()),
+             " in columns %d..%d" % (nz.min(), nz.max()) if len(nz)
+             else "  <- identical to the Y16 golden in this quad"))
     print("""
 Every differing column is inverted, not shifted: the vertical checker phase is
-identical in both images and the horizontal cell index differs by an odd
-number.  A whole-column inversion needs the horizontal offset to move by about
-half a checker cell, and the sign of the difference toggles every two or three
-columns across the band, so hardware's Y16 offset sweeps many cells' worth
-across the seam region while ours steps by one byte -- 82 to 83.""")
+identical in both images (--parity checks that per column) and the horizontal
+cell index differs by an ODD NUMBER OF WHOLE CELLS.  Within one column the
+sampled u is essentially constant, so a shift of d cells inverts the column
+exactly when floor(p + d) - floor(p) is odd; half a cell is not the threshold
+for inverting a column, it is a shift that inverts whichever columns have
+their phase in the upper half of a cell.
+
+That matters because a constant shift, of any size, is excluded here.  A
+constant shift can only invert at the base texture's own horizontal period,
+and only where that period exists -- and in columns %d..%d the base has no
+horizontal boundaries in 150 of 168 rows, while the inversion toggles ten
+times.  Run --parity for the counts and for the size the offset must move.""" %
+          (FLAT_LO, FLAT_HI))
+
+
+# ------------------------------------------------------------------ --parity
+def runs_of(mask):
+    """The maximal true runs of a boolean column mask, as (first, last)."""
+    out, start = [], None
+    for x, v in enumerate(mask):
+        if v and start is None:
+            start = x
+        elif not v and start is not None:
+            out.append((start, x - 1))
+            start = None
+    if start is not None:
+        out.append((start, len(mask) - 1))
+    return out
+
+
+def near(q, colour, tol=2):
+    d = np.abs(q.astype(np.int32) - colour.astype(np.int32))
+    return d.max(axis=2) <= tol
+
+
+def vtrans(q, col):
+    """The rows where column `col` changes colour: the vertical phase."""
+    d = np.abs(q[1:, col, :].astype(np.int32) -
+               q[:-1, col, :].astype(np.int32)).max(axis=1) > 0
+    return tuple(np.flatnonzero(d))
+
+
+def hcount(q, lo, hi):
+    """Per row, how many times the row changes colour between columns lo..hi.
+
+    Each change is one increment of the checkerboard's horizontal cell index,
+    so this counts the cells that row traverses across the span.  It is a
+    per-row count on purpose: the boundary set pooled over rows also picks up
+    the staircase of the checker's vertical edges."""
+    d = np.abs(q[:, 1:, :].astype(np.int32) -
+               q[:, :-1, :].astype(np.int32)).max(axis=2) > 0
+    return d[:, lo:hi + 1].sum(axis=1).astype(int)
+
+
+def report_parity():
+    suite = "Bump_map"
+    g16, g8 = gold(suite, "BumpMap_Y16"), gold(suite, "BumpMap_Y8")
+    print("""`Bump map`: how far the hardware Y16 offset moved, derived once.
+
+Every differing column is colour-INVERTED and not displaced, so the only thing
+the picture reports about the offset is the parity of k = (the gold Y16 cell
+index) - (the gold Y8 cell index).  k is what is bounded below; a candidate
+mechanism is scored by computing its own k, not by comparing a swing.
+""")
+    print("  %-9s %5s %5s %7s %-22s"
+          % ("quad", "cols", "vphase", "swaps", "differing px per column"))
+    for qy in (0, 1):
+        for qx in (0, 1):
+            a, b = quad_of(g16, qx, qy), quad_of(g8, qx, qy)
+            d = np.abs(a.astype(np.int32) - b.astype(np.int32)).max(axis=2) > 0
+            per = d.sum(axis=0)
+            cols = np.flatnonzero(per)
+            same = sum(1 for c in cols if vtrans(a, c) == vtrans(b, c))
+            swap = ((near(a, RED) & near(b, GREY)) |
+                    (near(a, GREY) & near(b, RED)))
+            print("  g%d b%d     %5d %4d/%-3d %6s  %d..%d of %d"
+                  "  (%.1f%%..%.1f%%)"
+                  % (qy, qx, len(cols), same, len(cols),
+                     "%d/%d" % (int((d & swap).sum()), int(d.sum())),
+                     per[cols].min(), per[cols].max(), QUAD,
+                     100.0 * per[cols].min() / QUAD,
+                     100.0 * per[cols].max() / QUAD))
+    print("""    vphase = differing columns whose vertical transition ROWS are
+    identical in both goldens; swaps = differing pixels that exchange red for
+    grey, against all differing pixels.  So the inversion is total in kind
+    (every differing pixel swaps the two checker colours) and not total in
+    extent (90.5%-100% of a column: the rows on a checker boundary agree).
+""")
+
+    a, b = quad_of(g16, 0, 0), quad_of(g8, 0, 0)
+    d = np.abs(a.astype(np.int32) - b.astype(np.int32)).max(axis=2) > 0
+    inv = d.sum(axis=0) > 0
+    runs = runs_of(inv)
+    toggles = int((inv[1:] != inv[:-1]).sum())
+    print("  quad g0 b0, the inverted runs (%d of them, %d parity toggles):"
+          % (len(runs), toggles))
+    print("    " + " | ".join("%d" % lo if lo == hi else "%d-%d" % (lo, hi)
+                              for lo, hi in runs))
+
+    print("\n  Checker cells each row traverses, gold Y8 against gold Y16:\n")
+    print("  %-9s %-28s %-28s"
+          % ("quad", "columns %d..%d" % (BAND_LO, BAND_HI),
+             "columns %d..%d" % (FLAT_LO, FLAT_HI)))
+    print("  %-9s %-28s %-28s"
+          % ("", "Y8    Y16   n16-n8", "Y8    Y16   n16-n8"))
+    band_max, band_min, flat_min = [], [], []
+    for qy in (0, 1):
+        for qx in (0, 1):
+            cells = []
+            for lo, hi in ((BAND_LO, BAND_HI), (FLAT_LO, FLAT_HI)):
+                n8 = hcount(quad_of(g8, qx, qy), lo, hi)
+                n16 = hcount(quad_of(g16, qx, qy), lo, hi)
+                dd = n16 - n8
+                cells.append("%-5d %-5d %d..%d"
+                             % (int(np.median(n8)), int(np.median(n16)),
+                                dd.min(), dd.max()))
+                if lo == BAND_LO:
+                    band_max.append(int(dd.max()))
+                    band_min.append(int(dd.min()))
+                else:
+                    flat_min.append(int(dd.min()))
+            print("  g%d b%d     %-28s %-28s" % (qy, qx, cells[0], cells[1]))
+
+    # The bound holds per row, so the strongest claim the data supports is the
+    # largest per-row difference -- and the honest one across the four quads is
+    # the smallest of those four maxima.
+    bound, flat_bound = min(band_max), min(flat_min)
+    n8f = hcount(quad_of(g8, 0, 0), FLAT_LO, FLAT_HI)
+    n16f = hcount(quad_of(g16, 0, 0), FLAT_LO, FLAT_HI)
+    rows_at = int((hcount(quad_of(g16, 0, 0), BAND_LO, BAND_HI) -
+                   hcount(quad_of(g8, 0, 0), BAND_LO, BAND_HI) >= bound).sum())
+    print("""    medians over the quad's 168 rows; n16-n8 is per row, min..max.
+
+  The base texture is FLAT over the right half of the band: %d of 168 rows of
+  the gold Y8 quad have no horizontal boundary at all in columns %d..%d (the
+  %d that do are the rows on the quad's own vertical checker seam).  The
+  median row of the gold Y16 quad has %d there, and every row of every quad
+  has at least %d more than its Y8 row.  A constant offset difference cannot
+  put a boundary where the base has none, so a constant offset -- of ANY size,
+  including the half-cell one an earlier version of this tool printed -- is
+  excluded by that sub-band alone.
+
+  The bound.  In a row, each colour change is one step of that image's cell
+  index, so the cumulative movement of k across the span is at least
+  (Y16 changes) - (Y8 changes).  That reaches %d cells in %d of 168 rows of
+  quad g0 b0 and in all four quads, never falling below %d in any row, and one
+  cell is (1/32)/(0.3/128) = %.1f byte units of `b`:
+
+      cumulative movement of k across columns %d..%d  >=  %d cells,
+      ~%.0f byte units, while ours holds the offset at one step, 82 -> 83.
+
+  What is NOT bounded is the EXCURSION (max - min) of k.  Parity and boundary
+  counts are blind to it: an offset oscillating between two adjacent cells
+  produces arbitrarily many toggles with a range of one cell, ~%.0f byte units.
+  A rival with a small swing is therefore not excluded by this measurement --
+  only one that cannot accumulate %d cells of relative movement across %d
+  columns, %d of which the base holds flat, is."""
+          % (int((n8f == 0).sum()), FLAT_LO, FLAT_HI, int((n8f > 0).sum()),
+             int(np.median(n16f)), flat_bound,
+             bound, rows_at, min(band_min), CELL_BYTES,
+             BAND_LO, BAND_HI, bound, bound * CELL_BYTES,
+             CELL_BYTES, bound, BAND_HI - BAND_LO + 1,
+             FLAT_HI - FLAT_LO + 1))
 
 
 # ----------------------------------------------------------------- --control
@@ -255,10 +435,11 @@ def main():
     ap.add_argument("--identity", action="store_true")
     ap.add_argument("--stored", action="store_true")
     ap.add_argument("--columns", action="store_true")
+    ap.add_argument("--parity", action="store_true")
     ap.add_argument("--control", action="store_true")
     ap.add_argument("--all", action="store_true")
     a = ap.parse_args()
-    if not any((a.identity, a.stored, a.columns, a.control)):
+    if not any((a.identity, a.stored, a.columns, a.parity, a.control)):
         a.all = True
     if a.all or a.stored:
         report_stored()
@@ -268,6 +449,9 @@ def main():
         print()
     if a.all or a.columns:
         report_columns(a.cap)
+        print()
+    if a.all or a.parity:
+        report_parity()
         print()
     if a.all or a.control:
         report_control(a.cap, a.lumcap)

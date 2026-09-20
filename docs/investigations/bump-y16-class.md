@@ -7,12 +7,28 @@ much larger problem" and left untouched. This is the Y16 half.
 
 Everything below is offline, against `/home/justin/goldens/results` and the
 post-fix capture set `z-repeat-c866527e03-011-Bump_map` (ref `c866527e03`, the
-same set `nv2a_issues.toml`'s `blocker_tested` cites). Nothing in the bump
-path has moved in `psh.c` since that ref -- `git diff c866527e03 origin/master
--- hw/xbox/nv2a/pgraph/glsl/psh.c` touches 305 lines and not one of them
-mentions bump -- so the capture set is current for this question.
+same set `nv2a_issues.toml`'s `blocker_tested` cites).
 
-Re-run any number here with `docs/testing/bump_y16_class.py --all`.
+**What was checked about that capture set's currency, and what was not.**
+`git diff c866527e03 origin/master -- hw/xbox/nv2a/pgraph/glsl/psh.c` touches
+305 lines and not one of them mentions bump. That is one file. Twenty-three
+files under `hw/xbox/nv2a` moved by ~4,800 lines over the same range,
+including `gl/texture.c` (texture cache invalidation and surface writeback),
+`gl/surface.c`, `gl/draw.c`, `gl/shaders.c` and `glsl/common.c`; none is
+obviously in this suite's path, but none was checked, and no newer `Bump_map`
+capture exists on this host to re-measure against without a device. The
+conclusion does not rest on it: the load-bearing claim -- that our Y16 and our
+Y8 produce the same bump offsets -- is derivable from current master (SZ_Y16
+is `GL_R16` with `{ONE,R,R,ONE}`, `Y8 * 257` samples to exactly `Y8/255`, and
+`bump_signed` rounds to a byte), and every claim about *hardware* is a
+comparison between two goldens, which no emulator commit can move. A fresh
+capture would re-confirm our half; it cannot change the goldens' half.
+
+Re-run the tables and the identity claim with
+`docs/testing/bump_y16_class.py --all`, and the inversion's structure and the
+size bound -- the run decomposition, the swap fractions, the per-row checker
+boundary counts and the arithmetic below -- with `--parity`, which is also
+included in `--all`. Nothing quantitative here is prose-only.
 
 ## The finding, in one table
 
@@ -84,26 +100,80 @@ difference column by column:
 Those are the parts of the quad where the bump source is one flat value, and
 there the two goldens are bit-identical.
 
-Two more facts about the 33 differing columns of quad g0 b0:
+Two more facts about the 33 differing columns of quad g0 b0, both of which
+hold identically in all four quads (`--parity`):
 
-- **all 33 are colour-inverted, not displaced.** Every column's vertical
-  checker transitions land on identical rows in both goldens (4, 10, 15, 20,
-  25, 31, ...) and more than 95% of its pixels swap red for grey. So the
-  vertical offset is unchanged and the *horizontal* checker cell index differs
-  by an odd number.
+- **all 33 are colour-inverted, not displaced.** All 33 have their vertical
+  checker transitions on identical rows in both goldens (4, 10, 15, 20, 25,
+  31, ...), and **every** differing pixel swaps red for grey -- 5,340 of 5,340
+  in this quad, and the same in the other three. What is not total is the
+  *extent*: 152 to 168 of each column's 168 pixels differ, i.e. 90.5%–100%,
+  the survivors being the rows sitting on a checker boundary. So the vertical
+  offset is unchanged and the *horizontal* checker cell index differs by an
+  odd number of whole cells.
 - **the inversion toggles 30 times across those 59 columns**, in fifteen runs:
   44 | 46-47 | 50 | 53-54 | 56 | 58-62 | 65 | 68-69 | 71-72 | 75-79 | 82-83 |
   87-88 | 92-93 | 96-98 | 101-102.
 
-That last line is the size of the thing. One checker cell is 8 texels of 256,
-and `psh.c` puts the horizontal displacement at `bumpMat[0][0] * dS` with the
-test's `m00 = 0.3` and `dS = b / 128` -- the reading that reproduces the Y8
-golden to the floor. So one cell of horizontal movement is
-`(1/32) / (0.3/128) = 13.3` byte units of `b`, and thirty parity flips is at
-least fifteen cells, i.e. **hardware's Y16 offset sweeps at least ~200 byte
-units across the seam region while ours steps from 82 to 83**. A lower bound,
-not a value: the parity is blind to even multiples of a cell, so the true
-swing can only be larger.
+### How far the offset moved, and which quantity that is
+
+The picture reports the *parity* of `k = (gold Y16's cell index) − (gold Y8's
+cell index)`, and nothing else about the offset. So `k` is what can be bounded,
+and a rival is scored by computing its own `k` — not by comparing a swing.
+
+The run list above is the wrong instrument for the size: a parity toggle needs
+either image's cell index to step, so the base checkerboard's own boundaries
+contribute toggles with the offset difference held perfectly constant. Count
+the two images' boundaries instead, per row, which `--parity` does:
+
+| columns | cells the gold **Y8** row traverses | cells the gold **Y16** row traverses | difference, per row |
+|---|---:|---:|---:|
+| 44..102 | 7 | 26 | 11..**19** |
+| 78..102 | **0** | 11 | 6..11 |
+
+(medians over the quad's 168 rows; the difference column is per-row min..max,
+and every figure above is the same in all four quads.)
+
+Each colour change along a row is one step of that image's cell index, so the
+cumulative movement of `k` across a span is at least (Y16's changes − Y8's).
+That reaches **19 cells** in 150 of the 168 rows of every quad and never falls
+below 11 in any row. One checker cell is 8 texels of 256, and `psh.c` puts the
+horizontal displacement at `bumpMat[0][0] * dS` with the test's `m00 = 0.3`
+and `dS = b / 128` — the reading that reproduces the Y8 golden to the floor —
+so one cell is `(1/32) / (0.3/128) = 13.3` byte units of `b`:
+
+> **the cumulative movement of `k` across columns 44..102 is at least 19 cells,
+> ~250 byte units of `b`, while ours holds the offset at a single step,
+> 82 → 83.**
+
+**The excursion is not bounded, and that distinction is the point.** A swing
+(max − min) is not bounded below by a toggle count or a boundary count at all:
+an offset oscillating between two adjacent cells produces arbitrarily many
+toggles with a range of one cell, ~13 byte units. So a candidate mechanism is
+excluded here only if it cannot *accumulate* 19 cells of relative movement
+across 59 columns, 25 of which the base texture holds flat — not for having a
+small swing. An earlier draft of this document said "sweeps at least ~200 byte
+units", halving the toggle count to get there and calling the result a swing
+that "can only be larger"; both halves of that were wrong, and the figure was
+the one number meant to survive into the next session.
+
+### The same table excludes a constant offset difference outright
+
+The second row is the strong one. In columns 78..102 the base checkerboard has
+**no horizontal boundary at all** in 150 of the quad's 168 rows -- the 18 that
+do are the rows lying on the quad's own vertical checker seam -- while every
+row of the gold Y16 quad has 11 boundaries there, and the inversion toggles
+ten times across that sub-band.
+
+A constant offset difference, of *any* size, can only put a boundary where the
+base already has one: within a column the sampled `u` is essentially constant,
+so a fixed shift of `d` cells inverts a column exactly when
+`floor(p + d) − floor(p)` is odd, which alternates with the base's own period
+(5.29 columns here) and nowhere else. Five inverted runs sit in a sub-band
+where that period does not exist. **So whatever hardware does, it varies with
+`u` across the band rather than offsetting it by a fixed amount** -- which is
+a stronger statement than "the offsets differ", and it is the one a mechanism
+has to reproduce.
 
 ## Three rivals that this refutes
 
@@ -117,11 +187,18 @@ swing can only be larger.
 3. **Reading the filtered 16-bit value at more than eight bits.** This is the
    obvious candidate -- `bump_signed` in `psh.c:2100` does
    `round(x * 255.0)`, which quantises the filtered value to a byte whatever
-   the source's width -- and it is refuted by magnitude. A 16-bit filter
+   the source's width -- and it is refuted by duty cycle. A 16-bit filter
    between `0x5252` and `0x5353` differs from the rounded byte by at most half
    a byte unit, which is `0.3 * 0.5 / 128 = 1.2e-3` of the texture: **0.3 texel
-   of 256, a twenty-fifth of a checker cell.** It cannot inspect, let alone
-   invert, a whole column, and it certainly cannot do it thirty times.
+   of 256, a twenty-fifth of a checker cell.**
+
+   A shift that small *can* invert whole columns -- any nonzero shift inverts
+   the columns whose base phase lies within the shift of a cell boundary, and
+   saying otherwise is the same reasoning error as "a whole-column inversion
+   needs half a cell". What it cannot do is invert *many*: it inverts only
+   ~1/26 of the band's columns, about two of the 59, and 33 of them are
+   inverted. It also accumulates ~1/26 of a cell of movement in `k`, against
+   the 19 cells measured above. Two orders of magnitude, not a judgement call.
 
 ## And the control that refutes the fourth
 
@@ -166,8 +243,10 @@ What is established:
 - it is not a stored byte, because there is only one stored byte;
 - it does not exist where the source is flat, so it is a property of whatever
   hardware does *between* two texels;
-- in `Bump map` that something moves the horizontal offset by at least fifteen
-  checker cells across the seam;
+- in `Bump map` that something varies the horizontal offset with `u` rather
+  than shifting it by a constant -- it puts checker boundaries in a sub-band
+  where the base texture has none -- and accumulates at least 19 cells,
+  ~250 byte units, of relative movement across the band;
 - in `Bump env lum`, over the same format, the same seam, the same
   byte-replicated field and a larger matrix, it does not happen at all.
 
