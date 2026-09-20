@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 133
-updated_utc = "2026-09-20T19:20:00Z"
+wave = 134
+updated_utc = "2026-09-20T21:23:10Z"
 
 
 [retired.hilodot10]
@@ -691,6 +691,13 @@ issues = ["13"]
 files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
 standing = false
 note = "DISPATCHED WAVE 133 (job.board), briefs/primpv13.md: #13's own remaining piece, deferred last tick for a careful brief rather than a rushed one. rewrite_triangle_fan()'s emit_tri_pv rotation reaches geom.c already rotated by one, so TFan/QStrip-TFan land at the predicted 70.36% rather than 100% -- 32,628 decisive px, a genuine trade against flat shading's need for provoking-vertex-at-0, not an oversight. prim_rewrite.c released from [free]."
+
+
+[lane.drvab77]
+issues = ["77"]
+files = []
+standing = false
+note = "DISPATCHED WAVE 134 (job.board), briefs/drvab77.md: #77's next step after lane.diagsoak77 (PR #165, merged) established the measured demo-cave scene and validated stipple_classify.py. Runs the driver A/B (T30/T26/stock via ~/hakux-work/drv/swap_driver.sh) that was previously answered void -- the old Turnip arms at c866527e03 failed V0 because those soaks predated both the working classifier and the scene that reaches it. Needs a Thor device soak, not NDK/disc-build, which is why it carries no cloud label. Claims no in-repo file: it edits nothing, only runs existing tools against device soaks and posts a rate table to #77. Pre-registered falsifier is in the brief -- overlapping driver ranges (within the existing 6.6-16.4/100 same-driver spread) is a null result, not a failed lane; do not read a void back into this as another failed attempt."
 
 
 [lane.cloud-audit2-187]
