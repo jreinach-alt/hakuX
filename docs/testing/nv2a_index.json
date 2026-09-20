@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:224",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:240",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -2434,7 +2434,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:489",
+   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:609",
    "symbols": [],
    "text": "assert(!\"Unexpected primitive mode\");"
   },
@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "aa3648cba2a214ed1d00f70c8d15c8a7a82b473c",
+  "emulator_commit": "f2433a89098f28918fe5cda2a7b466d172ac78fc",
   "gaps": 498,
   "resolved_tables": 1,
-  "sites": 2840,
+  "sites": 2841,
   "suites": 103,
   "support_dirs": [
-   "/home/user/pbkitplusplus"
+   "/home/justin/pbkitplusplus"
   ],
   "symbols": 951,
   "tests_commit": "91a0de45ca31fd03ef2b364347f8a827d226f2b3",
-  "tests_root": "/home/user/nxdk_pgraph_tests",
+  "tests_root": "/home/justin/nxdk_pgraph_tests",
   "unread": 145
  },
  "schema": 1,
@@ -8906,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:261",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:277",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
@@ -18948,6 +18948,11 @@
     "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:60",
     "role": "REF",
     "text": "((u && (a & NV_PGRAPH_TEXADDRESS0_WRAP_U)) ? 1 : 0) |"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:142",
+    "role": "COMMENT",
+    "text": "* (state->cylinder_wrap[i] non-zero, from NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q)"
    }
   ],
   "NV_PGRAPH_TEXADDRESS0_WRAP_V": [
