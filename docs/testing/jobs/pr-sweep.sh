@@ -29,7 +29,7 @@
 # orphaned `claimed:cloud`, whose repair is calling the tail that never ran
 # (`cloud.sh finish`, the same command the unit's own ExecStart would have
 # run) -- and every other class is REPORTED with the actor that owns it
-# named. Two of the five classes here are owned by jobs that already exist
+# named. Two of the six classes here are owned by jobs that already exist
 # and are better at them than a sweep could be; this file's value there is
 # noticing when that owner has said nothing.
 #
@@ -45,6 +45,14 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 TIP="${HAKUX_TIP:-master}"
 J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$J/localtime.sh"   # say_time_s: the display zone. Data timestamps below stay `date -u`.
+# NOT A BARE `.`, for lane.sh's reason: without the guard a missing file leaves
+# remote_lane_of and remote_authoritative undefined, the command-not-found does
+# not stop a script with no `set -e`, and every branch would resolve to the
+# empty lane name this file exists to stop producing.
+. "$J/remote-lane.sh" || {
+    echo "pr-sweep: could not load $J/remote-lane.sh, so this tick cannot tell which branches belong to a lane this host cannot drive; it repairs nothing." >&2
+    exit 0
+}
 S="$WORK/pr-sweep"; mkdir -p "$S/said" "$WORK/logs/pr-sweep" "$WORK/status"
 LOG="$WORK/logs/pr-sweep/tick.log"
 REPORT="$WORK/status/pr-sweep.md"
@@ -91,6 +99,47 @@ git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null || true
 trunk_time=$(git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$TIP" 2>/dev/null \
              || git -C "$REPO" log -1 --format=%ct "$TIP" 2>/dev/null || echo "")
 case "${trunk_time:-}" in ''|*[!0-9]*) trunk_time="" ;; esac
+
+# -------------------------------------------------- which branch is whose lane
+#
+# THE LANE NAME IS NOT A PREFIX. `branch[5:] if branch.startswith("lane/")`
+# gave the EMPTY STRING for `lane.remote`'s `claude/...` head, and an empty
+# lane name is not a harmless blank: it fed the draft-strand class, which
+# names `handback.sh` as the actor that owns the PR -- and `lane.sh resume` on
+# a remote lane is two agents pushing to one branch with no lock, which is the
+# single most expensive thing anything in this harness can do. A territory row
+# carrying `remote` is what names such a branch, and `remote-lane.sh` is its
+# one reader.
+#
+# A SEPARATE FETCH FOR `board`, NOT A SECOND REFSPEC ON THE ONE ABOVE. `git
+# fetch origin master board` exits 128 and updates NOTHING when either name
+# matches no remote ref -- so folding them together would make a host with no
+# `board` branch lose the trunk fetch too, and with it the stale-red class.
+git -C "$REPO" fetch -q origin board 2>/dev/null || true
+
+# THE FAIL-SAFE, AND IT IS `remote_authoritative` RATHER THAN
+# `remote_readable` ON PURPOSE. remote-lane.sh's header spells the third
+# outcome out: when origin/board cannot be read, board_files.load() falls back
+# to the fold-lagged IN-TREE territory.toml and SUCCEEDS. That copy reaches a
+# tree only when some later fold carries it over, so it is precisely the copy
+# missing a `remote` marker the board has just written -- and a map missing
+# that row answers "this branch belongs to no lane" in the one direction that
+# costs something, with no symptom at all.
+#
+# So a map that is not the board's disables the WHOLE tick rather than one
+# class. This sweep does not only report: it runs `cloud.sh finish` and it
+# comments on PRs, unattended, every three hours, and both of those are keyed
+# on which lane a head belongs to. "I do not know whose branch this is" is not
+# a state in which to take an outward action. The cure is one command and the
+# refusal names it; an unswept tick costs three hours.
+if ! remote_authoritative; then
+    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell which heads belong to a lane this host cannot drive. It reports nothing and repairs nothing. Cure: \`git fetch origin board\` in $REPO."
+    exit 0
+fi
+# "<branch>\t<lane>" per line, or empty when no row is marked `remote`. Read
+# once here and handed to the classifier; asking per PR would make one board
+# read into one per row.
+remote_rows=$(remote_map)
 
 # WHETHER CLASS 4 HAS AN OWNER. lane.stalecheck (PR #169) teaches fold.sh to
 # tell a stale red from a live one and hand it back for a base merge. This
@@ -146,16 +195,24 @@ board_health() {
 # PR in a state board.sh considers labelled.
 STATE_LABELS='needs-audit-1 needs-audit-2 needs-remediation fold-ready folded needs-rebase'
 
-classify() {   # <prs json> <active units, newline-separated> <trunk epoch|""> -> class\tnum\thead\tbranch\tdetail
-    python3 - "$1" "$2" "${3:-}" "$STATE_LABELS" <<'PY'
+classify() {   # <prs json> <active units> <trunk epoch|""> <remote map> -> class\tnum\thead\tbranch\tdetail
+    python3 - "$1" "$2" "${3:-}" "$STATE_LABELS" "${4:-}" <<'PY'
 import datetime
 import json
 import sys
 
-raw, units_raw, trunk, state_raw = sys.argv[1:5]
+raw, units_raw, trunk, state_raw, remote_raw = sys.argv[1:6]
 units = set(u.strip() for u in units_raw.splitlines() if u.strip())
 STATE = set(state_raw.split())
 trunk_epoch = int(trunk) if trunk.isdigit() else None
+# branch -> lane, for the lanes that do not live on this host. Empty is the
+# ordinary case and means every lane is local; it is NOT the "could not read"
+# case, which never reaches here -- the tick refuses before this runs.
+REMOTE = {}
+for line in remote_raw.splitlines():
+    b, _, l = line.partition("\t")
+    if b.strip() and l.strip():
+        REMOTE[b.strip()] = l.strip()
 # A check entry is failing on either spelling. PENDING and SUCCESS are not
 # failures, and neither is an entry with no verdict yet.
 BAD = {"FAILURE", "TIMED_OUT", "CANCELLED", "ACTION_REQUIRED", "STARTUP_FAILURE", "ERROR"}
@@ -186,7 +243,11 @@ def emit(cls, pr, detail):
 for pr in prs:
     names = set(l.get("name", "") for l in (pr.get("labels") or []))
     branch = pr.get("headRefName") or ""
-    lane = branch[5:] if branch.startswith("lane/") else ""
+    # THE REMOTE MAP IS ASKED FIRST, exactly as handback.sh asks it first: a
+    # remote lane whose branch is someday named `lane/<name>` must not fall
+    # into the local arm and be handed to an actor that would resume it here.
+    remote_lane = REMOTE.get(branch, "")
+    lane = remote_lane or (branch[5:] if branch.startswith("lane/") else "")
     quiet = None
     e = epoch(pr.get("updatedAt") or "")
     if e is not None:
@@ -205,7 +266,18 @@ for pr in prs:
     # 2. a draft whose lane has exited. handback.sh owns this and has a quiet
     #    period and a strand budget; the sweep only asks it whether it sees
     #    this PR, which happens in bash below.
-    if pr.get("isDraft") and lane and ("hakux-lane-%s" % lane) not in units:
+    #
+    #    A REMOTE LANE'S DRAFT IS A DIFFERENT CLASS AND IT IS NOT THIS ONE.
+    #    The predicate here is "no `hakux-lane-<lane>` unit", and a remote lane
+    #    never has one -- there is no host here to run it -- so every draft of
+    #    lane.remote's would have been emitted as a strand for as long as it
+    #    stayed a draft, each one naming `handback.sh` as the actor that owns
+    #    it. handback.sh refuses such a PR (it asks remote_lane_of first), but
+    #    a sweep whose correctness rests on another job's guard is a sweep that
+    #    is wrong and happens not to be paid for it. It is split here.
+    if pr.get("isDraft") and remote_lane:
+        emit("remote-draft", pr, "lane=%s quiet=%s" % (remote_lane, quiet if quiet is not None else "?"))
+    elif pr.get("isDraft") and lane and ("hakux-lane-%s" % lane) not in units:
         emit("draft-strand", pr, "lane=%s quiet=%s" % (lane, quiet if quiet is not None else "?"))
 
     # 3. ready, not a draft, and carrying none of the pipeline's state labels.
@@ -250,7 +322,7 @@ if [ -z "$prs" ]; then
     say "gh returned nothing for the open PR list; this tick is blind and repairs nothing"
     exit 0
 fi
-rows=$(classify "$prs" "$units" "$trunk_time")
+rows=$(classify "$prs" "$units" "$trunk_time" "$remote_rows")
 
 # What handback.sh would do, asked ONCE and not once per draft. `list` acts on
 # nothing. An unreadable answer makes the sweep report a draft handback may
@@ -355,6 +427,30 @@ Ran the tail on its behalf: \`cloud.sh finish $kind $num\`. That drops the claim
         comment "strand-$num-$head" "$num" "[job.pr-sweep] this PR is a draft and \`hakux-lane-${branch#lane/}\` is not running, so no lane is working on it -- and \`handback.sh list\`, which owns this state, does not list it either. Every other actor filters drafts out deliberately: \`board.sh\` skips \`isDraft\`, \`fleet.py\` counts only non-drafts, \`fold.sh\` refuses to fold one.
 
 Nothing here marks a PR ready: \`roles/lane.md\`'s definition of done includes things no script can check (NOTES.md written, \`Files:\` matching the diff, the prediction committed with its refs). This comment is the sweep saying the PR has no actor, ${quiet}s after it last changed."
+        ;;
+
+    remote-draft)
+        # A DRAFT BELONGING TO A LANE THIS HOST CANNOT DRIVE. handback.sh is
+        # NOT asked about it and is never named to the reader: the only thing
+        # it could do is `lane.sh resume`, and that on a remote lane is a
+        # second agent pushing to a branch a cloud container pushes to, with
+        # no lock. It refuses such a PR itself; this class exists so the sweep
+        # is not relying on that refusal to be correct.
+        #
+        # STILL REPORTED, because a cloud session whose tail died leaves the
+        # same silence as one that is working, and the routine that wakes it is
+        # the only actor -- so the useful thing to say is which lane's it is
+        # and who the actor is, after the same six hours every other class
+        # whose owner is elsewhere waits.
+        rlane=$(sed -n 's/.*\blane=\([^ ]*\).*/\1/p' <<< "$detail")
+        say "#$num is a draft on \`$branch\`, which is lane.${rlane:-?}'s -- a lane this host cannot drive. handback.sh is not asked; nothing local resumes it."
+        note "#$num (\`$branch\`) is a draft belonging to \`lane.${rlane:-?}\`, marked \`remote\` in \`territory.toml\`. It has no \`hakux-lane-*\` unit by design, so it is NOT a strand; \`handback.sh\` was not asked about it and nothing local may resume it."
+        [ "$quiet" -lt "$QUIET_SECS" ] && continue
+        comment "remotedraft-$num-$head" "$num" "[job.pr-sweep] this PR has been a draft for ${quiet}s and its head \`$branch\` is \`lane.${rlane:-?}\`'s, which \`territory.toml\` marks \`remote\`: it runs somewhere this host cannot see.
+
+That means the ordinary draft-strand reasoning does not apply and this sweep has not applied it. There is no \`hakux-lane-${rlane:-?}\` unit to be missing, \`handback.sh\` has not been asked about this PR, and nothing local will resume it -- \`lane.sh resume\` on a remote lane would put a second agent on a branch your own session pushes to, with no lock.
+
+The only actor for this PR is your own routine, on its next fire. If the work is done, \`roles/lane.md\`'s definition of done still applies and nothing here marks a PR ready: the \`Files:\` line, \`NOTES.md\`, the prediction and its refs are things no script can check. If it is not done, this comment is only the sweep saying the PR has been quiet and that no local actor is coming."
         ;;
 
     no-state-label)
