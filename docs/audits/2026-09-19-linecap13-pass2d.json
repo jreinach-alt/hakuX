@@ -1,0 +1,64 @@
+[
+ {
+  "pass2c_id": "N4",
+  "severity": "MEDIUM",
+  "file": "docs/testing/predictions/line-cap-clip.json",
+  "line": "15",
+  "verdict": "CLOSED",
+  "summary": "The mechanism is verified three independent ways rather than quoted. SOURCE: prim_rewrite.c:52-72 returns PRIM_TYPE_LINES for LINE_LOOP with no reference to polygon_mode (only the QUADS/QUAD_STRIP/POLYGON arm at :66-67 consults it), and glsl/geom.c:36-38 builds state->primitive_mode from that output mode, which is the field widen_lines tests at :138-141; vk/shaders.c:1406-1409 refreshes it identically on the cached path. GOLDENS: line_cap_phase.py --fills reproduces exactly here (12,021 / 11,730 width-dependent px, 0 outside the loop footprint, 59 in the label, 23,311 unexplained by the mutant, 0 bites at w=0/1 and 6 at w=32 against 8 with the deadband at zero). DEVICE: master vs deadbanded on Fill_0032.0 is 4 px, all 4 moving TO the golden's exact value and master wrong at all four. The leg is re-scoped by that mechanism: Fill_0000.*/Fill_0001.* stay under must_not_move (the discriminating half -- anything moving Fill_* for a non-loop reason moves all three), Fill_0032.0 moves to expect at 26717, labelled a reproduction leg in the file.",
+  "scenario": "Pass 2c's scenario -- a re-registration that keeps Line_width/Fill_* under must_not_move fires on Fill_0032.0 every time the change works, arms.sh recomputes regressed and fold.sh:503-510 refuses to fold -- can no longer occur: the glob is gone and the capture is registered on the improving side. The registration is checked as a registration and not as prose: request.sh's own key-binding gate run against the goldens binds 1,714 captures across 9 globs plus 1 expect key with nothing matching nothing; a_ref 613802831a and b_ref a170ba01e7 are both live ancestors of the tip after the last merge; the B-side binary is the binary that produced 26,717 (git diff --name-only 36e85c96c9..a170ba01e7 outside docs/ is glsl/geom.c alone, and that file is code-identical -- 12,973 bytes both sides after a C-comment strip and whitespace normalisation, against 45,071 -> 51,586 raw); the A-side binary is unchanged too (git diff --name-only 28a3805b93..613802831a outside docs/ is EMPTY, and the in-flight base arm confirms it at the same apk_sha 215d41ca8268 with Fill_0032.0 reading 26,721 again); and the disc composition is byte-for-byte the superseded file's, which an expect leg needs because ab_compare.composition_notes() die()s on an absolute whose disc differs.",
+  "evidence": "hw/xbox/nv2a/pgraph/prim_rewrite.c:49-72; hw/xbox/nv2a/pgraph/glsl/geom.c:27-45, 120-141; hw/xbox/nv2a/pgraph/vk/shaders.c:1400-1412; docs/testing/line_cap_phase.py fills()/fill_golden()/FILL_WIDTHS; docs/testing/predictions/line-cap-clip.json (must_not_move, expect, disc, a_ref, b_ref); docs/testing/ab_compare.py:938-948 and :1153-1210; docs/testing/request.sh:374-470; dispatch/results/1789866964-arms-linecap13-base-2557022 and -fix-2557051 captures1+2, 1789834717-arms-linecap13-fix-3127486 captures1, 1789872736-arms-linecap13-base-3057241 scores1.tsv; goldens/results/Line_width/Fill_*.png."
+ },
+ {
+  "pass2c_id": "N4-strength",
+  "severity": "MEDIUM",
+  "file": "docs/testing/line_cap_phase.py",
+  "line": "1030",
+  "verdict": "CLOSED",
+  "summary": "--fills leg 1 is a CONTAINMENT test and a containment test passes for free if its mask is large, so the mask was measured and moved rather than trusted. The leg-1 mask is 18,726 px, 6.10% of the frame (loop footprint 12,559, label 6,182); the five filled blocks' own footprint is 52,858 px, FOUR TIMES larger, so the lane's own mutant is the harder direction and not the easier one. Two mutants that are not the lane's: translating the loop footprint in x by 2/4/8/16/32/64 px leaves 100/368/890/1886/3774/7335 px outside and fails leg 1 on every one; rebuilding the footprint at w = 0/1/8/16/24/32/48 leaves 11962/8551/4445/2386/952/0/0 px outside, so w = 32 is the SMALLEST width at which the leg passes at all.",
+  "scenario": "The scenario a new instrument's clean result invites -- a zero that could not have come out otherwise -- does not apply here. A two-pixel shift of the mask already breaks leg 1, and the width sweep says the goldens put their LINE_WIDTH dependence not merely somewhere inside the loop's region but at the loop's POSITION and at the suite's OWN WIDTH. That is a stronger statement than --fills prints, and it is what licenses reading the four moved device pixels as the cap clip working on a wide line loop in a capture named Fill.",
+  "evidence": "docs/testing/line_cap_phase.py fills() legs 1 and 2, shader_mask(); docs/testing/line_priority.py BLOCKS/EDGES/our_edges()/text_mask(); goldens/results/Line_width/Fill_0000.0.png, Fill_0001.0.png, Fill_0032.0.png. Mutants run from a scratch symlink-free copy in scratch-audit2d/, since deleted; the real path was never modified."
+ },
+ {
+  "pass2c_id": "N5",
+  "severity": "MEDIUM",
+  "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+  "line": "611",
+  "verdict": "CLOSED",
+  "summary": "Corrected IN PLACE in all three documents that asserted it, not appended. geom.c:611-629 sits inside the derivation paragraph, directly under the sentence calling scale 1 the control row that must read zero, and states what the proof bounds (which samples are inside the footprint), what it does not (the value at a sample that stays covered), why (a cut synthesises a vertex and re-triangulates the strip), the two pixels, which modes are blind to the class, and that it is a known limit rather than a measured zero. NOTES.md:301-310 and :432-448 each sit immediately below the paragraph they correct, and the unqualified sentence is gone from the assertion -- it survives only inside the block quoting itself. line_cap_phase.py:44-49 puts the warning in the module docstring so a zero read out of --controls or --scale-cost carries it.",
+  "scenario": "Pass 2c's scenario -- the next lane on #13's colour phase, 76.3% of the issue's residual, sizing the deadband's scale-1 cost at zero -- can no longer occur from any of the three places that asserted it. Every number now committed to permanent source re-measures exactly: (271,93) master 51,155,151 / pre-deadband 51,154,152 / deadbanded 51,155,151 / golden 51,154,152, and (264,123) master 51,228,78 / pre-deadband 51,227,79 / deadbanded 51,228,78 / golden 51,227,79. Exactly two pixels, and no others differ between the pre-deadband and deadbanded builds on that capture. The one-directional claim holds at both -- deadbanded == master is True at each -- so the deadband gives up a win and does not introduce a loss. Both runs of the deadbanded arm are byte-identical, and the cross-device control below removes the confound that the comparison itself carried (a nova capture against a thor one).",
+  "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:608-630; docs/lanes/linecap13/NOTES.md:292-310, 425-448; docs/testing/line_cap_phase.py:37-49; dispatch/results/1789834717-arms-linecap13-fix-3127486/captures1, 1789866965-arms-linecap13-fix-2557051/captures1+2, 1789866964-arms-linecap13-base-2557022/captures1, against goldens/results/Line_width/Fill_0032.0.png."
+ },
+ {
+  "pass2c_id": "N6",
+  "severity": "LOW",
+  "file": "docs/lanes/linecap13/NOTES.md",
+  "line": "404",
+  "verdict": "CLOSED",
+  "summary": "The PR body's pass-2b section now carries the conversion it had dropped: 'a twelfth of the clip's own work above 1x -- after the scale^2 conversion, which geom.c and NOTES.md carry and this paragraph dropped (audit N6). 112 device samples at scale 2 and 393 guest px at scale 1 are not in one unit; read as though they were, they give 28%, four times the figure.' It states the trap as well as the fix. geom.c:592-597 and NOTES.md:404-406 were already right and are unchanged.",
+  "scenario": "A reader quoting the PR body and computing the deadband's cost as a quarter of the cap rule's work instead of a twelfth, from two numbers in different units, can no longer do so: the sentence now names the unit mismatch and the wrong answer it produces.",
+  "evidence": "PR #141 body, 'Pass-2b audit A1 (MEDIUM) remediated' section; hw/xbox/nv2a/pgraph/glsl/geom.c:592-597; docs/lanes/linecap13/NOTES.md:404-406."
+ },
+ {
+  "pass2d_id": "N7",
+  "severity": "LOW",
+  "file": "docs/lanes/linecap13/NOTES.md",
+  "line": "363",
+  "verdict": "OPEN",
+  "summary": "NOTES.md:355-361 carries the original 'nothing in this lane's diff can reach it' paragraph and NOTES.md:363-375 marks it WRONG, corrected in place by audit finding N4, directly underneath. The PR body carries the same paragraph in its 'Pass-2 audit remediated' section and was NOT given the same marker: it still reads 'and nothing in this branch's diff can reach it: with widen_lines false the generator emits the byte-identical fill shader it emitted before'. The body does correct it about 1,400 words later in the pass-2c section, so this is a currency defect rather than a contradiction left standing unremarked -- but it is the one place the lane applied its own standard unevenly, and the PR body is what the board and the next lane read first.",
+  "scenario": "A reader scanning the body for 'Fill', which is what anyone re-opening this question does, hits the pass-2 section first, reads that the diff cannot reach Line_width/Fill_*, and re-derives the error that cost this lane an arm. This campaign's standing lesson is the same shape: a withdrawal appended at the end leaves the earlier assertion still asserting itself.",
+  "remediation": "Two sentences in the PR body mirroring the NOTES.md block, at the paragraph that makes the claim. `gh pr edit --body-file` is broken on this host (Projects-classic GraphQL error) -- use the REST PATCH and read the value back. Worth doing before the fold; not worth holding it.",
+  "evidence": "PR #141 body, 'One thing this lane cannot settle' in the 'Pass-2 audit remediated, and the device FAIL it found' section; docs/lanes/linecap13/NOTES.md:353-375."
+ },
+ {
+  "pass2d_id": "N8",
+  "severity": "LOW",
+  "file": "docs/testing/predictions/line-cap-clip.json",
+  "line": "5",
+  "verdict": "OPEN",
+  "summary": "LEG C4 enumerates what its absolute can catch -- 'a capture that is not deterministic after all, a pair that is not the pair this file names, or a change that reaches this shader without anyone noticing' -- and justifies 26717 as 'the value the device measured twice with band 0 on this same binary'. True, and it omits that 'the device' was the THOR while the arm now judging it is on the NOVA. Every request in the chain carries \"device\": \"\" and nothing pins the pair-to-pair choice: arm 1 ran nova, arm 2 (which measured 26,717) ran thor, and arm 3's base is running on the nova per dispatch/running/*.owner. The same omission sits under N5's two-pixel measurement, which compares a nova capture with a thor one.",
+  "scenario": "As written the reasoning transfers an absolute across an axis it does not name -- the shape AGENTS.md records as an availability change silently redefining a registered comparison. Had the two devices disagreed on this suite, C4 would have failed on the next arm and the regressed label would have stayed for a reason having nothing to do with the cap rule, with the prediction's own text offering no way to see it. MEASURED INSTEAD OF FLAGGED, on the one binary both devices have now run (apk_sha 215d41ca8268, disc 2-suites:00a36f5b): 166 of 166 captures byte-identical between the nova and the thor, Line_width 61 of 61 and Blend_tests 105 of 105. So the absolute is a fact about the binary and not about the thor, the must_not_move globs cannot fire on a device difference either, and the leg is right as registered.",
+  "remediation": "Record the control, do not change the leg: one sentence in the prediction and in NOTES.md saying 26,717 was measured on the thor, that the judging pair may run on either handheld, and that the two are byte-identical on all 166 captures of this disc at one APK. This is worth more than this lane -- it is the first cross-device byte control on a multi-suite disc in this campaign, and AGENTS.md's 'Do not reach for the equivalence check to rescue it' paragraph, which records that the 62-of-62 equivalence has never been run on a large disc, is where it belongs.",
+  "evidence": "dispatch/results/1789834717-arms-linecap13-{base,fix}-*/result.json device_label nova; 1789866964-arms-linecap13-base-2557022/result.json and -fix-2557051/result.json device_label thor; dispatch/running/1789872736-arms-linecap13-base-3057241.owner (nova) and .req (\"device\": \"\", ref 613802831a); dispatch/queue/1789872736-arms-linecap13-fix-3057263.req (ref a170ba01e7); pixel-for-pixel RGBA comparison of all 166 captures in 1789872736-...-base-3057241/captures1 against 1789866964-...-base-2557022/captures1."
+ }
+]
