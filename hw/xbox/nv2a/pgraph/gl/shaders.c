@@ -25,8 +25,6 @@
 
 #include "xemu-version.h"
 #include "ui/xemu-settings.h"
-#include "hw/xbox/nv2a/nv2a_int.h"
-#include "hw/xbox/nv2a/pgraph/texture.h"
 #include "hw/xbox/nv2a/pgraph/util.h"
 #include "debug.h"
 #include "renderer.h"
@@ -951,55 +949,6 @@ static void apply_uniform_updates(const char *uniform_set,
 #endif
 }
 
-/*
- * #60 read side: which pad rule the fragment shader must apply to stage `i`'s
- * sampled alpha. See pgraph_glsl_surface_sampled_pad_alpha_mode() in psh.h
- * for the rule and the measurement; this function answers only "is THIS stage
- * sampling an X1A7 surface".
- *
- * Recomputed here every draw rather than recorded by pgraph_gl_bind_textures()
- * because the answer is keyed on a surface's drawn format, and a value cached
- * anywhere a shader or a texture binding outlives is the #43 staleness trap
- * again: nothing invalidates either cache on a surface-format change. The
- * inputs are the same registers bind_textures() read a few calls earlier in
- * the same draw -- pgraph_gl_draw_begin() calls it before
- * pgraph_gl_bind_shaders() -- so this sees the same state it did.
- *
- * It calls pgraph_gl_check_surface_to_texture_compatibility() rather than
- * restating the condition, so the fast-path decision has ONE definition read
- * from two places and not two definitions that can drift. That matters here
- * more than usual: when the fast path is refused the texture comes from VRAM
- * instead, where the bytes have been through pgraph_gl_download_surface_data()
- * and the question of what the guest reads is a different one this does not
- * try to answer.
- *
- * A NULL binding, a disabled stage, a non-surface texture or any surface not
- * drawn in X1A7R8G8B8_{Z,O} all return NONE, which is what the shader reads
- * when the uniform was never written, and is today's behaviour exactly.
- */
-static int sampled_pad_alpha_mode(NV2AState *d, PGRAPHState *pg,
-                                  PGRAPHGLState *r, int i)
-{
-    if (r->texture_binding[i] == NULL || !pgraph_is_texture_enabled(pg, i) ||
-        !pgraph_is_texture_descriptor_decodable(pg, i)) {
-        return PSH_SAMPLED_PAD_ALPHA_NONE;
-    }
-
-    SurfaceBinding *surface =
-        pgraph_gl_surface_get(d, pgraph_get_texture_phys_addr(pg, i));
-    if (surface == NULL) {
-        return PSH_SAMPLED_PAD_ALPHA_NONE;
-    }
-
-    TextureShape shape = pgraph_get_texture_shape(pg, i);
-    if (!pgraph_gl_check_surface_to_texture_compatibility(surface, &shape)) {
-        return PSH_SAMPLED_PAD_ALPHA_NONE;
-    }
-
-    return pgraph_glsl_surface_sampled_pad_alpha_mode(
-        pgraph_gl_surface_drawn_format(surface));
-}
-
 // FIXME: Dirty tracking
 // FIXME: Consider UBO to align with VK renderer
 static void update_shader_uniforms(PGRAPHState *pg, ShaderBinding *binding)
@@ -1015,13 +964,11 @@ static void update_shader_uniforms(PGRAPHState *pg, ShaderBinding *binding)
     PshUniformValues psh_values;
     pgraph_glsl_set_psh_uniform_values(pg, binding->uniform_locs.psh, &psh_values);
 
-    NV2AState *d = container_of(pg, NV2AState, pgraph);
     for (int i = 0; i < 4; i++) {
         if (r->texture_binding[i] != NULL) {
             float scale = r->texture_binding[i]->scale;
             psh_values.texScale[i] = scale;
         }
-        psh_values.sampledPadAlpha[i] = sampled_pad_alpha_mode(d, pg, r, i);
     }
     apply_uniform_updates("psh", PshUniformInfo, binding->uniform_locs.psh,
                           &psh_values, PshUniform__COUNT);

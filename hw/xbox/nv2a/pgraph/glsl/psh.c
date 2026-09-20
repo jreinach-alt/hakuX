@@ -265,28 +265,6 @@ int pgraph_glsl_surface_pad_alpha_mode(unsigned int color_format)
     }
 }
 
-/*
- * Issue #60: the READBACK rule for the one pad format whose readback is not a
- * constant. See the derivation at the declaration in psh.h.
- *
- * Takes the guest colour format the SAMPLED surface was last drawn with --
- * pgraph_gl_surface_drawn_format() -- and not the format the current draw
- * targets. The two are different questions and this used to be the only pad
- * helper where they could be confused, because the write side above is asked
- * about the target and this one is asked about a source.
- */
-int pgraph_glsl_surface_sampled_pad_alpha_mode(unsigned int color_format)
-{
-    switch (color_format) {
-    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_Z1A7R8G8B8:
-        return PSH_SAMPLED_PAD_ALPHA_X1A7_Z;
-    case NV097_SET_SURFACE_FORMAT_COLOR_LE_X1A7R8G8B8_O1A7R8G8B8:
-        return PSH_SAMPLED_PAD_ALPHA_X1A7_O;
-    default:
-        return PSH_SAMPLED_PAD_ALPHA_NONE;
-    }
-}
-
 void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
 {
 
@@ -3369,43 +3347,6 @@ static MString* psh_convert(struct PixelShader *ps)
             mstring_append_fmt(preflight, "uniform %s texSamp%d;\n",
                                sampler_type, i);
 
-            /*
-             * #60 read-side pad bits. A surface drawn in X1A7R8G8B8_{Z,O}
-             * holds seven bits of real alpha under a pad bit that reads back
-             * as 0 (_Z) or 1 (_O), and the texture unit hands the shader
-             * (X << 7) | (stored >> 1). We keep the surface as host RGBA8, so
-             * the sample arrives with the full eight bits and the transform
-             * has to be applied here.
-             *
-             * Emitted UNCONDITIONALLY and gated at run time on the uniform,
-             * following #43 and #59 and for the same reason:
-             * pgraph_glsl_check_shader_state_dirty() rebuilds ShaderState
-             * from a fixed register list that does not include
-             * NV_PGRAPH_SETSURFACE, so anything keyed on a surface format at
-             * generation time can be served stale from the shader cache. The
-             * branch is uniform-valued, and PSH_SAMPLED_PAD_ALPHA_NONE --
-             * which is also what a shader whose uniform was never written
-             * reads -- leaves the sample untouched.
-             *
-             * Placed before the signed-channel, alphakill and colour-key
-             * blocks below because all three consume what the texture unit
-             * delivers, and this IS what it delivers.
-             *
-             * APPROXIMATE UNDER FILTERING, exactly, and only there: silicon
-             * requantises before it filters and we filter before we
-             * requantise, so a bilinear tap between two texels can land one
-             * step off. Point-sampled texels -- which is the whole of the
-             * Surface format and Blend surface measurement -- are exact.
-             */
-            mstring_append_fmt(
-                vars,
-                "if (sampledPadAlpha[%d] != 0) {\n"
-                "    int a8_%d = int(clamp(t%d.a, 0.0, 1.0) * 255.0 + 0.5);\n"
-                "    t%d.a = float((sampledPadAlpha[%d] - 1) * 128 + "
-                "(a8_%d >> 1)) / 255.0;\n"
-                "}\n",
-                i, i, i, i, i, i);
-
             /* Channels flagged signed on a texture the sampler holds
              * unsigned: two's complement over 127, the SNORM reading.  A
              * texel a later bump or dot-product stage consumes is left as
@@ -3919,26 +3860,6 @@ void pgraph_glsl_set_psh_uniform_values(PGRAPHState *pg,
                 pgraph_glsl_surface_pad_alpha_mode(
                     pg->surface_shape.color_format) :
                 PSH_PAD_ALPHA_NONE;
-    }
-    if (locs[PshUniform_sampledPadAlpha] != -1) {
-        /*
-         * #60's READ side. Defaulted OFF here and overridden per stage by the
-         * renderer, the way texScale above is, because the answer is not in
-         * `pg` at all: it depends on which SURFACE each texture stage is
-         * sampling and whether the renderer took its surface-to-texture fast
-         * path for that stage, and only the backend knows both.
-         *
-         * OFF is today's behaviour, so a backend that does not override --
-         * which at this commit is Vulkan, whose s2t decision lives in
-         * vk/texture.c -- keeps exactly the pixels it has now. That is a
-         * KNOWN DIVERGENCE and not an oversight: the two renderers are
-         * byte-identical on nine of the ten X1A7 values measured at
-         * 01047cf3, and this lands the GL half of the pair. See the PR and
-         * docs/lanes/remote/NOTES.md.
-         */
-        for (int i = 0; i < 4; i++) {
-            values->sampledPadAlpha[i] = PSH_SAMPLED_PAD_ALPHA_NONE;
-        }
     }
     if (locs[PshUniform_consts] != -1) {
         for (int i = 0; i < 9; i++) {
