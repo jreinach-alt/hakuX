@@ -16,11 +16,17 @@ x1a7has()   { printf '%s\n' "$2" | grep -qF -- "$1"; }
 # assertion reports `bad` whatever the output said. That is the same shape as
 # P1 -- a guard that reports on something other than what it measured.
 x1a7hasnt() { ! printf '%s\n' "$2" | grep -qF -- "$1"; }
-x1a7cnt()   { printf '%s\n' "$2" | grep -cF -- "$1"; }
 
-check "the model reproduces every pinned golden half" \
-      [ "$(x1a7cnt ' ok' "$X1A7")" -ge 16 ]
-check "  and reports no mismatch" \
+# AUDIT L2: this used to count every line containing ' ok' and require >= 16.
+# The selftest prints eighteen such lines -- sixteen goldens plus the two
+# coincidence checks -- so the assertion passed with two golden halves
+# mismatching, and was sound only because the separate MISMATCH check caught
+# them. Count the GOLDEN lines specifically, and require exactly sixteen.
+x1a7goldens() { printf '%s\n' "$1" | grep -c '^  golden .* ok$'; }
+
+check "all sixteen pinned golden halves reproduce, and exactly sixteen" \
+      [ "$(x1a7goldens "$X1A7")" -eq 16 ]
+check "  and no golden half mismatches" \
       x1a7hasnt "MISMATCH" "$X1A7"
 # The point of the rivals: a pass must mean the goldens SELECTED these rules,
 # not merely that some rule fits. If a rival stops being refuted, either the
@@ -35,4 +41,28 @@ check "  as is a readback that ignores the pad bit" \
 check "  as is a pad bit applied to the whole channel" \
       x1a7has "R2 pad bit as a whole-channel constant         refuted" "$X1A7"
 check "no rival survives" x1a7hasnt "NOT REFUTED" "$X1A7"
+
+# AUDIT M1: the withdrawn --proposed mode computed the same function as the
+# model. The selftest now PROVES that rather than asserting it, and these two
+# checks are what stop the claim being quietly reinstated.
+check "the write transform is still shown to equal R1" \
+      x1a7has "the write transform is r1_blend_dst_alpha on all 256 values ok" "$X1A7"
+check "  and the swatch alpha is still its fixed point" \
+      x1a7has "the swatch alpha 0x22 is its fixed point                   ok" "$X1A7"
+check "  so the suite is stated as unable to validate the implementation" \
+      x1a7has "cannot distinguish them" "$X1A7"
+check "no --proposed mode is advertised" \
+      x1a7hasnt "scoring the PROPOSED implementation" "$X1A7"
+
 check "the selftest's own verdict is a pass" x1a7has "all checks pass" "$X1A7"
+
+# AUDIT H1: score() reported "0 of 32 modelled halves differ" and exited 0
+# when it had opened no goldens at all. A run that reads nothing must FAIL.
+echo "== x1a7_forward_model.py: a golden it never opened is not a golden that agreed"
+X1A7N=$(python3 "$REPO/docs/testing/x1a7_forward_model.py" "$T/x1a7-no-such-goldens" 2>&1)
+x1a7nrc=$?
+check "scoring against an absent goldens root exits non-zero" [ "$x1a7nrc" -ne 0 ]
+check "  and says nothing was compared, rather than that nothing differed" \
+      x1a7has "compared 0 of 32 modelled halves" "$X1A7N"
+check "  and calls it a failure in those words" \
+      x1a7has "NOT compared -- this is a FAILURE, not agreement" "$X1A7N"

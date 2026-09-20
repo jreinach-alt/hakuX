@@ -96,17 +96,31 @@ the texture read. Identity is the *point* on the blend side: a fixed-function
 blend unit's destination-alpha read cannot be intercepted from a shader, so the
 only place to put R1 is the stored bytes.
 
-### The proposed fix, simulated before any C is written
+### WITHDRAWN: "the proposed fix, simulated at 0 of 32" (audit pass 1, M1)
 
-`x1a7_forward_model.py --proposed` runs that implementation through
-`TestDstAlpha`'s real draw sequence — write transform on the fragment's alpha,
-then the blend, then R2 at the sample — and scores it against the goldens:
-**0 of 32 modelled halves differ, worst |delta| 0**, the held-out `1-DstAlpha`
-pair included. A mutant that drops the quantisation is caught by the gate.
+This section claimed `--proposed` simulated the implementation through the
+test's draw sequence and scored **0 of 32**. **That claim carried no
+information and is withdrawn.** The mode computed the *same function* as the
+default: the write transform `expand7(a >> 1)` is `r1_blend_dst_alpha`
+character for character, and the swatch alpha `0x22` is its fixed point, so
+both substitutions collapsed. Verified identical on all **1,024** inputs. It
+was this model scoring itself. The mode is removed; `--selftest` now *proves*
+the coincidence instead of asserting it.
 
-**Predicted yield, stated before implementing: the four `DstAlpha`/`1-DstAlpha`
-captures go to 0, which is 303,104 px** (81,920 + 65,536 + 90,112 + 65,536),
-less whatever the GL-only anomaly below holds back on `DstAlpha_XA_O1A7RGB8`.
+**What survives is worth more than the claim was.** On *TestDstAlpha* the
+proposed implementation and this model are indistinguishable, so **these four
+captures cannot validate the implementation at all.** Only a capture where
+alpha blending is live can — that is exactly where hardware quantises after
+the blend and fixed-function cannot. **`XA_*_Add_SrcA_DstA` (43,328 px each)
+is the capture that would settle it**, and it is one of the six this model
+never covered.
+
+**Predicted yield, and now stated with its real support: the four
+`DstAlpha`/`1-DstAlpha` captures go to 0, which is 303,104 px** (81,920 +
+65,536 + 90,112 + 65,536), less whatever the GL-only anomaly below holds back
+on `DstAlpha_XA_O1A7RGB8`. That rests on the model fitting 32 of 32 goldens
+plus the assumption that R1 and R2 implemented correctly produce the modelled
+values — **not** on a simulation, because there was none.
 
 **The other six X1A7 captures — 154,938 px — are NOT modelled and nothing here
 predicts them.** `XA_*_Add_SrcA_DstA` (43,328 each) is where the known
@@ -162,15 +176,23 @@ Ruled out, each by reading master rather than by argument:
 
 ### And that is the finding: the format cannot be the cause
 
-Enumerate every site outside `vk/` that names either suffix — `grep -rn
-"X1A7R8G8B8_[ZO]" hw/` — and there are exactly six, none of which separates
-them:
+Enumerate every site outside `vk/` that names either suffix:
+
+```
+grep -rn "X1A7R8G8B8_[ZO]" hw/ | grep -v /vk/
+```
+
+**11 lines, in six groups** (audit L4: the command as first written here
+omitted the `grep -v /vk/` and said "exactly six", conflating groups with
+lines — 19 lines with `vk/`, 11 without). None of the six separates the two
+suffixes:
 
 | site | what it is |
 |---|---|
 | `gl/surface.c:3059`, `gl/renderer.h:350` | comments |
 | `gl/constants.h:403`, `:405` | two rows, byte-identical |
 | `pgraph.c:4620-4621`, `:4658-4659` | both suffixes as **adjacent fallthrough cases** |
+| `pgraph.c:4664` | a comment — the eleventh line, and why 11 ≠ 6 |
 | `nv2a_regs.h:973-974` | the enum values, `0x06` and `0x07` |
 
 **No code on the GL path treats `_Z` differently from `_O`.** So a difference
