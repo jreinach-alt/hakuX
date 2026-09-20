@@ -97,6 +97,53 @@ which keeps `describe_suite_drift`'s message runnable on either host), and it
 belongs in a change of its own against a shared generated artefact rather
 than smuggled into a PR about a texture cache.
 
+## Remediation re-checked by `job.cloud`, and the one thing that is not a lane's (2026-09-20)
+
+The remediation above was pushed but the PR's `needs-remediation` label was
+never moved, so the outlet claimed #181 again. This firing re-checked it
+rather than assuming it, and **changed no fix**: H1 and M1 are discharged and
+the evidence is the real job's, not a re-reading of the patch.
+
+| | how it was checked this firing |
+|---|---|
+| **H1** | `arms.sh:653-656` skips on a non-empty `title` — read in the tree, and it sits *after* `live_ancestor` so a live `b_ref` does not get past it. `2026-09-20-gl-stale-surface-blit-opengl.json` carries `title` and hashes to `aafb5bf5eee8`, which the host's own `[job.arms]` comment of 10:05Z lists as skipped |
+| **M1** | same marker on `…-x1a7-read-side.json` (`8bbb18a02078`) and `…-x1a7-download.json` (`b259b4104da0`); the same `[job.arms]` comment lists both as skipped. Four device arms on reverted code are not spent |
+| L1 | the `Files:` line was missing the audit file the pass-1 auditor pushed to this branch. Added, so it matches `git diff --stat origin/master...HEAD` (8 files). `gh pr edit` applies nothing on this host — done with `gh api -X PATCH` and read back |
+| L2 | left as dispositioned above. It is the generator's property and the argument with the 34-commit count stands |
+
+### The `regressed` label cannot clear itself, and that is the owner's call
+
+Recorded here because a PR comment is not where a decision gets read.
+
+`fold.sh:675` gates on the `regressed` label and parses no verdicts — "the
+label is the interface" (`fold.sh:581`). `arms.sh`'s `label_decide()` keeps,
+per issue, the newest registration **that has a verdict on disk**. For `#60`
+that is `e988be896f6d` — the pre-marker snapshot of the OpenGL file, judged
+FAIL on a handheld pair whose 269 captures were byte-identical. The marker
+that discharges H1 is exactly what stops `aafb5bf5eee8` ever acquiring a
+verdict to displace it, so **the remediation and the frozen label are the
+same change**, and no tick can undo it.
+
+Three ways out, and none of them is a lane's or this job's:
+
+1. a hand-queued desktop pair for `aafb5bf5eee8`, both arms
+   `--device desktop --env HAKUX_RENDERER=OPENGL`, recipe in the file's first
+   paragraph. Its verdict is newer, so it takes the live row and the label
+   follows by itself;
+2. `regression-accepted:60` — **the owner's, explicitly**: "A lane must not
+   set it and no job sets it" (`fold.sh:639`). The argument for it is on #60,
+   where that gate says the trade has to be argued. Note what it would be
+   asserting is unusual: not that a regression is an accepted trade, but that
+   the FAIL is a wrong-renderer measurement and there is no regression to
+   accept. The gate has no word for that;
+3. a `prediction` field `arms.sh` passes to `request.sh --device`/`--env`,
+   which is audit pass 1's remedy (2) and the only durable one. That is a
+   harness change, and it would make this the last PR to hit this.
+
+Do not "fix" it by removing `regressed` by hand. `fold.sh:638` says why: that
+clears the label without clearing the regression, and the next tick's
+`label_decide()` recomputes it from the same verdict anyway.
+
 ## The pad bit is written by the raster, not applied by a reader (2026-09-20, third judgement)
 
 **Correction first, because the previous section got a fact wrong.** It said
