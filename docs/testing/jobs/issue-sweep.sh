@@ -127,7 +127,7 @@ git -C "$REPO" fetch -q origin board 2>/dev/null || true
 # class at once. It already says as much four paragraphs up. This enforces it.
 # The cure is one command and the refusal names it.
 if ! remote_authoritative; then
-    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell a remote lane from a dead one, and every class it reports would be read from a fold-lagged copy. It writes nothing and leaves any existing findings alone. Cure: \`git fetch origin board\` in $REPO."
+    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell a remote lane from a dead one, and every class it reports would be read from a fold-lagged copy. It writes nothing and leaves any existing findings alone. Cure: \`git fetch origin board\` in $REPO -- or, on a host that has no board branch at all, set HAKUX_BOARD_REF= to say that the in-tree copy IS the board."
     exit 0
 fi
 

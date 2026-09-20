@@ -148,9 +148,16 @@ class. Two reasons, and the second is the load-bearing one:
    in **every** class at once. Its own header already said so four paragraphs
    above the code; this enforces it.
 
-The refusal names the source it got and the one command that cures it
-(`git fetch origin board`). An unswept tick costs three hours; the other
-direction costs a released claim.
+The refusal names the source it got and **both** ways out. `git fetch origin
+board` is the ordinary one. The second matters because a gate that can refuse
+forever must name every exit: on a host that has no `board` branch **at all**,
+the fetch cures nothing -- the ref does not exist -- and that host would be
+refused on every tick, twice a day, for a fault it cannot fix with the command
+it was given. `HAKUX_BOARD_REF=` is the second exit, and `remote-lane.sh`
+already honours it as a deliberate choice rather than a fallback. Both strings
+are checked.
+
+An unswept tick costs three hours; the other direction costs a released claim.
 
 **A gate that refuses everything is the same defect with its sign flipped, so
 the host was checked rather than assumed.** The timers do not run this
@@ -239,7 +246,7 @@ because that harness needs `$REPO` to be a real git repo two levels above
 `docs/testing` and an extracted tree is not one; the fragment's whole contract
 is `$T`, `$HERE`, `$TESTING`, `check/ok/bad` and shims it builds itself.
 
-**63 checks: 38 fail against master, 25 pass.** The 25 are:
+**65 checks: 40 fail against master, 25 pass.** The 25 are:
 
 - **5** fixture integrity and stub safety (the two tips really are a month
   apart; each stub is a real file and not a symlink into the repository).
@@ -255,7 +262,7 @@ is `$T`, `$HERE`, `$TESTING`, `check/ok/bad` and shims it builds itself.
   why the `remote = true` shape was added; it is the leg that separates
   "silent for the right reason" from "silent for the wrong one".
 
-38 + 25 = 63. If those three numbers stop reconciling, this paragraph is the
+40 + 25 = 65. If those three numbers stop reconciling, this paragraph is the
 thing to re-measure, not to repair by arithmetic.
 
 **Two checks in the first draft of this fragment were vacuous, and the
@@ -269,7 +276,7 @@ alone, no report page written over the last one) is asserted separately
 against a `run` tick.
 
 `bash docs/testing/jobs/selftest.sh`: green, 943 checks before this branch and
-1006 after.
+1008 after.
 
 ## Files
 

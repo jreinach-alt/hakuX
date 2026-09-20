@@ -366,6 +366,13 @@ check "  and it does not say \"Nothing stuck\" either -- it established nothing"
 check "  it names the source it got, so the refusal is diagnosable" \
       sr_in 'came back `unreadable`'
 check "  and the one command that cures it" sr_in "git fetch origin board"
+# A GATE THAT CAN REFUSE FOREVER MUST NAME EVERY WAY OUT. On a host with no
+# `board` branch at all the fetch cures nothing -- the ref does not exist --
+# and that host would be refused on every tick, twice a day, for a fault it
+# cannot fix with the command it was given. `HAKUX_BOARD_REF=` is the second
+# way out and remote-lane.sh already honours it as a deliberate choice.
+check "  and the second way out, for a host that has no board branch to fetch" \
+      sr_in "HAKUX_BOARD_REF="
 
 # AND THE `run` TICK, which is the one that can destroy something: a blind
 # tick must not discharge findings nobody has read, and must not overwrite the
@@ -487,6 +494,8 @@ check "  and ask gh for the PR list at all -- it refuses before it looks" \
       sr_unasked "gh pr list"
 check "  while naming the source it got and the command that cures it" \
       sr_in "git fetch origin board"
+check "  and the way out for a host with no board branch to fetch" \
+      sr_in "HAKUX_BOARD_REF="
 
 got=$( ( export PATH="$SR/pbin:$PATH" HAKUX_WORK="$SR/work" HAKUX_REPO_DIR="$SR/repo" \
                 HAKUX_BOARD_REF=refs/nosuch

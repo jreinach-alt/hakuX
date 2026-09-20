@@ -133,7 +133,7 @@ git -C "$REPO" fetch -q origin board 2>/dev/null || true
 # a state in which to take an outward action. The cure is one command and the
 # refusal names it; an unswept tick costs three hours.
 if ! remote_authoritative; then
-    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell which heads belong to a lane this host cannot drive. It reports nothing and repairs nothing. Cure: \`git fetch origin board\` in $REPO."
+    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell which heads belong to a lane this host cannot drive. It reports nothing and repairs nothing. Cure: \`git fetch origin board\` in $REPO -- or, on a host that has no board branch at all, set HAKUX_BOARD_REF= to say that the in-tree copy IS the board."
     exit 0
 fi
 # "<branch>\t<lane>" per line, or empty when no row is marked `remote`. Read
