@@ -140,8 +140,98 @@ add the paragraphs recording the last two decisions. No leg changed.
   mine matched (`91a0de45`), and suites/sites/symbols were 103/2839/951 before
   and after with no suite added or removed.
 
+## Why attempt 1 did not finish
+
+It ran out of session while *correctly* waiting: the fix, the index and the
+prediction were pushed and preflight was green, and the one remaining item —
+the measured before/after the brief asks for — was the arms job's to produce.
+Attempt 1 ended in draft with a `[lane.clrpad164] waiting:` comment naming
+what would resolve it, which is the finished-session form `roles/lane.md`
+prescribes. Nothing was left half-done; a lane simply cannot mark itself ready
+while asleep, and `jobs/handback.sh` is the actor that resumed it here
+(`ede6c2f14b`: `ci=GREEN quiet=1108 arm=verified`). It did not spend an
+attempt.
+
+## The arm came back PASS, and the PASS measured nothing about this change
+
+`[job.arms]` on PR #172: **VERDICT: PASS — all 104 registered checks hold**,
+PR labelled `verified`. Read past the label before believing it.
+
+The per-capture table in the same comment says:
+
+    better 0     worse 0     same 74     noise 0      (74 compared)
+    hashed 74 of 74 shared captures
+    every checked capture is byte-identical between the arms.
+
+**Byte-identical on every capture, including the two movers.** And all 104
+checks are `must_not_move`/`must_not_regress` expansions — `expect` and
+`expect_counts` are empty, for the recorded reasons above. An arm in which
+*nothing changed at all* satisfies every one of those 104 legs trivially. So
+the PASS is the inert-control case the repo has been burned by before: an
+inert control is not a measurement, and this one discharges nothing. Not one
+of the 104 legs could have moved, because the patch was not in the binary.
+
+### Why it was inert, which is outcome (1) named in the prediction
+
+The arm ran the Android fleet: the verdict header gives each arm an **`apk`**
+(`215d41ca8268` for A, `8ce7f0acacb4` for B). This change is inside
+`#ifndef __ANDROID__`, so **it is absent from both binaries by construction**.
+That is exactly the uncomfortable outcome the prediction named in advance —
+"THIS ARM MUST RUN DESKTOP OPENGL … establish which renderer the arm used
+before reading a zero as a refutation" — so the zero is neither a refutation
+nor a confirmation. It is the arm not having compiled the code.
+
+**The two apk shas differing is not evidence to the contrary.** `b_ref` carries
+two commits `a_ref` does not and the build embeds commit-derived strings, so
+the shas differ whether or not any object code did. A differing artifact sha
+is not a differing code path.
+
+### What would actually measure it, and why this lane cannot
+
+`docs/testing/desktop-runs.md:91` — "Both renderers run here, and they are not
+interchangeable" — so the desktop lane *can* run the OpenGL renderer, which is
+where #158's raster half was measured. Two conditions a desktop arm must
+confirm rather than assume:
+
+1. **That it really ran OpenGL.** The desktop lane's default is the Vulkan
+   renderer on lavapipe (`AGENTS.md:1063`), and #29 is the precedent where a
+   run that *asked* for Vulkan silently ran OpenGL. Check the
+   `nv2a: renderer:` line, as that file says.
+2. **That `pgraph_glsl_dual_src_pad_supported()` is true** — the change is
+   gated on it, so on a GL part without `GL_ARB_blend_func_extended` it is a
+   deliberate no-op even on desktop, and would read as a refutation again.
+
+**This lane cannot run one, and the blocker was tested rather than assumed
+this attempt**: the sandbox refuses any path outside the worktree
+(`ls /home/justin/hakux-work/` → *"blocked … may only list files in the
+allowed working directories"*), so the test ISO, the goldens, the BIOS and the
+dispatch directory are all unreachable. There is no route from here to any
+device or to a desktop run.
+
+### The harness fact underneath this, which outlives the issue
+
+**The device arms job cannot falsify any `#ifndef __ANDROID__` change**, and
+it does not say so — it returns PASS and labels the PR `verified`, because a
+control-only prediction is vacuously satisfied by a binary that never carried
+the patch. #158's raster half hit the same wall and was measured off-fleet.
+Anything gated out of the Android build needs a desktop-OpenGL arm or it needs
+its prediction to say, in the machine-read half, that it is unmeasurable here.
+This is for the board, not for a lane: a lane cannot edit the tracker and
+cannot reach the dispatcher.
+
 ## State
 
-Preflight green (`--allow-tracker`). Fix, index and prediction pushed. The arm
-is the arms job's to run from the committed prediction; this lane cannot queue
-it. Awaiting `[job.arms]` on PR #172 for the two movers' measured before/after.
+Preflight green (`--allow-tracker`) on `ede6c2f14b`, re-run this attempt —
+psh_differ, aci_vmstate, nv2a index, territory, coverage and board files all
+ok. CI green on the same head (`build` ×2, `check`). `origin/master` merges
+clean into this branch (`git merge-tree`, no conflict), 18 commits ahead, so
+the branch is not re-merged: re-merging would reset CI and strand the PR in
+draft again for no gain.
+
+Marked ready with the arm's limitation stated in the PR body rather than left
+in draft for a measurement no actor in this harness can currently produce.
+**The code claim is unmeasured, not unsupported**: reachability was established
+by reading (five steps above), the `_O` twins' long-standing bit-exactness is
+the same mechanism observed from the other side, and the Vulkan counterpart has
+shipped this since #59. What is missing is a device-scale falsification, and
+what it needs is a desktop-OpenGL arm.
