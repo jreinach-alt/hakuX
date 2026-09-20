@@ -32,9 +32,336 @@ to `[lane.clrpad164]` for #164; that lane has PR #172 open. Do not edit it.
 | issue | state |
 |---|---|
 | #34 | not this lane's: four findings in `vk/*`, and the device confirmation is APK packaging in `android/` |
-| #60 | **its own fix is landed and correct** (`a105a51a`, the `drawn_format` refresh). What is left is not #60's defect at all: the whole `X1A7R8G8B8` family, **458,042 px on GL and 449,850 px on Vulkan**, nine of ten captures byte-identical between the backends. Modelled exactly — see "X1A7R8G8B8: two rules" immediately below |
+| #60 | **its own fix is landed and correct** (`a105a51a`, the `drawn_format` refresh). What is left is the whole `X1A7R8G8B8` family. **GL is now 449,850 px, equal to Vulkan and byte-identical to it on all ten captures** (`da9e02a2`); the last GL-only swatch turned out to be a texture-cache coherence defect and not a pad bit at all. The remaining 449,850 px is the pad-bit residual, and its read side needs `gl/surface.c` — **asked for, not held**. See the two sections immediately below, in that order |
 | #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
+
+## Audit pass 1 on PR #181: disposition (2026-09-20)
+
+`docs/audits/2026-09-20-claude/docs-tooling-agentic-coding-u152m1-pass1.md`
+(`8e0e32bf`) — 1 HIGH, 1 MEDIUM, 4 LOW. The `gl/texture.c` fix was checked
+claim-by-claim against the tree and stands; **both actionable findings are in
+the prediction files**, and H1 is that the file written to stop a
+wrong-renderer arm could not stop one.
+
+| | finding | disposition |
+|---|---|---|
+| **H1** | the routing requirement is prose, and `arms.sh` reads no prose | **taken** — `title` marker + hand-queue recipe, verified by running the job |
+| **M1** | two falsified predictions have live `b_ref`s and would spend four device arms | **taken** — same marker, and each says so in its first paragraph |
+| L1 | the PR body has no `roles/lane.md` header | **taken** — header added |
+| L2 | `nv2a_index.json` provenance records the sandbox's paths | **accepted, not fixed here** — see below |
+| L3 | the superseded file's "uncomfortable outcome" is unreachable | **acknowledged, no edit** — that file is judged; the supersession already replaced the leg with a reachable one |
+| **L4** | one path where "cannot be less correct" is not true | **taken** — the live file names `flush_surfaces()` and stops asserting the universal |
+
+### H1 and M1, and how the remediation was verified
+
+`arms.sh`'s queue loop reads `registered_utc`, `amended_utc`, `a_ref`,
+`b_ref`, `who`, `issue`, `title`, `runs_per_arm` and the suites, then calls
+`request.sh` with **no `--device` and no `--env`** (`arms.sh:671-675`). A
+renderer requirement in the `prediction` string is therefore invisible to it.
+`title` is the only opt-out the schema has (`arms.sh:654`), and nothing else
+in the tree reads a prediction's `title` — the other hits are on GitHub issue
+and request objects.
+
+**Verified by running the real job, in both directions**, rather than by
+reading the patch. `HAKUX_WORK` and `HAKUX_REPO_DIR` redirect `arms.sh` into
+a scratch work dir, and a `refs/remotes/origin/lane/*` ref makes `collect()`
+consider the branch:
+
+- **mutant** — the head before the remediation: all three files pass *through*
+  the title gate and skip at the next one.
+- **positive** — the head after it: all three skip with
+  `soak predictions (title=…) are hand-read; queue with request.sh --title yourself`.
+
+The container cannot demonstrate the `WOULD QUEUE` branch itself: `suites_for`
+finds no goldens here, so the mutant's fall-through lands on
+*"no suite with goldens in its keys or disc"*. **On the host it resolves —
+proven by the FAIL verdict itself, which lists all six suites.** So the gate
+the remediation moves is the one upstream of everything that differs.
+
+Calling this a "soak prediction" in the skip line is a small inaccuracy in
+service of a true one; the schema has no field for a renderer, and inventing
+one is a harness change, not this lane's.
+
+### L2, accepted rather than fixed
+
+The regeneration is required (the commit touches `hw/xbox`) and the auditor's
+own check says it is sound: `tests_commit` unchanged at `91a0de45`, 103
+suites, no suite dropped, every moved `loc` landing correctly. What churns is
+`provenance.tests_root` and `support_dirs[0]`, which record the generating
+machine's absolute paths. **That is a property of the generator, not of this
+diff: the same two lines have flipped between `/home/justin/…` and
+`/home/user/…` 17 times each — 34 commits — before this branch existed.**
+The fix is one line in `nv2a_index.py` (normalise a leading `$HOME` to `~`,
+which keeps `describe_suite_drift`'s message runnable on either host), and it
+belongs in a change of its own against a shared generated artefact rather
+than smuggled into a PR about a texture cache.
+
+## Remediation re-checked by `job.cloud`, and the one thing that is not a lane's (2026-09-20)
+
+The remediation above was pushed but the PR's `needs-remediation` label was
+never moved, so the outlet claimed #181 again. This firing re-checked it
+rather than assuming it, and **changed no fix**: H1 and M1 are discharged and
+the evidence is the real job's, not a re-reading of the patch.
+
+| | how it was checked this firing |
+|---|---|
+| **H1** | `arms.sh:653-656` skips on a non-empty `title` — read in the tree, and it sits *after* `live_ancestor` so a live `b_ref` does not get past it. `2026-09-20-gl-stale-surface-blit-opengl.json` carries `title` and hashes to `aafb5bf5eee8`, which the host's own `[job.arms]` comment of 10:05Z lists as skipped |
+| **M1** | same marker on `…-x1a7-read-side.json` (`8bbb18a02078`) and `…-x1a7-download.json` (`b259b4104da0`); the same `[job.arms]` comment lists both as skipped. Four device arms on reverted code are not spent |
+| L1 | the `Files:` line was missing the audit file the pass-1 auditor pushed to this branch. Added, so it matches `git diff --stat origin/master...HEAD` (8 files). `gh pr edit` applies nothing on this host — done with `gh api -X PATCH` and read back |
+| L2 | left as dispositioned above. It is the generator's property and the argument with the 34-commit count stands |
+
+### The `regressed` label cannot clear itself, and that is the owner's call
+
+Recorded here because a PR comment is not where a decision gets read.
+
+`fold.sh:675` gates on the `regressed` label and parses no verdicts — "the
+label is the interface" (`fold.sh:581`). `arms.sh`'s `label_decide()` keeps,
+per issue, the newest registration **that has a verdict on disk**. For `#60`
+that is `e988be896f6d` — the pre-marker snapshot of the OpenGL file, judged
+FAIL on a handheld pair whose 269 captures were byte-identical. The marker
+that discharges H1 is exactly what stops `aafb5bf5eee8` ever acquiring a
+verdict to displace it, so **the remediation and the frozen label are the
+same change**, and no tick can undo it.
+
+Three ways out, and none of them is a lane's or this job's:
+
+1. a hand-queued desktop pair for `aafb5bf5eee8`, both arms
+   `--device desktop --env HAKUX_RENDERER=OPENGL`, recipe in the file's first
+   paragraph. Its verdict is newer, so it takes the live row and the label
+   follows by itself;
+2. `regression-accepted:60` — **the owner's, explicitly**: "A lane must not
+   set it and no job sets it" (`fold.sh:639`). The argument for it is on #60,
+   where that gate says the trade has to be argued. Note what it would be
+   asserting is unusual: not that a regression is an accepted trade, but that
+   the FAIL is a wrong-renderer measurement and there is no regression to
+   accept. The gate has no word for that;
+3. a `prediction` field `arms.sh` passes to `request.sh --device`/`--env`,
+   which is audit pass 1's remedy (2) and the only durable one. That is a
+   harness change, and it would make this the last PR to hit this.
+
+Do not "fix" it by removing `regressed` by hand. `fold.sh:638` says why: that
+clears the label without clearing the regression, and the next tick's
+`label_decide()` recomputes it from the same verdict anyway.
+
+## The pad bit is written by the raster, not applied by a reader (2026-09-20, third judgement)
+
+**Correction first, because the previous section got a fact wrong.** It said
+`gl/surface.c` is `[lane.swizzle87]`'s and asked for it on #60. **It is this
+lane's.** `[lane.swizzle87]` was retired at wave 108 and released the file;
+the live board — `origin/board:territory.toml` at the repository **root**,
+wave 129 — lists `hw/xbox/nv2a/pgraph/gl/surface.c` as the first entry in
+`[lane.remote]`'s `files`. The in-tree `docs/testing/territory.toml` is at
+wave **94** and is 35 waves stale; I read it instead of the board. The ask on
+#60 is withdrawn — nothing was blocked.
+
+(`gl/shaders.c` moved the other way and is **not** this lane's on the live
+board. The reverted `9e9da01d` touched it; `aa3648cb` restores it
+byte-identically, so the net diff does not, the same shape as #62's
+`d7ef9820`.)
+
+### The measurement
+
+`5df42da3` put the rule where the last section said it belonged — the surface
+download writes `(X << 7) | (host >> 1)`, the upload reads back
+`expand7(guest & 0x7F)`. Registered at
+`docs/testing/predictions/2026-09-20-gl-x1a7-download.json`. **Four of five
+legs held, two of them exactly:**
+
+| capture | a (post-blit-fix) | measured | registered |
+|---|---:|---:|---|
+| `DstAlpha_XA_O1A7RGB8` | 81,920 | **16,384** | 16,384 ✔ exact |
+| `1-DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | 16,384 ✔ exact |
+| `1-DstAlpha_XA_O1A7RGB8` | 81,920 | **32,768** | 16,384 *or* 32,768 ✔ |
+| `DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | 16,384 *or* 32,768 ✔ |
+| `Fmt_X1A7R8G8B8_Z1A7R8G8B8` | 32,774 | **6,311** | must improve ✔ |
+| `Fmt_X1A7R8G8B8_O1A7R8G8B8` | 16,414 | **122,552** | must improve ✘ **KILL** |
+
+The fifth leg said *"both strictly improve. FAILS IF either grows."* It grew
+sevenfold, so the change is reverted in `ad5f43b6`. **An aggregate cannot
+license a capture that gets seven times worse**, which is exactly why that
+condition was registered before the run rather than judged after it.
+
+### Where the regression is, and what it says
+
+Not diffuse: **59,025 px of it are the frame's background**, golden
+`[32,32,32,255]`, which we produced correctly before and now produce as
+`[16,16,16,191]` — a half-opaque composite. Host alpha is `0` there and the
+`_O` rule turns `0` into `0x80`.
+
+On the **drawn swatch** the same rule is right: golden `[240,207,15,255]`,
+matched before and after, while the `_Z` twin's golden is `[120,103,7,191]`
+and this change makes `_Z`'s alpha histogram **byte-identical to its golden**
+— `255 ×271205, 191 ×17081, 0 ×3288, 192 ×1116` — with exactly **one** pixel
+newly wrong.
+
+### The rival, measured on the same instrument
+
+The same code with the pad bit forced to zero for both suffixes:
+
+| capture | a (post-blit-fix) | pad bit | no pad |
+|---|---:|---:|---:|
+| `1-DstAlpha_XA_O1A7RGB8` | 81,920 | **32,768** | 81,920 |
+| `1-DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | **16,384** |
+| `DstAlpha_XA_O1A7RGB8` | 81,920 | **16,384** | 81,920 |
+| `DstAlpha_XA_Z1A7RGB8` | 65,536 | **16,384** | **16,384** |
+| `Fmt_X1A7R8G8B8_O1A7R8G8B8` | 16,414 | 122,552 | 32,799 |
+| `Fmt_X1A7R8G8B8_Z1A7R8G8B8` | 32,774 | **6,311** | **6,311** |
+| ten `A7` total | 449,850 | 316,533 | 341,468 |
+
+So the pad bit is **necessary** for Blend surface's `_O` pair — without it
+they do not move at all — and **harmful** on Surface format's `_O`
+background. Both variants regress that capture, so neither ships.
+
+### The conclusion, and it is a design statement rather than a hypothesis
+
+**The pad bit is not a property of the memory that a reader applies. It is
+written by the raster, per pixel, and is absent where the raster never
+wrote.** Blend surface draws two full-surface quads so every pixel carries
+it; Surface format has a background the raster never touched, and forcing `X`
+there is what breaks it. A download cannot tell those apart — it sees only
+bytes — so **the pad bit belongs on the write side**, and that is the same
+reason one stored byte cannot answer both the blend's read and the texture
+unit's read under identity.
+
+What is not in doubt: **the 7-bit quantisation itself.** `_Z` 32,774 → 6,311,
+alpha exact, one pixel newly wrong. It is reverted only because it cannot be
+separated from the question the `_O` pair raises.
+
+### The next step, stated so nobody re-derives it
+
+Carry the guest representation in the host surface's alpha *for pixels the
+raster writes* — which only the fragment path can know — and make the
+download and upload identity again. That is #59's stamp machinery applied to
+a format it currently excludes, and `psh.h`'s exclusion note will need
+rewriting rather than deleting: it is right that a `PSH_PAD_ALPHA_ONE`-style
+constant would destroy seven real bits, and wrong that nothing else can be
+stamped. **The cost to price first** is what the blend then reads as
+destination alpha: `(X << 7) | A7` where hardware reads `expand7(A7)`, which
+is not an off-by-one — it is roughly a factor of two on `_Z`. Today's
+identity costs 14 of 32 modelled halves; that variant's cost is unmeasured
+and must be measured before it is built.
+
+## The X1A7 read side is not in the sampler, and one GL-only swatch was never a pad-bit defect (2026-09-20)
+
+Two predictions were registered before the runs and both were judged. One was
+falsified and reverted; the other landed exactly. Measured on `iso_surf1`, one
+GL run per arm from `01047cf3`, against `/tmp/goldens/results`.
+
+### 1. FALSIFIED: the readback rule does not belong at the texture sample
+
+`docs/testing/predictions/2026-09-20-gl-x1a7-read-side.json` said a per-stage
+uniform applying `(X << 7) | (stored >> 1)` at the sample would take the four
+`TestDstAlpha` captures from 303,104 px to between 81,920 and 114,688.
+**Nothing moved. All ten `A7` captures read their master values to the pixel.**
+Implemented in `9e9da01d`, reverted in `aa3648cb`.
+
+The gate was `pgraph_gl_check_surface_to_texture_compatibility()`, and that
+function's surface-format switch has cases for four formats — `X1R5G5B5_Z`,
+`R5G6B5`, `X8R8G8B8_Z`, `A8R8G8B8` — and **no case for `X1A7R8G8B8_Z` or
+`_O`**. Instrumented and counted: **96 X1A7 surface lookups reach the
+compatibility call and 96 are refused**, with extents and swizzle matching
+every time (128×128 texture format `0x12` against a 128×128 unswizzled
+surface). The only surface the shader ever sees through that path is
+`A8R8G8B8`. The `_O` twins of the two `_Z` formats that *are* listed are
+missing as well; that is a second thing to look at and not this one.
+
+So the sampled texel never comes from the host surface. It comes from guest
+VRAM, written there by `surface_download_to_buffer()`'s `glReadPixels`
+straight through the format map — `GL_BGRA` / `UNSIGNED_INT_8_8_8_8_REV`, the
+full eight bits of host alpha — and read back as an ordinary
+`LU_IMAGE_A8R8G8B8` texture.
+
+**`(X << 7) | (stored >> 1)` is not something the texture unit does to a host
+image. It is what the raster PUT IN MEMORY.** Its address is the surface
+download, with its inverse (`expand7`) on upload. Both are in
+`hw/xbox/nv2a/pgraph/gl/surface.c`, which is `[lane.swizzle87]`'s at wave 94,
+so it is **asked for and not taken**. The rule itself is unchanged and still
+measured twice; only its address was wrong.
+
+Reverted rather than left in place because the code was not merely untested,
+it was **unreachable on any content**: nothing can make that switch return
+true for `0x06` or `0x07`.
+
+### 2. LANDED: a texture the surface blit filled is not the VRAM it was hashed from
+
+`TextureBinding::data_hash` describes the *guest bytes* a binding was
+generated from. `pgraph_gl_render_surface_to_texture()` overwrites the
+binding's pixels and does not touch it, so the slow path asks the hash whether
+the binding is current and gets a confident wrong answer.
+
+Instrumented at the bind, on `DstAlpha_XA_O1A7RGB8`'s first swatch:
+
+| | |
+|---|---|
+| recorded `data_hash` | `141e1a7bae3fe174` |
+| live VRAM hash | `141e1a7bae3fe174` — genuinely equal |
+| `vram[0]` | `00000000` (guest memory is all-zero) |
+| `glGetTexImage[0]` | `ffffff22` (an earlier `A8R8G8B8` blit) |
+| `binding->draw_time` | `306824`, where every other X1A7 swatch reads `0` |
+
+`TestDstAlpha` points stage 0 at `GetTextureMemoryForStage(0)` with the same
+shape in every test, so one cache key is shared between tests whose surface
+format takes the fast path and tests whose format does not.
+
+Fixed in `da9e02a2` (`gl/texture.c`): a binding with a nonzero `draw_time`
+wanted as a VRAM texture is regenerated regardless of the hash. `draw_time` is
+the discriminator rather than a new field because it already means exactly
+that — `generate_texture()` sets it to `0` and the s2t branch is its only
+writer — and because the early-reuse path at the top of the same loop has
+always compared draw_times rather than bytes.
+
+**Measured, against the registered values:**
+
+| | master `01047cf3` | with `da9e02a2` | predicted |
+|---|---:|---:|---|
+| `Blend_surface::DstAlpha_XA_O1A7RGB8` | 90,112 | **81,920** | 81,920 ✔ |
+| the other nine `A7` captures | — | unchanged ✔ | unchanged |
+| ten `A7` captures, GL total | 458,042 | **449,850** | 449,850 ✔ |
+| those ten, GL vs Vulkan | 16,384 px | **0** ✔ | 0 |
+| whole disc | 1 better, 0 worse, 235 same | | no capture worse ✔ |
+
+**One leg did not hold as written.** The file predicted whole-disc GL/Vulkan
+byte-identity `227/236 → 228/236`; measured `228/236 → 229/236`. The delta is
+right and the baseline figure was wrong — 227 was carried from an earlier note
+rather than re-measured, and this run re-measured it. The comparison is PNG
+bytes with an RGB-array fallback, over the 236 captures present in both.
+
+**`Surface_pitch::Swizzle` is not a stable capture and must not be used as a
+tripwire on this disc.** Two runs of the *same* master binary read 12,224 and
+11,132 — 1,092 px apart — and the fixed binary read 12,224 again. That is the
+guest/pgraph race #39 and #87 already record, and it was nearly mistaken for a
+result: the first fix run was scored against a binary the build had not picked
+up, and the only capture that "moved" was this one.
+
+### 3. What the model covers, now checked rather than assumed
+
+`TestDstAlpha` draws **eight** swatches in two rows —
+`{0x00,0x40,0x80,0xFF}000000`, then the same four alphas over **red** — and
+`x1a7_forward_model.py` models the first row only. The second row must be
+identical because the blend is `{sfactor, ZERO}`, so the background RGB is
+multiplied by zero and cannot reach the surface. **On the goldens the two rows
+are byte-identical on all four captures, 0 of 65,536 px each**, so the model's
+32 halves do describe all 64. The earlier "303,104 px" figure rested on this
+without saying so.
+
+`R2` can only move **top** halves: the bottom half of each swatch is drawn with
+`SetFinalCombiner1Just(SRC_ZERO, true, true)`, alpha forced opaque, so the
+sampled alpha does not enter it. The four residual halves at `bg 0x80` are
+`R1`'s, off by exactly one (127 vs 126, 128 vs 129).
+
+### 4. What #60 still needs, and from whom
+
+- ~~**`gl/surface.c`** (`[lane.swizzle87]`)~~ **— WRONG, see the section above: the file is this lane's on the live board, and the download is not where the pad bit goes.** The superseded text: apply `(X << 7) | (stored >> 1)` in
+  the surface download and `expand7(a >> 1)` on upload, for
+  `X1A7R8G8B8_{Z,O}`. That is the read side, byte-exact, and it also fixes a
+  guest CPU read of the surface, which no sampler-side approximation can.
+- Optionally, in the same file: give `X1A7R8G8B8_{Z,O}` (and the missing `_O`
+  twins) cases in `pgraph_gl_check_surface_to_texture_compatibility()`. Only
+  *after* the download conversion exists — the fast path bypasses it, so a
+  shader-side rule would then be needed too, which is the reverted `9e9da01d`.
+- The write side's post-blend quantisation remains the known approximation and
+  `XA_*_Add_SrcA_DstA` remains the capture that would settle it.
 
 ## X1A7R8G8B8: two rules, and 32 of 32 golden halves (2026-09-20)
 
