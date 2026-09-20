@@ -56,6 +56,7 @@
 #define DEFAULT_HOST "192.168.50.2"
 #define DEFAULT_PORT 24242
 #define WATCHDOG_MS  20000u      /* no command for this long => soft reset */
+#define NO_HOST_MS   120000u     /* nobody listening this long => back to dash */
 #define ACK_TIMEOUT_MS 10000
 
 static char     g_host[64] = DEFAULT_HOST;
@@ -213,6 +214,25 @@ static void cmd_write(uint32_t off, uint32_t val)
                  off, block_of(off));
         send_line(out); return;
     }
+    /* Hazard list, refused HERE and not only in the driver.
+     *
+     * The window allow-list answers "could this write land somewhere fatal to
+     * the machine". It does not answer "is this particular register one that
+     * stops the console or drives a clock out of spec", and on 2026-09-20 a
+     * blind 0 into NV_PMC_ENABLE -- comfortably inside the allow-list --
+     * killed the console outright. The host is the thing most likely to carry
+     * a bug, so the refusal belongs on this side of the wire too. */
+    {
+        const char *hz = nv2a_hazard_name(off);
+        if (hz) {
+            g_refused++;
+            snprintf(out, sizeof(out),
+                     "ERR EHAZARD %08X is %s, refused by the probe: phase one "
+                     "does not write engine-enable, reset, pushbuffer or PLL "
+                     "registers", off, hz);
+            send_line(out); return;
+        }
+    }
     if (!journal_acquire_grant(off, val, &grant)) {
         g_refused++;
         send_line("ERR EJOURNAL write not journalled; refusing to execute it");
@@ -300,6 +320,15 @@ static void serve(void)
             cmd_status();
         } else if (line[0] == 'P' && line[1] == 0) {
             send_line("OK P");
+        } else if (line[0] == 'Q' && line[1] == 0) {
+            /* The host finished this run on purpose. Without this the probe
+             * cannot tell a clean end from a link failure and prints
+             * "disconnected; redialling" either way, which reads like a fault
+             * to whoever is watching the screen. */
+            send_line("BYE run complete");
+            g_watchdog_armed = false;
+            debugPrint("host finished the run; waiting for the next one\n");
+            return;
         } else if (line[0] == 'X' && line[1] == 0) {
             send_line("BYE soft reset");
             Sleep(250);
@@ -336,7 +365,27 @@ int main(void)
 
     CreateThread(NULL, 0, watchdog_thread, NULL, 0, NULL);
 
+    uint32_t last_session = GetTickCount();
     for (;;) {
+        /* ESCAPE HATCH.
+         *
+         * Without this, a probe launched while the host is not listening owns
+         * the console forever: it redials in a loop, UnleashX is not running
+         * so there is no FTP, and the only way out is a controller or the
+         * power button. That state was reached for real. Going back to the
+         * dashboard after a couple of minutes of nobody answering means the
+         * host regains FTP -- and therefore remote control -- on its own, and
+         * "stop the probe" becomes "stop listening", which needs no hands.
+         *
+         * It also makes an auto-relaunch loop safe to switch on: the worst a
+         * bad launch can do is cost NO_HOST_MS before the console hands
+         * itself back. */
+        if (GetTickCount() - last_session > NO_HOST_MS) {
+            debugPrint("no host for %us; returning to the dashboard\n",
+                       (unsigned)(NO_HOST_MS / 1000));
+            Sleep(250);
+            HalReturnToFirmware(HalRebootRoutine);
+        }
         g_watchdog_armed = false;
         g_sock = socket(AF_INET, SOCK_STREAM, 0);
         if (g_sock < 0) { Sleep(1000); continue; }
@@ -352,8 +401,10 @@ int main(void)
             struct timeval tv = { 0, 200000 };
             setsockopt(g_sock, SOL_SOCKET, SO_RCVTIMEO, &tv, sizeof(tv));
             debugPrint("connected\n");
+            last_session = GetTickCount();
             serve();
-            debugPrint("disconnected; redialling\n");
+            last_session = GetTickCount();
+            debugPrint("session ended; redialling\n");
         }
         g_watchdog_armed = false;
         closesocket(g_sock);

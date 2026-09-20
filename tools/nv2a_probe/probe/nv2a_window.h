@@ -50,6 +50,50 @@ static inline bool nv2a_offset_readable(uint32_t off)
     return off + 4u > off && off + 4u <= NV2A_MMIO_SIZE;
 }
 
+/* Registers a blind sweep must never write. Refused in the PROBE, not
+ * only in the driver, because the host is the thing most likely to have
+ * a bug in it. See gen_window.py for why each is here. */
+typedef struct { uint32_t offset; const char *name; } nv2a_hazard_t;
+static const nv2a_hazard_t kNv2aHazards[] = {
+    { 0x000000u, "NV_PMC_BOOT_0" },
+    { 0x000004u, "(measured)" },
+    { 0x000200u, "NV_PMC_ENABLE" },
+    { 0x003200u, "NV_PFIFO_CACHE1_PUSH0" },
+    { 0x003204u, "NV_PFIFO_CACHE1_PUSH1" },
+    { 0x003210u, "NV_PFIFO_CACHE1_PUT" },
+    { 0x003214u, "NV_PFIFO_CACHE1_STATUS" },
+    { 0x003220u, "NV_PFIFO_CACHE1_DMA_PUSH" },
+    { 0x003224u, "NV_PFIFO_CACHE1_DMA_FETCH" },
+    { 0x003228u, "NV_PFIFO_CACHE1_DMA_STATE" },
+    { 0x00322cu, "NV_PFIFO_CACHE1_DMA_INSTANCE" },
+    { 0x003240u, "NV_PFIFO_CACHE1_DMA_PUT" },
+    { 0x003244u, "NV_PFIFO_CACHE1_DMA_GET" },
+    { 0x003248u, "NV_PFIFO_CACHE1_REF" },
+    { 0x00324cu, "NV_PFIFO_CACHE1_DMA_SUBROUTINE" },
+    { 0x003250u, "NV_PFIFO_CACHE1_PULL0" },
+    { 0x003254u, "NV_PFIFO_CACHE1_PULL1" },
+    { 0x003270u, "NV_PFIFO_CACHE1_GET" },
+    { 0x003280u, "NV_PFIFO_CACHE1_ENGINE" },
+    { 0x0032a0u, "NV_PFIFO_CACHE1_DMA_DCOUNT" },
+    { 0x0032a4u, "NV_PFIFO_CACHE1_DMA_GET_JMP_SHADOW" },
+    { 0x0032a8u, "NV_PFIFO_CACHE1_DMA_RSVD_SHADOW" },
+    { 0x0032acu, "NV_PFIFO_CACHE1_DMA_DATA_SHADOW" },
+    { 0x003800u, "NV_PFIFO_CACHE1_METHOD" },
+    { 0x003804u, "NV_PFIFO_CACHE1_DATA" },
+    { 0x680500u, "NV_PRAMDAC_NVPLL_COEFF" },
+    { 0x680504u, "NV_PRAMDAC_MPLL_COEFF" },
+    { 0x680508u, "NV_PRAMDAC_VPLL_COEFF" },
+    { 0x680514u, "NV_PRAMDAC_PLL_TEST_COUNTER" },
+};
+#define NV2A_NUM_HAZARDS 29
+
+static inline const char *nv2a_hazard_name(uint32_t off)
+{
+    for (int i = 0; i < NV2A_NUM_HAZARDS; ++i)
+        if (kNv2aHazards[i].offset == off) return kNv2aHazards[i].name;
+    return 0;
+}
+
 /* Writes must land inside a modelled, write-enabled block. */
 static inline bool nv2a_offset_writable(uint32_t off)
 {
@@ -62,6 +106,12 @@ static inline bool nv2a_offset_writable(uint32_t off)
             return true;
     }
     return false;
+}
+
+/* The check the probe actually applies to a write. */
+static inline bool nv2a_offset_write_allowed(uint32_t off)
+{
+    return nv2a_offset_writable(off) && nv2a_hazard_name(off) == 0;
 }
 
 #endif /* NV2A_WINDOW_H */

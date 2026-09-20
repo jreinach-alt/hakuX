@@ -48,6 +48,33 @@ mutate "alignment enforced"                    's|if (off & 3u) return false;.*|
 mutate "block end is exclusive"                's|off + 4u <= (uint32_t)(b->offset + b->size)|off <= (uint32_t)(b->offset + b->size)|'
 mutate "BAR end is exclusive for reads"        's|return off + 4u > off \&\& off + 4u <= NV2A_MMIO_SIZE;|return off <= NV2A_MMIO_SIZE;|'
 mutate "unmodelled space stays refused"        's|{ "USER",|{ "PRAMIN",   0x700000u, 0x100000u, true },\n    { "USER",|'
+mutate "hazard list is consulted"              's|return nv2a_offset_writable(off) \&\& nv2a_hazard_name(off) == 0;|return nv2a_offset_writable(off);|'
+mutate "hazard table is not empty"             's|^#define NV2A_NUM_HAZARDS .*|#define NV2A_NUM_HAZARDS 0|'
+
+echo "== host suites =="
+for suite in test_driver_loopback test_supervisor; do
+    if python3 "host/$suite.py" >/dev/null 2>&1; then echo "   $suite: PASS"
+    else echo "   $suite: FAIL"; fail=1; fi
+done
+
+echo "== supervisor mutants: each must be killed =="
+pymutate() {  # $1 = name, $2 = sed program on a copy of supervisor.py
+    cp host/supervisor.py "$TMP/supervisor.py.bak"
+    sed -i "$2" host/supervisor.py
+    if cmp -s "$TMP/supervisor.py.bak" host/supervisor.py; then
+        echo "   $1: MUTANT DID NOT APPLY"; fail=1
+        cp "$TMP/supervisor.py.bak" host/supervisor.py; return
+    fi
+    if python3 host/test_supervisor.py >/dev/null 2>&1; then
+        echo "   $1: SURVIVED -- the suite does not test this"; fail=1
+    else
+        echo "   $1: killed (suite went red, as required)"
+    fi
+    cp "$TMP/supervisor.py.bak" host/supervisor.py
+}
+pymutate "bounce protection present"  's|if self.bounces >= self.max_bounces:|if False:|'
+pymutate "wedge is reported"          's|elif now - self.unreachable_since > self.unreachable_alert_s:|elif False:|'
+pymutate "a dark console is not mistaken for the dashboard" 's|return State.UNREACHABLE|return State.AT_DASHBOARD|'
 
 echo
 if [ "$fail" = 0 ]; then echo "allow-list suite OK (baseline green, every mutant killed)"; else echo "SUITE FAILED"; fi

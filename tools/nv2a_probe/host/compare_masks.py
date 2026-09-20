@@ -68,6 +68,24 @@ def parse_regs(path: str, prefix: str):
     return regs
 
 
+W1C_RE = re.compile(r"case\s+(NV_\w+)\s*:[^;]*?&=\s*~", re.S)
+
+
+def parse_w1c(path: str):
+    """Registers the write handler treats as write-1-to-CLEAR.
+
+    This matters because of what the sweep can and cannot see. It measures
+    LATCHING -- write ones, write zeros, see which bits followed. For a W1C
+    status register the correct hardware behaviour is that writing ones clears
+    and writing zeros does nothing, so every declared bit reads back 0 and the
+    measured writable mask is legitimately empty. Reporting that as "declared
+    but not writable" turns correct silicon into a finding.
+    """
+    if not os.path.exists(path):
+        return set()
+    return set(W1C_RE.findall(open(path, encoding="utf-8").read()))
+
+
 def parse_impl(path: str):
     """-> (read_cases, write_cases) register names each handler switches on."""
     src = open(path, encoding="utf-8").read()
@@ -101,6 +119,7 @@ def main() -> int:
 
     regs = parse_regs(regs_h, "NV_" + args.block.upper() + "_")
     reads, writes = (parse_impl(impl_c) if os.path.exists(impl_c) else (set(), set()))
+    w1c = parse_w1c(impl_c)
 
     measured = {}
     for line in open(args.results, encoding="utf-8"):
@@ -111,8 +130,8 @@ def main() -> int:
 
     print("block %s: %d registers declared in nv2a_regs.h, %d swept"
           % (args.block, len(regs), len(measured)))
-    print("%s.c switches on %d registers for read, %d for write\n"
-          % (args.block.lower(), len(reads), len(writes)))
+    print("%s.c switches on %d registers for read, %d for write; %d write-1-to-clear\n"
+          % (args.block.lower(), len(reads), len(writes), len(w1c)))
 
     findings = []
     hdr = ("%-28s %-8s %-10s %-10s %-10s %s"
@@ -141,8 +160,15 @@ def main() -> int:
             notes.append("writable bits outside declared fields: %08X" % (w & ~declared))
             findings.append(("undocumented-bits", name, off, w & ~declared, declared))
         if reg and declared and (declared & ~w) and reg["name"] in writes:
-            notes.append("declared but not writable: %08X" % (declared & ~w))
-            findings.append(("declared-not-writable", name, off, declared & ~w, declared))
+            if reg["name"] in w1c:
+                # Expected, not a defect: see parse_w1c.
+                notes.append("declared bits read back 0, but %s is write-1-to-clear "
+                             "-- the sweep cannot measure W1C, so this is not a "
+                             "disagreement" % reg["name"])
+            else:
+                notes.append("declared but not writable: %08X" % (declared & ~w))
+                findings.append(("declared-not-writable", name, off,
+                                 declared & ~w, declared))
         if not reg and w:
             notes.append("writable register absent from nv2a_regs.h")
             findings.append(("undeclared-writable", name, off, w, 0))

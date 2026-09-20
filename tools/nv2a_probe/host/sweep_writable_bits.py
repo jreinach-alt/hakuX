@@ -49,6 +49,32 @@ def load_done(path: str) -> dict[int, dict]:
     return done
 
 
+class RestoreFailed(RuntimeError):
+    def __init__(self, offset, msg):
+        super().__init__(msg)
+        self.offset = offset
+
+
+def load_hazards() -> dict:
+    hz = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hazards.json")
+    if not os.path.exists(hz):
+        raise SystemExit("hazards.json missing; run gen_window.py --write")
+    return {int(k, 16): v for k, v in json.load(open(hz, encoding="utf-8")).items()}
+
+
+def read_one(sess, off: int) -> dict:
+    """Read a register and write nothing at all.
+
+    A read sweep carries no risk -- it cannot wedge the console, cannot leave a
+    register holding a value it did not start with, and cannot drive a clock
+    out of spec -- and it still answers a real question: which registers return
+    data on silicon that this tree models as zero. 0x000160 was found that way,
+    reading a constant 0x01000000 where pmc.c has no case at all.
+    """
+    return {"offset": off, "t": time.time(), "mode": "read",
+            "orig": sess.read32(off)}
+
+
 def sweep_one(sess, off: int) -> dict:
     rec = {"offset": off, "t": time.time()}
     orig = sess.read32(off)
@@ -67,6 +93,17 @@ def sweep_one(sess, off: int) -> dict:
         stuck_zeros=(~ones & ~zeros) & 0xFFFFFFFF,
         restored=(final == orig),
     )
+    if final != orig:
+        # STOP. A register that will not go back to the value it had is a
+        # register whose function we did not understand, and the next one along
+        # is no safer. The first hardware run left 0x000004 holding 0x01000001
+        # instead of 0 and swept 120 more registers afterwards as if nothing
+        # had happened; the run that wedged the console came later, and this
+        # would have stopped before it.
+        raise RestoreFailed(off,
+            "%06X did not restore: was %08X, now %08X. Stopping rather than "
+            "continuing past a register we evidently do not understand."
+            % (off, orig, final))
     return rec
 
 
@@ -83,6 +120,16 @@ def main() -> int:
     ap.add_argument("--skip", action="append", default=[],
                     help="offset to leave alone, repeatable")
     ap.add_argument("--accept-timeout", type=float, default=300.0)
+    ap.add_argument("--read-only", action="store_true",
+                    help="read every register in the range and write NOTHING. "
+                         "Zero risk, and it still finds registers silicon "
+                         "answers where this tree returns 0.")
+    ap.add_argument("--write-scope", choices=("declared", "all"), default="declared",
+                    help="which registers may be WRITTEN. 'declared' (default) "
+                         "writes only registers nv2a_regs.h names, so a blind "
+                         "value never lands in something nobody has identified. "
+                         "Reads are unrestricted either way, so undeclared "
+                         "registers are still discovered, just not poked.")
     args = ap.parse_args()
 
     start, end = int(args.start, 0), int(args.end, 0)
@@ -90,7 +137,22 @@ def main() -> int:
     os.makedirs(args.workdir, exist_ok=True)
     results_path = os.path.join(args.workdir, "results.jsonl")
 
+    hazards = load_hazards()
+    declared = set()
+    if args.read_only:
+        print("READ-ONLY sweep: no write will be issued, so no register can be "
+              "left changed and nothing can wedge.")
+    elif args.write_scope == "declared":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import compare_masks as _cm
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        regs = _cm.parse_regs(os.path.join(root, "hw", "xbox", "nv2a", "nv2a_regs.h"),
+                              "NV_" + args.block.upper() + "_")
+        declared = set(regs)
+        print("write scope: declared only -- %d registers of %s are named in "
+              "nv2a_regs.h" % (len(declared), args.block))
     srv = ProbeServer(args.workdir, port=args.port)
+    print("hazard list: %d registers will not be written at all" % len(hazards))
     print("listening on %s:%d -- launch the probe on the console" % srv.addr)
     print("sweeping %s 0x%06X..0x%06X (%d registers)"
           % (args.block, start, end, (end - start) // 4))
@@ -104,26 +166,51 @@ def main() -> int:
     hangs = []
     try:
         while True:
-            todo = [o for o in range(start, end, 4)
-                    if o not in done and o not in skip
-                    and not srv.poison.is_poison(o, None)]
+            if args.read_only:
+                todo = [o for o in range(start, end, 4)
+                        if o not in done and o not in skip]
+            else:
+                todo = [o for o in range(start, end, 4)
+                        if o not in done and o not in skip
+                        and o not in hazards
+                        and (args.write_scope == "all" or o in declared)
+                        and not srv.poison.is_poison(o, None)]
             if not todo:
                 break
             if sess is None:
                 print("waiting for the probe to dial in ...")
-                sess = srv.accept(timeout=args.accept_timeout)
+                try:
+                    sess = srv.accept(timeout=args.accept_timeout)
+                except (ProbeError, OSError) as exc:
+                    # A connection that fails its handshake must not end the
+                    # sweep. Anything on the LAN can open this port -- a scan,
+                    # a stale retry, an operator testing reachability -- and
+                    # losing an hour of sweeping to one bad greeting is a much
+                    # worse outcome than waiting again. (Learned the hard way:
+                    # a reachability check from this very host killed a run.)
+                    print("  ignoring a connection that did not greet us: %s" % exc)
+                    continue
                 print("  connected: %s" % sess.hello)
                 reconnects += 1
             try:
                 for off in todo:
-                    rec = sweep_one(sess, off)
+                    rec = read_one(sess, off) if args.read_only else sweep_one(sess, off)
                     done[off] = rec
                     with open(results_path, "a", encoding="utf-8") as fh:
                         fh.write(json.dumps(rec) + "\n")
-                    if rec["writable"]:
+                    if args.read_only:
+                        if rec["orig"]:
+                            print("  %06X reads %08X" % (off, rec["orig"]))
+                    elif rec["writable"]:
                         print("  %06X writable=%08X orig=%08X%s"
                               % (off, rec["writable"], rec["orig"],
                                  "" if rec["restored"] else "  RESTORE FAILED"))
+            except RestoreFailed as exc:
+                print("\n  *** %s" % exc)
+                srv.poison.add(exc.offset, None,
+                               "did not restore after a sweep write")
+                print("  register banned; stopping rather than sweeping on.")
+                break
             except (ProbeError, OSError) as exc:
                 orphan = srv.note_link_death(exc)
                 if orphan:
@@ -141,7 +228,7 @@ def main() -> int:
                 continue
     finally:
         if sess:
-            sess.close()
+            sess.end_run()
         srv.close()
 
     print("\nswept %d registers, %d sessions, %d suspected hangs"
