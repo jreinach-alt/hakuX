@@ -34,6 +34,9 @@ vertex, which is exactly where the residual was.
   --quantise    the device's world: every emitted vertex snapped to the 1/256
                 grid before coverage, which is the only way this file can see
                 a clip that moves a vertex without moving a pixel centre
+  --scale-cost  what the deadband's half-GUEST-pixel constant costs at
+                Rendering Scale > 1, where the device samples are closer
+                together than it assumes (audit finding A1)
 """
 import argparse
 import os
@@ -270,7 +273,8 @@ def corners(golden_dir, lo, hi):
 DEADBAND = 0.5
 
 
-def shader_poly(e, w, tie=1.0 / 256.0, deadband=DEADBAND, quant=None):
+def shader_poly(e, w, tie=1.0 / 256.0, deadband=DEADBAND, quant=None,
+                bites=None):
     """A transliteration of what emit_line() now emits, corner for corner.
 
     This is NOT the model above.  It is the geometry-shader code path -- the
@@ -284,9 +288,19 @@ def shader_poly(e, w, tie=1.0 / 256.0, deadband=DEADBAND, quant=None):
     this is not clipped at all, and the four corners are handed back
     untouched.  0.5 is the shipped value and is not a tuning constant -- the
     clip planes land on whole pixel INDICES and the rasteriser samples pixel
-    CENTRES, so a sliver shallower than half a pixel provably contains no
-    sample.  Pass 0.0 for the pre-deadband shader, which is the mutant
-    --quantise scores against.
+    CENTRES, so a sliver shallower than half a GUEST pixel contains no sample
+    AT surface_scale_factor == 1.  Above that the samples are closer together
+    than the constant assumes and 0.5 suppresses cuts a device would have
+    sampled; --scale-cost measures what that costs, and audit finding A1 is
+    the derivation it corrects.  Pass 0.0 for the pre-deadband shader, which
+    is the mutant --quantise scores against.
+
+    `bites` collects one (xmaj, bound, dir, deep) per cap_clip() CALL -- the
+    plane, and the polygon's deepest violation of it as cap_clip() measures
+    it, whether or not the deadband let the cut through.  A caller asking
+    "which cuts did the deadband suppress" has to read that depth from the
+    same code path the shipped model runs, or it is modelling a second
+    shader.
 
     `quant` snaps every emitted vertex to that grid, which is what the device
     does at subPixelPrecisionBits = 8 (1/256) before it tests coverage.  The
@@ -313,6 +327,8 @@ def shader_poly(e, w, tie=1.0 / 256.0, deadband=DEADBAND, quant=None):
         deep = 0.0
         for p in poly:
             deep = max(deep, -dirn * ((p[1] if xmaj else p[0]) - bound))
+        if bites is not None:
+            bites.append((xmaj, bound, dirn, deep))
         if deep < deadband:
             return poly
         out = []
@@ -536,6 +552,190 @@ def quant_check(golden_dir, lo, hi, tie=1.0 / 256.0, quant=1.0 / 256.0):
     return 0 if (leg1 and leg2 and mutant_px > 0) else 1
 
 
+def _span(poly, m, xmaj):
+    """Where the convex polygon meets the line `minor == m`: (lo, hi) of the
+    major coordinate, or None if it does not reach that line."""
+    mi, ma = (1, 0) if xmaj else (0, 1)
+    vals = []
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        da, db = a[mi] - m, b[mi] - m
+        if da == 0.0:
+            vals.append(a[ma])
+        elif (da < 0.0) != (db < 0.0):
+            f = da / (da - db)
+            vals.append(a[ma] + (b[ma] - a[ma]) * f)
+    return (min(vals), max(vals)) if vals else None
+
+
+def over_reach(poly, xmaj, bound, dirn, scale):
+    """Device sample centres this polygon covers on the WRONG side of a plane.
+
+    The samples a suppressed cut leaves lit.  At surface_scale_factor = scale
+    a device sample centre sits at (k + 0.5) / scale in the guest pixels this
+    polygon is expressed in, so only the ceil(0.5 * scale) rows within half a
+    guest pixel of the plane can be in a suppressed sliver -- a suppressed cut
+    is shallower than DEADBAND by definition.  Each row is one interval of a
+    convex polygon, so this counts exactly rather than rasterising: a
+    full-frame mask at scale 4 is sixteen times the area, per edge, per
+    capture, and the answer is a few dozen samples.
+    """
+    if len(poly) < 3:
+        return []
+    lo_m = bound - DEADBAND if dirn > 0 else bound
+    hi_m = bound if dirn > 0 else bound + DEADBAND
+    out = []
+    for j in range(int(np.ceil(lo_m * scale - 0.5)),
+                   int(np.floor(hi_m * scale - 0.5)) + 1):
+        m = (j + 0.5) / scale
+        if dirn * (m - bound) >= 0.0:
+            continue                      # on the kept side; not over-reach
+        sp = _span(poly, m, xmaj)
+        if sp is None:
+            continue
+        for i in range(int(np.ceil(sp[0] * scale - 0.5)),
+                       int(np.floor(sp[1] * scale - 0.5)) + 1):
+            out.append((i, j) if xmaj else (j, i))
+    return out
+
+
+def covers(poly, xs, ys):
+    """Which of these points the convex polygon covers, sampled as the
+    rasteriser does -- closed, the same `>= 0` on every edge as mask_of()."""
+    area = 0.0
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        area += x0 * y1 - x1 * y0
+    sgn = 1.0 if area >= 0 else -1.0
+    m = np.ones(len(xs), bool)
+    for i in range(len(poly)):
+        x0, y0 = poly[i]
+        x1, y1 = poly[(i + 1) % len(poly)]
+        m &= (sgn * ((x1 - x0) * (ys - y0) - (y1 - y0) * (xs - x0))) >= 0.0
+    return m
+
+
+def scale_cost(golden_dir, lo, hi, scales=(1, 2, 3, 4), bits=8):
+    """AUDIT FINDING A1: what the half-GUEST-pixel deadband costs above 1x.
+
+    cap_clip()'s deadband is 0.5 of a GUEST pixel and the rasteriser samples
+    DEVICE pixels.  The geometry stage works in guest pixels -- vk/draw.c's
+    geom_line_params() says so and divides lineTieBias by
+    surface_scale_factor for exactly that reason -- so at Rendering Scale
+    `scale` the nearest sample to an integer bound is 0.5 / scale guest
+    pixels away, not 0.5.  The shipped constant is therefore EXACT at scale 1
+    and CONSERVATIVE above it: it suppresses cuts that would have removed a
+    sample.  One-directional, so it can never re-quantise geometry that was
+    right (that is N1, and it stays closed at every scale) -- what it costs is
+    part of the cap fix itself.
+
+    This counts that cost in the units it is lost in, and the two columns are
+    not the same claim:
+
+      suppressed  cap_clip() calls whose violation depth lands in
+                  [0.5 / scale, 0.5) -- cuts a scale-1 deadband skips and a
+                  scale-correct one takes.  A COUNT OF CUTS, not of pixels.
+      over-reach  distinct device samples those suppressed slivers cover.  A
+                  suppressed cut whose sliver contains no sample costs
+                  nothing, and at these depths many do not.
+      lost        of those, the ones no OTHER edge's scale-correct footprint
+                  covers either.  The captures draw 57 edges meeting at
+                  shared vertices, so a cap sliver of one edge is often
+                  inside its neighbour's band and lights that sample anyway.
+                  This is the column that measures lost coverage; over-reach
+                  is its upper bound.
+
+    Modelled at the scale throughout: the tie bias and the subpixel
+    quantisation are both 1 / (2^bits * scale) in guest pixels, which is what
+    geom_line_params() pushes and what the rasteriser snaps to.
+
+    Scale 1 is the control row and it is not decorative: 0.5 / 1 == 0.5, so
+    the suppressed set is empty by construction and every column must read 0.
+    A non-zero there would mean this file disagrees with itself about what
+    the shipped shader does.
+
+    THE CONTROL THAT IS NOT A TAUTOLOGY is the last leg: every sample
+    over_reach() counts must be one the shipped footprint actually lights,
+    tested with covers() -- the rasteriser's own inside test, which is a
+    different code path from the span arithmetic that produced the
+    candidates.  A sign error or an off-by-one in either would invent samples
+    no polygon covers, and the count would still look plausible; this is the
+    row that cannot happen.  It is also why `lost` is reported separately
+    from `over-reach` rather than instead of it: the gap between them is the
+    neighbouring edges' coverage doing real work, so seeing both non-zero and
+    unequal is evidence the union test discriminates.
+    """
+    print("A1: the deadband is 0.5 GUEST px; a device sample sits every "
+          "1/scale guest px.\n")
+    rows = {}
+    for scale in scales:
+        tie = 1.0 / (float(int(1) << bits) * scale)
+        band = 0.5 / scale
+        print("--- surface_scale_factor = %d   (exact deadband %.4f guest px,"
+              " tie bias 1/%d)" % (scale, band, (1 << bits) * scale))
+        print("%-14s%8s%12s%12s%8s" %
+              ("test", "w", "suppressed", "over-reach", "lost"))
+        t_sup = t_over = t_lost = n_cap = phantom = 0
+        for test, w, _g in lp.captures(golden_dir, lo, hi):
+            if test in lep.VOID:
+                continue
+            cand, ship, keep, sup = set(), [], [], 0
+            for e in lp.EDGES:
+                bites = []
+                p = shader_poly(e, w, tie, deadband=DEADBAND, quant=tie,
+                                bites=bites)
+                ship.append(p)
+                keep.append(shader_poly(e, w, tie, deadband=band, quant=tie))
+                for xmaj, bound, dirn, deep in bites:
+                    if band <= deep < DEADBAND:
+                        sup += 1
+                        cand.update(over_reach(p, xmaj, bound, dirn, scale))
+            lost = 0
+            if cand:
+                pts = sorted(cand)
+                xs = np.array([(i + 0.5) / scale for i, _ in pts])
+                ys = np.array([(j + 0.5) / scale for _, j in pts])
+                covered = np.zeros(len(pts), bool)
+                for p in keep:
+                    if len(p) >= 3:
+                        covered |= covers(p, xs, ys)
+                lost = int((~covered).sum())
+                lit = np.zeros(len(pts), bool)
+                for p in ship:
+                    if len(p) >= 3:
+                        lit |= covers(p, xs, ys)
+                phantom += int((~lit).sum())
+            t_sup += sup
+            t_over += len(cand)
+            t_lost += lost
+            n_cap += 1
+            if sup:
+                print("%-14s%8.3f%12d%12d%8d"
+                      % (test, w, sup, len(cand), lost))
+        rows[scale] = (t_sup, t_over, t_lost, n_cap, phantom)
+        print("  %d captures: %d suppressed cuts, %d device samples over-"
+              "reached, %d lost\n" % (n_cap, t_sup, t_over, t_lost))
+
+    print("%-8s%12s%12s%10s" % ("scale", "suppressed", "over-reach", "lost"))
+    for scale in scales:
+        t_sup, t_over, t_lost, _n, _p = rows[scale]
+        print("%-8d%12d%12d%10d" % (scale, t_sup, t_over, t_lost))
+    ok = rows.get(1, (0, 0, 0, 0, 0))[:3] == (0, 0, 0)
+    print("\nthe scale-1 control reads zero on every column: %s"
+          % ("PASS" if ok else "FAIL -- 0.5 is the exact deadband at scale 1"))
+    seen = any(rows[s][2] for s in scales if s > 1)
+    print("the cost above 1x is visible at all: %s"
+          % ("PASS" if seen else
+             "FAIL -- this instrument cannot see the thing it measures"))
+    bad = sum(rows[s][4] for s in scales)
+    print("every over-reached sample is one the SHIPPED footprint lights: %s"
+          % ("PASS" if bad == 0 else
+             "FAIL -- %d counted samples no emitted polygon covers" % bad))
+    return 0 if (ok and bad == 0 and (seen or len(scales) == 1)) else 1
+
+
 VARIANTS = {
     "perp": dict(cap="perp"),
     "pen": dict(cap="perp", pen=1.0, tie="floor1"),
@@ -571,6 +771,12 @@ def main():
                          "the 1/256 grid before testing coverage, and check "
                          "the clip moves nothing where it cannot move a "
                          "sample (audit finding N1)")
+    ap.add_argument("--scale-cost", action="store_true",
+                    help="what cap_clip()'s half-GUEST-pixel deadband costs "
+                         "at Rendering Scale > 1, in suppressed cuts and in "
+                         "device samples (audit finding A1)")
+    ap.add_argument("--scales", default="1,2,3,4",
+                    help="surface_scale_factor values for --scale-cost")
     ap.add_argument("--vs-goldens", metavar="CAPTUREDIR", default=None,
                     help="THE ARM LEG: whole-capture ink mismatch of a "
                          "capture set against the goldens, coverage only")
@@ -597,6 +803,10 @@ def main():
     if a.quantise:
         sys.exit(quant_check(a.goldens, a.min_width, a.max_width,
                              a.shader_tie))
+
+    if a.scale_cost:
+        sys.exit(scale_cost(a.goldens, a.min_width, a.max_width,
+                            tuple(int(s) for s in a.scales.split(","))))
 
     if a.corners:
         corners(a.goldens, a.min_width, a.max_width)

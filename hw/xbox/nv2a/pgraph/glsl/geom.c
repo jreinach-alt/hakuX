@@ -546,16 +546,67 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * synthesises a vertex where an endpoint's own values were available.
          *
          * THE HALF-PIXEL DEADBAND, and why it is not a fudge factor.  A plane
-         * the polygon pokes past by less than half a pixel is not clipped at
-         * all: the four corners are handed straight back, unrounded and in
-         * their original order.  The bounds below are WHOLE PIXEL INDICES --
-         * floor() and ceil() + 1 of the endpoints' extended minor coordinate
-         * -- and this renderer rasterises at one sample per pixel, at the
-         * pixel CENTRE (every rasterizationSamples in pgraph/vk/ is
-         * VK_SAMPLE_COUNT_1_BIT).  The nearest centre to an integer bound is
-         * half a pixel away, so the removed sliver of a shallower cut
-         * provably contains no sample and the clip can only re-quantise
-         * geometry that was previously exact.
+         * the polygon pokes past by less than half a GUEST pixel is not
+         * clipped at all: the four corners are handed straight back,
+         * unrounded and in their original order.  The bounds below are WHOLE
+         * PIXEL INDICES -- floor() and ceil() + 1 of the endpoints' extended
+         * minor coordinate -- and this renderer rasterises at one sample per
+         * pixel, at the pixel CENTRE (every rasterizationSamples in
+         * pgraph/vk/ is VK_SAMPLE_COUNT_1_BIT).  So at one device pixel per
+         * guest pixel the nearest centre to an integer bound is half a pixel
+         * away, the removed sliver of a shallower cut provably contains no
+         * sample, and the clip can only re-quantise geometry that was
+         * previously exact.
+         *
+         * THE HYPOTHESIS IN THAT PROOF IS surface_scale_factor == 1, which
+         * the paragraph above asserted without stating until audit finding
+         * A1.  The two sentences are in different coordinate spaces: this
+         * stage works in GUEST pixels -- vk/draw.c's geom_line_params() says
+         * so in its own comment and divides lineTieBias by
+         * surface_scale_factor for exactly that reason, and vsh.c scales only
+         * oPts by it, never the position -- while the samples are DEVICE
+         * pixel centres, 1/scale of a guest pixel apart.  At the user's
+         * Rendering Scale of 2 (g_config.display.quality.surface_scale,
+         * default 1, offered as 1x-4x by the Android settings UI) the nearest
+         * sample to a bound is a QUARTER of a guest pixel away, not half.
+         *
+         * 0.5 is therefore EXACT at scale 1 and CONSERVATIVE above it, and
+         * the error is one-directional by construction: 0.5 > 0.5/scale for
+         * every scale >= 1, so the deadband can only suppress MORE cutting
+         * than it should, never less.  A suppressed cut hands back master's
+         * own four corners, so no configuration is made worse than master and
+         * the re-quantisation this deadband exists to stop cannot come back
+         * through it at any scale.  What is given up above 1x is part of the
+         * cap fix itself, and it is measured rather than waved at --
+         * `line_cap_phase.py --scale-cost`, over the same 48 non-void
+         * captures, modelling the tie bias and the subpixel grid at the scale
+         * too:
+         *
+         *   scale   suppressed cuts   device samples over-reached   lost
+         *     1                   0                             0      0
+         *     2                 191                           278    112
+         *     3                 295                           860    298
+         *     4                 337                          1666    568
+         *
+         * `lost` is the column that means anything: the over-reached samples
+         * that no other edge's footprint covers anyway.  The cap rule removes
+         * 393 guest px at scale 1 (--controls), so scaled for comparison the
+         * deadband gives up on the order of a twelfth of the clip's own work
+         * above 1x, on 26 to 30 captures from w = 6 up.  Scale 1 is the
+         * control row and must read zero on every column, since 0.5/1 is 0.5.
+         *
+         * The fix, if that twelfth is ever worth it, is NOT a smaller
+         * constant -- 0.125 would be exact at scale 4 and would reintroduce
+         * the device's own FAIL at scale 1, which is the scale every arm and
+         * every golden here is measured at.  It is 0.5 / surface_scale_factor
+         * pushed in, and the cost is a fifth push-constant component: the
+         * geometry range would have to grow from 16 bytes to 32, because the
+         * vertex range that follows it holds a vec4 array and needs 16-byte
+         * alignment, and vk/instance.c's note applies -- that range is
+         * declared on EVERY graphics pipeline layout, whether or not it has a
+         * geometry stage, since two layouts are compatible for a descriptor
+         * set only if their push-constant ranges match.  A known, measured,
+         * one-directional limit was judged the better trade against that.
          *
          * Which is not free, and the device said so.  Without this deadband
          * the clip bit on 9 to 20 of each capture's 57 edges all the way down
@@ -774,6 +825,17 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  * deadband is what makes the inertness a property of the
                  * emitted geometry and not only of the offline model; see the
                  * derivation there, and `--quantise` for the check.
+                 *
+                 * w = 24 IS THE FIRST BITE AT EVERY RENDERING SCALE, which is
+                 * worth saying because the deadband's own limit (audit A1,
+                 * and the table in cap_clip()'s comment) is that it does not
+                 * scale: the cut threshold is 0.5 guest px whatever
+                 * surface_scale_factor is, so which cuts happen at all is a
+                 * property of the geometry alone.  Measured at scales 1 to 4
+                 * -- same 48 captures, tie bias modelled at each scale -- the
+                 * first capture with a cut is Line_0024.0 and 19 captures cut,
+                 * identically, in all four.  The scale changes how much a
+                 * SUPPRESSED cut costs, never which cuts are suppressed.
                  *
                  * EVERY NUMBER BELOW NAMES THE INSTRUMENT THAT PRODUCED IT,
                  * because two instruments score this rule and they do not

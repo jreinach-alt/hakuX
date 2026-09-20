@@ -289,6 +289,15 @@ after the fact, why the model's first moving capture is `Line_0024.0`: the
 deepest sliver per capture crosses 0.5 px between `w = 16` (0.468) and
 `w = 24` (0.704).
 
+> **Corrected in place by audit finding A1 (pass 2b): that paragraph is a
+> proof with a missing hypothesis, and the hypothesis is
+> `surface_scale_factor == 1`.**  The pixels the deadband is measured in are
+> GUEST pixels and the samples are DEVICE pixel centres; they coincide only
+> at Rendering Scale 1.  The direction is safe -- 0.5 only ever suppresses
+> too much -- but "provably removes no sample" is exact at scale 1 and
+> conservative above it.  See *Attempt 5* below for what it costs, and read
+> that before quoting anything in this section at a scale above 1.
+
 **`--quantise` is the instrument that can see this, because every other one
 here cannot.**  It rasterises the same polygon with each emitted vertex
 snapped to the 1/256 grid, and scores three legs against the UNCLIPPED
@@ -341,6 +350,100 @@ will say whether it is the device or something real; the glob stays in the
 prediction either way, because dropping a tripwire that fired is how a gate
 stops being one.
 
+## Attempt 5: the deadband's coordinate space (pass-2b audit A1)
+
+Pass 2b closed N1, N2 and N3 and raised one MEDIUM: `0.5` is half a **guest**
+pixel, the rasteriser samples **device** pixels, and the derivation above
+treats the two as one space.  The audit is right, and it is right for the
+reason it gives: `geom_line_params()` (`vk/draw.c`) works in guest pixels and
+divides `lineTieBias` by `surface_scale_factor` for exactly that reason, so
+`v_vtxPos.xy`, `bound` and `deep` are all guest pixels while the samples sit
+`1/scale` guest pixels apart.  At the user's Rendering Scale of 2 the nearest
+sample to a bound is a quarter of a guest pixel away, not half.
+
+**Chosen remediation: the audit's option 2 -- keep `0.5`, state the
+precondition, and measure the cost rather than describing it.**  Option 1
+(push `0.5 / surface_scale_factor` in) is the behavioural fix and it is not
+free here: all four components of `lineParams` are live, so it needs a fifth,
+and the geometry push-constant range cannot grow 16 -> 20 because the vertex
+range that follows holds `vec4 inlineValue[]` and needs 16-byte alignment
+(`glsl/vsh.c:994-999`) -- so it is 16 -> 32, on a range `vk/shaders.c`
+declares on **every** graphics pipeline layout for descriptor-set
+compatibility.  That is a renderer-wide layout change to recover a fraction
+of one fix, at a scale no arm in this campaign runs at
+(`desktop_channel.sh` pins `surface_scale = 1`), and nothing offline or on
+silicon has ever measured this rule above 1x.  Written down as a known,
+one-directional limit instead, with the instrument to re-derive it.
+
+**`line_cap_phase.py --scale-cost`** is that instrument.  Same 48 non-void
+captures, with the tie bias and the subpixel grid modelled at the scale too
+(both are `1 / (2^bits * scale)`), and three columns that are three different
+claims:
+
+| scale | suppressed cuts | device samples over-reached | lost |
+|---:|---:|---:|---:|
+| 1 | 0 | 0 | 0 |
+| 2 | 191 | 278 | **112** |
+| 3 | 295 | 860 | **298** |
+| 4 | 337 | 1666 | **568** |
+
+* **suppressed** is the audit's own column -- cuts whose depth lands in
+  `[0.5/scale, 0.5)` -- and 191 / 295 / 337 over 26 / 29 / 30 captures
+  reproduces its 191 / 293 / 338 over 26 / 29 / 30.  The two scale-3 and
+  scale-4 cells differ by two cuts because this models the tie bias at the
+  scale, which the shader pushes and the audit's script held at 1/256.
+* **over-reached** is what those suppressed slivers actually cover in device
+  samples.  A suppressed cut is shallower than half a guest pixel, so many
+  contain no sample at all and cost nothing: 191 cuts are 278 samples.
+* **lost** is the one that means anything: the over-reached samples no
+  *other* edge's scale-correct footprint covers either.  These captures draw
+  57 edges meeting at shared vertices, so a cap sliver is often inside its
+  neighbour's band and lights that sample anyway -- 278 over-reached is 112
+  lost.
+
+For magnitude: the cap rule removes 393 guest px at scale 1 (`--controls`),
+whose device-sample equivalent scales with `scale^2`, so the deadband gives
+up on the order of a twelfth of the clip's own work above 1x.  **It gives up
+nothing at scale 1, and it can never make anything worse than master at any
+scale**, since a suppressed cut emits master's own four corners.
+
+**Which cuts happen is scale-independent, and that is the same fact from the
+other side.**  The deadband does not scale, so the bite/no-bite decision is a
+property of the geometry alone: measured at scales 1-4, the first capture
+with a cut is `Line_0024.0` and 19 captures cut, identically, in all four.
+The scale changes what a *suppressed* cut costs, never which are suppressed.
+
+**The check inside the check.**  `--scale-cost`'s scale-1 row is a control
+and is trivially zero, so the leg that does the work is the third one: every
+sample the span arithmetic counts must be one `covers()` -- the rasteriser's
+own inside test, a different code path -- agrees the shipped footprint
+lights.  Negative-tested against a mutant of exactly the shape that bites
+here, the major-axis sample index taken at `k` instead of `k + 0.5`: the
+totals stay plausible (112 -> 103) and the leg reports
+`FAIL -- 26 counted samples no emitted polygon covers`.  A shipped-deadband
+run of that mutant would have read as a smaller, tidier finding.
+
+**Nothing this remediation touches can move the pending arm.**  `geom.c`'s
+change is comment-only and `line_cap_phase.py` runs offline, so the emitted
+GLSL is byte-identical to `36e85c96c9`'s -- checked rather than asserted, by
+building `geom_dump` twice (`make GLSL=<dir> BUILD=build-head`, so the real
+path is never swapped) against this tree and against `4cc0d26dc0`'s
+`glsl/geom.c` and diffing all ten emitted cases: `md5 d16bf20f52...` both
+sides, 1,295 lines, no differing byte.  That is the whole argument,
+which is worth saying because the tempting one is weaker.  "The arm runs at
+scale 1" is verified only for the DESKTOP channel, which pins
+`surface_scale = 1` (`desktop_channel.sh:454`); the device arms inherit the
+app default of 1 (`config_spec.yml`, `SettingsActivity.kt`'s `intDefaults`)
+and nothing in `dispatcher.sh` sets it, but a handheld's saved prefs are not
+something this lane can read.  It does not matter: the bite/no-bite sets are
+identical at scales 1-4, so every leg of the prediction reads the same at any
+scale a device happens to be set to.  `--quantise` (3 legs PASS, mutant 4 px
+on 4 captures), `--controls` (393/393/0, 1104 = 617 + 487) and `--rivals`
+(495 -> 102, `floor + 1` 115, centre band 645) re-run unchanged on this tip.
+So the prediction registered at `3beca48079` is **not** re-registered: its
+`b_ref 36e85c96c9` is still the last commit that can change a pixel, and
+re-registering would restart a ~90-minute arm for a comment.
+
 ## What the next lane should not repeat
 
 - **Do not quote the epsilon-tie score as a device prediction.**  It is a
@@ -367,6 +470,9 @@ stops being one.
 - [x] pass-2 audit remediated: N1 (the half-pixel deadband + `--quantise`),
       N2 (`--controls` splits the boundary population), N3 (the PR body no
       longer asserts the two figures its own appendix retires)
+- [x] pass-2b audit remediated: A1 (the deadband's coordinate space stated
+      where it is derived, in `geom.c` and here, with `--scale-cost` as the
+      measurement of what it costs above Rendering Scale 1)
 - [x] all six Vulkan cases `geom_dump` emits compile with the NDK's `glslc`
       after the deadband; `--shader` still reads 935 -> 544 at 1/256 and
       414 -> 21 at 1e-9, `--rivals` still 495 -> 102, `--depth` PASS/PASS
