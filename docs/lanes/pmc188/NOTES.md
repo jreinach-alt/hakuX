@@ -105,6 +105,21 @@ not on prose, because a comment in `pmc_write` mentioning `NV_PMC_ENABLE` is
 legitimate and in fact likely, and a grep for the words would go red against a
 correct file.
 
+### What the selftest is not: it is not wired to anything
+
+It runs when someone runs it. `jobs-selftest.yml` is scoped to
+`docs/testing/jobs/**` -- the host job scripts -- and is not a runner for
+emulator-code checks; `audio_starve_selftest.sh` and
+`glerr_report_selftest.sh` are unwired in exactly the same way, and are each
+cited in an audit that ran them by hand. I did not wire this one in:
+`.github/workflows/` and `docs/testing/jobs/` are outside this lane's files,
+and adding a call to another job's tick makes every existing fixture for that
+job drive this code, which is a bigger change than the one #188 asked for.
+
+Stated rather than left implicit, because a gate nobody invokes is not a gate.
+If someone wants these three to run per-PR, that is its own small piece of
+work and it should cover all three, not just this one.
+
 ## What the next lane should not repeat
 
 - **Do not re-derive the bit layout from this one value.** Three bits set at
