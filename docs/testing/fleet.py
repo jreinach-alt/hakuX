@@ -41,8 +41,8 @@ calm.
 So every fact that decides a FAIL is now derived from the thing itself:
 
   RUNNING            systemctl --user list-units 'hakux-lane-*'
-  READY, NOT FOLDED  gh pr list: an open lane PR that is not a draft
-  BLOCKED            gh pr list: an open lane PR labelled `blocked`
+  READY, NOT FOLDED  REST /pulls: an open lane PR that is not a draft
+  BLOCKED            REST /pulls: an open lane PR labelled `blocked`
   REMOTE LANES       a territory row carrying `remote`
   territory rows     board_files.load("territory.toml")
 
@@ -80,6 +80,14 @@ D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
 # Overridable so the issue-blind path can be exercised without unplugging the
 # network. A gate whose failure branch has never run is not a gate.
 REPO = os.environ.get("HAKUX_REPO", "jreinach-alt/hakuX")
+
+# BESIDE THIS FILE, NOT ON THE CWD: selftest.d/93 and /55 both run this script
+# from a scratch directory holding copies of it and its siblings. The `jobs/`
+# display helper imported in main() is OPTIONAL for exactly that reason and
+# this one is NOT -- it is how the script talks to GitHub at all, and a
+# ModuleNotFoundError is the right, loud answer to a copy that left it behind.
+sys.path.insert(0, HERE)
+import gh_rest  # noqa: E402  (after the sys.path line it depends on)
 
 
 def load_fleet():
@@ -214,20 +222,29 @@ def lane_prs(remote=None):
     """Open PRs a lane owns, or None if gh could not answer.
 
     A `lane/*` head, or a head some territory row names as its remote lane's.
-    One call. Everything the READY-NOT-FOLDED and BLOCKED sections need comes
-    out of it, so neither section costs a call per lane.
+    One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
+    sections need comes out of it. (One HTTP call per hundred PRs, since REST
+    pages -- see gh_rest.)
+
+    OVER REST, because `gh pr list` is GraphQL and a Claude Code cloud
+    session's proxy refuses GraphQL outright -- so there this returned None on
+    every call and the report was permanently PR-BLIND. That at least PRINTS
+    what it could not see, which is why this half of the defect was survivable
+    and check_coverage.py's silent `ok` was not; it was still wrong, and the
+    same credential answers over REST. gh_rest.open_prs normalises the field
+    names back onto the `gh pr list --json` spellings used below -- including
+    `head.ref` back to `headRefName`, which is what the `remote` map is keyed
+    on, so a remote lane's branch is matched over REST exactly as it was over
+    GraphQL.
+
+    NO PULL-REQUEST FILTER IS NEEDED HERE and its absence is not an oversight:
+    /pulls returns only pull requests. It is /issues that returns both, which
+    is gh_rest.open_issues' problem and is documented there.
     """
     remote = remote or {}
-    try:
-        r = subprocess.run(["gh", "pr", "list", "--repo", REPO, "--state", "open",
-                            "--limit", "60", "--json",
-                            "number,headRefName,isDraft,labels,updatedAt,title"],
-                           capture_output=True, text=True, timeout=30)
-        if r.returncode != 0:
-            return None
-        rows = json.loads(r.stdout or "[]")
-    except Exception as e:
-        print("gh pr list did not answer (%s)" % e, file=sys.stderr)
+    rows, err = gh_rest.open_prs(REPO)
+    if rows is None:
+        print("gh pr list did not answer (%s)" % err, file=sys.stderr)
         return None
     out = []
     for p in rows:
@@ -295,31 +312,28 @@ def main():
     # prompt, a wedged connection -- blocks forever, and anything that invokes
     # this from a poll loop then stops reporting the fleet at exactly the
     # moment the fleet is stuck. Fail fast and say the report is issue-blind.
-    try:
-        r = subprocess.run(["gh", "issue", "list", "--repo", REPO,
-                            "--state", "open", "--limit", "80",
-                            "--json", "number,title"],
-                           capture_output=True, text=True, timeout=30)
-        ok = r.returncode == 0
-    except Exception as e:
-        r, ok = None, False
-        print("gh did not answer (%s)" % e, file=sys.stderr)
-    if not ok:
-        print("cannot reach gh; fleet report is issue-blind -- the "
+    #
+    # AND IT IS REST NOW, for the reason spelled out in gh_rest: `gh issue
+    # list` is GraphQL, a cloud session's proxy refuses GraphQL, and this
+    # branch's issue-blind path was the ONLY path taken there. The timeout
+    # argument above is unchanged and still the reason a per-page timeout
+    # exists; gh_rest's is 40s.
+    rows, dropped_prs, why = gh_rest.open_issues(REPO)
+    if rows is None:
+        print("cannot reach gh (%s); fleet report is issue-blind -- the "
               "DISPATCHABLE section below is EMPTY BECAUSE IT WAS NOT "
-              "COMPUTED, which is not the same as nothing being dispatchable",
-              file=sys.stderr)
+              "COMPUTED, which is not the same as nothing being dispatchable"
+              % why, file=sys.stderr)
         live, titles = set(), {}
     else:
-        try:
-            rows = json.loads(r.stdout or "[]")
-        except ValueError:
-            rows, ok = [], False
-            print("gh issue list returned something that is not JSON; the "
-                  "DISPATCHABLE section is EMPTY BECAUSE IT WAS NOT COMPUTED",
-                  file=sys.stderr)
         live = {str(x["number"]) for x in rows}
         titles = {str(x["number"]): x["title"] for x in rows}
+        # The PR filter, reported rather than trusted. REST's /issues hands
+        # back pull requests too, and an unfiltered read would put every open
+        # PR into `live` -- where a tracker row keyed on that number does not
+        # exist, so fleet would announce each one as an unclassified issue.
+        print("issue list over REST: %d open issue(s), %d pull request(s) "
+              "dropped from the /issues response" % (len(rows), dropped_prs))
 
     # ---------------------------------------------------- the derived fleet
     units = lane_units()

@@ -52,21 +52,38 @@ import tomllib
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.environ.get("HAKUX_REPO", "jreinach-alt/hakuX")
 
+# BESIDE THIS FILE, NOT ON THE CWD. The selftest fragments run this script from
+# a scratch directory holding copies of it and its siblings, so the import has
+# to resolve against the script's own location. board_files is imported the
+# same way inside main().
+sys.path.insert(0, HERE)
+import gh_rest  # noqa: E402  (after the sys.path line it depends on)
+
 
 def open_issues():
-    try:
-        out = subprocess.run(
-            ["gh", "issue", "list", "--repo", REPO, "--state", "open",
-             "--limit", "200", "--json", "number,title"],
-            capture_output=True, text=True, timeout=40)
-    except Exception as e:
-        return None, "could not run gh: %s" % e
-    if out.returncode != 0:
-        return None, (out.stderr or "gh failed").strip().splitlines()[0]
-    try:
-        return json.loads(out.stdout), None
-    except Exception as e:
-        return None, "could not parse gh output: %s" % e
+    """The open issues, over REST. -> (rows, dropped_prs, None) | (None, 0, why)
+
+    THIS USED TO BE `gh issue list`, WHICH IS GRAPHQL, AND THE PROXY IN A
+    CLOUD SESSION REFUSES GRAPHQL WHOLESALE:
+
+        HTTP 403: GitHub GraphQL is not available from Claude Code sessions;
+        use the REST API (gh api repos/{owner}/{repo}/...)
+
+    So in one of the two environments that run this gate, it took the
+    fail-open branch below on every single invocation -- printed `coverage NOT
+    CHECKED`, exited 0, and preflight said `ok` over the top of it (see
+    preflight.sh's `coverage` step, fixed in the same change). Every
+    "preflight green" claimed from such a session included a coverage check
+    that had never run. On the owner's host GraphQL works and the gate
+    genuinely runs, so this was never visible from here. Found by lane.remote
+    on PR #162, 2026-09-19, from the container where it bites.
+
+    REST answers on the same credential in both places. gh_rest.open_issues
+    carries the two things that make the conversion safe rather than merely
+    different -- the pull-request filter and the paging -- and says why in
+    full; do not re-derive either at this call site.
+    """
+    return gh_rest.open_issues(REPO)
 
 
 def commits_behind():
@@ -268,9 +285,22 @@ def main():
     else:
         stale = ""
 
-    issues, err = open_issues()
+    issues, dropped_prs, err = open_issues()
     if issues is None:
-        print("coverage NOT CHECKED: %s%s" % (err, fleet_tail()))
+        # THE FAIL-OPEN STAYS; WHAT CHANGES IS THAT IT CANNOT BE READ AS A
+        # PASS. This branch exits 0 -- a network blip must not make the
+        # repository unpushable -- so the exit code carries no information
+        # here and every consumer has to read the WORDS. They are therefore
+        # written to be impossible to skim past, and the machine-readable
+        # prefix `coverage NOT CHECKED` is what preflight.sh and
+        # idle-watchdog.sh key on. Do not soften it and do not move it off
+        # the first `coverage ` line.
+        print("coverage NOT CHECKED -- THE GATE DID NOT RUN: %s%s"
+              % (err, fleet_tail()))
+        print("  NOTHING BELOW WAS VERIFIED. This exits 0 on purpose so a "
+              "network blip cannot make the repository unpushable, and an "
+              "exit code of 0 from here therefore means `not checked`, NOT "
+              "`checked and fine`.")
         print("  (failing open -- a network blip must not make this unpushable)")
         # Said even here, because "NOT CHECKED" plus a stale tree is the state
         # in which a lane is most likely to conclude something about the board.
@@ -818,7 +848,17 @@ def main():
              fleet_tail(),
              "" if not behind else
              "; STALE CHECKOUT: %d commit(s) behind the campaign tip, so this "
-             "`ok` is about a tree that is not the branch" % behind))
+             "`ok` is about a tree that is not the branch" % behind),
+          end="")
+    # THE FILTER IS REPORTED, NOT ASSUMED. REST's /issues hands back pull
+    # requests as well as issues; dropping them is the whole difference
+    # between this gate and one that demands a tracker row for every open PR.
+    # A count printed here is the cheap standing check that the filter is
+    # still doing something -- eight PRs open on this repository today, and a
+    # run that says "0 pull requests dropped" on a board with open PRs is the
+    # filter having silently stopped matching.
+    print("; over REST: %d pull request(s) dropped from the /issues response"
+          % dropped_prs)
     for line in note_lines:
         print(line)
     return 0
