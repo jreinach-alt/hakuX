@@ -1,0 +1,28 @@
+{
+  "registered_utc": "2026-09-20T08:25:36Z",
+  "who": "lane.remote",
+  "issue": "60",
+  "prediction": "#60's READ SIDE, at its real address: the surface download writes\n(X << 7) | (host_alpha >> 1) into guest VRAM and the upload reads\nexpand7(guest & 0x7F) back. a_ref is master 01047cf3; b_ref carries the\nstale-surface-blit fix (da9e02a2) as well, so the A SIDE FOR THESE NUMBERS IS\nTHE POST-BLIT-FIX GL RUN, not master: DstAlpha_XA_O1A7RGB8 already fell\n90,112 -> 81,920 there and this file does not re-claim that.\n\nTHE SAMPLER VERSION OF THIS RULE WAS MEASURED INERT AND REVERTED\n(2026-09-20-gl-x1a7-read-side.json, 9e9da01d -> aa3648cb): 96 of 96 X1A7\nsurface lookups are refused by\npgraph_gl_check_surface_to_texture_compatibility(), so the sampled texel\ncomes from VRAM. That is why this is in the download.\n\nR2 CAN ONLY MOVE TOP HALVES. Each swatch's bottom half is drawn with\nSetFinalCombiner1Just(SRC_ZERO, true, true) -- alpha forced opaque -- so the\nsampled alpha does not enter it. The four bottom halves at bg 0x80 (two rows\nx two captures) are the WRITE side's, off by exactly one (127 vs 126, 128 vs\n129), and this change cannot touch them.\n\nPREDICTED, per capture, differing px against the golden:\n\n  Blend_surface/DstAlpha_XA_O1A7RGB8     81,920 -> 16,384   EXACT\n  Blend_surface/1-DstAlpha_XA_Z1A7RGB8   65,536 -> 16,384   EXACT\n  Blend_surface/1-DstAlpha_XA_O1A7RGB8   81,920 -> 16,384 OR 32,768\n  Blend_surface/DstAlpha_XA_Z1A7RGB8     65,536 -> 16,384 OR 32,768\n\nThe first two are in expect because every one of their sixteen top halves\nlands on the golden under floor, round AND ceil of the emulator's stored\nalpha, computed from each swatch's own measured surface value rather than\nfrom the model's arithmetic. The other two have one ambiguous top half per\nrow -- bg 0x40 on 1-DstAlpha_XA_O1A7RGB8, bg 0x80 on DstAlpha_XA_Z1A7RGB8 --\nwhose predicted value straddles the golden by one, and the two rows move\ntogether, so each reads 16,384 or 32,768 and NOTHING ELSE. A third value on\neither falsifies this file.\n\nTHE AMBIGUITY IS OURS, NOT THE RULE'S: no rounding of\nstored = f(0x22 * surface / 255) reproduces all 32 of today's top halves --\nceil misses 4, floor and round miss 8 -- so the emulator's own write-side\narithmetic is not pinned to a step. That is exactly what the write side will\nsettle, and it is why those two captures get a band instead of a value.\n\nFOUR-CAPTURE TOTAL: 294,912 -> between 65,536 and 98,304. FAILS IF above\n98,304, or if any of the four exceeds 32,768.\n\nTHE OTHER SIX A7 CAPTURES. Surface_format/Fmt_X1A7R8G8B8_{Z,O} (16,414 and\n32,774) is the suite the 2026-09-12 derivation used, where truncation scored\n2,097 differing of 32,755 against 32,581 for no pad handling at all.\nPREDICTED: both strictly improve. FAILS IF either grows. The four\nXA_*_Add_SrcA_* captures (9,547, 9,547, 43,328, 43,328) are NOT predicted in\neither direction: Add_SrcA_DstA is where the known approximation bites --\nhardware quantises after the blend and fixed-function cannot -- and nothing\nhere models them. Named so a move is a result rather than a surprise.\n\nBLAST RADIUS, and must_not_move is deliberately NOT set over the disc. The\nconversion is keyed on pgraph_gl_surface_drawn_format() being 0x06 or 0x07\nand ten of the disc's 236 captures name A7, so the other 226 should not move\n-- but the UPLOAD direction is new behaviour for any X1A7 surface that\nround-trips, and I would rather find out than pin it blind. NO CAPTURE MAY\nGET WORSE. An improvement elsewhere must be named with its capture and its\ndelta. Surface_pitch::Swizzle is EXCLUDED from that judgement in both\ndirections: two runs of one unchanged master binary read 12,224 and 11,132,\nso it is 1,092 px of noise on this disc (#39/#87's race).\n\nGL AND VULKAN WILL DIVERGE AGAIN, and that is registered rather than\ndiscovered. da9e02a2 made GL byte-identical to Vulkan on all ten A7 captures;\nthis change puts GL ahead and Vulkan will stay at 449,850. The identity was\nnever the goal -- it was the evidence that the remaining defect is SHARED --\nand the Vulkan half of this rule needs vk/texture.c and vk/surface.c, which\nare not this lane's. PREDICTED: Vulkan unchanged, byte-identical to its\n01047cf3 run, and GL vs Vulkan back to 9 of 10 differing on the A7 family.\nFAILS IF the Vulkan run moves at all: this change is in gl/surface.c and a\nVulkan move means it is not the GL-only change it claims to be.\n\nTHE UNCOMFORTABLE OUTCOME, named in advance. If the four captures land in\nband but Surface_format does not improve, the download conversion is\nreaching Blend surface's path and not Surface format's, and the rule is being\napplied in one of the two places it has to hold -- which would make the\n2026-09-12 derivation and this implementation disagree about what they\nmeasured.",
+  "a_ref": "01047cf3",
+  "b_ref": "5df42da3",
+  "must_not_move": [],
+  "expect": {
+    "Blend_surface/DstAlpha_XA_O1A7RGB8": 16384,
+    "Blend_surface/1-DstAlpha_XA_Z1A7RGB8": 16384
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Blend_tests",
+      "Image_blit",
+      "Surface_format",
+      "Texture_format",
+      "Texture_render_target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
