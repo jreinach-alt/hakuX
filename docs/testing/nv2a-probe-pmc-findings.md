@@ -112,6 +112,48 @@ Two independent read sweeps, with a reboot between them, returned **1,024 of
 1,024 identical values**. `BOOT_0`, `PMC_ENABLE` and the `0x160` constant all
 reproduce exactly. The surviving findings are deterministic.
 
+## A read-only survey of every modelled block
+
+19,456 dwords across 17 blocks, **no write issued**, canary verified before and
+after each block, 7 seconds. Breadth is affordable precisely because reads
+cannot perturb anything.
+
+| block | non-zero | distinct | dominant value | reading |
+|---|---:|---:|---|---|
+| PVPE | 1024/1024 | 1 | `00000025` | one constant for a whole 4 KiB block |
+| PTV | 1024/1024 | 1 | `00000025` | identical to PVPE |
+| PRMCIO | 1024/1024 | 11 | `00048328` ×764 | large repeated regions |
+| PCRTC | 1014/1024 | 11 | `000D8328` ×766 | large repeated regions |
+| PTIMER | 992/1024 | 138 | `00001DCD` ×128 | structured repeats |
+| PCOUNTER | 752/1024 | 45 | — | |
+| PFIFO | 382/2048 | 9 | — | |
+| PGRAPH | **0**/2048 | 1 | `00000000` | reads entirely zero |
+| others | sparse | | | PMC 67, PRAMDAC 68, PBUS 65, PRMVIO 64, PFB 45 |
+
+`stubs.c` generates read handlers that `return 0` for the blocks with no `.c`
+of their own — PCOUNTER, PVPE, PTV, PSTRAPS among them. So the blocks above
+that answer with data are answering where we return nothing.
+
+**These are not 17 defects, and mostly not defects at all.** Three things have
+to be said before any of it is quoted:
+
+- **A whole block returning one value is aliasing, not registers.** PVPE and
+  PTV each return `00000025` for all 1,024 dwords. That is one fact about the
+  block, not 2,048 facts about registers.
+- **Values are state-dependent.** These reads were taken with the console
+  freshly out of the dashboard and the engines idle. PGRAPH reading entirely
+  zero is consistent with the graphics engine simply not being enabled —
+  `NV_PMC_ENABLE` reads `01110000` here — rather than with anything being
+  wrong. A different machine state gives different values.
+- **PTIMER is a clock.** Distinct values across a sweep are the counter
+  advancing, not distinct registers, and the repeats within it look like
+  aliasing again.
+
+What the survey is genuinely good for is a map of which blocks are live on this
+silicon and which are silent, taken cheaply and repeatably. What it is not is a
+specification, and nothing here should be turned into an emulator change
+without a second read in a known state.
+
 ## What this cost, and what the limits are
 
 **One full lockup.** A blind `0` into `NV_PMC_ENABLE` took the processor down
