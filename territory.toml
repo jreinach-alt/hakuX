@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 132
-updated_utc = "2026-09-20T18:15:00Z"
+wave = 133
+updated_utc = "2026-09-20T19:20:00Z"
 
 
 [retired.hilodot10]
@@ -569,7 +569,9 @@ files = [
          "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
          "hw/xbox/nv2a/pgraph/glsl/vsh.c",
-         "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+# NAMED OUT AT WAVE 133: prim_rewrite.c, granted to lane.primpv13 for #13's
+# provoking-vertex trade (rewrite_triangle_fan's emit_tri_pv rotation vs.
+# geom.c's edge-priority order, 32,628 decisive px) (job.board).
          "hw/xbox/nv2a/pgraph/s3tc.c",
          "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
@@ -682,6 +684,13 @@ issues = ["50"]
 files = ["docs/lanes/swatchorder50/NOTES.md"]
 standing = false
 note = "DISPATCHED WAVE 131 (job.board), briefs/swatchorder50.md: #50's blendrace50 retired last tick with the disc-composition finding recorded; the issue's own next step is a fresh, well-scoped falsifier -- a DrawColorAndAlphaStack variant with unequal swatch heights or a 3-swatch draw, to separate the two surviving readings (reversed y-position vs. reversed colour order) that the existing capture cannot distinguish. Claims no in-repo source file besides its own NOTES.md; the change lives in nxdk_pgraph_tests' blend_tests.cpp, out-of-repo and untracked here, same as [retired.wbufclip]'s wbuf_tests.cpp touch."
+
+
+[lane.primpv13]
+issues = ["13"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c"]
+standing = false
+note = "DISPATCHED WAVE 133 (job.board), briefs/primpv13.md: #13's own remaining piece, deferred last tick for a careful brief rather than a rushed one. rewrite_triangle_fan()'s emit_tri_pv rotation reaches geom.c already rotated by one, so TFan/QStrip-TFan land at the predicted 70.36% rather than 100% -- 32,628 decisive px, a genuine trade against flat shading's need for provoking-vertex-at-0, not an oversight. prim_rewrite.c released from [free]."
 
 
 [lane.cloud-audit2-187]
