@@ -43,6 +43,21 @@ invocation. **The changed lines are disjoint**; the header comment and #171's
 hunk share context lines, so a fold conflict is possible but mechanical. This
 wants a fold order, not a re-dispatch.
 
+**Resolved, and not by a prediction about it.** #171 MERGED at
+2026-09-20T02:37:54Z, and attempt 2 merged `origin/master` (42 commits) into
+this branch at `73f8d3afbb`: **clean, no conflict in `cloud.sh` or anywhere
+else.** `TURNS="${CLOUD_TURNS:-120}"` now sits at `cloud.sh:89` below the
+`limits.env` source, from turncap's commit, with my header comment above it.
+So the fold-order request above is discharged — it was right, and the order it
+asked for is the order that happened. Written down rather than deleted because
+the next lane to touch `cloud.sh` will face the same question, and "the two
+hunks were genuinely disjoint" is the part worth having evidence for.
+
+Since #171 is merged, `[lane.turncap]`'s hold on `docs/testing/jobs/cloud.sh`
+is now the *stale* row the brief expected to find under a different name. That
+is the board's to retire (`roles/lane.md:79`); I have not touched
+`territory.toml` and am not claiming the file on the way past.
+
 `docs/testing/jobs/selftest.d/**` went to `[free]` in the same wave, and no
 open PR uses the `72-` prefix.
 
