@@ -1,9 +1,19 @@
-# lane.remote — resumed 2026-09-19 onto master
+# lane.remote — resumed 2026-09-20 onto master
 
 The session that ran this lane through 2026-09-18 is the same one writing this.
-PR #45 merged at 23:11Z that day (fold commit `fa3d04f2`), so this branch was
-re-based onto `origin/master` rather than continued: all 78 of its commits are
-ancestors of master and nothing was carried forward.
+It has now been reset from master twice, for the same reason each time: a
+merged PR cannot track new work.
+
+- PR #45 merged 2026-09-18T23:11Z (fold `fa3d04f2`), 78 commits.
+- **PR #162 merged 2026-09-19T22:24:55Z (fold `11ddd94a66`)** — #158's GL
+  pad-bit write side. Verified on master by content rather than by the merge
+  message: `pad_write_color_factor` in `gl/draw.c`,
+  `pgraph_glsl_set_dual_src_pad_supported` in `gl/renderer.c` and `glsl/psh.c`.
+  The branch was fast-forwarded to master at `151dc059` and nothing was
+  carried forward.
+
+**`gl/draw.c` is no longer this lane's.** It was released 2026-09-19 and granted
+to `[lane.clrpad164]` for #164; that lane has PR #172 open. Do not edit it.
 
 ## What changed underneath this lane
 
@@ -22,9 +32,82 @@ ancestors of master and nothing was carried forward.
 | issue | state |
 |---|---|
 | #34 | not this lane's: four findings in `vk/*`, and the device confirmation is APK packaging in `android/` |
-| #60 | **the subject of this note** — see below |
+| #60 | **its own fix is landed and correct** (`a105a51a`, the `drawn_format` refresh). What is left is not #60's defect at all: the whole `X1A7R8G8B8` family, **458,042 px on GL and 449,850 px on Vulkan**, nine of ten captures byte-identical between the backends. Modelled exactly — see "X1A7R8G8B8: two rules" immediately below |
 | #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
+
+## X1A7R8G8B8: two rules, and 32 of 32 golden halves (2026-09-20)
+
+Measured at master `151dc059`, `iso_surf1`, one run per renderer on one
+binary, 236 captures each, zero assert lines. Reproduce with
+`docs/testing/x1a7_forward_model.py /tmp/goldens/results`; its `--selftest`
+needs no disc.
+
+| | GL | Vulkan | GL − VK |
+|---|---:|---:|---:|
+| ten `X1A7` captures, px from golden | **458,042** | **449,850** | **8,192** |
+
+Nine of the ten are byte-identical between the backends. **All but 8,192 px of
+this is one shared defect, not a renderer disagreement** — which is why every
+single-backend pad fix so far has left it untouched. The whole disc is 227/236
+byte-identical GL vs Vulkan, consistent with #158's post-fold figure.
+
+### The model
+
+Two rules, composed through Blend surface's own draw sequence, reproduce
+**32 of 32 golden swatch halves exactly, worst |delta| 0**, with no free
+parameter:
+
+- **R1 — blend destination alpha.** `Ad8 = (A7 << 1) | (A7 >> 6)`, `A7 = stored >> 1`.
+  Bit replication of the seven stored bits, and **the pad bit does not
+  participate**: the `_Z` and `_O` goldens are equal on every bottom half.
+- **R2 — texture readback.** `sampled8 = (X << 7) | (stored >> 1)`.
+
+**R2 is not new.** `vk/constants.h` measured it on 2026-09-12 over 32,755
+invertible px of *Surface format*. This derivation is from *Blend surface*, so
+the two are independent and agree. **R1 is new.** That same entry left it open
+as *"the other half ... the 7-bit quantisation on the way IN"*; it is now
+pinned, and it is bit replication rather than truncation or a constant. Today
+both renderers use the identity for R1 and no rule at all for R2.
+
+Sixteen of the thirty-two values are **held out**: the `1-DstAlpha` pair is
+scored against the goldens and never written into the pinned table, so a wrong
+sign cannot be hidden by a table edited to match the model. Four rivals are
+refuted by the same values — today's identity among them — so a pass means the
+goldens *selected* these rules rather than merely admitting them.
+
+### What this refutes, including the hypothesis it started from
+
+#59/#158 built a write-side stamp that **can** requantise, and the verdict
+calling this unimplementable (*"needs the stored alpha requantised to 7 bits,
+not a component swizzle"*, `a34d28c4`, 09-12) predates that stamp by one day
+(`4381fae5`, 09-13; dual-source output `52411a03`, 09-14). So the obvious move
+is to add `X1A7` to the stamp's table. **Measured: that does not work.**
+Storing `(X << 7) | (a >> 1)` and reading by identity — the shape the stamp
+gives — gets R1 wrong on **six of eight** cases, because R1 and R2 want
+different functions of the same seven bits and one stored byte cannot answer
+both by identity. **`psh.h`'s exclusion of `X1A7` from the pad table was
+right**, and the next lane should not undo it.
+
+What does work, checked exhaustively over all 128 seven-bit values: store
+`expand7(a >> 1)` — lossless, 128 distinct values, `expand7(v) >> 1 == v` — so
+R1 is correct by identity at the blend, and apply `(X << 7) | (stored >> 1)` at
+the texture read. **Not yet implemented.** The known residual is that hardware
+quantises *after* the blend and fixed-function cannot, so `Add_SrcA_DstA`
+(43,328 px each) is expected to move less than the `DstAlpha` pair; that is a
+prediction to register, not a result.
+
+### Still unexplained, and it is the GL-only 8,192 px
+
+`Blend_surface::DstAlpha_XA_O1A7RGB8` is the one capture where the backends
+differ. The whole difference is the **first swatch, background alpha `0x00`**,
+where GL renders the surface as if the destination alpha were 1 (`#FFFFFF`)
+while the golden and Vulkan both give `#000000`. GL gets the other three
+background alphas right, so it is not a blanket `Ad = 1` fold — and
+`surface_color_format_dst_alpha_is_one()` excludes `X1A7` on both backends. GL
+also gets the `_Z` twin's `0x00` swatch right, and the two formats share one
+`GL_RGBA8` row byte for byte, so whatever differs is not the format table.
+Unresolved; do not guess at it from the shape.
 
 ## #60: the fix landed while the issue stayed open
 
