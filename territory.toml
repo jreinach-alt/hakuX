@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 131
-updated_utc = "2026-09-20T16:10:00Z"
+wave = 132
+updated_utc = "2026-09-20T18:15:00Z"
 
 
 [retired.hilodot10]
@@ -689,3 +689,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-187, remediation of PR #187 on branch lane/cloud-10, attempt 1 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 187` removes this row when the unit ends."
+
+[lane.drvab77]
+issues = ["77"]
+files = []
+standing = false
+note = "DISPATCHED WAVE 132 (job.board), briefs/drvab77.md: diagsoak77 (PR #165, merged) validated a stipple classifier and a soak spec that reliably reaches the demo-cave scene the artifact fires in; the driver question (T30/T26/stock via ~/hakux-work/drv/swap_driver.sh) was last asked before either existed and came back void on both counts. Claims no in-repo file -- runs existing tools against device soaks and posts a rate table to #77."
