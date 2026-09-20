@@ -33,6 +33,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include <hal/debug.h>
@@ -65,6 +66,7 @@ static char     g_static_ip[32]  = "192.168.50.1";
 static char     g_static_mask[32]= "255.255.255.0";
 static char     g_static_gw[32]  = "192.168.50.2";
 
+static bool     g_use_dhcp = false;
 static int      g_sock = -1;
 static uint32_t g_seq;
 static uint32_t g_boot_tick;
@@ -72,6 +74,37 @@ static volatile uint32_t g_last_cmd_tick;
 static volatile bool     g_watchdog_armed;
 static uint32_t g_reads, g_writes, g_refused;
 static char     g_last_cmd[96] = "(none)";
+
+/* Read d:\nv2a_probe.cfg if present: "key=value" per line.
+ *
+ * The probe was born with the host address compiled in, which was fine for one
+ * console on one direct link and useless the moment it had to run anywhere
+ * else -- under the emulator's slirp the host is 10.0.2.2 and the guest is
+ * handed an address by DHCP, so neither the host IP nor the static config
+ * compiled in here is right. Reading a file next to the XBE costs nothing and
+ * means the same binary runs on hardware and under emulation.
+ */
+static void load_config(void)
+{
+    FILE *f = fopen("D:\\nv2a_probe.cfg", "r");
+    char line[128];
+    if (!f) return;
+    while (fgets(line, sizeof(line), f)) {
+        char *eq = strchr(line, '=');
+        char *nl;
+        if (!eq || line[0] == '#') continue;
+        *eq = 0;
+        for (nl = eq + 1; *nl; ++nl)
+            if (*nl == '\r' || *nl == '\n') { *nl = 0; break; }
+        if (!strcmp(line, "host"))        strncpy(g_host, eq + 1, sizeof(g_host) - 1);
+        else if (!strcmp(line, "port"))   g_port = atoi(eq + 1);
+        else if (!strcmp(line, "dhcp"))   g_use_dhcp = (eq[1] == '1');
+        else if (!strcmp(line, "ip"))     strncpy(g_static_ip, eq + 1, sizeof(g_static_ip) - 1);
+        else if (!strcmp(line, "mask"))   strncpy(g_static_mask, eq + 1, sizeof(g_static_mask) - 1);
+        else if (!strcmp(line, "gw"))     strncpy(g_static_gw, eq + 1, sizeof(g_static_gw) - 1);
+    }
+    fclose(f);
+}
 
 /* ---------------------------------------------------------------- plumbing */
 
@@ -352,8 +385,9 @@ int main(void)
     debugPrint("BAR %08X size %08X, %d writable blocks\n",
                NV2A_BASE, NV2A_MMIO_SIZE, NV2A_NUM_BLOCKS);
 
+    load_config();
     memset(&np, 0, sizeof(np));
-    np.ipv4_mode    = NX_NET_STATIC;
+    np.ipv4_mode    = g_use_dhcp ? NX_NET_DHCP : NX_NET_STATIC;
     np.ipv4_ip      = inet_addr(g_static_ip);
     np.ipv4_netmask = inet_addr(g_static_mask);
     np.ipv4_gateway = inet_addr(g_static_gw);
