@@ -32,9 +32,130 @@ to `[lane.clrpad164]` for #164; that lane has PR #172 open. Do not edit it.
 | issue | state |
 |---|---|
 | #34 | not this lane's: four findings in `vk/*`, and the device confirmation is APK packaging in `android/` |
-| #60 | **its own fix is landed and correct** (`a105a51a`, the `drawn_format` refresh). What is left is not #60's defect at all: the whole `X1A7R8G8B8` family, **458,042 px on GL and 449,850 px on Vulkan**, nine of ten captures byte-identical between the backends. Modelled exactly — see "X1A7R8G8B8: two rules" immediately below |
+| #60 | **its own fix is landed and correct** (`a105a51a`, the `drawn_format` refresh). What is left is the whole `X1A7R8G8B8` family. **GL is now 449,850 px, equal to Vulkan and byte-identical to it on all ten captures** (`da9e02a2`); the last GL-only swatch turned out to be a texture-cache coherence defect and not a pad bit at all. The remaining 449,850 px is the pad-bit residual, and its read side needs `gl/surface.c` — **asked for, not held**. See the two sections immediately below, in that order |
 | #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
+
+## The X1A7 read side is not in the sampler, and one GL-only swatch was never a pad-bit defect (2026-09-20)
+
+Two predictions were registered before the runs and both were judged. One was
+falsified and reverted; the other landed exactly. Measured on `iso_surf1`, one
+GL run per arm from `01047cf3`, against `/tmp/goldens/results`.
+
+### 1. FALSIFIED: the readback rule does not belong at the texture sample
+
+`docs/testing/predictions/2026-09-20-gl-x1a7-read-side.json` said a per-stage
+uniform applying `(X << 7) | (stored >> 1)` at the sample would take the four
+`TestDstAlpha` captures from 303,104 px to between 81,920 and 114,688.
+**Nothing moved. All ten `A7` captures read their master values to the pixel.**
+Implemented in `9e9da01d`, reverted in `aa3648cb`.
+
+The gate was `pgraph_gl_check_surface_to_texture_compatibility()`, and that
+function's surface-format switch has cases for four formats — `X1R5G5B5_Z`,
+`R5G6B5`, `X8R8G8B8_Z`, `A8R8G8B8` — and **no case for `X1A7R8G8B8_Z` or
+`_O`**. Instrumented and counted: **96 X1A7 surface lookups reach the
+compatibility call and 96 are refused**, with extents and swizzle matching
+every time (128×128 texture format `0x12` against a 128×128 unswizzled
+surface). The only surface the shader ever sees through that path is
+`A8R8G8B8`. The `_O` twins of the two `_Z` formats that *are* listed are
+missing as well; that is a second thing to look at and not this one.
+
+So the sampled texel never comes from the host surface. It comes from guest
+VRAM, written there by `surface_download_to_buffer()`'s `glReadPixels`
+straight through the format map — `GL_BGRA` / `UNSIGNED_INT_8_8_8_8_REV`, the
+full eight bits of host alpha — and read back as an ordinary
+`LU_IMAGE_A8R8G8B8` texture.
+
+**`(X << 7) | (stored >> 1)` is not something the texture unit does to a host
+image. It is what the raster PUT IN MEMORY.** Its address is the surface
+download, with its inverse (`expand7`) on upload. Both are in
+`hw/xbox/nv2a/pgraph/gl/surface.c`, which is `[lane.swizzle87]`'s at wave 94,
+so it is **asked for and not taken**. The rule itself is unchanged and still
+measured twice; only its address was wrong.
+
+Reverted rather than left in place because the code was not merely untested,
+it was **unreachable on any content**: nothing can make that switch return
+true for `0x06` or `0x07`.
+
+### 2. LANDED: a texture the surface blit filled is not the VRAM it was hashed from
+
+`TextureBinding::data_hash` describes the *guest bytes* a binding was
+generated from. `pgraph_gl_render_surface_to_texture()` overwrites the
+binding's pixels and does not touch it, so the slow path asks the hash whether
+the binding is current and gets a confident wrong answer.
+
+Instrumented at the bind, on `DstAlpha_XA_O1A7RGB8`'s first swatch:
+
+| | |
+|---|---|
+| recorded `data_hash` | `141e1a7bae3fe174` |
+| live VRAM hash | `141e1a7bae3fe174` — genuinely equal |
+| `vram[0]` | `00000000` (guest memory is all-zero) |
+| `glGetTexImage[0]` | `ffffff22` (an earlier `A8R8G8B8` blit) |
+| `binding->draw_time` | `306824`, where every other X1A7 swatch reads `0` |
+
+`TestDstAlpha` points stage 0 at `GetTextureMemoryForStage(0)` with the same
+shape in every test, so one cache key is shared between tests whose surface
+format takes the fast path and tests whose format does not.
+
+Fixed in `da9e02a2` (`gl/texture.c`): a binding with a nonzero `draw_time`
+wanted as a VRAM texture is regenerated regardless of the hash. `draw_time` is
+the discriminator rather than a new field because it already means exactly
+that — `generate_texture()` sets it to `0` and the s2t branch is its only
+writer — and because the early-reuse path at the top of the same loop has
+always compared draw_times rather than bytes.
+
+**Measured, against the registered values:**
+
+| | master `01047cf3` | with `da9e02a2` | predicted |
+|---|---:|---:|---|
+| `Blend_surface::DstAlpha_XA_O1A7RGB8` | 90,112 | **81,920** | 81,920 ✔ |
+| the other nine `A7` captures | — | unchanged ✔ | unchanged |
+| ten `A7` captures, GL total | 458,042 | **449,850** | 449,850 ✔ |
+| those ten, GL vs Vulkan | 16,384 px | **0** ✔ | 0 |
+| whole disc | 1 better, 0 worse, 235 same | | no capture worse ✔ |
+
+**One leg did not hold as written.** The file predicted whole-disc GL/Vulkan
+byte-identity `227/236 → 228/236`; measured `228/236 → 229/236`. The delta is
+right and the baseline figure was wrong — 227 was carried from an earlier note
+rather than re-measured, and this run re-measured it. The comparison is PNG
+bytes with an RGB-array fallback, over the 236 captures present in both.
+
+**`Surface_pitch::Swizzle` is not a stable capture and must not be used as a
+tripwire on this disc.** Two runs of the *same* master binary read 12,224 and
+11,132 — 1,092 px apart — and the fixed binary read 12,224 again. That is the
+guest/pgraph race #39 and #87 already record, and it was nearly mistaken for a
+result: the first fix run was scored against a binary the build had not picked
+up, and the only capture that "moved" was this one.
+
+### 3. What the model covers, now checked rather than assumed
+
+`TestDstAlpha` draws **eight** swatches in two rows —
+`{0x00,0x40,0x80,0xFF}000000`, then the same four alphas over **red** — and
+`x1a7_forward_model.py` models the first row only. The second row must be
+identical because the blend is `{sfactor, ZERO}`, so the background RGB is
+multiplied by zero and cannot reach the surface. **On the goldens the two rows
+are byte-identical on all four captures, 0 of 65,536 px each**, so the model's
+32 halves do describe all 64. The earlier "303,104 px" figure rested on this
+without saying so.
+
+`R2` can only move **top** halves: the bottom half of each swatch is drawn with
+`SetFinalCombiner1Just(SRC_ZERO, true, true)`, alpha forced opaque, so the
+sampled alpha does not enter it. The four residual halves at `bg 0x80` are
+`R1`'s, off by exactly one (127 vs 126, 128 vs 129).
+
+### 4. What #60 still needs, and from whom
+
+- **`gl/surface.c`** (`[lane.swizzle87]`): apply `(X << 7) | (stored >> 1)` in
+  the surface download and `expand7(a >> 1)` on upload, for
+  `X1A7R8G8B8_{Z,O}`. That is the read side, byte-exact, and it also fixes a
+  guest CPU read of the surface, which no sampler-side approximation can.
+- Optionally, in the same file: give `X1A7R8G8B8_{Z,O}` (and the missing `_O`
+  twins) cases in `pgraph_gl_check_surface_to_texture_compatibility()`. Only
+  *after* the download conversion exists — the fast path bypasses it, so a
+  shader-side rule would then be needed too, which is the reverted `9e9da01d`.
+- The write side's post-blend quantisation remains the known approximation and
+  `XA_*_Add_SrcA_DstA` remains the capture that would settle it.
 
 ## X1A7R8G8B8: two rules, and 32 of 32 golden halves (2026-09-20)
 
