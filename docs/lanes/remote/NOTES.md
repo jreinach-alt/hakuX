@@ -100,14 +100,35 @@ prediction to register, not a result.
 ### Still unexplained, and it is the GL-only 8,192 px
 
 `Blend_surface::DstAlpha_XA_O1A7RGB8` is the one capture where the backends
-differ. The whole difference is the **first swatch, background alpha `0x00`**,
-where GL renders the surface as if the destination alpha were 1 (`#FFFFFF`)
-while the golden and Vulkan both give `#000000`. GL gets the other three
-background alphas right, so it is not a blanket `Ad = 1` fold — and
-`surface_color_format_dst_alpha_is_one()` excludes `X1A7` on both backends. GL
-also gets the `_Z` twin's `0x00` swatch right, and the two formats share one
-`GL_RGBA8` row byte for byte, so whatever differs is not the format table.
-Unresolved; do not guess at it from the shape.
+differ, and the whole 8,192 px is the **first swatch, background alpha `0x00`**.
+
+The sharpest statement of it: **GL's `0x00` swatch is byte-identical to both of
+its `0xFF` swatches** (indices 3 and 7), and the goldens distinguish them. So
+GL renders that swatch as if the background alpha had been `0xFF`. Across the
+suite's eight `DstAlpha_*` captures this collapse happens in GL *and* Vulkan
+*and* the golden for every format with no real alpha (`R5G6B5`, `X_O1RGB5`,
+`X_ORGB8`, `X_Z1RGB5`, `X_ZRGB8`) — correct, since the background alpha cannot
+matter there. **`XA_O1A7RGB8` is the only capture where GL collapses and the
+golden does not.** `ARGB8` and the `_Z` twin are right on GL.
+
+Ruled out, each by reading master rather than by argument:
+
+- **Not the format table.** `X1A7R8G8B8_Z` and `_O` share one byte-identical
+  row in `kelvin_surface_color_format_gl_map` (`gl/constants.h:403/405`), so
+  nothing downstream of the table can tell them apart.
+- **Not the `Ad = 1` fold.** `surface_color_format_dst_alpha_is_one()`
+  (`gl/draw.c:117`) excludes `X1A7` on both backends, and GL gets `0x40` and
+  `0x80` right, which a blanket fold could not.
+- **Not the clear.** `pgraph_get_clear_color()` is **shared** between the
+  renderers (`pgraph.c:4599`) and treats `_Z` and `_O` identically —
+  `((clear_color >> 24) & 0x7F) / 127.0f` for both. This was the strongest
+  hypothesis, by analogy with #89's `77bd2977`, which fixed the clear's pad
+  alpha on Vulkan only; the shared helper refutes it.
+- **Not #158's stamp.** `pgraph_glsl_surface_pad_alpha_mode()` returns
+  `PSH_PAD_ALPHA_NONE` for both `X1A7` suffixes, so no stamp is emitted.
+
+Unresolved, and narrower than it was. Do not guess at it from the shape; the
+three hypotheses above were each plausible and each wrong.
 
 ## #60: the fix landed while the issue stayed open
 
