@@ -1,0 +1,90 @@
+[
+  {
+    "pass1_id": null,
+    "pass2_id": "N1",
+    "pass2b_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/testing/gles_token_check.py",
+    "line": "109-120",
+    "scenario": "Pass 2's scenario cannot occur at tip 26754a5e7e. It said a lane putting a desktop-only token in the #else of a #if defined(__APPLE__), a #if DEBUG_NV2A_GL or an #ifdef GL_FOO fallback chain would get '0 findings', push, and fail the arm64-v8a job -- H1 again with the check reporting clean. #else now inverts `live` only for a frame __ANDROID__ decided (`decided` set at :94/:96, cleared at :106 for #elif), so an unknown frame stays live in BOTH arms.",
+    "evidence": "Driving gles_visible_lines() directly over the default target: gl/debug.c now yields 60-65, 67, 68, 70, 71, 73 -- 67/68 are the glEnable(GL_DEBUG_OUTPUT) arm of #if defined(__APPLE__), what Android compiles; gl/debug.h yields 50-52, 54-61, 63, 65 -- the macro arm of #if DEBUG_NV2A_GL. Power retained: the script on gl/draw.c at 7ffcd2bc (extracted with git show) reports :151 GL_SRC1_ALPHA and :153 GL_ONE_MINUS_SRC1_ALPHA, the two lines by number the arm64-v8a compiler reported, exit 1. Default target still '13 files scanned, 0 findings', exit 0. --selftest 9/9.",
+    "note": "Verified with two mutants of my own rather than the commit messages'. Mutant A (#else inverts unconditionally, i.e. the pre-fix line): 7/9, red on n1-else-of-unknown-conditional and else-after-elif-on-an-android-frame, other seven unmoved. Mutant B (#elif no longer clears `decided`): 8/9, red on else-after-elif-on-an-android-frame alone. Each half of the fix has exactly one failing case. cb141001's separate claim -- that that fixture's expected 1 is a TRUE positive -- is right: SOME_OTHER_THING is undefined, so on Android the #ifndef arm is skipped, the #elif is not taken, and the #else arm is what compiles."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N2",
+    "pass2b_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/testing/pgraph_capture_run.sh",
+    "line": "109-117",
+    "scenario": "Pass 2's scenario cannot occur. It said a sweep looping the runner over OPENGL and VULKAN on a host with no usable GL context would have both arms come up on Vulkan, both exit 0, both produce captures, and the OPENGL arm's captures be Vulkan's -- reading out as 'GL is byte-identical to Vulkan', this PR's own headline. The runner now lowercases both sides and dies on a mismatch, before the extractor.",
+    "evidence": "pgraph_capture_run_selftest.sh run here with SELFTEST_TMP inside the worktree: 13 assertions, all pass, in under a second with no emulator, firmware, disc or X server. Against a mutant built by deleting exactly the nine lines the fix added (sed '/^# \\.\\.\\.and ENFORCE it\\./,/^fi$/d') and pointed at with RUNNER=: mismatch-refuses, mismatch-names-both and mismatch-says-discarded go red; cases 2 and 3 unmoved. Case 2 (asking OPENGL, stub reporting OpenGL) still reaches the extractor and logs 'requested=OPENGL got=OpenGL', so a blanket die -- the cheapest way to pass case 1 -- fails case 2.",
+    "note": "Every assertion reads words in the message, and each case separately asserts the stub ran ('nv2a: init' in the run log), so a refusal cannot be confused with a broken harness. That is the 'green for the wrong reason' fix the lane found in its own case 3, implemented rather than described."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": "N3",
+    "pass2b_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "PR body",
+    "line": null,
+    "scenario": "The PR body claimed a three-site convergence the code does not make. It now reads that the call site excludes GLES the way gl/renderer.c does, by preprocessor, because on GLES the tokens themselves are absent rather than merely unwanted, while psh.c:2018 and :3568 keep the run-time && !ps->opts.gles term, a shader gate having no token to be absent -- and names it a deliberate two-and-one.",
+    "evidence": "PR #162 body, the L1/L2 disposition paragraph.",
+    "note": "Exactly the clause N3 asked for."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": null,
+    "pass2b_id": "P1",
+    "severity": "MEDIUM",
+    "verdict": "OPEN",
+    "file": "docs/testing/skip_ci_marker_check.sh",
+    "line": "56",
+    "scenario": "A lane runs the check before pushing -- the only way it ever runs, since it is wired into nothing -- in a worktree or container where origin/master, the DEFAULT range's left endpoint, is absent: a single-branch clone, a fetch that named only the lane branch, an agent worktree off a bare mirror; or it mistypes the range. git log writes nothing, its error goes to /dev/null, the while body never runs, found stays 0, scan returns success, and the caller prints 'clean' and exits 0 having scanned zero commits. The lane pushes a commit whose body carries the retired marker, GitHub creates no workflow run, the check rollup is empty, and fold.sh cannot fold a head nothing has built -- the #101/#123/#129/#139 stall this script exists to prevent, with the instrument reporting success. There is no downstream gate for this class: fold.sh:343 only names the marker as the usual cause AFTER a fold has landed with no CI.",
+    "evidence": "Measured: `skip_ci_marker_check.sh origin/mastr..HEAD` prints 'scanning every commit body in origin/mastr..HEAD ...' then 'clean', exit 0. Nothing in the output distinguishes 'read 24 bodies, none carried it' from 'read nothing': the count is never printed and git's diagnosis is discarded by 2>/dev/null. grep -rn skip_ci_marker_check over the tree matches only its own usage lines, so nothing else would catch the false clean.",
+    "remediation": "Make the range a precondition and print what was scanned: n=$(git rev-list --count \"$RANGE\" 2>&1) || { echo \"cannot resolve $RANGE: $n\" >&2; exit 2; }, then report n. Add a fixture: a range naming an absent ref must exit 2 with a message, not 'clean'. The three existing fixtures all pass a resolvable range, so this invariant has no failing case today.",
+    "note": "This is the finding that forces needs-remediation. It shares its fix with P2."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": null,
+    "pass2b_id": "P2",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/testing/skip_ci_marker_check.sh",
+    "line": "41,52",
+    "scenario": "set -o pipefail is on and grep -qF exits at the first match, closing the pipe. Once a commit-message body exceeds the 64 KB pipe buffer, git log is killed by SIGPIPE, the pipeline status becomes 141, pipefail propagates it, the if is false, and the commit carrying the marker is not reported -- the script prints 'clean' and exits 0.",
+    "evidence": "Throwaway repo, marker in the first line of the body: 4 KB, 16 KB, 32 KB, 60 KB and 64 KB bodies are all found; a 128 KB body is MISSED, reported clean, 10 runs out of 10. Directly: `git log -1 --format=%B <c> | grep -qF -- \"$MARKER\"` returns 141 with pipefail and 0 without, while grep -cF on the same input returns 1.",
+    "remediation": "Take the pipe out: msg=$(git log -1 --format='%B' \"$c\") || die; case \"$msg\" in *\"$MARKER\"*) ... esac. Same edit closes P1.",
+    "note": "LOW and NOT to be escalated, for a measured reason: the largest commit-message body in the last 3,000 commits of this repository is 10,919 bytes, six times under the threshold. No commit that exists today can hit it. Latent hazard in a new instrument, not a live miss."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": null,
+    "pass2b_id": "P3",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/testing/skip_ci_marker_check.sh",
+    "line": null,
+    "scenario": "The PR's Files: line names pgraph_capture_run.sh, pgraph_capture_run_selftest.sh, gles_token_check.py and nv2a_index.json, and not skip_ci_marker_check.sh; neither docs/lanes/remote/NOTES.md nor the PR body mentions the file. board.sh reads Files: from open PRs to keep two lanes off one file, and docs/testing/ is lane.toolsmith's domain, so a second lane adding a marker check would not see this one holding the name.",
+    "evidence": "PR #162 body Files: line; git diff --stat origin/master...HEAD lists docs/testing/skip_ci_marker_check.sh at 117 lines; grep over NOTES.md and the PR body finds no mention.",
+    "remediation": "Add the path to Files: and one paragraph to NOTES.md saying what the script is and that it is deliberately not wired into preflight.sh.",
+    "note": "LOW because it is a NEW file: a collision would be a visible create/create conflict rather than a silent overwrite. Same class as the nv2a_index.json omission pass 2 recorded, which the lane then fixed."
+  },
+  {
+    "pass1_id": null,
+    "pass2_id": null,
+    "pass2b_id": "P4",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/audits/2026-09-19-claude/docs-tooling-agentic-coding-u152m1-pass2.md",
+    "line": null,
+    "scenario": "Pass 2's 'checked and did not find wrong' list states that none of the branch's commit subjects or bodies carries the retired CI-skip marker. That is wrong: 14312cb34f carries it in its body, inside a sentence recording that the marker had been retired. The instrument this branch itself adds is what shows it.",
+    "evidence": "skip_ci_marker_check.sh origin/master..HEAD reports 14312cb34f and exits 1. git merge-base --is-ancestor 14312cb34f 7ffcd2bce8 succeeds, so the commit is an ancestor of the prediction's b_ref.",
+    "remediation": "One line in the PR body: name the commit, say it is inert -- it is not the head, the head 26754a5e7e is clean and has workflow runs, and fold.sh merges rather than squashes, so no fold promotes that body to a head -- and say why it is not being reworded: rewriting it rewrites history a registered prediction depends on, which roles/lane.md forbids and which the script's own header warns against.",
+    "note": "A correction to the pass-2 record rather than a defect in the change. The marker is inert at this head; rewording would be affirmatively the wrong answer."
+  }
+]

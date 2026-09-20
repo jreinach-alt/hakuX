@@ -9,7 +9,9 @@
 #   lane.sh attempts | reset <name> # the per-lane attempt counter behind the escalation
 #   lane.sh rm    <name>            # remove the worktree once its PR is merged
 #   lane.sh list
-#   lane.sh fleet-end <name> [rc]   # clear the registry entry (the unit calls this)
+#   lane.sh fleet-end <name> [rc] [run.json]   # the unit's tail: clear the
+#                                   registry entry, and decide the unit's exit
+#                                   code (75 if the account's window closed)
 #   lane.sh fleet-gc                # drop registry entries whose unit is gone
 #
 # WHY THE WORKTREE IS MADE HERE AND NOT BY --worktree. Claude Code's own
@@ -45,8 +47,66 @@ JOBS="$(cd "$(dirname "${BASH_SOURCE[0]}")/jobs" && pwd)"   # allowlist, summari
 # when this script refuses.
 LANE_MAX=2
 . "$JOBS/models.env"
+# THE WINDOW IS NOT THE CAP. LANE_MAX only ever binds when there IS work, so
+# it throttles the days with a backlog and does nothing on a day the account's
+# window is already spent; it stays what its comment says it is, a runaway
+# backstop. The account's five-hour and weekly windows are handled by
+# jobs/window.sh: fleet-end below routes a lane that met a closed window to
+# exit 75 and REFUNDS its attempt, and board.sh holds the weekly reserve.
+. "$JOBS/window.sh"
+# NOT A BARE `.`. Without the guard a missing file leaves refuse_if_remote
+# undefined, `refuse_if_remote remote` is a command-not-found the script does
+# not stop for (there is no `set -e` here), and the one gate below runs to
+# completion having checked nothing -- the loudest possible failure turned
+# into the quietest.
+. "$JOBS/remote-lane.sh" || { echo "REFUSED: could not load $JOBS/remote-lane.sh, so this script cannot tell a remote lane from a local one." >&2; exit 76; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 cmd="${1:-}"; name="${2:-}"
+
+# ------------------------------------------------- a lane that is not ours
+#
+# THE MOST EXPENSIVE THING THIS SCRIPT COULD DO. `lane.remote` is a cloud
+# session that pushes to `claude/docs-tooling-agentic-coding-u152m1` about once
+# an hour. Nothing stopped `lane.sh resume remote` from making $WORK/wt/remote,
+# starting a local headless session and pointing it at the same branch: two
+# agents, one branch, no lock, and the loser's commits are whatever the last
+# push happened to contain. It is not hypothetical -- two routines firing in
+# the same minute already put two sessions on that branch once today, and the
+# host session had to disable one by hand.
+#
+# So the refusal is here rather than only in the callers. handback.sh has its
+# own (it never derives a local lane name for a remote branch), and that is
+# deliberate duplication: this is the last gate before `systemd-run`, and it is
+# reached by a person typing the command as well as by a job.
+#
+# A BOARD THAT CANNOT BE READ IS A REFUSAL, NOT A PASS. If territory.toml does
+# not parse, this script cannot tell whether the lane it was handed is remote,
+# and the safe answer to "I do not know whether another agent holds this
+# branch" is to stop. That direction costs a dispatch; the other costs a
+# session's work.
+#
+# AND board_files FALLING BACK TO THE WORKING TREE IS THE SAME ANSWER. The
+# in-tree copy reaches a checkout only when a fold carries it over, so it is
+# structurally behind `origin/board` -- 31 waves behind on the day this was
+# written -- and the row that marks a lane remote is the newest thing on the
+# board, never the oldest. "The stale copy does not mention this lane" is not
+# "this lane is local", and `remote_authoritative` is the predicate that keeps
+# the two apart. A host that has switched the board branch off deliberately
+# (`HAKUX_BOARD_REF=`) reads as `board` and is unaffected; the state this
+# refuses is a board ref configured and not fetched, which `git fetch origin
+# board` cures in one command -- named in the message, because a refusal
+# nobody can act on becomes a refusal somebody deletes.
+refuse_if_remote() {   # <lane name> -- exits when the lane is not this host's to start
+    local b
+    if ! remote_authoritative; then
+        echo "REFUSED: the board read came back \`$(remote_source)\` rather than origin/board, so this script cannot tell whether lane $1 runs somewhere else. Run \`git fetch origin board\` in $REPO (or fix territory.toml); starting a second agent on another session's branch is not recoverable." >&2
+        exit 76
+    fi
+    b=$(remote_branch_of "$1") || return 0
+    [ -n "$b" ] || return 0
+    echo "REFUSED: lane.$1 is marked \`remote\` in territory.toml and lives on \`$b\`, a branch this host does not drive. Starting it here would put a second agent on a branch its own session pushes to, with no lock. Wake it through its routine instead (\`/schedule\`, or the cloud session's own trigger); nothing local resumes it." >&2
+    exit 76
+}
 
 # ---------------------------------------------------------------- the registry
 #
@@ -119,9 +179,26 @@ next_attempt() {   # prints the attempt number this start will be, and the model
     ATTEMPT=$n
 }
 
+# A CLOSED WINDOW IS NOT AN ATTEMPT. The counter above is spent at START, so
+# by the time the session is refused by the account's usage window it has
+# already been charged -- and three of those in a row escalate the lane to the
+# most expensive model, then refuse it entirely and open a decision-needed
+# issue, for a reason that has nothing to do with the work. The refund is what
+# makes that impossible; it is also what makes it safe for anything (the
+# board, handback.sh, the owner) to resume a lane into a window it could not
+# know was closed. It only ever moves the counter down, and never below zero.
+refund_attempt() {   # <lane>
+    local f="$WORK/attempts/${1:?lane}" n
+    n=$(cat "$f" 2>/dev/null || echo 0)
+    case "$n" in ''|*[!0-9]*) return 0 ;; esac
+    [ "$n" -gt 0 ] && echo "$(( n - 1 ))" > "$f"
+    return 0
+}
+
 case "$cmd" in
   start)
     brief="${3:?usage: lane.sh start <name> <brief.md> [issue]}"; issue="${4:-}"
+    refuse_if_remote "${name:?name}"
     [ -f "$brief" ] || { echo "no such brief: $brief" >&2; exit 2; }
     wt="$WORK/wt/$name"; branch="lane/$name"
     mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/lane"
@@ -155,7 +232,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
+        bash -c "claude -p \"\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "started hakux-lane-$name in $wt on $branch; attempt $ATTEMPT on $MODEL; log $log"
     [ -n "$issue" ] && echo "issue #$issue -- the lane opens its draft PR; the board job labels it lane:$name"
     ;;
@@ -164,6 +241,7 @@ case "$cmd" in
     # A stopped lane keeps its worktree, its branch and its NOTES.md. Start a
     # fresh session there with the same brief; the SessionStart hook prints
     # the base check and the lane reads its own git log and notes first.
+    refuse_if_remote "${name:?name}"
     wt="$WORK/wt/${name:?name}"; branch="lane/$name"
     [ -d "$wt" ] || { echo "no worktree at $wt; use lane.sh start" >&2; exit 3; }
     [ -f "$WORK/briefs/$name.md" ] || { echo "no brief at $WORK/briefs/$name.md" >&2; exit 3; }
@@ -182,7 +260,7 @@ case "$cmd" in
         --setenv=DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}" \
         --setenv=JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}" \
         --working-directory="$wt" \
-        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc; exit \$rc"
+        bash -c "claude -p \"Resuming lane $name in an existing worktree, attempt $ATTEMPT: read NOTES.md and git log first, say in NOTES.md why the previous attempt did not finish, then continue the brief below.\n\n\$(cat '$WORK/briefs/$name.md')\" --model '$MODEL' --max-turns $TURNS --output-format json --permission-mode acceptEdits --append-system-prompt-file '$JOBS/roles/lane.md' --allowedTools \"\$(cat '$JOBS/allowed-tools.lane')\" > '$log' 2>&1; rc=\$?; python3 '$JOBS/summarise_run.py' '$log' lane-$name '$MODEL' >> '$WORK/logs/lane/index.tsv'; bash '$SELF' fleet-end '$name' \$rc '$log'; exit \$?"
     echo "resumed hakux-lane-$name in $wt; attempt $ATTEMPT on $MODEL; log $log"
     ;;
   rm)
@@ -197,9 +275,31 @@ case "$cmd" in
     # it -- and answers "what was this lane asked, and how did it end?" after
     # the entry is gone. A SIGKILLed unit skips this; that is precisely why
     # fleet.py asks systemd rather than this directory who is running.
+    #
+    #   fleet-end <name> [rc] [run.json]
+    #
+    # THE UNIT'S EXIT CODE IS DECIDED HERE, which is why the run's log is the
+    # fourth argument. run-claude-job.sh maps a usage-window refusal to 75 for
+    # the board, the arms job and the cloud job; lane.sh did not use it and a
+    # lane has no other tail, so a lane that met a closed window exited with
+    # whatever the CLI returned and was indistinguishable from a lane that
+    # failed at its work: an attempt spent, a model escalation three of those
+    # later, and a resume straight back into the same closed window. The log
+    # argument is optional so that a unit started by the PREVIOUS version of
+    # this script -- already running when it is folded -- still ends cleanly.
+    rc="${3:-0}"; runlog="${4:-}"
+    case "$rc" in ''|*[!0-9]*) rc=0 ;; esac
+    if [ -n "$runlog" ] && window_limit_hit "$runlog"; then
+        window_note_limit "lane-${name:?name}" "$runlog"
+        refund_attempt "$name"
+        rc=75
+        mkdir -p "$WORK/logs/lane" 2>/dev/null
+        echo "$(date -u '+%FT%TZ') lane $name STOPPED ON THE ACCOUNT'S USAGE WINDOW, not on its work: exit 75, and attempt refunded (counter now $(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)) so this costs the lane no escalation. Recorded in \$WORK/window/limits.tsv; the board defers dispatch while it is fresh." \
+            | tee -a "$WORK/logs/lane/tick.log"
+    fi
     f="$FLEETD/${name:?name}.json"
-    [ -f "$f" ] || exit 0
-    python3 - "$f" "$FLEETD/history.jsonl" "${3:-}" <<'PYEND' || true
+    [ -f "$f" ] || exit "$rc"
+    python3 - "$f" "$FLEETD/history.jsonl" "$rc" <<'PYEND' || true
 import datetime, json, sys
 src, hist, rc = sys.argv[1:4]
 try:
@@ -212,6 +312,7 @@ with open(hist, "a") as fh:
     fh.write(json.dumps(e) + "\n")
 PYEND
     rm -f "$f"
+    exit "$rc"
     ;;
   fleet-gc)
     # The entries the deleted orchestrator left behind (37 on the host on

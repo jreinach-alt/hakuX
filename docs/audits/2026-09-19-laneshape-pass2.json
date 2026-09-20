@@ -1,0 +1,102 @@
+[
+  {
+    "pass1_id": "H1",
+    "severity": "HIGH",
+    "file": "docs/testing/jobs/arms.sh",
+    "line": "140-225",
+    "verdict": "CLOSED",
+    "summary": "The fetch is split in two and the PR-head half no longer names a branch. Invocation one (:181) is `$TIP` plus the `+refs/heads/lane/*` wildcard and contains no name that can be missing, so it cannot fail the way pass 1 demonstrated; invocation two (:189) fetches `+refs/pull/<n>/head:refs/remotes/pr/<n>`, which GitHub publishes for every open PR including a fork's and including one whose head branch was deleted, and the PR number is validated as a number (:186) before it is interpolated into a ref path. A failed batch retries one spec at a time (:195-206) so one bad pull ref costs its own PR head only. The destination namespace is `refs/remotes/pr/`, checked inert to every other job: no reader outside arms.sh walks anything but refs/remotes/origin/ (fold.sh:231, cloud.sh:377, lane.sh:212, bootstrap-board-branch.sh:15), so a fork PR whose head is named `board` can no longer overwrite the ref the board is read from.",
+    "scenario": "Pass 1's scenario -- one open PR from a fork, or one open PR whose head branch was deleted, aborting the whole `git fetch` so that nothing updates at all and every prediction pushed thereafter on master or any lane branch is invisible to the queue for as long as that PR stays open -- can no longer occur: the trunk and lane/* are already updated before any name that can be missing is asked for.",
+    "evidence": "Measured, not read. 98-lane-shape.sh:129-217 builds a real bare origin with two open PRs -- #777 (head present, published at refs/pull/777/head) and #778 (`vanished-head`, on that origin neither as a branch nor as a pull ref) -- and pushes a prediction to master after the consumer's last fetch. On this tip the tick advances refs/remotes/origin/master to the pushed sha (:205), collects master:docs/testing/predictions/trunk.json (:207), names `PR head unavailable ... refs/pull/778/head` (:211) and has fetched refs/remotes/pr/777 (:216); the fixture's own precondition leg (:202) asserts the consumer was behind before the tick, so those are not green for a fetch that did nothing. I ran this branch's fragment against the pre-remediation tip 8b185a925f in a scratch worktree (runner byte-identical, diff -q): :205, :207, :211 and :216 all FAIL there. Against master@11ddd94a66 they pass, correctly -- master fetches no PR heads at all, so H1 was a defect this branch introduced and master is the wrong falsifier for it; NOTES.md:437-446 says exactly that."
+  },
+  {
+    "pass1_id": "H2",
+    "severity": "HIGH",
+    "file": "docs/testing/jobs/remote-lane.sh",
+    "line": "89-160",
+    "verdict": "CLOSED",
+    "summary": "board_files.load's third outcome is now visible and has a direction. The python block prints `src=board|worktree` as line one, derived from board_files.source() itself rather than guessed, and the shell maps a missing or unrecognised source line to `unreadable`; there are three states, and `remote_authoritative` is rc 0 only for `board`. The two callers whose question is an ABSENCE ask that predicate -- fold.sh:168 refuses to prune and lane.sh:101 exits 76, each naming the source it got and the one command that cures it -- while handback.sh:278 reads a positive (remote_lane_of), which the stale copy answers truthfully, so the depth is two different questions rather than one asked twice. `remote_readable` survives, documented as not a permission. HAKUX_BOARD_REF= reads as `board` (board_files.py:23,28 disables the git show by configuration), so the refusal does not fire on a host that switched the board branch off on purpose. prune_branch's refusal is still after the `lane/?*` case and can still only return 1, so the delete set cannot widen.",
+    "scenario": "Pass 1's scenario -- a fold tick from a checkout without origin/board reading the fold-lagged in-tree territory.toml, which by construction does not carry a `remote` marker the board has just written, and all three guards passing together on a map missing the one row they exist for: the branch of a live cloud lane deleted, a second agent started on it, and handback's defence in depth going with them -- can no longer occur.",
+    "evidence": "The legs fire the state through the real reader, not a shortcut: 98-lane-shape.sh:373-378 and :430-435 set HAKUX_BOARD_REF=refs/nosuch and set NO HAKUX_TERRITORY, so board_files.load runs for real, its `git show` fails, and it falls back to the in-tree territory.toml -- which names neither `lane/third` nor lane `alpha` as remote. `lane.sh resume alpha` exits 76 saying `came back \\`worktree\\` rather than origin/board`, names `git fetch origin board`, and creates no worktree; `fold.sh prune --apply` leaves refs/heads/lane/third on the fixture origin and says which source it got. Against 8b185a925f both fold.sh legs, all four lane.sh legs, the three remote_source/remote_authoritative legs and the two live-board agreement legs FAIL -- eleven of the sixteen reds. I also ran the default path on this checkout: remote_source=board, remote_authoritative rc 0, map empty (no row carries `remote` yet -- the board request in the PR body, so the change is correctly inert until it lands). fold.sh's comment cites board.sh:161 for the pre-exec board fetch; the fetch is real and is at board.sh:186, so that is a stale line number in a comment and nothing more."
+  },
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/testing/lane.sh",
+    "line": "56",
+    "verdict": "CLOSED",
+    "summary": "gh pr view 163 returns mergeStateStatus CLEAN. The merge 8233fe866a resolved lane.sh by hand and kept both sides: master's `. \"$JOBS/window.sh\"` at :56 and this branch's guarded `. \"$JOBS/remote-lane.sh\"` at :62, whose non-bare form turns a missing helper into exit 76 rather than an undefined refuse_if_remote. Master's window_limit_hit/window_note_limit are still called at :292-293, so the resolution dropped nothing from the other side. refuse_if_remote is the first statement with a side effect in both call sites, start (:201) and resume (:244).",
+    "scenario": "Pass 1's scenario -- the PR reaching fold-ready and fold.sh being unable to produce a merge commit, costing a handback cycle, with refuse_if_remote's placement against master's current start/resume bodies never verified -- can no longer occur.",
+    "evidence": "mergeStateStatus CLEAN, not a draft, three checks SUCCESS on head c61644cf8e. I ran docs/testing/jobs/selftest.sh on the resolved tree here: 727 passed, 0 failed, exit 0 -- the figure the commit message states, re-measured rather than read. Read both call sites directly to confirm the gate precedes the brief check, the worktree and the unit in start, and everything in resume."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/testing/jobs/selftest.d/98-lane-shape.sh",
+    "line": "22",
+    "verdict": "CLOSED",
+    "summary": "One number, measured at a named tip, in all three places, and the taxonomy under it reconciles to the file. The count moved 41 -> 61 in remediation; the fragment header (:22-28), NOTES.md:406-407 and the PR body all now say 61 checks, 43 failing against origin/master@11ddd94a66 and 18 passing, and all three give the same procedure.",
+    "scenario": "Pass 1's scenario -- pass 2 unpacking master, running the fragment, getting a fourth number, and being unable to tell a check that became a tautology from a wrong enumeration from a stale note, so it either passes the PR on an unchecked claim or hands back for a re-measurement -- can no longer occur. It did not occur: I got each of the three figures the documents claim.",
+    "evidence": "Re-measured all of it. `grep -c 'check \"'` -> 61. Ran this branch's fragment in a scratch worktree at master@11ddd94a66 (runner byte-identical): the 98 section is 43 FAIL / 18 ok = 61, and the run is 684 passed / 43 failed. I matched the 18 passers by name against the NOTES enumeration's four categories (6 must-not-move legs, 7 negative halves of a pair, 2 arms.sh state legs, 2 H1 trunk legs plus their control) -- exact, one for one, no leftovers on either side. The pre-remediation figure holds too: 16 of 61 fail against 8b185a925f, and the sixteen are H1's four and H2's twelve and nothing else, as the body says."
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/laneshape/NOTES.md",
+    "line": "455",
+    "verdict": "CLOSED",
+    "summary": "The claim is corrected where it is read. The heading is now `## ~~Not mine: 86-fold-regressed.sh is red on master~~ -- SUPERSEDED 2026-09-19, FIXED`, struck through at the heading itself, and the first line under it says the section is history and asks nobody for anything. The two-commit diagnosis is kept as the record. The PR body withdraws the claim in place, in the past tense, naming bb4b78689e, PR #167 and 19:47Z.",
+    "scenario": "Pass 1's scenario -- the board reading a still-open PR that says the trunk's selftest is red and every fold is blocked on an unowned fixture, and dispatching a lane at a defect already fixed; or pass 2 treating a red `jobs selftest` as expected on this branch and letting a real regression through -- can no longer occur.",
+    "evidence": "Read the heading and the paragraph under it. grep over the body fetched from the PR finds `holds up every fold` only inside the withdrawal paragraph; the old headline assertion is gone from the body. This head's three checks are SUCCESS, so the tense is now the correct one for this tree too."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": "610",
+    "verdict": "CLOSED",
+    "summary": "p[\"remote\"] has a reader: READY, NOT FOLDED consults it, so the field is now kept true by something.",
+    "scenario": "Pass 1's note -- a field nothing reads is a field nothing keeps true -- no longer applies.",
+    "evidence": "fleet.py:610-620 branches on p.get(\"remote\")."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": "614",
+    "verdict": "CLOSED",
+    "summary": "A remote lane's ready PR prints `elsewhere` rather than `finished`, which was the one word in that column meaning the local unit is gone.",
+    "scenario": "Pass 1's scenario -- a reader who stops at READY, NOT FOLDED reading `finished` for a lane that is actively pushing from a container this host cannot see -- can no longer occur.",
+    "evidence": "fleet.py:613-617 sets where=\"elsewhere\" for a remote row before the unit test is applied, and the comment says why."
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": "588",
+    "verdict": "CLOSED",
+    "summary": "The comment now says \"No FAIL FROM THIS SECTION\" and states that the PR can still raise one through unfolded/waiting, and should -- a remote lane's ready PR enters the audit pipeline like any other.",
+    "scenario": "Pass 1's scenario -- a later reader taking the comment to mean the change raises no FAIL at all, when lane_prs now admits those PRs and both unfolded and waiting do -- can no longer occur.",
+    "evidence": "fleet.py:588-593, read directly."
+  },
+  {
+    "pass1_id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/jobs/selftest.d/98-lane-shape.sh",
+    "line": "271",
+    "verdict": "CLOSED",
+    "summary": "The mislabelled check is split in two: :271 \"gives every row carrying `remote` a section of its own\" asserts REMOTE LANES (2), and :273 asserts the PR on the branch a territory row names. A failure now names its own assertion.",
+    "scenario": "Pass 1's scenario -- a failure reporting \"counts an open PR\" when what broke was the count of remote rows, one of which deliberately has no PR -- can no longer occur.",
+    "evidence": "98-lane-shape.sh:271-276, read directly."
+  },
+  {
+    "pass1_id": null,
+    "severity": "NOTE",
+    "file": "docs/testing/jobs/selftest.d/98-lane-shape.sh",
+    "line": "209",
+    "verdict": "RECORDED",
+    "summary": "One new H1 leg does not discriminate, for a reason of fixture shape rather than of assertion: \"and the other open PR's head is collected too, not lost with the bad one\" is green against 8b185a925f as well as against this tip. $LSA/repo is both the arms consumer and the pusher of claude/elsewhere-u1 (:105-127), and the push itself creates refs/remotes/origin/claude/elsewhere-u1 in that repo, so the leg is satisfied whether or not the tick's fetch ran.",
+    "scenario": "No failure scenario: the leg asserts something true and worth asserting, and H1's scenario is closed by four other legs that do discriminate (:205, :207, :211, :216). Recorded, at no severity, so a later reader does not count it as evidence of a fetch it cannot observe.",
+    "evidence": "The leg is among the 45 that pass against 8b185a925f. :216 -- refs/remotes/pr/777 exists -- is the leg that proves the PR-head fetch ran, and it does fail against that tip."
+  }
+]
