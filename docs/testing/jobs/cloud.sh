@@ -53,7 +53,6 @@ WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
 GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 TIP="${HAKUX_TIP:-master}"
-TURNS="${CLOUD_TURNS:-120}"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; JOBS="$T/jobs"
 . "$JOBS/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$JOBS/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
@@ -67,6 +66,13 @@ T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"; JOBS="$T/jobs"
 LANE_MAX=$(sed -n 's/^LANE_MAX=\([0-9][0-9]*\).*/\1/p' "$T/lane.sh" 2>/dev/null | head -1)
 . "$JOBS/models.env"; [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 : "${LANE_MAX:=2}"
+# AND THE TURN CAP IS READ HERE, BELOW THE SOURCE, for the reason lane.sh's
+# own TURNS line carries at length. It had the identical shape and the
+# identical defect: `TURNS="${CLOUD_TURNS:-120}"` sat nine lines up, was
+# evaluated before anything set CLOUD_TURNS, and the source below then set
+# CLOUD_TURNS for nobody. LANE_MAX just above survives because limits.env
+# assigns that exact name over it; CLOUD_TURNS is a different name, read once.
+TURNS="${CLOUD_TURNS:-120}"
 mkdir -p "$WORK/wt" "$WORK/briefs" "$WORK/logs/cloud" "$WORK/attempts"
 LOG="$WORK/logs/cloud/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
