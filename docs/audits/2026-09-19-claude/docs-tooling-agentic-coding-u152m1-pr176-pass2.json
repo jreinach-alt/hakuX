@@ -1,0 +1,116 @@
+[
+ {
+  "id": "H1",
+  "pass": 1,
+  "severity": "HIGH",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 254,
+  "verification": "Re-run, not re-read, in four arrangements against synthetic goldens painted from predictions() at the real grid geometry. Absent root: one PROBLEM line per capture, 'compared 0 of 32 modelled halves; 0 differ', '32 modelled halves were NOT compared -- this is a FAILURE, not agreement', exit 1. One capture of four present: 'compared 8 of 32', three PROBLEM lines, exit 1. All four present: 'compared 32 of 32 modelled halves; 0 differ; worst |delta| = 0', exit 0. All four with one half painted +3: 'golden 0x59 model 0x56 off by 3', 'compared 32 of 32; 1 differ; worst |delta| = 3', exit 1 -- so the pass is not bought by leniency. The pass-1 scenario (a reader runs the documented reproduction line against an empty root and records a false re-confirmation) cannot occur. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit.",
+  "note": "The fix is correct. The GATE that proved it could not run in CI at b8aa251b (H1-R); the lane fixed that in 9a4a070d and I re-verified H1 against the new head."
+ },
+ {
+  "id": "M1",
+  "pass": 1,
+  "severity": "MEDIUM",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 26,
+  "verification": "The mode is removed, not patched: __main__ is `args = [a for a in sys.argv[1:] if not a.startswith('--')]` with no --proposed dispatch, and grep finds only prose and coincidence(). The claim is withdrawn where it is read, in all three places -- PR body section 'WITHDRAWN: the fix, simulated at 0 of 32', NOTES.md:99, module docstring :26-40 -- and NOTES.md:35's top-of-file summary row says only 'modelled exactly', which is the golden fit and still stands. The surviving statement of support names the model fit plus an assumption and explicitly denies a simulation. --selftest now demonstrates the coincidence (write_transform == r1_blend_dst_alpha on all 256 values; 0x22 its fixed point) rather than asserting it. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit.",
+  "note": "One of the three checks the commit message offers as M1 regression guards cannot fail -- see M1-R."
+ },
+ {
+  "id": "M2",
+  "pass": 1,
+  "severity": "MEDIUM",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 265,
+  "verification": "glob is sorted(), len(hits) > 1 is refused rather than resolved, and the resolved path is printed once per capture. Duplicate fixture (iso_surf1/ and iso_surf1_rerun/ both carrying one capture): 'PROBLEM: 1-DstAlpha_XA_O1A7RGB8: 2 candidate goldens, ambiguous -- <both paths>', 'compared 24 of 32', '8 modelled halves were NOT compared', exit 1. Every scored capture prints its file, so a transcript is attributable to an artifact. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit."
+ },
+ {
+  "id": "L1",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 80,
+  "verification": "One compose() at :80-94. swatch() delegates to it; the rival loop calls it with (r1, r2). model_with() is gone -- no second transcription of the composition remains, so a rival cannot be refuted by a divergence between two copies. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit."
+ },
+ {
+  "id": "L2",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 25,
+  "verification": "x1a7goldens() counts '^  golden .* ok$' and the check requires -eq 16, not -ge 16 over every line containing ' ok'. Mutant-checked: two GOLDEN_DSTALPHA entries edited to match a wrong model drops the count to 14 and turns three checks red. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit."
+ },
+ {
+  "id": "L3",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 117,
+  "verification": "validate_geometry() compares the grid against the image. A 320x240 golden yields 'PROBLEM: <path>: image is 320x240 but the swatch grid needs at least 592x220', 'compared 24 of 32', exit 1 -- a report naming the file and both dimensions, not ValueError: attempt to get argmax of an empty sequence. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit."
+ },
+ {
+  "id": "L4",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/lanes/remote/NOTES.md",
+  "line": 182,
+  "verification": "Ran the command as written: `grep -rn \"X1A7R8G8B8_[ZO]\" hw/ | grep -v /vk/` returns 11 lines, and every line matches a row of the table, which now lists all eleven in six groups including pgraph.c:4664. The note states '11 lines, in six groups' and explains the earlier conflation. Re-verified against head 9a4a070d after the lane pushed the H1-R fix mid-audit."
+ },
+ {
+  "id": "H1-R",
+  "pass": 2,
+  "severity": "HIGH",
+  "status": "FIXED in 9a4a070d, verified closed",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 62,
+  "summary": "The H1 regression check cannot run on the machine that runs it, and the head is red because of it. score() opens with `import numpy as np` / `from PIL import Image` (x1a7_forward_model.py:255-256), and fragment 76:62 is the FIRST invocation in selftest.d that reaches score() -- no other fragment in the suite imports numpy or PIL. The jobs-selftest workflow is runs-on: ubuntu-latest running `bash docs/testing/jobs/selftest.sh` with no pip install and no setup-python, and the runner has neither module. CI on b8aa251b: 'selftest: 993 passed, 2 failed', and the two failures are exactly lines 65-68, the two word-anchored H1 checks. The pre-remediation head aab3a66f4 was GREEN on this job, so the remediation is what turned it red.",
+  "scenario": "Two. (1) Now: the head is red on the gate of record, so fold.sh will not fold it and the PR sits. (2) If the two word checks are relaxed rather than fixed: the third check, `[ \"$x1a7nrc\" -ne 0 ]`, PASSES on the ImportError -- a traceback exits 1 too -- so the surviving check is satisfied by a script that never reached a line of the H1 logic. The gate written to stop 'a pass over nothing read' would then pass on nothing run, which is H1 one level up, and is the shape the fragment's own header at :14-17 warns about.",
+  "remediation": "Make the H1 path reachable without the imaging stack rather than making the check conditional. The enumerate-and-account half of score() -- glob, ambiguity refusal, missing tally, summary line -- needs neither numpy nor PIL; only the pixel read does. Move the two imports down to where an image is actually opened (or into a _read_modal() helper) so the absent-root and partial cases produce their real verdict on any Python, and the CI check exercises H1's logic instead of an import error. Do NOT skip the section when numpy is absent: a guard keyed on a precondition that exempts the environment lacking it is green having tested nothing. A worded refusal ('cannot score: numpy/PIL unavailable') asserted on is the fallback, but it gates the environment rather than the fix and is strictly weaker.",
+  "evidence": "CI run 35488730468 (jobs selftest, FAILURE): 'FAIL   and says nothing was compared, rather than that nothing differed' / 'FAIL   and calls it a failure in those words' / 'selftest: 993 passed, 2 failed', the only two failures in the run. Reproduced locally by shadowing numpy with a module that raises ImportError and re-running fragment 76 against the real tree: the same two checks, same names, same order, '13 passed, 2 failed'; the script exits 1 on the traceback, which is why the rc check stays green. The remediation comment's '958 passed, 0 failed' is true and I reproduced it exactly on this host -- which has numpy 2.5.2 and PIL 12.3.0. A green local run of this suite is not evidence about this check.",
+  "fixed_by": "9a4a070d517b0c8951502ac5397cd411777411d9",
+  "verification": "score() now resolves the goldens with glob alone, reports first, and imports numpy/PIL only when there is something to open, with an explicit ImportError path that still prints the verdict. Three runs with both modules shadowed by a module that raises ImportError: absent goldens -> \"compared 0 of 32\", \"NOT compared -- this is a FAILURE\", exit 1; goldens PRESENT (the dangerous case) -> \"PROBLEM: cannot compare: shadowed\", \"compared 0 of 32\", same FAILURE line, exit 1; real environment with all four captures -> \"compared 32 of 32 modelled halves; 0 differ\", exit 0. The gate now guards its own fix: a mutant reverting the imports to the top of score() turns two checks red. Fragment 76 grew from 15 checks to 17 and is 17 passed, 0 failed on the new head."
+ },
+ {
+  "id": "M1-R",
+  "pass": 2,
+  "severity": "MEDIUM",
+  "status": "OPEN",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 54,
+  "summary": "`check \"no --proposed mode is advertised\" x1a7hasnt \"scoring the PROPOSED implementation\" \"$X1A7\"` greps the wrong artifact and cannot fail. $X1A7 is the output of --selftest, and that string was never printed by --selftest: in the pre-remediation file it was printed by score() on the --proposed path (b07c1229:...:267). The assertion is green against the exact code it forbids, and always was. The other two M1 checks cannot help -- they assert the write transform EQUALS R1 and that 0x22 is its fixed point, which is precisely what stays true when the mode returns.",
+  "scenario": "A later lane reads the docstring's long account of --proposed and reinstates it as a convenience, or a fold resolves a conflict in __main__ by taking the older side. Fragment 76 stays 15/15, the check named for exactly this event reports ok, and the next auditor reading the gate concludes the mode cannot be restored silently. The commit message's claim -- 'three M1 ones, so neither the silent pass nor the vacuous mode can return unnoticed' -- is not supported by the gate for the vacuous-mode half.",
+  "remediation": "Grep the artifact the mode would actually write: run the script with --proposed against a scratch path and assert the advertisement is absent from THAT output; or, better, because it does not depend on the wording of a string that no longer exists, assert against the source that __main__ contains no --proposed dispatch. Either must be mutant-checked: reinstating the mode has to turn it red.",
+  "evidence": "Mutant: reinstate a --proposed branch in __main__ printing the old advertisement, change nothing else. Fragment 76 against that tree: 15 passed, 0 FAILED -- identical to the baseline. For contrast, the pre-remediation model file turns 7 checks red, write_transform truncation turns 2 red, and an edited golden table turns 3 red, so the rest of the fragment does discriminate. Re-run against head 9a4a070d: baseline fragment 76 is 17 passed, 0 failed, and the reinstated-mode mutant is also 17 passed, 0 failed. The check is green on b07c1229's own file too -- it is not among the nine red checks in that mutant."
+ },
+ {
+  "id": "L-new",
+  "pass": 2,
+  "severity": "LOW",
+  "status": "OPEN",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 196,
+  "summary": "coincidence() computes `differ` over all 1,024 inputs and selftest() unpacks it as `_`. The line the reader sees -- 'so TestDstAlpha cannot distinguish them over any of 1024 inputs' -- takes its number from total = 256 * 2 * 2, a product of constants, not from the sweep that was just run and discarded. Nothing is wrong today (same_fn implies differ == 0, since compose is the only path), so this is quality rather than a defect: but it is a figure in prose standing where a scored count should be.",
+  "scenario": "A reader cites '1024 inputs' as a measured agreement; it is a literal. If the two compositions ever could diverge, the one line that would notice is the one thrown away.",
+  "remediation": "`bad += differ != 0` and print differ beside total. One line, and the sentence becomes measured."
+ },
+ {
+  "id": "L-new-2",
+  "pass": 2,
+  "severity": "LOW",
+  "status": "OPEN",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 265,
+  "summary": "New in 9a4a070d. The pre-import resolve pass keeps only len(hits) == 1, and if `resolved` is empty it prints '<name>: no golden under <root>' for every name and returns. With two candidate directories for all four captures the run prints four 'no golden under <root>' lines under a root that holds eight goldens -- the opposite of what happened. The verdict is right (compared 0 of 32, FAILURE, exit 1) and M2's real scenario still reports correctly, because a stale set beside a fresh one normally leaves at least one capture resolvable and the main loop then prints the ambiguity with both paths.",
+  "scenario": "A lane unpacks a complete second run beside the first, every capture is duplicated, and the tool says 'no golden under <root>'. The reader goes looking for a missing file instead of a duplicate one.",
+  "remediation": "Distinguish the two cases in the early return -- one branch. It would also let the second glob pass be dropped, since `resolved` already holds every answer the main loop re-derives.",
+  "evidence": "Fixture with iso_surf1/ and iso_surf1_rerun/ both carrying all four captures: four 'PROBLEM: <name>: no golden under <root>' lines, 'compared 0 of 32', exit 1."
+ }
+]

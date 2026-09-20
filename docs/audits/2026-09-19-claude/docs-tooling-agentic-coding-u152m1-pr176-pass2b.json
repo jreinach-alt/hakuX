@@ -1,0 +1,115 @@
+[
+ {
+  "id": "M1-R",
+  "pass": 2,
+  "severity": "MEDIUM",
+  "status": "CLOSED",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 60,
+  "verification": "The retired check grepped --selftest's output for a string only score() ever printed. It is replaced by two source assertions (:60-63, no \"'--proposed' in sys.argv\" wiring, no \"def proposed_predictions\") and one behavioural assertion (:96-99, --proposed output must equal no-flag output). Verified by mutant, not by reading the commit. Mutant A, b07c1229's own __main__ restored verbatim (old spelling, the \"not today's behaviour\" advertisement, proposed_predictions): fragment 76 goes 3 FAIL -- all three new checks. Mutant B, the same mode under a spelling that evades both source greps (flags = set(...), helper renamed) but still printing the advertisement: 1 FAIL, the behavioural check. The whole pre-remediation model file: 12 of 19 red, up from 9 of 17 at 9a4a070d. Baseline at e58fce12: 19 passed, 0 failed. Confirmed on the gate of record: jobs selftest run 35489863745 on e58fce12 is 999 passed, 0 failed and its log carries both 'ok   no --proposed mode is wired into argv' and 'ok   passing --proposed selects no different mode', so the new guards run on the machine with no numpy and no PIL.",
+  "note": "The residual -- a silent mode that diverges only once goldens resolve -- is recorded separately as L2b-2, a LOW, because it is outside the scenario M1-R described."
+ },
+ {
+  "id": "L-new",
+  "pass": 2,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 233,
+  "verification": "selftest() now unpacks differ, counts it (bad += differ != 0) and prints 'substituting the write transform changes 0 of 1024 inputs  ok'. Verified the number is the sweep's and not a literal: mutant F (write_transform truncates instead of bit-replicating) prints 'changes 512 of 1024 inputs  UNEXPECTED' and 'the write transform is r1_blend_dst_alpha on all 256 values NO LONGER TRUE', and fragment 76 goes 2 red on that tree. The figure moves with the measurement."
+ },
+ {
+  "id": "L-new-2",
+  "pass": 2,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 277,
+  "verification": "Fixture with iso_surf1/ and iso_surf1_rerun/ both carrying ALL FOUR captures -- the corner where `resolved` is empty. The run now prints one 'PROBLEM: <name>: 2 candidate goldens, ambiguous -- <both paths>' per capture, then 'compared 0 of 32 modelled halves', the FAILURE line, exit 1. No 'no golden under <root>' under a root holding eight goldens. The partial case (one capture duplicated) still reports 'compared 24 of 32' with both candidates named, exit 1."
+ },
+ {
+  "id": "H1",
+  "pass": 1,
+  "severity": "HIGH",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 259,
+  "verification": "Re-run at e58fce12 rather than assumed to have survived the remediation's edit to score()'s resolve pass. Absent root and empty root: 'compared 0 of 32 modelled halves', '32 modelled halves were NOT compared -- this is a FAILURE, not agreement', exit 1. One capture of four: 'compared 8 of 32', exit 1. All four: 'compared 32 of 32; 0 differ; worst |delta| = 0', exit 0. All four with one half painted +3: '1 differ; worst |delta| = 3', exit 1 -- the accounting still fails on a real disagreement."
+ },
+ {
+  "id": "M1",
+  "pass": 1,
+  "severity": "MEDIUM",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 26,
+  "verification": "The mode is still absent at e58fce12 and is now guarded by checks that fail when it returns (see M1-R). The withdrawal still reaches all three places it is read -- PR body, NOTES.md:101-106, module docstring -- and NOTES.md's '1,024 inputs' now matches a swept, printed count rather than a literal."
+ },
+ {
+  "id": "M2",
+  "pass": 1,
+  "severity": "MEDIUM",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 275,
+  "verification": "sorted() glob, len(hits) > 1 refused rather than resolved, resolved path printed once per capture (4 of 4 on the full fixture, checked in the transcript). Duplicate fixtures in both the partial and the all-ambiguous shape report the ambiguity with both paths and exit 1."
+ },
+ {
+  "id": "L1",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 80,
+  "verification": "One compose() at :80-94, unchanged by this remediation; swatch() delegates and the rival loop calls it with (r1, r2). No second transcription of the composition exists."
+ },
+ {
+  "id": "L2",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 27,
+  "verification": "The gate counts '^  golden .* ok$' and requires exactly 16. Still red on a golden table edited to match a wrong model, and red (16 -> other) on the pre-remediation file."
+ },
+ {
+  "id": "L3",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 118,
+  "verification": "320x240 goldens: 'PROBLEM: <path>: image is 320x240 but the swatch grid needs at least 592x220' per file, 'compared 0 of 32', exit 1 -- a report naming the file and both dimensions, not ValueError on an empty argmax."
+ },
+ {
+  "id": "L4",
+  "pass": 1,
+  "severity": "LOW",
+  "status": "CLOSED",
+  "file": "docs/lanes/remote/NOTES.md",
+  "line": 0,
+  "verification": "Unchanged since pass 2 verified it: the quoted command is the one that was run, and its eleven lines all appear in the table."
+ },
+ {
+  "id": "L2b-1",
+  "pass": "2b",
+  "severity": "LOW",
+  "status": "OPEN",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 59,
+  "summary": "X1A7SRC=$(cat \"$REPO/docs/testing/x1a7_forward_model.py\") and two x1a7hasnt assertions over it. If the read fails, X1A7SRC is empty and both negative assertions report ok -- a negated check over an empty artifact, the shape M1-R itself was.",
+  "scenario": "An auditor reads the fragment and credits those two checks with proving the mode is absent, when on an unreadable file they prove nothing. Bounded: measured with the model file absent from the tree, those two pass while 12 other checks in the same fragment fail, so the vacuous pass is never the only thing on screen and cannot produce a green run over nothing.",
+  "remediation": "Assert the read succeeded before the two negatives -- x1a7has \"def score(\" \"$X1A7SRC\" -- and mutant-check it by pointing $REPO at a tree without the file."
+ },
+ {
+  "id": "L2b-2",
+  "pass": "2b",
+  "severity": "LOW",
+  "status": "OPEN",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 96,
+  "summary": "The behavioural guard compares '--proposed <nonexistent root>' with '<nonexistent root>'. Both return from the early `if not resolved:` branch before any prediction set is consulted, so a mode that diverges only after goldens resolve looks identical to no mode at all.",
+  "scenario": "Mutant C: --proposed selects a different prediction set, prints no banner, and is not spelled \"'--proposed' in sys.argv\". Fragment 76 stays 19 passed, 0 failed and the check named for exactly this event reports ok. Bound: every reinstatement that prints anything, and every one that copies the historical spelling, is caught -- which covers the mode M1-R described, whose whole danger was the advertisement.",
+  "remediation": "Assert against the source that __main__ dispatches on nothing but --selftest -- e.g. that --proposed does not appear below the docstring at all -- rather than on one spelling of the argv test. Mutant C then goes red."
+ }
+]
