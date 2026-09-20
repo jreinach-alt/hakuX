@@ -40,3 +40,37 @@ Done when: the fix is pushed on lane/clrsurf91 with the prediction
 committed, the PR body follows roles/lane.md's template, states its effect
 on #88 (does the fix let #88's policy ship, or does #88 still need a
 separate decision), and the PR is marked ready.
+
+RESUMED 2026-09-20 (job.board): PR #148 is open, `fold-ready` + `regressed`.
+The registered arm on `7980d1caa2` came back FAIL: arm B is BYTE-IDENTICAL to
+arm A on all 11 captures (Color_zeta_overlap/Swap still 304,750, not the
+predicted 165,447) -- the fix moved nothing. That refutes the ROUTE
+(`update_surface_part()`'s gate is not how the bad word reaches Swap's
+background on this policy), not the byte arithmetic (0xFE242424 -> 0x00000024
+is still exactly a depth-only clear landing on colour; no other reading has
+been produced).
+
+Falsifier (5) in the registered prediction was unreadable by the auditor
+(sandboxed, no run-dir access) and is the next step: `dl91_probe`'s counter
+only exists in arm B (`7980d1caa2`), not arm A, so read it from arm B's own
+run, not by comparing arms.
+
+    grep -h '\[dl91\]' <arm-B run dir>/**/logcat*
+    # arm B ref 7980d1caa2, result dir 1789825274-arms-clrsurf91-fix-1110297
+
+- `n == 0`: the declined branch never fired in this suite. The mechanism is
+  refuted outright, on the prediction's own terms -- the byte-identical arms
+  are then fully explained (the fix had nothing to decline), and the next
+  step is finding the real route to Swap's background, not patching this one
+  harder.
+- `n > 0` with the arms still byte-identical: the branch fired and every
+  declined download would already have written the same bytes at that
+  address. Read why before concluding the fix is a no-op -- this is the more
+  interesting case and may point at a second site.
+
+Read the full `[job.arms] VERDICT: FAIL` comment on PR #148 (2026-09-19T16:18Z)
+before doing anything else; it has the complete falsifier list and what this
+arm cannot see. Do not remove `regressed` by hand -- `arms.sh` clears it from
+a fresh verdict, never from an edit to the label. If the mechanism is refuted,
+say so on the PR and in `status_note`, and register what replaces it; do not
+re-run the identical arm expecting a different byte-identical result.
