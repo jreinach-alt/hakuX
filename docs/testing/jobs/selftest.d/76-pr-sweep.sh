@@ -32,6 +32,15 @@ for f in "$HERE"/*.sh "$HERE"/*.py "$HERE"/*.env "$HERE"/allowed-tools.*; do
     [ -e "$f" ] && ln -sf "$f" "$PS/jobs/$(basename "$f")"
 done
 ln -sfn "$HERE/roles" "$PS/jobs/roles" 2>/dev/null || true
+# THE SCRATCH TREE IS A docs/testing, NOT JUST A jobs/. pr-sweep.sh sources
+# remote-lane.sh, which reads territory.toml through board_files.py from
+# `dirname $J` -- so without these two the map read comes back `unreadable`
+# and the sweep refuses every tick below for a fault the fixture invented.
+# HAKUX_BOARD_REF= in ps() is what makes this file the board rather than a
+# fold-lagged fallback; see 78-sweep-remote.sh for the checks on that
+# distinction, which are that fragment's whole subject.
+ln -sf "$(dirname "$HERE")/board_files.py" "$PS/board_files.py"
+printf 'wave = 1\nupdated_utc = "2026-09-19T00:00:00Z"\n' > "$PS/territory.toml"
 
 # `rm -f` BEFORE EVERY WRITE INTO THE SCRATCH TREE, AND IT IS NOT A TIDINESS
 # HABIT. `cat > $PS/jobs/cloud.sh` FOLLOWS the symlink and writes the stub into
@@ -113,7 +122,8 @@ PS_WORK="$PS/work"
 ps_reset() { rm -rf "$PS_WORK"; mkdir -p "$PS_WORK/logs/board"; : > "$PS_LOG"; : > "$PS/comments.log"
              : > "$PS/active"; : > "$PS/handback.list"; : > "$PS/arms.state"; : > "$PS/claim.body"
              echo active > "$PS/board-timer"; touch "$PS_WORK/logs/board/tick.log"; }
-ps() { ( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK"; bash "$PS/jobs/pr-sweep.sh" "$@" 2>&1 ); }
+ps() { ( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK" HAKUX_BOARD_REF=
+          bash "$PS/jobs/pr-sweep.sh" "$@" 2>&1 ); }
 ps_said()   { grep -qF -- "$1" "$PS/comments.log"; }
 ps_unsaid() { ! grep -qF -- "$1" "$PS/comments.log"; }
 # ANCHORED ON THE CALL, NOT ON THE WORDS. The gh shim logs every argument it
@@ -385,7 +395,8 @@ check "  (control)"                                      ps_row stale-red 214
 # did not run rather than printing an empty list that reads as "none".
 ps_reset
 ps_pr 204 lane/stale false MERGEABLE fold-ready 200000 "selftest:FAILURE:-600"
-( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK" HAKUX_REPO_DIR="$PS/not-a-repo" HAKUX_TIP=nope
+( export PATH="$PS/bin:$PATH" HAKUX_WORK="$PS_WORK" HAKUX_REPO_DIR="$PS/not-a-repo" HAKUX_TIP=nope \
+         HAKUX_BOARD_REF=
   bash "$PS/jobs/pr-sweep.sh" >/dev/null 2>&1 )
 check "with no readable trunk head the stale class is disabled, and says so" \
       ps_report "did not run this tick"

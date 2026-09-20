@@ -50,6 +50,15 @@ TIP="${HAKUX_TIP:-master}"
 J="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 TESTING="$(dirname "$J")"
 . "$J/localtime.sh"   # say_time_s: the display zone. Data timestamps below stay `date -u`.
+# NOT A BARE `.`, for lane.sh's reason: without the guard a missing file leaves
+# remote_authoritative undefined, the command-not-found does not stop a script
+# with no `set -e`, and the gate below would run to completion having checked
+# nothing -- on the one question whose wrong answer hands a live lane's
+# territory to the board as stale.
+. "$J/remote-lane.sh" || {
+    echo "issue-sweep: could not load $J/remote-lane.sh, so this tick cannot tell a remote lane from a dead one; it writes nothing." >&2
+    exit 0
+}
 mkdir -p "$WORK/logs/issue-sweep" "$WORK/status" "$WORK/board"
 LOG="$WORK/logs/issue-sweep/tick.log"
 REPORT="$WORK/status/issue-sweep.md"
@@ -62,6 +71,12 @@ mode="${1:-run}"
 # two hundred chances to dispatch it; anything shorter reports the ordinary
 # condition of a backlog under a lane cap.
 AVAIL_SECS="${ISSUE_SWEEP_AVAIL_SECS:-259200}"
+# How long a REMOTE lane's branch tip may sit unmoved before the sweep is
+# willing to call its territory claim stale. Same three days, and set HERE
+# beside its neighbour rather than at its point of use: $WORK/limits.env is
+# sourced on the next line, and a dial assigned after it is one the owner's
+# file cannot raise.
+REMOTE_QUIET_SECS="${ISSUE_SWEEP_REMOTE_QUIET_SECS:-259200}"
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 
 if ! command -v gh >/dev/null 2>&1 || ! timeout 30 gh auth status >/dev/null 2>&1; then
@@ -77,7 +92,73 @@ fi
 # fold-lagged behind it by whole waves -- so a sweep that read the tree would
 # report rows the board fixed hours ago. Fetch the ref before reading it, the
 # way board.sh does, and print which source was used.
-git -C "$REPO" fetch -q origin "$TIP" board 2>/dev/null || true
+#
+# TWO FETCHES, NOT ONE COMMAND WITH TWO REFSPECS. `git fetch origin master
+# board` fails the WHOLE invocation with exit 128 when either name matches no
+# remote ref, and updates NOTHING -- so a host whose origin has no `board`
+# branch yet would silently not fetch the trunk either. One refspec per call
+# means one missing ref costs only itself.
+git -C "$REPO" fetch -q origin "$TIP" 2>/dev/null || true
+git -C "$REPO" fetch -q origin board 2>/dev/null || true
+
+# ------------------------------------------- the lanes this host cannot see
+#
+# WHY THIS GATE IS THE FIRST THING AFTER THE FETCH. The `ghost` class below
+# decides that a territory claim is stale, and it decides it from an ABSENCE:
+# no unit, no open PR. `lane.remote` is a cloud session that has neither by
+# design -- no local systemd unit ever, and no open PR between PRs -- so the
+# absence test called it dead and handed its live claims to the board as stale
+# (four of them on 2026-09-19: #158, #62, #60, #34). Releasing a live lane's
+# territory is how two agents end up editing one file, which is the single
+# thing territory.toml exists to prevent.
+#
+# THE MAP HAS TO BE THE BOARD'S, AND `remote_authoritative` IS THE ONLY
+# PREDICATE THAT SAYS SO. remote-lane.sh's header spells out the third outcome:
+# board_files.load() falls back to the fold-lagged IN-TREE territory.toml when
+# origin/board cannot be read, and returns it SUCCESSFULLY. That copy reaches a
+# tree only when some later fold carries it over, so it is exactly the copy
+# guaranteed to be missing a `remote` marker the board has just written. Read
+# through `remote_readable` this tick would proceed on a map missing the one
+# row it exists for -- the same findings, the same release, and no symptom.
+#
+# So a map that is not the board's disables the WHOLE tick, not just the ghost
+# class. This sweep's every class compares live GitHub against the board's
+# files; on a stale board it reports rows the board fixed hours ago, in every
+# class at once. It already says as much four paragraphs up. This enforces it.
+# The cure is one command and the refusal names it.
+if ! remote_authoritative; then
+    say "the board read came back \`$(remote_source)\` rather than origin/board, so this tick cannot tell a remote lane from a dead one, and every class it reports would be read from a fold-lagged copy. It writes nothing and leaves any existing findings alone. Cure: \`git fetch origin board\` in $REPO -- or, on a host that has no board branch at all, set HAKUX_BOARD_REF= to say that the in-tree copy IS the board."
+    exit 0
+fi
+
+# WHAT THIS HOST CAN ACTUALLY SEE OF A REMOTE LANE. Not a unit -- there never
+# is one -- so: an open PR on ITS branch (not on `lane/<name>`, which is not
+# its branch and never will be), and the commit time of that branch's tip. A
+# lane that has pushed is unambiguously working, and a push is the one thing a
+# remote session does that this host can read for free.
+#
+# ITS COMMENTS ARE THE OTHER SIGNAL AND ARE DELIBERATELY NOT HERE. There is no
+# cheap query for "has lane.X commented anywhere recently": it is a search
+# across every open issue and PR, per lane, twice a day, and the answer it
+# gives is strictly weaker than the branch tip -- a session can comment without
+# having done anything, and cannot push without having. The tip is the
+# evidence; if it ever stops being enough, the thing to add is the search, and
+# this paragraph is what to re-read first.
+#
+# A TIP THAT CANNOT BE READ IS NOT AN OLD TIP. The branch may not be on this
+# origin at all (a fork, a ref nobody fetched). "Cannot tell" is not "dead",
+# and the safe direction here is silence: the cost of a claim held a day too
+# long is a file nobody else may edit, and the cost of the other direction is
+# two agents on one.
+remote_rows=""
+while IFS=$'\t' read -r rbranch rlane; do
+    [ -n "${rbranch:-}" ] && [ -n "${rlane:-}" ] || continue
+    git -C "$REPO" fetch -q origin "+refs/heads/$rbranch:refs/remotes/origin/$rbranch" 2>/dev/null || true
+    rtip=$(git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$rbranch" 2>/dev/null || echo "")
+    case "${rtip:-}" in ''|*[!0-9]*) rtip="" ;; esac
+    remote_rows="${remote_rows}${rlane}	${rbranch}	${rtip}
+"
+done <<< "$(remote_map)"
 
 issues=$(timeout 60 gh issue list --repo "$GH_REPO" --state open --limit 300 \
            --json number,title,labels,updatedAt 2>/dev/null)
@@ -92,12 +173,12 @@ pr_heads=$(timeout 60 gh pr list --repo "$GH_REPO" --state open --limit 100 \
 units=$(systemctl --user list-units 'hakux-lane-*' --state=active,activating --no-legend 2>/dev/null \
         | awk '{print $1}' | sed 's/\.service$//')
 
-report=$(python3 - "$TESTING" "$issues" "$pr_heads" "$units" "$AVAIL_SECS" <<'PY'
+report=$(python3 - "$TESTING" "$issues" "$pr_heads" "$units" "$AVAIL_SECS" "$remote_rows" "$REMOTE_QUIET_SECS" <<'PY'
 import datetime
 import os
 import sys
 
-testing, issues_raw, heads_raw, units_raw, avail_raw = sys.argv[1:6]
+testing, issues_raw, heads_raw, units_raw, avail_raw, remote_raw, rquiet_raw = sys.argv[1:8]
 sys.path.insert(0, testing)
 import json
 import board_files
@@ -105,6 +186,17 @@ import board_files
 heads = set(h.strip() for h in heads_raw.splitlines() if h.strip())
 units = set(u.strip() for u in units_raw.splitlines() if u.strip())
 AVAIL = int(avail_raw) if avail_raw.isdigit() else 259200
+RQUIET = int(rquiet_raw) if rquiet_raw.isdigit() else 259200
+
+# lane -> (branch, tip epoch or None), built in bash from remote-lane.sh's map
+# and this repository's refs. Empty is the ordinary case and means every lane
+# is local; it is NOT the "could not read" case, which never reaches here --
+# the tick refuses before this runs.
+REMOTE = {}
+for line in remote_raw.splitlines():
+    parts = line.split("\t")
+    if len(parts) == 3 and parts[0] and parts[1]:
+        REMOTE[parts[0]] = (parts[1], int(parts[2]) if parts[2].isdigit() else None)
 
 try:
     terr = board_files.load("territory.toml")
@@ -142,13 +234,48 @@ def days(sec):
     return "%.1fd" % (sec / 86400.0) if sec is not None else "unknown"
 
 
-def lane_live(name):
-    """The two facts that are NOT a board file: a running unit, or an open PR.
+def lane_absence(name):
+    """None when the lane still exists; otherwise the phrase that says how it is gone.
 
-    fleet.py had to relearn this one: liveness comes from systemd and the rest
-    from GitHub, never from a file that records what was true once.
+    The facts that are NOT a board file: a running unit, or an open PR.
+    fleet.py had to relearn that one -- liveness comes from systemd and the
+    rest from GitHub, never from a file that records what was true once.
+
+    A REMOTE LANE HAS NEITHER OF THOSE FACTS AND IS NOT DEAD. `lane.remote` is
+    a cloud session: no local unit ever, and no open PR between PRs. Asking
+    systemd about it is asking the wrong host, and asking for `lane/<name>` is
+    asking for a branch that is not its branch. What this host can see of it is
+    an open PR on the branch its territory row names, and that branch's tip.
+
+    It returns a PHRASE rather than a bool because the phrase goes on the
+    finding: a reader handed "no unit and no open PR" about a cloud lane is
+    being told something true of every cloud lane at every moment, and would
+    reasonably release the claim.
     """
-    return ("hakux-lane-%s" % name) in units or ("lane/%s" % name) in heads
+    r = REMOTE.get(name)
+    if r is None:
+        if ("hakux-lane-%s" % name) in units:
+            return None
+        if ("lane/%s" % name) in heads:
+            return None
+        return "has no unit and no open PR"
+    branch, tip = r
+    if branch in heads:
+        return None
+    if tip is None:
+        # The branch is not on this origin, or could not be fetched. "Cannot
+        # tell" is not "dead"; see the header above the fetch loop in bash.
+        return None
+    quiet_for = int(now.timestamp() - tip)
+    if quiet_for <= RQUIET:
+        return None
+    return ("is a REMOTE lane on `%s` (it has no local unit by design, so that "
+            "is not evidence), and that branch's tip has not moved in %s and it "
+            "has no open PR" % (branch, days(quiet_for)))
+
+
+def lane_live(name):
+    return lane_absence(name) is None
 
 
 def lane_exists(name):
@@ -225,16 +352,17 @@ for r in issues:
     ghosts = []
     for lbl in names:
         if lbl.startswith("lane:") and not lane_exists(lbl[5:]):
-            ghosts.append("label `%s` (no unit, no territory row, no open PR on lane/%s)"
-                          % (lbl, lbl[5:]))
+            ghosts.append("label `%s` (no territory row, and the lane %s)"
+                          % (lbl, lane_absence(lbl[5:])))
     for lane in owned.get(n, []):
         # `standing` rows are a deliberate long-lived reservation and are not
         # tied to a session at all, so "no unit" says nothing about them.
         if (lanes.get(lane) or {}).get("standing"):
             continue
-        if not lane_live(lane):
-            ghosts.append("territory row `lane.%s` claims it and that lane has no unit and no open PR"
-                          % lane)
+        gone = lane_absence(lane)
+        if gone is not None:
+            ghosts.append("territory row `lane.%s` claims it and that lane %s"
+                          % (lane, gone))
     if ghosts:
         ghost.append((n, title, ghosts, quiet))
 
@@ -262,6 +390,14 @@ for r in issues:
 out = []
 w = out.append
 w("Board source: %s" % src)
+# SAID EVEN WHEN NOTHING IS WRONG WITH THEM, because the reader of a finding
+# about a remote lane needs to know the sweep knew it was one -- and because a
+# tick that has stopped seeing them at all (a marker dropped from the board,
+# say) reads exactly like a tick where there are none.
+if REMOTE:
+    w("Remote lanes, judged by branch tip and not by a unit: %s"
+      % ", ".join("lane.%s on `%s`%s" % (l, b, "" if t else " (tip unreadable here)")
+                  for l, (b, t) in sorted(REMOTE.items())))
 w("")
 if norow:
     w("### %d open issue(s) with NO tracker row" % len(norow))
@@ -278,13 +414,15 @@ if ghost:
     w("### %d open issue(s) owned by a lane that no longer exists" % len(ghost))
     w("")
     w("A lane exists if it has an active `hakux-lane-*` unit, a `territory.toml` "
-      "row, or an open PR on `lane/<name>`. None of these has any of the three. "
+      "row, or an open PR on `lane/<name>` -- or, for a lane whose row carries "
+      "`remote`, an open PR on the branch that row names or a branch tip that "
+      "has moved inside %s. None of these has any of those. "
       "An issue carrying a `lane:` label is skipped by your own capacity filter "
       "(`board_filter`'s SKIP_PREFIX), so a label for a dead lane makes the "
       "issue invisible to dispatch permanently -- the same shape as an orphaned "
       "`claimed:cloud`, with no `finish` to run. Decide per issue: the work "
       "landed (close it, or set the status), or it did not (drop the stale "
-      "label and the stale row, and it becomes dispatchable again).")
+      "label and the stale row, and it becomes dispatchable again)." % days(RQUIET))
     w("")
     for n, t, gs, q in ghost:
         w("- #%s %s -- quiet %s" % (n, t[:70], days(q)))
@@ -328,7 +466,13 @@ if unpicked:
     for n, t, q in unpicked:
         w("- #%s %s -- quiet %s" % (n, t[:70], days(q)))
     w("")
-if len(out) <= 2:
+# COUNTED ON THE HEADINGS, NOT ON THE LENGTH. `len(out) <= 2` meant "only the
+# two header lines", which is true until the header grows a line -- and then
+# the quiet verdict is never printed and a clean sweep reads as an unfinished
+# one. The thing being asked is "did any class speak", and `### ` is how a
+# class speaks; it is also what `n_find` counts in bash, so the two agree by
+# construction rather than by both being edited at the same time.
+if not any(line.startswith("### ") for line in out):
     w("Nothing stuck: every open issue has a tracker row, a live owner or none, "
       "a triaged disposition, and no row claims finished work on an open issue.")
 print("\n".join(out))
