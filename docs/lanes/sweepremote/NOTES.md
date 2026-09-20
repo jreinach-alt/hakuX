@@ -316,3 +316,36 @@ line and the measurement that shows it is the only thing missing.
 
 Prediction: none -- this is harness code and touches no renderer path, so no
 arm can see it.
+
+## Why attempt 1 stopped, and what the second session found changed
+
+**It stopped waiting, correctly, in the one state the harness had no actor
+for.** At 2026-09-20T03:50Z every item of `roles/lane.md`'s definition of done
+was finished except the last: the branch was pushed, `preflight.sh` was green,
+the PR body's `Files:` matched the diff, this file was written and the
+prediction was declared `none`. What was left was CI on `03f5dc5a3d`, which
+takes about ten minutes and which a session has no way to sleep through. So it
+posted `[lane.sweepremote] waiting:` naming the sha and the signal, and ended
+-- and `jobs/handback.sh` resumed it at 05:51Z with "CI GREEN on that sha".
+
+That is the shape this lane should be read as: **nothing was unfinished, and
+nothing here was re-measured on the resume.** The one gap was that a finished,
+green PR was still a draft, which `board.sh`, `fleet.py` and `fold.sh` all
+skip. The handback job exists for exactly that gap; without it this branch sits
+green and invisible indefinitely. If you resume a lane of your own in this
+state, the work to do is the *last* item and nothing else.
+
+Re-checked at the top of attempt 2, because the whole outcome of this PR turns
+on one of them:
+
+| | attempt 1 (03:50Z) | attempt 2 (05:5xZ) |
+|---|---|---|
+| CI on `03f5dc5a3d` | pending | **GREEN** (build, build, selftest) |
+| mergeable vs master | -- | `MERGEABLE` / `CLEAN`, 52 behind and no conflict |
+| `preflight.sh` on this branch | passed | passed, territory and coverage both ok |
+| `remote_source` / `remote_authoritative` | `board` / rc 0 | unchanged |
+| `remote` marker on `[lane.remote]` | absent, wave 128 | **still absent, wave 129** (`updated_utc` 2026-09-20T03:40Z) and `remote_map` is still empty |
+
+So the request in the PR body and in the comment above it is still the live
+one, and it is still the board's to make, not this lane's. Nothing on the
+branch changed on the resume but this section.
