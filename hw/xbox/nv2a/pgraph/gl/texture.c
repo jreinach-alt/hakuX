@@ -867,6 +867,45 @@ void pgraph_gl_bind_textures(NV2AState *d)
         TextureLruNode *key_out = container_of(found, TextureLruNode, node);
         possibly_dirty |= (key_out->binding == NULL) || key_out->possibly_dirty;
 
+        /*
+         * data_hash describes the GUEST BYTES a binding was generated from,
+         * and pgraph_gl_render_surface_to_texture() overwrites the binding's
+         * pixels without touching it. So a binding last filled by the
+         * surface-to-texture blit no longer holds what data_hash claims, and
+         * asking the hash whether it is current gets a confident wrong answer
+         * -- must_destroy below stays false and the BLITTED pixels are served
+         * as if they were the texture the guest asked for.
+         *
+         * Measured on Blend surface (#60, #71): Blend_surface::TestDstAlpha
+         * points texture stage 0 at GetTextureMemoryForStage(0) with the same
+         * shape every suite, so one cache key is shared by tests whose surface
+         * format DOES take the fast path (A8R8G8B8) and tests whose format
+         * does not (X1A7R8G8B8_{Z,O} has no case in
+         * pgraph_gl_check_surface_to_texture_compatibility()). On
+         * DstAlpha_XA_O1A7RGB8's first swatch the recorded hash and the live
+         * VRAM hash were both 141e1a7bae3fe174 -- guest memory really was
+         * all-zero and really did match -- while glGetTexImage on the bound
+         * texture read ffffff22, an earlier A8R8G8B8 surface's blit.
+         * 16,384 px, and it is the WHOLE of the GL/Vulkan divergence across
+         * the ten X1A7 captures: the other nine are byte-identical between
+         * the backends and so is every other swatch of this one.
+         *
+         * draw_time is the discriminator rather than a new flag because it
+         * already means exactly this: generate_texture() sets it to 0 and the
+         * s2t branch below is the only writer. The early-reuse path at the
+         * top of this loop has always known better than the hash -- it
+         * compares draw_times and not bytes -- and this is the same knowledge
+         * the slow path was missing.
+         *
+         * Forcing possibly_dirty as well is not belt and braces: the hash is
+         * only computed when it is set, and a regenerated binding whose
+         * data_hash was left 0 would never match again and would re-upload on
+         * every draw.
+         */
+        bool stale_surface_fill = key_out->binding != NULL && !surf_to_tex &&
+                                  key_out->binding->draw_time != 0;
+        possibly_dirty |= stale_surface_fill;
+
         if (!surf_to_tex && !possibly_dirty_checked) {
             possibly_dirty |= check_texture_possibly_dirty(
                     d,
@@ -891,7 +930,8 @@ void pgraph_gl_bind_textures(NV2AState *d)
         // Free existing binding, if texture data has changed
         bool must_destroy = (key_out->binding != NULL)
                             && possibly_dirty
-                            && (key_out->binding->data_hash != tex_data_hash);
+                            && (stale_surface_fill ||
+                                key_out->binding->data_hash != tex_data_hash);
         if (must_destroy) {
             texture_binding_destroy(key_out->binding);
             key_out->binding = NULL;

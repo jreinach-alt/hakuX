@@ -1494,37 +1494,37 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:982",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1022",
    "symbols": [],
    "text": "assert(!\"Invalid format\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1016",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1056",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1094",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1134",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1141",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1181",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
-  },
-  {
-   "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1281",
-   "symbols": [],
-   "text": "assert(false);"
   },
   {
    "kind": "ABORT",
    "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1321",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1361",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "0dc61c5bee12823f52e3fc87ca6166315dd32650",
+  "emulator_commit": "aa3648cba2a214ed1d00f70c8d15c8a7a82b473c",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2840,
   "suites": 103,
   "support_dirs": [
-   "/home/justin/pbkitplusplus"
+   "/home/user/pbkitplusplus"
   ],
   "symbols": 951,
   "tests_commit": "91a0de45ca31fd03ef2b364347f8a827d226f2b3",
-  "tests_root": "/home/justin/nxdk_pgraph_tests",
+  "tests_root": "/home/user/nxdk_pgraph_tests",
   "unread": 145
  },
  "schema": 1,
