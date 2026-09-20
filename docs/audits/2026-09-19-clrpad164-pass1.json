@@ -1,0 +1,42 @@
+[
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/nv2a_index.json",
+    "line": 1,
+    "summary": "The index regeneration rewrote two host-absolute paths: provenance.tests_root /home/user/nxdk_pgraph_tests -> /home/justin/nxdk_pgraph_tests, and provenance.support_dirs the same for pbkitplusplus. nv2a_index.py:524-526 records whatever absolute path the regenerating host used, so the field encodes the desk rather than the provenance, and it has now alternated across ten regenerations on master: b112e93bf8 user, ffe744a17e justin, 9bb6f107b5 user, 8ce27b87fc justin, 425094304f user, 927ca58506 justin, 5e1aafe756 justin, 7ffcd2bce8 user, 11ddd94a66 user, 2ffd961764 justin. Not the lane's doing, and it is not what the gate reads -- tests_provenance_gate() at nv2a_index.py:544-583 keys on tests_commit, which is unchanged at 91a0de45.",
+    "scenario": "Two lanes that each shift a line in hw/xbox must each regenerate the index; if they regenerate on different hosts their diffs collide on these two lines for reasons unrelated to either change -- a merge conflict in a 100k-line generated JSON, at fold time, with no semantic content to resolve it by. Separately, a reader diffing two index versions cannot tell a real provenance change from a change of machine.",
+    "remediation": "Belongs to the generator, not to this PR: nv2a_index.py:524-526 should record the tests/support paths relative to the repository root (or a bare marker) and leave tests_commit as the provenance of record. Worth its own lane; no reason to hold #172.",
+    "evidence": "git show <sha>:docs/testing/nv2a_index.json | provenance for the ten shas listed; docs/testing/nv2a_index.py:511-526, :544-583."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 308,
+    "summary": "The GLES exclusion is wider than it needs to be. pgraph_gl_get_clear_color() is defined inside #ifndef __ANDROID__ (:216) and the call site is split into two arms (:308-312). Every symbol the helper uses is compiled on Android: pgraph_glsl_dual_src_pad_supported(), pgraph_glsl_surface_pad_alpha_mode() and PSH_PAD_ALPHA_* are declared in glsl/psh.h:149,:185-186 and defined in glsl/psh.c:244-266, which GLES builds compile. The flag's setter is itself inside #ifndef __ANDROID__ (gl/renderer.c:204-228), so on a GLES build the helper would return at its first statement having changed nothing: an unconditional definition and a single unconditional call would be behaviour-identical on both platforms. The comment at :241-248 justifies the guard by citing the raster half, but the raster half's own comment (:499-511) gives a stronger and different reason -- 'the tokens themselves are absent on GLES, not merely unwanted' -- because pad_write_color_factor() genuinely does not exist there. That site has no choice; this one does.",
+    "scenario": "None, which is why this is LOW rather than a defect. The cost is that obtaining the clear colour now has two call sites, one of which CI compiles and no golden measures, so a later change to how the clear colour is derived has a second place to forget.",
+    "remediation": "Optional, and cheap to fold into the next touch of this file: define pgraph_gl_get_clear_color() unconditionally, call it unconditionally, and keep the runtime flag as the gate. If the preprocessor form is kept for H1 symmetry, say in the comment that the reason here is symmetry and not token availability.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:216, :241-248, :249-262, :308-312, :499-511; glsl/psh.h:149,:185-186; glsl/psh.c:244-266; gl/renderer.c:204-228."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/gl/draw.c",
+    "line": 234,
+    "summary": "The comment at :234-239 asserts the capability gate is something 'the Vulkan copy does not need to be'. Vulkan is ungated, but not because it does not need to be: pgraph_vk_get_clear_color() (vk/draw.c:894-907) applies the pad constant unconditionally, while the Vulkan raster path takes its pad mode from pgraph_glsl_dual_src_pad_supported() ? ... : NONE (vk/draw.c:638-640) and the Vulkan readback override is gated on the same flag (vk/texture.c:1439). On a Vulkan device without dualSrcBlend, Vulkan therefore gets exactly the clear-writes-the-pad-constant-while-the-raster-does-not split this comment says the GL gate prevents, operands swapped.",
+    "scenario": "Blast radius today is zero -- every Vulkan device in this harness supports dualSrcBlend, lavapipe included -- so nothing renders wrongly now. The cost is to the next reader: a later lane takes 'Vulkan does not need it' as a measured asymmetry between the backends and either drops the gate when porting the next half, or skips checking Vulkan on a device that lacks the feature.",
+    "remediation": "One sentence: 'Vulkan is not gated, and nobody has checked whether it should be.' If someone wants the stronger claim, vk/draw.c:894 is the site to gate and #59's arm is the precedent to re-run.",
+    "evidence": "hw/xbox/nv2a/pgraph/gl/draw.c:234-239; vk/draw.c:638-640, :894-907; vk/texture.c:1439; vk/instance.c:1251."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/issue164-gl-clear-pad-alpha.json",
+    "line": 1,
+    "summary": "No arm verdict in this harness can distinguish the change from a no-op, and the PR carries the `verified` label anyway. The registered prediction's machine-read half is nine must_not_move globs plus must_not_regress Clear/*; expect and expect_counts are empty by deliberate and (I checked) correct reasoning -- the 98,342 / 49,274 figures on #164 are golden-versus-golden and no arm can move them, and Surface_pitch::Swizzle moves on its own and would fail a worse=0 leg for reasons unrelated to this change. The arm that ran was the Android fleet (the verdict header gives each arm an apk), and this change is inside #ifndef __ANDROID__, so it was in neither binary; 'better 0 worse 0 same 74, every capture byte-identical' is what an inert control reports, and all 104 legs are satisfied trivially by it. The lane states all of this in the PR body and NOTES.md; it is recorded here so it survives into the audit trail. fold.sh:387 says `verified` is not a fold requirement, so the hazard is to a reader, not to the gate.",
+    "scenario": "If pgraph_glsl_surface_pad_alpha_mode() gained a format row this switch did not, or the ZERO/ONE mapping were transposed, the harness would still report PASS and still label the PR verified, because a control-only prediction is satisfied by a binary that never carried the patch. The audit read the mapping closely (pgraph.c:4650-4675 against glsl/psh.c:254-266) precisely because nothing else in the harness is going to.",
+    "remediation": "Not this lane's -- the desktop-OpenGL arm the prediction asks for is unreachable from a lane sandbox and the arms job builds apks. When a desktop-OpenGL A/B exists, add expect rows for Clear/SCF_X8R8G8B8_Z8R8G8B8 and Clear/SFC_X1R5G5B5_Z1R5G5B5 (both must improve), and have the run confirm before its zero is believed that it ran OpenGL and not Vulkan-on-lavapipe (AGENTS.md:1063, #29) and that pgraph_glsl_dual_src_pad_supported() was true.",
+    "evidence": "docs/testing/predictions/issue164-gl-clear-pad-alpha.json (expect {}, expect_counts {}); the [job.arms] verdict comment on PR #172; hw/xbox/nv2a/pgraph/gl/draw.c:216; docs/testing/jobs/fold.sh:380-389."
+  }
+]
