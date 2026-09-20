@@ -52,7 +52,7 @@ mutate "hazard list is consulted"              's|return nv2a_offset_writable(of
 mutate "hazard table is not empty"             's|^#define NV2A_NUM_HAZARDS .*|#define NV2A_NUM_HAZARDS 0|'
 
 echo "== host suites =="
-for suite in test_driver_loopback test_supervisor; do
+for suite in test_driver_loopback test_supervisor test_canary; do
     if python3 "host/$suite.py" >/dev/null 2>&1; then echo "   $suite: PASS"
     else echo "   $suite: FAIL"; fail=1; fi
 done

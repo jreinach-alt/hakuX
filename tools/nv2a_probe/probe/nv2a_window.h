@@ -80,12 +80,19 @@ static const nv2a_hazard_t kNv2aHazards[] = {
     { 0x0032acu, "NV_PFIFO_CACHE1_DMA_DATA_SHADOW" },
     { 0x003800u, "NV_PFIFO_CACHE1_METHOD" },
     { 0x003804u, "NV_PFIFO_CACHE1_DATA" },
+    { 0x008700u, "NV_PVIDEO_BUFFER" },
+    { 0x008704u, "NV_PVIDEO_STOP" },
+    { 0x008900u, "NV_PVIDEO_BASE" },
+    { 0x008908u, "NV_PVIDEO_LIMIT" },
+    { 0x008920u, "NV_PVIDEO_OFFSET" },
+    { 0x400fc4u, "NV_PGRAPH_CHEOPS_OFFSET" },
+    { 0x600800u, "NV_PCRTC_START" },
     { 0x680500u, "NV_PRAMDAC_NVPLL_COEFF" },
     { 0x680504u, "NV_PRAMDAC_MPLL_COEFF" },
     { 0x680508u, "NV_PRAMDAC_VPLL_COEFF" },
     { 0x680514u, "NV_PRAMDAC_PLL_TEST_COUNTER" },
 };
-#define NV2A_NUM_HAZARDS 29
+#define NV2A_NUM_HAZARDS 36
 
 static inline const char *nv2a_hazard_name(uint32_t off)
 {
