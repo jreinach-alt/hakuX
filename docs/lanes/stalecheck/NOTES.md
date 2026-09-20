@@ -216,6 +216,68 @@ Separability, checked against the two open diffs rather than assumed:
 If any of the three folds first, the rest should merge with at most a header
 conflict. Mine is additive in both files.
 
+## Attempt 2: why attempt 1 did not finish, and the merge
+
+**Attempt 1 finished its work.** It was not cut off and it was not wrong: the
+PR was open, non-draft, `fold-ready`, audited by the board (the `[job.board]`
+diff-scope comment at 21:33:28Z), and green. What ended it was the trunk
+moving underneath it -- `fold.sh` tried to fold `lane/stalecheck` at
+`06cd5bfb30` on 2026-09-20 00:30:55Z, hit a conflict in `handback.sh`, and
+handed the PR back on `needs-rebase`. So attempt 2's whole task was the base
+merge, which is exactly the path this PR builds an actor for, one cause over.
+
+The two PRs my separability table called out as unfolded **both folded** in
+between, and both landed in `handback.sh`:
+
+| PR | landed as | what it changed under me |
+|---|---|---|
+| #153 `lane.draftstrand` | `5eeea45328`, `eb61bf0fb7`, `033d927723` | the draft-strand cause: `resume_strand()`, the `$extra`/`quiet=`/`arm=` cause parse, the `$said` phrasing, the attempt-counter restore |
+| #163 `lane.laneshape` | `8f43845b25`, `c61644cf8e` | `lane_name()`, the lane set derived from the board |
+
+Six conflict regions, all in `handback.sh`; `fold.sh` auto-merged (#163 touched
+`prune_branch`, mine is the CI gate -- the table's prediction of "no overlap"
+held). Every region was **both sides kept**, because the two changes are two
+causes sharing one job, not two takes on one cause:
+
+1. header prose -- both sections, mine then theirs.
+2. `resume_stale_ci()` and `resume_strand()` had been interleaved into one
+   broken function by the merge driver (both open with `cat <<EOF\n\n---\n`,
+   which is what it matched on). Split back into two whole functions.
+3. the cause parse -- theirs is a `case "$label"` with a `draft-strand-*` arm;
+   mine read `detail=`/`files=` and the whitelisted `action=`. Mine moved
+   **inside the `*)` arm**, which is where it belongs: a strand has no cause
+   file at all, so the override can only ever come from a label cause.
+4. the gone-worktree path -- kept my `blocked:needs-owner` label, but took
+   their `$said` for the comment's opening clause, since `$said` is the thing
+   that knows how to phrase a strand as well as a label.
+5. the dispatch -- kept their `attempts_before=` capture, but the invocation
+   stays `"$act"`, not `"$action"`.
+
+### The resolution was checked by mutant, not by the green
+
+`selftest.sh`: **798 passed, 0 failed**, with both fragments running -- mine
+(`87`, the two sections at "a red about a base that has moved" and "the stale
+red's lane is told it is not its defect") and theirs (`99-handback-draft`).
+
+But a green suite after a merge is weak evidence: region 5 is the exact line
+M4 was built to move, and a resolution that dropped `$act` would still be
+green on every check that does not need the override. So M4 was re-run on the
+merged file. Two shapes, deliberately:
+
+| M4 variant | what it removes | reds |
+|---|---|---|
+| dispatch only (`"$act"` -> `"$action"`) | the brief the lane reads | 4 |
+| the override assignment (`act="$a"` -> `:`) | the brief **and** the PR comment | 5 |
+
+5 is what this file recorded before the merge, and the narrower variant giving
+4 is the scope difference, not a lost check: the PR comment's own
+`case "$act"` (the "its red is stale" clause, vs "conflicting in") survives a
+dispatch-only mutant and is the fifth red. Both halves of the override are
+still live. Reverted with `git checkout --` after each, tree confirmed clean.
+
+Diff against the new master is still exactly the four files, so the merge
+pulled nothing of anyone else's into this PR's surface.
+
 ## What the next lane should not repeat
 
 - **Do not build a re-run.** It was measured twice, once by the brief's author
@@ -237,6 +299,16 @@ conflict. Mine is additive in both files.
   overwrite. A gate whose entire job is comparing a timestamp must not read
   that timestamp from a file another process can replace between the fetch and
   the read. Explicit refspec, then read the tracking ref by name.
+- **A merge driver will interleave two functions that open alike.** Both
+  briefs here begin `cat <<EOF` / `---`, so git matched on that and produced
+  one function with two headers and no closing brace -- and `bash -n` catches
+  it, but only because the heredocs happened not to balance. After resolving a
+  conflict in a file of same-shaped functions, check `grep -n '^[a-z_]*() {'`
+  against `^}` before trusting the suite.
+- **Re-run the mutant for any line the resolution touched.** A green suite
+  after a merge only says nothing *else* broke; the check that proves a line
+  is load-bearing is the mutant that moves it, and the merge is precisely when
+  that line was last rewritten by something that did not understand it.
 - The self-test now does a real `git fetch` per `fold.sh` tick that sees a RED
   head (`85`, `86`, `91` all do), because those fixtures do not set
   `FOLD_TIP_SHA`/`FOLD_TIP_EPOCH`. That is a few seconds, not a defect, but it
