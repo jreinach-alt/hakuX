@@ -17,11 +17,18 @@ POLY_MODE_LINE` -- now gates the fan's provoking-vertex rotation.
 
 The reasoning, in the order it has to be read:
 
-1. The rotation exists so index 0 is the guest's provoking vertex. Both
-   renderers rasterise first-vertex-provoking (`gl/draw.c` sets
-   `GL_FIRST_VERTEX_CONVENTION`; nothing in `vk/` enables
-   `VK_EXT_provoking_vertex`), and `geom.c:92` spells `provoking_index` as
-   the literal `"0"` only when the shade mode is FLAT.
+1. The rotation exists so index 0 is the guest's provoking vertex. Vulkan
+   rasterises first-vertex-provoking (nothing in `vk/` enables
+   `VK_EXT_provoking_vertex`) and so does the *desktop* GL renderer —
+   **but not the Android one** (corrected after audit pass 1, LOW 1; this
+   line said "both renderers"): `gl/draw.c:535`'s
+   `glProvokingVertex(GL_FIRST_VERTEX_CONVENTION)` is inside
+   `#ifndef __ANDROID__`, so an Android GL build keeps GLES 3.x's *last*
+   -vertex default. It does not reach the conclusion — step 3 leaves every
+   edge's ordered `(i0,i1)` pair intact, so whichever endpoint the
+   rasteriser takes a `flat` varying from is the same endpoint on both
+   arms — and every device arm here is Vulkan. `geom.c:92` spells
+   `provoking_index` as the literal `"0"` only when the shade mode is FLAT.
 2. `needs_rewrite()` **already encodes exactly this** for
    `PRIM_TYPE_TRIANGLES`: it declines to rewrite at all unless the draw is
    flat AND last-provoking. The strip and the fan must be rewritten whatever
@@ -110,6 +117,12 @@ It is not a rounding difference:
 | QStrip/TFan | 22,897 px @ 77.17% | 24,009 px @ **75.84%** |
 | LLoop | 99.53% | **100.00%** |
 
+> **Both totals in this table moved by +12 / +10 in the audit remediation
+> below (LOW 2)**, to 225,570 and 198,890. Nothing else in it changed. The
+> cause is `LLoop`'s corrected segment direction crossing `decisive()`'s
+> threshold on a dozen pixels at ~1e-13; see the remediation section for the
+> measurement.
+
 225,558 is exactly the figure `prim_rewrite.c`'s own file comment carries from
 #13's original derivation, phrasing and all ("100.00% of 225,558 decisive
 pixels, in each of eleven candidate classes separately"). So the *first* #13
@@ -147,6 +160,18 @@ the void `Line_0064.*`. With that window:
 
 Eleven `n`s and twelve percentages, none fitted. That is what makes the
 predicted column below a prediction.
+
+> **One row of this table has since moved, and the reason matters.** After the
+> audit remediation below (LOW 2), the offline model gives LLoop/Tri **1,315**
+> and ALL **198,890** where this table records 1,305 and 198,880. That is not
+> the model drifting away from the device: `n` is the size of the *decisive
+> set*, which `decisive()` computes from the goldens and the footprint model
+> alone — it is device-independent, and the "arm B (device, measured)" column
+> above is that same offline computation applied to the arm's captures. The
+> 1,305 is a frozen printout from the tool as it stood on 2026-09-20 before
+> the LLoop direction was corrected; re-run `line_priority_arms.py` against
+> the *same* landed arm today and both columns read 1,315. Every percentage,
+> which is the device-dependent half, is unchanged.
 
 ## The predicted arm
 
@@ -208,11 +233,15 @@ Poly/Quad and their mixtures -- no TStrip). Changing it would be a guess
 scored by nothing. If someone wants it, it needs a disc variant that draws a
 wireframe triangle strip first.
 
-**`glsl/geom.c` is untouched** -- another lane's territory. Its comment at
-lines ~195-206 now describes a state that no longer exists ("the rest of
-TFan is `rewrite_triangle_fan()`'s rotation to undo, and undoing it there
-collides with flat shading"). That is now done, and narrowed rather than
-collided-with. Routed on the PR rather than edited here.
+**`glsl/geom.c` — SUPERSEDED, see the remediation section below.** This
+paragraph originally said the file was untouched because it was "another
+lane's territory", and **that was wrong**: `origin/board:territory.toml`
+line 618 has it in `[free]`, released by `[retired.linecap13]` at
+`2026-09-20T14:57:11Z`, five hours before this lane opened. What was true
+is narrower — `[lane.primpv13].files` names only `prim_rewrite.c`, and a
+lane may not widen its own row — which is a disclosure to the board, not
+another lane's claim. The stale comment is now corrected in `geom.c`
+itself; see below.
 
 **The extent rule** is still #13's larger half and is not this lane's.
 
@@ -231,11 +260,12 @@ unpredicted rather than claimed inert.
 
 `docs/testing/predictions/line-prim-rewrite-fan-provoking.json`,
 a_ref `4955050b31` -> b_ref `40ca2bcb22`, sha256
-`f101bda3a82d333cb71a9d2003fa8e787c457b94f119dfd76f5f7ad0d2ad3a75`.
+`49cca16cc011b94a66d4ee81ac5a38f0c683ab3f2527ae559937734fc184500c`.
 Registered before any device run and committed with the refs it names.
-Re-registered once, also before any device run, to correct the footprint
-model described in finding 3 -- the superseded values are restated inside the
-new file alongside each leg, so the change is auditable rather than quiet.
+Re-registered **twice**, both times before any device run: once to correct
+the footprint model described in finding 3, and once in the audit-pass-1
+remediation below. The superseded values are restated inside the file
+alongside each leg, so each change is auditable rather than quiet.
 The judged command is
 `line_priority_arms.py --a <A> --b <B> --extent-rule --min-width 8 --max-width 63.875`. Legs
 1-4 are the class measurements from `line_priority_arms.py`; legs 5 and 6 are
@@ -247,3 +277,146 @@ predicate is inverted or the `flat_shading` term is dropped.
 `2D_Lines/*` byte-identical is registered as an assertion about my own output
 and **not** counted as a falsifier: `PRIMITIVE_LINES` never reaches
 `rewrite_triangle_fan()`, so the patch forces it true.
+
+## Remediation of audit pass 1 (2026-09-20, `job.cloud`)
+
+`docs/audits/2026-09-20-primpv13-pass1.md`: 0 HIGH, 3 MEDIUM, 3 LOW. All six
+are addressed below. None asked for a different predicate and none disputed a
+number; `pv_placement_observable()` is unchanged.
+
+### MEDIUM 1 — a fourth reader of index 0, and it does move
+
+The comment that is the whole safety argument asked "does anything downstream
+actually READ index 0 of a rewritten triangle?" and enumerated
+`provoking_index`, `vtxFogSpecial` and `calc_triz`. It missed **`cylWrap`**,
+which is a literal `[0]`, not a `provoking_index`:
+
+```
+geom.c:293   vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(...));   // emit_vertex
+geom.c:296   vtxT%d = mix(cylWrap(v_vtxT%d[0], v_vtxT%d[i0], ...),          // emit_vertex_fs
+             cylWrap(v_vtxT%d[0], v_vtxT%d[i1], ...), t);
+```
+
+Emitted whenever `state->cylinder_wrap[i]` is non-zero (a texture unit in WRAP
+address mode, `NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q`), in **both** the GL and the
+widened Vulkan paths, and **independently of the shade mode**.
+
+**Which way it moves.** `emit_tri_pv(hub, v1, v2, pv)` put the rim vertex at
+index 0 — `v2` under last-provoking, `v1` under first — and that vertex varies
+from fan triangle to fan triangle. The patch leaves `(hub, v1, v2)`, so the
+cylinder-wrap reference is now the **fan hub**, one reference for the whole
+fan. A rim vertex more than half a turn from the hub but less than half a turn
+from its old neighbour-reference (or the reverse) now takes a whole turn it did
+not take, moving its U or V by 1.0.
+
+**Tolerated, not measured, and now said so in three places** (the
+`prim_rewrite.c` comment, the prediction, here). The hub is arguably the better
+reference — it is what a `TRIANGLES` draw of the same geometry already gets —
+but this arm does not establish that, because **nothing in the registered disc
+draws it**: `Shade_model`'s line-mode prefix is `kUntexturedLM` and
+`Line width` is untextured, so a textured wireframe fan with WRAP addressing
+appears nowhere and every leg is silent on it. A clean verdict is not evidence
+about it either way. If a title regresses on textured wireframe geometry after
+this folds, start here.
+
+The other two index-0 readers were re-checked and do not move: `calc_triz` (a
+plane's gradient is rotation-invariant; feeds `triMZ`, not coverage), and the
+widened path's flat block at `geom.c:517-527`, which pins
+`vtxD0/vtxD1/vtxB0/vtxB1` to a literal `[0]` but is reached only under FLAT
+shading — a second reason the `flat_shading` term is load-bearing.
+
+### MEDIUM 2 — `geom.c:197-206` corrected where it is read, not routed
+
+Two errors, both fixed. The territory claim ("another lane's territory") was
+false — `origin/board:territory.toml:618` has `glsl/geom.c` in `[free]` since
+`2026-09-20T14:57:11Z`. And routing a correction in a PR body is not routing:
+the body leaves the reader's view the moment it merges, which is exactly how
+`line_priority.py`'s `ours` table went stale through two folds (finding 1
+above).
+
+So the six stale lines are corrected **in `geom.c` itself**, marked
+`SUPERSEDED` in place rather than replaced, so a reader meets the old claim and
+its correction together. `glsl/geom.c` is added to the PR's `Files:` line and
+disclosed to the board in a PR comment; it is comment-only, so the generated
+GLSL, and therefore both arms' binaries, are unchanged.
+
+### MEDIUM 3 — the arm's `PASS` line covers the scoping legs and nothing else
+
+`expect`, `expect_counts` and `must_not_regress` are all empty, so the
+machine-judged content is the nine `must_not_move` globs — 167 capture checks,
+every one of them a **scoping** leg. Legs 1–4 and 7, the claim the arm exists to
+test, live only in the prose string, and `ab_compare.judge()` never reads it.
+`ab_compare.py` guards post-hoc, tampered and unbound predictions; it has no
+guard for an empty `expect`, so `VERDICT: PASS -- all 167 registered checks
+hold` will print whether TFan lands at 100.00%, at 73.20% (patch never reached
+the binary) or at 47.57% (composition undone rather than completed).
+
+They stay prose — a class aggregate over many captures has no golden key for
+`expect` to name, and `must_not_regress` on the one capture pair that could
+carry it (`Shade_model/ProgLM_TriFan_Smooth_{First,Last}`) is drawn at the
+default line width, where paint order shows on a handful of corner pixels at
+most, so it could fail for reasons this lane did not model. What changed is the
+**disclosure**: the prediction now says, in its own text, that the automated
+verdict covers the scoping legs only; that legs 1–4 and 7 are judged by hand;
+**who** does it (whoever reads the `[job.arms]` verdict — the lane if resumed,
+else pass 2 or the board, *before* `fold-ready`); **what** they run (the judged
+command); and **where the answer goes** (a `[lane.primpv13] arm judged:` PR
+comment carrying the eleven class rows, and the same table appended here).
+
+### LOW 1 — the Android GL build is not first-provoking
+
+`gl/draw.c:535`'s `glProvokingVertex(GL_FIRST_VERTEX_CONVENTION)` is inside
+`#ifndef __ANDROID__ /* glProvokingVertex not available in GLES 3.x */`, so an
+Android GL build keeps GLES 3.x's last-vertex default. The conclusion survives
+(step 3 leaves every edge's ordered pair intact; every device arm is Vulkan),
+but the sentence was load-bearing prose repeated in four places. Corrected in
+all four: `prim_rewrite.c`, the prediction, these notes (step 1 above) and the
+PR body.
+
+### LOW 2 — the last hard-coded convention in the derived model, and it was wrong
+
+`line_priority.py`'s `prim_rewrite()` derived everything from the C except
+`LLoop`, which returned `(i, i+1)` unconditionally — and that is what
+`rewrite_line_loop()` emits under **first**-provoking, while the suite it models
+is `PROVOKING_VERTEX_LAST`. The C calls `emit_line_pv(v0, v1, pv = v1)`, and
+`emit_line_pv` emits `(b, a)` when the provoking vertex is not already first, so
+the real pairs are `(v1, v0)` with a closing `(v_first, v_last)`. It is now
+derived from a `last_provoking` parameter threaded through `our_edges()`.
+
+**The audit called this inert for the score; it is not quite, and the
+difference is worth recording.** It *is* inert in geometry — measured, not
+assumed: over every `LLoop` segment, both namings, seven widths × both footprint
+rules, `field()`'s coverage mask disagrees on **zero** pixels. But `t` and the
+colour lerp are taken from whichever endpoint is named first, so the two namings
+differ by ~1e-13 in colour, and a few pixels sitting exactly on `decisive()`'s
+`SEP` / `TOL*3` thresholds cross them. Whole effect:
+
+| | before | after |
+|---|---:|---:|
+| `--extent-rule` total decisive | 225,558 | 225,570 |
+| `--extent-rule` LLoop/Tri | 1,724 | 1,736 |
+| perpendicular total decisive | 198,880 | 198,890 |
+| perpendicular LLoop/Tri | 1,305 | 1,315 |
+
+One class, which reads 100.00% for every rule before and after. **Every figure
+legs 1, 2 and 4 rest on is unchanged** — TFan 11,636 at 73.20%, QStrip/TFan
+24,009 at 75.84%, `ALL` 96.05%, and the residue `225,570 − 216,650` is the same
+8,920. The prediction was re-registered (still before any device run) so that
+what the judged command prints matches what is registered.
+
+The lesson for the next lane, since it is the second time on this file: a
+number that "cannot be wrong today" is exactly the kind that goes stale quietly.
+`field()`'s dependence on which endpoint is named first is a real, if
+1e-13-sized, property of the instrument — it is not order-invariant by
+construction, only by arithmetic.
+
+### LOW 3 — "a guess scored by nothing" overstated the strip's evidence gap
+
+`Shade_model/ProgLM_TriStrip_*` — four captures, Flat/Smooth × First/Last — *is*
+`TRIANGLE_STRIP` under `POLY_MODE_LINE`, in this arm's own disc, and is
+registered under `must_not_move`. It is weak evidence (default line width, so
+overlap is confined to corners) but it is not nothing. The comment now reads
+"not decisively scored by the `Line width` corpus, and only weakly by
+`Shade_model/ProgLM_TriStrip_*` at width 1", so the next lane can price the
+strip rather than read a blocker as settled. The reflection-vs-rotation half of
+the argument stands unchanged.

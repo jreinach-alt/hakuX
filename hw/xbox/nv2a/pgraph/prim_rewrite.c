@@ -87,10 +87,19 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
 /*
  * Does anything downstream actually READ index 0 of a rewritten triangle?
  *
- * Both renderers rasterise first-vertex-provoking -- gl/draw.c sets
- * GL_FIRST_VERTEX_CONVENTION and nothing in vk/ enables
- * VK_EXT_provoking_vertex -- and glsl/geom.c spells its provoking_index as
- * the literal "0" exactly when the shade mode is FLAT, as "index" otherwise.
+ * Vulkan rasterises first-vertex-provoking (nothing in vk/ enables
+ * VK_EXT_provoking_vertex) and so does the desktop GL renderer, but NOT the
+ * Android one: gl/draw.c's glProvokingVertex(GL_FIRST_VERTEX_CONVENTION) sits
+ * inside `#ifndef __ANDROID__ / glProvokingVertex not available in GLES 3.x`,
+ * so an Android GL build keeps GLES 3.x's LAST-vertex default.  That does not
+ * reach the conclusion below, for the reason the edge-list argument gives: the
+ * rotation leaves every emitted line's (i0, i1) pair intact, so whichever
+ * endpoint the rasteriser takes a `flat` varying from, it takes the same one
+ * on both arms.  It is written out here because the sentence "both renderers
+ * are first-provoking" is load-bearing prose that is false in one build.
+ *
+ * glsl/geom.c spells its provoking_index as the literal "0" exactly when the
+ * shade mode is FLAT, as "index" otherwise.
  * So under SMOOTH shading the rotation buys nothing.  needs_rewrite() above
  * already says as much for PRIM_TYPE_TRIANGLES, which it declines to rewrite
  * AT ALL unless the draw is flat and last-provoking; the strip and the fan
@@ -113,11 +122,45 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
  * the perpendicular footprint model this emulator stopped drawing in
  * 80c23dcabe, not the pixels that are wrong inside it.)
  *
- * Dropping the rotation costs nothing on that path.  vtxFogSpecial is `flat`
- * in EVERY shade mode (glsl/common.c), but each emit_line() takes it from
- * that EDGE's own first endpoint rather than from the triangle's index 0,
- * and rotating the triple does not change any edge's own endpoints -- so
- * every edge carries the value it carried before, in a different order.
+ * WHO ELSE READS INDEX 0 ON THAT PATH.  Three readers, and the third is the
+ * one this comment used to miss.
+ *
+ * (1) vtxFogSpecial is `flat` in EVERY shade mode (glsl/common.c), but each
+ * emit_line() takes it from that EDGE's own first endpoint rather than from
+ * the triangle's index 0 -- geom.c:422 uses `index`, and the widened path
+ * pins it to the edge's own i0 (geom.c:535).  Rotating the triple does not
+ * change any edge's own endpoints, so every edge carries the value it carried
+ * before, in a different order.  Unchanged.
+ *
+ * (2) calc_triz(0, 1, 2) takes the depth slope relative to vertex 0, so a fan
+ * triangle's dz is now evaluated on the same basis a list triangle's already
+ * was.  A plane's gradient is rotation-invariant, so this can move dz only by
+ * rounding; it feeds triMZ, not coverage.
+ *
+ * (3) cylWrap DOES move, and it is a literal [0] rather than a
+ * provoking_index.  When a texture unit is in WRAP address mode
+ * (state->cylinder_wrap[i] non-zero, from NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q)
+ * geom.c:293-298 emits `vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], ...)`
+ * in emit_vertex() and the same `v_vtxT%d[0]` reference in emit_vertex_fs()'s
+ * lerp -- in BOTH the GL and the widened Vulkan paths, and independently of
+ * the shade mode.  Cylinder wrap adjusts each vertex's texture coordinate by
+ * whole turns relative to the input primitive's vertex 0, so moving vertex 0
+ * moves the reference.  Direction: it was the rim vertex the rotation put
+ * there (v2 under last-provoking, v1 under first), which VARIES per fan
+ * triangle; it is now the fan HUB, the same vertex for every triangle of the
+ * fan.  A rim vertex more than half a turn from the hub but less than half a
+ * turn from its old neighbour-reference (or the reverse) now takes a whole
+ * turn it did not take, moving its U or V by 1.0.
+ *
+ * This is TOLERATED, not measured, and it is arguably the better reference --
+ * one reference per fan rather than a different one per triangle is what a
+ * TRIANGLES draw of the same geometry already gets, which is the consistency
+ * the rest of this change is for.  But no golden here exercises it: a
+ * textured wireframe fan with WRAP addressing is drawn by nothing in the
+ * registered disc (`Shade_model`'s line-mode prefix is kUntexturedLM and
+ * `Line width` is untextured), so the arm cannot see it either way and will
+ * come back clean whether or not it matters.  If a title regresses on
+ * textured wireframe geometry, start here.
  *
  * POLY_MODE_FILL and POLY_MODE_POINT keep it, because there the rotation is
  * NOT a reorder: it decides the triangle's provoking output vertex outright,
@@ -285,8 +328,14 @@ static void rewrite_triangles(PrimRewrite *r, const uint32_t *idx,
  * is a REFLECTION (v1, v0, v2), not a rotation, so its composition with
  * geom.c's edge order is a different derivation from the fan's -- and the
  * `Line width` corpus, which is what pins these orders to the pixel, draws no
- * TRIANGLE_STRIP at all under POLY_MODE_LINE.  Changing it here would be a
- * guess scored by nothing.  See docs/lanes/primpv13/NOTES.md.
+ * TRIANGLE_STRIP at all under POLY_MODE_LINE.  So the strip's order is not
+ * decisively scored by that corpus, and only weakly by
+ * Shade_model/ProgLM_TriStrip_* -- four real POLY_MODE_LINE strip captures,
+ * but at the default line width, where overlap is confined to a handful of
+ * corner pixels.  That is evidence, just not enough to price a change on; the
+ * reflection-vs-rotation half of the argument stands on its own.  The next
+ * lane can price this rather than read it as settled.
+ * See docs/lanes/primpv13/NOTES.md.
  */
 static void rewrite_triangle_strip(PrimRewrite *r, const uint32_t *idx,
                                    uint32_t base, unsigned int count,

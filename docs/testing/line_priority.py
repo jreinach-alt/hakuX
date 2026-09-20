@@ -89,7 +89,7 @@ PX, PY = XX + 0.5, YY + 0.5
 GEOM_TRI_EDGES = ((1, 2), (2, 0), (0, 1))   # glsl/geom.c, POLY_MODE_LINE
 
 
-def prim_rewrite(block, n, fan_pv_rotate=True):
+def prim_rewrite(block, n, fan_pv_rotate=True, last_provoking=True):
     """What prim_rewrite.c hands the geometry stage, in emission order.
 
     Each item is ("L", pair) for an edge that is already a LINES index pair,
@@ -98,17 +98,48 @@ def prim_rewrite(block, n, fan_pv_rotate=True):
     `Line width` draws under POLY_MODE_LINE with SHADEMODE_SMOOTH and
     PROVOKING_VERTEX_LAST, which is what picks the branches below:
 
-      * QUADS / QUAD_STRIP / POLYGON reach rewrite_*_line() and come out as
+      * QUADS / QUAD_STRIP / POLYGON reach rewrite_*_line(), which take no
+        `last_provoking` argument in the C at all -- their order is derived
+        from the tessellation, not from the convention -- and come out as
         LINES with the derived edge order already in them;
+      * LINE_LOOP reaches rewrite_line_loop(), which DOES take it: it calls
+        emit_line_pv(v0, v1, pv) with pv = last_provoking ? v1 : v0, and
+        emit_line_pv emits (b, a) when the provoking vertex is not already
+        first.  So the convention decides each segment's DIRECTION, below;
       * TRIANGLES is not rewritten AT ALL -- needs_rewrite() is
-        `last_provoking && flat_shading` and this suite is smooth -- so its
-        triples arrive at the geometry stage unrotated;
+        `last_provoking && flat_shading` and this suite is smooth, so it is
+        a pass-through under either convention -- and its triples arrive at
+        the geometry stage unrotated;
       * TRIANGLE_FAN is always rewritten (it is a topology change), and
         emit_tri_pv() additionally ROTATES the provoking vertex to index 0.
         `fan_pv_rotate` is that rotation, which is the only thing this lane's
         patch removes.
+
+    `last_provoking` is a parameter rather than a constant for the same reason
+    the tables above are derived rather than listed: LLoop was the one place a
+    hard-coded value survived the rewrite, and it was the WRONG one -- it
+    returned (i, i+1), which is what the C emits under FIRST-provoking, while
+    the suite this tool models is PROVOKING_VERTEX_LAST.
+
+    What correcting it costs, measured rather than assumed.  It is inert in
+    GEOMETRY: over every LLoop segment, both namings, seven widths x both
+    footprint rules, field()'s coverage mask disagrees on ZERO pixels.  It is
+    not quite inert in the SCORE, because t and the colour lerp are computed
+    from whichever endpoint is named first, so the two namings differ by
+    ~1e-13 in colour -- and a handful of pixels sit exactly on decisive()'s
+    SEP / TOL*3 thresholds, which that noise pushes across.  The whole effect
+    is +12 decisive pixels under --extent-rule (LLoop/Tri 1,724 -> 1,736) and
+    +10 under the perpendicular default (1,305 -> 1,315), all inside one
+    class, which reads 100.00% for every rule before and after.  No other
+    class, no rule percentage and no residue changes: `ours` stays 96.05% and
+    `ours_patched` 100.00%, and 225,570 - 216,650 is the same 8,920 as before.
     """
     if block == "LLoop":            # rewrite_line_loop
+        if last_provoking:          # emit_line_pv(v0, v1, pv = v1) -> (v1, v0)
+            #                         ... and the closing edge is (v_first,
+            #                         v_last), because there pv = v_first.
+            return ([("L", (i + 1, i)) for i in range(n - 1)] +
+                    [("L", (0, n - 1))])
         return [("L", (i, (i + 1) % n)) for i in range(n)]
     if block == "Tri":              # pass-through; see needs_rewrite()
         return [("T", (t, t + 1, t + 2)) for t in range(0, n - 2, 3)]
@@ -138,7 +169,7 @@ def prim_rewrite(block, n, fan_pv_rotate=True):
     raise KeyError(block)
 
 
-def our_edges(block, n, fan_pv_rotate=True):
+def our_edges(block, n, fan_pv_rotate=True, last_provoking=True):
     """The index pairs OUR renderer emits, in OUR order.
 
     DERIVED from the two files that decide it rather than listed, because
@@ -150,7 +181,7 @@ def our_edges(block, n, fan_pv_rotate=True):
     as a changed score instead of as a silently wrong baseline.
     """
     out = []
-    for kind, v in prim_rewrite(block, n, fan_pv_rotate):
+    for kind, v in prim_rewrite(block, n, fan_pv_rotate, last_provoking):
         if kind == "L":
             out.append(v)
         else:
