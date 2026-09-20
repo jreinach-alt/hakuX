@@ -62,6 +62,19 @@ def load_hazards() -> dict:
     return {int(k, 16): v for k, v in json.load(open(hz, encoding="utf-8")).items()}
 
 
+def read_one(sess, off: int) -> dict:
+    """Read a register and write nothing at all.
+
+    A read sweep carries no risk -- it cannot wedge the console, cannot leave a
+    register holding a value it did not start with, and cannot drive a clock
+    out of spec -- and it still answers a real question: which registers return
+    data on silicon that this tree models as zero. 0x000160 was found that way,
+    reading a constant 0x01000000 where pmc.c has no case at all.
+    """
+    return {"offset": off, "t": time.time(), "mode": "read",
+            "orig": sess.read32(off)}
+
+
 def sweep_one(sess, off: int) -> dict:
     rec = {"offset": off, "t": time.time()}
     orig = sess.read32(off)
@@ -107,6 +120,10 @@ def main() -> int:
     ap.add_argument("--skip", action="append", default=[],
                     help="offset to leave alone, repeatable")
     ap.add_argument("--accept-timeout", type=float, default=300.0)
+    ap.add_argument("--read-only", action="store_true",
+                    help="read every register in the range and write NOTHING. "
+                         "Zero risk, and it still finds registers silicon "
+                         "answers where this tree returns 0.")
     ap.add_argument("--write-scope", choices=("declared", "all"), default="declared",
                     help="which registers may be WRITTEN. 'declared' (default) "
                          "writes only registers nv2a_regs.h names, so a blind "
@@ -122,7 +139,10 @@ def main() -> int:
 
     hazards = load_hazards()
     declared = set()
-    if args.write_scope == "declared":
+    if args.read_only:
+        print("READ-ONLY sweep: no write will be issued, so no register can be "
+              "left changed and nothing can wedge.")
+    elif args.write_scope == "declared":
         sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
         import compare_masks as _cm
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
@@ -131,7 +151,7 @@ def main() -> int:
         declared = set(regs)
         print("write scope: declared only -- %d registers of %s are named in "
               "nv2a_regs.h" % (len(declared), args.block))
-
+    srv = ProbeServer(args.workdir, port=args.port)
     print("hazard list: %d registers will not be written at all" % len(hazards))
     print("listening on %s:%d -- launch the probe on the console" % srv.addr)
     print("sweeping %s 0x%06X..0x%06X (%d registers)"
@@ -146,11 +166,15 @@ def main() -> int:
     hangs = []
     try:
         while True:
-            todo = [o for o in range(start, end, 4)
-                    if o not in done and o not in skip
-                    and o not in hazards
-                    and (args.write_scope == "all" or o in declared)
-                    and not srv.poison.is_poison(o, None)]
+            if args.read_only:
+                todo = [o for o in range(start, end, 4)
+                        if o not in done and o not in skip]
+            else:
+                todo = [o for o in range(start, end, 4)
+                        if o not in done and o not in skip
+                        and o not in hazards
+                        and (args.write_scope == "all" or o in declared)
+                        and not srv.poison.is_poison(o, None)]
             if not todo:
                 break
             if sess is None:
@@ -170,11 +194,14 @@ def main() -> int:
                 reconnects += 1
             try:
                 for off in todo:
-                    rec = sweep_one(sess, off)
+                    rec = read_one(sess, off) if args.read_only else sweep_one(sess, off)
                     done[off] = rec
                     with open(results_path, "a", encoding="utf-8") as fh:
                         fh.write(json.dumps(rec) + "\n")
-                    if rec["writable"]:
+                    if args.read_only:
+                        if rec["orig"]:
+                            print("  %06X reads %08X" % (off, rec["orig"]))
+                    elif rec["writable"]:
                         print("  %06X writable=%08X orig=%08X%s"
                               % (off, rec["writable"], rec["orig"],
                                  "" if rec["restored"] else "  RESTORE FAILED"))
