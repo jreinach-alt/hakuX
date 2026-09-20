@@ -271,14 +271,22 @@ static void serve(void)
              PROBE_PROTO, NV2A_BASE, NV2A_MMIO_SIZE, NV2A_NUM_BLOCKS, WATCHDOG_MS);
     if (!send_line(hello)) return;
 
+    /* The watchdog arms on the FIRST command, not on connect.
+     *
+     * Armed at connect, a probe that dials in before the host has a sweep
+     * ready would see no command for WATCHDOG_MS and soft-reset -- then boot,
+     * redial, and do it again: a reset loop caused entirely by the recovery
+     * mechanism. Waiting for one command costs nothing (a console that wedges
+     * before it has been asked to do anything has not been asked to do
+     * anything) and it makes an idle connected probe sit still indefinitely. */
     g_last_cmd_tick = GetTickCount();
-    g_watchdog_armed = true;
 
     for (;;) {
         int r = recv_line(line, sizeof(line), 1000);
         if (r < 0) return;                 /* socket died; reconnect */
         if (r == 0) continue;              /* idle; watchdog owns the deadline */
 
+        g_watchdog_armed = true;
         g_last_cmd_tick = GetTickCount();
         strncpy(g_last_cmd, line, sizeof(g_last_cmd) - 1);
         g_last_cmd[sizeof(g_last_cmd) - 1] = 0;
