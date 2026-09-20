@@ -53,6 +53,16 @@ int main(void)
     CHECK(nv2a_offset_writable(0x00DFFC), "last dword of PTV");
     CHECK(!nv2a_offset_writable(0x00E000), "the seam after PTV must be refused");
 
+    /* Hazards: inside the allow-list, still refused. */
+    CHECK(nv2a_offset_writable(0x000200), "0x200 IS inside a writable block");
+    CHECK(!nv2a_offset_write_allowed(0x000200), "NV_PMC_ENABLE must be refused");
+    CHECK(!nv2a_offset_write_allowed(0x000004), "the register that would not restore");
+    CHECK(!nv2a_offset_write_allowed(0x680504), "MPLL coefficient must be refused");
+    CHECK(!nv2a_offset_write_allowed(0x680508), "VPLL coefficient must be refused");
+    CHECK(!nv2a_offset_write_allowed(0x003200), "pushbuffer cache control refused");
+    CHECK(nv2a_offset_write_allowed(0x000140), "a harmless register still allowed");
+    CHECK(nv2a_offset_readable(0x000200), "hazards stay READABLE");
+
     if (fails) { printf("%d check(s) failed\n", fails); return 1; }
     printf("all allow-list checks passed\n");
     return 0;

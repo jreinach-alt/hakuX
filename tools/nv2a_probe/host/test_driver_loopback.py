@@ -150,6 +150,16 @@ def main() -> int:
         sess.write32(0x000104, 0x12345678)
         check(sess.read32(0x000104) == 0x12345678, "sweep resumes past the suspect")
 
+        print("== the SWEEP's offset-level filter sees the ban ==")
+        # The sweep asks "is this register banned" with val=None. An exact-key
+        # lookup answered no for a ban recorded against a specific value, and
+        # the register that had just wedged the console went back on the todo
+        # list. This is the check that would have caught it.
+        check(srv.poison.is_poison(HANG_AT, None),
+              "is_poison(off, None) matches a ban recorded for one value")
+        check(not srv.poison.is_poison(0x000999, None),
+              "an unrelated register is not banned")
+
         print("== poison survives a restart (it is persisted) ==")
         srv2 = ProbeServer(wd, host="127.0.0.1", port=PORT + 1)
         check(srv2.poison.is_poison(HANG_AT, 0xFFFFFFFF),

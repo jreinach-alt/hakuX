@@ -1,0 +1,118 @@
+{
+  "000000": {
+    "name": "NV_PMC_BOOT_0",
+    "why": "chip straps/identity; 0x004 latched and would not restore"
+  },
+  "000004": {
+    "name": "(measured)",
+    "why": "undeclared PMC register: a blind write latched 0x01000001 and it would NOT restore to its original 0x00000000. We do not know what it is and we could not put it back."
+  },
+  "000200": {
+    "name": "NV_PMC_ENABLE",
+    "why": "engine enable: clearing it stops PFIFO/PGRAPH and the machine with them (measured: full lockup, power cycle)"
+  },
+  "003200": {
+    "name": "NV_PFIFO_CACHE1_PUSH0",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003204": {
+    "name": "NV_PFIFO_CACHE1_PUSH1",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003210": {
+    "name": "NV_PFIFO_CACHE1_PUT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003214": {
+    "name": "NV_PFIFO_CACHE1_STATUS",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003220": {
+    "name": "NV_PFIFO_CACHE1_DMA_PUSH",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003224": {
+    "name": "NV_PFIFO_CACHE1_DMA_FETCH",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003228": {
+    "name": "NV_PFIFO_CACHE1_DMA_STATE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "00322C": {
+    "name": "NV_PFIFO_CACHE1_DMA_INSTANCE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003240": {
+    "name": "NV_PFIFO_CACHE1_DMA_PUT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003244": {
+    "name": "NV_PFIFO_CACHE1_DMA_GET",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003248": {
+    "name": "NV_PFIFO_CACHE1_REF",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "00324C": {
+    "name": "NV_PFIFO_CACHE1_DMA_SUBROUTINE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003250": {
+    "name": "NV_PFIFO_CACHE1_PULL0",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003254": {
+    "name": "NV_PFIFO_CACHE1_PULL1",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003270": {
+    "name": "NV_PFIFO_CACHE1_GET",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003280": {
+    "name": "NV_PFIFO_CACHE1_ENGINE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A0": {
+    "name": "NV_PFIFO_CACHE1_DMA_DCOUNT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A4": {
+    "name": "NV_PFIFO_CACHE1_DMA_GET_JMP_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A8": {
+    "name": "NV_PFIFO_CACHE1_DMA_RSVD_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032AC": {
+    "name": "NV_PFIFO_CACHE1_DMA_DATA_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003800": {
+    "name": "NV_PFIFO_CACHE1_METHOD",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003804": {
+    "name": "NV_PFIFO_CACHE1_DATA",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "680500": {
+    "name": "NV_PRAMDAC_NVPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680504": {
+    "name": "NV_PRAMDAC_MPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680508": {
+    "name": "NV_PRAMDAC_VPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680514": {
+    "name": "NV_PRAMDAC_PLL_TEST_COUNTER",
+    "why": "PLL test path: same clock domain as the coefficients"
+  }
+}
