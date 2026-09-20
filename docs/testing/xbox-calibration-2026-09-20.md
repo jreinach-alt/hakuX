@@ -64,27 +64,46 @@ that the comparison is about this console and not about disc versions.
 The two `Color_zeta_overlap` rows are one suite and plausibly one mechanism
 rather than two findings.
 
-### What has not been established about those five
+### What those five turned out to be — resolved 2026-09-20
 
-Three explanations remain open and this run cannot separate them:
+The original verdict left three explanations open and named the experiment that
+would separate them. It was run: `Color zeta overlap` twice back to back with
+**byte-identical disc composition**, and `Texture format` / `3D primitive` /
+`Attrib float` likewise. Holding the disc constant is what makes the answer
+clean — contamination is controlled rather than assumed away.
 
-1. **A genuine 1.0-versus-1.1 silicon difference.** Predicted in advance as a
-   real hardware difference rather than an instrument fault. Five isolated
-   captures in formats and edge cases (`R6G5B5`, NaN attributes, line loops,
-   colour/zeta aliasing) is the shape that would take.
-2. **Contamination from the test before it.** Every test here ran on a shared
-   disc; `score_sweep` marks every suite non-solo for exactly this reason.
-3. **Nondeterminism.** Untested, and it is the sharpest of the three because it
-   needs no golden at all — the console is compared only with itself.
+All three explanations turned out to be real, each on different captures.
 
-**The cheap next step is a repeat.** Re-running just `Color_zeta_overlap`,
-`3D_primitive` and `Attrib_float` is about 181 tests and a couple of minutes.
-If the same five differ by the same pixel counts, nondeterminism is out and
-these become candidate 1.0/1.1 differences worth an issue. If they move, the
-numbers above are single-run noise and should not be quoted.
+| capture | verdict | evidence |
+|---|---|---|
+| `ZetaIntoColor` | **nondeterministic on silicon** | 20,141 px differ between two identical-disc runs |
+| `ColorIntoZeta_ZB` | **nondeterministic on silicon** | 3,182 px differ between two identical-disc runs |
+| `TexFmt_R6G5B5` | **real disagreement with the golden** | byte-identical across runs and discs; 134,902 px vs golden |
+| `-NaNs_NaNs` | **real disagreement with the golden** | byte-identical across runs and discs; 60 px vs golden |
+| `LineLoop-inlinearrays-ls` | **contamination** | stable within a disc, 4,546 px different *between* discs |
 
-Nothing should be staked on those five until that is done. Nothing is blocked
-by them either: 3,374 captures are bit-identical and those are usable now.
+**Two are hardware nondeterminism.** `ZetaIntoColor` and `ColorIntoZeta_ZB`
+vary run to run on the same console with the same disc, in the same screen
+region each time (rows 113–367, cols 124–519 for `ZetaIntoColor`). The golden
+is one sample from a distribution whose spread — 20,141 px — is the same order
+as the distance from the golden itself (21,712–27,787 px). Reported to #88 and
+#91, which take absolute pixel targets from those captures' golden histograms.
+
+**Two are genuine.** `TexFmt_R6G5B5` and `-NaNs_NaNs` reproduce byte-for-byte
+across runs and across disc compositions and still differ from the golden.
+Either this V1.1 silicon differs from the 1.0 the goldens came from, or those
+goldens came from a different build of the suite. Both remain open; neither is
+noise.
+
+**One is contamination**, and it is the cleanest demonstration of why
+`score_sweep` marks every whole-suite capture non-solo.
+`LineLoop-inlinearrays-ls` is byte-stable when the disc is held constant and
+moves by 4,546 px when the disc composition changes. What ran before it changed
+what it drew.
+
+So the residual is five captures for four different reasons, and "the console
+disagrees with the goldens" was the wrong summary for three of them. The 3,374
+bit-identical captures were never in question and remain usable.
 
 ### Stencil was stable
 
