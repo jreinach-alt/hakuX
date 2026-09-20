@@ -1,7 +1,7 @@
 {
   "000000": {
     "name": "NV_PMC_BOOT_0",
-    "why": "chip straps/identity; 0x004 latched and would not restore"
+    "why": "chip straps and identity, and 0x004 is the MMIO endian switch -- see EMPIRICAL_HAZARDS"
   },
   "000004": {
     "name": "(measured)",
@@ -98,6 +98,34 @@
   "003804": {
     "name": "NV_PFIFO_CACHE1_DATA",
     "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "008700": {
+    "name": "NV_PVIDEO_BUFFER",
+    "why": "engine buffer select/arm: decides whether DMA runs at all"
+  },
+  "008704": {
+    "name": "NV_PVIDEO_STOP",
+    "why": "engine stop/arm control"
+  },
+  "008900": {
+    "name": "NV_PVIDEO_BASE",
+    "why": "DMA base address: redirects where hardware reads"
+  },
+  "008908": {
+    "name": "NV_PVIDEO_LIMIT",
+    "why": "DMA limit: paired with a base, bounds what hardware reads"
+  },
+  "008920": {
+    "name": "NV_PVIDEO_OFFSET",
+    "why": "DMA offset: redirects where hardware reads"
+  },
+  "400FC4": {
+    "name": "NV_PGRAPH_CHEOPS_OFFSET",
+    "why": "DMA offset: redirects where hardware reads"
+  },
+  "600800": {
+    "name": "NV_PCRTC_START",
+    "why": "scanout/engine start address: redirects where hardware reads"
   },
   "680500": {
     "name": "NV_PRAMDAC_NVPLL_COEFF",

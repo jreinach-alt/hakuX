@@ -88,7 +88,27 @@ HAZARD_PATTERNS = [
     (r"_RESET",          "reset control"),
     (r"^NV_PFIFO_CACHE", "pushbuffer cache/DMA control: phase one does not submit "
                          "pushbuffer work and must not start by accident"),
-    (r"^NV_PMC_BOOT",    "chip straps/identity; 0x004 latched and would not restore"),
+    (r"^NV_PMC_BOOT",    "chip straps and identity, and 0x004 is the MMIO endian "
+                         "switch -- see EMPIRICAL_HAZARDS"),
+
+    # SEMANTIC CLASS: registers that point hardware at memory, or that gate
+    # whether an engine is fetching from it. A blind 0xFFFFFFFF here does not
+    # corrupt the register, it redirects a DMA engine or the scanout address at
+    # an arbitrary place. NV_PCRTC_START is the display start address;
+    # NV_PVIDEO_BASE/LIMIT/OFFSET are the overlay's DMA pointers, and
+    # NV_PVIDEO_BUFFER/STOP decide whether the overlay is fetching at all --
+    # and the sweep writes BUFFER before it reaches the pointers, so ordering
+    # alone could arm an overlay aimed at nothing.
+    #
+    # None of these is spelled like a hazard, which is the same lesson
+    # NV_PMC_BOOT_1 taught: the danger is in what the write MEANS, not in the
+    # name. Reads are unaffected, so the registers are still observed.
+    (r"_START$",  "scanout/engine start address: redirects where hardware reads"),
+    (r"_BASE$",   "DMA base address: redirects where hardware reads"),
+    (r"_LIMIT$",  "DMA limit: paired with a base, bounds what hardware reads"),
+    (r"_OFFSET$", "DMA offset: redirects where hardware reads"),
+    (r"_BUFFER$", "engine buffer select/arm: decides whether DMA runs at all"),
+    (r"_STOP$",   "engine stop/arm control"),
 ]
 
 
