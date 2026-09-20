@@ -1,0 +1,146 @@
+{
+  "000000": {
+    "name": "NV_PMC_BOOT_0",
+    "why": "chip straps and identity, and 0x004 is the MMIO endian switch -- see EMPIRICAL_HAZARDS"
+  },
+  "000004": {
+    "name": "(measured)",
+    "why": "NV_PMC_BOOT_1: its low bit is the MMIO endian switch. Writing ones here byte-swapped every subsequent access, the sweep ran on for 120 more registers, and two 'findings' were published that were declared bits seen through a byte swap. Note what this one proves: a NAME-based list could never have caught it, because BOOT_1 is not spelled like anything dangerous. It is hazardous for its SEMANTICS -- a write that redefines how every later access is interpreted. The general defence is the canary in sweep_writable_bits.py, not this entry."
+  },
+  "000200": {
+    "name": "NV_PMC_ENABLE",
+    "why": "engine enable: clearing it stops PFIFO/PGRAPH and the machine with them (measured: full lockup, power cycle)"
+  },
+  "003200": {
+    "name": "NV_PFIFO_CACHE1_PUSH0",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003204": {
+    "name": "NV_PFIFO_CACHE1_PUSH1",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003210": {
+    "name": "NV_PFIFO_CACHE1_PUT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003214": {
+    "name": "NV_PFIFO_CACHE1_STATUS",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003220": {
+    "name": "NV_PFIFO_CACHE1_DMA_PUSH",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003224": {
+    "name": "NV_PFIFO_CACHE1_DMA_FETCH",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003228": {
+    "name": "NV_PFIFO_CACHE1_DMA_STATE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "00322C": {
+    "name": "NV_PFIFO_CACHE1_DMA_INSTANCE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003240": {
+    "name": "NV_PFIFO_CACHE1_DMA_PUT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003244": {
+    "name": "NV_PFIFO_CACHE1_DMA_GET",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003248": {
+    "name": "NV_PFIFO_CACHE1_REF",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "00324C": {
+    "name": "NV_PFIFO_CACHE1_DMA_SUBROUTINE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003250": {
+    "name": "NV_PFIFO_CACHE1_PULL0",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003254": {
+    "name": "NV_PFIFO_CACHE1_PULL1",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003270": {
+    "name": "NV_PFIFO_CACHE1_GET",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003280": {
+    "name": "NV_PFIFO_CACHE1_ENGINE",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A0": {
+    "name": "NV_PFIFO_CACHE1_DMA_DCOUNT",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A4": {
+    "name": "NV_PFIFO_CACHE1_DMA_GET_JMP_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032A8": {
+    "name": "NV_PFIFO_CACHE1_DMA_RSVD_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "0032AC": {
+    "name": "NV_PFIFO_CACHE1_DMA_DATA_SHADOW",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003800": {
+    "name": "NV_PFIFO_CACHE1_METHOD",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "003804": {
+    "name": "NV_PFIFO_CACHE1_DATA",
+    "why": "pushbuffer cache/DMA control: phase one does not submit pushbuffer work and must not start by accident"
+  },
+  "008700": {
+    "name": "NV_PVIDEO_BUFFER",
+    "why": "engine buffer select/arm: decides whether DMA runs at all"
+  },
+  "008704": {
+    "name": "NV_PVIDEO_STOP",
+    "why": "engine stop/arm control"
+  },
+  "008900": {
+    "name": "NV_PVIDEO_BASE",
+    "why": "DMA base address: redirects where hardware reads"
+  },
+  "008908": {
+    "name": "NV_PVIDEO_LIMIT",
+    "why": "DMA limit: paired with a base, bounds what hardware reads"
+  },
+  "008920": {
+    "name": "NV_PVIDEO_OFFSET",
+    "why": "DMA offset: redirects where hardware reads"
+  },
+  "400FC4": {
+    "name": "NV_PGRAPH_CHEOPS_OFFSET",
+    "why": "DMA offset: redirects where hardware reads"
+  },
+  "600800": {
+    "name": "NV_PCRTC_START",
+    "why": "scanout/engine start address: redirects where hardware reads"
+  },
+  "680500": {
+    "name": "NV_PRAMDAC_NVPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680504": {
+    "name": "NV_PRAMDAC_MPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680508": {
+    "name": "NV_PRAMDAC_VPLL_COEFF",
+    "why": "clock PLL coefficient: a blind value is an out-of-spec core, memory or video clock, not merely a hang"
+  },
+  "680514": {
+    "name": "NV_PRAMDAC_PLL_TEST_COUNTER",
+    "why": "PLL test path: same clock domain as the coefficients"
+  }
+}

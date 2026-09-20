@@ -65,7 +65,100 @@ def parse(nv2a_c):
                      "window" % (n, o, s, size))
     return size, sorted(blocks, key=lambda b: b[1])
 
-def render(size, blocks, nv2a_c):
+# Registers a BLIND write sweep must not touch, by name pattern, each with the
+# reason it is here. Derived against nv2a_regs.h rather than listed by address,
+# so a header change cannot silently unprotect one.
+#
+# This list exists because the first hardware run wrote 0 to NV_PMC_ENABLE and
+# stopped the console dead -- CPU included, so the watchdog could not help and
+# it took a power cycle. The hazard had been reasoned about beforehand and the
+# sweep was allowed to hit it anyway, trusting a recovery path that had never
+# been exercised on hardware. Reasoning about a hazard is not the same as
+# refusing it.
+#
+# The PLL entries are the serious ones. A blind 0xFFFFFFFF into a memory- or
+# core-clock coefficient is not a hang, it is an out-of-spec clock, and the
+# sweep would have reached them the moment it widened past PMC.
+HAZARD_PATTERNS = [
+    (r"_ENABLE$",        "engine enable: clearing it stops PFIFO/PGRAPH and the "
+                         "machine with them (measured: full lockup, power cycle)"),
+    (r"PLL_COEFF$",      "clock PLL coefficient: a blind value is an out-of-spec "
+                         "core, memory or video clock, not merely a hang"),
+    (r"PLL_TEST",        "PLL test path: same clock domain as the coefficients"),
+    (r"_RESET",          "reset control"),
+    (r"^NV_PFIFO_CACHE", "pushbuffer cache/DMA control: phase one does not submit "
+                         "pushbuffer work and must not start by accident"),
+    (r"^NV_PMC_BOOT",    "chip straps and identity, and 0x004 is the MMIO endian "
+                         "switch -- see EMPIRICAL_HAZARDS"),
+
+    # SEMANTIC CLASS: registers that point hardware at memory, or that gate
+    # whether an engine is fetching from it. A blind 0xFFFFFFFF here does not
+    # corrupt the register, it redirects a DMA engine or the scanout address at
+    # an arbitrary place. NV_PCRTC_START is the display start address;
+    # NV_PVIDEO_BASE/LIMIT/OFFSET are the overlay's DMA pointers, and
+    # NV_PVIDEO_BUFFER/STOP decide whether the overlay is fetching at all --
+    # and the sweep writes BUFFER before it reaches the pointers, so ordering
+    # alone could arm an overlay aimed at nothing.
+    #
+    # None of these is spelled like a hazard, which is the same lesson
+    # NV_PMC_BOOT_1 taught: the danger is in what the write MEANS, not in the
+    # name. Reads are unaffected, so the registers are still observed.
+    (r"_START$",  "scanout/engine start address: redirects where hardware reads"),
+    (r"_BASE$",   "DMA base address: redirects where hardware reads"),
+    (r"_LIMIT$",  "DMA limit: paired with a base, bounds what hardware reads"),
+    (r"_OFFSET$", "DMA offset: redirects where hardware reads"),
+    (r"_BUFFER$", "engine buffer select/arm: decides whether DMA runs at all"),
+    (r"_STOP$",   "engine stop/arm control"),
+]
+
+
+# Hazards MEASUREMENT found, which a name-based rule cannot see because these
+# registers are not declared in nv2a_regs.h at all. Keyed by absolute BAR
+# offset. This list only grows by someone running into something.
+EMPIRICAL_HAZARDS = {
+    0x000200: "NV_PMC_ENABLE: writing 0 stopped the console dead on 2026-09-20 "
+              "-- no ICMP, ARP FAILED, watchdog could not help because the CPU "
+              "was gone too. Power cycle required.",
+    0x000004: "NV_PMC_BOOT_1: its low bit is the MMIO endian switch. Writing "
+              "ones here byte-swapped every subsequent access, the sweep ran on "
+              "for 120 more registers, and two 'findings' were published that "
+              "were declared bits seen through a byte swap. Note what this one "
+              "proves: a NAME-based list could never have caught it, because "
+              "BOOT_1 is not spelled like anything dangerous. It is hazardous "
+              "for its SEMANTICS -- a write that redefines how every later "
+              "access is interpreted. The general defence is the canary in "
+              "sweep_writable_bits.py, not this entry.",
+}
+
+
+def parse_hazards(regs_h, blocks):
+    """Absolute BAR offsets of hazardous registers, derived from the header."""
+    import re as _re
+    base = {name: off for name, off, _size in blocks}
+    reg_re = _re.compile(r"^#define\s+(NV_(\w+?)_\w+|NV_\w+)\s+(0x[0-9A-Fa-f]+)\s*$")
+    out = {}
+    for line in open(regs_h, encoding="utf-8"):
+        m = _re.match(r"^#define\s+(NV_\w+)\s+(0x[0-9A-Fa-f]+)\s*$", line.rstrip())
+        if not m:
+            continue
+        name, off = m.group(1), int(m.group(2), 16)
+        blk = None
+        for b in base:
+            if name.startswith("NV_" + b + "_") or name == "NV_" + b:
+                if blk is None or len(b) > len(blk):
+                    blk = b
+        if blk is None:
+            continue
+        for pat, why in HAZARD_PATTERNS:
+            if _re.search(pat, name):
+                out[base[blk] + off] = (name, why)
+                break
+    for off, why in EMPIRICAL_HAZARDS.items():
+        out.setdefault(off, ("(measured)", why))
+    return out
+
+
+def render(size, blocks, nv2a_c, hazards=None):
     w = [b for b in blocks if b[0] not in PHASE1_WRITE_EXCLUDED]
     out = []
     A = out.append
@@ -107,6 +200,23 @@ def render(size, blocks, nv2a_c):
     A("    return off + 4u > off && off + 4u <= NV2A_MMIO_SIZE;")
     A("}")
     A("")
+    A("/* Registers a blind sweep must never write. Refused in the PROBE, not")
+    A(" * only in the driver, because the host is the thing most likely to have")
+    A(" * a bug in it. See gen_window.py for why each is here. */")
+    A("typedef struct { uint32_t offset; const char *name; } nv2a_hazard_t;")
+    A("static const nv2a_hazard_t kNv2aHazards[] = {")
+    for off, (name, _why) in sorted((hazards or {}).items()):
+        A('    { 0x%06xu, "%s" },' % (off, name))
+    A("};")
+    A("#define NV2A_NUM_HAZARDS %d" % len(hazards or {}))
+    A("")
+    A("static inline const char *nv2a_hazard_name(uint32_t off)")
+    A("{")
+    A("    for (int i = 0; i < NV2A_NUM_HAZARDS; ++i)")
+    A("        if (kNv2aHazards[i].offset == off) return kNv2aHazards[i].name;")
+    A("    return 0;")
+    A("}")
+    A("")
     A("/* Writes must land inside a modelled, write-enabled block. */")
     A("static inline bool nv2a_offset_writable(uint32_t off)")
     A("{")
@@ -119,6 +229,12 @@ def render(size, blocks, nv2a_c):
     A("            return true;")
     A("    }")
     A("    return false;")
+    A("}")
+    A("")
+    A("/* The check the probe actually applies to a write. */")
+    A("static inline bool nv2a_offset_write_allowed(uint32_t off)")
+    A("{")
+    A("    return nv2a_offset_writable(off) && nv2a_hazard_name(off) == 0;")
     A("}")
     A("")
     A("#endif /* NV2A_WINDOW_H */")
@@ -135,8 +251,17 @@ def main():
     nv2a_c = os.path.join(root, "hw", "xbox", "nv2a", "nv2a.c")
     rel = os.path.relpath(nv2a_c, root)
     size, blocks = parse(nv2a_c)
-    text = render(size, blocks, rel)
+    hazards = parse_hazards(os.path.join(root, "hw", "xbox", "nv2a", "nv2a_regs.h"),
+                            blocks)
+    text = render(size, blocks, rel, hazards)
     hdr = os.path.join(root, "tools", "nv2a_probe", "probe", "nv2a_window.h")
+    if a.write:
+        hz = os.path.join(root, "tools", "nv2a_probe", "host", "hazards.json")
+        os.makedirs(os.path.dirname(hz), exist_ok=True)
+        import json as _json
+        _json.dump({"%06X" % o: {"name": n, "why": w}
+                    for o, (n, w) in sorted(hazards.items())},
+                   open(hz, "w", encoding="utf-8"), indent=2)
     if a.print_blocks:
         print("window 0x%08x (%d MiB), %d blocks" % (size, size >> 20, len(blocks)))
         for n, o, s in blocks:

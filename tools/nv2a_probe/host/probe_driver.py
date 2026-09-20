@@ -97,8 +97,21 @@ class PoisonList:
         return "%08X/%s" % (off, "*" if val is None else "%08X" % val)
 
     def is_poison(self, off: int, val: int | None = None) -> bool:
-        return (self.key(off, val) in self.items
-                or self.key(off, None) in self.items)
+        """Is this write banned?
+
+        `val=None` asks the broader question "is this REGISTER banned", which
+        is what a sweep needs: you cannot sweep a register without writing to
+        it, so one value hanging the console bans the offset. The first version
+        only compared exact keys, so a ban recorded as `00000200/00000000` did
+        not match the sweep's `is_poison(0x200, None)` lookup and the register
+        that had just wedged the machine went straight back onto the todo list.
+        """
+        if self.key(off, None) in self.items:
+            return True
+        if val is not None:
+            return self.key(off, val) in self.items
+        prefix = "%08X/" % off
+        return any(k.startswith(prefix) for k in self.items)
 
     def add(self, off: int, val: int | None, why: str) -> None:
         self.items[self.key(off, val)] = {"why": why, "t": time.time()}
@@ -192,6 +205,19 @@ class Session:
         except Exception:
             pass
 
+    def end_run(self) -> None:
+        """Tell the probe this run ended on purpose, then close.
+
+        Without it the probe reports every close as "disconnected; redialling",
+        which looks identical to a failure on the console's screen.
+        """
+        try:
+            self._send("Q")
+            self._recv_line()
+        except Exception:
+            pass
+        self.close()
+
     def close(self):
         try:
             self.conn.close()
@@ -230,6 +256,11 @@ class ProbeServer:
         self.journal.record_outcome(orphan["seq"], "suspected_hang", str(exc))
         self.poison.add(orphan["offset"], orphan["value"],
                         "link died with this write in flight")
+        # Ban the whole register too, not just this value. A sweep has to write
+        # to a register to measure it, so "this value hangs it" and "leave this
+        # register alone" are the same instruction here.
+        self.poison.add(orphan["offset"], None,
+                        "link died with a write to this register in flight")
         return orphan
 
     def close(self):
