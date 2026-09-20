@@ -1,0 +1,141 @@
+# Is this Xbox a trustworthy instrument?
+
+**Yes.** 3,374 of 3,379 captures are bit-identical to the published hardware
+goldens — 99.9%. Zero blank frames, zero captures off by one, and zero label
+mismatches. Five captures disagree, and they are named below.
+
+Until now every measurement this project took on real silicon was a claim.
+This run makes it evidence, with a stated residual of five captures.
+
+Hardware: see [`xbox-console-provenance.md`](xbox-console-provenance.md) —
+reported V1.1, ind-BIOS, kernel 1.0.5003.67, GPU revision 163, MCP revision
+212. **The goldens were captured on Xbox 1.0 silicon; this is a 1.1.** That
+matters for reading the residual and it was written down before the run, not
+after. Cross-reference: issue #112.
+
+## What was run
+
+| | |
+|---|---|
+| Disc | `nxdk_pgraph_tests_xiso.iso`, sha256 `2371e743…`, 5,767,168 bytes |
+| | byte-for-byte the image [`pgraph-harness.md`](pgraph-harness.md) is written against |
+| Launch | from HDD at `E:\Apps\PgraphCalib\`, not from disc |
+| Goldens | `abaire/nxdk_pgraph_tests_golden_results` @ `6e159f15`, 2026-08-11 |
+| Small run | `Alpha func`, 16 tests — **16/16 bit-identical** |
+| Full run | everything bar one test, 2,934 tests, all completed |
+| Captures | 3,379 = 2,934 colour + 445 depth |
+
+`Texture render target::RenderTextureLoop` was skipped deliberately. It ends
+with the texture stage disabled and the 40 `TexFmt_*` tests that sort after it
+rely on the suite's `Initialize()`. The decision was made on evidence before
+running: the `TexFmt_*` goldens are rich — up to 65,027 distinct colours — so
+they were not captured with that contamination present. Leaving it in would
+have blanked 40 captures and inflated the residual about tenfold against
+goldens that never had it. One capture lost against forty corrupted.
+
+## How "matching" is defined here
+
+Per [`pgraph-harness.md`](pgraph-harness.md), and not reinvented: **differing
+pixel count and max delta, never a mean.** A mean cannot separate "this format
+is not decoded at all" from "rounding", and that is the whole triage decision.
+
+**Alpha is included.** `score_sweep.py` reports max delta over RGB and over A
+in separate columns, so neither is dropped and neither is silently folded into
+the other. Depth captures are compared as decoded integers with "off by
+exactly one" kept as its own category — there were none.
+
+## The residual: five captures
+
+| suite | test | differing px | share | max RGB | max A |
+|---|---|---:|---:|---:|---:|
+| `Texture_format` | `TexFmt_R6G5B5` | 134,902 | 43.91% | 223 | 254 |
+| `Color_zeta_overlap` | `ZetaIntoColor` | 19,994 | 6.51% | 84 | 0 |
+| `Color_zeta_overlap` | `ColorIntoZeta_ZB` | 10,982 | 3.57% | 135 | 220 |
+| `3D_primitive` | `LineLoop-inlinearrays-ls` | 4,546 | 1.48% | 100 | 59 |
+| `Attrib_float` | `-NaNs_NaNs` | 60 | 0.02% | 155 | 255 |
+
+Two carry the status `white-content`, which is **not** a label mismatch: white
+pixels differ in the image *body*, below the 64-row label band. The row stays
+scoreable and the difference is real content. `label-differs` — the status that
+would mean the golden came from a different build of the suite — **did not
+occur once in 3,379 captures.** That is the strongest single piece of evidence
+that the comparison is about this console and not about disc versions.
+
+The two `Color_zeta_overlap` rows are one suite and plausibly one mechanism
+rather than two findings.
+
+### What has not been established about those five
+
+Three explanations remain open and this run cannot separate them:
+
+1. **A genuine 1.0-versus-1.1 silicon difference.** Predicted in advance as a
+   real hardware difference rather than an instrument fault. Five isolated
+   captures in formats and edge cases (`R6G5B5`, NaN attributes, line loops,
+   colour/zeta aliasing) is the shape that would take.
+2. **Contamination from the test before it.** Every test here ran on a shared
+   disc; `score_sweep` marks every suite non-solo for exactly this reason.
+3. **Nondeterminism.** Untested, and it is the sharpest of the three because it
+   needs no golden at all — the console is compared only with itself.
+
+**The cheap next step is a repeat.** Re-running just `Color_zeta_overlap`,
+`3D_primitive` and `Attrib_float` is about 181 tests and a couple of minutes.
+If the same five differ by the same pixel counts, nondeterminism is out and
+these become candidate 1.0/1.1 differences worth an issue. If they move, the
+numbers above are single-run noise and should not be quoted.
+
+Nothing should be staked on those five until that is done. Nothing is blocked
+by them either: 3,374 captures are bit-identical and those are usable now.
+
+### Stencil was stable
+
+Issue #79 records 9 of 16 `Stencil` captures changing between runs of the same
+binary on the Thor. On this hardware, `Stencil` scored **16/16 bit-identical**,
+and `Stencil_func` likewise. One run cannot prove stability, but it is
+consistent with #79 being an emulator artefact rather than something the
+silicon does — which is worth knowing before another campaign is built on top
+of that suite.
+
+## Coverage, and why 2,934 is not 5,608
+
+The goldens hold 5,608 captures; this disc ran 2,934 tests producing 3,379
+captures. **92 of the 100 suites match exactly** (tests run == goldens minus
+depth). The shortfall concentrates in `Blend_tests` (105 of 1,673) and
+`Depth_buffer` (144 of 784).
+
+This was not accepted as version skew on the counts alone — skew is the
+explanation of last resort. Three things were checked first:
+
+1. **Every name this disc produced exists in the goldens.** There is not one
+   orphan capture in any suite. Every capture scored had a golden of the same
+   name to be compared against.
+2. **The missing goldens use an older spelling this build does not emit.**
+   `Front face` is the clearest case: the disc produces
+   `FrontFace_FM_0x00_CF_B`, and the goldens carry both that set and a
+   12-strong `FrontFace_0x00_CF_B` set. A golden repository accumulates — a
+   renamed test leaves its old PNG behind unless somebody deletes it.
+3. **`sample-config.json` on the disc is itself stale** against the XBE beside
+   it, spelling the same tests `FrontFace_0_CF_B`. It is an enumeration of
+   empty `{}` values, not a set of skip directives, so it neither caused this
+   nor could have prevented it.
+
+So the 1,905 are goldens for test names this XBE does not produce, not tests
+that failed to run. `score_sweep` flags the affected suites as PARTIAL
+COVERAGE, and **a score over part of a suite is not the suite's score** —
+`Blend_tests 105/105` means 105 of 105 *run*, not 105 of 1,673.
+
+## Reproducing this
+
+Captures, logs and scores stay on the host, under
+`~/hakux-work/hardware/runs/2026-09-19-calib/`, with `PROVENANCE.txt` and the
+pre-run `PREDICTION.txt` beside them. Only this verdict is in git.
+
+```sh
+python3 docs/testing/score_sweep.py \
+    --out  ~/hakux-work/hardware/runs/2026-09-19-calib/full/out \
+    --goldens ~/goldens/results --jobs 8 \
+    --tsv  ~/hakux-work/hardware/runs/2026-09-19-calib/full/scores.tsv \
+    --disc-id full-suite-minus-RenderTextureLoop --label xbox-hw-calib-full
+```
+
+Scoring 3,379 captures single-threaded runs past fifteen minutes; `--jobs 8`
+brings it under two.
