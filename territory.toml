@@ -682,10 +682,3 @@ issues = ["50"]
 files = ["docs/lanes/swatchorder50/NOTES.md"]
 standing = false
 note = "DISPATCHED WAVE 131 (job.board), briefs/swatchorder50.md: #50's blendrace50 retired last tick with the disc-composition finding recorded; the issue's own next step is a fresh, well-scoped falsifier -- a DrawColorAndAlphaStack variant with unequal swatch heights or a 3-swatch draw, to separate the two surviving readings (reversed y-position vs. reversed colour order) that the existing capture cannot distinguish. Claims no in-repo source file besides its own NOTES.md; the change lives in nxdk_pgraph_tests' blend_tests.cpp, out-of-repo and untracked here, same as [retired.wbufclip]'s wbuf_tests.cpp touch."
-
-
-[lane.cloud-audit1-187]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-187, audit pass 1 of PR #187 on branch lane/cloud-10, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 187` removes this row when the unit ends."
