@@ -120,6 +120,19 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
      * parameters below arrive as a push constant, which has no GL spelling,
      * and gl/shaders.c is another lane's file.  A GL-only fix would read the
      * same lineParams from a plain uniform; nothing here forecloses it.
+     *
+     * A POLYGON MODE DECIDES NOTHING FOR A LINE PRIMITIVE, and reading the
+     * test below by its name cost this lane an arm.  state->primitive_mode
+     * is the OUTPUT mode: pgraph_prim_rewrite_get_output_mode() maps
+     * LINE_LOOP and LINE_STRIP to PRIM_TYPE_LINES whatever polygon_mode
+     * says, and only QUADS/QUAD_STRIP/POLYGON consult it.  So a draw that
+     * set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened
+     * path, and one does: the Line_width suite's Fill_0000/0001/0032
+     * captures are named for that FILL mode and draw a 16-segment LINE_LOOP
+     * at the suite's line width alongside their five filled blocks.  Every
+     * pixel of those goldens that depends on LINE_WIDTH is the loop's --
+     * 12,021 of 12,021 between Fill_0000.0 and Fill_0032.0, bar 59 in the
+     * guest's printed label (line_cap_phase.py --fills, audit finding N4).
      */
     bool widen_lines =
         opts.vulkan && (state->primitive_mode == PRIM_TYPE_LINES ||
@@ -594,6 +607,26 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
          * deadband gives up on the order of a twelfth of the clip's own work
          * above 1x, on 26 to 30 captures from w = 6 up.  Scale 1 is the
          * control row and must read zero on every column, since 0.5/1 is 0.5.
+         *
+         * THAT ZERO IS ABOUT COVERAGE, AND THE SCALE-1 COST IS NOT ZERO --
+         * audit finding N5.  The half-pixel argument bounds which SAMPLES
+         * fall inside the footprint; it says nothing about the value at a
+         * sample that stays covered, and taking a cut does more than move an
+         * edge.  It synthesises a vertex and re-triangulates the strip, so
+         * the varyings interpolate differently across a sample the cut never
+         * uncovered.  Measured on the device at surface_scale_factor 1:
+         * suppressing a cut in Line_width/Fill_0032.0 costs TWO pixels that
+         * the pre-deadband build shaded exactly right -- (271,93)
+         * 51,154,152 -> 51,155,151 and (264,123) 51,227,79 -> 51,228,78,
+         * with the golden at the first value in both -- against four pixels
+         * that capture gains from the clip.  It wins less there; it does not
+         * lose.  At both pixels the deadbanded build holds master's own
+         * value, which is the one-directional argument above doing exactly
+         * what it claims.  No instrument in
+         * docs/testing/line_cap_phase.py reports that class: --rivals,
+         * --controls, --shader, --quantise, --scale-cost and --fills all
+         * score coverage, and --depth is value-aware for z alone.  It is a
+         * known limit, not a measured zero.
          *
          * The fix, if that twelfth is ever worth it, is NOT a smaller
          * constant -- 0.125 would be exact at scale 4 and would reintroduce

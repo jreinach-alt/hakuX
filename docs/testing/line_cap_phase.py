@@ -37,6 +37,16 @@ vertex, which is exactly where the residual was.
   --scale-cost  what the deadband's half-GUEST-pixel constant costs at
                 Rendering Scale > 1, where the device samples are closer
                 together than it assumes (audit finding A1)
+  --fills       the three `Fill_*` captures every other mode here skips:
+                which of the suite's six blocks the wide-line path draws in
+                them, and what the deadband says they may do (finding N4)
+
+EVERY MODE ABOVE EXCEPT --fills SCORES `Line_*` ONLY.  line_priority.captures()
+matches `Line_(\\d+)\\.(\\d)`, so the suite's three `Fill_*` captures are outside
+the capture set of --rivals, --controls, --shader, --vs-goldens, --quantise and
+--scale-cost alike.  They are not void: they draw a wide LINE_LOOP.  See
+--fills, and do not read a "costs nothing" from the others as a statement about
+them (audit finding N5).
 """
 import argparse
 import os
@@ -777,6 +787,10 @@ def main():
                          "device samples (audit finding A1)")
     ap.add_argument("--scales", default="1,2,3,4",
                     help="surface_scale_factor values for --scale-cost")
+    ap.add_argument("--fills", action="store_true",
+                    help="the three Fill_* captures every other mode here "
+                         "skips: which block the wide-line path draws in "
+                         "them, and what the deadband allows (finding N4)")
     ap.add_argument("--vs-goldens", metavar="CAPTUREDIR", default=None,
                     help="THE ARM LEG: whole-capture ink mismatch of a "
                          "capture set against the goldens, coverage only")
@@ -807,6 +821,9 @@ def main():
     if a.scale_cost:
         sys.exit(scale_cost(a.goldens, a.min_width, a.max_width,
                             tuple(int(s) for s in a.scales.split(","))))
+
+    if a.fills:
+        sys.exit(fills(a.goldens))
 
     if a.corners:
         corners(a.goldens, a.min_width, a.max_width)
@@ -911,6 +928,163 @@ def controls(golden_dir, lo, hi):
     print(f"  landing on a pixel CENTRE -- the population that separated "
           f"low-open from\n    closed for the REJECTED centre-sampled band: "
           f"{ties_centre}")
+
+
+FILL_WIDTHS = (("Fill_0000.0", 0.0), ("Fill_0001.0", 1.0),
+               ("Fill_0032.0", 32.0))
+
+
+def fill_golden(golden_dir, test):
+    """One `Line_width/Fill_*` golden, in either directory shape."""
+    import captures as cap
+    from PIL import Image
+    d = os.path.join(golden_dir, lp.SUITE)
+    if os.path.isdir(d):
+        path = os.path.join(d, test + ".png")
+    else:
+        d = cap.resolve(golden_dir, "%s::*.png" % lp.SUITE)
+        path = os.path.join(d, "%s::%s.png" % (lp.SUITE, test))
+    return np.asarray(Image.open(path).convert("RGBA")).astype(np.int16)
+
+
+def fills(golden_dir):
+    """N4's check: `Line_width/Fill_*` IS a wide-line capture, and which block.
+
+    THE PREMISE THIS EXISTS TO KILL.  Until this remediation the prediction
+    held `Line_width/Fill_*` under `must_not_move` on the argument that
+    `SetFill(true)` makes the capture a filled-polygon draw, so `widen_lines`
+    is false and the generator emits the shader it emitted before.  The device
+    moved `Fill_0032.0` anyway (26,721 -> 26,717, `[job.arms]` on PR #141),
+    four pixels, every one of them onto the golden's exact value.  The premise
+    was false, not the result.
+
+    `SetFill()` sets NV097_SET_FRONT_POLYGON_MODE, and a polygon mode decides
+    nothing for a LINE primitive.  `line_width_tests.cpp` draws SIX blocks and
+    the first is a 16-segment LINE_LOOP (`line_priority.BLOCKS`);
+    `pgraph_prim_rewrite_get_output_mode()` maps LINE_LOOP -> PRIM_TYPE_LINES
+    irrespective of `polygon_mode` (prim_rewrite.c), `glsl/geom.c` builds
+    `state->primitive_mode` from that output mode, and `widen_lines` is true
+    for every PRIM_TYPE_LINES draw.  So a `Fill_*` capture is five filled
+    blocks AND one wide-line loop at the suite's line width, and the cap clip
+    reaches the loop.
+
+    THE FOUR LEGS.
+
+      1. The goldens say the same thing, from hardware.  Every pixel whose
+         value depends on LINE_WIDTH -- `Fill_0000.0` XOR `Fill_0032.0`, and
+         `Fill_0001.0` XOR `Fill_0032.0` -- must lie inside the LINE_LOOP
+         block's own unclipped w = 32 footprint (dilated by one pixel for the
+         tie) or in the guest's printed label, which spells the width out.
+         The five FILLED blocks must contribute nothing.
+      2. The mutant for leg 1.  Drop the LINE_LOOP from that mask and leg 1
+         must FAIL by thousands of pixels, or it is a leg that passes because
+         the mask is large rather than because the loop is where the width
+         goes.
+      3. C2's own claim, restricted to the loop.  At w = 0 and w = 1 nothing
+         cuts, so `emit_line()` hands back master's four corners and the
+         capture must be BIT-IDENTICAL between the arms -- zero bites and
+         zero quantised pixels moved against the unclipped parallelogram.
+         Which is the device's reading: neither `Fill_0000.0` nor
+         `Fill_0001.0` moved one pixel on either arm.
+
+         AND THE DEADBAND IS NOT WHAT EARNS THAT, which is worth saying
+         because the Line_* captures at those widths are a different story.
+         The `bites db=0` column reads zero at w = 0 and w = 1 too: the
+         LINE_LOOP's sixteen edges have no sub-half-pixel crossing that
+         narrow, so the pre-deadband geometry also left these two captures
+         alone -- and the device agrees, they did not move on the FAILING arm
+         either.  Quoting them as evidence for the deadband would be reading
+         a zero that was there before it.
+      4. And leg 3 must not be vacuous: at w = 32 the clip has to bite, or it
+         would be satisfied by a clip that does nothing at all and
+         `Fill_0032.0`'s improvement would have no mechanism behind it.  The
+         same row is where the deadband is visible in this instrument at all
+         -- 6 cuts shipped against 8 with the deadband at zero.
+
+    WHAT THIS DOES NOT DO.  It does not predict `Fill_0032.0`'s score.  Like
+    --quantise it rasterises in float64 at exact centres and under-counts: one
+    quantised pixel here against the four the device moved.  The prediction
+    registers the device's own measured value for that capture, not this one.
+    """
+    lit_pad = 1
+    loop = [e for e in lp.EDGES if e[0] == "LLoop"]
+    other = [e for e in lp.EDGES if e[0] != "LLoop"]
+    print("the suite's six blocks, and which the wide-line path draws under "
+          "SetFill(true):")
+    for name, _pts in lp.BLOCKS:
+        print("  %-8s %2d edges   %s" % (
+            name, lp.NEDGE[name],
+            "LINE_LOOP -> PRIM_TYPE_LINES: WIDENED whatever the polygon mode"
+            if name == "LLoop" else "POLY_MODE_FILL -> triangles: not widened"))
+
+    def foot(edges, w, pad):
+        m = np.zeros((lp.H, lp.W), bool)
+        for e in edges:
+            m |= shader_mask(e, w, deadband=float("inf"))
+        for s in range(1, pad + 1):
+            for ax in (0, 1):
+                m |= np.roll(m, s, axis=ax) | np.roll(m, -s, axis=ax)
+        return m
+
+    g = {t: fill_golden(golden_dir, t) for t, _w in FILL_WIDTHS}
+    label = lp.text_mask(g["Fill_0000.0"]) | lp.text_mask(g["Fill_0032.0"]) \
+        | lp.text_mask(g["Fill_0001.0"])
+    inside = foot(loop, 32.0, lit_pad) | label
+    mutant = foot(other, 32.0, lit_pad) | label
+    print("\nleg 1 -- where the GOLDENS put their dependence on LINE_WIDTH")
+    print("%-26s%10s%10s%14s%16s" % ("golden pair", "differ", "in label",
+                                     "outside loop", "outside MUTANT"))
+    leg1 = out_mut = 0
+    for a in ("Fill_0000.0", "Fill_0001.0"):
+        d = (g[a] != g["Fill_0032.0"]).any(axis=2)
+        o1 = int((d & ~inside).sum())
+        o2 = int((d & ~mutant).sum())
+        leg1 += o1
+        out_mut += o2
+        print("%-26s%10d%10d%14d%16d"
+              % ("%s vs Fill_0032.0" % a, int(d.sum()), int((d & label).sum()),
+                 o1, o2))
+
+    print("\nlegs 3 and 4 -- what the shipped deadband does to the LINE_LOOP")
+    print("%-14s%8s%10s%12s%12s%12s" % ("test", "w", "bites", "bites db=0",
+                                        "quant px", "quant db=0"))
+    zero_ok, wide_bites, wide_suppressed = True, 0, 0
+    for test, w in FILL_WIDTHS:
+        acc, bite = {}, {"new": 0, "old": 0}
+        for k, db in (("base", float("inf")), ("new", DEADBAND), ("old", 0.0)):
+            m = np.zeros((lp.H, lp.W), bool)
+            for e in loop:
+                m |= shader_mask(e, w, deadband=db, quant=1.0 / 256.0)
+                if k != "base" and len(shader_poly(e, w, deadband=db)) > 4:
+                    bite[k] += 1
+            acc[k] = m
+        q_new = int((acc["new"] ^ acc["base"]).sum())
+        q_old = int((acc["old"] ^ acc["base"]).sum())
+        print("%-14s%8.3f%10d%12d%12d%12d"
+              % (test, w, bite["new"], bite["old"], q_new, q_old))
+        if w < 24.0 and (bite["new"] or q_new):
+            zero_ok = False
+        if w >= 24.0:
+            wide_bites += bite["new"]
+            wide_suppressed += bite["old"] - bite["new"]
+
+    print("\nevery width-dependent golden px is the LINE_LOOP's or the "
+          "label's: %s"
+          % ("PASS" if leg1 == 0 else "FAIL -- %d px are neither" % leg1))
+    print("and that leg is about the LOOP, not about a large mask -- the "
+          "five filled\n  blocks in its place leave %d px unexplained: %s"
+          % (out_mut, "PASS" if out_mut > 0 else
+             "FAIL -- the check discriminates nothing"))
+    print("below w = 24 nothing cuts, so Fill_0000.0 and Fill_0001.0 are "
+          "master's own\n  geometry -- and `bites db=0` says the deadband is "
+          "not what earns it: %s"
+          % ("PASS" if zero_ok else "FAIL -- a cut survives the deadband"))
+    print("and at w = 32 the clip does bite (%d cuts, %d more without the "
+          "deadband), so\n  Fill_0032.0's improvement has a mechanism and the "
+          "leg above is not vacuous: %s"
+          % (wide_bites, wide_suppressed,
+             "PASS" if wide_bites else "FAIL -- nothing cuts"))
+    return 0 if (leg1 == 0 and out_mut > 0 and zero_ok and wide_bites) else 1
 
 
 def depth_check():

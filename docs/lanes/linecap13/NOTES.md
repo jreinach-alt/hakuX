@@ -298,6 +298,16 @@ deepest sliver per capture crosses 0.5 px between `w = 16` (0.468) and
 > conservative above it.  See *Attempt 5* below for what it costs, and read
 > that before quoting anything in this section at a scale above 1.
 
+> **Corrected in place again by audit finding N5 (pass 2c): "removes no
+> sample" is a statement about COVERAGE, and it is the whole of what this
+> paragraph proves.**  A cut does two things -- it moves an edge, and it
+> synthesises a vertex that re-triangulates the strip -- and the second one
+> changes how the varyings interpolate at samples the cut never uncovered.
+> So a suppressed cut can still cost a shaded VALUE at scale 1, and on the
+> device it does: two pixels of `Line_width/Fill_0032.0`.  See *Attempt 6*.
+> Every instrument in `line_cap_phase.py` scores coverage; `--depth` is the
+> only value-aware one and it reads z alone.
+
 **`--quantise` is the instrument that can see this, because every other one
 here cannot.**  It rasterises the same polygon with each emitted vertex
 snapped to the 1/256 grid, and scores three legs against the UNCLIPPED
@@ -349,6 +359,18 @@ per arm there is no noise estimate to weigh that against.  Two runs per arm
 will say whether it is the device or something real; the glob stays in the
 prediction either way, because dropping a tripwire that fired is how a gate
 stops being one.
+
+> **WRONG, and corrected in place by audit finding N4 (pass 2c): the premise
+> is false and `widen_lines` is TRUE for part of that capture.**  `SetFill()`
+> sets `NV097_SET_FRONT_POLYGON_MODE`, and a polygon mode decides nothing for
+> a LINE primitive: `pgraph_prim_rewrite_get_output_mode()` maps `LINE_LOOP`
+> to `PRIM_TYPE_LINES` whatever `polygon_mode` says.  The suite's first block
+> is a 16-segment `LINE_LOOP` (`line_priority.BLOCKS`), so a `Fill_*` capture
+> is five filled blocks AND one wide-line loop at the suite's width.  The
+> second run of the arm settled it the other way from the one this paragraph
+> expected: the capture is reachable, it moved because the fix works, and
+> both runs of both arms were byte-identical with themselves.  See *Attempt
+> 6* and `line_cap_phase.py --fills`.
 
 ## Attempt 5: the deadband's coordinate space (pass-2b audit A1)
 
@@ -403,9 +425,26 @@ claims:
 
 For magnitude: the cap rule removes 393 guest px at scale 1 (`--controls`),
 whose device-sample equivalent scales with `scale^2`, so the deadband gives
-up on the order of a twelfth of the clip's own work above 1x.  **It gives up
-nothing at scale 1, and it can never make anything worse than master at any
-scale**, since a suppressed cut emits master's own four corners.
+up on the order of a twelfth of the clip's own work above 1x.  **It can never
+make anything worse than master at any scale**, since a suppressed cut emits
+master's own four corners.
+
+> **Corrected in place by audit finding N5 (pass 2c).**  This paragraph said
+> "it gives up nothing at scale 1".  That is true of every number in this
+> section and false of the device.  The zero is `--scale-cost`'s scale-1
+> control row, which is a COVERAGE count over the 48 non-void `Line_*`
+> captures -- the only set `lp.captures()` matches, so the suite's three
+> `Fill_*` captures are outside every instrument in this file except
+> `--fills`, and interpolated values are outside all of them.  At scale 1 on
+> the device the deadband gives up **two pixels** of
+> `Line_width/Fill_0032.0`, `(271,93)` `51,154,152 -> 51,155,151` and
+> `(264,123)` `51,227,79 -> 51,228,78`, the golden sitting at the first value
+> in each.  Both stay covered by the footprint either way; what moves is the
+> shading, because taking the cut re-triangulates the strip.  It wins less,
+> it does not lose -- both pixels hold master's own value -- and it is the
+> only measurement of the deadband's true scale-1 cost that exists.  It lands
+> in the colour channel, which is #13's next phase and 76.3% of the issue's
+> residual, so the next lane should not size it at zero.
 
 **Which cuts happen is scale-independent, and that is the same fact from the
 other side.**  The deadband does not scale, so the bite/no-bite decision is a
@@ -429,7 +468,9 @@ GLSL is byte-identical to `36e85c96c9`'s -- checked rather than asserted, by
 building `geom_dump` twice (`make GLSL=<dir> BUILD=build-head`, so the real
 path is never swapped) against this tree and against `4cc0d26dc0`'s
 `glsl/geom.c` and diffing all ten emitted cases: `md5 d16bf20f52...` both
-sides, 1,295 lines, no differing byte.  That is the whole argument,
+sides, 1,292 lines (this said 1,295, which counted three lines of `make`'s
+own output; the md5 is of the 1,292), no differing byte.  That is the whole
+argument,
 which is worth saying because the tempting one is weaker.  "The arm runs at
 scale 1" is verified only for the DESKTOP channel, which pins
 `surface_scale = 1` (`desktop_channel.sh:454`); the device arms inherit the
@@ -444,6 +485,85 @@ So the prediction registered at `3beca48079` is **not** re-registered: its
 `b_ref 36e85c96c9` is still the last commit that can change a pixel, and
 re-registering would restart a ~90-minute arm for a comment.
 
+## Attempt 6: `Fill_*` is a wide-line capture (pass-2c audit N4, N5, N6)
+
+The second arm came back **20 better, 0 worse, 146 same**, both sides two runs
+and each byte-identical with itself.  Every leg held except one, and the one
+that fired is a leg this lane wrote: `Line_width/Fill_*` under `must_not_move`,
+tripped by `Fill_0032.0` moving `26,721 -> 26,717` -- *better*, by four pixels,
+every one of them onto the golden's exact value.
+
+**The premise was false, not the result.**  `SetFill(true)` sets
+`NV097_SET_FRONT_POLYGON_MODE_V_FILL`, and this lane read the capture by its
+name: fill mode, so `widen_lines` is false, so nothing in the diff can reach
+it.  A polygon mode decides nothing for a LINE primitive.
+`pgraph_prim_rewrite_get_output_mode()` (`pgraph/prim_rewrite.c`) maps
+`LINE_LOOP` and `LINE_STRIP` to `PRIM_TYPE_LINES` irrespective of
+`polygon_mode` -- only `QUADS`/`QUAD_STRIP`/`POLYGON` consult it --
+`glsl/geom.c:36` builds `state->primitive_mode` from that output mode, and
+`widen_lines` is true for every `PRIM_TYPE_LINES` draw.  And
+`line_width_tests.cpp` draws **six** blocks, of which the first is a
+16-segment `LINE_LOOP` (`line_priority.BLOCKS`; the fill loop is
+`for (auto line_width : {0, 1 << 3, 32 << 3})`, so the three captures are
+w = 0, 1 and 32).  A `Fill_*` capture is five filled blocks **and** one wide
+line loop at the suite's width, and the cap clip reaches the loop.
+
+**`line_cap_phase.py --fills` is the check, and it is new because every other
+mode in that file is blind here.**  `lp.captures()` matches
+`Line_(\d+)\.(\d)`, so `--rivals`, `--controls`, `--shader`, `--vs-goldens`,
+`--quantise` and `--scale-cost` never opened a `Fill_*` capture at all. Four
+legs, all PASS:
+
+| leg | reading |
+|---|---|
+| the goldens' dependence on `LINE_WIDTH` is the loop's | `Fill_0000.0` vs `Fill_0032.0` differ in **12,021** px, **0** of them outside the loop's own unclipped `w = 32` footprint or the guest's printed label (59 px). The five filled blocks contribute nothing. |
+| and that is about the LOOP, not a large mask | the five filled blocks in the loop's place leave **23,311** px unexplained |
+| below `w = 24` nothing cuts | `Fill_0000.0` and `Fill_0001.0`: **0** bites, **0** quantised px moved -- so master's own four corners, so bit-identical |
+| and at `w = 32` it does cut | **6** cuts, 8 with the deadband at zero -- `Fill_0032.0`'s gain has a mechanism and the leg above is not vacuous |
+
+Two things that row three does *not* say.  The `bites db=0` column is zero at
+`w = 0` and `w = 1` as well: the loop's sixteen edges have no sub-half-pixel
+crossing that narrow, so the **pre-deadband** geometry left those two captures
+alone too, and the device agrees -- neither moved on the failing arm either.
+Quoting them as evidence for the deadband would be reading a zero that was
+there before it.  And `--fills` does not predict `Fill_0032.0`'s score: like
+`--quantise` it rasterises in float64 at exact centres, and it under-counts,
+one quantised px here against the device's four.
+
+**What changed in the prediction, and why this is not a post-hoc edit to a leg
+that fired.**  This lane has twice refused to weaken a leg the device broke,
+and was right both times.  What is different here is that the device falsified
+the leg's PREMISE and not its result: `Fill_0032.0` is reachable, so "a line
+change must not touch it" was never a true statement about this capture.  So:
+
+- `Line_width/Fill_0000.*` and `Line_width/Fill_0001.*` **stay** in
+  `must_not_move`.  They are the half of the old glob the mechanism supports,
+  and they are the discriminating half -- if the `Fill_*` captures were moving
+  for some reason other than the line loop (a push-constant range, a pipeline
+  layout), all three would move together.
+- `Line_width/Fill_0032.0` moves to `expect`, at the value the device measured
+  twice on this very binary: **26,717**.  That is a reproduction leg, not a
+  forecast, and it is registered as one.  The shader is byte-identical to the
+  arm that produced it (`geom_dump` md5 `d16bf20f52...`), so a different
+  number means either the capture is not deterministic after all or the pair
+  is not the pair this file names -- both worth failing on.
+
+**The deadband's scale-1 cost is not zero, and it is in the colour channel**
+(N5).  Same capture: the pre-deadband build got two pixels of `Fill_0032.0`
+exactly right that the deadbanded one does not, `(271,93)`
+`51,154,152 -> 51,155,151` and `(264,123)` `51,227,79 -> 51,228,78`.  Neither
+is a coverage flip -- both stay inside the footprint -- so the half-pixel proof
+does not cover them: taking a cut synthesises a vertex and re-triangulates the
+strip, and the varyings interpolate differently across samples that never
+moved.  Both corrected in place above, in `geom.c`'s derivation, and here.
+
+**Two figures corrected while checking the above.**  The `geom_dump` GLSL is
+**1,292** lines, not 1,295; the earlier count included three lines of `make`'s
+own output, and the md5 `d16bf20f526caf274e5f58640b72823d` is of the 1,292.
+And the PR body's "a twelfth of the clip's own work" (N6, LOW) dropped the
+`scale^2` conversion that `geom.c` and this file carry, which reads as 28% --
+four times the figure -- if the two numbers are taken in one unit.
+
 ## What the next lane should not repeat
 
 - **Do not quote the epsilon-tie score as a device prediction.**  It is a
@@ -455,6 +575,14 @@ re-registering would restart a ~90-minute arm for a comment.
   pixel centre) and by `subPixelPrecisionBits`, and it is not ours to pick.
   If that residual is worth opening, it is a question about the rasteriser's
   vertex quantisation, not about the cap.
+- **Do not read a capture's draw calls off its test name.**  `Fill_0032.0` is
+  a wide-line capture; `SetFill()` renames the polygon mode and the suite's
+  `LINE_LOOP` block ignores it.  Cost this lane an arm and two audit passes.
+  `line_cap_phase.py --fills` is the check that would have caught it.
+- **`lp.captures()` is `Line_*` only.**  Every instrument built on it -- which
+  is all of `line_priority.py`, `line_extent_phase.py` and `line_cap_phase.py`
+  bar `--fills` -- silently excludes three of the suite's 61 captures. A zero
+  from any of them is a zero over 48 captures, not over the suite.
 - `geom_dump/build/` is generated.  Do not commit it; `make clean && make run`.
 
 ## Status
@@ -476,6 +604,13 @@ re-registering would restart a ~90-minute arm for a comment.
 - [x] all six Vulkan cases `geom_dump` emits compile with the NDK's `glslc`
       after the deadband; `--shader` still reads 935 -> 544 at 1/256 and
       414 -> 21 at 1e-9, `--rivals` still 495 -> 102, `--depth` PASS/PASS
-- [ ] the re-judged arm: two runs per side, `a_ref` master's tip, `b_ref` the
-      deadbanded shader.  The FAIL of 2026-09-19 16:50 is answered by the
-      remediation above and by nothing else until that verdict lands.
+- [x] the re-judged arm ran: **20 better, 0 worse, 146 same**, two runs a side
+      each byte-identical with itself.  FAIL on one leg only -- `Fill_*` under
+      `must_not_move`, tripped by `Fill_0032.0` improving
+- [x] pass-2c audit remediated: N4 (`Fill_*` draws a `LINE_LOOP`, so it IS a
+      wide-line capture; `--fills` is the check, C2 re-scoped, re-registered),
+      N5 (the half-pixel proof bounds coverage and not values; the deadband's
+      2 px at scale 1 recorded), N6 (the `scale^2` conversion restored to the
+      PR body)
+- [ ] the third arm, on the re-scoped C2.  `Fill_0000.*`/`Fill_0001.*` must be
+      bit-identical; `Fill_0032.0` must read 26,717.
