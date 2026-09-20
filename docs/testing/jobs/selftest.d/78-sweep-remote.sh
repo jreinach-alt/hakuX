@@ -170,7 +170,15 @@ sr_board() {   # <dir> <lane>|<issues csv>|<remote branch or empty> ...
           IFS='|' read -r l i r <<< "$spec"
           printf '\n[lane.%s]\nissues = [%s]\nfiles = []\nstanding = false\nnote = "x"\n' \
               "$l" "$([ -n "${i:-}" ] && echo "$i" | sed 's/[^,]*/"&"/g')"
-          [ -n "${r:-}" ] && printf 'remote = "%s"\n' "$r"
+          # `true` is the OTHER legal spelling and it means `lane/<row name>`:
+          # a remote lane whose branch wears the local prefix. remote-lane.sh
+          # accepts both, so a fixture that only ever writes the string half
+          # has not exercised the case where the two namespaces collide.
+          case "${r:-}" in
+              "")     ;;
+              true)   printf 'remote = true\n' ;;
+              *)      printf 'remote = "%s"\n' "$r" ;;
+          esac
       done
     } > "$dir/territory.toml"
 }
@@ -342,10 +350,15 @@ got=$(sr_is list)
 check "(control) with the board readable, this fixture IS a finding" \
       sr_in 'territory row `lane.deadlocal`'
 
-echo "findings nobody has read yet" > "$SR/work/board/issue-sweep.findings"
+# IN `list` MODE FOR THE "REPORTS NOTHING" HALF, AND THAT IS NOT A DETAIL.
+# A `run` tick prints only its one-line `say` summary: the report goes to a
+# file. So `no ### on stdout` is true of a run tick under ANY code, and the
+# first version of these two checks passed against master for that reason
+# alone -- a falsifier its own subject forces true. `list` is the mode whose
+# stdout IS the report.
 got=$( ( export PATH="$SR/ibin:$PATH" HAKUX_WORK="$SR/work" HAKUX_REPO_DIR="$SR/repo" \
                 HAKUX_TERRITORY="$SR/nosuch.toml"
-         bash "$SRT/jobs/issue-sweep.sh" 2>&1 ) )
+         bash "$SRT/jobs/issue-sweep.sh" list 2>&1 ) )
 check "MUTANT: an unreadable board map makes the issue sweep report no class at all" \
       sr_no_heading
 check "  and it does not say \"Nothing stuck\" either -- it established nothing" \
@@ -353,7 +366,17 @@ check "  and it does not say \"Nothing stuck\" either -- it established nothing"
 check "  it names the source it got, so the refusal is diagnosable" \
       sr_in 'came back `unreadable`'
 check "  and the one command that cures it" sr_in "git fetch origin board"
-check "  and it leaves the unread findings alone" sr_findings_intact
+
+# AND THE `run` TICK, which is the one that can destroy something: a blind
+# tick must not discharge findings nobody has read, and must not overwrite the
+# report page with an emptier one.
+echo "findings nobody has read yet" > "$SR/work/board/issue-sweep.findings"
+( export PATH="$SR/ibin:$PATH" HAKUX_WORK="$SR/work" HAKUX_REPO_DIR="$SR/repo" \
+         HAKUX_TERRITORY="$SR/nosuch.toml"
+  bash "$SRT/jobs/issue-sweep.sh" ) >/dev/null 2>&1
+check "  and a run tick on that map leaves the unread findings alone" sr_findings_intact
+check "  and writes no report page over the last one that meant something" \
+      test ! -f "$SR/work/status/issue-sweep.md"
 
 # AND THE FOLD-LAGGED READ, WHICH IS THE ONE THAT LOOKS LIKE A SUCCESS.
 # board_files.load() falls back to the in-tree copy and RETURNS IT, so this
@@ -382,6 +405,30 @@ check "  by the lane name the BOARD gave the branch, not by a prefix" \
 check "  and says out loud that nothing local may resume it" \
       sr_said "nothing local will resume it"
 check "  while still not marking the PR ready" sr_said "nothing here marks a PR ready"
+
+# THE SHAPE THAT ACTUALLY MISROUTES, and it is the one a `claude/*` head does
+# NOT produce. Measured against master: with `remote = "<branch>"` the old code
+# derived the EMPTY lane name, and both `draft-strand` and `regressed` are
+# guarded on `and lane` -- so such a PR fell out of the sweep entirely. It
+# under-reported; it did not misroute.
+#
+# `remote = true` is where it misroutes. The branch is `lane/prefixed`, so the
+# old prefix strip yields a real lane name, there is no `hakux-lane-prefixed`
+# unit (there is no host here to run one), and the PR is emitted as a strand
+# whose whole content is naming `handback.sh` as its actor. handback.sh
+# refuses it -- it asks remote_lane_of first -- but a sweep that is correct
+# only because another job guards it is a sweep that is wrong and happens not
+# to be paid for it. This is 98-lane-shape's "a remote lane named lane/* is
+# still not resumed locally", asked one actor earlier.
+sr_reset
+sr_board "$SRP" "prefixed||true"
+sr_pr 306 lane/prefixed true "" 90000
+sr_ps >/dev/null
+check "a remote lane whose branch IS lane/<name> is still not a strand" \
+      sr_unsaid "[job.pr-sweep] this PR is a draft and"
+check "  and handback.sh is not asked about it either" sr_unasked "handback.sh"
+check "  it is told the remote thing instead, by lane name" sr_said 'lane.prefixed'
+check "  and that nothing local may resume it" sr_said "nothing local will resume it"
 
 # THE CONTROL, in the shape that matters: an ordinary lane/* draft must still
 # go to the actor that owns it. The target is narrowed, never widened.

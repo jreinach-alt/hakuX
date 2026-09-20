@@ -107,9 +107,10 @@ git -C "$REPO" fetch -q origin board 2>/dev/null || true
 # decides that a territory claim is stale, and it decides it from an ABSENCE:
 # no unit, no open PR. `lane.remote` is a cloud session that has neither by
 # design -- no local systemd unit ever, and no open PR between PRs -- so the
-# absence test called it dead and handed three of its live claims to the board
-# as stale. Releasing a live lane's territory is how two agents end up editing
-# one file, which is the single thing territory.toml exists to prevent.
+# absence test called it dead and handed its live claims to the board as stale
+# (four of them on 2026-09-19: #158, #62, #60, #34). Releasing a live lane's
+# territory is how two agents end up editing one file, which is the single
+# thing territory.toml exists to prevent.
 #
 # THE MAP HAS TO BE THE BOARD'S, AND `remote_authoritative` IS THE ONLY
 # PREDICATE THAT SAYS SO. remote-lane.sh's header spells out the third outcome:

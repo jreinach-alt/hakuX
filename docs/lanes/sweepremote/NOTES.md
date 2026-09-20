@@ -15,10 +15,28 @@ Both sweeps decided a lane was dead from exactly that absence.
   Releasing a live lane's territory is how two agents end up editing one file.
 - **`pr-sweep.sh:189`** derived the lane name as
   `branch[5:] if branch.startswith("lane/") else ""`, so a `claude/*` head
-  produced the **empty** lane name. That fed two classes: `draft-strand`,
-  whose entire content is naming `handback.sh` as the actor that should resume
-  the PR, and `regressed`, which was guarded on `and lane` and therefore never
-  fired for such a head at all.
+  produced the **empty** lane name.
+
+### One correction to the brief, measured rather than assumed
+
+The brief says the empty lane name "feeds `emit("draft-strand", ...)` at :209
+and `emit("regressed", ...)` at :241". It does not: **both** of those emits
+are guarded on `and lane`, and the empty string is falsy. So for a head like
+`claude/docs-tooling-agentic-coding-u152m1` the old sweep **under-reported** --
+the PR fell out of two classes entirely and no actor, right or wrong, was ever
+named for it. Nothing was misrouted to `handback.sh`.
+
+The misroute is real for the **other** legal spelling. `remote = true` means
+the conventional `lane/<row name>`, so the prefix strip yields a real lane
+name, there is no `hakux-lane-<name>` unit (there is no host here to run one),
+and the PR **is** emitted as a strand whose entire content is naming
+`handback.sh` as its actor. `handback.sh` refuses it -- it asks
+`remote_lane_of` first -- but a sweep that is correct only because another job
+guards it is a sweep that is wrong and happens not to be paid for it.
+
+Both shapes are in the fragment, and the `remote = true` one is what goes red
+against master for the misroute claim. The `claude/*` one goes red for
+under-reporting, which is what it actually did.
 
 `jobs/remote-lane.sh` (lane.laneshape, folded 2026-09-19T23:59Z) already
 answered both questions and neither sweep called it: `grep -c remote-lane
@@ -60,6 +78,30 @@ A lane must not write that row (`roles/lane.md:79`, and the lane contract), so
 it is asked for here and in the PR body rather than done. The second table row
 above is what the sweep does the moment it exists -- that run is the evidence
 the field is the only thing missing, not a prediction about it.
+
+### Two actors on this host already disagree about whether that lane exists
+
+`check_coverage.py` runs in **every lane's preflight and in every fold**. Run
+from this branch, 2026-09-19, it says:
+
+```
+coverage ok (...); 2 lane(s) RUNNING (fold, remote)
+  -- do not claim their files or advise folding them
+```
+
+It gets that from `$DISPATCH_DIR/fleet/remote.json` (`"state": "running"`,
+`"worktree": "cloud"`, dispatched 2026-09-14). So at the same moment, on the
+same host: the coverage gate tells every lane **not to claim `lane.remote`'s
+files**, and the issue sweep tells the board those same claims are stale and
+should be released.
+
+**The fleet row is not the fix and must not become one.** It is a record of a
+dispatch, written once in September and never refuted -- exactly the "file
+that records what was true once" that `lane_live`'s own docstring says
+liveness must never come from. It is cited here only as the contradiction:
+whichever oracle is right, two actors on one host must not answer "does this
+lane exist" in opposite directions, and the `remote` marker is what makes them
+agree.
 
 ## How the two sweeps judge a remote lane now
 
@@ -109,6 +151,22 @@ class. Two reasons, and the second is the load-bearing one:
 The refusal names the source it got and the one command that cures it
 (`git fetch origin board`). An unswept tick costs three hours; the other
 direction costs a released claim.
+
+**A gate that refuses everything is the same defect with its sign flipped, so
+the host was checked rather than assumed.** The timers do not run this
+worktree: `run-trunk.sh` execs the job from `$WORK/jobs-wt`, a detached
+worktree sharing `$REPO`'s ref store. Measured there, 2026-09-19:
+
+```
+$ cd /home/justin/hakux-work/jobs-wt/docs/testing
+$ . jobs/remote-lane.sh; remote_source; remote_authoritative && echo yes
+board
+yes
+```
+
+So both sweeps pass the new gate on the host as it stands, and `pr-sweep`'s
+new `git fetch origin board` is what keeps that true on a checkout that has
+not fetched the ref yet.
 
 ### The fetch that makes the cure reachable
 
@@ -167,11 +225,51 @@ wearing the face of its fix:
 | an unreadable map acts on nothing | the same fixture with the board readable IS a finding, run immediately before |
 | a fold-lagged map acts on nothing | `HAKUX_BOARD_REF=refs/nosuch`, which succeeds through `remote_readable` and must not through `remote_authoritative` |
 | a remote draft never reaches handback | the stub records being called **at all**; an ordinary `lane/*` draft in the next case still calls it |
+| a `remote = true` lane on `lane/<name>` is not a strand | the discriminating shape: this is the one master DOES misroute |
 | a `claude/*` head with no row is still not a lane | it is neither `remote-draft` nor `draft-strand` |
 | a missing `remote-lane.sh` refuses | a `jobs/` holding the sweep and `models.env` and nothing else |
 
+### The falsification run, and the taxonomy of what survives it
+
+The fragment was run against **master's** `issue-sweep.sh` and `pr-sweep.sh`
+(`git archive origin/master docs/testing` into a scratch tree; master already
+has `remote-lane.sh`, so every job there is the old one and only the sweeps
+differ). Driven by a standalone harness rather than master's `selftest.sh`,
+because that harness needs `$REPO` to be a real git repo two levels above
+`docs/testing` and an extracted tree is not one; the fragment's whole contract
+is `$T`, `$HERE`, `$TESTING`, `check/ok/bad` and shims it builds itself.
+
+**63 checks: 38 fail against master, 25 pass.** The 25 are:
+
+- **5** fixture integrity and stub safety (the two tips really are a month
+  apart; each stub is a real file and not a symlink into the repository).
+- **8** must-not-move legs about **local** lanes -- the dead local lane is
+  still reported, in the old words; an ordinary `lane/*` draft still reaches
+  `handback.sh` and is still called a strand.
+- **2** positive controls that must pass under both, and exist so the mutant
+  beside them cannot be satisfied by a sweep that has simply stopped working.
+- **10** negative halves of a pair, true under both codes **for different
+  reasons**. The sharpest: "a remote lane's draft never reaches `handback.sh`"
+  passes against master too -- because master emits no class at all for a
+  `claude/*` head, not because it routes it anywhere correct. That is exactly
+  why the `remote = true` shape was added; it is the leg that separates
+  "silent for the right reason" from "silent for the wrong one".
+
+38 + 25 = 63. If those three numbers stop reconciling, this paragraph is the
+thing to re-measure, not to repair by arithmetic.
+
+**Two checks in the first draft of this fragment were vacuous, and the
+falsification run is what found them.** They asserted that an unreadable board
+map makes `issue-sweep` print no `### ` heading -- but they ran it in `run`
+mode, whose stdout is only the one-line `say` summary, because the report goes
+to a file. "No headings on stdout" is true of a run tick under any code: a
+falsifier its own subject forces true. They are in `list` mode now, whose
+stdout **is** the report, and the destructive half (unread findings left
+alone, no report page written over the last one) is asserted separately
+against a `run` tick.
+
 `bash docs/testing/jobs/selftest.sh`: green, 943 checks before this branch and
-978 after.
+1006 after.
 
 ## Files
 
@@ -186,17 +284,28 @@ wearing the face of its fix:
 
 ## The territory rows, which are the board's and not mine
 
-Two stale rows on origin/board @ wave 127, said here rather than edited
-(`roles/lane.md:79`):
+**Resolved while this lane was working.** At wave 127 `[lane.sweeps]` still
+held `pr-sweep.sh` and `issue-sweep.sh` (PR #174 MERGED, unit gone), and it
+also named `selftest.d/73-pr-sweep.sh` and `74-issue-sweep.sh`, which do not
+exist -- they were renumbered to `76-` and `77-` at fold, so that row had been
+naming two absent paths since the fold that created them. At **wave 128** the
+board released it and wrote `[lane.sweepremote]` holding both sweeps. Verified:
 
-1. **`[lane.sweeps]` still claims `docs/testing/jobs/pr-sweep.sh` and
-   `docs/testing/jobs/issue-sweep.sh`** -- the two files this PR changes --
-   while PR #174 is MERGED and the unit is gone. It also claims
-   `docs/testing/jobs/selftest.d/73-pr-sweep.sh` and `74-issue-sweep.sh`,
-   which do not exist: they were renumbered to `76-` and `77-` at fold, so
-   that row has been naming two absent paths since the fold that created them.
-2. **`[lane.remote]` carries no `remote` marker**, which is the one field this
-   whole branch waits on. See the section above.
+```
+docs/testing/jobs/pr-sweep.sh                   -> ['sweepremote']
+docs/testing/jobs/issue-sweep.sh                -> ['sweepremote']
+docs/testing/jobs/selftest.d/78-sweep-remote.sh -> unclaimed
+docs/testing/jobs/selftest.d/76-pr-sweep.sh     -> unclaimed
+docs/lanes/sweepremote/NOTES.md                 -> unclaimed
+```
+
+No collision on any file in this PR, and `check_territory.py` is green.
+
+**Still open, and it is the one this branch waits on: `[lane.remote]` carries
+no `remote` marker at wave 128 either.** The board ticked at 2026-09-20T03:20Z
+and wrote my row in the same wave without writing that field, so it is not a
+matter of the board not having ticked yet. See the section above for the exact
+line and the measurement that shows it is the only thing missing.
 
 Prediction: none -- this is harness code and touches no renderer path, so no
 arm can see it.
