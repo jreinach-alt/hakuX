@@ -327,7 +327,15 @@ def score(goldens):
                             % (name, len(hits), ', '.join(hits)))
             continue
         path = hits[0]
-        g = np.asarray(Image.open(path).convert('RGBA')).astype(int)
+        try:
+            g = np.asarray(Image.open(path).convert('RGBA')).astype(int)
+        except Exception as exc:
+            # A golden that exists but will not open is not a golden that
+            # agreed either, and it must not take the run down: L3 was the
+            # same lesson for an undersized image.
+            missing += 2 * len(BACKGROUND_ALPHAS)
+            problems.append('%s: cannot open: %s' % (path, exc))
+            continue
         complaint = validate_geometry(g.shape)
         if complaint:
             missing += 2 * len(BACKGROUND_ALPHAS)

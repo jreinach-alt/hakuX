@@ -57,6 +57,13 @@ check "  so the suite is stated as unable to validate the implementation" \
 # always had been: a guard that cannot fail. Grep the SOURCE for the wiring,
 # and separately prove the flag changes no behaviour.
 X1A7SRC=$(cat "$REPO/docs/testing/x1a7_forward_model.py")
+# AUDIT L2b-1: a POSITIVE control first. If the read fails, X1A7SRC is empty
+# and every x1a7hasnt over it reports ok -- a negated check over an empty
+# artifact, which is the shape M1-R itself was. Anchor on a string the file
+# must contain, so an empty read fails here instead of passing silently
+# three lines down.
+check "the model source was actually read" \
+      x1a7has "def r1_blend_dst_alpha" "$X1A7SRC"
 check "no --proposed mode is wired into argv" \
       x1a7hasnt "'--proposed' in sys.argv" "$X1A7SRC"
 check "  and no separate prediction set exists for it to score" \
@@ -90,10 +97,30 @@ check "with no image stack it still REPORTS rather than dying on the import" \
 check "  and does not leak a traceback instead of a verdict" \
       x1a7hasnt "Traceback (most recent call last)" "$X1A7I"
 
-# AUDIT M1-R, behavioural half: passing --proposed must select nothing. If a
-# distinct mode is ever reinstated, these two outputs diverge. Needs neither
-# goldens nor an image stack, so it runs on the runner too.
-X1A7P=$(python3 "$REPO/docs/testing/x1a7_forward_model.py" --proposed \
-        "$T/x1a7-no-such-goldens" 2>&1)
-check "passing --proposed selects no different mode" \
-      [ "$X1A7P" = "$X1A7N" ]
+# AUDIT M1-R, behavioural half, CORRECTED per L2b-2. Comparing the two
+# invocations against a NONEXISTENT root proved little: both return from the
+# early `if not resolved:` branch before any prediction set is consulted, so a
+# mode diverging only after goldens resolve looked identical to no mode at
+# all. Use a root whose globs RESOLVE -- files that exist but are not images
+# -- so both runs get past resolution and into the comparison path.
+X1A7G="$T/x1a7-resolvable/suite"; mkdir -p "$X1A7G"
+for x1a7c in DstAlpha_XA_Z1A7RGB8 DstAlpha_XA_O1A7RGB8 \
+             1-DstAlpha_XA_Z1A7RGB8 1-DstAlpha_XA_O1A7RGB8; do
+    : > "$X1A7G/$x1a7c.png"
+done
+X1A7R=$(python3 "$REPO/docs/testing/x1a7_forward_model.py" \
+        "$T/x1a7-resolvable" 2>&1)
+X1A7RP=$(python3 "$REPO/docs/testing/x1a7_forward_model.py" --proposed \
+         "$T/x1a7-resolvable" 2>&1)
+check "a golden that resolves but will not open is reported, not a crash" \
+      x1a7has "NOT compared -- this is a FAILURE, not agreement" "$X1A7R"
+check "  without leaking a traceback" \
+      x1a7hasnt "Traceback (most recent call last)" "$X1A7R"
+check "passing --proposed selects no different mode, past resolution" \
+      [ "$X1A7RP" = "$X1A7R" ]
+# What this still cannot prove: a mode diverging only once real goldens open.
+# That needs goldens, which the runner does not have. The two source checks
+# above are what actually forbid the mode; this is corroboration.
+check "and no different mode before resolution either" \
+      [ "$(python3 "$REPO/docs/testing/x1a7_forward_model.py" --proposed \
+           "$T/x1a7-no-such-goldens" 2>&1)" = "$X1A7N" ]
