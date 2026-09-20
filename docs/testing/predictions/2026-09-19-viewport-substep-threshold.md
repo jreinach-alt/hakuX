@@ -165,8 +165,10 @@ then D5 and D6 as the direction and translation controls.
 **Already decided, offline, and not worth silicon time:**
 
 - **S9** -- "9/16" read as the rasteriser's sample position rather than as a
-  rounding threshold. It moves coverage only where the snapped edge sits at
-  exactly 9/16, which on this sweep is #49's two captures and nothing else,
+  rounding threshold. It moves coverage only where the snapped edge's position
+  *within its own pixel* is exactly 9/16, which on this sweep is #49's two
+  captures (`+9/16` and `−7/16`, whose edges sit at `n + 9/16` and `n − 7/16`
+  and so share that fractional position) and nothing else,
   and it predicts **every vertex `LOW`** in both. Gold has x = 120 and x = 220
   `HIGH` there. S9 is the same frame as the small negative pre-snap bias
   `viewport-9-16-boundary.md` already priced at **888 px** against today's

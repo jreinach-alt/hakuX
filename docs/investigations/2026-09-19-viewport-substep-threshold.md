@@ -69,7 +69,12 @@ different constants and only one of them has ever been measured against.
 
 ## S9 is refuted by the goldens, offline
 
-S9 moves coverage wherever the snapped edge sits at exactly `9/16` -- which,
+S9 moves coverage wherever the snapped edge's position **within its own
+pixel** is exactly `9/16` -- `ceil(x - 1/2)` and `ceil(x - 9/16)` differ iff
+`frac(x)` lies in `(1/2, 9/16]`, and on a 1/16 grid the only value in that
+half-open interval is `9/16` itself. On this sweep that is `+9/16` (edge at
+`n + 9/16`) and `−7/16` (edge at `n − 7/16`, whose fractional position is also
+`9/16`) -- which,
 on this sweep, is the two grid-exact offsets and nothing else:
 
 | offset | T first covered | **S9** first covered | differ |
@@ -106,8 +111,12 @@ when the discarded remainder is ≥ θ. T is θ = 1, R is θ = 9/16, round-half-
 is θ = 1/2.
 
 The goldens already bracket it. `+17/32` has remainder exactly 1/2 and renders
-`LOW` on silicon, so **θ > 1/2** -- that is the 820,000-px result restated as a
-bound rather than as a pixel count. Nothing in the corpus constrains θ from
+`LOW` on silicon, so **θ > 1/2** -- a bound from this suite's own goldens, and
+a separate observation from the ~820,000 px that θ = 1/2 costs across
+`Blend_tests`, `Specular`, `Specular_back`, `Material_color_source` and
+`Lighting_spotlight`. Two independent measurements agreeing, not one restated:
+none of those 820,000 px is a `Viewport` pixel, and the bound stands without
+them. Nothing in the corpus constrains θ from
 below any further, because no capture in it has a remainder strictly between
 1/2 and 1.
 

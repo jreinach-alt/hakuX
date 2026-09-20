@@ -37,7 +37,8 @@ coordinate is reduced to four fractional bits rounding up at 9/16 *of a step*
 (**S9**). They are not variants; only one number is shared.
 
 1. **S9 is refuted by the goldens.** It moves coverage only where the snapped
-   edge lands at exactly 9/16, which on this sweep is #49's two captures and
+   edge's position within its own pixel is exactly 9/16 -- which on this sweep
+   is #49's two captures (`+9/16` and `−7/16` both put it there) and
    nothing else, and it predicts every vertex `LOW` in both. Gold has x = 120
    and x = 220 `HIGH`. It is the same frame as the small negative pre-snap bias
    `viewport-9-16-boundary.md` already priced at **888 px** -- a different
