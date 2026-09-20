@@ -77,18 +77,30 @@ def r2_sampled_alpha(stored8, pad_bit):
     return (pad_bit << 7) | a7_of(stored8)
 
 
-def compose(background_alpha, pad_bit, one_minus, r1=None, r2=None):
+def compose(background_alpha, pad_bit, one_minus, r1=None, r2=None,
+            store=None):
     """The test's draw sequence, as one function. ONE copy (audit L1).
 
     Both the model and every rival are scored through this, so a rival cannot
     be refuted by a divergence between two transcriptions of the composition.
+
+    ``store`` is the WRITE side: what the emulator actually puts in the host
+    surface's alpha byte after the blend. It defaults to the identity, which
+    is what both renderers do today, and it exists so a design that changes
+    the stored byte can be priced here rather than argued -- see DESIGNS.
     """
     r1 = r1 or r1_blend_dst_alpha
     r2 = r2 or r2_sampled_alpha
-    ad = r1(background_alpha) / 255.0
+    store = store or (lambda a8, pad: a8)
+    # The background pass is a draw with blending off, so it goes through the
+    # write side as well; the byte the blend unit reads as its destination is
+    # the STORED one, not the value the test asked for. With store = identity
+    # -- every rival above, and both renderers today -- this is exactly the
+    # previous expression, so nothing that was scored before moves.
+    ad = r1(store(background_alpha, pad_bit)) / 255.0
     factor = (1.0 - ad) if one_minus else ad
     surface_rgb = SWATCH_RGB * factor
-    surface_alpha = round(SWATCH_ALPHA * factor)
+    surface_alpha = store(round(SWATCH_ALPHA * factor), pad_bit)
     sampled = r2(surface_alpha, pad_bit) / 255.0
     return (round(surface_rgb * sampled + FRAMEBUFFER_GREY * (1.0 - sampled)),
             round(surface_rgb))
@@ -176,6 +188,60 @@ RIVALS = {
 }
 
 
+# WHOLE DESIGNS, not single rules. A rival above swaps one read; an entry here
+# is a complete answer to "where does the pad bit live", scored end to end
+# through the same compose().  Each is (r1_for(pad_bit), r2, store):
+# r1 is built per pad bit because one of these designs has the blend unit
+# reading a byte the pad bit is part of.
+#
+# `guest byte in the host surface` is the third refuted home for the pad bit,
+# and the only one refuted BEFORE any C was written.  The sampler and the
+# download were each implemented, measured and reverted first; this one cost
+# a python run.  It is kept so the number can be re-run rather than quoted:
+# an unrecorded number is a claim.
+#
+# The two other entries are controls. `today` must reproduce the error the
+# renderers actually have, and `R1 expand7 + R2 rule` must reproduce zero; a
+# table where the controls drift is measuring itself.
+DESIGNS = {
+    'today (both renderers)': (
+        lambda pad: (lambda s: s),
+        lambda s, pad: s,
+        None),
+    'R1 expand7 + R2 rule (this model)': (
+        lambda pad: r1_blend_dst_alpha,
+        r2_sampled_alpha,
+        None),
+    'guest byte in the host surface': (
+        lambda pad: (lambda s: s),
+        lambda s, pad: s,
+        lambda a8, pad: (pad << 7) | (a8 >> 1)),
+    'guest byte stored, blend still reads expand7': (
+        lambda pad: r1_blend_dst_alpha,
+        lambda s, pad: s,
+        lambda a8, pad: (pad << 7) | (a8 >> 1)),
+}
+
+
+def score_design(design, truth):
+    """Halves this design gets wrong, and its worst |delta|, against `truth`.
+
+    `truth` maps (capture, background alpha, half) -> byte, so the same
+    function scores GOLDEN_DSTALPHA's sixteen checked-in values and the
+    thirty-two read off the goldens.
+    """
+    r1_for, r2, store = DESIGNS[design]
+    wrong = worst = 0
+    for (name, bg, half), want in truth.items():
+        pad_bit = 1 if 'O1A7' in name else 0
+        top, bot = compose(bg, pad_bit, name.startswith('1-'),
+                           r1=r1_for(pad_bit), r2=r2, store=store)
+        got = top if half == 'top' else bot
+        wrong += got != want
+        worst = max(worst, abs(got - want))
+    return wrong, worst
+
+
 def write_transform(a8):
     """The proposed implementation's write side: quantise to seven bits.
 
@@ -248,6 +314,28 @@ def selftest():
     print('  -- validating the implementation needs XA_*_Add_SrcA_DstA,')
     print('     the capture where alpha blending is live.')
 
+    print('\ndesigns -- where the pad bit could live, scored end to end')
+    print('  (sixteen checked-in DstAlpha halves; score() does all thirty-two)')
+    scored = {}
+    for design in DESIGNS:
+        wrong, worst = score_design(design, GOLDEN_DSTALPHA)
+        scored[design] = wrong
+        print('  %-46s %2d of %d wrong, worst |delta| %3d'
+              % (design, wrong, len(GOLDEN_DSTALPHA), worst))
+    # The controls, as assertions rather than as prose. A table whose controls
+    # drift is scoring itself, which is what audit M1 caught the removed
+    # --proposed mode doing.
+    for label, ok in (
+            ('the model gets every one right',
+             scored['R1 expand7 + R2 rule (this model)'] == 0),
+            ("today's identity does not",
+             scored['today (both renderers)'] > 0),
+            ('storing the guest byte does not, either way round',
+             scored['guest byte in the host surface'] > 0 and
+             scored['guest byte stored, blend still reads expand7'] > 0)):
+        bad += not ok
+        print('  %-58s %s' % (label, 'ok' if ok else 'NO LONGER TRUE'))
+
     lossy = [v for v in range(128) if a7_of(expand7(v)) != v]
     bad += bool(lossy)
     print('\n  the seven-bit expansion round-trips over all 128 values  %s'
@@ -272,6 +360,7 @@ def score(goldens):
     # assertion satisfied for a reason other than the one it names, which is
     # the very shape H1 was. Resolve first, report first, import only to
     # compare.
+    observed = {}
     resolved, why = {}, {}
     for name in names:
         hits = sorted(glob.glob(os.path.join(goldens, '*', name + '.png')))
@@ -350,6 +439,7 @@ def score(goldens):
                 vals, counts = np.unique(flat, axis=0, return_counts=True)
                 got = int(vals[counts.argmax()][0])
                 want = pred[(name, bg, half)]
+                observed[(name, bg, half)] = got
                 d = abs(got - want)
                 compared += 1
                 worst = max(worst, d)
@@ -365,6 +455,19 @@ def score(goldens):
     if missing:
         print('%d modelled halves were NOT compared -- this is a FAILURE, not '
               'agreement' % missing)
+
+    if observed:
+        # The same designs the selftest prices on sixteen values, priced here
+        # on every half actually read off the disc. These are the numbers the
+        # #60 record quotes, and this is where they are re-run. Printed after
+        # the verdict above on purpose: if that line says halves were not
+        # compared, these are scored on a subset and the count says which.
+        print('\ndesigns, against the %d halves read above' % len(observed))
+        for design in DESIGNS:
+            n, w = score_design(design, observed)
+            print('  %-46s %2d of %d wrong, worst |delta| %3d'
+                  % (design, n, len(observed), w))
+
     return 1 if (bad or missing or compared != expected) else 0
 
 
