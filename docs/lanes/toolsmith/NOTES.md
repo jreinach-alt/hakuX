@@ -249,3 +249,95 @@ Both are new files created by this lane; neither collides. The `selftest.d/**`
 glob held by `lane.cloudterritory` does not read as a collision with a named
 fragment under `check_territory.py`'s exact-match rule -- the same reasoning
 the board already applied to `[lane.desktopchannel]` and `[lane.windowbudget]`.
+
+## Why attempt 2 did not finish either, and what the merge cost
+
+Attempt 2 ended with #170 out of draft, green, and labelled `needs-rebase`:
+the fold job had tried to merge `lane/toolsmith` into `master` and conflicted
+on `docs/testing/fleet.py`. That is a finished outcome for a lane -- the merge
+base moved under a PR that was already audited -- but it is not a *done* one,
+so `jobs/handback.sh` resumed the lane onto the conflict. Nothing about the
+work this PR carries was re-opened or re-measured.
+
+CI on `333582297a` was green when this attempt started, so the RED the
+resume table reported on `0c3edf5595` had already been fixed by attempt 2's
+own commits. Read the head, not the table.
+
+### The conflict, and why both sides survive intact
+
+Both sides changed `fleet.py` in the same two places, for unrelated reasons:
+
+- master taught it that **a lane is a row in `territory.toml`, not a branch
+  name**: `remote_lanes()` reads the `remote` marker, and `lane_prs()`
+  classifies a head by that map as well as by the `lane/` prefix.
+- this lane moved the PR list **off GraphQL**.
+
+They compose rather than collide, and the reason is one line worth keeping:
+`gh_rest.open_prs` normalises `head.ref` back to `headRefName`, which is the
+exact key `remote_lanes`' map is keyed on. A remote lane's branch is therefore
+matched over REST exactly as it was over GraphQL. That is now in the
+docstring, because a reader of either change alone would not see it.
+
+One thing was kept from this side deliberately: master's `returncode != 0`
+arm returned `None` **silently**. That is a PR-BLIND report with nothing
+saying why -- the shape this whole branch exists to remove -- so the REST
+path's `print(...)` stands.
+
+### What the merge broke, and the fault it uncovered
+
+`98-lane-shape.sh` is master's new fixture and it starved instantly: its `gh`
+shim served `pr list` only, and `gh_rest.py` was not in its copy list. Same
+coordinated touch as the five in the table above, same fix -- one flat fixture
+file, a shim that answers on both transports.
+
+**Then the converted arm did not work either, and the reason is the best
+finding of this session.** `jq` on this host is `/snap/bin/jq`, and a snap has
+a **private `/tmp` namespace**. The fake host lives under `/tmp`. So:
+
+    [ -s "$LS_PRS" ]   ->  true          (bash sees the file)
+    jq ... "$LS_PRS"   ->  "No such file or directory", exit 2, no output
+
+and the shim's own trailing `exit 0` turned that into an empty answer. The
+caller saw unparseable output, `fleet.py` said PR-BLIND, and **a broken
+fixture read as a code fault**. Both shims use `python3` now -- already
+required by every fragment here, and not confined. `97-board-gate.sh`'s REST
+arm has no consumer today (`board.sh gate` answers from `gh` and arithmetic
+alone), which is exactly why it was fixed here rather than when it next
+acquires one: an unexercised arm that is already broken is a trap with a
+timer on it.
+
+The transferable half is not the snap. It is that **a starved fixture and a
+misclassified row render identically** -- both are a missing line. So the
+fragment now asserts the fixture answered at all:
+
+    check "the fleet fixture answered -- the report is not PR-BLIND"
+
+This was not reasoned into existence; it trips on the *actual* broken output,
+captured in the run before the fix, and passes on the run after. A guard
+whose red state has been observed is worth more than one whose red state has
+been argued for.
+
+### `60-status.sh`: a fixture with a fuse, belonging to no lane
+
+Untouched by this lane (`git diff origin/master...HEAD` was empty for it) and
+unrelated to everything above. Its two rows were stamped `2026-09-19T01:00Z`
+and `T01:10Z`; `status.sh` filters `### Lane sessions finished` on
+`date -u -d '24 hours ago'`. At `2026-09-20T01:26Z` they fell out of that
+window -- twenty-six and sixteen minutes apart -- **during this session**:
+green on one run, red on the next, with nothing between them but the clock.
+
+From that moment it was red on every branch at once, for a fault in none of
+them. It was fixed here because a trunk-wide red that belongs to no lane gets
+attributed to whichever PR notices it, and because the fix is to stop pinning
+an age to a day: the rows are now relative to now, and the checks -- which are
+about the rows' *content* -- are unchanged.
+
+Worth generalising: **a fixture that hardcodes a date is a test that passes
+until a particular afternoon.** The ones under `selftest.d/` that filter on a
+window are the ones to look at.
+
+### State at the end of this attempt
+
+`bash docs/testing/jobs/selftest.sh` -> **825 passed, 0 failed** on
+`1c4b9bad1c`. The next thing is CI on the pushed head; when it is green the
+labels go `needs-rebase` off, `fold-ready` on.
