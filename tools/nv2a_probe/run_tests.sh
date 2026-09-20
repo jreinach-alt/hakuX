@@ -48,6 +48,8 @@ mutate "alignment enforced"                    's|if (off & 3u) return false;.*|
 mutate "block end is exclusive"                's|off + 4u <= (uint32_t)(b->offset + b->size)|off <= (uint32_t)(b->offset + b->size)|'
 mutate "BAR end is exclusive for reads"        's|return off + 4u > off \&\& off + 4u <= NV2A_MMIO_SIZE;|return off <= NV2A_MMIO_SIZE;|'
 mutate "unmodelled space stays refused"        's|{ "USER",|{ "PRAMIN",   0x700000u, 0x100000u, true },\n    { "USER",|'
+mutate "hazard list is consulted"              's|return nv2a_offset_writable(off) \&\& nv2a_hazard_name(off) == 0;|return nv2a_offset_writable(off);|'
+mutate "hazard table is not empty"             's|^#define NV2A_NUM_HAZARDS .*|#define NV2A_NUM_HAZARDS 0|'
 
 echo
 if [ "$fail" = 0 ]; then echo "allow-list suite OK (baseline green, every mutant killed)"; else echo "SUITE FAILED"; fi

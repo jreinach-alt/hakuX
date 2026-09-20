@@ -121,15 +121,57 @@ fail is not evidence. The loopback suite drives a simulated probe that wedges
 on a nominated register, so the hang-attribution and poison paths — which a
 healthy run never reaches — are exercised deliberately.
 
+## Hazards, and what the first hardware run actually did
+
+**Do not trust the tiering below to keep the console alive. It did not.**
+
+The original version of this document said "most hangs never reach the
+hardware", inherited from the task brief and never tested. On the first real
+run, 128 PMC registers in, a blind `0` into `NV_PMC_ENABLE` stopped the console
+dead — no ICMP, ARP `FAILED`, and the watchdog could not help because the
+processor was gone with everything else. It took a power cycle. In the same 128
+registers, `0x000004` latched a value and would **not** restore. Two registers
+out of 128 did something irreversible. That is not a rare tail.
+
+The hazard was not a surprise in hindsight, which is the uncomfortable part:
+`NV_PMC_ENABLE`'s PFIFO and PGRAPH bits had already been read out of
+`nv2a_regs.h` and written down before the run. Reasoning about a hazard is not
+the same as refusing it.
+
+So there is now a **hazard list, generated from the tree** and refused *in the
+probe*, not only in the driver:
+
+| source | what it catches |
+|---|---|
+| name patterns over `nv2a_regs.h` | `_ENABLE`, `*PLL_COEFF`, `_RESET`, `NV_PFIFO_CACHE*`, `NV_PMC_BOOT*` |
+| measurement | registers a run has already proven it cannot undo |
+
+The PLL entries matter more than the one that bit us. `NV_PRAMDAC_MPLL_COEFF`
+and friends are the core, memory and video clock coefficients: a blind
+`0xFFFFFFFF` there is not a hang, it is an out-of-spec clock, and the sweep
+would have reached them the moment it widened past PMC.
+
+Two further defaults changed after that run:
+
+- **`--write-scope declared` is the default.** Only registers `nv2a_regs.h`
+  actually names may be written. Reads stay unrestricted, so an undeclared
+  register that returns data is still discovered — it just is not poked.
+- **A failed restore stops the sweep.** Previously `0x000004` failed to restore
+  and the sweep carried on for 120 more registers as if nothing had happened.
+
+Applied to the PMC block, these defaults would have written two registers
+instead of 128 — and those two are where all three of the disagreements
+actually came from. The safer experiment loses nothing that was learned.
+
 ## Recovery
 
-Tiered, because most hangs never reach the hardware:
+Still tiered, but the third row is not hypothetical:
 
 | failure | what happens |
 |---|---|
 | bad register hangs the GPU, CPU alive | probe stays responsive; host issues `X`, a soft `HalReturnToFirmware(HalRebootRoutine)` |
 | probe's main loop wedges | watchdog thread resets after 20 s with no command |
-| processor fully wedged | needs a human at the power button — a relay across the front panel is a later improvement, not part of phase one |
+| processor fully wedged | **observed on the first run.** Needs a human at the power button; a relay across the front panel is a later improvement, not part of phase one |
 
 On a dead socket the host marks the in-flight write `suspected_hang`, adds it
 to the poison list, and resumes from the next register. A poisoned

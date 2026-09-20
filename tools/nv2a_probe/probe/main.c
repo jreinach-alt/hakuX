@@ -213,6 +213,25 @@ static void cmd_write(uint32_t off, uint32_t val)
                  off, block_of(off));
         send_line(out); return;
     }
+    /* Hazard list, refused HERE and not only in the driver.
+     *
+     * The window allow-list answers "could this write land somewhere fatal to
+     * the machine". It does not answer "is this particular register one that
+     * stops the console or drives a clock out of spec", and on 2026-09-20 a
+     * blind 0 into NV_PMC_ENABLE -- comfortably inside the allow-list --
+     * killed the console outright. The host is the thing most likely to carry
+     * a bug, so the refusal belongs on this side of the wire too. */
+    {
+        const char *hz = nv2a_hazard_name(off);
+        if (hz) {
+            g_refused++;
+            snprintf(out, sizeof(out),
+                     "ERR EHAZARD %08X is %s, refused by the probe: phase one "
+                     "does not write engine-enable, reset, pushbuffer or PLL "
+                     "registers", off, hz);
+            send_line(out); return;
+        }
+    }
     if (!journal_acquire_grant(off, val, &grant)) {
         g_refused++;
         send_line("ERR EJOURNAL write not journalled; refusing to execute it");

@@ -49,6 +49,19 @@ def load_done(path: str) -> dict[int, dict]:
     return done
 
 
+class RestoreFailed(RuntimeError):
+    def __init__(self, offset, msg):
+        super().__init__(msg)
+        self.offset = offset
+
+
+def load_hazards() -> dict:
+    hz = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hazards.json")
+    if not os.path.exists(hz):
+        raise SystemExit("hazards.json missing; run gen_window.py --write")
+    return {int(k, 16): v for k, v in json.load(open(hz, encoding="utf-8")).items()}
+
+
 def sweep_one(sess, off: int) -> dict:
     rec = {"offset": off, "t": time.time()}
     orig = sess.read32(off)
@@ -67,6 +80,17 @@ def sweep_one(sess, off: int) -> dict:
         stuck_zeros=(~ones & ~zeros) & 0xFFFFFFFF,
         restored=(final == orig),
     )
+    if final != orig:
+        # STOP. A register that will not go back to the value it had is a
+        # register whose function we did not understand, and the next one along
+        # is no safer. The first hardware run left 0x000004 holding 0x01000001
+        # instead of 0 and swept 120 more registers afterwards as if nothing
+        # had happened; the run that wedged the console came later, and this
+        # would have stopped before it.
+        raise RestoreFailed(off,
+            "%06X did not restore: was %08X, now %08X. Stopping rather than "
+            "continuing past a register we evidently do not understand."
+            % (off, orig, final))
     return rec
 
 
@@ -83,6 +107,12 @@ def main() -> int:
     ap.add_argument("--skip", action="append", default=[],
                     help="offset to leave alone, repeatable")
     ap.add_argument("--accept-timeout", type=float, default=300.0)
+    ap.add_argument("--write-scope", choices=("declared", "all"), default="declared",
+                    help="which registers may be WRITTEN. 'declared' (default) "
+                         "writes only registers nv2a_regs.h names, so a blind "
+                         "value never lands in something nobody has identified. "
+                         "Reads are unrestricted either way, so undeclared "
+                         "registers are still discovered, just not poked.")
     args = ap.parse_args()
 
     start, end = int(args.start, 0), int(args.end, 0)
@@ -90,7 +120,19 @@ def main() -> int:
     os.makedirs(args.workdir, exist_ok=True)
     results_path = os.path.join(args.workdir, "results.jsonl")
 
-    srv = ProbeServer(args.workdir, port=args.port)
+    hazards = load_hazards()
+    declared = set()
+    if args.write_scope == "declared":
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import compare_masks as _cm
+        root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+        regs = _cm.parse_regs(os.path.join(root, "hw", "xbox", "nv2a", "nv2a_regs.h"),
+                              "NV_" + args.block.upper() + "_")
+        declared = set(regs)
+        print("write scope: declared only -- %d registers of %s are named in "
+              "nv2a_regs.h" % (len(declared), args.block))
+
+    print("hazard list: %d registers will not be written at all" % len(hazards))
     print("listening on %s:%d -- launch the probe on the console" % srv.addr)
     print("sweeping %s 0x%06X..0x%06X (%d registers)"
           % (args.block, start, end, (end - start) // 4))
@@ -106,6 +148,8 @@ def main() -> int:
         while True:
             todo = [o for o in range(start, end, 4)
                     if o not in done and o not in skip
+                    and o not in hazards
+                    and (args.write_scope == "all" or o in declared)
                     and not srv.poison.is_poison(o, None)]
             if not todo:
                 break
@@ -134,6 +178,12 @@ def main() -> int:
                         print("  %06X writable=%08X orig=%08X%s"
                               % (off, rec["writable"], rec["orig"],
                                  "" if rec["restored"] else "  RESTORE FAILED"))
+            except RestoreFailed as exc:
+                print("\n  *** %s" % exc)
+                srv.poison.add(exc.offset, None,
+                               "did not restore after a sweep write")
+                print("  register banned; stopping rather than sweeping on.")
+                break
             except (ProbeError, OSError) as exc:
                 orphan = srv.note_link_death(exc)
                 if orphan:
