@@ -100,17 +100,31 @@ difference column by column:
 Those are the parts of the quad where the bump source is one flat value, and
 there the two goldens are bit-identical.
 
+**There is text drawn inside every quad, and it is inside this band.** The test
+prints its own label over the geometry in opaque white -- exactly
+`(255,255,255,0)`, 360 px at rows 84..99 and columns 44..90 of quad g0 b0,
+1,400 px across the four. It is pixel-identical in the Y8 golden, the Y16
+golden and our captures, so it contributes **zero** differing pixels and moves
+no total on this page. But it overlaps the measured band, so it is the reason
+a per-column extent is not 168 of 168 and the reason a per-row colour-change
+count picks up edges that are glyphs. Every figure below that could confuse the
+two says which it is; `--columns` prints the label's own box, and `--parity`
+reports the checkerboard with it taken out.
+
 Two more facts about the 33 differing columns of quad g0 b0, both of which
 hold identically in all four quads (`--parity`):
 
-- **all 33 are colour-inverted, not displaced.** All 33 have their vertical
-  checker transitions on identical rows in both goldens (4, 10, 15, 20, 25,
-  31, ...), and **every** differing pixel swaps red for grey -- 5,340 of 5,340
-  in this quad, and the same in the other three. What is not total is the
-  *extent*: 152 to 168 of each column's 168 pixels differ, i.e. 90.5%–100%,
-  the survivors being the rows sitting on a checker boundary. So the vertical
-  offset is unchanged and the *horizontal* checker cell index differs by an
-  odd number of whole cells.
+- **all 33 are colour-inverted, not displaced, and the inversion is total.**
+  All 33 have their vertical checker transitions on identical rows in both
+  goldens (4, 10, 15, 20, 25, 31, ...), and **every** differing pixel swaps red
+  for grey -- 5,340 of 5,340 in this quad, and the same in the other three.
+  The raw extent is 152 to 168 of each column's 168 pixels, i.e. 90.5%–100%,
+  and **every one of the 704 survivors across the four quads is a label pixel**
+  (204 / 146 / 208 / 146, each of them 100% label). Outside the label, 21,472
+  of 21,472 pixels in a differing column differ. So the vertical offset is
+  unchanged, the *horizontal* checker cell index differs by an odd number of
+  whole cells, and the mechanism to look for inverts **168 of 168** -- not one
+  that spares a structural row.
 - **the inversion toggles 30 times across those 59 columns**, in fifteen runs:
   44 | 46-47 | 50 | 53-54 | 56 | 58-62 | 65 | 68-69 | 71-72 | 75-79 | 82-83 |
   87-88 | 92-93 | 96-98 | 101-102.
@@ -136,9 +150,21 @@ and every figure above is the same in all four quads.)
 
 Each colour change along a row is one step of that image's cell index, so the
 cumulative movement of `k` across a span is at least (Y16's changes − Y8's).
-That reaches **19 cells** in 150 of the 168 rows of every quad and never falls
-below 11 in any row. One checker cell is 8 texels of 256, and `psh.c` puts the
-horizontal displacement at `bumpMat[0][0] * dS` with the test's `m00 = 0.3`
+*Subtracting* Y8's count needs one more step than the obvious one: a colour
+change proves the index moved by at least 1, which makes Y16's count a lower
+bound on its own traversal, but Y8's count can only be subtracted if it is an
+**upper** bound on the base's — a base that stepped two cells between adjacent
+columns would show no change and be undercounted. It cannot here, and
+`--parity` measures it: over the 152 rows the label does not touch,
+consecutive base boundaries in columns 44..102 are 5 or 6 columns apart in 910
+of 916 cases (the six exceptions are on rows 52 and 73, where the vertical
+seam crosses), so the base index advances well under half a cell per column and
+`n8` is its traversal exactly.
+
+The bound reaches **19 cells** in 150 of the 168 rows of every quad and never
+falls below 11 in any row — and none of those 150 rows is a label row, so it is
+a checkerboard figure throughout. One checker cell is 8 texels of 256, and
+`psh.c` puts the horizontal displacement at `bumpMat[0][0] * dS` with the test's `m00 = 0.3`
 and `dS = b / 128` — the reading that reproduces the Y8 golden to the floor —
 so one cell is `(1/32) / (0.3/128) = 13.3` byte units of `b`:
 
@@ -160,10 +186,18 @@ the one number meant to survive into the next session.
 ### The same table excludes a constant offset difference outright
 
 The second row is the strong one. In columns 78..102 the base checkerboard has
-**no horizontal boundary at all** in 150 of the quad's 168 rows -- the 18 that
-do are the rows lying on the quad's own vertical checker seam -- while every
-row of the gold Y16 quad has 11 boundaries there, and the inversion toggles
-ten times across that sub-band.
+**no horizontal boundary at all** in 150 of the quad's 168 rows, while every
+row of the gold Y16 quad has **9 to 12** there (median 11, and at least nine in
+every row of every quad), and the inversion toggles ten times across that
+sub-band.
+
+The 18 rows that *do* carry a base boundary in that sub-band are **rows 52 and
+73, where the quad's own vertical checker seam crosses, plus the 16 rows of the
+test's white label**, whose glyph edges a colour-change count cannot tell from
+checker edges. That matters for the next reader in one specific way: sixteen
+eighteenths of that feature is text, so **no bump mechanism has to reproduce
+it**, and a scorer that treats those 18 rows as base-texture structure is
+chasing a glyph.
 
 A constant offset difference, of *any* size, can only put a boundary where the
 base already has one: within a column the sampled `u` is essentially constant,

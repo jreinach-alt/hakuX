@@ -23,7 +23,9 @@ Five things it reports, each a standalone claim:
   --parity     How much the offset moved: the inversion's run structure, and
                the two goldens' own checker-boundary counts, which are what
                the size claim is derived from.  Nothing about the size of the
-               effect should be re-derived by eye; this prints it.
+               effect should be re-derived by eye; this prints it.  It also
+               separates the test's own white label from the checkerboard
+               everywhere the two are counted together -- see OVERLAY_RGBA.
   --control    The `Bump env lum` Y16 row, which is at the #38 floor -- the
                same format, the same bump texture, the same 16-bit field, and
                no disagreement.
@@ -75,6 +77,19 @@ for _qy in (0, 1):
         MASK[ORIGIN_Y + _qy * STRIDE:ORIGIN_Y + _qy * STRIDE + QUAD,
              ORIGIN_X + _qx * STRIDE:ORIGIN_X + _qx * STRIDE + QUAD] = True
 
+# THERE IS TEXT DRAWN INSIDE THE QUADS.  The test prints its own label over the
+# geometry in opaque white, which lands as exactly (255,255,255,0) -- 360 px in
+# quad g0 b0, 1,400 px across the four, sixteen rows tall, and pixel-identical
+# in the Y8 golden, the Y16 golden and our captures alike.  It therefore costs
+# ZERO differing pixels and moves no total in this tool.  What it does do is sit
+# inside the band every measurement below is taken over, so it is the reason a
+# differing column is 152 of 168 rather than 168 of 168, and it puts glyph edges
+# into any per-row colour-change count.  Every report that quotes a per-column
+# extent or a per-row boundary count has to say which side of it the number is
+# on.  Derived from the image, never hardcoded: the label's position follows the
+# framebuffer size and the test's own layout, and a hardcoded box goes stale.
+OVERLAY_RGBA = np.array([255, 255, 255, 0], np.int16)
+
 
 def load(path):
     return np.asarray(Image.open(path).convert("RGBA"), dtype=np.int16)
@@ -100,6 +115,17 @@ def differing(a, b, tol=0):
 def quad_of(img, qx, qy):
     left, top = ORIGIN_X + qx * STRIDE, ORIGIN_Y + qy * STRIDE
     return img[top:top + QUAD, left:left + QUAD]
+
+
+def overlay_of(q):
+    """The test's own white label inside a quad, as a boolean mask."""
+    return (q == OVERLAY_RGBA).all(axis=2)
+
+
+def diff_mask(a, b, qx, qy):
+    """Per-pixel difference inside one quad."""
+    qa, qb = quad_of(a, qx, qy), quad_of(b, qx, qy)
+    return np.abs(qa.astype(np.int32) - qb.astype(np.int32)).max(axis=2) > 0
 
 
 # ------------------------------------------------------------------ --stored
@@ -177,9 +203,7 @@ for a Y16 source as for a Y8 one, and hardware does not.""")
 
 # ----------------------------------------------------------------- --columns
 def col_profile(a, b, qx, qy):
-    qa, qb = quad_of(a, qx, qy), quad_of(b, qx, qy)
-    d = np.abs(qa.astype(np.int32) - qb.astype(np.int32)).max(axis=2) > 0
-    return d.sum(axis=0)
+    return diff_mask(a, b, qx, qy).sum(axis=0)
 
 
 def report_columns(capdir):
@@ -193,11 +217,16 @@ its midpoint, column 84 of 168.  Columns are counted from the quad's left.
 """)
     for qy in (0, 1):
         for qx in (0, 1):
-            p = col_profile(g16, g8, qx, qy)
+            d = diff_mask(g16, g8, qx, qy)
+            p = d.sum(axis=0)
             nz = np.flatnonzero(p)
-            full = int((p >= QUAD - 12).sum())
+            # "Whole-column" excludes the test's own label, which is identical
+            # in both goldens and so can never differ; it is exact, not a
+            # threshold on how many of the 168 rows happened to move.
+            ov = overlay_of(quad_of(g16, qx, qy))
+            full = int(((d | ov).all(axis=0) & (p > 0)).sum())
             print("  quad g%d b%d  %6d px in %3d columns, %3d..%3d"
-                  "  (%d of them whole-column)"
+                  "  (%d of them whole-column, label excluded)"
                   % (qy, qx, int(p.sum()), len(nz),
                      nz.min() if len(nz) else -1,
                      nz.max() if len(nz) else -1, full))
@@ -206,6 +235,14 @@ its midpoint, column 84 of 168.  Columns are counted from the quad's left.
           " ".join(str(x) for x in np.flatnonzero(p)))
     print("  columns 0..43 and 103..167: %d differing px"
           % int(p[:BAND_LO].sum() + p[BAND_HI + 1:].sum()))
+    ov = overlay_of(quad_of(g16, 0, 0))
+    orow, ocol = np.flatnonzero(ov.any(axis=1)), np.flatnonzero(ov.any(axis=0))
+    print("  the test's own white label, drawn inside this quad: %d px at rows"
+          " %d..%d, columns %d..%d" % (int(ov.sum()), orow.min(), orow.max(),
+                                       ocol.min(), ocol.max()))
+    print("    (identical in both goldens, so none of the px above -- but it"
+          " overlaps the band,")
+    print("     so it is what keeps a differing column off 168 of 168.)")
     c16 = cap(capdir, suite, "BumpMap_Y16")
     p2 = col_profile(c16, g16, 0, 0)
     nz = np.flatnonzero(p2)
@@ -266,10 +303,31 @@ def hcount(q, lo, hi):
     Each change is one increment of the checkerboard's horizontal cell index,
     so this counts the cells that row traverses across the span.  It is a
     per-row count on purpose: the boundary set pooled over rows also picks up
-    the staircase of the checker's vertical edges."""
+    the staircase of the checker's vertical edges.
+
+    On a row the test's white label crosses, the glyph edges are colour changes
+    too and this counts them.  That is why the callers say, per claim, whether a
+    row is one of the sixteen the label touches -- see OVERLAY_RGBA."""
     d = np.abs(q[:, 1:, :].astype(np.int32) -
                q[:, :-1, :].astype(np.int32)).max(axis=2) > 0
     return d[:, lo:hi + 1].sum(axis=1).astype(int)
+
+
+def base_gaps(q, lab, lo, hi):
+    """Column spacing between consecutive colour changes along a row.
+
+    Over the rows the label does not touch only: on a label row the glyph edges
+    would report spacings of one or two columns that belong to text.  This is
+    what says the base index moves by less than a cell per column, which is what
+    lets hcount's Y8 figure be subtracted rather than only compared."""
+    d = np.abs(q[:, 1:, :].astype(np.int32) -
+               q[:, :-1, :].astype(np.int32)).max(axis=2) > 0
+    out = []
+    for r in np.flatnonzero(~lab.any(axis=1)):
+        pos = np.flatnonzero(d[r, lo:hi + 1])
+        if len(pos) > 1:
+            out.extend(np.diff(pos).tolist())
+    return np.array(out, int)
 
 
 def report_parity():
@@ -282,8 +340,10 @@ the picture reports about the offset is the parity of k = (the gold Y16 cell
 index) - (the gold Y8 cell index).  k is what is bounded below; a candidate
 mechanism is scored by computing its own k, not by comparing a swing.
 """)
-    print("  %-9s %5s %5s %7s %-22s"
-          % ("quad", "cols", "vphase", "swaps", "differing px per column"))
+    print("  %-9s %5s %5s %7s %-22s %s"
+          % ("quad", "cols", "vphase", "swaps", "differing px per column",
+             "survivors / of which label"))
+    surv_tot, surv_lab, nonlab_tot, nonlab_diff = 0, 0, 0, 0
     for qy in (0, 1):
         for qx in (0, 1):
             a, b = quad_of(g16, qx, qy), quad_of(g8, qx, qy)
@@ -293,19 +353,36 @@ mechanism is scored by computing its own k, not by comparing a swing.
             same = sum(1 for c in cols if vtrans(a, c) == vtrans(b, c))
             swap = ((near(a, RED) & near(b, GREY)) |
                     (near(a, GREY) & near(b, RED)))
+            # Inside the differing columns, which pixels did NOT move, and how
+            # many of those are the test's label rather than a checker feature.
+            ov = overlay_of(a)
+            surv = ~d[:, cols]
+            lab = ov[:, cols]
+            surv_tot += int(surv.sum())
+            surv_lab += int((surv & lab).sum())
+            nonlab_tot += int((~lab).sum())
+            nonlab_diff += int((d[:, cols] & ~lab).sum())
             print("  g%d b%d     %5d %4d/%-3d %6s  %d..%d of %d"
-                  "  (%.1f%%..%.1f%%)"
+                  "  (%.1f%%..%.1f%%)   %5s"
                   % (qy, qx, len(cols), same, len(cols),
                      "%d/%d" % (int((d & swap).sum()), int(d.sum())),
                      per[cols].min(), per[cols].max(), QUAD,
                      100.0 * per[cols].min() / QUAD,
-                     100.0 * per[cols].max() / QUAD))
+                     100.0 * per[cols].max() / QUAD,
+                     "%d/%d" % (int((surv & lab).sum()), int(surv.sum()))))
     print("""    vphase = differing columns whose vertical transition ROWS are
     identical in both goldens; swaps = differing pixels that exchange red for
-    grey, against all differing pixels.  So the inversion is total in kind
-    (every differing pixel swaps the two checker colours) and not total in
-    extent (90.5%-100% of a column: the rows on a checker boundary agree).
-""")
+    grey, against all differing pixels.  So the inversion is total in kind:
+    every differing pixel swaps the two checker colours.
+
+    It is total in EXTENT too, once the test's own white label is taken out.
+    Of the %d pixels a differing column holds outside the label, %d differ --
+    every one of them -- and every one of the %d survivors is a label pixel
+    (%d of %d, in all four quads).  The 90.5%%..100%% range above is the
+    label's sixteen rows and nothing else; the checkerboard spares nothing.
+    So a mechanism that inverts 168 of 168 is what this data asks for, and one
+    that spares a structural row does not match it.
+""" % (nonlab_tot, nonlab_diff, surv_tot, surv_lab, surv_tot))
 
     a, b = quad_of(g16, 0, 0), quad_of(g8, 0, 0)
     d = np.abs(a.astype(np.int32) - b.astype(np.int32)).max(axis=2) > 0
@@ -346,19 +423,36 @@ mechanism is scored by computing its own k, not by comparing a swing.
     # the smallest of those four maxima.
     bound, flat_bound = min(band_max), min(flat_min)
     n8f = hcount(quad_of(g8, 0, 0), FLAT_LO, FLAT_HI)
-    n16f = hcount(quad_of(g16, 0, 0), FLAT_LO, FLAT_HI)
-    rows_at = int((hcount(quad_of(g16, 0, 0), BAND_LO, BAND_HI) -
-                   hcount(quad_of(g8, 0, 0), BAND_LO, BAND_HI) >= bound).sum())
+    # Which rows DO carry a base boundary in the flat sub-band: the two rows the
+    # quad's vertical checker seam crosses, plus every row the test's own label
+    # crosses, whose glyph edges are colour changes like any other.  Naming them
+    # separately matters: no bump mechanism can reproduce a glyph.
+    lab00 = overlay_of(quad_of(g16, 0, 0))
+    lab_flat = set(np.flatnonzero(
+        lab00[:, FLAT_LO:FLAT_HI + 1].any(axis=1)).tolist())
+    base_rows = [int(r) for r in np.flatnonzero(n8f > 0)]
+    seam_rows = [r for r in base_rows if r not in lab_flat]
+    n16f_lo = min(int(hcount(quad_of(g16, qx, qy), FLAT_LO, FLAT_HI).min())
+                  for qy in (0, 1) for qx in (0, 1))
+    n16f_hi = max(int(hcount(quad_of(g16, qx, qy), FLAT_LO, FLAT_HI).max())
+                  for qy in (0, 1) for qx in (0, 1))
+    dband = (hcount(quad_of(g16, 0, 0), BAND_LO, BAND_HI) -
+             hcount(quad_of(g8, 0, 0), BAND_LO, BAND_HI))
+    at = set(int(r) for r in np.flatnonzero(dband >= bound))
+    lab_rows = set(np.flatnonzero(lab00.any(axis=1)).tolist())
+    gaps = base_gaps(quad_of(g8, 0, 0), lab00, BAND_LO, BAND_HI)
     print("""    medians over the quad's 168 rows; n16-n8 is per row, min..max.
 
   The base texture is FLAT over the right half of the band: %d of 168 rows of
-  the gold Y8 quad have no horizontal boundary at all in columns %d..%d (the
-  %d that do are the rows on the quad's own vertical checker seam).  The
-  median row of the gold Y16 quad has %d there, and every row of every quad
-  has at least %d more than its Y8 row.  A constant offset difference cannot
-  put a boundary where the base has none, so a constant offset -- of ANY size,
-  including the half-cell one an earlier version of this tool printed -- is
-  excluded by that sub-band alone.
+  the gold Y8 quad have no horizontal boundary at all in columns %d..%d.  The
+  %d that do are rows %s, where the quad's own vertical checker seam crosses,
+  plus the %d rows of the test's white label, whose glyph edges this count
+  cannot tell from checker edges.  The gold Y16 quad has %d..%d boundaries
+  there in every row of every quad (median %d), at least %d more than its own
+  Y8 row.  A constant offset difference cannot put a boundary where the base
+  has none, so a constant offset -- of ANY size, including the half-cell one an
+  earlier version of this tool printed -- is excluded by that sub-band alone.
+  A mechanism does NOT have to reproduce the %d rows: %d of them are a glyph.
 
   The bound.  In a row, each colour change is one step of that image's cell
   index, so the cumulative movement of k across the span is at least
@@ -369,16 +463,35 @@ mechanism is scored by computing its own k, not by comparing a swing.
       cumulative movement of k across columns %d..%d  >=  %d cells,
       ~%.0f byte units, while ours holds the offset at one step, 82 -> 83.
 
+  None of the %d rows that attain it is a label row (%d of them are), so the
+  figure is a checker measurement throughout.
+
+  Why Y8's count may be SUBTRACTED.  A colour change needs the cell index to
+  move by at least one, which makes Y16's count a lower bound on its own
+  traversal -- but subtracting Y8's needs the opposite, that the base does not
+  step two cells between adjacent columns and hide a pair.  Measured on the %d
+  rows the label does not touch: consecutive base boundaries in columns %d..%d
+  are %d..%d columns apart, %d of %d of them 5 or 6, i.e. at most about half a
+  cell of base index per column.  So the base cannot skip a cell, Y8's count is
+  its traversal exactly rather than a lower bound, and the subtraction holds.
+
   What is NOT bounded is the EXCURSION (max - min) of k.  Parity and boundary
   counts are blind to it: an offset oscillating between two adjacent cells
   produces arbitrarily many toggles with a range of one cell, ~%.0f byte units.
   A rival with a small swing is therefore not excluded by this measurement --
   only one that cannot accumulate %d cells of relative movement across %d
   columns, %d of which the base holds flat, is."""
-          % (int((n8f == 0).sum()), FLAT_LO, FLAT_HI, int((n8f > 0).sum()),
-             int(np.median(n16f)), flat_bound,
-             bound, rows_at, min(band_min), CELL_BYTES,
+          % (int((n8f == 0).sum()), FLAT_LO, FLAT_HI, len(base_rows),
+             " and ".join(str(r) for r in seam_rows), len(lab_flat),
+             n16f_lo, n16f_hi, int(np.median(hcount(quad_of(g16, 0, 0),
+                                                    FLAT_LO, FLAT_HI))),
+             flat_bound, len(base_rows), len(lab_flat),
+             bound, len(at), min(band_min), CELL_BYTES,
              BAND_LO, BAND_HI, bound, bound * CELL_BYTES,
+             len(at), len(at & lab_rows),
+             int((~lab00.any(axis=1)).sum()), BAND_LO, BAND_HI,
+             int(gaps.min()), int(gaps.max()),
+             int(((gaps == 5) | (gaps == 6)).sum()), len(gaps),
              CELL_BYTES, bound, BAND_HI - BAND_LO + 1,
              FLAT_HI - FLAT_LO + 1))
 

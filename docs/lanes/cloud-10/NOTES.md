@@ -28,11 +28,14 @@ much larger problem":
 - all 21,472 px sit in columns 44..102 of 168 in every quad, **zero outside**,
   and every differing column is colour-inverted with its vertical checker
   transitions on identical rows -- a horizontal cell-parity flip that toggles
-  30 times across the band.
+  30 times across the band. The inversion is **total**: outside the test's own
+  white label (see below) 21,472 of 21,472 pixels in a differing column differ,
+  and all 704 survivors are label pixels.
 - **hardware varies the horizontal offset with `u`; it does not shift it by a
   constant.** In columns 78..102 the base checkerboard has no horizontal
-  boundary in 150 of the quad's 168 rows, and the gold Y16 quad has 11 in
-  every row. A constant shift, of any size, can only invert at the base's own
+  boundary in 150 of the quad's 168 rows, and the gold Y16 quad has 9..12 there
+  (median 11) in every row of every quad. A constant shift, of any size, can
+  only invert at the base's own
   period. Counting both images' boundaries per row bounds the *cumulative*
   movement of the relative cell index at **>= 19 cells, ~250 byte units** of
   `b`, against our single 82 -> 83 step. Its *excursion* is not bounded by
@@ -62,6 +65,19 @@ much larger problem":
   quad and 77 for ours -- images that differ by 1,576 px in total. The right
   half of each quad carries almost no horizontal information and any threshold
   scan across it answers confidently.
+- **There is text drawn inside the measured quads, and I explained it as
+  checkerboard twice.** The test prints its own label over the geometry in
+  opaque white -- exactly `(255,255,255,0)`, rows 84..99 / columns 44..90 of
+  quad g0 b0, 1,400 px across the four, identical in both goldens and in ours.
+  It costs zero differing pixels, which is exactly why it survived two passes:
+  every total was right. What it broke was the *description*. I wrote that a
+  differing column's 152-of-168 survivors "sit on a checker boundary" (they are
+  704 of 704 glyph pixels; outside the label the inversion is 21,472 of 21,472)
+  and that the 18 rows with a base boundary in columns 78..102 "lie on the
+  quad's vertical seam" (two do; sixteen are the glyph). The audit on #187
+  caught both. Both would have handed a scorer a target no bump mechanism can
+  hit. Count the colours in a region before explaining its structure -- three
+  in these quads, not two -- and `--columns` now prints the label's box.
 - **Do not bound a swing with a flip count.** The first draft of this document
   turned "the inversion toggles 30 times" into "the offset sweeps at least
   ~200 byte units", by halving the toggles into cells and then claiming the
