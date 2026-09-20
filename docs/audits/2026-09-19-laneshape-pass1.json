@@ -1,0 +1,92 @@
+[
+  {
+    "id": "H1",
+    "severity": "HIGH",
+    "file": "docs/testing/jobs/arms.sh",
+    "line": 157,
+    "summary": "The new collect step builds one `git fetch` carrying a named, non-wildcard refspec per open PR head (`+refs/heads/$b:refs/remotes/origin/$b`, arms.sh:155). git fetch fails the entire invocation when any named refspec matches no remote ref, and updates NOTHING -- not the other named specs, not the `+refs/heads/lane/*` wildcard, not `$TIP`. Verified against a scratch bare origin: `git fetch -q origin master '+refs/heads/lane/*:...' '+refs/heads/gone:...'` prints `fatal: couldn't find remote ref refs/heads/gone`, rc=128, and the consumer's origin/master stayed at the pre-fetch sha while origin had advanced. The old code could not fail this way: `$TIP` always exists and a wildcard matching nothing is not an error. `headRefName` is the branch name in the HEAD repository, which for a fork PR is not a branch on origin at all -- and this repository is public by the PR body's own CI argument -- and a head branch deleted while its PR stays open produces the same permanently-missing name. The lane/* and $TIP filters at :153 and :163 remove only the self-inflicted cases.",
+    "scenario": "Someone opens a PR from a fork, or deletes the head branch of an open PR. From the next tick on, arms.sh logs `WARNING: fetch failed; working from what the object store has` and collects from whatever refs it already had. Every prediction pushed after that moment -- on master, on every lane/* branch, on the remote lane -- is invisible to the queue for as long as that PR stays open, and nothing says so outside $WORK/logs/arms/tick.log. That is a strictly larger outage than the one this PR fixes, and it needs a person to notice. It does not fire today: the one non-lane/* head, #162's claude/docs-tooling-agentic-coding-u152m1, exists on origin (git ls-remote --heads).",
+    "remediation": "Fetch PR heads as `+refs/pull/<n>/head:...` (always present, and the only form that works for a fork at all -- PR_TSV already carries the number); or intersect the branch list with one `git ls-remote --heads origin` per tick; or issue the PR-head fetch as a second, separate, non-fatal `git fetch` so a bad name cannot take master's refs down with it. Add a fragment leg with an open PR whose head does not exist on the fixture origin, asserting master's tracking ref still advanced.",
+    "evidence": "docs/testing/jobs/arms.sh:150-158, :153, :163; empirical fetch experiment against a scratch bare origin (rc=128, origin/master unchanged); `gh pr list --repo jreinach-alt/hakuX --state open --json number,headRefName,headRepositoryOwner`; `git ls-remote --heads origin claude/docs-tooling-agentic-coding-u152m1`."
+  },
+  {
+    "id": "H2",
+    "severity": "HIGH",
+    "file": "docs/testing/jobs/remote-lane.sh",
+    "line": 37,
+    "summary": "remote_map treats board_files.load's silent working-tree fallback as a successful read of the board. board_files._from_ref returns None whenever `git show origin/board:territory.toml` fails (ref not fetched, clone or CI checkout without it, timeout), and load then opens the IN-TREE docs/testing/territory.toml and records that in _src. remote_map (remote-lane.sh:66-82) never calls board_files.source(), so this path exits 0 with a map built from the wrong file and remote_readable returns true. The in-tree copy is structurally stale, not incidentally: origin/board:territory.toml is wave 125 (2026-09-19T21:00:00Z) and origin/master:docs/testing/territory.toml is wave 94 (2026-09-18T22:25:00Z). The `remote` marker this PR asks the board to add (body, board request 3) lives on origin/board and reaches the in-tree copy only when a later fold copies it, so the fallback file is precisely the one guaranteed not to carry the new marker. The header at :37-40 and :52-60 states the opposite as the design's central safety property: `THE BOARD IS READ THROUGH board_files.py, so this sees origin/board and not a lane worktree's fold-lagged copy`, and `A READ FAILURE IS NOT \"NO REMOTE LANES\" [...] lane.sh REFUSES, fold.sh KEEPS the ref, fleet.py reports as before`. There is a third state, and it is answered \"no remote lanes\" for all three.",
+    "scenario": "The board adds `remote = true` to a row whose lane lives on lane/<name> -- the case fold.sh's exemption exists for, in its own comment 'the exemption for the day one is, which is exactly when nobody will be thinking about it'. A fold tick runs from a checkout without origin/board (board.sh re-execs fold.sh/arms.sh from a fetched master worktree; a fresh clone has origin/master and not origin/board). remote_readable returns 0 from the wave-94 copy, is_remote_branch returns false, and prune_branch deletes the branch of a live cloud lane on origin, its tracking ref and the local head -- what the exemption's own comment calls 'not the recoverable kind of mistake'. In the same state lane.sh's refuse_if_remote also passes and starts a second agent on that branch, and handback.sh's defence-in-depth (which IS lane.sh) goes with it. Three guards, one common-mode failure, in the direction the header promises is impossible.",
+    "remediation": "Make the stale-copy state visible and pick a direction for it. board_files.source(\"territory.toml\") already answers the question; have the python block emit it so remote_map can distinguish `read from origin/board` / `read from the working tree` / `unreadable`, with callers treating the middle as they treat the third (refuse, keep, report-as-before) or at minimum naming it in the refusal text. Add a fragment leg: a fixture whose origin/board read fails and whose working-tree territory.toml carries no remote row, asserting fold.sh still does not prune and lane.sh still exits 76.",
+    "evidence": "docs/testing/jobs/remote-lane.sh:37-40, :52-60, :66-82; docs/testing/board_files.py:27-47 (_from_ref returns None on failure, load falls back to os.path.join(HERE, name), source() records it); `git show origin/board:territory.toml | grep '^wave'` -> 125; `git show origin/master:docs/testing/territory.toml | grep '^wave'` -> 94; docs/testing/jobs/fold.sh:147-167; docs/testing/lane.sh:68-84."
+  },
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/testing/lane.sh",
+    "line": 49,
+    "summary": "The branch conflicts with current origin/master. `gh pr view 163 --json mergeStateStatus` returns DIRTY, and `git merge-tree --write-tree --name-only HEAD origin/master` reports `CONFLICT (content): Merge conflict in docs/testing/lane.sh`; fold.sh and handback.sh auto-merge. The tip 8b185a925f is 21 commits behind origin/master.",
+    "scenario": "The PR reaches fold-ready and fold.sh cannot produce a merge commit; it sits until handback.sh labels it needs-rebase and something resumes the lane -- one full extra cycle after two audit passes have been spent. Worse for this file specifically: master has moved lane.sh underneath the single gate this PR adds to it, so refuse_if_remote's placement relative to master's current start/resume bodies has been verified by nothing, and the conflict resolution is where that would be checked.",
+    "remediation": "git merge origin/master, resolve docs/testing/lane.sh by hand, re-run selftest.sh (the 98 fragment exercises both call sites), push. Commit the resolution before running any long gate.",
+    "evidence": "gh pr view 163 --json mergeStateStatus -> DIRTY; git merge-tree --write-tree --name-only HEAD origin/master; git rev-list --count HEAD..origin/master -> 21."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/laneshape/NOTES.md",
+    "line": 220,
+    "summary": "Three mutually inconsistent records of the falsification measurement, and the one in the PR body was reconciled by arithmetic rather than by re-measuring. The fragment contains 41 `check` calls -- verified, and it has contained exactly 41 in all four commits on this branch (8f43845b25, f6523b5923, d9e14938ec, e18b3e47ef). selftest.d/98-lane-shape.sh:22 says 'Measured 2026-09-19 against master@841a38736c: 19 of these fail' (841a38736c is a real commit on master, the 10:50 fold of #160). NOTES.md:220 says '25 of the 39 do. The other 14'. The PR body says '25 of the 41 fail against master's code' and 'The other 16'. 19 != 25, and the body's 16 is 41 - 25: the denominator was corrected to the true check count while the numerator was carried over unchanged. The count IS the evidence that 41 new checks discriminate, and NOTES then enumerates the 14 that could not; with the totals disagreeing, at most one account can be true and the taxonomy under it cannot be reconciled to the file.",
+    "scenario": "Pass 2 sets out to verify 'each new check fails against the code it replaces', unpacks master's docs/testing, drops the fragment into its selftest.d and runs it. The number it gets matches none of 19, 25, or 25-of-39. It cannot tell whether a check has silently become a tautology against the new code, whether the enumeration of non-discriminating legs is wrong, or whether it is only reading a stale note -- so it either passes the PR on a claim it could not check, or hands back for a re-measurement that should have been done once.",
+    "remediation": "Re-run the unpack-master procedure once against this tip, write the resulting number in all three places, and make the NOTES enumeration sum to 41. If the 19 and the 25 were measured at different tips of this branch, say which tip each belongs to.",
+    "evidence": "grep -c 'check \"' docs/testing/jobs/selftest.d/98-lane-shape.sh -> 41, at every commit on the branch; selftest.d/98-lane-shape.sh:22; docs/lanes/laneshape/NOTES.md:220-222; PR #163 body; git log -1 841a38736c."
+  },
+  {
+    "id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/lanes/laneshape/NOTES.md",
+    "line": 242,
+    "summary": "The section 'Not mine: 86-fold-regressed.sh is red on master' asserts in the present tense that selftest.sh reports 11 failures on this branch, 10 of them master's, and concludes 'CI is the gate of record, so this holds up every fold until someone owns it, including this PR's.' The PR body repeats it under 'Not this lane's, and both block the pipeline'. The jobs selftest workflow run on this head (8b185a925f, 2026-09-19T20:42:34Z) concluded success; the previous head e18b3e47ef concluded failure. Whatever landed in the 21 commits merged from master resolved it, and that merge commit is on this branch. The two-commit diagnosis (a4fcced05a's prune_branch at fold.sh:603, then 4eb641e777 folding #145 whose fr_reset re-pushes a now-deleted local lane/foldreg) is good work and worth keeping; what is wrong is the tense, asserted at the section heading and in the body's headline, which is where it is read.",
+    "scenario": "The board reads a still-open PR saying the trunk's selftest is red and every fold is blocked on an unowned fixture, and dispatches a lane at a defect that is already fixed; or pass 2 treats a red `jobs selftest` on this branch as expected and lets a real regression through. A withdrawal appended at the bottom of a long notes file leaves the claim at the top still asserting itself -- and here there is not even a withdrawal.",
+    "remediation": "Mark the section superseded in place, at its heading, naming the head and the green run. Keep the two-commit diagnosis. Remove 'holds up every fold, including this PR's' from the PR body, or restate it in the past tense with the date it stopped being true.",
+    "evidence": "gh run list --branch lane/laneshape -> 8b185a925f 'jobs selftest' success 2026-09-19T20:42:34Z, e18b3e47ef 'jobs selftest' failure 18:59:44Z; gh pr view 163 --json statusCheckRollup -> all SUCCESS; docs/lanes/laneshape/NOTES.md:242-274."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": 237,
+    "summary": "lane_prs writes p[\"remote\"] = True/False on every row and nothing in the file ever reads it: the REMOTE LANES section iterates the `remote` map directly and pr_of is keyed by lane.",
+    "scenario": "No behaviour effect. A field nothing reads is a field nothing keeps true, and the next editor has to establish that before touching either branch of the if/elif.",
+    "remediation": "Use it where the distinction matters (see L2) or drop it.",
+    "evidence": "grep -n \"\\['remote'\\]\\|\\[\\\"remote\\\"\\]\" docs/testing/fleet.py -> only :237 and :240."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": 609,
+    "summary": "READY, NOT FOLDED prints `\"unit up\" if p[\"lane\"] in units else \"finished\"`. A remote lane never has a hakux-lane-* unit -- that is the premise of the whole change -- so its ready PR always prints `finished`, the one word in that column that means the local unit is gone.",
+    "scenario": "A reader scanning READY, NOT FOLDED sees `elsewhere #777 finished` and concludes the session ended, which is the inference the REMOTE LANES section exists to prevent. It is corrected only for a reader who gets as far as that section.",
+    "remediation": "Print `elsewhere` for a row whose lane is in the remote map; p[\"remote\"] (L1) is exactly the field for it.",
+    "evidence": "docs/testing/fleet.py:605-610; remote lanes are excluded from `units` by construction (fleet.py:407-418 comment)."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "docs/testing/fleet.py",
+    "line": 588,
+    "summary": "The REMOTE LANES comment reasons 'No FAIL: there is no action a board tick could take from here'. True of that section; not true of the change, because lane_prs now admits remote lanes' PRs and both unfolded (:386) and waiting (:399) raise FAIL at :714 and :694, and board.sh starts a model session on any ^FAIL hit.",
+    "scenario": "Almost certainly the intent -- a remote lane's ready PR should enter the audit pipeline -- but a later reader deciding whether the change can wake the board reads this comment and concludes it cannot.",
+    "remediation": "One clause: say the section itself sets no FAIL, and that these PRs do reach the board through unfolded/waiting like any other.",
+    "evidence": "docs/testing/fleet.py:581-590, :386, :399, :693-719."
+  },
+  {
+    "id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/jobs/selftest.d/98-lane-shape.sh",
+    "line": 186,
+    "summary": "The check labelled 'fleet.py counts an open PR on a branch a territory row names' asserts `REMOTE LANES (2)`, which is the count of remote ROWS -- one of which (prefixed) deliberately has no PR. The check that actually asserts the PR is the next one.",
+    "scenario": "When it fails, it names the wrong fact, and the reader looks at PR counting rather than at row parsing.",
+    "remediation": "Rename to what it asserts: 'every remote row is reported, PR or not'.",
+    "evidence": "docs/testing/jobs/selftest.d/98-lane-shape.sh:186-191; fleet.py:582 prints len(remote)."
+  }
+]

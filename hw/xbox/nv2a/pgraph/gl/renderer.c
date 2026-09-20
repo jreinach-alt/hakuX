@@ -201,6 +201,33 @@ static void pgraph_gl_init(NV2AState *d, Error **errp)
                         r->supported_extensions.texture_lod_bias ? "yes" : "no",
                         r->supported_extensions.occlusion_query_boolean ? "yes" : "no");
 #endif
+#ifndef __ANDROID__
+    /*
+     * #158/#59: the GL half of the surface pad-bit write side.
+     *
+     * psh.c stamps the format's pad constant into the fragment's alpha and
+     * keeps the combiner's alpha at output index 1, so the blend unit can
+     * still read the value it would have read before the stamp existed. That
+     * needs dual-source blending, which is core GL 3.3
+     * (GL_ARB_blend_func_extended) and which this renderer had simply never
+     * asked for -- the gate in psh.c said `opts.vulkan`, so the whole
+     * mechanism was Vulkan-only by construction rather than by capability.
+     *
+     * Absence is a REFUSAL TO ENABLE, never a failure to start (psh.h:182):
+     * with the flag false, psh.c declares no index-1 output, emits no stamp
+     * and stages PSH_PAD_ALPHA_NONE, and pgraph_gl_draw_begin() names no SRC1
+     * factor -- which is bit-for-bit this renderer's behaviour before #158.
+     *
+     * Android is excluded deliberately and not by omission: GLES needs
+     * EXT_blend_func_extended, which is not core in GLES 3.0, and the failure
+     * mode there is a shader that does not compile. Same desktop-versus-GLES
+     * split #72 was conditioned on.
+     */
+    pgraph_glsl_set_dual_src_pad_supported(
+        epoxy_gl_version() >= 33 ||
+        epoxy_has_gl_extension("GL_ARB_blend_func_extended"));
+#endif
+
     if (r->supported_extensions.texture_filter_anisotropic) {
         glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT,
                     &r->supported_extensions.max_texture_max_anisotropy);

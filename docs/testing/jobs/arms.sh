@@ -12,8 +12,9 @@
 #
 # WHAT IT DOES. Every registered prediction names two refs (a_ref, b_ref) and
 # the captures it expects to move or hold. That is a complete device request:
-# the arms job finds every such prediction on master, on any lane branch, or
-# registered on this host, queues its two arms through request.sh, and when
+# the arms job finds every such prediction on master, on any branch with an
+# open PR, on any lane branch, or registered on this host, queues its two arms
+# through request.sh, and when
 # both have run, judges the pair with ab_compare.py and posts the verdict on
 # the lane's PR (or its issue). Nothing has to label anything for the
 # handhelds to get work: a lane that commits a prediction and pushes has
@@ -32,6 +33,15 @@
 # the queue, or in $WORK/arms/judged; and when it was registered before the
 # watermark in $WORK/arms/since (install-host.sh seeds it with "now"). Set the
 # watermark back to re-run older ones; delete a judged marker to re-judge.
+#
+# A LANE IS A BRANCH WITH AN OPEN PR, NOT A BRANCH NAMED `lane/*`. Until
+# 2026-09-19 the collect step fetched and walked `refs/remotes/origin/lane/*`
+# and nothing else, so a prediction on any other branch was never collected,
+# never queued and never judged. `lane.remote` is a cloud session on
+# `claude/docs-tooling-agentic-coding-u152m1` and had been contributing for
+# days: the device pipeline had never once been available to it, which is why
+# it measured on its own desktop build. The prefix was a proxy for "a branch a
+# lane owns" and it failed on the one real lane that does not use it.
 #
 # WHAT IT REFUSES, per AGENTS.md's inert-prediction rules: a ref that does not
 # resolve, a b_ref that is not an ancestor of master or of any live lane
@@ -54,9 +64,11 @@ A="$WORK/arms"
 # beside this file (board.sh re-execs this from a fetched master worktree).
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
 mkdir -p "$A"/{expect,pairs,judged,skipped,log} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
 QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait
@@ -65,22 +77,144 @@ QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many reques
 # history, and the first tick queued nothing while PR #102's live arm sat
 # there. The expect_sha check is what stops a re-run; the watermark only
 # keeps the job from walking a week of old registrations.
+# DATA, NOT DISPLAY -- STAYS UTC. $SINCE is compared to registered_utc with
+# `\<` below, a LEXICAL string comparison that is correct only because UTC
+# "%FT%TZ" sorts chronologically. In local time the November fall-back makes
+# 01:00-02:00 happen twice, so two distinct instants compare in the wrong
+# order and the watermark silently re-runs or skips a prediction -- once a
+# year, at night, leaving no trace. Do not "finish the job" here.
 [ -f "$A/since" ] || date -u -d '2 days ago' '+%FT%TZ' > "$A/since"
 SINCE=$(cat "$A/since")
 history=0
 mode="${1:-run}"
 
+# --------------------------------------------------------- the open PRs
+#
+# THE BRANCHES A LANE OWNS, ASKED OF GITHUB ONCE. Read before the fetch below
+# because it decides what to fetch, and reused by pr_for() so a verdict costs
+# no second call.
+#
+# WHY AN OPEN PR AND NOT A TERRITORY ROW. The brief offered either. A territory
+# row does not NAME a branch -- the lane rows carry files/issues/note/standing
+# and nothing else -- so "every branch a row names" would need a new field on
+# every row, kept in step by hand, and a row whose field was never written
+# would be silently uncollectable in exactly the way the `lane/*` glob already
+# is. An open PR IS the branch, machine-read, and it is the same fact this job
+# needs anyway: a prediction's verdict has to be POSTED somewhere, and for a
+# branch that is not the trunk that somewhere is its PR. One question, one
+# call, two uses.
+#
+# THE `lane/*` GLOB IS KEPT ALONGSIDE IT, NOT REPLACED. A lane that pushes a
+# prediction before opening its PR -- the ordering roles/lane.md asks for is
+# the other way round, but the window is real -- would otherwise become
+# uncollectable the moment this changed. This only ever ADDS branches.
+#
+# `arms.sh state` SKIPS ALL OF THIS, AND THE FETCH BELOW WITH IT. Its own
+# header promises it "Reads $WORK/arms only; queues and judges nothing", and it
+# needs neither the PR map nor a ref: it prints a label decision from disk. The
+# first version of this block asked anyway, and on a host where `gh` answers
+# nothing the WARNING landed on stdout AHEAD of the `STATE=` line -- which
+# callers read with `sed -n 1p`. A read-only mode that opens the network is a
+# contract broken quietly; here it also corrupted the one line it exists to
+# print.
+PR_TSV="$A/log/prs.tsv"
+if [ "$mode" = state ]; then
+    :
+elif out=$(gh pr list --repo "$GH_REPO" --state open --limit 100 \
+             --json number,headRefName --jq '.[] | "\(.headRefName)\t\(.number)"' 2>/dev/null) \
+       && [ -n "$out" ]; then
+    printf '%s\n' "$out" > "$PR_TSV"
+else
+    # gh could not answer, or there are genuinely no open PRs. Either way the
+    # previous tick's file is a better map than none -- a verdict posted on a
+    # PR that has since closed is a comment on a closed PR, which is visible;
+    # a verdict posted nowhere is not. Do NOT delete it.
+    say "WARNING: gh pr list did not answer; using the last tick's PR map ($(wc -l < "$PR_TSV" 2>/dev/null || echo 0) branches) and the lane/* glob"
+fi
+
 # ----------------------------------------------------------------- collect
-# Every prediction file reachable from the trunk, from any lane branch, or
-# registered in the dispatch directory. Exported by content hash so the same
-# registration on two branches is one candidate and an amended copy is a new
-# one (an amendment changes the sha, and the sha is what binds an arm).
-git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/lane/*' 2>/dev/null \
-    || say "WARNING: fetch failed; working from what the object store has"
-# The trunk first: a prediction that is on master AND on the lane branch
-# that folded it is master's, and its verdict goes to the issue, not to a
-# PR that may have closed.
-tips="refs/remotes/origin/$TIP $(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/remotes/origin/lane/*')"
+# Every prediction file reachable from the trunk, from any branch with an open
+# PR, from any lane branch, or registered in the dispatch directory. Exported
+# by content hash so the same registration on two branches is one candidate and
+# an amended copy is a new one (an amendment changes the sha, and the sha is
+# what binds an arm).
+#
+# A PR HEAD IS FETCHED AS `refs/pull/<n>/head`, AND IN A SECOND, SEPARATE
+# `git fetch`. Both halves of that sentence are load-bearing, and the first
+# version of this block had neither.
+#
+# (a) NOT `+refs/heads/<branch>:...`. `headRefName` is the branch name in the
+#     HEAD repository, which for a PR from a fork is not a branch on `origin`
+#     at all; a head branch deleted while its PR stays open is the same state,
+#     and GitHub leaves such PRs open indefinitely. `refs/pull/<n>/head` is
+#     always present for an open PR, fork or not, and survives the branch's
+#     deletion. The number is already in the map -- the same `gh` call carries
+#     it for pr_for().
+#
+# (b) A SECOND `git fetch`, NOT ONE MORE REFSPEC. `git fetch` fails the WHOLE
+#     invocation when any NAMED (non-wildcard) refspec matches no remote ref,
+#     and updates NOTHING -- not the other named specs, not the `lane/*`
+#     wildcard, and not $TIP. One such PR would therefore have staled every
+#     ref collect() walks, master included: every prediction pushed after that
+#     moment invisible to the queue, for as long as that PR stayed open, with
+#     one WARNING in a log nobody reads. Splitting it means the trunk and the
+#     lane branches are already updated before anything that can name a
+#     missing ref is asked for, and the PR fetch's failure costs only the PR
+#     heads. The first spec cannot fail this way at all: $TIP always exists
+#     and a wildcard that matches nothing is not an error.
+#
+# THE DESTINATION IS `refs/remotes/pr/<n>`, ITS OWN NAMESPACE, not
+# `refs/remotes/origin/<branch>`. A fork's head branch name is chosen by a
+# stranger and is under no obligation to differ from a branch of ours: a fork
+# PR whose head is called `board` would otherwise have overwritten
+# `refs/remotes/origin/board`, which is where every job reads the board from.
+declare -A PR_HEAD_BRANCH=()   # refs/remotes/pr/<n> -> the head branch, which is the label pr_for() keys on
+tips=""
+if [ "$mode" != state ]; then
+    # Fetch one: cannot fail on a name.
+    git -C "$REPO" fetch -q origin "$TIP" '+refs/heads/lane/*:refs/remotes/origin/lane/*' 2>/dev/null \
+        || say "WARNING: fetch of $TIP and lane/* failed; working from what the object store has"
+    # Fetch two: can, and is allowed to, without taking the first one with it.
+    prspec=()
+    while IFS=$'\t' read -r b n; do
+        [ -n "$b" ] && [ -n "$n" ] || continue
+        case "$b" in lane/*|"$TIP") continue ;; esac   # the wildcard and $TIP already have these
+        # The NUMBER is what enters the refspec now, so the number is what has
+        # to be validated. A non-numeric field here means the map is not the
+        # map, and expanding it into a ref path is how a fetch grows a second
+        # destination.
+        case "$n" in ''|*[!0-9]*) say "  ignoring PR head '$b': '$n' is not a PR number"; continue ;; esac
+        [ -n "${PR_HEAD_BRANCH[refs/remotes/pr/$n]:-}" ] && continue
+        PR_HEAD_BRANCH["refs/remotes/pr/$n"]="$b"
+        prspec+=("+refs/pull/$n/head:refs/remotes/pr/$n")
+    done < <([ -s "$PR_TSV" ] && cat "$PR_TSV")
+    if [ ${#prspec[@]} -gt 0 ] && ! git -C "$REPO" fetch -q origin "${prspec[@]}" 2>/dev/null; then
+        # ...AND ONE BAD NAME MUST NOT COST THE OTHER PR HEADS EITHER. The
+        # batch is one round trip and is what runs on every ordinary tick;
+        # this is the degraded path, entered only when it already failed, so
+        # the N fetches cost nothing on the days nothing is wrong. Without it
+        # a single unfetchable pull ref would still have staled every OTHER
+        # open PR's head -- a smaller outage than staling master, and the same
+        # shape.
+        say "WARNING: the PR-head fetch failed as a batch; retrying ${#prspec[@]} spec(s) one at a time ($TIP and lane/* are already current)"
+        for spec in "${prspec[@]}"; do
+            git -C "$REPO" fetch -q origin "$spec" 2>/dev/null || say "  PR head unavailable: $spec"
+        done
+        unset spec
+    fi
+    # The trunk first: a prediction that is on master AND on the lane branch
+    # that folded it is master's, and its verdict goes to the issue, not to a
+    # PR that may have closed.
+    tips="refs/remotes/origin/$TIP $(git -C "$REPO" for-each-ref --format='%(refname)' 'refs/remotes/origin/lane/*')"
+    # ...then the non-lane/* PR heads. One ref per PR number, so there is
+    # nothing left to deduplicate against the wildcard; a ref the fetch could
+    # not produce is simply skipped.
+    for ref in "${!PR_HEAD_BRANCH[@]}"; do
+        git -C "$REPO" rev-parse -q --verify "$ref" >/dev/null || continue
+        tips="$tips $ref"
+    done
+    unset ref
+fi
 
 collect() {   # prints: <sha256> <exported-path> <source>, first sighting wins (trunk before lanes)
     local ref blob f sha out; declare -A seen; declare -A blobsha
@@ -102,7 +236,9 @@ collect() {   # prints: <sha256> <exported-path> <source>, first sighting wins (
             [ -n "${seen[$sha]:-}" ] && continue; seen[$sha]=1
             out="$A/expect/$sha.json"
             [ -f "$out" ] || git -C "$REPO" cat-file -p "$blob" > "$out"
-            echo "$sha $out ${ref#refs/remotes/origin/}:$f"
+            # The SOURCE label is the branch, always: pr_for() keys the PR map
+            # on it, and a `refs/remotes/pr/<n>` path would answer nothing.
+            echo "$sha $out ${PR_HEAD_BRANCH[$ref]:-${ref#refs/remotes/origin/}}:$f"
         done < <(git -C "$REPO" ls-tree -r "$ref" -- docs/testing/predictions/ 2>/dev/null \
                      | awk -F'\t' '$2 ~ /\.json$/ {split($1,a," "); print a[3], $2}')
     done
@@ -224,10 +360,22 @@ field() { python3 -c "import json,sys;v=json.load(open(sys.argv[1])).get(sys.arg
 # The PR a verdict belongs on: the open PR whose head is the branch the
 # prediction came from. A host-registered or master prediction goes to its
 # issue instead.
+#
+# NO PREFIX TEST. It used to answer only for `lane/*`, so every verdict for the
+# one lane whose branch is `claude/...` fell through to the issue -- graceful,
+# and the wrong place, because fold.sh and the board both read the PR. The
+# branch either has an open PR or it does not, and the map read at the top of
+# this tick already says which.
 pr_for() {   # <source>  -> PR number or empty
-    case "$1" in
-        lane/*) gh pr list --repo "$GH_REPO" --head "${1%%:*}" --state open --json number --jq '.[0].number' 2>/dev/null ;;
-    esac
+    local branch="${1%%:*}" n
+    case "$branch" in ""|host|"$TIP") return 0 ;; esac   # the trunk and host registrations have no PR
+    n=$(awk -F'\t' -v b="$branch" '$1 == b { print $2; exit }' "$PR_TSV" 2>/dev/null)
+    # ASK DIRECTLY WHEN THE MAP IS SILENT. The map is one snapshot taken at the
+    # top of the tick, and a judge loop runs minutes later; a PR opened in
+    # between, or a map this tick could not refresh, must not cost a lane its
+    # verdict. One call, only for a branch the map does not already answer.
+    [ -n "$n" ] || n=$(gh pr list --repo "$GH_REPO" --head "$branch" --state open --json number --jq '.[0].number' 2>/dev/null)
+    printf '%s' "$n"
 }
 post() {   # <pr> <issue> <body-file>
     if [ -n "$1" ]; then gh pr comment "$1" --repo "$GH_REPO" --body-file "$3" >/dev/null 2>&1 && return 0; fi
@@ -303,6 +451,10 @@ tell_skip() {   # <sha> <expect-path> <source>
         echo; echo "If the skip is wrong, say so here."
     } > "$body"
     if post "$pr" "$issue" "$body"; then
+        # UTC: a stamp in a host state file, alongside queued_utc, not a line
+        # a reader is shown. tell_skip probes it with `grep -q '^told='` and
+        # never compares the value, so this is provenance -- keep it in the
+        # same zone as every other recorded field.
         echo "told=$(date -u '+%FT%TZ')" >> "$m"
     else
         say "  could not post the skip for $sha anywhere; will try again next tick"
@@ -528,6 +680,10 @@ import json, sys, datetime
 p, sha, ida, idb, path, src, who, issue, a, b, suites = sys.argv[1:]
 json.dump({"sha": sha, "id_a": ida, "id_b": idb, "expect": path, "source": src, "who": who, "issue": issue,
            "a_ref": a, "b_ref": b, "suites": suites,
+           # queued_utc: DATA, stays UTC. It breaks the tie when two
+           # registrations carry the same timestamp (see "Newest registration
+           # wins" above) -- another lexical comparison that needs a zone
+           # whose strings sort chronologically.
            "queued_utc": datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")},
           open(p, "w"), indent=2)
 PY
@@ -578,7 +734,7 @@ for pair in "$A"/pairs/*.json; do
         echo "| a_ref (base) | \`$(field "$pair" a_ref)\` result \`$ida\` |"
         echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
         echo "| suites | $(field "$pair" suites) |"
-        echo "| judged | $(date -u '+%FT%TZ') by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+        echo "| judged | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
         if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed 1d "$dec"; fi
         echo
         echo "<details><summary>ab_compare output (first 80 lines)</summary>"

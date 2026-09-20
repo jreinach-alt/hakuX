@@ -69,11 +69,31 @@ git -C "$FR/repo" checkout -q -b lane/foldreg
 printf 'a lane change\n' > "$FR/repo/docs/lanes-file"
 git -C "$FR/repo" add -A && git -C "$FR/repo" commit -qm "foldreg: a lane change"
 git -C "$FR/repo" push -q origin lane/foldreg
+FR_LANE_SHA="$(git -C "$FR/repo" rev-parse lane/foldreg)"   # see fr_reset
 git -C "$FR/repo" checkout -q master
 
 fr_reset() {   # a fresh host AND a fresh master: a fold pushes, so it must be undone
     rm -rf "$FR/work"; git -C "$FR/repo" worktree prune 2>/dev/null
-    git -C "$FR/repo" push -q -f origin master lane/foldreg
+    # THE LANE REF IS RECREATED, NOT ASSUMED. A tick that really folds calls
+    # fold.sh's prune_branch(), which deletes `lane/foldreg` on origin AND the
+    # LOCAL refs/heads/lane/foldreg in $REPO -- and $REPO here is this
+    # fixture's own $FR/repo. So the first folding tick destroyed the fixture
+    # every later check needs: the push below died with "src refspec
+    # lane/foldreg does not match any", every later `fr_tick` ran against a
+    # master that was never reset, and TEN checks failed against a completely
+    # correct fold.sh. `selftest` is a required check, so that was red on
+    # master and on every open harness PR at once.
+    #
+    # prune_branch is not the bug -- deleting the branch is the feature, and
+    # fold.sh:176-178 says why the local one goes too. This fixture was written
+    # before it existed, which is the general shape: ADDING A STEP TO A JOB'S
+    # TICK MAKES EVERY EXISTING FIXTURE FOR THAT JOB DRIVE THE NEW CODE.
+    # Restoring from the sha captured at setup is unconditional on purpose: it
+    # puts the ref back where the checks below were written against whatever
+    # the last tick did to it -- pruned it, moved it, or left it alone.
+    git -C "$FR/repo" update-ref refs/heads/lane/foldreg "$FR_LANE_SHA"
+    git -C "$FR/repo" push -q -f origin master lane/foldreg \
+        || bad "fr_reset could not restore the fixture -- the checks below are measuring nothing"
     : > "$FR/comments.log"; : > "$FR/gh.log"; : > "$FR/tick.log"
 }
 fr_tick() {   # <labels csv> [mode] : one tick of the REAL fold.sh
@@ -100,6 +120,16 @@ fr_dropped_foldready() { grep -q -- '-X DELETE.*labels/fold-ready' "$FR/gh.log";
 fr_kept_foldready()    { ! fr_dropped_foldready; }
 fr_called_pr_view()    { grep -q '^pr view' "$FR/gh.log"; }
 fr_no_pr_view()        { ! fr_called_pr_view; }
+# The fixture checking ITSELF. The state it used to lose was visible only as a
+# stderr line from git in the middle of a run that still printed check names,
+# so it is made a check: after a tick has folded (and therefore pruned), both
+# refs must be back and origin's master must carry no fold, or every check
+# after the first fold is being measured against a stale origin.
+fr_fixture_intact() {
+    git -C "$FR/repo" rev-parse -q --verify refs/heads/lane/foldreg >/dev/null \
+        && git -C "$FR/origin.git" rev-parse -q --verify refs/heads/lane/foldreg >/dev/null \
+        && fr_unfolded
+}
 
 # ------------------------------------------------- the failure being fixed
 fr_reset; fr_tick "fold-ready,regressed"
@@ -125,7 +155,9 @@ fr_reset; fr_tick "fold-ready"
 check "a PR with no arms verdict at all still folds (verified is NOT required)" fr_folded
 check "  and the fold really removed fold-ready, so the DELETE check above can fail" fr_dropped_foldready
 check "  a plain fold says nothing about regressions" fr_unsaid 'regression'
-fr_reset; fr_tick "fold-ready,verified"
+fr_reset
+check "  and the fixture survives its own fold: the tick pruned lane/foldreg, fr_reset rebuilt it" fr_fixture_intact
+fr_tick "fold-ready,verified"
 check "a verified PR folds" fr_folded
 fr_reset; fr_tick "fold-ready,regression-accepted:91"
 check "an override on a PR with no verdict folds it, quietly" fr_folded

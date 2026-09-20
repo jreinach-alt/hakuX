@@ -1,0 +1,68 @@
+[
+  {
+    "pass2b_id": "P1",
+    "pass2c_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "docs/testing/skip_ci_marker_check.sh",
+    "line": "60-69, 181-184",
+    "scenario": "Pass 2b's scenario cannot occur at tip 0cd8363668. It said a lane running the check in a tree where origin/master -- the DEFAULT range's left endpoint -- is absent (single-branch clone, a fetch naming only the lane branch, an agent worktree off a bare mirror), or mistyping the range, would get `clean`/exit 0 from a scan that read nothing, push a commit carrying the retired marker, and stall the fold with an empty check rollup. The range is now resolved with `git rev-list --count` before scanning; failure returns 2 and the caller exits 2; the count is printed on both the scanning line and the verdict.",
+    "evidence": "Ran both forms. Typo form: `skip_ci_marker_check.sh origin/mastr..HEAD` -> 'cannot resolve range ... nothing was scanned. This is not a clean result.', exit 2. LIVE form, which pass 2b named and which is the one a lane would hit: a fresh one-commit repo with no origin/master, invoked with NO argument so the default range applies -> same refusal, exit 2. On real history: 'scanning 30 commit bodies in origin/master..HEAD', reports 14312cb34f, exit 1. --selftest 7/7.",
+    "note": "Mutant-verified rather than read. Mutant A (resolve call replaced by RANGE_COUNT=unknown, `git rev-list ... 2>/dev/null` restored in scan, verdict back to bare `clean`): 4/7 -- 'unresolvable range exits 2', 'never gives the clean verdict for it' and 'reports how many bodies it read' red, other four unmoved; and in the no-origin/master repo with the default range it prints `clean` exit 0, the pre-fix behaviour exactly. The fixture drives the SCRIPT rather than scan() because the first remedy had resolve() call exit 2 inside a command substitution -- the guard firing and the script proceeding anyway, P1's own shape -- which scan() alone could not have shown. The lane caught that, not the audit."
+  },
+  {
+    "pass2b_id": "P2",
+    "pass2c_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/testing/skip_ci_marker_check.sh",
+    "line": "78-94",
+    "scenario": "Pass 2b's scenario cannot occur. `set -o pipefail` plus `grep -qF` closing the pipe at the first match made git die of SIGPIPE on a body past the 64 KB pipe buffer, the pipeline status 141, and the commit NOT reported -- not found for the one reason that it WAS found. scan() now captures the body into `msg` and matches with a shell `case`: no pipe, no buffer, no status to propagate.",
+    "evidence": "The 128 KB-body fixture at :157-169 passes at this tip, and goes red ALONE (6/7) against mutant B, which restores `git log -1 --format=%B | grep -qF` under pipefail. A git log that fails is now exit 2 rather than a silently skipped commit.",
+    "note": "Same one-line change closed P1's second half. Pass 2b's measured threshold (4/16/32/60/64 KB found, 128 KB missed 10 of 10) is the mutant's behaviour, reproduced here."
+  },
+  {
+    "pass2b_id": "P3",
+    "pass2c_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "PR body, docs/lanes/remote/NOTES.md",
+    "line": null,
+    "scenario": "The new script was on no `Files:` line and in no lane record, so board.sh could not keep a second lane off it. It is now on the PR's Files: line (body :7) and has its own NOTES.md section. hw/xbox/nv2a/pgraph/gl/surface.c -- the same omission recurring on a5fdb6a7 -- is on Files: too (body :5).",
+    "evidence": "PR #162 body lines 4-7; docs/lanes/remote/NOTES.md.",
+    "note": "One file in the branch's 18 is still undeclared -- see A2 -- but it is not this one and it predates every pass."
+  },
+  {
+    "pass2b_id": "P4",
+    "pass2c_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "PR body",
+    "line": "60",
+    "scenario": "Pass 2's record wrongly said this branch carries no retired marker. The body now names 14312cb34f, says the marker sits inside a sentence recording that it had been retired, establishes it is inert (CI has run on every head since; fold.sh merges rather than squashes), and says why it must not be reworded.",
+    "evidence": "Re-verified the two ancestry facts independently: `git merge-base --is-ancestor` says both prediction refs dcefe55745 and 7ffcd2bce8 are ancestors of 0cd83636, so rewording 14312cb34f would rewrite history a live prediction depends on. The prediction file still hashes to 29eb63008be367c497d943d5c7f1d91ca2b08aede2d2523feada4b2bae776cfa, matching the body's Prediction: line.",
+    "note": "Refusing the rewrite is the right call and the script's own header says so."
+  },
+  {
+    "pass2b_id": null,
+    "pass2c_id": "A1",
+    "severity": "MEDIUM",
+    "verdict": "OPEN",
+    "file": "hw/xbox/nv2a/pgraph/gl/surface.c",
+    "line": "1331",
+    "scenario": "a5fdb6a7's new condition cannot execute, and the commit's central factual claim -- 'Both gates in front of the blit admit R5G6B5 ... So the blit is taken and the expansion is wrong' -- is false on this tree. There is a third gate in front of both. render_surface_to_texture_slow() is reached only from pgraph_gl_render_surface_to_texture(), whose single call site gl/texture.c:927 is guarded by surf_to_tex from pgraph_gl_check_surface_to_texture_compatibility() at gl/texture.c:801. That function returns false at gl/surface.c:1543 for every texture format where pgraph_texture_format_is_converted() is true, and texture.c:143 makes that predicate fall through to pgraph_texture_format_expands_by_replication() -- true for every 5- and 6-bit packed texture format. So an R5G6B5 surface-to-texture never reaches the Android blit, the condition's left operand can only be false where the second operand is already false, and the texture comes from VRAM through pgraph_convert_texture_data instead.",
+    "evidence": "Derived from the switch bodies rather than asserted. android_surface_to_texture_rgba8_compatible() accepts, for LE_R5G6B5: LU_IMAGE_R5G6B5, SZ_R5G6B5; for LE_X1R5G5B5_Z1R5G5B5: LU_IMAGE_X1R5G5B5, SZ_X1R5G5B5, LU_IMAGE_A1R5G5B5, SZ_A1R5G5B5. Accepted-but-not-converted: NONE for both. In check_surface_to_texture_compatibility() the is_converted refusal is line 1543 and the first `return true` is line 1587, so the refusal precedes every true-returning path including the #ifdef __ANDROID__ early return at :1585. The two refusals are c234c1cc and f0095555, both 2026-09-12, from #59's replication work, and docs/investigations/packed-texel-expansion.md:359 in this same tree already records that check_surface_to_texture_compatiblity() 'now rejects every converted format outright'. pgraph_gl_render_surface_to_texture() has exactly one call site in the tree and no function-pointer indirection reaches it.",
+    "note": "MEDIUM, not HIGH: no incorrect behaviour is introduced, nothing crashes, the desktop is untouched, the change is at worst inert. What is wrong is a factual claim in a permanent record other work is planned against -- the commit states a throughput trade ('gives up the GPU blit ... takes a CPU conversion') that does not exist, and hands #62's device half a confirmation that cannot be made: a device lane will get a byte-identical result and have to guess whether that confirms the fix or refutes the ratio/replicate model. The X1R5G5B5 sibling the lane flagged at PR body :99-104 and asked to have rated CANNOT OCCUR EITHER, by the same gate -- all four of its accepted texture formats are replication-expanding. The desktop '235 of 236 byte-identical' result is consistent with inertness and is not evidence against it; an #ifdef __ANDROID__ block cannot move a desktop pixel either way. Remediation is prose in the PR body, NOTES.md and a comment on #62, plus a decision on four lines of C: keep them with the comment rewritten to say they are a belt-and-braces guard that becomes live only if the is_converted refusal is relaxed (a live direction -- packed-texel-expansion.md calls that guard its 'least certain point'), or revert and leave the exclusion to whoever relaxes the gate. The measured arithmetic (4/32, 10/64, 23,200/65,536, and the truncating-vs-rounding reconciliation of the 09-13 30,720 figure) is correct and should be kept, moved to where it describes the VRAM round-trip that actually runs. No re-measurement and no device needed."
+  },
+  {
+    "pass2b_id": null,
+    "pass2c_id": "A2",
+    "severity": "LOW",
+    "verdict": "OPEN",
+    "file": "docs/investigations/gl-pad-bit-write-side-patch-shape.md",
+    "line": null,
+    "scenario": "Added by cb57880d and on no `Files:` line. `git diff --name-only origin/master...HEAD` lists 18 files; the body's Files: line covers nine, the prediction is declared on its own line, and the audit records plus docs/lanes/remote/NOTES.md are per-lane paths that cannot collide. This one is left undeclared, so board.sh cannot see a second lane taking it.",
+    "evidence": "git diff --name-only origin/master...HEAD against PR #162 body lines 4-8.",
+    "note": "LOW and it predates every pass -- a new file with a lane-specific name in a directory of 100-odd such files, so a collision would be a visible create/create conflict rather than a silent overwrite, which is exactly why pass 2b rated the same shape LOW for skip_ci_marker_check.sh. Add it to Files: while the body is open for A1; it does not justify a pass on its own."
+  }
+]

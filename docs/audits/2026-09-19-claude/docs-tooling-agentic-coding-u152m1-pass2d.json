@@ -1,0 +1,46 @@
+[
+  {
+    "pass2c_id": "A1",
+    "pass2d_id": null,
+    "severity": "MEDIUM",
+    "verdict": "CLOSED",
+    "file": "hw/xbox/nv2a/pgraph/gl/surface.c",
+    "line": "n/a -- the change is reverted; the file is byte-identical to master",
+    "scenario": "Pass 2c's scenario cannot occur at tip 5baea4836e. It said a lane dispatched on #62 finding 2's device half with this PR as its brief would arm an A/B on a5fdb6a7, run the Texture_render_target and Surface_format 565 captures on a handheld, get byte-identical results on every one, and then either close #62 as confirmed -- recording a fix that never ran as verified silicon agreement -- or open a regression against the ratio/replicate model #59 measured; and that the same brief would send a second lane at the X1R5G5B5 sibling for the same null. There is no longer a commit to arm, and every place the false premise was read now says it is withdrawn.",
+    "evidence": "1. d7ef982090 reverts a5fdb6a7d1. Not similar to master's file, the SAME BLOB: git rev-parse origin/master:hw/xbox/nv2a/pgraph/gl/surface.c and HEAD:... both c21e19409809d1d5b6b09b2004626f09f97914f2; git diff --stat origin/master HEAD -- that path is empty. 2. The index went with it and went cleanly: the branch's nv2a_index.json diff against master touches only glsl/psh.c (198 loc lines), gl/draw.c (102) and gl/renderer.c (1), ZERO surface.c lines, so every entry a5fdb6a7 moved is back where master has it; structure identical across a5fdb6a7^, a5fdb6a7, the merge, the revert, HEAD and master (suites 103, symbols 951, sites 765, gaps 498, tests_commit 91a0de45ca); preflight reports 'nv2a index ok' and the NV2A index workflow is SUCCESS on this head. 3. All three places pass 2c named are corrected, and in the order a top-down reader meets them: PR body has a '#62 finding 2 -- WITHDRAWN' section and gl/surface.c is off the Files: line; NOTES.md:26 (the FIRST mention of #62 in the file) rewritten by 5baea483 to WITHDRAWN/reverted with the gl/surface.c:1543 chain, the c234c1cc/f0095555 2026-09-12 date against the 09-13 filing, and 'the device ask is withdrawn'; NOTES.md:677 marked SUPERSEDED in place with a banner naming which claims below it are wrong; #62 comment at 21:02:48Z withdraws the fix and the device ask. 4. The decision pass 2c asked for is stated at NOTES.md:797 (REVERTED, because a guard that cannot execute cannot be tested), and the arithmetic it asked to keep is kept at NOTES.md:814-829 with the sentence that separates the model from the route.",
+    "note": "The second half of the scenario -- a second lane sent at X1R5G5B5 -- was checked separately rather than assumed to ride along. The sibling offer sits at NOTES.md:737-750, INSIDE the superseded span 677-753, so the banner's 'every reachability claim below is wrong' covers it, and the PR body withdraws it explicitly. I also checked the place a device lane would actually read: the #62 issue body and ALL its comments mention X1R5G5B5 nowhere, so the withdrawal comment not naming it leaves nothing standing."
+  },
+  {
+    "pass2c_id": "A2",
+    "pass2d_id": null,
+    "severity": "LOW",
+    "verdict": "CLOSED",
+    "file": "docs/investigations/gl-pad-bit-write-side-patch-shape.md",
+    "line": "PR body Files: line",
+    "scenario": "Pass 2c's scenario -- a path edited by this branch that is on no Files: line, so the board cannot see the collision -- cannot occur: the file is declared.",
+    "evidence": "Re-derived the whole line rather than checking the one path. git diff --name-only origin/master...HEAD is 20 paths; remove the eight per-lane audit records and docs/lanes/remote/NOTES.md (per-lane paths that cannot collide) and the prediction (declared on its own line), and the remaining NINE match the nine on Files: exactly, in both directions. gl/surface.c is correctly absent now that the revert makes it byte-identical to master.",
+    "note": null
+  },
+  {
+    "pass2c_id": null,
+    "pass2d_id": "B1",
+    "severity": "LOW",
+    "verdict": "OPEN -- recorded, deliberately not a blocker",
+    "file": "PR #162 body",
+    "line": "State: line, and the CI checkbox in the definition of done",
+    "scenario": "Both name d7ef9820 as the head; the head is 5baea4836e, one commit later. A reader comparing the body's sha against the PR's head sees a mismatch and cannot tell from the body alone whether CI has run on what is actually there.",
+    "evidence": "CI is green on 5baea4836e as well -- Android SUCCESS, Desktop build SUCCESS, NV2A index SUCCESS, runs 35469865847 / 35469865822 / 35469865838 -- verified here rather than inferred. 5baea483 changes only docs/lanes/remote/NOTES.md (+10/-2), so nothing the checkbox asserts is affected by the staleness.",
+    "note": "Not made a finding and not a reason to withhold fold-ready: it fires no scenario, the substance is correct, and a remediation round trip costs more than the one-line edit is worth. Worth fixing whenever the body is next open."
+  },
+  {
+    "pass2c_id": "P1-P4, N1, N2, H1, M1, L1-L4",
+    "pass2d_id": null,
+    "severity": "n/a",
+    "verdict": "RE-CONFIRMED AT TIP",
+    "file": "(multiple)",
+    "line": "n/a",
+    "scenario": "Every earlier pass's scenario re-checked at 5baea4836e rather than cited, because two merges and a revert have landed since the passes that closed them.",
+    "evidence": "H1: the only two SRC1 code references are draw.c:169/:171 inside #ifndef __ANDROID__ (:164-:176), AND the call site at :474-475 is in the #else arm of the #ifdef __ANDROID__ at :459-:483 -- the half pass 1's own remedy got wrong; Android workflow SUCCESS. M1: filed as #164, open. L3: prediction hashes to 29eb63008be367c497d943d5c7f1d91ca2b08aede2d2523feada4b2bae776cfa matching the body; a_ref dcefe557 and b_ref 7ffcd2bc both still ancestors of the tip; merge-base with master is 3b27da7a, so no rebase. N1: gles_token_check.py 13 files scanned, 0 findings, exit 0. N2: pgraph_capture_run_selftest.sh all fixtures pass, 13 assertions including both negative ones. P1/P2: skip_ci_marker_check.sh --selftest 7/7. P3/P4: declared, and P4's reason for staying unfixed still holds. Territory: check_territory.py against origin/board, 'territory ok (wave 125, 29 lanes, 76 files claimed)'. preflight.sh --allow-tracker green end to end at this tip.",
+    "note": "Also read the three commits no pass had seen. e239097c61 is not an evil merge, checked from both sides: diff against ^2 is exactly the branch's own 20 files, diff against ^1 is exactly master's four. d7ef982090 touches three files and nothing else. 5baea4836e touches one file and nothing under hw/."
+  }
+]

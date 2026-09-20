@@ -63,9 +63,12 @@ WT="$WORK/fold-wt"
 F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
+. "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
+. "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh" # is_remote_branch: a branch this host must never delete
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
-say() { echo "$(date -u '+%FT%TZ') $*" | tee -a "$LOG"; }
+# The tick log is read by hand when something jams, so it is display: local.
+say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 mode="${1:-run}"
 
 find_repo() { for d in "$HOME/$1" /home/justin/"$1" /home/user/"$1"; do [ -d "$d/.git" ] && { echo "$d"; return; }; done; }
@@ -141,6 +144,35 @@ prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 
         lane/?*) ;;
         *) say "  NOT pruning '$branch': only lane/* refs are ever deleted"; return 1 ;;
     esac
+    # ...AND NOT A REMOTE LANE'S, even when it is named lane/*. A row marked
+    # `remote` in territory.toml belongs to a session in a container this host
+    # cannot see, which pushes to that branch about once an hour. Deleting the
+    # ref of a long-lived cloud lane is not the recoverable kind of mistake:
+    # the branch comes back on its next push carrying whatever that container's
+    # local copy holds, and anything folded in the meantime is a conflict
+    # nobody is watching for. No remote lane is named `lane/*` today, so this
+    # is the exemption for the day one is -- which is exactly when nobody will
+    # be thinking about it.
+    #
+    # TARGET NARROWED, NEVER WIDENED: this can only ever refuse. And a board it
+    # cannot read is also a refusal -- an un-pruned ref costs a few bytes, and
+    # "I could not check" is not "it is safe to delete".
+    #
+    # `remote_authoritative`, NOT `remote_readable`: the question here is
+    # whether NO row names this branch, and the fold-lagged in-tree copy
+    # board_files falls back to cannot answer it -- that copy gets a marker
+    # only when some later fold carries it over, so it is precisely the one
+    # missing the row the board wrote this morning. board.sh fetches
+    # `origin/board` before re-execing this job (board.sh:161); a checkout
+    # where that has not happened gets this refusal and one fetch fixes it.
+    if ! remote_authoritative; then
+        say "  NOT pruning '$branch': the board read came back \`$(remote_source)\` (not origin/board), so whether it belongs to a remote lane is unknown. \`git fetch origin board\` in this checkout."
+        return 1
+    fi
+    if is_remote_branch "$branch"; then
+        say "  NOT pruning '$branch': it is lane.$(remote_lane_of "$branch")'s, marked \`remote\` in territory.toml -- a session this host cannot see pushes to it"
+        return 1
+    fi
     # ...and a plain ref path, so nothing in it can read as an option to push
     # or expand into a second ref. check-ref-format refuses .., ~, ^, :, *, a
     # trailing lock and a leading dash for us.
@@ -295,7 +327,17 @@ It has now been failing for more than $((BOARD_GATE_STUCK_SECS / 3600))h, which 
 # would end up inside a field a gate keys on.
 cands=$(gh pr list --repo "$GH_REPO" --state open --label fold-ready --json number,title,headRefName,headRefOid,isDraft,labels \
             --jq 'sort_by(.number)[] | "\(.number)\t\(.headRefName)\t\(.headRefOid)\t\(.isDraft)\t\([.labels[].name] | join(","))\t\(.title)"' 2>/dev/null)
-[ -n "$cands" ] || { [ "$mode" = list ] && echo "nothing labelled fold-ready"; exit 0; }
+# NOTHING TO FOLD IS NOT NOTHING TO DO. This used to `exit 0` here, which also
+# skipped the `handback.sh` tail call at the bottom of this file -- and none of
+# handback's causes is the `fold-ready` label. A PR handed back carries
+# `needs-rebase` and has had `fold-ready` REMOVED; a lane stranded in draft
+# never had it. So the one state in which nothing folds -- every open PR is
+# handed back, or waiting, or a draft nobody will touch -- was exactly the
+# state in which the actor for all of them did not run either. Fall through:
+# the loop below reads an empty `$cands` as zero candidates and the tail runs.
+if [ -z "$cands" ]; then
+    [ "$mode" = list ] && echo "nothing labelled fold-ready"
+fi
 
 ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (or was skipped)
     gh pr view "$1" --repo "$GH_REPO" --json statusCheckRollup --jq '
@@ -513,6 +555,9 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
             # it is there. Keyed on the head sha, so a lane that pushes produces a
             # new cause and an unchanged branch does not.
             mkdir -p "$WORK/handback/cause"
+            # at=: UTC. A recorded field in a host state file, like queued_utc
+            # -- handback.sh reads only files= from here and never shows this
+            # line to anyone, so it stays in the zone the records are kept in.
             printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
                 "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
             label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
