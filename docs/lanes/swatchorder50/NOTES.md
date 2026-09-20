@@ -11,6 +11,27 @@ readings the capture matches:
 because the discriminator the variant was going to manufacture already exists
 in 1,120 captures on disk, and it is a single channel.
 
+## Why attempt 1 did not finish (resumed 2026-09-20)
+
+Not for want of the measurement. Attempt 1 finished every substantive item --
+the verdict, the scores below, the `[lane.swatchorder50]` comment on #50 at
+16:13:57Z, this file, and PR #186 with a `Files:` line matching its diff. It
+then ended with #186 **still in draft**, while CI was still running on
+`ecd4b4d38f` (it went green at 16:19:46Z, six minutes after the session
+stopped).
+
+So the lane stopped in the one state nothing else can act on: `board.sh`,
+`fleet.py` and `fold.sh` all skip drafts. It left no
+`[lane.swatchorder50] waiting:` comment either, so the reason for the draft --
+"waiting for CI" -- existed only in a session that no longer existed.
+`jobs/handback.sh` found it on the quiet clock and resumed it with the CI
+verdict resolved.
+
+The lesson is procedural, not scientific: **waiting is a finished session, but
+only if you say so where a reader can see it.** Ending silently on a green,
+complete PR costs a whole resume cycle. Either mark it ready, or post the
+waiting comment naming what will resolve it.
+
 ## Why the brief's measurement was not the cheapest one
 
 The brief is right that the existing frame cannot separate reading 1 from
