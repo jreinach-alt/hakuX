@@ -252,14 +252,48 @@ def selftest():
 
 
 def score(goldens):
-    import numpy as np
-    from PIL import Image
-
     pred = predictions()
     names = sorted({k[0] for k in pred})
     expected = len(pred)
     compared = missing = bad = worst = 0
     problems = []
+
+    # RESOLVE BEFORE IMPORTING THE IMAGE STACK. Deciding which goldens exist
+    # needs glob and nothing else, and the CI runner has no numpy or PIL: with
+    # the imports at the top of this function, a run with no goldens died on
+    # ImportError and never printed its report. The gate's "exits non-zero"
+    # check then passed on the traceback rather than on the guard -- an
+    # assertion satisfied for a reason other than the one it names, which is
+    # the very shape H1 was. Resolve first, report first, import only to
+    # compare.
+    resolved = {}
+    for name in names:
+        hits = sorted(glob.glob(os.path.join(goldens, '*', name + '.png')))
+        if len(hits) == 1:
+            resolved[name] = hits[0]
+
+    if not resolved:
+        for name in names:
+            problems.append('%s: no golden under %s' % (name, goldens))
+        missing = expected
+        for p in problems:
+            print('PROBLEM: %s' % p)
+        print('\ncompared 0 of %d modelled halves; 0 differ; worst |delta| = 0'
+              % expected)
+        print('%d modelled halves were NOT compared -- this is a FAILURE, not '
+              'agreement' % missing)
+        return 1
+
+    try:
+        import numpy as np
+        from PIL import Image
+    except ImportError as exc:
+        print('PROBLEM: cannot compare: %s' % exc)
+        print('\ncompared 0 of %d modelled halves; 0 differ; worst |delta| = 0'
+              % expected)
+        print('%d modelled halves were NOT compared -- this is a FAILURE, not '
+              'agreement' % expected)
+        return 1
 
     for name in names:
         hits = sorted(glob.glob(os.path.join(goldens, '*', name + '.png')))

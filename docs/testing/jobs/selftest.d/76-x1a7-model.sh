@@ -66,3 +66,18 @@ check "  and says nothing was compared, rather than that nothing differed" \
       x1a7has "compared 0 of 32 modelled halves" "$X1A7N"
 check "  and calls it a failure in those words" \
       x1a7has "NOT compared -- this is a FAILURE, not agreement" "$X1A7N"
+# ...and it must REPORT that, not die on an import. The runner has no numpy or
+# PIL, so the first version of this section exited non-zero on an ImportError
+# and the exit-code check above passed for a reason other than the guard --
+# the same shape as H1 itself. Shadow the image stack and require the report.
+# On the runner the shadow is a no-op because they are absent anyway, so this
+# check exercises the real condition in both places.
+X1A7SHADOW="$T/x1a7-shadow"; mkdir -p "$X1A7SHADOW"
+printf 'raise ImportError("shadowed")\n' > "$X1A7SHADOW/numpy.py"
+printf 'raise ImportError("shadowed")\n' > "$X1A7SHADOW/PIL.py"
+X1A7I=$(PYTHONPATH="$X1A7SHADOW" python3 "$REPO/docs/testing/x1a7_forward_model.py" \
+        "$T/x1a7-no-such-goldens" 2>&1)
+check "with no image stack it still REPORTS rather than dying on the import" \
+      x1a7has "NOT compared -- this is a FAILURE, not agreement" "$X1A7I"
+check "  and does not leak a traceback instead of a verdict" \
+      x1a7hasnt "Traceback (most recent call last)" "$X1A7I"
