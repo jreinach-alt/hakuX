@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 129
-updated_utc = "2026-09-20T03:40:00Z"
+wave = 131
+updated_utc = "2026-09-20T16:10:00Z"
 
 
 [retired.hilodot10]
@@ -682,3 +682,10 @@ issues = ["10"]
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-10, a cloud-class lane on issue #10, branch lane/cloud-10, attempt 1 of 4 on claude-opus-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 10` removes this row when the unit ends."
+
+
+[lane.swatchorder50]
+issues = ["50"]
+files = ["docs/lanes/swatchorder50/NOTES.md"]
+standing = false
+note = "DISPATCHED WAVE 131 (job.board), briefs/swatchorder50.md: #50's blendrace50 retired last tick with the disc-composition finding recorded; the issue's own next step is a fresh, well-scoped falsifier -- a DrawColorAndAlphaStack variant with unequal swatch heights or a 3-swatch draw, to separate the two surviving readings (reversed y-position vs. reversed colour order) that the existing capture cannot distinguish. Claims no in-repo source file besides its own NOTES.md; the change lives in nxdk_pgraph_tests' blend_tests.cpp, out-of-repo and untracked here, same as [retired.wbufclip]'s wbuf_tests.cpp touch."
