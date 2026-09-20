@@ -106,6 +106,18 @@ def check_canary(sess, expected: int, after: int) -> None:
         % (CANARY_OFF, got, expected, after))
 
 
+def _block_base(root: str, name: str) -> int:
+    """Absolute BAR offset of a block, from the generated window header."""
+    import re
+    hdr = os.path.join(root, "tools", "nv2a_probe", "probe", "nv2a_window.h")
+    m = re.search(r'\{\s*"%s",\s*(0x[0-9a-f]+)u' % re.escape(name),
+                  open(hdr, encoding="utf-8").read())
+    if not m:
+        raise SystemExit("no block %r in nv2a_window.h -- is the name right? "
+                         "(it must match the device model's table)" % name)
+    return int(m.group(1), 16)
+
+
 def load_hazards() -> dict:
     hz = os.path.join(os.path.dirname(os.path.abspath(__file__)), "hazards.json")
     if not os.path.exists(hz):
@@ -205,9 +217,14 @@ def main() -> int:
         root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
         regs = _cm.parse_regs(os.path.join(root, "hw", "xbox", "nv2a", "nv2a_regs.h"),
                               "NV_" + args.block.upper() + "_")
-        declared = set(regs)
-        print("write scope: declared only -- %d registers of %s are named in "
-              "nv2a_regs.h" % (len(declared), args.block))
+        # nv2a_regs.h offsets are BLOCK-RELATIVE; the sweep works in absolute
+        # BAR offsets. PMC happens to sit at base 0 so the two coincided there
+        # and this was wrong without being visible. The base comes from the
+        # generated window header, which is the device model's own table.
+        base = _block_base(root, args.block.upper())
+        declared = {base + o for o in regs}
+        print("write scope: declared only -- %d registers of %s (base %06X) are "
+              "named in nv2a_regs.h" % (len(declared), args.block, base))
     if not args.read_only and CANARY_OFF not in hazards:
         raise SystemExit(
             "refusing to run: the canary at %06X is not on the hazard list, so "
@@ -308,6 +325,14 @@ def main() -> int:
             sess.end_run()
         srv.close()
 
+    if not done:
+        print("\n*** SWEPT NOTHING. ***")
+        print("Every candidate was filtered out before a single register was "
+              "measured -- by the declared-only scope, the hazard list, the "
+              "poison list, or --skip. A run that measures nothing must not "
+              "read as a run that found nothing, so this is an error rather "
+              "than a clean exit.")
+        return 2
     print("\nswept %d registers, %d sessions, %d suspected hangs"
           % (len(done), reconnects, len(hangs)))
     print("results: %s" % results_path)
