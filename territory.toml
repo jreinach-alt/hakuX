@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 128
-updated_utc = "2026-09-20T03:20:00Z"
+wave = 129
+updated_utc = "2026-09-20T03:40:00Z"
 
 
 [lane.hilodot10]
@@ -638,7 +638,7 @@ note = "WRITTEN 2026-09-19 by the host session; lane RUNNING since 18:56Z with n
 issues = []
 files = ["docs/testing/jobs/selftest.d/72-cloud-tail.sh", "docs/lanes/cloudtail/NOTES.md"]
 standing = false
-note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #175 draft, branch lane/cloudtail) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue (brief only): the cloud unit's tail must run however the unit ends, from a path nothing moves. docs/testing/jobs/cloud.sh DELIBERATELY NOT CLAIMED although the lane's diff touches it: that file is [lane.turncap]'s below (granted outright at wave 126, PR #171 open), and the PR's own body says so -- it read its brief's claim as stale, found the file live instead, and confirmed the two diffs are disjoint hunks (header comment and the systemd-run invocation vs. #171's TURNS line) that share only context lines. This is a fold-order question, not a re-dispatch or a grant: coordinate at fold with turncap, same pattern as localtime/laneshape over files they touch but do not hold. selftest.d/72 is the next free fragment number (71 was cloudterritory's, retired at wave 126) and collides with nothing live."
+note = "WRITTEN AT WAVE 127 (job.board): lane was RUNNING (PR #175 draft, branch lane/cloudtail) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue (brief only): the cloud unit's tail must run however the unit ends, from a path nothing moves. docs/testing/jobs/cloud.sh DELIBERATELY NOT CLAIMED although the lane's diff touches it: that file was [lane.turncap]'s (granted outright at wave 126, PR #171). This is a fold-order question, not a re-dispatch or a grant: coordinate at fold with turncap, same pattern as localtime/laneshape over files they touch but do not hold. selftest.d/72 is the next free fragment number (71 was cloudterritory's, retired at wave 126) and collides with nothing live. UPDATED AT WAVE 129 (job.board): PR #175 is out of draft, CI green (build/build/selftest all SUCCESS), MERGEABLE against current master -- [lane.turncap]'s PR #171 folded 2026-09-20T02:37:54Z (fold ef2459f03c) before #175 went ready, so the coordination this row flagged has already happened; #171's TURNS-line hunk in cloud.sh is on master and #175's own hunks (header comment, systemd-run invocation) are disjoint from it. Diff touches nothing under hw/, target/, accel/, android/ -- no audit needed. Labelled fold-ready; this row's claim holds until the fold actually lands, per [lane.draftstrand]/[lane.stalecheck]'s own convention (fold-ready is not folded)."
 
 
 [retired.sweeps]
