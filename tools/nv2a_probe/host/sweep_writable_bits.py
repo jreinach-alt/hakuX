@@ -111,7 +111,17 @@ def main() -> int:
                 break
             if sess is None:
                 print("waiting for the probe to dial in ...")
-                sess = srv.accept(timeout=args.accept_timeout)
+                try:
+                    sess = srv.accept(timeout=args.accept_timeout)
+                except (ProbeError, OSError) as exc:
+                    # A connection that fails its handshake must not end the
+                    # sweep. Anything on the LAN can open this port -- a scan,
+                    # a stale retry, an operator testing reachability -- and
+                    # losing an hour of sweeping to one bad greeting is a much
+                    # worse outcome than waiting again. (Learned the hard way:
+                    # a reachability check from this very host killed a run.)
+                    print("  ignoring a connection that did not greet us: %s" % exc)
+                    continue
                 print("  connected: %s" % sess.hello)
                 reconnects += 1
             try:
