@@ -128,9 +128,30 @@ issue_count() {
     if [ -n "$last_count" ] && [ $(( now - last_count_at )) -lt "$ISSUE_TTL" ]; then
         printf '%s' "$last_count"; return 0
     fi
+    # REST, NOT `gh issue list`, AND THE PR FILTER IS THE POINT.
+    #
+    # `gh issue list` is GraphQL and a Claude Code cloud session's proxy
+    # refuses GraphQL, so this returned "" there and the watchdog fell into
+    # its fail-quiet branch permanently. Fail-quiet is the right default for
+    # this script (an un-actionable nag trains the reader to ignore the
+    # actionable ones) and it stays -- but it should be reached by the backlog
+    # being clear, not by the question never being asked.
+    #
+    # `repos/{repo}/issues` RETURNS PULL REQUESTS TOO, so `length` over the
+    # raw response is the count of open issues PLUS open PRs -- 31 rather than
+    # 23 on this repository on 2026-09-19. This watchdog exits when the count
+    # reaches zero, and a count inflated by PRs is a watchdog that never
+    # exits. `map(select(.pull_request == null))` is what makes the number
+    # mean what its name says.
+    #
+    # ONE PAGE OF 100 IS DELIBERATE HERE, unlike gh_rest's paging: this is a
+    # poll on a 20s loop that only needs "is the backlog empty", and a
+    # backlog over 100 is not zero under any paging. It is still not a total
+    # -- which is why the caller uses it as a threshold and never prints it
+    # as "N issues remain".
     local c
-    c=$(timeout 20 gh issue list --repo "$REPO" --state open --limit 100 \
-          --json number --jq 'length' 2>/dev/null) || c=""
+    c=$(timeout 20 gh api "repos/$REPO/issues?state=open&per_page=100" \
+          --jq 'map(select(.pull_request == null)) | length' 2>/dev/null) || c=""
     case "$c" in ''|*[!0-9]*) printf ''; return 1 ;; esac
     last_count="$c"; last_count_at="$now"
     printf '%s' "$c"
@@ -220,11 +241,38 @@ while :; do
         continue
     fi
 
+    # READ BY GREP, NOT BY LINE NUMBER, and both halves of that were broken.
+    #
+    # This captured `head -6` and then matched `FAIL*` against the whole blob
+    # and took `sed -n 2p` as the detail. Two things since made both wrong:
+    # check_coverage.py grew a provenance first line ("board read from: ..."),
+    # so `FAIL*` stopped matching ANY real coverage gap -- every one of them
+    # fell through to the `*)` branch below, which then advised on the
+    # assumption that nothing was uncovered. And the FAIL lines go to STDERR
+    # while the summary goes to stdout, so under `2>&1 |` -- stdout block
+    # buffered, stderr not -- their relative order is not even fixed.
+    #
+    # So: capture everything, and pull each piece out by the prefix its writer
+    # guarantees. `^coverage ` is the verdict line (ok or NOT CHECKED),
+    # `^FAIL` is a gate failure, `^  #` is the issue it names. Position is not
+    # an interface; those prefixes are.
     cov=$(cd "$HERE/../.." 2>/dev/null && timeout 45 python3 \
-              docs/testing/check_coverage.py 2>&1 | head -6)
-    case "$cov" in
-        FAIL*)  hint="COVERAGE GAP -- $(printf '%s' "$cov" | sed -n 2p | sed 's/^ *//'). Give it a lane in territory.toml or write blocked_on on its tracker entry." ;;
-        *"NOT CHECKED"*) hint="coverage unchecked (no gh). Pick up: fold a finished lane's diff and dispatch its A/B; claim an issue whose files territory.toml lists free; or refresh the scoreboard with collect_sweep.sh." ;;
+              docs/testing/check_coverage.py 2>&1)
+    cov_line=$(printf '%s\n' "$cov" | grep -m1 '^coverage ' || true)
+    cov_fail=$(printf '%s\n' "$cov" | grep -m1 '^FAIL' || true)
+    cov_detail=$(printf '%s\n' "$cov" | grep -m1 '^  #' | sed 's/^ *//' || true)
+    # AN EMPTY VERDICT IS `NOT CHECKED` TOO: check_coverage.py died somewhere
+    # it does not report from, or the timeout fired. Reporting that as the
+    # calm "nothing uncovered" branch is the same defect this block fixes.
+    [ -n "$cov_line" ] || cov_line="coverage NOT CHECKED -- THE GATE DID NOT RUN: check_coverage.py printed no verdict line (died early, or the 45s timeout fired)"
+    # One token for the three states, so the case below branches on a decision
+    # and not on a pattern match against free text.
+    cov_state=ok
+    [ -n "$cov_fail" ] && cov_state=fail
+    case "$cov_line" in *"NOT CHECKED"*) cov_state=unchecked ;; esac
+    case "$cov_state" in
+        fail)   hint="COVERAGE GAP -- ${cov_detail:-$cov_fail}. Give it a lane in territory.toml or write blocked_on on its tracker entry." ;;
+        unchecked) hint="COVERAGE GATE DID NOT RUN, so 'nothing uncovered' is NOT what this says -- ${cov_line}. Pick up: fold a finished lane's diff and dispatch its A/B; claim an issue whose files territory.toml lists free; or refresh the scoreboard with collect_sweep.sh." ;;
         *)
             # DEVICE-BOUND IS A STATE, NOT AN ABSENCE OF SUGGESTIONS. When
             # nothing is uncovered and arms are queued, all three of the
@@ -314,7 +362,7 @@ PYEOF
                     0) fleet="but NO device lane is alive -- nothing will drain this queue" ;;
                     *) fleet="across ${devs} handhelds" ;;
                 esac
-                hint="$(printf '%s' "$cov" | sed -n 1p). DEVICE-BOUND: ~${mins} min of arms queued ${fleet}, and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
+                hint="${cov_line}. DEVICE-BOUND: ~${mins} min of arms queued ${fleet}, and nothing uncovered, so there is nothing to fold or claim -- holding is correct. Fold results as they land."
             else
                 # DO NOT ADVISE WORK THAT IS ALREADY RUNNING.
                 #
@@ -342,9 +390,9 @@ print(sum(len(m.get("files") or []) for m in (d.get("lane") or {}).values()))
 PYLANE
 )
                 if [ "${lanes:-0}" -gt 0 ]; then
-                    hint="$(printf '%s' "$cov" | sed -n 1p). ${lanes} lane(s) hold ${heldn} file(s) and have not reported, and ${sweep} sweep suite(s) are still draining -- so there is nothing FINISHED to fold, and claiming a file now would collide with a live lane. Holding is correct; fold each lane as it reports and release what its result did not need."
+                    hint="${cov_line}. ${lanes} lane(s) hold ${heldn} file(s) and have not reported, and ${sweep} sweep suite(s) are still draining -- so there is nothing FINISHED to fold, and claiming a file now would collide with a live lane. Holding is correct; fold each lane as it reports and release what its result did not need."
                 else
-                    hint="$(printf '%s' "$cov" | sed -n 1p). Nothing is uncovered, no arms are queued and NO lane is claimed, so the next move is a free file in territory.toml to claim, or collect_sweep.sh."
+                    hint="${cov_line}. Nothing is uncovered, no arms are queued and NO lane is claimed, so the next move is a free file in territory.toml to claim, or collect_sweep.sh."
                 fi
             fi ;;
     esac

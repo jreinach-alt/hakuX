@@ -90,7 +90,7 @@ check "local_ts renders an empty value as empty" [ -z "$(local_ts '')" ]
 # to add an import to fleet.py finds out from its own fragment rather than
 # from somebody else's.
 lt_copy="$T/fleet-copy"; mkdir -p "$lt_copy"
-cp "$(dirname "$HERE")/fleet.py" "$(dirname "$HERE")/board_files.py" "$lt_copy/" 2>/dev/null
+cp "$(dirname "$HERE")/fleet.py" "$(dirname "$HERE")/board_files.py" "$(dirname "$HERE")/gh_rest.py" "$lt_copy/" 2>/dev/null
 # The two board files 93's fixture also writes; HAKUX_BOARD_REF= makes
 # board_files read them from this directory rather than from origin/board.
 printf 'wave = 1\nupdated_utc = "2026-09-19T00:00:00Z"\n' > "$lt_copy/territory.toml"

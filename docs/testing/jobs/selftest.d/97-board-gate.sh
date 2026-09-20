@@ -36,10 +36,48 @@ echo "== board.sh: the positive gate, because both of the old gates were error r
 BG="$T/boardgate"; mkdir -p "$BG/bin"
 cat > "$BG/bin/gh" <<'EOF'
 #!/usr/bin/env bash
+# BOTH SPELLINGS, AND THAT IS THE POINT RATHER THAN BELT AND BRACES.
+# `board.sh` still asks over GraphQL (`gh issue list` / `gh pr list`, which
+# work on the owner's host where every job runs), while fleet.py and
+# check_coverage.py -- which board.sh invokes, and which also run inside
+# cloud sessions where the proxy refuses GraphQL -- ask over REST. One
+# fixture, two consumers, two transports. Dropping the GraphQL arms here
+# silently starved board.sh's own two calls.
+#
+# THE PR FIXTURE IS SERVED IN WHICHEVER SHAPE WAS ASKED FOR: `gh pr list
+# --json` flattens headRefName/isDraft, REST nests head.ref and spells it
+# `draft`. $BG_PRS is written in the flat shape board.sh reads, and the REST
+# arm converts, so the fixture files stay readable as one thing.
 case "$1 $2" in
     "auth status") [ -n "${BG_NO_GH:-}" ] && exit 1; exit 0 ;;
-    "issue list")  cat "${BG_ISSUES:-/dev/null}" ;;
-    "pr list")     cat "${BG_PRS:-/dev/null}" ;;
+    "issue list")  cat "${BG_ISSUES:-/dev/null}"; exit 0 ;;
+    "pr list")     cat "${BG_PRS:-/dev/null}"; exit 0 ;;
+esac
+case "$*" in
+    *"/issues?"*) cat "${BG_ISSUES:-/dev/null}" ;;
+    *"/pulls?"*)
+        # NO `2>/dev/null || echo []` HERE. Swallowing a conversion failure
+        # into an empty list is the fail-open-invisibly shape this whole
+        # change exists to remove: it would turn a broken fixture into a
+        # quietly passing "no PRs" run. An absent fixture is the only empty
+        # answer, and the converter's error goes to the log if the shape ever
+        # drifts.
+        #
+        # PYTHON3 AND NOT JQ: on the owner's host jq is /snap/bin/jq, and a
+        # snap has a PRIVATE /tmp namespace, while the fake host lives under
+        # /tmp. `[ -s "$f" ]` passes and jq then says "No such file or
+        # directory" for that same path, printing nothing and exiting 2.
+        # Caught in 98-lane-shape.sh, where it made a live fixture read as a
+        # PR-BLIND report. This arm has no consumer today -- board.sh's gate
+        # answers from gh and arithmetic alone -- which is exactly why it had
+        # to be fixed here rather than when it next acquires one.
+        [ -s "${BG_PRS:-}" ] || { echo '[]'; exit 0; }
+        python3 -c 'import json,sys
+rows = json.load(open(sys.argv[1]))
+json.dump([{"number": p["number"], "head": {"ref": p.get("headRefName")},
+            "draft": p.get("isDraft"), "labels": p.get("labels") or [],
+            "updated_at": p.get("updatedAt") or "",
+            "title": p.get("title") or ""} for p in rows], sys.stdout)' "$BG_PRS" ;;
 esac
 exit 0
 EOF
