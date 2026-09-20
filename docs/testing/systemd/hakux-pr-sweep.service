@@ -1,0 +1,23 @@
+[Unit]
+Description=hakuX PR sweep -- find the open PRs no actor can reach, and run the tails that did not
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/pr-sweep.sh
+
+[Service]
+Type=oneshot
+# A USER UNIT DOES NOT INHERIT THE LOGIN PATH. Measured 2026-09-19 on
+# hakux-dispatcher.service: a unit's PATH is
+# /usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin and nothing
+# else, so ~/.local/bin is absent and the same command by hand succeeds --
+# which is why that one stayed invisible for a day. This sweep runs `gh`,
+# `git`, `python3` and `systemctl`, and calls cloud.sh, arms.sh and
+# handback.sh, any of which may reach for a tool installed per-user.
+Environment=PATH=/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+# run-trunk.sh keeps a private worktree of origin/master and runs the job
+# from it, so a stale owner checkout cannot run a stale job.
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/run-trunk.sh pr-sweep
+SuccessExitStatus=75
+# It makes a handful of gh calls per PR at worst and starts no session; ten
+# minutes is a ceiling on a network stall, not a budget.
+TimeoutStartSec=600
+StandardOutput=append:/home/justin/hakux-work/logs/pr-sweep/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/pr-sweep/systemd.log

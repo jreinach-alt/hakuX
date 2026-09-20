@@ -13,7 +13,7 @@ set -u
 REPO="${HAKUX_REPO_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../../.." && pwd)}"
 WORK="${HAKUX_WORK:-/home/justin/hakux-work}"
 UNITS="$HOME/.config/systemd/user"
-mkdir -p "$UNITS" "$WORK"/{wt,briefs,predictions,attempts,arms,fold,status,logs/board,logs/lane,logs/arms,logs/fold,logs/status,logs/cloud,dispatch/logs}
+mkdir -p "$UNITS" "$WORK"/{wt,briefs,predictions,attempts,arms,fold,status,board,pr-sweep/said,logs/board,logs/lane,logs/arms,logs/fold,logs/status,logs/cloud,logs/pr-sweep,logs/issue-sweep,dispatch/logs}
 # The arms job runs predictions registered after this watermark; history
 # stays history. Move it back (ISO-8601 UTC) to re-run older ones.
 [ -f "$WORK/arms/since" ] || date -u -d '2 days ago' +%FT%TZ > "$WORK/arms/since"
@@ -25,7 +25,11 @@ for u in "$REPO"/docs/testing/systemd/*.service "$REPO"/docs/testing/systemd/*.t
 done
 systemctl --user daemon-reload
 loginctl enable-linger "$USER" 2>/dev/null || echo "note: enable-linger needs a password; run: sudo loginctl enable-linger $USER"
-systemctl --user enable --now hakux-board.timer hakux-arms.timer hakux-fold.timer hakux-status.timer hakux-cloud.timer hakux-nightly.timer hakux-comments.timer hakux-dx.timer
+# The two sweeps are NAMED HERE, not left to the copy loop above, for the
+# reason the desktop channel's line below gives: the loop installs a unit and
+# does not start it, and a unit file sitting un-enabled in ~/.config is the
+# same shape of invisible as the states these two exist to find.
+systemctl --user enable --now hakux-board.timer hakux-arms.timer hakux-fold.timer hakux-status.timer hakux-cloud.timer hakux-nightly.timer hakux-comments.timer hakux-dx.timer hakux-pr-sweep.timer hakux-issue-sweep.timer
 # hakux-desktop.service is the `desktop` device lane -- this host's own xemu
 # build, serving requests pinned with `--device desktop`. Named HERE and not
 # only in the copy loop above, because the loop installs a unit and does not
