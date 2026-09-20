@@ -1,0 +1,8 @@
+# build artefacts and run data -- captures, journals and logs stay out of git
+bin/
+*.obj
+*.exe
+*.lib
+*.d
+__pycache__/
+*.pyc
