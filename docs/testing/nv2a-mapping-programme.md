@@ -76,6 +76,68 @@ functions of state that can be set, not by name.
 **Success criterion:** every method either has a recorded delta or is recorded
 as producing none. A method with no observable delta is a result, not a gap.
 
+## PREFLIGHT, run on hardware before committing to any of this
+
+Everything above was costed before anything was tried. The preflight ran on the
+console and **falsified part of workstream 1**, which is recorded here rather
+than quietly corrected.
+
+### What validated
+
+- **Single-test isolation needs no build.** A config naming one test runs it as
+  the whole suite (`Starting [1/1]`), so `Initialize()` → `Deinitialize()`
+  brackets exactly that test. Per-test resolution is available today.
+- **The blacklist is exactly right.** `pgraph_diff_token.cpp` lists 63
+  registers that move regardless of method. All 63 appeared in a measured
+  135-register suite delta — a perfect hit, and **47% of a raw diff is noise**.
+  Note it is commented out in `DumpDiff()`; it should not be.
+- **Deltas are clean.** Two single-test runs moved 299 registers each, of which
+  **294 ended at identical values and only 5 differed** — no noise beyond the
+  blacklist. The signal is sharp enough to attribute.
+- The whole loop ran unattended over `SITE EXEC`.
+
+### What was falsified
+
+The prediction was that `#spot_0_ADD` and `#spot_0_MIN`, which differ only in
+blend equation (`NV097_SET_BLEND_EQUATION_V_FUNC_ADD` vs `_V_MIN`, confirmed in
+`blend_tests.cpp`), would differ in `NV_PGRAPH_BLEND`.
+
+**They do not.** `NV_PGRAPH_BLEND` ends identical for both. The only five
+registers that differ are `CLEARRECT`-family aliases, and their values track
+the length of the test's *name*:
+
+```
+FD400D64                        ADD 0270000F=>007D0078   MIN 0270000F=>007E007D
+FD401864 NV_PGRAPH_CLEARRECTX   ADD 0270000F=>007D0078   MIN 0270000F=>007E007D
+FD401964 / FD401C64 / FD401D64  (same values -- context mirrors)
+```
+
+That is the on-screen parameter label, not the blend state.
+
+### Why, and what it costs
+
+`Capture()` sits at `test_suite.cpp:341` (suite `Initialize`) and `DumpDiff()`
+at `:372` (suite `Deinitialize`). Every test draws its parameter label *after*
+its own geometry, and that draw sets its own raster state. So the mechanism
+measures **residual state after the label draw and teardown**, not the state
+the test established.
+
+**The spec originally said "move it to per-test — small change". That was
+wrong.** Per-test still means per-test-*teardown*. What is needed is a capture
+point immediately after the test's own draw and before the label is rendered,
+which is a change inside the test lifecycle rather than a relocation of two
+calls.
+
+Consequence for cost: this cannot be reached by toggling a config flag, so
+workstream 1 requires **building the suite from source** — which needs `cmake`,
+a dependency deliberately avoided when building the probe. That is a real
+addition to the setup, not a change to the order of work.
+
+The core costing is unaffected: the measurement is still two local MMIO block
+reads, and harness overhead still dominates. The signal quality result — 5
+attributable registers out of 299, with the known noise fully accounted for —
+is a better outcome for the technique than the costing assumed.
+
 ## Workstream 2 — state dependence, as a screening problem
 
 A method's effect may depend on prior state, which is combinatorial in
