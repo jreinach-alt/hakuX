@@ -178,6 +178,61 @@ to the poison list, and resumes from the next register. A poisoned
 `(offset, value)` is never issued twice, so a resumed sweep walks past what
 killed it rather than into it again.
 
+## Running it without a human: the supervisor
+
+UnleashX's FTP server implements a `SITE` verb family, and that is what takes
+the person out of the loop. Confirmed against the live server:
+
+```
+SITE EXEC <path>    launch an XBE            -> 200 EXEC command succeeded.
+SITE REBOOT | RESTART | SHUTDOWN | POWERCYCLE | NETRESET | FTPRESET
+SITE DRIVESTAT | MD5 | XBERENAME | TRAYOPEN | TRAYCLOSE | EJECT
+```
+
+(`EXEC` alone answers `501`, and a bare `EXEC <path>` answers `502` — the verbs
+live under `SITE`, which cost a few minutes to work out.)
+
+The console has three states, and they are distinguishable rather than guessed
+at, because the dashboard and the probe cannot both hold the machine:
+
+| observation | state | what the supervisor does |
+|---|---|---|
+| FTP answers | UnleashX has it | `SITE EXEC` the probe |
+| ICMP but no FTP | an XBE has it — the probe | nothing |
+| no ICMP | booting, off, or wedged | wait, then report |
+
+```sh
+python3 tools/nv2a_probe/host/supervisor.py          # runs until told otherwise
+python3 tools/nv2a_probe/host/supervisor.py --once   # observe and act once
+```
+
+What it deliberately will not do: power-cycle, write to the console's drive, or
+relaunch while a launch is in flight. A console with no ICMP has lost its
+processor and no software on this side can recover it, so the supervisor says
+so and stops instead of thrashing. **Bounce protection**: a probe that returns
+to the dashboard almost immediately, three times running, stops the loop —
+relaunching again would look like progress and would not be any.
+
+Together with the probe's own escape hatch (it hands the console back after two
+minutes with no host session) the loop closes: every soft reset, watchdog reset
+and escape-hatch return lands at the dashboard, and the dashboard can be told
+to start the probe again.
+
+**Measured end to end**: supervisor saw `at-dashboard`, issued `SITE EXEC`, the
+probe launched and dialled out, 1,024 registers were read, the run ended
+cleanly. Nobody touched the console. A second run the same way produced
+**1,024 of 1,024 identical values**, so the findings reproduce across a reboot.
+
+What still needs hands: a hard wedge. `NV_PMC_ENABLE` took the processor down
+with the GPU, and no watchdog can run on a dead CPU. The next improvement is a
+relay across the front-panel power button — worth first testing whether this
+console boots when mains is restored, since if it does a switched plug is
+enough and nothing needs soldering.
+
+Security note, because `SITE EXEC` is a remote-execution surface: this console
+is on an isolated direct link with default credentials. If it ever shares a
+general network, change that before anything else.
+
 ## The wire protocol
 
 The console dials out to the host; nothing listens on the console. That gives a
