@@ -120,6 +120,19 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
      * parameters below arrive as a push constant, which has no GL spelling,
      * and gl/shaders.c is another lane's file.  A GL-only fix would read the
      * same lineParams from a plain uniform; nothing here forecloses it.
+     *
+     * A POLYGON MODE DECIDES NOTHING FOR A LINE PRIMITIVE, and reading the
+     * test below by its name cost this lane an arm.  state->primitive_mode
+     * is the OUTPUT mode: pgraph_prim_rewrite_get_output_mode() maps
+     * LINE_LOOP and LINE_STRIP to PRIM_TYPE_LINES whatever polygon_mode
+     * says, and only QUADS/QUAD_STRIP/POLYGON consult it.  So a draw that
+     * set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened
+     * path, and one does: the Line_width suite's Fill_0000/0001/0032
+     * captures are named for that FILL mode and draw a 16-segment LINE_LOOP
+     * at the suite's line width alongside their five filled blocks.  Every
+     * pixel of those goldens that depends on LINE_WIDTH is the loop's --
+     * 12,021 of 12,021 between Fill_0000.0 and Fill_0032.0, bar 59 in the
+     * guest's printed label (line_cap_phase.py --fills, audit finding N4).
      */
     bool widen_lines =
         opts.vulkan && (state->primitive_mode == PRIM_TYPE_LINES ||
@@ -132,7 +145,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         need_linez = true;
         layout_in = "layout(lines) in;\n";
         layout_out = widen_lines ?
-            "layout(triangle_strip, max_vertices = 4) out;\n" :
+            "layout(triangle_strip, max_vertices = 6) out;\n" :
             "layout(line_strip, max_vertices = 2) out;\n";
         body = "  emit_line(0, 1, 0.0);\n";
         break;
@@ -149,8 +162,10 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         } else if (polygon_mode == POLY_MODE_LINE) {
             need_linez = true;
             /*
-             * 12 is the largest max_vertices this generator can emit -- three
-             * edges times four vertices per widened line -- and it is what
+             * 18 is the largest max_vertices this generator can emit -- three
+             * edges times SIX vertices per widened line, up from four when the
+             * cap clip made the footprint a hexagon rather than a
+             * parallelogram -- and it is what
              * vk/instance.c checks the device's maxGeometryOutputVertices and
              * maxGeometryTotalOutputComponents against at device init, and
              * what it build-asserts against the Vulkan required minimums.
@@ -162,7 +177,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
              * (audit finding L10).
              */
             layout_out = widen_lines ?
-                "layout(triangle_strip, max_vertices = 12) out;\n" :
+                "layout(triangle_strip, max_vertices = 18) out;\n" :
                 "layout(line_strip, max_vertices = 6) out;\n";
             /* Silicon's edge order for a triangle rasterised in
              * POLY_MODE_LINE, derived from the Line_width goldens on
@@ -262,16 +277,32 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                                state->noperspective, false, false, false);
 
     char tex_lines[4][160];
+    /* The same four assignments for a vertex that lies a fraction t of the
+     * way along a line rather than on one of its endpoints -- the cap clip's
+     * cut point.  cylWrap() is a per-vertex adjustment against gl_in[0]'s
+     * coordinate, so the two adjusted values are what interpolates, exactly
+     * as the rasteriser interpolates them between two adjusted corners. */
+    char tex_lerp[4][320];
     for (int i = 0; i < 4; i++) {
         uint8_t w = state->cylinder_wrap[i];
         if (w) {
+            const char *u = (w & 1) ? "true" : "false";
+            const char *v = (w & 2) ? "true" : "false";
+            const char *p = (w & 4) ? "true" : "false";
+            const char *q = (w & 8) ? "true" : "false";
             snprintf(tex_lines[i], sizeof(tex_lines[i]),
                      "  vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(%s, %s, %s, %s));\n",
-                     i, i, i, (w & 1) ? "true" : "false", (w & 2) ? "true" : "false",
-                     (w & 4) ? "true" : "false", (w & 8) ? "true" : "false");
+                     i, i, i, u, v, p, q);
+            snprintf(tex_lerp[i], sizeof(tex_lerp[i]),
+                     "  vtxT%d = mix(cylWrap(v_vtxT%d[0], v_vtxT%d[i0], bvec4(%s, %s, %s, %s)),\n"
+                     "               cylWrap(v_vtxT%d[0], v_vtxT%d[i1], bvec4(%s, %s, %s, %s)), t);\n",
+                     i, i, i, u, v, p, q, i, i, u, v, p, q);
         } else {
             snprintf(tex_lines[i], sizeof(tex_lines[i]),
                      "  vtxT%d = v_vtxT%d[index];\n", i, i);
+            snprintf(tex_lerp[i], sizeof(tex_lerp[i]),
+                     "  vtxT%d = mix(v_vtxT%d[i0], v_vtxT%d[i1], t);\n",
+                     i, i, i);
         }
     }
 
@@ -291,12 +322,92 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                        "  return vec4((screen * lineNdcScale - 1.0) * p.w,\n"
                        "              p.z, p.w);\n"
                        "}\n");
+        /*
+         * The same map for a vertex that is not an endpoint.  The cap clip
+         * below cuts one corner off each end of the footprint, and the cut
+         * point on the LONG side sits a fraction t of the way down the line,
+         * so it has no source vertex to take z and w from.
+         *
+         * TWO QUANTITIES, AND BOTH ARE LINEAR IN SCREEN SPACE -- this is not
+         * the perspective-correct rule the varyings follow.  1/w is affine in
+         * window coordinates, and so is window-space depth, which is what the
+         * rasteriser interpolates across a primitive.  So the cut vertex must
+         * carry
+         *
+         *     1/w    = mix(1/wa, 1/wb, t)
+         *     z_clip = w * mix(za/wa, zb/wb, t)
+         *
+         * -- one factor of 1/w inside the mix and one w outside, not two of
+         * each.  A vertex carrying those leaves the depth over both
+         * sub-polygons exactly as the unclipped parallelogram had it, and,
+         * because 1/w is then right, leaves every perspective-correct varying
+         * right as well.
+         *
+         * Interpolating z perspective-correctly instead -- which is what this
+         * did until audit finding H1 -- agrees only when wa == wb.  At
+         * wa = 1, wb = 4 with endpoint NDC depths 0.2 and 0.8 it reads 0.32 at
+         * the screen midpoint where the true value is 0.50, so the cap of a
+         * wide line sorts against other geometry differently from the body of
+         * the same line, and z can leave [-w, w] and invoke clipping the
+         * parallelogram never met.  Nothing here reads depth -- the offline
+         * model scores ink coverage -- so the check is explicit:
+         * `line_cap_phase.py --depth`, which evaluates this expression
+         * against the screen-space lerp and trips on the old one.
+         *
+         * At w0 == w1 -- all 2D content, the Line_width suite included -- it
+         * collapses to the plain screen-space lerp.
+         */
+        mstring_append(output,
+                       "vec4 line_clip_lerp(int i0, int i1, float t,\n"
+                       "                    vec2 screen) {\n"
+                       "  vec4 pa = gl_in[i0].gl_Position;\n"
+                       "  vec4 pb = gl_in[i1].gl_Position;\n"
+                       "  float ia = 1.0 / pa.w;\n"
+                       "  float ib = 1.0 / pb.w;\n"
+                       "  float q = mix(ia, ib, t);\n"
+                       "  float w = 1.0 / q;\n"
+                       "  float z = mix(pa.z * ia, pb.z * ib, t) * w;\n"
+                       "  return vec4((screen * lineNdcScale - 1.0) * w,\n"
+                       "              z, w);\n"
+                       "}\n"
+                       "\n");
+        if (!state->noperspective) {
+            mstring_append(output,
+                       /* The perspective-correct line parameter for the same
+                        * point, which is what the varyings interpolate by
+                        * while they carry the default `smooth` qualifier.
+                        * Under NOPERSPECTIVE they do not, and this is not
+                        * emitted: see emit_line_vertex(). */
+                       "float line_lerp_t(int i0, int i1, float t) {\n"
+                       "  float ia = 1.0 / gl_in[i0].gl_Position.w;\n"
+                       "  float ib = 1.0 / gl_in[i1].gl_Position.w;\n"
+                       "  return (t * ib) / mix(ia, ib, t);\n"
+                       "}\n");
+        }
     }
 
-    mstring_append(
+    /*
+     * vtxFogSpecial is `flat` in EVERY shade mode (glsl/common.c), so the
+     * value that reaches the fragment shader is the one the provoking output
+     * vertex carried -- and the cap clip below moves which vertex that is.
+     * The widened-line path therefore emits through emit_vertex_fs(), whose
+     * second argument names the flat source separately from the vertex being
+     * emitted, and gives every vertex of one footprint the same source; then
+     * no output convention can be observed.  Everything else is unchanged,
+     * and the non-widened path still generates the three-argument
+     * emit_vertex() verbatim.
+     */
+    const char *emit_vertex_sig =
+        widen_lines ? "void emit_vertex_fs(int index, int fs, mat4 pz,\n"
+                      "                    vec4 pos) {\n"
+                    : "void emit_vertex(int index, mat4 pz, vec4 pos) {\n";
+    const char *fog_special_index = widen_lines ? "fs" : "index";
+
+    mstring_append_fmt(
         output,
-        "void emit_vertex(int index, mat4 pz, vec4 pos) {\n"
-        "  gl_Position = pos;\n");
+        "%s"
+        "  gl_Position = pos;\n",
+        emit_vertex_sig);
     if (!opts.gles) {
         mstring_append(output,
             "  gl_PointSize = gl_in[index].gl_PointSize;\n");
@@ -308,7 +419,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         "  vtxB0 = v_vtxB0[%s];\n"
         "  vtxB1 = v_vtxB1[%s];\n"
         "  vtxFog = v_vtxFog[index];\n"
-        "  vtxFogSpecial = v_vtxFogSpecial[index];\n"
+        "  vtxFogSpecial = v_vtxFogSpecial[%s];\n"
         "%s%s%s%s"
         "  vtxPos0 = pz[0];\n"
         "  vtxPos1 = pz[1];\n"
@@ -321,7 +432,265 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         provoking_index,
         provoking_index,
         provoking_index,
+        fog_special_index,
         tex_lines[0], tex_lines[1], tex_lines[2], tex_lines[3]);
+
+    if (widen_lines) {
+        /*
+         * A vertex of the widened footprint that is not one of the line's two
+         * endpoints.  Only the cap clip's cut point on the long side is one,
+         * and only when the clip bites: at t == 0 or t == 1 this hands
+         * straight back to emit_vertex_fs() with the endpoint's own index, so
+         * the unclipped four-corner case emits exactly what it emitted
+         * before, bit for bit, rather than an arithmetically-equal mix().
+         *
+         * That is a statement about the case where the clip does not bite,
+         * NOT about narrow lines: until the half-pixel deadband in cap_clip()
+         * the clip bit on lines as narrow as w = 0.625, where the offline
+         * model says no pixel can change, and the device disagreed with the
+         * model eight captures' worth.  The deadband is what ties the two
+         * together; read it before trusting this paragraph about any
+         * particular width.
+         *
+         * WHICH VARYINGS ARE INTERPOLATED IS THE QUALIFIER TABLE IN
+         * glsl/common.c, NOT THE SHADE MODE.  Only vtxD0/D1/B0/B1 follow the
+         * shade mode; vtxFog, vtxT0..T3 and vtxPointSize carry `smooth` (or
+         * `noperspective`) unconditionally and are interpolated even under
+         * flat shading, so the cut vertex must carry their interpolated value
+         * in BOTH arms below.  Pinning them to an endpoint -- which is what
+         * this did until audit finding H2 -- hands a flat-shaded textured wide
+         * line the texture coordinate from the far end of the line over the
+         * two triangles that touch the cap, and drops the cylWrap()
+         * adjustment with it.
+         *
+         * THE FLAT SOURCE IS DECIDED ONCE FOR THE WHOLE FOOTPRINT, on both
+         * paths.  vtxD0/D1/B0/B1 under flat shading come from gl_in[0], which
+         * prim_rewrite.c has already made the guest's provoking vertex
+         * (needs_rewrite() rewrites a LINES draw exactly when it is flat and
+         * PROVOKING_VERTEX_LAST).  vtxFogSpecial is `flat` in every shade mode
+         * and comes from i0 here and from emit_vertex_fs()'s `fs` argument
+         * there.  Since every vertex of one footprint then carries the same
+         * value, the pipeline's own provoking convention -- first-vertex,
+         * because nothing in vk/ enables VK_EXT_provoking_vertex -- cannot be
+         * observed, and a flat-shaded wide line does not change colour
+         * depending on how many corners the clip happened to cut.  The
+         * four-corner strip got that by accident (both its triangles provoked
+         * from the i0 side); the hexagon's does not, which is audit finding
+         * M1.
+         *
+         * THE INTERPOLATION PARAMETER FOLLOWS THE SAME TABLE.  Under
+         * state->noperspective the rasteriser interpolates those varyings
+         * linearly in SCREEN space, so the value the unclipped parallelogram
+         * produced at the cut point is the one at the screen fraction tl;
+         * otherwise it is the perspective-correct value at
+         * line_lerp_t(tl).  Using the perspective-correct parameter under
+         * NOPERSPECTIVE is audit finding M2: at wa = 1, wb = 4 a cut at screen
+         * fraction 0.5 would be given the value for parameter 0.8.
+         */
+        mstring_append_fmt(
+            output,
+            "void emit_line_vertex(int i0, int i1, float tl, mat4 pz,\n"
+            "                      vec2 screen) {\n"
+            "  if (tl <= 0.0) {\n"
+            "    emit_vertex_fs(i0, i0, pz, line_clip(i0, screen));\n"
+            "    return;\n"
+            "  }\n"
+            "  if (tl >= 1.0) {\n"
+            "    emit_vertex_fs(i1, i0, pz, line_clip(i1, screen));\n"
+            "    return;\n"
+            "  }\n"
+            "  float t = %s;\n"
+            "  gl_Position = line_clip_lerp(i0, i1, tl, screen);\n",
+            state->noperspective ? "tl" : "line_lerp_t(i0, i1, tl)");
+        if (!opts.gles) {
+            mstring_append(
+                output,
+                "  gl_PointSize = mix(gl_in[i0].gl_PointSize,\n"
+                "                     gl_in[i1].gl_PointSize, t);\n");
+        }
+        if (state->smooth_shading) {
+            mstring_append(
+                output,
+                "  vtxD0 = mix(v_vtxD0[i0], v_vtxD0[i1], t);\n"
+                "  vtxD1 = mix(v_vtxD1[i0], v_vtxD1[i1], t);\n"
+                "  vtxB0 = mix(v_vtxB0[i0], v_vtxB0[i1], t);\n"
+                "  vtxB1 = mix(v_vtxB1[i0], v_vtxB1[i1], t);\n");
+        } else {
+            /* Flat: these four, and only these four, are decided by the
+             * provoking vertex, so an interpolated value would be discarded.
+             * gl_in[0] is where the generator already pins them. */
+            mstring_append(
+                output,
+                "  vtxD0 = v_vtxD0[0];\n"
+                "  vtxD1 = v_vtxD1[0];\n"
+                "  vtxB0 = v_vtxB0[0];\n"
+                "  vtxB1 = v_vtxB1[0];\n");
+        }
+        mstring_append_fmt(
+            output,
+            "  vtxFog = mix(v_vtxFog[i0], v_vtxFog[i1], t);\n"
+            "%s%s%s%s"
+            "  vtxPointSize = mix(v_vtxPointSize[i0],\n"
+            "                     v_vtxPointSize[i1], t);\n"
+            "  vtxFogSpecial = v_vtxFogSpecial[i0];\n",
+            tex_lerp[0], tex_lerp[1], tex_lerp[2], tex_lerp[3]);
+        mstring_append(
+            output,
+            "  vtxPos0 = pz[0];\n"
+            "  vtxPos1 = pz[1];\n"
+            "  vtxPos2 = pz[2];\n"
+            "  triMZ = (isnan(pz[3].x) || isinf(pz[3].x)) ? 0.0 : pz[3].x;\n"
+            "  EmitVertex();\n"
+            "}\n"
+            "\n");
+        /*
+         * Sutherland-Hodgman against one minor-axis half-plane, in place.  A
+         * convex n-gon clipped by a half-plane has at most n + 1 vertices, so
+         * the parallelogram's two clips reach 6 and no more; the `< 6` guards
+         * are for the floating-point case where a near-degenerate polygon
+         * would otherwise index past the array, which in GLSL is undefined
+         * rather than an error.
+         *
+         * A cut on one of the two SHORT edges has T[i] == T[j] -- both ends of
+         * a cap edge sit at the same point along the line -- and that exact
+         * endpoint parameter is taken rather than mix()ed, because mix(1, 1,
+         * f) is (1 - f) + f and is not required to be exactly 1.  A T of
+         * 1 - eps misses emit_line_vertex()'s endpoint early-out and
+         * synthesises a vertex where an endpoint's own values were available.
+         *
+         * THE HALF-PIXEL DEADBAND, and why it is not a fudge factor.  A plane
+         * the polygon pokes past by less than half a GUEST pixel is not
+         * clipped at all: the four corners are handed straight back,
+         * unrounded and in their original order.  The bounds below are WHOLE
+         * PIXEL INDICES -- floor() and ceil() + 1 of the endpoints' extended
+         * minor coordinate -- and this renderer rasterises at one sample per
+         * pixel, at the pixel CENTRE (every rasterizationSamples in
+         * pgraph/vk/ is VK_SAMPLE_COUNT_1_BIT).  So at one device pixel per
+         * guest pixel the nearest centre to an integer bound is half a pixel
+         * away, the removed sliver of a shallower cut provably contains no
+         * sample, and the clip can only re-quantise geometry that was
+         * previously exact.
+         *
+         * THE HYPOTHESIS IN THAT PROOF IS surface_scale_factor == 1, which
+         * the paragraph above asserted without stating until audit finding
+         * A1.  The two sentences are in different coordinate spaces: this
+         * stage works in GUEST pixels -- vk/draw.c's geom_line_params() says
+         * so in its own comment and divides lineTieBias by
+         * surface_scale_factor for exactly that reason, and vsh.c scales only
+         * oPts by it, never the position -- while the samples are DEVICE
+         * pixel centres, 1/scale of a guest pixel apart.  At the user's
+         * Rendering Scale of 2 (g_config.display.quality.surface_scale,
+         * default 1, offered as 1x-4x by the Android settings UI) the nearest
+         * sample to a bound is a QUARTER of a guest pixel away, not half.
+         *
+         * 0.5 is therefore EXACT at scale 1 and CONSERVATIVE above it, and
+         * the error is one-directional by construction: 0.5 > 0.5/scale for
+         * every scale >= 1, so the deadband can only suppress MORE cutting
+         * than it should, never less.  A suppressed cut hands back master's
+         * own four corners, so no configuration is made worse than master and
+         * the re-quantisation this deadband exists to stop cannot come back
+         * through it at any scale.  What is given up above 1x is part of the
+         * cap fix itself, and it is measured rather than waved at --
+         * `line_cap_phase.py --scale-cost`, over the same 48 non-void
+         * captures, modelling the tie bias and the subpixel grid at the scale
+         * too:
+         *
+         *   scale   suppressed cuts   device samples over-reached   lost
+         *     1                   0                             0      0
+         *     2                 191                           278    112
+         *     3                 295                           860    298
+         *     4                 337                          1666    568
+         *
+         * `lost` is the column that means anything: the over-reached samples
+         * that no other edge's footprint covers anyway.  The cap rule removes
+         * 393 guest px at scale 1 (--controls), so scaled for comparison the
+         * deadband gives up on the order of a twelfth of the clip's own work
+         * above 1x, on 26 to 30 captures from w = 6 up.  Scale 1 is the
+         * control row and must read zero on every column, since 0.5/1 is 0.5.
+         *
+         * THAT ZERO IS ABOUT COVERAGE, AND THE SCALE-1 COST IS NOT ZERO --
+         * audit finding N5.  The half-pixel argument bounds which SAMPLES
+         * fall inside the footprint; it says nothing about the value at a
+         * sample that stays covered, and taking a cut does more than move an
+         * edge.  It synthesises a vertex and re-triangulates the strip, so
+         * the varyings interpolate differently across a sample the cut never
+         * uncovered.  Measured on the device at surface_scale_factor 1:
+         * suppressing a cut in Line_width/Fill_0032.0 costs TWO pixels that
+         * the pre-deadband build shaded exactly right -- (271,93)
+         * 51,154,152 -> 51,155,151 and (264,123) 51,227,79 -> 51,228,78,
+         * with the golden at the first value in both -- against four pixels
+         * that capture gains from the clip.  It wins less there; it does not
+         * lose.  At both pixels the deadbanded build holds master's own
+         * value, which is the one-directional argument above doing exactly
+         * what it claims.  No instrument in
+         * docs/testing/line_cap_phase.py reports that class: --rivals,
+         * --controls, --shader, --quantise, --scale-cost and --fills all
+         * score coverage, and --depth is value-aware for z alone.  It is a
+         * known limit, not a measured zero.
+         *
+         * The fix, if that twelfth is ever worth it, is NOT a smaller
+         * constant -- 0.125 would be exact at scale 4 and would reintroduce
+         * the device's own FAIL at scale 1, which is the scale every arm and
+         * every golden here is measured at.  It is 0.5 / surface_scale_factor
+         * pushed in, and the cost is a fifth push-constant component: the
+         * geometry range would have to grow from 16 bytes to 32, because the
+         * vertex range that follows it holds a vec4 array and needs 16-byte
+         * alignment, and vk/instance.c's note applies -- that range is
+         * declared on EVERY graphics pipeline layout, whether or not it has a
+         * geometry stage, since two layouts are compatible for a descriptor
+         * set only if their push-constant ranges match.  A known, measured,
+         * one-directional limit was judged the better trade against that.
+         *
+         * Which is not free, and the device said so.  Without this deadband
+         * the clip bit on 9 to 20 of each capture's 57 edges all the way down
+         * to w = 0.625, cutting slivers a few hundredths of a pixel deep;
+         * every offline instrument in docs/testing/line_cap_phase.py scored
+         * that as inert because it rasterises in double precision at exact
+         * centres, and the device scored EIGHT captures at w = 4 to 14 worse
+         * ([job.arms] VERDICT: FAIL on PR #141, 2026-09-19).  Silicon cuts at
+         * f = da / (da - db) in float32 from a sliver-sized da and then snaps
+         * the result to 1/256 of a pixel, so a centre a thousandth of a pixel
+         * inside the cut edge goes one way here and the other there.
+         *
+         * `line_cap_phase.py --quantise` is the instrument that can see this
+         * -- the same polygon with its vertices snapped to the 1/256 grid
+         * before the coverage test -- and it carries the deadband-at-zero
+         * mutant inside it, so a check that stopped discriminating would say
+         * so.
+         */
+        mstring_append(
+            output,
+            "int cap_clip(inout vec2 P[6], inout float T[6], int np,\n"
+            "             bool xmaj, float bound, float dir) {\n"
+            "  float deep = 0.0;\n"
+            "  for (int i = 0; i < np; i++) {\n"
+            "    deep = max(deep, -dir * ((xmaj ? P[i].y : P[i].x) - bound));\n"
+            "  }\n"
+            "  if (deep < 0.5) { return np; }\n"
+            "  vec2 Q[6];\n"
+            "  float S[6];\n"
+            "  int nq = 0;\n"
+            "  for (int i = 0; i < np; i++) {\n"
+            "    int j = (i + 1 == np) ? 0 : i + 1;\n"
+            "    float da = dir * ((xmaj ? P[i].y : P[i].x) - bound);\n"
+            "    float db = dir * ((xmaj ? P[j].y : P[j].x) - bound);\n"
+            "    if (da >= 0.0 && nq < 6) {\n"
+            "      Q[nq] = P[i]; S[nq] = T[i]; nq++;\n"
+            "    }\n"
+            "    if (((da < 0.0) != (db < 0.0)) && nq < 6) {\n"
+            "      float f = da / (da - db);\n"
+            "      Q[nq] = mix(P[i], P[j], f);\n"
+            "      S[nq] = (T[i] == T[j]) ? T[i] : mix(T[i], T[j], f);\n"
+            "      nq++;\n"
+            "    }\n"
+            "  }\n"
+            "  for (int i = 0; i < nq; i++) {\n"
+            "    P[i] = Q[i]; T[i] = S[i];\n"
+            "  }\n"
+            "  return nq;\n"
+            "}\n"
+            "\n");
+    }
 
     if (need_triz) {
         mstring_append(
@@ -397,8 +766,10 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  * The footprint is the intersection of two bands: the edge
                  * offset by +/- E/2 along the MINOR axis, and the slab
                  * between the two perpendiculars through the endpoints (the
-                 * butt cap).  Two bands intersect in a parallelogram, so
-                 * four vertices are exact -- no clipping, no hexagon.
+                 * butt cap).  Two bands intersect in a parallelogram, and
+                 * these four corners are exact.  A THIRD constraint -- the
+                 * cap clip, below -- cuts one corner off each end, so what is
+                 * finally emitted is a hexagon where it bites.
                  *
                  * Its corner offset works out free of any major-axis branch.
                  * Writing u for the unit edge direction and n for the
@@ -456,10 +827,112 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                  */
                 "  vec2 tie = (ad.x >= ad.y) ? vec2(0.0, lineTieBias)\n"
                 "                            : vec2(lineTieBias, 0.0);\n"
-                "  emit_vertex(i0, pz, line_clip(i0, v_vtxPos[i0].xy + n + tie));\n"
-                "  emit_vertex(i0, pz, line_clip(i0, v_vtxPos[i0].xy - n + tie));\n"
-                "  emit_vertex(i1, pz, line_clip(i1, v_vtxPos[i1].xy + n + tie));\n"
-                "  emit_vertex(i1, pz, line_clip(i1, v_vtxPos[i1].xy - n + tie));\n"
+                /*
+                 * THE CAP.  The parallelogram above is right in its body and
+                 * too big at its two tips, and the goldens say by how much:
+                 * the footprint never reaches, on the MINOR axis, past the
+                 * endpoints' own minor coordinates extended by w/2 -- the
+                 * line WIDTH, not the widened extent E -- with those two
+                 * bounds rounded OUTWARD to whole pixel indices:
+                 *
+                 *   minor index i is lit only if
+                 *     floor(m_min - w/2) <= i <= ceil(m_max + w/2)
+                 *
+                 * so the geometry has to cover those pixels' centres and no
+                 * others, which is the half-open span [floor(...),
+                 * ceil(...) + 1) in coordinates.  Derived offline from the
+                 * goldens, no device: docs/testing/line_cap_phase.py, with
+                 * the corner table it was read off in
+                 * docs/lanes/linecap13/NOTES.md.
+                 *
+                 * WHERE IT BITES, AND WHERE IT MUST NOT.  The first capture
+                 * whose COVERAGE this changes is w = 24, because below that
+                 * every sliver it would remove is shallower than the half
+                 * pixel between an integer bound and the nearest sample.  It
+                 * does not follow that the change cannot reach a narrower
+                 * line, and an earlier version of this comment said it did:
+                 * the clip still BIT there, on up to 20 of a capture's 57
+                 * edges down to w = 0.625, re-quantising exact corners for no
+                 * modelled gain, and the device scored eight captures between
+                 * w = 4 and w = 14 worse for it.  cap_clip()'s half-pixel
+                 * deadband is what makes the inertness a property of the
+                 * emitted geometry and not only of the offline model; see the
+                 * derivation there, and `--quantise` for the check.
+                 *
+                 * w = 24 IS THE FIRST BITE AT EVERY RENDERING SCALE, which is
+                 * worth saying because the deadband's own limit (audit A1,
+                 * and the table in cap_clip()'s comment) is that it does not
+                 * scale: the cut threshold is 0.5 guest px whatever
+                 * surface_scale_factor is, so which cuts happen at all is a
+                 * property of the geometry alone.  Measured at scales 1 to 4
+                 * -- same 48 captures, tie bias modelled at each scale -- the
+                 * first capture with a cut is Line_0024.0 and 19 captures cut,
+                 * identically, in all four.  The scale changes how much a
+                 * SUPPRESSED cut costs, never which cuts are suppressed.
+                 *
+                 * EVERY NUMBER BELOW NAMES THE INSTRUMENT THAT PRODUCED IT,
+                 * because two instruments score this rule and they do not
+                 * agree, over the same 48 non-void Line_* captures and their
+                 * 1,967,133 golden ink px:
+                 *
+                 *   --rivals  the ANALYTIC MODEL, no tie bias.  Whole-capture
+                 *             coverage 495 mismatched px without this clip,
+                 *             102 with it, no capture worse.
+                 *   --shader  emit_line()'s OWN polygon, rasterised at pixel
+                 *             centres with the tie bias the device pushes
+                 *             (1/256 at subPixelPrecisionBits = 8): 935 px
+                 *             without the clip, 544 with it.  At an epsilon
+                 *             bias, which isolates the geometry from the
+                 *             quantisation, 414 and 21.
+                 *
+                 * The device sees the second instrument's world, so ~544 --
+                 * not 21 and not 102 -- is what the registered prediction
+                 * bounds.
+                 *
+                 * The outward rounding is measured, not assumed: the low and
+                 * the high side of the same capture disagree by exactly one
+                 * pixel at the same width and slope (LLoop0 reaches 32.5 px
+                 * past its endpoint where LLoop4 stops at 31.5), and the
+                 * obvious reading -- a centre-sampled w/2 band -- scores 645
+                 * px on --rivals, worse than the 495 it was meant to fix.
+                 *
+                 * The clip planes are computed from v_vtxPos, NOT from the
+                 * tie-shifted corners: they are silicon's grid, and they land
+                 * on integers, half a pixel from any centre, so the tie bias
+                 * that the band edges need cannot reach them.
+                 *
+                 * Clipping a parallelogram by two parallel planes gives a
+                 * HEXAGON, which is why max_vertices went 4 -> 6 and 12 -> 18
+                 * and why vk/instance.c's PGRAPH_GEOM_MAX_OUTPUT_VERTICES
+                 * moved with them.  Where the clip does not bite, cap_clip()
+                 * returns the same four corners in the same order and the
+                 * emitted strip is byte for byte the one this shader emitted
+                 * before.
+                 */
+                "  vec2 P[6];\n"
+                "  float T[6];\n"
+                "  P[0] = v_vtxPos[i0].xy + n + tie; T[0] = 0.0;\n"
+                "  P[1] = v_vtxPos[i1].xy + n + tie; T[1] = 1.0;\n"
+                "  P[2] = v_vtxPos[i1].xy - n + tie; T[2] = 1.0;\n"
+                "  P[3] = v_vtxPos[i0].xy - n + tie; T[3] = 0.0;\n"
+                "  int np = 4;\n"
+                "  bool xmaj = ad.x >= ad.y;\n"
+                "  vec2 m = xmaj ? vec2(v_vtxPos[i0].y, v_vtxPos[i1].y)\n"
+                "                : vec2(v_vtxPos[i0].x, v_vtxPos[i1].x);\n"
+                "  np = cap_clip(P, T, np, xmaj,\n"
+                "                floor(min(m.x, m.y) - lineHalfExtentScale),\n"
+                "                1.0);\n"
+                "  np = cap_clip(P, T, np, xmaj,\n"
+                "                ceil(max(m.x, m.y) + lineHalfExtentScale) +\n"
+                "                    1.0,\n"
+                "                -1.0);\n"
+                /* A convex polygon as one triangle strip: 0, n-1, 1, n-2, ...
+                 * At np == 4 that is P0, P3, P1, P2 -- the order the four
+                 * corners were emitted in before this clip existed. */
+                "  for (int k = 0; k < np; k++) {\n"
+                "    int j = ((k & 1) == 0) ? (k >> 1) : (np - 1 - (k >> 1));\n"
+                "    emit_line_vertex(i0, i1, T[j], pz, P[j]);\n"
+                "  }\n"
                 "  EndPrimitive();\n"
                 "}\n");
         } else {

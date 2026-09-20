@@ -1,0 +1,115 @@
+[
+  {
+    "pass1_id": "H1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "356",
+    "verdict": "CLOSED",
+    "summary": "line_clip_lerp() now computes `float z = mix(pa.z * ia, pb.z * ib, t) * w;` -- one factor of 1/w inside the mix and one w outside. pa.z * ia is the endpoint's window-space depth, the mix is taken at the screen fraction tl the caller passes, and multiplying by w returns it to clip space, so z/w at the cut point is mix(za/wa, zb/wb, t), which is what the rasteriser interpolates across the parallelogram the cut vertex replaces. The comment above it was rewritten from the correct rule and names the old expression as the defect.",
+    "scenario": "Pass 1's scenario -- a wide line in perspective with w_a = 1, w_b = 4 and endpoint NDC depths 0.2 and 0.8, whose cut vertices read 0.246/0.320/0.457 where the truth is 0.350/0.500/0.650 -- can no longer occur. line_cap_phase.py --depth, run on this host, transliterates the shipped expression and the pre-remediation one over 75 cases including that exact pair: shipped worst |error| 1.11e-16, mutant worst |error| 0.583. The mutant is inside the check and the check reports FAIL about itself if the old expression does not trip it, so the green is not a check that discriminates nothing; I read depth_check() to confirm the second leg is real rather than only reading its PASS.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:317-357 (line_clip_lerp and its rewritten comment), :483-484 (call site at the screen fraction tl); docs/testing/line_cap_phase.py:551-608 (depth_check, both expressions and the mutant leg); `python3 line_cap_phase.py --depth` run at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "H2",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "501",
+    "verdict": "CLOSED",
+    "summary": "vtxFog, vtxT0..T3 and vtxPointSize are emitted from a single mstring_append_fmt() below both shade-mode arms, so both arms interpolate them; only vtxD0/D1/B0/B1 remain inside the arms, pinned to gl_in[0] under flat. That matches the qualifier table re-read at glsl/common.c:56-71, where qualifier_s (shade-mode-dependent) applies to vtxD*/vtxB* and smooth_s applies unconditionally to vtxFog, vtxT0..T3 and vtxPointSize. tex_lerp[] is now referenced from the common block, so the cylWrap() adjustment survives on both paths, and its longest expansion (~175 chars) does not truncate the 320-byte buffer.",
+    "scenario": "Pass 1's scenario -- a flat-shaded textured wide line at w = 32 whose two cut vertices at the i1 tip receive i0's texture coordinates, the value from the far end of the line -- can no longer occur. Verified on the emitted shader rather than the generator: geom_dump's lines_flat_vk case emits `vtxD0 = v_vtxD0[0]` .. `vtxB1 = v_vtxB1[0]` followed by `vtxFog = mix(v_vtxFog[i0], v_vtxFog[i1], t)`, `vtxT0..T3 = mix(...)` and `vtxPointSize = mix(...)`. The cylWrap half is closed in lines_smooth_zpersp_cylwrap_vk, which emits vtxT0 = mix(cylWrap(v_vtxT0[0], v_vtxT0[i0], bvec4(true,true,false,false)), cylWrap(v_vtxT0[0], v_vtxT0[i1], ...), t) -- the two adjusted values interpolated, as the rasteriser interpolates between two adjusted corners.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:490-510 (both arms and the common block), :264-292 (tex_lines/tex_lerp); hw/xbox/nv2a/pgraph/glsl/common.c:56-71 (qualifier table); docs/testing/geom_dump `make && ./build/geom-dump`, cases lines_flat_vk and lines_smooth_zpersp_cylwrap_vk, at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "387",
+    "verdict": "CLOSED",
+    "summary": "emit_vertex() is generated as emit_vertex_fs(int index, int fs, mat4 pz, vec4 pos) when widen_lines, with vtxFogSpecial = v_vtxFogSpecial[fs], and every widened call passes fs = i0: both early-outs in emit_line_vertex() (:474, :478) and the interpolated path's own vtxFogSpecial = v_vtxFogSpecial[i0] (:509). One footprint therefore carries one flat value on every vertex, so no output convention can observe which vertex provokes. The non-widened path still generates the three-argument emit_vertex() with vtxFogSpecial = v_vtxFogSpecial[index] verbatim.",
+    "scenario": "Pass 1's scenario -- the mirror case where the lower-minor endpoint is i1, the hexagon's strip order 0,5,1,4,2,3 puts the surviving corner P1 = i1 + n in a provoking position, and vtxFogSpecial changes according to whether the clip bit -- can no longer occur: every vertex of the footprint now carries v_vtxFogSpecial[i0] regardless of np. Two collateral checks: (a) the rename cannot leave a stray three-argument call, because when widen_lines is set the only generated bodies are emit_line(0,1,0.0) and POLY_MODE_LINE's three emit_line() calls, while the emit_vertex() sites at :145-147 and :202-206 are POLY_MODE_FILL and POLY_MODE_POINT and widen_lines (:124-127) requires PRIM_TYPE_LINES or POLY_MODE_LINE -- and all six Vulkan cases compile. (b) The comment's claim about the convention is true: nothing under hw/xbox/nv2a/pgraph/vk/ enables VK_EXT_provoking_vertex, every last_provoking in vk/draw.c feeds PrimAssemblyState, and prim_rewrite.c:81 rewrites a LINES draw exactly when last_provoking && flat_shading, so the pipeline convention is first-vertex and gl_in[0] is the guest's provoking vertex.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:376-423 (emit_vertex_fs and its comment), :471-509 (emit_line_vertex), :124-127, :145-147, :202-206, :788-793; hw/xbox/nv2a/pgraph/vk/draw.c:5078, :5408, :5728, :5856, :7465; hw/xbox/nv2a/pgraph/prim_rewrite.c:74-84; grep for provoking over hw/xbox/nv2a/pgraph/vk/*.c finds no VK_EXT_provoking_vertex."
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "483",
+    "verdict": "CLOSED",
+    "summary": "emit_line_vertex() selects its interpolation parameter on the qualifier table rather than assuming smooth: `float t = %s` takes state->noperspective ? \"tl\" : \"line_lerp_t(i0, i1, tl)\", and line_lerp_t() is not emitted at all under noperspective (:361-373), so a stale reference could not link.",
+    "scenario": "Pass 1's scenario -- perspective-disabled texturing on a wide line with w_a = 1, w_b = 4, where a cut at screen fraction 0.5 was given the varying value for parameter 0.8 -- can no longer occur. Confirmed on the emitted shader: geom_dump's lines_smooth_zpersp_cylwrap_vk case carries NOPERSPECTIVE on v_vtxD0 through v_vtxPointSize, contains `float t = tl;`, and contains no line_lerp_t anywhere in the case.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:361-373 (line_lerp_t emitted only when !noperspective), :455-484 (the comment's third paragraph and the selection); hw/xbox/nv2a/pgraph/glsl/common.c:45; geom_dump case lines_smooth_zpersp_cylwrap_vk at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/line_cap_phase.py",
+    "line": "487",
+    "verdict": "CLOSED",
+    "summary": "controls() unions pen=1.0, tie=\"ceil\" -- the shipped rule, the same kwargs shader_check() compares the transliteration against and the same entry VARIANTS[\"pen ceil\"] holds -- instead of the rejected clip=1.0 centre-sampled band, and counts the integer-boundary population that actually separates the outward rounding from floor + 1, keeping the centre-boundary count labelled as the rejected rival's.",
+    "scenario": "Pass 1's scenario -- a reader of --controls getting a touchable-pixel population and a tie count for a rule nobody adopted -- can no longer occur. Re-run here against ~/goldens/results: 393 px removed by the shipped rule, 393 golden-dark, 0 golden-lit; 5,472 cap boundaries, 1,104 on a whole pixel index, 1,038 on a pixel centre. The question pass 1 left open is answered in the right direction: the population is not empty, so the goldens do separate tie=ceil from tie=floor1. The count itself over-states that population; filed separately as N2, which does not reopen this.",
+    "evidence": "docs/testing/line_cap_phase.py:487-549 (controls), :75-86 (edge_mask's pen/tie branch), :406-416 (VARIANTS), :344 (shader_check's kwargs); `python3 line_cap_phase.py --controls` run at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "718",
+    "verdict": "CLOSED",
+    "summary": "The derivation citation now names docs/testing/line_cap_phase.py and docs/lanes/linecap13/NOTES.md, and the corner table really is in that file (NOTES.md:66-78, the four LLoop rows with their floor/ceil readings). The only remaining mentions of the non-existent docs/investigations/line-cap-phase.md in the tree are pass 1's own record and a NOTES line describing the fix.",
+    "scenario": "A reader following the citation for the derivation now reaches a file that exists and carries the table the rounding was read from.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:714-721; docs/lanes/linecap13/NOTES.md:48-78; grep for 'investigations/line-cap-phase' over the worktree."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "722",
+    "verdict": "CLOSED",
+    "summary": "Every figure in the shipped comment now names the instrument that produced it, and each one reproduces on this host: --rivals (analytic model) 495 without the clip, 102 with it, 115 for the tie=floor1 rival and 645 for the rejected centre band; the shader polygon at the device's 1/256 tie 935 -> 544, and at an epsilon tie 414 -> 21. The retired 497 and 412 are gone from geom.c and NOTES.md.",
+    "scenario": "A reader of the comment can no longer take one number from the analytic model and the next from the polygon rasterisation as though they were one measurement. The PR body still carries the retired pair above its own retraction; filed as N3, which is the body rather than the code.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:722-747; `line_cap_phase.py --rivals` and the shader transliteration with and without the clip at tie 1/256 and 1e-9, both run at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/instance.c",
+    "line": "753",
+    "verdict": "CLOSED",
+    "summary": "The stale 12 in the runtime-assert argument is now 18, matching PGRAPH_GEOM_MAX_OUTPUT_VERTICES, and line_cap_phase.py's variant comments now label tie=\"floor1\" as the nearest rival and tie=\"ceil\" as the shipped rule.",
+    "scenario": "A reader picking a variant from the tool's comment now picks the one the shader implements, and the reasoning about the unfireable runtime assert quotes the constant it sits next to.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/instance.c:734-760; docs/testing/line_cap_phase.py:78-80."
+  },
+  {
+    "pass1_id": "N1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "719",
+    "verdict": "NEW",
+    "summary": "geom.c:719 tells the reader the cap clip 'is inert below w = 24, where E/2 - w/2 is under a pixel', and emit_line_vertex()'s comment adds that the unclipped four-corner case emits what it emitted before 'bit for bit'. Both hold for the pixels the offline model scores and not for the geometry the device is handed. E/2 - w/2 being under a pixel does not stop the clip biting: the bounds are floor(m_min - w/2) and ceil(m_max + w/2) + 1, arbitrary reals rounded to integers, so a tenth-of-a-pixel overhang crosses one whenever a corner lands near it. Counting edges whose shader_poly() returns more than four vertices at the shipped 1/256 tie, every capture from w = 0.625 up is clipped on 3 to 20 of its 57 edges before w reaches 24 (w=1: 9 edges, deepest sliver 0.020 px; w=4: 17, 0.114; w=8: 18, 0.232; w=13: 11, 0.301; w=16: 20, 0.468; w=24: 25, 0.704). Below w = 24 the sliver is under half a pixel so no pixel centre changes side in float64, which is why --rivals, --controls and --shader all report the change as inert there. The device computes the cut fraction f = da/(da - db) in float32 from a da that is a sliver depth, snaps every emitted vertex to 1/256 of a pixel, and then decides centre membership.",
+    "scenario": "Already measured, by the arms job on this PR. VERDICT: FAIL, a_ref 2e1c5790aa (master) against b_ref 9fdc6b5d70 (this branch), one run each, suite Line_width: 10 captures worse, 8 of them at w = 4, 6, 7, 9, 10, 12, 13 and 14 (+1, +2, +2, +1, +2, +5, +9, +1), inside the range the comment says the change cannot touch. Five more below w = 24 moved the other way (w = 1, 8, 11, 15, 16 at -1, -1, -1, -5, -1), and Line_0064.0 through .7 and Line_FFFFFFFF each moved 1,402 -> 1,401 -- the same value, the same direction, nine captures at once, which is not the shape of a single-run flake. Thirteen scored captures below w = 24 moved where all three of this lane's instruments say not one pixel can change; I reproduced that blindness here by rasterising the clipped and unclipped polygons capture by capture at both tie biases, where the first row that moves at all is Line_0024.0 (935 -> 544 at 1/256, 414 -> 21 at 1e-9, nothing below 24 in either). The prediction's machine-read leg is expect_counts {\"worse\": 0} and it failed; the PR carries regressed; nothing on the PR has answered it. The consequence beyond the eight captures is the comment: it tells the next reader this change cannot reach narrow lines, so a narrow-line regression will not be traced here.",
+    "remediation": "1. Stop the clip biting where it cannot matter: a cut shallower than the device's own vertex quantum can only move pixels by re-quantising an edge that was previously exact, so skipping cap_clip() on a plane the polygon violates by less than one quantum (lineTieBias is already in the push constant) leaves the w >= 24 result untouched -- the deepest sliver there is 0.70 px and up -- and restores the bit-for-bit claim below it. Derive the threshold and state it; do not pick 24. 2. Make an instrument see it: shader_poly() rasterises in double precision and never snaps a vertex to the 1/256 grid, so it is blind to exactly the class of change the arm measured; quantising each emitted vertex to lineTieBias before the coverage test, and reporting the per-capture bite count, would have caught this offline. --depth is the model for the shape. 3. Re-register and let the arms job re-judge: arms.sh clears regressed from the verdicts, not by hand, and a second pair also settles how much of the plus-or-minus one pixel is run-to-run, since noise 0 in that verdict is one run per arm with nothing to estimate from rather than a measured zero. Correct both comments either way; if the narrow-line movement is an acceptable price for the wide end, that is a regression-accepted argument for the owner on #13, not a comment saying it did not happen.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:714-721 (the inertness claim), :425-434 (the bit-for-bit claim), :531-566 (cap_clip and its f = da/(da-db)), :760-787 (the two cap_clip calls and the bounds); docs/testing/line_cap_phase.py:267-327 (shader_poly and shader_mask, both float64, no vertex quantisation); the [job.arms] VERDICT: FAIL comment on PR #141 dated 2026-09-19T16:50:19Z; bite counts from len(shader_poly(e, w, 1/256)) > 4 over lp.EDGES for every non-void capture, and the clipped-vs-unclipped coverage comparison at tie 1/256 and 1e-9, both run at tip 1d4e5aa14b."
+  },
+  {
+    "pass1_id": "N2",
+    "severity": "LOW",
+    "file": "docs/testing/line_cap_phase.py",
+    "line": "529",
+    "verdict": "NEW",
+    "summary": "controls() counts both m_min - w/2 and m_max + w/2 into ties_int and prints the total as 'the population that separates tie=ceil from tie=floor1'. Only the high boundary can: edge_mask() computes plo with np.floor(...) for every tie value and the tie switch reaches phi alone, so a low boundary landing on an integer is floored identically by both rules.",
+    "scenario": "A reader of --controls, and of the PR comment that quotes it, is told 1,104 of 5,472 boundaries separate the shipped outward rounding from floor + 1. Split over the same captures the 1,104 is 617 low-side and 487 high-side, so the figure is 2.3x the population it names. The conclusion survives -- 487 is not zero, so the goldens do select the outward rounding, which is the question pass 1's M3 asked -- which is why this is LOW and does not reopen M3.",
+    "remediation": "Count m_max + w/2 alone for the integer population, or print both halves with the low side labelled as not separating anything.",
+    "evidence": "docs/testing/line_cap_phase.py:525-535 (the loop over both bounds), :75-86 (edge_mask: plo is floor(...) for every tie, the switch reaches phi only); split re-run over ~/goldens/results at tip 1d4e5aa14b: 2,736 edge-captures, integer low 617 / high 487, centre low 586 / high 452."
+  },
+  {
+    "pass1_id": "N3",
+    "severity": "LOW",
+    "file": "PR #141 body (not a tracked file)",
+    "line": "0",
+    "verdict": "NEW",
+    "summary": "The PR body still asserts the two figures its own appendix retires. The appendix says 497 and 412 are retired and neither reproduces on this tree; sixty lines above it the original derivation still reads 'A centre-sampled +-w/2 band scores 497 px, worse than the 412 px it was meant to fix.' geom.c and NOTES.md were both corrected, the body was not.",
+    "scenario": "A reader who stops at the derivation -- which is where the rule is argued -- takes the retired number as the evidence for the outward rounding. This is what gh pr edit silently failing on this host looks like: the remediation comment states the body was updated.",
+    "remediation": "PATCH the body through `gh api` rather than `gh pr edit`, and read the value back. While there, the Files: line needs the two pass-2 audit records added, as it has the pass-1 pair.",
+    "evidence": "PR #141 body as fetched at 2026-09-19 (the derivation paragraph and the 'Two figures are retired' paragraph); hw/xbox/nv2a/pgraph/glsl/geom.c:722-747 and docs/lanes/linecap13/NOTES.md, both correct."
+  }
+]
