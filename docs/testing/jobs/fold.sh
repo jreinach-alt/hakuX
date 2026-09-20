@@ -34,6 +34,14 @@
 # merge resolved by a script that does not understand the code is how a
 # working fix was reverted on 2026-09-12.
 #
+# A RED VERDICT ABOUT A BASE THAT HAS MOVED IS STILL REFUSED, BUT NOT IN
+# SILENCE. When a required check breaks on the trunk, every open PR keeps the
+# FAILURE it got from the broken tree -- GitHub never re-runs a PR's checks
+# when its base moves -- and this job used to refuse such a head every tick
+# forever. It now compares the failing runs' start times against the trunk
+# head's commit time and hands a stale one back for a base merge. See "a red
+# about a base that moved" below; nothing there ever folds on a stale verdict.
+#
 # THE ONE EXCEPTION IS A ROOT NOTES.md, AND IT IS A RENAME, NOT A MERGE.
 # roles/lane.md used to ask every lane for `NOTES.md` in the branch root.
 # master has none, so the first fold lands one and EVERY fold after it
@@ -64,6 +72,7 @@ F="$WORK/fold"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
+. "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh" # is_remote_branch: a branch this host must never delete
 mkdir -p "$F/failed" "$WORK/logs/fold"
 LOG="$WORK/logs/fold/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
@@ -143,6 +152,35 @@ prune_branch() {   # <dir sharing $REPO's ref store> <branch> <proof commit> -> 
         lane/?*) ;;
         *) say "  NOT pruning '$branch': only lane/* refs are ever deleted"; return 1 ;;
     esac
+    # ...AND NOT A REMOTE LANE'S, even when it is named lane/*. A row marked
+    # `remote` in territory.toml belongs to a session in a container this host
+    # cannot see, which pushes to that branch about once an hour. Deleting the
+    # ref of a long-lived cloud lane is not the recoverable kind of mistake:
+    # the branch comes back on its next push carrying whatever that container's
+    # local copy holds, and anything folded in the meantime is a conflict
+    # nobody is watching for. No remote lane is named `lane/*` today, so this
+    # is the exemption for the day one is -- which is exactly when nobody will
+    # be thinking about it.
+    #
+    # TARGET NARROWED, NEVER WIDENED: this can only ever refuse. And a board it
+    # cannot read is also a refusal -- an un-pruned ref costs a few bytes, and
+    # "I could not check" is not "it is safe to delete".
+    #
+    # `remote_authoritative`, NOT `remote_readable`: the question here is
+    # whether NO row names this branch, and the fold-lagged in-tree copy
+    # board_files falls back to cannot answer it -- that copy gets a marker
+    # only when some later fold carries it over, so it is precisely the one
+    # missing the row the board wrote this morning. board.sh fetches
+    # `origin/board` before re-execing this job (board.sh:161); a checkout
+    # where that has not happened gets this refusal and one fetch fixes it.
+    if ! remote_authoritative; then
+        say "  NOT pruning '$branch': the board read came back \`$(remote_source)\` (not origin/board), so whether it belongs to a remote lane is unknown. \`git fetch origin board\` in this checkout."
+        return 1
+    fi
+    if is_remote_branch "$branch"; then
+        say "  NOT pruning '$branch': it is lane.$(remote_lane_of "$branch")'s, marked \`remote\` in territory.toml -- a session this host cannot see pushes to it"
+        return 1
+    fi
     # ...and a plain ref path, so nothing in it can read as an option to push
     # or expand into a second ref. check-ref-format refuses .., ~, ^, :, *, a
     # trailing lock and a leading dash for us.
@@ -318,6 +356,170 @@ ci_green() {   # <pr> -> 0 when every check on the head has concluded SUCCESS (o
           else "PENDING" end' 2>/dev/null
 }
 
+# --------------------------------------------- a red about a base that moved
+# GITHUB DOES NOT RE-RUN A PULL REQUEST'S CHECKS WHEN THE BASE BRANCH MOVES.
+# So when a REQUIRED check breaks on $TIP -- `selftest.d/86-fold-regressed.sh`
+# was broken on master for most of 2026-09-19, because its fixture reused a
+# `lane/foldreg` ref that prune_branch() above deletes -- every open PR that
+# ran against the broken tree keeps reporting FAILURE forever, about a tree
+# that no longer exists. PR #167 fixed it and the push run on `bb4b78689e`
+# came back success at 19:47:52Z; #152, #153, #155 and #163 still read
+# `selftest:FAILURE` from runs that started at 17:14:32Z and 18:59:47Z.
+#
+# NOTHING IN THE HARNESS COULD REACH THEM. The CI gate below refuses --
+# correctly, on the data it has, since it cannot tell a stale red from a live
+# one. `handback.sh` resumes a lane only on `needs-rebase`, and these had no
+# conflict; they were MERGEABLE. `board.sh` only picks up PRs carrying no
+# pipeline label, and these were labelled. So four complete, audited PRs sat
+# `fold-ready` and refused every tick until a person pushed over them -- and
+# that recurs EVERY time a required check breaks on the trunk.
+#
+# A RE-RUN DOES NOT FIX IT, AND THAT WAS MEASURED BEFORE THIS WAS WRITTEN.
+# #152's failed `selftest` was re-run at 20:37:16Z, 50 minutes after the fix
+# folded, and came back `failure` with the same ten checks: the workflows
+# check out the PR's OWN HEAD, not `refs/pull/N/merge`, so the branch's own
+# copy of the broken fragment is still the one that runs. `FR_LANE_SHA` -- the
+# fix -- appears twice on master and ZERO times on all four branches. There is
+# therefore deliberately NO re-run path here, and none should be added: the
+# only thing that refreshes the verdict is bringing $TIP INTO the branch,
+# which is the lane's work and is exactly what `handback.sh` already asks for.
+# It is also why this costs no CI minutes of its own; the one run it causes is
+# the one the lane's own push triggers.
+#
+# THE TEST IS A TIMESTAMP, AND IT CAN ONLY EVER ADD AN ACTOR. Every failing
+# check's run started before the current `origin/$TIP` head was committed =>
+# that verdict is about a base that has moved. If ANY failing check started
+# after it, the red is live and nothing changes: the PR waits, reported
+# exactly as before. A timestamp that cannot be read is LIVE too -- "I could
+# not tell" is not "it is stale" -- and so is a rollup with no failing check
+# in it at all.
+#
+# A STALE RED IS NOT LICENCE TO FOLD. Nothing here folds on this verdict. The
+# head is handed back so that a FRESH verdict exists, and that fresh verdict
+# is what the gate reads next tick. The gate stays; only "forever" goes.
+#
+# MERGEABILITY IS NOT CHECKED, ON PURPOSE, although the four PRs that prompted
+# this were all MERGEABLE. This gate runs BEFORE the merge attempt, so a PR
+# that is both stale-red and conflicting never reaches the conflict path
+# either and has no actor for the same reason. The answer to both is the same
+# base merge, so gating on MERGEABLE would have left half the jam in place and
+# bought one more `gh` call for it.
+#
+# IT IS `needs-rebase`, NOT A NEW LABEL, AND THAT IS A DELIBERATE CHOICE.
+# The label's own description is already the action -- "bring master into the
+# lane branch" -- and it is the only thing a stale red needs. A new label
+# would have to be added to `ensure-labels.sh`, to `board.sh`'s state-label
+# set and to `fleet.py`'s, or a PR carrying only it would read as UNLABELLED
+# to the board and be handed `needs-audit-1` on top of work that was already
+# audited; those three files belong to three other lanes. The cause file below
+# carries `action=resume_stale_ci` so `handback.sh` tells the lane the truth
+# about WHY -- the red is not its defect -- rather than asking it to hunt for
+# a conflict that is not there.
+STALE_LABEL="${FOLD_STALE_LABEL:-needs-rebase}"
+
+# `$TIP`'s head, read once per tick and only when a red candidate exists: a
+# tick with nothing red must not pay for a fetch.
+#
+# THIS MAKES `list` FETCH, which nothing else in `list` did. That is the one
+# thing `list` now costs, and it is deliberate: without the trunk's head there
+# is no answer to give, and "CI RED" where the truth is "CI RED but STALE" is
+# the wrong answer in the one report a person reads when something is jammed.
+# A fetch writes refs and nothing else -- no label, no comment, no session --
+# so `list` remains read-only in every sense that decides anything.
+TIP_SHA=""; TIP_EPOCH=""
+tip_state() {   # -> 0 with TIP_SHA and TIP_EPOCH set for origin/$TIP
+    [ -n "$TIP_EPOCH" ] && return 0
+    if [ -n "${FOLD_TIP_SHA:-}" ] && [ -n "${FOLD_TIP_EPOCH:-}" ]; then
+        TIP_SHA="$FOLD_TIP_SHA"; TIP_EPOCH="$FOLD_TIP_EPOCH"; return 0
+    fi
+    # The TRACKING REF, not FETCH_HEAD. `$REPO` is the shared checkout and
+    # several jobs fetch in it; FETCH_HEAD is one file they all overwrite, so
+    # another job's fetch landing between this one and the read below would
+    # silently hand this gate a different commit's timestamp. An explicit
+    # refspec writes the ref this then reads by name.
+    git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null || return 1
+    TIP_SHA=$(git -C "$REPO" rev-parse "refs/remotes/origin/$TIP" 2>/dev/null)
+    TIP_EPOCH=$(git -C "$REPO" log -1 --format=%ct "refs/remotes/origin/$TIP" 2>/dev/null)
+    [ -n "$TIP_SHA" ] && [ -n "$TIP_EPOCH" ]
+}
+
+# `""` IS PENDING AND `//` DOES NOT CATCH IT. `gh` prints an EMPTY conclusion
+# for a run still in flight, and jq's `//` falls through only on null and
+# false, so `.conclusion // .state` yields `""` and a running check would read
+# as a concluded one. Tested for emptiness explicitly, in both positions.
+#
+# In a variable because the self-test's `gh` shim answers `pr view` directly
+# and would never exercise a typo in this: the fragment pulls this line out
+# and runs it through the real jq against a canned rollup.
+CHECK_ROWS_JQ='.statusCheckRollup[]? | [ (.name // .context // "check"), (if (.conclusion // "") != "" then .conclusion elif (.state // "") != "" then .state else "PENDING" end), (.startedAt // .createdAt // "") ] | @tsv'
+check_rows() {   # <pr> -> "<name>\t<conclusion>\t<started>", one line per check
+    gh pr view "$1" --repo "$GH_REPO" --json statusCheckRollup --jq "$CHECK_ROWS_JQ" 2>/dev/null
+}
+
+# STALE_RUN is SET, not printed: `$(stale_red ...)` would run this in a
+# command-substitution subshell and the caller would post a comment with an
+# empty run name in it -- the trap `handback.sh`'s lane_name() documents, where
+# the discarded variable IS the content of the answer.
+STALE_RUN=""
+stale_red() {   # <pr> <tip epoch> -> 0 when EVERY failing check predates it
+    STALE_RUN=""
+    local name concl started ts newest=0 failing=0
+    while IFS=$'\t' read -r name concl started; do
+        [ -n "$name" ] || continue
+        case "$concl" in FAILURE|ERROR|CANCELLED|TIMED_OUT|STARTUP_FAILURE) ;; *) continue ;; esac
+        failing=$((failing+1))
+        # An EMPTY string is not an unparseable date to `date -d`: it is
+        # MIDNIGHT TODAY, at exit 0. A rollup entry with no timestamp would
+        # therefore read as "started today", which on most days is after the
+        # trunk's head and on some days is before it. Refused by hand.
+        [ -n "$started" ] || { STALE_RUN=""; return 1; }
+        ts=$(date -u -d "$started" +%s 2>/dev/null) || { STALE_RUN=""; return 1; }
+        [ -n "$ts" ] || { STALE_RUN=""; return 1; }
+        if [ "$ts" -gt "$newest" ]; then newest=$ts; STALE_RUN="$name, started $started"; fi
+    done <<< "$(check_rows "$1")"
+    # No failing check at all means the rollup does not say what `ci_green`
+    # said, or `gh` answered nothing. Either way this cannot judge it.
+    [ "$failing" -gt 0 ] || { STALE_RUN=""; return 1; }
+    [ "$newest" -lt "$2" ]
+}
+
+# THE LEDGER IS KEYED ON (PR, TRUNK HEAD). The only thing that can change this
+# verdict is $TIP moving, so acting twice on one pair is acting on no new
+# information -- and each action removes a label, writes a cause and starts a
+# lane session. Same `$F/failed/<pr>-<head>` shape as every other record here,
+# holding the trunk shas already acted on, one per line.
+stale_handback() {   # <pr> <branch> <head> <run>
+    local pr=$1 branch=$2 head=$3 run=$4 m="$F/failed/$1-$3-stale"
+    if grep -qxF "$TIP_SHA" "$m" 2>/dev/null; then
+        say "#$pr $branch: stale red already handed back at $TIP ${TIP_SHA:0:10}; waiting for the lane"
+        return
+    fi
+    printf '%s\n' "$TIP_SHA" >> "$m"
+    say "#$pr $branch: CI is RED on ${head:0:10} but its failing run ($run) predates $TIP ${TIP_SHA:0:10}; handing back for a base merge"
+    mkdir -p "$WORK/handback/cause"
+    # at=: UTC, like the conflict cause below -- a recorded field in a host
+    # state file, never shown to anyone.
+    printf 'label=%s\naction=resume_stale_ci\nbranch=%s\nhead=%s\ndetail=%s\ntip=%s\nat=%s\n' \
+        "$STALE_LABEL" "$branch" "$head" "$run" "$TIP_SHA" "$(date -u '+%FT%TZ')" \
+        > "$WORK/handback/cause/$pr-$head"
+    label_rm "$pr" fold-ready
+    label_add "$pr" "$STALE_LABEL" || say "  WARNING: could not label #$pr $STALE_LABEL"
+    comment "$pr" "[job.fold] Not folded, and **the red is not yours**: **every** failing check on \`${head:0:10}\` ran **before** \`$TIP\`'s current head \`${TIP_SHA:0:10}\` was committed -- the most recent of them is \`$run\`. That verdict is about a base that has since moved, and GitHub does not re-run a PR's checks when its base moves.
+
+Do not go looking for a defect of your own here -- re-read the failing run's date above first. Re-running it would not help either: the workflows check out this PR's own head, not \`refs/pull/$pr/merge\`, so the branch's own copy of whatever broke is still the copy that runs.
+
+What refreshes the verdict is bringing the trunk in:
+
+\`\`\`
+git fetch origin $TIP
+git merge origin/$TIP        # MERGE, never rebase -- a rebase un-ancestors
+                             # any registered prediction's a_ref/b_ref.
+git push
+\`\`\`
+
+Then, once CI is green on the new head, re-apply \`fold-ready\` (\`bash docs/testing/jobs/gh-label.sh add $pr fold-ready\`). \`fold-ready\` has been removed and \`$STALE_LABEL\` set so \`jobs/handback.sh\` has an actor for this; it is the label whose description is exactly this action. **This is the only comment this job will make about this head at \`${TIP_SHA:0:10}\`** -- if the trunk moves again and the red is still stale, it says so once more against the new trunk."
+}
+
 # ------------------------------------------------- reporting a stopped fold
 # A fold that stops must say so ON THE PR, exactly once per head and state.
 # Until 2026-09-18 only RED spoke. A head with NO run at all mapped to NONE,
@@ -483,6 +685,14 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
     fi
     ci=$(ci_green "$pr")
     if [ "$ci" != GREEN ]; then
+        # A RED whose every failing run predates the trunk's head is a verdict
+        # about a base that has moved: the one state this job used to refuse
+        # forever. Handed back for a base merge; never folded on.
+        if [ "$ci" = RED ] && tip_state && stale_red "$pr" "$TIP_EPOCH"; then
+            [ "$mode" = list ] && { echo "#$pr $branch: CI RED but STALE ($STALE_RUN predates $TIP ${TIP_SHA:0:10})"; continue; }
+            stale_handback "$pr" "$branch" "$head" "$STALE_RUN"
+            continue
+        fi
         [ "$mode" = list ] && echo "#$pr $branch: CI $ci"
         say "#$pr $branch: CI is $ci on $head; waiting"
         ci_report "$pr" "$head" "$ci"
