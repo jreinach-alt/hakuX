@@ -36,6 +36,67 @@ to `[lane.clrpad164]` for #164; that lane has PR #172 open. Do not edit it.
 | #62 | finding 2 was implemented on `a5fdb6a7` and then **WITHDRAWN — reverted in `d7ef9820`** (audit pass 2c, A1): the condition it added is unreachable, because `pgraph_gl_check_surface_to_texture_compatibility()` refuses every replication-expanding texture format at `gl/surface.c:1543`, and has done since `c234c1cc`/`f0095555` on 2026-09-12 — the day *before* #62 was filed. **The device ask is withdrawn**; there is nothing here for a device lane to confirm. `gl/surface.c` is byte-identical to master on this branch. The other five findings were already fixed and verified in master. See the pass-2c section at the end of this file |
 | #88 | filed by this lane; needs `vk/surface.c`, which this lane does not hold |
 
+## Audit pass 1 on PR #181: disposition (2026-09-20)
+
+`docs/audits/2026-09-20-claude/docs-tooling-agentic-coding-u152m1-pass1.md`
+(`8e0e32bf`) — 1 HIGH, 1 MEDIUM, 4 LOW. The `gl/texture.c` fix was checked
+claim-by-claim against the tree and stands; **both actionable findings are in
+the prediction files**, and H1 is that the file written to stop a
+wrong-renderer arm could not stop one.
+
+| | finding | disposition |
+|---|---|---|
+| **H1** | the routing requirement is prose, and `arms.sh` reads no prose | **taken** — `title` marker + hand-queue recipe, verified by running the job |
+| **M1** | two falsified predictions have live `b_ref`s and would spend four device arms | **taken** — same marker, and each says so in its first paragraph |
+| L1 | the PR body has no `roles/lane.md` header | **taken** — header added |
+| L2 | `nv2a_index.json` provenance records the sandbox's paths | **accepted, not fixed here** — see below |
+| L3 | the superseded file's "uncomfortable outcome" is unreachable | **acknowledged, no edit** — that file is judged; the supersession already replaced the leg with a reachable one |
+| **L4** | one path where "cannot be less correct" is not true | **taken** — the live file names `flush_surfaces()` and stops asserting the universal |
+
+### H1 and M1, and how the remediation was verified
+
+`arms.sh`'s queue loop reads `registered_utc`, `amended_utc`, `a_ref`,
+`b_ref`, `who`, `issue`, `title`, `runs_per_arm` and the suites, then calls
+`request.sh` with **no `--device` and no `--env`** (`arms.sh:671-675`). A
+renderer requirement in the `prediction` string is therefore invisible to it.
+`title` is the only opt-out the schema has (`arms.sh:654`), and nothing else
+in the tree reads a prediction's `title` — the other hits are on GitHub issue
+and request objects.
+
+**Verified by running the real job, in both directions**, rather than by
+reading the patch. `HAKUX_WORK` and `HAKUX_REPO_DIR` redirect `arms.sh` into
+a scratch work dir, and a `refs/remotes/origin/lane/*` ref makes `collect()`
+consider the branch:
+
+- **mutant** — the head before the remediation: all three files pass *through*
+  the title gate and skip at the next one.
+- **positive** — the head after it: all three skip with
+  `soak predictions (title=…) are hand-read; queue with request.sh --title yourself`.
+
+The container cannot demonstrate the `WOULD QUEUE` branch itself: `suites_for`
+finds no goldens here, so the mutant's fall-through lands on
+*"no suite with goldens in its keys or disc"*. **On the host it resolves —
+proven by the FAIL verdict itself, which lists all six suites.** So the gate
+the remediation moves is the one upstream of everything that differs.
+
+Calling this a "soak prediction" in the skip line is a small inaccuracy in
+service of a true one; the schema has no field for a renderer, and inventing
+one is a harness change, not this lane's.
+
+### L2, accepted rather than fixed
+
+The regeneration is required (the commit touches `hw/xbox`) and the auditor's
+own check says it is sound: `tests_commit` unchanged at `91a0de45`, 103
+suites, no suite dropped, every moved `loc` landing correctly. What churns is
+`provenance.tests_root` and `support_dirs[0]`, which record the generating
+machine's absolute paths. **That is a property of the generator, not of this
+diff: the same two lines have flipped between `/home/justin/…` and
+`/home/user/…` 17 times each — 34 commits — before this branch existed.**
+The fix is one line in `nv2a_index.py` (normalise a leading `$HOME` to `~`,
+which keeps `describe_suite_drift`'s message runnable on either host), and it
+belongs in a change of its own against a shared generated artefact rather
+than smuggled into a PR about a texture cache.
+
 ## The pad bit is written by the raster, not applied by a reader (2026-09-20, third judgement)
 
 **Correction first, because the previous section got a fact wrong.** It said
