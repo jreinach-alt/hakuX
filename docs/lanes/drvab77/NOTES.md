@@ -262,3 +262,168 @@ handled before the first swap rather than after:
    a window is listed** -- if any request other than this lane's ran on the
    thor in one, it is named here and on its own lane's PR. An empty list is
    reported as an empty list, not as an absence of risk.
+
+The two windows, and what ran in them (`window_audit.py`, which is the check
+and not a note about the check):
+
+| window | open | T30 back | runs that finished inside | foreign |
+|---|---|---|---|---|
+| t26 | 17:15:01 | 17:24:45 | `t26-1` 17:19:35, `t26-2` 17:24:03 | **0** |
+| stock | 17:24:51 | 17:36:30 | `stock-1` 17:29:20, `stock-2` 17:33:46 | **0** |
+
+Four runs in 21 minutes of exposure, all four this lane's. Nothing else was
+claimed for the thor in either window. That is luck as much as design -- four
+arms requests sat in `queue/` throughout -- so the finding is "these two
+windows were clean", not "this is safe". A dispatcher that knew about drivers
+would not need the audit; see the follow-up at the end.
+
+## R2. The stock arm's driver string is not valid JSONL, and it broke the label
+
+Both stock runs first scored with `driver: ?`, which under this lane's own
+**G2** ("a missing/unparseable session header is void and retaken") would
+have thrown away the two runs the experiment most needs. It was the reader,
+and the raw bytes say so: Adreno's driver string has **embedded newlines**,
+
+    "driver":"Qualcomm Technologies Inc. Adreno Vulkan Driver (Driver Build:
+    69e13475cb, ... Date: 12/27/23 Compiler Version: E031.41.03.47
+    Driver Branch: )"
+
+so a stock dump's session record spans **five physical lines** and
+`json.loads(fh.readline())` sees an unterminated string. Both Turnip arms are
+one line and parse, which is why nothing caught it until the third arm.
+
+Note the shape of this, because it is the one worth carrying: **the
+instrument failed on exactly the arm it was built to identify.** The whole
+point of reading the driver off the dump was that "the swap did not take"
+must be distinguishable from "the swap took", and the stock arm is the only
+one of the three where those two produce different strings -- and it is the
+only one the reader could not read.
+
+Fixed in `score_arms.py`: accumulate physical lines until the record parses,
+with `strict=False`, bounded at 12 lines, still requiring `t == "session"`.
+The fix was made after seeing a run, so it is tested in both directions by
+`tests_session_header.py`, and the two mutants were built and run:
+
+| mutant | case that trips it |
+|---|---|
+| the old one-line `readline` reader | `multi-line driver recovers` FAILs |
+| accumulate, but drop the `t == "session"` check | `no session record stays None` FAILs (it returns a draw record and calls the run headed) |
+
+The real file passes all four cases. Neither mutant passes both, so the test
+is not green-for-free -- which matters here because the loosening the second
+mutant represents would silently disarm G2 for every future arm.
+
+**The rates were never in doubt.** `stipple_classify` reads PPMs; the header
+is read for the arm LABEL only. The stock numbers below are byte-identical
+before and after the fix, and the fix's effect is that the label says
+`Qualcomm Technologies Inc. Adreno Vulkan Driver` instead of `?`.
+
+## R3. The answer: REFUTED at the stated sensitivity
+
+All six runs of this lane are on the **thor**, at `ref 732b97e2df` /
+`apk f326072aa6c8`, spec `600,after165,cap200`, 220 s. All pass **G2** (76-92
+images) and **G1** (median HF 1.44-1.76 against 1.24-2.14; median brightness
+29.7-35.8 against 29.1-39.3). Every arm label below is the driver string read
+out of that run's own dump.
+
+| arm | run id | driver, from the dump | imgs | `R_full` | `R_lower` |
+|---|---|---|---|---|---|
+| `t30-1` | `1789940132-drvab77-t30-1-1103129` | PurpleVK 26.3.0-devel | 63 | 9.5 | 23.8 |
+| `t30-2` | `1789940135-drvab77-t30-2-1104874` | PurpleVK 26.3.0-devel | 92 | 5.4 | 16.3 |
+| `t26-1` | `1789949705-drvab77-t26-1-1245715` | PurpleVK 26.1.0-devel | 78 | 5.1 | 15.4 |
+| `t26-2` | `1789949708-drvab77-t26-2-1245737` | PurpleVK 26.1.0-devel | 83 | 8.4 | 22.9 |
+| `stock-1` | `1789950291-drvab77-stock-1-1271457` | Qualcomm Adreno (build 69e13475cb) | 84 | 4.8 | 20.2 |
+| `stock-2` | `1789950294-drvab77-stock-2-1271702` | Qualcomm Adreno (build 69e13475cb) | 76 | 9.2 | 23.7 |
+
+`compare_arms.py` prints the arithmetic:
+
+| | `R_full` | `R_lower` |
+|---|---|---|
+| t30 (this lane) | 5.4-9.5, mean 7.45 | 16.3-23.8, mean 20.05 |
+| t26 | 5.1-8.4, mean 6.75 | 15.4-22.9, mean 19.15 |
+| stock | 4.8-9.2, mean 7.00 | 20.2-23.7, mean 21.95 |
+| largest between-arm mean gap | **0.70** | **2.80** |
+| smallest WITHIN-arm difference | **3.30** | **3.50** |
+
+**P4's rule, applied: no arm has both runs outside the T30 band on the same
+side.** On `R_full` the band is 5.4-16.4 over six T30 runs and every one of
+the six arms' runs is inside it but for `t26-1` at 5.1 -- whose partner is at
+8.4, so the arm's range overlaps and the rule is not met. On `R_lower` the
+band is 16.3-30.1 and `t26-1` at 15.4 is the only excursion, again with a
+partner (22.9) inside. **This is the registered null: driver-dependence is
+refuted at this sensitivity.**
+
+Two things make it a stronger null than the bare rule requires:
+
+- **Every between-driver gap is smaller than every within-driver gap.** The
+  largest difference between two arms' means is 0.70 per 100 (`R_full`),
+  while the smallest difference between two runs *of the same arm* is 3.3.
+  The driver moves the number less than re-running the same driver does.
+- **The three-driver spread is narrower than the one-driver spread.** Six
+  runs across three drivers in one hour span 4.8-9.5 (1.98x). Four runs of
+  one driver in lane.diagsoak77 span 6.6-16.4 (2.48x).
+
+**And the sensitivity, in the terms registered before the answer.** T30's six
+runs have sd 3.97 on `R_full`, so two runs per arm give 2 se of an
+arm-vs-T30 difference of **7.9 per 100 -- 88% of the T30 mean**. On `R_lower`,
+sd 4.71 and 2 se of 9.4, **39% of its mean**. So this refutes a driver effect
+of roughly the size of the artifact itself and no smaller. **It does not say
+the driver effect is zero**, and nothing downstream may quote it that way.
+Halving the interval costs 4x the runs, i.e. ~6 more soaks per arm.
+
+`R_lower` agrees with `R_full`, so P5's disagreement clause does not fire.
+P5's claim that `R_lower` is the *more sensitive* read is withdrawn by R0 and
+the numbers here confirm the withdrawal: its 39%-of-mean interval is better
+than `R_full`'s 88%, but its band had to widen by the same 6-run correction,
+and both give the same verdict.
+
+## R4. The finding that outlives the null: the stipple is not Turnip's
+
+The null says the driver does not move the *rate*. Something else in the same
+six runs says more, and it is the thing to carry to the next lane:
+
+**The artifact fires on all three drivers, including Qualcomm's own.** V0 --
+does the artifact appear at all -- passes on `t26` (5.1, 8.4) and on `stock`
+(4.8, 9.2), at rates statistically indistinguishable from T30's. The stock
+arm is not a Mesa/Turnip driver at all; it is the vendor's proprietary Adreno
+Vulkan driver, a completely different implementation.
+
+So the deck/ground stipple in #77 is **not a Turnip bug**. A defect that
+reproduces at the same rate on two Mesa builds two releases apart *and* on
+the vendor's independent driver is a defect in what we hand the driver, which
+means `hw/xbox/nv2a/pgraph/vk/` -- and per this lane's brief, changing that is
+the follow-up this lane must not do.
+
+**This also explains the void result of the earlier A/B** and closes it out.
+Those four arms at `c866527e03` failed V0 on both Turnip arms, and the
+tempting reading was "T26 and stock do not show it". They do -- at 5.1, 8.4,
+4.8, 9.2 per 100. The old verdict was the 180 s soak never reaching the cave
+scene and the old default bar, exactly as `nv2a_issues.toml`'s `blocked_on`
+said. Nothing about the driver was ever measured there.
+
+## R5. What this lane did not, and cannot, see
+
+- **Which frames stipple, not how many.** Every number here is a rate. A
+  driver that moved the artifact onto *different* frames while keeping the
+  count would read as a perfect null. `score_arms.py` writes
+  `flagged_frames` into its `--json` for exactly this, and nobody has looked.
+- **Effects below the interval in R3.** 88% of the mean on `R_full` is a
+  coarse instrument; a 30% driver effect would sit inside this null unseen.
+- **Anything outside the cave scene.** All six runs sample one scene of the
+  attract demo, because that is the scene the soak reliably reaches. The
+  gameplay deck scene #77 was filed against is not what was measured, here or
+  in PR #165.
+- **The content/mip-level hypothesis**, which diagsoak77 named as the next
+  instrument and which needs a code change. Out of scope by the brief.
+
+## R6. For whoever schedules the next driver arm
+
+`swap_driver.sh` defaults to the **Nova**, and the two devices are one
+`SERIAL=` away from a silent cross-device measurement. More importantly the
+dispatcher has no concept of an installed driver, so the swap window is
+unguarded by anything but a lane remembering to audit it afterwards. The
+cheap fix, if a second driver experiment is ever scheduled, is a `driver`
+field on a request that the worker installs and restores around the run the
+way it already does for `env` -- `dispatcher.sh`'s env handling is the exact
+shape, including the marker that makes cleanup safe. That is a harness
+change, not an issue, and belongs in a lane of its own.

@@ -40,19 +40,66 @@ from galleon_flash_rate import load_frames  # noqa: E402
 FRAME_RE = re.compile(r"_f(\d+)\.ppm$")
 
 
+MAX_HEADER_LINES = 12
+
+
 def session_header(pulled):
-    """The dump's own account of the run: driver, spec, prefs."""
+    """The dump's own account of the run: driver, spec, prefs.
+
+    THE HEADER IS NOT ALWAYS ONE LINE, AND THE ARM THAT BREAKS IT IS THE ONE
+    THIS WHOLE FILE EXISTS FOR. `readline()` plus a strict `json.loads` reads
+    both Turnip arms perfectly and returns None for the **stock** arm, because
+    Adreno's own `VkPhysicalDeviceProperties.driverName`-ish blob is five
+    lines with embedded newlines:
+
+        Qualcomm Technologies Inc. Adreno Vulkan Driver (Driver Build: ...
+        Date: 12/27/23
+        Compiler Version: E031.41.03.47
+        Driver Branch:
+        )
+
+    The emulator writes that straight into the JSONL, so line 1 of a stock
+    dump is an unterminated string and the record continues over the next
+    four. Both stock runs of #77's driver A/B came back with `driver: ?` for
+    exactly this reason -- and this lane's OWN registered guard G2 voids a run
+    with an unparseable header, so a reader bug was one step from being
+    reported as "the stock arm did not produce a readable run". The arm whose
+    label cannot be derived is the arm whose label matters most: it is the
+    only one of the three that is not a PurpleVK string, i.e. the only one
+    where "the swap did not take" and "the swap took" look different.
+
+    So: accumulate physical lines until the record parses, and parse with
+    `strict=False` so a control character inside a string is data rather than
+    a syntax error.
+
+    THIS MUST NOT TURN "NO HEADER" INTO A HEADER. The accumulation is bounded
+    (`MAX_HEADER_LINES`) and still requires `t == "session"`, so a dump whose
+    first record is a draw, or a truncated dump with no session line at all,
+    returns None exactly as before -- which is what G2 is entitled to void on.
+    `tests_session_header.py` next to this file asserts both directions.
+    """
     for p in sorted(glob.glob(os.path.join(pulled, "framedump_*.jsonl"))):
+        buf = ""
         with open(p, errors="replace") as fh:
-            first = fh.readline()
-        try:
-            rec = json.loads(first)
-        except ValueError:
-            continue
-        if rec.get("t") == "session":
-            rec["_jsonl"] = os.path.basename(p)
-            return rec
+            for n, line in enumerate(fh):
+                if n >= MAX_HEADER_LINES:
+                    break
+                buf += line
+                try:
+                    rec = json.loads(buf, strict=False)
+                except ValueError:
+                    continue
+                if rec.get("t") == "session":
+                    rec["_jsonl"] = os.path.basename(p)
+                    rec["_header_lines"] = n + 1
+                    return rec
+                break  # a parsed record that is not the session record
     return None
+
+
+def one_line(s):
+    """A driver string for a table cell. Adreno's spans five lines."""
+    return " ".join((s or "?").split())
 
 
 def ordered_frames(pulled):
@@ -120,7 +167,7 @@ def main(argv=None):
             print("%-42s %s" % (o["run"], o["error"]))
             continue
         print("%-42s %-46s %5d %6d %7.1f" %
-              (o["run"], (o["driver"] or "?")[:46], o["images"], o["stipple"],
+              (o["run"], one_line(o["driver"])[:46], o["images"], o["stipple"],
                o["rate_per_100"]))
         if o["gaps"]:
             print("    GAP in frame numbering: %s -- neighbours in the local "
