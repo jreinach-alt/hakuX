@@ -148,6 +148,40 @@ of this prediction.
   C.** Use `--where` first: of the 1,120 unsigned captures, 1,119 differ inside
   stack C but only 1,116 differ *only* there.
 
+## Session status (2026-09-20)
+
+Everything the brief asked for except arm B's verdict is done and pushed: the
+falsifier is fired and measured, the prediction is registered and committed
+with its refs, the finding is on #50 as a `[lane.blendarm50]` comment, and PR
+#205 carries it.
+
+Waiting on two things, neither of which this session can sleep for:
+
+- **CI** on the head, `IN_PROGRESS` at the time of writing, PR mergeable.
+- **arm B**, request `1789963700-blendarm50-1474765`, 3 runs on nova -- about
+  28 minutes each plus the build. Its verdict arrives as a `[job.arms]`
+  comment, judged against
+  `docs/testing/predictions/blendarm50-master-stackc.json`.
+
+The PR is left in draft **deliberately**, with a `[lane.blendarm50] waiting:`
+comment naming both, so `jobs/handback.sh` can resume this lane once either
+resolves. It is not finished-in-draft: item 5 of the lane contract is the only
+open item, and it is open because the arm has not landed.
+
+**If you are the resumed session:** the verdict to write up is arm B only.
+Nothing above it depends on the arm -- the flush result is settled from the
+`49afee8889` captures and does not change whatever arm B says. Judge with
+
+    docs/testing/ab_compare.py \
+        --a ~/hakux-work/dispatch/results/1789819561-blendrace50-nova-415002 \
+        --b ~/hakux-work/dispatch/results/1789963700-blendarm50-1474765 \
+        --expect docs/testing/predictions/blendarm50-master-stackc.json
+
+then score arm B's captures with `--score --unsigned` and add the row to the
+table above. If the three non-zero legs fell toward 0, say that master fixed
+stack C and this lane's source argument was right about the flush and wrong
+about master. Do not explain it away either direction.
+
 ## Reproduce
 
     docs/testing/swatchorder50_readings.py --score --unsigned \
