@@ -106,6 +106,26 @@ That is a different defect from GL's `da9e02a2`, which *was* a cache-entry
 defect (`data_hash` describing bytes the s2t blit had overwritten) and is
 fixed by making the slow path notice.
 
+### The rebuild claim, checked against the refs rather than against the tip
+
+"`SCF_X8R8G8B8_{Z,O}` rebuild on every bind and still fail" is a claim about
+code, and the runs that measured the failure are not the tip. So it was
+checked per ref rather than read off master:
+
+- **10 of the 13 refs carry `pad_alpha_needs_rebuild` in
+  `vk/texture.c`** (`0026f00534`, `2501f35211`, `6762a54c82`, `c866527e03`,
+  `23be8223f5`, `55de5edfff`, `0e919fe51e`, `cd8854be10`, `11ddd94a66`,
+  `2ffd961764`), and all ten duplicate.
+- **3 do not** — `ce9c4eecf8` predates `4946433d87`, which introduced it at
+  2026-09-12 16:49, and the two arm builds `4381fae5f6` / `1f9eac66c4`
+  descend from it without the string in that file. **All three duplicate
+  identically.**
+
+So the duplication is present with the rebuild and without it, which says
+independently that the rebuild is neither its cause nor its cure — and rules
+`4946433d87` out as the flip commit, since `ce9c4eecf8` is already in the
+post-flip regime three hours before it.
+
 ## What I could NOT establish, stated as a fit rather than a cause
 
 Which source is stale, and why the split. The rule that fits all eight rows is
@@ -132,10 +152,12 @@ comment describes. So they predate `f825d6a9ee` (2026-09-11).
 
 These run dirs carry **no renderer record**. No handheld in this fleet can run
 OPENGL, so they are almost certainly Vulkan, but I am dating them rather than
-claiming them. *If* they are Vulkan, the flip falls in 2026-09-10..09-12,
-where five commits touch this exact path: `f825d6a9ee`, `2d8cebbf95`,
-`c477155f55` (which introduced `surface_is_texture_source`), `d66e9b861f`,
-`f009555537`. That would also make the 4-byte group's duplication *newer*
+claiming them. *If* they are Vulkan, the flip falls between 2026-09-10 and
+`ce9c4eecf8` (2026-09-12 13:33), the earliest ref measured in the post-flip
+regime. That window holds `f825d6a9ee`, `2d8cebbf95`, `c477155f55` (which
+introduced `surface_is_texture_source`), `d66e9b861f` and `f009555537`, and
+**excludes `4946433d87`** (16:49 the same day) by three hours — see the ref
+check above. That would also make the 4-byte group's duplication *newer*
 than `R5G6B5`'s, i.e. two mechanisms rather than one -- which is a claim the
 next lane should test before assuming a single fix covers all six.
 
