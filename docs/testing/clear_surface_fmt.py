@@ -289,13 +289,19 @@ def report(goldens, run_dir):
           'six times.\nresidual is what is left once duplication is accounted '
           'for -- a different\ndefect, and on this suite a pad-byte one '
           '(#164, #48).')
-    print('\n%d capture(s) show duplication, %d do not' % (aliasing, clean))
+    # The denominator is in the sentence on purpose. "0 show duplication" is
+    # what a run directory with no captures in it also prints, and those two
+    # readings must not look alike -- a starved instrument reporting a clean
+    # result is the failure this line is shaped to prevent.
+    print('\nof %d capture(s) SCORED (%d in the suite): %d show duplication, '
+          '%d do not' % (checked, len(CAPTURES), aliasing, clean))
 
     for p in problems:
         print('PROBLEM: %s' % p)
     if checked != len(CAPTURES):
         print('%d of %d captures were NOT checked -- this is a FAILURE, not '
-              'agreement' % (len(CAPTURES) - checked, len(CAPTURES)))
+              'agreement, and the line above describes only the %d that were'
+              % (len(CAPTURES) - checked, len(CAPTURES), checked))
     return 1 if (problems or checked != len(CAPTURES)) else 0
 
 
