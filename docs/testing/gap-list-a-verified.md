@@ -28,7 +28,57 @@ This is the first time A1 and A3 have been checked against a running emulator
 rather than inferred from `pmc.c` having no `case`. The code reading was right,
 and after several wrong readings this session that was worth confirming.
 
-## A2 cannot be seen this way, and that is the finding
+## A2 — verified, with an emulator-only build
+
+A read comparison is blind to A2: `NV_PMC_BOOT_1` reads `00000000` on both
+sides, because the endian switch diverges only on **write**.
+
+So the probe gained a **build-time** flag, `PROBE_ALLOW_HAZARDS`, which drops
+the hazard refusal. Build-time and not a config key on purpose: a config key
+would mean the console binary could be talked into a hazardous write by editing
+a file beside it, which is the structural guarantee the hazard list exists to
+give. The relaxed build also announces itself in its HELLO line
+(`nv2a-probe-HAZARDS-ALLOWED-EMULATOR-ONLY`), so no log from it can be
+mistaken for a console run.
+
+Run inside the emulator, writing `FFFFFFFF` to `0x000004`:
+
+```
+before:  BOOT_0=02A000A3  BOOT_1=00000000
+write accepted
+after:   BOOT_0=02A000A3  BOOT_1=00000000
+```
+
+**`BOOT_0` is unchanged, so the emulator does not honour the endian switch** —
+where the same write on hardware byte-swapped every subsequent access. And
+`BOOT_1` reads back `00000000`, so the write does not even latch, which matches
+`pmc_write` having no case for it.
+
+**A2 verified from both sides.**
+
+## A5 — verified on the emulator side
+
+A writable-bit sweep of PVIDEO's 12 declared parameter registers inside the
+emulator returns `writable=FFFFFFFF` for **every one of them**. Every bit of
+every register latches, including:
+
+| register | declared fields | emulator accepts |
+|---|---|---|
+| `SIZE_IN` | `07FF07FF` | `FFFFFFFF` |
+| `SIZE_OUT` | `0FFF0FFF` | `FFFFFFFF` |
+| `FORMAT` (13-bit pitch) | `00131FFF` | `FFFFFFFF` |
+
+"No size cap and no pitch handling" is now measured rather than inferred from
+`pvideo_write`'s `default:` storing all 32 bits.
+
+The **hardware half is still open**: PVIDEO is inert on the console until
+`NV_PMC_ENABLE` bit 28 is set, so all 12 read `0` and latch nothing there. What
+the real field widths are needs that bit set on silicon — a targeted
+read-modify-write to the register that cost a power cycle, which is a decision
+to take deliberately rather than fold into a sweep.
+
+## What a read comparison still cannot reach
+
 
 | | hardware | emulator |
 |---|---|---|
@@ -61,12 +111,12 @@ and PVIDEO is inert on hardware until `NV_PMC_ENABLE` bit 28 is set.
 | item | status |
 |---|---|
 | A1 `NV_PMC_ENABLE` | **verified both sides** |
-| A2 endian switch | read values match; divergence is write-only, unchanged |
+| A2 endian switch | **verified both sides** (emulator-only build) |
 | A3 PMC read regions | **verified both sides** |
 | A4 PVIDEO composition | not reachable by a read sweep |
-| A5 PVIDEO size cap | not reachable by a read sweep |
+| A5 PVIDEO size cap | **emulator side verified**; hardware half needs PMC_ENABLE bit 28 |
 
-Two of five moved from "inferred from the tree" to "measured on both sides".
-The other three are not failures of the measurement; they are outside what a
-read comparison can observe, which is worth knowing before anyone plans around
-it.
+Three of five are now measured on both sides, and a fourth is measured on the
+emulator side with its hardware half named precisely. Only A4 -- overlay
+composition -- is outside what a register probe can observe at all, because it
+is a render behaviour rather than a register one.
