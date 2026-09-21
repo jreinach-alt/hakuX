@@ -37,7 +37,7 @@ lesson generalises: a coverage number without a validator is a guess.)*
 |---|---|---|
 | `NV_PMC_ENABLE` (0x200) — **read landed, write still nowhere** | silicon reads `0x01110000` with the console idle; `pmc_read` has returned that constant since PR #198. `pmc_write` still drops it via `default:`, deliberately — writing 0 halted the console outright, and what each bit gates is unestablished | #188 |
 | `NV_PMC_BOOT_1` (0x004) — the **MMIO endian switch** | not declared and not modelled. Hardware honours it: writing ones byte-swapped every subsequent access | #189 |
-| PMC reads `0x160`, `0x204`–`0x2FC` | silicon returns `1`, emulator returns `0` | #190 |
+| PMC reads `0x160`, `0x204`–`0x2FC` — **read landed, what the region IS still untested** | silicon returns `1` at 0x160 and at all 63 dwords of 0x204–0x2FC; `pmc_read` has returned that since PR #211, for dword-aligned offsets only. Whether the run is 63 live registers, one aliased register or a fixed unimplemented-read pattern is **undetermined and not modelled** — separating them needs a write one dword from #188's register, which halted the console. `pmc_write` drops the whole region via `default:` | #190 |
 | PVIDEO overlay composition | `d->vga.enable_overlay = true` is **commented out** in `pvideo.c`; `nv2a.c:1302` has `overlay_draw_line` commented out too | #110 |
 | PVIDEO size/pitch limits | `pvideo_write`'s `default:` stores all 32 bits unmasked — no cap of any kind | #110 |
 
