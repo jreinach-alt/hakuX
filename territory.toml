@@ -754,10 +754,3 @@ issues = ["50"]
 files = ["docs/lanes/fulldisc50/NOTES.md"]
 standing = false
 note = "DISPATCHED WAVE 144 (job.board), briefs/fulldisc50.md: #50's own blocked_on names this as THE CHEAPEST HONEST MEASUREMENT still outstanding -- 5 runs on the FULL 1,673-capture disc (~28 min each), read with fulldisc_instability_50.py (already on disk, controls for binary/device/composition, no args, discovers every result on disk). Read blendarm50's brief and retirement note FIRST: the aliasing mechanism is essentially settled (1119/1120 vs 9/1120 unsigned) and the unequal-height/3-swatch variant is EXPLICITLY REFUTED as a next step -- do not build it, that separates two models already dead. This lane does not touch swatchorder50_readings.py or attempt either reversed-placement/reversed-colour reading; it runs the full-disc composition-controlled instability read only. No source files claimed -- request.sh and fulldisc_instability_50.py are free and used, not edited, unless the 5-run read finds the script itself wrong for the new data shape, in which case narrow the touch to that one file and say so in NOTES.md before doing it."
-
-
-[lane.cloud-audit1-203]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-203, audit pass 1 of PR #203 on branch claude/pmc-enable-under-load, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 203` removes this row when the unit ends."
