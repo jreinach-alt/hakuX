@@ -35,11 +35,16 @@ lesson generalises: a coverage number without a validator is a guess.)*
 
 | what | evidence | issue |
 |---|---|---|
-| `NV_PMC_ENABLE` (0x200) | declared with PFIFO/PGRAPH bits; `pmc.c` has **no read and no write case**. Silicon reads `0x01110000`; writing 0 halted the console outright | #188 |
+| `NV_PMC_ENABLE` (0x200) — **read landed, write still nowhere** | silicon reads `0x01110000` with the console idle; `pmc_read` has returned that constant since PR #198. `pmc_write` still drops it via `default:`, deliberately — writing 0 halted the console outright, and what each bit gates is unestablished | #188 |
 | `NV_PMC_BOOT_1` (0x004) — the **MMIO endian switch** | not declared and not modelled. Hardware honours it: writing ones byte-swapped every subsequent access | #189 |
 | PMC reads `0x160`, `0x204`–`0x2FC` | silicon returns `1`, emulator returns `0` | #190 |
 | PVIDEO overlay composition | `d->vga.enable_overlay = true` is **commented out** in `pvideo.c`; `nv2a.c:1302` has `overlay_draw_line` commented out too | #110 |
 | PVIDEO size/pitch limits | `pvideo_write`'s `default:` stores all 32 bits unmasked — no cap of any kind | #110 |
+
+**Read the row, not the heading.** This table is where PMC briefs are written
+from — #188 came out of it, and #189 and #190 are still open above — so a row
+that has partly landed is annotated in place rather than deleted. Check `pmc.c`
+before writing "the emulator answers nothing in this block" into a brief.
 
 ## B. Behaviour that provably differs from hardware
 
