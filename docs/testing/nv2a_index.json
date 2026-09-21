@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "aa3648cba2a214ed1d00f70c8d15c8a7a82b473c",
+  "emulator_commit": "d289a21507bda508d1c44391d82aeb83f65153cf",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2840,
-  "suites": 103,
+  "suites": 104,
   "support_dirs": [
-   "/home/user/pbkitplusplus"
+   "/home/justin/pbkitplusplus"
   ],
   "symbols": 951,
-  "tests_commit": "91a0de45ca31fd03ef2b364347f8a827d226f2b3",
-  "tests_root": "/home/user/nxdk_pgraph_tests",
+  "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
+  "tests_root": "/home/justin/.claude/jobs/11a5ab43/tmp/tests-pristine",
   "unread": 145
  },
  "schema": 1,
@@ -20993,7 +20993,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog carryover": {
@@ -21040,7 +21041,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog exceptional value": {
@@ -21122,7 +21124,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog param": {
@@ -21136,6 +21139,32 @@
     "NV097_SET_FOG_ENABLE",
     "NV097_SET_FOG_GEN_MODE",
     "NV097_SET_FOG_GEN_MODE_V_FOG_X",
+    "NV097_SET_FOG_MODE",
+    "NV097_SET_FOG_MODE_V_EXP",
+    "NV097_SET_FOG_MODE_V_EXP2",
+    "NV097_SET_FOG_MODE_V_EXP2_ABS",
+    "NV097_SET_FOG_MODE_V_EXP_ABS",
+    "NV097_SET_FOG_MODE_V_LINEAR",
+    "NV097_SET_FOG_MODE_V_LINEAR_ABS",
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
+   ]
+  },
+  "Fog planar vsh": {
+   "results_name": "Fog_planar_vsh",
+   "sources": [
+    "src/tests/fog_tests.cpp",
+    "src/tests/fog_tests.h"
+   ],
+   "symbols": [
+    "NV097_SET_FOG_COLOR",
+    "NV097_SET_FOG_ENABLE",
+    "NV097_SET_FOG_GEN_MODE",
+    "NV097_SET_FOG_GEN_MODE_V_ABS_PLANAR",
+    "NV097_SET_FOG_GEN_MODE_V_FOG_X",
+    "NV097_SET_FOG_GEN_MODE_V_PLANAR",
+    "NV097_SET_FOG_GEN_MODE_V_RADIAL",
+    "NV097_SET_FOG_GEN_MODE_V_SPEC_ALPHA",
     "NV097_SET_FOG_MODE",
     "NV097_SET_FOG_MODE_V_EXP",
     "NV097_SET_FOG_MODE_V_EXP2",
@@ -21169,7 +21198,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Front face": {
@@ -22183,6 +22213,7 @@
     "src/tests/texture_format_tests.h"
    ],
    "symbols": [
+    "NV097_SET_DEPTH_TEST_ENABLE",
     "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
@@ -22227,7 +22258,8 @@
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8",
+    "NV097_SET_TEXTURE_OFFSET"
    ]
   },
   "Texture palette": {
