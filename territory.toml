@@ -737,10 +737,3 @@ issues = []
 retired_utc = "2026-09-21T14:04:00Z"
 files = []
 note = "RETIRED (job.board, issue sweep): PR #205 MERGED 2026-09-21T07:07:19Z, unit gone, no open PR left on lane/blendarm50. Falsifier fired: 771c8eb4f1 does not move stack C off the aliasing model, and could not have -- its body is unreachable with draw_reorder/draw_merge off, measured on 1,120 unsigned captures (aliasing 1119, control 1). Arm B (a follow-on device run) was stopped by the owner and recorded as a deliberate absence, not a gap to re-run. docs/lanes/blendarm50/NOTES.md and docs/testing/swatchorder50_readings.py RELEASED TO [free]. #50 stays open and dispatchable -- two readings (reversed placement vs. reversed colour assignment) remain unseparated and the full-1,673-capture-disc instability measurement blocked_on names is still outstanding; this lane answered one narrower question (does the flush already fix it) and did not attempt those."
-
-
-[lane.cloud-remediate-201]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-201, remediation of PR #201 on branch claude/nv2a-hw-probe, attempt 3 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 201` removes this row when the unit ends."
