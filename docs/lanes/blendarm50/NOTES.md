@@ -97,7 +97,12 @@ anywhere in the frame.
 That is the open question this lane hands on, and it is a narrower one than
 #50 started with.
 
-## Arm B: is stack C still wrong on *master*?
+## Arm B: is stack C still wrong on *master*?  (STOPPED BY THE OWNER -- no verdict)
+
+**Read "Arm B's verdict: there is none" below before acting on anything in this
+section.** The arm described here was killed mid-run on 2026-09-20 and the
+prediction is permanently skipped; the design is recorded, the measurement does
+not exist.
 
 Everything above is measured at ref `49afee8889`. Master is **1,193 commits**
 later and has never had `TestDetailed` run against it. That is the one thing
@@ -144,11 +149,77 @@ of this prediction.
 - **Do not read the 1115/1116/1119 spread as movement.** The run-to-run band on
   this disc is 15 captures of 1,568; the control column is pinned at 1/1120
   throughout.
+- **Do not revive `blendarm50-master-stackc.json`, and do not delete its skip
+  marker.** The owner stopped that arm by hand and wrote the marker so the job
+  could not re-queue it. A missing measurement that a person deliberately
+  stopped is not a gap to be filled by the next agent that notices it.
+- **Do not score `1789963700-blendarm50-1474765`.** Two of its three runs are
+  complete and the temptation is real; the `ERROR` file rules out the whole
+  directory and the owner ruled out the question.
 - **`--score` alone will not tell you whether a prediction leg is about stack
   C.** Use `--where` first: of the 1,120 unsigned captures, 1,119 differ inside
   stack C but only 1,116 differ *only* there.
 
-## Session status (2026-09-20)
+## Arm B's verdict: there is none, and that is the owner's decision
+
+**Attempt 1 did not finish because it was waiting**, correctly: CI was
+`IN_PROGRESS` on `e70b6d37c7` and arm B had not landed, so the PR was left in
+draft with a `[lane.blendarm50] waiting:` comment for `jobs/handback.sh`. Both
+signals have now resolved, and only one of them the way that session expected.
+
+- **CI on `e70b6d37c7`: GREEN** (two `build` checks, both `SUCCESS`).
+- **Arm B: stopped by the owner, no verdict, and not to be revived.**
+
+Request `1789963700-blendarm50-1474765` ran on nova and was killed mid-run at
+88 minutes. Its result directory carries an `ERROR` marker in the owner's own
+words: *"KILLED BY THE OWNER 2026-09-20T22:40Z... The owner identified this as
+a side quest no longer being pursued, left behind by another agent, and asked
+for it to be stopped."*
+
+The owner also wrote the arms skip marker by hand,
+`$WORK/arms/skipped/8d1ea561e79a7ef8...`, which says why it had to exist:
+`arms.sh` treats an ERRORed result as "not a run" (`arms.sh:292,310`), so
+without the marker the next tick would have re-queued this exact pair and spent
+another ninety minutes of device on it. It ends:
+
+> Do NOT delete this file to "fix" a missing measurement for #50: the absence
+> is deliberate. If #50 is picked up again, register a fresh prediction rather
+> than reviving this one.
+
+So `docs/testing/predictions/blendarm50-master-stackc.json` stays committed as
+the record of what was asked, and will never be judged. It is registered, its
+refs are live, and it is permanently skipped. That is the honest end state, not
+a `PRE-REGISTERED` and not a verdict.
+
+**Arm B's captures are not scored here, on purpose.** `result.json` reports runs
+1 and 2 at 1673/1673 with `partial: false` and run 3 at zero, so the two
+complete sets *look* scoreable -- and the `ERROR` file forbids the directory
+anyway ("It must never be scored, compared, or used as a baseline"). The owner
+stopped the question, not just the third run; scoring two thirds of a killed arm
+would be answering it regardless. The next lane should not talk itself past that
+marker either: the recipe left below by attempt 1 is superseded.
+
+## What this does and does not change
+
+Nothing above this section depended on arm B, which is why attempt 1 said so
+before it ended. The brief's actual falsifier fired on data already on disk:
+`771c8eb4f1` does not move stack C off the aliasing model (1115-1119/1120,
+control pinned at 1/1120), and could not have, because its body is unreachable
+with `draw_reorder`/`draw_merge` off in every run we make. That result is
+measured, pushed, and reported on #50.
+
+What is left unmeasured is the narrower question arm B was for: **whether any of
+the 1,193 commits between `49afee8889` and master moves stack C.** It is open,
+it is deliberately open, and reviving it needs the owner's assent plus a fresh
+prediction -- not this one.
+
+## Session status (2026-09-21, attempt 2)
+
+The lane is finished. CI is green, the arm is closed by the owner, `Files:`
+matches the diff, the prediction is committed with its refs and the PR body says
+why it carries no verdict. PR #205 is marked ready.
+
+## Session status (2026-09-20, attempt 1 -- superseded by the section above)
 
 Everything the brief asked for except arm B's verdict is done and pushed: the
 falsifier is fired and measured, the prediction is registered and committed
@@ -167,6 +238,11 @@ The PR is left in draft **deliberately**, with a `[lane.blendarm50] waiting:`
 comment naming both, so `jobs/handback.sh` can resume this lane once either
 resolves. It is not finished-in-draft: item 5 of the lane contract is the only
 open item, and it is open because the arm has not landed.
+
+**SUPERSEDED 2026-09-21.** The recipe below was written before arm B was killed
+by the owner. There is no verdict to write up and the `ab_compare` invocation
+must not be run: see "Arm B's verdict: there is none" above. Kept only so the
+superseding is legible.
 
 **If you are the resumed session:** the verdict to write up is arm B only.
 Nothing above it depends on the arm -- the flush result is settled from the
