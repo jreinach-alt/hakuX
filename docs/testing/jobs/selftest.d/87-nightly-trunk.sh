@@ -237,6 +237,54 @@ check "a tree purely ahead of the trunk publishes, labelled unpushed" \
 check "  and is not mislabelled as behind" \
     bash -c '! grep -qF "behind" "$1"' _ "$NT/ahead.md"
 
+# ------------------------------------------------- the unit, and its copies
+#
+# Everything above is about the script refusing. This is about the OTHER half
+# of the defect, which no amount of care inside nightly_build.sh can reach: a
+# unit file that hands it the owner's checkout in the first place.
+#
+# docs/systemd/ held a second hakux-nightly.service and .timer. Both
+# directories install into ~/.config/systemd/user/, so whichever was copied
+# last won; they had already drifted (AccuracySec 1min vs 30s, no Unit= in the
+# older); and the older one still carried WorkingDirectory=/home/justin/hakuX
+# with ExecStart=.../nightly_build.sh. Its README gave the `cp` command. That
+# is a documented procedure for reinstating this bug after it is fixed, which
+# is worse than the bug, because it fires long after anyone is looking.
+#
+# So: no unit anywhere in the repository may ExecStart nightly_build.sh. The
+# launcher is the only entry point, and it is the thing that knows which tree
+# to hand over.
+# Parameterised on the directory, so the identical predicate can be run
+# against a mutant tree below. A check whose only evidence is that it is green
+# on the fixed tree cannot distinguish "no bad unit" from "found no units".
+no_unit_execstarts_the_script() {   # <dir>
+    ! grep -rlE '^ExecStart=.*nightly_build\.sh' "$1" --include='*.service' | grep -q .
+}
+a_unit_execstarts_the_script() { ! no_unit_execstarts_the_script "$1"; }
+
+check "no installable unit ExecStarts nightly_build.sh directly" \
+    no_unit_execstarts_the_script "$REPO/docs"
+# The mutant: the docs/systemd/ unit as it stood at bda6c52d9c, verbatim. If
+# the predicate above is green against this too, it is finding no units rather
+# than finding no bad ones.
+MUT="$NT/mutant-units"; mkdir -p "$MUT"
+cat > "$MUT/hakux-nightly.service" <<'MUTANT'
+[Service]
+Type=oneshot
+WorkingDirectory=/home/justin/hakuX
+ExecStart=/home/justin/hakuX/docs/testing/nightly_build.sh
+MUTANT
+check "  MUTANT: the deleted docs/systemd/ unit would be caught" \
+    a_unit_execstarts_the_script "$MUT"
+check "  and the search really reaches the repository's own .service files" \
+    bash -c 'grep -rlE "^ExecStart=.*run-nightly\.sh" "$1"/docs --include="*.service" | grep -q .' \
+        _ "$REPO"
+check "  and exactly one hakux-nightly.service is shipped" \
+    bash -c '[ "$(find "$1"/docs -name hakux-nightly.service | wc -l)" = 1 ]' _ "$REPO"
+check "  the unit no longer pins a WorkingDirectory (that WAS the defect)" \
+    bash -c '! grep -q "^WorkingDirectory=" "$1/docs/testing/systemd/hakux-nightly.service"' \
+        _ "$REPO"
+
 # ------------------------------------------------------------ falsification
 # nightly_build.sh lines 66-80 and the notes else-branch as they stood at
 # bda6c52d9c, verbatim, over the SAME five-commits-behind tree. The lines

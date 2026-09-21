@@ -52,7 +52,28 @@ filename and the notes and all four are read before `./gradlew` starts.
 
 **`docs/testing/systemd/hakux-nightly.service`**. ExecStart is the launcher;
 `WorkingDirectory` is gone (it *was* the defect); `SuccessExitStatus=75` for a
-lock conflict, matching `hakux-fold.service`.
+lock conflict, matching `hakux-fold.service`. The owner must re-run
+`install-host.sh` (or at least `daemon-reload`) for the unit change to take.
+
+**`docs/systemd/hakux-nightly.{service,timer}`, deleted.** Found while
+grepping for other references, and it is the half of this defect that no care
+inside `nightly_build.sh` can reach. There were *two* copies of the nightly
+unit, both installing into the same `~/.config/systemd/user/`, so whichever
+was copied last won. They had already drifted (`AccuracySec=1min` vs `30s`, no
+`Unit=` in the old one), and the old one still carried
+`WorkingDirectory=/home/justin/hakuX` with
+`ExecStart=.../nightly_build.sh` -- and `docs/systemd/README.md` gave the `cp`
+command for it. That is a documented procedure for reinstating this bug after
+it is fixed, which is worse than the bug: it fires months later, when nobody
+is looking at the nightly. Deleted rather than fixed, because two copies of a
+unit are what produced the drift in the first place; the README keeps its
+prose (linger, `Persistent=true`, WSL) and points at `install-host.sh`.
+
+Worth recording: **`docs/ORCHESTRATION-DESIGN.md:496` already specified this**
+-- "`nightly_build.sh` from a worktree of `origin/master`, not from the
+owner's checkout" -- and §7.3 lists `nightly_build.sh` and `dx_pass.sh` as the
+two that still reference the shared tree. The design was right and was never
+implemented for the nightly; §7.3's other name is the dx pass, below.
 
 ## Why its own worktree and not `run-trunk.sh`
 
@@ -76,8 +97,8 @@ only in the launcher lives in the file nobody updates.
 
 ## The mutant
 
-`docs/testing/jobs/selftest.d/87-nightly-trunk.sh`, 29 checks, all green.
-Full selftest on the final head: 1097 passed, 0 failed.
+`docs/testing/jobs/selftest.d/87-nightly-trunk.sh`, 34 checks, all green.
+Full selftest on the final head: 1102 passed, 0 failed.
 
 A bare origin, a clone at its tip, and a clone **pinned five commits behind
 it**. The behind tree's commits are backdated three days and the trunk's five
@@ -91,6 +112,13 @@ The falsification runs `nightly_build.sh`'s replaced lines 66-80 verbatim over
 the same behind tree and requires both central predicates to FAIL: the old
 code prints ``built from `<stale>` on `master` `` as fact and prints "No
 commits in the last day." while the trunk has five.
+
+The last four checks are about the unit rather than the script: no `.service`
+anywhere under `docs/` may ExecStart `nightly_build.sh`, exactly one
+`hakux-nightly.service` is shipped, and it pins no `WorkingDirectory`. That
+predicate is parameterised on a directory and run against a mutant holding the
+deleted unit verbatim, because a check green only on the fixed tree cannot
+tell "no bad unit" from "found no units".
 
 It also drives the two arms of the deliberate asymmetry in the gate: a tree
 both ahead of and behind the trunk refuses (behind is tested first), while a
@@ -115,7 +143,8 @@ not an enforced gate.
 
 ## The other two units out of the owner's checkout
 
-**`hakux-dx` should move; it has the same defect.** `dx_pass.sh` reads
+**`hakux-dx` should move; it has the same defect, and the design doc already
+says so** (§7.3 names `dx_pass.sh` alongside `nightly_build.sh`). `dx_pass.sh` reads
 `$TREE/docs/testing/papercuts.toml` and `git log --since='24 hours ago'` from
 the owner's checkout. On 09-20 and 09-21 it was reading the same 34-hour-old
 tree, so its harvest saw zero of the day's commit messages and "no new paper

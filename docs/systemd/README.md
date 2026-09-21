@@ -1,13 +1,27 @@
 # The nightly timer
 
-Installed as a **systemd user timer**, not as a cron job in an agent session:
-an in-session scheduler dies with the session and expires after seven days,
-which is not a nightly.
+**The unit files live in `docs/testing/systemd/`, and
+`docs/testing/jobs/install-host.sh` installs them.** This directory used to
+hold a second copy of `hakux-nightly.service` and `.timer`, and they were
+deleted rather than fixed:
 
-    cp docs/systemd/hakux-nightly.* ~/.config/systemd/user/
-    systemctl --user daemon-reload
-    systemctl --user enable --now hakux-nightly.timer
-    loginctl enable-linger "$USER"      # or the timer stops with your last shell
+- Both copies installed to the same `~/.config/systemd/user/`, so whichever
+  was copied last won, and they had already drifted (`AccuracySec=1min` vs
+  `30s`, no `Unit=` at all in this one).
+- The copy here still carried `WorkingDirectory=/home/justin/hakuX` and
+  `ExecStart=.../nightly_build.sh`, which is precisely the defect that made
+  `nightly-2026-09-20` and `nightly-2026-09-21` both ship a 09-19 sha. So the
+  install command in this file was a documented way to reinstate a bug after
+  it had been fixed.
+
+`selftest.d/87-nightly-trunk.sh` now asserts that no installable unit in the
+repository ExecStarts `nightly_build.sh` directly, so a third copy cannot
+quietly appear.
+
+The prose below is the part of this file that was worth keeping.
+
+    bash docs/testing/jobs/install-host.sh     # installs and enables every unit
+    loginctl enable-linger "$USER"             # or the timer stops with your last shell
 
 `systemctl --user list-timers hakux-nightly.timer` shows the next firing.
 

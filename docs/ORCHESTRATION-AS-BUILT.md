@@ -301,7 +301,7 @@ do.**
 
 | unit | when | what |
 |---|---|---|
-| `hakux-nightly.timer` | `00:30` daily | `nightly_build.sh` — build and publish a **prerelease** |
+| `hakux-nightly.timer` | `00:30` daily | `jobs/run-nightly.sh` → `nightly_build.sh` — build and publish a **prerelease**, from its own worktree of `origin/master` |
 | `hakux-dx.timer` | `09:23` daily | `dx_pass.sh` — harvest paper cuts, mark one due |
 | `hakux-comments.timer` | hourly at `:17` | `comment_sweep.sh` — report unabsorbed issue comments |
 
