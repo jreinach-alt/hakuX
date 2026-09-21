@@ -510,3 +510,74 @@ was built from, checked before the build rather than after.
 arm (legs 1-4 and 7) is still not run, because no `[job.arms]` verdict exists
 yet. That is MEDIUM 3's standing item, not a new one, and the prediction names
 who owes it and where the answer goes.
+
+---
+
+## Attempt 2 (2026-09-20): why attempt 1 did not finish, and what this one did
+
+### Why attempt 1 did not finish
+
+Not because a measurement failed and not because anything in the patch was
+wrong. The work was complete and pushed at `bb11b82199`, audited over three
+passes (pass 1, pass 2, pass 2b), and every finding closed. What it did not
+do before it stopped was **bring the trunk in**.
+
+The fold job then refused #194 every tick, for a reason that belongs to no
+commit on this branch: the PR's check rollup was FAILURE, and every failing
+check on `bb11b82199` had *started before `master`'s current head existed*
+(the latest, `check`, started 2026-09-21T03:06:37Z). GitHub does not re-run a
+PR's checks when its base moves, so that verdict described a tree that no
+longer existed and would have been refused forever. Re-running it would not
+have helped either -- the workflows check out this PR's own head, not
+`refs/pull/194/merge`, so the branch's own copy of whatever broke on the trunk
+is the copy that runs.
+
+A second, smaller thing: **this worktree was 9 commits behind its own remote
+branch.** The three audit passes and their two remediation commits were
+pushed from other sessions, so `HEAD` here was still `fd73e841b0` while
+`origin/lane/primpv13` was `bb11b82199`. Reading only the local `git log`
+would have shown a lane that had never been audited. Fast-forwarded first,
+before anything else, and `rev-list --left-right --count` is what showed it.
+
+### What attempt 2 did
+
+`git fetch origin master` + `git merge origin/master` -- **merge, never
+rebase**, because a rebase rewrites every sha and un-ancestors the registered
+prediction's `a_ref`/`b_ref`. 31 commits came in, **no conflicts**, and the
+merge touched nothing this lane owns: `git diff --stat bb11b82199..HEAD` over
+`docs/testing/jobs/`, `docs/testing/nv2a_index.json`,
+`docs/testing/predictions/` and `hw/` is empty. Nothing under `jobs/` moved,
+so `jobs/selftest.sh` was not required.
+
+Checked after the merge rather than assumed:
+
+- `a_ref 4955050b31` and `b_ref 40ca2bcb22` are both still ancestors of
+  `HEAD`. Merging is what keeps that true; this is the check that would have
+  failed had anyone rebased.
+- `sha256(docs/testing/predictions/line-prim-rewrite-fan-provoking.json)` is
+  `63979910e31cc6b62ea8ed64f9435ae104949c829c1837e9f33b18b8bf104c6e`, which is
+  what #194's body already carries. (The `f101bda3a8...` in the "Prediction"
+  section further up this file is the *first* registration's digest, superseded
+  by the footprint-model correction in `15c2fb9ae5`; the PR body is the current
+  one.)
+- `preflight.sh` passes on the merged head, tracker gate included -- `nv2a
+  index ok`, `territory ok`, `coverage ok`, `board files ok`, exit 0.
+- `git diff --stat origin/master...HEAD` is exactly the 12 paths on the PR's
+  `Files:` line.
+
+Merged head: `688fe5b8df`, pushed. **No work was re-opened, re-measured or
+extended** -- the handback was explicit that only the base had moved, and this
+attempt did not touch `prim_rewrite.c`, `geom.c`, the instruments or the
+prediction.
+
+### What is left, and it is not a measurement
+
+The `needs-rebase` -> `fold-ready` label flip, once CI is green on
+`688fe5b8df`. That head is a fresh build of an already-audited tree against a
+trunk it merges cleanly with, so there is nothing to debug in advance of it;
+if it goes red, the finding will be about `master`'s 31 new commits meeting
+this branch, not about the trade.
+
+The device arm is still unrun -- no `[job.arms]` comment exists on #194. That
+remains MEDIUM 3's standing item from audit pass 2, unchanged by this attempt:
+legs 1-4 and 7 are registered and judgeable, and nobody has measured them yet.
