@@ -73,7 +73,7 @@ deletes them; leaving them costs only disk.
   lane, unit, branch, worktree, brief, asked, issues[], attempt, model,
   started_utc   (and ended_utc/rc for the moment between exit and unlink)
 """
-import datetime, json, os, subprocess, sys, tomllib
+import datetime, json, os, subprocess, sys, time, tomllib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
@@ -182,6 +182,110 @@ def age(iso):
         return "%.1fh" % h
     except Exception:
         return "?"
+
+
+# A REQUEST NOBODY EVER CLAIMS LOOKS EXACTLY LIKE A BUSY FLEET.
+#
+# status.sh renders "N arms on a device, M queued" every tick and its own
+# header says why it exists: "a jammed fleet and a running fleet rendered
+# identically". It solved the RENDERING. Nothing escalated the numbers, so on
+# 2026-09-20 four arms sat unclaimed -- the oldest for eighteen hours -- with
+# two healthy handhelds, and the page said so the whole time.
+#
+# The cause was a pin to a lane no worker serves (dispatcher.sh:508). That is
+# one cause; the check is deliberately about the SYMPTOM, because any cause
+# that leaves work unclaimed looks the same from here and all of them are
+# worth waking the board for.
+#
+# TWO EXCLUSIONS, both of which would otherwise fire every twenty minutes for
+# nothing -- and a FAIL the board cannot clear spends a window each time.
+#
+#   z-*  is the full-corpus sweep. dispatcher.sh serves in ASCII order
+#        precisely so those yield to every agent request, so a z- request
+#        waiting hours is the design working, not a stall.
+#   held devices are a deliberate out-of-service, not a fault. If every
+#        serving lane is held there is nobody to claim anything and saying so
+#        would be noise.
+#
+# `running` is NOT part of the condition. The incident had one arm running on
+# the nova while four others were unclaimable, so "0 running" would have
+# missed it the moment anything started.
+QUEUE_STALL_MIN = int(os.environ.get("FLEET_QUEUE_STALL_MIN", "120"))
+
+
+def queue_stall(threshold_min=None):
+    """Agent requests the fleet has demonstrably passed over.
+
+    Returns (stalled, all_held). `stalled` is [(id, age_seconds)], oldest
+    first. Never raises: this file is also run from a scratch copy by
+    selftest.d/93, where $DISPATCH_DIR has no queue at all.
+
+    THE CONDITION IS "PASSED OVER", NOT "OLD". A request sitting behind a long
+    queue on a busy fleet is waiting its turn; a request still sitting while
+    the fleet FINISHED OTHER WORK is being skipped. The second is the failure
+    worth waking anyone for, and the difference is one comparison: did a
+    result land after this was queued.
+    """
+    if threshold_min is None:
+        threshold_min = QUEUE_STALL_MIN
+    qdir = os.path.join(D, "queue")
+    try:
+        names = [n for n in os.listdir(qdir) if n.endswith(".req")]
+    except Exception:
+        return [], False
+    now = time.time()
+    pending = []
+    for n in names:
+        if n.startswith("z-"):          # idle-priority sweep: designed to wait
+            continue
+        path = os.path.join(qdir, n)
+        queued = None
+        try:
+            with open(path) as fh:
+                queued = json.load(fh).get("queued_utc") or None
+        except Exception:
+            pass
+        t = None
+        if queued:
+            try:
+                t = datetime.datetime.strptime(queued, "%Y-%m-%dT%H:%M:%SZ") \
+                    .replace(tzinfo=datetime.timezone.utc).timestamp()
+            except Exception:
+                t = None
+        if t is None:
+            try:
+                t = os.path.getmtime(path)
+            except Exception:
+                continue
+        if now - t > threshold_min * 60:
+            pending.append((n[:-4], t))
+    if not pending:
+        return [], False
+    # Newest completed result. A result directory is named with the epoch of
+    # the CLAIM, not of the queueing, so its mtime is what says "the fleet was
+    # working at this time" -- which is all this needs.
+    newest_result = 0.0
+    try:
+        rdir = os.path.join(D, "results")
+        for e in os.scandir(rdir):
+            if e.is_dir():
+                newest_result = max(newest_result, e.stat().st_mtime)
+    except Exception:
+        newest_result = 0.0
+    stalled = [(i, now - t) for i, t in pending if newest_result > t]
+    stalled.sort(key=lambda r: -r[1])
+    if not stalled:
+        return [], False
+    # Deliberately out of service is not a stall.
+    try:
+        lanes = {l for l in os.listdir(os.path.join(D, "lanes"))
+                 if not l.endswith(".lastbrief")}
+        held = {h for h in os.listdir(os.path.join(D, "hold"))
+                if not h.endswith(".why") and h != "lifted"}
+    except Exception:
+        lanes, held = set(), set()
+    all_held = bool(lanes) and lanes.issubset(held)
+    return stalled, all_held
 
 
 # A PR the machine has already picked up is not the board's to act on. These
@@ -747,6 +851,27 @@ def main():
     # This one UNDER-reports it: the lane is editing files nothing knows it
     # holds, so a second lane can be handed the same file and both preflights
     # will pass.
+    stalled, stall_all_held = queue_stall()
+    if stalled and not stall_all_held:
+        oldest_id, oldest_s = stalled[0]
+        print("FAIL: %d dispatch request(s) have waited over %dh with devices "
+              "serving -- oldest %s at %s. Work nobody claims is invisible: "
+              "status.sh renders it identically to a busy fleet. Check the "
+              "pin with `python3 docs/testing/affinity.py $DISPATCH_DIR "
+              "$DISPATCH_DIR/queue/<id>.req` -- a pin to a lane that is "
+              "registered but served by no worker is claimed by nobody "
+              "(dispatcher.sh:508) -- then `$DISPATCH_DIR/hold/` and whether "
+              "$DISPATCH_DIR/bin is the current snapshot."
+              % (len(stalled), QUEUE_STALL_MIN // 60, oldest_id,
+                 age_s(oldest_s)),
+              file=sys.stderr)
+        rc = 1
+    elif stalled and stall_all_held:
+        # Not a fault and not a wake-up: somebody took the fleet out of
+        # service on purpose and the queue filling up behind that is expected.
+        print("\nqueue: %d request(s) waiting and every serving lane is held "
+              "-- deliberate, not a stall. `rm $DISPATCH_DIR/hold/<lane>` "
+              "returns it to service." % len(stalled))
     if unclaimed:
         print("FAIL: %d lane(s) are RUNNING with no territory row -- %s. "
               "Nothing can see them: check_territory.py cannot detect a "
