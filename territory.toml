@@ -725,13 +725,6 @@ files = []
 note = "RETIRED (job.board): this row conflicted between two names (cloud-audit2-194 and cloud-remediate-194, each written at claim by jobs/cloud.sh at a different point in the same PR's audit cycle) and neither is live -- fleet.py's RUNNING set carries only cloud-audit1-197, and cloud-remediate-194 shows in LANE CLAIMED WITH NO RUNNING AGENT (0 files held). PR #194 (lane/primpv13) is already labelled fold-ready on GitHub, so the audit/remediation cycle this row tracked has concluded; nothing to hold. Held files = [] throughout, nothing to release."
 
 
-[lane.cloud-audit1-197]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-197, audit pass 1 of PR #197 on branch lane/drvab77, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 197` removes this row when the unit ends."
-
-
 [lane.blendarm50]
 issues = ["50"]
 files = ["docs/lanes/blendarm50/NOTES.md", "docs/testing/swatchorder50_readings.py"]
