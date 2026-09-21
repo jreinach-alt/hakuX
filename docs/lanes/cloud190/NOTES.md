@@ -214,6 +214,40 @@ consequence is what a *guest* reads if it asks -- and whether any title asks is
 unmeasured. "Unmeasured" is not "nothing differs": the live behavioural change
 is that 64 offsets now answer 1 instead of 0 to any guest read, at all times.
 
+## The red `check` is the trunk's, and folding this re-arms it on master
+
+PR #211's `check` (workflow **NV2A index**) is FAILURE, on both of the first
+two heads, and it belongs to no lane:
+
+| check | result |
+|---|---|
+| `git rev-parse origin/master:docs/testing/nv2a_index.json HEAD:...` | `953215679f` **both sides** -- the index blob here IS master's |
+| files in `git diff --name-only origin/master...HEAD` that the index reads | none |
+| the failure text | `1 suite(s) changed content ...: Texture render target. Ordinary staleness; regenerate.` |
+| `.github/workflows/nv2a-index.yml:47` | `git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests` -- **no ref** |
+| last green run on that workflow | master `01538395b7`, 15:53Z the same day |
+| the same gate locally | `preflight.sh` -> `nv2a index ok` |
+
+Green here and red in CI is **two trees, not two verdicts**: `preflight.sh`
+resolves `nxdk_pgraph_tests` to this host's clone, which is at `6743b6a`
+(2026-09-20) -- the commit `93bc128ff0` regenerated the index over. CI clones
+upstream's tip at run time, and upstream moved.
+
+**I did not regenerate it, deliberately.** `nv2a_index.json` is not this
+lane's file, and the only tests tree I can reach is the stale one, so
+regenerating would re-commit today's answer while looking like a fix -- and
+an older tests checkout can silently drop a suite while it fixes line numbers,
+which is how a stale index becomes a confidently wrong one.
+
+Two things for whoever owns index freshness, recorded here because this lane
+is the second to pay for it: the workflow also triggers on `push` to `master`
+with `paths: hw/xbox/**`, so **folding any PMC change re-arms the same red on
+the trunk**; and the same failure already cost PR #198 two handbacks earlier
+the same day. The durable fix is pinning the clone -- ideally deriving the pin
+from the index's own `provenance.tests_commit`, so the gate compares the index
+against the tree it was built from rather than against whatever upstream did
+overnight.
+
 ## What the next lane should not repeat
 
 - **Do not attempt a write into `0x204-0x2FC` to find out what the region
