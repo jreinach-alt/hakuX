@@ -35,7 +35,7 @@ lesson generalises: a coverage number without a validator is a guess.)*
 
 | what | evidence | issue |
 |---|---|---|
-| `NV_PMC_ENABLE` (0x200) | declared with PFIFO/PGRAPH bits; `pmc.c` has **no read and no write case**. Silicon reads `0x01110000`; writing 0 halted the console outright | #188 |
+| `NV_PMC_ENABLE` (0x200) | declared with PFIFO/PGRAPH bits; `pmc.c` has **no read and no write case**. Silicon reads `0x01110000` idle and **`0x13111113` with a graphics app running**; writing 0 halted the console outright | #188 |
 | `NV_PMC_BOOT_1` (0x004) — the **MMIO endian switch** | not declared and not modelled. Hardware honours it: writing ones byte-swapped every subsequent access | #189 |
 | PMC reads `0x160`, `0x204`–`0x2FC` | silicon returns `1`, emulator returns `0` | #190 |
 | PVIDEO overlay composition | `d->vga.enable_overlay = true` is **commented out** in `pvideo.c`; `nv2a.c:1302` has `overlay_draw_line` commented out too | #110 |

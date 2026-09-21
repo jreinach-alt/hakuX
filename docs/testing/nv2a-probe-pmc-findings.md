@@ -74,12 +74,40 @@ Writing `0` to it **stopped the console dead**: no ICMP, ARP `FAILED`, power
 cycle required. The register is live, it gates something the machine cannot run
 without, and the emulator neither reports nor honours it.
 
-*Open, and deliberately not asserted:* the header declares `PFIFO` at bit 8 and
-`PGRAPH` at bit 12, while the measured value has bits 16, 20 and 24 set. Those
-header positions are the generic NVIDIA ones and may simply not be NV2A's. That
-is a question for envytools, not something to conclude from one read — and
-given the endian lesson above, a bit-position claim from this sweep has earned
-some scepticism.
+*This was left open and is now closed, by a read.* The header declares `PFIFO`
+at bit 8 and `PGRAPH` at bit 12, while this value has bits 16, 20 and 24 set.
+Either the generic NVIDIA positions are not NV2A's, or the engines were simply
+idle — a probe XBE does not initialise the GPU.
+
+Reading the same register from inside a running graphics application separates
+the two, and needs no write. It reads **`0x13111113`**:
+
+| bit | envytools NV4:G80 | idle | running |
+|---|---|---|---|
+| 0 | *(unnamed)* | 0 | 1 |
+| 1 | *(unnamed)* | 0 | 1 |
+| 4 | PMEDIA | 0 | 1 |
+| 8 | PFIFO | 0 | 1 |
+| 12 | PGRAPH | 0 | 1 |
+| 16 | PTIMER | 1 | 1 |
+| 20 | *(unnamed)* | 1 | 1 |
+| 24 | PCRTC | 1 | 1 |
+| 25 | *(unnamed)* | 0 | 1 |
+| 28 | PVIDEO | 0 | 1 |
+
+Every bit envytools names behaves as named: PTIMER and PCRTC are up when the
+machine is otherwise idle, and PMEDIA, PFIFO, PGRAPH and PVIDEO come up only
+when something draws. The generic layout does describe this chip. Four bits it
+does not name — 0, 1, 20, 25 — are live here.
+
+`NV_PMC_BOOT_0` was read in the same pass and returned `0x02A000A3` every time,
+so this is not the byte-swapped window that produced confident nonsense before.
+
+**This retires the planned write.** The open item was to set bit 28 on silicon
+to find out whether it is PVIDEO. Bit 28 is *already set* whenever a normal
+graphics application runs, so the state that write was meant to create occurs
+on its own, and the register that halted this console once does not need to be
+written at all.
 
 ### `0x000160` reads `0x00000001` where the emulator returns 0
 
@@ -144,7 +172,8 @@ to be said before any of it is quoted:
   freshly out of the dashboard and the engines idle. PGRAPH reading entirely
   zero is consistent with the graphics engine simply not being enabled —
   `NV_PMC_ENABLE` reads `01110000` here — rather than with anything being
-  wrong. A different machine state gives different values.
+  wrong. A different machine state gives different values, and that is not
+  hypothetical: the same register reads `13111113` under a graphics load.
 - **PTIMER is a clock.** Distinct values across a sweep are the counter
   advancing, not distinct registers, and the repeats within it look like
   aliasing again.
