@@ -116,7 +116,7 @@ static void expect_read_sz(const char *what, hwaddr addr, unsigned int size,
 }
 
 /* Every dword-aligned offset in [lo, hi] must read `want`. One check, not
- * one per offset: 63 ok lines would bury the seven that carry information.
+ * one per offset: 63 ok lines would bury the fifteen that carry information.
  * The failure path names the offending offsets, so a partial region -- an
  * off-by-one at either end, or a case that lost its range -- is diagnosable
  * from the output without rerunning anything. */

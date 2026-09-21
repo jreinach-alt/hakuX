@@ -8,8 +8,18 @@ Same discipline and the same runner as docs/lanes/pmc188/mutants.py, imported
 rather than copied: two copies of a scratch-tree runner drift, and this suite
 drives the very same script. Every row names the LINE the run must go red on,
 because an exit code is a coarse discriminator -- a script that exits non-zero
-on everything "catches" everything. Four rows must PASS, which is the half
-that shows the guards are not simply always-on.
+on everything "catches" everything. Three rows (P1-P3) must PASS, which is
+the half that shows the guards are not simply always-on, and two more (K1,
+K2) must pass UNCOMFORTABLY: they are the holes grep cannot close, recorded
+as green rows so the guard's reach is re-runnable rather than a sentence.
+
+    python3 docs/lanes/cloud190/mutants.py --newly-caught
+
+pairs the OLD script with the OLD pmc.c to show the write-side guard was
+missing rather than merely asserting it. A bare `--at <rev>` cannot show that:
+it runs the old script against THIS pmc.c, where the old "unmodelled 0x204
+reads 0" assertion fails and every write mutant goes red for a reason that has
+nothing to do with the write side.
 
 PRE is the falsification run and the one that makes the rest mean anything: it
 builds the selftest against pmc.c as it was at the base commit, BEFORE this
