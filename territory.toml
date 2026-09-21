@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 141
-updated_utc = "2026-09-21T13:03:33Z"
+wave = 142
+updated_utc = "2026-09-21T14:04:00Z"
 
 
 [retired.hilodot10]
@@ -696,11 +696,11 @@ standing = false
 note = "DISPATCHED WAVE 133 (job.board), briefs/primpv13.md: #13's own remaining piece, deferred last tick for a careful brief rather than a rushed one. rewrite_triangle_fan()'s emit_tri_pv rotation reaches geom.c already rotated by one, so TFan/QStrip-TFan land at the predicted 70.36% rather than 100% -- 32,628 decisive px, a genuine trade against flat shading's need for provoking-vertex-at-0, not an oversight. prim_rewrite.c released from [free]."
 
 
-[lane.drvab77]
-issues = ["77"]
+[retired.drvab77]
+issues = []
+retired_utc = "2026-09-21T14:04:00Z"
 files = []
-standing = false
-note = "DISPATCHED WAVE 134 (job.board), briefs/drvab77.md: #77's next step after lane.diagsoak77 (PR #165, merged) established the measured demo-cave scene and validated stipple_classify.py. Runs the driver A/B (T30/T26/stock via ~/hakux-work/drv/swap_driver.sh) that was previously answered void -- the old Turnip arms at c866527e03 failed V0 because those soaks predated both the working classifier and the scene that reaches it. Needs a Thor device soak, not NDK/disc-build, which is why it carries no cloud label. Claims no in-repo file: it edits nothing, only runs existing tools against device soaks and posts a rate table to #77. Pre-registered falsifier is in the brief -- overlapping driver ranges (within the existing 6.6-16.4/100 same-driver spread) is a null result, not a failed lane; do not read a void back into this as another failed attempt."
+note = "RETIRED (job.board, issue sweep): PR #197 MERGED 2026-09-21T06:36:24Z, unit gone, no open PR left on lane/drvab77. Falsifier answered: the driver A/B (six Thor soaks, T30/T26/stock, stipple_classify.py) found the stipple rate does not move with the GPU driver, and it fires on Qualcomm's own driver -- so the mechanism is not driver-side. Claimed no in-repo file, nothing to release. #77 stays open (disposition unknown-semantics) -- the remaining question is what does drive the rate, which this lane did not attempt."
 
 
 [lane.pmc188]
@@ -710,12 +710,11 @@ standing = false
 note = "DISPATCHED WAVE 135 (job.board), briefs/pmc188.md: most severe of the three dispatchable PMC issues (#188/#189/#190, all filed within the same minute by the nv2a_probe sweep) -- NV_PMC_ENABLE gates PFIFO/PGRAPH and writing 0 halted the physical console outright, vs. #189's unconfirmed real-title impact and #190's own 'severity is probably low'. Scope is read-only: model pmc_read returning the measured 0x01110000 constant, leave pmc_write and the unconfirmed bit-field semantics alone. #189 and #190 stay dispatchable and are next in severity/age order. #200 (filed 2026-09-21T00:35, after this dispatch) ALSO NAMES nv2a_regs.h -- unreachable header bits, method handlers rebuilding registers field-by-field -- so it collides with this claim too and stays undispatched alongside #189/#190 until pmc.c/nv2a_regs.h free. RECHECKED WAVE 139 (job.board, 2026-09-21T05:59Z): PR #198 still open at needs-audit-1, so the collision holds; corrected this note's earlier claim that #189/#190 `already carry cloud` -- checked GitHub directly, neither issue carries any label. Not applying `cloud` now either: both are blocked on this exact file pair, and the cloud outlet dispatching onto a held file is the collision, not the fix. Re-evaluate once #198 folds and the files free. RECHECKED WAVE 140 (job.board, 2026-09-21T13:03Z): PR #198 has progressed to fold-ready (audit passed) but is NOT YET FOLDED -- fold.sh has not run against it, so pmc.c/nv2a_regs.h are still this lane's per the QUEUED-BUT-NOT-JUDGED-is-still-claimed rule at the top of this file. fleet.py's own DISPATCHABLE NOW section independently reports 0, agreeing #189/#190/#200 stay undispatched this wave. Still not applying `cloud`, same reasoning as WAVE 139. Re-evaluate once #198 actually folds. RECHECKED WAVE 141 (job.board, 2026-09-21T14:04Z): PR #198 is STILL open (still `fold-ready`, mergedAt null) -- checked `gh pr view 198` directly. Collision still holds, #189/#190/#200 stay undispatched, still no `cloud` label for the same reason. Also cleared this tick: blendarm50's WAVE-138 note (a different row, not this one) asserted #189/#190/#200 'already carry cloud' -- checked GitHub directly, false, none of the three carry any label; that note is stale prose about a claim this row already corrected at WAVE 139 and is left as-is since it is a closed dispatch record, not a live blocker. Re-evaluate once #198 actually folds."
 
 
-[lane.clrvk184]
-issues = ["184"]
-files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
-         "docs/lanes/clrvk184/NOTES.md"]
-standing = false
-note = "DISPATCHED (job.board), briefs/clrvk184.md: #184's Vulkan Clear-suite surface-format captures, filed by lane.remote as a by-product of #60's X1A7 work and explicitly not lane.remote's to fix (pgraph/vk/* is outside its row). Both files were sitting in [free] since wave 108/110. Suspected mechanism named on the issue itself: one texture cache key reused across six NV097_CLEAR_SURFACE calls at GetTextureMemoryForStage(0), the same shape #60's own comment flagged on the other renderer -- not yet instrumented, not yet claimed as the answer. Needs desktop Vulkan captures, not device time."
+[retired.clrvk184]
+issues = []
+retired_utc = "2026-09-21T14:04:00Z"
+files = []
+note = "RETIRED (job.board, issue sweep): PR #204 MERGED 2026-09-21T03:15:56Z (docs/testing: instrument the Clear suite surface-format captures), unit gone, no open PR left on lane/clrvk184. This was the analysis-only half: instrumented Clear::TestSurfaceFmt, confirmed the shape bigger than filed and refuted the GetTextureMemoryForStage(0) cache-key mechanism as stated, replacing it with a narrower one (pad_alpha_needs_rebuild in vk/texture.c, confirmed per-ref on 10 of 13 refs). hw/xbox/nv2a/pgraph/vk/texture.c and vk/surface-compute.c RELEASED TO [free]; docs/lanes/clrvk184/NOTES.md released too. #184 stays open, dispatch_state=blocked in nv2a_issues.toml -- the actual fix site is vk/draw.c and vk/surface.c, still held by [lane.clrsurf91] pending PR #148's fold. Not a grant candidate: PR #148 is open pipeline state (labelled fold-ready + regressed), not a stuck lane."
 
 
 [retired.cloud-194]
@@ -725,11 +724,11 @@ files = []
 note = "RETIRED (job.board): this row conflicted between two names (cloud-audit2-194 and cloud-remediate-194, each written at claim by jobs/cloud.sh at a different point in the same PR's audit cycle) and neither is live -- fleet.py's RUNNING set carries only cloud-audit1-197, and cloud-remediate-194 shows in LANE CLAIMED WITH NO RUNNING AGENT (0 files held). PR #194 (lane/primpv13) is already labelled fold-ready on GitHub, so the audit/remediation cycle this row tracked has concluded; nothing to hold. Held files = [] throughout, nothing to release."
 
 
-[lane.blendarm50]
-issues = ["50"]
-files = ["docs/lanes/blendarm50/NOTES.md", "docs/testing/swatchorder50_readings.py"]
-standing = false
-note = "DISPATCHED WAVE 138 (job.board), briefs/blendarm50.md: #50's next step after lane.swatchorder50 (PR #186, merged) -- the mechanism is settled (render-target aliasing) and both other readings are measured dead, but the landed flush 771c8eb4f1 has never been judged by an arm against these models; the 1,568 captures on disk all predate it. Needs a fresh device TestDetailed run plus a registered prediction, which is why it carries no cloud label -- the cloud session cannot see the dispatcher's results on disk. Largest structural entry on the board (6,500,124 channels), picked this tick over #189/#190/#200 (already `cloud`, no device needed, queued for the hourly outlet) and #10 (already `cloud`, no mechanism in hand for its remaining classes)."
+[retired.blendarm50]
+issues = []
+retired_utc = "2026-09-21T14:04:00Z"
+files = []
+note = "RETIRED (job.board, issue sweep): PR #205 MERGED 2026-09-21T07:07:19Z, unit gone, no open PR left on lane/blendarm50. Falsifier fired: 771c8eb4f1 does not move stack C off the aliasing model, and could not have -- its body is unreachable with draw_reorder/draw_merge off, measured on 1,120 unsigned captures (aliasing 1119, control 1). Arm B (a follow-on device run) was stopped by the owner and recorded as a deliberate absence, not a gap to re-run. docs/lanes/blendarm50/NOTES.md and docs/testing/swatchorder50_readings.py RELEASED TO [free]. #50 stays open and dispatchable -- two readings (reversed placement vs. reversed colour assignment) remain unseparated and the full-1,673-capture-disc instability measurement blocked_on names is still outstanding; this lane answered one narrower question (does the flush already fix it) and did not attempt those."
 
 
 [lane.cloud-remediate-201]
