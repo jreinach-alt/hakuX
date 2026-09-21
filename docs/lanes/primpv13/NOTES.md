@@ -581,3 +581,177 @@ this branch, not about the trade.
 The device arm is still unrun -- no `[job.arms]` comment exists on #194. That
 remains MEDIUM 3's standing item from audit pass 2, unchanged by this attempt:
 legs 1-4 and 7 are registered and judgeable, and nobody has measured them yet.
+
+
+---
+
+## Attempt 3 (2026-09-20): the red belongs to the trunk's tests tree, not to this branch
+
+### Why attempt 2 did not finish
+
+It did its whole job and stopped one signal short. Attempt 2 merged
+`origin/master` in (31 commits, no conflicts), pushed `fea1db47a1`, verified
+the prediction refs were still ancestors and that `preflight.sh` passed -- and
+then had nothing left to do but **wait for CI on the new head**, which is a
+finished session only if it *says so*. It did not post a
+`[lane.primpv13] waiting:` comment and did not stop deliberately; it simply
+ended. So when CI came back red at 05:05Z, no actor was pointed at it.
+
+Both handbacks this branch received were also **already spent by the time they
+were read**, which is worth recording because it cost most of attempt 3's
+opening:
+
+- The 22:02 handback said the red was stale (every failing check predated
+  `master`'s head). True of `bb11b82199`. **Not true of `fea1db47a1`**: its
+  failing `check` started `2026-09-21T05:05:38Z`, and `master`'s head
+  `94814d4731` was committed `2026-09-21T03:58:14Z`. The red on the current
+  head is LIVE. The handback's own instruction -- "read its date first" -- is
+  what showed this, and it pointed the opposite way to its conclusion.
+- The 22:34 handback said `lane/primpv13` no longer merges into `master`.
+  Also spent: GitHub now reports #194 `MERGEABLE`, and
+  `git merge-base --is-ancestor origin/master HEAD` is **true** -- `master` is
+  a strict ancestor, so the merge is a fast-forward and there is no conflict
+  to resolve. `git rev-list --left-right --count origin/master...HEAD` is
+  `0 16`. Nothing was resolved in attempt 3 because nothing was unresolved.
+
+The `needs-rebase` label was therefore describing a condition that no longer
+existed, and following it would have been a third session spent re-merging an
+already-merged branch.
+
+### What the red actually is, and whose it is
+
+`.github/workflows/nv2a-index.yml`, job `check`, failing in 16 seconds:
+
+```
+STALE INDEX - regenerate with: nv2a_index.py build --tests DIR
+  suites differ (committed 103, tests tree 104)
+  the tests tree has 1 suite(s) the index does NOT: Fog planar vsh
+  5 suite(s) changed content: Fog, Fog coord vec4, Fog inf coord,
+      Fog vsh, Texture format
+```
+
+That is the *upstream test program* moving, not this branch. The workflow does
+`git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests` -- **upstream
+HEAD, unpinned** -- and compares the committed index against whatever it finds.
+
+**Measured, not assumed.** Both trees were cloned locally and the check was run
+against a pristine `origin/master` extracted with `git archive`, using
+`master`'s own copy of `nv2a_index.py`:
+
+| tree | `tests_commit` | suites | `nv2a_index.py check` |
+|---|---|---|---|
+| `origin/master` (pristine) | `91a0de45ca` | 103 | **FAIL**, identical text |
+| `lane/primpv13` @ `fea1db47a1` | `91a0de45ca` | 103 | **FAIL**, identical text |
+
+Same provenance, same suite count, same failure, same named suite. This
+branch's only index edits are two emulator-side line numbers
+(`geom.c:224 -> :240`, `prim_rewrite.c:489 -> :614`) and the provenance
+`emulator_commit`. **The red reproduces on a base this lane never touched**,
+so it belongs to no lane.
+
+The trigger is datable. Upstream `nxdk_pgraph_tests` is four commits ahead of
+the pin:
+
+```
+6743b6a Adds more fog tests.                 <- adds "Fog planar vsh"
+d75fc17 Removes pixel shader program code and uses combiners directly.
+057e572 Adds tests for alpha channel behavior in X alpha modes.
+493296f Fixes zeta limit error when running surface as vertex array tests in bulk mode.
+```
+
+`6743b6a` was committed **2026-09-20 17:53:58 PDT** = `2026-09-21T00:53:58Z`.
+#198's `check` passed at `2026-09-20T22:38:05Z`, before it; ours ran at
+`2026-09-21T05:05:38Z`, after it. Every PR touching `hw/xbox/**`,
+`nv2a_index.py`, `nv2a_index.json` or `nv2a_issues.toml` has been red since
+that moment, and #194 is simply the first to run the workflow after it.
+
+### Why this lane cannot fix it, checked rather than claimed
+
+The root cause is a **host** disagreement: `/home/justin/nxdk_pgraph_tests` is
+at `91a0de45ca`, four commits behind the upstream that CI clones floating.
+(`/home/justin/pbkitplusplus` is behind too: host `e91d509e4f`, upstream
+`ba683441d5`.) Both were read without running git in them -- `.git/HEAD` and
+the ref file, via `python3`, since a lane must not run git in a tree that is
+not its worktree.
+
+Three ways out were each tested and each is closed to a lane:
+
+1. **Let `fold.sh` regenerate it.** `fold.sh` is the designated owner -- its
+   header says "THE INDEX IS REGENERATED, NEVER MERGED" and line 750 rebuilds
+   whenever the post-merge check fails. But `ci_green` is at **line 686** and
+   the index step at **line 748**: the CI gate runs first, so a red PR never
+   reaches the regeneration. Unreachable by construction.
+
+2. **Regenerate on this branch.** This would turn CI green and then fail
+   *inside* the fold instead. `fold.sh` would run its check against the host's
+   stale tree, get the **opposite** direction -- "the tests tree is MISSING 1
+   suite(s) the index has: Fog planar vsh" -- and call
+   `nv2a_index.py build` with neither `--allow-older-tests` nor
+   `--allow-suite-removal`. That build **refuses**; verified by running
+   fold.sh's exact invocation:
+
+   ```
+   REFUSING to rebuild the index from an older tests tree.
+     committed index built from: 91a0de45ca31
+     this checkout is at:        6743b6ab164e
+   ```
+
+   `fold.sh` would then take its `index regeneration FAILED` branch and
+   comment "Needs a person." So regenerating converts a red PR into a jammed
+   fold, and buys nothing. The #157 guard is doing its job here; the problem
+   is upstream of it.
+
+3. **Update the host tree.** `git -C /home/justin/nxdk_pgraph_tests fetch --all
+   && git -C /home/justin/nxdk_pgraph_tests merge --ff-only @{u}` -- which is
+   exactly what `describe_suite_drift()` prints as the remedy for the missing
+   direction. A lane must not run git in a tree that is not its worktree, so
+   this is the board's or the owner's, and it is the *only* one of the three
+   that fixes the cause.
+
+Board request written to `$DISPATCH_DIR/board-requests/primpv13.md`.
+
+### A second finding, offered and not acted on
+
+The build's ancestry guard is defeated by the workflow's own clone depth. A
+`--depth 1` checkout cannot see `91a0de45ca` at all, so the guard refuses with
+"that commit is not in this checkout at all -- it may simply be unfetched"
+even when the checkout is strictly **newer**. It only answered correctly here
+after `git fetch --unshallow`. Anyone told to "regenerate from a fresh clone"
+hits this and may reach for `--allow-older-tests`, which is precisely the flag
+that deletes the new suite. CI only runs `check`, so the shallow clone is
+harmless *there* -- but the remedy text the check prints is not safe to follow
+against a shallow tree.
+
+Not this lane's file and not fixed here. It is in the board request.
+
+### The gap that let this sit
+
+`fold.sh`'s own header documents a red that no actor can reach, for the stale
+case, and builds `stale_handback()` for it. This head is the **live** case of
+the same shape: #194 is not draft, is `MERGEABLE`, has no conflict, and its
+red is live -- so `stale_red()` returns 1 (correctly), `handback.sh` only
+resumes **draft** lane PRs, and `board.sh` only picks up PRs carrying no
+pipeline label. A finished, audited, trunk-merged PR whose red belongs to the
+trunk is reachable by nothing. That is the same "nothing in the harness could
+reach them" paragraph, through a new door.
+
+`needs-rebase` was removed, because its condition is verifiably gone.
+`fold-ready` was **not** added, because its condition -- CI green -- is not
+met, and asserting it would be a claim this lane cannot support.
+
+### State of the trade itself: unchanged and untouched
+
+Nothing in `prim_rewrite.c`, `geom.c`, the instruments or the prediction was
+opened in this attempt. The patch remains as audited over three passes with
+every finding closed. `a_ref 4955050b31` and `b_ref 40ca2bcb22` are still
+ancestors of `HEAD`. The device arm is still unrun -- no `[job.arms]` comment
+exists on #194 -- which remains MEDIUM 3's standing item, not a new one.
+
+**What the next session should not repeat:** do not re-merge `master` (it is
+already a strict ancestor), do not debug the `check` job as though it were
+this branch's (a pristine `origin/master` fails it identically), and do not
+regenerate `nv2a_index.json` here (the fold job's build will refuse it against
+the host's older tree). The one thing that moves this forward is updating the
+host's `nxdk_pgraph_tests` and `pbkitplusplus` checkouts; after that, master's
+index regenerates on the next fold, and merging that master in gives this
+branch a fresh head and a fresh, green run.
