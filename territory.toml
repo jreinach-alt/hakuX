@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 142
-updated_utc = "2026-09-21T14:04:00Z"
+wave = 143
+updated_utc = "2026-09-21T16:06:07Z"
 
 
 [retired.hilodot10]
@@ -81,13 +81,21 @@ standing = false
 note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #151 draft, attempt 1/opus-5, started 2026-09-19T13:37:25Z) with no territory row at all. Harness change, no tracker issue: show Pacific to the reader, keep UTC in the data. ITS OWN BRIEF'S Files: LINE NAMES SIX FILES ALREADY HELD BY OTHER RUNNING OR STANDING LANES, and none of them are given here -- a brief that lists a file as 'yours' is not the claim, this row is, and check_territory.py rejects a literal duplicate outright: `docs/testing/jobs/status.sh` is [lane.statusfresh]'s below (that lane's ENTIRE brief is this file); `docs/testing/jobs/board.sh` is [lane.windowbudget]'s below (its reserve-check logic lands there); `docs/testing/nightly_build.sh` is [lane.nightlynotes]'s below (its entire brief is this file); `docs/testing/jobs/fold.sh` is [lane.branchprune]'s (already on this board); `docs/testing/jobs/arms.sh` is [lane.armlabel]'s (already on this board); `docs/testing/jobs/cloud.sh` is [lane.cloudterritory]'s (already on this board); `docs/testing/fleet.py` is [lane.toolsmith]'s (standing lane, owns the instruments). If localtime's display change needs a one-line timestamp-formatting call in any of these, that touch must be small and coordinated with the holder at fold time, not a claim -- the same pattern this file already uses for branchprune/selftestsplit over selftest.sh. FLAG FOR THE NEXT READER: six collisions from one brief is not ordinary overlap; the brief was written without checking territory.toml at all, and whoever reviews this PR should confirm its diff actually stays out of the six files above before it is marked ready."
 
 
-[lane.nightlynotes]
+[retired.nightlynotes]
+issues = []
+files = []
+retired_utc = "2026-09-21T16:06:07Z"
+note = "RETIRED (job.board, board tick wave 143): PR #152 MERGED 2026-09-19T20:51:07Z, unit gone. docs/testing/nightly_build.sh, docs/testing/jobs/selftest.d/86-nightly-notes.sh and docs/lanes/nightlynotes/NOTES.md RELEASED TO [free]. Retired now, not earlier, because nightly_build.sh was needed this tick: [lane.nightlytrunk] below claims it and check_territory.py rejects a literal duplicate."
+
+
+[lane.nightlytrunk]
 issues = []
 files = ["docs/testing/nightly_build.sh",
-         "docs/testing/jobs/selftest.d/86-nightly-notes.sh",
-         "docs/lanes/nightlynotes/NOTES.md"]
+         "docs/testing/jobs/run-nightly.sh",
+         "docs/testing/systemd/hakux-nightly.service",
+         "docs/lanes/nightlytrunk/NOTES.md"]
 standing = false
-note = "WRITTEN AT WAVE 118 (job.board) -- lane was RUNNING (PR #152 draft, attempt 1/opus-5, started 2026-09-19T13:30:06Z) with no territory row at all. Harness defect, no tracker issue: the 2026-09-19 nightly release notes listed 40 commits and named 0 touching hw/target/accel/ui/audio, of 29 that did -- grouping by area instead of truncating by recency. Files exactly as its own brief's Files: line names; no collision with any other row (lane.localtime's brief also names nightly_build.sh but that file is claimed HERE, not there -- see [lane.localtime]'s note)."
+note = "WRITTEN AT WAVE 143 (job.board) -- fleet.py reported the lane RUNNING (PR #209 draft, attempt 1/opus-5, started 2026-09-21T15:49:43Z) with no territory row at all, invisible to check_territory.py. Harness defect, no tracker issue: the nightly build runs out of the owner's checkout with no fetch, so two consecutive releases (nightly-2026-09-20, nightly-2026-09-21) shipped the same 2026-09-19 sha and told the reader 'No commits in the last day' while origin/master was 152 commits ahead. Files exactly as PR #209's own diff (`gh pr view 209 --json files`), which also matches its brief's stated blast radius (nightly_build.sh, a new run-nightly.sh launcher, the systemd unit, and its own lane notes). docs/testing/nightly_build.sh RECLAIMED FROM [retired.nightlynotes] above, freed the same tick this row was written."
 
 
 [lane.statusfresh]
