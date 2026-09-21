@@ -730,3 +730,10 @@ issues = ["50"]
 files = ["docs/lanes/blendarm50/NOTES.md", "docs/testing/swatchorder50_readings.py"]
 standing = false
 note = "DISPATCHED WAVE 138 (job.board), briefs/blendarm50.md: #50's next step after lane.swatchorder50 (PR #186, merged) -- the mechanism is settled (render-target aliasing) and both other readings are measured dead, but the landed flush 771c8eb4f1 has never been judged by an arm against these models; the 1,568 captures on disk all predate it. Needs a fresh device TestDetailed run plus a registered prediction, which is why it carries no cloud label -- the cloud session cannot see the dispatcher's results on disk. Largest structural entry on the board (6,500,124 channels), picked this tick over #189/#190/#200 (already `cloud`, no device needed, queued for the hourly outlet) and #10 (already `cloud`, no mechanism in hand for its remaining classes)."
+
+
+[lane.cloud-audit1-198]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-198, audit pass 1 of PR #198 on branch lane/pmc188, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 198` removes this row when the unit ends."
