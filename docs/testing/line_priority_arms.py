@@ -32,12 +32,24 @@ is every device arm -- we now draw the WIDER hypot-approximation width, and
 `--extent-rule` is the accurate model of our own coverage.
 
 The default is left alone rather than flipped, so that arms already judged
-against it (#13's geom.c arm, 198,880 decisive px) stay reproducible.  But a
+against it (#13's geom.c arm) stay judgeable on the same footprint.  But a
 new arm should pass `--extent-rule`, and the two are not interchangeable: over
-widths 8-63.875 the perpendicular set is 198,880 px and the derived-extent set
-is 225,558 -- the latter being the population #13's own derivation quotes, and
+widths 8-63.875 the perpendicular set is 198,890 px and the derived-extent set
+is 225,570 -- the latter being the population #13's own derivation quotes, and
 the one on which the derived rule scores 100.00% in each of eleven classes
 separately rather than 98-99%.
+
+BOTH OF THOSE TOTALS MOVED ON 2026-09-20, by +10 and +12 respectively, and
+this docstring carried the old pair (198,880 / 225,558) until the same day.
+The cause is line_priority.py's LLoop segment direction, which was hard-coded
+to the FIRST-provoking naming while the suite it models is
+PROVOKING_VERTEX_LAST (lane primpv13, audit pass 1 LOW 2).  The correction is
+inert in coverage and moves the colour lerp by ~1e-13, which is enough for a
+dozen pixels sitting exactly on `decisive()`'s thresholds to cross them.  So
+#13's geom.c arm RE-RUNS AT 198,890, not the 198,880 recorded when it was
+judged, with every percentage in its eleven-class table unchanged and only
+LLoop/Tri's population moving (1,305 -> 1,315).  A ten-pixel gap against that
+arm's record is this instrument change, not a device change.
 
     line_priority_arms.py --a RESULTDIR [--b RESULTDIR] [--goldens DIR] \
         --extent-rule --min-width 8 --max-width 63.875

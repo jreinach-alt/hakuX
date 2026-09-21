@@ -127,10 +127,10 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
  *
  * (1) vtxFogSpecial is `flat` in EVERY shade mode (glsl/common.c), but each
  * emit_line() takes it from that EDGE's own first endpoint rather than from
- * the triangle's index 0 -- geom.c:422 uses `index`, and the widened path
- * pins it to the edge's own i0 (geom.c:535).  Rotating the triple does not
- * change any edge's own endpoints, so every edge carries the value it carried
- * before, in a different order.  Unchanged.
+ * the triangle's index 0 -- geom.c:438 uses `index` (chosen at geom.c:420),
+ * and the widened path pins it to the edge's own i0 (geom.c:551).  Rotating
+ * the triple does not change any edge's own endpoints, so every edge carries
+ * the value it carried before, in a different order.  Unchanged.
  *
  * (2) calc_triz(0, 1, 2) takes the depth slope relative to vertex 0, so a fan
  * triangle's dz is now evaluated on the same basis a list triangle's already
@@ -140,17 +140,17 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
  * (3) cylWrap DOES move, and it is a literal [0] rather than a
  * provoking_index.  When a texture unit is in WRAP address mode
  * (state->cylinder_wrap[i] non-zero, from NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q)
- * geom.c:293-298 emits `vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], ...)`
- * in emit_vertex() and the same `v_vtxT%d[0]` reference in emit_vertex_fs()'s
- * lerp -- in BOTH the GL and the widened Vulkan paths, and independently of
- * the shade mode.  Cylinder wrap adjusts each vertex's texture coordinate by
- * whole turns relative to the input primitive's vertex 0, so moving vertex 0
- * moves the reference.  Direction: it was the rim vertex the rotation put
- * there (v2 under last-provoking, v1 under first), which VARIES per fan
- * triangle; it is now the fan HUB, the same vertex for every triangle of the
- * fan.  A rim vertex more than half a turn from the hub but less than half a
- * turn from its old neighbour-reference (or the reverse) now takes a whole
- * turn it did not take, moving its U or V by 1.0.
+ * geom.c:310 emits `vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], ...)` in
+ * emit_vertex(), and geom.c:313-314 the same `v_vtxT%d[0]` reference in
+ * emit_vertex_fs()'s lerp -- in BOTH the GL and the widened Vulkan paths, and
+ * independently of the shade mode.  Cylinder wrap adjusts each vertex's
+ * texture coordinate by whole turns relative to the input primitive's vertex
+ * 0, so moving vertex 0 moves the reference.  Direction: it was the rim
+ * vertex the rotation put there (v2 under last-provoking, v1 under first),
+ * which VARIES per fan triangle; it is now the fan HUB, the same vertex for
+ * every triangle of the fan.  A rim vertex more than half a turn from the hub
+ * but less than half a turn from its old neighbour-reference (or the reverse)
+ * now takes a whole turn it did not take, moving its U or V by 1.0.
  *
  * This is TOLERATED, not measured, and it is arguably the better reference --
  * one reference per fan rather than a different one per triangle is what a
@@ -424,7 +424,12 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
  * It is correct on 100.00% of 225,558 decisive pixels, in each of eleven
  * candidate classes separately, against 78.51% for the order that was here
  * before -- which the goldens refute rather than merely beat.  See
- * docs/investigations/line-width-residual.md.
+ * docs/investigations/line-width-residual.md.  (225,558 is what the
+ * instrument printed at #13's derivation; it prints 225,570 today, +12 from
+ * line_priority.py's LLoop segment direction being corrected on 2026-09-20 --
+ * a dozen pixels crossing decisive()'s thresholds at ~1e-13, all in
+ * LLoop/Tri, which reads 100.00% before and after.  Every percentage in this
+ * paragraph is unchanged.)
  *
  * The emission COUNT is unchanged in all three functions, so no counter can
  * tell the two orders apart; only the captures can.

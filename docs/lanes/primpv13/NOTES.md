@@ -123,18 +123,21 @@ It is not a rounding difference:
 > threshold on a dozen pixels at ~1e-13; see the remediation section for the
 > measurement.
 
-225,558 is exactly the figure `prim_rewrite.c`'s own file comment carries from
-#13's original derivation, phrasing and all ("100.00% of 225,558 decisive
-pixels, in each of eleven candidate classes separately"). So the *first* #13
-fold used the extent model and the *geom.c* fold used the perpendicular
-default — the two folds were judged on different instruments, and only one of
-them still describes the renderer.
+225,558 is the figure `prim_rewrite.c`'s own file comment carries from #13's
+original derivation, phrasing and all ("100.00% of 225,558 decisive pixels, in
+each of eleven candidate classes separately") — the same instrument, the same
+window and, to within this lane's own +12 (LOW 2, below), the same answer. So
+the *first* #13 fold used the extent model and the *geom.c* fold used the
+perpendicular default — the two folds were judged on different instruments,
+and only one of them still describes the renderer.
 
 The docstring is fixed to say so and to tell a new arm to pass `--extent-rule`.
 **The default is deliberately left alone**, so the already-judged geom.c arm
-(198,880 px) stays reproducible. The prediction was re-registered against the
-extent model with the perpendicular values kept alongside each leg, so it is
-judgeable either way.
+stays judgeable on its own footprint — though it no longer reproduces to the
+pixel: LOW 2 moved the perpendicular total to **198,890** from the 198,880
+that arm was judged against, with every percentage unchanged. The prediction
+was re-registered against the extent model with the perpendicular values kept
+alongside each leg, so it is judgeable either way.
 
 ### 4. The offline model reproduces the device arm exactly, once the window matches
 
@@ -186,13 +189,23 @@ Under `--extent-rule`, the footprint we actually draw (the judged column):
 |---|---:|---:|---:|---|
 | TFan | 11,636 | 73.20% | **100.00%** | leg 1 |
 | QStrip/TFan | 24,009 | 75.84% | **100.00%** | leg 2 |
-| nine others | 189,913 | 100.00% | 100.00% | leg 3 |
-| **ALL** | **225,558** | **96.05%** | **100.00%** | advisory |
+| nine others | 189,925 | 100.00% | 100.00% | leg 3 |
+| **ALL** | **225,570** | **96.05%** | **100.00%** | advisory |
+
+> **Two `n`s in this table moved with the two beside it**, and unlike those
+> two this one is edited in place rather than annotated-and-frozen, because it
+> mirrors the *registered* prediction and has to agree with it digit for
+> digit. It recorded `nine others` 189,913 and `ALL` 225,558 before the audit
+> remediation below (LOW 2); the +12 is entirely `LLoop/Tri`, 1,724 -> 1,736,
+> in a class reading 100.00% before and after. Leg 3's nine per-class `n`s
+> still sum to the `nine others` cell (189,925), and `189,925 + 11,636 +
+> 24,009 = 225,570`. No percentage moved and no leg's verdict moved.
 
 Under the perpendicular default (registered alongside, so the prediction is
 judgeable either way): TFan 9,731 px 70.36% -> 100.00%, QStrip/TFan 22,897 px
-77.17% -> 100.00%, ALL 198,880 px 95.85% -> 99.93%, the 149 px left being
-`LLoop`'s known 99.53%.
+77.17% -> 100.00%, ALL 198,890 px 95.85% -> 99.93% (198,880 before LOW 2; the
++10 is `LLoop/Tri` again, 1,305 -> 1,315), the 149 px left being `LLoop`'s
+known 99.53%.
 
 Pixels that actually change their answer: 3,119 (TFan) + 5,801 (QStrip/TFan)
 = **8,920** under the extent model, 2,884 + 5,228 = 8,112 under the
@@ -292,9 +305,9 @@ actually READ index 0 of a rewritten triangle?" and enumerated
 which is a literal `[0]`, not a `provoking_index`:
 
 ```
-geom.c:293   vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(...));   // emit_vertex
-geom.c:296   vtxT%d = mix(cylWrap(v_vtxT%d[0], v_vtxT%d[i0], ...),          // emit_vertex_fs
-             cylWrap(v_vtxT%d[0], v_vtxT%d[i1], ...), t);
+geom.c:310   vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(...));   // emit_vertex
+geom.c:313   vtxT%d = mix(cylWrap(v_vtxT%d[0], v_vtxT%d[i0], ...),          // emit_vertex_fs
+geom.c:314                cylWrap(v_vtxT%d[0], v_vtxT%d[i1], ...), t);
 ```
 
 Emitted whenever `state->cylinder_wrap[i]` is non-zero (a texture unit in WRAP
@@ -321,7 +334,7 @@ this folds, start here.
 
 The other two index-0 readers were re-checked and do not move: `calc_triz` (a
 plane's gradient is rotation-invariant; feeds `triMZ`, not coverage), and the
-widened path's flat block at `geom.c:517-527`, which pins
+widened path's flat block at `geom.c:534-543`, which pins
 `vtxD0/vtxD1/vtxB0/vtxB1` to a literal `[0]` but is reached only under FLAT
 shading — a second reason the `flat_shading` term is load-bearing.
 
@@ -420,3 +433,80 @@ overlap is confined to corners) but it is not nothing. The comment now reads
 `Shade_model/ProgLM_TriStrip_*` at width 1", so the next lane can price the
 strip rather than read a blocker as settled. The reflection-vs-rotation half of
 the argument stands unchanged.
+
+## Audit pass 2 remediation (2026-09-21)
+
+`docs/audits/2026-09-20-primpv13-pass2.md`: all six pass-1 scenarios closed,
+**1 new MEDIUM and 1 new LOW**, both consequences of the pass-1 remediation
+itself. Both are addressed here. The predicate is still unchanged, no
+percentage moved, and no leg's verdict moved.
+
+### NEW MEDIUM 1 — the `+12 / +10` correction reached four of six places
+
+The LOW-2 fix changed what `line_priority.py` prints (`225,558 -> 225,570`
+under `--extent-rule`, `198,880 -> 198,890` under the default) and the
+propagation stopped short of three shipped statements of those same numbers —
+one of them inside the prediction that was re-registered to fix exactly this.
+The failure the audit named is concrete: the hand-judge appointed by MEDIUM 3
+reads the tool's docstring and this file's leg table, runs the tool, gets
+`189,925` and `225,570`, and a twelve-pixel discrepancy **in the size of the
+group leg 3 declares unchanged** is the shape of the thing leg 3 forbids.
+
+| where | said | now says |
+|---|---|---|
+| `line_priority_arms.py:34-49` | `198,880` / `225,558` | `198,890` / `225,570`, plus why both moved and that #13's geom.c arm re-runs at 198,890 |
+| this file, the predicted-arm table | `189,913` / `225,558` / `198,880` | `189,925` / `225,570` / `198,890`, edited in place with a note, because it mirrors the registered prediction |
+| this file, the docstring section | "geom.c arm (198,880 px) stays reproducible" | stays *judgeable on its own footprint*; it no longer reproduces to the pixel |
+| prediction, calibration 1 | "exactly the figure … same answer" | the same answer **to within 12 px**, named as this lane's own LOW-2 correction |
+| prediction, calibration 2 | reproduces the landed arm's table | …and where two `n`s are +10 against that arm's record, and why |
+| `prim_rewrite.c:424` | "correct on 100.00% of 225,558 decisive pixels" | same, with a parenthetical that the instrument prints 225,570 today |
+
+`geom.c:184` carries the same `225,558` and is **deliberately left alone**: it
+attributes the figure to #13's derivation doc, which is where it came from,
+and calibration 1 now names both files and the difference. Editing it would
+have shifted every `geom.c` line number in this branch's prose by three —
+which is the other half of this pass (NEW LOW 1) reappearing in the fix for
+the first half.
+
+**Done before the arm fires.** No `[job.arms]` comment exists on #194, so
+nothing has been measured against any revision of the prediction; the
+re-registration is a correction, not a post-hoc edit. `must_not_move`,
+`expect`, `expect_counts`, `must_not_regress`, `disc`, `a_ref` and `b_ref` are
+byte-identical to the previous registration — only `registered_utc` and the
+prose moved, checked field by field rather than asserted.
+
+`225,570` and the nine per-class `n`s were **re-derived here**, not taken from
+the audit: `line_priority.py --rules --extent-rule --min-width 8 --max-width
+63.875` on this tip gives TFan 11,636, QStrip/TFan 24,009 and nine others
+summing to 189,925, total 225,570, `ours` 216,650 (96.05%), residue 8,920.
+
+### NEW LOW 1 — five `geom.c` citations were +16 stale by their own hunk
+
+The `SUPERSEDED` block added at `geom.c:196-221` in `f2433a8909` pushed every
+line below it down by 16, and the hand-written citations added in the same
+commit were not moved with it. `be2cc09ec7` regenerated `nv2a_index.json` for
+precisely that shift, so the machine-read index was re-derived and the prose
+beside it was not — which is this repo's oldest shape, one file deriving what
+the one next to it hard-codes.
+
+| citation in | said | now |
+|---|---|---|
+| `prim_rewrite.c:130` | `geom.c:422` | `geom.c:438` (and `:420`, where `fog_special_index` is chosen) |
+| `prim_rewrite.c:131` | `geom.c:535` | `geom.c:551` |
+| `prim_rewrite.c:144`, prediction | `geom.c:293-298` | `geom.c:310` and `geom.c:313-314` |
+| prediction, this file | `geom.c:517-527` | `geom.c:534-543` (the `else` arm itself, not a mechanical +16) |
+| this file, the cylWrap block | `geom.c:293`, `:296` | `geom.c:310`, `:313`, `:314` |
+
+Each was checked against `geom.c` on this tip rather than shifted by 16.
+`geom.c:92` (`provoking_index`) and `geom.c:197-206` (the superseded claim) sit
+above the insert and are unchanged.
+
+`prim_rewrite.c` grew five lines at `:424`, so `nv2a_index.json` is
+regenerated: one site moves, `prim_rewrite.c:609 -> :614`, against an
+unchanged `tests_commit 91a0de45ca` — the same tests tree the committed index
+was built from, checked before the build rather than after.
+
+**Not done, and said rather than left quiet:** the hand-judged half of this
+arm (legs 1-4 and 7) is still not run, because no `[job.arms]` verdict exists
+yet. That is MEDIUM 3's standing item, not a new one, and the prediction names
+who owes it and where the answer goes.

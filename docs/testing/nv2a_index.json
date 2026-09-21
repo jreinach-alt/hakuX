@@ -2434,7 +2434,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:609",
+   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:614",
    "symbols": [],
    "text": "assert(!\"Unexpected primitive mode\");"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "f2433a89098f28918fe5cda2a7b466d172ac78fc",
+  "emulator_commit": "f3e9967185747624e2868c575cf0dd7daa15ecc9",
   "gaps": 498,
   "resolved_tables": 1,
   "sites": 2841,
