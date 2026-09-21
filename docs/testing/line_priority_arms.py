@@ -150,14 +150,48 @@ def label(pix, cand_cols, tol, ratio):
 def changed_region(w):
     """Union of the footprints of every edge whose ORDER prim_rewrite.c picks,
     dilated by one pixel.  Nothing outside this can move when only the order of
-    those edges changes, so a difference outside it is a scoping bug."""
+    those edges changes, so a difference outside it is a scoping bug.
+
+    IT TAKES EVERY FOOTPRINT MODEL AT ONCE, and that is the whole point of the
+    function rather than a refinement of it.  `outside` is not a selection
+    rule like `decisive_xy()`'s -- it is a BOUND on where our renderer's own
+    pixels for those edges can be, and a bound that under-covers what we draw
+    manufactures escapes out of nothing.  This used to hard-code the narrow
+    perpendicular model while `decisive_xy()` was given `--extent-rule`, i.e.
+    the WIDE hypot-approximation footprint we actually draw on Vulkan.  The
+    margin between the two grows with width and the one-pixel dilation stops
+    covering it around w = 40, so on #13's own fan arm -- judged with
+    `--extent-rule` exactly as this file's docstring instructs -- 17 of the
+    window's 28 captures reported a non-zero `outside` against a footnote
+    calling it a must-be-zero (audit pass 1b of PR #194, 2026-09-21).
+
+    Threading the run's rule through, which is what that audit asked for, is
+    not enough: it fixes `--extent-rule` and leaves the DEFAULT reading 1 and
+    2 px outside at w = 40 and 48, because there the model is narrower than
+    our own coverage for a second, legitimate reason -- the arms really do
+    differ out at the wider extent.  So the region unions both models.  The
+    derived extent is the wider of the two at every angle ((max + min/2) / L
+    is 1.0 axis-aligned and 1.06 at 45 degrees, never below 1), so the union
+    IS the extent footprint today; taking it as a union rather than as "the
+    wide one" is what keeps this sound if a third model is ever added.  With
+    it, all 28 captures read 0 under BOTH rules -- each a full sweep of the
+    window, not an inference from the two that had moved -- and no other
+    column of the report moves.
+
+    A WIDER BOUND OWES A POSITIVE CONTROL, since a scoping check that can no
+    longer report a non-zero is worth less than no check.  At the widest width
+    in the window this region is 76,383 px of the 307,200-px frame -- 24.9%,
+    with 230,817 px still excluded -- and a single differing pixel planted at
+    an excluded coordinate is counted.
+    """
     m = np.zeros((lp.H, lp.W), dtype=bool)
     for i, e in enumerate(lp.EDGES):
         if e[0] not in OURS_TO_ORDER:
             continue
         for bias in ((0.0, 0.0), (0.5, 0.0)):
-            c, _, _, _ = lp.field(e, w, bias, 0.0, False)
-            m |= c
+            for rule in (False, True):
+                c, _, _, _ = lp.field(e, w, bias, 0.0, rule)
+                m |= c
     d = m.copy()
     for s in (1, -1):
         d |= np.roll(m, s, axis=0)
@@ -299,7 +333,11 @@ def main():
         print("\n* 'outside' counts pixels differing between the arms OUTSIDE "
               "the union of the\n  footprints whose order changed, dilated by "
               "one pixel.  It must be 0: a\n  reordering of those edges cannot "
-              "reach anything else.")
+              "reach anything else.  The region unions\n  EVERY footprint "
+              "model, not the one --extent-rule selected above, because it is "
+              "a\n  bound on our own coverage rather than a selection rule: a "
+              "region narrower than\n  what we actually draw reports the gap "
+              "between two models as a scoping escape.")
     return 0
 
 
