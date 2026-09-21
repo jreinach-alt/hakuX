@@ -61,6 +61,46 @@ uint64_t pmc_read(void *opaque, hwaddr addr, unsigned int size)
         /* Selects which functional units can cause IRQs */
         r = d->pmc.enabled_interrupts;
         break;
+    case NV_PMC_ENABLE:
+        /* Measured on real NV2A silicon (#188): two independent read-only
+         * sweeps, with a reboot between them, both read 0x01110000 here --
+         * 1,024 of 1,024 PMC dwords reproducible. We returned 0.
+         *
+         * The state it was read in is part of the measurement: the console
+         * freshly out of the dashboard, drive quiescent, engines idle, and no
+         * write issued in either sweep. Both sweeps were that same state, so
+         * 1,024/1,024 bounds REPEATABILITY, not state-independence -- which
+         * is the property a hardcoded constant actually needs.
+         * nv2a-probe-pmc-findings.md says as much of its own numbers.
+         *
+         * A bare constant, deliberately -- but NOT because the header and the
+         * measurement contradict each other, which an earlier version of this
+         * comment claimed and two documents in this tree refute. The header
+         * puts _PFIFO at bit 8 and _PGRAPH at bit 12, and the measured word
+         * has both of those bits CLEAR. In the same sweep PGRAPH read 0/2048
+         * non-zero, so "PGRAPH is not enabled" is what the header PREDICTS
+         * for this word, not a refutation of it. (PFIFO read 382/2048
+         * non-zero, which settles nothing either way: a disabled engine's
+         * registers can still hold reset defaults.) And
+         * nv2a-mapping-programme.md:168 already reads bit 16 as PTIMER,
+         * cross-checked against PTIMER reading 992/1024 non-zero in that same
+         * survey.
+         *
+         * What is unestablished, and what the envytools cross-reference #188
+         * asks for should settle: what bits 20 and 24 gate, and what this
+         * register reads on a machine that is actually rendering. Until then
+         * no field decomposition here -- which does mean we answer "PFIFO and
+         * PGRAPH are down" to any guest that asks, at all times, including
+         * mid-frame. The 0 we used to return said exactly the same thing and
+         * was further from silicon in the one state anyone has measured.
+         *
+         * Nor is the write side modelled, for a blunter reason: writing 0 to
+         * this register halted the physical console outright -- no ICMP, ARP
+         * FAILED, power cycle. Writes stay a silent no-op via pmc_write's
+         * `default` until someone establishes what each bit gates.
+         */
+        r = 0x01110000;
+        break;
     default:
         break;
     }
