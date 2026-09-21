@@ -264,15 +264,17 @@ TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHE
         section "Harness and tooling" "$N_HARN"  ${SUB_HARN[@]+"${SUB_HARN[@]}"}
         section "Docs and the rest"   "$N_OTHER" ${SUB_OTHER[@]+"${SUB_OTHER[@]}"}
         echo "_${TALLY}_"
-    elif [ "$TRUNK_OK" = 1 ]; then
-        # Reachable and at the tip (behind already refused above), so this is
-        # a statement about the trunk and is safe to make flatly.
+    elif [ -z "$STALE_NOTE" ]; then
+        # $STALE_NOTE is empty exactly when origin answered AND this tree is
+        # its tip, so here the window really is the trunk's window and the
+        # flat sentence is true.
         echo "No commits in the last day."
     else
-        # Unreachable. An empty window here is a fact about a tree we could
-        # not confirm, and the bare sentence is exactly the one the two
-        # mislabelled releases printed. Say what it is a fact ABOUT.
-        echo "No commits in the last day **on this checkout** -- origin was unreachable, so the trunk may have moved."
+        # Behind, or origin unreachable. An empty window is then a fact about
+        # a tree we could not confirm is the trunk -- and the bare sentence
+        # above is precisely what nightly-2026-09-20 and -21 printed while 89
+        # commits landed on master. Say what it is a fact ABOUT.
+        echo "No commits in the last day **on this tree** -- see the note above; this is not confirmed to be the trunk."
     fi
     echo
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
