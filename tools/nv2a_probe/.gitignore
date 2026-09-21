@@ -1,5 +1,10 @@
 # build artefacts and run data -- captures, journals and logs stay out of git
 bin/
+# the emulator-only build's own output dir, and the stamp recording which
+# variant the objects on disk were built with (gitignore has no trailing
+# comments, hence these lines)
+bin-hazards/
+.build-variant
 *.obj
 *.exe
 *.lib

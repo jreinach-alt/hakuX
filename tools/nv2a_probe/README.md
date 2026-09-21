@@ -66,6 +66,50 @@ make -C tools/nv2a_probe/probe -j4          # -> probe/bin/default.xbe
 A `lld: warning: .edata=.rdata: already merged into .edataxb` during link is
 normal; the stock nxdk samples emit it too.
 
+#### The emulator-only build
+
+```sh
+make -C tools/nv2a_probe/probe PROBE_ALLOW_HAZARDS=y -j4   # -> probe/bin-hazards/default.xbe
+```
+
+This build compiles out the probe's refusal to write the hazard list --
+`NV_PMC_ENABLE`, the PLL coefficients, the rest. Under the emulator those
+writes are the measurement; on the console one of them is what took a power
+cycle on 2026-09-20. **It must never be the XBE on the console**, and three
+things keep the two apart rather than one:
+
+| | mechanism |
+|---|---|
+| it is not a config key | a file next to the XBE cannot talk the console binary into a hazardous write; only a rebuild can |
+| it never lands in `bin/` | its own `XBE_TITLE` and `bin-hazards/` output dir, so `bin/default.xbe` -- what the FTP deploy below reads -- is always the safe one |
+| the host refuses it | the HELLO carries `-HAZARDS-ALLOWED-EMULATOR-ONLY`, and `probe_driver.py` rejects the session unless the caller passed `allow_hazards=True` (`sweep_writable_bits.py --allow-hazards`) |
+
+Switching variants also deletes the objects: nxdk's Makefile tracks source
+files, not `CFLAGS`, so without that a `main.obj` built with the flag would
+survive into what the operator believes is the safe XBE.
+
+### Config file
+
+The probe reads `D:\nv2a_probe.cfg` next to the XBE if it is there, so one
+binary runs on the console and under the emulator (whose slirp host is
+`10.0.2.2` with a DHCP-leased guest address). `key=value`, one per line; `#`
+and `;` start a comment; whitespace around either side is ignored.
+
+| key | meaning | default |
+|---|---|---|
+| `host` | host to dial | `192.168.50.2` |
+| `port` | TCP port, 1..65535 | `24242` |
+| `dhcp` | `1/0`, `true/false`, `yes/no`, `on/off` | `false` (static) |
+| `ip`, `mask`, `gw` | static addressing, ignored when `dhcp` is on | `192.168.50.1`, `255.255.255.0`, `192.168.50.2` |
+
+Anything it cannot parse -- an unknown key, a value too long for its field, a
+line longer than the parser's buffer, `port=http`, `dhcp=banana` -- is
+**refused and counted**, never silently dropped, and the probe prints the
+effective settings on the console's screen at startup. A cfg that is present
+and wholly unparsed used to look exactly like no cfg at all. The parser lives
+in `probe/probe_cfg.h` rather than in `main.c` so that `run_tests.sh` can
+compile and mutate it; nothing on the host compiles `main.c`.
+
 ## Safety model
 
 **The allow-list is generated, not written.** `gen_window.py` reads the block
@@ -207,9 +251,12 @@ python3 tools/nv2a_probe/host/supervisor.py --once   # observe and act once
 ```
 
 What it deliberately will not do: power-cycle, write to the console's drive, or
-relaunch while a launch is in flight. A console with no ICMP has lost its
-processor and no software on this side can recover it, so the supervisor says
-so and stops instead of thrashing. **Bounce protection**: a probe that returns
+relaunch while a launch is in flight. A console with no ICMP is either wedged
+or powered off -- UnleashX has an `AutoTurnOff` timer and an idle console
+reaches it -- and the two are indistinguishable from this side, so the
+supervisor reports the state and stops instead of thrashing or diagnosing.
+(It used to say the processor was gone. That is one of the two cases, asserted
+as if it were both; `test_supervisor.py` now fails if the claim comes back.) **Bounce protection**: a probe that returns
 to the dashboard almost immediately, three times running, stops the loop —
 relaunching again would look like progress and would not be any.
 

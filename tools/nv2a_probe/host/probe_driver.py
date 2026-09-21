@@ -127,8 +127,14 @@ class PoisonList:
 class Session:
     """One accepted connection from the probe."""
 
+    #: The probe's HELLO carries this when it was built with
+    #: PROBE_ALLOW_HAZARDS -- the emulator-only variant whose hazard refusal is
+    #: compiled out.
+    HAZARD_MARK = "-HAZARDS-ALLOWED-EMULATOR-ONLY"
+
     def __init__(self, conn: socket.socket, peer, journal: Journal,
-                 poison: PoisonList, timeout: float = 15.0):
+                 poison: PoisonList, timeout: float = 15.0,
+                 allow_hazards: bool = False):
         self.conn = conn
         self.peer = peer
         self.journal = journal
@@ -138,6 +144,27 @@ class Session:
         self.hello = self._recv_line()
         if not self.hello.startswith("HELLO"):
             raise ProbeError("expected HELLO, got %r" % self.hello)
+
+        # THE HAZARD-ALLOWED BUILD IS REFUSED UNLESS IT WAS ASKED FOR.
+        #
+        # The variant exists so the emulator can be driven into registers the
+        # console must never be driven into; the hazard refusal is compiled
+        # out of it. It lands in bin-hazards/, under its own XBE title, so it
+        # cannot occupy the path the console deploy reads -- but a file can be
+        # copied, and "which CFLAGS were in that shell" is not a property this
+        # side can see. The HELLO is, so this is where it gets checked. The
+        # announcement existed before this check and nothing read it, which
+        # made it a log line rather than a safety property.
+        self.hazards_allowed = self.HAZARD_MARK in self.hello
+        if self.hazards_allowed and not allow_hazards:
+            raise ProbeError(
+                "the probe that dialled in is the HAZARDS-ALLOWED build: its "
+                "refusal to write NV_PMC_ENABLE, the PLL coefficients and the "
+                "rest of the hazard list is compiled out. That build is for "
+                "the emulator. If this really is the emulator, pass "
+                "allow_hazards=True (probe_driver) or --allow-hazards; if it "
+                "is the console, the wrong XBE is deployed. HELLO was: %s"
+                % self.hello)
 
     # -- wire ------------------------------------------------------------
     def _recv_line(self) -> str:
@@ -228,8 +255,12 @@ class Session:
 class ProbeServer:
     """Accepts the console's dial-out, forever, handing each to a callback."""
 
-    def __init__(self, workdir: str, host: str = "0.0.0.0", port: int = 24242):
+    def __init__(self, workdir: str, host: str = "0.0.0.0", port: int = 24242,
+                 allow_hazards: bool = False):
         self.addr = (host, port)
+        # Off by default and passed down to every session: the caller has to
+        # say, once, that it knows it is talking to the emulator-only build.
+        self.allow_hazards = allow_hazards
         self.journal = Journal(os.path.join(workdir, "journal.jsonl"))
         self.poison = PoisonList(os.path.join(workdir, "poison.json"))
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -240,7 +271,8 @@ class ProbeServer:
     def accept(self, timeout: float | None = None) -> Session:
         self.sock.settimeout(timeout)
         conn, peer = self.sock.accept()
-        return Session(conn, peer, self.journal, self.poison)
+        return Session(conn, peer, self.journal, self.poison,
+                       allow_hazards=self.allow_hazards)
 
     def note_link_death(self, exc: Exception) -> dict | None:
         """Attribute a dead socket to whatever was in flight.

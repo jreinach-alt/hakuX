@@ -15,7 +15,40 @@ That is #200's claim — handlers rebuild registers field-by-field through
 `PG_SET_MASK`, so a bit with no name is unreachable — measured rather than
 inferred.
 
-## The instrument
+## The instrument, and what of this is reproducible
+
+**Provenance.** The runs used a modified `nxdk_pgraph_tests`:
+
+| | |
+|---|---|
+| tests tree base commit | `6743b6ab164e760e8b995e969c762d829af5d52e` ("Adds more fog tests.", 2026-09-20 17:53 -0700) |
+| the modification | [`patches/nxdk_pgraph_tests-6743b6ab-per-test-pgraph-diff.patch`](patches/nxdk_pgraph_tests-6743b6ab-per-test-pgraph-diff.patch), committed here |
+| emulator side | this repository at the commit this document landed on |
+| console side | `xbox-console-provenance.md` |
+
+`nv2a_index.json` carries `provenance.tests_commit` for exactly this reason:
+a result that cannot name the tree it was measured against cannot be compared
+with the next one. This document did not carry it, and the patch existed only
+as uncommitted working-tree changes on one machine.
+
+**What the patch is evidence of, precisely.** It was captured from that
+working tree on 2026-09-21, the day after the runs. The files carry an mtime of
+2026-09-21 06:40, which is later than the last build of that tree
+(2026-09-20 18:24) and later than this document's first commit (18:13). So the
+patch is the instrument *as it stands*, not a proof that the run's XBE was
+built from exactly these bytes. Treat it as the thing to apply and re-measure
+from, not as a warrant for the numbers below.
+
+**The numbers below are not re-derivable from this repository.** The raw
+per-side dumps were not preserved and the host-side script that attributed
+`PGRAPH-DIFF <suite>::<test>` lines to tests was ad hoc and is gone: a search
+of this box on 2026-09-21 found no file containing a `PGRAPH-DIFF` line
+outside the tests tree's own source and binaries. A rerun -- one run per side,
+which the Scope section already costs -- should apply the patch above, record
+the resulting sha, and **commit the two dumps**, at which point the table stops
+being a claim and becomes a check.
+
+### What the patch changes
 
 `nxdk_pgraph_tests` already had `enable_pgraph_region_diff`, but it captured at
 suite `Initialize` and dumped at `Deinitialize`, so a difference could not be
@@ -30,6 +63,12 @@ attributed to a test. Three changes, in the tests tree, not in this repo:
   reached only `Logger::Log()`, which writes to a file on the Xbox
   filesystem — readable over FTP from a real console, but not from an
   emulator whose `E:` is inside a qcow2, and the emulator half is the point.
+
+A fourth change rides along and is not part of this measurement: `DumpDiff()`
+also emits a four-register **PMC watch** (`BOOT_0` as a fixed-chip-ID canary,
+`INTR_0`, `INTR_EN_0`, `ENABLE`). It is read-only -- nothing in the patch
+writes MMIO -- and it exists for #188's question about `NV_PMC_ENABLE`'s bit
+layout, not for this one.
 
 The empirical blacklist in `DumpDiff()` stays commented out. It was derived on
 one machine by intersecting two unrelated draws, and filtering inside the
@@ -76,9 +115,11 @@ through the `T0_S`/`T0_T`/`T0_R`/`T0_Q` masks. `T0_ENABLE`, `T0_MODE` and
 `hw/xbox/nv2a/`** — neither read nor written.
 
 No live rendering defect follows from that today, precisely because nothing
-reads them. It is worth recording anyway: `shaders.c` hashes `CSV1_A` into the
-shader cache key, so two states differing only in `T0_ENABLE` hash together
-here and not on silicon.
+reads them. It is worth recording anyway: `CSV1_A` appears in the register list
+`pgraph_glsl_check_shader_state_dirty()` walks (`shaders.c:99`) — a dirty
+check, not a hash — and nothing reads `T0_ENABLE` into a `ShaderState`, so two
+states differing only in that bit are indistinguishable here and are not on
+silicon.
 
 ## Not a divergence
 
@@ -96,10 +137,18 @@ can be called anything.
 
 ## Scope
 
-Two suites, `Texture format` (40 tests) and `Attrib float` (12). The claim
-"nothing outside the header's vocabulary moves on the emulator" is a claim
-about those 54 diff blocks, not about every method. Widening it costs one run
-per side and no new tooling.
+Two suites, `Texture format` (40 tests) and `Attrib float` (12). **52 tests,
+54 diff blocks:** the patch dumps one block per test *and* one
+`SUITE-RESIDUAL <suite>` block per suite from `Deinitialize`, so 52 + 2 = 54.
+The two are different things -- a residual is the net change across a whole
+suite, measured against `Initialize` -- and the observation counts below
+(`53 / 53`, `40 / 40`, 191 comparable, 764 mirror) are over blocks, without
+this document recording which of the 54 each denominator drew from. That
+cannot be recovered without the raw dumps; see the provenance note above.
+
+The claim "nothing outside the header's vocabulary moves on the emulator" is a
+claim about those 54 diff blocks, not about every method. Widening it costs one
+run per side and no new tooling.
 
 ## Bycatch
 

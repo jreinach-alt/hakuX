@@ -46,6 +46,7 @@
 #include <lwip/inet.h>
 
 #include "nv2a_window.h"
+#include "probe_cfg.h"
 
 /* Cross-checked two ways: nxdk lib/pbkit/outer.h defines VIDEO_BASE as
  * 0xFD000000, and pbkit.c comments place NV_PGRAPH_PARAMETER_A at 0xFD401A88,
@@ -54,19 +55,19 @@
 #define NV2A_BASE 0xFD000000u
 
 #define PROBE_PROTO 1
-#define DEFAULT_HOST "192.168.50.2"
-#define DEFAULT_PORT 24242
 #define WATCHDOG_MS  20000u      /* no command for this long => soft reset */
 #define NO_HOST_MS   120000u     /* nobody listening this long => back to dash */
 #define ACK_TIMEOUT_MS 10000
 
-static char     g_host[64] = DEFAULT_HOST;
-static int      g_port     = DEFAULT_PORT;
-static char     g_static_ip[32]  = "192.168.50.1";
-static char     g_static_mask[32]= "255.255.255.0";
-static char     g_static_gw[32]  = "192.168.50.2";
+#ifdef PROBE_ALLOW_HAZARDS
+#define HELLO_VARIANT "-HAZARDS-ALLOWED-EMULATOR-ONLY"
+#else
+#define HELLO_VARIANT ""
+#endif
 
-static bool     g_use_dhcp = false;
+/* Defaults live in probe_cfg_defaults(); the file may override them. */
+static probe_cfg_t g_cfg;
+
 static int      g_sock = -1;
 static uint32_t g_seq;
 static uint32_t g_boot_tick;
@@ -75,7 +76,9 @@ static volatile bool     g_watchdog_armed;
 static uint32_t g_reads, g_writes, g_refused;
 static char     g_last_cmd[96] = "(none)";
 
-/* Read d:\nv2a_probe.cfg if present: "key=value" per line.
+/* Read D:\nv2a_probe.cfg if present. The parsing itself is in probe_cfg.h,
+ * where the host suite can compile and mutate it; this is only the file open
+ * and the report.
  *
  * The probe was born with the host address compiled in, which was fine for one
  * console on one direct link and useless the moment it had to run anywhere
@@ -83,27 +86,29 @@ static char     g_last_cmd[96] = "(none)";
  * handed an address by DHCP, so neither the host IP nor the static config
  * compiled in here is right. Reading a file next to the XBE costs nothing and
  * means the same binary runs on hardware and under emulation.
+ *
+ * The report is not decoration. The effective settings are the only thing that
+ * distinguishes "there is no cfg" from "there is a cfg and none of it parsed",
+ * and those two used to look identical on screen.
  */
 static void load_config(void)
 {
-    FILE *f = fopen("D:\\nv2a_probe.cfg", "r");
-    char line[128];
-    if (!f) return;
-    while (fgets(line, sizeof(line), f)) {
-        char *eq = strchr(line, '=');
-        char *nl;
-        if (!eq || line[0] == '#') continue;
-        *eq = 0;
-        for (nl = eq + 1; *nl; ++nl)
-            if (*nl == '\r' || *nl == '\n') { *nl = 0; break; }
-        if (!strcmp(line, "host"))        strncpy(g_host, eq + 1, sizeof(g_host) - 1);
-        else if (!strcmp(line, "port"))   g_port = atoi(eq + 1);
-        else if (!strcmp(line, "dhcp"))   g_use_dhcp = (eq[1] == '1');
-        else if (!strcmp(line, "ip"))     strncpy(g_static_ip, eq + 1, sizeof(g_static_ip) - 1);
-        else if (!strcmp(line, "mask"))   strncpy(g_static_mask, eq + 1, sizeof(g_static_mask) - 1);
-        else if (!strcmp(line, "gw"))     strncpy(g_static_gw, eq + 1, sizeof(g_static_gw) - 1);
+    FILE *f;
+
+    probe_cfg_defaults(&g_cfg);
+    f = fopen(PROBE_CFG_PATH, "r");
+    if (f) {
+        probe_cfg_read(&g_cfg, f);
+        fclose(f);
     }
-    fclose(f);
+    debugPrint("cfg %s: %s, %d applied, %d rejected\n", PROBE_CFG_PATH,
+               g_cfg.present ? "read" : "absent (compiled-in defaults)",
+               g_cfg.applied, g_cfg.rejected);
+    if (g_cfg.rejected)
+        debugPrint("cfg: last rejected record: %s\n", g_cfg.last_reject);
+    debugPrint("cfg effective: mode=%s ip=%s mask=%s gw=%s host=%s:%d\n",
+               g_cfg.dhcp ? "dhcp" : "static",
+               g_cfg.ip, g_cfg.mask, g_cfg.gw, g_cfg.host, g_cfg.port);
 }
 
 /* ---------------------------------------------------------------- plumbing */
@@ -193,10 +198,9 @@ static bool journal_acquire_grant(uint32_t off, uint32_t val, write_grant_t *out
 static bool mmio_commit_write(const write_grant_t *g)
 {
     if (!g || g->magic != GRANT_MAGIC) return false;
-    if (!nv2a_offset_writable(g->offset)) return false;   /* checked again here */
-#ifndef PROBE_ALLOW_HAZARDS
-    if (nv2a_hazard_name(g->offset)) return false;
-#endif
+    /* Checked again here, at the only store in the program, and through the
+     * same predicate cmd_write used. Defence in depth costs one call. */
+    if (!nv2a_offset_write_allowed(g->offset)) return false;
     *(volatile uint32_t *)((uintptr_t)NV2A_BASE + g->offset) = g->value;
     return true;
 }
@@ -250,15 +254,6 @@ static void cmd_write(uint32_t off, uint32_t val)
                  off, block_of(off));
         send_line(out); return;
     }
-#ifdef PROBE_ALLOW_HAZARDS
-    /* EMULATOR-ONLY BUILD. See the Makefile comment.
-     *
-     * Deliberately a BUILD flag and not a config key. A config key would mean
-     * the console binary could be talked into a hazardous write by editing a
-     * file next to it, which is exactly the structural guarantee the hazard
-     * list exists to provide. A separate build cannot: the refusal is either
-     * compiled in or the binary is not the one on the console. */
-#else
     /* Hazard list, refused HERE and not only in the driver.
      *
      * The window allow-list answers "could this write land somewhere fatal to
@@ -266,10 +261,16 @@ static void cmd_write(uint32_t off, uint32_t val)
      * stops the console or drives a clock out of spec", and on 2026-09-20 a
      * blind 0 into NV_PMC_ENABLE -- comfortably inside the allow-list --
      * killed the console outright. The host is the thing most likely to carry
-     * a bug, so the refusal belongs on this side of the wire too. */
+     * a bug, so the refusal belongs on this side of the wire too.
+     *
+     * nv2a_offset_write_allowed() is where the refusal lives, and it is the
+     * one place PROBE_ALLOW_HAZARDS (the emulator-only build, see the
+     * Makefile) takes it out. No #ifdef here: two copies of a safety decision
+     * are two things that can drift, and this file is compiled by nothing on
+     * the host so neither copy would be checked. */
     {
         const char *hz = nv2a_hazard_name(off);
-        if (hz) {
+        if (hz && !nv2a_offset_write_allowed(off)) {
             g_refused++;
             snprintf(out, sizeof(out),
                      "ERR EHAZARD %08X is %s, refused by the probe: phase one "
@@ -278,7 +279,6 @@ static void cmd_write(uint32_t off, uint32_t val)
             send_line(out); return;
         }
     }
-#endif
     if (!journal_acquire_grant(off, val, &grant)) {
         g_refused++;
         send_line("ERR EJOURNAL write not journalled; refusing to execute it");
@@ -334,12 +334,7 @@ static void serve(void)
     snprintf(hello, sizeof(hello),
              "HELLO %d nv2a-probe%s base=%08X size=%08X blocks=%d watchdog_ms=%u "
              "built=" __DATE__ " " __TIME__,
-             PROBE_PROTO,
-#ifdef PROBE_ALLOW_HAZARDS
-             "-HAZARDS-ALLOWED-EMULATOR-ONLY",
-#else
-             "",
-#endif
+             PROBE_PROTO, HELLO_VARIANT,
              NV2A_BASE, NV2A_MMIO_SIZE, NV2A_NUM_BLOCKS, WATCHDOG_MS);
     if (!send_line(hello)) return;
 
@@ -406,15 +401,20 @@ int main(void)
 
     load_config();
     memset(&np, 0, sizeof(np));
-    np.ipv4_mode    = g_use_dhcp ? NX_NET_DHCP : NX_NET_STATIC;
-    np.ipv4_ip      = inet_addr(g_static_ip);
-    np.ipv4_netmask = inet_addr(g_static_mask);
-    np.ipv4_gateway = inet_addr(g_static_gw);
+    np.ipv4_mode    = g_cfg.dhcp ? NX_NET_DHCP : NX_NET_STATIC;
+    np.ipv4_ip      = inet_addr(g_cfg.ip);
+    np.ipv4_netmask = inet_addr(g_cfg.mask);
+    np.ipv4_gateway = inet_addr(g_cfg.gw);
     if (nxNetInit(&np) != 0) {
         note("network init FAILED");
         while (1) Sleep(1000);
     }
-    debugPrint("net up: %s -> host %s:%d\n", g_static_ip, g_host, g_port);
+    /* In DHCP mode the static address was never used, so printing it puts an
+     * address on screen that the console does not have. */
+    if (g_cfg.dhcp)
+        debugPrint("net up: dhcp (leased) -> host %s:%d\n", g_cfg.host, g_cfg.port);
+    else
+        debugPrint("net up: %s -> host %s:%d\n", g_cfg.ip, g_cfg.host, g_cfg.port);
 
     CreateThread(NULL, 0, watchdog_thread, NULL, 0, NULL);
 
@@ -445,8 +445,8 @@ int main(void)
 
         memset(&addr, 0, sizeof(addr));
         addr.sin_family = AF_INET;
-        addr.sin_port   = htons((uint16_t)g_port);
-        addr.sin_addr.s_addr = inet_addr(g_host);
+        addr.sin_port   = htons((uint16_t)g_cfg.port);
+        addr.sin_addr.s_addr = inet_addr(g_cfg.host);
 
         if (connect(g_sock, (struct sockaddr *)&addr, sizeof(addr)) == 0) {
             int one = 1;
