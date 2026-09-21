@@ -194,6 +194,9 @@ static bool mmio_commit_write(const write_grant_t *g)
 {
     if (!g || g->magic != GRANT_MAGIC) return false;
     if (!nv2a_offset_writable(g->offset)) return false;   /* checked again here */
+#ifndef PROBE_ALLOW_HAZARDS
+    if (nv2a_hazard_name(g->offset)) return false;
+#endif
     *(volatile uint32_t *)((uintptr_t)NV2A_BASE + g->offset) = g->value;
     return true;
 }
@@ -247,6 +250,15 @@ static void cmd_write(uint32_t off, uint32_t val)
                  off, block_of(off));
         send_line(out); return;
     }
+#ifdef PROBE_ALLOW_HAZARDS
+    /* EMULATOR-ONLY BUILD. See the Makefile comment.
+     *
+     * Deliberately a BUILD flag and not a config key. A config key would mean
+     * the console binary could be talked into a hazardous write by editing a
+     * file next to it, which is exactly the structural guarantee the hazard
+     * list exists to provide. A separate build cannot: the refusal is either
+     * compiled in or the binary is not the one on the console. */
+#else
     /* Hazard list, refused HERE and not only in the driver.
      *
      * The window allow-list answers "could this write land somewhere fatal to
@@ -266,6 +278,7 @@ static void cmd_write(uint32_t off, uint32_t val)
             send_line(out); return;
         }
     }
+#endif
     if (!journal_acquire_grant(off, val, &grant)) {
         g_refused++;
         send_line("ERR EJOURNAL write not journalled; refusing to execute it");
@@ -319,9 +332,15 @@ static void serve(void)
     char hello[224];
 
     snprintf(hello, sizeof(hello),
-             "HELLO %d nv2a-probe base=%08X size=%08X blocks=%d watchdog_ms=%u "
+             "HELLO %d nv2a-probe%s base=%08X size=%08X blocks=%d watchdog_ms=%u "
              "built=" __DATE__ " " __TIME__,
-             PROBE_PROTO, NV2A_BASE, NV2A_MMIO_SIZE, NV2A_NUM_BLOCKS, WATCHDOG_MS);
+             PROBE_PROTO,
+#ifdef PROBE_ALLOW_HAZARDS
+             "-HAZARDS-ALLOWED-EMULATOR-ONLY",
+#else
+             "",
+#endif
+             NV2A_BASE, NV2A_MMIO_SIZE, NV2A_NUM_BLOCKS, WATCHDOG_MS);
     if (!send_line(hello)) return;
 
     /* The watchdog arms on the FIRST command, not on connect.
