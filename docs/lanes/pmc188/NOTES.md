@@ -5,6 +5,9 @@ decided -- see "Remediation after audit pass 1" below). One hunk in `pmc_read`,
 plus a committed selftest and its committed mutant suite. PR #198.
 Attempt 2 (2026-09-21) changed no emulator code at all: it merged the trunk in
 to refresh a stale CI verdict -- see "Attempt 2: why attempt 1 did not finish".
+Attempt 3 (2026-09-21) changed none either, and merged nothing: its handback's
+premise -- "no longer merges into `master`" -- was false, and the real blocker
+was a `needs-rebase` label attempt 2 never cleared. See "Attempt 3".
 
 ## The brief
 
@@ -259,6 +262,56 @@ What attempt 2 did, and nothing else:
 
 No emulator code changed. `pmc.c`'s diff against `origin/master` is still the
 single `pmc_read` hunk.
+
+## Attempt 3: why attempt 2 did not finish, and why the handback's premise was false
+
+Attempt 2 did the merge it was asked to do and pushed it. What it did not do is
+the **two label commands at the bottom of its own handback**, and on this
+harness those are not bookkeeping -- they are the only thing that makes a fold
+possible. `fold.sh` gates on the `fold-ready` label, and `needs-rebase` was
+still on the PR. So attempt 2 ended having fixed the actual problem and left
+the signal saying it hadn't.
+
+That stale label is also where attempt 3's brief came from. The handback of
+2026-09-21 08:22 says "PR #198 no longer merges into `master`" and makes
+resolving that conflict "the whole task". **There was no conflict.** Checked
+before touching anything, because a handback is a claim like any other:
+
+| check | result |
+|---|---|
+| `git merge-base --is-ancestor origin/master HEAD` | **yes** -- `bda6c52d9c` is an ancestor of `d6edc21944` |
+| `git rev-list --left-right --count origin/master...HEAD` | `0 9` -- nothing to merge in at all |
+| `gh pr view 198 --json mergeable,mergeStateStatus` | `MERGEABLE` / `CLEAN` |
+| check rollup on `d6edc21944` | build SUCCESS, build SUCCESS, check SUCCESS (all 2026-09-21T14:52Z) |
+
+Master being an *ancestor* of the head means folding this branch is a
+fast-forward; a fast-forward cannot conflict. The `[job.handback]` comment at
+15:22 is generic -- "Resumed `lane.pmc188` on `needs-rebase`" -- and that is
+exactly what happened: it resumed on the **label**, not on a fresh merge
+attempt, and the label was attempt 2's own residue. There is no `[job.fold]`
+comment after 14:20 asserting a conflict, which is the tell.
+
+So attempt 3 changed no code and merged nothing. It verified the four rows
+above, re-ran the gates, wrote this, and did the two label commands.
+
+Re-ran rather than inherited, because "it was green two heads ago" is the
+class of claim this lane has now been handed back twice over:
+
+```
+docs/testing/preflight.sh          -> preflight passed (nv2a index ok,
+                                      territory ok, coverage ok, board files ok)
+docs/testing/pmc_enable_selftest.sh -> 8 checks, 0 failures
+pmc.c diff vs origin/master         -> one hunk, @@ uint64_t pmc_read
+sha256 of pmc_write, master vs here -> 20150c04ab69... both sides
+PR body Files:                      -> matches git diff --stat, all 10 paths
+```
+
+**What the next lane should take from this:** if a handback hands you a
+premise, spend the two commands it takes to confirm the premise still holds.
+Merging "just in case" would have produced an empty merge commit, a new head,
+another ten-minute CI cycle and another tick of delay, all to fix a conflict
+that did not exist -- and the real defect (a label nobody flipped) would have
+survived it untouched.
 
 ## What the next lane should not repeat
 
