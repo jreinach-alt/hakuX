@@ -934,3 +934,66 @@ remediation touched was already on it.
 merging**: its `nv2a_index.json` carries the same `tests_commit 91a0de45ca`
 and the same 103 suites, so the trunk's `check` red is exactly where attempt 3
 left it and a merge would buy a new head with the same failing gate.
+
+## Attempt 4 (2026-09-21): the trunk fixed the cause; merge it and resolve the index
+
+### Why attempt 3 did not finish
+
+Attempt 3 ended on a correct diagnosis with no actor: the `check` red on
+`bf247ede15` belonged to the trunk (a pristine `origin/master` failed it
+identically), the fix was to update the host's `nxdk_pgraph_tests` checkout,
+and a lane may not run git in a tree that is not its worktree. So it wrote a
+board request and stopped. That was the right stop; nothing on this branch
+could have turned the check green.
+
+Between then and now the trunk moved:
+
+| what | before | now |
+|---|---|---|
+| host `/home/justin/nxdk_pgraph_tests` | `91a0de45ca` | `6743b6ab16` |
+| `origin/master` index `tests_commit` | `91a0de45ca` (103 suites) | `6743b6ab16` (104 suites), via PR #208 lane/indexfresh |
+| `origin/master` | `94814d4731` | `bda6c52d9c` (20 commits) |
+
+Also, my local worktree was 5 commits behind `origin/lane/primpv13`: the
+auditor's pass 2c and its remediation had been pushed to the branch. Fast-
+forwarded before merging, so the merge commit is on top of `bf247ede15`, the
+head the handback names.
+
+### The merge conflict, and how it was resolved
+
+`git merge origin/master` conflicted on exactly one file:
+`docs/testing/nv2a_index.json`. Both sides had rebuilt it: master over the
+newer tests tree (a new suite, "Fog planar vsh"), this branch over the
+emulator changes (two `geom.c` sites and one `prim_rewrite.c` site moved, one
+`prim_rewrite.c` COMMENT site added). A textual merge of a derived file is
+wrong by construction, and `fold.sh`'s header says so ("REGENERATED, NEVER
+MERGED"). Resolution:
+
+1. `git checkout --theirs` -- master's copy as the base, so the resolution
+   starts from the newer suite list.
+2. `nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support
+   /home/justin/pbkitplusplus` -- the host tree now sits at the same commit
+   master's index names, so the build's ancestry guard has nothing to refuse.
+3. `nv2a_index.py check` against the same trees: `index matches the tree
+   (951 symbols, 2841 sites, 104 suites)`.
+4. `git diff origin/master -- docs/testing/nv2a_index.json` shows ONLY this
+   branch's emulator-side deltas plus provenance (`emulator_commit`,
+   `tests_root`): geom.c 224->240, 261->277, prim_rewrite.c 489->614, and
+   the added prim_rewrite.c:142 site. No suite added or dropped relative to
+   master. That is the diff a correct merge of a derived file must have.
+
+Merge commit `525310f8cd`. `preflight.sh --allow-tracker` on it: `nv2a index
+ok`, `territory ok`, `coverage ok`, `board files ok`, passed.
+
+### What was not touched
+
+`prim_rewrite.c`, `geom.c`, `line_priority.py`, `line_priority_arms.py` and
+the registered prediction were not opened. The patch is as audited over
+passes 1, 1b, 2, 2b and 2c. `a_ref 4955050b31` / `b_ref 40ca2bcb22` remain
+ancestors of `HEAD` (checked after the push). The device arm is still
+MEDIUM 3's standing item and still unrun.
+
+**What the next session should not repeat:** if `nv2a_index.json` conflicts
+again, do not hand-merge it and do not take either side verbatim; take
+master's, rebuild over the host tree, and confirm the diff against master is
+only this branch's emulator-side sites.
