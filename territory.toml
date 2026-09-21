@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 138
-updated_utc = "2026-09-21T03:50:00Z"
+wave = 139
+updated_utc = "2026-09-21T05:59:22Z"
 
 
 [retired.hilodot10]
@@ -707,7 +707,7 @@ note = "DISPATCHED WAVE 134 (job.board), briefs/drvab77.md: #77's next step afte
 issues = ["188"]
 files = ["hw/xbox/nv2a/pmc.c", "hw/xbox/nv2a/nv2a_regs.h"]
 standing = false
-note = "DISPATCHED WAVE 135 (job.board), briefs/pmc188.md: most severe of the three dispatchable PMC issues (#188/#189/#190, all filed within the same minute by the nv2a_probe sweep) -- NV_PMC_ENABLE gates PFIFO/PGRAPH and writing 0 halted the physical console outright, vs. #189's unconfirmed real-title impact and #190's own 'severity is probably low'. Scope is read-only: model pmc_read returning the measured 0x01110000 constant, leave pmc_write and the unconfirmed bit-field semantics alone. #189 and #190 stay dispatchable, already carry `cloud`, and are next in severity/age order. #200 (filed 2026-09-21T00:35, after this dispatch) ALSO NAMES nv2a_regs.h -- unreachable header bits, method handlers rebuilding registers field-by-field -- so it collides with this claim too and stays undispatched alongside #189/#190 until pmc.c/nv2a_regs.h free (PR #198 open, needs-audit-1)."
+note = "DISPATCHED WAVE 135 (job.board), briefs/pmc188.md: most severe of the three dispatchable PMC issues (#188/#189/#190, all filed within the same minute by the nv2a_probe sweep) -- NV_PMC_ENABLE gates PFIFO/PGRAPH and writing 0 halted the physical console outright, vs. #189's unconfirmed real-title impact and #190's own 'severity is probably low'. Scope is read-only: model pmc_read returning the measured 0x01110000 constant, leave pmc_write and the unconfirmed bit-field semantics alone. #189 and #190 stay dispatchable and are next in severity/age order. #200 (filed 2026-09-21T00:35, after this dispatch) ALSO NAMES nv2a_regs.h -- unreachable header bits, method handlers rebuilding registers field-by-field -- so it collides with this claim too and stays undispatched alongside #189/#190 until pmc.c/nv2a_regs.h free. RECHECKED WAVE 139 (job.board, 2026-09-21T05:59Z): PR #198 still open at needs-audit-1, so the collision holds; corrected this note's earlier claim that #189/#190 `already carry cloud` -- checked GitHub directly, neither issue carries any label. Not applying `cloud` now either: both are blocked on this exact file pair, and the cloud outlet dispatching onto a held file is the collision, not the fix. Re-evaluate once #198 folds and the files free."
 
 
 [lane.clrvk184]
