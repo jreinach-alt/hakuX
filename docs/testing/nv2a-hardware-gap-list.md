@@ -53,6 +53,18 @@ The last two are this console disagreeing with a golden captured on 1.0
 silicon. Either a V1.1-vs-1.0 difference or a golden from a different suite
 build; both reproduce exactly and neither is noise.
 
+**A third explanation for `-NaNs_NaNs`, which this list omitted.** The tests
+tree says so itself, at `src/tests/attribute_float_tests.cpp:55`: *"It appears
+that the handling of the signaling NaN is nondeterministic. Sometimes it is
+converted to quiet NaN."* If that is right, the golden froze one of two
+outcomes and the 60 px is neither a silicon revision nor a suite build.
+
+"Deterministic across runs and discs" was measured on this console and still
+holds; it does not rule this out, because a console can be deterministic in
+itself and disagree with another. Deciding between the three needs the test
+run on a second console, not more runs on this one — so until then
+`-NaNs_NaNs` should not be quoted as a settled hardware disagreement.
+
 ## C. Measurement hazards — things that will mislead a future comparison
 
 | what | measured |
