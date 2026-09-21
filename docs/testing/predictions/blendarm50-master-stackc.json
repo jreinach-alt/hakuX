@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-21T04:05:54Z",
+  "who": "blendarm50",
+  "issue": "50",
+  "prediction": "#50 -- DOES ANYTHING BETWEEN 49afee8889 AND MASTER MOVE STACK C? Arm A is the\nexisting 5-run nova set 1789819561-blendrace50-nova-415002 (ref 49afee8889,\napk b0cba34acef7, disc iso:85b525/Blend tests); arm B is master's tree on the\nSAME interactive disc, pinned to nova. No new arm A is needed, so this costs\none binary and one device slot.\n\nPREDICTION: NOTHING MOVES. Stack C is still wholly wrong on master, and every\nleg below holds at arm A's value.\n\nWHY, DERIVED FROM SOURCE AND NOT FROM THESE CAPTURES. The brief this lane was\ngiven asks whether 771c8eb4f1 (\"record queued draws before a synchronous\nsurface download\") fixes #50. It cannot, and the reason needs no device:\n771c8eb4f1's flush is guarded on `r->reorder_window.count > 0` and\n`r->draw_queue.count > 0` (vk/surface.c). The reorder window is appended to\nonly inside `if (g_xemu_draw_reorder && ...)` (vk/draw.c:6357) and the draw\nqueue only inside `if (g_xemu_draw_merge && ...)` (vk/draw.c:6415,6472). Both\nglobals are `static bool = false` (vk/draw.c:31,32); the only callers of\nxemu_set_draw_reorder/xemu_set_draw_merge in the tree are the Android JNI,\nwhere GetPrefBool defaults both to false (xemu_android.cpp:949,954). So both\ncounters are zero and the flush body never runs.\n\nThat is not an inference from the code alone -- the runs say so themselves.\nAll nine TestDetailed runs on this disc print `draw reorder: OFF` and\n`draw merge: OFF` in their own logcat, including the most recent\n(1789819561/1789819556, 2026-09-19). Arm A is therefore a post-flush run in\nwhich the flush provably did not execute, and arm B will be another.\n\nSo this arm does NOT test the flush. It tests the only thing about #50 that\nis genuinely unmeasured: whether any of the 1,193 commits between 49afee8889\nand master moves stack C. Master's own vk/surface.c comment already retracts\nthe claim that 771c8eb4f1 fixed #50 and names the real hole as the reorder\npath's surface-dirty bookkeeping -- which is also inert while the switch is\noff.\n\nTHE LEGS ARE PURE-STACK-C ROWS, chosen so the dispatcher's whole-capture\n`differing` column IS the stack C number. On arm A's captures1, every\ndiffering pixel of each of these four lies inside the stack C region\n(x 560..623, y 112..367); measured per-capture against the golden, not taken\nfrom the score column. All four are identical across all five of arm A's runs,\nso a move in arm B is not the device: arm A's run-to-run instability is 15 of\n1,568 TestDetailed captures (0.96%) and none of these is among them.\n\nThree distinct magnitudes plus a zero, so that a uniform shift cannot satisfy\nthe set:\n\n  0_ADD_1-cA    16384  -- the whole 64x256 blit differs\n  0_ADD_1-srcA  12512\n  0_ADD_srcA     8192\n  0_ADD_1            0  -- CONTROL. The one capture whose stack C draws are a\n                          mathematical no-op, so it is bit-exact today. If\n                          stack C were newly broken rather than newly fixed,\n                          this is the row that rises off zero.\n\nFALSIFIER. If 0_ADD_1-cA, 0_ADD_1-srcA and 0_ADD_srcA fall toward 0 on master\nwhile 0_ADD_1 stays 0, then something in the 1,193 commits fixed stack C, the\naliasing site was reachable after all, and this lane's source argument is\nwrong about master even though it is right about the flush. Report that, do\nnot explain it away. If instead 0_ADD_1 rises off 0, stack C changed for the\nworse and the no-op capture is no longer a no-op.\n\nPROSE HALF, NOT MACHINE-READ (no golden is named by a total summed over many\ncaptures). Scored with docs/testing/swatchorder50_readings.py --score\n--unsigned on arm B's captures, our stack C should still match the aliasing\nmodel (stack A's render target blitted at C) on ~1,119 of 1,120 unsigned\ncaptures and the correct-stack-C control on ~0, reproducing PR #186's offline\ncolumn on a post-flush, current-master capture set.\n\nCAVEAT STATED UP FRONT. `expect` compares the WHOLE capture. These four rows\nare pure stack C on arm A; if a commit in the span changes some other region\nof the frame, the value moves and the leg fails without that being a fact\nabout stack C. Read a failure against the per-region breakdown in\ndocs/lanes/blendarm50/NOTES.md before attributing it. `expect_counts` is\ndeliberately NOT registered: it is a global tally over all 1,673 captures and\nthe 15 known run-scoped movers would decide it, not this prediction.",
+  "a_ref": "49afee8889",
+  "b_ref": "05177dc522",
+  "must_not_move": [
+    "Blend_tests/0_ADD_1-cA",
+    "Blend_tests/0_ADD_1-srcA",
+    "Blend_tests/0_ADD_srcA",
+    "Blend_tests/0_ADD_1"
+  ],
+  "expect": {
+    "Blend_tests/0_ADD_1-cA": 16384,
+    "Blend_tests/0_ADD_1-srcA": 12512,
+    "Blend_tests/0_ADD_srcA": 8192,
+    "Blend_tests/0_ADD_1": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend tests"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "/home/justin/hakux-work/dispatch/results/1789819561-blendrace50-nova-415002/request.json",
+    "source_request": "1789819561-blendrace50-nova-415002",
+    "disc_id_seen": "iso:85b525/Blend tests"
+  }
+}
