@@ -109,6 +109,47 @@ graphics application runs, so the state that write was meant to create occurs
 on its own, and the register that halted this console once does not need to be
 written at all.
 
+### Why it reads `0x13111113`, and what that number is
+
+`pb_init()` does this, unconditionally, at `nxdk lib/pbkit/pbkit.c:2400`:
+
+```c
+pb_OldMCEnable = VIDEOREG(NV_PMC_ENABLE);          // 2391, saved
+...
+VIDEOREG(NV_PMC_ENABLE) = NV_PMC_ENABLE_ALL_ENABLE;  // 2400
+```
+
+and `outer.h:87` defines `NV_PMC_ENABLE_ALL_ENABLE` as **`0xFFFFFFFF`**.
+`pb_kill()` puts the saved value back at `pbkit.c:2217`. The only other writes
+to the register in the whole library clear and re-set bit 12 (`2584`, `2585`).
+
+So the value read from inside a graphics application is the read-back of an
+all-ones write, with one bit toggled off and on again. **`0x13111113` is the
+implemented-and-settable bit mask of `NV_PMC_ENABLE` on this silicon** — ten
+bits: 0, 1, 4, 8, 12, 16, 20, 24, 25, 28. Every other bit ignores a 1.
+
+Two things follow.
+
+*The halt is explained.* `outer.h:88` names `0` `NV_PMC_ENABLE_ALL_DISABLE`.
+That is exactly what was written when this console stopped dead — the
+library's own name for it says what it does.
+
+*The write was never exotic.* Every graphics title on the machine writes
+`0xFFFFFFFF` here at startup. The danger was never writing this register; it
+was writing **zero** to it.
+
+### What this unblocks for #110
+
+`hardware/probe/pvideo` concluded that PVIDEO is inert — 12 registers written,
+nothing latched, `orig=0 ones_readback=0 zeros_readback=0` — and prescribed a
+targeted `NV_PMC_ENABLE` write to bring the block up first.
+
+That diagnosis was right and the remedy is unnecessary. The probe XBE calls
+`XVideoSetMode` and never `pb_init()`, so it runs with PGRAPH, PFIFO, PMEDIA
+and PVIDEO all down; `0x01110000` is the machine *it* creates, not the machine.
+The prerequisite is `pb_init()`, not a hand-rolled write to the register that
+halted the console.
+
 ### `0x000160` reads `0x00000001` where the emulator returns 0
 
 Undeclared and unmodelled. Value taken from the clean read sweep. (The write
