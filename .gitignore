@@ -18,6 +18,10 @@ GTAGS
 *.depend_raw
 *.swp
 *.patch
+# ...except instrument patches. A measurement taken with a modified
+# nxdk_pgraph_tests is not reproducible unless the modification is in the
+# repository, and *.patch above silently kept one out of a commit.
+!docs/testing/patches/*.patch
 *.gcov
 
 build.log

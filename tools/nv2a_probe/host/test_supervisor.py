@@ -96,8 +96,18 @@ def main() -> int:
     sup, con = drive(["unreachable"] * 40, clock_step=10.0,
                      unreachable_alert_s=120.0)
     check(sup.stopped_reason is not None, "supervisor stopped")
-    check("power cycle" in (sup.stopped_reason or ""),
+    check("power button" in (sup.stopped_reason or ""),
           "and says plainly that it needs hands")
+    check("AutoTurnOff" in (sup.stopped_reason or ""),
+          "and does not assert a wedge -- an idle console powers itself off")
+    # The RETRACTION, checked as an absence. The two checks above pass just as
+    # happily with the old claim still in the message: an edit that restores
+    # "No ICMP means the processor is gone" alongside the AutoTurnOff sentence
+    # keeps this suite green, and the false diagnosis is back. run_tests.sh
+    # mutates the message to put that wording back, so this row is itself
+    # proven to fire.
+    check("processor is gone" not in (sup.stopped_reason or ""),
+          "and never claims the processor is gone -- ICMP cannot show that")
     check(con.power_cycles == 0, "it never attempted a power cycle itself")
     check(con.launches == [], "and never tried to launch into a dark console")
 
