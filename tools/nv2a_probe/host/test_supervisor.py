@@ -96,8 +96,10 @@ def main() -> int:
     sup, con = drive(["unreachable"] * 40, clock_step=10.0,
                      unreachable_alert_s=120.0)
     check(sup.stopped_reason is not None, "supervisor stopped")
-    check("power cycle" in (sup.stopped_reason or ""),
+    check("power button" in (sup.stopped_reason or ""),
           "and says plainly that it needs hands")
+    check("AutoTurnOff" in (sup.stopped_reason or ""),
+          "and does not assert a wedge -- an idle console powers itself off")
     check(con.power_cycles == 0, "it never attempted a power cycle itself")
     check(con.launches == [], "and never tried to launch into a dark console")
 

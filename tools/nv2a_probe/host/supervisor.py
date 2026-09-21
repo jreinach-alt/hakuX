@@ -121,10 +121,13 @@ class Supervisor:
                 self.unreachable_since = now
                 self.log("  unreachable -- could be a reboot; waiting")
             elif now - self.unreachable_since > self.unreachable_alert_s:
-                self.stop("console unreachable for %ds. No ICMP means the "
-                          "processor is gone, and nothing on this side can "
-                          "recover that: it needs a power cycle."
-                          % int(now - self.unreachable_since))
+                self.stop(
+                    "console unreachable for %ds. Either it powered itself "
+                    "off -- UnleashX has an AutoTurnOff timer and an idle "
+                    "console reaches it -- or it is wedged. Both look "
+                    "identical from here and both need the power button, but "
+                    "only one is a fault, so this does not claim the "
+                    "processor is gone." % int(now - self.unreachable_since))
             return state
 
         # AT_DASHBOARD
