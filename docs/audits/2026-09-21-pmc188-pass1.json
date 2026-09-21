@@ -1,0 +1,107 @@
+{
+  "audit": "pass1",
+  "date": "2026-09-21",
+  "pr": 198,
+  "branch": "lane/pmc188",
+  "tip": "c2e57d8d863edbcba5c84e7e520aee878a3ddf9f",
+  "base": "470ccb834e",
+  "auditor": "job.cloud",
+  "counts": {
+    "HIGH": 0,
+    "MEDIUM": 3,
+    "LOW": 6
+  },
+  "verdict": "needs-remediation",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "MEDIUM",
+      "file": "docs/testing/pmc_enable_selftest.sh",
+      "line": 62,
+      "summary": "The two guards that refuse a write model for NV_PMC_ENABLE match the macro spelling only. A write case spelled with the numeric offset -- `case 0x200:` in pmc_write -- passes the script green: the first grep requires `case NV_PMC_ENABLE`, and the second looks for 0x01110000, which a write case has no reason to contain. This is the PR's sole stated verification (`Prediction: none: no arm ... The check is the committed selftest`), and the guarded thing is the register whose write halted the physical console. Mutant M1 in the lane's table tested the macro spelling only.",
+      "scenario": "A later lane adds a write model using the offset it copied from nv2a_regs.h or from a probe log (where it reads 0x200 / 0xFD400200) rather than the macro. Verified by mutation: inserting `case 0x200: d->pmc.pending_interrupts = val; break;` into pmc_write yields `8 checks, 0 failures`, exit 0 -- the script certifies the tree as clean while a write model for the halting register sits in it.",
+      "remediation": "Widen both greps to the offset as well as the name, e.g. `case[[:space:]]*(NV_PMC_ENABLE|0x0*200)[[:space:]]*:`, and add the numeric-spelling mutant to the table so the guard has been seen to refuse both. Pass 2 can re-run the mutant verbatim.",
+      "evidence": "docs/testing/pmc_enable_selftest.sh:62 and :70; mutant run on a scratch copy of hw/xbox/nv2a/pmc.c, exit 0, 8 checks 0 failures."
+    },
+    {
+      "id": "M2",
+      "severity": "MEDIUM",
+      "file": "docs/testing/nv2a-hardware-gap-list.md",
+      "line": 38,
+      "summary": "The gap list's section A (\"Modelled nowhere -- confirmed on silicon\") still says `pmc.c` has **no read and no write case** for NV_PMC_ENABLE. That row is half false the moment this PR folds, and the file is not in the diff. This is the file briefs are written from -- #188 itself came out of this table -- and the two rows directly below it are #189 and #190, both open, both PMC. The file is not board-owned (the board owns nv2a_issues.toml and territory.toml), so the lane may edit it.",
+      "scenario": "A session opens the gap list to brief #190 (PMC 0x160 and 0x204-0x2FC) or #189 (PMC_BOOT_1), reads three consecutive 'modelled nowhere' rows as current, and either re-does the read half of #188 or writes a brief on the false premise that pmc.c answers nothing in this block. The same shape already cost this repository a lane re-dispatched twice onto merged work behind a stale prose note.",
+      "remediation": "Edit the row to what is now true -- read modelled as of #198 returning the measured constant, write still dropped deliberately -- or move it out of 'modelled nowhere', and add docs/testing/nv2a-hardware-gap-list.md to the PR body's Files: line.",
+      "evidence": "docs/testing/nv2a-hardware-gap-list.md:34-40; hw/xbox/nv2a/pmc.c:64-83 in this PR; git log shows one commit on the gap list (05adaad5d3), no lane precedent for updating it."
+    },
+    {
+      "id": "M3",
+      "severity": "MEDIUM",
+      "file": "hw/xbox/nv2a/pmc.c",
+      "line": 69,
+      "summary": "The comment beside the constant -- and the PR body and NOTES.md -- assert that the header's _PFIFO@8 / _PGRAPH@12 and the measured bits 16/20/24 'do not reconcile'. Two documents in this tree say otherwise: nv2a-mapping-programme.md:167,204 already reads bit 16 as PTIMER and cross-checks it against PTIMER's block reading 992/1024 non-zero, and nv2a-probe-pmc-findings.md reads this very value as evidence of engine state ('PGRAPH reading entirely zero is consistent with the graphics engine simply not being enabled -- NV_PMC_ENABLE reads 01110000 here'), with PGRAPH at 0/2048 in the same survey. Bits 8 and 12 being CLEAR in a word read on a machine whose PGRAPH is silent is what the header predicts, not a contradiction of it. Relatedly, the reproducibility claim (two sweeps, 1,024/1,024 identical) bounds repeatability of one machine state -- both sweeps were the console idle out of the dashboard -- and not state-independence, which is the property a hardcoded constant needs; the measuring document's own warning ('nothing here should be turned into an emulator change without a second read in a known state') appears nowhere in the diff.",
+      "scenario": "Two bites. (a) The envytools cross-reference lane that #188 asks for next is told by this comment, by the PR body and by NOTES.md that the header positions and the measurement are irreconcilable, and spends its budget explaining a contradiction that the tree's own documents already dissolve -- while the genuinely open questions (what bits 20 and 24 are, what a BUSY machine reads) go unnamed. (b) If the header positions hold, the emulator now answers 'PFIFO and PGRAPH are off' at all times, including mid-frame, to exactly the reader #188's body names ('a guest that reads PMC_ENABLE to check whether PFIFO or PGRAPH is up'). Not a regression -- the previous 0 said the same and was further from silicon in the one state measured -- which is why the value must stay.",
+      "remediation": "Correct the framing where it is read: pmc.c's comment, the PR body, and NOTES.md (whose summary asserts it near the top as well as in the body). Say that the measured word has bits 8 and 12 clear, consistent with both engines idle when the sweep ran; that nv2a-mapping-programme.md already reads bit 16 as PTIMER; and that what is unestablished is bits 20/24 and what a busy machine reads. Name the machine state the word was measured in, beside the constant. The stateful alternative (reflect our own engines in bits 8/12) is NOT asked for: it would assert the header positions this lane deliberately refused, and needs a NV2AState field plus a vmstate bump (nv2a.c:1519, version_id = 3), which is the write lane's work.",
+      "evidence": "hw/xbox/nv2a/pmc.c:69-75; docs/testing/nv2a-mapping-programme.md:166-168 and :204; docs/testing/nv2a-probe-pmc-findings.md (survey table: PGRAPH 0/2048, PFIFO 382/2048, PTIMER 992/1024; 'Values are state-dependent' paragraph); issue #188 body."
+    },
+    {
+      "id": "L1",
+      "severity": "LOW",
+      "file": "docs/testing/pmc_enable_selftest.sh",
+      "line": 44,
+      "summary": "The write extract is `sed -n \"${WSTART},\\$p\"` -- pmc_write's signature to EOF -- so both write-side guards are really 'anywhere after pmc_write begins'. An unrelated later function mentioning 0x01110000, or containing a `case NV_PMC_ENABLE:`, is refused as though pmc_write had changed.",
+      "scenario": "Verified: appending `static uint32_t pmc_enable_debug_mask(void) { return 0x01110000; }` to a copy of pmc.c produces `REFUSED: the measured read-back constant appears in pmc_write.` against a file whose pmc_write is untouched. LOW because it fails loudly and nothing currently follows pmc_write.",
+      "remediation": "Bound the write extract at the end of the function rather than at EOF.",
+      "evidence": "docs/testing/pmc_enable_selftest.sh:44, :62, :70; mutant run, exit 1 with the REFUSED line."
+    },
+    {
+      "id": "L2",
+      "severity": "LOW",
+      "file": "docs/testing/pmc_enable_selftest.sh",
+      "line": 43,
+      "summary": "The read extract spans pmc_read's signature to the line before pmc_write's, so any helper added between the two is compiled into the test against the stub set.",
+      "scenario": "A future static helper between the two functions touches a QEMU type the stubs do not provide; the script reports 'the extracted pmc_read did not compile cleanly', which reads as a defect in pmc.c rather than a gap in the test's stubs.",
+      "remediation": "Extract to the end of pmc_read rather than to pmc_write's signature, or say in the failure message that an interposed definition is a possible cause. NOTES.md already documents the ordering assumption; this is its other half.",
+      "evidence": "docs/testing/pmc_enable_selftest.sh:43, :79-82; docs/lanes/pmc188/NOTES.md (closing bullet on the anchors)."
+    },
+    {
+      "id": "L3",
+      "severity": "LOW",
+      "file": "docs/testing/pmc_enable_selftest.c",
+      "line": 76,
+      "summary": "g_log.size and g_log.block are captured by the logging stub and never asserted; the trace check covers calls, val and addr only. A case that logged the read under the wrong block, or with a corrupted size, passes 'the trace is right'.",
+      "scenario": "M7 in the lane's mutant table (trace logs 0 instead of r) is caught, but its siblings -- log the wrong block, log size 0 -- are not, so the trace guard is narrower than the table implies.",
+      "remediation": "Assert size (the helper already knows it is 4). block cannot be asserted because NV_PMC lives in nv2a_int.h, which the stub deliberately does not include -- say so in one line so the omission reads as deliberate.",
+      "evidence": "docs/testing/pmc_enable_selftest.c:38-44, :62-86."
+    },
+    {
+      "id": "L4",
+      "severity": "LOW",
+      "file": "docs/testing/pmc_enable_selftest.c",
+      "line": 121,
+      "summary": "The control `expect_read(\"unmodelled 0x204\", 0x204, 0, &d)` asserts our model returns 0 where silicon reads 0x00000001 (open issue #190 covers 0x204-0x2FC), and the comment does not say so. Correct as a case-width control; misleading as a statement about hardware.",
+      "scenario": "The lane that fixes #190 sees this check go red and has to establish from scratch whether it broke something or satisfied a known divergence. A reader meeting the line cold takes 'unmodelled 0x204 must read 0' as silicon-backed.",
+      "remediation": "Add a clause: silicon reads 1 here (#190); this pins the case width, not the value. The same paragraph is the natural home for the endian refutation (the clean read sweep issued no writes, and BOOT_0 read 0x02A000A3 in the same run), since 0x01110000 byte-swapped is 0x00001101 -- bits 0/8/12 -- which the next reader will notice and need answered.",
+      "evidence": "docs/testing/pmc_enable_selftest.c:116-122; docs/testing/nv2a-hardware-gap-list.md:40; docs/testing/nv2a-probe-pmc-findings.md (WITHDRAWN section, and the 0x204-0x2FC region)."
+    },
+    {
+      "id": "L5",
+      "severity": "LOW",
+      "file": "docs/testing/pmc_enable_selftest.sh",
+      "line": 1,
+      "summary": "No gate runs this script. git grep finds no reference to pmc_enable_selftest, audio_starve_selftest or glerr_report_selftest in .github/workflows/, docs/testing/jobs/ or preflight.sh, and jobs-selftest.yml is path-scoped to docs/testing/jobs/** so it would not fire on this diff. NOTES.md states this and gives a sound reason for not wiring it; recorded here so the record does not lose it.",
+      "scenario": "Pass 2, the fold, or a later lane assumes CI covers this file. It does not: M1's hole and any future drift in pmc_read are caught only by someone running the script by hand, as this audit did.",
+      "remediation": "None required of this lane -- the reasoning (the workflow is not a runner for emulator checks; adding a call to another job's tick makes every existing fixture for that job drive this code; all three unwired selftests should be wired together) is accepted. Log the decision.",
+      "evidence": ".github/workflows/jobs-selftest.yml:8-27; git grep over .github/ and docs/testing/jobs/ for *_selftest -- no hits; docs/lanes/pmc188/NOTES.md ('What the selftest is not: it is not wired to anything')."
+    },
+    {
+      "id": "L6",
+      "severity": "LOW",
+      "file": "docs/lanes/pmc188/NOTES.md",
+      "line": 52,
+      "summary": "'The write is still discarded, so nothing differs today' (PR body, and NOTES.md:52-53) is false as stated: the read differs today for every guest read of 0x200, and it is the only thing this PR changes. NOTES.md says so one sentence earlier and then undercuts it; the PR body keeps only the undercutting half.",
+      "scenario": "A fold reviewer reads the PR body's 'nothing differs today' and treats the change as inert, when it is the one live behavioural change in the diff and nothing measured says whether a title reads the register. 'Unmeasured' and 'nothing differs' are different claims.",
+      "remediation": "One word: no *write* differs today. Pairs with M3's request to name the state the value was measured in.",
+      "evidence": "PR #198 body ('The write is still discarded, so nothing differs today'); docs/lanes/pmc188/NOTES.md:50-55."
+    }
+  ]
+}
