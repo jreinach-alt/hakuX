@@ -755,3 +755,19 @@ the host's older tree). The one thing that moves this forward is updating the
 host's `nxdk_pgraph_tests` and `pbkitplusplus` checkouts; after that, master's
 index regenerates on the next fold, and merging that master in gives this
 branch a fresh head and a fresh, green run.
+
+### The local gate and CI disagree, and that is the cleanest proof of the cause
+
+`preflight.sh --allow-tracker` on this head passes with **`nv2a index ok`**,
+while CI's `check` on the same tree fails. Not a contradiction -- they read
+different tests trees:
+
+| actor | tests tree | at | verdict |
+|---|---|---|---|
+| `preflight.sh` (and `fold.sh`) | `/home/justin/nxdk_pgraph_tests` | `91a0de45ca` | **ok** |
+| `.github/workflows/nv2a-index.yml` | `git clone --depth 1` upstream | `6743b6ab16` | **STALE INDEX** |
+
+The committed index says `91a0de45ca`, so it agrees with the host and
+disagrees with upstream. Every gate is behaving correctly on the tree it can
+see; the disagreement *is* the defect, and it lives in neither the index nor
+this branch.
