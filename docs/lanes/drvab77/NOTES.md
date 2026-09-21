@@ -174,3 +174,91 @@ region before.
 Nothing above this line has been edited since it was committed. Where a run
 made a registered choice look wrong, it is recorded below rather than by
 editing the registration.
+
+## Why attempt 1 did not finish
+
+It queued two of the six registered arms -- `t30-1` and `t30-2`, the two that
+need no driver swap -- and stopped with the PR in draft while they were in
+flight. Both landed (`DONE`, 2026-09-20 14:39 and 14:44 local) and were never
+scored, because the session that queued them ended waiting on them. Nothing
+was lost: the two result dirs are intact and are scored below, so attempt 2
+spends no device time re-taking them.
+
+What it did not do is the half of the experiment that needs
+`swap_driver.sh` -- `t26-1/2` and `stock-1/2` were never queued at all. So
+the answer to the brief's question did not exist when attempt 1 ended, and
+`R0` below is the first arm of it to be scored.
+
+## R0. The T30 arms, and the registered band is already too narrow
+
+Both runs pass **G2** (63 and 92 images, bar is 60) and **G1** (median HF
+1.758 / 1.635 against the 1.24-2.14 bound; median frame brightness 34.2 /
+33.6 against 29.1-39.3). They are valid runs of the registered spec, on the
+thor (`bdc158a5`), at `ref 732b97e2df` / `apk f326072aa6c8`, and the driver
+string read off each dump is `PurpleVK 26.3.0-devel` -- T30, derived, not
+typed.
+
+| arm | run id | imgs | `R_full` per 100 | `R_lower` per 100 | med HF | med px |
+|---|---|---|---|---|---|---|
+| `t30-1` | `1789940132-drvab77-t30-1-1103129` | 63 | **9.5** | **23.8** | 1.758 | 34.2 |
+| `t30-2` | `1789940135-drvab77-t30-2-1104874` | 92 | **5.4** | **16.3** | 1.635 | 33.6 |
+
+**Registered before any run, and the first two runs already fall outside
+it.** P1's `R_full` band is 6.6-16.4 and `t30-2` scores 5.4. P5's `R_lower`
+band is 22.4-30.1 and `t30-2` scores 16.3 -- 27% below its floor. These are
+**T30 runs, the same driver the band was measured on**, so this is not a
+driver effect: it is the same-driver spread being wider than four runs of it
+could see.
+
+This is recorded here rather than by editing P1 or P5. Its consequence for
+the verdict is stated once, now, before any non-T30 number exists:
+
+- the honest same-driver `R_full` spread is now **5.4-16.4 over six runs**
+  (3.0x, not 2.5x), and `R_lower` **16.3-30.1** (1.85x, not 1.34x);
+- P4's rule is unchanged in form -- both runs of an arm clearly outside, same
+  side -- but the band it is applied against is the six-run one above, because
+  a band that its own driver's next run falls out of is not a bar;
+- so the sensitivity is **worse** than P4 advertised: `R_full` can now only
+  see an effect of roughly `>=1.7x` on the high side or `<=0.55x` on the low,
+  and `R_lower`'s advantage over `R_full` is largely gone. **`R_lower` is
+  still reported as the pre-registered secondary, but it may no longer be
+  described as the more sensitive read.** P5 said it was; six runs say it is
+  not.
+
+Widening a band after seeing a number is exactly the move a pre-registration
+exists to stop, so note what is and is not happening here: the number that
+widened it is from the **control** arm, the arm whose driver defines the
+band, and it widens the band in the direction that makes a positive result
+HARDER to claim. Nothing below may narrow it again.
+
+## R1. The swap protocol, and the window it exposes
+
+`swap_driver.sh` is an out-of-band adb write -- it is not routed through
+`request.sh`, and the dispatcher knows nothing about it. Two hazards, both
+handled before the first swap rather than after:
+
+1. **It defaults to the wrong device.** The script's `SERIAL` defaults to
+   `ee317437`, which is the **Nova**. The band and every arm of this lane are
+   on the **thor**, `bdc158a5`. A swap run with the default serial would
+   install T26 on a device this lane never touches and leave the thor on T30,
+   and the arm would come back "t26" with a T30 rate in it. Every swap here
+   is `SERIAL=bdc158a5`, the meta.json is read back off the thor before the
+   soak is queued, and `score_arms.py` derives the arm from the dump header
+   anyway -- three independent chances to catch the same mistake.
+
+2. **A swapped driver is installed for every request, not just mine.** While
+   T26 or stock is on the thor, ANY request the dispatcher claims for the
+   thor runs on it. `affinity.py` hashes unpinned requests over the serving
+   devices, so another lane's A/B arm can land there, and nothing in that
+   lane's result would say its binary ran on a different Vulkan driver. That
+   is the "arm B inherits arm A's independent variable" failure
+   `dispatcher.sh` names as the purest form of what the queue exists to
+   prevent, and this lane would be the one causing it.
+
+   So: the swap windows are **recorded as epoch ranges** below, kept as short
+   as the runs allow (both runs of an arm share one window; T30 is restored
+   between arms), my own soaks are pinned `--device thor` so they cannot
+   wander, and **after the last restore every result dir that started inside
+   a window is listed** -- if any request other than this lane's ran on the
+   thor in one, it is named here and on its own lane's PR. An empty list is
+   reported as an empty list, not as an absence of risk.
