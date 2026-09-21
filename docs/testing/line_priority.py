@@ -517,13 +517,28 @@ def report_rules(pixels, label=""):
     byblk = defaultdict(list)
     for win, c in pixels:
         byblk["/".join(sorted({EDGES[e[0]][0] for e in c}))].append((win, c))
+    # opp_acb earns its column: it is the only rival the goldens separate from
+    # the derived rule, and over widths 8-63.875 under --extent-rule they
+    # separate it in TWO blocks -- Tri 88.83% and QStrip 79.46% against
+    # opp_abc's 100.00% in both, i.e. 92,550 of 225,570 decisive pixels.
+    # (Audit pass 1b of PR #194 named only QStrip; Tri is the larger of the
+    # two.)  It pools to 93.75% in the aggregate table above, which is exactly
+    # the hiding this per-block row exists to undo, and dropping the column for
+    # ours_patched left the row unable to say WHICH rival a changed `ours` had
+    # slid to.  Both fit; the row is five columns wide.
+    # The field is 15 and not 12 because `nearest_centre` is 14 characters and
+    # `ours_patched` 12: at 12 the header ran its last two names together as
+    # `oursours_patchednearest_centre` while the cells below stayed aligned,
+    # so every column in the row was mislabelled by sight.  15 is the first
+    # width that leaves a space between EVERY pair of these five names.
+    BLKCOLS = ("opp_abc", "opp_acb", "ours", "ours_patched", "nearest_centre")
     print(f"\n{'candidates in':<18}{'n':>8}" +
-          "".join(f"{r:>12}" for r in ("opp_abc", "ours", "ours_patched", "nearest_centre")))
+          "".join(f"{r:>15}" for r in BLKCOLS))
     for b in sorted(byblk, key=lambda b: -len(byblk[b])):
         px = byblk[b]
         cells = "".join(
-            f"{sum(1 for w,c in px if pick(c,r)==w)/len(px)*100:>11.2f}%"
-            for r in ("opp_abc", "ours", "ours_patched", "nearest_centre"))
+            f"{sum(1 for w,c in px if pick(c,r)==w)/len(px)*100:>14.2f}%"
+            for r in BLKCOLS)
         print(f"{b:<18}{len(px):>8}{cells}")
 
 
