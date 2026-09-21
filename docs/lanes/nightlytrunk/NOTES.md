@@ -2,6 +2,40 @@
 
 Brief only, no tracker issue. Base: `master @ bda6c52d9c`. PR #209.
 
+## Why attempt 1 did not finish
+
+The work was done, pushed and green; the session ended with the PR still a
+**draft**, which is the one state nothing else in the harness can act on --
+`board.sh`, `fleet.py` and `fold.sh` all skip drafts. It would have sat there
+indefinitely.
+
+The cause was sitting in the worktree as an untracked `.ci-poll.sh` (removed
+now): a 40-round `gh pr view` loop on #209's check rollup, `sleep 45` between
+rounds -- i.e. a hand-rolled sleep, worth 30 minutes of turns. Attempt 1
+pushed `b651d2b2e0`, started waiting for CI on it, and ran out of turns inside
+that loop -- so it never reached `gh pr ready`, and it never wrote the
+`[lane.nightlytrunk] waiting:` comment that would have told a reader what it
+was waiting for. From the outside those two failures are indistinguishable
+from a lane that gave up mid-change.
+
+Two things a lane should take from it:
+
+- **Waiting is a finished session, but only if you say so.** CI on a fresh
+  head is ~10 minutes and a lane cannot sleep through it. Post the
+  `waiting:` comment, write it here, stop. `jobs/handback.sh` is the actor for
+  that state and a resume for a wait costs no attempt -- that is exactly how
+  this attempt was started.
+- **Polling is what consumes the turns you need to finish.** The budget spent
+  on 40 rounds of `gh pr view` is the budget that should have gone on the four
+  remaining definition-of-done items, none of which needed CI's answer.
+  Nothing in items 1-4 depends on the rollup, so all four could have been
+  finished *before* the push that started the wait.
+
+Nothing about the change itself was in question: CI was green on
+`b651d2b2e0`, `mergeStateStatus` is `CLEAN`, and `preflight.sh` passes on that
+head with no `--allow-tracker`. Attempt 2 added no code -- it wrote this
+section and marked the PR ready.
+
 ## What was wrong
 
 `nightly-2026-09-20` and `nightly-2026-09-21` were both built from
