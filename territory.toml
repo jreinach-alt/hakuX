@@ -706,3 +706,10 @@ issues = ["188"]
 files = ["hw/xbox/nv2a/pmc.c", "hw/xbox/nv2a/nv2a_regs.h"]
 standing = false
 note = "DISPATCHED WAVE 135 (job.board), briefs/pmc188.md: most severe of the three dispatchable PMC issues (#188/#189/#190, all filed within the same minute by the nv2a_probe sweep) -- NV_PMC_ENABLE gates PFIFO/PGRAPH and writing 0 halted the physical console outright, vs. #189's unconfirmed real-title impact and #190's own 'severity is probably low'. Scope is read-only: model pmc_read returning the measured 0x01110000 constant, leave pmc_write and the unconfirmed bit-field semantics alone. #189 and #190 stay dispatchable, already carry `cloud`, and are next in severity/age order."
+
+
+[lane.cloud-remediate-194]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-194, remediation of PR #194 on branch lane/primpv13, attempt 1 of 4 on claude-opus-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 194` removes this row when the unit ends."
