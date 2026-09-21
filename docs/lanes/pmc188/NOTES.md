@@ -3,6 +3,8 @@
 Status: done, and remediated against audit pass 1 (3 MEDIUM fixed, 6 LOW
 decided -- see "Remediation after audit pass 1" below). One hunk in `pmc_read`,
 plus a committed selftest and its committed mutant suite. PR #198.
+Attempt 2 (2026-09-21) changed no emulator code at all: it merged the trunk in
+to refresh a stale CI verdict -- see "Attempt 2: why attempt 1 did not finish".
 
 ## The brief
 
@@ -216,6 +218,47 @@ idle". PGRAPH yes -- 0/2048. **PFIFO read 382/2048 non-zero**, so it is not
 silent, and the bit-8-clear reading is *unrefuted* rather than *confirmed* by
 that half. Reset defaults in a disabled engine's registers explain it, but that
 is an explanation, not a measurement. The section above says it that way.
+
+## Attempt 2: why attempt 1 did not finish
+
+Attempt 1 finished the *work* -- the change, the selftest, the mutant suite,
+and the audit's pass-1 remediation are all in commits at or below
+`7349605566`. What it did not finish was the *fold*, and for a reason that no
+amount of further work on this branch could have fixed.
+
+PR #198's checks were red at `7349605566`, but every one of those runs
+predates `master`'s current head; the latest was `check` started
+2026-09-21T12:09:41Z. GitHub does not re-run a PR's checks when its base
+branch moves, so that FAILURE described a tree that no longer existed. The
+fold job refuses a red head, and would have refused this one on every tick
+forever. Attempt 1 ended in draft against that frozen verdict.
+
+The trunk fix was `master`'s two newest commits, `93bc128ff0` /
+`bda6c52d9c`: the nv2a index regenerated over nxdk_pgraph_tests `6743b6a`,
+whose own message says the stale index "was failing check on every PR". So
+the red was never this lane's -- it was the trunk's, and it was already fixed
+there. Re-running the job would not have helped either: the workflows check
+out the PR's own head rather than `refs/pull/198/merge`, so the branch's own
+stale copy of `nv2a_index.json` is the copy that runs.
+
+What attempt 2 did, and nothing else:
+
+- The worktree itself was stale -- 31 commits behind `origin/lane/pmc188`
+  with nothing of its own, so it still held attempt 1's *pre-audit* NOTES.md.
+  Fast-forwarded to the pushed head first; concluding anything from the tree
+  as found would have described a branch state that was two rounds old.
+- `git merge origin/master` (**merge, not rebase** -- a rebase rewrites every
+  sha; there is no registered prediction here to un-ancestor, but the rule is
+  the rule and the audit trail is worth more than a linear history). Clean:
+  the only incoming file is `docs/testing/nv2a_index.json`, which this lane
+  has never touched.
+- Re-ran `pmc_enable_selftest.sh` on the merged head: 8 checks, 0 failures.
+  Not because the merge could plausibly have broken a PMC register read, but
+  because "the gate was green two heads ago" is exactly the class of claim
+  this whole handback is about.
+
+No emulator code changed. `pmc.c`'s diff against `origin/master` is still the
+single `pmc_read` hunk.
 
 ## What the next lane should not repeat
 
