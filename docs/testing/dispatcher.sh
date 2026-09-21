@@ -64,7 +64,24 @@ SNAP="$D/bin"
 # to the tree at all -- which is the very failure the re-exec exists to
 # prevent, reintroduced by the fix for the one after it.
 SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
-SCRIPT_DEPS="dispatcher.sh soak_title.sh run_disc.sh score_sweep.py"
+# EVERY FILE snapshot_scripts SHIPS, or a change to one never reaches a worker.
+#
+# This listed four of the nine files the snapshot copies. The other five --
+# affinity.py, devices.sh, captures.py, make_test_iso.py, extract_results.py --
+# could be edited, committed and folded without changing this hash, so no
+# worker ever re-execed and no worker ever re-snapshotted: they kept executing
+# whatever copy was in $SNAP when they last restarted.
+#
+# That is not hypothetical. 37af3f02fe changed affinity.py to keep handheld
+# work off the desktop lane. The running workers never saw it, kept the older
+# copy, and it pinned every queued A/B to `desktop` -- a lane no dispatcher
+# worker serves. Both handhelds skipped those requests silently, which is what
+# serve_one does with a pin that is not its own, and four arms sat unclaimed
+# for eighteen hours with two healthy devices idle.
+#
+# The two sets must be the same set. Keep this in sync with snapshot_scripts.
+SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
+affinity.py captures.py make_test_iso.py extract_results.py"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
