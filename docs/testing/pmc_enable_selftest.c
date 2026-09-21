@@ -72,13 +72,20 @@ static void expect_read(const char *what, hwaddr addr, uint64_t want,
                (unsigned long long)want);
         return;
     }
-    /* The traced value must be the returned one, at the read's own offset. */
-    if (g_log.calls != 1 || g_log.val != want || g_log.addr != addr) {
+    /* The traced value must be the returned one, at the read's own offset and
+     * the read's own width. g_log.block is captured but NOT asserted, and
+     * deliberately: NV_PMC lives in nv2a_int.h, which this stub set does not
+     * include (it would drag in the QEMU headers this whole approach exists to
+     * avoid). So a case logging the read under the wrong block is outside what
+     * this check can see -- audit pass 1, L3. */
+    if (g_log.calls != 1 || g_log.val != want || g_log.addr != addr
+        || g_log.size != 4) {
         failures++;
         printf("FAIL %-28s addr=0x%03x value 0x%08llx is right but the trace "
-               "is wrong: calls=%d logged addr=0x%03x val=0x%08llx\n",
+               "is wrong: calls=%d logged addr=0x%03x size=%u val=0x%08llx\n",
                what, (unsigned)addr, (unsigned long long)got, g_log.calls,
-               (unsigned)g_log.addr, (unsigned long long)g_log.val);
+               (unsigned)g_log.addr, g_log.size,
+               (unsigned long long)g_log.val);
         return;
     }
     printf("ok   %-28s addr=0x%03x -> 0x%08llx\n", what, (unsigned)addr,
@@ -92,9 +99,22 @@ int main(void)
 
     /* THE FALSIFIER (#188). Two independent read-only sweeps of real NV2A
      * silicon, with a reboot between them, read 0x01110000 at PMC+0x200,
-     * 1,024/1,024 dwords reproducible. Before this lane pmc_read had no case
-     * for it and fell through to `default: r = 0`, so this line printed
-     * got=0x00000000 want=0x01110000. */
+     * 1,024/1,024 dwords reproducible. Both sweeps were the console idle out
+     * of the dashboard, so that is repeatability in one state and not
+     * state-independence; nobody has read this register on a machine that is
+     * rendering. Before this lane pmc_read had no case for it and fell
+     * through to `default: r = 0`, so this line printed got=0x00000000
+     * want=0x01110000.
+     *
+     * The endian rival is already dead, and it is recorded here because the
+     * coincidence is arresting enough to stop the next reader: 0x01110000
+     * byte-swapped is 0x00001101, i.e. bits 0, 8 and 12 -- the header's
+     * _PFIFO/_PGRAPH pair -- and this same probe campaign has already
+     * retracted one bit-position claim as an endian artefact. It does not
+     * apply to this value. The endian switch is NV_PMC_BOOT_1, flipped only
+     * by a write, and the sweep that read 0x01110000 issued no writes at all;
+     * NV_PMC_BOOT_0 read its correct 0x02A000A3 in that same run as the
+     * control. See nv2a-probe-pmc-findings.md. */
     expect_read("NV_PMC_ENABLE", NV_PMC_ENABLE, 0x01110000, &d);
 
     /* Controls. Adding a case to a switch is exactly the kind of edit that can
@@ -117,7 +137,13 @@ int main(void)
      * did not license inventing values for the rest of the block. These pin
      * the new case to the exact offset: a case written against a mask or a
      * range, or a `default` quietly given the constant, answers 0x204 and
-     * 0x00c too. */
+     * 0x00c too.
+     *
+     * NOT silicon-backed, and the 0x204 line is knowingly contrary to a
+     * measurement: hardware reads 0x00000001 across 0x204-0x2FC, which is
+     * open issue #190. This asserts the WIDTH of the new case, not the value
+     * of that register. The lane that fixes #190 should expect this line to
+     * go red and should change it, not investigate it. */
     expect_read("unmodelled 0x204", 0x204, 0, &d);
     expect_read("unmodelled 0x000c", 0x00c, 0, &d);
 

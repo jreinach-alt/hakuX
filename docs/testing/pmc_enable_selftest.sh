@@ -15,9 +15,9 @@
 # The second half checks that pmc_write is still the no-op #188 found it as.
 # That is not tidiness: writing 0 to NV_PMC_ENABLE HALTED THE PHYSICAL CONSOLE
 # in the sweep that found this register, and #188 is explicit that the
-# bit-field semantics -- which bits gate PFIFO and PGRAPH, whether the header's
-# generic NVIDIA _PFIFO/_PGRAPH positions apply to NV2A at all -- are not
-# established. Modelling a write means modelling a halt on a guess. So the
+# bit-field semantics are not established -- bits 20 and 24 are assigned by
+# nothing in this tree, and the one state anyone has measured is an idle
+# console. Modelling a write means modelling a halt on a guess. So the
 # write path stays a silent no-op, and this says so in a way that a later edit
 # has to notice.
 set -u
@@ -30,7 +30,12 @@ REGS="$HERE/../../hw/xbox/nv2a/nv2a_regs.h"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-# pmc_read runs from its signature to the line before pmc_write's.
+# Each function runs from its signature to its own closing brace at column 0.
+# Bounded on the brace, not on the next function's signature or on EOF: a
+# helper interposed between the two would otherwise be compiled into the read
+# extract against this file's stub set (reported as "pmc.c did not compile"),
+# and a later function mentioning the constant would be refused as though
+# pmc_write had changed. Both were reproduced in audit pass 1 (L1, L2).
 START=$(grep -n '^uint64_t pmc_read(' "$SRC" | cut -d: -f1)
 WSTART=$(grep -n '^void pmc_write(' "$SRC" | cut -d: -f1)
 if [ -z "$START" ] || [ -z "$WSTART" ] || [ "$WSTART" -le "$START" ]; then
@@ -40,8 +45,23 @@ if [ -z "$START" ] || [ -z "$WSTART" ] || [ "$WSTART" -le "$START" ]; then
     echo "  '^void pmc_write('     : ${WSTART:-MISSING}" >&2
     exit 2
 fi
-sed -n "${START},$((WSTART - 1))p" "$SRC" > "$TMP/pmc_read_extract.c"
-sed -n "${WSTART},\$p"            "$SRC" > "$TMP/pmc_write_extract.c"
+
+# end_of_function <first line of the function> -> absolute line of its '^}'
+end_of_function() {
+    local first="$1" rel
+    rel=$(sed -n "${first},\$p" "$SRC" | grep -n '^}' | head -1 | cut -d: -f1)
+    [ -n "$rel" ] || return 1
+    echo $((first + rel - 1))
+}
+END=$(end_of_function "$START")   || { echo "pmc_read has no closing brace at column 0" >&2; exit 2; }
+WEND=$(end_of_function "$WSTART") || { echo "pmc_write has no closing brace at column 0" >&2; exit 2; }
+if [ "$END" -ge "$WSTART" ]; then
+    echo "pmc_read's closing brace ($END) is not before pmc_write ($WSTART):" >&2
+    echo "brace-matching by column-0 '}' has stopped working on this file." >&2
+    exit 2
+fi
+sed -n "${START},${END}p"   "$SRC" > "$TMP/pmc_read_extract.c"
+sed -n "${WSTART},${WEND}p" "$SRC" > "$TMP/pmc_write_extract.c"
 
 # A silent mis-extract compiles to something empty and "passes", so both
 # halves are confirmed to contain what they are named for.
@@ -58,16 +78,25 @@ grep -q 'void pmc_write' "$TMP/pmc_write_extract.c" || {
 # Anchored on the CODE, not on prose: a comment mentioning NV_PMC_ENABLE in
 # pmc_write is fine and in fact likely, so the check is for a case label and
 # for the measured constant appearing on the write side.
+#
+# On the OFFSET as well as the macro. Audit pass 1 (M1) built the other
+# spelling -- `case 0x200:` in pmc_write -- and this script reported 8 checks,
+# 0 failures against a tree carrying a write model for the halting register.
+# Every existing arm in pmc_write uses a macro, but the offset is what a
+# future editor copies out of nv2a_regs.h (0x00000200) or a probe log
+# (0xFD400200), so the guard has to know both. The `...` alternative catches
+# the GCC range form, which is how #190's block (0x204-0x2FC) would arrive.
 fail=0
-if grep -qE '^[[:space:]]*case[[:space:]]+NV_PMC_ENABLE[[:space:]]*:' \
+if grep -qE \
+    '^[[:space:]]*case[[:space:]]+(NV_PMC_ENABLE|0[xX]0*200|512)[[:space:]]*(\.\.\.|:)' \
         "$TMP/pmc_write_extract.c"; then
-    echo "REFUSED: pmc_write has a case for NV_PMC_ENABLE." >&2
+    echo "REFUSED: pmc_write has a case for NV_PMC_ENABLE (0x200)." >&2
     echo "  Writing 0 to this register halted the physical console, and #188" >&2
     echo "  does not establish which bits gate what. A write model needs the" >&2
     echo "  envytools cross-reference #188 asks for, not this lane." >&2
     fail=1
 fi
-if grep -q '0x01110000' "$TMP/pmc_write_extract.c"; then
+if grep -qiE '0[xX]0*1110000' "$TMP/pmc_write_extract.c"; then
     echo "REFUSED: the measured read-back constant appears in pmc_write." >&2
     echo "  0x01110000 is what silicon READS. Nothing measured says what" >&2
     echo "  happens when it is written." >&2
