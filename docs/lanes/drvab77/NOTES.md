@@ -427,3 +427,21 @@ field on a request that the worker installs and restores around the run the
 way it already does for `env` -- `dispatcher.sh`'s env handling is the exact
 shape, including the marker that makes cleanup safe. That is a harness
 change, not an issue, and belongs in a lane of its own.
+
+## R7. Lane status at close
+
+- Six arms run, all scored, verdict **refuted at the stated sensitivity**;
+  reading posted to #77 and carried in PR #197's body.
+- `preflight.sh --allow-tracker` on this branch: every gate green except
+  **coverage**, which fails on **#200** -- an unrelated open issue with
+  neither a lane nor a `blocked_on`. The three remedies the gate offers are
+  all edits to board files, which a lane may not make, and `--allow-tracker`
+  does not cover this gate. That red belongs to the board and was red before
+  this branch existed; it is recorded in the PR body and in the board request
+  rather than worked around.
+- Board request filed at `dispatch/board-requests/drvab77.md`: `issue.77`'s
+  `blocked_on` is discharged (it was correct -- the void A/B was the soak),
+  #200's coverage row needs a board hand, and the `swap_driver.sh` gap in R6
+  is recorded there as a harness lane rather than as a new issue.
+- No source file, prediction, golden or board file was touched. Files are
+  `docs/lanes/drvab77/**` only.
