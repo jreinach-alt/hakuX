@@ -76,7 +76,8 @@ only in the launcher lives in the file nobody updates.
 
 ## The mutant
 
-`docs/testing/jobs/selftest.d/87-nightly-trunk.sh`, 26 checks, all green.
+`docs/testing/jobs/selftest.d/87-nightly-trunk.sh`, 29 checks, all green.
+Full selftest on the final head: 1097 passed, 0 failed.
 
 A bare origin, a clone at its tip, and a clone **pinned five commits behind
 it**. The behind tree's commits are backdated three days and the trunk's five
@@ -90,6 +91,13 @@ The falsification runs `nightly_build.sh`'s replaced lines 66-80 verbatim over
 the same behind tree and requires both central predicates to FAIL: the old
 code prints ``built from `<stale>` on `master` `` as fact and prints "No
 commits in the last day." while the trunk has five.
+
+It also drives the two arms of the deliberate asymmetry in the gate: a tree
+both ahead of and behind the trunk refuses (behind is tested first), while a
+tree purely ahead of it publishes with the old `unpushed` label, because it
+contains every trunk commit and so nothing a reader is owed is missing from
+it. That rests entirely on the order of an `elif`, and a documented gate is
+not an enforced gate.
 
 ### What the next lane should not repeat
 
