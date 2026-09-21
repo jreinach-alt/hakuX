@@ -10,6 +10,12 @@
 # It reports either way. A silent failure is worse than no nightly at all,
 # because a missing release looks like a day with no work.
 #
+# It builds THE TRUNK. Not the tree it happens to be started in: it fetches
+# origin/master every run and refuses to publish anything that is not that
+# tip. See "is this the trunk?" below for what went wrong without that.
+# jobs/run-nightly.sh is what the systemd unit runs; it keeps the private
+# worktree this builds in.
+#
 # Two modes:
 #   nightly_build.sh                    build, write the notes, publish
 #   nightly_build.sh notes [SINCE]      write the notes to stdout and stop
@@ -22,7 +28,15 @@
 set -u
 
 REPO="${NIGHTLY_REPO:-jreinach-alt/hakuX}"
-TREE="${NIGHTLY_TREE:-/home/justin/hakuX}"
+# The tree to build. DEFAULTS TO THIS SCRIPT'S OWN REPOSITORY, not to a fixed
+# path: under jobs/run-nightly.sh this file is the copy inside the nightly's
+# private worktree, so the default resolves to the fetched trunk. The old
+# default was a hardcoded /home/justin/hakuX -- the owner's checkout, whatever
+# branch they last left it on -- and on 2026-09-20 and -21 that published a
+# 09-19 sha twice under a current date. The trunk gate below is what actually
+# makes that impossible; this default only removes the easiest way to trip it.
+TREE="${NIGHTLY_TREE:-$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")/../.." && pwd)}"
+TIP="${NIGHTLY_TIP:-master}"
 OUT="${NIGHTLY_OUT:-/home/justin/hakux-work/nightly}"
 export JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}"
 export PATH="/home/justin/Android/Sdk/cmake/3.30.3/bin:$PATH"
@@ -65,18 +79,72 @@ say() {
 
 cd "$TREE" || { echo "no tree at $TREE"; exit 1; }
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
+# run-nightly.sh parks its worktree detached on the fetched tip, where
+# --abbrev-ref prints the literal "HEAD". "built from `abc1234` on `HEAD`" is
+# not a sentence; the branch it is detached AT is the one to name.
+[ "$BRANCH" = HEAD ] && BRANCH="$TIP"
 SHA=$(git rev-parse --short HEAD)
 say "nightly $DAY  branch=$BRANCH  head=$SHA"
 
-# Reproducibility: say plainly whether this sha exists on the remote. A
-# release built from an unpushed HEAD cannot be rebuilt by anyone else, so it
-# is labelled rather than quietly published as if it could.
-UNPUSHED=$(git log --oneline "origin/$BRANCH..HEAD" 2>/dev/null | wc -l)
-if [ "$UNPUSHED" -gt 0 ]; then
-    say "WARNING: $UNPUSHED commit(s) not on origin; the release will say so"
-    PROV="built from **unpushed** \`$SHA\` on \`$BRANCH\` ($UNPUSHED commits ahead of origin)"
+# ------------------------------------------------------- is this the trunk?
+#
+# THE DEFECT THIS EXISTS FOR. nightly-2026-09-20 and nightly-2026-09-21 were
+# both built from 20e4708d50, an evening-of-09-19 commit, because the script
+# asked the owner's checkout what it was and that checkout had not been pulled
+# for 34 hours. origin/master was 152 commits ahead. Both releases shipped an
+# APK under a current date and said "No commits in the last day".
+#
+# So: ASK ORIGIN, every run, and treat the three answers separately.
+#
+#   behind      refuse. A release whose sha is not the trunk's tip is worse
+#               than no release, because it is indistinguishable from a good
+#               one at every place a person looks -- the tag, the date, the
+#               APK. A missing nightly at least reads as a missing nightly,
+#               and this exits non-zero so systemd records it as a failure.
+#   unreachable label. We cannot know the tip, so we cannot claim to be it;
+#               the notes say the fetch failed and when this host last
+#               succeeded. Silently falling back to the local sha is today's
+#               failure with a different cause.
+#   at the tip  the normal path, and the only one that publishes.
+#
+# `ahead` keeps the old unpushed-HEAD label: it is the same question (can
+# anyone else rebuild this?) asked against the trunk rather than against
+# whatever branch happened to be checked out.
+TRUNK_OK=0; TRUNK=""; BEHIND=0; AHEAD=0; STALE_NOTE=""
+if git fetch -q origin "$TIP" 2>>"${LOG:-/dev/null}"; then
+    TRUNK_OK=1
+    TRUNK=$(git rev-parse --short FETCH_HEAD)
+    BEHIND=$(git rev-list --count HEAD..FETCH_HEAD 2>/dev/null || echo 0)
+    AHEAD=$(git rev-list --count FETCH_HEAD..HEAD 2>/dev/null || echo 0)
+fi
+
+if [ "$TRUNK_OK" = 0 ]; then
+    # The mtime of FETCH_HEAD is when this host last heard from origin at all
+    # -- not a commit date, which would be the trunk's age and not ours.
+    FH=$(git rev-parse --git-path FETCH_HEAD 2>/dev/null)
+    LAST_FETCH="never"
+    [ -n "$FH" ] && [ -e "$FH" ] && LAST_FETCH=$(date -r "$FH" '+%F %H:%M %Z' 2>/dev/null || echo unknown)
+    say "WARNING: cannot reach origin/$TIP; cannot confirm $SHA is the trunk (last fetch: $LAST_FETCH)"
+    PROV="built from \`$SHA\` on \`$BRANCH\` -- **origin was unreachable**, so this is the last sha this host had, not necessarily the trunk's tip"
+    STALE_NOTE="> Could not reach \`origin/$TIP\` at build time (this host last fetched at $LAST_FETCH). The sha below is what was on disk; it may be behind the trunk."
+elif [ "$BEHIND" -gt 0 ]; then
+    say "REFUSING: HEAD $SHA is $BEHIND commit(s) behind origin/$TIP ($TRUNK); the nightly publishes the trunk or nothing"
+    PROV="built from \`$SHA\` on \`$BRANCH\` -- **$BEHIND commit(s) behind \`origin/$TIP\`** (\`$TRUNK\`)"
+    STALE_NOTE="> This tree is $BEHIND commit(s) behind \`origin/$TIP\` (\`$TRUNK\`). A nightly must publish the trunk's tip, so this build is refused."
+elif [ "$AHEAD" -gt 0 ]; then
+    say "WARNING: $AHEAD commit(s) not on origin/$TIP; the release will say so"
+    PROV="built from **unpushed** \`$SHA\` on \`$BRANCH\` ($AHEAD commits ahead of origin/$TIP)"
 else
-    PROV="built from \`$SHA\` on \`$BRANCH\`"
+    PROV="built from \`$SHA\` on \`$BRANCH\` (the tip of \`origin/$TIP\`)"
+fi
+
+# Refuse BEFORE ./gradlew, not after: ten minutes of build time spent on a
+# tree we already know is stale buys nothing, and the exit code is the signal.
+# Not in `notes` mode -- that mode publishes nothing, and its job is to show
+# what the body would say, banner included, which is what the mutant reads.
+if [ "$MODE" = build ] && [ "$BEHIND" -gt 0 ]; then
+    say "nothing published; the nightly must run from a tree at origin/$TIP (jobs/run-nightly.sh keeps one)"
+    exit 5
 fi
 
 DIRTY=$(git status --porcelain | grep -v '^??' | wc -l)
@@ -154,11 +222,17 @@ while IFS= read -r line; do
         hw/*|target/*|accel/*|ui/*|audio/*)   cur_area=emu ;;
         docs/testing/*|.github/*)  [ "$cur_area" = emu ] || cur_area=harn ;;
     esac
-done < <(git log --no-merges --since="$SINCE" --format=$'\x01%s' --name-only 2>/dev/null)
+#
+# BOTH logs name HEAD explicitly, and HEAD is the ref the gate above just
+# checked and the ref ./gradlew will build. That is the whole point: on
+# 2026-09-20 the notes said "No commits in the last day" about a 34-hour-old
+# checkout while 89 commits landed on the trunk. The range and the binary must
+# be answers about the same ref, so neither may be implicit.
+done < <(git log --no-merges --since="$SINCE" --format=$'\x01%s' --name-only HEAD 2>/dev/null)
 flush_commit
 
 N_WORK=$((N_EMU + N_HARN + N_OTHER))
-TOTAL=$(git log --since="$SINCE" --oneline 2>/dev/null | wc -l)
+TOTAL=$(git log --since="$SINCE" --oneline HEAD 2>/dev/null | wc -l)
 N_MERGE=$((TOTAL - N_WORK))
 say "$TOTAL commit(s) since $SINCE: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
 
@@ -180,14 +254,25 @@ TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHE
     echo "Automated nightly. $PROV."
     echo
     [ "$DIRTY" -gt 0 ] && echo "> Built with $DIRTY modified tracked file(s): the binary is not exactly this commit."
+    # The same shape of warning, one question earlier: the dirty line says the
+    # binary is not exactly this commit, this one says this commit may not be
+    # the one a reader is owed.
+    [ -n "$STALE_NOTE" ] && echo "$STALE_NOTE"
     echo
     if [ "$N_WORK" -gt 0 ]; then
         section "Emulator"            "$N_EMU"   ${SUB_EMU[@]+"${SUB_EMU[@]}"}
         section "Harness and tooling" "$N_HARN"  ${SUB_HARN[@]+"${SUB_HARN[@]}"}
         section "Docs and the rest"   "$N_OTHER" ${SUB_OTHER[@]+"${SUB_OTHER[@]}"}
         echo "_${TALLY}_"
-    else
+    elif [ "$TRUNK_OK" = 1 ]; then
+        # Reachable and at the tip (behind already refused above), so this is
+        # a statement about the trunk and is safe to make flatly.
         echo "No commits in the last day."
+    else
+        # Unreachable. An empty window here is a fact about a tree we could
+        # not confirm, and the bare sentence is exactly the one the two
+        # mislabelled releases printed. Say what it is a fact ABOUT.
+        echo "No commits in the last day **on this checkout** -- origin was unreachable, so the trunk may have moved."
     fi
     echo
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
@@ -226,6 +311,20 @@ say "built $NAME ($(du -h "$OUT/$NAME" | cut -f1)), sha256 $(sha256sum "$OUT/$NA
 
 TAG="nightly-$DAY"
 # $BODY was written before the build, from the same code `notes` mode runs.
+
+# The last gate, and the one that makes the guarantee hold across the build's
+# own duration: $SHA, the sha in the tag title, the APK filename and the notes,
+# was read before ./gradlew and the build takes minutes. If anything moved HEAD
+# under us in that time -- a checkout in a shared tree, a launcher racing
+# itself -- then every one of those labels now names a commit that is not what
+# was compiled, which is the same lie as the stale nightly wearing a different
+# hat. The trunk is allowed to move during a build (we publish its tip AT BUILD
+# TIME); our own tree is not.
+SHA_NOW=$(git rev-parse --short HEAD)
+if [ "$SHA_NOW" != "$SHA" ]; then
+    say "PUBLISH REFUSED: HEAD moved $SHA -> $SHA_NOW during the build; $NAME is labelled with a commit it was not built from"
+    exit 6
+fi
 
 if gh release create "$TAG" "$OUT/$NAME" --repo "$REPO" --prerelease \
         --title "hakuX nightly $DAY ($SHA)" --notes-file "$BODY" >>"$LOG" 2>&1; then
