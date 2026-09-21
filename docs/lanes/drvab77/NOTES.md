@@ -321,19 +321,34 @@ before and after the fix, and the fix's effect is that the label says
 ## R3. The answer: REFUTED at the stated sensitivity
 
 All six runs of this lane are on the **thor**, at `ref 732b97e2df` /
-`apk f326072aa6c8`, spec `600,after165,cap200`, 220 s. All pass **G2** (76-92
-images) and **G1** (median HF 1.44-1.76 against 1.24-2.14; median brightness
-29.7-35.8 against 29.1-39.3). Every arm label below is the driver string read
-out of that run's own dump.
+`apk f326072aa6c8`, spec `600,after165,cap200`, 220 s. All pass **G2**
+(**63-92** images, bar 60) and **G1**, below, per run and on the quantity G1
+actually bounds. Every arm label below is the driver string read out of that
+run's own dump.
 
-| arm | run id | driver, from the dump | imgs | `R_full` | `R_lower` |
-|---|---|---|---|---|---|
-| `t30-1` | `1789940132-drvab77-t30-1-1103129` | PurpleVK 26.3.0-devel | 63 | 9.5 | 23.8 |
-| `t30-2` | `1789940135-drvab77-t30-2-1104874` | PurpleVK 26.3.0-devel | 92 | 5.4 | 16.3 |
-| `t26-1` | `1789949705-drvab77-t26-1-1245715` | PurpleVK 26.1.0-devel | 78 | 5.1 | 15.4 |
-| `t26-2` | `1789949708-drvab77-t26-2-1245737` | PurpleVK 26.1.0-devel | 83 | 8.4 | 22.9 |
-| `stock-1` | `1789950291-drvab77-stock-1-1271457` | Qualcomm Adreno (build 69e13475cb) | 84 | 4.8 | 20.2 |
-| `stock-2` | `1789950294-drvab77-stock-2-1271702` | Qualcomm Adreno (build 69e13475cb) | 76 | 9.2 | 23.7 |
+| arm | run id | driver, from the dump | imgs | `R_full` | `R_lower` | med HF (whole frame) | med px (whole frame) |
+|---|---|---|---|---|---|---|---|
+| `t30-1` | `1789940132-drvab77-t30-1-1103129` | PurpleVK 26.3.0-devel | 63 | 9.5 | 23.8 | 1.758 | 34.2 |
+| `t30-2` | `1789940135-drvab77-t30-2-1104874` | PurpleVK 26.3.0-devel | 92 | 5.4 | 16.3 | 1.635 | 33.6 |
+| `t26-1` | `1789949705-drvab77-t26-1-1245715` | PurpleVK 26.1.0-devel | 78 | 5.1 | 15.4 | 1.753 | 35.0 |
+| `t26-2` | `1789949708-drvab77-t26-2-1245737` | PurpleVK 26.1.0-devel | 83 | 8.4 | 22.9 | 1.723 | 34.6 |
+| `stock-1` | `1789950291-drvab77-stock-1-1271457` | Qualcomm Adreno (build 69e13475cb) | 84 | 4.8 | 20.2 | 1.673 | 35.8 |
+| `stock-2` | `1789950294-drvab77-stock-2-1271702` | Qualcomm Adreno (build 69e13475cb) | 76 | 9.2 | 23.7 | 1.658 | 34.7 |
+
+**G1, stated on its own quantity.** P3 registered G1 against P1's
+**whole-frame** medians, so those are the two columns above: median HF
+**1.635-1.758** against the 1.24-2.14 bound, median frame brightness
+**33.6-35.8** against 29.1-39.3. Every run passes with the whole bound to
+spare, and across all ten runs (this lane's six and the band's four)
+whole-frame content spans 7.5% in HF and 6.8% in brightness -- tighter than
+P1's own 3.8%/1.5% suggested G1 would need to be, and the arms saw the same
+scene. **G1's numbers are not transferable to `R_lower`.** That region's
+medians run 1.438-1.691 and 27.9-33.7 over the same ten runs, and applying
+G1's 29.1 brightness floor to them would void **C6 at 27.9** -- one of the
+four runs that define the band this entire verdict is measured against. An
+earlier draft of this paragraph mixed the two, quoting `R_lower` lows
+(1.44, 29.7) against whole-frame highs (1.76, 35.8); corrected here, and see
+R9.
 
 `compare_arms.py` prints the arithmetic:
 
@@ -346,12 +361,20 @@ out of that run's own dump.
 | smallest WITHIN-arm difference | **3.30** | **3.50** |
 
 **P4's rule, applied: no arm has both runs outside the T30 band on the same
-side.** On `R_full` the band is 5.4-16.4 over six T30 runs and every one of
-the six arms' runs is inside it but for `t26-1` at 5.1 -- whose partner is at
-8.4, so the arm's range overlaps and the rule is not met. On `R_lower` the
-band is 16.3-30.1 and `t26-1` at 15.4 is the only excursion, again with a
-partner (22.9) inside. **This is the registered null: driver-dependence is
-refuted at this sensitivity.**
+side.** On `R_full` the band is 5.4-16.4 over six T30 runs, and **two** of the
+six arm runs fall below its floor -- `t26-1` at 5.1 and `stock-1` at 4.8 --
+with neither arm's partner joining it (8.4 and 9.2, both inside). So no arm
+meets the rule. On `R_lower` the band is 16.3-30.1 and `t26-1` at 15.4 is the
+only excursion, again with a partner (22.9) inside. **This is the registered
+null: driver-dependence is refuted at this sensitivity.**
+
+Note what the two low excursions are, since an earlier draft of this paragraph
+counted only one of them: **every new batch of runs has pushed the low end of
+this band down** -- 6.6 from the band's four, then 5.4 from `t30-2`, then 5.1
+and 4.8 from the non-T30 arms. That is the pattern R0 flagged and it bears
+directly on R5's "effects below the interval": the floor is not converged, and
+a future lane that wants a tighter band must buy it with runs rather than
+inherit this one.
 
 Two things make it a stronger null than the bare rule requires:
 
@@ -445,3 +468,145 @@ change, not an issue, and belongs in a lane of its own.
   is recorded there as a harness lane rather than as a new issue.
 - No source file, prediction, golden or board file was touched. Files are
   `docs/lanes/drvab77/**` only.
+
+(R8 and R9 below are the remediation pass for audit
+`docs/audits/2026-09-20-drvab77-pass1.md`, written after R7 was.)
+
+## R8. The sampling cadence of the ten runs, and what it is worth
+
+The audit's M1: `score_arms.py` warned on `b != a + 1`, which is true of
+almost every adjacent pair of a `cap200` dump, so the warning fired on every
+run ever taken and the operator therefore never read it -- and the first four
+gaps it printed were always the routine ones, so the three runs with a real
+hole printed the same reassuring line as the four band runs. **Nothing in
+this lane's record ever stated the spacing, which means nothing in it stated
+that the six arms and the four band runs were sampled differently.** They
+were:
+
+| run | imgs | median gap | max gap | max/median | holes > 2x median |
+|---|---|---|---|---|---|
+| C3 | 73 | 10 | 15 | 1.5 | 0 |
+| C4 | 73 | 10 | 16 | 1.6 | 0 |
+| C5 | 73 | 10 | 15 | 1.5 | 0 |
+| C6 | 76 | 9 | 15 | 1.7 | 0 |
+| `t30-1` | 63 | 10 | **43** | **4.3** | **3** |
+| `t30-2` | 92 | 7 | 15 | **2.1** | **1** |
+| `t26-1` | 78 | 9 | **38** | **4.2** | **1** |
+| `t26-2` | 83 | 7 | **53** | **7.6** | **5** |
+| `stock-1` | 84 | 9 | 15 | 1.7 | 0 |
+| `stock-2` | 76 | 9 | 15 | 1.7 | 0 |
+
+The four runs that define the band have no hole at all; four of this lane's
+six do. The bar (2x the run's own median) is not tuned: the two populations
+are 1.5-1.7x and 2.1-7.6x, and 2.0 is the gap between them. Why the holes
+appeared in this lane's runs and not in the band's is not established here.
+
+**And whether the rates are stable under it, which is the question M1
+actually raises.** A hole matters only through the classifier's local
+baseline: across one, a frame's +-10-image baseline is drawn from a longer
+stretch of wall time, so the smooth animation trend the local median removes
+is removed less well and a frame riding a ramp could clear the 1.45x bar. So
+re-score each run over only the frames whose baseline window contains no
+anomalous boundary, and compare:
+
+| run | `R_full` whole run | hole-free frames only | `R_lower` whole run | hole-free only | n |
+|---|---|---|---|---|---|
+| `t30-1` | 9.5 | 10.0 | 23.8 | 26.7 | 30 |
+| `t30-2` | 5.4 | 6.9 | 16.3 | 13.9 | 72 |
+| `t26-1` | 5.1 | 6.1 | 15.4 | 16.7 | 66 |
+| `t26-2` | 8.4 | 8.8 | 22.9 | 26.5 | 34 |
+| C3-C6, `stock-1`, `stock-2` | unchanged | (no holes) | unchanged | (no holes) | -- |
+
+Three things follow, and the third is the one that matters:
+
+1. **The direction is wrong for the feared mechanism.** All four `R_full`
+   rates go **up** when the hole-affected frames are removed, not down. A
+   hole manufacturing false flags would do the opposite. Across the ten runs
+   only one flagged frame in `R_full` sits immediately across an anomalous
+   hole at all (`t26-2`, image 75); dropping it takes that run from 8.4 to
+   7.2, and no arm changes side.
+2. **The magnitude is inside the instrument's own resolution.** The largest
+   shift is 1.5 per 100 on `R_full` and 3.6 on `R_lower`, against R3's
+   stated 2 se intervals of 7.9 and 9.4. On `R_full` it is also well under
+   the smallest within-arm difference (1.5 against 3.3); on `R_lower` the
+   two are the same size (3.6 against 3.5), which is one more reason
+   `R_lower` may not be called the more sensitive read.
+3. **The verdict does not move.** On the hole-free rates the arms are
+   t30 10.0/6.9, t26 6.1/8.8, stock 4.8/9.2: no arm has both runs outside
+   the band on the same side, every between-arm mean gap (max 1.45) is still
+   smaller than every within-arm difference (min 2.7), and `R_lower` agrees.
+   Same null.
+
+Caveat, stated rather than buried: the hole-free subsets are small (30 and 34
+images for `t30-1` and `t26-2`), so those two columns are noisier than the
+whole-run ones. They bound the effect of the holes; they are not a better
+estimate of the rate.
+
+`score_arms.py` now reports median gap, max gap and the LARGEST holes, and
+says `SPACING ANOMALY` only when the max exceeds 2x the run's own median --
+so the line is silent on the band's four runs and loud on the four that
+earned it.
+
+## R9. The remediation pass, and the decisions on the LOWs
+
+Audit `docs/audits/2026-09-20-drvab77-pass1.md`: 0 HIGH, 5 MEDIUM, 4 LOW. The
+audit re-derived all twenty rates from the PPMs and confirmed them, so no
+number in this lane changed; what changed is the reporting and the tooling.
+
+| finding | what changed |
+|---|---|
+| **M1** gap detector fires on every run, hides the real holes | `spacing()` in `score_arms.py` reports median/max gap and the largest holes, flagging only above `ANOMALY_RATIO`; R8 states the profile and measures what it is worth |
+| **M2** R3's G1 range mixes whole-frame and `R_lower` numbers | R3's table now carries per-run whole-frame med HF and med px, with a paragraph on why G1's bound does not transfer to `R_lower` (it would void C6) |
+| **M3** the P4 sentence counts one low excursion where there are two | corrected in R3: `t26-1` 5.1 **and** `stock-1` 4.8, neither partner joining |
+| **M4** `window_audit.py` asks "finished inside", not "overlapped" | rewritten as an overlap test on `[queued, done]`, plus an artifact-evidence second pass so a queue-straddler is `QUEUED-THRU` rather than a false contamination; `tests_window_audit.py` pins both |
+| **M5** case 4 does not pin the bound (the unbounded mutant passes) | cases 5 and 6 added: a record closing one line past `MAX_HEADER_LINES` must not be read, and one spanning exactly it must be, with `_header_lines` asserted |
+
+M4's remedy needed one thing the audit did not call for. Re-running the audit
+as a plain `[queued, done]` overlap turned up
+`1789893938-arms-remote-base-4039343` -- **queued 01:45, ran 21:53-22:00 on
+the thor** -- straddling both windows by queue time while running four hours
+after the last one closed. Reporting that as contamination would have
+rebuilt M1's defect inside M4's fix: a check that is always right and
+therefore never read. Hence the two classes. **R1's published finding is
+unchanged: 4 runs executed inside the two windows, all four this lane's, 0
+foreign.** The one queue-straddler is now named in the output instead of
+being invisible.
+
+Both checks were run against mutants of themselves rather than asserted to
+work. `tests_session_header.py`: the old one-line reader fails cases 1 and 6,
+dropping `t == "session"` fails 3, deleting the bound fails 5, an off-by-one
+bound fails 6. `tests_window_audit.py`: the original finish-time test fails
+the straddle case, and an overlap test with no artifact evidence fails the
+queue-straddler case. A positive control on real data confirms the second
+file is not blind by construction -- given a window placed inside
+`arms-remote-base`'s actual run, it reports that run as FOREIGN.
+
+**R7's board red has cleared.** This pass merged `origin/master` (21 commits;
+`git log HEAD..origin/master` over `galleon_flash_rate.py` and
+`stipple_classify.py` is empty, so the ten scored runs are unaffected by it),
+and `preflight.sh --allow-tracker` is now green on every gate including
+**coverage** -- #200 was handled on the board side. R7's "every gate green
+except coverage" is superseded here rather than by editing it.
+
+**The LOWs, decided:**
+
+- **L1** (`score_arms.py` documented a void rule it did not implement) --
+  **fixed, as code rather than as a retraction.** `--expect-driver SUBSTRING`
+  marks a run `VOID (driver)` and exits 1. P2's rule is now machine-checked
+  for the next driver experiment, which is the reader that needs it.
+  Exercised both ways on real dirs: `--expect-driver PurpleVK` voids a stock
+  run, `--expect-driver Adreno` passes it, and `--expect-driver 26.1.0` voids
+  a T30 run -- the discriminating case, since the two Turnip arms differ only
+  in version.
+- **L2** (`galleon_flash_rate` imported only as a side effect of the line
+  above) -- **fixed**: `docs/testing` is inserted explicitly.
+- **L3** (R3's "76-92 images" excludes `t30-1` at 63) -- **fixed**: 63-92.
+- **L4** (`window_audit.py`'s inputs are unverifiable) -- **partly fixed, and
+  the rest declined with a reason.** `--results` (or `HAKUX_RESULTS`),
+  `--window` and `--mine` are now arguments. The audit's suggestion to point
+  the bounds at `swap_driver.sh`'s own log cannot be taken: that script lives
+  outside this repository and writes neither a log nor a marker, so there is
+  no artifact to point at. The docstring now says so in place of implying
+  provenance the numbers do not have, and R6's request -- a `driver` field on
+  the request, which would put the swap in the dispatcher's own log -- is the
+  real fix.

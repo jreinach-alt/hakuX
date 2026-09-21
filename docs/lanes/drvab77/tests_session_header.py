@@ -8,10 +8,24 @@ It may NOT invent a header where the dump has none, because this lane's
 registered guard G2 voids a run on a missing header and a reader that
 hallucinates one would silently disarm that guard for every future arm.
 
-So there is a positive case and two negative ones, and the negatives are the
-point: run this file against the OLD one-line reader and case 1 fails; run it
-against an "accumulate until anything parses" reader with the `t == session`
-check dropped and case 3 fails. Neither mutant passes both.
+It may also NOT read the whole dump looking for one: the accumulation is
+bounded at `MAX_HEADER_LINES`, and cases 5 and 6 assert THE BOUND rather than
+the answer, because asserting the answer does not pin it -- a truncated header
+returns None under a bounded reader and under an unbounded one alike, so the
+first version of case 4 was green against a reader with the bound deleted.
+
+So there is a positive case and five that constrain it, and the constraints
+are the point. Every mutant below was built in a scratch tree and run:
+
+    mutant                                              cases it FAILs
+    the OLD one-line `readline` reader                  1, 6
+    accumulate, but drop the `t == "session"` check     3
+    delete `MAX_HEADER_LINES` and its `break`           5
+    off-by-one: `break` at `MAX_HEADER_LINES - 1`       6
+
+No mutant passes all six, and each of 3, 5 and 6 is the SOLE failure of one
+of them -- so the `t` check and both edges of the bound are each pinned by a
+case that nothing else is keeping green.
 
     python3 tests_session_header.py
 """
@@ -21,7 +35,7 @@ import sys
 import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from score_arms import session_header  # noqa: E402
+from score_arms import MAX_HEADER_LINES, session_header  # noqa: E402
 
 # The real string, read off 1789950291-drvab77-stock-1-1271457.
 ADRENO = ("Qualcomm Technologies Inc. Adreno Vulkan Driver (Driver Build: "
@@ -44,7 +58,7 @@ def session_line(driver):
     return rec.replace("DRIVER", driver) + "\n"
 
 
-def case(name, lines, want_driver, want_none=False):
+def case(name, lines, want_driver, want_none=False, want_lines=None):
     with tempfile.TemporaryDirectory() as d:
         write(d, lines)
         got = session_header(d)
@@ -54,6 +68,13 @@ def case(name, lines, want_driver, want_none=False):
     else:
         ok = got is not None and got.get("driver") == want_driver
         detail = "driver=%r" % (got or {}).get("driver")
+        if ok and want_lines is not None:
+            # The reader's own count of physical lines consumed. This is the
+            # quantity the bound is about, so it is asserted directly rather
+            # than inferred from the answer.
+            ok = got.get("_header_lines") == want_lines
+            detail = "_header_lines=%r, want %d" % (
+                got.get("_header_lines"), want_lines)
     print("%-4s %s -- %s" % ("PASS" if ok else "FAIL", name, detail))
     return ok
 
@@ -77,13 +98,34 @@ def main():
                ['{"t":"draw","n":1}\n', '{"t":"draw","n":2}\n'],
                None, want_none=True)
 
-    # 4. A truncated header -- the dump died mid-record. Unbounded
-    #    accumulation over a huge file is the other way to "fix" case 1; this
-    #    says the answer is still None rather than a scan of the whole dump.
+    # 4. A truncated header -- the dump died mid-record. The answer is None.
+    #    NOTE what this does NOT test: an unbounded reader answers None here
+    #    too, because a dangling string followed by draw records never
+    #    re-parses no matter how many lines are added. Cases 5 and 6 are the
+    #    ones that pin the bound.
     ok &= case("truncated header stays None",
                ['{"t":"session","driver":"half a stri\n'] +
                ['{"t":"draw","n":%d}\n' % i for i in range(40)],
                None, want_none=True)
+
+    # 5. THE BOUND, from above. A session record whose driver string closes
+    #    one line PAST MAX_HEADER_LINES. An unbounded accumulator parses it
+    #    and returns a header; the bounded reader must give up and say None.
+    #    This is the case that fails on a reader with the bound deleted, and
+    #    it is the only one that does.
+    too_long = "\n".join("cont %d" % i for i in range(MAX_HEADER_LINES + 1))
+    ok &= case("record past the bound is not read",
+               [session_line(too_long)], None, want_none=True)
+
+    # 6. THE BOUND, from below, so "stop early" is not a way to pass case 5.
+    #    A record spanning EXACTLY MAX_HEADER_LINES physical lines must still
+    #    be read, and the reader must report consuming exactly that many.
+    #    Fixture sized off the constant, so changing the constant is a
+    #    configuration change while an off-by-one in the loop is a failure.
+    # m joined pieces carry m-1 newlines, so the record spans m lines.
+    exact = "\n".join("cont %d" % i for i in range(MAX_HEADER_LINES))
+    ok &= case("record exactly at the bound is read", [session_line(exact)],
+               exact, want_lines=MAX_HEADER_LINES)
 
     print("ALL PASS" if ok else "FAILURES ABOVE")
     return 0 if ok else 1
