@@ -107,9 +107,14 @@ say "nightly $DAY  branch=$BRANCH  head=$SHA"
 #               failure with a different cause.
 #   at the tip  the normal path, and the only one that publishes.
 #
-# `ahead` keeps the old unpushed-HEAD label: it is the same question (can
-# anyone else rebuild this?) asked against the trunk rather than against
-# whatever branch happened to be checked out.
+# `ahead` keeps the old unpushed-HEAD label rather than becoming a fourth
+# refusal: it is the same question (can anyone else rebuild this?) asked
+# against the trunk rather than against whatever branch happened to be checked
+# out. A tree that is purely ahead contains every trunk commit, so nothing a
+# reader is owed is MISSING from it -- which is the thing that went wrong --
+# and the release says "unpushed" in its first line. A tree that is ahead AND
+# behind is diverged, and the `elif` order is deliberate: behind is tested
+# first, so divergence refuses.
 TRUNK_OK=0; TRUNK=""; BEHIND=0; AHEAD=0; STALE_NOTE=""
 if git fetch -q origin "$TIP" 2>>"${LOG:-/dev/null}"; then
     TRUNK_OK=1

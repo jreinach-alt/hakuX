@@ -207,6 +207,36 @@ check "  the last successful fetch is dated, so the reader can price the risk" \
 check "  and the empty window is qualified there too" \
     notes_avoid_the_bare_sentence "$NT/unreachable.md"
 
+# Diverged, and ahead-only. The script documents a deliberate asymmetry here
+# -- a tree purely AHEAD of the trunk publishes with the old "unpushed" label,
+# because it contains every trunk commit and so nothing a reader is owed is
+# missing from it, while a tree that is ahead AND behind refuses. That rests
+# entirely on the order of an `elif`, and a documented gate is not an enforced
+# one, so both arms are checked.
+DIVERGED="$NT/diverged"
+git clone -q "$ORIGIN" "$DIVERGED"
+git -C "$DIVERGED" config user.email s@t; git -C "$DIVERGED" config user.name s
+git -C "$DIVERGED" reset -q --hard "$STALE"
+nt_commit "$DIVERGED" "a local commit the owner never pushed" "$NOW" local.c
+GH_DIV="$NT/gh-diverged.log"; : > "$GH_DIV"
+NIGHTLY_TREE="$DIVERGED" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-diverged" \
+    SELFTEST_GH_LOG="$GH_DIV" bash "$NIGHTLY" >"$NT/diverged-build.log" 2>&1
+rc=$?
+check "a tree both ahead of and behind the trunk refuses (behind wins the elif)" \
+    bash -c '[ "$1" = 5 ] && grep -q "REFUSING" "$2" && ! grep -q "release create" "$3"' \
+        _ "$rc" "$NT/diverged-build.log" "$GH_DIV"
+
+AHEAD_T="$NT/ahead"
+git clone -q "$ORIGIN" "$AHEAD_T"
+git -C "$AHEAD_T" config user.email s@t; git -C "$AHEAD_T" config user.name s
+nt_commit "$AHEAD_T" "hw/xbox/nv2a: a local commit on top of the tip" "$NOW" hw/xbox/nv2a/local.c
+nt_notes "$NIGHTLY" "$AHEAD_T" "$NT/ahead.md"
+check "a tree purely ahead of the trunk publishes, labelled unpushed" \
+    bash -c 'grep -qF "**unpushed**" "$1" && grep -qF "1 commits ahead of origin/master" "$1"' \
+        _ "$NT/ahead.md"
+check "  and is not mislabelled as behind" \
+    bash -c '! grep -qF "behind" "$1"' _ "$NT/ahead.md"
+
 # ------------------------------------------------------------ falsification
 # nightly_build.sh lines 66-80 and the notes else-branch as they stood at
 # bda6c52d9c, verbatim, over the SAME five-commits-behind tree. The lines
