@@ -771,3 +771,166 @@ The committed index says `91a0de45ca`, so it agrees with the host and
 disagrees with upstream. Every gate is behaving correctly on the tree it can
 see; the disagreement *is* the defect, and it lives in neither the index nor
 this branch.
+
+## Audit pass 1b remediation (2026-09-21, `job.cloud`)
+
+`docs/audits/2026-09-20-primpv13-pass1b.md` re-read the **whole** diff after
+the arm landed rather than only what arrived since pass 2b: **1 MEDIUM, 3
+LOW**. The compiled change is untouched for the third pass running — the
+MEDIUM is in the falsifier this diff re-points, and `pv_placement_observable()`
+still reads `flat_shading || polygon_mode != POLY_MODE_LINE`. No percentage in
+any table moved and no leg's verdict moved.
+
+### MEDIUM 1 — the scoping column misread its own model, and the audit's own fix stops one mode short
+
+`changed_region()` built the region from the narrow perpendicular footprint
+while `decisive_xy()` was given `--extent-rule` — the wide
+hypot-approximation footprint we actually draw on Vulkan. The margin between
+the two grows with width and the one-pixel dilation stops covering it around
+w = 40, so the judged command the diff's own docstring mandates reported a
+non-zero `outside` against a footnote that calls it a must-be-zero.
+Reproduced here on the landed arm's two result directories before changing
+anything:
+
+| w | `outside` as shipped | after |
+|---:|---:|---:|
+| 8 – 32 (11 captures) | 0 | 0 |
+| 40 | 1 | 0 |
+| 48 | 2 | 0 |
+| 56 – 59 | 5, 6, 6, 7 | 0 |
+| 60 – 63 | 7, 8, 8, 9 | 0 |
+| 63.125 – 63.875 (7 captures) | 8, 8, 8, 8, 8, 9, 9 | 0 |
+
+**17 of 28, where the audit's prose says 12 of 27.** Its own table lists all
+seventeen non-zero rows and every value in them reproduces here to the digit,
+so the finding is right and only the sentence above the table is wrong; the
+window holds 28 captures, not 27. Every other column is byte-identical before
+and after: the eleven-class table, every per-capture `decisive`, `A names`,
+`B names`, `moved` and `A!=B px`.
+
+**The audit asked for the run's rule to be threaded through, and that is not
+enough.** Threading it fixes `--extent-rule` and leaves the DEFAULT reading
+`outside` 1 and 2 at w = 40 and 48 — measured, not reasoned: the arms really
+do differ out at the wider extent, so there the region is narrower than our
+own coverage for a second and entirely legitimate reason. `outside` is not a
+selection rule, it is a **bound** on where our renderer's pixels for those
+edges can be, and a bound that under-covers what we draw manufactures escapes.
+So the region now unions **both** models. The derived extent is the wider at
+every angle — `(max + min/2) / L` is 1.0 axis-aligned and 1.06 at 45°, never
+below 1 — so the union *is* the extent footprint today; writing it as a union
+rather than as "the wide one" is what keeps it sound if a third model is added.
+All 28 captures now read 0 under **both** rules, each measured by a full sweep
+of the window rather than inferred from the two that had moved.
+
+**The widened region still has power, which is the check a wider bound owes.**
+At the widest width it covers 76,383 px of 307,200 — **24.9% of the frame,
+230,817 px still excluded** — and a single differing pixel planted at an
+excluded coordinate is counted (`outside=1`). A scoping check that could no
+longer report a non-zero would be worth less than no check.
+
+### LOW 2 — `opp_acb` is back in the per-block table, and it separates in TWO blocks
+
+`report_rules()`'s per-block breakdown had swapped it out for `ours_patched`.
+The row is five columns wide now and carries both; the aggregate table above
+it was already scoring all of `SCHEMES`, which is why this was LOW.
+
+**The audit says the goldens separate `opp_acb` "in exactly one block"; they
+separate it in two.** Re-derived here rather than copied —
+`line_priority.py --rules --extent-rule --min-width 8 --max-width 63.875` on
+this tip, which is the restored column:
+
+| candidates in | n | `opp_abc` | `opp_acb` |
+|---|---:|---:|---:|
+| Tri | 52,411 | 100.00% | **88.83%** |
+| QStrip | 40,139 | 100.00% | **79.46%** |
+| the other nine classes | 133,020 | 100.00% | 100.00% |
+
+`QStrip` at 79.46% is the audit's figure to the digit; `Tri` at 88.83% is a
+second separation it did not name, on the largest class in the corpus. So the
+column is worth more than the finding claimed, and 92,550 of 225,570 decisive
+pixels sit in a block where it discriminates. (`opp_acb` pools to 93.75%
+overall, which is the aggregate table's figure and the one that hides where
+the disagreement is — the argument for the per-block row in one line.)
+
+The header field also went 12 → 15. At 12 it printed
+`oursours_patchednearest_centre`, three names run together over correctly
+aligned cells, so every column in the row was mislabelled by sight. That was
+true before this change and would have been worse with five columns.
+
+### LOW 3 — the arm's hand-judged table, in the lane's record
+
+The prediction says the eleven class rows go in a `[lane.primpv13] arm judged:`
+comment **and** in this file. Audit pass 1b ran the hand-judged half and posted
+the comment; an auditor may not edit a lane file, so the second half was filed
+rather than done. It is done here, and the table is this remediation's own run
+of the judged command rather than a copy of the audit's:
+
+```
+python3 docs/testing/line_priority_arms.py \
+    --a .../1789968297-arms-primpv13-base-2094212 \
+    --b .../1789968297-arms-primpv13-fix-2094234 \
+    --extent-rule --min-width 8 --max-width 63.875
+```
+
+```
+class                     n   A names   B names    unm A    unm B     moved
+Tri*                  52411   100.00%   100.00%    0.00%    0.00%         0
+QStrip*               40139   100.00%   100.00%    0.00%    0.00%         0
+LLoop                 35571   100.00%   100.00%    0.00%    0.00%         0
+Quad*                 26549   100.00%   100.00%    0.00%    0.00%         0
+QStrip/TFan*          24009    75.84%   100.00%    0.00%    0.00%      5801
+Poly*                 19355   100.00%   100.00%    0.00%    0.00%         0
+Poly/TFan*            13764   100.00%   100.00%    0.00%    0.00%         0
+TFan*                 11636    73.20%   100.00%    0.00%    0.00%      3119
+LLoop/Tri*             1736   100.00%   100.00%    0.00%    0.00%         0
+Poly/Tri*               272   100.00%   100.00%    0.00%    0.00%         0
+LLoop/TFan*             128   100.00%   100.00%    0.00%    0.00%         0
+ALL                  225570    96.05%   100.00%    0.00%    0.00%      8920
+```
+
+| leg | registered | measured | |
+|---|---|---|---|
+| 1 | TFan 11,636 px, 73.20% → 100.00% | 11,636, 73.20% → 100.00% | **met** |
+| 2 | QStrip/TFan 24,009 px, 75.84% → 100.00% | 24,009, 75.84% → 100.00% | **met** |
+| 3 | nine other classes unchanged, `moved` 0 each | all nine 100.00%/100.00%, `moved` 0 | **met** |
+| 4 | `moved` ≥ 3,119 TFan and ≥ 5,801 QStrip/TFan | 3,119 and 5,801 | **met** |
+| 7 | ALL 96.05% → 100.00% over 225,570 | identical | **met** (advisory) |
+
+Legs 5 and 6 are the `must_not_move` globs and were machine-judged by the
+`[job.arms]` PASS. So all seven legs are now discharged and the figures come
+from two independent runs of the tool on the same two result directories.
+
+**What this still does not establish**, restated so nothing over-reads it:
+`cylWrap()`'s reference vertex still moves for a textured wireframe fan in
+WRAP address mode, nothing in the registered disc draws one, and no leg above
+is sensitive to it. That is the tolerated, disclosed item from pass 1's
+MEDIUM 1 and this measurement does not touch it.
+
+### LOW 1 — the index's `provenance` home path: reviewed, NOT fixed, and why
+
+`be2cc09ec7` moved `support_dirs` and `tests_root` from `/home/user/...` to
+`/home/justin/...` because that is where this host's checkouts are. No gate
+reads either field — `cmd_check()` compares `symbols`, `sites` and `suites`
+only — so it is churn plus an operator's home path in a public repository,
+not a failure.
+
+Not fixed here, deliberately. The durable fix is in `nv2a_index.py`, which
+should record a basename or nothing, and that file is outside this lane. The
+tempting local fix — put master's `/home/user/...` back — is worse than the
+problem: it would make the committed provenance assert a tree the index was
+not generated from, which is the one thing a provenance block is for. Left
+for the generator, and stated here rather than left silent.
+
+### What did NOT change
+
+The prediction file is **untouched**. Its sha256 is still
+`63979910e31c…`, which is what the `[job.arms]` verdict names and what the PR
+body carries; the arm has been judged, so any edit to it now would be a
+post-hoc edit of a bound prediction. Nothing in it cites the `outside` column,
+so nothing in it went stale. `Files:` is unchanged too — every path this
+remediation touched was already on it.
+
+`origin/master` has moved 18 commits ahead again, and it is **still not worth
+merging**: its `nv2a_index.json` carries the same `tests_commit 91a0de45ca`
+and the same 103 suites, so the trunk's `check` red is exactly where attempt 3
+left it and a merge would buy a new head with the same failing gate.
