@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 162
-updated_utc = "2026-09-25T13:30:00Z"
+wave = 163
+updated_utc = "2026-09-25T13:50:00Z"
 
 
 [retired.hilodot10]
@@ -787,3 +787,9 @@ issues = ["91"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/issue91-writeback.json", "docs/lanes/clrwb91/NOTES.md"]
 standing = false
 note = "WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
+
+[lane.nightlynotes]
+issues = []
+files = ["docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 163 (host session) on the owner's question ('The nightly build shows zero emulator changes. Why did no emulator work make it into the nightly?'): nightly_build.sh selects release-note commits by COMMIT DATE (git log --since 'yesterday 00:30'), so lane commits written days before they fold are dropped -- nightly-2026-09-25 listed 4 of the 14 commits it built and '0 emulator' while carrying #172's fix. Fix: select by ancestry from the previous nightly-* tag. Harness defect, brief only (no issue). Must land before the 00:30 nightly. Brief: briefs/nightlynotes.md."
