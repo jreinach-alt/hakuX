@@ -416,6 +416,37 @@ is to compare `territory.toml`'s lanes against `$DISPATCH_DIR/fleet/*.json`'s
 running set in both directions -- which is how the third was found, and found
 `lane.tcginval` still claiming files after it had retired at the same time.
 
+## Public-facing text carries no process commentary (owner, 2026-09-25)
+
+> "I don't need it to say corrected in the notes, we don't need leaky process
+> notes appearing at the top. If you want to include a one liner at the end
+> indicating this was changed and the timestamp, that's fine."
+
+**Public-facing** means anything written for people who don't run the harness:
+
+- GitHub release notes and the releases page;
+- `README.md`, `CHANGELOG.md` and `ROADMAP.md`;
+- user docs outside `docs/testing/`, `docs/lanes/`, `docs/audits/` and
+  `docs/investigations/`.
+
+Text there says what a build or the project IS, not how the harness produced it.
+
+- **Fix errors in place, silently.** Don't add a "corrected" banner, an account
+  of what went wrong, or the old text kept or struck through. The most a
+  correction carries is one line at the END: `_Notes updated YYYY-MM-DD HH:MM UTC._`
+- **Process belongs on the work surfaces**: issues, PRs, the board, a lane's
+  NOTES, audits and job logs. That's where the record of a failure lives, and
+  where it's useful. The public page gets only the corrected result.
+- **Generators follow the same rule.** A job that writes public text (the
+  nightly's release notes in `nightly_build.sh`) sends its warnings, fallbacks
+  and caveats to its own log. Where a caveat would be needed to make the
+  public text true, for example a build that isn't exactly the commit it names,
+  the job fixes the cause or does not publish. It does not publish a caveat at
+  the top.
+
+Issues and PR threads are public too, but they're the work record, and this
+rule doesn't apply to them.
+
 ## Non-negotiables
 
 **Never trigger CI to check your own work.** GitHub Actions minutes here are a

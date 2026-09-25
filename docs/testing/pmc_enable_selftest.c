@@ -17,16 +17,20 @@
  * 0x01110000" is asserting it about the offset the header actually defines,
  * and would fail if NV_PMC_ENABLE moved.
  *
- * What this does NOT check: that pmc.c compiles in tree, anything on the
- * write path (deliberately -- see below), and anything about the __ANDROID__
- * logging blocks, which are not compiled here and do not alter the returned
- * value on any path.
+ * pmc_write and pmc_reset are extracted the same way (#188's storage), so
+ * the NV_PMC_ENABLE checks run the real write and the real reset value.
+ *
+ * What this does NOT check: that pmc.c compiles in tree, the reset wiring in
+ * nv2a.c or the savestate subsection, writes anywhere but NV_PMC_ENABLE and
+ * the two INTR registers, and anything about the __ANDROID__ logging blocks,
+ * which are not compiled here and do not alter the returned value on any
+ * path.
  */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
-/* --- stubs for the three things pmc_read touches --- */
+/* --- stubs for what pmc_read, pmc_write and pmc_reset touch --- */
 
 typedef uint64_t hwaddr;
 
@@ -36,6 +40,7 @@ typedef struct NV2AState {
     struct {
         uint32_t pending_interrupts;
         uint32_t enabled_interrupts;
+        uint32_t enable;
     } pmc;
 } NV2AState;
 
@@ -60,7 +65,29 @@ static void nv2a_reg_log_read(int block, hwaddr addr, unsigned int size,
     g_log.val = val;
 }
 
+/* The write side's two calls. Counted, because "a write to NV_PMC_ENABLE
+ * has no effect but the stored word" includes raising no interrupt. Anything
+ * else pmc_write might call -- an engine reset on a bit, say -- has no stub
+ * here and fails to compile, which is the loudest form of that check. */
+static int g_update_irq_calls;
+static int g_log_write_calls;
+
+static void nv2a_update_irq(NV2AState *d)
+{
+    (void)d;
+    g_update_irq_calls++;
+}
+
+static void nv2a_reg_log_write(int block, hwaddr addr, unsigned int size,
+                               uint64_t val)
+{
+    (void)block; (void)addr; (void)size; (void)val;
+    g_log_write_calls++;
+}
+
 #include "pmc_read_extract.c"
+#include "pmc_write_extract.c"
+#include "pmc_reset_extract.c"
 
 /* --- the checks --- */
 
@@ -159,12 +186,43 @@ static void expect_read(const char *what, hwaddr addr, uint64_t want,
     expect_read_sz(what, addr, 4, want, d);
 }
 
+/* Write `val` to NV_PMC_ENABLE, then require that it reads back `want` AND
+ * that nothing else moved: every other field of the state byte-identical,
+ * no interrupt update, one trace line. That is #188's "gate nothing" -- the
+ * bit->engine map is unmeasured, so a write may change the stored word and
+ * must change nothing else. */
+static void expect_enable_write(const char *what, uint32_t val, uint64_t want,
+                                NV2AState *d)
+{
+    NV2AState before = *d;
+    g_update_irq_calls = 0;
+    g_log_write_calls = 0;
+    pmc_write(d, NV_PMC_ENABLE, val, 4);
+
+    NV2AState after = *d;
+    before.pmc.enable = after.pmc.enable = 0;
+    checks++;
+    if (memcmp(&before, &after, sizeof(before)) != 0 || g_update_irq_calls
+        || g_log_write_calls != 1) {
+        failures++;
+        printf("FAIL %-28s write 0x%08x had a side effect: other state %s, "
+               "update_irq x%d, log_write x%d\n", what, val,
+               memcmp(&before, &after, sizeof(before)) ? "CHANGED" : "same",
+               g_update_irq_calls, g_log_write_calls);
+        return;
+    }
+    printf("ok   %-28s write 0x%08x, no side effect\n", what, val);
+    expect_read(what, NV_PMC_ENABLE, want, d);
+}
+
 int main(void)
 {
     NV2AState d;
     memset(&d, 0, sizeof(d));
+    pmc_reset(&d);
 
-    /* THE FALSIFIER (#188). Two independent read-only sweeps of real NV2A
+    /* THE FALSIFIER (#188), now of pmc_reset: the reset value is what a
+     * guest reads before it writes anything. Two independent read-only sweeps of real NV2A
      * silicon, with a reboot between them, read 0x01110000 at PMC+0x200,
      * 1,024/1,024 dwords reproducible. Both sweeps were the console idle out
      * of the dashboard, so that is repeatability in one state and not
@@ -182,7 +240,7 @@ int main(void)
      * by a write, and the sweep that read 0x01110000 issued no writes at all;
      * NV_PMC_BOOT_0 read its correct 0x02A000A3 in that same run as the
      * control. See nv2a-probe-pmc-findings.md. */
-    expect_read("NV_PMC_ENABLE", NV_PMC_ENABLE, 0x01110000, &d);
+    expect_read("NV_PMC_ENABLE reset", NV_PMC_ENABLE, 0x01110000, &d);
 
     /* Controls. Adding a case to a switch is exactly the kind of edit that can
      * land inside the wrong case and silently take another register's arm with
@@ -255,6 +313,72 @@ int main(void)
      * measurement should change this line rather than work around it. */
     expect_read_sz("aligned byte in the region", 0x204, 1, 0x00000001, &d);
     expect_read_sz("unaligned byte, not ours", 0x205, 1, 0, &d);
+
+    /* ---- NV_PMC_ENABLE's write side (#188, after #203) ----
+     *
+     * The sequence every graphics title runs, in pbkit's own order.
+     * pb_init() saves the register and writes NV_PMC_ENABLE_ALL_ENABLE,
+     * 0xFFFFFFFF; silicon then reads 0x13111113, the ten implemented bits
+     * (0, 1, 4, 8, 12, 16, 20, 24, 25, 28). The constant read this replaces
+     * answered 0x01110000 here. */
+    memset(&d, 0, sizeof(d));
+    pmc_reset(&d);
+    /* Live interrupt state for the WHOLE sequence, not just one write: the
+     * side-effect check can only see a field it is not already zero in. A
+     * mutant ANDing the written word into enabled_interrupts passed when
+     * only one write ran over non-zero state (mutants.py U7). */
+    d.pmc.pending_interrupts = NV_PMC_INTR_0_PGRAPH | NV_PMC_INTR_0_PCRTC;
+    d.pmc.enabled_interrupts = NV_PMC_INTR_EN_0_HARDWARE;
+    uint32_t saved = (uint32_t)pmc_read(&d, NV_PMC_ENABLE, 4);
+    expect_enable_write("pb_init all-ones", 0xFFFFFFFF, 0x13111113, &d);
+
+    /* The only other writes pbkit issues clear and re-set bit 12. Read-
+     * modify-write, as pbkit does it, so this is also the storage feeding
+     * its own next write. */
+    expect_enable_write("pbkit clears bit 12",
+                        (uint32_t)pmc_read(&d, NV_PMC_ENABLE, 4) & ~0x1000u,
+                        0x13110113, &d);
+    expect_enable_write("pbkit re-sets bit 12",
+                        (uint32_t)pmc_read(&d, NV_PMC_ENABLE, 4) | 0x1000u,
+                        0x13111113, &d);
+
+    /* pb_kill() writes the saved value back, and it must round-trip. */
+    expect_enable_write("pb_kill restores", saved, 0x01110000, &d);
+
+    /* THE CHOICE, stated: bits 16, 20 and 24 are modelled as STORAGE, so a
+     * write that clears them reads back clear. Silicon has never been read
+     * after such a write -- all three read 1 before any write, so settable
+     * and hardwired-1 predict every read anyone has taken. Under hardwired-1
+     * this would read 0x01111000. The falsifier is in pmc_write's comment;
+     * if silicon answers "hardwired", this is the line to change. */
+    expect_enable_write("0x1000: 16/20/24 = storage", 0x00001000, 0x00001000,
+                        &d);
+
+    /* Unimplemented bits ignore a 1: every bit outside the ten. */
+    expect_enable_write("unimplemented bits only", ~0x13111113u, 0, &d);
+
+    /* Zero is NV_PMC_ENABLE_ALL_DISABLE, the write that halted the console.
+     * Not modelled as a halt or as an engine reset: stored, nothing else. */
+    expect_enable_write("ALL_DISABLE stores 0", 0, 0, &d);
+
+    /* The stored word is NV_PMC_ENABLE's alone. The interrupt state seeded
+     * above survived every write, as the registers read it; #190's region
+     * and BOOT_0 still read their constants; and a write elsewhere does not
+     * reach it. */
+    expect_enable_write("back to all-ones", 0xFFFFFFFF, 0x13111113, &d);
+    expect_read("NV_PMC_INTR_0 after enable", NV_PMC_INTR_0,
+                NV_PMC_INTR_0_PGRAPH | NV_PMC_INTR_0_PCRTC, &d);
+    expect_read("NV_PMC_INTR_EN_0 after enable", NV_PMC_INTR_EN_0,
+                NV_PMC_INTR_EN_0_HARDWARE, &d);
+    expect_read("NV_PMC_BOOT_0 after enable", NV_PMC_BOOT_0, 0x02A000A3, &d);
+    expect_region("0x204-0x2FC after enable", 0x204, 0x2FC, 0x00000001, &d);
+    pmc_write(&d, NV_PMC_INTR_EN_0, 0, 4);
+    pmc_write(&d, 0x204, 0, 4);
+    expect_read("enable after other writes", NV_PMC_ENABLE, 0x13111113, &d);
+
+    /* A guest reboot returns the idle value whatever was written. */
+    pmc_reset(&d);
+    expect_read("NV_PMC_ENABLE re-reset", NV_PMC_ENABLE, 0x01110000, &d);
 
     printf("\n%d checks, %d failures\n", checks, failures);
     return failures ? 1 : 0;

@@ -1390,6 +1390,7 @@ static void nv2a_reset(NV2AState *d)
     d->pgraph.waiting_for_context_switch = false;
 
     d->pmc.pending_interrupts = 0;
+    pmc_reset(d);
     d->pfifo.pending_interrupts = 0;
     d->ptimer.pending_interrupts = 0;
     d->pcrtc.pending_interrupts = 0;
@@ -1494,6 +1495,9 @@ static int nv2a_pre_load(void *opaque)
 {
     NV2AState *d = opaque;
     nv2a_lock_fifo(d);
+    /* A state saved before NV_PMC_ENABLE had storage carries no
+     * nv2a/pmc-enable subsection; it then loads as the reset value. */
+    pmc_reset(d);
     return 0;
 }
 
@@ -1513,6 +1517,18 @@ const VMStateDescription vmstate_nv2a_pgraph_vertex_attributes = {
         // FIXME
         VMSTATE_END_OF_LIST()
     }
+};
+
+/* A subsection rather than a field in the main list, so that a state saved
+ * before this existed still loads (#188). */
+static const VMStateDescription vmstate_nv2a_pmc_enable = {
+    .name = "nv2a/pmc-enable",
+    .version_id = 1,
+    .minimum_version_id = 1,
+    .fields = (const VMStateField[]) {
+        VMSTATE_UINT32(pmc.enable, NV2AState),
+        VMSTATE_END_OF_LIST()
+    },
 };
 
 static const VMStateDescription vmstate_nv2a = {
@@ -1638,6 +1654,10 @@ static const VMStateDescription vmstate_nv2a = {
         VMSTATE_UNUSED(1),
         VMSTATE_BOOL(pgraph.waiting_for_context_switch, NV2AState),
         VMSTATE_END_OF_LIST()
+    },
+    .subsections = (const VMStateDescription * const []) {
+        &vmstate_nv2a_pmc_enable,
+        NULL
     },
 };
 
