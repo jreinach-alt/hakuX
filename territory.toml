@@ -885,12 +885,6 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on the owner's request: dispatch by expected improvement. board_filter sorts startable issues by the tracker's game_visible, then impact_px + impact_onestep_px//4, then oldest; roles/board.md says take them in listed order and keep the impact fields current. Brief: briefs/boardprio.md."
 
 
-[lane.cloud-audit1-250]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-250, audit pass 1 of PR #250 on branch lane/wparamclip223, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 250` removes this row when the unit ends."
-
 [lane.vshsubneg255]
 issues = ["255"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshsubneg255-*.json", "docs/lanes/vshsubneg255/**"]
