@@ -69,3 +69,25 @@ build disagree" leg).
 The original soak ran on the Nova while Vulkan validation and sync
 validation were on (11:11-13:05 PDT, #265 thread). Its timing is not
 representative, and a race reading must not rest on it.
+
+## 3. Attempt 1 ended waiting; attempt 2 (2026-09-25 ~23:30 UTC)
+
+Attempt 1 did not finish because it was correctly waiting: the two probe runs
+(`1790370304-…`, `1790370307-…`, queued 21:05 UTC) had not been claimed. It
+also left CI red, which it did not know about: the `display.c` probe adds 17
+PGRAPH register read sites (TEXCTL0/1, TEXFMT, TEXOFFSET...), so the committed
+`nv2a_index.json` no longer matched the tree. Attempt 2 merged origin/master
+and regenerated the index over the pinned trees (tests `6743b6ab16`, pbkit
+`e91d509e4f`, same as CI). The only site changes are the probe's.
+
+At 23:30 UTC both probe requests are still in `dispatch/queue/`, behind a
+~190-request pgraph arm (`8e683b3a26`, running Pixel_shader). The dispatcher is
+busy, not jammed, so no nudge. The lane is waiting on those two runs. They
+settle the path (PVIDEO vs which texture format) and whether guest RAM holds
+the Cr=0 (reading A, CPU/JIT) or not (reading B, texture upload: texvol283's
+hunk, ask for a grant on #303). No fix and no prediction exist yet, so none
+is registered. The probe is env-gated (`HAKUX_FMV303_PROBE=1`) and inert by
+default.
+
+Next lane, do not repeat: the "Y=U=V=0" premise (section 1 refutes it); the
+Nova soak's timing (validation layers were on).
