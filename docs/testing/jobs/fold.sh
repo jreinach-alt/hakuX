@@ -11,6 +11,11 @@
 #   fold.sh resolve-notes <worktree> <branch>
 #                    the one conflict resolution below, on an in-progress
 #                    merge, so the self-test can run it without a fake gh
+#   fold.sh resolve-index <worktree>
+#                    the index-only resolution, the same way and for the same
+#                    reason; its refusal reason goes to stderr
+#   fold.sh regen-index <worktree> [pr]
+#                    the index gate over the pinned trees, on a committed merge
 #   fold.sh prune-branch <dir> <branch> <proof>
 #                    the branch deletion, on a repository handed in, so the
 #                    self-test can run it against a scratch remote, same reason
@@ -32,7 +37,8 @@
 # and the merge applies without conflict. A conflict is never resolved here
 # -- the lane gets `needs-rebase` and a comment naming the files, because a
 # merge resolved by a script that does not understand the code is how a
-# working fix was reverted on 2026-09-12.
+# working fix was reverted on 2026-09-12. The two exceptions below, a root
+# NOTES.md and the generated index, are the ones with no content to decide.
 #
 # A RED VERDICT ABOUT A BASE THAT HAS MOVED IS STILL REFUSED, BUT NOT IN
 # SILENCE. When a required check breaks on the trunk, every open PR keeps the
@@ -57,7 +63,11 @@
 # THE INDEX IS REGENERATED, NEVER MERGED. nv2a_index.json records line
 # numbers, so a merge of two edits to it is stale by construction. If
 # nv2a_index.py check fails after the merge the index is rebuilt from the
-# test sources and committed on top, in the same push.
+# test sources and committed on top, in the same push. And when that file is
+# the ONLY conflict, master's copy is staged and the same rebuild replaces it:
+# a derived file has no content to decide. The test sources are the ones CI
+# checks against, pinned (see resolve_index_only), never the host's live
+# checkouts. Anything the rebuild cannot vouch for goes back to the lane.
 #
 # AND THEN THE BRANCH IS DELETED. See prune_branch below: the fold is the one
 # moment that has just PROVED every commit is on the trunk, and nothing else
@@ -112,6 +122,120 @@ resolve_root_notes() {   # <worktree> <branch> -> 0 when the merge is left fully
 }
 if [ "$mode" = resolve-notes ]; then
     resolve_root_notes "${2:?worktree}" "${3:?branch}"; exit $?
+fi
+
+hand_back() {   # <pr> <branch> <head> <files> -> the lane's PR labelled needs-rebase, its cause recorded
+    local pr=$1 branch=$2 head=$3 files=$4
+    mkdir -p "$WORK/handback/cause"
+    # at=: UTC. A recorded field in a host state file, like queued_utc
+    # -- handback.sh reads only files= from here and never shows this
+    # line to anyone, so it stays in the zone the records are kept in.
+    printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
+        "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
+    label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
+}
+
+# ------------------------------------------ the second: the generated index
+# Every PR that moves a line under hw/ regenerates nv2a_index.json, which
+# records a line number per register site. So each fold of one such PR left
+# every other open hw PR conflicting with master in that file alone, and each
+# went back to its lane for a resolution that is pure mechanism (2026-09-25:
+# #234, #235, #237 in one hour, four lane sessions). When the index is the
+# WHOLE conflict, master's copy is staged and the index gate below rebuilds it
+# over the merged tree. That is not a content decision: the file is derived,
+# and the derivation is rerun rather than either side's copy being trusted.
+#
+# BUT ONLY OVER THE TREES CI CHECKS IT AGAINST. CI regenerates nothing; it
+# checks the index against nxdk_pgraph_tests at the index's own
+# provenance.tests_commit and pbkitplusplus at PBKIT_SHA in the workflow. A
+# rebuild over whatever the host's checkouts hold can drop a suite while
+# fixing line numbers, or turn master's CI red. So the rebuild runs in
+# detached worktrees of the host checkouts at exactly those commits, under
+# $WORK/fold-pins/, and a commit that is not here is a hand-back, never a
+# fetch of something else. Two sides naming different tests_commits is a
+# refresh somebody chose: also a hand-back.
+INDEX=docs/testing/nv2a_index.json
+PINS="$WORK/fold-pins"
+index_json() {   # <wt> <rev|:stage> <python expr over d> -> its value, "" when absent or unreadable
+    git -C "$1" show "$2:$INDEX" 2>/dev/null | python3 -c 'import json,sys
+try: d=json.load(sys.stdin)
+except Exception: sys.exit(0)
+print(eval(sys.argv[1]) or "")' "$3" 2>/dev/null
+}
+tests_commit_of() { index_json "$1" "$2" '(d.get("provenance") or {}).get("tests_commit")'; }
+suites_of()       { index_json "$1" "$2" 'str(len(d.get("suites") or {}))'; }
+pbkit_pin() {   # <wt> -> PBKIT_SHA as the nv2a-index workflow pins it; "" unless exactly one
+    local s; s=$(grep -oE 'PBKIT_SHA: *[0-9a-f]{40}' "$1/.github/workflows/nv2a-index.yml" 2>/dev/null \
+                 | grep -oE '[0-9a-f]{40}' | sort -u)
+    [ "$(printf '%s\n' "$s" | grep -c .)" = 1 ] && echo "$s"
+}
+pin_one() {   # <host checkout> <name> <sha> -> 0 with $PINS/<name> clean and detached at <sha>
+    local src=$1 dst="$PINS/$2" sha=$3
+    [[ "$sha" =~ ^[0-9a-f]{40}$ ]] || { WHY="no pinned $2 commit to rebuild over (got '${sha}')"; return 1; }
+    [ -n "$src" ] && git -C "$src" rev-parse --git-dir >/dev/null 2>&1 \
+        || { WHY="no host checkout of $2 to pin from"; return 1; }
+    git -C "$src" cat-file -e "$sha^{commit}" 2>/dev/null \
+        || { WHY="$2 @ ${sha:0:12} is not in $src; this job does not fetch a substitute"; return 1; }
+    # Refresh in place when the pin moved; recreate when that fails (the
+    # worktree belongs to another checkout, or was half-deleted).
+    if ! { [ -e "$dst/.git" ] && git -C "$dst" checkout -q -f --detach "$sha" 2>/dev/null; }; then
+        rm -rf "$dst"; git -C "$src" worktree prune 2>/dev/null; mkdir -p "$PINS"
+        git -C "$src" worktree add -q --detach "$dst" "$sha" >/dev/null 2>&1 \
+            || { WHY="could not create the $2 pin at $dst"; return 1; }
+    fi
+    git -C "$dst" clean -qfdx 2>/dev/null
+    [ "$(git -C "$dst" rev-parse HEAD 2>/dev/null)" = "$sha" ] && [ -z "$(git -C "$dst" status --porcelain 2>/dev/null)" ] \
+        || { WHY="the $2 pin at $dst is not clean at ${sha:0:12}"; return 1; }
+}
+pin_trees() {   # <wt> <tests_commit> -> 0 with PIN_TESTS/PIN_SUPPORT set
+    PIN_TESTS=""; PIN_SUPPORT=""
+    local pb; pb=$(pbkit_pin "$1")
+    [ -n "$pb" ] || { WHY="no single PBKIT_SHA in .github/workflows/nv2a-index.yml"; return 1; }
+    pin_one "$TESTS" nxdk_pgraph_tests "$2" && pin_one "$SUPPORT" pbkitplusplus "$pb" || return 1
+    PIN_TESTS="$PINS/nxdk_pgraph_tests"; PIN_SUPPORT="$PINS/pbkitplusplus"
+}
+resolve_index_only() {   # <worktree> -> 0 when the merge is left fully staged with master's index
+    local wt="$1" ours theirs
+    WHY=""
+    # ONLY the index. One unmerged path, and that path exactly.
+    [ "$(git -C "$wt" diff --name-only --diff-filter=U)" = "$INDEX" ] || return 1
+    ours=$(tests_commit_of "$wt" :2); theirs=$(tests_commit_of "$wt" :3)
+    [ -n "$ours" ] && [ -n "$theirs" ] \
+        || { WHY="a side of the index conflict names no provenance.tests_commit"; return 1; }
+    [ "$ours" = "$theirs" ] \
+        || { WHY="master's index is built from tests ${ours:0:12}, the branch's from ${theirs:0:12}; which one is a decision"; return 1; }
+    pin_trees "$wt" "$ours" || return 1
+    # The worktree is detached at origin/$TIP, so master's side is --ours.
+    git -C "$wt" checkout --ours -- "$INDEX" && git -C "$wt" add -- "$INDEX" || { WHY="could not stage master's index"; return 1; }
+    [ -z "$(git -C "$wt" diff --name-only --diff-filter=U)" ] || return 1
+}
+regen_index() {   # <wt> <pr> -> 0 index checks (committed on top if rebuilt); 2 cannot pin; 1 refused
+    local wt=$1 pr=$2 tc have n p
+    WHY=""
+    git -C "$wt" cat-file -e "HEAD:$INDEX" 2>/dev/null || { WHY="no $INDEX in the merged tree"; return 2; }
+    tc=$(tests_commit_of "$wt" HEAD)
+    pin_trees "$wt" "$tc" || return 2
+    (cd "$wt" && python3 "$INDEX_PY" check --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >"$F/index.log" 2>&1) && return 0
+    say "  index stale after merge; regenerating over tests ${tc:0:12}, pbkitplusplus $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD)"
+    (cd "$wt" && python3 "$INDEX_PY" build --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >>"$F/index.log" 2>&1) \
+        || { WHY="the rebuild failed"; return 1; }
+    (cd "$wt" && python3 "$INDEX_PY" check --tests "$PIN_TESTS" --support "$PIN_SUPPORT" >>"$F/index.log" 2>&1) \
+        || { WHY="the rebuilt index does not check"; return 1; }
+    have=$(python3 -c 'import json,sys; print(len(json.load(open(sys.argv[1])).get("suites") or {}))' "$wt/$INDEX" 2>/dev/null)
+    [ -n "$have" ] || { WHY="the rebuilt index does not parse"; return 1; }
+    for p in HEAD^1 HEAD^2; do
+        n=$(suites_of "$wt" "$p"); [ -n "$n" ] || continue
+        [ "$have" -ge "$n" ] || { WHY="the rebuilt index has $have suites, $p's has $n"; return 1; }
+    done
+    git -C "$wt" add -- "$INDEX" && git -C "$wt" commit -q -m "nv2a index: regenerate after folding #$pr" \
+        || { WHY="the rebuilt index would not commit"; return 1; }
+}
+INDEX_PY=docs/testing/nv2a_index.py
+if [ "$mode" = resolve-index ]; then
+    resolve_index_only "${2:?worktree}"; rc=$?; [ -n "$WHY" ] && echo "refused: $WHY" >&2; exit $rc
+fi
+if [ "$mode" = regen-index ]; then
+    regen_index "${2:?worktree}" "${3:-0}"; rc=$?; [ -n "$WHY" ] && echo "refused: $WHY" >&2; exit $rc
 fi
 
 # ------------------------------------------- deleting a folded lane branch
@@ -713,7 +837,7 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
     fi
     git -C "$WT" fetch -q origin "$TIP" "$branch" || { say "fetch failed"; continue; }
     git -C "$WT" reset -q --hard && git -C "$WT" clean -qfd && git -C "$WT" checkout -q --detach "origin/$TIP"
-    notes_moved=""
+    notes_moved=""; index_taken=""
     if ! git -C "$WT" merge --no-ff --no-edit -m "fold: PR #$pr $branch -- $title" "origin/$branch" >"$F/merge.log" 2>&1; then
         files=$(git -C "$WT" diff --name-only --diff-filter=U | tr '\n' ' ')
         if resolve_root_notes "$WT" "$branch"; then
@@ -722,7 +846,14 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
                 -m "The lane's root NOTES.md conflicted with master's and nothing else did; its copy is at $notes_moved (roles/lane.md item 3). No content was merged or dropped." \
                 || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr NOTES.md resolved but the merge would not commit"; continue; }
             say "  only root NOTES.md conflicted; the lane's copy is at $notes_moved"
+        elif resolve_index_only "$WT"; then
+            index_taken=1
+            git -C "$WT" commit -q -m "fold: PR #$pr $branch -- $title" \
+                -m "$INDEX conflicted with master's and nothing else did. master's copy was taken, and the index gate below checks it over nxdk_pgraph_tests @ $(git -C "$PIN_TESTS" rev-parse --short=12 HEAD) and pbkitplusplus @ $(git -C "$PIN_SUPPORT" rev-parse --short=12 HEAD) and regenerates it on top if it is stale. Nothing in it was hand-merged." \
+                || { git -C "$WT" merge --abort 2>/dev/null; say "#$pr index resolved but the merge would not commit"; continue; }
+            say "  only $INDEX conflicted; master's copy taken, to be regenerated over the pinned trees"
         else
+            [ -n "$WHY" ] && say "  $INDEX is the only conflict, but not resolved here: $WHY"
             git -C "$WT" merge --abort 2>/dev/null
             say "#$pr CONFLICT in: $files"
             # RECORD THE CAUSE; DO NOT ACT ON IT. `needs-rebase` was set by this
@@ -734,28 +865,28 @@ while IFS=$'\t' read -r pr branch head draft labels title; do
             # hand, or by a fold from before this line existed) and quotes it when
             # it is there. Keyed on the head sha, so a lane that pushes produces a
             # new cause and an unchanged branch does not.
-            mkdir -p "$WORK/handback/cause"
-            # at=: UTC. A recorded field in a host state file, like queued_utc
-            # -- handback.sh reads only files= from here and never shows this
-            # line to anyone, so it stays in the zone the records are kept in.
-            printf 'label=needs-rebase\nbranch=%s\nhead=%s\nfiles=%s\nat=%s\n' \
-                "$branch" "$head" "$files" "$(date -u '+%FT%TZ')" > "$WORK/handback/cause/$pr-$head"
-            label_rm "$pr" fold-ready; label_add "$pr" needs-rebase || say "  WARNING: could not label #$pr needs-rebase"
+            hand_back "$pr" "$branch" "$head" "$files"
             comment "$pr" "[job.fold] Not folded: merging \`$branch\` into \`$TIP\` conflicts in: \`$files\`. The fold job resolves nothing (a merge it does not understand is how a fix was reverted on 09-12). Merge \`origin/$TIP\` into the lane branch, resolve there, push, then re-apply \`fold-ready\`."
             continue
         fi
     fi
-    # The index: regenerate if the merge moved it, never hand-merge it.
-    if [ -n "$TESTS" ] && [ -n "$SUPPORT" ]; then
-        if ! (cd "$WT" && python3 docs/testing/nv2a_index.py check --tests "$TESTS" --support "$SUPPORT" >"$F/index.log" 2>&1); then
-            say "  index stale after merge; regenerating"
-            (cd "$WT" && python3 docs/testing/nv2a_index.py build --tests "$TESTS" --support "$SUPPORT" >>"$F/index.log" 2>&1) \
-                && git -C "$WT" add docs/testing/nv2a_index.json \
-                && git -C "$WT" commit -q -m "nv2a index: regenerate after folding #$pr" \
-                || { echo "index regeneration failed" > "$F/failed/$pr-$head"; say "  index regeneration FAILED"; comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log). Needs a person."; continue; }
+    # The index: regenerate if the merge moved it, never hand-merge it, and
+    # only over the pinned trees (see resolve_index_only). A clean merge that
+    # cannot pin skips the gate, as a host without the sources always has; an
+    # index conflict that was resolved above may not, since its copy is known
+    # to be master's and not this merge's.
+    regen_index "$WT" "$pr"; rc=$?
+    if [ "$rc" = 2 ] && [ -z "$index_taken" ]; then
+        say "  note: $WHY; index gate skipped (CI runs it on master)"
+    elif [ "$rc" != 0 ]; then
+        echo "index regeneration failed: $WHY" > "$F/failed/$pr-$head"; say "  index regeneration FAILED: $WHY"
+        if [ -n "$index_taken" ]; then
+            hand_back "$pr" "$branch" "$head" "$INDEX "
+            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log): $WHY. It was the only conflicting file, so master's copy was taken to be rebuilt over the pinned trees, and that rebuild is what failed. Merge \`origin/$TIP\` into the lane branch, regenerate the index there, push, then re-apply \`fold-ready\`."
+        else
+            comment "$pr" "[job.fold] Not folded: the nv2a index did not regenerate cleanly after the merge (see the host's \$WORK/fold/index.log). Needs a person."
         fi
-    else
-        say "  note: test sources not found on this host; index gate skipped (CI runs it on master)"
+        continue
     fi
     # The fast local gates. The tracker gate is the board's, not this PR's.
     if ! (cd "$WT" && bash docs/testing/preflight.sh --allow-tracker >"$F/preflight.log" 2>&1); then
