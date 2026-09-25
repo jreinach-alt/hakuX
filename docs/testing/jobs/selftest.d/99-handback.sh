@@ -214,8 +214,17 @@ check "fold.sh records the conflicting files where handback.sh reads them" \
     grep -q 'handback/cause/\$pr-\$head' "$HERE/fold.sh"
 check "fold.sh calls the actor at the end of its tick" \
     grep -q 'jobs/handback.sh" "\$mode"' "$HERE/fold.sh"
-check "fold.sh still resolves no conflict itself" \
-    bash -c '! grep -qE "checkout --(ours|theirs)|merge -X|-s (ours|recursive)" "$HERE/fold.sh"'
+# One exception, and one only: an index-only conflict takes master's copy of
+# the GENERATED index and rebuilds it (90-fold-index.sh pins that boundary by
+# behaviour). So one side is taken on exactly one line, of that one file, and
+# no merge strategy is ever chosen.
+hb_one_side_taken() {
+    ! grep -qE "merge -X|-s (ours|recursive)" "$HERE/fold.sh" \
+        && [ "$(grep -cE 'checkout --(ours|theirs)' "$HERE/fold.sh")" = 1 ] \
+        && grep -qF 'checkout --ours -- "$INDEX"' "$HERE/fold.sh" \
+        && grep -qx 'INDEX=docs/testing/nv2a_index.json' "$HERE/fold.sh"
+}
+check "fold.sh resolves no conflict itself beyond the generated index" hb_one_side_taken
 check "roles/board.md tells the board handback.sh owns needs-rebase" \
     grep -q 'needs-rebase` is not yours' "$HERE/roles/board.md"
 
