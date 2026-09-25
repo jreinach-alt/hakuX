@@ -193,3 +193,7 @@ it. I regenerated the index on the merged tree with
 suites, 2841 sites and `resolved_tables` 1, and `check` passes. Master was
 merged in, not rebased onto, so the arm's refs `9c5f7416d8`/`9de95de849` are
 still ancestors. Nothing in the PR's work was re-opened.
+
+Waiting: CI on head `487dae0ba4`. When it is green, run
+`gh-label.sh rm 237 needs-rebase` and `gh-label.sh add 237 fold-ready`.
+Preflight passes on this head, and the PR is ready (not draft) and MERGEABLE.
