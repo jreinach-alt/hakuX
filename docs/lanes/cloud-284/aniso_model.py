@@ -12,8 +12,11 @@ anisotropic pixel is a mix, whose weight w (share of yellow) reads straight
 off the golden: w = (R - 102) / 153.
 
 Usage:
-  aniso_model.py weights  [--goldens DIR]          # golden weight histograms
-  aniso_model.py score    [--goldens DIR] [--capture DIR ...]
+  aniso_model.py [--goldens DIR] [--capture DIR ...] [--sweep]
+
+Prints, per level, differing pixels in rows 245..364 (any channel differs)
+for each --capture dir and for the model, with the |d| = 1 / 2..8 / >8
+split. --sweep also scores every model variant (NOTES.md, "what was tried").
 """
 import argparse
 import math
@@ -35,8 +38,8 @@ BOX = 4
 VREP = 32.0
 YELLOW = np.array([255, 255, 0], float)
 BROWN = np.array([102, 51, 51], float)
-ROWS = slice(245, 365)
-VOFF = 0.53125                          # SetXDKDefaultViewport...: viewport offset                  # the plane, the region the brief names
+ROWS = slice(245, 365)                  # the plane, the region the brief names
+VOFF = 0.53125                          # SetXDKDefaultViewport...: viewport offset
 
 
 def golden(level, root=GOLDENS):
@@ -83,26 +86,13 @@ def raster(ox=0.0, oy=0.0, xscale=None):
     return S, T, ZE
 
 
-def texcoords(px, py, off=0.0):
-    """Texel-space (s, t) at a screen point, perspective-correct: the plane is
-    y_eye = -1.5, so the row fixes z_eye and the column then fixes x_eye."""
-    sy = (py - H / 2) / (H / 2)                        # +down
-    with np.errstate(divide='ignore', invalid='ignore'):
-        z_eye = (-PLANE_Y) * YS / sy
-    x_eye = (px - W / 2) / (W / 2) * (ASPECT / YS) * z_eye
-    z = z_eye + CAM_Z
-    u = (x_eye + 4.0) / 8.0
-    v = VREP * (200.0 - z) / 200.0
-    return u * TEX, v * TEX, z_eye
-
-
 def checker(s, t, parity=0):
     """1.0 where the point sample is yellow."""
     c = (np.floor(s / BOX).astype(np.int64) + np.floor(t / BOX).astype(np.int64) + parity) & 1
     return (c == 0).astype(float)
 
 
-def grid(ox=0.5, oy=0.5):
+def grid(ox, oy):
     y, x = np.mgrid[0:H, 0:W].astype(float)
     return x + ox, y + oy
 
@@ -112,10 +102,6 @@ def to_rgb(w):
     return np.floor(BROWN + (YELLOW - BROWN) * w[..., None] + 0.5).astype(int)
 
 
-def mask_plane(z_eye):
-    return (z_eye >= 7.0) & (z_eye <= 207.0) & np.isfinite(z_eye)
-
-
 def score(pred_rgb, gold, valid):
     pred_rgb = np.where(valid[..., None], pred_rgb, 32)       # 0xFE202020 clear
     d = np.abs(pred_rgb - gold).max(-1)
@@ -123,10 +109,6 @@ def score(pred_rgb, gold, valid):
     region[ROWS] = True
     d = np.where(region, d, 0)
     return int((d > 0).sum()), int(d.max())
-
-
-def golden_weight(g):
-    return (g[..., 0] - 102) / 153.0
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +181,8 @@ def probes(nf, spacing, rule):
     return out
 
 
-def model_aniso(L, rule='even-frac', deriv='central', pmin_floor=1.0, clamp='raise-pmin', parity=0):
+def model_aniso(L, rule='even-frac', deriv='central', pmin_floor=1.0, clamp='raise-pmin', parity=0, kmaj=1.0,
+                wbits=0, wround=np.round):
     """Render the weight (yellow share) under a probe model.
 
     Pmaj/Pmin from the Jacobian's column lengths (texels per pixel); the probe
@@ -212,7 +195,7 @@ def model_aniso(L, rule='even-frac', deriv='central', pmin_floor=1.0, clamp='rai
     S, T = np.nan_to_num(S), np.nan_to_num(T)
     Px, Py = np.hypot(dsx, dtx), np.hypot(dsy, dty)
     ymaj = Py >= Px
-    pmaj = np.nan_to_num(np.where(ymaj, Py, Px), nan=1.0)
+    pmaj = kmaj * np.nan_to_num(np.where(ymaj, Py, Px), nan=1.0)
     pmin = np.nan_to_num(np.where(ymaj, Px, Py), nan=1.0)
     ax_s = np.nan_to_num(np.where(ymaj, dsy, dsx) / np.maximum(pmaj, 1e-9))
     ax_t = np.nan_to_num(np.where(ymaj, dty, dtx) / np.maximum(pmaj, 1e-9))
@@ -222,6 +205,56 @@ def model_aniso(L, rule='even-frac', deriv='central', pmin_floor=1.0, clamp='rai
     nf = np.clip(pmaj / pe, 1.0, L)
     w = np.zeros_like(S)
     for off, wt in probes(nf, pe, rule):
+        if wbits:
+            wt = wround(wt * (1 << wbits)) / (1 << wbits)
         d = off * pe
         w += wt * checker(S + d * ax_s, T + d * ax_t, parity)
     return w, valid
+
+
+# ---------------------------------------------------------------------------
+# the result
+
+BEST = dict(rule='even-frac', deriv='quad', pmin_floor=1.0, clamp='raise-pmin')
+
+
+def split(pred_rgb, gold):
+    d = np.abs(pred_rgb - gold).max(-1)[ROWS]
+    return (int((d > 0).sum()), int((d == 1).sum()), int(((d >= 2) & (d <= 8)).sum()),
+            int((d > 8).sum()), int(d.max()))
+
+
+def render(L, **kw):
+    w, v = model_iso() if L == 1 else model_aniso(L, **kw)
+    return np.where(v[..., None], to_rgb(w), 32)
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('--goldens', default=GOLDENS)
+    ap.add_argument('--capture', action='append', default=[],
+                    help='a directory holding Texture_anisotropy::Anisotropy-N.png')
+    ap.add_argument('--sweep', action='store_true')
+    a = ap.parse_args()
+    np.seterr(all='ignore')
+    levels = (1, 2, 4, 8)
+    gold = {L: golden(L, a.goldens) for L in levels}
+    print('rows 245..364; cells are px (|d|=1, 2..8, >8, max)')
+    for c in a.capture:
+        for L in levels:
+            img = np.asarray(Image.open(os.path.join(c, f'{SUITE}::Anisotropy-{L}.png')).convert('RGB')).astype(int)
+            print(f'  {os.path.basename(os.path.dirname(c.rstrip("/"))) or c:48s} x{L}', split(img, gold[L]))
+    for L in levels:
+        print(f'  {"model " + str(BEST):48s} x{L}', split(render(L, **BEST), gold[L]))
+    if a.sweep:
+        print('variants (x2, x4, x8):')
+        for rule in ('even-frac', 'ceil-even', 'round'):
+            for deriv in ('central', 'quad'):
+                for clamp in ('raise-pmin', 'truncate'):
+                    kw = dict(rule=rule, deriv=deriv, pmin_floor=1.0, clamp=clamp)
+                    print(f'  {rule:9s} {deriv:7s} {clamp:10s}',
+                          [split(render(L, **kw), gold[L])[0] for L in (2, 4, 8)])
+
+
+if __name__ == '__main__':
+    sys.exit(main())
