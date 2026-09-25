@@ -794,10 +794,3 @@ issues = []
 retired_utc = "2026-09-25T08:40:00Z"
 files = []
 note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
-
-
-[lane.cloud-issue-188]
-issues = ["188"]
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-188, a cloud-class lane on issue #188, branch lane/cloud-188, attempt 3 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 188` removes this row when the unit ends."
