@@ -968,3 +968,10 @@ issues = ["68"]
 files = ["accel/tcg/cputlb.c", "accel/tcg/tb-maint.c", "accel/tcg/translate-all.c", "accel/tcg/cpu-exec.c", "target/i386/helper.c", "target/i386/tcg/**", "docs/lanes/tcgchurn/**", "docs/testing/predictions/tcgchurn-*.json"]
 standing = false
 note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z) for #68 (and #73): ~35-40% of the guest thread is translation-cache bookkeeping in the 09-11 Crimson profile (tlb_reset_dirty 10.7%, tcg_flush_jmp_cache 8.4%, lookups ~11%). Counters first (full-TLB-flush triggers by cause; tlb_reset_dirty callers and walk lengths), mechanism per trigger, then a fix with a soak arm. accel/tcg/*.c were in [free]; target/i386/helper.c and target/i386/tcg/** sit under the [free] glob target/**. #68's held range test 937848c9e7 is a candidate. Brief: briefs/tcgchurn.md."
+
+
+[lane.cloud-audit2-263]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-263, audit pass 2 of PR #263 on branch lane/shadetie224b, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 263` removes this row when the unit ends."
