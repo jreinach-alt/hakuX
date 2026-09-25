@@ -1,14 +1,16 @@
 # Audit pass 2 — PR #234, `lane/vshconst`: emulate vertex-program writes to constant registers (#233)
 
 **Auditor** `job.cloud` (claims no files; audit record only).
-**Subject** PR #234, branch `lane/vshconst`, remediation tip **`0e5f4167a3`**
-("nv2a/vsh: fix the two MEDIUMs from vshconst pass 1").
+**Subject** PR #234, branch `lane/vshconst`. First pass 2 at remediation tip
+**`0e5f4167a3`** ("nv2a/vsh: fix the two MEDIUMs from vshconst pass 1");
+re-run at **`dab6d1365b`** (index regeneration), see the last section.
 **Pass 1** `2026-09-25-vshconst-pass1.md`, audited at `a73eb00a7f`.
 **Date** 2026-09-25.
 
-**Both pass-1 MEDIUMs can no longer occur. The head is not clean: the
-remediation commit left `nv2a_index.json` stale, so CI `check` is red.**
-Verdict: `needs-remediation`. The fix is mechanical: regenerate the index.
+**Clean at `dab6d1365b`. Verdict: `fold-ready`.** Both pass-1 MEDIUMs can no
+longer occur. The one blocker the first pass 2 found, a stale
+`nv2a_index.json` that turned CI `check` red, is fixed by a commit that
+touches only that file, and `check` and both `build`s are green on it.
 
 ## M1 (paired ILU reads its MAC partner's constant write): closed
 
@@ -60,7 +62,7 @@ The scenario cannot occur.
 
 The scenario cannot occur.
 
-## New in the remediation: stale `nv2a_index.json` (blocks fold)
+## New in the remediation: stale `nv2a_index.json` (closed at `dab6d1365b`)
 
 The remediation adds 10 lines to `hw/xbox/nv2a/pgraph/pgraph.c` and does not
 regenerate the index. CI `check` on `0e5f4167a3`
@@ -95,3 +97,22 @@ The remediation has not been re-armed. Neither fix can move the arm 2
 captures (no `.vsh` on the pgraph disc writes a constant), so this is
 acceptable. The handheld ILU RCP Tests run through `--program vsh` is still
 owed, as `NOTES.md` records.
+
+## Re-run at `dab6d1365b` (second pass-2 firing)
+
+The first pass 2 made `fold-ready` conditional on a commit that touches only
+`nv2a_index.json` and a green `check`. Both hold:
+
+* `git show --stat dab6d1365b` lists `docs/testing/nv2a_index.json` alone
+  (186 +, 186 -). With digits masked, every changed line is a `"loc"` in
+  `pgraph.c` (183 lines) or `glsl/vsh-prog.c` (2), plus `emulator_commit`.
+  No site was added, dropped or renamed.
+* CI on `dab6d1365b`: `check` SUCCESS, `build` SUCCESS (x2).
+* GitHub reports the PR `mergeable: true`, `mergeable_state: clean`, and
+  `git merge-tree` against current `origin/master` merges without conflict.
+
+I re-read the remediation diff (`dff6b04b8b..0e5f4167a3`) myself rather than
+relying on the first trace. The M1 and M2 conclusions above stand. One extra
+check was not in the first trace: `c_mask` is `&mask_str[O_MASK][1]`, and
+every entry of `mask_str` for masks 1..15 is non-empty after the comma. The
+suffix therefore never emits `c_rw[n]. = ...`, which would not compile.
