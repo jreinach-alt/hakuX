@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 169
+wave = 170
 updated_utc = "2026-09-25T14:45:00Z"
 
 
@@ -819,3 +819,9 @@ issues = ["242"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshnobegin242-*.json", "docs/lanes/vshnobegin242/**"]
 standing = false
 note = "DISPATCHED AT WAVE 169 (job.board, 2026-09-25T14:45:00Z). #242: a lone SET_VERTEX4F outside Begin/End never runs the vertex program, so nxdk_vsh_tests Exceptional Float reads all zeros (found by lane.toolsmith, verdict on #112 item 4). Mechanism fully read in the issue; fix is in pgraph.c SET_VERTEX4F, reusing #234's evaluator. Arm pre-specified in briefs/vshnobegin242.md (Thor, nxdk_vsh_tests). hw/xbox/nv2a/pgraph/pgraph.c was free."
+
+[lane.wbuf31sel]
+issues = ["31"]
+files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md."
