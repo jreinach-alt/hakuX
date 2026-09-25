@@ -219,3 +219,129 @@ For the next #224 family-B lane:
   way. It needs no specular for row 1 and no diffuse blue for row 2. Each
   quad's byte then reads off which side of the tie silicon puts that input
   on, and the rounding point is a measurement, not a fit.
+
+## 8. shadetie224b (2026-09-25): envytools' lighting unit, priced and ported
+
+PR #263, lane shadetie224b. The candidate is not a new rounding rule. It is
+envytools' Celsius lighting-unit model, which was already the source of
+`lt()`, ported whole.
+
+### The three ties are 0.03 of a byte wide, and they pull opposite ways
+
+- **Shade model n3.** Master's product 0.7000122 x 0.3333333 is
+  0.23333739. That is one float32 ulp *under* the 13-bit grid point
+  15292/65536 = 0.2333374, which would give 60. Any upward nudge at 13 bits
+  fixes it.
+- **Directional.** Blue = diffuse 21 (ambients 0.031373 + 0.05) + specular.
+  The specular is S(x) = (x + k0)/(x k1 + k2) at x = N.H = 0.9901475, with
+  dS/dx of about 17. Master gives 203.47, just 0.03 under the 203.5 tie.
+  Rounding x to 13 bits to nearest (0.990173) gives 204. Truncating it, or
+  not rounding it, keeps 203.
+- So N.L wants rounding **up** and N.H wants rounding **down/none**. No rule
+  that rounds both dot products (or N) the same way fits both points.
+
+### Pricing (`python3 price.py --three`)
+
+| candidate | n3 (60) | n1 (179) | Dir spec (203) | 0.1f (25) | fits | independent argument |
+|---|---|---|---|---|---|---|
+| master | 59 | 179 | 203 | 25 | | |
+| lt(N) (refuted on device) | 60 | 179 | **204** | 25 | | |
+| lt(N.L) only | 60 | 179 | 203 | 25 | all | none: rounds N.L and not N.H |
+| lt(N.L) and lt(N.H) | 60 | 179 | **204** | 25 | | |
+| lt(diffuse product) only | 60 | 179 | 203 | 25 | all | none |
+| lt(both products) | 60 | 179 | 203 | 25 | all | none: envytools says products truncate |
+| RN at colorPrecision | 60 | 179 | 203 | 25 | all | contradicted by the Point size goldens (0.7 -> 178, 0.9 -> 229 need truncation) |
+| **envytools Celsius LT, unmodified** | **60** | **179** | **203** | 25 | **all** | a hardware-tested model with no free parameter |
+
+Four rules fit the three ties and have no argument outside them. They are
+curve fits, per the brief, and they are not carried. The Celsius model also
+gives:
+
+- all nine Shade model flat colours (0 of 9 wrong);
+- **127 for five 0.1 ambients**. That is the Lighting accumulation
+  Directional-5 fact in vsh-ff.c's header, which the file says "no rounding
+  of the float32 sum produces";
+- a direction that matches Lighting accumulation's master residuals: ours is
+  +1 over silicon in Point-2 (52/51), All (76/75) and Point-4 (103/102),
+  which is what a truncating accumulation removes.
+
+### The model
+
+envytools `nvhw/pgraph_celsius_xfrm.c` `pgraph_celsius_lt_full` works like
+this. Every LT input goes through `xf_s2lt` (`convert_light_v`): the normal,
+the eye vector, the light vectors, the colours and the LTC scalars
+(specular params). The multiply keeps the top 14 bits of the 14x14 product,
+truncating (`lt_mul`). The adds align in fixed point and drop bits, towards
+zero (`lt_add3`, `lts_add`). The reciprocal is a 64-entry table plus one
+Newton step (`lt_rcp`). Then:
+
+- An infinite light with a non-local eye: cd = N.L, s = N.H,
+  cs = (s + k0) * rcp(s k1 + k2).
+- Otherwise: H = eye + L unnormalised, and the second triple is evaluated
+  homogeneously.
+
+`celsius_lt.py` is a port of those functions.
+
+### The change (fe07f11f50)
+
+vsh-ff.c's loop now does what `pgraph_celsius_lt_full` does:
+
+- `N = lt(normal)`, `lv = lt(dir)`, `k = lt(specularParams)`;
+- ca, cd and cs come from the LT operations above;
+- every colour product and sum is `ltVM`/`ltVA`;
+- a folded specular (SPECULAR_ENABLE or SEPARATE_SPECULAR clear) is added
+  into oD0 light by light, as envytools' `!spec_out` does, not after the
+  loop.
+
+Stages envytools does not model are the local-light (1, d, d^2) attenuation
+input and the spot factor ("XXX spotlight"). Those stay float32 and are
+rounded into the LT multiply.
+
+### Checks run offline
+
+- `vshemit/check.py`: the emitted lighting GLSL compiles under the NDK's
+  glslc (Vulkan 450) for 120 VshStates x both paths, 240 of 240.
+- `vshemit/exact.py`: the emitted GLSL helpers, compiled as C++, match
+  `celsius_lt.py` bit for bit on 60,000 random operands. One bug was found
+  and fixed this way: an underflowed product must be -0, not +0.
+
+### The arm
+
+`docs/testing/predictions/shadetie224b-celsius-lt.json` (sha256
+a023d0f6...), a = 2b04d4d422 (master), b = fe07f11f50. It was registered by
+`register_b.py` from a scores1.tsv, so every leg is named individually.
+
+- expect = 0: the 24 Fixed/W_Fixed Flat captures.
+- must_not_move: 136. These are Shade model Prog*/FixedTex*/W_FixedTex* and
+  Lighting control VS_*_LightOff, where no LT code runs.
+- must_not_regress: the other 210.
+
+The world in which it fails: Directional leaves 224, or Lighting control or
+Specular get worse in 1-LSB blocks. The Spot captures carry the one stage
+that is not modelled.
+
+Before believing the verdict: check scores1.tsv `status` for `unreadable`,
+and run1.log for PARTIAL COVERAGE / UtilAcceptVsock.
+
+### State at end of session 1 (2026-09-25)
+
+Waiting on the arm. The prediction is committed at ca9d8dbe04 with live refs
+(a = 2b04d4d422, b = fe07f11f50), so the arms job will run it and post a
+`[job.arms]` verdict on PR #263. When it lands:
+
+- check the status column and run1.log, as above;
+- record the verdict here;
+- mark the PR ready if every leg holds. If one fails, record the regressing
+  suite as the stage that is refuted.
+
+### The verdict (2026-09-25): FAIL on one leg, Specular_back Pow0_1
+
+- **Result:** 18 of 18 B captures exact, and Directional stayed at 224.
+  Differing went from 4.94M to 3.84M; 104 captures got better and 1 got worse.
+- **The one worse leg:** `Specular_back/SpecParams_FF_Pow0_1`, 1259 -> 1280,
+  all off-by-one. That capture is deterministic on disc across seven apks,
+  and its front-face twin improved (2296 -> 1979). So the refuted stage is
+  the back-face specular path, not the LT arithmetic.
+- **Readability:** no `unreadable` captures and full coverage in both arms.
+
+The details and the next steps are in `docs/lanes/shadetie224b/NOTES.md`.
