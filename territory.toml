@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 158
-updated_utc = "2026-09-25T08:40:00Z"
+wave = 159
+updated_utc = "2026-09-25T11:30:00Z"
 
 
 [retired.hilodot10]
@@ -664,19 +664,6 @@ issues = []
 files = []
 retired_utc = "2026-09-25T08:30:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T08:30:00Z): PR #177 MERGED 2026-09-20T06:55:37Z, no open PR on lane/sweepremote, row was still lane.sweepremote. Files RELEASED to [free]. PRIOR NOTE: WRITTEN AT WAVE 128 (job.board): lane was RUNNING (branch lane/sweepremote, no open PR yet) with no territory row at all, invisible to check_territory.py -- the same defect this file has now recorded for eight lanes. Harness defect, no tracker issue (brief only, docs/lanes/sweepremote via briefs/sweepremote.md): lane.remote is a cloud session on a claude/* branch with no local systemd unit BY DESIGN and, between PRs, no open PR either -- issue-sweep.sh's dead-lane test ('no unit and no open PR') and pr-sweep.sh:189's lane extraction ('lane/' prefix or empty string) both misread it as dead/unnamed, which is how a live claim on #34/#60/#62 gets handed to the board as stale and how the next lane.remote PR would get routed to handback.sh for a resume that would put two agents on one branch. The fix already exists and just isn't called: lane.laneshape's remote-lane.sh (remote_lane_of/remote_branch_of/is_remote_branch/remote_source/remote_authoritative), sourced not edited -- needs no claim here. FILES NARROW TO THE TWO SWEEPS: board.sh, install-host.sh, the systemd units and selftest.d/73-74 from the old [lane.sweeps] claim are DONE work sitting in the folded PR and are not this lane's to reopen; they stay in [free]. Constraint carried from the brief: remote_authoritative must gate both sweeps' outward actions -- an unreadable board must make them fail safe and act on nothing, not silently report 'no remote lanes exist'."
-
-[lane.cloud-audit2-163]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-163, audit pass 2 of PR #163 on branch lane/laneshape, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 163` removes this row when the unit ends."
-
-
-[lane.cloud-audit1-181]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-181, audit pass 1 of PR #181 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 181` removes this row when the unit ends."
 
 
 [retired.swatchorder50]
