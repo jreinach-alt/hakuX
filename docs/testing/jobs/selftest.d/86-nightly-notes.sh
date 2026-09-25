@@ -216,8 +216,35 @@ check "  the log line names the tag it counted from" \
     grep -qF "3 commit(s) since nightly-$YDAY" "$NB/late.md.err"
 check "  a tag-based range prints no fallback note" \
     bash -c '! grep -qF "tag is an ancestor of this build" "$1"' _ "$NB/late.md"
-check "the tagless fixture falls back to the date window, and SAYS so in the notes" \
-    grep -qF 'tag is an ancestor of this build, so this lists commits DATED since 2000-01-01' "$NB/new.md"
+check "the tagless fixture falls back to the date window, and says so in the LOG" \
+    grep -qF 'WARNING: no nightly-* tag is an ancestor of HEAD; falling back to commits dated since 2000-01-01' "$NB/new.md.err"
+
+# ------------------------------------------- the body carries no caveats
+# Owner's standing order, 2026-09-25 (AGENTS.md PR #239): the public release
+# body carries no process commentary. The dirty-tree line, the not-the-trunk
+# note and the date-window note were each a blockquote at the top of the body;
+# all three now go to the log, and the builds that needed them refuse. The
+# predicate is shared with 87-nightly-trunk.sh, which sources after this file,
+# so every fixture scenario in both is put through the same test.
+#
+# -s first: a negative grep passes against a missing or empty file.
+nightly_body_has_no_caveat() {   # <notes file>
+    [ -s "$1" ] && grep -q '^Automated nightly\.' "$1" \
+        && ! grep -qiE '^>|warning|refus|caveat|not exactly this commit|not confirmed|unreachable|could not reach|may be behind|commit\(s\) behind|on this tree|DATED since|fall(s|ing)? back' "$1"
+}
+nightly_body_has_a_caveat() { ! nightly_body_has_no_caveat "$1"; }
+for f in new.md none.md late.md; do
+    check "the published body carries no warning or caveat line: $f" \
+        nightly_body_has_no_caveat "$NB/$f"
+done
+# Not vacuous: the top of the body as nightly_build.sh wrote it at 48f0618aff
+# for a tree with no reachable origin -- which is every fixture in this file.
+{ echo "Automated nightly. built from \`abc1234\` on \`master\` -- **origin was unreachable**, so this is the last sha this host had, not necessarily the trunk's tip."
+  echo
+  echo "> Could not reach \`origin/master\` at build time (this host last fetched at never). The sha below is what was on disk; it may be behind the trunk."
+  echo; sed -n '/^### /,$p' "$NB/new.md"; } > "$NB/caveated.md"
+check "  and the predicate catches the old top-of-body caveat" \
+    nightly_body_has_a_caveat "$NB/caveated.md"
 
 # Falsification: the replaced selection, verbatim from nightly_build.sh at
 # 48f0618aff (the SINCE default and the `git log --since` it fed), with the
