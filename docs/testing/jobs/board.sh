@@ -88,8 +88,29 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 # on the script, so a piped array would be read as source and the filter would
 # silently return nothing -- which reads exactly like "no work", the defect this
 # file is about.
+#
+# THE ISSUES COME OUT IN DISPATCH ORDER, NOT gh's. gh lists newest first, and
+# the role file used to say "severity bucket, then oldest" over a tracker that
+# recorded no size at all -- so a 5k-px edge case and a 1.5 M-px family looked
+# the same, and the owner asked (2026-09-25) for the broad ones to go first.
+# The host now writes four fields on each tracker row and the board keeps them
+# current; this sorts on them, and prints the key on every line so the board
+# and a human can see why a row ranks where it does:
+#
+#   1. game_visible = true                      [game]
+#   2. impact_px + impact_onestep_px // 4, descending   [impact N px]
+#      (one-step px count a quarter: they are rounding, not rules)
+#   3. a row with no impact fields, oldest first        [no impact estimate]
+#   4. an issue with no tracker row at all, oldest first [no tracker row]
+#
+# Ties inside a tier go to the oldest issue. The tracker is read through
+# board_files.load, as every other board tool reads it, so this sees
+# origin/board and not a fold-lagged copy. If it cannot be read the list is
+# still printed -- an unreadable tracker must not read as "no work", which is
+# the defect this gate exists to end -- every line says so, and the order is
+# oldest first.
 board_filter() {   # <issues|prs> <the JSON array gh printed>
-    python3 - "$1" "$2" <<'PY'
+    python3 - "$1" "$2" "$SELF/.." <<'PY'
 import json, sys
 mode = sys.argv[1]
 # An issue no lane may be started on. Everything else open is startable.
@@ -105,6 +126,7 @@ try:
     rows = json.loads(sys.argv[2] or "[]") or []
 except Exception:
     sys.exit(0)
+out = []
 for r in rows:
     names = [l.get("name", "") for l in (r.get("labels") or [])]
     if mode == "issues":
@@ -116,7 +138,51 @@ for r in rows:
         if any(n in STATE for n in names):
             continue
     tail = "  [" + ",".join(names) + "]" if names else ""
-    print("#%s %s%s" % (r.get("number"), (r.get("title") or "").strip(), tail))
+    out.append((r, (r.get("title") or "").strip() + tail))
+if mode != "issues":
+    for r, text in out:
+        print("#%s %s" % (r.get("number"), text))
+    sys.exit(0)
+
+tracker = None
+try:
+    sys.path.insert(0, sys.argv[3])
+    import board_files
+    tracker = board_files.load("nv2a_issues.toml").get("issue") or {}
+except Exception:
+    pass
+
+def num(r):
+    try:
+        return int(r.get("number"))
+    except (TypeError, ValueError):
+        return 1 << 62
+
+def rank(r):
+    n = num(r)
+    if tracker is None:
+        return (3, 0, n), "[tracker unreadable]"
+    row = tracker.get(str(r.get("number")))
+    if not isinstance(row, dict):
+        return (3, 0, n), "[no tracker row]"
+    # A malformed value counts as zero rather than raising: one bad row must
+    # not empty the whole list.
+    px, one = (v if isinstance(v, int) and not isinstance(v, bool) else 0
+               for v in (row.get("impact_px"), row.get("impact_onestep_px")))
+    score = px + one // 4
+    size = "impact {:,} px".format(score)
+    if one:
+        size += " = {:,} structural + {:,} one-step / 4".format(px, one)
+    if row.get("game_visible") is True:
+        key = "[game]" if not score else "[game; %s]" % size
+        return (0, -score, n), key
+    if "impact_px" in row or "impact_onestep_px" in row:
+        return (1, -score, n), "[%s]" % size
+    return (2, 0, n), "[no impact estimate]"
+
+ranked = sorted((rank(r) + (r, text) for r, text in out), key=lambda t: t[0])
+for _, key, r, text in ranked:
+    print("#%s %s %s" % (r.get("number"), key, text))
 PY
 }
 
@@ -341,7 +407,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo "## capacity -- there is room under LANE_MAX and there is startable work"
     echo
     [ "${WINDOW_DEFER:-0}" = 1 ] && { echo "**START NO LANE AND CLAIM NO AUDIT THIS TICK.** $WINDOW_WHY. Dispatch resumes at $WINDOW_UNTIL and the list below is deliberately empty; do not go looking for startable issues yourself. Everything else in this brief is still yours: labels, the coverage gate, comments, briefs. This is a budget decision, not a failure -- do not open a decision-needed issue about it. ($WINDOW_FACTS)"; echo; }
-    echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), by your role file's order (severity bucket, then oldest), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
+    echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), in the order listed (it is sorted by expected improvement: game-visible, then recoverable px, and each line shows its key), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
     printf '%s\n' "${capacity:-none}"
     echo

@@ -30,8 +30,12 @@ So, every tick, in this order:
 
 - Dispatch **up to three lanes per tick**. `LANE_MAX` is the only capacity
   cap: the owner lifted the budget throttle on 2026-09-25 ("there's no limits
-  on [capacity] now"). Take the most valuable `dispatchable` issues whose
-  files are free, severity bucket first, then oldest. For EACH one: write its
+  on [capacity] now"). Take the startable issues **in the order the capacity
+  list prints them**, skipping any whose files are not free or that has a
+  blocker: that list is sorted by expected improvement (game-visible first,
+  then `impact_px + impact_onestep_px // 4` descending, then rows with no
+  estimate, then issues with no tracker row, oldest first inside each), and
+  each line carries the key it was sorted on. For EACH one: write its
   brief to `briefs/<lane>.md` on the `board` branch, write and push its row,
   start it with `docs/testing/lane.sh start <name> <brief> <issue>`, and label
   the issue `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its
@@ -139,6 +143,14 @@ So, every tick, in this order:
   only actor who can clear it, and it is the first thing to clear. Note that
   closing an issue and leaving its row saying `open` creates this yourself:
   close the issue and fix the row in the same tick.
+- **The dispatch order's inputs.** When you file or triage an issue, set or
+  update its row's `impact_px` (expected recoverable structural px: the size
+  times how tractable the next step is, not the whole residual),
+  `impact_onestep_px` (expected recoverable one-step px from a named
+  mechanism), `game_visible` (seen in a commercial game: a crash or a visible
+  glitch) and `impact_basis` (the run id it came from, or the estimate and
+  why). The capacity list is sorted on these, so a row without them sorts
+  below every row with them, and a stale one dispatches the wrong issue first.
 - Routing: apply `board-request` comments; answer intent questions from the
   diff; anything you cannot decide by rule → open or update a
   `decision-needed` issue with the options and the evidence.
