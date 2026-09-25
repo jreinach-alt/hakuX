@@ -47,6 +47,34 @@ device happens to be first.
   detects a run with no lease, result or build activity for 30 min and
   restarts the service when nothing else is in flight.
 
+## Defect 3 (added 2026-09-25 02:15 PDT): WSL interop adb failures void runs
+
+The host's `adb` is the Windows `adb.exe` reached through WSL interop
+(`/usr/local/bin/adb -> /mnt/c/platform-tools/adb.exe`). Interop sometimes
+fails with `<3>WSL (...) ERROR: UtilAcceptVsock:271: accept4 failed 110`.
+
+- Five run logs carry it: `1790325543-arms-vshconst-{base,fix}`,
+  `1790321693-arms-wbuf31fix-base`, `1790317302-xbox-wbuf31-dryrun`, and a
+  09-13 one. Most of those runs survived it.
+- `1790325543-arms-vshconst-base-650341` did not. It logged four such errors,
+  "ran 39s", "pull failed or timed out", and an empty logcat, so its pair came
+  back as ARM ERROR and one device run was lost.
+
+What to do:
+
+- Recognise the signature, and retry the adb call with backoff before treating
+  it as device loss.
+- If a run still produces 0 captures and the signature appears in its log,
+  record `ERROR: adb interop failure` rather than a silent zero, and requeue
+  it once.
+
+## Defect 4 (minor): score_sweep.py crashes on an empty run
+
+`score_sweep.py:399` does `max(len(k) for k in suites)`, which raises
+`ValueError: max() iterable argument is empty` when a run has no captures (the
+same lost run). Guard it. An empty run already prints its own explanation just
+above.
+
 ## Falsify before claiming
 
 - Defect 2: a selftest fragment with a fake `adb` that never returns. On the
