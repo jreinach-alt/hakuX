@@ -3519,9 +3519,6 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
                 if (!color) {
                     surf91_overlap_probe(pg, target.vram_addr);
-                    /* ARM SCAFFOLDING, #91: #88's decline (4726557b0f). */
-                    pg_surface->buffer_dirty = false;
-                    return;
                 }
                 unbind_surface(d, !color);
             }
