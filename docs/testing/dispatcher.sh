@@ -1110,7 +1110,7 @@ try:
 except Exception:
     meta["scorer_sha256"] = "unknown"
 # Keep equal to score_sweep.py's SCORED_STATUSES (selftest fragment
-# 35-dispatch-hardening.sh checks). A row outside it -- `unreadable` after a
+# 51-dispatch-hardening.sh checks). A row outside it -- `unreadable` after a
 # truncated pull, above all -- carries differing=0 because there is no number,
 # so it is neither a capture nor exact. Counting it as both is how #224's fix
 # arm recorded 110 of 110 W_param while score_sweep said 54 of 110.

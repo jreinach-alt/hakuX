@@ -233,6 +233,67 @@ else
     rm -f "$DISPATCH_DIR"/queue/*.req "$DHHALF/ERROR"; clear_markers
 fi
 
+echo "== dispatch hardening E2: an INCOMPLETE verdict is re-queued once, then final"
+# PR #249 audit M1: INCOMPLETE said "Re-run the arm", and arms.sh wrote
+# judged/<sha> for it while both clean halves stayed in RAN -- so nothing,
+# not even the ARM ERROR recipe, could queue it again. The results 50 left are
+# set aside so the live prediction queues afresh, and put back at the end.
+DHSAVE="$DH/saved-results"; rm -rf "$DHSAVE"; mkdir -p "$DHSAVE"
+mv "$DISPATCH_DIR"/results/* "$DHSAVE"/ 2>/dev/null
+rm -f "$DISPATCH_DIR"/queue/*.req "$HAKUX_WORK"/arms/incomplete/*; clear_markers
+dhincomplete() {   # <arms tree>: give the queued pair the A fixture's INCOMPLETE results
+    local pair ida idb
+    pair=$(ls "$HAKUX_WORK"/arms/pairs/*.json 2>/dev/null | head -1); [ -n "$pair" ] || return 1
+    ida=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['id_a'])" "$pair")
+    idb=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['id_b'])" "$pair")
+    python3 -c "import json,sys;p=json.load(open(sys.argv[1]));p['expect']=sys.argv[2];json.dump(p,open(sys.argv[1],'w'))" "$pair" "$DH/expect.json"
+    finish_queue ""
+    cp "$DH/a/DONE" "$DH/a/scores1.tsv" "$DH/a/result.json" "$DISPATCH_DIR/results/$ida/"
+    cp "$DH/b/DONE" "$DH/b/scores1.tsv" "$DH/b/result.json" "$DISPATCH_DIR/results/$idb/"
+    bash "$1/jobs/arms.sh" >/dev/null 2>&1
+}
+dhsha() { python3 -c "import json,sys;print(json.load(open(sys.argv[1]))['sha'])" "$(ls "$HAKUX_WORK"/arms/pairs/*.json | head -1)"; }
+bash "$HERE/arms.sh" >/dev/null 2>&1                 # queue the live pair
+DHSHA=$(dhsha 2>/dev/null)
+if [ -z "$DHSHA" ]; then
+    bad "E2: the live prediction queued no pair with the results set aside"
+else
+    dhincomplete "$TESTING"
+    check "E2: the first INCOMPLETE writes no judged marker" test ! -e "$HAKUX_WORK/arms/judged/$DHSHA"
+    check "E2: and records the attempt" grep -q "^VERDICT: INCOMPLETE" "$HAKUX_WORK/arms/incomplete/$DHSHA"
+    check "E2: and both halves are VOIDED" bash -c '[ "$(ls "$1"/results/*/VOIDED | wc -l)" -eq 2 ]' _ "$DISPATCH_DIR"
+    check "E2: and the comment says it is queued again" grep -q "queued again on the next tick, once" "$HAKUX_WORK/arms/pairs/$DHSHA.comment.md"
+    bash "$HERE/arms.sh" >/dev/null 2>&1
+    check "E2: the next tick queues the pair again" \
+        [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -ge 2 ]
+    dhincomplete "$TESTING"
+    check "E2: the second INCOMPLETE is final: judged" grep -q "^VERDICT: INCOMPLETE" "$HAKUX_WORK/arms/judged/$DHSHA"
+    check "E2: and its comment names the recovery" grep -q "register the prediction again" "$HAKUX_WORK/arms/pairs/$DHSHA.comment.md"
+    bash "$HERE/arms.sh" >/dev/null 2>&1
+    check "E2: and nothing is queued a third time" \
+        [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -eq 0 ]
+    # The published recipe after a final INCOMPLETE: delete the two markers.
+    clear_markers
+    bash "$HERE/arms.sh" >/dev/null 2>&1
+    check "E2: deleting judged/ and pairs/ after a final INCOMPLETE does queue it" \
+        [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -ge 2 ]
+    # MUTANT: the RAN walk counts a VOIDED result as a run -- the first
+    # INCOMPLETE then strands the prediction, which is the audited defect.
+    rm -rf "$DISPATCH_DIR"/results/* "$DISPATCH_DIR"/queue/*.req "$HAKUX_WORK"/arms/incomplete/*; clear_markers
+    DHM=$(dhmut jobs/arms.sh '/os.path.join(os.path.dirname(rj), "VOIDED")/,+1d' voided)
+    if [ -z "$DHM" ]; then
+        bad "E2 MUTANT: could not build it (the sed matched nothing)"
+    else
+        bash "$DHM/jobs/arms.sh" >/dev/null 2>&1
+        dhincomplete "$DHM"
+        bash "$DHM/jobs/arms.sh" >/dev/null 2>&1
+        check "E2 MUTANT: a voided result counted as a run queues nothing, so E2 can go red" \
+            [ "$(ls "$DISPATCH_DIR"/queue/*.req 2>/dev/null | wc -l)" -eq 0 ]
+    fi
+fi
+rm -rf "$DISPATCH_DIR"/results/* "$DISPATCH_DIR"/queue/*.req "$HAKUX_WORK"/arms/incomplete/*; clear_markers
+mv "$DHSAVE"/* "$DISPATCH_DIR"/results/ 2>/dev/null
+
 # ------------------------------------------------ F. interop: requeue once
 echo "== dispatch hardening F: 0 captures with the WSL interop signature is requeued once"
 # The whole disc path of serve_one, as written, with the four programs it

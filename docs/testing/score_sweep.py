@@ -83,7 +83,7 @@ Z16_NAME = re.compile(r"(^|_)z16_|^[WZ]Buf16[DF]_")
 # reads as bit-identical to anything that does not check this set -- which is
 # how 52 truncated W_param captures became "repaired to exact" on #224's arm.
 # ab_compare.py and dispatcher.sh's result writer carry copies; the selftest
-# fragment 35-dispatch-hardening.sh fails if the three drift apart.
+# fragment 51-dispatch-hardening.sh fails if the three drift apart.
 SCORED_STATUSES = ("ok", "blank", "label-differs", "white-content")
 
 

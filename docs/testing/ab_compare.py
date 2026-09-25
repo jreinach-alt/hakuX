@@ -756,7 +756,7 @@ def byte_verdict(ha, hb):
 # writes `differing = 0` because there is no number to write, and a 0 in that
 # column reads as bit-identical to everything downstream. Keep this equal to
 # SCORED_STATUSES in score_sweep.py and in dispatcher.sh's result writer;
-# selftest.d/35-dispatch-hardening.sh checks that the three agree.
+# selftest.d/51-dispatch-hardening.sh checks that the three agree.
 #
 # `blank`, `white-content` and `label-differs` stay measured on purpose: each
 # is computed from both images' pixels, and a blank capture that starts to
