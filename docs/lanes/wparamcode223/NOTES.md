@@ -19,6 +19,16 @@ On resume:
 - check the per-row prose tolerances in section 4 by hand;
 - then mark ready, or diagnose the failed leg.
 
+**Attempt 2 (2026-09-25 23:55Z): still waiting, same cause.** Attempt 1
+ended waiting on the arm, and handback resumed it because CI went green on
+`634099fd2d`. That was not what it was waiting for.  The arm is still
+unrun: the arms job queued `1790373302-arms-wparamcode223-base-991502` and
+`-fix-991557` at 21:55Z.  Neither has been claimed.  They sit in a
+189-request queue, and the #311 bisect/ghoul runs hold the devices.  With no
+`[job.arms]` verdict, the must-not-move legs are unchecked, so the PR stays
+draft.  Files, prediction and CI are all done; the verdict is the only open
+item.
+
 ## 1. Re-derived prices (ff_port.py, rerun here, unchanged tools)
 
 | model | ff bitri coverage xor G | ff quad coverage xor G |
