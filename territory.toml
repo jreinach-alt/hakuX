@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 205
+wave = 206
 updated_utc = "2026-09-25T22:10:00Z"
 
 
@@ -912,9 +912,9 @@ note = "DISPATCHED AT TERRITORY WAVE 189 (host session, 2026-09-25 13:10 PDT) fr
 
 [lane.goldencorr287]
 issues = ["287"]
-files = ["docs/testing/predictions/goldencorr287-*.json", "docs/lanes/goldencorr287/**"]
+files = ["docs/testing/predictions/goldencorr287-*.json", "docs/lanes/goldencorr287/**", "docs/testing/golden_overrides/**"]
 standing = false
-note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #287: TexFmt_R6G5B5's golden is the outlier, our output is byte-identical to the console (134,902 phantom px). Scoring/data work, no hw/ file. It must locate the golden or override mechanism first and ask for that path by board-request; score_sweep.py is lane.toolsmith's and scoreboard.py is lane.sweepcover's and neither is granted. briefs/goldencorr287.md."
+note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #287: TexFmt_R6G5B5's golden is the outlier, our output is byte-identical to the console (134,902 phantom px). Scoring/data work, no hw/ file. It must locate the golden or override mechanism first and ask for that path by board-request; score_sweep.py is lane.toolsmith's and scoreboard.py is lane.sweepcover's and neither is granted. briefs/goldencorr287.md. GRANTED (host session, 2026-09-25T22:28:57Z) on board-requests/goldencorr287.md: docs/testing/golden_overrides/** (new path) for the #287 override PNG (a byte copy of console set K) and its README provenance row. It moves no score until the scorer reads it: that hook is lane.toolsmith's defect 17 (an ordered list of golden roots), with golden_overrides as the first root. dispatcher.sh is lent to lane.titlerun until its first PR folds."
 
 [retired.zetaswap275]
 issues = []
