@@ -70,3 +70,31 @@ a representative slice of `nv2a_index.py blast pgraph.c`, which names the
 whole file. The prediction text says what would move each leg. No `.vsh` on
 the pgraph disc writes a constant, so on that disc the only live effect is the
 reset of a lone vertex's inline buffer.
+
+## Checks done so far
+
+- `pgraph.c` passes `-fsyntax-only` with the desktop build's own compile
+  command, with this worktree's headers put first. The only warning is one
+  that was already there (`pgraph_method_histogram_log_and_reset`).
+- `nv2a_index.json` was regenerated because the edit moved 190 sites by 16
+  lines. The tests tree was at the index's provenance commit 6743b6ab16, and
+  the build used `--support ~/pbkitplusplus`. `check --tests` matches.
+- Preflight passes on `8b0d0a4` (the head after the index commit).
+
+## State at the end of attempt 1 (2026-09-25): WAITING
+
+- vsh proof, self-queued on Thor (no `[job.arms]` comment will announce
+  these): fix `1790347577-vshnobegin242-3252169` (ref bd552105ed), base
+  `1790347581-vshnobegin242-3253522` (ref 21946df29b). Results land in
+  `~/hakux-work/dispatch/results/<id>/`. Read `vsh*.txt`, check that
+  `log_completed` is true and that no row is STALE or MISSING, and grep
+  run1.log for `UtilAcceptVsock` before believing either one.
+- pgraph arm: the arms job should queue `vshnobegin242-must-not-move.json`
+  and post a `[job.arms]` verdict on #245. Read both arms' status columns
+  for `unreadable`, and run1.log for PARTIAL COVERAGE.
+- CI on the head.
+
+The next attempt: judge both halves, post the verdicts on #245 and #242,
+record them here, then `gh pr ready 245` if they are clean. If Exceptional
+Float moves only partly, score the finite rows separately (see the prediction
+above). Do not revert.
