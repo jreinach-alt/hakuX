@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-25T09:32:02Z",
+  "who": "lane.clrwb91",
+  "issue": "91",
+  "prediction": "THE MECHANISM, MEASURED BEFORE THIS ARM RATHER THAN INFERRED. The diagnostic trace run 1790328363-lane.clrwb91-1134991 (f4dadc07d6, #88's decline plus a [wb91] trace sampling one background VRAM word per surface event; reproduced Swap 304,750 with 0x00000024 x 139,303) shows, in Swap's frame, the zeta image at the colour address 0x0397c000 created fresh and UPLOADED while VRAM read 0xFE242424, then evicted by colour after the quad draw and DOWNLOADED as 0x00000024 -- nothing between them but the quad. The clear-based mechanism the brief inherited from #148 is refuted by reading as well: pbkit always clears Z and STENCIL together, and both Vulkan clear paths add the stencil aspect, so no clear can zero depth and keep stencil 0x24. THE DEFECT: pgraph_vk_upload_surface_data() builds the depth VkBufferImageCopy with bufferOffset = staging_base, then on the Z24S8 compute path switches the copy source to BUFFER_COMPUTE_SRC, where the unpack wrote depth at offset 0; only the stencil region's offset is rewritten (60bc72faed introduced staging_base and missed it). In Swap a 640x480x4 colour upload (trace: 'upload C addr=0x02b6c000') came first in the staging window, so staging_base = the depth size, the depth copy read the stencil plane (0x24242424 as float -> depth 0), and the REQUIRED write-back over colour memory carried depth 0. The fix sets regions[0].bufferOffset = 0; the write-back is kept and now carries the 0xFE2424 lifted from colour memory.\n\nARMS. a_ref 9c5f7416d8 = master + #88's decline (scaffolding: on master Swap's background is already 0xFE242424 in every master-policy capture, so master -> master+fix could not move Swap and would be an inert control). b_ref 9de95de849 = a_ref + the one-line fix. The branch withdraws the decline at the next commit, so the shipped diff is the fix alone. Three-suite disc, inherited from #88/#148's arms, so the two out-of-suite controls bind and score.\n\nFALSIFIERS, EACH WITH THE WORLD IN WHICH IT FAILS.\n(1) Color_zeta_overlap/Swap 304,750 -> 165,447 exactly. Fails if the depth plane is wrong for a second reason as well (e.g. a later pack reading a stale region), which would show as a third value; fails upward if the fix breaks the quad's depth, which is drawn over the uploaded image. 165,447 is NOT the golden: the quad stays #E91A24 vs the golden's #E91624 (depth quantisation, off by 4 in the low byte, present under both policies and not claimed here).\n(2) MECHANISM LEG, read by hand from the captures: Swap's 139,303 background px read 0x00000024 in arm A and 0xFE242424 in arm B, matching the golden and the silicon runs; the quad population stays FFE91A24 x 165,447 in both. Fails if the count lands right with a third background value -- that would be the right number for the wrong reason and refutes this model.\n(3) ColorIntoZeta_ZB stays 10,766 and ZetaIntoColor stays 71,663 -- #88's absolutes, which the decline produces in both arms. By the trace, neither capture's pixels pass through a zeta upload that was not first in its window (ColorIntoZeta's zeta stays declined; ZetaIntoColor's frame-37 zeta upload is of an all-zero surface and zeta is then declined for the quad). Fails if that reading of the trace is wrong. Note these two are nondeterministic on silicon (#88's hardware comment), but on the Nova they have been bit-stable at these values across every decline arm.\n(4) must_not_move on Swap_ZB, the three Adjacent* captures, ColorIntoZeta, ZetaIntoColor_ZB, Color_Zeta_Disable/MaskOff_ZB, Null_surface/XemuBug893. GENUINE, and the Adjacent* legs are the sharpest: the trace shows zeta uploads at 0x026ef000 and 0x026fb000 (frames 32-33, the Adjacent* tests) that DID follow a colour upload in the same window, so the fix changes what those zeta images receive. All three are at 0 differing, so any move is a regression; they fail in the world where a correct depth plane changes a depth test the goldens were matched with the wrong one.\n(5) expect_counts worse=0 better=1: legs (1),(3),(4) restated, not an independent falsifier.\n\nWHAT THIS ARM CANNOT SEE. It does not measure the fix under master's policy, where it is expected to be inert on this disc; it does not measure the fix's reach outside these three suites, and the defect it repairs is generic (any Z24S8/D32S8 upload that is not the first staging allocation since a reset), so other depth-heavy suites may move and need their own sweep before the reach is claimed. It does not address #88's policy, which is not shipped here.\n",
+  "a_ref": "9c5f7416d8",
+  "b_ref": "9de95de849",
+  "must_not_move": [
+    "Color_zeta_overlap/Swap_ZB",
+    "Color_zeta_overlap/AdjacentWithAA",
+    "Color_zeta_overlap/AdjacentWithClipOffset_l",
+    "Color_zeta_overlap/AdjacentWithClipOffset_sz",
+    "Color_zeta_overlap/ColorIntoZeta",
+    "Color_zeta_overlap/ZetaIntoColor_ZB",
+    "Color_Zeta_Disable/MaskOff_ZB",
+    "Null_surface/XemuBug893"
+  ],
+  "expect": {
+    "Color_zeta_overlap/Swap": 165447,
+    "Color_zeta_overlap/ColorIntoZeta_ZB": 10766,
+    "Color_zeta_overlap/ZetaIntoColor": 71663
+  },
+  "expect_counts": {
+    "worse": 0,
+    "better": 1
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color Zeta Disable",
+      "Color zeta overlap",
+      "Null surface"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
