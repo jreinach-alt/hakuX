@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 164
+wave = 165
 updated_utc = "2026-09-25T14:00:00Z"
 
 
@@ -609,7 +609,6 @@ files = [
          "docs/testing/vblank_report.py",
          "docs/testing/vblank_ab.py",
          "hw/xbox/nv2a/debug.h",
-         "hw/xbox/nv2a/pgraph/vk/renderer.c",
          "android/app/src/main/cpp/xemu_android.cpp",
          "android/app/src/main/java/com/rfandango/haku_x/LauncherActivity.kt",
 # RELEASED (job.board, board tick 2026-09-20T14:57:11Z) by retiring
@@ -773,9 +772,9 @@ note = "DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #23
 
 [lane.shadeflat224]
 issues = ["224"]
-files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "hw/xbox/nv2a/pgraph/prim_rewrite.h", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/gl/draw.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/shadeflat224-*.json", "docs/lanes/shadeflat224/**"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "hw/xbox/nv2a/pgraph/prim_rewrite.h", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/gl/draw.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/shadeflat224-*.json", "docs/lanes/shadeflat224/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 157 (host session) on lane.shade224's board request: #224 family A, the flat-quad diagonal (474,214 px) -- keep silicon's v0-v2/v1-v2 diagonal and feed v3's flat varyings through a triangles-with-adjacency slot (NOTES section 4 on PR #232). Files: prim_rewrite.c/.h and glsl/geom.c (from [free]/unclaimed), gl/draw.c and vk/draw.c for the draw-mode mapping (vk/draw.c from [free]; gl/draw.c unclaimed since lane.clrpad164 retired). Brief: briefs/shadeflat224.md."
+note = "DISPATCHED AT TERRITORY WAVE 157 (host session) on lane.shade224's board request: #224 family A, the flat-quad diagonal (474,214 px) -- keep silicon's v0-v2/v1-v2 diagonal and feed v3's flat varyings through a triangles-with-adjacency slot (NOTES section 4 on PR #232). Files: prim_rewrite.c/.h and glsl/geom.c (from [free]/unclaimed), gl/draw.c and vk/draw.c for the draw-mode mapping (vk/draw.c from [free]; gl/draw.c unclaimed since lane.clrpad164 retired). Brief: briefs/shadeflat224.md. WAVE 165 (host session): + hw/xbox/nv2a/pgraph/vk/renderer.c, from [free]. #235's arm runs persisted geometry-shader keys carrying the new PRIM_TYPE_TRIANGLES_ADJACENCY, and a new enum value changes neither a struct size nor SHADER_STATE_LAYOUT_VERSION, so other builds on both handhelds kept the poisoned cache and aborted at geom.c's default assert. The host bumped the version to 2 on the PR (32319107ab) after the lane's four attempts were spent; the claim covers that one line until #235 folds."
 
 [retired.cloud190]
 issues = []
