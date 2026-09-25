@@ -49,7 +49,12 @@ seen_dirs=""
 # provenance record exists to catch, reintroduced while fixing something else.
 # A label with no results is an empty column and says so; that is the right
 # failure.
-for rdir in "$D"/results/z-"$SWEEP_LABEL"-*/; do
+#
+# `-NNN-`, three digits, and not `-*`: queue_full_sweep.sh queues its optional
+# legs as `z-<label>.<leg>-001-<Suite>`, each its own column, and a bare `-*`
+# would also have taken every `z-<label>-<anything>` -- a label `a` collecting
+# a sweep labelled `a-now-...` whole.
+for rdir in "$D"/results/z-"$SWEEP_LABEL"-[0-9][0-9][0-9]-*/; do
     [ -d "$rdir" ] || continue
     case " $seen_dirs " in *" $rdir "*) continue;; esac
     seen_dirs="$seen_dirs $rdir"

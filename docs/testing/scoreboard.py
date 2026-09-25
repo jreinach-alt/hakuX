@@ -118,7 +118,7 @@ def load_run(d):
     return list(seen.values()), shas, discs, dupes
 
 
-def summarise(rows, goldens):
+def summarise(rows, goldens, unscoreable=None):
     """Per category: captures, exact, one-step px, structural px, void, coverage.
 
     `n` counts SCORED captures only; a void row lands in `void` (and
@@ -152,15 +152,39 @@ def summarise(rows, goldens):
             a["one"] += int(r["off_by_one"])
         else:
             a["no_one_step"] = True
-    # coverage: captures scored against goldens the category owns
+    # coverage: captures scored against goldens the category owns, less the
+    # goldens no disc can produce -- they are reported, not counted, so a
+    # category whose every producible golden was scored shows no floor.
+    unscoreable = unscoreable or {}
     for c, a in agg.items():
-        have = 0
+        have = gone = 0
         for s in CATEGORIES.get(c, a["suites"]):
             gd = os.path.join(goldens, s)
             if os.path.isdir(gd):
-                have += len([f for f in os.listdir(gd) if f.endswith(".png")])
+                names = [f[:-4] for f in os.listdir(gd) if f.endswith(".png")]
+                dead = unscoreable.get(s, set())
+                have += sum(n not in dead for n in names)
+                gone += sum(n in dead for n in names)
         a["goldens"] = have
+        a["unscoreable"] = gone
     return agg
+
+
+def load_unscoreable(path):
+    """({suite: {test}}, {suite: entry}) from unscoreable_goldens.json.
+
+    A missing or unreadable file is reported and read as empty: the board then
+    counts every golden, which is the old behaviour and the conservative one.
+    """
+    try:
+        doc = json.load(open(path))
+    except (OSError, ValueError) as e:
+        sys.stderr.write(f"scoreboard: no unscoreable list ({e}); counting "
+                         "every golden\n")
+        return {}, {}
+    un = {s: set(e.get("tests") or [])
+          for s, e in (doc.get("unscoreable") or {}).items()}
+    return un, doc.get("not_captured_by_design") or {}
 
 
 def cell(a):
@@ -184,7 +208,13 @@ def main():
                          "and ordered left to right")
     ap.add_argument("--goldens", required=True)
     ap.add_argument("--md", help="write the table here instead of stdout")
+    ap.add_argument("--unscoreable", metavar="JSON",
+                    default=os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                         "unscoreable_goldens.json"),
+                    help="goldens no disc produces and suites that save "
+                         "nothing (default: unscoreable_goldens.json here)")
     args = ap.parse_args()
+    unscoreable, by_design = load_unscoreable(args.unscoreable)
 
     runs = []
     for spec in args.run:
@@ -205,7 +235,7 @@ def main():
                 prov = None
         runs.append(dict(label=label, dir=d, rows=rows, shas=shas, discs=discs,
                          dupes=dupes, prov=prov,
-                         agg=summarise(rows, args.goldens)))
+                         agg=summarise(rows, args.goldens, unscoreable)))
 
     out = []
     out.append("# Accuracy scoreboard\n")
@@ -251,12 +281,28 @@ def main():
         if not any(a and (a["n"] or a["void"]) for a in present):
             continue
         g = next((a["goldens"] for a in present if a), 0)
+        gone = next((a["unscoreable"] for a in present if a), 0)
         cov = ""
         first = next((a for a in present if a and (a["n"] or a["void"])), None)
         if first and g and first["n"] < g:
             cov = f" ⚠️{100.0 * first['n'] / g:.0f}%"
-        out.append(f"| {c}{cov} | {g} | " +
+        gcell = f"{g} (+{gone} unscoreable)" if gone else f"{g}"
+        out.append(f"| {c}{cov} | {gcell} | " +
                    " | ".join(cell(a) for a in present) + " |")
+
+    # What the denominators leave out, by name, so a missing floor is never
+    # mistaken for a suite that was simply not looked at.
+    if unscoreable or by_design:
+        out.append("\n**Unscoreable goldens** are in the golden set but no disc "
+                   "in use emits them (renamed or compiled-out tests); they are "
+                   "counted in no denominator above. **Not captured by design** "
+                   "are suites that save nothing, so they have no goldens to "
+                   "score. Both come from `unscoreable_goldens.json`.\n")
+        for s, tests in sorted(unscoreable.items()):
+            out.append(f"- unscoreable: `{s}` {len(tests)}")
+        for s, e in sorted(by_design.items()):
+            out.append(f"- not captured by design: `{s}` "
+                       f"({e.get('tests', '?')} tests) -- {e.get('reason', '')}")
 
     out.append("\n† that run did not record the one-step column, so its figure "
                "is *all* differing pixels and is not comparable with a "
