@@ -1,0 +1,67 @@
+{
+  "registered_utc": "2026-09-25T15:11:22Z",
+  "who": "lane.shadetie224",
+  "issue": "224",
+  "prediction": "#224 family B: vsh-ff.c append_lighting now rounds the eye-space normal with lt() (envytools xf_s2lt, the XF->LT input rounding the file already applies to every light register and vertex colour). Offline (docs/lanes/shadetie224/price.py) this reproduces master's blue 59 for Shade model normal 3 and gives silicon's 60, with all nine other lit golden colours, including the 178.5 tie for normal 1, unchanged. EXPECT: the 18 Fixed/W_Fixed Flat captures carrying family B (every differing pixel is ours (0,85,59) vs silicon (0,85,60); baseline 1789968297-arms-primpv13-fix, e.g. Fixed_Quad_Flat 54,720, W_Fixed_QuadStrip_Flat 125,652) go to exactly 0. The six B-free ones (Poly_Flat_*, Tri_Flat_Last, both paths) stay 0; they move only if lt(N) changed a normal-0/4/5 colour, which price.py says it does not. WORLD IN WHICH MUST_MOVE FAILS: the tie is not the normal's input rounding but some other light-path precision (e.g. the lit value stored at a different width before the interpolator). Then the pixel moves to 59 or 61, not 60, or not at all, and these captures stay nonzero. MUST_NOT_MOVE: Prog*/ProgTex*/ProgLM* run with LIGHTING_ENABLE false, so no lighting block is emitted and their GLSL is byte-identical. FixedTex*/W_FixedTex* draw with a TEX0-only final combiner, so the diffuse never reaches the pixel. A move there means lt() leaked outside the lighting block. NOT IN ANY LEG: the 12 Fixed/W_Fixed Smooth captures (family C, #38). Vertex 3's byte goes 59->60 there too, and the baseline's signed blue error is mixed (-1 dominant, +1 present), so they move by at most the area of vertex 3's triangles, in either direction. MUST_NOT_REGRESS: every other lit suite (Lighting *, Material *, Specular, Specular back, SetVertexData). lt(N) moves N by at most 2^-14 relative per component, so a lit byte moves by at most one colorPrecision step, and only near a boundary. If lt(N) is silicon's rule, those moves go toward the goldens. A capture that gets WORSE there refutes the mechanism, not the leg.",
+  "a_ref": "0a4e284536",
+  "b_ref": "6765c1f5e9",
+  "must_not_move": [
+    "Shade_model/Prog*",
+    "Shade_model/FixedTex*",
+    "Shade_model/W_FixedTex*"
+  ],
+  "expect": {
+    "Shade_model/Fixed_QuadStrip_Flat_First": 0,
+    "Shade_model/Fixed_QuadStrip_Flat_Last": 0,
+    "Shade_model/Fixed_Quad_Flat_First": 0,
+    "Shade_model/Fixed_Quad_Flat_Last": 0,
+    "Shade_model/Fixed_TriFan_Flat_First": 0,
+    "Shade_model/Fixed_TriFan_Flat_Last": 0,
+    "Shade_model/Fixed_TriStrip_Flat_First": 0,
+    "Shade_model/Fixed_TriStrip_Flat_Last": 0,
+    "Shade_model/Fixed_Tri_Flat_First": 0,
+    "Shade_model/Fixed_Poly_Flat_First": 0,
+    "Shade_model/Fixed_Poly_Flat_Last": 0,
+    "Shade_model/Fixed_Tri_Flat_Last": 0,
+    "Shade_model/W_Fixed_QuadStrip_Flat_First": 0,
+    "Shade_model/W_Fixed_QuadStrip_Flat_Last": 0,
+    "Shade_model/W_Fixed_Quad_Flat_First": 0,
+    "Shade_model/W_Fixed_Quad_Flat_Last": 0,
+    "Shade_model/W_Fixed_TriFan_Flat_First": 0,
+    "Shade_model/W_Fixed_TriFan_Flat_Last": 0,
+    "Shade_model/W_Fixed_TriStrip_Flat_First": 0,
+    "Shade_model/W_Fixed_TriStrip_Flat_Last": 0,
+    "Shade_model/W_Fixed_Tri_Flat_First": 0,
+    "Shade_model/W_Fixed_Poly_Flat_First": 0,
+    "Shade_model/W_Fixed_Poly_Flat_Last": 0,
+    "Shade_model/W_Fixed_Tri_Flat_Last": 0
+  },
+  "expect_counts": {},
+  "must_not_regress": [
+    "Lighting_*/*",
+    "Material_*/*",
+    "Specular/*",
+    "Specular_back/*",
+    "SetVertexData/*"
+  ],
+  "disc": {
+    "suites": [
+      "Lighting Two Sided",
+      "Lighting accumulation",
+      "Lighting control",
+      "Lighting normals",
+      "Lighting range",
+      "Lighting spotlight",
+      "Material alpha",
+      "Material color",
+      "Material color source",
+      "SetVertexData",
+      "Shade model",
+      "Specular",
+      "Specular back"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
