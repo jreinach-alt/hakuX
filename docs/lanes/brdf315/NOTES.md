@@ -146,7 +146,7 @@ merges master, and registers after the last rebase:
 - **must_move**: `Texture_BRDF/BRDF_e0_l0`, `Texture_BRDF/BRDF_e0_l1`,
   `Texture_BRDF/BRDF_e1_l0`, each 614 -> <= 30 differing. The falsifier is a
   value, not a count: pixel (639,479) must read (198,246,222,255) (texel
-  48,61,55, the golden's own) instead of (18,18,18,254).
+  49,61,55, the golden's own) instead of (18,18,18,254).
 - **must_not_move**: every other `Texture_*` capture (cubemap, 3D_as_2D,
   signed_component, border, format, ...) and every `Pixel_shader/*` and
   `Combiner/*` capture. The change that would move them: both halves of the
