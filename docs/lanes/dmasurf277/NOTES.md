@@ -86,7 +86,7 @@ text glyphs.
   - `DMAOverlap` and `xemuReadFromFileIntoTexture` are exact today. A move means
     the new call matched a range it should not (the mapping's ram_addr
     disagreeing with the watch's).
-  - `Surface_format/*`, `Clear/*` and `Surface_as_vertex_array/*` do no DMA into
+  - `Surface_format/*` and `Clear/*` do no DMA into
     a bound surface. A move means a test-host file read overlapped a still-dirty
     watched surface. Moving toward the golden would be a real extra fix; moving
     away, or a hung run, refutes the hunk.
@@ -106,3 +106,15 @@ text glyphs.
   DMA read.
 - Do not look in `vk/surface.c:3406-3422` (the upload check) for this bug. The
   upload never gets the chance: the download destroys the data first.
+
+## Remediation 1 (job.cloud, 2026-09-25, pass-2 MEDIUM-1)
+
+- The arms job refused the arm twice: `Surface_as_vertex_array/*` has no PNG in
+  the golden set that `request.sh` checks keys against, although the suite is in
+  the nv2a index. Re-registered with `--force` before any arm ran. The refs are
+  unchanged and there has been no rebase. That leg and its disc suite are
+  dropped. The other four legs each bind to a golden PNG (checked against
+  `goldens/results`, not the index).
+- The pass-1 LOW-1 BQL wait is not filed as an issue yet. The hunk adds no new
+  class of wait, and the arm's hung-run leg is the measurement for it. The PR
+  comment explains this.
