@@ -118,23 +118,13 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
 "\n"
 );
 
-    /* See the light loop below for what these model. The lighting unit's
-     * multiply gives zero for zero times anything, its reciprocal of zero
-     * is infinity, and nothing is clamped before the colour sum. FLOAT_MAX
-     * stands in for that infinity so that a zero factor stays zero in GLSL
-     * instead of becoming NaN, and every product is held to it so that two
-     * of them multiplied together cannot overflow past it. */
     /* The lighting unit works on floats with a 13-bit fraction: the
      * Celsius transform model (envytools, xf_s2lt) rounds every value it
      * takes in to the nearest such float, adding half a unit at bit 9
      * before dropping the low ten bits, except that a value whose bits 10
-     * to 17 are all set is dropped without the half unit; its multiply
-     * and add then truncate towards zero. lt() brings the registers and
-     * the vertex colours to that precision on their way in; the
-     * arithmetic that follows is still float32, so the last count can
-     * still differ. Five lights with an ambient of 0.1 sum to 127 on the
-     * hardware, not 128 (Lighting accumulation Directional-5), which no
-     * rounding of the float32 sum produces. */
+     * to 17 are all set is dropped without the half unit. lt() brings the
+     * registers, the vertex colours and the transform unit's outputs to
+     * that precision on their way in. */
     mstring_append(header,
         "uint ltBits(uint u) {\n"
         "  if (((u >> 10) & 0xFFu) != 0xFFu) u += 0x200u;\n"
@@ -142,19 +132,154 @@ GLSL_DEFINE(eyeDirection, GLSL_LTCTXA(NV_IGRAPH_XF_LTCTXA_EYED) ".xyz")
         "}\n"
         "float lt(float x) { return uintBitsToFloat(ltBits(floatBitsToUint(x))); }\n"
         "vec3 lt(vec3 v) { return vec3(lt(v.x), lt(v.y), lt(v.z)); }\n"
-        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n"
-        "float specularFactor(float x, vec3 k) {\n"
-        "  float n = x + k.x;\n"
-        "  float d = x * k.y + k.z;\n"
-        "  if (n <= 0.0) return 0.0;\n"
-        "  return d == 0.0 ? FLOAT_MAX : n / d;\n"
+        "vec4 lt(vec4 v) { return vec4(lt(v.x), lt(v.y), lt(v.z), lt(v.w)); }\n");
+
+    /* The lighting unit's own arithmetic, bit for bit: envytools'
+     * pgraph_celsius_lt_mul, _lts_mul, _lt_add3, _lts_add and _lt_rcp
+     * (nvhw/pgraph_celsius_xfrm.c), which hwtest checks against the
+     * hardware. Every operand carries a 14-bit mantissa; a multiply keeps the
+     * top 14 bits of the product, an add aligns and sums in fixed point and
+     * drops what falls off, both towards zero; the reciprocal is a 64-entry
+     * table and one Newton step. NV2A keeps the Celsius lighting unit's
+     * register file (LTCTXA/B, LTC0-3), and the rounding lt() models on
+     * the way in is xf_s2lt from the same file.
+     *
+     * Float32 arithmetic after lt() was the approximation, and #224 is where
+     * it shows: Shade model's normal 3 lands one float32 ulp under the
+     * 13-bit step that gives silicon's blue 60, and rounding the normal to
+     * lift it (lt(N) alone) lifts Lighting range Directional's specular over
+     * its own step, 203 -> 204. This arithmetic gives all nine Shade model
+     * colours, 203 for Directional, and 127 for five 0.1 ambients
+     * (Lighting accumulation Directional-5) -- none of them fitted
+     * (docs/lanes/shadetie224/price.py --three). */
+    mstring_append(header,
+        "const uint ltRcpLut[64] = uint[64](\n"
+        "  0x7Fu, 0x7Du, 0x7Bu, 0x79u, 0x77u, 0x75u, 0x74u, 0x72u,\n"
+        "  0x70u, 0x6Fu, 0x6Du, 0x6Cu, 0x6Bu, 0x69u, 0x68u, 0x67u,\n"
+        "  0x65u, 0x64u, 0x63u, 0x62u, 0x60u, 0x5Fu, 0x5Eu, 0x5Du,\n"
+        "  0x5Cu, 0x5Bu, 0x5Au, 0x59u, 0x58u, 0x57u, 0x56u, 0x55u,\n"
+        "  0x54u, 0x54u, 0x53u, 0x52u, 0x51u, 0x50u, 0x4Fu, 0x4Fu,\n"
+        "  0x4Eu, 0x4Du, 0x4Cu, 0x4Cu, 0x4Bu, 0x4Au, 0x4Au, 0x49u,\n"
+        "  0x48u, 0x48u, 0x47u, 0x46u, 0x46u, 0x45u, 0x45u, 0x44u,\n"
+        "  0x43u, 0x43u, 0x42u, 0x42u, 0x41u, 0x41u, 0x40u, 0x40u);\n"
+        "const uint LT_NAN = 0x7FFFFC00u;\n"
+        "const uint LT_INF = 0x7F800000u;\n"
+        /* Index of the highest set bit of a nonzero value (no findMSB in
+         * GLSL ES 3.00). */
+        "int ltMsb(uint u) {\n"
+        "  int n = 0;\n"
+        "  if (u >= 0x10000u) { u >>= 16; n += 16; }\n"
+        "  if (u >= 0x100u) { u >>= 8; n += 8; }\n"
+        "  if (u >= 0x10u) { u >>= 4; n += 4; }\n"
+        "  if (u >= 0x4u) { u >>= 2; n += 2; }\n"
+        "  if (u >= 0x2u) { n += 1; }\n"
+        "  return n;\n"
         "}\n"
-        "float ltMul(float a, float b) {\n"
-        "  return (a == 0.0 || b == 0.0) ? 0.0 : clamp(a * b, -FLOAT_MAX, FLOAT_MAX);\n"
+        "uint ltShr(uint m, int sh) {\n"
+        "  return sh >= 32 ? 0u : (sh >= 0 ? m >> uint(sh) : m << uint(-sh));\n"
         "}\n"
-        "vec3 ltMul(vec3 c, float s) {\n"
-        "  return mix(clamp(c * s, vec3(-FLOAT_MAX), vec3(FLOAT_MAX)), vec3(0.0),\n"
-        "             equal(c, vec3(0.0)));\n"
+        "bool ltIsNan(uint x) { return (x & 0x7F800000u) == 0x7F800000u && (x & 0x7FFFFFu) != 0u; }\n"
+        "bool ltIsInf(uint x) { return (x & 0x7FFFFFFFu) == 0x7F800000u; }\n"
+        /* fp32_mkfin(s, e, m << 10, FP_RZ | FP_FTZ), m normalised to bit 13 */
+        "float ltMk(uint s, int e, uint m) {\n"
+        "  if (m == 0u || e <= 0) return uintBitsToFloat(s << 31);\n"
+        "  if (e >= 255) return uintBitsToFloat(s << 31 | 0x7F7FFFFFu);\n"
+        "  return uintBitsToFloat(s << 31 | uint(e) << 23 | (m & 0x1FFFu) << 10);\n"
+        "}\n"
+        "float ltMulCore(float fa, float fb, bool signedInf) {\n"
+        "  uint a = floatBitsToUint(fa), b = floatBitsToUint(fb);\n"
+        "  uint s = (a ^ b) >> 31;\n"
+        "  int ea = int(a >> 23 & 0xFFu), eb = int(b >> 23 & 0xFFu);\n"
+        "  uint ma = (a >> 10 & 0x1FFFu) | 0x2000u, mb = (b >> 10 & 0x1FFFu) | 0x2000u;\n"
+        "  if ((ea == 255 && ma > 0x2000u) || (eb == 255 && mb > 0x2000u))\n"
+        "    return uintBitsToFloat(LT_NAN);\n"
+        "  if (ea == 0 || eb == 0) return 0.0;\n"
+        "  if (ea == 255 || eb == 255)\n"
+        "    return uintBitsToFloat(signedInf ? (s << 31 | LT_INF) : LT_INF);\n"
+        "  int e = ea + eb - 127;\n"
+        "  if (signedInf && e >= 255) return uintBitsToFloat(s << 31 | LT_INF);\n"
+        "  uint m = (ma * mb) >> 13;\n"
+        "  if (m > 0x3FFFu) { m >>= 1; e++; }\n"
+        "  if (e <= 0) return uintBitsToFloat(s << 31);\n"
+        "  if (e >= 255) { e = 254; m = 0x1FFFu; }\n"
+        "  return uintBitsToFloat(s << 31 | uint(e) << 23 | (m & 0x1FFFu) << 10);\n"
+        "}\n"
+        "float ltM(float a, float b) { return ltMulCore(a, b, false); }\n"
+        "float ltsM(float a, float b) { return ltMulCore(a, b, true); }\n"
+        "vec3 ltVM(vec3 a, vec3 b) { return vec3(ltM(a.x, b.x), ltM(a.y, b.y), ltM(a.z, b.z)); }\n"
+        "float ltA3(float x0, float x1, float x2) {\n"
+        "  uint v[3] = uint[3](floatBitsToUint(x0), floatBitsToUint(x1), floatBitsToUint(x2));\n"
+        "  bool pinf = false, ninf = false;\n"
+        "  for (int i = 0; i < 3; i++) {\n"
+        "    if (ltIsNan(v[i])) return uintBitsToFloat(LT_NAN);\n"
+        "  }\n"
+        "  for (int i = 0; i < 3; i++) {\n"
+        "    if (ltIsInf(v[i])) { if ((v[i] >> 31) != 0u) ninf = true; else pinf = true; }\n"
+        "  }\n"
+        "  if (pinf && ninf) return uintBitsToFloat(LT_NAN);\n"
+        "  if (pinf || ninf) return uintBitsToFloat(LT_INF);\n"
+        "  int er = 0;\n"
+        "  int e[3];\n"
+        "  uint m[3];\n"
+        "  for (int i = 0; i < 3; i++) {\n"
+        "    e[i] = int(v[i] >> 23 & 0xFFu);\n"
+        "    m[i] = ((v[i] & 0x7FFFFFu) | (e[i] != 0 ? 0x800000u : 0u)) >> 10;\n"
+        "    er = max(er, e[i] + 2);\n"
+        "  }\n"
+        "  int r = 0;\n"
+        "  for (int i = 0; i < 3; i++) {\n"
+        "    int f = int(ltShr(m[i], er - e[i] - 7));\n"
+        "    r += (v[i] >> 31) != 0u ? -f : f;\n"
+        "  }\n"
+        "  if (r == 0) return 0.0;\n"
+        "  uint s = r < 0 ? 1u : 0u;\n"
+        "  uint u = uint(abs(r));\n"
+        "  int sh = 20 - ltMsb(u);\n"
+        "  u <<= uint(sh);\n"
+        "  er -= sh;\n"
+        "  u >>= 7u;\n"
+        "  if (er >= 255) { er = 254; u = 0x3FFFu; }\n"
+        "  return ltMk(s, er, u);\n"
+        "}\n"
+        "float ltA(float a, float b) { return ltA3(a, b, 0.0); }\n"
+        "vec3 ltVA(vec3 a, vec3 b) { return vec3(ltA(a.x, b.x), ltA(a.y, b.y), ltA(a.z, b.z)); }\n"
+        "float ltDp(vec3 a, vec3 b) { return ltA3(ltM(a.x, b.x), ltM(a.y, b.y), ltM(a.z, b.z)); }\n"
+        "float ltsA(float fa, float fb) {\n"
+        "  uint a = floatBitsToUint(fa), b = floatBitsToUint(fb);\n"
+        "  if (ltIsNan(a) || ltIsNan(b)) return uintBitsToFloat(LT_NAN);\n"
+        "  if (ltIsInf(a) || ltIsInf(b)) {\n"
+        "    if (ltIsInf(a) && ltIsInf(b) && (a >> 31) != (b >> 31)) return uintBitsToFloat(LT_NAN);\n"
+        "    return uintBitsToFloat(LT_INF);\n"
+        "  }\n"
+        "  int ea = int(a >> 23 & 0xFFu), eb = int(b >> 23 & 0xFFu);\n"
+        "  uint ma = ea != 0 ? ((a & 0x7FFFFFu) >> 10) | 0x2000u : 0u;\n"
+        "  uint mb = eb != 0 ? ((b & 0x7FFFFFu) >> 10) | 0x2000u : 0u;\n"
+        "  int er = max(ea, eb) + 1;\n"
+        "  int fa2 = int(ltShr(ma, er - ea - 1)), fb2 = int(ltShr(mb, er - eb - 1));\n"
+        "  int r = ((a >> 31) != 0u ? -fa2 : fa2) + ((b >> 31) != 0u ? -fb2 : fb2);\n"
+        "  if (r == 0) return 0.0;\n"
+        "  uint s = r < 0 ? 1u : 0u;\n"
+        "  uint u = uint(abs(r));\n"
+        "  int sh = 14 - ltMsb(u);\n"
+        "  u <<= uint(sh);\n"
+        "  er -= sh;\n"
+        "  u >>= 1u;\n"
+        "  return ltMk(s, er, u);\n"
+        "}\n"
+        "float ltR(float fx) {\n"
+        "  uint x = floatBitsToUint(fx);\n"
+        "  if (ltIsNan(x)) return uintBitsToFloat(LT_NAN);\n"
+        "  uint sx = x >> 31;\n"
+        "  int ex = int(x >> 23 & 0xFFu);\n"
+        "  if (ex == 0) return uintBitsToFloat(LT_INF);\n"
+        "  if (ltIsInf(x)) return 0.0;\n"
+        "  int er = 0xFD - ex;\n"
+        "  uint f = ((x & 0x7FFFFFu) + 0x800000u) >> 10;\n"
+        "  uint s0 = ltRcpLut[f >> 7 & 0x3Fu];\n"
+        "  uint s1 = (((1u << 21) - s0 * f) * s0 >> 14) << 11;\n"
+        "  uint fr = s1 - 0x800000u;\n"
+        "  if (er <= 0) return uintBitsToFloat(sx << 31);\n"
+        "  return uintBitsToFloat(sx << 31 | uint(er) << 23 | (fr & 0x7FFFFFu));\n"
         "}\n");
 }
 
@@ -169,6 +294,10 @@ struct LightingSide {
     const char *factor;
     const char *material_alpha;
     int specular_params;
+    /* The lit specular is added to the diffuse output light by light
+     * instead of leaving on its own (SPECULAR_ENABLE or SEPARATE_SPECULAR
+     * clear). */
+    bool fold_specular;
     enum MaterialColorSource emission_src;
     enum MaterialColorSource ambient_src;
     enum MaterialColorSource diffuse_src;
@@ -186,12 +315,18 @@ static const char *vertex_color_rgb(enum MaterialColorSource src)
     }
 }
 
-static const char *vertex_color_scale(enum MaterialColorSource src)
+/* Adds one light's term to an output, through the lighting unit's multiply
+ * by the vertex colour when a selector names one. */
+static void append_light_term(MString *body, const char *out,
+                              enum MaterialColorSource src, const char *term)
 {
-    switch (src) {
-    case MATERIAL_COLOR_SRC_DIFFUSE: return "ltDiffuse.xyz * ";
-    case MATERIAL_COLOR_SRC_SPECULAR: return "ltSpecular.xyz * ";
-    default: return "";
+    const char *vc = vertex_color_rgb(src);
+    if (vc) {
+        mstring_append_fmt(body, "    %s.xyz = ltVA(%s.xyz, ltVM(%s, %s));\n",
+                           out, out, term, vc);
+    } else {
+        mstring_append_fmt(body, "    %s.xyz = ltVA(%s.xyz, %s);\n",
+                           out, out, term);
     }
 }
 
@@ -244,8 +379,9 @@ static void append_lighting_constant(MString *body,
     mstring_append_fmt(body, "  %s = vec4(%s, %s);\n",
                        side->diffuse_out, constant, alpha_source);
     if (scaled) {
-        mstring_append_fmt(body, "  %s.rgb += %s * %s;\n",
-                           side->diffuse_out, scaled, side->factor);
+        mstring_append_fmt(body, "  %s.rgb = ltVA(%s.rgb, ltVM(%s, %s));\n",
+                           side->diffuse_out, side->diffuse_out, scaled,
+                           side->factor);
     }
     mstring_append_fmt(body, "  %s = vec4(0.0, 0.0, 0.0, %s);\n",
                        side->specular_out, specular_a);
@@ -257,11 +393,15 @@ static void append_lighting(const VshState *state, MString *body,
 {
     append_lighting_constant(body, side, diffuse_a, specular_a);
 
-    mstring_append_fmt(body, "  {\n  vec3 N = %s;\n", side->normal);
+    /* The normal and the eye vector enter the lighting unit rounded
+     * (xf_s2lt), as the light registers do. */
+    mstring_append_fmt(body, "  {\n  vec3 N = lt(%s);\n", side->normal);
     if (state->local_eye) {
         mstring_append(body,
-            "  vec3 VPeye = normalize(eyePosition.xyz / eyePosition.w - tPosition.xyz / tPosition.w);\n"
+            "  vec3 ltEye = lt(normalize(eyePosition.xyz / eyePosition.w - tPosition.xyz / tPosition.w));\n"
         );
+    } else {
+        mstring_append(body, "  vec3 ltEye = lt(eyeDirection);\n");
     }
 
     for (int i = 0; i < NV2A_MAX_LIGHTS; i++) {
@@ -278,34 +418,20 @@ static void append_lighting(const VshState *state, MString *body,
              * its multiply gives zero for zero times anything, so a light
              * with all three attenuation values at zero lights every
              * channel its colour is nonzero in and none it is zero in
-             * (the Lighting spotlight AtFixed 0/0/0 golden). A large
-             * finite value has the same effect in GLSL, where zero times
-             * infinity would be NaN. Without a local eye the half vector
-             * is built from the eye direction register, not from a zero
-             * vector. */
+             * (the Lighting spotlight AtFixed 0/0/0 golden). ltR() and
+             * ltM() do exactly that. The light vector, its distance and
+             * its square come from the transform unit, which works in
+             * float32, and are rounded on the way in. */
             mstring_append_fmt(body,
                 "  vec3 tPos = tPosition.xyz/tPosition.w;\n"
                 "  vec3 VP = lightLocalPosition[%d] - tPos;\n"
                 "  float d = length(VP);\n"
                 "  if (d <= lightLocalRange(%d)) {\n"  /* FIXME: Double check that range is inclusive */
-                "    VP = normalize(VP);\n"
-                "    float attDen = lightLocalAttenuation[%d].x\n"
-                "                   + lightLocalAttenuation[%d].y * d\n"
-                "                   + lightLocalAttenuation[%d].z * d * d;\n"
-                "    float attenuation = attDen == 0.0 ? FLOAT_MAX : 1.0 / attDen;\n"
-                "    vec3 halfVector = normalize(VP + %s);\n"
-                "    float nDotVP = max(0.0, dot(N, VP));\n"
-                "    float nDotHV = max(0.0, dot(N, halfVector));\n",
-                i, i, i, i, i,
-                state->local_eye ? "VPeye" : "eyeDirection"
-            );
-        }
-
-        switch(state->light[i]) {
-        case LIGHT_INFINITE:
-
-            /* lightLocalRange will be 1e+30 here */
-
+                "    vec3 lv = lt(normalize(VP));\n"
+                "    float ca = ltR(ltDp(vec3(1.0, lt(d), lt(d * d)),\n"
+                "                        lt(lightLocalAttenuation[%d])));\n",
+                i, i, i);
+        } else {
             /* The direction register is used as it is, like the half
              * vector register: D3D normalises before writing it, and
              * with an unnormalised one the diffuse scales by its length
@@ -314,25 +440,12 @@ static void append_lighting(const VshState *state, MString *body,
              * the square root of two, saturating on one side). */
             mstring_append_fmt(body,
                 "  {\n"
-                "    float attenuation = 1.0;\n"
-                "    vec3 lightDirection = lightInfiniteDirection[%d];\n"
-                "    float nDotVP = max(0.0, dot(N, lightDirection));\n",
+                "    vec3 lv = lt(lightInfiniteDirection[%d]);\n"
+                "    float ca = 1.0;\n",
                 i);
-            if (state->local_eye) {
-                mstring_append(body,
-                    "    float nDotHV = max(0.0, dot(N, normalize(lightDirection + VPeye)));\n"
-                );
-            } else {
-                mstring_append_fmt(body,
-                    "    float nDotHV = max(0.0, dot(N, lightInfiniteHalfVector[%d]));\n",
-                    i
-                );
-            }
-            break;
-        case LIGHT_LOCAL:
-            /* Everything done already */
-            break;
-        case LIGHT_SPOT:
+        }
+
+        if (state->light[i] == LIGHT_SPOT) {
             /* The spot direction register holds the axis scaled so that
              * x = dot(dir, VP) + w runs from 0 at the outer cone to 1 at
              * the inner one, and the three falloff values feed the same
@@ -352,64 +465,84 @@ static void append_lighting(const VshState *state, MString *body,
              * zero saturates both of them across the whole cone (the
              * FoFixed 0/0/0 golden is flat magenta from a red diffuse and
              * a half-blue specular), which a factor held at one cannot
-             * reproduce. */
+             * reproduce. envytools does not model the spot factor
+             * ("XXX spotlight"), so it stays float32 and is rounded into
+             * the unit's attenuation multiply. */
             mstring_append_fmt(body,
                 "    vec4 spotDir = lightSpotDirection(%d);\n"
                 "    vec3 spotK = lightSpotFalloff(%d);\n"
-                "    float spotX = min(dot(spotDir.xyz, VP) + spotDir.w, 1.0);\n"
+                "    float spotX = min(dot(spotDir.xyz, normalize(VP)) + spotDir.w, 1.0);\n"
                 "    float spotN = spotX + spotK.x;\n"
                 "    float spotD = spotX * spotK.y + spotK.z;\n"
                 "    float spotS = spotD == 0.0 ? FLOAT_MAX : spotN / spotD;\n"
-                "    attenuation = spotN <= 0.0 ? 0.0 : ltMul(attenuation, spotS);\n",
+                "    ca = spotN <= 0.0 ? 0.0 : ltM(ca, lt(spotS));\n",
                 i, i);
-            break;
-        default:
-            assert(false);
-            break;
         }
 
-        /* The specular power is not a pow(). The lighting unit evaluates
-         * a rational function of the half-vector dot product with three
+        /* pgraph_celsius_lt_full, one light. A negative N.L zeroes both the
+         * diffuse and the specular term. The specular power is not a
+         * pow(): the unit evaluates a rational function with three
          * coefficients, S = (x + k0) / (x k1 + k2), zero once the
-         * numerator goes negative; that is the form D3D's specular
-         * tables are fitted to and the Specular goldens follow. Which
-         * three depends on the half vector: an infinite light seen by a
-         * non-local eye has its half vector precomputed and normalised,
-         * and uses the first triple on x = N.H; everything else builds
-         * the half vector per vertex and uses the second triple, fitted
-         * for half the power, on x = (N.H)^2, which is what falls out of
-         * the unnormalised sum without a square root. */
+         * numerator goes negative; that is the form D3D's specular tables
+         * are fitted to and the Specular goldens follow. An infinite light
+         * seen by a non-local eye uses its precomputed half vector and the
+         * first triple on x = N.H. Everything else builds the half vector
+         * per vertex, H = eye + light unnormalised, and evaluates the
+         * second triple homogeneously, (s^2 + k0 |H|^2) / (s^2 k1 +
+         * |H|^2 k2) with s = N.H, which is x = (N.H)^2 / |H|^2 without a
+         * square root. A numerator past the pole is not clamped: the
+         * factor goes negative, the separate output clamps it away and the
+         * fold subtracts it from the ambient (Lighting control's sphere
+         * and cylinder, whose normals are longer than one). */
         bool half_precomputed = state->light[i] == LIGHT_INFINITE &&
                                 !state->local_eye;
         mstring_append_fmt(body,
-            "    float pf;\n"
-            "    if (nDotVP == 0.0 || nDotHV == 0.0) {\n"
-            "      pf = 0.0;\n"
-            "    } else {\n"
-            "      pf = specularFactor(%s, specularParams[%d]);\n"
-            "    }\n"
-            "    vec3 lightAmbient = ltMul(%s(%d), attenuation);\n"
-            "    vec3 lightDiffuse = ltMul(%s(%d), ltMul(attenuation, nDotVP));\n"
-            "    vec3 lightSpecular = ltMul(%s(%d), ltMul(attenuation, pf));\n",
-            half_precomputed ? "nDotHV" : "nDotHV * nDotHV",
-            side->specular_params + (half_precomputed ? 0 : 1),
+            "    vec3 k = lt(specularParams[%d]);\n"
+            "    bool zero = false;\n"
+            "    float cd = ltDp(N, lv);\n"
+            "    if (cd < 0.0) { zero = true; cd = 0.0; }\n"
+            "    cd = ltM(ca, cd);\n",
+            side->specular_params + (half_precomputed ? 0 : 1));
+        if (half_precomputed) {
+            mstring_append_fmt(body,
+                "    float s = ltDp(N, lt(lightInfiniteHalfVector[%d]));\n"
+                "    float t = ltsA(s, k.x);\n"
+                "    if (t < 0.0) zero = true;\n"
+                "    float b = ltsA(ltsM(s, k.y), k.z);\n",
+                i);
+        } else {
+            mstring_append(body,
+                "    vec3 hi = ltVA(ltEye, lv);\n"
+                "    float hd = ltDp(hi, hi);\n"
+                "    float s = ltDp(N, hi);\n"
+                "    if (s < 0.0) zero = true;\n"
+                "    float ss = ltsM(s, s);\n"
+                "    float t = ltsA(ss, ltsM(hd, k.x));\n"
+                "    if (t < 0.0) zero = true;\n"
+                "    float b = ltsA(ltsA(ltsM(ss, k.y), 0.0), ltsM(hd, k.z));\n");
+        }
+        mstring_append_fmt(body,
+            "    float cs = zero ? 0.0 : ltM(ca, ltsM(t, ltR(b)));\n"
+            "    vec3 lightAmbient = ltVM(vec3(ca), %s(%d));\n"
+            "    vec3 lightDiffuse = ltVM(vec3(cd), %s(%d));\n"
+            "    vec3 lightSpecular = ltVM(vec3(cs), %s(%d));\n",
             side->ambient_color, i, side->diffuse_color, i,
             side->specular_color, i);
 
-        mstring_append_fmt(body,
-                           "    %s.xyz += %slightAmbient;\n"
-                           "    %s.xyz += %slightDiffuse;\n"
-                           "    %s.xyz += %slightSpecular;\n",
-                           side->diffuse_out, vertex_color_scale(side->ambient_src),
-                           side->diffuse_out, vertex_color_scale(side->diffuse_src),
-                           side->specular_out, vertex_color_scale(side->specular_src));
+        append_light_term(body, side->diffuse_out, side->ambient_src,
+                          "lightAmbient");
+        append_light_term(body, side->diffuse_out, side->diffuse_src,
+                          "lightDiffuse");
+        append_light_term(body,
+                          side->fold_specular ? side->diffuse_out
+                                              : side->specular_out,
+                          side->specular_src, "lightSpecular");
 
         mstring_append(body, "  }\n"
                              "  }\n");
     }
     mstring_append(body, "  }\n");
 }
-
 
 /*
  * The colour outputs under a vertex program.
@@ -486,6 +619,7 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
         .factor = "materialEmissionColor",
         .material_alpha = "material_alpha",
         .specular_params = 0,
+        .fold_specular = !state->specular_enable || !state->separate_specular,
         .emission_src = state->emission_src,
         .ambient_src = state->ambient_src,
         .diffuse_src = state->diffuse_src,
@@ -505,6 +639,7 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
             .factor = "backMaterialEmissionColor",
             .material_alpha = "material_alpha_back",
             .specular_params = 2,
+            .fold_specular = !state->specular_enable || !state->separate_specular,
             .emission_src = state->back_emission_src,
             .ambient_src = state->back_ambient_src,
             .diffuse_src = state->back_diffuse_src,
@@ -574,12 +709,6 @@ void pgraph_glsl_append_vsh_prog_lighting(const VshState *state,
      * 8,480 px in the SEPARATE_SPECULAR-on column that never moved for
      * either attempt.
      */
-    if (!state->specular_enable || !state->separate_specular) {
-        mstring_append(body, "  oD0.xyz += oD1.xyz;\n");
-        if (state->two_side_light) {
-            mstring_append(body, "  oB0.xyz += oB1.xyz;\n");
-        }
-    }
     if (state->specular_enable && !state->separate_specular) {
         mstring_append(body, "  oD1 = v4;\n");
         if (state->two_side_light) {
@@ -770,6 +899,7 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
             .factor = "materialEmissionColor",
             .material_alpha = "material_alpha",
             .specular_params = 0,
+            .fold_specular = !state->specular_enable || !state->separate_specular,
             .emission_src = state->emission_src,
             .ambient_src = state->ambient_src,
             .diffuse_src = state->diffuse_src,
@@ -797,6 +927,7 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
                 .factor = "backMaterialEmissionColor",
                 .material_alpha = "material_alpha_back",
                 .specular_params = 2,
+                .fold_specular = !state->specular_enable || !state->separate_specular,
                 .emission_src = state->back_emission_src,
                 .ambient_src = state->back_ambient_src,
                 .diffuse_src = state->back_diffuse_src,
@@ -808,7 +939,9 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
 
     /* The lit specular only leaves the unit on its own output with both
      * SPECULAR_ENABLE and SEPARATE_SPECULAR set. Otherwise it is folded
-     * into the diffuse, with SPECULAR_ENABLE off as much as with
+     * into the diffuse inside the unit, light by light (fold_specular in
+     * the light loop, envytools' !spec_out), with SPECULAR_ENABLE off as
+     * much as with
      * SEPARATE_SPECULAR off, and the specular output is the front vertex
      * colour, for the back face as well (Specular back ControlFlags_FF
      * golden), or, with specular disabled, black with the alpha at one.
@@ -820,12 +953,6 @@ GLSL_DEFINE(texPlaneQ3, GLSL_C(NV_IGRAPH_XF_XFCTX_TG3MAT + 3))
      * highlight is added to the diffuse, and on the sphere and cylinder,
      * whose normals are longer than one, the ambient disappears where the
      * highlight would be beyond the pole. */
-    if (state->lighting &&
-        (!state->specular_enable || !state->separate_specular)) {
-        mstring_append(body,
-                       "  oD0.xyz += oD1.xyz;\n"
-                       "  oB0.xyz += oB1.xyz;\n");
-    }
     if (!state->specular_enable) {
         mstring_append(body, "  oD1 = vec4(0.0, 0.0, 0.0, 1.0);\n");
         mstring_append(body, "  oB1 = vec4(0.0, 0.0, 0.0, 1.0);\n");
