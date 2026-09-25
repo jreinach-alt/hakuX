@@ -1,0 +1,42 @@
+From 545195ee969991e94538da5bcf71d80a98f05b45 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Thu, 24 Sep 2026 23:31:58 -0700
+Subject: [PATCH] hakuX #31: a fifth ClipF variant at clip_top = 4
+
+35 came back 34 on silicon (the absolute 4-grid at phase 2). 48 anchor
+rules still fit 32/128/224/35; at clip_top = 4 the 4-grid is the only one
+predicting 6, and the 47 coarse-grid rules predict 2, 10, 18 or 34. 35
+stays in as a control that must come back 34.
+---
+ src/tests/wbuf_tests.cpp | 8 ++++++--
+ 1 file changed, 6 insertions(+), 2 deletions(-)
+
+diff --git a/src/tests/wbuf_tests.cpp b/src/tests/wbuf_tests.cpp
+index 373e564..c36da3b 100644
+--- a/src/tests/wbuf_tests.cpp
++++ b/src/tests/wbuf_tests.cpp
+@@ -334,7 +334,7 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+         };
+   }
+ 
+-  for (int i = 0; i < 4; i++) {
++  for (int i = 0; i < 5; i++) {
+     int depthf = 6;
+     bool zbias = false;
+     bool zslope = true;
+@@ -349,7 +349,11 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+     // attributed to any one of them.  At 35 they predict 37, 34 and 36.  35
+     // also keeps the quad's first triangle covered (~15,800 px), which
+     // clip_top 128 and 224 do not.
+-    uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : 35;
++    // i == 4: clip_top = 4, measured on silicon after 35 came back 34. With
++    // 32/128/224/35 known, 48 anchor rules remain; at 4 the absolute 4-grid at
++    // phase 2 is the only one predicting 6, and the 47 coarse-grid rules
++    // predict 2, 10, 18 or 34 (hakuX docs/testing/wbuf_clip_phase_choice.py).
++    uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : (i == 3 ? 35 : 4);
+ 
+     tests_[MakeTestName(kPrimFloorClip, depthf, zbias, zslope, vsh, clip_left, clip_top)] =
+         [this, depthf, zbias, zslope, vsh, clip_left, clip_top]() {
+-- 
+2.43.0
+
