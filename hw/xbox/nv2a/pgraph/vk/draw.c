@@ -6725,21 +6725,65 @@ static void sync_vertex_ram_buffer(PGRAPHState *pg)
  * Without this the next draw samples the surface with no barrier against its
  * own writes, which the validation layer reports as a read-after-write hazard
  * and a tiler is free to honour.
+ *
+ * A texture BUILT FROM the surface's memory needs the same signal. That covers
+ * a surface-to-texture copy, and an upload of the guest bytes the surface
+ * downloads to. Neither is a direct view. The gate is the same too: a clear
+ * into the surface moves no texture register and writes no guest memory, so
+ * pgraph_vk_bind_textures is never entered again and the stage keeps
+ * sampling what the surface held when it was bound. Measured on #184: every
+ * swatch after the first of Clear's TestSurfaceFmt sampled swatch 0's
+ * texture. Once the gate opens, create_texture already recopies a copy whose
+ * surface draw_time moved, and downloads a draw_dirty surface before it
+ * re-uploads.
+ *
+ * OPENING THE GATE IS NOT ENOUGH: THE STAGE'S REGISTER CACHE HAS TO GO TOO.
+ * pgraph_vk_bind_textures skips create_texture for a stage whose registers
+ * still match tex_reg_cache while its VRAM memo reads "checked clean this
+ * frame". Re-setting a texture before drawing with it writes the same values,
+ * which sets texture_dirty but moves no gen, and that shortcut takes it. For
+ * a stage built from a surface the memo is about guest memory the draw never
+ * wrote, so it vouches for nothing. Whether it is current is timing -- it
+ * lasts until the next flip -- so on #184 the gate alone fixed three of
+ * Clear's collapsing captures, and which of the X1A7 pair stayed stale moved
+ * when an instrument changed the timing.
+ *
+ * texture_dirty is deliberately NOT set. It would make every bind rebuild a
+ * stage the current draw does not sample -- for a copy, recopy it -- on every
+ * draw of a render pass that leaves a stage bound to its own target. With the
+ * cache invalidated, the rebuild waits for the next write of that stage's
+ * registers, which is how Clear's display quad re-sets it. A stage sampled
+ * while its own memory is written, with no register write in between, is not
+ * reached; it is stale on master too.
  */
 void pgraph_vk_surface_written_while_sampled(PGRAPHState *pg,
                                              SurfaceBinding *surface)
 {
     PGRAPHVkState *r = pg->vk_renderer_state;
+    bool sampled = false;
 
     if (!surface || surface->image_view == VK_NULL_HANDLE) {
         return;
     }
     for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        const TextureBinding *binding = r->texture_bindings[i];
+
         if (r->tex_surface_direct[i] &&
             r->tex_surface_direct_views[i] == surface->image_view) {
-            pg->texture_state_gen++;
-            return;
+            sampled = true;
+            continue;
         }
+        if (binding && binding != &r->dummy_texture &&
+            binding->key.texture_length && surface->size &&
+            ranges_overlap(binding->key.texture_vram_offset,
+                           binding->key.texture_length, surface->vram_addr,
+                           surface->size)) {
+            r->tex_reg_cache[i].valid = false;
+            sampled = true;
+        }
+    }
+    if (sampled) {
+        pg->texture_state_gen++;
     }
 }
 
