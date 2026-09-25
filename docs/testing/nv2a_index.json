@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:224",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:240",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -2434,7 +2434,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:489",
+   "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:614",
    "symbols": [],
    "text": "assert(!\"Unexpected primitive mode\");"
   },
@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "1a50107fddc9558e9af8dfa87153ee199609cc05",
+  "emulator_commit": "1f9bd946115d073a79dbc6baeef5715969dec59e",
   "gaps": 498,
   "resolved_tables": 1,
-  "sites": 2840,
+  "sites": 2841,
   "suites": 104,
   "support_dirs": [
-   "/home/justin/pbkitplusplus"
+   "/tmp/claude-1000/-home-justin-hakuX/27043c55-bae4-438c-84be-38f8b4f9f22f/scratchpad/pin-pbkitplusplus"
   ],
   "symbols": 951,
   "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
-  "tests_root": "/home/justin/.claude/jobs/11a5ab43/tmp/tests-pristine",
+  "tests_root": "/tmp/claude-1000/-home-justin-hakuX/27043c55-bae4-438c-84be-38f8b4f9f22f/scratchpad/pin-nxdk_pgraph_tests",
   "unread": 145
  },
  "schema": 1,
@@ -8906,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:261",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:277",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
@@ -18948,6 +18948,11 @@
     "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:60",
     "role": "REF",
     "text": "((u && (a & NV_PGRAPH_TEXADDRESS0_WRAP_U)) ? 1 : 0) |"
+   },
+   {
+    "loc": "hw/xbox/nv2a/pgraph/prim_rewrite.c:142",
+    "role": "COMMENT",
+    "text": "* (state->cylinder_wrap[i] non-zero, from NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q)"
    }
   ],
   "NV_PGRAPH_TEXADDRESS0_WRAP_V": [

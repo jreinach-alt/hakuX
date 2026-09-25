@@ -196,13 +196,29 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
              *
              * Note this also reorders TRIANGLE_STRIP and TRIANGLE_FAN,
              * because GeomState::primitive_mode is the REWRITTEN mode and
-             * cannot tell a fan triangle from a list triangle.  The fan
-             * arrives here already rotated by emit_tri_pv() placing the
-             * provoking vertex at index 0, so this takes the Tri class to
-             * 100.00% of its decisive pixels and TFan only to 70.36%; the
-             * rest of TFan is rewrite_triangle_fan()'s rotation to undo,
-             * and undoing it there collides with flat shading's need for
-             * the provoking vertex at index 0.
+             * cannot tell a fan triangle from a list triangle.  That used to
+             * cost the fan: it arrived here already rotated by emit_tri_pv()
+             * placing the provoking vertex at index 0, which left TFan at
+             * 70.36% of its decisive pixels where Tri reached 100.00%, and
+             * this comment recorded that undoing it in prim_rewrite.c would
+             * collide with flat shading's need for the provoking vertex at
+             * index 0.
+             *
+             * SUPERSEDED, and deliberately corrected here rather than only in
+             * the PR that changed it: prim_rewrite.c's
+             * pv_placement_observable() now gates that rotation on
+             * `flat_shading || polygon_mode != POLY_MODE_LINE`, so under a
+             * SMOOTH wireframe the fan arrives UNROTATED, in the same
+             * (hub, v1, v2) order a TRIANGLES draw arrives in, and the one
+             * edge order derived here fits both.  The collision was real but
+             * narrower than stated -- it is only the flat-shaded wireframe
+             * corner, which is the predicate's first term.  TFan and
+             * QStrip/TFan reach 100.00% with the rest; see
+             * docs/lanes/primpv13/NOTES.md for the arm.  (#13's older
+             * "32,628 decisive pixels" for the residue is the POPULATION of
+             * those two classes under the perpendicular footprint model this
+             * emulator stopped drawing in 80c23dcabe; the pixels actually
+             * naming the wrong edge were 8,920.)
              */
             body = "  float dz = calc_triz(0, 1, 2)[3].x;\n"
                    "  emit_line(1, 2, dz);\n"

@@ -20,13 +20,39 @@ outcomes a total cannot:
   * arm B names a different edge, not golden's -> it executed and is wrong
   * arm B names the golden's edge              -> it executed and is right
 
-The decisive set is built with the PERPENDICULAR footprint by default, because
-that is the footprint our renderer actually draws; `--extent-rule` builds it
-with silicon's wider hypot-approximation width instead, which is what the
-goldens want and what we do not yet implement.
+WHICH FOOTPRINT: PASS `--extent-rule`.  The decisive set is built from a model
+of OUR OWN footprint, not silicon's, because the question is which edge OUR
+capture's colour names -- an edge our render covers but the model excludes
+reads as `unm` rather than as agreement.  The default here is the
+PERPENDICULAR footprint and the reason given was "that is the footprint our
+renderer actually draws".  THAT REASON EXPIRED ON 2026-09-13: `80c23dcabe`
+landed the derived extent in geom.c's `widen_lines` path that same day and
+`7ce57a799b`/`e0c0a9974b` refined its cap on 2026-09-19, so on Vulkan -- which
+is every device arm -- we now draw the WIDER hypot-approximation width, and
+`--extent-rule` is the accurate model of our own coverage.
+
+The default is left alone rather than flipped, so that arms already judged
+against it (#13's geom.c arm) stay judgeable on the same footprint.  But a
+new arm should pass `--extent-rule`, and the two are not interchangeable: over
+widths 8-63.875 the perpendicular set is 198,890 px and the derived-extent set
+is 225,570 -- the latter being the population #13's own derivation quotes, and
+the one on which the derived rule scores 100.00% in each of eleven classes
+separately rather than 98-99%.
+
+BOTH OF THOSE TOTALS MOVED ON 2026-09-20, by +10 and +12 respectively, and
+this docstring carried the old pair (198,880 / 225,558) until the same day.
+The cause is line_priority.py's LLoop segment direction, which was hard-coded
+to the FIRST-provoking naming while the suite it models is
+PROVOKING_VERTEX_LAST (lane primpv13, audit pass 1 LOW 2).  The correction is
+inert in coverage and moves the colour lerp by ~1e-13, which is enough for a
+dozen pixels sitting exactly on `decisive()`'s thresholds to cross them.  So
+#13's geom.c arm RE-RUNS AT 198,890, not the 198,880 recorded when it was
+judged, with every percentage in its eleven-class table unchanged and only
+LLoop/Tri's population moving (1,305 -> 1,315).  A ten-pixel gap against that
+arm's record is this instrument change, not a device change.
 
     line_priority_arms.py --a RESULTDIR [--b RESULTDIR] [--goldens DIR] \
-        --min-width 8 --max-width 63.875
+        --extent-rule --min-width 8 --max-width 63.875
 
 Captures are resolved with `captures.py`, never by globbing: a falsifier that
 reports its own evidence MISSING on an arm that contains it reads exactly like
@@ -124,14 +150,48 @@ def label(pix, cand_cols, tol, ratio):
 def changed_region(w):
     """Union of the footprints of every edge whose ORDER prim_rewrite.c picks,
     dilated by one pixel.  Nothing outside this can move when only the order of
-    those edges changes, so a difference outside it is a scoping bug."""
+    those edges changes, so a difference outside it is a scoping bug.
+
+    IT TAKES EVERY FOOTPRINT MODEL AT ONCE, and that is the whole point of the
+    function rather than a refinement of it.  `outside` is not a selection
+    rule like `decisive_xy()`'s -- it is a BOUND on where our renderer's own
+    pixels for those edges can be, and a bound that under-covers what we draw
+    manufactures escapes out of nothing.  This used to hard-code the narrow
+    perpendicular model while `decisive_xy()` was given `--extent-rule`, i.e.
+    the WIDE hypot-approximation footprint we actually draw on Vulkan.  The
+    margin between the two grows with width and the one-pixel dilation stops
+    covering it around w = 40, so on #13's own fan arm -- judged with
+    `--extent-rule` exactly as this file's docstring instructs -- 17 of the
+    window's 28 captures reported a non-zero `outside` against a footnote
+    calling it a must-be-zero (audit pass 1b of PR #194, 2026-09-21).
+
+    Threading the run's rule through, which is what that audit asked for, is
+    not enough: it fixes `--extent-rule` and leaves the DEFAULT reading 1 and
+    2 px outside at w = 40 and 48, because there the model is narrower than
+    our own coverage for a second, legitimate reason -- the arms really do
+    differ out at the wider extent.  So the region unions both models.  The
+    derived extent is the wider of the two at every angle ((max + min/2) / L
+    is 1.0 axis-aligned and 1.06 at 45 degrees, never below 1), so the union
+    IS the extent footprint today; taking it as a union rather than as "the
+    wide one" is what keeps this sound if a third model is ever added.  With
+    it, all 28 captures read 0 under BOTH rules -- each a full sweep of the
+    window, not an inference from the two that had moved -- and no other
+    column of the report moves.
+
+    A WIDER BOUND OWES A POSITIVE CONTROL, since a scoping check that can no
+    longer report a non-zero is worth less than no check.  At the widest width
+    in the window this region is 76,383 px of the 307,200-px frame -- 24.9%,
+    with 230,817 px still excluded -- and a single differing pixel planted at
+    an excluded coordinate is counted.
+    """
     m = np.zeros((lp.H, lp.W), dtype=bool)
     for i, e in enumerate(lp.EDGES):
         if e[0] not in OURS_TO_ORDER:
             continue
         for bias in ((0.0, 0.0), (0.5, 0.0)):
-            c, _, _, _ = lp.field(e, w, bias, 0.0, False)
-            m |= c
+            for rule in (False, True):
+                c, _, _, _ = lp.field(e, w, bias, 0.0, rule)
+                m |= c
     d = m.copy()
     for s in (1, -1):
         d |= np.roll(m, s, axis=0)
@@ -273,7 +333,11 @@ def main():
         print("\n* 'outside' counts pixels differing between the arms OUTSIDE "
               "the union of the\n  footprints whose order changed, dilated by "
               "one pixel.  It must be 0: a\n  reordering of those edges cannot "
-              "reach anything else.")
+              "reach anything else.  The region unions\n  EVERY footprint "
+              "model, not the one --extent-rule selected above, because it is "
+              "a\n  bound on our own coverage rather than a selection rule: a "
+              "region narrower than\n  what we actually draw reports the gap "
+              "between two models as a scoping escape.")
     return 0
 
 
