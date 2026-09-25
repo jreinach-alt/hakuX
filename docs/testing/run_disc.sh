@@ -51,7 +51,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # extracted its results, and then sat for seven hours wedged in the exit trap
 # because adb stopped answering -- the work was done and the job still looked
 # alive. A device that goes unresponsive must not be able to hold a slot.
-a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
+# adb_call (devices.sh) keeps that deadline and adds a retry on failure: the
+# WSL interop drop-outs lost two arms' pulls in 40 minutes on 09-25, one of
+# them after a run whose logcat was normal.
+a() { adb_call "${ADB_TIMEOUT:-120}" "adb $1" "$@"; }
 
 # Optional logcat capture, off unless CAPTURE_LOG names a file.
 #

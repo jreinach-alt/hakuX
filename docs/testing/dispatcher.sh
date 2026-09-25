@@ -44,7 +44,6 @@ D="${DISPATCH_DIR:-/home/justin/hakux-work/dispatch}"
 . "$HERE/devices.sh"
 device_env "${SERIAL:-ee317437}" || exit 2
 GOLDENS="${GOLDENS:-/home/justin/goldens/results}"
-SWEEP_STATE="${SWEEP_STATE:-/home/justin/hakux-work/night19/sq_g0}"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 export JAVA_HOME="${JAVA_HOME:-/home/justin/toolchains/jdk21}"
 export PATH="/home/justin/Android/Sdk/cmake/3.30.3/bin:$PATH"
@@ -135,7 +134,24 @@ log() { echo "$(date '+%m-%d %H:%M:%S') $*" | tee -a "$D/logs/dispatcher.log" >&
 jq_get() { python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],sys.argv[3] if len(sys.argv)>3 else ''))" "$1" "$2" "${3:-}"; }
 
 device_present() {
-    adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
+    timeout -k 5 30 adb devices | tr -d '\r' | grep -q "^$SERIAL[[:space:]]*device$"
+}
+
+# EVERY adb CALL IN THE SERVE PATH GOES THROUGH adb_call (devices.sh), with a
+# deadline sized to the operation. The install, the run-as pref calls and the
+# force-stops had none, and one of them held the Thor from 09-14 06:29 to
+# 09-18 09:23 while the queue waited behind it. A call that hangs is written
+# to ADB_HUNG_FILE (per device, cleared at each claim); adb_error turns that
+# into the request's ERROR line, so the result names the call that hung and
+# the worker leaves through the post-claim exit it would have taken anyway.
+ADB_INSTALL_TIMEOUT="${ADB_INSTALL_TIMEOUT:-300}"   # a ~100 MB apk over USB
+ADB_QUICK_TIMEOUT="${ADB_QUICK_TIMEOUT:-30}"        # a pref read, a force-stop
+adb_error() {   # <what failed> -> the ERROR line, naming a hung call if any
+    if [ -s "${ADB_HUNG_FILE:-}" ]; then
+        echo "$1: adb hung -- $(head -1 "$ADB_HUNG_FILE")"
+    else
+        echo "$1"
+    fi
 }
 
 # Put the request's `env` into the app's environment for THIS RUN, and take it
@@ -273,10 +289,19 @@ PYENV
     # The app must not be running while we write: SharedPreferences are cached
     # in the process and flushed on commit, so a live process would overwrite
     # this the moment anything else touched a pref.
-    adb -s "$SERIAL" shell am force-stop "$pkg" >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (env pref)" shell am force-stop "$pkg" >/dev/null 2>&1
     tmp="$D/.prefs.${DEVICE_LABEL:-$SERIAL}.xml"
-    adb -s "$SERIAL" shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as cat x1box_prefs.xml" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
         2>/dev/null | tr -d '\r' > "$tmp"
+    # A HUNG device is not an unreadable file. The clearing branch below drops
+    # its marker on an unreadable file, which is right for a run-as that
+    # refuses and wrong for a call that never answered: the env would be left
+    # on the device with nothing remembering to take it off.
+    if [ -s "${ADB_HUNG_FILE:-}" ]; then
+        log "  ENV: adb hung ($(head -1 "$ADB_HUNG_FILE")); marker kept"
+        return 1
+    fi
     if [ ! -s "$tmp" ]; then
         if [ -z "$want" ]; then
             # Clearing, and we cannot read the file. Drop the marker: another
@@ -306,14 +331,16 @@ if want:
     s = s.replace("</map>", '    <string name="env_vars">%s</string>\n</map>' % esc)
 open(path, "w").write(s)
 PYENV
-    adb -s "$SERIAL" shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'" < "$tmp"
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as write x1box_prefs.xml" --in "$tmp" \
+        shell "run-as $pkg sh -c 'cat > shared_prefs/x1box_prefs.xml'"
     # VERIFY BY READING BACK. A `cat >` over adb can truncate, and the failure
     # mode of a silently-unwritten pref is a run that measures the other arm.
     # Via a FILE and a quoted heredoc, not `python3 -c "..."`. The source below
     # is full of quotes, backslashes and an `&`, and a shell string is the
     # wrong container for any of them -- the same mistake that was running the
     # shell over the disc_id block's comments a few hundred lines down.
-    adb -s "$SERIAL" shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
+    adb_call "$ADB_QUICK_TIMEOUT" "run-as read back x1box_prefs.xml" \
+        shell "run-as $pkg cat shared_prefs/x1box_prefs.xml" \
         2>/dev/null | tr -d '\r' > "$tmp.back"
     local back
     back=$(python3 - "$tmp.back" <<'PYENV'
@@ -345,22 +372,19 @@ PYENV
     return 0
 }
 
-# The full sweep is idle-priority work and yields to requests. pause blocks
-# until the runner has genuinely parked rather than setting a flag and hoping,
-# and every resume reinstalls the baseline so a preempting binary cannot
-# contaminate the rows that follow.
-sweep_running() { [ -f "$SWEEP_STATE/pid" ] && kill -0 "$(cat "$SWEEP_STATE/pid")" 2>/dev/null; }
-preempt_sweep() {
-    sweep_running || return 0
-    log "preempting the sweep"
-    SWEEP_STATE="$SWEEP_STATE" bash "$HERE/sweep_queue.sh" pause >>"$D/logs/dispatcher.log" 2>&1
-}
-resume_sweep() {
-    [ -f "$SWEEP_STATE/PAUSE" ] || return 0
-    [ -n "$(ls -A "$D/queue" 2>/dev/null)" ] && return 0   # more work first
-    log "queue empty, resuming the sweep"
-    SWEEP_STATE="$SWEEP_STATE" bash "$HERE/sweep_queue.sh" resume >>"$D/logs/dispatcher.log" 2>&1
-}
+# THERE IS NO SWEEP PREEMPTION HERE, and there was one until 2026-09-25.
+# preempt_sweep/resume_sweep drove sweep_queue.sh pause/resume around every
+# install. It never ran: sweep_queue.sh demanded four build inputs before its
+# `pause` case, which were not passed, so it exited first; it was given no
+# SERIAL, so had it run it would have force-stopped the app on the FIRST adb
+# device rather than the sweep's; and its guard read a pid file in a 09-12
+# state dir whose runner had been dead since 09-12. dispatcher.log (which
+# starts 09-12 11:03) holds no "preempting the sweep" line at all. A path
+# that has never run is not a feature, and this one carried a force-stop
+# aimed at whichever device was listed first, so it was deleted rather than
+# repaired. The corpus sweep is queue work now (z-sweep-* requests, sorted
+# last by the claim loop), which yields to requests without any of this.
+# sweep_queue.sh remains as a standalone tool and records its own device.
 
 # The private build worktree, created on first use. --detach so it never
 # holds a branch, which keeps `git worktree list` honest about what it is.
@@ -572,6 +596,9 @@ serve_one() {
     mv "$req" "$D/running/$id.req" 2>/dev/null || return 1
     printf '%s\n' "$DEVICE_LABEL" > "$D/running/$id.owner"
     req="$D/running/$id.req"
+    # Per device and per request: a hang recorded here is THIS request's.
+    export ADB_HUNG_FILE="$D/.adb_hung.${DEVICE_LABEL:-$SERIAL}"
+    rm -f "$ADB_HUNG_FILE"
     # Say so if that `want` above was decided over an empty device set.
     lane_blind_check "$id"
     local requester purpose ref arm runs
@@ -628,9 +655,8 @@ serve_one() {
         log "  device absent; requeueing"
         mv "$req" "$D/queue/$id.req"; sleep 30; return 0
     fi
-    preempt_sweep
-    adb -s "$SERIAL" install -r "$apk" 2>&1 | grep -q Success || {
-        echo "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED"
+    adb_call "$ADB_INSTALL_TIMEOUT" "adb install -r" install -r "$apk" 2>&1 | grep -q Success || {
+        adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
         mv "$req" "$rdir/request.json"; return 0
     }
 
@@ -640,7 +666,7 @@ serve_one() {
     # marker this costs zero adb calls.
     local req_env=""
     if ! apply_env_pref "$req"; then
-        echo "could not set the requested env_vars pref; see dispatcher.log" > "$rdir/ERROR"
+        adb_error "could not set the requested env_vars pref; see dispatcher.log" > "$rdir/ERROR"
         log "  ENV SETUP FAILED"
         mv "$req" "$rdir/request.json"; return 0
     fi
@@ -656,8 +682,8 @@ serve_one() {
     if [ -n "$title" ]; then
         log "  soak: $title for ${seconds}s"
         local tpath="$DEVICE_ISO_ROOT/$title"
-        if ! adb -s "$SERIAL" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
-            echo "title not on device: $tpath" > "$rdir/ERROR"
+        if ! adb_call "$ADB_QUICK_TIMEOUT" "title check" shell "[ -f '$tpath' ] && echo yes" 2>/dev/null | tr -d '\r' | grep -q yes; then
+            adb_error "title not on device: $tpath" > "$rdir/ERROR"
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
@@ -727,7 +753,6 @@ PYEOF
         mv "$req" "$rdir/request.json"
         rm -f "$D/running/$id.owner"
     touch "$rdir/DONE"
-        resume_sweep
         return 0
     fi
 
@@ -1034,9 +1059,20 @@ try:
         meta["scorer_sha256"] = hashlib.sha256(fh.read()).hexdigest()[:12]
 except Exception:
     meta["scorer_sha256"] = "unknown"
+# Keep equal to score_sweep.py's SCORED_STATUSES (selftest fragment
+# 35-dispatch-hardening.sh checks). A row outside it -- `unreadable` after a
+# truncated pull, above all -- carries differing=0 because there is no number,
+# so it is neither a capture nor exact. Counting it as both is how #224's fix
+# arm recorded 110 of 110 W_param while score_sweep said 54 of 110.
+SCORED_STATUSES = ("ok", "blank", "label-differs", "white-content")
 runs = []
 for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
-    rows = [r for r in csv.DictReader(open(t), delimiter="\t") if r.get("suite")]
+    every = [r for r in csv.DictReader(open(t), delimiter="\t") if r.get("suite")]
+    rows = [r for r in every if r.get("status") in SCORED_STATUSES]
+    unscored = {}
+    for r in every:
+        if r.get("status") not in SCORED_STATUSES:
+            unscored[r.get("status") or "?"] = unscored.get(r.get("status") or "?", 0) + 1
     # A run counts only if its own progress log shows tests completing.
     logdir = t.replace("scores", "captures").replace(".tsv", "")
     plog = os.path.join(logdir, "pgraph_progress_log.txt")
@@ -1044,6 +1080,7 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
     runs.append(dict(tsv=os.path.basename(t), captures=len(rows),
                      exact=sum(1 for r in rows if int(r["differing"] or 0) == 0),
                      px=sum(int(r["differing"] or 0) for r in rows),
+                     unscored=unscored,
                      progress_log_proof=proof))
 # A vsh run has no scores TSV: vsh_score.py wrote a verdict per test against
 # the console's printed values. `captures` counts the tests whose .txt came
@@ -1095,7 +1132,7 @@ for s in sorted(suites if program != "vsh" else ()):
     have = len([f for f in os.listdir(gd)]) if os.path.isdir(gd) else 0
     got = sum(1 for t in sorted(glob.glob(os.path.join(rdir, "scores1.tsv")))
               for row in csv.DictReader(open(t), delimiter="\t")
-              if row.get("suite") == s)
+              if row.get("suite") == s and row.get("status") in SCORED_STATUSES)
     cov[s] = dict(scored=got, goldens=have,
                   partial=bool(have and got < have))
 meta["captures_vs_goldens"] = cov
@@ -1122,14 +1159,43 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
         # Zero captures is a failed run, not a result of zero. Handing a
         # requester an empty TSV as if it were an answer is how "this suite
         # renders nothing" gets believed.
-        echo "ran but produced 0 captures; see run1.log and captures1/" > "$rdir/ERROR"
-        log "  FAILED: 0 captures"
+        #
+        # AND ZERO WITH THE WSL INTEROP SIGNATURE IN THE LOG IS A LOST PULL,
+        # not a failed run. 1790325543-arms-vshconst-base logged four
+        # `UtilAcceptVsock ... accept4 failed 110`, "pull failed or timed out"
+        # and nothing else, and its pair came back ARM ERROR; the next one lost
+        # its captures after a logcat showing a normal run. Say which it was,
+        # and run it once more: the attempt is moved aside to <id>.interop1 so
+        # the rerun gets a clean result dir, and a second loss is final.
+        local msg="ran but produced 0 captures; see run1.log and captures1/"
+        if grep -qs "UtilAcceptVsock" "$rdir"/run*.log; then
+            msg="adb interop failure: 0 captures, and run*.log carries the WSL UtilAcceptVsock signature -- the captures were lost between device and host, not unrendered"
+            if [ -z "$(jq_get "$rdir/request.json" interop_requeued "")" ] &&
+               python3 - "$rdir/request.json" "$D/queue/$id.req" <<'PYEOF'
+import json, sys, time
+r = json.load(open(sys.argv[1]))
+r["interop_requeued"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+json.dump(r, open(sys.argv[2], "w"), indent=2)
+PYEOF
+            then
+                echo "$msg; requeued once as $id" > "$rdir/ERROR"
+                local aside="$rdir.interop1"
+                [ -e "$aside" ] && aside="$rdir.interop1.$(date +%s)"
+                mv "$rdir" "$aside"
+                rm -f "$D/running/$id.owner"
+                log "  FAILED: 0 captures, adb interop failure; requeued once (attempt kept at $aside)"
+                return 0
+            fi
+            [ -n "$(jq_get "$rdir/request.json" interop_requeued "")" ] && msg="$msg; this was the one requeue, so it is final"
+        fi
+        adb_error "$msg" > "$rdir/ERROR"
+        log "  FAILED: $(head -1 "$rdir/ERROR")"
         return 0
     fi
     rm -f "$D/running/$id.owner"
     touch "$rdir/DONE"
     log "  done -> $rdir"
-    adb -s "$SERIAL" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (after run)" shell am force-stop com.jreinach.hakux.debug >/dev/null 2>&1
 }
 
 # The logcat spec, defined ONCE and exported, because it was previously defined
@@ -1209,10 +1275,6 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
 # flood; that was checked before adding it rather than assumed.
 LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
-
-# Which device runs the idle sweep. One of them must, and both of them must
-# not: two workers driving one long sweep would fight over its disk image.
-SWEEP_DEVICE="${SWEEP_DEVICE:-nova}"
 
 case "${1:-status}" in
   serve)
@@ -1421,9 +1483,6 @@ case "${1:-status}" in
 
         reqs=("$D"/queue/*.req)
         if [ "${#reqs[@]}" -eq 0 ]; then
-            # Only the sweep-owning device resumes it, or two workers would
-            # drive the same long sweep against one disk image.
-            [ "$DEVICE_LABEL" = "$SWEEP_DEVICE" ] && resume_sweep
             sleep 10
             continue
         fi
@@ -1455,7 +1514,6 @@ case "${1:-status}" in
     echo "running: $(ls "$D/running"/*.req 2>/dev/null | wc -l)"
     echo "results: $(ls -d "$D/results"/*/ 2>/dev/null | wc -l)"
     device_present && echo "device:  present" || echo "device:  ABSENT"
-    sweep_running && echo "sweep:   running" || echo "sweep:   not running"
     echo "build:   $BUILD_TREE @ $(git -C "$BUILD_TREE" rev-parse --short HEAD 2>/dev/null || echo 'not created yet')"
     tail -5 "$D/logs/dispatcher.log" 2>/dev/null
     ;;

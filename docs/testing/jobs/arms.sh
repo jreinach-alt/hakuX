@@ -303,17 +303,30 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
 # to 916 results without anyone watching it.
 #
 # So the results are read ONCE, here, into a set.
+#
+# AND A SHA HAS RUN ONLY WHEN BOTH HALVES HAVE. This counted a sha as run if
+# EITHER arm's result was clean, so a pair with one half ERRORed could never be
+# queued again: vshconst's base lost its pull to WSL interop (09-25), its fix
+# half was DONE, and the ARM ERROR comment's "delete judged/<sha> and
+# pairs/<sha>.json" did nothing, because the surviving half still matched
+# here. A half is told apart by its ref -- a pair with a_ref == b_ref is
+# skipped structurally before it gets this far -- so a sha counts once two
+# distinct refs carry a clean result for it.
 declare -A RAN
 while IFS= read -r s; do [ -n "$s" ] && RAN[$s]=1; done < <(python3 - "$D" <<'PYRAN'
 import glob, json, os, sys
+refs = {}
 for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
     if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
         continue                       # an ERRORed result is not a run
     try:
-        sha = json.load(open(rj)).get("expect_sha")
+        r = json.load(open(rj))
     except Exception:
         continue
-    if sha:
+    if r.get("expect_sha"):
+        refs.setdefault(r["expect_sha"], set()).add(r.get("ref") or "")
+for sha, got in refs.items():
+    if len(got) >= 2:
         print(sha)
 PYRAN
 )
