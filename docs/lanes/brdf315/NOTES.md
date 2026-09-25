@@ -159,7 +159,11 @@ merges master, and registers after the last rebase:
 
 ## 6. Discriminating read at fab230935e
 
-Pending: `1790373098-brdf315-964945`.
+Queued as `1790373098-brdf315-964945`, still in the queue when this PR was
+marked ready. It is confirmatory only and does not gate anything here: by
+section 1 both mechanisms read (18,18,18,254) at (639,479) at this ref. A
+different reading would falsify the blend argument. Anything else would
+bear on the defect only through the arm in section 5.
 
 ## What the next lane should not repeat
 
