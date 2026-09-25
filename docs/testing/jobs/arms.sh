@@ -65,7 +65,7 @@ A="$WORK/arms"
 T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
-mkdir -p "$A"/{expect,pairs,judged,skipped,log} "$WORK/logs/arms"
+mkdir -p "$A"/{expect,pairs,judged,skipped,log,incomplete} "$WORK/logs/arms"
 LOG="$WORK/logs/arms/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
@@ -303,17 +303,37 @@ already_ran() {   # the sha is in a result, in the queue, in flight, or judged
 # to 916 results without anyone watching it.
 #
 # So the results are read ONCE, here, into a set.
+#
+# AND A SHA HAS RUN ONLY WHEN BOTH HALVES HAVE. This counted a sha as run if
+# EITHER arm's result was clean, so a pair with one half ERRORed could never be
+# queued again: vshconst's base lost its pull to WSL interop (09-25), its fix
+# half was DONE, and the ARM ERROR comment's "delete judged/<sha> and
+# pairs/<sha>.json" did nothing, because the surviving half still matched
+# here. A half is told apart by its ref -- a pair with a_ref == b_ref is
+# skipped structurally before it gets this far -- so a sha counts once two
+# distinct refs carry a clean result for it.
+#
+# A VOIDED result is not a run either. The judge loop drops that marker in
+# both halves of a pair whose verdict was INCOMPLETE (a leg on an unscored
+# capture), and the verdict says "Re-run the arm" -- which nothing could do
+# while those clean request.jsons still carried the sha (PR #249 audit M1).
 declare -A RAN
 while IFS= read -r s; do [ -n "$s" ] && RAN[$s]=1; done < <(python3 - "$D" <<'PYRAN'
 import glob, json, os, sys
+refs = {}
 for rj in glob.glob(os.path.join(sys.argv[1], "results", "*", "request.json")):
     if os.path.exists(os.path.join(os.path.dirname(rj), "ERROR")):
         continue                       # an ERRORed result is not a run
+    if os.path.exists(os.path.join(os.path.dirname(rj), "VOIDED")):
+        continue                       # nor is one an INCOMPLETE verdict voided
     try:
-        sha = json.load(open(rj)).get("expect_sha")
+        r = json.load(open(rj))
     except Exception:
         continue
-    if sha:
+    if r.get("expect_sha"):
+        refs.setdefault(r["expect_sha"], set()).add(r.get("ref") or "")
+for sha, got in refs.items():
+    if len(got) >= 2:
         print(sha)
 PYRAN
 )
@@ -725,6 +745,25 @@ for pair in "$A"/pairs/*.json; do
     dec="$A/pairs/$sha.label.md"
     label_decide "${src%%:*}" "$sha" "$verdict" > "$dec"
     state=$(sed -n '1s/^STATE=//p' "$dec")
+    # INCOMPLETE IS NOT A VERDICT, SO IT MUST NOT END THE PREDICTION. Some leg
+    # landed on a capture that was never measured -- #224's pull truncated 56
+    # W_param PNGs in one arm, which still had captures, so the dispatcher's
+    # 0-capture interop requeue never fired. Both halves are marked VOIDED so
+    # the RAN walk above stops counting them, and the first INCOMPLETE is
+    # re-queued by the next tick with no judged marker written. A second one is
+    # final: the cause is then likely not a transient pull, and a loop would
+    # spend a device on it every tick.
+    incomplete=""; note=""
+    case "$verdict" in
+        "VERDICT: INCOMPLETE"*)
+            if [ -f "$A/incomplete/$sha" ]; then
+                incomplete=final
+                note="This is this prediction's second INCOMPLETE, so it is not queued again. Fix what left the captures unscored (the VOID lines below), then register the prediction again (any edit changes its sha), or delete \`\$WORK/arms/judged/$sha\` and \`\$WORK/arms/pairs/$sha.json\` to have the job queue it once more."
+            else
+                incomplete=first
+                note="Not a verdict, and no label moves on it. Both results are marked VOIDED and the pair is queued again on the next tick, once; a second INCOMPLETE is final."
+            fi ;;
+    esac
     {
         echo "[job.arms] $verdict"
         echo
@@ -735,6 +774,7 @@ for pair in "$A"/pairs/*.json; do
         echo "| b_ref (fix) | \`$(field "$pair" b_ref)\` result \`$idb\` |"
         echo "| suites | $(field "$pair" suites) |"
         echo "| judged | $(say_time_s) by ab_compare.py on the host; full text in \`\$WORK/arms/pairs/$sha.verdict.txt\` |"
+        if [ -n "$incomplete" ]; then echo; echo "$note"; fi
         if [ -n "$pr" ] && [ "${state:-none}" != none ]; then echo; sed 1d "$dec"; fi
         echo
         echo "<details><summary>ab_compare output (first 80 lines)</summary>"
@@ -748,6 +788,14 @@ for pair in "$A"/pairs/*.json; do
             verified)  label_add "$pr" verified  && label_rm "$pr" regressed || say "  WARNING: #$pr has no unsuperseded FAIL but could not be labelled verified" ;;
             regressed) label_add "$pr" regressed && label_rm "$pr" verified  || say "  WARNING: #$pr has an unsuperseded FAIL but could not be labelled regressed" ;;
         esac
+    fi
+    if [ -n "$incomplete" ]; then
+        : > "$RA/VOIDED"; : > "$RB/VOIDED"
+        if [ "$incomplete" = first ]; then
+            echo "$verdict" > "$A/incomplete/$sha"; rm -f "$pair"
+            say "judged $sha: INCOMPLETE, results voided, the pair re-queued once ($src)"
+            continue
+        fi
     fi
     echo "$verdict" > "$A/judged/$sha"; say "judged $sha: $verdict ($src${pr:+, PR #$pr -> ${state:-no label}})"
 done
