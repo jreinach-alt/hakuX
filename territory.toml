@@ -1039,13 +1039,6 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #315: PS_TEXTUREMODES_BRDF unimplemented plus a 614-px wedge silicon draws and we do not. Discriminating run first (pixel 639,479 at a ref containing 8e683b3a26), then fit the BRDF rule and name the psh.c hunk (psh.c is held; named-not-edited). Brief: briefs/brdf315.md."
 
 
-[lane.cloud-audit1-327]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-327, audit pass 1 of PR #327 on branch claude/docs-tooling-agentic-coding-u152m1, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 327` removes this row when the unit ends."
-
-
 [lane.cloud-issue-286]
 issues = ["286"]
 files = []
