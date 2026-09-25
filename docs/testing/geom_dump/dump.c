@@ -74,6 +74,27 @@ int main(int argc, char **argv)
             .polygon_back_mode = POLY_MODE_FILL,
             .smooth_shading = true },
           { .vulkan = true } },
+        /* #224: a flat, filled QUADS / QUAD_STRIP draw, rewritten to
+         * triangles-with-adjacency (prim_rewrite.c flat_quad_adjacency()). */
+        { "quad_flat_adjacency_vk",
+          { .primitive_mode = PRIM_TYPE_TRIANGLES_ADJACENCY,
+            .polygon_front_mode = POLY_MODE_FILL,
+            .polygon_back_mode = POLY_MODE_FILL,
+            .smooth_shading = false,
+            .cylinder_wrap = { 3, 0, 0, 0 } },
+          { .vulkan = true } },
+        { "quad_flat_adjacency_gl",
+          { .primitive_mode = PRIM_TYPE_TRIANGLES_ADJACENCY,
+            .polygon_front_mode = POLY_MODE_FILL,
+            .polygon_back_mode = POLY_MODE_FILL,
+            .smooth_shading = false },
+          { .vulkan = false } },
+        { "quad_flat_adjacency_gles320",
+          { .primitive_mode = PRIM_TYPE_TRIANGLES_ADJACENCY,
+            .polygon_front_mode = POLY_MODE_FILL,
+            .polygon_back_mode = POLY_MODE_FILL,
+            .smooth_shading = false },
+          { .vulkan = false, .gles = true, .gles_version = 320 } },
         /* The GL renderer keeps the native line path: no widening, and this
          * case is what shows that nothing above reached it. */
         { "lines_smooth_gl",

@@ -39,6 +39,13 @@
 #include "gloffscreen.h"
 #include "constants.h"
 
+/* GL 3.2 / GLES 3.2 core, and GL_TRIANGLES_ADJACENCY_EXT under
+ * GL_EXT_geometry_shader, all the same value; a GLES 3.0/3.1 header lacks
+ * the name.  Only drawn when a geometry shader is attached. */
+#ifndef GL_TRIANGLES_ADJACENCY
+#define GL_TRIANGLES_ADJACENCY 0x000C
+#endif
+
 typedef struct SurfaceBinding {
     QTAILQ_ENTRY(SurfaceBinding) entry;
     MemAccessCallback *access_cb;

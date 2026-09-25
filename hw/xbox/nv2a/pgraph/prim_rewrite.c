@@ -65,16 +65,72 @@ pgraph_prim_rewrite_get_output_mode(enum ShaderPrimitiveMode primitive_mode,
     case PRIM_TYPE_POLYGON:
         return polygon_mode == POLY_MODE_LINE ? PRIM_TYPE_LINES :
                                                 PRIM_TYPE_TRIANGLES;
+    case PRIM_TYPE_TRIANGLES_ADJACENCY:
+        return PRIM_TYPE_TRIANGLES;
     default:
         assert(!"Unexpected primitive mode");
         return primitive_mode;
     }
 }
 
+/*
+ * #224: a flat, filled quad keeps silicon's diagonal and still takes its flat
+ * colour from v3.
+ *
+ * Silicon colours a flat quad from v3 whatever FLAT_SHADE_OP says (the
+ * untextured Shade_model Quad/QuadStrip Flat goldens pin it), and it splits
+ * the quad on the SAME diagonal in Flat as in Smooth: its FixedTex_QuadStrip
+ * Flat texture pattern is identical to its Smooth one.  A triangle list
+ * cannot have both, because (v0, v1, v2) does not contain v3, and the old
+ * flat branch chose the colour, splitting on v1-v3 / v0-v3 so v3 was in both
+ * triangles -- which moved the texture mapping inside every non-parallelogram
+ * quad (474,214 px over the 12 *Tex Quad/QuadStrip Flat captures;
+ * docs/lanes/shade224/NOTES.md section 1A).
+ *
+ * Triangles-with-adjacency has both.  Each triangle is emitted as
+ * (a, v3, b, v3, c, v3): the rasterised triangle is slots 0, 2, 4, which is
+ * the Smooth tessellation vertex for vertex, and glsl/geom.c reads the flat
+ * varyings from slot 1.  The adjacency slots are otherwise unused.
+ *
+ * FILL only.  POLY_MODE_LINE has its own rewrite_*_line() paths, and
+ * POLY_MODE_POINT draws the vertices themselves, where the diagonal is not
+ * observable; both keep what they had.
+ */
+static inline bool flat_quad_adjacency(enum ShaderPrimitiveMode primitive_mode,
+                                       enum ShaderPolygonMode polygon_mode,
+                                       bool flat_shading)
+{
+    return flat_shading && polygon_mode == POLY_MODE_FILL &&
+           (primitive_mode == PRIM_TYPE_QUADS ||
+            primitive_mode == PRIM_TYPE_QUAD_STRIP);
+}
+
+enum ShaderPrimitiveMode
+pgraph_prim_rewrite_get_draw_mode(enum ShaderPrimitiveMode primitive_mode,
+                                  enum ShaderPolygonMode polygon_mode,
+                                  bool flat_shading)
+{
+    /* The Vulkan draw queue replays with pg->primitive_mode set to the
+     * binding's draw mode, so the draw mode must map to itself. */
+    if (primitive_mode == PRIM_TYPE_TRIANGLES_ADJACENCY ||
+        flat_quad_adjacency(primitive_mode, polygon_mode, flat_shading)) {
+        return PRIM_TYPE_TRIANGLES_ADJACENCY;
+    }
+    return pgraph_prim_rewrite_get_output_mode(primitive_mode, polygon_mode);
+}
+
+static inline bool emits_adjacency(const PrimAssemblyState *mode)
+{
+    return !mode->no_adjacency &&
+           flat_quad_adjacency(mode->primitive_mode, mode->polygon_mode,
+                               mode->flat_shading);
+}
+
 static inline bool needs_rewrite(PrimAssemblyState mode)
 {
     switch (mode.primitive_mode) {
     case PRIM_TYPE_POINTS:
+    case PRIM_TYPE_TRIANGLES_ADJACENCY:
         return false;
     case PRIM_TYPE_LINES:
     case PRIM_TYPE_TRIANGLES:
@@ -176,8 +232,12 @@ static inline bool pv_placement_observable(PrimAssemblyState mode)
 
 static unsigned int max_output_indices(enum ShaderPrimitiveMode mode,
                                        enum ShaderPolygonMode polygon_mode,
+                                       bool adjacency,
                                        unsigned int input_count)
 {
+    /* An adjacency triangle is six indices where a list triangle is three. */
+    unsigned int per_tri = adjacency ? 6 : 3;
+
     switch (mode) {
     case PRIM_TYPE_LINES:
         return input_count;
@@ -199,12 +259,12 @@ static unsigned int max_output_indices(enum ShaderPrimitiveMode mode,
         if (polygon_mode == POLY_MODE_LINE) {
             return (input_count / 4) * 8;
         }
-        return (input_count / 4) * 6;
+        return (input_count / 4) * 2 * per_tri;
     case PRIM_TYPE_QUAD_STRIP:
         if (polygon_mode == POLY_MODE_LINE) {
             return (input_count >= 4) ? ((input_count - 2) / 2) * 8 : 0;
         }
-        return (input_count >= 4) ? ((input_count - 2) / 2) * 6 : 0;
+        return (input_count >= 4) ? ((input_count - 2) / 2) * 2 * per_tri : 0;
     default:
         return 0;
     }
@@ -243,6 +303,18 @@ static inline void emit_tri(PrimRewrite *r, uint32_t a, uint32_t b, uint32_t c)
     emit_vertex(r, a);
     emit_vertex(r, b);
     emit_vertex(r, c);
+}
+
+/* Triangle (a, b, c) with p in every adjacency slot; see flat_quad_adjacency. */
+static inline void emit_tri_adj(PrimRewrite *r, uint32_t a, uint32_t b,
+                                uint32_t c, uint32_t p)
+{
+    emit_vertex(r, a);
+    emit_vertex(r, p);
+    emit_vertex(r, b);
+    emit_vertex(r, p);
+    emit_vertex(r, c);
+    emit_vertex(r, p);
 }
 
 /* Rotate provoking vertex p to index 0, preserving winding of (a, b, c). */
@@ -387,7 +459,8 @@ static void rewrite_triangle_fan(PrimRewrite *r, const uint32_t *idx,
 }
 
 static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
-                          unsigned int count, bool flat_shading)
+                          unsigned int count, bool flat_shading,
+                          bool adjacency)
 {
     for (unsigned int i = 0; i + 3 < count; i += 4) {
         uint32_t v0 = idx_at(idx, i, base);
@@ -395,8 +468,14 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
         uint32_t v2 = idx_at(idx, i + 2, base);
         uint32_t v3 = idx_at(idx, i + 3, base);
 
-        if (flat_shading) {
-            /* Use v1-v3 diagonal so provoking vertex v3 is in both triangles.
+        if (adjacency) {
+            /* The Smooth branch's v0-v2 diagonal, coloured from v3. */
+            emit_tri_adj(r, v0, v1, v2, v3);
+            emit_tri_adj(r, v0, v2, v3, v3);
+        } else if (flat_shading) {
+            /* No geometry shader to read an adjacency slot (see
+             * PrimAssemblyState::no_adjacency), and POLY_MODE_POINT.
+             * Use v1-v3 diagonal so provoking vertex v3 is in both triangles.
              * This gives correct flat shading color but slightly different
              * depth slope vs hardware. */
             emit_tri(r, v3, v0, v1);
@@ -458,7 +537,7 @@ static void rewrite_quads_line(PrimRewrite *r, const uint32_t *idx,
 
 static void rewrite_quad_strip(PrimRewrite *r, const uint32_t *idx,
                                uint32_t base, unsigned int count,
-                               bool flat_shading)
+                               bool flat_shading, bool adjacency)
 {
     if (count < 4) {
         return;
@@ -470,8 +549,13 @@ static void rewrite_quad_strip(PrimRewrite *r, const uint32_t *idx,
         uint32_t v2 = idx_at(idx, i + 2, base);
         uint32_t v3 = idx_at(idx, i + 3, base);
 
-        if (flat_shading) {
-            /* Use v0-v3 diagonal so provoking vertex v3 is in both triangles.
+        if (adjacency) {
+            /* The Smooth branch's v1-v2 diagonal, coloured from v3. */
+            emit_tri_adj(r, v0, v1, v2, v3);
+            emit_tri_adj(r, v2, v1, v3, v3);
+        } else if (flat_shading) {
+            /* As rewrite_quads(): no geometry shader, or POLY_MODE_POINT.
+             * Use v0-v3 diagonal so provoking vertex v3 is in both triangles.
              * This gives correct flat shading color but slightly different
              * depth slope vs hardware. */
             emit_tri(r, v3, v2, v0);
@@ -593,14 +677,16 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         if (mode->polygon_mode == POLY_MODE_LINE) {
             rewrite_quads_line(r, idx, base, num_indices);
         } else {
-            rewrite_quads(r, idx, base, num_indices, mode->flat_shading);
+            rewrite_quads(r, idx, base, num_indices, mode->flat_shading,
+                          emits_adjacency(mode));
         }
         break;
     case PRIM_TYPE_QUAD_STRIP:
         if (mode->polygon_mode == POLY_MODE_LINE) {
             rewrite_quad_strip_line(r, idx, base, num_indices);
         } else {
-            rewrite_quad_strip(r, idx, base, num_indices, mode->flat_shading);
+            rewrite_quad_strip(r, idx, base, num_indices, mode->flat_shading,
+                               emits_adjacency(mode));
         }
         break;
     case PRIM_TYPE_POLYGON:
@@ -634,7 +720,9 @@ PrimRewrite pgraph_prim_rewrite_ranges(PrimRewriteBuf *buf,
     unsigned int total_max_output = 0;
     for (unsigned int r = 0; r < num_ranges; r++) {
         total_max_output += max_output_indices(mode.primitive_mode,
-                                               mode.polygon_mode, counts[r]);
+                                               mode.polygon_mode,
+                                               emits_adjacency(&mode),
+                                               counts[r]);
     }
 
     if (total_max_output == 0) {
@@ -670,7 +758,8 @@ PrimRewrite pgraph_prim_rewrite_indexed(PrimRewriteBuf *buf,
     }
 
     unsigned int max_output = max_output_indices(
-        mode.primitive_mode, mode.polygon_mode, num_input_indices);
+        mode.primitive_mode, mode.polygon_mode, emits_adjacency(&mode),
+        num_input_indices);
 
     if (max_output == 0) {
         return result;
