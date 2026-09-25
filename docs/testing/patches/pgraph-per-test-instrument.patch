@@ -1,0 +1,245 @@
+diff --git a/src/pgraph_diff_token.cpp b/src/pgraph_diff_token.cpp
+index bef0f8d..a9f44a1 100644
+--- a/src/pgraph_diff_token.cpp
++++ b/src/pgraph_diff_token.cpp
+@@ -1,6 +1,8 @@
+ #include "pgraph_diff_token.h"
+ 
++#include <cstdio>
+ #include <set>
++#include <string>
+ #include <vector>
+ 
+ #include "configure.h"
+@@ -24,6 +26,46 @@ static std::set<uint32_t> kDiffBlacklist{
+     0xFD4017EC, 0xFD4017F0, 0xFD4017F4, 0xFD4017F8, 0xFD4017FC,
+ };
+ 
++// ---------------------------------------------------------------------------
++// PMC watch. READ ONLY -- nothing here writes MMIO.
++//
++// This exists to settle one question a register diff cannot: whether NV2A's
++// NV_PMC_ENABLE uses the generic NVIDIA bit positions. nv2a_regs.h declares
++// PFIFO at bit 8 and PGRAPH at bit 12, but a probe read taken at the
++// dashboard returned 0x01110000 -- bits 16, 20 and 24, with 8 and 12 clear.
++// Either the engines really were idle at the dashboard, or the layout is not
++// the generic one. Reading the same register from inside a test, with PGRAPH
++// and PFIFO demonstrably running, separates the two.
++//
++// NV_PMC_BOOT_0 is read alongside as a canary. It is a fixed chip ID, so a
++// value other than 0x02A000A3 means the read path is not trustworthy -- a
++// byte-swapped MMIO window has produced confident nonsense here before -- and
++// the whole row must be discarded rather than interpreted.
++static constexpr uint32_t kPMCBase = 0xFD000000;
++struct PMCWatch {
++  uint32_t offset;
++  const char *name;
++};
++static constexpr PMCWatch kPMCWatch[] = {
++    {0x000000, "BOOT_0(canary)"},
++    {0x000100, "INTR_0"},
++    {0x000140, "INTR_EN_0"},
++    {0x000200, "ENABLE"},
++};
++
++static std::string read_pmc_watch() {
++  std::string out;
++  char line[96];
++  for (const auto &w : kPMCWatch) {
++    // Identity-mapped MMIO; volatile so the reads are not folded or reordered.
++    auto v = *reinterpret_cast<volatile const uint32_t *>(kPMCBase + w.offset);
++    snprintf(line, sizeof(line), "PMC %s 0x%08X = 0x%08X\n", w.name,
++             kPMCBase + w.offset, v);
++    out += line;
++  }
++  return out;
++}
++
+ PGRAPHDiffToken::PGRAPHDiffToken(bool initialize, bool enable_progress_log)
+     : registers{0}, enable_progress_log{enable_progress_log} {
+   if (initialize) {
+@@ -33,7 +75,7 @@ PGRAPHDiffToken::PGRAPHDiffToken(bool initialize, bool enable_progress_log)
+ 
+ void PGRAPHDiffToken::Capture() { pb_fetch_pgraph_registers(registers); }
+ 
+-void PGRAPHDiffToken::DumpDiff() const {
++void PGRAPHDiffToken::DumpDiff(const char* label) const {
+   std::vector<uint8_t> new_registers;
+   new_registers.resize(PGRAPH_REGISTER_ARRAY_SIZE);
+   pb_fetch_pgraph_registers(new_registers.data());
+@@ -44,16 +86,49 @@ void PGRAPHDiffToken::DumpDiff() const {
+   auto old_vals = reinterpret_cast<const uint32_t*>(registers);
+   auto new_vals = reinterpret_cast<const uint32_t*>(new_registers.data());
+ 
++  // Accumulated so the remote collector receives one APPE per diff rather than
++  // one per register; a busy suite moves >100 registers per test.
++  std::string remote;
++  char line[64];
++
++  if (label) {
++    // Built as a std::string, not in `line`: a suite::test label runs past 50
++    // characters, and snprintf would cut it and drop the newline, fusing the
++    // PMC canary onto the marker line.
++    const std::string marker = std::string("PGRAPH-DIFF ") + label + "\n";
++    PrintMsg("%s", marker.c_str());
++    if (enable_progress_log) {
++      Logger::Log() << marker;
++    }
++    remote += marker;
++
++    const std::string pmc = read_pmc_watch();
++    PrintMsg("%s", pmc.c_str());
++    if (enable_progress_log) {
++      Logger::Log() << pmc;
++    }
++    remote += pmc;
++  }
++
+   for (auto addr : modified_registers) {
++    // The blacklist above is deliberately NOT applied. It was derived
++    // empirically on one machine, and filtering here would hide exactly the
++    // kind of divergence this diff exists to find. Filter on the host, where
++    // both sides are visible.
+     //    if (kDiffBlacklist.find(addr) != kDiffBlacklist.end()) {
+     //      continue;
+     //    }
+     const auto offset = (addr - PGRAPH_REGISTER_BASE) / 4;
+-    PrintMsg("0x%08X: 0x%08X => 0x%08X\n", addr, old_vals[offset], new_vals[offset]);
++    snprintf(line, sizeof(line), "0x%08X: 0x%08X => 0x%08X\n", addr, old_vals[offset], new_vals[offset]);
++    PrintMsg("%s", line);
+ 
+     if (enable_progress_log) {
+-      Logger::Log() << std::setw(8) << std::hex << "0x" << addr << ": 0x" << old_vals[offset] << " => 0x"
+-                    << new_vals[offset] << std::endl;
++      Logger::Log() << line;
+     }
++    remote += line;
++  }
++
++  if (ftp_logger && !remote.empty()) {
++    ftp_logger->LogProgress(remote);
+   }
+ }
+diff --git a/src/pgraph_diff_token.h b/src/pgraph_diff_token.h
+index 0dc8eba..e0a0491 100644
+--- a/src/pgraph_diff_token.h
++++ b/src/pgraph_diff_token.h
+@@ -1,15 +1,29 @@
+ #ifndef NXDK_PGRAPH_TESTS_PGRAPH_DIFF_TOKEN_H
+ #define NXDK_PGRAPH_TESTS_PGRAPH_DIFF_TOKEN_H
+ 
++#include <ftp_logger.h>
++
++#include <memory>
++
+ #include "pbkit_ext.h"
+ 
+ struct PGRAPHDiffToken {
+   uint8_t registers[PGRAPH_REGISTER_ARRAY_SIZE];
+   bool enable_progress_log;
+ 
++  // When set, the diff is also streamed to the remote collector. Without this
++  // the diff only reaches Logger::Log(), which writes to a file on the Xbox
++  // filesystem -- unreadable on an emulator whose disk is a qcow2 image, and
++  // the emulator half is the whole point of the comparison.
++  std::shared_ptr<FTPLogger> ftp_logger;
++
+   explicit PGRAPHDiffToken(bool initialize = true, bool enable_progress_log = false);
+   void Capture();
+-  void DumpDiff() const;
++
++  // `label` is emitted as a "PGRAPH-DIFF <label>" marker ahead of the register
++  // lines so a parser can attribute them to a test rather than to whatever
++  // line happened to precede them.
++  void DumpDiff(const char* label = nullptr) const;
+ };
+ 
+ #endif  // NXDK_PGRAPH_TESTS_PGRAPH_DIFF_TOKEN_H
+diff --git a/src/tests/test_suite.cpp b/src/tests/test_suite.cpp
+index 52b2590..895c950 100644
+--- a/src/tests/test_suite.cpp
++++ b/src/tests/test_suite.cpp
+@@ -26,6 +26,7 @@ TestSuite::TestSuite(TestHost& host, std::string output_dir, std::string suite_n
+       suite_name_(std::move(suite_name)),
+       interactive_only_(interactive_only),
+       pgraph_diff_(false, config.enable_progress_log),
++      pgraph_diff_per_test_(false, config.enable_progress_log),
+       enable_progress_log_{config.enable_progress_log},
+       enable_pgraph_region_diff_{config.enable_pgraph_region_diff},
+       delay_milliseconds_between_tests_{config.delay_milliseconds_between_tests},
+@@ -33,6 +34,12 @@ TestSuite::TestSuite(TestHost& host, std::string output_dir, std::string suite_n
+   output_dir_ += "\\";
+   output_dir_ += suite_name_;
+   std::replace(output_dir_.begin(), output_dir_.end(), ' ', '_');
++
++  // Logger::Log() writes to a file on the Xbox filesystem. That is readable
++  // over FTP from a real console but not from an emulator, whose E: lives
++  // inside a qcow2, so the diff also goes to the remote collector.
++  pgraph_diff_.ftp_logger = ftp_logger_;
++  pgraph_diff_per_test_.ftp_logger = ftp_logger_;
+ }
+ 
+ std::vector<std::string> TestSuite::TestNames() const {
+@@ -58,9 +65,35 @@ void TestSuite::Run(const std::string& test_name, uint32_t test_index, uint32_t
+   }
+ 
+   SetupTest();
++
++  // PER-TEST pgraph register diff.
++  //
++  // Capture()/DumpDiff() are also called from Initialize()/Deinitialize(),
++  // which brackets the whole SUITE: on a multi-test disc that yields the net
++  // state change across every test together, which cannot attribute anything.
++  // Bracketing the test body instead gives one diff per test, so a full suite
++  // run produces a per-test map in a single pass rather than one disc per test.
++  //
++  // The test body also draws its parameter label, so the label's raster state
++  // is inside the bracket. That is tolerable for the comparison this exists
++  // for -- emulator versus hardware runs the same body on both sides, so the
++  // label contributes to both and cancels. It is NOT tolerable for comparing
++  // two different tests to each other, where the labels differ in width: doing
++  // that produced a delta consisting entirely of CLEARRECT registers tracking
++  // the test name's length.
++  if (enable_pgraph_region_diff_) {
++    pgraph_diff_per_test_.Capture();
++  }
++
+   auto start_time = LogTestStart(test_name, test_index, total_tests);
+   it->second();
+   auto duration = LogTestEnd(test_name, start_time, test_index, total_tests);
++
++  if (enable_pgraph_region_diff_) {
++    std::string label = suite_name_ + "::" + test_name;
++    pgraph_diff_per_test_.DumpDiff(label.c_str());
++  }
++
+   TearDownTest();
+ 
+   if (ftp_logger_) {
+@@ -361,7 +394,8 @@ void TestSuite::Deinitialize() {
+   }
+ 
+   if (enable_pgraph_region_diff_) {
+-    pgraph_diff_.DumpDiff();
++    std::string label = "SUITE-RESIDUAL " + suite_name_;
++    pgraph_diff_.DumpDiff(label.c_str());
+   }
+ }
+ 
+diff --git a/src/tests/test_suite.h b/src/tests/test_suite.h
+index 95a593e..dffaf46 100644
+--- a/src/tests/test_suite.h
++++ b/src/tests/test_suite.h
+@@ -110,6 +110,12 @@ class TestSuite {
+ 
+   PGRAPHDiffToken pgraph_diff_;
+ 
++  // Separate token for the per-test bracket. Sharing one with the suite-level
++  // Initialize/Deinitialize pair would have the per-test Capture() overwrite
++  // the suite baseline, turning the suite residual into a diff against the
++  // last test rather than against initialization.
++  PGRAPHDiffToken pgraph_diff_per_test_;
++
+   bool enable_progress_log_;
+   bool enable_pgraph_region_diff_;
+   uint32_t delay_milliseconds_between_tests_;
