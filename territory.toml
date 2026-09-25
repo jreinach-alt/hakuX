@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 170
+wave = 171
 updated_utc = "2026-09-25T14:45:00Z"
 
 
@@ -825,3 +825,9 @@ issues = ["31"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md."
+
+[lane.boardrate2]
+issues = []
+files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 171 (host session): the host's own two-line follow-up to PR #231 -- board.sh's tick prompt still said 'Dispatch AT MOST ONE this tick' and status.sh 'at most one per tick', contradicting roles/board.md's 'up to three', and the board obeyed the prompt (07:39 PDT tick). No NOTES dir: the commit message is the record. Retire on fold."
