@@ -61,6 +61,12 @@ share rested on one anchor (032/t0) that nothing else tested; it now rests on
 four, all consistent with that pattern. Which selector to encode is
 `lane.wbuf31fix`'s call.
 
+**Later refuted as a rule:** the fourth run
+([`xbox-wbuf31-clipf300-2026-09-25.md`](xbox-wbuf31-clipf300-2026-09-25.md))
+put a flat-topped t0 under an 8-aligned `clip_top` (clip_left 300, clip_top 8),
+and it took the 4-grid (10). What differs is that its first span starts at the
+clip.
+
 Captures stay on the host under
 `~/hakux-work/hardware/runs/2026-09-25-wbuf31-t0/`. Score with
 `docs/lanes/xbox/score_clipf_t0.py --goldens <that>/console-run/console`.
