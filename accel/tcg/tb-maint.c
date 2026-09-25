@@ -38,6 +38,8 @@
 #include "tb-internal.h"
 #include "internal-common.h"
 #include "tb-cache-hints.h"
+#include "qemu/timer.h"
+#include "accel/tcg/hakux-tlb68.h"
 #ifdef CONFIG_USER_ONLY
 #include "user/page-protection.h"
 #define runstate_is_running()  true
@@ -1294,6 +1296,46 @@ static void tb_jmp_cache_inval_tb(TranslationBlock *tb)
     CPUState *cpu;
 
     if (tb_cflags(tb) & CF_PCREL) {
+#ifdef XBOX
+        /*
+         * #68: do not wipe every CPU's whole jump cache per discarded block.
+         * target/i386 sets CF_PCREL unconditionally, so this branch ran for
+         * EVERY discard -- 4096 stores each, 8.37% self of the guest thread
+         * in the 2026-09-11 Crimson Skies profile.
+         *
+         * What could go stale: a jump-cache slot still pointing at this TB,
+         * so a later lookup at that virtual pc runs code the guest has since
+         * rewritten.
+         *
+         * Why it cannot: the only readers of jc->array[].tb are tb_lookup()
+         * (cpu-exec.c), which takes a slot only if tb_cflags(tb) == s.cflags
+         * EXACTLY, and s.cflags never carries CF_INVALID (curr_cflags(), or
+         * cflags_next_tb, which tb_lookup() asserts). do_tb_phys_invalidate()
+         * set CF_INVALID under jmp_lock before calling here, so the slot now
+         * misses on every lookup and the htable path decides, exactly as if
+         * the slot were NULL. A slot is revived only if this same TB is
+         * RECYCLED (translate-all.c clears CF_INVALID), and recycling requires
+         * inv_tb_lookup_cmp(): same phys page(s), pc/flags/cs_base/cflags, and
+         * the same code bytes by ihash. The slot's virtual pc still maps to
+         * that phys page, because any TLB flush covering it clears its jump
+         * cache page (tlb_flush_page_by_mmuidx_async_0, the range flush, the
+         * full flush) -- the same invariant every CF_PCREL jump-cache hit
+         * already relies on. So a revived slot runs the translation of the
+         * bytes that are actually there. TBs are never freed individually;
+         * tb_flush() frees them all and wipes every jump cache itself.
+         *
+         * What would break it: a reader of the jump cache that masks
+         * CF_INVALID (tb_lookup_cmp does, but it reads the htable, not
+         * this), a path that clears CF_INVALID other than a recycle through
+         * inv_tb_lookup_cmp, or freeing a single TB's memory without
+         * tb_flush(). None is guest-driven. HAKUX_TCG68_JC=0 restores this.
+         */
+        if (hakux_tlb68_jc_on()) {
+            hakux_tlb68_jcx++;
+            return;
+        }
+        hakux_tlb68_jci++;
+#endif
         /* A TB may be at any virtual address */
         CPU_FOREACH(cpu) {
             tcg_flush_jmp_cache(cpu);

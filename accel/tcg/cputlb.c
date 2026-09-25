@@ -52,6 +52,7 @@
 #endif
 #include "tcg/tcg-ldst.h"
 #include "backend-ldst.h"
+#include "accel/tcg/hakux-tlb68.h"
 
 
 /* DEBUG defines, enable DEBUG_TLB_LOG to log to the CPU_LOG_MMU target */
@@ -91,6 +92,204 @@
 QEMU_BUILD_BUG_ON(sizeof(vaddr) > sizeof(run_on_cpu_data));
 
 #define ALL_MMUIDX_BITS ((1 << NB_MMU_MODES) - 1)
+
+#ifdef XBOX
+/*
+ * #68, lane.tcgchurn: what the guest thread's TLB/jump-cache maintenance is
+ * spent on. Two questions, each answered by counting its events:
+ *
+ *  (a) what triggers the full TLB flushes, which also wipe the jump cache:
+ *      tlb_flush_by_mmuidx_async_work() calls by the cause the caller tagged
+ *      (target/i386 sets hakux_tlb68_cause before tlb_flush), plus INVLPG
+ *      page flushes and those that escalate to a whole-mode flush because the
+ *      page lies inside a recorded large page;
+ *  (b) what drives tlb_reset_dirty(): calls on the vCPU thread against calls
+ *      from other threads (nv2a's dirty queries reach it too), how many of
+ *      the vCPU thread's calls are code arming (tlb_protect_code), and the
+ *      entries and modes walked per call.
+ *
+ * The two costs are also TIMED, because a count cannot price a walk -- which
+ * is exactly what kept 937848c9e7 from folding
+ * (docs/investigations/tcg-invalidation-three-arm.md, "What the exchange
+ * actually costs"). One monotonic clock read either side of a call that walks
+ * thousands of entries.
+ *
+ * One line every 2 s, tag "hakuX" at WARN with a [tlb68] prefix: "hakuX" is in
+ * every runner's LOGCAT_SPEC and soak_title.sh keeps it only at W. A window
+ * with no line is VOID, not zero.
+ *
+ * The counters are written from the vCPU thread except the rd*o ones, which
+ * other threads also write; those use atomic adds.
+ */
+uint64_t hakux_tlb68_cause_n[HAKUX_TLB68_NCAUSE];
+int hakux_tlb68_cause = HAKUX_TLB68_OTHER;
+uint64_t hakux_tlb68_ff;        /* full-flush async work, vCPU thread */
+uint64_t hakux_tlb68_ff_empty;  /* ... of which found no dirty mode */
+uint64_t hakux_tlb68_pf;        /* tlb_flush_page_by_mmuidx calls */
+uint64_t hakux_tlb68_pfl;       /* ... mode flushes forced by a large page */
+uint64_t hakux_tlb68_jc;        /* tcg_flush_jmp_cache calls, any origin */
+uint64_t hakux_tlb68_jc_ns;
+uint64_t hakux_tlb68_jct;       /* ... from a full TLB flush */
+uint64_t hakux_tlb68_jci;       /* ... from a CF_PCREL TB invalidation */
+uint64_t hakux_tlb68_jcx;       /* PCREL invalidations that skipped it */
+uint64_t hakux_tlb68_rd;        /* tlb_reset_dirty on the vCPU thread */
+uint64_t hakux_tlb68_rdc;       /* ... of which code arming */
+uint64_t hakux_tlb68_rde;       /* ... entries walked */
+uint64_t hakux_tlb68_rdm;       /* ... modes walked */
+uint64_t hakux_tlb68_rdh;       /* ... entries it set TLB_NOTDIRTY on */
+uint64_t hakux_tlb68_rd_ns;
+uint64_t hakux_tlb68_rdo;       /* tlb_reset_dirty on any other thread */
+uint64_t hakux_tlb68_rdoe;
+uint64_t hakux_tlb68_rdo_ns;
+uint64_t hakux_tlb68_sd;        /* tlb_set_dirty (notdirty write re-enable) */
+static __thread bool hakux_tlb68_arming;
+
+/*
+ * Fix switches, read once from the environment so one binary carries both
+ * arms (request.sh --env). Default ON; "0" restores the old path.
+ *
+ *   HAKUX_TCG68_RD  tlb_reset_dirty / tlb_set_dirty walk only the modes in
+ *                   tlb.c.dirty instead of all NB_MMU_MODES. Exact, not a
+ *                   heuristic: see tlb_reset_dirty().
+ *   HAKUX_TCG68_JC  do_tb_phys_invalidate() does not wipe the whole jump
+ *                   cache for a CF_PCREL TB. See tb_jmp_cache_inval_tb().
+ */
+static int hakux_tlb68_env(const char *name)
+{
+    const char *v = getenv(name);
+    return !(v && v[0] == '0');
+}
+
+static int hakux_tlb68_fix_rd = -1;
+static int hakux_tlb68_fix_jc = -1;
+
+static inline bool hakux_tlb68_rd_on(void)
+{
+    int v = qatomic_read(&hakux_tlb68_fix_rd);
+    if (unlikely(v < 0)) {
+        v = hakux_tlb68_env("HAKUX_TCG68_RD");
+        qatomic_set(&hakux_tlb68_fix_rd, v);
+    }
+    return v;
+}
+
+bool hakux_tlb68_jc_on(void)
+{
+    int v = qatomic_read(&hakux_tlb68_fix_jc);
+    if (unlikely(v < 0)) {
+        v = hakux_tlb68_env("HAKUX_TCG68_JC");
+        qatomic_set(&hakux_tlb68_fix_jc, v);
+    }
+    return v;
+}
+
+#ifdef __ANDROID__
+#include <android/log.h>
+#define TLB68_LOG(...) \
+    __android_log_print(ANDROID_LOG_WARN, "hakuX", __VA_ARGS__)
+#else
+#define TLB68_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+/*
+ * Called from cpu_exec_loop() on the vCPU thread, gated there to one call in
+ * 1024 loop iterations; the clock decides whether a line is due.
+ */
+void hakux_tlb68_tick(CPUState *cpu)
+{
+    static int64_t prev_ns, prev_cpu_ns;
+    static uint64_t p_cause[HAKUX_TLB68_NCAUSE];
+    static uint64_t p_ff, p_ffe, p_pf, p_pfl, p_jc, p_jcns, p_jct, p_jci,
+                    p_jcx, p_rd, p_rdc, p_rde, p_rdm, p_rdh, p_rdns, p_rdo,
+                    p_rdoe, p_rdons, p_sd;
+    static unsigned window;
+    int64_t now = get_clock();
+    struct timespec ts;
+    int64_t cpu_ns;
+    uint64_t c[HAKUX_TLB68_NCAUSE];
+    uint64_t rdo, rdoe, rdons;
+    char sz[96];
+    int off = 0;
+    MMUIdxMap dm;
+
+    if (prev_ns && now - prev_ns < 2 * NANOSECONDS_PER_SECOND) {
+        return;
+    }
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ts);
+    cpu_ns = ts.tv_sec * NANOSECONDS_PER_SECOND + ts.tv_nsec;
+    if (!prev_ns) {
+        /* First call only sets the baseline. */
+        prev_ns = now;
+        prev_cpu_ns = cpu_ns;
+        return;
+    }
+
+    for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
+        c[i] = hakux_tlb68_cause_n[i];
+    }
+    rdo = qatomic_read(&hakux_tlb68_rdo);
+    rdoe = qatomic_read(&hakux_tlb68_rdoe);
+    rdons = qatomic_read(&hakux_tlb68_rdo_ns);
+
+    /* Size of every dirty mode's fast table, "idx:n" pairs. */
+    dm = qatomic_read(&cpu->neg.tlb.c.dirty);
+    sz[0] = 0;
+    for (MMUIdxMap w = dm; w && off < (int)sizeof(sz) - 12; w &= w - 1) {
+        int i = ctz32(w);
+        off += snprintf(sz + off, sizeof(sz) - off, "%s%d:%zu",
+                        off ? "," : "", i,
+                        (size_t)(cpu_tlb_fast(cpu, i)->mask
+                                 >> CPU_TLB_ENTRY_BITS) + 1);
+    }
+
+    TLB68_LOG("[tlb68] w=%u dt=%" PRId64 " cpu=%" PRId64
+              " ff=%" PRIu64 " ffe=%" PRIu64
+              " cr3n=%" PRIu64 " cr3s=%" PRIu64 " cr0=%" PRIu64
+              " cr4=%" PRIu64 " a20=%" PRIu64 " fo=%" PRIu64
+              " pf=%" PRIu64 " pfl=%" PRIu64
+              " jc=%" PRIu64 " jct=%" PRIu64 " jci=%" PRIu64 " jcx=%" PRIu64
+              " jcus=%" PRIu64
+              " rd=%" PRIu64 " rdc=%" PRIu64 " rde=%" PRIu64 " rdm=%" PRIu64
+              " rdh=%" PRIu64 " rdus=%" PRIu64
+              " rdo=%" PRIu64 " rdoe=%" PRIu64 " rdous=%" PRIu64
+              " sd=%" PRIu64 " dm=0x%x sz=%s fx=rd%djc%d",
+              window++, (now - prev_ns) / 1000000,
+              (cpu_ns - prev_cpu_ns) / 1000000,
+              hakux_tlb68_ff - p_ff, hakux_tlb68_ff_empty - p_ffe,
+              c[HAKUX_TLB68_CR3_NEW] - p_cause[HAKUX_TLB68_CR3_NEW],
+              c[HAKUX_TLB68_CR3_SAME] - p_cause[HAKUX_TLB68_CR3_SAME],
+              c[HAKUX_TLB68_CR0] - p_cause[HAKUX_TLB68_CR0],
+              c[HAKUX_TLB68_CR4] - p_cause[HAKUX_TLB68_CR4],
+              c[HAKUX_TLB68_A20] - p_cause[HAKUX_TLB68_A20],
+              c[HAKUX_TLB68_OTHER] - p_cause[HAKUX_TLB68_OTHER],
+              hakux_tlb68_pf - p_pf, hakux_tlb68_pfl - p_pfl,
+              hakux_tlb68_jc - p_jc, hakux_tlb68_jct - p_jct,
+              hakux_tlb68_jci - p_jci, hakux_tlb68_jcx - p_jcx,
+              (hakux_tlb68_jc_ns - p_jcns) / 1000,
+              hakux_tlb68_rd - p_rd, hakux_tlb68_rdc - p_rdc,
+              hakux_tlb68_rde - p_rde, hakux_tlb68_rdm - p_rdm,
+              hakux_tlb68_rdh - p_rdh, (hakux_tlb68_rd_ns - p_rdns) / 1000,
+              rdo - p_rdo, rdoe - p_rdoe, (rdons - p_rdons) / 1000,
+              hakux_tlb68_sd - p_sd, (unsigned)dm, sz[0] ? sz : "-",
+              hakux_tlb68_rd_on(), hakux_tlb68_jc_on());
+
+    for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
+        p_cause[i] = c[i];
+    }
+    p_ff = hakux_tlb68_ff; p_ffe = hakux_tlb68_ff_empty;
+    p_pf = hakux_tlb68_pf; p_pfl = hakux_tlb68_pfl;
+    p_jc = hakux_tlb68_jc; p_jcns = hakux_tlb68_jc_ns;
+    p_jct = hakux_tlb68_jct; p_jci = hakux_tlb68_jci; p_jcx = hakux_tlb68_jcx;
+    p_rd = hakux_tlb68_rd; p_rdc = hakux_tlb68_rdc; p_rde = hakux_tlb68_rde;
+    p_rdm = hakux_tlb68_rdm; p_rdh = hakux_tlb68_rdh;
+    p_rdns = hakux_tlb68_rd_ns;
+    p_rdo = rdo; p_rdoe = rdoe; p_rdons = rdons;
+    p_sd = hakux_tlb68_sd;
+    prev_ns = now;
+    prev_cpu_ns = cpu_ns;
+}
+#endif /* XBOX */
 
 static inline size_t tlb_n_entries(CPUTLBDescFast *fast)
 {
@@ -390,6 +589,15 @@ static void tlb_flush_by_mmuidx_async_work(CPUState *cpu, run_on_cpu_data data)
 
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
 
+#ifdef XBOX
+    hakux_tlb68_ff++;
+    if (!to_clean) {
+        hakux_tlb68_ff_empty++;
+    }
+    hakux_tlb68_cause_n[hakux_tlb68_cause]++;
+    hakux_tlb68_cause = HAKUX_TLB68_OTHER;
+    hakux_tlb68_jct++;
+#endif
     tcg_flush_jmp_cache(cpu);
 
     if (to_clean == ALL_MMUIDX_BITS) {
@@ -509,6 +717,9 @@ static void tlb_flush_page_locked(CPUState *cpu, int midx, vaddr page)
         tlb_debug("forcing full flush midx %d (%016"
                   VADDR_PRIx "/%016" VADDR_PRIx ")\n",
                   midx, lp_addr, lp_mask);
+#ifdef XBOX
+        hakux_tlb68_pfl++;
+#endif
         tlb_flush_one_mmuidx_locked(cpu, midx, get_clock_realtime());
     } else {
         if (tlb_flush_entry_locked(tlb_entry(cpu, midx, page), page)) {
@@ -537,6 +748,9 @@ static void tlb_flush_page_by_mmuidx_async_0(CPUState *cpu,
 
     tlb_debug("page addr: %016" VADDR_PRIx " mmu_map:0x%x\n", addr, idxmap);
 
+#ifdef XBOX
+    hakux_tlb68_pf++;
+#endif
     qemu_spin_lock(&cpu->neg.tlb.c.lock);
     for (mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
         if ((idxmap >> mmu_idx) & 1) {
@@ -856,9 +1070,15 @@ void tlb_flush_page_bits_by_mmuidx_all_cpus_synced(CPUState *src_cpu,
    can be detected */
 void tlb_protect_code(ram_addr_t ram_addr)
 {
+#ifdef XBOX
+    hakux_tlb68_arming = true;
+#endif
     physical_memory_test_and_clear_dirty(ram_addr & TARGET_PAGE_MASK,
                                              TARGET_PAGE_SIZE,
                                              DIRTY_MEMORY_CODE);
+#ifdef XBOX
+    hakux_tlb68_arming = false;
+#endif
 }
 
 /* update the TLB so that writes in physical page 'phys_addr' are no longer
@@ -885,7 +1105,7 @@ void tlb_unprotect_code(ram_addr_t ram_addr)
  *
  * Called with tlb_c.lock held.
  */
-static void tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent,
+static bool tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent,
                                          uintptr_t start, uintptr_t length)
 {
     const uintptr_t addr = ent->addr_write;
@@ -896,8 +1116,10 @@ static void tlb_reset_dirty_range_locked(CPUTLBEntryFull *full, CPUTLBEntry *ent
         uintptr_t host = (addr & TARGET_PAGE_MASK) + ent->addend;
         if ((host - start) < length) {
             qatomic_set(&ent->addr_write, addr | TLB_NOTDIRTY);
+            return true;
         }
     }
+    return false;
 }
 
 /*
@@ -916,26 +1138,84 @@ static inline void copy_tlb_helper_locked(CPUTLBEntry *d, const CPUTLBEntry *s)
  */
 void tlb_reset_dirty(CPUState *cpu, uintptr_t start, uintptr_t length)
 {
-    int mmu_idx;
+    MMUIdxMap walk = ALL_MMUIDX_BITS;
+#ifdef XBOX
+    int64_t t0 = get_clock();
+    uint64_t entries = 0, modes = 0, hits = 0;
+#endif
 
     qemu_spin_lock(&cpu->neg.tlb.c.lock);
-    for (mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
+#ifdef XBOX
+    /*
+     * #68: walk only the modes that can hold a live entry.
+     *
+     * What could go stale: an entry left writable (no TLB_NOTDIRTY) on a page
+     * that now holds code, so a store to that code skips the notdirty slow
+     * path and the stale translation keeps running.
+     *
+     * Why it cannot: a mode's bit in c.dirty is set, under this same lock, by
+     * tlb_set_page_full() BEFORE it installs any entry in that mode, and the
+     * only place that clears a bit is tlb_flush_by_mmuidx_async_work(), which
+     * does it in the same critical section as tlb_flush_one_mmuidx_locked()
+     * for that mode -- memset(-1) over its fast table AND its victim table.
+     * tlb_init() starts every mode flushed with c.dirty == 0. So a mode whose
+     * bit is clear holds only -1 entries, which tlb_reset_dirty_range_locked()
+     * rejects on TLB_INVALID_MASK; skipping them changes no entry. Victim
+     * swaps move entries within one mode and resizes happen only inside a
+     * flush, so neither creates a live entry in a clean mode.
+     *
+     * What would break it: a new path that fills a TLB entry without going
+     * through tlb_set_page_full(), or one that clears a c.dirty bit without
+     * flushing the mode. Neither is a guest behaviour; both are code changes
+     * here. HAKUX_TCG68_RD=0 restores the full walk.
+     */
+    if (hakux_tlb68_rd_on()) {
+        walk = cpu->neg.tlb.c.dirty;
+    }
+#endif
+    for (; walk; walk &= walk - 1) {
+        int mmu_idx = ctz32(walk);
         CPUTLBDesc *desc = &cpu->neg.tlb.d[mmu_idx];
         CPUTLBDescFast *fast = cpu_tlb_fast(cpu, mmu_idx);
         unsigned int n = tlb_n_entries(fast);
         unsigned int i;
 
         for (i = 0; i < n; i++) {
+#ifdef XBOX
+            hits +=
+#endif
             tlb_reset_dirty_range_locked(&desc->fulltlb[i], &fast->table[i],
                                          start, length);
         }
 
         for (i = 0; i < CPU_VTLB_SIZE; i++) {
+#ifdef XBOX
+            hits +=
+#endif
             tlb_reset_dirty_range_locked(&desc->vfulltlb[i], &desc->vtable[i],
                                          start, length);
         }
+#ifdef XBOX
+        entries += n + CPU_VTLB_SIZE;
+        modes++;
+#endif
     }
     qemu_spin_unlock(&cpu->neg.tlb.c.lock);
+
+#ifdef XBOX
+    if (current_cpu == cpu) {
+        hakux_tlb68_rd++;
+        hakux_tlb68_rdc += hakux_tlb68_arming;
+        hakux_tlb68_rde += entries;
+        hakux_tlb68_rdm += modes;
+        hakux_tlb68_rdh += hits;
+        hakux_tlb68_rd_ns += get_clock() - t0;
+    } else {
+        qatomic_add(&hakux_tlb68_rdo, 1);
+        qatomic_add(&hakux_tlb68_rdoe, entries);
+        qatomic_add(&hakux_tlb68_rdo_ns, get_clock() - t0);
+    }
+#endif
 }
 
 /* Called with tlb_c.lock held */
@@ -951,17 +1231,30 @@ static inline void tlb_set_dirty1_locked(CPUTLBEntry *tlb_entry,
    so that it is no longer dirty */
 static void tlb_set_dirty(CPUState *cpu, vaddr addr)
 {
-    int mmu_idx;
+    MMUIdxMap walk = ALL_MMUIDX_BITS;
 
     assert_cpu_is_self(cpu);
 
     addr &= TARGET_PAGE_MASK;
     qemu_spin_lock(&cpu->neg.tlb.c.lock);
-    for (mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
+#ifdef XBOX
+    hakux_tlb68_sd++;
+    /*
+     * Same argument as tlb_reset_dirty(): a mode outside c.dirty holds only
+     * -1 entries, and tlb_set_dirty1_locked() matches only an entry equal to
+     * addr | TLB_NOTDIRTY, which -1 never is.
+     */
+    if (hakux_tlb68_rd_on()) {
+        walk = cpu->neg.tlb.c.dirty;
+    }
+#endif
+    for (MMUIdxMap w = walk; w; w &= w - 1) {
+        int mmu_idx = ctz32(w);
         tlb_set_dirty1_locked(tlb_entry(cpu, mmu_idx, addr), addr);
     }
 
-    for (mmu_idx = 0; mmu_idx < NB_MMU_MODES; mmu_idx++) {
+    for (MMUIdxMap w = walk; w; w &= w - 1) {
+        int mmu_idx = ctz32(w);
         int k;
         for (k = 0; k < CPU_VTLB_SIZE; k++) {
             tlb_set_dirty1_locked(&cpu->neg.tlb.d[mmu_idx].vtable[k], addr);
