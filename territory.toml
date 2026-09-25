@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 157
+wave = 158
 updated_utc = "2026-09-25T08:40:00Z"
 
 
@@ -527,6 +527,8 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = [
+# RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
+    "hw/xbox/nv2a/pmc.c",
 # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
@@ -704,13 +706,6 @@ files = []
 note = "RETIRED (job.board, board tick): PR #198 (lane/pmc188) FOLDED as 01538395b7 (`gh pr view 198` confirms MERGED 2026-09-21T15:53:09Z; visible in this worktree's own log). Unit gone, no open PR left on lane/pmc188. Scope delivered was exactly what the row promised: pmc_read returns the measured 0x01110000 constant for NV_PMC_ENABLE, pmc_write and bit-field semantics untouched. #188 STAYS OPEN -- the PR's own body records a follow-on caveat (0x01110000 is the idle value, not necessarily the value inside a running graphics context; see #203) that this fold did not attempt, so nv2a_issues.toml's status=open is correct, not stale. hw/xbox/nv2a/pmc.c RECLAIMED THE SAME TICK by [lane.cloud190] below (#190, next in this cluster's own established severity/age order -- this row's note said so at WAVE 135). hw/xbox/nv2a/nv2a_regs.h RELEASED TO [free] (nv2a_regs.h was never touched by the PR in the end; #200's remaining work needs it but its brief is stale -- see nv2a_issues.toml issue.200, not re-dispatched this tick)."
 
 
-[lane.cloud190]
-issues = ["190"]
-files = ["hw/xbox/nv2a/pmc.c"]
-standing = false
-note = "LABELLED `cloud` WAVE 144 (job.board): briefs/190.md already existed (written, never used while pmc.c was held by lane.pmc188/PR #198) and is still exactly right -- read-only model, pmc_read returns the measured 0x00000001 for 0x160 and each dword in 0x204-0x2FC except 0x200 (#188's, left alone), falsifier is a desktop-build test, needs device: no, needs NDK: no. #190 is lowest severity of the three PMC issues by the filer's own reading, so on severity alone it would run last, but #189's first step needs no files at all (see briefs/189.md, labelled cloud the same tick with no territory claim) and #200's brief is stale (its analysis half was already answered directly, see issue.200 status_note CORRECTED) so neither collides with or outranks this claim for the one file that matters. Claims pmc.c only -- nv2a_regs.h is NOT this row's, it went to [free]."
-
-
 [lane.vklayer34]
 issues = ["34"]
 files = ["android/app/build.gradle.kts", "docs/lanes/vklayer34/**", "docs/testing/vk_validation_android.md"]
@@ -799,3 +794,9 @@ issues = ["224"]
 files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "hw/xbox/nv2a/pgraph/prim_rewrite.h", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/gl/draw.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/shadeflat224-*.json", "docs/lanes/shadeflat224/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 157 (host session) on lane.shade224's board request: #224 family A, the flat-quad diagonal (474,214 px) -- keep silicon's v0-v2/v1-v2 diagonal and feed v3's flat varyings through a triangles-with-adjacency slot (NOTES section 4 on PR #232). Files: prim_rewrite.c/.h and glsl/geom.c (from [free]/unclaimed), gl/draw.c and vk/draw.c for the draw-mode mapping (vk/draw.c from [free]; gl/draw.c unclaimed since lane.clrpad164 retired). Brief: briefs/shadeflat224.md."
+
+[retired.cloud190]
+issues = []
+retired_utc = "2026-09-25T08:40:00Z"
+files = []
+note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
