@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 174
-updated_utc = "2026-09-25T15:15:00Z"
+wave = 175
+updated_utc = "2026-09-25T15:50:00Z"
 
 
 [retired.hilodot10]
@@ -790,17 +790,6 @@ standing = false
 retired_utc = "2026-09-25T14:50:00Z"
 note = "RETIRED (host session, 2026-09-25T14:50:00Z): PR #237 MERGED 2026-09-25T14:45:36Z (fold af5bedd1b0), no open PR on lane/clrwb91, unit inactive (attempts exhausted, but the work finished: the host re-merged the index twice and cleared a false blocked:needs-owner). Files RELEASED: hw/xbox/nv2a/pgraph/vk/surface.c, docs/testing/predictions/issue91-writeback.json, docs/lanes/clrwb91/NOTES.md. PRIOR NOTE: WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
 
-[lane.nightlynotes]
-issues = []
-files = ["docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/jobs/run-nightly.sh", "docs/testing/jobs/selftest.d/87-nightly-trunk.sh"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 163 (host session) on the owner's question ('The nightly build shows zero emulator changes. Why did no emulator work make it into the nightly?'): nightly_build.sh selects release-note commits by COMMIT DATE (git log --since 'yesterday 00:30'), so lane commits written days before they fold are dropped -- nightly-2026-09-25 listed 4 of the 14 commits it built and '0 emulator' while carrying #172's fix. Fix: select by ancestry from the previous nightly-* tag. Harness defect, brief only (no issue). Must land before the 00:30 nightly. Brief: briefs/nightlynotes.md. WAVE 166 (host session): + docs/testing/jobs/run-nightly.sh and selftest.d/87-nightly-trunk.sh, which PR #240 edits (its Files: line names both)."
-
-[lane.foldindex]
-issues = []
-files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/90-fold-index.sh", "docs/lanes/foldindex/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 166 (host session). Harness defect, no tracker issue: every hw PR regenerates docs/testing/nv2a_index.json, so each fold leaves every other open hw PR conflicting in that one generated file, and fold.sh hands each back to its lane (06:40-06:50 PDT 2026-09-25: #234, #235, #237; four handback sessions by 07:10). fold.sh already regenerates the index after a clean merge; this lane adds resolve_index_only beside resolve_root_notes (the unmerged set is exactly that file: take master's copy, regenerate over the PINNED trees -- provenance.tests_commit and the workflow's PBKIT_SHA, via worktrees under $WORK/fold-pins -- and refuse on any doubt). Brief: briefs/foldindex.md. selftest.d/90-fold-index.sh checked against the runner's two-digit glob; duplicate numbers sort by full name."
 
 [lane.handbackresolved]
 issues = []
@@ -808,11 +797,6 @@ files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handb
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
 
-[lane.wparamgeom223]
-issues = []
-files = ["docs/lanes/wparamgeom223/**", "docs/lanes/wparam223/NOTES.md"]
-standing = false
-note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note). WAVE 173 (host session): FINISHED as analysis -- PR #246 refuted the uniform w scale (the missing triangles are 2^120+ RATIO cases; a scale cannot change a ratio), corrected wparam223 NOTES section 4 and withdrew section 5; the code was reverted, so #246 is NOTES only. glsl/geom.c and the predictions glob pass to [lane.wparamclip223] for the geometry-shader clip #246 names as the next step; this row keeps its own docs and docs/lanes/wparam223/NOTES.md (edited by #246) until #246 folds, then retires."
 
 [lane.vshnobegin242]
 issues = ["242"]
@@ -826,11 +810,6 @@ files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py"
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md."
 
-[lane.boardrate2]
-issues = []
-files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 171 (host session): the host's own two-line follow-up to PR #231 -- board.sh's tick prompt still said 'Dispatch AT MOST ONE this tick' and status.sh 'at most one per tick', contradicting roles/board.md's 'up to three', and the board obeyed the prompt (07:39 PDT tick). No NOTES dir: the commit message is the record. Retire on fold."
 
 [lane.wparamclip223]
 issues = ["223"]
@@ -849,3 +828,31 @@ issues = ["224"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/shadetie224-*.json", "docs/lanes/shadetie224/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
+
+[retired.foldindex]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-25T15:50:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #251 MERGED 2026-09-25T15:45:26Z (fold 5eab6a8754), no open PR on lane/foldindex, unit gone. RELEASED TO [free]: docs/testing/jobs/fold.sh, selftest.d/90-fold-index.sh and docs/lanes/foldindex/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 166 (host session). Harness defect, no tracker issue: every hw PR regenerates docs/testing/nv2a_index.json, so each fold leaves every other open hw PR conflicting in that one generated file, and fold.sh hands each back to its lane (06:40-06:50 PDT 2026-09-25: #234, #235, #237; four handback sessions by 07:10). fold.sh already regenerates the index after a clean merge; this lane adds resolve_index_only beside resolve_root_notes (the unmerged set is exactly that file: take master's copy, regenerate over the PINNED trees -- provenance.tests_commit and the workflow's PBKIT_SHA, via worktrees under $WORK/fold-pins -- and refuse on any doubt). Brief: briefs/foldindex.md. selftest.d/90-fold-index.sh checked against the runner's two-digit glob; duplicate numbers sort by full name."
+
+[retired.boardrate2]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-25T15:50:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #248 MERGED 2026-09-25T15:25:27Z (fold bde743f0af), no open PR on lane/boardrate2, unit gone. RELEASED TO [free]: docs/testing/jobs/board.sh and status.sh. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 171 (host session): the host's own two-line follow-up to PR #231 -- board.sh's tick prompt still said 'Dispatch AT MOST ONE this tick' and status.sh 'at most one per tick', contradicting roles/board.md's 'up to three', and the board obeyed the prompt (07:39 PDT tick). No NOTES dir: the commit message is the record. Retire on fold."
+
+[retired.nightlynotes2]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-25T15:50:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #240 MERGED 2026-09-25T14:25:26Z (fold at 14:25Z), no open PR on lane/nightlynotes, unit gone. RELEASED TO [free]: nightly_build.sh, run-nightly.sh, selftest.d/86-nightly-notes.sh, 87-nightly-trunk.sh and docs/lanes/nightlynotes/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 163 (host session) on the owner's question ('The nightly build shows zero emulator changes. Why did no emulator work make it into the nightly?'): nightly_build.sh selects release-note commits by COMMIT DATE (git log --since 'yesterday 00:30'), so lane commits written days before they fold are dropped -- nightly-2026-09-25 listed 4 of the 14 commits it built and '0 emulator' while carrying #172's fix. Fix: select by ancestry from the previous nightly-* tag. Harness defect, brief only (no issue). Must land before the 00:30 nightly. Brief: briefs/nightlynotes.md. WAVE 166 (host session): + docs/testing/jobs/run-nightly.sh and selftest.d/87-nightly-trunk.sh, which PR #240 edits (its Files: line names both)."
+
+[retired.wparamgeom223]
+issues = []
+files = []
+standing = false
+retired_utc = "2026-09-25T15:50:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #246 MERGED 2026-09-25T15:15:31Z (fold 38789df749), no open PR on lane/wparamgeom223, unit gone. RELEASED TO [free]: docs/lanes/wparamgeom223/** and docs/lanes/wparam223/NOTES.md. PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note). WAVE 173 (host session): FINISHED as analysis -- PR #246 refuted the uniform w scale (the missing triangles are 2^120+ RATIO cases; a scale cannot change a ratio), corrected wparam223 NOTES section 4 and withdrew section 5; the code was reverted, so #246 is NOTES only. glsl/geom.c and the predictions glob pass to [lane.wparamclip223] for the geometry-shader clip #246 names as the next step; this row keeps its own docs and docs/lanes/wparam223/NOTES.md (edited by #246) until #246 folds, then retires."
