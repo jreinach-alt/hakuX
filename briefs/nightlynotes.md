@@ -1,3 +1,30 @@
+## STANDING ORDER FROM THE OWNER (2026-09-25), which overrides one line of the brief below
+
+Public-facing text carries no process commentary (AGENTS.md, PR #239): "we
+don't need leaky process notes appearing at the top. If you want to include a
+one liner at the end indicating this was changed and the timestamp, that's
+fine."
+
+For this lane:
+
+- **Where the brief says "fall back to the date window ... and SAY so in the
+  notes", do NOT say so in the notes.** Log the fallback to the job's own log
+  and the tick log. The release body stays clean.
+- **`nightly_build.sh` already writes two caveats at the TOP of the public
+  body.** Move both out of the body:
+  - the DIRTY line ("> Built with N modified tracked file(s): the binary is
+    not exactly this commit");
+  - `$STALE_NOTE` ("... not confirmed to be the trunk").
+
+  Where the caveat was needed to keep the notes true (a dirty tree, or a
+  build that isn't the tip), fix the cause or do not publish; log the
+  reason. `run-nightly.sh` builds a clean worktree of the tip, so on the
+  intended path neither case should arise.
+- **Assert it in the selftest:** the published body contains no
+  warning/caveat lines in any of the fixture scenarios.
+
+---
+
 # The nightly's release notes drop every lane commit written more than a day before it folds
 
 Lane: nightlynotes            Issue: none (a harness defect, brief only)
