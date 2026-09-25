@@ -1,0 +1,39 @@
+{
+  "registered_utc": "2026-09-25T18:02:59Z",
+  "who": "lane.remote",
+  "issue": "109",
+  "prediction": "#109'S VULKAN HALF, ON THE PATHS THE CORPUS ACTUALLY TAKES. A swizzled surface has no pitch, and three CPU sites in vk/surface.c stage one through a linear buffer at the guest's pitch, as GL did before #247: the deferred download's completion (pgraph_vk_complete_staged_downloads: swizzle_buf is g_malloc(pitch * height), filled and swizzled at dl->pitch, for every format), the synchronous download's CPU branch (download_surface_to_buffer, every format but 4-byte, which swizzles in compute), and the upload's CPU branch (pgraph_vk_upload_surface_data, every format but 4-byte). With pitch < width * bpp each gives Model E, and the deferred one also reads past its buffer on the last row. The change makes all three stage at width * bpp, as gl/surface.c now does. Linear surfaces keep the guest's pitch; the 4-byte compute paths and the extent sites (pitch * height in the dirty ranges) are untouched.\nMEASURED BEFORE ANY CODE, with a local instrument on master 5807b54f (never committed; one desktop Vulkan run each of disc109, iso_surf1 and iso_pre_clear): no transfer of an undersized-pitch swizzled surface reaches any of the three sites on any of the three discs. Every deferred swizzled download there has pitch == width * bpp, and wrote bytes identical to a pitch-free swizzle. No 1- or 2-byte swizzled surface is transferred at all. The corpus's one undersized-pitch swizzled surface, Surface_pitch::Swizzle's target 3 (128x128 A8R8G8B8, pitch 256), is downloaded and uploaded by the 4-byte compute paths, which is why Vulkan reads Model H on that capture. So on the natural paths THIS CHANGE CANNOT MOVE A CAPTURE, and this registration says exactly that. The defect itself is demonstrated by the three forced-path registrations filed beside this one (remote-109-vk-forced-*.json).\nARMS: A = 5807b54f (master), B = the fix commit. Desktop Vulkan (llvmpipe, [display.quality] surface_scale = 1), /tmp/pgraph-run/iso_surf1.iso (14 suites, 236 captures, a superset of disc109's 8), 3 runs each, alternating.\nREGISTERED LEGS: every capture must_not_move, bit-identical; better = 0, worse = 0. This includes #88's captures, named by the host as a guard for this arm (5836653214): Color_zeta_overlap ColorIntoZeta_ZB 10,766, ZetaIntoColor 71,663, Swap 165,447 on master.\nUNCOMFORTABLE OUTCOME NAMED NOW: any capture moving means a transfer I did not see reaches one of the three sites on this disc, or the change touches a path I believe it does not. That is a finding, reported by name.",
+  "a_ref": "5807b54f",
+  "b_ref": "3f3fe35b",
+  "must_not_move": [
+    "*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 0,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend surface",
+      "Color Zeta Disable",
+      "Color mask blend",
+      "Color zeta overlap",
+      "Image blit",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture format",
+      "Texture perspective",
+      "Texture perspective enable",
+      "Texture render target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}

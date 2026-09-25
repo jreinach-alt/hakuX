@@ -341,3 +341,17 @@ window are the ones to look at.
 `bash docs/testing/jobs/selftest.sh` -> **825 passed, 0 failed** on
 `1c4b9bad1c`. The next thing is CI on the pushed head; when it is green the
 labels go `needs-rebase` off, `fold-ready` on.
+
+## 2026-09-25: dispatch-hardening defects 11, 12, 13 (PR #260)
+
+The record for these is `docs/lanes/dispatch-hardening/NOTES.md`, under
+"Defect 11", "Defect 12" and "Defect 13". The dispatch-hardening brief's
+earlier defects live there too.
+
+**Why attempt 1 did not finish.** It committed the defect 11 code and
+fragment, then started the falsification run in `.falsify/`, a scratch
+worktree at master. The session ended before that run reported. The NOTES
+section was left uncommitted, with two placeholder lines. Defects 12 and 13
+were added to the brief after that session ended. Nothing was lost:
+attempt 2 re-ran the falsification from the same scratch worktree, and CI
+was green on the attempt-1 head `20255263bc`.
