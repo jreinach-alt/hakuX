@@ -836,10 +836,3 @@ files = []
 standing = false
 retired_utc = "2026-09-25T15:50:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T15:50:00Z): PR #246 MERGED 2026-09-25T15:15:31Z (fold 38789df749), no open PR on lane/wparamgeom223, unit gone. RELEASED TO [free]: docs/lanes/wparamgeom223/** and docs/lanes/wparam223/NOTES.md. PRIOR NOTE: DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note). WAVE 173 (host session): FINISHED as analysis -- PR #246 refuted the uniform w scale (the missing triangles are 2^120+ RATIO cases; a scale cannot change a ratio), corrected wparam223 NOTES section 4 and withdrew section 5; the code was reverted, so #246 is NOTES only. glsl/geom.c and the predictions glob pass to [lane.wparamclip223] for the geometry-shader clip #246 names as the next step; this row keeps its own docs and docs/lanes/wparam223/NOTES.md (edited by #246) until #246 folds, then retires."
-
-
-[lane.cloud-remediate-249]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-249, remediation of PR #249 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 249` removes this row when the unit ends."
