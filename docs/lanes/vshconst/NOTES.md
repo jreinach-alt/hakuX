@@ -376,3 +376,13 @@ merged tree with `nv2a_index.py build --tests ~/nxdk_pgraph_tests --support
 `~/nxdk_pgraph_tests` is at that commit. `check` passes. Leaving out
 `--support` gives `resolved_tables: 0` and an index that does not match, so
 pass it. Nothing in the PR's work was re-opened or re-measured.
+
+The first push was rejected: the audit's commits (pass 1 and pass 2, the
+M1/M2 remediation, and another index regen, through `c7f3e27b1f`) had landed
+on the branch. I merged them in and regenerated the index a second time.
+`check` and preflight pass on `8fc01597a7`. The PR body's Files line now
+includes the two `docs/audits/` files.
+
+Waiting: CI on this head. When it is green, run `gh-label.sh rm 234
+needs-rebase` and `gh-label.sh add 234 fold-ready`. The handback resumes on a
+green check.
