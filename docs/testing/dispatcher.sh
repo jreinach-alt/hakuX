@@ -115,7 +115,19 @@ snapshot_scripts() {
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
              sweep_queue.sh make_isolation_discs.py vsh_score.py; do
-        [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
+        [ -f "$SRC/$f" ] || continue
+        cmp -s "$SRC/$f" "$SNAP/$f" 2>/dev/null && continue
+        # NEVER REWRITE A SNAPSHOT FILE IN PLACE. $SNAP is shared by every
+        # worker, and bash reads a running script lazily, by byte offset: a
+        # `cp -f` over run_disc.sh while the other device's worker was inside
+        # it made that bash read the new file at the old offset (`line 137:
+        # cess: command not found`), and a real run was voided as "the
+        # emulator never started" (2026-09-25, dispatch-hardening defect 13).
+        # Write beside it and rename: the rename swaps the inode, and a
+        # process already reading the old file keeps the old one.
+        cp -f "$SRC/$f" "$SNAP/.$f.tmp.$$" 2>/dev/null \
+            && mv -f "$SNAP/.$f.tmp.$$" "$SNAP/$f" 2>/dev/null \
+            || rm -f "$SNAP/.$f.tmp.$$"
     done
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
