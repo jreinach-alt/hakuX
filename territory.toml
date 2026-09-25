@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 156
-updated_utc = "2026-09-25T08:15:00Z"
+wave = 157
+updated_utc = "2026-09-25T08:40:00Z"
 
 
 [retired.hilodot10]
@@ -530,7 +530,6 @@ files = [
 # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
-    "hw/xbox/nv2a/pgraph/vk/draw.c",
     "hw/xbox/nv2a/pgraph/vk/surface.c",
     "hw/xbox/nv2a/pgraph/vk/texture.c",
     "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
@@ -560,7 +559,6 @@ files = [
     "accel/tcg/cpu-exec.c",
     "accel/tcg/translate-all.c",
 "accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
-         "hw/xbox/nv2a/pgraph/pgraph.c",
          "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
          "hw/xbox/nv2a/pgraph/swizzle.c",
@@ -621,7 +619,7 @@ files = [
          "docs/testing/nv2a_index.py",
          "docs/lanes/indexcheck/NOTES.md",
          "docs/lanes/wbufclip/NOTES.md",
-         "hw/xbox/nv2a/pgraph/glsl/geom.c"]
+         ]
 
 
 [retired.selftest86]
@@ -778,16 +776,16 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
 
 [lane.shade224]
-issues = ["224"]
+issues = []
 files = ["docs/testing/predictions/shade224-*.json", "docs/lanes/shade224/**"]
 standing = false
-note = "DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, unowned. Analysis-first: classify by primitive x shade x W_ and edge vs interior, and say whether W_Fixed_*_Smooth is the same residual as #223 (lane.wparam223, PR #228). Docs and prediction files only claimed; any hw/ fix is a board-request. Attempt 1, opus-5."
+note = "DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, unowned. Analysis-first: classify by primitive x shade x W_ and edge vs interior, and say whether W_Fixed_*_Smooth is the same residual as #223 (lane.wparam223, PR #228). Docs and prediction files only claimed; any hw/ fix is a board-request. Attempt 1, opus-5. #224 MOVED to [lane.shadeflat224] at wave 157: this lane's analysis is done (PR #232, fold-ready) and family A's fix is a new lane on its board request."
 
 [lane.vshconst]
 issues = ["233"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "docs/testing/predictions/vshconst-*.json", "docs/lanes/vshconst/**"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "docs/testing/predictions/vshconst-*.json", "docs/lanes/vshconst/**", "hw/xbox/nv2a/pgraph/rdi.c", "hw/xbox/nv2a/pgraph/pgraph.c"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #233, the assert(!\"TODO: Emulate writeable const registers\") at vsh-prog.c:383 that aborts every Android build (-UNDEBUG) when a vertex program writes a constant register; reproduced on desktop in nxdk_vsh_tests' ILU RCP Tests; silicon golden IluRcpTests.txt from lane.xbox's console run. Cross-draw persistence of const writes is UNMEASURED -- the lane settles it. Brief: briefs/vshconst.md."
+note = "DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #233, the assert(!\"TODO: Emulate writeable const registers\") at vsh-prog.c:383 that aborts every Android build (-UNDEBUG) when a vertex program writes a constant register; reproduced on desktop in nxdk_vsh_tests' ILU RCP Tests; silicon golden IluRcpTests.txt from lane.xbox's console run. Cross-draw persistence of const writes is UNMEASURED -- the lane settles it. Brief: briefs/vshconst.md. GRANTED AT WAVE 157 on its board request: rdi.c (the SECOND guest-reachable abort: pgraph_rdi_read asserts reading c[192..], silicon returns 0) and pgraph.c -- the WRITEBACK of the program's constant writes into pg->vsh_constants + dirty bits goes in pgraph.c's draw-end path, one place for both renderers; gl/draw.c and vk/draw.c go to lane.shadeflat224 the same wave, so do not edit them. Persistence answered by the lane from the test's source: silicon keeps the write in constant RAM after the draw."
 
 
 [lane.cloud-remediate-229]
@@ -795,3 +793,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-229, remediation of PR #229 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 229` removes this row when the unit ends."
+
+[lane.shadeflat224]
+issues = ["224"]
+files = ["hw/xbox/nv2a/pgraph/prim_rewrite.c", "hw/xbox/nv2a/pgraph/prim_rewrite.h", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/gl/draw.c", "hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/shadeflat224-*.json", "docs/lanes/shadeflat224/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 157 (host session) on lane.shade224's board request: #224 family A, the flat-quad diagonal (474,214 px) -- keep silicon's v0-v2/v1-v2 diagonal and feed v3's flat varyings through a triangles-with-adjacency slot (NOTES section 4 on PR #232). Files: prim_rewrite.c/.h and glsl/geom.c (from [free]/unclaimed), gl/draw.c and vk/draw.c for the draw-mode mapping (vk/draw.c from [free]; gl/draw.c unclaimed since lane.clrpad164 retired). Brief: briefs/shadeflat224.md."
