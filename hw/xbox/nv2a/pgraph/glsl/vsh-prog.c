@@ -303,6 +303,12 @@ static MString *decode_swizzle(const uint32_t *shader_token,
 #define VSH_CONST_FILE_RW "c_rw"
 /* A write past the end of the constant file lands here and is never read. */
 #define VSH_CONST_FILE_RW_OOB "_c_rw_oob"
+/*
+ * A paired MAC's constant write is held here until its ILU partner has read
+ * input C, which may name the same register: both units read before either
+ * writes.
+ */
+#define VSH_CONST_FILE_RW_TMP "_c_rw_tmp"
 
 static MString *decode_opcode_input(const uint32_t *shader_token,
                                     VshParameterType param,
@@ -370,6 +376,8 @@ static MString *decode_opcode(const uint32_t *shader_token,
     if (out_mux == OMUX_MAC
           && vsh_get_field(shader_token, FLD_ILU) != ILU_NOP) {
         use_temp_var = true;
+        assert(suffix && "Temp var flagged on non-MAC instruction");
+        *suffix = mstring_new();
         if (reg_num == 1) {
             /* Ignore paired MAC opcodes that write to R1 */
             mask = 0;
@@ -398,10 +406,23 @@ static MString *decode_opcode(const uint32_t *shader_token,
              */
             int c_reg = convert_c_register(
                 vsh_get_field(shader_token, FLD_OUT_ADDRESS));
-            if (c_reg >= 0 && c_reg < NV2A_VERTEXSHADER_CONSTANTS) {
-                mstring_append_fmt(ret, VSH_CONST_FILE_RW "[%d]", c_reg);
-            } else {
+            if (c_reg < 0 || c_reg >= NV2A_VERTEXSHADER_CONSTANTS) {
                 mstring_append(ret, VSH_CONST_FILE_RW_OOB);
+            } else if (use_temp_var) {
+                /*
+                 * The ILU statement follows this one and its input C can
+                 * be this same constant, so the copy is written only in
+                 * the suffix, which decode_token appends after the ILU.
+                 */
+                const char *c_mask =
+                    &mask_str[vsh_get_field(shader_token, FLD_OUT_O_MASK)][1];
+                mstring_append(ret, VSH_CONST_FILE_RW_TMP);
+                mstring_append_fmt(*suffix,
+                                   "  " VSH_CONST_FILE_RW "[%d].%s = "
+                                   VSH_CONST_FILE_RW_TMP ".%s;\n",
+                                   c_reg, c_mask, c_mask);
+            } else {
+                mstring_append_fmt(ret, VSH_CONST_FILE_RW "[%d]", c_reg);
             }
         } else {
             int out_reg = vsh_get_field(shader_token, FLD_OUT_ADDRESS) & 0xF;
@@ -417,8 +438,6 @@ static MString *decode_opcode(const uint32_t *shader_token,
     }
 
     if (use_temp_var) {
-        assert(suffix && "Temp var flagged on non-MAC instruction");
-        *suffix = mstring_new();
         if (strcmp(opcode, mac_opcode[MAC_ARL]) == 0) {
             mstring_append_fmt(ret, "  ARL(_temp_addr%s);\n", inputs);
             mstring_append(*suffix, "  A0 = _temp_addr;\n");
@@ -794,7 +813,8 @@ void pgraph_glsl_gen_vsh_prog(uint16_t version, const uint32_t *tokens,
             mstring_append(body,
                 "  vec4 " VSH_CONST_FILE_RW "[" stringify(
                     NV2A_VERTEXSHADER_CONSTANTS) "] = " VSH_CONST_FILE ";\n"
-                "  vec4 " VSH_CONST_FILE_RW_OOB ";\n");
+                "  vec4 " VSH_CONST_FILE_RW_OOB ";\n"
+                "  vec4 " VSH_CONST_FILE_RW_TMP ";\n");
             break;
         }
         if (vsh_get_field(cur_token, FLD_FINAL)) {

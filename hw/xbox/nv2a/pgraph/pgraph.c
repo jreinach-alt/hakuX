@@ -4382,6 +4382,7 @@ static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
     }
 
     unsigned int unknown = 0;
+    bool changed = false;
     for (int r = 0; r < NV2A_VERTEXSHADER_CONSTANTS; r++) {
         for (int c = 0; c < 4 && written[r]; c++) {
             if (!(written[r] & (NV2AWM_X >> c))) {
@@ -4397,8 +4398,17 @@ static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
                 pg->vsh_constants[r][c] = bits;
                 pg->vsh_constants_dirty[r] = true;
                 pg->vsh_constants_any_dirty = true;
+                changed = true;
             }
         }
+    }
+    if (changed) {
+        /*
+         * A merged Vulkan draw reuses the queue's uniforms unless
+         * any_reg_gen has moved (try_enqueue_draw_arrays), so without this
+         * the third draw of a merge run would miss the second's writeback.
+         */
+        pg->any_reg_gen++;
     }
     if (unknown) {
         NV2A_DPRINTF("vertex program at %u: %u constant components depend on "
