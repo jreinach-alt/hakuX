@@ -41,6 +41,29 @@ def mk(d, name, g_ms, tso=None, device="nova", apk="abc", windows=40):
     return p
 
 
+PPRED = os.path.join(ROOT, "docs/testing/predictions/perfarch-vcpu-prime.json")
+
+
+def mkp(d, name, g_ms, mask, on_prime, windows=40):
+    """A placement-arm result: gfps lines, the vCPU tid line, topo rows."""
+    p = mk(d, name, g_ms, None, windows=windows)
+    L = open(os.path.join(p, "logcat.txt")).read().splitlines()
+    L.insert(0, "I/hakuX-lane(1): perfarch place vcpu tid=77 spec=%s%s -> %s"
+             % ("prime" if mask else "none",
+                " mask=%s" % mask if mask else "",
+                "PINNED" if mask else "NOT PINNED"))
+    rest = 100 - on_prime
+    for i in range(6):
+        L.append("I/hakuX-lane(1): perfarch topo tid=77 comm=qemu_main "
+                 "busy=85.0%% mig/s=1.0 rqwait_ms/s=0.50 "
+                 "cpu%%=0/0/0/%d/%d/0/0/%d" % (rest // 2, rest - rest // 2, on_prime))
+        L.append("I/hakuX-lane(1): perfarch topo freq win_s=10.0 "
+                 "p0=1000(300-2000,cap2000) p3=2400(2000-2800,cap2800) "
+                 "p7=3000(2800-3187,cap3187)")
+    open(os.path.join(p, "logcat.txt"), "w").write("\n".join(L) + "\n")
+    return p
+
+
 def judge(a, b):
     r = subprocess.run([sys.executable, os.path.join(HERE, "tso_judge.py"),
                         "--expect", PRED, "--a"] + a + ["--b"] + b,
@@ -85,6 +108,28 @@ def main():
         ok = abs(got - mid) < 0.01
         fails += not ok
         print("median-of-3  %s" % ("ok" if ok else "WRONG"))
+        # place_judge: a pinned B inside the band passes; a B whose vCPU
+        # never reached the prime core fails P0; a gain outside the band
+        # fails P1.
+        pexp = json.load(open(PPRED))["expect"]
+        pmid = (pexp["P1_change_min"] + pexp["P1_change_max"]) / 2
+        pa = [mkp(d, "pa1", 52.0, None, 15), mkp(d, "pa2", 52.2, None, 18)]
+        pcases = [
+            ("place ok", [mkp(d, "pb1", 52.1 * (1 + pmid), "0x80", 99),
+                          mkp(d, "pb2", 52.1 * (1 + pmid), "0x80", 98)], 0),
+            ("place unpinned", [mkp(d, "pc1", 52.1 * (1 + pmid), "0x80", 30),
+                                mkp(d, "pc2", 52.1 * (1 + pmid), "0x80", 30)], 1),
+            ("place no gain", [mkp(d, "pd1", 52.1, "0x80", 99),
+                               mkp(d, "pd2", 52.1, "0x80", 99)], 1),
+        ]
+        for name, b, want in pcases:
+            r = subprocess.run([sys.executable, os.path.join(HERE, "place_judge.py"),
+                                "--expect", PPRED, "--a"] + pa + ["--b"] + b,
+                               capture_output=True, text=True)
+            ok = r.returncode == want
+            fails += not ok
+            print("%-14s want %d got %d  %s" % (name, want, r.returncode,
+                                                 "ok" if ok else "WRONG\n" + r.stdout + r.stderr))
         # hostbench_report must parse its own formats without crashing.
         hb = os.path.join(d, "hb.txt")
         open(hb, "w").write(
