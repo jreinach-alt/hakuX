@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 204
+wave = 205
 updated_utc = "2026-09-25T22:10:00Z"
 
 
@@ -876,7 +876,7 @@ note = "RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #267 MERGED 202
 issues = ["266"]
 files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json", "hw/xbox/nv2a/pgraph/glsl/psh.c"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds. PASS-ON ORDER (host session, 2026-09-25T21:02:11Z): when this lane's #266 PR folds, psh.c goes to lane.texvol283 (#283, PR #289, disjoint hunks at ~:510/~:3380), then back to lane.wbuf31sel (#244)."
+note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds. PASS-ON ORDER (host session, 2026-09-25T21:02:11Z): when this lane's #266 PR folds, psh.c goes to lane.texvol283 (#283, PR #289, disjoint hunks at ~:510/~:3380), then back to lane.wbuf31sel (#244). QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): psh.c after this lane's #266 PR folds: lane.texvol283 (#283, its hunk ready) -> lane.zclamp276 (#276, 129k px; also needs pgraph.c and psh.h) -> lane.wbuf31sel (#244, 0 scored px). Supersedes the wave-200 order."
 
 [lane.boardprio]
 issues = []
@@ -889,7 +889,7 @@ note = "DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on
 issues = ["255"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshsubneg255-*.json", "docs/lanes/vshsubneg255/**"]
 standing = false
-note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #288 folds, pgraph.c goes to [lane.spheremap273] for #273's one case in kelvin_map_texgen (262,990 px, priced offline). The host re-pinned this lane's two queued vsh runs from the Thor (behind the 0.5 sweeps, ~7 h) to the Nova (devices agree per capture). AMENDED (host session, 2026-09-25T20:59:17Z): lane.spheremap273 retired at wave 197 (PR #305, analysis, merged). When PR #288 folds, pgraph.c goes to a NEW #273 fix dispatch. The hunk is in docs/lanes/spheremap273/NOTES.md section 4 (one case in kelvin_map_texgen, priced 262,990 -> 0 px); #273's tracker row now names this blocker."
+note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #288 folds, pgraph.c goes to [lane.spheremap273] for #273's one case in kelvin_map_texgen (262,990 px, priced offline). The host re-pinned this lane's two queued vsh runs from the Thor (behind the 0.5 sweeps, ~7 h) to the Nova (devices agree per capture). AMENDED (host session, 2026-09-25T20:59:17Z): lane.spheremap273 retired at wave 197 (PR #305, analysis, merged). When PR #288 folds, pgraph.c goes to a NEW #273 fix dispatch. The hunk is in docs/lanes/spheremap273/NOTES.md section 4 (one case in kelvin_map_texgen, priced 262,990 -> 0 px); #273's tracker row now names this blocker. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): pgraph.c after PR #288 folds (verdict PASS 21:48Z): the #273 spheremap fix (263k px; hunk in docs/lanes/spheremap273/NOTES.md s4) -> lane.zclamp276 (#276, 129k px)."
 
 [lane.vshr12280]
 issues = ["280"]
@@ -1001,21 +1001,21 @@ note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:57:51Z), on the own
 issues = ["223"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamcode223-*.json", "docs/lanes/wparamcode223/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #223, on PR #304's fold (8af1bbb18e): build hunk (A) (vsh-ff.c position tail: nv2a 0*x=0 multiply + homogeneous carry past 2^19, priced ff bitri 1,601 / ff quad 2,126 coverage px) and hunk (B) (geom.c append_wedge: a one-negative zero-grid-area triangle draws nothing), together, with the must-not-move gate over w_gaps* first. Brief: briefs/wparamcode223.md."
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #223, on PR #304's fold (8af1bbb18e): build hunk (A) (vsh-ff.c position tail: nv2a 0*x=0 multiply + homogeneous carry past 2^19, priced ff bitri 1,601 / ff quad 2,126 coverage px) and hunk (B) (geom.c append_wedge: a one-negative zero-grid-area triangle draws nothing), together, with the must-not-move gate over w_gaps* first. Brief: briefs/wparamcode223.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): vsh-ff.c after PR #321 folds: lane.zdepth272 (#272, 275k px, round-toward-zero fixed-function screen z; hunk ready on PR #322)."
 
 
 [lane.zdepth272]
 issues = ["272", "275"]
 files = ["docs/testing/predictions/zdepth272-*.json", "docs/lanes/zdepth272/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #272 (#275's Swap folds in): derive silicon's fixed-function depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor. LOCATE-FIRST: vsh-ff.c:~884 is lane.wparamcode223's and psh.c zfloor is lane.wbufdepth24's; the lane names the hunk and asks. Check PR #268's NOTES first (same signature as #266). Brief: briefs/zdepth272.md."
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #272 (#275's Swap folds in): derive silicon's fixed-function depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor. LOCATE-FIRST: vsh-ff.c:~884 is lane.wparamcode223's and psh.c zfloor is lane.wbufdepth24's; the lane names the hunk and asks. Check PR #268's NOTES first (same signature as #266). Brief: briefs/zdepth272.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): vsh-ff.c passes here after lane.wparamcode223's PR #321 folds; register the arm then, on concrete refs. PR #322 (analysis + hunk) may fold meanwhile."
 
 
 [lane.zclamp276]
 issues = ["276"]
 files = ["docs/testing/predictions/zclamp276-*.json", "docs/lanes/zclamp276/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #276: ZMinMaxControl NEARFAR ZCLAMP/ZCULL, 129,337 + 14,336 px, we draw what silicon culls. LOCATE-FIRST: the issue's guess vk/draw.c:2294 is lane.vtxarr262's; the lane derives which ZMIN_MAX_CONTROL bit each capture sets and names the function. Brief: briefs/zclamp276.md."
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #276: ZMinMaxControl NEARFAR ZCLAMP/ZCULL, 129,337 + 14,336 px, we draw what silicon culls. LOCATE-FIRST: the issue's guess vk/draw.c:2294 is lane.vtxarr262's; the lane derives which ZMIN_MAX_CONTROL bit each capture sets and names the function. Brief: briefs/zclamp276.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): needs pgraph.c + psh.c + psh.h + nv2a_regs.h together. pgraph.c comes after #288 and the #273 fix; psh.c after #266 and #283; psh.h follows psh.c. nv2a_regs.h stays [free] until then (claim it with the others). PR #323 (analysis + named hunk) may fold meanwhile."
 
 
 [lane.dmasurf277]
