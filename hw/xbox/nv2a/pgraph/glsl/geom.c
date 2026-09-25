@@ -138,6 +138,15 @@ bool pgraph_glsl_need_geom(const GeomState *state)
  * part, the region round the positive vertex; three: nothing.  Both are left
  * alone -- W_param's prog and ff quads (two negative w in each half) are the
  * control, and they already match silicon.
+ *
+ * "Zero area" is decided on the 1/16 px grid, from v_vtxPos (pz[i].xy), the
+ * screen position the vertex shader truncated and silicon rasterises -- not
+ * from q_i.  q_i is (ndc * w) / w, which is not ndc again for w = -0.9, so
+ * two vertices on the same grid point come back an ulp apart and the exact
+ * test on q passes a triangle with no area.  Its "wedge" then spans the
+ * screen (W_param's w_gaps: the -0.9 and -10.9 vertices share a grid point
+ * with an infinite-w neighbour; silicon draws nothing there, and the arm
+ * with the q test drew 11.7k px each in w_gaps and w_gaps_tex_persp).
  */
 static void append_wedge(MString *output, const GeomState *state,
                          GenGeomGlslOptions opts)
@@ -253,6 +262,10 @@ static void append_wedge(MString *output, const GeomState *state,
         "  vec2 P1 = q[(n + 1) %% 3];\n"
         "  vec2 P2 = q[(n + 2) %% 3];\n"
         "  float area = wedge_cross(q[1] - q[0], q[2] - q[0]);\n"
+        "  vec2 g1 = pz[1].xy - pz[0].xy;\n"
+        "  vec2 g2 = pz[2].xy - pz[0].xy;\n"
+        "  float garea = kahan_det(g1.x, g2.y, g2.x, g1.y);\n"
+        "  if (!(abs(garea) > 0.0) || wedge_bad(garea)) { return false; }\n"
         "  if (!(abs(area) > 0.0) || wedge_bad(area)) { return false; }\n"
         /* mu = 1 - lambda_N; the corners bound it over the surface. */
         "  float mu = 1.0;\n"
