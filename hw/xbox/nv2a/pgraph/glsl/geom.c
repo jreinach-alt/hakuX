@@ -79,6 +79,235 @@ bool pgraph_glsl_need_geom(const GeomState *state)
     }
 }
 
+/*
+ * #223: a filled triangle with EXACTLY ONE negative-w vertex N, drawn as
+ * silicon draws it -- the external wedge -- rather than handed to the host
+ * clipper.
+ *
+ * The wedge is where the w > 0 part of the homogeneous triangle projects:
+ * every point of it is N + mu * (Q - N) for Q on the edge P1-P2 and mu >= 1,
+ * so it lies across P1-P2 from N, between the rays N->P1 and N->P2 continued
+ * past P1 and P2.  It depends on the screen positions alone, never on how
+ * large the w values are.  The host clipper finds the same region by cutting
+ * the triangle at w = 0, and that cut is what fails: at |w| ratios of 2^120
+ * and more (W_param's prog_w_zero_inf__bitri_w-0.00 and w-1.88e-37 to
+ * w-7.52e-37) Adreno draws nothing where silicon draws the wedge, and
+ * llvmpipe draws the triangle's interior instead, so which answer you get is
+ * the driver's.  The offline model of the wedge covers every one of the 13
+ * negative-w prog_w_zero_inf__bitri goldens with 0 coverage mismatch
+ * (docs/lanes/wparamclip223/wedge_price.py).
+ *
+ * So build the wedge here and emit it with w > 0 inside the surface, where
+ * no host clipper has anything to cut:
+ *
+ *   - NDC q_i = gl_Position.xy / w, and the screen barycentrics lambda(p) of
+ *     the triangle (q0, q1, q2).  In the wedge lambda_N <= 0 and the other two
+ *     are >= 0, and mu = 1 - lambda_N.
+ *   - the quadrilateral P1, N + K(P1 - N), N + K(P2 - N), P2 with K twice the
+ *     largest mu over the surface's corners, which holds all of the wedge
+ *     that is on screen; then Sutherland-Hodgman against the four surface
+ *     edges, NDC +/-1.  Four vertices and four clips is eight at most, which
+ *     is this path's max_vertices, and well inside the 18 vk/instance.c
+ *     checks the device against.  P1 and P2 are copied, never recomputed, so
+ *     the edge the two wedges of a W_param bitri share is the same exact edge
+ *     in both, and the host's tie rule still gives each centre on it to one.
+ *   - at each vertex p the homogeneous weights alpha_i = lambda_i / w_i, all
+ *     >= 0 in the wedge, sum s.  The perspective-correct value of a varying at
+ *     p is sum(alpha_i A_i) / s and 1/w there is s, so the vertex carries
+ *     w' proportional to 1/s and those normalised weights -- the rasteriser
+ *     then interpolates A/w' and 1/w' linearly across screen, which is the
+ *     same field the triangle had.  NOPERSPECTIVE varyings take lambda
+ *     itself, which is affine in screen.  Depth is written by the fragment
+ *     shader, so z only has to be the triangle's plane: z/w = sum(lambda_i
+ *     z_i / w_i).
+ *   - w' is normalised to at most 1 and held at >= 2^-64 of that: the
+ *     weights can span 2^128, and A/w' at 2^128 overflows a float.  Holding
+ *     it moves where a varying hands over from one vertex's value to
+ *     another's by less than 2^-64 of the polygon.
+ *
+ * Winding: the host clipper's polygon for this triangle runs P1, P2, then out
+ * along P2's ray and back along P1's, which winds opposite to the screen
+ * triangle (N, P1, P2) -- the sign of the homogeneous determinant.  The strip
+ * below is emitted so that it winds the same way, so a culled draw culls
+ * exactly what it culled before.
+ *
+ * Anything this cannot do exactly -- no negative w, two or three of them, a
+ * screen triangle of zero area, or any non-finite value -- returns false
+ * BEFORE emitting a vertex, and the caller emits the triangle unchanged, as
+ * it always has.  Two negative vertices: the host clipper keeps the w > 0
+ * part, the region round the positive vertex; three: nothing.  Both are left
+ * alone -- W_param's prog and ff quads (two negative w in each half) are the
+ * control, and they already match silicon.
+ */
+static void append_wedge(MString *output, const GeomState *state,
+                         GenGeomGlslOptions opts)
+{
+    mstring_append(
+        output,
+        "int wedge_clip(inout vec2 P[8], int np, bool y, float bound) {\n"
+        "  vec2 Q[8];\n"
+        "  int nq = 0;\n"
+        "  for (int i = 0; i < np; i++) {\n"
+        "    int j = (i + 1 == np) ? 0 : i + 1;\n"
+        "    float da = sign(bound) * (bound - (y ? P[i].y : P[i].x));\n"
+        "    float db = sign(bound) * (bound - (y ? P[j].y : P[j].x));\n"
+        "    if (da >= 0.0 && nq < 8) {\n"
+        "      Q[nq] = P[i]; nq++;\n"
+        "    }\n"
+        "    if (((da < 0.0) != (db < 0.0)) && nq < 8) {\n"
+        "      vec2 c = mix(P[i], P[j], da / (da - db));\n"
+        "      if (y) { c.y = bound; } else { c.x = bound; }\n"
+        "      Q[nq] = c; nq++;\n"
+        "    }\n"
+        "  }\n"
+        "  for (int i = 0; i < nq; i++) {\n"
+        "    P[i] = Q[i];\n"
+        "  }\n"
+        "  return nq;\n"
+        "}\n"
+        "\n"
+        "float wedge_cross(vec2 a, vec2 b) {\n"
+        "  return a.x * b.y - a.y * b.x;\n"
+        "}\n"
+        "\n");
+
+    mstring_append(output,
+                   "void emit_wedge_vertex(vec3 a, vec4 pos, mat4 pz) {\n"
+                   "  gl_Position = pos;\n");
+    if (!opts.gles) {
+        mstring_append(output,
+                       "  gl_PointSize = gl_in[0].gl_PointSize;\n");
+    }
+    static const char *const colours[] = { "vtxD0", "vtxD1", "vtxB0",
+                                            "vtxB1" };
+    for (int i = 0; i < 4; i++) {
+        const char *c = colours[i];
+        if (state->smooth_shading) {
+            mstring_append_fmt(output,
+                               "  %s = a.x * v_%s[0] + a.y * v_%s[1] +"
+                               " a.z * v_%s[2];\n",
+                               c, c, c, c);
+        } else {
+            /* Flat: the provoking vertex, gl_in[0], as emit_vertex(). */
+            mstring_append_fmt(output, "  %s = v_%s[0];\n", c, c);
+        }
+    }
+    mstring_append(output,
+                   "  vtxFog = dot(a, vec3(v_vtxFog[0], v_vtxFog[1],"
+                   " v_vtxFog[2]));\n"
+                   "  vtxFogSpecial = v_vtxFogSpecial[0];\n");
+    for (int i = 0; i < 4; i++) {
+        uint8_t w = state->cylinder_wrap[i];
+        if (w) {
+            char bv[64];
+            snprintf(bv, sizeof(bv), "bvec4(%s, %s, %s, %s)",
+                     (w & 1) ? "true" : "false", (w & 2) ? "true" : "false",
+                     (w & 4) ? "true" : "false", (w & 8) ? "true" : "false");
+            mstring_append_fmt(
+                output,
+                "  vtxT%d = a.x * cylWrap(v_vtxT%d[0], v_vtxT%d[0], %s) +\n"
+                "          a.y * cylWrap(v_vtxT%d[0], v_vtxT%d[1], %s) +\n"
+                "          a.z * cylWrap(v_vtxT%d[0], v_vtxT%d[2], %s);\n",
+                i, i, i, bv, i, i, bv, i, i, bv);
+        } else {
+            mstring_append_fmt(output,
+                               "  vtxT%d = a.x * v_vtxT%d[0] + a.y * v_vtxT%d[1]"
+                               " + a.z * v_vtxT%d[2];\n",
+                               i, i, i, i);
+        }
+    }
+    mstring_append(
+        output,
+        "  vtxPos0 = pz[0];\n"
+        "  vtxPos1 = pz[1];\n"
+        "  vtxPos2 = pz[2];\n"
+        "  triMZ = (isnan(pz[3].x) || isinf(pz[3].x)) ? 0.0 : pz[3].x;\n"
+        "  vtxPointSize = dot(a, vec3(v_vtxPointSize[0], v_vtxPointSize[1],"
+        " v_vtxPointSize[2]));\n"
+        "  EmitVertex();\n"
+        "}\n"
+        "\n");
+
+    mstring_append_fmt(
+        output,
+        "bool wedge_bad(float v) {\n"
+        "  return isnan(v) || isinf(v);\n"
+        "}\n"
+        "\n"
+        "bool emit_wedge(mat4 pz) {\n"
+        "  vec3 w = vec3(gl_in[0].gl_Position.w, gl_in[1].gl_Position.w,\n"
+        "                gl_in[2].gl_Position.w);\n"
+        "  bvec3 neg = lessThan(w, vec3(0.0));\n"
+        "  if (int(neg.x) + int(neg.y) + int(neg.z) != 1) { return false; }\n"
+        "  vec2 q[3];\n"
+        "  vec3 zq;\n"
+        "  for (int i = 0; i < 3; i++) {\n"
+        "    q[i] = gl_in[i].gl_Position.xy / w[i];\n"
+        "    zq[i] = gl_in[i].gl_Position.z / w[i];\n"
+        "    if (wedge_bad(q[i].x) || wedge_bad(q[i].y) || wedge_bad(zq[i])) {\n"
+        "      return false;\n"
+        "    }\n"
+        "  }\n"
+        "  int n = neg.x ? 0 : (neg.y ? 1 : 2);\n"
+        "  vec2 N = q[n];\n"
+        "  vec2 P1 = q[(n + 1) %% 3];\n"
+        "  vec2 P2 = q[(n + 2) %% 3];\n"
+        "  float area = wedge_cross(q[1] - q[0], q[2] - q[0]);\n"
+        "  if (!(abs(area) > 0.0) || wedge_bad(area)) { return false; }\n"
+        /* mu = 1 - lambda_N; the corners bound it over the surface. */
+        "  float mu = 1.0;\n"
+        "  for (int c = 0; c < 4; c++) {\n"
+        "    vec2 k = vec2((c & 1) == 0 ? -1.0 : 1.0, c < 2 ? -1.0 : 1.0);\n"
+        "    mu = max(mu, 1.0 - wedge_cross(P1 - k, P2 - k) / area);\n"
+        "  }\n"
+        "  float K = 2.0 * mu;\n"
+        "  vec2 P[8];\n"
+        "  P[0] = P1;\n"
+        "  P[1] = N + K * (P1 - N);\n"
+        "  P[2] = N + K * (P2 - N);\n"
+        "  P[3] = P2;\n"
+        "  if (wedge_bad(K) || wedge_bad(P[1].x) || wedge_bad(P[1].y) ||\n"
+        "      wedge_bad(P[2].x) || wedge_bad(P[2].y)) {\n"
+        "    return false;\n"
+        "  }\n"
+        "  int np = 4;\n"
+        "  np = wedge_clip(P, np, false, 1.0);\n"
+        "  np = wedge_clip(P, np, false, -1.0);\n"
+        "  np = wedge_clip(P, np, true, 1.0);\n"
+        "  np = wedge_clip(P, np, true, -1.0);\n"
+        "  vec3 A[8];\n"
+        "  float S[8];\n"
+        "  float Z[8];\n"
+        "  float smin = 3.4e38;\n"
+        "  for (int k = 0; k < np; k++) {\n"
+        "    vec2 p = P[k];\n"
+        "    vec3 lam = vec3(wedge_cross(q[1] - p, q[2] - p),\n"
+        "                    wedge_cross(q[2] - p, q[0] - p),\n"
+        "                    wedge_cross(q[0] - p, q[1] - p)) / area;\n"
+        "    vec3 al = max(lam / w, vec3(0.0));\n"
+        "    S[k] = al.x + al.y + al.z;\n"
+        "    A[k] = %s;\n"
+        "    Z[k] = dot(lam, zq);\n"
+        "    if (!(S[k] > 0.0) || wedge_bad(S[k]) || wedge_bad(Z[k]) ||\n"
+        "        wedge_bad(A[k].x) || wedge_bad(A[k].y) || wedge_bad(A[k].z)) {\n"
+        "      return false;\n"
+        "    }\n"
+        "    smin = min(smin, S[k]);\n"
+        "  }\n"
+        /* A strip over a convex polygon, 0, n-1, 1, n-2, ...: its triangles
+         * wind opposite to the polygon's order, and the polygon runs P1, far
+         * P1, far P2, P2, so the strip winds as the host clipper's did. */
+        "  for (int k = 0; k < np; k++) {\n"
+        "    int j = ((k & 1) == 0) ? (k >> 1) : (np - 1 - (k >> 1));\n"
+        "    float W = max(smin / S[j], 5.421011e-20);\n"
+        "    emit_wedge_vertex(A[j], vec4(P[j] * W, Z[j] * W, W), pz);\n"
+        "  }\n"
+        "  EndPrimitive();\n"
+        "  return true;\n"
+        "}\n",
+        state->noperspective ? "lam" : "al / S[k]");
+}
+
 MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
 {
     /* FIXME: Missing support for 2-sided-poly mode */
@@ -87,6 +316,7 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
 
     bool need_triz = false;
     bool need_linez = false;
+    bool need_wedge = false;
     const char *layout_in = NULL;
     const char *layout_out = NULL;
     const char *body = NULL;
@@ -167,8 +397,12 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         need_triz = true;
         layout_in = "layout(triangles) in;\n";
         if (polygon_mode == POLY_MODE_FILL) {
-            layout_out = "layout(triangle_strip, max_vertices = 3) out;\n";
+            /* 8: the external wedge of emit_wedge() below, a quadrilateral
+             * clipped by four surface edges, or the triangle itself. */
+            need_wedge = true;
+            layout_out = "layout(triangle_strip, max_vertices = 8) out;\n";
             body = "  mat4 pz = calc_triz(0, 1, 2);\n"
+                   "  if (emit_wedge(pz)) { return; }\n"
                    "  emit_vertex(0, pz, gl_in[0].gl_Position);\n"
                    "  emit_vertex(1, pz, gl_in[1].gl_Position);\n"
                    "  emit_vertex(2, pz, gl_in[2].gl_Position);\n"
@@ -985,6 +1219,10 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                 "  EndPrimitive();\n"
                 "}\n");
         }
+    }
+
+    if (need_wedge) {
+        append_wedge(output, state, opts);
     }
 
     mstring_append_fmt(output,
