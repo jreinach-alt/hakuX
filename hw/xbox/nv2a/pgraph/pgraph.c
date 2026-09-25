@@ -3663,6 +3663,8 @@ DEF_METHOD_INC(NV097, SET_LIGHT_AMBIENT_COLOR)
     }
 }
 
+static void pgraph_vsh_writeback_constants(PGRAPHState *pg);
+
 DEF_METHOD_INC(NV097, SET_VERTEX4F)
 {
     int slot = (method - NV097_SET_VERTEX4F) / 4;
@@ -3672,6 +3674,20 @@ DEF_METHOD_INC(NV097, SET_VERTEX4F)
     attribute->inline_value[slot] = *(float*)&parameter;
     if (slot == 3) {
         pgraph_finish_inline_buffer_vertex(pg);
+        if (pg->primitive_mode == PRIM_TYPE_INVALID) {
+            /*
+             * #242: a vertex sent with no Begin open still runs the vertex
+             * program on silicon.  nxdk_vsh_tests' Exceptional Float sends
+             * one this way and reads the constants its program wrote back
+             * over RDI; the console holds them.  Keep only the constant
+             * writes: nothing is rasterised, and nothing shows where the
+             * vertex's other outputs go.  The next Begin would drop the
+             * vertex anyway, so drop it now rather than let lone vertices
+             * pile up in the inline buffer.
+             */
+            pgraph_vsh_writeback_constants(pg);
+            pgraph_reset_inline_buffers(pg);
+        }
     }
 }
 
