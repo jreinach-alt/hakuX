@@ -68,5 +68,41 @@ glslc). KGSL only, `android-strict=false` (T30 exposes Vulkan 1.4 at minApi
 30, which strict mode would cap), unstripped. Patches go in
 `tools/turnip/patches/*.patch`; the control has none.
 
+**It builds (attempt 2).** Output: `turnip_hakux_4c18636110f0_none.adpkg.zip`. It
+took two fixes, both flags and not patches:
+- bison needs `M4`, and the nxdk bundle's m4 is not on its bin PATH.
+- The pinned `tu_cs.h:295` braces a `size_t` into a `uint16_t`, which NDK
+  clang++ rejects (`-Wc++11-narrowing`), so the build passes
+  `-Dcpp_args=-Wno-c++11-narrowing`. Upstream builds with gcc and does not hit it.
+
+`tools/turnip/compare_pkg.sh` checks the package against T30 statically:
+- Same so far: AArch64 DYN, the same eight NEEDED libraries, and an exported
+  `HMI` (Android's Vulkan HAL entry).
+- Size: 17.7 MB against 18.9 MB.
+- One shape difference: the soname. Ours is `libvulkan_freedreno.so`; T30's is
+  `vulkan.purple.so`. Setting it with `-Dc_link_args`/`-Dcpp_link_args` dropped the
+  android stub libraries from the link, so it was reverted. **Hypothesis,
+  unmeasured:** it does not matter, because adrenotools opens the file by path
+  from `libraryName`. The first device load will tell.
+
+**Not bit-reproducible yet.** Two `--clean` builds from the same script and
+inputs gave `vulkan.hakux.so` sha256 `df0479cb…` (17,666,808 bytes) and
+`f94a1acc…` (17,667,200 bytes). The variance source is unmeasured: build-id,
+embedded timestamps or the meson-generated version header are the suspects.
+Pin by the package sha, not by rebuilding.
+
+**Do not repeat:** do not grep for `vk_icd*` to check a package. Android builds
+export `HMI`, not the desktop loader's entry points.
+
+### Why attempt 1 did not finish (written on the attempt 2 resume)
+
+Attempt 1 ended mid-build with three loose ends. First, the first `meson
+setup` failed at `meson.build:747` because `glslangValidator` was not found.
+Second, `build.sh` was then extended to build glslang 15.4.0, but that edit was
+never committed or run. Third, the last NOTES commit (7328894a0a) was never
+pushed, and the driver-swap question it describes as "Asked on #68" was never
+posted. Nobody acted on the draft PR in the meantime. Attempt 2 ran the build,
+committed the script, and posted the question as a `blocked:` comment.
+
 The control against T30 needs our package installed on a device. That is a
 driver swap, which a lane cannot do (see "Do not repeat"). Asked on #68.
