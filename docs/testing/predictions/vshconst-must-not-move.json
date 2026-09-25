@@ -1,0 +1,30 @@
+{
+  "registered_utc": "2026-09-25T08:26:17Z",
+  "who": "lane.vshconst",
+  "issue": "233",
+  "prediction": "#233: a vertex program that writes a constant register no longer asserts; it works on a per-invocation copy c_rw[192] of the constant file. This arm checks only that NOTHING ELSE MOVES: every leg is must-not-move, no pixel is claimed to improve (the ILU RCP value check is on nxdk_vsh_tests, not this disc). WHAT WOULD MOVE EACH LEG. (1) Vertex shader independence/rounding/swizzle and W param: all draw with vertex programs. Their GLSL changes only if pgraph_glsl_vsh_token_constant_write fires on one of their tokens; then every constant read in that program goes through c_rw and the output select that fired is written to c_rw[n] instead of the output register it used to name. The misfire that moves a leg is a token with OUT_ORB==OUTPUT_C and nonzero O mask whose destination was previously ALSO emitted as c<n> -- that would have asserted on master, so any capture that exists on master cannot contain one, and none of the .vsh sources under nxdk_pgraph_tests/src write c[]. The other mover is a GLSL compile failure in the renamed read (decode_opcode_input now formats '%s[%d]' with c_file), which would drop the program's draws and move every leg by the full geometry. (2) Fog coord vec4: these programs write oFog from constants, the exact CONST readback path vsh.c now demotes to COMPUTED when the program writes c[n]. The leg moves if the demotion fires on a program that writes no constant (writes_constant[] set by a misfire), changing the fog coordinate's source from the CPU copy to the computed path. A MOVE ON ANY LEG REFUTES 'byte-identical GLSL for programs that write no constant' and the patch is wrong, not the leg.",
+  "a_ref": "a6bb4a13d4",
+  "b_ref": "47ee3f65e9",
+  "must_not_move": [
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/*",
+    "Vertex_shader_swizzle_tests/*",
+    "W_param/*",
+    "Fog_coord_vec4/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Fog coord vec4",
+      "Vertex shader independence tests",
+      "Vertex shader rounding tests",
+      "Vertex shader swizzle tests",
+      "W param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

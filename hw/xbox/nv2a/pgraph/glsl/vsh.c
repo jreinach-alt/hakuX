@@ -298,9 +298,15 @@ VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state)
     }
 
     const ProgrammableVshState *prog = &state->programmable;
+    bool writes_constant[NV2A_VERTEXSHADER_CONSTANTS] = { false };
 
     for (int i = 0; i < prog->program_length; i++) {
         const uint32_t *token = prog->program_data[i];
+
+        int c_reg = pgraph_glsl_vsh_token_constant_write(token);
+        if (c_reg >= 0 && c_reg < NV2A_VERTEXSHADER_CONSTANTS) {
+            writes_constant[c_reg] = true;
+        }
 
         if (vsh_token_writes_fog(token)) {
             if (w.kind != VSH_FOG_WRITE_NONE) {
@@ -323,6 +329,15 @@ VshFogWrite pgraph_glsl_vsh_fog_write(const VshState *state)
         if (vsh_get_field(token, FLD_FINAL)) {
             break;
         }
+    }
+
+    /*
+     * #233: a constant the program writes no longer holds what the CPU
+     * loaded, before the write or after it: the value stays in the
+     * constant RAM for the next vertex.
+     */
+    if (w.kind == VSH_FOG_WRITE_CONST && writes_constant[w.reg]) {
+        w.kind = VSH_FOG_WRITE_COMPUTED;
     }
 
     return w;
