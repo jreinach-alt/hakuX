@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 209
-updated_utc = "2026-09-25T23:40:00Z"
+wave = 210
+updated_utc = "2026-09-25T23:55:00Z"
 
 
 [retired.hilodot10]
@@ -710,6 +710,19 @@ retired_utc = "2026-09-25T05:45:00Z"
 files = []
 note = "RETIRED AT WAVE 147 (host session): PR #148 CLOSED unmerged 2026-09-25T05:11Z by owner decision #207 (not accepted: the lane withdrew its #91 claim, the golden requires the write-back the change declines, and it was pixel-inert on master). vk/draw.c and vk/surface.c RELEASED to [free]; #91 and #88 return to the pool with #91's corrected mechanism on the issue. Branch lane/clrsurf91 kept for salvage (the independent pass-1 M1 repair)."
 
+[retired.zdepth272]
+issues = ["272", "275"]
+files = []
+retired_utc = "2026-09-25T23:55:00Z"
+note = "RETIRED (job.board, wave 210): PR #322 MERGED (fold faf58eb89d), unit gone, no open PR on lane/zdepth272. It was analysis plus a named hunk, not the fix: the fix is docs/lanes/zdepth272/vsh-ff-zrtz.patch (round-toward-zero fixed-function screen z) in glsl/vsh-ff.c, which is lane.wparamcode223's until PR #321 folds; host queue 2026-09-25T22:15Z passes vsh-ff.c to a #272 code lane then. #272 and #275 stay open. No file held."
+
+[retired.zclamp276]
+issues = ["276"]
+files = []
+retired_utc = "2026-09-25T23:55:00Z"
+note = "RETIRED (job.board, wave 210): PR #323 MERGED (fold 2dc5d1b884), unit gone, no open PR on lane/zclamp276. Analysis plus a named hunk (docs/lanes/zclamp276/nearfar_cull.diff: pgraph.c SET_ZMIN_MAX_CONTROL drops CULL_NEAR_FAR_EN, plus psh.c / psh.h / nv2a_regs.h). #276 stays open; the code lane waits on the host queue (pgraph.c after #273 fix, psh.c after #266 and #283). No file held."
+
+
 [lane.remote]
 issues = ["184", "109", "274"]
 files = ["docs/testing/predictions/remote-109-*.json", "docs/lanes/remote/**", "docs/testing/predictions/remote-184-*.json", "hw/xbox/nv2a/pgraph/vk/texture.c", "docs/testing/predictions/remote-274-*.json"]
@@ -1020,20 +1033,6 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #223, on PR #304's fold (8af1bbb18e): build hunk (A) (vsh-ff.c position tail: nv2a 0*x=0 multiply + homogeneous carry past 2^19, priced ff bitri 1,601 / ff quad 2,126 coverage px) and hunk (B) (geom.c append_wedge: a one-negative zero-grid-area triangle draws nothing), together, with the must-not-move gate over w_gaps* first. Brief: briefs/wparamcode223.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): vsh-ff.c after PR #321 folds: lane.zdepth272 (#272, 275k px, round-toward-zero fixed-function screen z; hunk ready on PR #322)."
 
 
-[lane.zdepth272]
-issues = ["272", "275"]
-files = ["docs/testing/predictions/zdepth272-*.json", "docs/lanes/zdepth272/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #272 (#275's Swap folds in): derive silicon's fixed-function depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor. LOCATE-FIRST: vsh-ff.c:~884 is lane.wparamcode223's and psh.c zfloor is lane.wbufdepth24's; the lane names the hunk and asks. Check PR #268's NOTES first (same signature as #266). Brief: briefs/zdepth272.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): vsh-ff.c passes here after lane.wparamcode223's PR #321 folds; register the arm then, on concrete refs. PR #322 (analysis + hunk) may fold meanwhile."
-
-
-[lane.zclamp276]
-issues = ["276"]
-files = ["docs/testing/predictions/zclamp276-*.json", "docs/lanes/zclamp276/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #276: ZMinMaxControl NEARFAR ZCLAMP/ZCULL, 129,337 + 14,336 px, we draw what silicon culls. LOCATE-FIRST: the issue's guess vk/draw.c:2294 is lane.vtxarr262's; the lane derives which ZMIN_MAX_CONTROL bit each capture sets and names the function. Brief: briefs/zclamp276.md. QUEUE (host session, 2026-09-25T22:15:39Z, impact-first): needs pgraph.c + psh.c + psh.h + nv2a_regs.h together. pgraph.c comes after #288 and the #273 fix; psh.c after #266 and #283; psh.h follows psh.c. nv2a_regs.h stays [free] until then (claim it with the others). PR #323 (analysis + named hunk) may fold meanwhile."
-
-
 [lane.dmasurf277]
 issues = ["277"]
 files = ["docs/testing/predictions/dmasurf277-*.json", "docs/lanes/dmasurf277/**"]
@@ -1060,3 +1059,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-270, audit pass 2 of PR #270 on branch lane/boardprio, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 270` removes this row when the unit ends."
+
+[lane.aasample]
+issues = ["286"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.h", "docs/testing/predictions/aasample-*.json", "docs/lanes/aasample/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 210 (job.board, 2026-09-25T23:55:00Z) for #286's class A (PR #328 folded, docs/lanes/cloud-286/NOTES.md sec 3): our AA-surface path is not transparent -- silicon's CENTER_CORNER_2 is byte-identical to a non-AA draw on the 48 inert captures, ours moves 517,872 px; pgraph_apply_anti_aliasing_factor (pgraph.h:572) is width*=2 and nothing else. ~242k px net recoverable (Quads loses 17.8k). LOCATE-FIRST for the consumers: vk/draw.c is lane.vtxarr262's (PR #264) and vk/surface.c is [free] but ungranted; the lane names the hunks and asks. Reads #282's NOTES for the tie rule. Brief: briefs/aasample.md."
