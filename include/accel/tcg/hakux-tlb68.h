@@ -21,7 +21,7 @@
  *       entries per MMU index, so the walk has a ceiling. See cputlb.c.
  */
 #ifndef HAKUX_TCG311_KEEP_ARMED
-#define HAKUX_TCG311_KEEP_ARMED 0
+#define HAKUX_TCG311_KEEP_ARMED 1
 #endif
 #ifndef HAKUX_TCG311_TLB_BOUND
 #define HAKUX_TCG311_TLB_BOUND 0
