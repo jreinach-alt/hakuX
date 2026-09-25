@@ -245,11 +245,18 @@ fixed-function draws, so the live legs are the vertex-program suites. Fog gen
 FF and SetVertexData check that the call order at draw end disturbs nothing.
 Arm 1 (`vshconst-must-not-move.json`, GLSL only) stands as registered.
 
-### Still owed
+### Still owed, and the state at the end of attempt 2
 
 - The handheld: `request.sh --program vsh ... --suites "ILU RCP Tests"`,
   once #229 folds. It is the run that counts.
 - The two arms' `[job.arms]` verdicts.
+- WAITING, not blocked. Definition-of-done items 1-4 hold: preflight passes,
+  `Files:` matches the diff, NOTES are here, and both arms are registered and
+  committed. The PR stays in draft until arm 2's verdict is clean and CI is
+  green on the head, because the brief's "done when" needs the arm verdict on
+  #233. Then mark it ready. A move on an arm-2 leg means the pre-scan
+  misfired or the draw-end call order is wrong. Read the prediction's leg
+  text before touching the leg.
 
 ## Do not repeat
 
