@@ -15,7 +15,11 @@
 #   D. the sweep preemption is gone, and sweep_queue.sh pause reaches the
 #      sweep's own device;
 #   E. arms.sh counts a sha as run only when BOTH halves ran clean;
-#   F. 0 captures with the WSL interop signature is requeued once, then final.
+#   F. 0 captures with the WSL interop signature is requeued once, then final;
+#   G. run_disc.sh names a crash faster than its poll instead of "never started";
+#   H. the shader caches are cleared when, and only when, the apk changes;
+#   I. the logcat spec keeps an assert's text; the lane allowlist names scripts;
+#      check_territory reads the tracker from where it reads the territory.
 #
 # Every mutant is confirmed to DIFFER from the real file before it is run, and
 # lives in a symlink tree: the real docs/testing is never written.
@@ -163,6 +167,9 @@ check "C1: ERROR names the hung install and its deadline" \
 check "C1: the request left running/ through the post-claim exit" \
     test -f "$DH/c1/results/1-hang/request.json" -a ! -e "$DH/c1/running/1-hang.req"
 dhreq "$DH/c2" 1-hang '{"requester":"selftest","purpose":"hang","ref":"HEAD","env":["X=1"]}'
+# The shader-cache clear (H) comes first and would hang first; this case is
+# about the pref calls, so the device already ran this (empty) apk.
+sha256sum "$DH/apk" | cut -c1-12 > "$DH/c2/.shader_cache_apk.nova"
 dhserve "$TESTING" "$DH/c2" 1-hang hang-shell 40; DHRC=$?
 check "C2: an env request whose pref calls hang returns on its own (exit $DHRC)" [ "$DHRC" != 124 ]
 check "C2: ERROR names the first hung pref call" \
@@ -261,4 +268,81 @@ echo "pull failed or timed out"; exit 1' nosig)
     check "F: without the signature, 0 captures is the plain ERROR and is not requeued" \
         bash -c 'grep -qx "ran but produced 0 captures; see run1.log and captures1/" "$1/results/1-lost/ERROR" && [ ! -e "$1/queue/1-lost.req" ]' _ "$DH/f2"
 fi
-unset DH DHM DHS DHS2 DHO DHV DHMO DHB DHSETS DHRC DHT DHHALF DHQ DHREQ DH_ADB_PIDS TAB
+
+# --------------------------------------------- G. a crash faster than a poll
+echo "== dispatch hardening G: run_disc.sh names a crash faster than its 1 s poll"
+# 1790342580-vsh-2092945 aborted 0.2 s after Vulkan init and was reported as
+# "the emulator never started ... within 90s". Here `ps` never shows the
+# process and the logcat stream carries what the real crash logged.
+cat > "$DH/fakebin-crash" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+    *"logcat -v"*) printf '%s\n' '09-25 04:10:01.100 E/hakuX   ( 123): Caught signal 6 in tid 123 fault_pc=0x0 si_addr=0x7b' \
+        '09-25 04:10:01.101 F/libc    ( 123): hw/xbox/nv2a/pgraph/glsl/geom.c:240: MString *pgraph_glsl_gen_geom(const GeomState *, GenGeomGlslOptions): assertion "false" failed'
+        exec sleep 30 ;;
+esac
+exit 0
+EOF
+mkdir -p "$DH/gbin"; mv "$DH/fakebin-crash" "$DH/gbin/adb"; chmod +x "$DH/gbin/adb"; : > "$DH/g.iso"
+dhrun() {   # <testing-dir> -> run_disc.sh's stdout, bounded
+    ( PATH="$DH/gbin:$PATH" SERIAL=ee317437 DEVICE_LABEL=nova CAPTURE_LOG="$DH/g.logcat" \
+      HAKUX_DEVICE_LEASE="$DH/g.lease" APPEAR_TIMEOUT=6 ADB_RETRY_SLEEP=0 \
+          timeout 30 bash "$1/run_disc.sh" "$DH/g.iso" gdir "$DH/g.res" 60 2>&1 ) }
+SECONDS=0; DHG=$(dhrun "$TESTING"); DHT=$SECONDS
+case "$DHG" in *"started and CRASHED"*"assertion \"false\" failed"*)
+        ok "G: the report says it CRASHED and quotes the assert (${DHT}s)" ;;
+    *) bad "G: expected a CRASHED report with the assert; got: $(printf '%s' "$DHG" | head -3)" ;; esac
+case "$DHG" in *"never started"*) bad "G: it still says 'never started'" ;;
+    *) ok "G: and does not say 'never started'" ;; esac
+DHM=$(dhmut run_disc.sh 's#^    \[ -n "\$CAPTURE_LOG" \] && \[ -s "\$CAPTURE_LOG" \] || return 1$#    return 1#')
+if [ -z "$DHM" ]; then
+    bad "G MUTANT: could not build it (the sed matched nothing)"
+else
+    case "$(dhrun "$DHM")" in *"never started"*) ok "G MUTANT: blind to the logcat, the same crash reads 'never started' -- G can go red" ;;
+        *) bad "G MUTANT: expected 'never started'" ;; esac
+fi
+
+# ------------------------------------------------ H. shader caches per apk
+echo "== dispatch hardening H: the shader caches are cleared when the apk changes, and only then"
+# #235's fix arm left enum values in shader_module_keys.bin that the next
+# master build aborted on at startup (geom.c:240), voiding two runs.
+dhreq "$DH/h" 1-a '{"requester":"selftest","purpose":"h","ref":"HEAD","title":"absent.iso"}'
+dhreq "$DH/h" 2-b '{"requester":"selftest","purpose":"h","ref":"HEAD","title":"absent.iso"}'
+dhreq "$DH/h" 3-c '{"requester":"selftest","purpose":"h","ref":"HEAD","title":"absent.iso"}'
+: > "$DH/h/adb.log"
+echo one > "$DH/apk"; dhserve "$TESTING" "$DH/h" 1-a ok 30
+DHH1=$(grep -c "rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" "$DH/h/adb.log")
+dhserve "$TESTING" "$DH/h" 2-b ok 30
+DHH2=$(grep -c "rm -rf files/spv_cache" "$DH/h/adb.log")
+echo two > "$DH/apk"; dhserve "$TESTING" "$DH/h" 3-c ok 30
+DHH3=$(grep -c "rm -rf files/spv_cache" "$DH/h/adb.log")
+check "H: the first run on a device clears all three cache paths (clears so far: $DHH1)" [ "$DHH1" = 1 ]
+check "H: a second run of the SAME apk keeps the warm cache (clears so far: $DHH2)" [ "$DHH2" = 1 ]
+check "H: a DIFFERENT apk clears it again (clears so far: $DHH3)" [ "$DHH3" = 2 ]
+check "H: the clear runs as the app, on the device the dispatcher serves" \
+    grep -q -- "-s ee317437 shell run-as com.jreinach.hakux.debug rm -rf files/spv_cache" "$DH/h/adb.log"
+: > "$DH/apk"
+
+# ---------------------------------------- I. logcat, allowlist, tracker source
+echo "== dispatch hardening I: an assert's text survives the logcat filter; lanes can run their scripts"
+DHSPEC=$( (export DISPATCH_DIR="$DH/i" SERIAL=ee317437; . "$TESTING/dispatcher.sh" selftest-not-a-subcommand >/dev/null 2>&1; printf '%s' "$LOGCAT_SPEC") )
+for t in libc:F DEBUG:F hakuX-stderr:E hakuX-crash:V; do
+    case " $DHSPEC " in *" $t "*) ok "I: the dispatcher's LOGCAT_SPEC keeps $t" ;;
+        *) bad "I: the dispatcher's LOGCAT_SPEC drops $t: $DHSPEC" ;; esac
+done
+# A `*` inside a Bash prefix rule is literal, so `Bash(docs/testing/*:*)`
+# matched no real command and `docs/testing/request.sh` needed approval in
+# every form (#238). Proven with a headless claude -p call in NOTES.md.
+DHAL="$HERE/allowed-tools.lane"
+check "I: the lane allowlist has no prefix rule with a literal * in its path" \
+    bash -c '! tr "," "\n" < "$1" | grep -q "^Bash([^:]*\*[^:]*:"' _ "$DHAL"
+for s in request.sh ab_run.sh preflight.sh; do
+    check "I: the lane allowlist lets a lane run docs/testing/$s directly" \
+        grep -q "Bash(docs/testing/$s:\*)" "$DHAL"
+done
+DHTERR=$(cd "$REPO" && python3 "$TESTING/check_territory.py" 2>&1 | head -3)
+check "I: check_territory names where it read the tracker, and it is where it read the territory" \
+    bash -c 't=$(sed -n "s/^territory.toml read from //p" <<< "$1"); [ -n "$t" ] && grep -qx "nv2a_issues.toml read from $t" <<< "$1"' _ "$DHTERR"
+
+unset DH DHM DHS DHS2 DHO DHV DHMO DHB DHSETS DHRC DHT DHHALF DHQ DHREQ DH_ADB_PIDS TAB \
+      DHG DHH1 DHH2 DHH3 DHSPEC DHAL DHTERR

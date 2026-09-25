@@ -75,7 +75,8 @@ CAPTURE_LOG="${CAPTURE_LOG:-}"
 # invocation only. hakuX:I rather than :W because the draw-reorder pref lines
 # are logged at I; see the #50 investigation, which could not establish from
 # any dispatcher logcat whether those prefs were on.
-LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+# libc:F, DEBUG:F and hakuX-stderr:E carry an assert's text; see dispatcher.sh.
+LOGCAT_SPEC="${LOGCAT_SPEC:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 LOGCAT_PID=""
 
 release() {
@@ -117,15 +118,37 @@ a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$DEVISO'"
 # believing it has gone.
 alive() { a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; }
 
+# A PROCESS THAT DIED BEFORE THE FIRST POLL WAS NEVER "NOT STARTED".
+# 1790342580-vsh-2092945 aborted 0.2 s after Vulkan init and this said "the
+# emulator never started: no ...:xemu within 90s" -- after waiting the whole
+# 90 s for a process that was already gone. A one-second poll cannot see a
+# 0.2 s life; the logcat can. The crash handler logs "Caught signal", bionic
+# logs the assert under libc and the kernel's "Fatal signal" line under
+# libc too. Read only this run's capture: the reader started after
+# `logcat -c`, so an older run's crash is not in it.
+crash_line() {
+    [ -n "$CAPTURE_LOG" ] && [ -s "$CAPTURE_LOG" ] || return 1
+    grep -a -m1 -E "Caught signal|Fatal signal|assertion .* failed" "$CAPTURE_LOG"
+}
+
 s=0
 appeared=0
 while [ "$s" -lt "${APPEAR_TIMEOUT:-90}" ]; do
     sleep 1; s=$((s+1))
     touch "$LEASE"
     if alive; then appeared=1; break; fi
+    if crashed=$(crash_line); then break; fi
 done
 if [ "$appeared" = 0 ]; then
-    echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s"
+    sleep 1                          # the handler sleeps 200 ms before re-raising
+    if crashed=$(crash_line); then
+        echo "the emulator started and CRASHED before $PKG:xemu was seen running (${s}s): $crashed"
+        grep -a -m1 -E "assertion .* failed|Abort message" "$CAPTURE_LOG" | sed 's/^/  /'
+    elif [ -n "$CAPTURE_LOG" ]; then
+        echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s, and no crash in $CAPTURE_LOG"
+    else
+        echo "the emulator never started: no $PKG:xemu within ${APPEAR_TIMEOUT:-90}s (no CAPTURE_LOG, so a crash faster than the 1 s poll cannot be ruled out)"
+    fi
     exit 1
 fi
 

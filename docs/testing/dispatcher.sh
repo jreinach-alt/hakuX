@@ -267,6 +267,45 @@ stop_frame_capture() {
 
 env_pref_marker() { echo "$D/.env_pref.${DEVICE_LABEL:-$SERIAL}"; }
 
+# A NEW APK STARTS WITH NO SHADER CACHE, per device.
+#
+# The app wipes its Vulkan caches only when the driver identity, a struct
+# size or SHADER_STATE_LAYOUT_VERSION changes (check_driver_identity_and_
+# wipe_caches, vk/renderer.c). A build that adds an ENUM VALUE changes none
+# of those. #235's fix arm persisted geometry-shader keys carrying
+# PRIM_TYPE_TRIANGLES_ADJACENCY into shader_module_keys.bin on both
+# handhelds; the next master build regenerated them at startup and aborted
+# at geom.c:240, which voided two runs of somebody else's work. The host
+# bumped the version for that one case; the next lane to add an enum value
+# does it again.
+#
+# So the dispatcher clears the three paths the app itself clears (filesDir:
+# spv_cache/, vk_pipeline_cache.bin, shader_module_keys.bin) whenever the apk
+# it just installed differs from the one the previous run on THIS device
+# used. Not before every run: a same-apk run keeps its warm cache, because
+# soaks price frame rate and shader warm-up would land in their first minute.
+# The last apk is recorded per device only after a successful clear, so a
+# failed clear is retried next time. SHADER_CACHE_STATE goes into result.json.
+shader_apk_marker() { echo "$D/.shader_cache_apk.${DEVICE_LABEL:-$SERIAL}"; }
+clear_shader_caches_on_apk_change() {   # <apk sha>
+    local sha="$1" last pkg="${PKG:-com.jreinach.hakux.debug}"
+    last=$(cat "$(shader_apk_marker)" 2>/dev/null)
+    if [ "$last" = "$sha" ]; then
+        export SHADER_CACHE_STATE="kept: same apk as this device's previous run"
+        return 0
+    fi
+    adb_call "$ADB_QUICK_TIMEOUT" "am force-stop (shader cache)" shell am force-stop "$pkg" >/dev/null 2>&1
+    if ! adb_call "$ADB_QUICK_TIMEOUT" "run-as rm shader caches" \
+            shell "run-as $pkg rm -rf files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin" \
+            >/dev/null 2>&1; then
+        log "  SHADER CACHE: could not clear for apk $sha (previous ${last:-none})"
+        return 1
+    fi
+    printf '%s\n' "$sha" > "$(shader_apk_marker)"
+    export SHADER_CACHE_STATE="cleared: apk ${last:-unrecorded} -> $sha on this device"
+    log "  shader cache $SHADER_CACHE_STATE"
+}
+
 # apply_env_pref <request.json> ; echoes the newline-joined env it installed
 apply_env_pref() {
     local req="$1" marker want tmp pkg
@@ -659,6 +698,11 @@ serve_one() {
         adb_error "install failed" > "$rdir/ERROR"; log "  INSTALL FAILED: $(cat "$rdir/ERROR")"
         mv "$req" "$rdir/request.json"; return 0
     }
+    if ! clear_shader_caches_on_apk_change "$sha"; then
+        adb_error "could not clear the shader caches for a new apk; see dispatcher.log" > "$rdir/ERROR"
+        log "  SHADER CACHE CLEAR FAILED"
+        mv "$req" "$rdir/request.json"; return 0
+    fi
 
     # AFTER the install and BEFORE either run path, because both of them start
     # the app and neither may start it with the previous request's environment
@@ -728,6 +772,9 @@ json.dump(dict(apk_sha=sha, kind="soak", title=title, seconds=int(seconds),
                device_serial=os.environ.get("SERIAL", ""),
                device_label=os.environ.get("DEVICE_LABEL", ""),
                logcat_lines=int(lines), pulled=pulled,
+               # Cold or warm shader cache: a cleared cache puts shader
+               # warm-up in the first minute of a frame-rate soak.
+               shader_cache=os.environ.get("SHADER_CACHE_STATE", ""),
                # THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH. An env A/B has one
                # binary, so apk_sha is identical across its arms and cannot
                # distinguish them -- this field is the only thing in the result
@@ -1014,6 +1061,9 @@ if program == "vsh":
 # such. A result with no `env` key predates the feature; `env: []` means it was
 # checked and there was none.
 meta["env"] = json.loads(os.environ.get("REQ_ENV_JSON") or "[]")
+# Whether this run started on a cleared shader cache (clear_shader_caches_on_
+# apk_change): "cleared: apk X -> Y", "kept: ...", or "" before the field.
+meta["shader_cache"] = os.environ.get("SHADER_CACHE_STATE", "")
 # TWO revisions, because `classifier_rev` has been recording the WRONG FILE.
 #
 # The `status` column every consumer reads -- ok / label-differs /
@@ -1168,7 +1218,10 @@ print(sum(r['captures'] for r in m['runs']))" "$rdir/result.json" 2>/dev/null ||
         # and run it once more: the attempt is moved aside to <id>.interop1 so
         # the rerun gets a clean result dir, and a second loss is final.
         local msg="ran but produced 0 captures; see run1.log and captures1/"
-        if grep -qs "UtilAcceptVsock" "$rdir"/run*.log; then
+        local crash; crash=$(grep -h -m1 "emulator started and CRASHED" "$rdir"/run*.log 2>/dev/null | head -1)
+        if [ -n "$crash" ]; then
+            msg="0 captures: $crash"
+        elif grep -qs "UtilAcceptVsock" "$rdir"/run*.log; then
             msg="adb interop failure: 0 captures, and run*.log carries the WSL UtilAcceptVsock signature -- the captures were lost between device and host, not unrendered"
             if [ -z "$(jq_get "$rdir/request.json" interop_requeued "")" ] &&
                python3 - "$rdir/request.json" "$D/queue/$id.req" <<'PYEOF'
@@ -1273,7 +1326,22 @@ PYEOF
 # five and read as a partial answer. The sites are self-throttled -- first ten,
 # then every ten-thousandth -- so this costs a handful of lines per run, not a
 # flood; that was checked before adding it rather than assumed.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+#
+# libc:F, DEBUG:F and hakuX-stderr:E were MISSING, and every assert's text
+# went with them. 1790344835-vsh-2413308 (thor) and 1790344836-vsh-2413360
+# (nova) both SIGABRTed in pgraph_glsl_gen_vsh_prog; vsh-prog.c has four
+# asserts and the logcat could not say which fired. The hakuX crash handler
+# (android_crash_handler.cpp) logs the signal, the fault pc and a frame-
+# pointer backtrace under `hakuX` -- but not the abort message. Bionic logs
+# "file:line: func: assertion ... failed" under `libc` at F; crash_dump's
+# tombstone under `DEBUG` at F repeats it as "Abort message:" with an
+# unwinder-built backtrace of every thread, which the FP walk cannot give
+# past a frame without a frame pointer. `hakuX-stderr` is the app's pump for
+# the process's stderr, which is where pgraph prints the offending format
+# before it aborts. All three are emitted only on the way down, so they cost
+# nothing on a run that does not crash. hakuX-vk:I is one line, the app's own
+# "Cache identity mismatch: wiping" -- whether this run started cold.
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in

@@ -742,6 +742,19 @@ def main():
     stale_brief = []
     dispatch = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
     now = datetime.datetime.now(datetime.timezone.utc)
+    # When deliver.sh scan last read the feed successfully, for all lanes at
+    # once (its `sweep_stamp`). A lane with no comment in the window keeps an
+    # old per-lane `scanned`, and that age measured the lane's quiet, not the
+    # sweep: "is hakux-comments.timer running?" was asked of a timer that ran
+    # hourly. The newer of the two is the cache's real age.
+    sweep_h = None
+    try:
+        with open(os.path.join(dispatch, "delivery-cache", ".sweep-scanned")) as fh:
+            seen = datetime.datetime.strptime(fh.read().strip(), "%Y-%m-%dT%H:%M:%SZ")
+        sweep_h = (now - seen.replace(tzinfo=datetime.timezone.utc)) \
+            .total_seconds() / 3600.0
+    except Exception:
+        sweep_h = None
     for lane, meta in sorted((terr.get("lane") or {}).items()):
         idle_issues = [i for i in (meta.get("issues") or [])
                        if str(i) in live and not (tracker.get(str(i), {})
@@ -787,7 +800,7 @@ def main():
         # that age is old enough to be the thing you are actually looking at.
         cache = os.path.join(dispatch, "delivery-cache", "%s.json" % lane)
         hours, src = None, "no delivery comment on record"
-        scanned_h = None
+        scanned_h = sweep_h
         try:
             with open(cache) as fh:
                 blob = json.load(fh)
@@ -800,10 +813,11 @@ def main():
             try:
                 seen = datetime.datetime.strptime(blob["scanned"],
                                                   "%Y-%m-%dT%H:%M:%SZ")
-                scanned_h = (now - seen.replace(tzinfo=datetime.timezone.utc)) \
+                lane_h = (now - seen.replace(tzinfo=datetime.timezone.utc)) \
                     .total_seconds() / 3600.0
+                scanned_h = lane_h if sweep_h is None else min(lane_h, sweep_h)
             except Exception:
-                scanned_h = None
+                pass
         except Exception:
             hours = None
         # A CACHE NOBODY IS REFRESHING CANNOT REPORT A FRESH BRIEF, so say so
