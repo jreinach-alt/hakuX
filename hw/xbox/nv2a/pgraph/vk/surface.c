@@ -351,6 +351,24 @@ static void memcpy_image(void *dst, void const *src, int dst_stride,
     }
 }
 
+/*
+ * A swizzled surface has no pitch: generate_swizzle_masks() interleaves the
+ * bits of x and y and nothing else, so the surface is width * height * bpp
+ * bytes whatever the guest's pitch says. A CPU site that stages one through a
+ * linear buffer has to lay that buffer out at width * bpp. At the guest's
+ * pitch an undersized pitch (pitch < width * bpp) overlaps the rows, and the
+ * read-back is dest(x, y) = src(x - pitch / bpp, y + 1): Model E on #109, the
+ * defect gl/surface.c had. The deferred download also read past its
+ * pitch * height buffer on the last row. These are the CPU paths; a 4-byte
+ * swizzled surface normally takes the compute ones, which have no pitch, so
+ * on the test corpus only a forced run reaches them with an undersized pitch.
+ */
+static unsigned int swizzle_linear_pitch(unsigned int width,
+                                         unsigned int bytes_per_pixel)
+{
+    return width * bytes_per_pixel;
+}
+
 static bool check_surface_overlaps_range(const SurfaceBinding *surface,
                                          hwaddr range_start, hwaddr range_len)
 {
@@ -852,12 +870,14 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
         void *src = staging->mapped + dl->staging_offset;
 
         if (dl->swizzle) {
+            unsigned int linear_pitch =
+                swizzle_linear_pitch(dl->width, dl->bytes_per_pixel);
             g_autofree uint8_t *swizzle_buf =
-                (uint8_t *)g_malloc(dl->pitch * dl->height);
-            memcpy_image(swizzle_buf, src, dl->pitch,
+                (uint8_t *)g_malloc(linear_pitch * dl->height);
+            memcpy_image(swizzle_buf, src, linear_pitch,
                          dl->width * dl->bytes_per_pixel, dl->height);
             swizzle_rect(swizzle_buf, dl->width, dl->height, dl->dest_ptr,
-                         dl->pitch, dl->bytes_per_pixel);
+                         linear_pitch, dl->bytes_per_pixel);
             nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
         } else {
             memcpy_image(dl->dest_ptr, src, dl->pitch,
@@ -1503,13 +1523,16 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
         memcpy(pixels, mapped_memory_ptr, downloaded_image_size);
         nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
     } else {
-        memcpy_image(gl_read_buf, mapped_memory_ptr, surface->pitch,
+        unsigned int guest_pitch = surface->swizzle ?
+            swizzle_linear_pitch(surface->width, surface->fmt.bytes_per_pixel) :
+            surface->pitch;
+        memcpy_image(gl_read_buf, mapped_memory_ptr, guest_pitch,
                      surface->width * surface->fmt.bytes_per_pixel,
                      dl_height);
 
         if (surface->swizzle) {
             swizzle_rect(swizzle_buf, surface->width, surface->height, pixels,
-                         surface->pitch, surface->fmt.bytes_per_pixel);
+                         guest_pitch, surface->fmt.bytes_per_pixel);
             nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
             g_free(swizzle_buf);
         }
@@ -2787,14 +2810,17 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 
     g_autofree uint8_t *swizzle_buf = NULL;
     uint8_t *gl_read_buf = NULL;
+    unsigned int buf_pitch = surface->pitch;
 
     if (surface->swizzle && !use_compute_to_unswizzle) {
+        buf_pitch = swizzle_linear_pitch(surface->width,
+                                         surface->fmt.bytes_per_pixel);
         swizzle_buf = (uint8_t*)g_malloc(surface->size);
         gl_read_buf = swizzle_buf;
         unswizzle_rect(data + surface->vram_addr,
                        surface->width, surface->height,
                        swizzle_buf,
-                       surface->pitch,
+                       buf_pitch,
                        surface->fmt.bytes_per_pixel);
         nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
     } else {
@@ -2834,7 +2860,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     } else {
         memcpy_image(mapped_memory_ptr, gl_read_buf,
                      surface->width * surface->fmt.bytes_per_pixel,
-                     surface->pitch, surface->height);
+                     buf_pitch, surface->height);
     }
 
     vmaFlushAllocation(r->allocator, copy_buffer->allocation, staging_base,
