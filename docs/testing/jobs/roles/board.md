@@ -28,13 +28,16 @@ So, every tick, in this order:
 
 ## What you own
 
-- Dispatch, **at most one lane per tick**: pick the single most valuable
-  `dispatchable` issue whose files are free (severity bucket first, then
-  oldest), write its brief to `briefs/<lane>.md` on the `board` branch, start
-  it with `docs/testing/lane.sh start <name> <brief> <issue>`, label the issue
-  `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its cap: stop
-  dispatching locally, do not retry, do not start a session any other way.
-  Eleven dispatchable issues is eleven ticks of work, not one.
+- Dispatch **up to three lanes per tick**. `LANE_MAX` is the only capacity
+  cap: the owner lifted the budget throttle on 2026-09-25 ("there's no limits
+  on [capacity] now"). Take the most valuable `dispatchable` issues whose
+  files are free, severity bucket first, then oldest. For EACH one: write its
+  brief to `briefs/<lane>.md` on the `board` branch, write and push its row,
+  start it with `docs/testing/lane.sh start <name> <brief> <issue>`, and label
+  the issue `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its
+  cap: stop dispatching locally, do not retry, do not start a session any
+  other way. The brief is still the work, so write three good briefs, not
+  three thin ones. If turns run short, dispatch fewer.
 - **The audit outlet, which is not yours to start.** `jobs/board.sh` runs
   `jobs/cloud.sh` at the top of every tick, before either gate below is read,
   and it claims one unit: a `needs-remediation` PR, a `needs-audit-2` PR, a
