@@ -298,6 +298,19 @@ void tcg_gen_br(TCGLabel *l)
  * counter lives next to the branch whose effect it reports. */
 uint64_t hakux_mb_emitted;
 
+/*
+ * x86-TSO from RCpc instructions (lane.perfarch, #68). Off unless the aarch64
+ * backend's tcg_target_init sets it from HAKUX_TCG_TSO=rcpc on a host with
+ * FEAT_LRCPC. When set, every guest load is emitted as LDAPR and every guest
+ * store as STLR, which supplies LD_LD, LD_ST and ST_ST by construction -- all
+ * of x86-TSO except ST_LD, which x86 does not supply either. So the per-access
+ * requests from tcg_gen_req_mo are redundant and elided below, and the only
+ * barriers still emitted are the ones that ask for ST_LD: MFENCE (and anything
+ * else requesting TCG_MO_ALL). Guarantees kept and dropped are listed in
+ * docs/investigations/perf-architecture.md, section 1.
+ */
+bool hakux_tso_rcpc;
+
 void tcg_gen_mb(TCGBar mb_type)
 {
 #ifdef CONFIG_USER_ONLY
@@ -311,6 +324,10 @@ void tcg_gen_mb(TCGBar mb_type)
      * guest memory operation on ARM64.
      */
     bool parallel = tcg_ctx->gen_tb->cflags & CF_PARALLEL;
+
+    if (hakux_tso_rcpc) {
+        parallel = (mb_type & TCG_MO_ST_LD) != 0;
+    }
 #else
     /*
      * It is tempting to elide the barrier in a uniprocessor context.

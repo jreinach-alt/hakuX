@@ -12,6 +12,20 @@
 
 #include "qemu/bitops.h"
 
+#ifdef XBOX
+/*
+ * x86-TSO from RCpc instructions, off by default; see hakux_tso_rcpc in
+ * tcg/tcg-op.c and docs/investigations/perf-architecture.md section 1.
+ * Counted at TRANSLATION time so an arm can prove which regime it ran.
+ */
+extern bool hakux_tso_rcpc;
+static uint64_t hakux_tso_ld, hakux_tso_st, hakux_tso_pair, hakux_tso_slow;
+static void hakux_tso_count(uint64_t *c);
+
+/* HAKUX_HOSTBENCH / HAKUX_TOPO, run from tcg_target_init; off by default. */
+#include "../../tools/bench/hostbench.c.inc"
+#endif
+
 /* Used for function call generation. */
 #define TCG_REG_CALL_STACK              TCG_REG_SP
 #define TCG_TARGET_STACK_ALIGN          16
@@ -1694,6 +1708,14 @@ static bool tcg_out_qemu_ld_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
     tcg_out_ld_helper_args(s, lb, &ldst_helper_param);
     tcg_out_call_int(s, qemu_ld_helpers[opc & MO_SIZE]);
     tcg_out_ld_helper_ret(s, lb, false, &ldst_helper_param);
+#ifdef XBOX
+    if (hakux_tso_rcpc) {
+        /* The helper's load is a plain C load: order it before everything
+         * after it, which is what LDAPR would have done. */
+        tcg_out32(s, DMB_ISH | DMB_LD);
+        hakux_tso_count(&hakux_tso_slow);
+    }
+#endif
     tcg_out_goto(s, lb->raddr);
     return true;
 }
@@ -1706,6 +1728,14 @@ static bool tcg_out_qemu_st_slow_path(TCGContext *s, TCGLabelQemuLdst *lb)
         return false;
     }
 
+#ifdef XBOX
+    if (hakux_tso_rcpc) {
+        /* The helper's store is a plain C store: order everything before it
+         * ahead of it, which is what STLR would have done. */
+        tcg_out32(s, DMB_ISH | DMB_LD | DMB_ST);
+        hakux_tso_count(&hakux_tso_slow);
+    }
+#endif
     tcg_out_st_helper_args(s, lb, &ldst_helper_param);
     tcg_out_call_int(s, qemu_st_helpers[opc & MO_SIZE]);
     tcg_out_goto(s, lb->raddr);
@@ -1914,9 +1944,93 @@ static TCGLabelQemuLdst *prepare_host_addr(TCGContext *s, HostAddress *h,
     return ldst;
 }
 
+#ifdef XBOX
+static void hakux_tso_count(uint64_t *c)
+{
+    ++*c;
+    /* Logged every 2^16 guest loads and stores emitted. */
+    if ((c == &hakux_tso_ld || c == &hakux_tso_st) &&
+        ((hakux_tso_ld + hakux_tso_st) & 0xffff) == 0) {
+        hb_log("tso rcpc emitted ld=%llu st=%llu pair=%llu slow=%llu",
+               (unsigned long long)hakux_tso_ld,
+               (unsigned long long)hakux_tso_st,
+               (unsigned long long)hakux_tso_pair,
+               (unsigned long long)hakux_tso_slow);
+    }
+}
+
+/* LDAPR/STLR take only [Xn]: fold base + index into TMP2 when needed. */
+static TCGReg hakux_tso_addr(TCGContext *s, HostAddress h)
+{
+    if (h.index == TCG_REG_XZR) {
+        return h.base;
+    }
+    if (h.index_ext == TCG_TYPE_I32) {
+        tcg_out_insn(s, 3501, ADD, TCG_TYPE_I64, TCG_REG_TMP2,
+                     h.base, h.index, MO_32, 0);
+    } else {
+        tcg_out_insn(s, 3502, ADD, 1, TCG_REG_TMP2, h.base, h.index);
+    }
+    return TCG_REG_TMP2;
+}
+
+/*
+ * LDAPR{B,H,,X} (FEAT_LRCPC): a load with RCpc acquire semantics, so no later
+ * load or store is observed before it -- x86's LD_LD and LD_ST. There is no
+ * sign-extending form without FEAT_LRCPC2, so extend separately.
+ */
+static void hakux_tso_ld_direct(TCGContext *s, MemOp memop, TCGType ext,
+                                TCGReg data_r, HostAddress h)
+{
+    static const uint32_t ldapr[4] = {
+        0x38bfc000, 0x78bfc000, 0xb8bfc000, 0xf8bfc000
+    };
+    TCGReg base = hakux_tso_addr(s, h);
+
+    tcg_out32(s, ldapr[memop & MO_SIZE] | base << 5 | data_r);
+    switch (memop & MO_SSIZE) {
+    case MO_SB:
+        tcg_out_ext8s(s, ext, data_r, data_r);
+        break;
+    case MO_SW:
+        tcg_out_ext16s(s, ext, data_r, data_r);
+        break;
+    case MO_SL:
+        tcg_out_ext32s(s, data_r, data_r);
+        break;
+    default:
+        break;
+    }
+    hakux_tso_count(&hakux_tso_ld);
+}
+
+/*
+ * STLR{B,H,,X}: a store-release, so every earlier load and store is observed
+ * before it -- x86's LD_ST and ST_ST. A later LDAPR may still be satisfied
+ * before it drains: that is ST_LD, which x86 permits too.
+ */
+static void hakux_tso_st_direct(TCGContext *s, MemOp memop,
+                                TCGReg data_r, HostAddress h)
+{
+    static const uint32_t stlr[4] = {
+        0x089ffc00, 0x489ffc00, 0x889ffc00, 0xc89ffc00
+    };
+    TCGReg base = hakux_tso_addr(s, h);
+
+    tcg_out32(s, stlr[memop & MO_SIZE] | base << 5 | data_r);
+    hakux_tso_count(&hakux_tso_st);
+}
+#endif
+
 static void tcg_out_qemu_ld_direct(TCGContext *s, MemOp memop, TCGType ext,
                                    TCGReg data_r, HostAddress h)
 {
+#ifdef XBOX
+    if (hakux_tso_rcpc) {
+        hakux_tso_ld_direct(s, memop, ext, data_r, h);
+        return;
+    }
+#endif
     switch (memop & MO_SSIZE) {
     case MO_UB:
         tcg_out_ldst_r(s, I3312_LDRB, data_r, h.base, h.index_ext, h.index);
@@ -1949,6 +2063,12 @@ static void tcg_out_qemu_ld_direct(TCGContext *s, MemOp memop, TCGType ext,
 static void tcg_out_qemu_st_direct(TCGContext *s, MemOp memop,
                                    TCGReg data_r, HostAddress h)
 {
+#ifdef XBOX
+    if (hakux_tso_rcpc) {
+        hakux_tso_st_direct(s, memop, data_r, h);
+        return;
+    }
+#endif
     switch (memop & MO_SIZE) {
     case MO_8:
         tcg_out_ldst_r(s, I3312_STRB, data_r, h.base, h.index_ext, h.index);
@@ -2036,6 +2156,15 @@ static void tcg_out_qemu_ldst_i128(TCGContext *s, TCGReg datalo, TCGReg datahi,
 
     use_pair = h.aa.atom < MO_128 || have_lse2;
 
+#ifdef XBOX
+    /* No RCpc form of a 128-bit access: a store gets a full barrier in
+     * front (LD_ST and ST_ST), a load an ISHLD behind (LD_LD and LD_ST). */
+    if (hakux_tso_rcpc && !is_ld) {
+        tcg_out32(s, DMB_ISH | DMB_LD | DMB_ST);
+        hakux_tso_count(&hakux_tso_pair);
+    }
+#endif
+
     if (!use_pair) {
         tcg_insn_unit *branch = NULL;
         TCGReg ll, lh, sl, sh;
@@ -2102,6 +2231,13 @@ static void tcg_out_qemu_ldst_i128(TCGContext *s, TCGReg datalo, TCGReg datahi,
             tcg_out_insn(s, 3314, STP, datalo, datahi, base, 0, 1, 0);
         }
     }
+
+#ifdef XBOX
+    if (hakux_tso_rcpc && is_ld) {
+        tcg_out32(s, DMB_ISH | DMB_LD);
+        hakux_tso_count(&hakux_tso_pair);
+    }
+#endif
 
     if (ldst) {
         ldst->type = TCG_TYPE_I128;
@@ -4237,6 +4373,24 @@ static void tcg_target_init(TCGContext *s)
     tcg_regset_set_reg(s->reserved_regs, TCG_REG_TMP1);
     tcg_regset_set_reg(s->reserved_regs, TCG_REG_TMP2);
     tcg_regset_set_reg(s->reserved_regs, TCG_VEC_TMP0);
+
+#ifdef XBOX
+    {
+        /* HWCAP_LRCPC is bit 15 of AT_HWCAP on Linux/arm64. */
+        const char *tso = getenv("HAKUX_TCG_TSO");
+        if (tso && strcmp(tso, "rcpc") == 0) {
+#if defined(__linux__)
+            unsigned long hw = qemu_getauxval(AT_HWCAP);
+            hakux_tso_rcpc = (hw >> 15) & 1;
+            hb_log("tso mode=rcpc requested lrcpc=%d -> %s",
+                   (int)((hw >> 15) & 1), hakux_tso_rcpc ? "ON" : "OFF");
+#else
+            hb_log("tso mode=rcpc requested: no HWCAP on this OS -> OFF");
+#endif
+        }
+    }
+    hakux_hostbench_maybe_run();
+#endif
 }
 
 /* Saving pairs: (X19, X20) .. (X27, X28), (X29(fp), X30(lr)).  */
