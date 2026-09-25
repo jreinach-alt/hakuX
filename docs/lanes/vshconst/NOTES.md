@@ -274,6 +274,17 @@ were cached. Rerunning both halves keeps the pair on the same device session.
 Attempt 3 also merged origin/master (0940056bf6, models.env only). It did not
 rebase, so b_ref 9ff7f6d67a is still an ancestor of the head.
 
+WAITING at the end of attempt 3. Preflight passes on the merged head, and
+`Files:` matches the diff. The re-run was queued as `1790328976-vshconst-base-1459825`
+and `1790328976-vshconst-fix-1460107`. It was self-queued, so no `[job.arms]`
+comment will announce it. The next attempt picks it up with
+`bash docs/testing/ab_run.sh --resume
+1790328976-vshconst-base-1459825,1790328976-vshconst-fix-1460107 --expect
+docs/testing/predictions/vshconst-writeback-must-not-move.json`, posts the
+verdict on #234 and #233, and then runs `gh pr ready 234` if it is clean.
+If the fix half is lost to adb interop again, that is still a host fault
+(toolsmith's dispatch defect 3), not a result.
+
 ## Do not repeat
 
 - `nv2a_index.py blast` on `vsh-prog.c` or `vsh.c` answers "No indexed suite
