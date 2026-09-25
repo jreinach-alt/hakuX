@@ -333,3 +333,15 @@ Waiting on the arm. The prediction is committed at ca9d8dbe04 with live refs
 - record the verdict here;
 - mark the PR ready if every leg holds. If one fails, record the regressing
   suite as the stage that is refuted.
+
+### The verdict (2026-09-25): FAIL on one leg, Specular_back Pow0_1
+
+- **Result:** 18 of 18 B captures exact, and Directional stayed at 224.
+  Differing went from 4.94M to 3.84M; 104 captures got better and 1 got worse.
+- **The one worse leg:** `Specular_back/SpecParams_FF_Pow0_1`, 1259 -> 1280,
+  all off-by-one. That capture is deterministic on disc across seven apks,
+  and its front-face twin improved (2296 -> 1979). So the refuted stage is
+  the back-face specular path, not the LT arithmetic.
+- **Readability:** no `unreadable` captures and full coverage in both arms.
+
+The details and the next steps are in `docs/lanes/shadetie224b/NOTES.md`.
