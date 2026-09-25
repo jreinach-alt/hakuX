@@ -1039,13 +1039,6 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #315: PS_TEXTUREMODES_BRDF unimplemented plus a 614-px wedge silicon draws and we do not. Discriminating run first (pixel 639,479 at a ref containing 8e683b3a26), then fit the BRDF rule and name the psh.c hunk (psh.c is held; named-not-edited). Brief: briefs/brdf315.md."
 
 
-[lane.cloud-issue-286]
-issues = ["286"]
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-286, a cloud-class lane on issue #286, branch lane/cloud-286, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 286` removes this row when the unit ends."
-
-
 [lane.cloud-audit1-270]
 issues = []
 files = []
