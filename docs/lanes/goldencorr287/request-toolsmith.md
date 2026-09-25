@@ -16,6 +16,6 @@
 2. `dispatcher.sh:1039`: pass `--golden-overrides "$TREE/docs/testing/golden_overrides"`. It has to be the tree path, **not** `$HERE`: workers run from the `$SNAP` copy, and a data directory is not in `SCRIPT_DEPS`, so a sibling path would not exist there (see the closure comment at dispatcher.sh:81 and selftest.d/97).
 3. Data (a board territory grant is requested separately): `docs/testing/golden_overrides/Texture_format/TexFmt_R6G5B5.png`, a byte copy of console set K (`hardware/runs/2026-09-19-calib/full/out/run1`), sha256 `07dedad9ac60aa7c...`, with a README row recording the upstream golden's sha256 (`50af66a644f6...`), the source runs and #287. The data can land before the hook and moves nothing until the hook reads it.
 
-**Offline result** (stock scorer vs the scratch scorer with `GOLDEN_OVERRIDES` set): see docs/lanes/goldencorr287/NOTES.md on PR #300.
+**Offline result** (stock scorer vs the scratch scorer with `GOLDEN_OVERRIDES` set): re-scoring the scored sweeps of run `z-c866527e03`, `Texture_format` (40 rows, twice) goes from 134,902 px to 0 with only `TexFmt_R6G5B5` moving (white-content -> ok); `Texture_render_target` (40 rows) is 1,473 px both ways with no row moved, including its own `TexFmt_R6G5B5`. Full detail: docs/lanes/goldencorr287/NOTES.md on PR #300.
 
 No arm can measure this: the captures do not change, only the reference and the scorer do, and an arm is scored by the host's snapshot scorer, not by either ref.

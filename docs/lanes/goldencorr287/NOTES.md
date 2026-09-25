@@ -66,7 +66,16 @@ score identically. So `Prediction: none: no arm`, and the falsifier is a re-scor
 of real sweep captures: stock `score_sweep.py` against upstream goldens (A) vs
 the scratch patched scorer with the one override (B), `falsify.sh`.
 
-RESULTS_PLACEHOLDER
+Re-scored sweeps of scored run `z-c866527e03` (every row in both suites, 40 each):
+
+| sweep | rows | A sum px | B sum px | rows moved A -> B |
+|---|---:|---:|---:|---|
+| 081-Texture_format | 40 | 134,902 | 0 | `TexFmt_R6G5B5`: white-content 134,902 -> ok 0 |
+| repeat 081-Texture_format | 40 | 134,902 | 0 | the same, only that row |
+| 085-Texture_render_target | 40 | 1,473 | 1,473 | none (its `TexFmt_R6G5B5` stays ok 0) |
+
+R6G5B5 moves to exact, and no other row moves in status or pixel count,
+including the same-named render-target row.
 
 What this tests and what it cannot: once the override is the console capture,
 R6G5B5 going exact is forced for any capture byte-identical to K. The
@@ -101,6 +110,16 @@ golden that is wrong in a suite K did not capture is not visible to this query.
 
 Either order is safe: the data moves nothing until the hook reads it, and the
 hook moves nothing until the data exists.
+
+## Why attempt 1 did not finish (written on attempt 2, 2026-09-25)
+
+Attempt 1 ended with the PR in draft, the falsifier table still a placeholder
+(the TSVs were on disk in the untracked `scratch/`, never summarised), the PR
+body still saying `Prediction: pending`, nothing posted on #287, and the
+toolsmith request drafted but never sent (#287 carried no delivery comment).
+The board request was filed. Attempt 2 summarised the TSVs above, sent the
+toolsmith request, answered #287, and marked the PR ready as blocked on the
+two grants. Nothing was re-measured.
 
 ## Do not repeat
 
