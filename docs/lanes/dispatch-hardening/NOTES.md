@@ -223,6 +223,54 @@ hand and has no fragment.
     #91 notes are gone. Master's version printed them from the 09-18
     working-tree copy.
 
+## Defect 11: a refuted-then-reverted FAIL kept its PR `regressed` forever
+
+PR #260, decision #257 option 3.
+
+- **The shape.** A lane whose arm refutes its candidate reverts the code.
+  The branch is then docs-only, which builds master's binary, so no arm can
+  supersede the FAIL. PR #252 (#224 family B) sat there. The exits were an
+  override that was not an acceptance, or re-landing the docs with no
+  prediction (#259).
+- **The rule.** In `label_decide`, a FAIL is withdrawn when
+  `git diff --name-only a_ref b_ref`, minus `docs/`, shares no file with
+  `git diff --name-only origin/<tip>...<head>`.
+  - A withdrawn FAIL leaves the decision entirely. It neither counts nor
+    supersedes, so an older verdict on the same issue is live again.
+  - `state` prints `withdrawn <prediction>` straight after `STATE=`, and a
+    markdown line naming the files that are gone.
+  - Things that cannot be answered keep the FAIL: an unresolvable ref, a head
+    the object store lacks, or an arm whose b_ref changed no code. (An empty
+    set would otherwise be withdrawn vacuously.)
+  - A PASS is never withdrawn. A partial revert is not a withdrawal.
+  - `state` stays offline. It reads the refs the last tick fetched:
+    `origin/<branch>`, then `refs/heads/<branch>`, then `refs/remotes/pr/<n>`
+    from the last PR map.
+- **The label.** Beyond the brief, the judge loop moves labels only when it
+  judges an arm, and a reverted branch is never judged again. Without more,
+  `regressed` would stay on the PR and fold.sh reads the label. So each tick,
+  for every open PR (from the PR map) with a withdrawn FAIL and nothing else
+  outstanding, it takes `regressed` off once per set of withdrawn verdicts.
+  It posts a `[job.arms] WITHDRAWN:` comment and keeps a marker in
+  `$WORK/arms/withdrawn/`. It does not add `verified`. The verdict comment
+  and the `judged/` marker are untouched.
+- **Proof.** Fragment `94-arms-withdrawn.sh`, with its own git repo, work dir
+  and dispatch dir:
+  - (a) full revert reads `STATE=none` plus `withdrawn`.
+  - (b) partial reads `regressed`.
+  - (c) intact reads `regressed`.
+  - (d) a PASS on a docs-only branch reads `verified`.
+  - (e) on one branch with three arms, only the middle FAIL is withdrawn.
+  - The tick removes the label once, on the right PR only.
+  - Three mutants, run from copies inside the fragment, each red on its named
+    case: no `docs/` restriction (a), any-overlap-withdraws (b), and a PASS
+    withdrawn too (d).
+- FALSIFICATION_PLACEHOLDER
+- **Real check.** `arms.sh state lane/shadetie224` on the host:
+  `STATE=none`, `withdrawn shadetie224-ltnormal.json`, naming
+  `hw/xbox/nv2a/pgraph/glsl/vsh-ff.c` as the code that is gone.
+- SELFTEST_PLACEHOLDER
+
 ## For the next lane
 
 - Do not match the WSL interop signature on a call's stderr; it bypasses
