@@ -98,3 +98,88 @@ The next attempt: judge both halves, post the verdicts on #245 and #242,
 record them here, then `gh pr ready 245` if they are clean. If Exceptional
 Float moves only partly, score the finite rows separately (see the prediction
 above). Do not revert.
+
+## Attempt 2 (2026-09-25, resumed by job.handback)
+
+### Why attempt 1 did not finish
+
+It ended on purpose, WAITING for the two vsh runs, the `[job.arms]` verdict
+and CI. All three came back, but not cleanly. The arm was judged FAIL, so
+the PR was labelled `regressed`. And master had moved 55 commits ahead, so
+the PR had an `nv2a_index.json` conflict. A PR that does not merge gets no
+CI run, which is why CI showed NONE on `f484395160`.
+
+### vsh proof (Exceptional Float): 2 of 3 rows moved to the console's values
+
+Both runs were on Thor `bdc158a5`, with `log_completed` true and
+`log_stale` false. Neither run1.log contains `UtilAcceptVsock` or PARTIAL.
+
+| row | console | base 21946df29b | fix bd552105ed |
+|---|---|---|---|
+| Inf, -Inf, NaN, -NaN | inf,-inf,nan,nan | 0,0,0,0 | **inf,-inf,nan,nan** |
+| Max, -Max, Min, -Min | 3.402823e+38,-3.402823e+38,0,-0 | 0,0,0,0 | **3.402823e+38,-3.402823e+38,0.000000,-0.000000** |
+| MaxSub, -MaxSub, MinSub, -MinSub | 0,**-0**,0,**-0** | 0,0,0,0 | 0,**0**,0,**0** |
+
+MAC_mov is IDENTICAL in both arms.
+
+So the lone vertex's program now runs, and its writes reach the bank that
+RDI reads. The NaN row agrees too: the console prints `-NaN` as `nan`, and
+so do we. The one remaining difference is arithmetic. A negative
+**subnormal** input comes back as +0 here, while silicon keeps the sign
+(-0). The flush-to-zero somewhere between the SET_VERTEX4F float and the
+constant writeback drops the sign bit. Min/-Min are normal floats and do
+keep it. This is outside this lane's scope, like #112 item 4's MUL/RCC
+behaviours. It is reported on #242 for whoever takes the evaluator's
+denormal handling.
+
+### pgraph must-not-move arm: FAIL, read as device nondeterminism
+
+`[job.arms]` FAIL, 4 of 403. The movers are all
+`Vertex_shader_rounding_tests/GeometrySuperscreen_*`: 0.4999 went 0→400,
+0.5000 went 400→0, 0.9990 went 285→0, 1.0000 went 0→285. Neither arm has any
+`unreadable` status. Neither log has PARTIAL COVERAGE. The fix arm's run1.log
+has 4 `UtilAcceptVsock` lines, all at lines 1-4, before any test ran.
+
+To analyse it, I masked the label strip (rows 20-45) and matched every
+fix-arm capture of that suite against every base-arm capture:
+
+- 47 of 51 captures match their own base capture.
+- In the **base** arm, which is master without the patch, one stray image
+  shows up in each half of GeometrySuperscreen, at 0.5000 and at 0.9990. It
+  matches no other test's image.
+- The **fix** arm has the same two stray images, identical byte for byte
+  outside the label, one test earlier or later: at 0.4999 and 1.0000.
+  The tests where the base arm had them now render the normal image.
+- No earlier scores1.tsv on the host has a nonzero GeometrySuperscreen row.
+  That covers 11 runs, from vshconst and xbox-region200 to the 090/091
+  sweeps.
+
+Master renders the stray frame without the patch, and the patch cannot run on
+this disc (no constant writes). So the patch did not cause the frame. It
+changed at most which test caught it. One run per arm cannot separate those,
+as ab_compare's own byte-level block says. I re-registered at 3 runs per arm
+instead of reverting: `vshnobegin242-must-not-move-runs3.json`, issue 242,
+a = master `a8691063e6`, b = merge `6e3b1aff8b`. Under arms.sh's
+supersession-by-issue rule, it supersedes the single-run FAIL once it is
+judged.
+
+If the 3-run arm still shows GeometrySuperscreen moving outside its band,
+the next lane should find out where the stray frame comes from. It first
+appeared in both arms of this pair, and never before. Candidates: a timing
+or capture race, or something that landed in master between the 090/091
+sweeps and 21946df29b (#224's flat-quad diagonal split is the obvious
+suspect for a rounding-boundary test). Do not revert #242 for it.
+
+### Merge
+
+I merged `origin/master` into the branch, without rebasing, because the old
+prediction names bd552105ed. The only conflict was `nv2a_index.json`. I
+regenerated it over `~/nxdk_pgraph_tests` @ 6743b6ab16 (the provenance
+tests_commit) with `--support ~/pbkitplusplus`. `check` matches.
+
+### State at the end of attempt 2: WAITING
+
+- the `[job.arms]` verdict on `vshnobegin242-must-not-move-runs3.json`. Read
+  the NOISE column for GeometrySuperscreen, `unreadable`, PARTIAL COVERAGE.
+- CI on the merged head.
+Once both are clean: `gh pr ready 245`.
