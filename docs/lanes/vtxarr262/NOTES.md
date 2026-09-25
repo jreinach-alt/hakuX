@@ -119,3 +119,22 @@ base `1790368380-vtxarr262-base-iso-1676913` (342d21c43f), fix
 over both runs' `captures1`. Expect base DynamicUpdateLoop 96,000 and fix 0. The other
 four should stay as they are (RenderScalePattern 18,136 at delta 1). Check that
 `Surface_as_vertex_array::*` files exist in both before scoring.
+
+## Attempt 2, second resume (2026-09-25 22:40Z)
+
+**Why the previous session did not finish:** it ended correctly, waiting on the
+refs6743-disc arm pair, with the PR in draft. After that, master moved 109 commits
+ahead and `docs/testing/nv2a_index.json` conflicted. GitHub builds the merge commit,
+so `0247449198` got no CI run at all. That was the "CI: NONE" the handback reported.
+
+**Done this session.** Merged `origin/master` @ 90a8dc1c1a. This was a merge, not a
+rebase, so the prediction's refs are still ancestors. The only conflict was the
+generated index. I took master's copy and rebuilt it with `nv2a_index.py build` over
+`fold-pins/` (tests_commit 6743b6a, which matches provenance). `check` passes.
+
+**Still waiting.** The pair `1790368380-vtxarr262-base-iso-1676913` /
+`1790368384-vtxarr262-fix-iso-1679009` is still in `dispatch/queue`. The dispatcher
+is not jammed: a 100-suite `0-a-now-*`/`0-b-*` priority sweep is running ahead of it,
+finishing a suite every 1-2 minutes. The PR stays draft until the must-move leg
+(DynamicUpdateLoop 96,000 -> 0) is hand-scored. That leg is the only evidence the fix
+does anything, and the machine legs only show it is inert elsewhere.
