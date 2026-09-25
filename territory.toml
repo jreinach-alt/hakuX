@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 196
-updated_utc = "2026-09-25T21:10:00Z"
+wave = 197
+updated_utc = "2026-09-25T21:15:00Z"
 
 
 [retired.hilodot10]
@@ -852,12 +852,12 @@ standing = false
 retired_utc = "2026-09-25T18:05:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T18:05Z): PR #259 MERGED (fold 2b04d4d422), no open PR on lane/shadetie224-notes. docs/lanes/shadetie224/** passes to [lane.shadetie224b]; nothing else was held. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 180 (host session): decision #257 option 2 -- the host lands lane.shadetie224's refuted-candidate analysis (NOTES sections 6-7 carry family B's next step) on a fresh branch with NO registered prediction; the judged prediction is kept under docs/lanes/shadetie224/ as a record, outside docs/testing/predictions/, so arms.sh never collects it."
 
-[lane.shadetie224b]
-issues = ["224"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/shadetie224b-*.json", "docs/lanes/shadetie224/**"]
+[retired.shadetie224b]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 183 (job.board, 2026-09-25T18:05Z), on #259's fold (2b04d4d422), which put docs/lanes/shadetie224/NOTES.md on master. #224 family B, the 1-LSB fixed-function lighting tie (884,185 px), take two: lt(N) on the whole normal is REFUTED (NOTES section 6: Lighting_range/Directional 792 -> 66,328), so the job is to price the unpriced candidates (lt on N.L only or the diffuse product only, the LT's truncating multiply/add, round-to-nearest at one named stage) against THREE tie points -- Shade_model n=3 (60), n=1 (179) and Directional's specular blue (224) -- and the Lighting_control NoSpec rows, with an independent argument; failing that, the finding is the nxdk_pgraph_tests capture spec in NOTES section 7. Fresh lane name (shadetie224b) so the refuted lane's attempt counter is not inherited. glsl/vsh-ff.c was free. Brief: briefs/shadetie224b.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #263 folds, glsl/vsh-ff.c goes to [lane.wparamff223] for #223 hunk (A), the position tail at vsh-ff.c:878-887 (priced: ff quad 494k -> ~2k, ff bitri w-inf 114k -> ~0)."
-
+retired_utc = "2026-09-25T21:15:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #263 MERGED 2026-09-25T20:40:33Z (fold 9eaae9448a), no open PR on lane/shadetie224b, unit gone. vsh-ff.c, predictions/shadetie224b-*.json, docs/lanes/shadetie224/** RELEASED to [free]. #224 stays open. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 183 (job.board, 2026-09-25T18:05Z), on #259's fold (2b04d4d422), which put docs/lanes/shadetie224/NOTES.md on master. #224 family B, the 1-LSB fixed-function lighting tie (884,185 px), take two: lt(N) on the whole normal is REFUTED (NOTES section 6: Lighting_range/Directional 792 -> 66,328), so the job is to price the unpriced candidates (lt on N.L only or the diffuse product only, the LT's truncating multiply/add, round-to-nearest at one named stage) against THREE tie points -- Shade_model n=3 (60), n=1 (179) and Directional's specular blue (224) -- and the Lighting_control NoSpec rows, with an independent argument; failing that, the finding is the nxdk_pgraph_tests capture spec in NOTES section 7. Fresh lane name (shadetie224b) so the refuted lane's attempt counter is not inherited. glsl/vsh-ff.c was free. Brief: briefs/shadetie224b.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #263 folds, glsl/vsh-ff.c goes to [lane.wparamff223] for #223 hunk (A), the position tail at vsh-ff.c:878-887 (priced: ff quad 494k -> ~2k, ff bitri w-inf 114k -> ~0)."
 
 [lane.vtxarr262]
 issues = ["262"]
@@ -915,11 +915,12 @@ files = ["docs/testing/predictions/goldencorr287-*.json", "docs/lanes/goldencorr
 standing = false
 note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #287: TexFmt_R6G5B5's golden is the outlier, our output is byte-identical to the console (134,902 phantom px). Scoring/data work, no hw/ file. It must locate the golden or override mechanism first and ask for that path by board-request; score_sweep.py is lane.toolsmith's and scoreboard.py is lane.sweepcover's and neither is granted. briefs/goldencorr287.md."
 
-[lane.zetaswap275]
-issues = ["275", "272"]
-files = ["docs/testing/predictions/zetaswap275-*.json", "docs/lanes/zetaswap275/**"]
+[retired.zetaswap275]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #275: Color_zeta_overlap Swap, 165,447 px, console matches the golden. LOCATE-FIRST: no hw/ file claimed because every plausible file (vk/surface.c, pgraph.c, psh.c, vk/draw.c) is held by another lane; the lane names the function and asks. Must not undo #91's accepted colour-wins trade. briefs/zetaswap275.md. WIDENED (host session, 2026-09-25T20:30:10Z), accepting the lane's recommendation: #275's Swap is #272's defect (the fixed-function perspective depth transform, vsh-ff.c:884 feeding psh.c zfloor), so #272 joins this lane. Next: derive silicon's depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor, price it offline. #275 closes into #272 when PR #301 folds."
+retired_utc = "2026-09-25T21:15:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #301 MERGED 2026-09-25T20:30:27Z (fold 248f1312c7), no open PR on lane/zetaswap275, unit gone. predictions/zetaswap275-*.json, docs/lanes/zetaswap275/** RELEASED to [free]. #275 and #272 stay open: the WIDENED plan (derive silicon's depth arithmetic from DBFF's grid, hold out Swap/ZetaIntoColor) is not started -- it needs a fresh dispatch on vsh-ff.c + psh.c, both to be claimed then. PRIOR NOTE: DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #275: Color_zeta_overlap Swap, 165,447 px, console matches the golden. LOCATE-FIRST: no hw/ file claimed because every plausible file (vk/surface.c, pgraph.c, psh.c, vk/draw.c) is held by another lane; the lane names the function and asks. Must not undo #91's accepted colour-wins trade. briefs/zetaswap275.md. WIDENED (host session, 2026-09-25T20:30:10Z), accepting the lane's recommendation: #275's Swap is #272's defect (the fixed-function perspective depth transform, vsh-ff.c:884 feeding psh.c zfloor), so #272 joins this lane. Next: derive silicon's depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor, price it offline. #275 closes into #272 when PR #301 folds."
 
 [lane.nanattr281]
 issues = ["281"]
@@ -933,11 +934,12 @@ files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamff22
 standing = false
 note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #223's ff bitri + ff quad families (1,640,455 px after PR #250's one-negative wedge, which folded as 8e683b3a26). PRICE OFFLINE FIRST with docs/lanes/wparamclip223/wedge_price.py: swap vsh-ff.c's divide for the prog path's homogeneous carry and see whether ff bitri reaches 0 coverage mismatch; if it does the fix is vsh-ff.c, which is lane.shadetie224b's (PR #263 in audit) -- report the function and ask, do not edit. geom.c is claimed here only for the ff-quad two-negative-vertex rule. vk/instance.c released to [free]. Brief: briefs/wparamff223.md. HOST DECISION (2026-09-25T20:30:10Z): build hunk (B) in geom.c append_wedge() now (check w_gaps first, as NOTES say); hunk (A) needs vsh-ff.c, which comes here when lane.shadetie224b's PR #263 folds."
 
-[lane.spheremap273]
-issues = ["273"]
-files = ["docs/testing/predictions/spheremap273-*.json", "docs/lanes/spheremap273/**"]
+[retired.spheremap273]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #273: Texgen with texture matrix, SphereMap_Arbitrary and SphereMap_RotateX draw the whole 455x289 quad wrong (262,990 px, one mechanism). LOCATE-FIRST: vsh-ff.c (the guessed area, :699) is lane.shadetie224b's; name the function and the change and ask. Brief: briefs/spheremap273.md. HOST DECISION (2026-09-25T20:30:10Z) on the 20:22Z grant request: pgraph.c comes here when lane.vshsubneg255's PR #288 folds (different function, but one file one holder). PR #305 stays analysis-only until then."
+retired_utc = "2026-09-25T21:15:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #305 MERGED 2026-09-25T20:56:21Z, analysis only, no open PR on lane/spheremap273, unit gone. predictions/spheremap273-*.json, docs/lanes/spheremap273/** RELEASED to [free]. #273 stays open. STANDING HOST DECISION carried over from the lane row: pgraph.c goes to the next #273 lane when lane.vshsubneg255's PR #288 folds (one file, one holder). PRIOR NOTE: DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #273: Texgen with texture matrix, SphereMap_Arbitrary and SphereMap_RotateX draw the whole 455x289 quad wrong (262,990 px, one mechanism). LOCATE-FIRST: vsh-ff.c (the guessed area, :699) is lane.shadetie224b's; name the function and the change and ask. Brief: briefs/spheremap273.md. HOST DECISION (2026-09-25T20:30:10Z) on the 20:22Z grant request: pgraph.c comes here when lane.vshsubneg255's PR #288 folds (different function, but one file one holder). PR #305 stays analysis-only until then."
 
 [lane.x1a7271]
 issues = ["271"]
@@ -974,14 +976,14 @@ note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z) for #68 (an
 issues = ["303"]
 files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
 standing = false
-note = "ROW WRITTEN, LANE NOT YET STARTED: at wave 195 lane.sh start returned an approval prompt in the board session (not REFUSED, no attempt spent), so the unit never started; the brief is committed. NEXT TICK: start it, do not retire this row as stale. DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
+note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
 
 
 [lane.ghoul311]
 issues = ["311"]
 files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**"]
 standing = false
-note = "ROW WRITTEN, LANE NOT YET STARTED: at wave 195 lane.sh start returned an approval prompt in the board session (not REFUSED, no attempt spent), so the unit never started; the brief is committed. NEXT TICK: start it, do not retire this row as stale. DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
+note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
 
 
 [lane.cloud-remediate-260]
