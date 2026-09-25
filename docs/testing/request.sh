@@ -15,6 +15,20 @@
 #              --env HAKUX_FIFO_SKEW_BOUND=2 --seconds 120 \
 #              --expect predictions/skew44-mode2.json
 #
+#   request.sh --who vsh --purpose "RCP vs silicon" --program vsh \
+#              --base-iso ~/hakux-work/vsh-build/nxdk_vsh_tests-c3dde45-shutdown.iso \
+#              --suites "ILU RCP Tests,Exceptional Float" --device thor \
+#              --no-expect "printed values diffed against the console's"
+#
+# --program vsh runs nxdk_vsh_tests instead of the pgraph suite. --suites names
+# the program's own suites (spaces, as in its cnf), the disc gets a
+# vsh_tests.cnf listing them, and the result is vsh_score.py's per-test diff of
+# the printed values against the 2026-09-25 console run -- not a golden score,
+# and ab_compare refuses it. The base ISO is inspected HERE: a vsh image queued
+# as pgraph, one that reboots at completion, or a vsh disc that would boot
+# without its cnf all hang the guest for the whole timeout, so each is refused
+# before a worker can claim it.
+#
 # --env KEY=VALUE, repeatable, sets one environment variable in the emulator
 # for this run and this run only. It is how a runtime-selectable option becomes
 # selectable BY A QUEUED REQUEST rather than only by a person holding the
@@ -85,7 +99,7 @@ WHO=""; PURPOSE=""; SUITES=""; REF="HEAD"; RUNS=1; WAIT=0; ARM="company"; TESTS=
 REF_WAS_DEFAULTED=1
 SKIP_TESTS=""
 TITLE=""; SECONDS_HOLD=60; PULL_GLOB=""; EXPECT=""; NO_EXPECT=""; DEVICE=""
-AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""
+AUDIO_CAPTURE=""; BASE_ISO=""; PERFLOG=""; ONLY_TESTS=""; PROGRAM="pgraph"
 ENV_VARS=()
 FRAMES_EVERY=0
 while [ $# -gt 0 ]; do
@@ -135,6 +149,7 @@ while [ $# -gt 0 ]; do
         --pull) PULL_GLOB="$2"; shift 2;;
         --audio-capture) AUDIO_CAPTURE="$2"; shift 2;;
         --base-iso) BASE_ISO="$2"; shift 2;;
+        --program) PROGRAM="$2"; shift 2;;
         --perflog) PERFLOG=true; shift;;
         --env) ENV_VARS+=("$2"); shift 2;;
         --frames-every) FRAMES_EVERY="$2"; shift 2;;
@@ -915,16 +930,97 @@ if [ -n "$BASE_ISO" ]; then
     fi
 fi
 
+# --program: WHICH TEST PROGRAM, and the disc it would boot, checked HERE.
+#
+# nxdk_vsh_tests reads d:\vsh_tests.cnf and, when the file is missing, ASSERTs
+# and waits forever (debug_output.cpp PrintAssertAndWaitForever). The emulator
+# stays up, so nothing tells the worker the guest is dead: the run burns its
+# whole timeout with the device awake and comes back with nothing. Every path
+# to that disc is refused before a worker can claim it:
+#
+#   * a vsh base ISO queued as pgraph (no --program): the dispatcher would
+#     write nxdk_pgraph_tests_config.json, which this program never reads, and
+#     no cnf. This is the case a request.sh without the check ACCEPTS.
+#   * --program vsh without --base-iso: the stock disc is pgraph.
+#   * a vsh build that reboots at completion: on hakuX the reboot boots the
+#     same disc again, and the program reruns until the timeout.
+#   * a suite name the program does not know: it drops unknown names and,
+#     left with none, runs EVERY suite.
+#
+# The vsh disc is BUILT here, into a scratch file, with the arguments the
+# dispatcher will use, and the built image is inspected -- the check reads the
+# artefact, not a model of it.
+case "$PROGRAM" in
+    pgraph|vsh) ;;
+    *) echo "unknown --program '$PROGRAM'; expected pgraph or vsh" >&2; exit 2 ;;
+esac
+if [ -n "$BASE_ISO" ] || [ "$PROGRAM" = vsh ]; then
+    MKISO="$(cd "$(dirname "$0")" && pwd)/make_test_iso.py"
+    if [ "$PROGRAM" = vsh ]; then
+        if [ -n "$TITLE" ] || [ -z "$BASE_ISO" ]; then
+            echo "refusing to queue: --program vsh needs --base-iso (an nxdk_vsh_tests" >&2
+            echo "  image built with ENABLE_SHUTDOWN) and --suites, and is not a soak." >&2
+            exit 2
+        fi
+        if [ -n "$ONLY_TESTS$SKIP_TESTS" ]; then
+            echo "refusing to queue: --only-tests/--skip-tests are pgraph-disc options;" >&2
+            echo "  nothing writes nxdk_vsh_tests' own '-Test' syntax yet." >&2
+            exit 2
+        fi
+        # THE SERVING SNAPSHOT must carry all three halves, or a worker that
+        # predates them builds this as a pgraph disc -- the hang above.
+        SNAPBIN="${DISPATCH_DIR:-$D}/bin"
+        if ! grep -q -- '--program' "$SNAPBIN/make_test_iso.py" 2>/dev/null \
+           || ! grep -q vsh_score.py "$SNAPBIN/dispatcher.sh" 2>/dev/null \
+           || [ ! -f "$SNAPBIN/vsh_score.py" ]; then
+            echo "refusing to queue: the serving dispatcher snapshot ($SNAPBIN) does" >&2
+            echo "  not run program vsh. It would build a pgraph disc from this image," >&2
+            echo "  which hangs. Wait for the vsh support to fold and a worker to re-exec." >&2
+            exit 2
+        fi
+        VSH_TMP=$(mktemp -d)
+        VSH_ARGS=()
+        IFS=',' read -r -a VSH_SUITES <<<"$SUITES"
+        for s in "${VSH_SUITES[@]}"; do
+            s="${s#"${s%%[![:space:]]*}"}"; s="${s%"${s##*[![:space:]]}"}"
+            [ -n "$s" ] && VSH_ARGS+=(--suite "$s")
+        done
+        if ! python3 "$MKISO" "$BASE_ISO" --program vsh -o "$VSH_TMP/disc.iso" \
+                ${VSH_ARGS[@]+"${VSH_ARGS[@]}"} >"$VSH_TMP/log" 2>&1 \
+           || ! python3 "$MKISO" --inspect --program vsh "$VSH_TMP/disc.iso" \
+                >>"$VSH_TMP/log" 2>&1; then
+            echo "refusing to queue: this vsh disc would not run to completion:" >&2
+            grep -E "^(refused|error):|suite|needs" "$VSH_TMP/log" | sed 's/^/  /' >&2
+            rm -rf "$VSH_TMP"
+            exit 2
+        fi
+        rm -rf "$VSH_TMP"
+    else
+        # pgraph with a named base ISO. An image the inspector cannot identify
+        # stays accepted, as every base ISO was before this check; only one
+        # that is POSITIVELY another program is refused.
+        GOT=$(python3 "$MKISO" --inspect --program pgraph "$BASE_ISO" 2>/dev/null \
+              | python3 -c 'import json,sys; print(json.load(sys.stdin)["program"])' 2>/dev/null)
+        if [ "$GOT" = vsh ]; then
+            echo "refusing to queue: $BASE_ISO is an nxdk_vsh_tests disc, queued as pgraph." >&2
+            echo "  The dispatcher would write the pgraph JSON and no vsh_tests.cnf, and the" >&2
+            echo "  program ASSERTs and waits forever without it. Pass --program vsh." >&2
+            exit 2
+        fi
+    fi
+fi
+
 # `env` goes LAST and as the remaining argv, because it is the only repeatable
 # option here and packing it into one comma-joined string -- the shape every
 # other list option uses -- would make a value containing a comma unqueueable.
-python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
+python3 - "$D/queue/.$ID.req.tmp" "$ID" "$WHO" "$PURPOSE" "$SUITES" "$REF" "$ARM" "$RUNS" "$TESTS" "$TITLE" "$SECONDS_HOLD" "$PULL_GLOB" "$EXPECT" "${EXPECT_SHA:-}" "$NO_EXPECT" "$SKIP_TESTS" "$DEVICE" "$AUDIO_CAPTURE" "$BASE_ISO" "$PERFLOG" "$ONLY_TESTS" "$FRAMES_EVERY" "$PROGRAM" ${ENV_VARS[@]+"${ENV_VARS[@]}"} <<'PY'
 import json, sys
 (p, i, who, purpose, suites, ref, arm, runs, tests, title, seconds,
  pull_glob, expect, expect_sha, no_expect, skip_tests, device,
- arm_audio, base_iso, perflog, only_tests, frames_every) = sys.argv[1:23]
-env_vars = sys.argv[23:]
+ arm_audio, base_iso, perflog, only_tests, frames_every, program) = sys.argv[1:24]
+env_vars = sys.argv[24:]
 json.dump({"id": i, "requester": who, "purpose": purpose,
+           "program": program,
            "suites": [s.strip() for s in suites.split(",") if s.strip()],
            "tests": [t.strip() for t in tests.split(",") if t.strip()],
            "skip_tests": [t.strip() for t in skip_tests.split(",") if t.strip()],
@@ -981,8 +1077,9 @@ if r.get("title"):
     print("soak: %s, %ss%s" % (r["title"], r["seconds"],
                                ", env " + " ".join(r["env"]) if r.get("env") else ""))
 else:
-    print("disc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
-          % (len(r["suites"]), ",".join(r["suites"])[:70],
+    print("%sdisc: %d suite(s) [%s], only_tests %d, skip_tests %d, runs %d"
+          % ("vsh " if r.get("program") == "vsh" else "",
+             len(r["suites"]), ",".join(r["suites"])[:70],
              len(r["only_tests"]), len(r["skip_tests"]), r["runs"]))
 PYSUM
 )
@@ -1043,6 +1140,15 @@ if m.get('kind') == 'soak':
         print('frames   NONE, though every', str(fr['every']) + 's was asked for'
               ' -- every capture failed; treat this as a failed run, not as zero')
     print('logcat  ', '$D/results/$ID/logcat.txt')
+    raise SystemExit(0)
+# A vsh result has verdicts against the console's text, not golden scores.
+if m.get('kind') == 'vsh':
+    print('binary  ', m['apk_sha'], ' disc', m['disc_id'], ' device', m.get('device_label') or '?')
+    for r in m['runs']:
+        print('run     ', r['json'], r['identical'], 'identical', r['differs'], 'differ',
+              r['missing'], 'missing', r['stale'], 'stale', r['no_reference'], 'no-reference',
+              '' if r['log_completed'] else '  *** log.txt NOT COMPLETED ***')
+    print('verdicts', '$D/results/$ID/vsh1.txt')
     raise SystemExit(0)
 print('binary  ', m['apk_sha'], ' disc', m['disc_id'], ' classifier', m.get('classifier_rev'))
 for r in m['runs']:
