@@ -380,6 +380,17 @@ reader: it needs a job reading it hourly, not a person.
 all reference it; each moves to its own worktree from the mirror. Once nothing
 automated reads it, "the shared tree went dirty" cannot stall anything.
 
+**`nightly_build.sh` is done** (PR #209): `jobs/run-nightly.sh` keeps its own
+worktree, and the script refuses to publish anything that is not
+`origin/master`'s tip. It is worth saying what the cost of the delay was,
+because the other three are still open: for the 34 hours this paragraph went
+unexecuted the nightly built a 09-19 sha twice and published both under a
+current date saying "No commits in the last day". The shared tree does not
+only go *dirty*; it goes *stale*, silently, and a job reading it cannot tell.
+`dx_pass.sh` is the one with the same shape -- it reads `papercuts.toml` and a
+24-hour `git log` from that tree -- and it should go through `run-trunk.sh`,
+not a second private worktree, since it has no build to hold a lock for.
+
 ---
 
 ## 8. Folding and CI

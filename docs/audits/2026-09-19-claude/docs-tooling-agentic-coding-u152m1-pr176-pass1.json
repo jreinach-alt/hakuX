@@ -1,0 +1,72 @@
+[
+ {
+  "id": "H1",
+  "severity": "HIGH",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 240,
+  "summary": "score() treats a golden it never opened as a golden that agreed. A capture with no file on disk prints 'NO GOLDEN' and continues at :240-241 without touching `bad` or `worst`, and the summary at :257 is a HARDCODED 32 over a tally that only ever counted the halves that existed; the return is `1 if bad else 0`. So a run that read nothing prints '0 of 32 modelled halves differ; worst |delta| = 0' and exits 0 -- character for character the number this PR publishes in its title, its body and NOTES.md. The partial case has no honest reading at all: with one of four captures present the run compares eight halves and still reports 32. This is not a generic robustness nit, because of the PR's own argument -- the sixteen DstAlpha halves are pinned in GOLDEN_DSTALPHA and checked with no disc, while the HELD-OUT sixteen (the 1-DstAlpha pair, which the body correctly calls the reason a wrong sign cannot be hidden by a table written to match) are checked ONLY by score(), and they are exactly the entries that vanish into NO GOLDEN without a tally. The half of the evidence carrying the falsification power is the half that disappears silently.",
+  "scenario": "The documented default goldens root is /tmp/goldens/results (:4, :265), which is empty on this host right now and on any host where the disc has not been unpacked this boot. A later lane, or the pass-2 auditor, runs the reproduction line the NOTES give them -- `docs/testing/x1a7_forward_model.py /tmp/goldens/results` -- reads '0 of 32 modelled halves differ; worst |delta| = 0', exit 0, and records the model as re-confirmed against goldens it never opened. Nothing in the run distinguishes that from the real result.",
+  "remediation": "Count what was not read. `bad += 1` per missing capture is not enough on its own: make the summary report the denominator actually compared ('%d of %d compared, %d of 32 expected') and return non-zero when compared != len(pred). A --require-all that is on by default is the shape this repo has settled on elsewhere. Also print the path of each golden actually opened (see M2).",
+  "evidence": "Ran it. Empty dir: four 'NO GOLDEN' lines then '0 of 32 modelled halves differ; worst |delta| = 0', RC=0. One synthetic capture of the four, filled with the model's own values: eight 'ok' rows, three 'NO GOLDEN' rows, same summary line, RC=0 -- eight halves compared, thirty-two reported."
+ },
+ {
+  "id": "M1",
+  "severity": "MEDIUM",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 87,
+  "summary": "--proposed computes the identical function to the default mode, so it cannot disagree with it. write_transform(a8) at :69-76 is expand7(r2_a7(a8)), which is r1_blend_dst_alpha(a8) character for character, and write_transform(0x22) == 0x22, the swatch alpha. Substituting both turns proposed() (:87-105) into swatch() (:57-66) line for line. Checked exhaustively, not by inspection: over all 1,024 combinations of background_alpha 0..255 x pad_bit {0,1} x one_minus {F,T}, proposed() and swatch() differ on 0. So --proposed and the default mode emit byte-identical output on any input, and the selftest's third section (:213-221, 'the PROPOSED fix ... reproduces 16 of 16') is a restatement of its first. There is no world in which the first passes and the third fails.",
+  "scenario": "The body presents this as a distinct result: 'The fix, simulated before any C is written ... scores it against the goldens: 0 of 32 modelled halves differ, worst |delta| 0, held-out pair included.' A lane picking this up writes the psh.c write side, runs --proposed against real goldens, sees 0 of 32, and records the implementation as validated before device. But --proposed reads no C, and at the model level it re-evaluates the same composition R1 and R2 were SELECTED from using the same 32 numbers. It can only ever agree. The one thing it does catch is a mutation of write_transform alone -- that R1's definition was not broken in one of its two spellings -- which is a consistency check between two copies of one formula, not a simulation of a fix.",
+  "remediation": "Either make proposed() model something swatch() does not -- the honest candidate is the XA_*_Add_SrcA_DstA pair the note already identifies, where expand7(As>>1)*Fs + Ad*Fd and expand7((As*Fs + Ad*Fd)>>1) genuinely differ and a predicted delta would be a real forward prediction -- or delete --proposed and the third selftest section and say in one line that the fix implements R1 by identity, so its simulation IS the model.",
+  "evidence": "Exhaustive sweep: 'proposed() vs swatch(): 0 differing of 1024'; 'write_transform == r1_blend_dst_alpha over 0..255: True'; 'write_transform(0x22) = 0x22'. proposed()'s own docstring names the reason ('write_transform(0x22) == 0x22') while the body and NOTES still bank the result as independent."
+ },
+ {
+  "id": "M2",
+  "severity": "MEDIUM",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 238,
+  "summary": "score() picks hit[0] out of an unordered multi-match glob and never says which file it read. The '*' at :238 is a suite directory, so a goldens root holding more than one directory that carries DstAlpha_XA_Z1A7RGB8.png -- a re-run beside a previous one, a GL set beside a Vulkan set, an unpacked archive beside a live capture dir -- silently scores whichever the filesystem returns first. glob.glob does not sort. No line of output names the file, so the run is not reproducible from its own transcript and a reader cannot tell which artifact produced the number.",
+  "scenario": "A lane unpacks a fresh iso_surf1 run next to the one from an earlier sweep under the same root. score() reads the stale one, prints '0 of 32 modelled halves differ', and the lane concludes the model still holds at the new master -- a stale artifact measuring beautifully. Compounded with H1, the published figures are attributable to no named artifact at all.",
+  "remediation": "Sort the matches, refuse (or warn loudly and count) when len(hit) > 1, and print the resolved path on every scored row or once per capture, so the PR's numbers are re-runnable to the file.",
+  "evidence": "Read at :238-242: `hit = glob.glob(...)`, `if not hit: continue`, `Image.open(hit[0])`. No sort, no len check, no path in any print."
+ },
+ {
+  "id": "L1",
+  "severity": "LOW",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 182,
+  "summary": "model_with() (:182-189) is a third copy of the composition in swatch() (:57-66). They agree on all 1,024 inputs today (checked). But the rivals are scored through model_with while the model is scored through swatch, so a future correction to swatch that still satisfies the sixteen pinned goldens -- one affecting only one_minus=True, which neither selftest() nor the rival loop ever evaluates -- would leave the four refutations computed against the superseded composition with the gate still green.",
+  "scenario": "Someone corrects the blend or the rounding in swatch() in a way the pinned DstAlpha half does not see; the rival section keeps printing 'refuted' under the old model, and the gate's discriminating power detaches from the model it is supposed to be discriminating for.",
+  "remediation": "One composition function taking (r1, r2), called with the real pair for the model and the rival pairs for the rivals. That removes the class rather than the instance.",
+  "evidence": "model_with(r1_blend_dst_alpha, r2_sampled_alpha, ...) vs swatch(...): 0 differing of 1024 today; nothing in the file or the gate asserts it."
+ },
+ {
+  "id": "L2",
+  "severity": "LOW",
+  "file": "docs/testing/jobs/selftest.d/76-x1a7-model.sh",
+  "line": 21,
+  "summary": "The gate's first check counts 18 things and calls them 16. `[ \"$(x1a7cnt ' ok' \"$X1A7\")\" -ge 16 ]` counts lines containing ' ok', and the selftest prints 18 of them: 16 goldens plus the proposed line plus the losslessness line (counted: 18). So this check alone passes with two golden halves mismatching. It is sound today only because the separate MISMATCH check at :23-24 catches them -- but the description, 'the model reproduces every pinned golden half', is then describing something it does not measure. A grep check matching the prose rather than the call.",
+  "scenario": "Two of the sixteen pinned halves start mismatching; the count check still passes at 16 >= 16, and only the second assertion fails. If the MISMATCH wording ever changes, the gate reports a pass on 14 of 16.",
+  "remediation": "Have the model print an explicit '16 of 16 pinned halves reproduced' tally and anchor the check on that string.",
+  "evidence": "`python3 docs/testing/x1a7_forward_model.py --selftest | grep -cF -- ' ok'` -> 18."
+ },
+ {
+  "id": "L3",
+  "severity": "LOW",
+  "file": "docs/testing/x1a7_forward_model.py",
+  "line": 246,
+  "summary": "An undersized golden crashes rather than reporting. At :246-250, if an image is smaller than the hardcoded MARGIN/TOP/SPACING/ROW_PITCH/SIZE grid (:122), `region` is empty and counts.argmax() raises 'attempt to get argmax of an empty sequence'. The five geometry constants are unvalidated against the image and undocumented as to where they came from.",
+  "scenario": "A capture at a different resolution, or a cropped/thumbnailed golden, aborts the whole scoring run with a numpy traceback instead of naming the capture whose geometry did not match.",
+  "remediation": "Assert the image shape covers the grid, with the capture name in the message; one line.",
+  "evidence": "Read at :243-253; no shape check between Image.open and the slice."
+ },
+ {
+  "id": "L4",
+  "severity": "LOW",
+  "file": "docs/lanes/remote/NOTES.md",
+  "line": 0,
+  "summary": "The NOTES' reproduction command does not reproduce its own table. The note says 'Enumerate every site outside vk/ that names either suffix -- grep -rn \"X1A7R8G8B8_[ZO]\" hw/', but that command as written includes vk/ and returns 11 lines here, while the table lists six sites. The uncounted eleventh, pgraph.c:4664, is a comment, so the conclusion ('no GL-path code distinguishes them') is unaffected.",
+  "scenario": "A later reader runs the quoted line, gets a different count from the stated one, and spends time reconciling an exhaustiveness claim that is in fact correct.",
+  "remediation": "Quote the command actually run, e.g. with `| grep -v '/vk/'`, and either list pgraph.c:4664 in the table or say comments outside the two named ones are excluded.",
+  "evidence": "`grep -rn \"X1A7R8G8B8_[ZO]\" hw/ | grep -v '/vk/'` -> 11 lines over 7 files; the table names 6 sites."
+ }
+]

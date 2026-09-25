@@ -41,9 +41,18 @@ calm.
 So every fact that decides a FAIL is now derived from the thing itself:
 
   RUNNING            systemctl --user list-units 'hakux-lane-*'
-  READY, NOT FOLDED  gh pr list: an open lane PR that is not a draft
-  BLOCKED            gh pr list: an open lane PR labelled `blocked`
+  READY, NOT FOLDED  REST /pulls: an open lane PR that is not a draft
+  BLOCKED            REST /pulls: an open lane PR labelled `blocked`
+  REMOTE LANES       a territory row carrying `remote`
   territory rows     board_files.load("territory.toml")
+
+AND A LANE PR IS NOT DEFINED BY ITS BRANCH NAME. `lane/*` was a proxy for "a
+branch a lane owns" and it failed on the one real lane that does not use the
+prefix: `lane.remote`, a cloud session on `claude/...`, was counted in no PR
+section and listed as a claim with no agent on every tick. Its liveness is not
+a systemd unit and never can be, so subtracting the unit set says nothing about
+it -- and this section is what a reader uses to decide a claim is stale, on a
+row whose files a live session pushes to hourly.
 
 A unit that is active is running; there is no state for it to be in that a
 file could disagree with. A lane that has finished is one whose unit is gone,
@@ -71,6 +80,14 @@ D = os.environ.get("DISPATCH_DIR", "/home/justin/hakux-work/dispatch")
 # Overridable so the issue-blind path can be exercised without unplugging the
 # network. A gate whose failure branch has never run is not a gate.
 REPO = os.environ.get("HAKUX_REPO", "jreinach-alt/hakuX")
+
+# BESIDE THIS FILE, NOT ON THE CWD: selftest.d/93 and /55 both run this script
+# from a scratch directory holding copies of it and its siblings. The `jobs/`
+# display helper imported in main() is OPTIONAL for exactly that reason and
+# this one is NOT -- it is how the script talks to GitHub at all, and a
+# ModuleNotFoundError is the right, loud answer to a copy that left it behind.
+sys.path.insert(0, HERE)
+import gh_rest  # noqa: E402  (after the sys.path line it depends on)
 
 
 def load_fleet():
@@ -176,29 +193,70 @@ IN_FLIGHT = {"needs-audit-1", "needs-audit-2", "needs-remediation",
              "fold-ready", "folded", "needs-rebase", "claimed:cloud"}
 
 
-def lane_prs():
-    """Open PRs on lane/* branches, or None if gh could not answer.
+def remote_lanes(terr):
+    """{branch: lane} for every territory row marked `remote`.
 
-    One call. Everything the READY-NOT-FOLDED and BLOCKED sections need comes
-    out of it, so neither section costs a call per lane.
+    A LANE IS A ROW IN territory.toml, NOT A BRANCH NAME. `lane.remote` is a
+    cloud session on `claude/docs-tooling-agentic-coding-u152m1`; before this
+    it was counted in no PR section and reported in LANE CLAIMED WITH NO
+    RUNNING AGENT every tick, because its liveness is not a `hakux-lane-*`
+    unit and never can be. The board could therefore dispatch a local lane
+    onto files that lane holds, with territory.toml the only thing in the way.
+
+    The marker's VALUE is the branch (`remote = "claude/..."`); `remote = true`
+    means the conventional `lane/<row name>`. See jobs/remote-lane.sh, which is
+    the same rule for the shell jobs -- a boolean alone cannot answer the
+    question this function is asked, which is "whose branch is this?".
     """
-    try:
-        r = subprocess.run(["gh", "pr", "list", "--repo", REPO, "--state", "open",
-                            "--limit", "60", "--json",
-                            "number,headRefName,isDraft,labels,updatedAt,title"],
-                           capture_output=True, text=True, timeout=30)
-        if r.returncode != 0:
-            return None
-        rows = json.loads(r.stdout or "[]")
-    except Exception as e:
-        print("gh pr list did not answer (%s)" % e, file=sys.stderr)
+    out = {}
+    for lane, meta in (terr.get("lane") or {}).items():
+        r = meta.get("remote")
+        if r is True:
+            out["lane/" + lane] = lane
+        elif isinstance(r, str) and r.strip():
+            out[r.strip()] = lane
+    return out
+
+
+def lane_prs(remote=None):
+    """Open PRs a lane owns, or None if gh could not answer.
+
+    A `lane/*` head, or a head some territory row names as its remote lane's.
+    One LIST, not a call per lane: everything the READY-NOT-FOLDED and BLOCKED
+    sections need comes out of it. (One HTTP call per hundred PRs, since REST
+    pages -- see gh_rest.)
+
+    OVER REST, because `gh pr list` is GraphQL and a Claude Code cloud
+    session's proxy refuses GraphQL outright -- so there this returned None on
+    every call and the report was permanently PR-BLIND. That at least PRINTS
+    what it could not see, which is why this half of the defect was survivable
+    and check_coverage.py's silent `ok` was not; it was still wrong, and the
+    same credential answers over REST. gh_rest.open_prs normalises the field
+    names back onto the `gh pr list --json` spellings used below -- including
+    `head.ref` back to `headRefName`, which is what the `remote` map is keyed
+    on, so a remote lane's branch is matched over REST exactly as it was over
+    GraphQL.
+
+    NO PULL-REQUEST FILTER IS NEEDED HERE and its absence is not an oversight:
+    /pulls returns only pull requests. It is /issues that returns both, which
+    is gh_rest.open_issues' problem and is documented there.
+    """
+    remote = remote or {}
+    rows, err = gh_rest.open_prs(REPO)
+    if rows is None:
+        print("gh pr list did not answer (%s)" % err, file=sys.stderr)
         return None
     out = []
     for p in rows:
         ref = p.get("headRefName") or ""
-        if not ref.startswith("lane/"):
+        if ref in remote:
+            p["lane"] = remote[ref]
+            p["remote"] = True
+        elif ref.startswith("lane/"):
+            p["lane"] = ref[len("lane/"):]
+            p["remote"] = False
+        else:
             continue
-        p["lane"] = ref[len("lane/"):]
         p["labelset"] = {l.get("name") for l in (p.get("labels") or [])}
         out.append(p)
     return out
@@ -254,31 +312,28 @@ def main():
     # prompt, a wedged connection -- blocks forever, and anything that invokes
     # this from a poll loop then stops reporting the fleet at exactly the
     # moment the fleet is stuck. Fail fast and say the report is issue-blind.
-    try:
-        r = subprocess.run(["gh", "issue", "list", "--repo", REPO,
-                            "--state", "open", "--limit", "80",
-                            "--json", "number,title"],
-                           capture_output=True, text=True, timeout=30)
-        ok = r.returncode == 0
-    except Exception as e:
-        r, ok = None, False
-        print("gh did not answer (%s)" % e, file=sys.stderr)
-    if not ok:
-        print("cannot reach gh; fleet report is issue-blind -- the "
+    #
+    # AND IT IS REST NOW, for the reason spelled out in gh_rest: `gh issue
+    # list` is GraphQL, a cloud session's proxy refuses GraphQL, and this
+    # branch's issue-blind path was the ONLY path taken there. The timeout
+    # argument above is unchanged and still the reason a per-page timeout
+    # exists; gh_rest's is 40s.
+    rows, dropped_prs, why = gh_rest.open_issues(REPO)
+    if rows is None:
+        print("cannot reach gh (%s); fleet report is issue-blind -- the "
               "DISPATCHABLE section below is EMPTY BECAUSE IT WAS NOT "
-              "COMPUTED, which is not the same as nothing being dispatchable",
-              file=sys.stderr)
+              "COMPUTED, which is not the same as nothing being dispatchable"
+              % why, file=sys.stderr)
         live, titles = set(), {}
     else:
-        try:
-            rows = json.loads(r.stdout or "[]")
-        except ValueError:
-            rows, ok = [], False
-            print("gh issue list returned something that is not JSON; the "
-                  "DISPATCHABLE section is EMPTY BECAUSE IT WAS NOT COMPUTED",
-                  file=sys.stderr)
         live = {str(x["number"]) for x in rows}
         titles = {str(x["number"]): x["title"] for x in rows}
+        # The PR filter, reported rather than trusted. REST's /issues hands
+        # back pull requests too, and an unfiltered read would put every open
+        # PR into `live` -- where a tracker row keyed on that number does not
+        # exist, so fleet would announce each one as an unclassified issue.
+        print("issue list over REST: %d open issue(s), %d pull request(s) "
+              "dropped from the /issues response" % (len(rows), dropped_prs))
 
     # ---------------------------------------------------- the derived fleet
     units = lane_units()
@@ -312,7 +367,8 @@ def main():
               "(`systemctl --user list-units`); the fleet is unobservable "
               "until it answers.", file=sys.stderr)
 
-    prs = lane_prs()
+    remote = remote_lanes(terr)
+    prs = lane_prs(remote)
     pr_blind = prs is None
     if pr_blind:
         prs = []
@@ -365,8 +421,16 @@ def main():
     # than merely silent. It sets no rc, so this changes no wake-up -- but a
     # reader acting on a full list of "abandoned" claims would retire the live
     # fleet's rows, and the FLEET-BLIND line promises it is not computed.
+    #
+    # A REMOTE LANE IS NEVER A GHOST. Its liveness is not a `hakux-lane-*`
+    # unit and never can be -- it runs in a cloud container this host cannot
+    # see -- so subtracting the unit set says nothing about it. Listing it here
+    # was not merely noise: this section is the evidence a reader uses to
+    # retire a claim, and retiring `lane.remote`'s row would free files a live
+    # session pushes to hourly. It is reported under REMOTE LANES instead.
     ghost = [] if fleet_blind else sorted(
-        lane for lane in (terr.get("lane") or {}) if lane not in units)
+        lane for lane in (terr.get("lane") or {})
+        if lane not in units and lane not in remote.values())
 
     # THE OTHER DIRECTION, AND IT IS THE WORSE ONE: an agent that is RUNNING
     # with no row in territory.toml at all.
@@ -531,13 +595,44 @@ def main():
               "`lane.sh fleet-gc` deletes them)"
               % (len(stale_reg), "y" if len(stale_reg) == 1 else "ies"))
 
+    # ELSEWHERE, NOT GONE. A lane whose row carries `remote` runs somewhere
+    # this host cannot observe, so neither RUNNING nor LANE CLAIMED WITH NO
+    # RUNNING AGENT is the truth about it. It gets a line of its own saying
+    # what IS known: its branch, its PR, and that nothing local can wake it.
+    # No FAIL FROM THIS SECTION: there is no action a board tick could take
+    # from here, and a standing wake-up the board cannot clear spends a window
+    # every twenty minutes for nothing. Its PR can still raise one through
+    # `unfolded` and `waiting` below, and should -- a remote lane's ready PR
+    # enters the audit pipeline exactly like any other. The line this section
+    # does not want is the permanent one about the lane itself.
+    if remote:
+        print("\n=== REMOTE LANES (%d) -- no local unit, and that is not a fault"
+              % len(remote))
+        for branch, lane in sorted(remote.items(), key=lambda kv: kv[1]):
+            p = pr_of.get(lane)
+            print("  %-12s %-44s %s"
+                  % (lane, branch,
+                     ("PR #%d%s" % (p["number"], " draft" if p.get("isDraft") else " READY"))
+                     if p else "no open PR"))
+        print("  Its routine wakes it; `lane.sh resume` refuses these by name "
+              "(two agents, one branch, no lock). fold.sh never prunes their "
+              "branches.")
+
     print("\n=== READY, NOT FOLDED (%d)%s"
           % (len(unfolded), "  -- NOT COMPUTED, see PR-BLIND above" if pr_blind else ""))
     for p in unfolded:
+        # `finished` MEANS "the local unit is gone", and a remote lane never
+        # had one -- so the unit test answers a question that was never asked
+        # about it, and always with the one word that reads as "nobody is
+        # working on this". That is what `remote` is for: the row above is the
+        # only other place the distinction is visible, and a reader who stops
+        # at this section would not have got there.
+        if p.get("remote"):
+            where = "elsewhere"
+        else:
+            where = "unit up" if p["lane"] in units else "finished"
         print("  %-12s #%-5d %-9s %s"
-              % (p["lane"], p["number"],
-                 "unit up" if p["lane"] in units else "finished",
-                 (p.get("title") or "")[:60]))
+              % (p["lane"], p["number"], where, (p.get("title") or "")[:60]))
     print("\n=== BLOCKED (labelled `blocked`) (%d)" % len(waiting))
     for p in waiting:
         print("  %-12s #%-5d %s" % (p["lane"], p["number"], (p.get("title") or "")[:70]))

@@ -1,0 +1,158 @@
+{
+  "audit": "pass2",
+  "date": "2026-09-21",
+  "pr": 198,
+  "branch": "lane/pmc188",
+  "tip": "514783f697",
+  "pass1_tip": "c2e57d8d86",
+  "pass1_record": "docs/audits/2026-09-21-pmc188-pass1.md",
+  "auditor": "job.cloud",
+  "counts": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0,
+    "observations": 2
+  },
+  "verdict": "clean",
+  "next_label": "fold-ready",
+  "method": "Each pass-1 scenario was rebuilt from the pass-1 prose (not from the lane's mutants.py) in a tempfile.mkdtemp() tree assembled by copy, and the current selftest run against it. The lane's own harness was then run as a cross-check and agrees. The worktree was never written to.",
+  "instrument_rerun": {
+    "why": "The remediation edited both greps, the extraction bounds and the trace assertion, so pass 1's red/green describes a script that no longer exists.",
+    "current_selftest_vs_pmc_c_at_68a18b35d7^": {
+      "exit": 1,
+      "line": "FAIL NV_PMC_ENABLE addr=0x200 got=0x00000000 want=0x01110000",
+      "totals": "8 checks, 1 failures"
+    },
+    "current_selftest_vs_pmc_c_at_HEAD": {
+      "exit": 0,
+      "line": "ok NV_PMC_ENABLE addr=0x200 -> 0x01110000",
+      "totals": "8 checks, 0 failures"
+    }
+  },
+  "remediation_changed_no_code": "Filtering the pmc.c hunk of 514783f697 to non-comment, non-blank lines yields nothing. The arm is still `case NV_PMC_ENABLE: r = 0x01110000; break;`, byte for byte what pass 1 scored. Android and Desktop build are both SUCCESS on this head.",
+  "scenarios": [
+    {
+      "id": "M1",
+      "severity_at_pass1": "MEDIUM",
+      "scenario": "A write model for NV_PMC_ENABLE spelled with the numeric offset passes the selftest green, so the register whose write halted the physical console is certified clean with a write model in the tree.",
+      "rebuilt_as": "`case 0x200:` with a bogus write body at the top of pmc_write's switch -- pass 1's own block, verbatim.",
+      "before": "8 checks, 0 failures, exit 0",
+      "now": "exit 1, `REFUSED: pmc_write has a case for NV_PMC_ENABLE (0x200).`",
+      "status": "closed",
+      "extra_spellings_checked": {
+        "case NV_PMC_ENABLE:": "exit 1",
+        "case 0x00000200:": "exit 1",
+        "case 512:": "exit 1"
+      }
+    },
+    {
+      "id": "M2",
+      "severity_at_pass1": "MEDIUM",
+      "scenario": "A session opens nv2a-hardware-gap-list.md to brief #190, reads the PMC rows of 'Modelled nowhere' as current, and writes a brief whose premise ('pmc.c answers nothing in this block') is false.",
+      "verified": "Row 38 now reads 'read landed, write still nowhere' and states that pmc_read has returned the constant since PR #198 while pmc_write still drops it deliberately. A 'Read the row, not the heading' note under the table names #189 and #190 as the briefs written from it. The path is on the PR body's Files: line.",
+      "status": "closed"
+    },
+    {
+      "id": "M3",
+      "severity_at_pass1": "MEDIUM",
+      "scenario": "The 'those two facts do not reconcile' framing, planted in emulator source and two documents, points the follow-up work #188 asks for away from the narrow open question.",
+      "verified": "All four things pass 1 asked for are present at all three sites (pmc.c:69-95, the PR body, NOTES.md): bits 8 and 12 clear rather than contradictory; nv2a-mapping-programme.md:168 already reading bit 16 as PTIMER; the open questions named narrowly as bits 20/24 and a busy machine; and the measured machine state recorded beside the constant with the repeatability-vs-state-independence distinction. Corrected IN PLACE -- NOTES.md's section heading carries the withdrawal marker, so the top of the file no longer asserts the retracted premise. `git grep -i 'do not reconcile'` over the branch now hits only the pass-1 audit records.",
+      "citations_checked": {
+        "nv2a_regs.h:72-74": "0x00000200, _PFIFO (1 << 8), _PGRAPH (1 << 12)",
+        "nv2a-mapping-programme.md:167-168,204": "bit 16 = PTIMER, block reads 992/1024 non-zero",
+        "nv2a-probe-pmc-findings.md:127-130": "PTIMER 992/1024, PFIFO 382/2048, PGRAPH 0/2048",
+        "nv2a-probe-pmc-findings.md:35": "BOOT_0 = 02A000A3 as the control in both runs"
+      },
+      "remediation_corrected_the_auditor": "Pass 1 wrote the word as 'consistent with both engines idle'. PGRAPH at 0/2048 carries that half; PFIFO at 382/2048 means bit 8 being clear is unrefuted rather than confirmed. NOTES.md and the PR body both say it that way.",
+      "status": "closed"
+    },
+    {
+      "id": "L1",
+      "severity_at_pass1": "LOW",
+      "scenario": "The write extract ran to EOF, so an unrelated later function is refused as though pmc_write had changed.",
+      "rebuilt_as": "pass 1's `pmc_enable_debug_mask()` returning the constant, appended to pmc.c; and pass 1's second clause, a later `pmc_decode()` helper carrying `case NV_PMC_ENABLE:`.",
+      "before": "exit 1, false REFUSED",
+      "now": "exit 0, 8 checks, 0 failures -- both",
+      "note": "The second form is not in the lane's mutant table and passes anyway: the fix is structural (each extract bounded at its own column-0 '}', plus a guard that END < WSTART) rather than aimed at the one demonstrated mutant.",
+      "status": "closed"
+    },
+    {
+      "id": "L2",
+      "severity_at_pass1": "LOW",
+      "scenario": "The read extract ran to pmc_write's signature, so a helper added between the two is compiled into the test and a stub-set failure is reported as 'pmc.c did not compile'.",
+      "rebuilt_as": "`static MemoryRegion *pmc_region(NV2AState *d)` inserted before pmc_write.",
+      "before": "exit 1, 'the extracted pmc_read did not compile cleanly'",
+      "now": "exit 0, 8 checks, 0 failures",
+      "status": "closed"
+    },
+    {
+      "id": "L3",
+      "severity_at_pass1": "LOW",
+      "scenario": "g_log.size and g_log.block are recorded and never asserted, so a case logging the read under a corrupted size passes 'the trace is right'.",
+      "verified": "`g_log.size != 4` is in the trace condition and in the failure print; expect_read always calls pmc_read(d, addr, 4), so the assertion is live. Mutant M7b logs `size - 1` and trips it -- and logs `size - 1` rather than 0 so that -Werror=unused-parameter cannot redden the build before the assertion fires. `block` carries a comment naming nv2a_int.h as the reason it cannot be asserted.",
+      "status": "closed"
+    },
+    {
+      "id": "L4",
+      "severity_at_pass1": "LOW",
+      "scenario": "`unmodelled 0x204 == 0` reads as silicon-backed when silicon reads 1 there (#190), so the lane fixing #190 sees it go red and has to work out whether it broke something.",
+      "verified": "pmc_enable_selftest.c:137-146 now says hardware reads 0x00000001 across 0x204-0x2FC (#190), that the assertion pins the WIDTH of the new case and not the value, and that the #190 lane should change the line rather than investigate it.",
+      "status": "closed"
+    },
+    {
+      "id": "L5",
+      "severity_at_pass1": "LOW",
+      "scenario": "Nothing in CI runs the selftest, and a later reader assumes it does.",
+      "verified": "Not fixed, declined with reasoning pass 1 had already accepted, and recorded plainly in the PR body and NOTES.md. Re-confirmed by grep over .github/, docs/testing/jobs/ and preflight.sh: no reference to pmc_enable_selftest.",
+      "status": "declined with reason, as accepted at pass 1"
+    },
+    {
+      "id": "L6",
+      "severity_at_pass1": "LOW",
+      "scenario": "'nothing differs today' is false and is the sentence a fold reviewer reads.",
+      "verified": "Reworded in the PR body and NOTES.md to 'no *write* differs today', with the read named as the one live behavioural change and 'unmeasured is not nothing differs' spelled out.",
+      "status": "closed"
+    }
+  ],
+  "mutants_py": {
+    "python3 docs/lanes/pmc188/mutants.py": "14 mutants, 0 unexpected",
+    "python3 docs/lanes/pmc188/mutants.py --at c2e57d8d86": "6 of 14 disagree: M1b M1c M2b M7b L1 L2",
+    "reading": "Exactly the six rows the remediation added, and no others, which is what makes 'newly caught' a measurement rather than a claim. Matches the PR body's table."
+  },
+  "observations_not_blocking": [
+    {
+      "id": "P1",
+      "what": "nv2a-probe-pmc-findings.md:77-82 still carries the framing M3 retracted, and :68 still says pmc.c has 'neither a read case nor a write case'. Issue #190's body and #188's 'Deliberately not asserted' paragraph say the same things.",
+      "why_not_a_finding": "That document is a dated measurement record ('First results from the hardware probe... Two runs of the PMC block, 2026-09-20'), its own section at :144-148 already contains the correct reading, and pass 1 read it closely and chose to treat it as the refuting authority rather than a site to edit. Issue bodies cannot be edited by a lane at all. Bouncing the PR for a file no pass named would be moving the goalposts.",
+      "for": "whoever takes PMC next (#189, #190, the envytools cross-reference)"
+    },
+    {
+      "id": "P2",
+      "what": "A case range containing 0x200 without starting at it still passes the write guard. Measured: `case 0x1FC ... 0x2FC:` in pmc_write -> 8 checks, 0 failures, exit 0.",
+      "why_not_a_finding": "The regex alternates on NV_PMC_ENABLE|0[xX]0*200|512 followed by ':' or '...', so it catches ranges beginning at the register, not ranges spanning it. #190's own block is 0x204-0x2FC, which excludes 0x200, so the natural arm for the follow-up work is caught by neither needing to be. Recorded so the guard's reach is written down somewhere other than the regex."
+    }
+  ],
+  "red_check": {
+    "check": "NV2A index",
+    "conclusion": "FAILURE",
+    "belongs_to": "the trunk, not this PR",
+    "evidence": [
+      "First red on 4f92f86ea1 -- the pass-1 AUDIT commit, whose entire content is two files under docs/audits/.",
+      "The lane tip before it, c2e57d8d86, was green on the same workflow at 2026-09-20T22:38Z.",
+      "lane/primpv13 (PR #194) is red on the same workflow at three different head shas: 07:09Z, 08:10Z, 09:10Z on 2026-09-21.",
+      "Failure text: 'STALE INDEX ... the tests tree has 1 suite(s) the index does NOT: Fog planar vsh', plus five suites changed content.",
+      "The workflow does `git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests` with no pin, so upstream moving reddens every PR touching hw/xbox/** at once. #201, #202, #203 and #206 show no check at all because the workflow is path-scoped and their diffs miss it.",
+      "master's last NV2A index run was 2026-09-20T13:22Z, green -- before the upstream change. The trunk is stale too and does not know it yet.",
+      "preflight.sh passes on this branch with no --allow-tracker, 'nv2a index ok' included, because it checks against no cloned tests tree. Two gates, two trees."
+    ],
+    "consequence": "fold.sh's ci_green reads the rollup and will see RED, so it comments and keeps fold-ready rather than folding. Correct behaviour; no action from this lane, and re-applying the label is not required.",
+    "fix": "Regenerate docs/testing/nv2a_index.json against a CURRENT tests tree. Trunk-wide work, touching a file outside this PR's Files:, and it would collide with every other PR needing it. Recommend the board pick it up; nothing filed."
+  },
+  "definition_of_done": {
+    "preflight": "passes with no --allow-tracker",
+    "files_line": "matches git diff --name-only origin/master...HEAD exactly -- 8 paths, including nv2a-hardware-gap-list.md and mutants.py added by the remediation",
+    "notes": "docs/lanes/pmc188/NOTES.md, not the branch root",
+    "prediction": "none: no arm -- correct, no golden can score a PMC read",
+    "draft": "ready, not draft"
+  }
+}

@@ -1,0 +1,72 @@
+[
+  {
+    "pass1_id": "H1",
+    "severity": "HIGH",
+    "file": "docs/testing/predictions/2026-09-20-gl-stale-surface-blit-opengl.json",
+    "line": "5",
+    "verdict": "CLOSED",
+    "summary": "The renderer requirement is no longer carried only by prose. The file now sets a top-level \"title\", which arms.sh:653-656 reads with field() (a top-level JSON get) and skips on, and its first paragraph carries the two-arm hand-queue recipe (request.sh --device desktop --env HAKUX_RENDERER=OPENGL) instead of a prohibition addressed to a reader the queue path does not have. The gate sits AFTER live_ancestor, so the still-live b_ref does not get past it -- the remediation does not work by breaking a ref. Nothing else in the tree reads a prediction's title: the other hits are a GitHub issue title (board.sh:119, fold.sh:337) and a request record's title (request.sh:980).",
+    "scenario": "Pass 1's scenario -- collect() finds the file, it is past the watermark, both refs resolve and b_ref is live, so it is queued to the handheld pool on the default renderer, comes back 269 byte-identical captures, VERDICT: FAIL, and the PR is labelled regressed a second time on a second spent device pair -- can no longer occur. The queue loop refuses it before suites_for is ever called.",
+    "evidence": "Executed, not read. `arms.sh list` against an isolated object store and $HAKUX_WORK, with the remediated head (682f4aa8) and the head pass 1 read (516e96a8) present as two lane refs in ONE tick: the mutant reaches `WOULD QUEUE e988be896f6d... a=01047cf3 b=da9e02a2 suites=[Blend_surface,Blend_tests,Image_blit,Surface_format,Texture_format,Texture_render_target]` and the remediated head reaches `would skip aafb5bf5eee8...: soak predictions (title=desktop OpenGL A/B -- hand-queue only, see the prediction text) are hand-read; queue with request.sh --title yourself`. So the mutant reproduces pass 1's scenario in this instrument and the positive refuses it. Independently, the HOST's own job posted `[job.arms] SKIPPED` for sha256 aafb5bf5eee8 on this PR at 10:21:58Z with the same line."
+  },
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "docs/testing/predictions/2026-09-20-gl-x1a7-read-side.json",
+    "line": "7",
+    "verdict": "CLOSED",
+    "summary": "Both falsified predictions carry the same `title` marker and both now open with \"ALREADY JUDGED, ON THIS HOST, AND THE CODE IS REVERTED. DO NOT SPEND A DEVICE PAIR ON IT\", naming audit pass 1 M1 and pointing at docs/lanes/remote/NOTES.md for the result each would re-derive. The b_refs are deliberately left live, so live_ancestor still passes and the branch's history stays honest about what it contains; the refusal is the marker, one gate later.",
+    "scenario": "Pass 1's scenario -- live_ancestor passes for 9e9da01d and 5df42da3, each arm builds the b_ref commit rather than the tip, so two pairs and four arms of ~90 minutes of handheld time are spent rebuilding trees that still contain the change this branch reverted, to re-derive two results NOTES.md already states -- can no longer occur.",
+    "evidence": "Same single tick: `WOULD QUEUE cff1e2afb47d... b=9e9da01d` and `WOULD QUEUE 7af3baa38f40... b=5df42da3` on the mutant ref; `would skip 8bbb18a02078...` and `would skip b259b4104da0...` with `title=FALSIFIED AND REVERTED ON THIS BRANCH -- do not queue` on the remediated ref. The host's job posted `[job.arms] SKIPPED` for both shas on this PR at 10:22:01Z and 10:21:59Z."
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "PR #181 body",
+    "line": "1",
+    "verdict": "CLOSED",
+    "summary": "The roles/lane.md header block is present: Lane / Base / Files / Prediction / Needs device / Needs NDK. Files: lists eight paths and `git diff --stat origin/master...HEAD` at 682f4aa8 is eight files -- they match, including docs/audits/2026-09-20-claude/...-pass1.md, which the pass-1 auditor pushed to this branch and which the first correction had missed. `Prediction: ... @ aafb5bf5eee8...` is the amended file's current sha256, not the pre-marker one.",
+    "scenario": "Pass 1's scenario -- the board reads Files: from every open PR to keep two lanes off one file, and a path edited but not listed is a collision nothing can see -- no longer applies; the line is present and complete.",
+    "evidence": "gh pr view 181 --json body, against git diff --stat origin/master...HEAD."
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "provenance.tests_root",
+    "verdict": "ACCEPTED",
+    "summary": "Not fixed, and declined with a logged reason, which AGENTS.md's loop step 3 permits for a LOW. tests_root is still /home/user/nxdk_pgraph_tests and support_dirs[0] still /home/user/pbkitplusplus; tests_commit is still 91a0de45, so nothing was dropped. The reason given is measured rather than preferential: the two lines record the generating machine and have flipped between the two homes repeatedly before this branch existed, so it is the generator's property. The proposed fix is one line in nv2a_index.py against a shared generated artefact and does not belong in a texture-cache PR.",
+    "scenario": "Churn on a shared generated file and a provenance record naming a root nothing on the host has. Still true, and knowingly so.",
+    "evidence": "Read provenance back from the file at HEAD. Counted the flips myself rather than taking the lane's number: `git log --oneline --all -S'/home/user/nxdk_pgraph_tests' -- docs/testing/nv2a_index.json` is 18 commits, 17 of them predating this branch."
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/2026-09-20-gl-stale-surface-blit.json",
+    "line": "5",
+    "verdict": "ACKNOWLEDGED",
+    "summary": "No edit, and that is the right call. The file is already judged on this host (fb6c220892d2..., in $WORK/arms/judged), and the supersession had already replaced the unreachable leg with a reachable one before pass 1 ran. The disposition is recorded in docs/lanes/remote/NOTES.md so the superseded file is not later read as if its leg had held, which is all L3 asked for.",
+    "scenario": "A reader taking the superseded file's pre-registered discomfort as a leg that survived. Closed by the record, not by an edit to a judged file.",
+    "evidence": "judged marker present for fb6c220892d2...; disposition table in docs/lanes/remote/NOTES.md at fae800a8."
+  },
+  {
+    "pass1_id": "L4",
+    "severity": "LOW",
+    "file": "docs/testing/predictions/2026-09-20-gl-stale-surface-blit-opengl.json",
+    "line": "5",
+    "verdict": "CLOSED",
+    "summary": "The live prediction no longer asserts the universal. It now ends with a named paragraph: flush_surfaces() (gl/surface.c:3374) invalidates with its download commented out (the FIXME at :3390) and does not flush the texture cache, its caller marks all textures possibly dirty, and under this change a blit-filled binding is destroyed and re-uploaded from VRAM that was deliberately never written back. It states the reachability -- out of band only, nv2a_pre_save/post_load, a renderer switch, pgraph_gl_set_surface_scale_factor -- and states explicitly that the prediction is about this disc's captures and is NOT a claim about that path.",
+    "scenario": "\"A binding that regenerates from VRAM when the guest asked for VRAM cannot be less correct\" read as a theorem, when gl/surface.c contains one counterexample. The sentence is no longer stated as universal.",
+    "evidence": "Read the amended prediction string at HEAD against gl/surface.c:3374-3390."
+  },
+  {
+    "pass1_id": "note",
+    "severity": "NOTE",
+    "file": "docs/lanes/remote/NOTES.md",
+    "line": "100",
+    "verdict": "NOT-A-FINDING",
+    "summary": "The remediation and the frozen `regressed` label are the same change, and this is disclosed, correctly diagnosed and correctly escalated by the lane, which is why it is a note and not a finding. fold.sh:675 gates on the label and parses no verdicts (\"the label is the interface\", fold.sh:581); arms.sh's label_decide() keeps, per issue, the newest registration THAT HAS A VERDICT ON DISK, which for #60 is e988be896f6d -- the pre-marker OpenGL file, judged FAIL at 10:22:05Z on 269 byte-identical handheld captures from a pair queued before the marker landed. The title marker that discharges H1 is exactly what stops aafb5bf5eee8 ever acquiring a verdict to displace it, so no tick can undo it. Clearing it is the owner's: fold.sh:639 says a lane must not set regression-accepted:<issue> and no job sets it, and fold.sh:638 says removing `regressed` by hand clears the label without clearing the regression.",
+    "scenario": "PR #181 will not fold while it carries `regressed`, regardless of fold-ready. The durable fix is audit pass 1's own remedy (2) -- a prediction field arms.sh passes through to request.sh --device/--env -- which is a harness change and belongs to whoever owns arms.sh.",
+    "evidence": "fold.sh:575-581, :638-639, :675-682; the [job.arms] FAIL comment for e988be896f6d at 2026-09-20T10:22:05Z; the three ways out enumerated in docs/lanes/remote/NOTES.md at 682f4aa8."
+  }
+]

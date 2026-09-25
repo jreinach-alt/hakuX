@@ -700,9 +700,15 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  * #13's wide-line widening made the geometry stage the tightest-fitting
  * stage in this renderer, and nothing in hw/ or ui/ has ever read the limits
  * it has to fit inside.  pgraph_glsl_gen_geom() emits
- * `layout(triangle_strip, max_vertices = 12)` for PRIM_TYPE_TRIANGLES under
- * POLY_MODE_LINE (glsl/geom.c), up from 6, because emit_line() now emits four
- * vertices per line instead of two.  Before this block,
+ * `layout(triangle_strip, max_vertices = 18)` for PRIM_TYPE_TRIANGLES under
+ * POLY_MODE_LINE (glsl/geom.c), up from 6 and then from 12, because
+ * emit_line() emits four vertices per line instead of two and SIX wherever
+ * #13's cap clip bites: clipping the widened parallelogram by the two
+ * minor-axis planes at the endpoints' own w/2 span leaves a hexagon.  That
+ * takes the total to 954 of the 1024 components every conformant device
+ * must offer -- 70 of headroom, which is not enough for another varying and
+ * is why the build assert below is the thing that has to catch it.  Before
+ * this block,
  * maxGeometryOutputVertices and maxGeometryTotalOutputComponents occurred in
  * exactly two places in the tree -- their own field declarations in the
  * bundled vulkan_core.h -- and no code read either.
@@ -725,9 +731,11 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  * recommended when it declined L2; it crosses into glsl/, which also serves
  * the GL renderer, so it is filed as a board request rather than done here.
  */
-#define PGRAPH_GEOM_MAX_OUTPUT_VERTICES 12
+#define PGRAPH_GEOM_MAX_OUTPUT_VERTICES 18
 #define PGRAPH_GEOM_VTX_COMPONENTS 48
-/* gl_Position (4) + gl_PointSize (1); both are written by emit_vertex(). */
+/* gl_Position (4) + gl_PointSize (1); both are written by every vertex
+ * emitter in glsl/geom.c (emit_vertex()/emit_vertex_fs(),
+ * emit_line_vertex()). */
 #define PGRAPH_GEOM_BUILTIN_COMPONENTS 5
 #define PGRAPH_GEOM_COMPONENTS_PER_VERTEX \
     (PGRAPH_GEOM_VTX_COMPONENTS + PGRAPH_GEOM_BUILTIN_COMPONENTS)
@@ -742,8 +750,8 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  * problem before a device does.
  *
  * This is deliberately not a runtime assert on the same numbers.  A runtime
- * `assert(limits.maxGeometryOutputVertices >= 12)` is unfireable on any
- * conformant device -- 12 is far below the 256 every device must report --
+ * `assert(limits.maxGeometryOutputVertices >= 18)` is unfireable on any
+ * conformant device -- 18 is far below the 256 every device must report --
  * which is the shape audit pass 2 caught in H1's first remediation: an assert
  * implied by a condition it sits under.  The build-time checks below fire on
  * the case that actually bites: someone adding a varying to
@@ -754,7 +762,7 @@ static bool select_physical_device(PGRAPHState *pg, Error **errp)
  *
  * maxGeometryOutputComponents is the binding one and neither audit pass named
  * it: its required minimum is 64 and we use 53 of that, where the total sits
- * at 636 of 1024.  glslang's own resource table (vk/glsl.c) allows 128
+ * at 954 of 1024.  glslang's own resource table (vk/glsl.c) allows 128
  * per-vertex output components, so a varying set between 65 and 128
  * components would compile cleanly on the host and fail only on a device at
  * the minimum -- exactly the silent draws-nothing this exists for.

@@ -1,0 +1,32 @@
+{
+  "registered_utc": "2026-09-20T12:20:18Z",
+  "who": "lane.remote",
+  "issue": "60",
+  "prediction": "#60, THE GL-ONLY CONTROL. On a HANDHELD arm -- the fleet's default, Vulkan --\n`da9e02a2` must be byte-identical to `01047cf3` on every capture, because the\nchange is confined to hw/xbox/nv2a/pgraph/gl/texture.c and OPENGL is \"the\nrenderer neither handheld can run\" (desktop_channel.sh:627, affinity.py:61).\n\nWHY THIS FILE EXISTS, said plainly. Three handheld pairs have now been spent\non #60, and all three came back with every capture byte-identical: 269, 278\nand 269 captures, 0 better and 0 worse each time. All three were judged FAIL,\nand correctly so -- each claimed desktop-GL pixel movements that a Vulkan arm\ncannot produce. THE INERTNESS WAS OBSERVED THREE TIMES AND CLAIMED ZERO\nTIMES, so none of it counts as evidence for anything. This file claims it.\n\nThat is the whole content: it is falsifiable, it is about a property nobody\nhas checked on device, and it is judged by the instrument that will actually\nrun. [job.fold] declined to fold this PR on the `regressed` label and named\n\"push the fix and re-register the prediction\" as the lane's path; this is\nthat, and it is a correction of WHAT WAS CLAIMED rather than a second attempt\nat the same claim.\n\nWHAT THIS DOES NOT CLAIM. Not one pixel of the desktop-GL result. That is\n2026-09-20-gl-stale-surface-blit-opengl.json (`aafb5bf5eee8`), which carries a\n`title` so the arms job cannot queue it, and which needs a hand-queued pair\nwith `--device desktop --env HAKUX_RENDERER=OPENGL` on BOTH arms. Nothing here\nsupersedes that evidence; the two files claim different things about different\ninstruments.\n\nLABEL CONSEQUENCE, AND IT IS A REAL COST. label_decide() keeps, per issue, the\nNEWEST REGISTRATION that has a verdict -- registration time, not verdict time\n(arms.sh:586). So this file will outrank `aafb5bf5eee8` for #60 even after a\ndesktop pair judges it. A later desktop verdict must therefore be read on its\nown file's terms and not from the PR's label. That is a worse label and a\nbetter record, and it is stated here so nobody discovers it.\n\nPREDICTED, on a handheld arm, disc = the six suites below:\n\n  every capture in Blend_surface, Blend_tests, Image_blit, Surface_format,\n  Texture_format and Texture_render_target: SAME. 0 better, 0 worse.\n\nFAILS IF ANY CAPTURE MOVES IN EITHER DIRECTION, and that failure would be the\nimportant one: it would mean a change confined to the GL renderer's texture\ncache reached the Vulkan renderer, which is not something this tree's\nstructure permits. An improvement would falsify it exactly as a regression\nwould, and I want it that way -- \"better\" here is not good news, it is\nevidence that the change is not what I have said it is four times.\n\nTHE RISK, NAMED: device noise. A capture that moves run-to-run on the handheld\nfails this leg without the change having done anything. Against that: the\nthree pairs above were 100% byte-identical across 269, 278 and 269 captures on\nthis exact fleet and these exact suites, which is the strongest evidence\navailable that they are deterministic here. If this file fails on one capture\nwith no mechanism, that is the answer -- and it is worth knowing, because\nevery must_not_move leg any lane registers on this fleet rests on the same\nassumption.\n\nRUNS PER ARM IS 1, deliberately. must_not_move's `cls` is score-based and one\nrun decides it; the byte leg needs two runs per arm before it may FAIL, so at\none run it REPORTS and cannot fail (ab_compare.py:75-78). Device time is the\nscarcest thing the harness has -- audit pass 1's M1 was about exactly that --\nand the score leg already carries the claim. I am not spending two more arms\nto upgrade a leg that three prior pairs have already answered incidentally.",
+  "a_ref": "01047cf3",
+  "b_ref": "da9e02a2",
+  "must_not_move": [
+    "Blend_surface/*",
+    "Blend_tests/*",
+    "Image_blit/*",
+    "Surface_format/*",
+    "Texture_format/*",
+    "Texture_render_target/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Blend_surface",
+      "Blend_tests",
+      "Image_blit",
+      "Surface_format",
+      "Texture_format",
+      "Texture_render_target"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}

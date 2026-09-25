@@ -53,9 +53,18 @@ label_rm() {    # <number> <label>...  -> 0 when none of them is on it any more
     return $rc
 }
 
-# Sourced: the two functions above are the whole interface. Run directly: a CLI,
-# because cloud.sh builds an "unclaim" command as a STRING for the session's
-# systemd unit to run when it exits, where nothing is sourced.
+# Sourced: the two functions above are the whole interface. Run directly: a CLI.
+#
+# IT STILL HAS CALLERS, and they are not the one this line used to name. The
+# original reason was that cloud.sh built an "unclaim" command as a STRING for
+# the session's systemd unit, where nothing is sourced. cloud.sh no longer does
+# that -- its unit's `ExecStopPost=` calls `cloud.sh finish`, which sources this
+# file like everything else, after that trailing-`;` tail stranded two PRs for
+# six and a half hours on 2026-09-19. The CLI is load-bearing for a different
+# reason: it is what roles/cloud.md and every lane brief tell a SESSION to run
+# ("bash docs/testing/jobs/gh-label.sh add <n> <label>"), because `gh pr edit`
+# is GraphQL and applies nothing on this host. Do not delete it for want of a
+# caller.
 if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     case "${1:-}" in
         add) shift; label_add "$@" ;;

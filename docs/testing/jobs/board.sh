@@ -23,7 +23,7 @@ TIP="${HAKUX_TIP:-master}"
 WT="$WORK/board-wt"
 SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$SELF/localtime.sh"  # say_time/local_ts: the display zone. Data timestamps below stay `date -u`.
-mkdir -p "$WORK/logs/board" "$WORK/briefs"
+mkdir -p "$WORK/logs/board" "$WORK/briefs" "$WORK/board"
 LOG="$WORK/logs/board/tick.log"
 # The tick log is read by hand when something jams, so it is display: local.
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
@@ -120,6 +120,43 @@ for r in rows:
 PY
 }
 
+# ===================================================================
+# THE ISSUE SWEEP'S FINDINGS (jobs/issue-sweep.sh), AS A FIFTH GATE
+#
+# The sweep decides what is decidable from files -- an open issue with no
+# tracker row, a row owned by a lane that no longer exists, an untriaged
+# disposition, a row that already says the work is done -- and then stops,
+# because the remaining half ("is this blocker still true?") is judgement and
+# THIS is the harness's actor for judgement. It is also the only actor
+# permitted to write nv2a_issues.toml, so a second model session on a second
+# timer would be a second writer of one file reaching the same conclusions
+# from a worse vantage point.
+#
+# WHAT KEEPS IT FROM FIRING FOREVER -- the rule this file states for every
+# other trigger, and the reason the key is a CONTENT hash and not a timestamp.
+# The sweep runs twice a day and rewrites the same findings while they remain
+# true, so a gate that merely asked "does the file exist?" would wake a model
+# tick every twenty minutes for as long as one issue stayed untriaged. Keyed
+# on the file's sha256, one SET of findings wakes at most one tick; discharge
+# any part of it and the next sweep writes a different set, which fires again.
+#
+# AND IT IS MARKED SEEN ONLY WHEN A TICK ACTUALLY RAN (below, after
+# run-claude-job.sh returns 0). Marking here would discharge the findings on a
+# tick that died before reading them, and the sweep would never re-offer them:
+# the file it writes next would hash the same.
+SWEEP_FINDINGS="$WORK/board/issue-sweep.findings"
+SWEEP_SEEN="$WORK/board/issue-sweep.seen"
+sweep=""; SWEEP_HASH=""
+sweep_gate() {
+    local h
+    [ -s "$SWEEP_FINDINGS" ] || return 0
+    h=$(sha256sum "$SWEEP_FINDINGS" 2>/dev/null | cut -d' ' -f1)
+    [ -n "$h" ] || return 0            # no sha256sum: no key, so no trigger
+    [ "$h" = "$(cat "$SWEEP_SEEN" 2>/dev/null)" ] && return 0
+    sweep=$(cat "$SWEEP_FINDINGS")
+    SWEEP_HASH="$h"
+}
+
 capacity=""; unlabelled=""; lanes=0
 positive_gate() {
     # The cap, read and never raised. lane.sh's default is 2 and
@@ -163,7 +200,7 @@ positive_gate() {
 
 # ONE PREDICATE, SHARED. The tick below and `board.sh gate` must agree about
 # what "nothing actionable" means, or the gate is tested and the tick is not.
-nothing_actionable() { [ -z "$fails$cov$capacity$unlabelled" ]; }
+nothing_actionable() { [ -z "$fails$cov$capacity$unlabelled$sweep" ]; }
 
 # `board.sh gate` -- the positive half alone, for the selftest and for a human
 # asking "why did that tick not wake?". Exits 0 if it would wake the tick, 1
@@ -171,9 +208,14 @@ nothing_actionable() { [ -z "$fails$cov$capacity$unlabelled" ]; }
 if [ "${1:-}" = "gate" ]; then
     fails=""; cov=""
     positive_gate
+    # A PROBE MARKS NOTHING SEEN. `gate` is what a person runs to ask why a
+    # tick did not wake, and the selftest runs it too; if it discharged the
+    # sweep's findings they would be gone before any tick read them.
+    sweep_gate
     if nothing_actionable; then echo "no positive trigger"; exit 1; fi
     [ -n "$capacity" ] && { echo "capacity: $lanes/$LANE_MAX lanes running, startable issues:"; printf '%s\n' "$capacity"; }
     [ -n "$unlabelled" ] && { echo "ready PRs with no state label:"; printf '%s\n' "$unlabelled"; }
+    [ -n "$sweep" ] && { echo "issue-sweep findings not yet seen (sha ${SWEEP_HASH:0:12}):"; printf '%s\n' "$sweep" | grep '^### ' | sed 's/^/  /'; }
     exit 0
 fi
 
@@ -256,6 +298,8 @@ cov=$(cd "$WT" && timeout 60 python3 docs/testing/check_coverage.py 2>&1 | grep 
 # The positive half: is there capacity and work, and is there a ready PR this
 # job owes a label? See THE POSITIVE GATE at the top of this file.
 positive_gate
+# And the issue sweep's handoff, if it has written a set this job has not read.
+sweep_gate
 
 if nothing_actionable; then
     # "no startable issue" would be a lie while the reserve holds -- the
@@ -274,6 +318,7 @@ say "actionable:"
 [ -n "$cov" ] && { say "coverage gate:"; printf '%s\n' "$cov" | sed 's/^/  /' | tee -a "$LOG"; }
 [ -n "$capacity" ] && { say "capacity: $lanes/${LANE_MAX:-2} lanes running and $(printf '%s\n' "$capacity" | wc -l | tr -d ' ') startable issue(s):"; printf '%s\n' "$capacity" | sed 's/^/  /' | tee -a "$LOG"; }
 [ -n "$unlabelled" ] && { say "ready PRs with no state label:"; printf '%s\n' "$unlabelled" | sed 's/^/  /' | tee -a "$LOG"; }
+[ -n "$sweep" ] && { say "issue sweep (sha ${SWEEP_HASH:0:12}):"; printf '%s\n' "$sweep" | grep '^### ' | sed 's/^/  /' | tee -a "$LOG"; }
 
 # UTC in the FILENAME: data. These sort, and `ls` ordering is how a stack of
 # them is read back; a local-time name would jumble across the fall-back.
@@ -281,7 +326,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
 {
     echo "# board tick"
     echo
-    echo "Four gates report below, and ALL are yours. Push your board edits before any outward action (see your role file)."
+    echo "Five gates report below, and ALL are yours. Push your board edits before any outward action (see your role file)."
     echo
     echo "## fleet.py -- what the fleet is doing"
     echo
@@ -306,9 +351,27 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     printf '%s\n' "${unlabelled:-none}"
     echo
+    echo "## issue sweep -- backlog states that no other actor reaches"
+    echo
+    echo "From \`docs/testing/jobs/issue-sweep.sh\`, which decides what is decidable from files and stops there. It repairs nothing, because \`nv2a_issues.toml\` has exactly one writer and it is you. Each section below says what it costs and what the decision is; the judgement half -- is this blocker still true, can this \`decision-needed\` be settled -- is why it was handed to a tick and not to a second script. You are seeing this set ONCE: it is keyed on its own sha256 and marked read when this tick returns, so leaving an item undone means it will not wake another tick until the sweep's findings change. Act on it here, or say in the row or on the issue why it stays."
+    echo
+    printf '%s\n' "${sweep:-none}"
+    echo
     echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when every list above is empty or every item on it has a label, a comment, an issue, or (for at most one capacity item) a running lane."
 } > "$brief"
 bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"; rc=$?
+# MARKED SEEN ONLY NOW, AND ONLY ON A TICK THAT RAN. The sweep rewrites the
+# same findings for as long as they hold, so without this key one untriaged
+# row would wake a model tick every twenty minutes; and marking it before the
+# session -- or after a session that failed to start -- would discharge a set
+# nobody read, which the sweep cannot re-offer because its next file hashes
+# the same.
+if [ -n "$SWEEP_HASH" ] && [ "$rc" = 0 ]; then
+    printf '%s\n' "$SWEEP_HASH" > "$SWEEP_SEEN"
+    say "issue-sweep findings ${SWEEP_HASH:0:12} handed to this tick and marked read"
+elif [ -n "$SWEEP_HASH" ]; then
+    say "issue-sweep findings ${SWEEP_HASH:0:12} were in this tick's brief but it exited $rc; leaving them unread for the next tick"
+fi
 # The roll-up after every tick, model or not: the status comment is how the
 # owner sees this job at all (jobs/status.sh).
 bash "$JOBS/status.sh" >/dev/null 2>&1

@@ -24,6 +24,21 @@
 # resuming only on a new cause, the cap, the attempt counter -- is written
 # once, here. Adding a label is an edit to that list.
 #
+# ONE LABEL CAN CARRY TWO CAUSES, AND THE CAUSE FILE SAYS WHICH. `fold.sh`
+# also sets `needs-rebase` when a PR's only failing check ran BEFORE the
+# trunk's current head was committed -- a red about a base that has moved,
+# which GitHub never re-runs and which nothing in the harness could reach
+# until then (four PRs at once on 2026-09-19). The action is the same one this
+# label's description already names, "bring master into the lane branch", so
+# it is the same label and the same row; a second label would have had to be
+# added to `board.sh`'s and `fleet.py`'s state-label sets too, or a PR
+# carrying only it would read as UNLABELLED to the board and be handed
+# `needs-audit-1` on top of already-audited work. What differs is only what
+# the lane must be TOLD, so the cause file carries `action=` and the row's
+# action is overridden from it, against a whitelist. Telling the truth there
+# matters: a lane sent to resolve a conflict that does not exist spends a
+# session looking for a defect of its own that is not there.
+#
 # THE SECOND CAUSE IS NOT A LABEL: A DRAFT PR WHOSE LANE HAS EXITED. Every
 # actor filters drafts out, deliberately -- `board.sh` skips `isDraft`,
 # `fleet.py` counts only non-draft lane PRs, `fold.sh` refuses to fold one --
@@ -66,6 +81,7 @@ T="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"          # docs/testing
 LANE_SH="${HAKUX_LANE_SH:-$T/lane.sh}"
 . "$(dirname "${BASH_SOURCE[0]}")/gh-label.sh"   # label_add/label_rm: `gh pr edit --add-label` exits 1 here
 . "$(dirname "${BASH_SOURCE[0]}")/localtime.sh"  # say_time/local_ts: the display zone
+. "$(dirname "${BASH_SOURCE[0]}")/remote-lane.sh" # remote_lane_of: a branch a lane owns from somewhere this host cannot see
 H="$WORK/handback"
 mkdir -p "$H/done" "$H/cause" "$H/strand" "$WORK/attempts" "$WORK/logs/handback"
 LOG="$WORK/logs/handback/tick.log"
@@ -147,6 +163,60 @@ audited and green, and only the merge base moved. If the conflict cannot be
 resolved without a decision that is not yours, say so in \`NOTES.md\` and in a
 PR comment starting \`[lane.$4] blocked:\`, and stop -- that is a finished
 outcome.
+EOF
+}
+
+# The other cause behind the same label: the red is about a base that moved.
+# $5 is the failing run and its start time, as `fold.sh` read them.
+#
+# THE WHOLE POINT OF THIS TEXT IS "IT IS NOT YOURS". The measured failure this
+# exists for is a lane opening a session, reading a red `selftest` on its own
+# PR, and starting to debug a fragment that was fixed on master hours earlier.
+# So the run and its timestamp are named first, and the re-run is ruled out
+# explicitly -- it was tried, at 20:37:16Z on 2026-09-19, and came back red
+# because the workflows check out the PR's own head.
+resume_stale_ci() {
+    cat <<EOF
+
+---
+
+## Handed back $(say_time_s): PR #$1's red is about a base that has moved
+
+The fold job did not fold \`$2\` at \`${3:0:10}\`, and **not because of
+anything you pushed**. **Every** failing check on that head ran before
+\`$TIP\`'s current head was committed${5:+; the most recent of them is \`$5\`}.
+GitHub does not re-run a pull request's checks when its base branch moves, so
+that FAILURE is a verdict about a tree that no longer exists, and it would
+have been refused every tick forever.
+
+**Do not open the failing job and start debugging it.** Read its date first.
+Re-running it does not help either: the workflows check out this PR's own
+head, not \`refs/pull/$1/merge\`, so the branch's own copy of whatever broke on
+the trunk is still the copy that runs. The only thing that refreshes the
+verdict is bringing the trunk in:
+
+\`\`\`
+git fetch origin $TIP
+git merge origin/$TIP        # MERGE, never rebase: a rebase rewrites every
+                             # sha and un-ancestors any registered
+                             # prediction's a_ref/b_ref (ORCHESTRATION-DESIGN
+                             # 8.1). Merging keeps them bound forever.
+# resolve anything that conflicts, keeping BOTH sides' intent, then:
+git commit && git push
+bash docs/testing/jobs/selftest.sh     # if anything under jobs/ moved
+\`\`\`
+
+Then, once CI is green on the new head:
+
+\`\`\`
+bash docs/testing/jobs/gh-label.sh rm  $1 needs-rebase
+bash docs/testing/jobs/gh-label.sh add $1 fold-ready
+\`\`\`
+
+Do not re-open, re-measure or extend the work this PR already carries; it was
+audited and green, and only the base moved under it. If the merge needs a
+decision that is not yours, say so in \`NOTES.md\` and in a PR comment starting
+\`[lane.$4] blocked:\`, and stop -- that is a finished outcome.
 EOF
 }
 
@@ -245,9 +315,40 @@ EOF
 # runs the function in a command-substitution subshell, so the REASON it sets
 # on the refusing paths is discarded and the PR gets a comment that stops
 # mid-sentence at the colon -- which is the whole content of the answer.
+#
+# A REMOTE LANE IS ELSEWHERE, NOT ABSENT, and that is a different answer. The
+# `*)` arm below used to catch `lane.remote`'s `claude/...` head and tell its PR
+# "whoever owns this branch merges origin/master into it by hand" -- true of a
+# person's branch and wrong about a lane that has been contributing for days.
+# The routine that wakes that session picks the handback up on its next fire;
+# saying so is the whole fix, because nothing local should act.
+#
+# IT IS TESTED FIRST, BEFORE THE `lane/*` ARMS. A remote lane whose branch is
+# someday named `lane/<name>` would otherwise fall into the local arm and be
+# resumed here -- a second agent on a branch a cloud container pushes to, with
+# no lock. `lane.sh` refuses that too; this is not the only guard, on purpose.
+#
+# THE DEPTH IS REAL ONLY BECAUSE THE TWO GUARDS FAIL DIFFERENTLY. This one
+# reads a POSITIVE -- "some row names this branch" -- which the fold-lagged
+# in-tree territory.toml can still answer truthfully; what it cannot answer is
+# the absence, and this arm never asks it to. When the board read is stale and
+# the row is missing, the head falls through to the local arm and reaches the
+# single resume call site below -- where `remote_authoritative` refuses
+# outright (lane.sh's refuse_if_remote). Two guards, two different questions,
+# not one question asked twice.
+#
+# (Not spelling the resume invocation out here is deliberate:
+# `99-handback-draft.sh` counts that exact string to prove there is ONE call
+# site, and a comment quoting it makes the count read 2. A grep anchored on a
+# call matches the prose too.)
 NAME=""; REASON=""
 lane_name() {   # <head branch> -> 0 with $NAME set, or 1 with $REASON set
     NAME=""; REASON=""
+    local rl; rl=$(remote_lane_of "$1")
+    if [ -n "$rl" ]; then
+        REASON="\`$1\` is \`lane.$rl\`'s branch, and that lane runs somewhere this host cannot see (\`remote\` in \`territory.toml\`). Nothing local resumes it and nothing local should: its routine picks this up on its next fire. The work is unchanged -- merge \`origin/$TIP\` into the branch, resolve, push, then re-apply \`fold-ready\`."
+        return 1
+    fi
     case "$1" in
         lane/cloud-*)
             REASON="\`$1\` is a cloud session's branch: it has no local worktree, and cloud lanes remediate themselves (\`jobs/roles/cloud.md\`). Nothing local can resume it."
@@ -411,7 +512,7 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # whatever the job that set the label wrote down; for a strand it is
         # the resolved state -- which is the entire reason the resume is worth
         # a session rather than a repeat of the last one.
-        cause=""; quiet=0; arm=none
+        cause=""; quiet=0; arm=none; act="$action"
         case "$label" in
         draft-strand-*)
             quiet=$(sed -n 's/.*\bquiet=\([0-9]*\).*/\1/p' <<< "$extra"); quiet="${quiet:-0}"
@@ -421,14 +522,40 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             esac
             cause="${extra#isDraft=* } arm=$arm" ;;
         *)
-            [ -f "$H/cause/$pr-$head" ] && cause=$(sed -n 's/^files=//p' "$H/cause/$pr-$head" | head -1) ;;
+            # `files=` is what fold.sh's conflict branch has always written;
+            # `detail=` is the general field a newer cause uses. Either is the
+            # one line of detail the action puts in the brief. A strand has no
+            # cause file at all, which is why this is only the label arm.
+            if [ -f "$H/cause/$pr-$head" ]; then
+                cause=$(sed -n 's/^detail=//p;s/^files=//p' "$H/cause/$pr-$head" | head -1)
+                # ONE LABEL, TWO CAUSES: `action=` overrides the row's action so
+                # the lane is told the truth about why. AGAINST A WHITELIST, never
+                # taken as written -- this string comes out of a file and is about
+                # to be the command word of an invocation. An unknown value falls
+                # back to the row's own action, which is the label's meaning and
+                # is never wrong about what to DO, only about why.
+                a=$(sed -n 's/^action=//p' "$H/cause/$pr-$head" | head -1)
+                case "$a" in
+                    resume_stale_ci) act="$a" ;;
+                    "") ;;
+                    *) say "#$pr: cause names action '$a', which is not one of this job's; using $action" ;;
+                esac
+            fi ;;
         esac
 
         if [ ! -d "$WORK/wt/$name" ] || [ ! -f "$WORK/briefs/$name.md" ]; then
             [ "$mode" = list ] && { echo "#$pr $branch: $label, lane $name has no worktree or brief on this host"; continue; }
             echo "no worktree or brief for lane $name" > "$marker"
             say "#$pr: lane $name has no worktree ($WORK/wt/$name) or brief; cannot resume"
-            comment "$pr" "[job.handback] $said and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's."
+            # AND IT IS LABELLED, NOT ONLY COMMENTED. A PR comment is read by
+            # whoever opens the PR; nothing polls it. This is the end of the
+            # line for a lane that is not merely exited but GONE -- no session
+            # can be resumed and this job will never act on this head again --
+            # so it gets the label that means the owner's call, the same one
+            # the attempts-exhausted path sets, and appears in status.sh's
+            # roll-up instead of only in a comment nobody is looking at.
+            label_add "$pr" blocked:needs-owner || say "  WARNING: could not label #$pr blocked:needs-owner"
+            comment "$pr" "[job.handback] $said and lane \`$name\`'s worktree or brief is gone from this host (\`$WORK/wt/$name\`), so \`lane.sh resume\` cannot run. It needs \`lane.sh start $name <brief>\`, which is the board's call, not this job's. Labelled \`blocked:needs-owner\` so this PR is not waiting in silence: **nothing will act on it until someone does.**"
             continue
         fi
 
@@ -502,7 +629,9 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         # `systemd-run --unit hakux-lane-$name` cannot start while it is, so
         # nothing else writes that file in between.
         attempts_before=$(cat "$WORK/attempts/$name" 2>/dev/null || echo 0)
-        "$action" "$pr" "$branch" "$head" "$name" "$cause" >> "$WORK/briefs/$name.md"
+        # `$act`, not `$action`: one label can carry two causes and the cause
+        # file's `action=` (whitelisted above) says which brief to print.
+        "$act" "$pr" "$branch" "$head" "$name" "$cause" >> "$WORK/briefs/$name.md"
         out=$(bash "$LANE_SH" resume "$name" 2>&1); rc=$?
         [ "$rc" -eq 0 ] || truncate -s "$size" "$WORK/briefs/$name.md"
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
@@ -519,7 +648,14 @@ This job does **not** mark a PR ready: the definition of done includes \`NOTES.m
         elif [ "$rc" -eq 0 ]; then
             echo "resumed: $out" > "$marker"
             say "#$pr: resumed lane.$name -- $out"
-            comment "$pr" "[job.handback] Resumed \`lane.$name\` on \`$label\` at \`${head:0:10}\`${cause:+ (conflicting in \`$cause\`)}. The handback was appended to its brief: merge \`origin/$TIP\` (never rebase -- it would un-ancestor any registered prediction), resolve, push, then re-apply \`fold-ready\`. This job resumes a lane once per head sha, so pushing is what makes another handback possible."
+            # The cause in one clause, in the words of the cause it actually
+            # was: "conflicting in ..." on a PR that merges cleanly is the
+            # wrong sentence, and it is the sentence a lane acts on.
+            case "$act" in
+                resume_stale_ci) why="${cause:+ (its red is stale: \`$cause\`, which ran before the current head of \`$TIP\`)}" ;;
+                *)               why="${cause:+ (conflicting in \`$cause\`)}" ;;
+            esac
+            comment "$pr" "[job.handback] Resumed \`lane.$name\` on \`$label\` at \`${head:0:10}\`$why. The handback was appended to its brief: merge \`origin/$TIP\` (never rebase -- it would un-ancestor any registered prediction), resolve, push, then re-apply \`fold-ready\`. This job resumes a lane once per head sha, so pushing is what makes another handback possible."
             resumed=1
         elif grep -q 'LANE_MAX_ATTEMPTS' <<< "$out"; then
             # THE END OF THE LINE, AND IT MUST STAY REACHABLE. lane.sh refuses

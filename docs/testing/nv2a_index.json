@@ -1494,37 +1494,37 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:982",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1022",
    "symbols": [],
    "text": "assert(!\"Invalid format\");"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1016",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1056",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1094",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1134",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1141",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1181",
    "symbols": [],
    "text": "// FIXME: Consider preserving the border."
-  },
-  {
-   "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1281",
-   "symbols": [],
-   "text": "assert(false);"
   },
   {
    "kind": "ABORT",
    "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1321",
+   "symbols": [],
+   "text": "assert(false);"
+  },
+  {
+   "kind": "ABORT",
+   "loc": "hw/xbox/nv2a/pgraph/gl/texture.c:1361",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -1569,7 +1569,7 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:209",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:224",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "637b4f1d2a9c3ec88c6077af858d2f6c79f1b31d",
+  "emulator_commit": "1a50107fddc9558e9af8dfa87153ee199609cc05",
   "gaps": 498,
   "resolved_tables": 1,
-  "sites": 2839,
-  "suites": 103,
+  "sites": 2840,
+  "suites": 104,
   "support_dirs": [
    "/home/justin/pbkitplusplus"
   ],
   "symbols": 951,
-  "tests_commit": "91a0de45ca31fd03ef2b364347f8a827d226f2b3",
-  "tests_root": "/home/justin/nxdk_pgraph_tests",
+  "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
+  "tests_root": "/home/justin/.claude/jobs/11a5ab43/tmp/tests-pristine",
   "unread": 145
  },
  "schema": 1,
@@ -6625,6 +6625,11 @@
    }
   ],
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": [
+   {
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:129",
+    "role": "COMMENT",
+    "text": "* set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened"
+   },
    {
     "loc": "hw/xbox/nv2a/pgraph/pgraph.c:3123",
     "role": "DISPATCH",
@@ -8901,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:246",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:261",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
@@ -20988,7 +20993,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog carryover": {
@@ -21035,7 +21041,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog exceptional value": {
@@ -21117,7 +21124,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Fog param": {
@@ -21131,6 +21139,32 @@
     "NV097_SET_FOG_ENABLE",
     "NV097_SET_FOG_GEN_MODE",
     "NV097_SET_FOG_GEN_MODE_V_FOG_X",
+    "NV097_SET_FOG_MODE",
+    "NV097_SET_FOG_MODE_V_EXP",
+    "NV097_SET_FOG_MODE_V_EXP2",
+    "NV097_SET_FOG_MODE_V_EXP2_ABS",
+    "NV097_SET_FOG_MODE_V_EXP_ABS",
+    "NV097_SET_FOG_MODE_V_LINEAR",
+    "NV097_SET_FOG_MODE_V_LINEAR_ABS",
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
+   ]
+  },
+  "Fog planar vsh": {
+   "results_name": "Fog_planar_vsh",
+   "sources": [
+    "src/tests/fog_tests.cpp",
+    "src/tests/fog_tests.h"
+   ],
+   "symbols": [
+    "NV097_SET_FOG_COLOR",
+    "NV097_SET_FOG_ENABLE",
+    "NV097_SET_FOG_GEN_MODE",
+    "NV097_SET_FOG_GEN_MODE_V_ABS_PLANAR",
+    "NV097_SET_FOG_GEN_MODE_V_FOG_X",
+    "NV097_SET_FOG_GEN_MODE_V_PLANAR",
+    "NV097_SET_FOG_GEN_MODE_V_RADIAL",
+    "NV097_SET_FOG_GEN_MODE_V_SPEC_ALPHA",
     "NV097_SET_FOG_MODE",
     "NV097_SET_FOG_MODE_V_EXP",
     "NV097_SET_FOG_MODE_V_EXP2",
@@ -21164,7 +21198,8 @@
     "NV097_SET_FOG_MODE_V_EXP_ABS",
     "NV097_SET_FOG_MODE_V_LINEAR",
     "NV097_SET_FOG_MODE_V_LINEAR_ABS",
-    "NV097_SET_FOG_PARAMS"
+    "NV097_SET_FOG_PARAMS",
+    "NV097_SET_FOG_PLANE"
    ]
   },
   "Front face": {
@@ -22178,6 +22213,7 @@
     "src/tests/texture_format_tests.h"
    ],
    "symbols": [
+    "NV097_SET_DEPTH_TEST_ENABLE",
     "NV097_SET_TEXTURE_FORMAT_COLOR_D16",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8",
@@ -22222,7 +22258,8 @@
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X1R5G5B5",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_X8R8G8B8",
     "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16",
-    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8"
+    "NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y8",
+    "NV097_SET_TEXTURE_OFFSET"
    ]
   },
   "Texture palette": {

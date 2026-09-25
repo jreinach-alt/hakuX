@@ -1,0 +1,82 @@
+[
+  {
+    "id": "H1",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 338,
+    "summary": "line_clip_lerp() computes the clip-space z of the cap clip's cut vertex as mix(pa.z*ia*ia, pb.z*ib*ib, t) * w * w. z_clip is linear in the 3D segment parameter, so z_ndc = z_clip/w is affine in window space and the correct value at screen fraction t is w * mix(za*ia, zb*ib, t) -- one factor of ia/ib inside and one w outside, not two of each. The two expressions coincide only when ia == ib, i.e. w0 == w1, which is the 2D case the lane measured. The comment at geom.c:313-327 asserts the general perspective case is handled ('perspective-correct interpolation is affine in (a/w, 1/w)'), so the defect is also documented as correct. The 1/w half of the same function is right; only z is wrong.",
+    "scenario": "A wide line (w >= ~24, where the cap clip bites) drawn in perspective with w_a = 1, w_b = 4 and endpoint NDC depths 0.2 and 0.8. Evaluated at screen fractions 0.25/0.5/0.75 the shipped expression yields NDC depth 0.246/0.320/0.457 where the correct values are 0.350/0.500/0.650. The cut vertices sit at both tips, so depth across the two sub-polygons nearest each cap is wrong by up to ~0.18 NDC: the cap of a wide line sorts against other geometry differently from the body of the same line, and z can leave [-w, w] and invoke near/far clipping the unclipped parallelogram never met. No golden and no leg in line-cap-clip.json reads depth -- the offline model scores ink masks -- so a green --shader check and green CI say nothing about it.",
+    "remediation": "float z = mix(pa.z * ia, pb.z * ib, t) * w;  Add a host-side leg in line_cap_phase.py's shader transliteration that evaluates the cut vertices' z for a w0 != w1 pair against the endpoint lerp, so the next change here is not measured by ink alone.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:313-345 (line_clip_lerp and its comment), :409-410 (call site); numeric evaluation of both expressions at wa=1, wb=4, za=0.2, zb=3.2, t in {0.25,0.5,0.75}."
+  },
+  {
+    "id": "H2",
+    "severity": "HIGH",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 439,
+    "summary": "The flat arm of emit_line_vertex() assigns vtxFog, vtxT0..vtxT3 and vtxPointSize the constant value from endpoint i0. All six are declared with smooth_s UNCONDITIONALLY by pgraph_glsl_get_vtx_header (glsl/common.c:60-70): flat shading changes the qualifier of vtxD0/vtxD1/vtxB0/vtxB1 only. emit_vertex() agrees -- it reads vtxD*/vtxB* through provoking_index ('0' under flat) but vtxFog/vtxT*/vtxPointSize through index, the emitted vertex. So the premise stated at geom.c:392-394, 'EVERY FLAT VARYING HERE COMES FROM i0. Under flat shading that is all of them', is false, and the code follows it. The same arm also drops the cylWrap() adjustment that tex_lines[] applies: tex_lerp[] is built for all four texture units and referenced only from the smooth arm.",
+    "scenario": "A flat-shaded, textured wide line at w = 32 whose higher-minor endpoint is i1. The high plane cuts corner P1 = i1 + n, producing a cut vertex on the long edge P0->P1 with T close to 1 and a second on the short cap edge P1->P2 whose T is mix(1,1,f) -- 1-eps in float, not exactly 1, so it misses the tl >= 1.0 early-out too. Both sit at the i1 tip and both receive i0's texture coordinates, the value from the far end of the line. For a 20 px line at 45 degrees the long-edge cut lands near T = 0.5, so the error is a large fraction of the line's whole texcoord span; at the short-edge vertex it is the entire span. Texture and fog over the two triangles touching each cap are sheared. --vs-goldens, --rivals and --shader all compare ink masks and are blind to varyings, and Line_width contains no textured flat-shaded wide line.",
+    "remediation": "Interpolate vtxFog, vtxT0..3 (through tex_lerp[], so cylWrap survives) and vtxPointSize on both arms, and keep only vtxD0/vtxD1/vtxB0/vtxB1 pinned to gl_in[0] under flat. Rewrite the comment at :390-399 from the qualifier table in common.c rather than from the shade mode.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:383-460 (emit_line_vertex, both arms), :264-292 (tex_lines/tex_lerp), :355-381 (emit_vertex), :92 (provoking_index); hw/xbox/nv2a/pgraph/glsl/common.c:45-71 (qualifier table)."
+  },
+  {
+    "id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 392,
+    "summary": "The invariant the comment promises -- that the flat varyings do not depend on how many corners the clip cut -- is not achieved for vtxFogSpecial. It is flat in every shade mode (common.c:61) and emit_vertex() reads it through index (geom.c:366), so a strip vertex emitted at T == 0 or T == 1 supplies v_vtxFogSpecial[i0] or [i1] according to which endpoint it came from. emit_line_vertex() pins it to i0 only on the interpolated path. Which strip position is provoking therefore moves with the clip.",
+    "scenario": "When the LOWER-minor endpoint is i1, the low plane cuts P3 and the high plane cuts P0, and the resulting 6-gon's strip order 0,5,1,4,2,3 places the surviving original corner P1 = i1 + n -- emitted through emit_vertex(i1) -- in a provoking position under Vulkan's default first-vertex convention, where before the change both triangles of the 4-vertex strip provoked from the i0 side. Independently, the pipeline can be built with last_provoking from NV_PGRAPH_CONTROL_3_PROVOKING_VERTEX_LAST (vk/draw.c:5078-5080); under that convention the old strip provoked from i1 for both triangles while the hexagon's last vertices are three interpolated ones (pinned to i0) and one i1. Either way a flat-shaded wide line's vtxFogSpecial changes according to whether the cap clip bit, which is the defect the comment says the design removes, over the whole width range above the bite threshold.",
+    "remediation": "Decide the flat source once for the whole primitive and apply it on both paths: if i0 is intended, emit_line() must stop routing T == 0/1 vertices through emit_vertex(index) for the flat varyings; if the answer is 'whatever the provoking vertex would have been', name the convention and derive it. The comment must state which convention it depends on.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:366, :390-399, :446-447, :686-690 (strip index); hw/xbox/nv2a/pgraph/glsl/common.c:61; hw/xbox/nv2a/pgraph/vk/draw.c:5078-5080, :5408-5411."
+  },
+  {
+    "id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 409,
+    "summary": "emit_line_vertex() interpolates every varying by t = line_lerp_t(i0, i1, tl), the perspective-correct line parameter. That is right for default smooth interpolation and wrong when the varyings are declared noperspective. common.c:45 sets smooth_s to 'NOPERSPECTIVE ' whenever state->noperspective is set, which geom.c:46 drives from NV_PGRAPH_CONTROL_0 (the Texture_perspective state bit). Under noperspective the rasteriser interpolates linearly in screen space, so the value the unclipped parallelogram produced at the cut point is mix(A0, A1, tl) with the SCREEN fraction; handing the vertex mix(A0, A1, t) makes the sub-polygons reproduce a different function over the whole footprint, not just at the vertex.",
+    "scenario": "Perspective-disabled texturing (the tex_*_pers_n cases of the Texture_perspective suite) on a wide line with w_a = 1, w_b = 4 at a width above the bite threshold: a cut at screen fraction 0.5 is given the varying value for parameter 0.8 instead of 0.5, and the texture over the cap triangles is stretched by that amount. Bounded -- it needs the perspective bit off, a real w difference, and a wide line at once -- but docs/investigations/gl-never-emits-noperspective.md measured the state at 159,574 px across six captures, so it is exercised.",
+    "remediation": "Compute both parameters and select on state->noperspective, which the generator has in hand at this point: screen fraction tl for the noperspective case, line_lerp_t(tl) otherwise. gl_Position is unaffected either way.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:46, :261-264, :409, :411-445; hw/xbox/nv2a/pgraph/glsl/common.c:28-45."
+  },
+  {
+    "id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/line_cap_phase.py",
+    "line": 494,
+    "summary": "controls() is the tool's 'what the instrument cannot see' section, and it measures the wrong rule. It unions cap='perp', clip=1.0 (:494) -- the centre-sampled band, listed in VARIANTS as 'pen, centre band' and rejected in the write-up for scoring 497 px -- and reports how many pixels that removes and how many the goldens agree with. The shipped rule is pen=1.0, tie='ceil', which is what shader_check() compares the transliterated shader against (:344). The tie count at :501-503 has the same problem: it counts boundaries landing on a half-integer, the population that separates low-open from closed for the clip= variant. The population that separates the shipped outward rounding from its nearest rival tie='floor1' is boundaries landing on an exact integer, and nothing in the tool counts it.",
+    "scenario": "The control exists so a score that did not move can be told from a rule with nothing to act on, and as written it answers that question for a rule that was not adopted -- the touchable-pixel population and the tie count both belong to the rejected rival. Concretely, tie='floor1' and tie='ceil' differ by one pixel row on the high side exactly when m_max + w/2 is an integer, and every corner in the NOTES table (318.9375, 508.9375, 387.9375, 356.0625, 128.0625, 255.0625) is non-integer, so the six readings the outward rounding was chosen from cannot distinguish the two rules at all. Whether any golden edge can is unmeasured, and --controls is the place that was supposed to say.",
+    "remediation": "Score controls() on pen=1.0, tie='ceil', and add a tie count for abs(v - round(v)) < 1e-9 over m_min - w/2 and m_max + w/2. If that count is zero, state it: it means the goldens do not select the outward rounding over floor + 1, which the current write-up asserts the opposite of and which the next lane needs to know.",
+    "evidence": "docs/testing/line_cap_phase.py:72-82 (the pen tie variants), :344 (shader_check's model), :406-414 (VARIANTS), :476-506 (controls); docs/lanes/linecap13/NOTES.md corner table."
+  },
+  {
+    "id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 642,
+    "summary": "The shipped comment sends the reader to 'docs/testing/line_cap_phase.py and docs/investigations/line-cap-phase.md' for the derivation. The tool exists; the document does not, on this branch or on master. docs/investigations/ holds line-extent-phase.md, line-extent-arm-result.md, line-width-residual.md, line-width.md, line-polygon-smoothing.md, line-width-first-gl-baseline.md and two others -- none of them this one.",
+    "scenario": "The only in-tree derivation of the rule this shader implements is docs/lanes/linecap13/NOTES.md, which the comment does not name; a reader following the citation finds nothing and has no other pointer to the corner table the rounding was read from.",
+    "remediation": "Write the investigation, or cite docs/lanes/linecap13/NOTES.md.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:641-643; ls docs/investigations/."
+  },
+  {
+    "id": "L2",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": 645,
+    "summary": "The shipped comment quotes a before/after pair that appears in no other artifact. geom.c:644-646 says the clip takes the residual 'from 495 mismatched px to 102' and :652-653 says the centre-sampled rival scores '497 px, worse than the 495 it was meant to fix'; the prediction, the PR body and NOTES.md all say 497 is worse than 412, and quote 414 -> 21 at the epsilon tie and 935 -> 544 at the device tie. 102 appears nowhere else in the diff. Three baselines (412, 495, 935) and two 'after' figures are in play for what reads as one measurement, and no quotation names its instrument.",
+    "scenario": "These numbers are the entire evidence for the rule and for the choice of outward rounding over the centre-sampled band. A reader comparing the shader comment with the prediction cannot tell which pair is the analytic model, which is the polygon rasterisation at tie=1e-9 and which at tie=1/256, so the 497-vs-412 and 497-vs-495 comparisons cannot be checked and the rounding decision cannot be re-derived from the tree.",
+    "remediation": "Name the instrument at each quotation (analytic model / polygon rasterisation at tie=1e-9 / at tie=1/256), or drop the figures from the shader comment and keep them in one place.",
+    "evidence": "hw/xbox/nv2a/pgraph/glsl/geom.c:644-653; docs/testing/predictions/line-cap-clip.json (prediction text and measured{}); docs/lanes/linecap13/NOTES.md."
+  },
+  {
+    "id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/vk/instance.c",
+    "line": 751,
+    "summary": "Two references went stale when the constants moved. vk/instance.c:751 still reasons about 'assert(limits.maxGeometryOutputVertices >= 12)' after PGRAPH_GEOM_MAX_OUTPUT_VERTICES became 18 -- the argument is unaffected, the number is not. docs/testing/line_cap_phase.py:76 labels tie == 'floor1' as 'the measured rule', but the rule the shader implements, and the one shader_check() validates against, is tie='ceil'.",
+    "scenario": "The instance.c line is cosmetic. The line_cap_phase.py one is not: a reader picking the rule's variant from that comment picks floor1, which differs from the shipped ceil on any edge where m_max + w/2 is an integer (see M3), and would score and remediate against a rule the shader does not draw.",
+    "remediation": "Update both. In line_cap_phase.py, mark tie='ceil' as the shipped rule and say in one line what separates it from floor1.",
+    "evidence": "hw/xbox/nv2a/pgraph/vk/instance.c:734, :751; docs/testing/line_cap_phase.py:76, :344."
+  }
+]

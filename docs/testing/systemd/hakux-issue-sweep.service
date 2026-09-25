@@ -1,0 +1,21 @@
+[Unit]
+Description=hakuX issue sweep -- backlog states no actor reaches, handed to the board's next tick
+Documentation=file:///home/justin/hakuX/docs/testing/jobs/issue-sweep.sh
+
+[Service]
+Type=oneshot
+# A user unit does not inherit the login PATH -- see the same line in
+# hakux-dispatcher.service, where its absence broke every uncached Android
+# build for a day because `meson` lives in ~/.local/bin. This sweep runs `gh`,
+# `git`, `python3` and `systemctl`.
+Environment=PATH=/home/justin/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
+# run-trunk.sh keeps a private worktree of origin/master and runs the job
+# from it, so a stale owner checkout cannot run a stale job.
+ExecStart=/usr/bin/env bash /home/justin/hakuX/docs/testing/jobs/run-trunk.sh issue-sweep
+SuccessExitStatus=75
+# Two gh list calls and one pass over the tracker. It starts NO model session:
+# the findings go to $WORK/board/issue-sweep.findings and the board's own
+# timer decides what to do with them.
+TimeoutStartSec=600
+StandardOutput=append:/home/justin/hakux-work/logs/issue-sweep/systemd.log
+StandardError=append:/home/justin/hakux-work/logs/issue-sweep/systemd.log

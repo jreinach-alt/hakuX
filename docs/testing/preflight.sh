@@ -30,6 +30,13 @@ while [ $# -gt 0 ]; do
         --allow-tracker) ALLOW_TRACKER=1; shift ;;
         --tests) TESTS="$2"; shift 2 ;;
         --support) SUPPORT="$2"; shift 2 ;;
+        # Render the `coverage` step's verdict from a check_coverage.py log
+        # and exit. THIS EXISTS SO THE SELF-TEST DRIVES THIS FILE rather than
+        # a paraphrase of it: the defect being pinned is entirely in how this
+        # script READS that log, and a fixture that reimplemented the reading
+        # would pass against the broken version for free. fold.sh's
+        # `preflight-verdict` mode is the same pattern for the same reason.
+        --render-coverage) RENDER_COVERAGE="$2"; shift 2 ;;
         *) echo "unknown argument: $1" >&2; exit 2 ;;
     esac
 done
@@ -38,6 +45,58 @@ fail=0
 step() { printf '%-28s' "$1"; }
 ok()   { echo "ok"; }
 bad()  { echo "FAILED"; fail=1; }
+# A THIRD VERDICT, BECAUSE THERE ARE THREE OUTCOMES AND THERE WERE TWO WORDS.
+#
+# A gate that could not reach the thing it checks has not passed and has not
+# failed; it has not run. Every such gate here FAILS OPEN on purpose -- a
+# network blip must not make the repository unpushable -- so it exits 0, and
+# with only `ok` and `FAILED` available that exit was rendered as `ok`. The
+# operator then read "preflight green" over a check that did no work.
+#
+# That is not hypothetical and it is not rare. `check_coverage.py` reaches
+# GitHub through `gh`, and in a Claude Code cloud session the proxy refuses
+# GraphQL wholesale -- so on 2026-09-19 (lane.remote, PR #162) EVERY coverage
+# gate run from such a session took the fail-open branch, printed its reason,
+# and was reported here as `ok`. The REST conversion in check_coverage.py
+# fixes the cause; this word fixes the class, because the next gate to lose
+# its network will print this instead of a pass.
+#
+# IT DOES NOT SET `fail`. The fail-open is deliberate and stays; what was
+# missing was a way to say so out loud. `fold.sh` keys a failed gate on a
+# line ENDING in the word FAILED (`preflight_failed_gates`), so this word is
+# invisible to it by construction and a fold is not blocked by a blip.
+unchecked() { echo "DID NOT RUN"; }
+
+render_coverage() {   # <check_coverage.py log> -> the step's verdict and detail
+    # THE VERDICT IS THE `^coverage ` LINE, NOT LINE 1. This read `sed -n 1p`,
+    # which was right until check_coverage.py grew a provenance line ("board
+    # read from: territory.toml <- origin/board, ...") and that became line 1.
+    # From then on the operator saw where the board was read from and NOTHING
+    # about what was checked -- including, on a run that failed open, nothing
+    # about the fact that it had failed open. check_coverage.py's own comments
+    # promise that prefix as an interface; a line number is not one.
+    #
+    # A MISSING VERDICT LINE IS ALSO `DID NOT RUN`. If the script printed
+    # nothing matching, it died somewhere it does not report from, and an
+    # empty grep rendered as `ok` is the same bug one layer down.
+    local v
+    v=$(grep -m1 '^coverage ' "$1" 2>/dev/null || true)
+    case "$v" in
+        "coverage NOT CHECKED"*|"")
+            unchecked
+            # The WHOLE log, not one line: on this path the reason is the only
+            # thing of value, and it is a handful of lines.
+            sed 's/^/  /' "$1" 2>/dev/null
+            echo "  ^^ THE COVERAGE GATE DID NOT RUN. It exits 0 by design so"
+            echo "     a blip cannot block a push; that 0 is not a pass." ;;
+        *)  ok
+            printf '  %s\n' "$v" ;;
+    esac
+}
+
+if [ -n "${RENDER_COVERAGE:-}" ]; then
+    step "coverage"; render_coverage "$RENDER_COVERAGE"; exit 0
+fi
 
 # 1. psh_differ, as .github/workflows/desktop.yml runs it. carve.py refuses to
 #    carve a function it was not told about, so a new PGRAPHState reader in
@@ -186,10 +245,13 @@ fi
 #    not know what a lane is -- but it belongs here for the same reason: the
 #    state it guards changes at exactly the moment someone folds work and
 #    pushes. It FAILS OPEN without `gh`, so an offline preflight still passes.
+#
+#    THE SUCCESS PATH IS `render_coverage`, defined above with the reasoning:
+#    check_coverage.py exits 0 both when it checked and when it failed open,
+#    so the exit code cannot tell those apart and the WORDS have to.
 step "coverage"
 if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; then
-    ok
-    sed -n 1p /tmp/preflight-coverage.log | sed 's/^/  /'
+    render_coverage /tmp/preflight-coverage.log
 else
     bad
     sed 's/^/  /' /tmp/preflight-coverage.log

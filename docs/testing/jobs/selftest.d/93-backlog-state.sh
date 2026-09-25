@@ -51,9 +51,14 @@ BD="$T/board"; BDD="$T/board-dispatch"
 # directory for a later fragment to trip over is the failure mode the split
 # was done to remove.
 mkdir -p "$BD" "$T/bin2" "$BDD/fleet" "$BDD/delivery-cache"
-cp "$BSRC/check_coverage.py" "$BSRC/fleet.py" "$BSRC/board_files.py" "$BD/"
-check "the three board modules were copied from $BSRC" \
-    bash -c '[ -s "$1/check_coverage.py" ] && [ -s "$1/fleet.py" ] && [ -s "$1/board_files.py" ]' _ "$BD"
+# gh_rest.py joined this list when the GraphQL-to-REST conversion landed. It is
+# how both scripts talk to GitHub at all, so a copy without it raises
+# ModuleNotFoundError rather than running degraded -- which is the right, loud
+# answer, and is why that import is NOT optional the way fleet.py's display
+# helper is (see 55-localtime.sh's note on the same layout).
+cp "$BSRC/check_coverage.py" "$BSRC/fleet.py" "$BSRC/board_files.py" "$BSRC/gh_rest.py" "$BD/"
+check "the four board modules were copied from $BSRC" \
+    bash -c '[ -s "$1/check_coverage.py" ] && [ -s "$1/fleet.py" ] && [ -s "$1/board_files.py" ] && [ -s "$1/gh_rest.py" ]' _ "$BD"
 printf '{"lane":"alpha","agent":"a","issues":["1"],"dispatched_utc":"2026-09-19T00:00:00Z","asked":"the running lane"}\n' > "$BDD/fleet/alpha.json"
 # So the UNBRIEFED tail stays out of line 1, which every check below asserts on.
 # It was an empty `deliveries/alpha.md` until the delivery channel moved to
@@ -73,8 +78,20 @@ PY
 cat > "$T/bin2/gh" <<'EOF'
 #!/usr/bin/env bash
 # Four open issues, which is what a board fixture needs and all it needs.
-[[ "$*" == *"issue list"* ]] || exit 0
-echo '[{"number":1,"title":"owned by a running lane"},{"number":2,"title":"the available one"},{"number":3,"title":"really blocked"},{"number":4,"title":"mentions NOT BLOCKED mid-text"}]'
+#
+# REST, NOT `gh issue list`. check_coverage.py and fleet.py read
+# repos/<repo>/issues through `gh api` since GraphQL is refused in a Claude
+# Code cloud session (see gh_rest.py). The DATA here is unchanged from the
+# `issue list` version; only the question the scripts ask moved. The
+# pull-request half of that conversion has its own fragment
+# (98-coverage-rest.sh) rather than being folded into this board fixture.
+case "$*" in
+    *"/issues?"*) echo '[{"number":1,"title":"owned by a running lane"},{"number":2,"title":"the available one"},{"number":3,"title":"really blocked"},{"number":4,"title":"mentions NOT BLOCKED mid-text"}]' ;;
+    # An empty PR list, not silence: silence parses as nothing and fleet.py
+    # reports PR-BLIND, which suppresses sections this fragment reads.
+    *"/pulls?"*)  echo '[]' ;;
+esac
+exit 0
 EOF
 # AFTER THE SPLIT (2/2): `alpha is running` used to be the `"state": "running"`
 # field in the registry entry above. ae3712aae1 (#133) made fleet.py derive

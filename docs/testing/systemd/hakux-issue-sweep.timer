@@ -1,0 +1,25 @@
+[Unit]
+Description=hakuX issue sweep, twice a day at 07:41 and 19:41
+
+[Timer]
+# TWICE A DAY, NOT HOURLY, and the reason is what consumes it. This sweep
+# produces no repair; it writes findings that wake at most ONE board tick per
+# distinct set (board.sh keys them on their sha256). Running it more often
+# cannot make the board act sooner -- an unchanged finding set hashes the same
+# and is already marked read -- so a shorter period would buy two gh list
+# calls and nothing else. It is the same cadence as the interactive stopgap
+# (`41 7,19 * * *`), in a form that outlives the session that created it.
+#
+# :41 is off the hour and off every other hakux timer's phase (:03-:08 from
+# OnBootSec offsets, :13 for the PR sweep, :30 for the nightly). It reads the
+# board files, which the board tick writes; sharing a minute with one is how a
+# sweep reports a row that was being corrected as it read it.
+OnCalendar=*-*-* 07,19:41:00
+# WSL2 is shut down whenever the owner closes it; a missed slot must not look
+# like a clean sweep.
+Persistent=true
+RandomizedDelaySec=60
+Unit=hakux-issue-sweep.service
+
+[Install]
+WantedBy=timers.target
