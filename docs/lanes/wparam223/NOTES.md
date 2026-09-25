@@ -78,28 +78,38 @@ tri2 fills x>160, y>70, below it.
 
 We emit the negative w to the host and rely on the host clipper, which yields
 the same wedge **when the arithmetic is well conditioned**. `prog_..._w-1.00` and
-`_w-inf` match to 666/670 px. Per triangle, `prog_w_zero_inf__bitri` (positive
-vertices at w = 2^-64 = kMinW, clamp range [2^-64, 2^64]):
+`_w-inf` match to 666/670 px. Per triangle, `prog_w_zero_inf__bitri`, clamp
+range [2^-64, 2^64]. **tri1's positive vertices are at kMinW = 2^-64 and
+tri2's at kMaxW = 2^64** (`w_param_tests.cpp:646-706`: tri1 = {kMinW / m,
+kMinW, kMinW}, tri2 = {kMaxW * m, kMaxW, kMaxW}). This table first gave 2^-64
+for both, and lane.wparamgeom223 built a fix on that and had to withdraw it
+(`docs/lanes/wparamgeom223/NOTES.md`):
 
-| capture | tri1 neg w | tri1 | tri2 neg w | tri2 |
-|---|---|---|---|---|
-| w-1.00 | -2^-64 | drawn | -2^64 | drawn |
-| w-inf | -2^-64 (from -0) | drawn | -2^64 (from -inf) | drawn |
-| w-0.00 | -2^64 (from -inf) | **missing** | -2^-64 (from -0) | **missing** |
-| w-1.88e-37 | -2^58 | drawn | -2^-58 | **missing** |
-| w-3.76e-37 | -2^57 | drawn | -2^-57 | **missing** |
-| w-7.52e-37 | -2^56 | drawn | -2^-56 | 4,025 px missing |
-| w-1.50e-36 | -2^55 | drawn | -2^-55 | drawn |
+| capture | tri1 {neg \| pos} | ratio | tri1 | tri2 {neg \| pos} | ratio | tri2 |
+|---|---|---|---|---|---|---|
+| w-1.00 | {-2^-64 \| 2^-64} | 1 | drawn | {-2^64 \| 2^64} | 1 | drawn |
+| w-inf | {-2^-64 (from -0) \| 2^-64} | 1 | drawn | {-2^64 (from -inf) \| 2^64} | 1 | drawn |
+| w-0.00 | {-2^64 (from -inf) \| 2^-64} | 2^128 | **missing** | {-2^-64 (from -0) \| 2^64} | 2^128 | **missing** |
+| w-1.88e-37 | {-2^58 \| 2^-64} | 2^122 | drawn | {-2^-58 \| 2^64} | 2^122 | **missing** |
+| w-3.76e-37 | {-2^57 \| 2^-64} | 2^121 | drawn | {-2^-57 \| 2^64} | 2^121 | **missing** |
+| w-7.52e-37 | {-2^56 \| 2^-64} | 2^120 | drawn | {-2^-56 \| 2^64} | 2^120 | 4,025 px missing |
+| w-1.50e-36 | {-2^55 \| 2^-64} | 2^119 | drawn | {-2^-55 \| 2^64} | 2^119 | drawn |
 
-- A single rule about w values can't produce this: the same clamped value
-  (-2^64, -2^-64) is drawn in one triangle and missing in the other. It
-  depends on the triangle's geometry together with its w magnitudes.
-- tri1 fails only at a ratio of 2^128 (-2^64 against 2^-64). A clip parameter
-  t = d+/(d+ - d-) of about 2^-128 is below FLT_MIN, so a flush-to-zero
-  clipper collapses the clipped vertex onto the positive one. That fits, but
-  it is an unvalidated model of Adreno's clipper.
-- tri2 fails at *small* ratios (2^6 to 2^8) with all |w| <= 2^-57. No
-  underflow model explains that one, so it stays **unexplained**.
+- **Every missing triangle has a |w| ratio of 2^120 or more, and every
+  ratio-1 triangle draws**, at 2^-64 and at 2^64 alike. So the failure goes
+  with the ratio, not the magnitude. It is asymmetric: a *small* negative
+  vertex against large positive ones fails from 2^120, while a *large*
+  negative against small positives still draws at 2^122 and fails only at
+  2^128.
+- A clip parameter t = d+/(d+ - d-) near 2^-120 is a factor of 2^6 above
+  FLT_MIN, so a flush-to-zero clipper that multiplies it by a coordinate
+  difference of 2^-2 to 2^-6 before use could collapse the clipped vertex.
+  That fits both triangles, but it is an unvalidated model of Adreno's
+  clipper.
+- Pixel split of `w-0.00`'s 271,518 px against the fix run of PR #235
+  (`1790332452-arms-shadeflat224-fix-1762588`): 142,693 in tri2's colour
+  (37,209,245) and 128,825 in tri1's (229,17,53). `w-1.88e-37`'s 143,546 is
+  tri2's alone.
 - **Three renderers, three answers.** Desktop llvmpipe GL (binary d1ec4af687,
   desktop channel, run `wparam223_prog_wm0_gl`) renders `w-0.00` as tri2's
   *interior* (upper-left of the diagonal). Adreno renders nothing. Silicon
@@ -112,6 +122,14 @@ vertices at w = 2^-64 = kMinW, clamp range [2^-64, 2^64]):
   *over*-draws: 79,014 px where silicon draws nothing, plus 67k value.
 
 ## 5. What the next lane should do (not done here)
+
+**WITHDRAWN (lane.wparamgeom223, 2026-09-25).** The uniform scale below was
+built on the section 4 table's wrong positive w for tri2. A uniform scale
+cannot change a ratio, and every failing triangle is a ratio case. At
+w-1.88e-37 the scale multiplies tri2 {-2^-58, 2^64} by 2^-3, not the 2^61
+assumed below. What remains is clipping the triangle in the geometry shader
+itself. See `docs/lanes/wparamgeom223/NOTES.md`. The original text is kept
+below so the arm and its reasoning can still be read:
 
 The one rendering-invariant lever is a **per-primitive uniform positive scale
 of the three clip-space vertices** in the geometry shader. Homogeneous
