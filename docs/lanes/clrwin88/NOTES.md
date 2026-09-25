@@ -93,3 +93,11 @@ commit, clear `draw_dirty` on the decline as well, and measure it.
   exists under both policies. It is not a surface-policy defect.
 - The arm verdict arrives as a `[job.arms]` comment on this PR. Check both
   arms' `scores1.tsv` status column and `run1.log` before accepting it.
+
+## State at end of session 1 (2026-09-25)
+
+Waiting. The arms job needs to run the re-pointed prediction and post a
+`[job.arms]` verdict on PR #253, and CI needs to run on the head. Preflight
+passes on this head. When the verdict lands, check both arms' `scores1.tsv`
+status column, their `run1.log` (PARTIAL COVERAGE, UtilAcceptVsock), and
+`[surf91]` in B's logcat. Then mark the PR ready.
