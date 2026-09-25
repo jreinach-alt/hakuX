@@ -124,6 +124,69 @@ the comment tell the lane to re-run with `ab_run.sh`.
 same lost run). Guard it. An empty run already prints its own explanation just
 above.
 
+## Defects 5-10 (added 2026-09-25 07:30 PDT): found since this brief was written
+
+These are smaller than 0-4. They may go in a second PR, and 5-7 are lane.xbox's,
+from the voided vsh proof: https://github.com/jreinach-alt/hakuX/pull/238#issuecomment-5833289939
+
+- **5. A new enum value in persisted shader keys poisons the cache for every
+  other build.**
+  - #235's fix arm persisted geometry-shader keys carrying
+    `PRIM_TYPE_TRIANGLES_ADJACENCY` into `shader_module_keys.bin` on both
+    handhelds.
+  - `check_driver_identity_and_wipe_caches` wipes only on a struct size or
+    `SHADER_STATE_LAYOUT_VERSION` change. So the next master build regenerated
+    those keys at startup and aborted at `geom.c:240`, which voided two runs.
+  - The host bumped the version on #235 (`32319107ab`), but the next lane to
+    add an enum value will do it again.
+  - Harness fix: clear the three shader-cache paths when the APK about to run
+    differs from the previous run's on that device. Record it per device. Say
+    why if you choose "before every run" instead: it costs shader warm-up on
+    perf runs.
+- **6. `LOGCAT_SPEC` drops every assert's text.** It ends in `*:S` and does not
+  include `libc`.
+  - Measured: `1790344835-vsh-2413308` (thor) and `1790344836-vsh-2413360`
+    (nova) both SIGABRT in `pgraph_glsl_gen_vsh_prog`. `vsh-prog.c` has four
+    asserts, and the logcat cannot say which one fired.
+  - Add `libc:F`. Check that `DEBUG:F` adds anything the hakuX crash handler
+    does not already print.
+- **7. `run_disc.sh` reports a crash 0.2 s after Vulkan init as "the emulator
+  never started".** lane.xbox's comment above has the run.
+- **8. The unattended lane allowlist never matches a direct script call.**
+  - `docs/testing/jobs/allowed-tools.lane` has `Bash(docs/testing/*:*)` and
+    `Bash(./docs/testing/*:*)`. The `*` inside a Bash prefix rule is literal, so
+    `docs/testing/request.sh ...` came back "requires approval" in every form
+    (#238, attempt 1).
+  - `bash docs/testing/request.sh ...` passes, through `Bash(bash:*)`.
+  - Replace the two entries with explicit prefixes for the scripts lanes run
+    directly (at least `request.sh`, `ab_run.sh`, `preflight.sh`,
+    `lane_preflight.sh` if it exists). Prove it with one headless `claude -p`
+    call that runs a harmless one, e.g. `request.sh --help`, under the
+    allowlist.
+- **9. The delivery cache reports a stopped sweep that is running.**
+  - `deliver.sh scan` stamps `scanned` only on lanes that had a delivery or
+    report comment in the window, through `cache_merge`. A quiet lane keeps its
+    old stamp.
+  - `check_coverage.py` then says "cache last refreshed 3.8h ago -- is
+    hakux-comments.timer running?". Measured 07:02 PDT for clrwb91 (3.8h),
+    vshconst and xbox (6.8h), while the timer ran hourly and exited 0 at 06:17.
+  - Fix: a SUCCESSFUL scan stamps every cache file, or writes one sweep stamp
+    that the gate reads. A failed scan must still leave the stamp alone. That is
+    the distinction `cmd_scan` already draws with exit 3.
+- **10. `check_territory.py:151` reads the tracker from the working tree.** It
+  opens `os.path.join(HERE, "nv2a_issues.toml")`, which is master's fold-lagged
+  copy (last changed 09-18), where it should use `board_files.load()`.
+  - So its "walled" NOTE reports #13 as blocked by shadeflat224's files, while
+    #13's live row on `origin/board` has no `blocked_on` at all.
+  - Load it through `board_files` like the territory, and print its source like
+    the territory line does.
+
+Files for 5-10, beyond the list above: docs/testing/run_disc.sh (already yours),
+docs/testing/jobs/allowed-tools.lane, docs/testing/jobs/deliver.sh,
+docs/testing/check_coverage.py and check_territory.py (already yours), and
+wherever `LOGCAT_SPEC` and the pre-run cache step live (dispatcher.sh, yours).
+The board row adds the two new ones at dispatch.
+
 ## Falsify before claiming
 
 - Defect 2: a selftest fragment with a fake `adb` that never returns. On the
