@@ -322,3 +322,14 @@ that is not modelled.
 
 Before believing the verdict: check scores1.tsv `status` for `unreadable`,
 and run1.log for PARTIAL COVERAGE / UtilAcceptVsock.
+
+### State at end of session 1 (2026-09-25)
+
+Waiting on the arm. The prediction is committed at ca9d8dbe04 with live refs
+(a = 2b04d4d422, b = fe07f11f50), so the arms job will run it and post a
+`[job.arms]` verdict on PR #263. When it lands:
+
+- check the status column and run1.log, as above;
+- record the verdict here;
+- mark the PR ready if every leg holds. If one fails, record the regressing
+  suite as the stage that is refuted.
