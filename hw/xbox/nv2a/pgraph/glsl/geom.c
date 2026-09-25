@@ -33,13 +33,13 @@ void pgraph_glsl_set_geom_state(PGRAPHState *pg, GeomState *state)
         pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),
         NV_PGRAPH_SETUPRASTER_BACKFACEMODE);
 
-    state->primitive_mode = pgraph_prim_rewrite_get_output_mode(
-        (enum ShaderPrimitiveMode)pg->primitive_mode,
-        state->polygon_front_mode);
-
     state->smooth_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                      NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                             NV_PGRAPH_CONTROL_3_SHADEMODE_SMOOTH;
+
+    state->primitive_mode = pgraph_prim_rewrite_get_draw_mode(
+        (enum ShaderPrimitiveMode)pg->primitive_mode,
+        state->polygon_front_mode, !state->smooth_shading);
 
     state->z_perspective = pgraph_reg_r(pg, NV_PGRAPH_CONTROL_0) &
                            NV_PGRAPH_CONTROL_0_Z_PERSPECTIVE_ENABLE;
@@ -72,6 +72,7 @@ bool pgraph_glsl_need_geom(const GeomState *state)
     switch (state->primitive_mode) {
     case PRIM_TYPE_LINES:
     case PRIM_TYPE_TRIANGLES:
+    case PRIM_TYPE_TRIANGLES_ADJACENCY:
         return true;
     default:
         return false;
@@ -90,6 +91,19 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
     const char *layout_out = NULL;
     const char *body = NULL;
     const char *provoking_index = state->smooth_shading ? "index" : "0";
+    /*
+     * #224: a flat, filled quad arrives as triangles-with-adjacency,
+     * (a, v3, b, v3, c, v3) -- see flat_quad_adjacency() in prim_rewrite.c.
+     * The triangle is slots 0, 2, 4 and v3 sits in slot 1, so every flat
+     * varying comes from slot 1, vtxFogSpecial included: it is `flat` in
+     * every shade mode, and slot 1 is the v3 the old v3-first triangles
+     * handed a first-vertex-provoking rasteriser.
+     */
+    bool adjacency = state->primitive_mode == PRIM_TYPE_TRIANGLES_ADJACENCY;
+    if (adjacency) {
+        assert(!state->smooth_shading && polygon_mode == POLY_MODE_FILL);
+        provoking_index = "1";
+    }
 
     /*
      * #13: silicon's wide line is NOT the perpendicular rectangle the API's
@@ -235,6 +249,16 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
                    "  emit_vertex(2, mat4(pz[2], pz[2], pz[2], pz[3]), gl_in[2].gl_Position);\n"
                    "  EndPrimitive();\n";
         }
+        break;
+    case PRIM_TYPE_TRIANGLES_ADJACENCY:
+        need_triz = true;
+        layout_in = "layout(triangles_adjacency) in;\n";
+        layout_out = "layout(triangle_strip, max_vertices = 3) out;\n";
+        body = "  mat4 pz = calc_triz(0, 2, 4);\n"
+               "  emit_vertex(0, pz, gl_in[0].gl_Position);\n"
+               "  emit_vertex(2, pz, gl_in[2].gl_Position);\n"
+               "  emit_vertex(4, pz, gl_in[4].gl_Position);\n"
+               "  EndPrimitive();\n";
         break;
     default:
         assert(false);
@@ -417,7 +441,9 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         widen_lines ? "void emit_vertex_fs(int index, int fs, mat4 pz,\n"
                       "                    vec4 pos) {\n"
                     : "void emit_vertex(int index, mat4 pz, vec4 pos) {\n";
-    const char *fog_special_index = widen_lines ? "fs" : "index";
+    const char *fog_special_index = widen_lines ? "fs" :
+                                    adjacency   ? provoking_index :
+                                                  "index";
 
     mstring_append_fmt(
         output,
