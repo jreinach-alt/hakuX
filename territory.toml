@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 198
+wave = 199
 updated_utc = "2026-09-25T21:15:00Z"
 
 
@@ -888,7 +888,7 @@ note = "DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on
 issues = ["255"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshsubneg255-*.json", "docs/lanes/vshsubneg255/**"]
 standing = false
-note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #288 folds, pgraph.c goes to [lane.spheremap273] for #273's one case in kelvin_map_texgen (262,990 px, priced offline). The host re-pinned this lane's two queued vsh runs from the Thor (behind the 0.5 sweeps, ~7 h) to the Nova (devices agree per capture)."
+note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md. PASS-ON (host session, 2026-09-25T20:30:10Z): when PR #288 folds, pgraph.c goes to [lane.spheremap273] for #273's one case in kelvin_map_texgen (262,990 px, priced offline). The host re-pinned this lane's two queued vsh runs from the Thor (behind the 0.5 sweeps, ~7 h) to the Nova (devices agree per capture). AMENDED (host session, 2026-09-25T20:59:17Z): lane.spheremap273 retired at wave 197 (PR #305, analysis, merged). When PR #288 folds, pgraph.c goes to a NEW #273 fix dispatch. The hunk is in docs/lanes/spheremap273/NOTES.md section 4 (one case in kelvin_map_texgen, priced 262,990 -> 0 px); #273's tracker row now names this blocker."
 
 [lane.vshr12280]
 issues = ["280"]
@@ -930,9 +930,9 @@ note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #281: NaN vert
 
 [lane.wparamff223]
 issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamff223-*.json", "docs/lanes/wparamff223/**"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamff223-*.json", "docs/lanes/wparamff223/**", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c"]
 standing = false
-note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #223's ff bitri + ff quad families (1,640,455 px after PR #250's one-negative wedge, which folded as 8e683b3a26). PRICE OFFLINE FIRST with docs/lanes/wparamclip223/wedge_price.py: swap vsh-ff.c's divide for the prog path's homogeneous carry and see whether ff bitri reaches 0 coverage mismatch; if it does the fix is vsh-ff.c, which is lane.shadetie224b's (PR #263 in audit) -- report the function and ask, do not edit. geom.c is claimed here only for the ff-quad two-negative-vertex rule. vk/instance.c released to [free]. Brief: briefs/wparamff223.md. HOST DECISION (2026-09-25T20:30:10Z): build hunk (B) in geom.c append_wedge() now (check w_gaps first, as NOTES say); hunk (A) needs vsh-ff.c, which comes here when lane.shadetie224b's PR #263 folds."
+note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #223's ff bitri + ff quad families (1,640,455 px after PR #250's one-negative wedge, which folded as 8e683b3a26). PRICE OFFLINE FIRST with docs/lanes/wparamclip223/wedge_price.py: swap vsh-ff.c's divide for the prog path's homogeneous carry and see whether ff bitri reaches 0 coverage mismatch; if it does the fix is vsh-ff.c, which is lane.shadetie224b's (PR #263 in audit) -- report the function and ask, do not edit. geom.c is claimed here only for the ff-quad two-negative-vertex rule. vk/instance.c released to [free]. Brief: briefs/wparamff223.md. HOST DECISION (2026-09-25T20:30:10Z): build hunk (B) in geom.c append_wedge() now (check w_gaps first, as NOTES say); hunk (A) needs vsh-ff.c, which comes here when lane.shadetie224b's PR #263 folds. GRANTED (host session, 2026-09-25T20:59:17Z): glsl/vsh-ff.c, the pass-on recorded at wave 194. PR #263 folded and lane.shadetie224b retired at wave 197, which left the file unowned. Build hunk (A) (position tail, vsh-ff.c:878-887) with hunk (B) (geom.c append_wedge), and register one arm for both."
 
 [retired.spheremap273]
 issues = []
