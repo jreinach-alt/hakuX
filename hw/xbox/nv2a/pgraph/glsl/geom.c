@@ -169,10 +169,9 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         if (polygon_mode == POLY_MODE_FILL) {
             layout_out = "layout(triangle_strip, max_vertices = 3) out;\n";
             body = "  mat4 pz = calc_triz(0, 1, 2);\n"
-                   "  float ws = tri_w_scale(0, 1, 2);\n"
-                   "  emit_vertex(0, pz, gl_in[0].gl_Position * ws);\n"
-                   "  emit_vertex(1, pz, gl_in[1].gl_Position * ws);\n"
-                   "  emit_vertex(2, pz, gl_in[2].gl_Position * ws);\n"
+                   "  emit_vertex(0, pz, gl_in[0].gl_Position);\n"
+                   "  emit_vertex(1, pz, gl_in[1].gl_Position);\n"
+                   "  emit_vertex(2, pz, gl_in[2].gl_Position);\n"
                    "  EndPrimitive();\n";
         } else if (polygon_mode == POLY_MODE_LINE) {
             need_linez = true;
@@ -256,10 +255,9 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
         layout_in = "layout(triangles_adjacency) in;\n";
         layout_out = "layout(triangle_strip, max_vertices = 3) out;\n";
         body = "  mat4 pz = calc_triz(0, 2, 4);\n"
-               "  float ws = tri_w_scale(0, 2, 4);\n"
-               "  emit_vertex(0, pz, gl_in[0].gl_Position * ws);\n"
-               "  emit_vertex(2, pz, gl_in[2].gl_Position * ws);\n"
-               "  emit_vertex(4, pz, gl_in[4].gl_Position * ws);\n"
+               "  emit_vertex(0, pz, gl_in[0].gl_Position);\n"
+               "  emit_vertex(2, pz, gl_in[2].gl_Position);\n"
+               "  emit_vertex(4, pz, gl_in[4].gl_Position);\n"
                "  EndPrimitive();\n";
         break;
     default:
@@ -752,58 +750,6 @@ MString *pgraph_glsl_gen_geom(const GeomState *state, GenGeomGlslOptions opts)
             "  precise float err = fma(-c, d, cd);\n"
             "  precise float res = fma(a, b, -cd) + err;\n"
             "  return res;\n"
-            "}\n");
-
-        /*
-         * #223: one positive power of two for all three clip-space vertices
-         * of a filled triangle, chosen so that sqrt(max|w| * min|w|) lands
-         * within a factor of two of 1.  Homogeneous coordinates are
-         * invariant under a uniform positive scale, so NDC positions,
-         * clip-space depth and every perspective-correct varying are
-         * unchanged.  A POWER OF TWO makes that exact in float32 rather than
-         * merely equal on paper: x/w, z/w, the clipper's t = d0 / (d0 - d1)
-         * and the barycentric 1/w weights all come out bit for bit the same,
-         * unless something overflows or leaves the normal range.
-         *
-         * The only thing that moves is |w|.  W_param's prog_w_zero_inf__bitri
-         * draws triangles with one negative-w vertex.  Silicon draws them as
-         * the external wedge, and the host clipper draws the same wedge only
-         * while its arithmetic is well conditioned.  With every |w| at or
-         * below 2^-57 (tri2 in w-1.88e-37, {-2^-58, 2^-64}) Adreno drew
-         * nothing.  Scaled, that triangle arrives as {-8, 1/8}.  A
-         * 2^128 RATIO (tri1 in w-0.00, {-2^64, 2^-64}) is out of reach
-         * by construction: the scale leaves it at {-2^64, 2^-64}.  See
-         * docs/lanes/wparam223/NOTES.md sections 4-5.
-         *
-         * Exponents are read from the bits, not from log2(), so the factor is
-         * an exact power of two on every driver.  A zero, subnormal, inf or
-         * NaN w (clampAwayZeroInf() in vsh.c prevents all four, but this stage
-         * does not rely on it), or a scaled component that would leave the
-         * normal range, gets a factor of 1.0, which is what this stage emitted
-         * before the scale existed.
-         */
-        mstring_append(
-            output,
-            "int f32_exp(float v) {\n"
-            "  return ((floatBitsToInt(v) >> 23) & 0xff) - 127;\n"
-            "}\n"
-            "float tri_w_scale(int i0, int i1, int i2) {\n"
-            "  vec4 p0 = gl_in[i0].gl_Position;\n"
-            "  vec4 p1 = gl_in[i1].gl_Position;\n"
-            "  vec4 p2 = gl_in[i2].gl_Position;\n"
-            "  ivec3 e = ivec3(f32_exp(p0.w), f32_exp(p1.w), f32_exp(p2.w));\n"
-            "  if (any(equal(e, ivec3(-127))) || any(equal(e, ivec3(128)))) {\n"
-            "    return 1.0;\n"
-            "  }\n"
-            "  int emin = min(min(e.x, e.y), e.z);\n"
-            "  int k = -((max(max(e.x, e.y), e.z) + emin) / 2);\n"
-            "  vec4 a = max(max(abs(p0), abs(p1)), abs(p2));\n"
-            "  float big = max(max(a.x, a.y), max(a.z, a.w));\n"
-            "  if (k == 0 || k < -126 || emin + k < -126 ||\n"
-            "      f32_exp(big) + k > 126) {\n"
-            "    return 1.0;\n"
-            "  }\n"
-            "  return intBitsToFloat((127 + k) << 23);\n"
             "}\n");
 
         if (state->z_perspective) {
