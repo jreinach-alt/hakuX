@@ -311,6 +311,34 @@ Attempt 4 merged origin/master with `git merge`, not a rebase, so b_ref stays
 an ancestor. It then marked #234 ready. Still owed after it folds: the
 handheld ILU RCP Tests run through `request.sh --program vsh` once #229 folds.
 
+## Remediation of pass 1 (2026-09-25, job.cloud)
+
+Pass 1 (`docs/audits/2026-09-25-vshconst-pass1.md`) found 0 HIGH and 2 MEDIUM.
+Both are fixed here. The LOWs are left as recorded.
+
+- **M1, a paired ILU read its MAC partner's constant write (GLSL).** In
+  `decode_opcode`, when the MAC is paired with an ILU and muxed to a constant
+  register, the MAC now writes `_c_rw_tmp`. The suffix, which `decode_token`
+  appends after the ILU statement, copies the masked components into
+  `c_rw[n]`. `mad c[5], v0, c[5], c[5]` + `rcp r1.x, c[5].x` now emits
+  `MAD(_c_rw_tmp,xyzw, ...)`, `RCP(R1,x, c_rw[5])` and
+  `c_rw[5].xyzw = _c_rw_tmp.xyzw;`, in that order, so the RCP reads the old
+  c[5], as the emulator and silicon do. `_c_rw_tmp` is declared with the
+  `c_rw` copy, so the GLSL of a program that writes no constant is unchanged.
+  An out-of-range address still goes straight to `_c_rw_oob`, which nothing
+  reads.
+- **M2, merged Vulkan draws missed the writeback.**
+  `pgraph_vsh_writeback_constants` now bumps `any_reg_gen` when it changes any
+  constant. `try_enqueue_draw_arrays` and its indexed variant then upload
+  fresh uniforms for the next merged draw, instead of reusing the previous
+  entry's UBO offsets.
+
+Neither change can move the arm 2 captures. M1 only changes programs that
+write a constant from a paired MAC, and no `.vsh` on the pgraph disc writes a
+constant at all (see "Do not repeat"). M2 does nothing unless the writeback
+changed a constant. Both files pass `-fsyntax-only` with the desktop build's
+flags. The arm has not been re-run on this ref.
+
 ## Do not repeat
 
 - `nv2a_index.py blast` on `vsh-prog.c` or `vsh.c` answers "No indexed suite
