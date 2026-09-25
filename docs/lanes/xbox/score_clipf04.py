@@ -16,4 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
 import wbuf_anchor_recover as w  # noqa: E402
 
 w.PRIMS["ClipF-150-004"] = (w.FLOOR, 150, 4, "FloorQuad")
+# _QUADS is built from PRIMS at import; without this, --selectors would read
+# second_of_quad False on this quad's second triangle.
+w._QUADS.add("ClipF-150-004")
 sys.exit(w.main())

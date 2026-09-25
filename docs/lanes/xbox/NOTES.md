@@ -36,6 +36,17 @@ owner if the console stops answering.
 - Runner lesson (fixed in `lane/xbox-runner`): with networking off, an XBE
   never answers ping, so a run in progress LOOKS unreachable. It went dark
   at SITE EXEC and answered ping again 49 s later, back at the dashboard.
+- 2026-09-25. #31 RESULT, fourth run (routed on #112 item C): at
+  `clip_left` 300, `clip_top` 8, the first triangle anchors at **10**, the
+  4-grid. `span_starts_at_clip` holds and master's `flatTop` clause (8) is
+  refuted there. Master's rule gets all 24,952 of that triangle's pixels wrong
+  in the float32 simulation. 57 four-literal fits survive, exactly the ones
+  registered as voting grid. Every leg held (C1 22/22 identical).
+  `docs/testing/xbox-wbuf31-clipf300-2026-09-25.md`.
+- Wrapper lesson: `wbuf_anchor_recover.py` builds `_QUADS` from PRIMS at
+  import, so a scoring wrapper that adds a quad capture must add it to
+  `_QUADS` too, or its second triangle reads `second_of_quad` False. That
+  made the t0 run's published count 75 instead of 93 (corrected in place).
 - 2026-09-25. #200 RESULT (routed on #112 item B): the per-test PGRAPH diff
   over 782 tests in 20 suites, on the console and on the Thor. On silicon, set
   bits appear in the holes of CONTROL_3 (`0x60`), SETUPRASTER (`0x481FE020`),
