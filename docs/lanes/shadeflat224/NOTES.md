@@ -10,9 +10,21 @@ from 52 that got better. Every readable W_param capture is byte-identical
 between the arms. See section 4. PR marked ready. The W_param legs are
 unmeasured until the same registered arm is rerun.**
 
+**Attempt 3 (2026-09-25): replicate registered, waiting on its arm.** The host
+accepted the unreadable diagnosis (and withdrew its #223 heads-up), but the FAIL
+and `regressed` stand because W_param's must_not_move legs have no valid
+measurement. See section 4d.
+
 Why attempt 1 did not finish: it did, as a wait. It pushed the registered
 prediction, posted the wait and stopped. Attempt 2 is the handback on the
 verdict.
+
+Why attempt 2 did not finish: it diagnosed the FAIL correctly and marked the
+PR ready, but it could not get the W_param legs a valid measurement. It asked
+for a rerun of the same prediction, but this lane may not run `ab_run.sh`, and
+the arms job will not re-queue a pair with one valid half, because its RAN
+set counts the done halves. The rerun had no actor. Attempt 3 gives it one: a
+new prediction file gets a new sha, and the arms job queues that.
 
 ## 1. What changed
 
@@ -210,6 +222,20 @@ W_param numbers.
   2. `result.json`'s `captures_vs_goldens` counts `unreadable` rows as
      scored, and `run1.log` does not.
   3. B's `run1.log` `ran 49s` against a ~158 s logcat lifetime.
+
+### 4d. The replicate (attempt 3)
+
+`docs/testing/predictions/shadeflat224-flatdiag-replicate.json`, sha256
+`36509316d609...`. It is registered with `ab_compare.py --register` after
+the last merge of `origin/master`. Its legs, `expect_counts`, disc and refs
+(a6bb4a13d4 / 3ce8778094) are asserted equal to the original's field for
+field. The only change is a replicate note at the head of the prose. It was
+written before its arm ran, and it is not fitted to the first measurement:
+W_param stays must_not_move, as it was.
+
+When the verdict lands, read every mover's `[status]` tag before its "better"
+or "worse". A PASS with W_param at 110 of 110 readable settles the legs. Any
+`unreadable` row is a void leg again, not a result.
 
 ## 5. Do not repeat
 
