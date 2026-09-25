@@ -3,9 +3,16 @@
 Brief: implement the fix `docs/lanes/shade224/NOTES.md` section 4 specifies
 (PR #232), and run the arm it names.
 
-**Status: patch committed (3ce8778094), prediction registered
-(`docs/testing/predictions/shadeflat224-flatdiag.json`, a_ref a6bb4a13d4 =
-master at branch time, b_ref 3ce8778094). Waiting on the device arm.**
+**Status (attempt 2, 2026-09-25): the arm ran. Family A moved exactly as
+registered, 12 better and 0 worse, every capture inside its bound. The arm's
+FAIL comes from 56 W_param captures that were UNREADABLE in the B run, not
+from 52 that got better. Every readable W_param capture is byte-identical
+between the arms. See section 4. PR marked ready. The W_param legs are
+unmeasured until the same registered arm is rerun.**
+
+Why attempt 1 did not finish: it did, as a wait. It pushed the registered
+prediction, posted the wait and stopped. Attempt 2 is the handback on the
+verdict.
 
 ## 1. What changed
 
@@ -115,21 +122,94 @@ W_param.
 
 ## 4. Verdict
 
-**Waiting (2026-09-25).** The prediction is committed and pushed with its refs,
-so the host's arms job queues it. The signal that resolves the wait is the
-`[job.arms]` verdict comment on PR #235. On resume:
+`[job.arms] VERDICT: FAIL -- 53 of 461 checks violated`. Pair
+`42c014b32fab...`: A = `1790327180-arms-shadeflat224-base-820902` (a6bb4a13d4),
+B = `1790327180-arms-shadeflat224-fix-820924` (3ce8778094), both on thor
+(bdc158a5), one run each. The prediction is PRE-REGISTERED and unedited.
 
-1. Read the verdict. Then check the magnitude table in section 3 by hand
-   against the b arm's `scores1.tsv`, because `ab_compare` cannot state
-   "<= Smooth sibling + 200".
-2. If the 12 do not move at all, suspect wiring before the model: is the
-   pipeline's topology ADJ, and did the geometry shader compile? A failed
-   Vulkan compile draws nothing, so the untextured Flat quads would jump
-   too. Look for the arm's logcat shader-compile errors.
-3. Record it here, then mark the PR ready.
+### 4a. Family A: PASS, inside every registered bound
 
-Preflight passes on 574bb4f7d3. The nv2a index was regenerated: line moves
-only, with the tests tree at the committed provenance.
+| capture (First = Last) | A | B | bound | ok |
+|---|---:|---:|---:|---|
+| W_FixedTex_QuadStrip_Flat | 98,922 | 14 | <= 214 | yes |
+| W_FixedTex_Quad_Flat | 42,185 | 24 | <= 224 | yes |
+| FixedTex_QuadStrip_Flat | 43,456 | 6 | <= 206 | yes |
+| ProgTex_QuadStrip_Flat | 43,453 | 115 | <= 315 | yes |
+| ProgTex_Quad_Flat | 4,778 | 29 | <= 229 | yes |
+| FixedTex_Quad_Flat | 4,313 | 104 | <= 304 | yes |
+
+Shade_model total: 3,757,098 -> 3,283,468 (-473,630). The registered value
+was 3,282,884 +- 3,000. The 12 untextured Flat quads (the v3 colour pin) and
+every other Shade_model capture did not move. Byte check: 68 captures differ.
+These are the 12 above plus the 56 unreadable ones below, and nothing else.
+
+### 4b. W_param: 0 real movers. The 52 "better" are unreadable captures scored as 0
+
+The verdict lists 52 W_param captures as "better ... now exact". Every one of
+them carries `[status ok -> unreadable]`. The chain:
+
+- `score_sweep.py:147-161`: when a capture PNG will not open, the row is
+  `status = unreadable, differing = 0`.
+- `ab_compare` reads that 0 as a score, so a capture that could not be
+  read becomes "repaired to exact".
+- B's `scores1.tsv` has **56** W_param rows `unreadable` with `pixels = 0`,
+  and A has none. That is the 52 "movers", plus the 4 the byte check called
+  "same, 0 -> 0, PIXELS MOVED" (`prog_w_zero_inf__bitri_w{1,2,4}.00`,
+  `_winf`, which were already 0 in A).
+- B's own `run1.log` says so: `W_param 28/54 ... PARTIAL COVERAGE: W_param 54
+  of 110`. A's says `32/110`. But `result.json`'s `captures_vs_goldens`
+  records W_param as 110 of 110 and not partial, because it counts the
+  unreadable rows as scored.
+- Every **readable** B W_param capture (52 ok + 2 white-content) is
+  byte-identical to A. Hashing 451 captures found 68 differing, and 12 + 56
+  = 68.
+
+Which ones were unreadable (B, in `scores1.tsv` order):
+
+| group | unreadable in B | readable |
+|---|---|---|
+| `ff_w_zero_inf__bitri_*` | w-7.52e-37, w0.00, w0.25, w0.50, w1.00, w2.00, w4.00 (7) | 12 |
+| `ff_w_zero_inf__quad_*` | w-0.25, w-0.96e-34, w-3.08e-33, w0.25 (4) | 16 |
+| `prog_w_zero_inf__bitri_*` | all but w-0.00 (19) | 1 |
+| `prog_w_zero_inf__quad_*` | none | 20 |
+| `rcc_w_zero_inf__z*` | all 20 | 0 |
+| `w_gaps`, `w_gaps_tex_persp`, `w_neg_strip*`, `w_pos_strip*` | all 6 | 0 |
+| `ff_w_zero__*` | none | 4 |
+
+Unreadable, and not re-rendered. A mechanism that changes pixels cannot
+make a PNG fail to open. W_param never reaches the new path anyway:
+`test_suite.cpp:177` resets `SET_SHADE_MODEL SMOOTH` before every test,
+only `shade_model_tests.cpp` in `nxdk_pgraph_tests/src/tests` sets FLAT, and `flat_quad_adjacency()` requires
+flat shading. The B guest also exited cleanly (`qemu_main returned 0`,
+02:19:48, about 158 s against A's 166 s), and all 452 files were extracted.
+So the files were truncated on the guest disk or during extraction, not lost
+to a crash.
+`unreadable` appears in 2 of every `scores*.tsv` under `dispatch/results`
+(this run and one Depth_buffer row in `depth52-A`). The captures directory
+has been pruned, so the truncated bytes cannot be examined now. Also,
+`run1.log` for B says `ran 49s` and extracted 13.6 MiB against A's
+`141s` / 17.6 MiB, which does not match B's own logcat timeline. I did not
+resolve that.
+
+**So #223's W_param residual is unchanged by this patch.** The
+"5,117,044 -> 1,695,991 (-67%)" in the resume brief is 3.42M px of W_param
+captures dropping out of the sum, not pixels fixed. #223 starts from A's
+W_param numbers.
+
+### 4c. What settles it, and what is wrong in the instrument
+
+- **Rerun the same registered prediction on the same refs** (a6bb4a13d4 /
+  3ce8778094, `--expect .../42c014b32fab....json`), preferably `--runs 2`.
+  Do not re-register. The prediction already says W_param must not move,
+  and it has not yet been measured. I tried to queue it with `ab_run.sh`.
+  This session is not permitted to run it, so the host has to.
+- Harness defects, for the host to brief, not for this lane's files:
+  1. `ab_compare` scores an `unreadable` capture as differing = 0. An
+     unreadable B capture should void its legs (not scored), not move them
+     to exact.
+  2. `result.json`'s `captures_vs_goldens` counts `unreadable` rows as
+     scored, and `run1.log` does not.
+  3. B's `run1.log` `ran 49s` against a ~158 s logcat lifetime.
 
 ## 5. Do not repeat
 
@@ -141,3 +221,5 @@ only, with the tests tree at the committed provenance.
 - `vk/shaders.c`'s cached-state fast path re-derives `geom.primitive_mode`
   on every primitive change. Miss it, and the shader and the index stream
   disagree about adjacency on the second draw.
+- Do not read a verdict's "now exact" before its `[status ...]` tag. A
+  move to `unreadable` is a capture that failed to open, scored as 0.
