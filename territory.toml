@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 194
-updated_utc = "2026-09-25T20:30:00Z"
+wave = 195
+updated_utc = "2026-09-25T20:45:00Z"
 
 
 [retired.hilodot10]
@@ -982,3 +982,17 @@ issues = ["297"]
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-297, a cloud-class lane on issue #297, branch lane/cloud-297, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 297` removes this row when the unit ends."
+
+
+[lane.fmv303]
+issues = ["303"]
+files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
+standing = false
+note = "DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
+
+
+[lane.ghoul311]
+issues = ["311"]
+files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**"]
+standing = false
+note = "DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
