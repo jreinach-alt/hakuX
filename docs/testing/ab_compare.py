@@ -157,6 +157,13 @@ class Arm:
         self.meta = json.load(open(mpath))
         self.meta_mtime = os.path.getmtime(mpath)
         self.runs = self.meta.get("runs") or []
+        # A vsh result is nxdk_vsh_tests diffed against the console's printed
+        # values (vsh_score.py), not pgraph captures scored against goldens.
+        # Refused by name rather than by the KeyError its runs[] would raise.
+        if self.meta.get("program", "pgraph") != "pgraph":
+            die("%s (%s) ran program %r, not pgraph: there are no golden "
+                "scores to compare. Its verdicts are in vsh*.txt"
+                % (name, self.label, self.meta.get("program")))
         self._shas = None
         self._sha_runs = 0
 
