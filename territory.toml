@@ -532,7 +532,7 @@ files = [
 # RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
-    "hw/xbox/nv2a/pgraph/vk/surface.c",
+# TAKEN 2026-09-25 by [lane.clrwb91] (#91 write-back): vk/surface.c.
     "hw/xbox/nv2a/pgraph/vk/texture.c",
     "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
     "docs/lanes/clrvk184/NOTES.md",
@@ -794,3 +794,9 @@ issues = []
 retired_utc = "2026-09-25T08:40:00Z"
 files = []
 note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
+
+[lane.clrwb91]
+issues = ["91"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/issue91-writeback.json", "docs/lanes/clrwb91/NOTES.md"]
+standing = false
+note = "WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
