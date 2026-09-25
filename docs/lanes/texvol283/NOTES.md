@@ -102,6 +102,17 @@ with the other 18 Volume texture captures and the other five suites
 `must_not_move`. So only Y16 and R16B16 may move, and both must improve.
 Magnitudes in the prose: Y16 to at most ~100 px, R16B16 to at most ~2,000.
 
+## State at end of session 1 (2026-09-25)
+
+WAITING on the `[job.arms]` verdict for `texvol283-bytes16.json` (queued by
+the push of ec27f7c96d) and on CI for the head. preflight passes
+(`--allow-tracker`). Board request for the psh.c/psh.h grant is in
+`board-requests/texvol283.md`; #244 was told about the overlap. On resume:
+read the verdict, check `[status]`/`unreadable` and PARTIAL COVERAGE on both
+arms, record Y16 / R16B16 magnitudes here, then `gh pr ready 289`. If a
+Texture_format 16-bit capture moved, the split is wrong: that is the refuting
+world, not a leg to relax.
+
 ## Scratch tools (not committed)
 
 `.scratch/texsim.py` rebuilds the test's texture memory: GenerateSurface ->
