@@ -47,6 +47,10 @@ chmod +x "$BP/bin/"*
 #   #270, #310, #320  50,000 each        -> a tie, oldest first
 #   #305  5,000 structural               -> 5,000
 #   #280, #290, #304  rows, no estimate  -> a tie, oldest first
+#   #296, #306, #312  measured zero      -> BELOW the unestimated rows (host
+#                                           decision 2026-09-25: an unknown
+#                                           may be large, a measured zero is
+#                                           not), a tie, oldest first
 #   #299  a huge estimate, but lane-held -> never listed: startability is not
 #                                           the sort's to change
 #   #300  no tracker row at all          -> last, and says so
@@ -83,13 +87,25 @@ title = "no estimate a"
 title = "no estimate b"
 [issue.304]
 title = "no estimate c"
+[issue.296]
+title = "zero a"
+impact_px = 0
+impact_onestep_px = 0
+[issue.306]
+title = "zero b"
+impact_px = 0
+impact_onestep_px = 0
+game_visible = false
+[issue.312]
+title = "zero c"
+impact_px = 0
 [issue.299]
 title = "held"
 impact_px = 9000000
 EOF
 # gh's order: newest first, as `gh issue list` returns it. Each tie's correct
 # winner is the MIDDLE of its three in this order (#270 between #310 and
-# #320; #280 between #304 and #290), so neither a first-wins nor a last-wins
+# #320; #280 between #304 and #290; #296 between #312 and #306), so neither a first-wins nor a last-wins
 # tie-break can pass by accident.
 cat > "$BP/issues.json" <<'EOF'
 [{"number":310,"title":"tie b","labels":[]},
@@ -99,6 +115,9 @@ cat > "$BP/issues.json" <<'EOF'
  {"number":304,"title":"no estimate c","labels":[]},
  {"number":280,"title":"no estimate a","labels":[]},
  {"number":290,"title":"no estimate b","labels":[]},
+ {"number":312,"title":"zero c","labels":[]},
+ {"number":296,"title":"zero a","labels":[]},
+ {"number":306,"title":"zero b","labels":[]},
  {"number":303,"title":"one-step only","labels":[]},
  {"number":302,"title":"large structural","labels":[]},
  {"number":301,"title":"game","labels":[]},
@@ -112,8 +131,8 @@ bprio() {
 }
 out=$(bprio)
 order=$(grep -o '^#[0-9]*' <<< "$out" | tr '\n' ' ')
-want="#301 #302 #303 #270 #310 #320 #305 #280 #290 #304 #300 "
-check "the capacity list is in dispatch order: game, then px descending, then no estimate, then no row (got: $order)" \
+want="#301 #302 #303 #270 #310 #320 #305 #280 #290 #304 #296 #306 #312 #300 "
+check "the capacity list is in dispatch order: game, then px descending, then no estimate, then measured zero, then no row (got: $order)" \
     test "$order" = "$want"
 has() { grep -qxF -- "$1" <<< "$out"; }
 check "a game-visible row says [game]" \
@@ -126,6 +145,8 @@ check "the labels still follow the key" \
     has '#305 [impact 5,000 px] small structural  [harness]'
 check "a row with no impact fields says so" \
     has '#280 [no impact estimate] no estimate a'
+check "a measured zero says it was measured" \
+    has '#296 [impact 0 px, measured] zero a'
 check "an issue with no tracker row says so" \
     has '#300 [no tracker row] no row'
 check "the sort does not change what is startable: a lane-held issue stays out" \

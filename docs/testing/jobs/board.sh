@@ -98,10 +98,13 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 # and a human can see why a row ranks where it does:
 #
 #   1. game_visible = true                      [game]
-#   2. impact_px + impact_onestep_px // 4, descending   [impact N px]
+#   2. impact_px + impact_onestep_px // 4 > 0, descending  [impact N px]
 #      (one-step px count a quarter: they are rounding, not rules)
 #   3. a row with no impact fields, oldest first        [no impact estimate]
-#   4. an issue with no tracker row at all, oldest first [no tracker row]
+#   4. a measured zero, oldest first                    [impact 0 px, measured]
+#      (host decision 2026-09-25: "measured, nothing recoverable" ranks below
+#      an unestimated row, which may be large)
+#   5. an issue with no tracker row at all, oldest first [no tracker row]
 #
 # Ties inside a tier go to the oldest issue. The tracker is read through
 # board_files.load, as every other board tool reads it, so this sees
@@ -161,10 +164,10 @@ def num(r):
 def rank(r):
     n = num(r)
     if tracker is None:
-        return (3, 0, n), "[tracker unreadable]"
+        return (4, 0, n), "[tracker unreadable]"
     row = tracker.get(str(r.get("number")))
     if not isinstance(row, dict):
-        return (3, 0, n), "[no tracker row]"
+        return (4, 0, n), "[no tracker row]"
     # A malformed value counts as zero rather than raising: one bad row must
     # not empty the whole list.
     px, one = (v if isinstance(v, int) and not isinstance(v, bool) else 0
@@ -177,6 +180,8 @@ def rank(r):
         key = "[game]" if not score else "[game; %s]" % size
         return (0, -score, n), key
     if "impact_px" in row or "impact_onestep_px" in row:
+        if score <= 0:
+            return (3, 0, n), "[impact 0 px, measured]"
         return (1, -score, n), "[%s]" % size
     return (2, 0, n), "[no impact estimate]"
 

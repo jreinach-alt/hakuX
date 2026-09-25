@@ -34,8 +34,12 @@ So, every tick, in this order:
   list prints them**, skipping any whose files are not free or that has a
   blocker: that list is sorted by expected improvement (game-visible first,
   then `impact_px + impact_onestep_px // 4` descending, then rows with no
-  estimate, then issues with no tracker row, oldest first inside each), and
-  each line carries the key it was sorted on. For EACH one: write its
+  estimate, then measured zeros, then issues with no tracker row, oldest first
+  inside each), and each line carries the key it was sorted on. The host
+  session holds the owner's delegation for `decision-needed` and
+  `regression-accepted` calls (owner, 2026-09-24): route those to the host
+  with a `[board]` comment on the issue or PR, and keep dispatching other
+  work; never idle waiting for the owner. For EACH one: write its
   brief to `briefs/<lane>.md` on the `board` branch, write and push its row,
   start it with `docs/testing/lane.sh start <name> <brief> <issue>`, and label
   the issue `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its

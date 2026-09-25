@@ -23,6 +23,8 @@ mutate ascending   'key=lambda t: t[0])' 'key=lambda t: (t[0][0], -t[0][1], t[0]
 mutate no-game     'if row.get("game_visible") is True:' 'if False:'
 mutate onestep-1to1 'score = px + one // 4' 'score = px + one'
 mutate no-join     'ranked = sorted((rank(r) + (r, text) for r, text in out), key=lambda t: t[0])' 'ranked = [rank(r) + (r, text) for r, text in out]'
+# A measured zero back in the score tier, at score 0: above the unknowns.
+mutate zero-above-unknown 'return (3, 0, n), "[impact 0 px, measured]"' 'return (1, 0, n), "[impact 0 px, measured]"'
 # The tie-breaks: drop the number (stable sort keeps gh's order inside a tie),
 # and newest first. The fixture puts each tie's right answer in the middle.
 mutate tie-gh-order 'key=lambda t: t[0])' 'key=lambda t: t[0][:2])'

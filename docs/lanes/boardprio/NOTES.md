@@ -60,14 +60,34 @@ Against the real tracker (`real-tracker.sh`, origin/board 2026-09-25):
 1,463,282 / 4]`, `#224 [221,046]`, `#13 [4,734]`, `#31 [impact 0 px]`,
 `#4 [no impact estimate]`, `#99999 [no tracker row]`.
 
+## Attempt 2 (2026-09-25)
+
+**Why attempt 1 did not finish:** the work, the mutants and the falsification
+were done and committed, but the session ended with PR #270 still a draft
+whose body said "Work in progress", with an open question (measured zero vs
+unknown) in NOTES. A draft is skipped by board.sh, fleet.py and fold.sh, so
+nothing downstream could see it. Do not end on a draft again.
+
+**Host decision (owner-delegated): a measured zero ranks BELOW an unknown.**
+Tiers are now: game-visible; score > 0 descending; no estimate; measured
+zero (`[impact 0 px, measured]`: fields present, score 0); no tracker row.
+Fixture gained #296/#306/#312 (measured zeros, tie winner #296 in the
+middle); fragment is 9 checks, all green. New mutant `zero-above-unknown`
+(tier 1 at score 0, the attempt-1 behaviour): red. All seven mutants red.
+
+Falsification re-run against origin/master d709a8d1fa (after merging it):
+**8 of 9 red**, order `#310 #270 #320 #305 #304 #280 #290 #312 #296 #306
+#303 #302 #301 #300` = gh's order exactly; the lane-held check stays green,
+so the run reached the filter.
+
+`roles/board.md` also now says the host holds the owner's delegation for
+`decision-needed` / `regression-accepted` calls: the board routes them with
+a `[board]` comment and keeps dispatching, never idling on the owner.
+
 ## For the owner / the next lane
 
-- **A measured zero sorts above an unknown.** Following the brief literally, a
-  row with `impact_px = 0, impact_onestep_px = 0` (#31, #38, #50 today) is in
-  tier 2 at score 0, above every row with no fields. If "measured, nothing
-  recoverable" should rank below "not yet estimated", that is a one-line
-  change to `rank()` (return tier 2 for score 0), and the fragment would need
-  a row for it.
+- Real tracker today: #31, #38, #50 are measured zeros and now sort below
+  every unestimated row.
 - **`fleet.py`'s DISPATCHABLE list does not share this order.** It is
   lane.toolsmith's file and was not touched. If it should, the sort is
   `rank()` in board.sh's `board_filter`; lifting it into a small module both
