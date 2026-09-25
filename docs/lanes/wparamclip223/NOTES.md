@@ -5,10 +5,16 @@ external wedge in `glsl/geom.c` and emit it as positive-w geometry, so the host
 clipper never cuts at w = 0. Price it offline first, then prove it on a Thor
 W_param arm.
 
-**Status: implemented, priced, prediction registered
-(`docs/testing/predictions/wparamclip223-wedge.json`, a_ref 0a4e284536 = master,
-b_ref 77bc07d5e2). Waiting on the arm.** Section 5 is filled in when the verdict
-lands.
+**Status (attempt 2, 2026-09-25):** the first arm (`wparamclip223-wedge.json`)
+put all four must-move captures on the golden. It FAILED on `w_gaps` and
+`w_gaps_tex_persp`, where the gate leaked (section 5). The fix is `537ffb91ed`:
+the gate now decides zero area on the 1/16 px grid. It is re-registered as
+`docs/testing/predictions/wparamclip223-wedge-grid.json` (a_ref a8691063e6 =
+master as merged, b_ref 537ffb91ed). **Waiting on that arm.**
+
+**Why attempt 1 did not finish:** it ended correctly, waiting on its arm with
+a `waiting:` comment posted. The arm then came back FAIL, so the handback
+resumed the lane with a `regressed` label to answer, not a PR to mark ready.
 
 ## 1. The wedge, and a correction to the brief's wording
 
@@ -90,7 +96,8 @@ either way. The registered bound is <= 2,500 for each of the four.
 ## 3. The change (`glsl/geom.c`, `append_wedge()`)
 
 - **Gate:** exactly one w < 0, and every q_i = xy/w, z/w and the screen area
-  finite and non-zero. Anything else returns false **before emitting a
+  finite and non-zero. Since `537ffb91ed` the area must also be non-zero on
+  v_vtxPos, the 1/16 px grid (section 5). Anything else returns false **before emitting a
   vertex**, and the triangle is emitted as before.
 - **Polygon:** the quadrilateral P1, N + K(P1 - N), N + K(P2 - N), P2. K is
   twice the largest mu = 1 - lambda_N over the surface corners. It is
@@ -153,19 +160,90 @@ used, because its replicate pair moved 0 of 451 captures outside Shade_model.
   example because of a guard band or a coarse raster rule. The captures then
   move but not onto the golden. Report the residual; do not refit.
 
-## 5. Result
+## 5. Result of the first arm, and the gate leak it found
 
-Pending. **Waiting (2026-09-25)** on the arms job's `[job.arms]` verdict for
-`wparamclip223-wedge.json` (a 0a4e284536, b 77bc07d5e2) on PR #250. When it
-lands:
+Arms `1790352054-arms-wparamclip223-{base-769689,fix-769712}` (Thor, apk
+a209ea60b1da -> 1076e9288fff, 451 captures each).
 
-1. Check both arms' `scores1.tsv` status column for `unreadable`, and
-   `run1.log` for PARTIAL COVERAGE and UtilAcceptVsock.
-2. Judge the 19 new-path rows by hand against section 4's ranges.
-3. Run `wedge_price.py --capture-dir <B>/captures1` for coverage.
-4. Mark the PR ready.
+- **Status column:** 0 `unreadable` in either `scores1.tsv`.
+- **`run1.log`:** 0 UtilAcceptVsock. PARTIAL COVERAGE appears only for
+  Front_face (24 of 36), the same in both arms and outside this change.
+
+| capture | A | B | predicted |
+|---|---:|---:|---|
+| prog bitri w-0.00 | 271,518 | **746** | <= 2,500, ~742 |
+| prog bitri w-1.88e-37 | 143,546 | **744** | <= 2,500, ~742 |
+| prog bitri w-3.76e-37 | 143,494 | **742** | <= 2,500, ~742 |
+| prog bitri w-7.52e-37 | 4,768 | **743** | <= 2,500, ~742 |
+| ff bitri w-0.25 | 442 | 314 | \|B - A\| <= 1,000 |
+| ff bitri w-0.50 | 648 | 386 | coverage 262 -> 209 |
+| **w_gaps** | 145,687 | **157,370** | must not move |
+| **w_gaps_tex_persp** | 145,687 | **157,479** | must not move |
+
+- The wedge model held. All four must-move rows landed on the predicted ~742:
+  the shared diagonal plus our texel specks.
+- The other 443 captures were byte-identical, including every other new-path
+  row. That covers ff w-inf too: it was predicted to improve in coverage, but
+  it did not move at all.
+- **The verdict is FAIL, on the two `w_gaps` rows.**
+
+**Diagnosis.** B paints a white, blue and red wedge over the lower right of
+`w_gaps`, where silicon draws nothing. Offline, `w_gaps`'s one-negative
+triangles (its -0.9 and -10.9 vertices) all share a grid point with an
+infinite-w neighbour, so they have zero area. Section 4 stated this, and it is
+true **on the grid**. The shader, however, measured area on
+q = gl_Position.xy / w = (ndc * w) / w. That value comes back an ulp off
+(-0.6666667 vs -0.66666675), so `abs(area) > 0.0` passed a triangle with no
+area, and its wedge spans the screen.
+
+`wedge_port.py --gaps` now runs those triangles under two division models:
+
+- **IEEE division:** the old q test happens to pass none of them.
+- **`x * (1/w)`, as many GPUs divide:** it passes `strip27`, and paints
+  113,205 px.
+- The port does not predict *which* triangle the Adreno passed; the capture
+  shows the leaking one in the Tris half.
+
+`check_legs.py` guarded these rows on section 4's prose claim. Nothing ran the
+port on `w_gaps`.
+
+**Fix (`537ffb91ed`).** The gate also requires a non-zero area on v_vtxPos
+(`pz[i].xy`), the truncated screen position that silicon rasterises. It uses
+`kahan_det`, which is already emitted for `calc_triz`.
+
+- **Grid gate:** passes none of the 12 `w_gaps` triangles under either
+  division model.
+- **zero_inf rows:** the port's output is byte-identical before and after (39
+  rows), so no row the first arm judged changes path.
+- **glslc:** all 15 `geom_dump` cases compile under the NDK's glslc, and a
+  mutant is rejected.
+- **Index:** `nv2a_index.json` is regenerated (tests 6743b6a, pbkitplusplus
+  e91d509), and `check` passes.
+
+## 6. The second arm (`wparamclip223-wedge-grid.json`)
+
+Registered 2026-09-25T17:17:20Z, after the merge of master and before any
+build. a_ref a8691063e6 (master as merged), b_ref 537ffb91ed, on the same
+13-suite disc.
+
+- **expect** (exact B values; this time they are legs the judge scores, not
+  prose):
+  - prog bitri w-0.00 746, w-1.88e-37 744, w-3.76e-37 742 and w-7.52e-37 743;
+  - ff bitri w-0.25 314 and w-0.50 386.
+- **must_not_move:** the other 445 captures, bit-identical. That includes
+  `w_gaps` and `w_gaps_tex_persp`, which must now equal the base.
+- **World in which it fails:**
+  - `w_gaps` still moves: another degeneracy reaches the wedge, such as
+    collinear rather than coincident grid points.
+  - An expect row is off by a few px with its coverage unchanged: the added
+    shader lines moved texel rounding. Report it; do not refit.
 
 ## For the next lane
+
+- A gate that tests for an exact zero must read the quantity silicon
+  quantises (v_vtxPos, on the 1/16 px grid), not one reconstructed through a
+  divide. Run the float port on every capture that a must-not-move glob
+  claims is untouched; a prose claim that it is untouched is not a check.
 
 - Do not rebuild a uniform or per-triangle w scale (wparamgeom223).
 - Do not score desktop captures against these goldens.
