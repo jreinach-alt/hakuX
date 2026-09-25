@@ -82,6 +82,51 @@ device_env() {
     return 0
 }
 
+# adb_call <seconds> <what> [--in FILE] <adb args...>
+#
+# ONE adb call against $SERIAL, with a deadline and a retry. Stdout and stderr
+# pass through; the exit status is adb's, or 124 when the deadline expired.
+#
+# THE DEADLINE. The dispatcher's install, run-as pref reads/writes and
+# force-stops had none. On 09-14 the Thor sat in one request from 06:29 until
+# 09-18 09:23, stopped between run 2 and run 3, and the queue waited four days
+# behind a call that never returned. run_disc.sh has bounded its own calls
+# since 09-10; this is the same rule for everything else. On expiry the call
+# is named on stderr and, when ADB_HUNG_FILE is set, in that file -- a file,
+# because most calls sit in a pipeline or a $(...), where a variable set here
+# would die with the subshell.
+#
+# THE RETRY. The host's adb is Windows adb.exe reached through WSL interop,
+# and interop sometimes fails (`<3>WSL (...) ERROR: UtilAcceptVsock:271:
+# accept4 failed 110`). That line is written past the call's own stderr
+# redirection, straight into the run log, so it cannot be matched here; the
+# exit status can. A failed call (not a hung one: a deadline is not retried,
+# it already cost its whole budget) is retried ADB_RETRIES times more, after
+# 2 s and then 6 s. Every call routed through here is safe to repeat: reads,
+# `install -r`, a push or pull to a fixed path, a force-stop, and a pref write
+# whose input is a file re-read on each try (--in), never a consumed pipe.
+adb_call() {
+    local secs="$1" what="$2" in=/dev/null rc try=0 out
+    shift 2
+    if [ "${1:-}" = --in ]; then in="$2"; shift 2; fi
+    out=$(mktemp "${TMPDIR:-/tmp}/adb_call.XXXXXX")
+    while :; do
+        timeout -k 5 "$secs" adb -s "$SERIAL" "$@" <"$in" >"$out"; rc=$?
+        if [ "$rc" = 124 ] || [ "$rc" = 137 ]; then
+            echo "adb_call: HUNG -- $what: no answer in ${secs}s" >&2
+            [ -n "${ADB_HUNG_FILE:-}" ] && echo "$what (no answer in ${secs}s)" >> "$ADB_HUNG_FILE"
+            rc=124; break
+        fi
+        [ "$rc" = 0 ] || [ "$try" -ge "${ADB_RETRIES:-2}" ] && break
+        try=$((try + 1))
+        local wait=$((try == 1 ? 2 : 6))
+        echo "adb_call: $what failed (exit $rc); retry $try of ${ADB_RETRIES:-2} in ${wait}s" >&2
+        sleep "${ADB_RETRY_SLEEP:-$wait}"
+    done
+    cat "$out"; rm -f "$out"
+    return "$rc"
+}
+
 device_default() {
     # Resolve a serial when the caller gave none -- and REFUSE when the answer
     # is ambiguous.

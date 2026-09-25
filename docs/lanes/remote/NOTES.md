@@ -1483,3 +1483,190 @@ has used, on both renderers, for the whole campaign. It is also where #164's
 clear-half fix is measurable: desktop OpenGL, `SCF_X8R8G8B8_Z8R8G8B8`
 98,208 → 0 and `SFC_X1R5G5B5_Z1R5G5B5` 49,104 → 0, with `iso_surf1` 0 better
 / 0 worse / 236 same beside it and a same-binary control at 0 / 0 / 236.
+
+## #109: the swizzle stride, measured and fixed (2026-09-25)
+
+**Where it started.** PR #115 registered a GL-vs-Vulkan arm at `4129a349e6`
+asking which of two models our renderers follow for a swizzled surface whose
+pitch is smaller than `width * bpp`. The arms job cannot run a renderer
+variant, so the board routed it here (territory wave 153). Result, on #109 in
+5828843964: VERDICT FAIL 3/17. All three violations were the Vulkan-only #59
+pad write side at that ref, forecast in 5828665488 before any run. The
+discriminating capture split cleanly: **GL is Model E, Vulkan is Model H.**
+Wave 162 granted `gl/surface.c` for the fix.
+
+**The defect.** A swizzled surface has no pitch: `generate_swizzle_masks()`
+interleaves x and y and nothing else. Every GL site that staged one through a
+linear intermediate used `surface->pitch` as that buffer's row stride. At pitch
+256 on a 128-wide A8R8G8B8 surface the rows overlap, and the read-back is
+`dest(x, y) = src(x - 64, y + 1)` for `x >= 64`. The fix (`e4fb7c24`) adds
+`surface_swizzle_linear_pitch()` (`width * bpp`) and uses it at every staging
+site in `gl/surface.c`:
+- `surface_download_to_buffer()`: the desktop readback stride, the downscale
+  loop and `swizzle_rect`, plus its Android RGBA8 branch;
+- the Android depth16 and z24s8 helpers;
+- the unswizzle in `pgraph_gl_upload_surface_data()`.
+
+Linear surfaces keep the guest's pitch.
+
+**Registered before the code**, on #109 in 5834083923. The draft is sha256
+`bf0f60dc...`, and the committed file differs from it only in `b_ref` and
+`registered_utc`. File: `docs/testing/predictions/remote-109-swizzle-linear-stride.json`,
+judged as registered at sha256 `6e1e8c24...` (commit `e156200f`). `1349125a`
+then added a `title` so `[job.arms]` treats it as hand-queued, because the
+fleet APK defaults to Vulkan, where the fix is absent. No leg changed.
+
+**Measured**, desktop GL, `surface_scale = 1`, the registered 8-suite disc,
+3 runs per arm alternating. The base `0.4.0-j1-2173-g84a67b9c`, sha256
+`5dc4737e9b04`, is arm A; `0.4.0-j1-2174-ge4fb7c24`, sha256 `f1f4934be561`, is
+arm B. No capture is `unreadable` in any of the eight scores files.
+
+| | A (84a67b9c) | B (e4fb7c24) |
+|---|---:|---:|
+| `Surface_pitch/Swizzle`, every run | 12,224 | **8,192** |
+| per quad q0 / q1 / q2 / q3 | 2,048 / 2,048 / 2,048 / 6,080 | 2,048 / 2,048 / 2,048 / **2,048** |
+| q3 signature, of 8,128 (golden 4,096) | 8,128 | **4,096** |
+| q3 top-right quadrant, non-green | 4,032 | **0** |
+| totals, every run | 943,576 px, 49 exact | 939,544 px, 49 exact |
+| `surface_scale = 2`, one run | **aborts**: `gl/surface.c:2473` assert, exit 134, 59 captures | **completes**, 73 captures |
+
+`ab_compare.py`: **PASS, all 75 registered checks hold**, `PRE-REGISTERED`.
+The counts are better 1 / worse 0 / same 72, and the byte check found only the
+mover different. At scale 2, B's Swizzle reads 10,240: 2,048 on q0 and q1, and
+3,072 on q2 and q3 alike. That leg was not registered. It is recorded because
+q2 (exact pitch) and q3 (undersized) now read the same, which is the silicon
+relation.
+
+**Re-run it.** Build the disc with `make_test_iso.py --suite` for each of the
+eight suites, `--progress-log --shutdown-on-completion`. Run each binary under
+`xemu.toml` `renderer = 'OPENGL'`, `[display.quality] surface_scale = 1`, from a
+fresh HDD with the shader caches cleared. Score with `score_sweep.py --flat`
+and judge with `ab_compare.py --expect` on the prediction. For the per-quad
+legs, run `docs/lanes/remote/swizzle_pitch_quads.py CAPTURE [GOLDEN]` on the
+Swizzle capture.
+
+**Not covered.**
+- The Android branches compile, checked with `-D__ANDROID__ -fsyntax-only`
+  against stubs, but cannot run here. By reading, the z24s8 helper's swizzled
+  buffer was `pitch * height` while every row wrote `width * 4`, so an
+  undersized-pitch swizzled zeta surface wrote past the allocation. It is now
+  sized from the same stride. Nothing on the disc reaches it.
+- The extent sites (`pitch * height` as a surface's size in the dirty ranges
+  and DMA asserts) are #109's silicon question and are untouched.
+- Vulkan's deferred download still stages at `dl->pitch`, but `vk/surface.c`
+  is not this lane's. On this capture Vulkan read Model H in every run.
+
+## #184: two gates on one stale texture, and the first fix found only one (2026-09-25)
+
+**Where it started.** #184 filed the shape: on desktop Vulkan, six of
+`Clear::TestSurfaceFmt`'s eight surface-format captures show swatch 0's clear
+on every swatch after it. The test clears one 128x128 surface at one address
+six times, draws a 4x4 centre mark into it, and samples it back as a linear
+`A8B8G8R8` texture each time. An instrument on 09-24 (#184, 5827596169) found
+that `pgraph_vk_bind_textures()` was never called for swatches 1-5: every
+call site's gate opens only on `texture_state_gen` or `texture_vram_gen`, and
+a clear or a draw into the source surface moves neither.
+`pgraph_vk_surface_written_while_sampled()` bumped the gen only for a stage
+whose direct view *is* the surface; these stages hold a surface-to-texture
+copy, or for the 16-bit formats a VRAM upload.
+
+**First attempt: FAIL 4 of 35, reported as such.** `b0470969` added a second
+case to that hook: bump when a stage's bound memory overlaps the written
+surface. Registered first (5834976599, `remote-184-clear-rebind.json`), then
+measured (5835099210): `SFC_A8R8G8B8`, `SCF_R5G6B5` and
+`SCF_X8R8G8B8_Z8R8G8B8` went to 0, `SCF_X1A7R8G8B8_Z1A7R8G8B8` stopped
+aliasing, and `SCF_X8R8G8B8_O8R8G8B8` and `SCF_X1A7R8G8B8_O1A7R8G8B8` did not
+move. My X1A7 alpha model was wrong too: the Vulkan path stores the clear
+alpha's low 7 bits widened back to 8 by bit replication, not the raw alpha. I
+guessed the `_O` captures copied from a different `SurfaceBinding`. That
+guess was also wrong.
+
+**What the instrument showed** (local, never committed; one run of
+`iso_pre_clear` on `b0470969`). The stale swatches were copied from the very
+`SurfaceBinding` that was written. The bump did open the gate, and
+`pgraph_vk_bind_textures()` then skipped the stage twice per swatch:
+- at the centre-mark draw nothing was marked dirty, so it returned at
+  `check_textures_dirty()`;
+- at the display quad, `SetupTextureStages()` re-sets stage 0 with identical
+  register values. That sets `texture_dirty` and moves no gen
+  (`pgraph_reg_w()` bumps only on a change), and the `tex_reg_cache` shortcut
+  skips `create_texture()` when the registers match and the binding's VRAM
+  memo reads "checked clean this frame".
+
+For a stage built from a surface, that memo is about guest memory the draw
+never wrote. It lasts until the next `FLIP_INCREMENT_WRITE`, which is after all
+six swatches, so whether it is current is timing. In the v1 arm the two tests
+that follow a VRAM-path format aliased. In the instrumented run the X1A7 twins
+swapped. **A partial fix that makes the outcome timing-dependent is worse than
+it looks: "each `_O` follows its `_Z` twin" read like a mechanism, and it was
+an accident of test order.**
+
+**Second attempt: `1213f50c`, still body-only in the same hook.** For every
+stage whose bound memory overlaps the written surface it invalidates
+`tex_reg_cache[i]`. It bumps the gen once, and a direct view no longer ends
+the scan early. `texture_dirty` is deliberately not set: that would rebuild,
+and so recopy, an enabled stage the draw does not sample, on every draw of a
+pass that leaves a stage bound to its own target. Invalidating the cache
+defers the rebuild to the next write of that stage's registers.
+
+**Registered before the code** (5835426532; drafts `1e4d2530...` and
+`d1c61132...`, committed in `ad2860f4`, each differing from its draft only in
+`b_ref` and `registered_utc`):
+
+| capture | A `5eab6a87` | registered B | measured B `1213f50c` |
+|---|---:|---:|---:|
+| `SFC_A8R8G8B8` | 81,840 | 0 | **0** |
+| `SCF_R5G6B5` | 40,920 | 0 | **0** |
+| `SCF_X8R8G8B8_Z8R8G8B8` | 81,840 | 0 | **0** |
+| `SCF_X8R8G8B8_O8R8G8B8` | 81,840 | 0 | **0** |
+| `SCF_X1A7R8G8B8_Z1A7R8G8B8` | 81,936 | 65,568 | **65,568** |
+| `SCF_X1A7R8G8B8_O1A7R8G8B8` | 98,208 | 65,472 | **65,472** |
+
+Desktop Vulkan, llvmpipe, `surface_scale = 1`, 3 runs per arm, alternating;
+every run has progress-log proof, and no capture is `unreadable`.
+`remote-184-clear-rebind-v2.json`: **PASS, all 35 registered checks hold**,
+`PRE-REGISTERED`. The counts are better 6 / worse 0 / same 27, and only the six
+movers differ byte for byte. The prose legs hold by script in all 3 B runs:
+- every swatch shows its own clear (`clear_swatch_quads.py`'s stale column is
+  `......` on all eight);
+- the X1A7 splits are 16 / 16,384 / 16,384 / 16 / 16,384 / 16,384 and
+  16,368 / 16,368 / 0 / 16,368 / 16,368 / 0;
+- all eight SCF/SFC captures are pixel-identical across the three runs.
+
+The X1A7 residuals equal GL's; they are #60's pad-bit family. Master's arm A
+is pixel-identical to `38789df7`'s on all 33 captures; the only `hw/`
+difference between those refs is GL-only. Disc totals: 517,568 px (master) ->
+296,600 (first attempt) -> 182,024.
+
+**The guard, `remote-184-surf1-guard.json`: PASS, all 238 registered checks
+hold**, `PRE-REGISTERED`. The change reaches every stage that overlaps a
+written surface, so it was also run on `iso_surf1` (14 suites, 236 captures),
+3 runs per arm. Every capture is byte-identical between master and the fix:
+better 0 / worse 0 / same 236, and 3,760,226 px with 128 exact in every run of
+both arms. That matches what reading those suites predicted:
+- `Blend_surface` rebinds stage 0 through the dummy texture between quads;
+- `Surface_format` renders once per capture, after a CPU memset;
+- `Color_zeta_overlap` enables no stage.
+
+**Not covered, and not claimed.** A stage sampled while its own memory is
+written, with no register write in between (a feedback loop), and a stage that
+starts being sampled through `SET_SHADER_STAGE_PROGRAM` alone are both still
+stale. Both are stale on master too, and neither disc reaches them. A
+direct-view stage keeps its old treatment. It samples the surface itself, so
+its risk is a skipped barrier, not stale texels, and whether the same shortcut
+skips that barrier was not examined.
+
+**A bookkeeping error in the first arm.** Its `result.json` files carried
+disc109's `disc_id` string, from a stale file in my assembler. Both arms
+carried the same string, the judge's composition check reads `request.json`,
+which named `Clear` and `Pixel shader`, and the captures and run logs are
+`iso_pre_clear`'s, so the verdict stands. The second arm's ids follow
+`dispatcher.sh`'s formula.
+
+**Re-run it.** Both discs are built with `make_test_iso.py --suite` for each
+listed suite, `--progress-log --shutdown-on-completion`. Run each binary under
+`renderer = 'VULKAN'`, `[display.quality] surface_scale = 1`, from a fresh HDD
+with the shader caches cleared. Score with `score_sweep.py --flat` and judge
+with `ab_compare.py --expect` on the prediction. For the per-swatch legs, run
+`docs/lanes/remote/clear_swatch_quads.py CAPTURE_DIR [GOLDENS_DIR]` on each B
+run.

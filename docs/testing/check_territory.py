@@ -146,11 +146,21 @@ def main():
     # necessary. What is not legitimate is doing it without saying so, leaving
     # a blocker naming a predecessor that finished months ago while the real
     # one is the lane claimed this morning.
+    #
+    # THE TRACKER COMES FROM WHERE THE TERRITORY DOES. This opened
+    # os.path.join(HERE, "nv2a_issues.toml") -- master's fold-lagged copy,
+    # last changed 09-18 -- while the territory beside it came from the live
+    # board through board_files. So on 2026-09-25 the note reported #13 as
+    # walled by shadeflat224's files from a `blocked_on` the live row on
+    # origin/board no longer carried. Two files of one board, read from two
+    # different places, disagree about the board.
     walled = []
     try:
-        with open(os.path.join(HERE, "nv2a_issues.toml"), "rb") as fh:
-            tracker = tomllib.load(fh)["issue"]
-    except Exception:
+        tracker = board_files.load("nv2a_issues.toml")["issue"]
+        print("nv2a_issues.toml read from %s" % board_files.source("nv2a_issues.toml"))
+    except Exception as e:
+        print("NOTE: nv2a_issues.toml unreadable (%s); the walled-blocker "
+              "check below did not run" % e)
         tracker = {}
     for num, v in sorted(tracker.items()):
         blocker = (v.get("blocked_on") or "")

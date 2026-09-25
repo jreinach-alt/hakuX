@@ -751,10 +751,58 @@ def byte_verdict(ha, hb):
     return moved, bool(moved and self_stable)
 
 
+# The statuses under which score_sweep.py's `differing` is a MEASUREMENT: its
+# own `scored` set. Every other status -- `unreadable`, `size`, `no-golden` --
+# writes `differing = 0` because there is no number to write, and a 0 in that
+# column reads as bit-identical to everything downstream. Keep this equal to
+# SCORED_STATUSES in score_sweep.py and in dispatcher.sh's result writer;
+# selftest.d/51-dispatch-hardening.sh checks that the three agree.
+#
+# `blank`, `white-content` and `label-differs` stay measured on purpose: each
+# is computed from both images' pixels, and a blank capture that starts to
+# draw is exactly the movement a fix is supposed to produce.
+SCORED_STATUSES = ("ok", "blank", "label-differs", "white-content")
+
+
+def void_reason(a, b, key):
+    """Why one capture cannot be compared between the arms, or None.
+
+    VOID IS A THIRD ANSWER, NOT A ZERO. On #224's arm (pair 42c014b32fab) the
+    fix arm's pull truncated 56 W_param PNGs; score_sweep wrote each as
+    `unreadable` with `differing = 0`, and this file then counted 52 of them
+    "better ... now exact" -- 5.12 M -> 1.70 M px of improvement that was a
+    lost pull. The same arithmetic passes a must-move leg on a capture that no
+    longer exists. So a capture with any unscored run, in EITHER arm, is taken
+    out of every class and every total, and listed by name.
+    """
+    why = []
+    for arm in (a, b):
+        st = arm.statuses(key)
+        if not st:
+            why.append("absent in %s" % arm.name)
+            continue
+        bad = sorted({s or "(no status)" for s in st} - set(SCORED_STATUSES))
+        if bad:
+            why.append("%s %s" % (arm.name, "/".join(bad)))
+    return ", ".join(why) or None
+
+
 def compare(a, b):
     sha_a, sha_b = a.capture_shas(), b.capture_shas()
     rows = []
-    for key in sorted(a.captures() & b.captures()):
+    for key in sorted(a.captures() | b.captures()):
+        why = void_reason(a, b, key)
+        if why:
+            rows.append(dict(
+                pixels_moved=None, pixels_moved_attributable=False,
+                key=key, suite=key[0], test=key[1],
+                a=0, b=0, delta=0, band=0, a_runs=a.values(key),
+                b_runs=b.values(key), a_struct=0, b_struct=0,
+                cls="void", void=why, from_exact=False, to_exact=False,
+                status_a="/".join(a.statuses(key)) or "absent",
+                status_b="/".join(b.statuses(key)) or "absent",
+                unstable=unstable_by_name(key)))
+            continue
         va, vb = a.values(key), b.values(key)
         pa, pb = point(va), point(vb)
         oa = point(a.values(key, "off_by_one"))
@@ -774,7 +822,7 @@ def compare(a, b):
             a=pa, b=pb, delta=delta, band=bnd,
             a_runs=va, b_runs=vb,
             a_struct=pa - oa, b_struct=pb - ob,
-            cls=cls,
+            cls=cls, void=None,
             from_exact=(pa == 0 and pb > 0),
             to_exact=(pa > 0 and pb == 0),
             status_a=(a.statuses(key) or [""])[0],
@@ -877,8 +925,16 @@ def load_expect(path, a, b):
 
 
 def judge(exp, rows):
-    """Check the prediction. Returns (failures, checks_made)."""
+    """Check the prediction. Returns (failures, checks_made, void_legs).
+
+    A leg that lands on a VOID capture (see void_reason) is neither held nor
+    broken: it is listed in ``void_legs`` and counted in neither of the
+    others. A global `expect_counts` leg is void if ANY capture is, because
+    the capture that could not be read is one it would have counted.
+    """
     fails = []
+    voids = []
+    void_hits = {}
     checks = 0
     by_name = {"%s/%s" % r["key"]: r for r in rows}
 
@@ -910,9 +966,12 @@ def judge(exp, rows):
                              "the guard was never actually applied"
                              % (kind, pat))
                 continue
-            checks += len(hit)
             for n in sorted(hit):
                 r = by_name[n]
+                if r["void"]:
+                    void_hits.setdefault("%s %s" % (kind, pat), []).append(r)
+                    continue
+                checks += 1
                 if r["cls"] in bad_cls:
                     fails.append("%s, but %s: %-40s %9d -> %9d"
                                  % (kind.replace("_", " "),
@@ -948,17 +1007,34 @@ def judge(exp, rows):
             fails.append("expect %r matched no capture" % name)
             continue
         for n in sorted(hit):
+            if by_name[n]["void"]:
+                void_hits.setdefault("expect %s" % name, []).append(by_name[n])
+                continue
             checks += 1
             got = by_name[n]["b"]
             if got != int(want):
                 fails.append("predicted %-46s = %d, measured %d"
                              % (n, int(want), got))
 
+    # One line per LEG, not per capture: a glob over a suite whose pull was
+    # truncated would otherwise print 56 lines saying the same thing.
+    for leg, hit in void_hits.items():
+        why = sorted({r["void"] for r in hit})
+        voids.append("%s: %d VOID capture(s) (%s), e.g. %s"
+                     % (leg, len(hit), "; ".join(why),
+                        ", ".join("%s/%s" % r["key"] for r in hit[:3])))
+
     counts = exp.get("expect_counts") or {}
+    void_rows = sorted("%s/%s" % r["key"] for r in rows if r["void"])
     if counts:
         tally = {c: sum(1 for r in rows if r["cls"] == c)
                  for c in ("better", "worse", "same", "noise")}
         for k, want in counts.items():
+            if void_rows:
+                voids.append("expect_counts %s=%s: %d capture(s) could not be "
+                             "counted, e.g. %s" % (k, want, len(void_rows),
+                                                   ", ".join(void_rows[:3])))
+                continue
             checks += 1
             if tally.get(k) != int(want):
                 msg = ("predicted %s = %s, measured %s"
@@ -994,7 +1070,7 @@ def judge(exp, rows):
                                 % ", ".join("#%s (%s)" % (i, ", ".join(su))
                                             for i, su in sorted(owned.items())))
                 fails.append(msg)
-    return fails, checks
+    return fails, checks, voids
 
 
 def _harness_issue_for(suites):
@@ -1397,6 +1473,11 @@ def byte_summary(a, b, rows):
 
 
 def report(a, b, rows, warn, exp, exp_notes, args):
+    # Every count, total and per-suite figure below is over MEASURED rows only.
+    # judge() alone sees the void ones, so it can name the legs they hit.
+    all_rows = rows
+    void = [r for r in rows if r["void"]]
+    rows = [r for r in rows if not r["void"]]
     out = []
     out.append("=" * 78)
     out.append("A/B comparison, per capture")
@@ -1451,6 +1532,17 @@ def report(a, b, rows, warn, exp, exp_notes, args):
     out.append("  better %-5d worse %-5d same %-5d noise %-5d   (%d compared)"
                % (tally["better"], tally["worse"], tally["same"],
                   tally["noise"], len(rows)))
+    if void:
+        # Printed right under the counts, because the counts are what a reader
+        # quotes: "0 worse" over 395 of 451 captures is not "0 worse".
+        out.append("  VOID   %-5d  UNMEASURED -- no score in one or both arms, "
+                   "so in no class above:" % len(void))
+        by_why = {}
+        for r in void:
+            by_why.setdefault((r["suite"], r["void"]), []).append(r["test"])
+        for (suite, why), tests in sorted(by_why.items()):
+            out.append("    %-24s %4d  %s   e.g. %s"
+                       % (suite, len(tests), why, ", ".join(tests[:3])))
     ea = sum(1 for r in rows if r["a"] == 0)
     eb = sum(1 for r in rows if r["b"] == 0)
     # Crossing zero only counts as a regression if the capture moved outside
@@ -1548,6 +1640,12 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                        "is no band to test them against: %s. Requeue both "
                        "arms with --runs 3."
                        % ", ".join("%s/%s" % r["key"] for r in soft))
+        elif void:
+            # No word PASS or FAIL on this line: arms.sh classifies a verdict
+            # by those substrings, and an unmeasured arm must set no label.
+            out.append("VERDICT: UNJUDGED -- nothing measured got worse, but "
+                       "%d capture(s) are VOID (see the counts above) and no "
+                       "prediction was registered." % len(void))
         elif bc["flat_but_moved"]:
             # THE FLAT-COUNT TRAP, NAMED IN THE VERDICT LINE.
             #
@@ -1574,7 +1672,7 @@ def report(a, b, rows, warn, exp, exp_notes, args):
     else:
         for n in exp_notes:
             out.append(n)
-        fails, checks = judge(exp, rows)
+        fails, checks, void_legs = judge(exp, all_rows)
         if bc["quiet"]:
             out.append("BYTE CHECK: %d capture(s) held their score and moved "
                        "their pixels: %s. No registered leg tests that -- "
@@ -1589,6 +1687,22 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                        % (len(fails), checks))
             for f in fails:
                 out.append("    " + f)
+            if void_legs:
+                out.append("    and %d leg(s) could not be judged at all "
+                           "(VOID):" % len(void_legs))
+                for v in void_legs:
+                    out.append("    " + v)
+            rc = 1
+        elif void_legs:
+            # NOT A PASS. The words PASS and FAIL are both kept off this line:
+            # arms.sh reads the verdict by substring, and a verdict with an
+            # unmeasured leg must neither verify the PR nor supersede a FAIL.
+            out.append("VERDICT: INCOMPLETE -- %d registered check(s) hold, "
+                       "but %d leg(s) landed on VOID captures, which were not "
+                       "measured. Re-run the arm; this is not a verdict:"
+                       % (checks, len(void_legs)))
+            for v in void_legs:
+                out.append("    " + v)
             rc = 1
         else:
             out.append("VERDICT: PASS -- all %d registered checks hold."
@@ -1625,6 +1739,8 @@ def report(a, b, rows, warn, exp, exp_notes, args):
                 repaired_to_exact=["%s/%s" % r["key"] for r in rep],
                 totals=dict(differing_a=ta, differing_b=tb,
                             structural_a=sa, structural_b=sb),
+                void=[dict(capture="%s/%s" % r["key"], why=r["void"])
+                      for r in void],
                 warnings=warn, post_hoc=exp_notes, verdict=rc,
                 byte_check={k: v for k, v in bc.items() if k != "lines"},
                 movers=[{k: v for k, v in r.items() if k != "key"}
@@ -1717,6 +1833,13 @@ def main():
             die("%s did not score %s. Its suites were: %s"
                 % (arm.label, args.capture,
                    ", ".join(sorted({s for s, _ in arm.captures()}))))
+        # An unscored run's `differing` is a 0 that means "no number", and
+        # ab_bisect reads this median as the step's oracle. Refuse, so the
+        # bisect skips the step rather than calling it exact.
+        bad = sorted(set(arm.statuses(key)) - set(SCORED_STATUSES))
+        if bad:
+            die("%s scored %s as %s in at least one run: VOID, not a value"
+                % (arm.label, args.capture, "/".join(bad)))
         vals = arm.values(key)
         print("capture   %s" % args.capture)
         print("arm       %s  ref %s  apk %s" % (arm.label, arm.ref, arm.apk))

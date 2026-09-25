@@ -1,0 +1,47 @@
+From d504bad3977306bef4dcc3b72cddb5ff9be0eafe Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 07:26:39 -0700
+Subject: [PATCH] hakuX #31: ClipF at clip_left 300, clip_top 8, for the first
+ triangle's flatTop clause
+
+At clip_left 300 the first triangle's first span starts at the clip, so
+master's flat-top quad clause (row 8) and span_starts_at_clip (row 10)
+disagree. The nine earlier variants stay as controls.
+---
+ src/tests/wbuf_tests.cpp | 9 ++++++---
+ 1 file changed, 6 insertions(+), 3 deletions(-)
+
+diff --git a/src/tests/wbuf_tests.cpp b/src/tests/wbuf_tests.cpp
+index cd4d71c..fbdb8b7 100644
+--- a/src/tests/wbuf_tests.cpp
++++ b/src/tests/wbuf_tests.cpp
+@@ -334,12 +334,15 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+         };
+   }
+ 
+-  for (int i = 0; i < 9; i++) {
++  for (int i = 0; i < 10; i++) {
+     int depthf = 6;
+     bool zbias = false;
+     bool zslope = true;
+     bool vsh = true;
+-    uint32_t clip_left = kClipLeft;
++    // i == 9: clip_left 300 at clip_top 8. There the first triangle's first
++    // span starts AT the clip, which separates the quad snap's flat-top clause
++    // from span_starts_at_clip (hakuX #31, docs/lanes/wbuf31fix/NOTES.md).
++    uint32_t clip_left = (i == 9) ? 300 : kClipLeft;
+     // i < 3 reproduces the three existing captures exactly.  The fourth is
+     // deliberately not a multiple of 4: kVertSampleCoords holds only multiples
+     // of 32, so on every ClipF capture that exists today "anchor = clip_top +
+@@ -357,7 +360,7 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+     // 32 / 34 / 6 at clip_top 32 / 35 / 4, which neither the quad snap nor the
+     // 4-grid gives alone; these separate row alignment and column phase
+     // (hakuX #31, lane.wbuf31fix's --selectors search).
+-    static constexpr uint32_t kExtraClipTop[] = {35, 4, 8, 12, 16, 64};
++    static constexpr uint32_t kExtraClipTop[] = {35, 4, 8, 12, 16, 64, 8};
+     uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : kExtraClipTop[i - 3];
+ 
+     tests_[MakeTestName(kPrimFloorClip, depthf, zbias, zslope, vsh, clip_left, clip_top)] =
+-- 
+2.43.0
+

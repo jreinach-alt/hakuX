@@ -36,3 +36,35 @@ owner if the console stops answering.
 - Runner lesson (fixed in `lane/xbox-runner`): with networking off, an XBE
   never answers ping, so a run in progress LOOKS unreachable. It went dark
   at SITE EXEC and answered ping again 49 s later, back at the dashboard.
+- 2026-09-25. #31 RESULT, fourth run (routed on #112 item C): at
+  `clip_left` 300, `clip_top` 8, the first triangle anchors at **10**, the
+  4-grid. `span_starts_at_clip` holds and master's `flatTop` clause (8) is
+  refuted there. Master's rule gets all 24,952 of that triangle's pixels wrong
+  in the float32 simulation. 57 four-literal fits survive, exactly the ones
+  registered as voting grid. Every leg held (C1 22/22 identical).
+  `docs/testing/xbox-wbuf31-clipf300-2026-09-25.md`.
+- Wrapper lesson: `wbuf_anchor_recover.py` builds `_QUADS` from PRIMS at
+  import, so a scoring wrapper that adds a quad capture must add it to
+  `_QUADS` too, or its second triangle reads `second_of_quad` False. That
+  made the t0 run's published count 75 instead of 93 (corrected in place).
+- 2026-09-25. #200 RESULT (routed on #112 item B): the per-test PGRAPH diff
+  over 782 tests in 20 suites, on the console and on the Thor. On silicon, set
+  bits appear in the holes of CONTROL_3 (`0x60`), SETUPRASTER (`0x481FE020`),
+  ZCOMPRESSOCCLUDE (`0x6`) and TEXFMT0..3 (`0x30`), plus SURFACE bit 0 (#201).
+  Silicon also sets declared-never-written CSV0_D FOG_MODE and CSV1_A
+  T0_ENABLE/MODE/TEXTURE. hakuX sets none of them. Every leg held.
+  `docs/testing/xbox-region200-2026-09-25.md`.
+- Instrument lesson: the per-test patch's `DumpDiff` label buffer is 64
+  bytes, so long test names are truncated and the canary gets glued onto
+  them. A dispatcher dry run cannot exercise the diff at all unless the XBE
+  forces it on, because `make_test_iso.py` pins `enable_pgraph_region_diff`
+  false.
+- 2026-09-25. Idle-time references, at the owner's request (the console
+  turns itself off after 10 idle hours): silicon captures of `Fog planar vsh`
+  (6 tests) and `Surface as vertex array` (5), which nothing had captured
+  before. Pristine `6743b6a`, C1 16/16. The first comparison finds hakuX's
+  `DynamicUpdateLoop` wrong by 96,000 px: when a surface is rendered to and
+  then read as a vertex array, hakuX keeps the stale vertex data.
+  `docs/testing/xbox-refs6743-2026-09-25.md`. `Clipping precision` is
+  interactive-only and saves nothing. `PVIDEO` writes `NV_PMC_ENABLE` and
+  waits for the power switch.

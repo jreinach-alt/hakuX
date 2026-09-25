@@ -552,7 +552,12 @@ nightly, and leave running to the dispatcher's queue.
 
 Scoring the whole corpus is about **4.5 hours of device time**, which cannot
 sit in front of an implementer waiting on eight captures. So it is the
-dispatcher's lowest-priority work, and it yields:
+dispatcher's lowest-priority work: the corpus sweep enqueues one `z-sweep-*`
+request per suite, and the claim loop sorts every other request ahead of them.
+The dispatcher does **not** drive `sweep_queue.sh`; its preempt/resume hook
+never ran and was removed on 2026-09-25 (see
+`docs/lanes/dispatch-hardening/NOTES.md`). `sweep_queue.sh` is a standalone
+tool for a hand-run sweep, and it yields:
 
 - `sweep_queue.sh pause` **blocks until the runner has genuinely parked**, then
   frees the device. It does not merely set a flag and hope.

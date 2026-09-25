@@ -67,7 +67,8 @@
 # AND WAITING IS NOT FAILING, so a strand resume does not spend one of the
 # four attempts behind the escalation policy (`lane.sh` counts every resume;
 # this job puts the counter back). What bounds it instead is DRAFT_STRAND_MAX
-# per lane, plus the same once-per-head-sha key as every other cause.
+# per lane, plus a once-per-cause key: the head sha for the quiet clock, the
+# set of judged verdicts for an arm (see the strand table below).
 #
 # WHAT IT DOES NOT DO. It resolves nothing and it starts nothing itself: the
 # actor is `docs/testing/lane.sh resume`, which already counts the attempt,
@@ -110,9 +111,92 @@ HANDBACK_ROWS=(
 #                       (`arms.sh` labels the PR `verified` or `regressed`)
 #   draft-strand-quiet  nothing has happened on the PR for DRAFT_STRAND_SECS
 #
-# Two keys, not one, on purpose: the marker is `$label-$pr-$head`, so a
-# verdict that lands AFTER a quiet resume is still a new cause at the same
-# head, while a second quiet tick at that head is not.
+# Two keys, not one, on purpose: a verdict that lands AFTER a quiet resume is
+# still a new cause at the same head, while a second quiet tick at that head is
+# not. The quiet marker is `$label-$pr-$head`; the arm marker is keyed on the
+# VERDICTS, below, because the head is not what an arm resume is about.
+#
+# A NEW HEAD IS NOT A NEW VERDICT. The arm cause used the head key too until
+# 2026-09-25, so a lane that reacted to its verdict by pushing -- registering a
+# replicate, committing NOTES, merging master -- was strand-resumed again, with
+# nothing new to read, on the next tick. lane.vshnobegin242 (#245) was resumed
+# at 16:10Z, 16:29Z and 16:32Z on ONE judged FAIL and labelled
+# `blocked:needs-owner` at 16:42Z while the replicate it had correctly
+# registered sat queued on the Thor. So the arm marker is a hash of the
+# `(prediction sha, verdict)` pairs judged for the branch, and it moves only
+# when `arms.sh` judges another one.
+ARMS_DIR="$WORK/arms"
+DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}"
+VKEY=""; VSET=""
+verdicts_of() {   # <branch> -> VKEY (hash) and VSET (short list), or both "" if none judged
+    # THE SAME READ `arms.sh state` MAKES, not a second opinion: a pair's
+    # branch is the part of its `source` before the colon, its verdict is
+    # judged/<sha> as the judge wrote it, and only a line saying FAIL or PASS
+    # is a verdict (FAIL first, as there). UNJUDGED and ERROR supersede nothing
+    # there and are not new information here. Not by CALLING `arms.sh state`:
+    # it rewrites $ARMS_DIR/log/label-index.tsv with `>`, and an arms tick
+    # reading that index mid-judge would see it truncated.
+    local out
+    out=$(python3 - "$ARMS_DIR" "$1" <<'PY'
+import glob, hashlib, json, os, sys
+A, branch = sys.argv[1:3]
+got = []
+for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
+    if pj.endswith(".verdict.json"):
+        continue
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    sha, src = p.get("sha"), str(p.get("source") or "")
+    if not sha or src.partition(":")[0] != branch:
+        continue
+    try:
+        v = open(os.path.join(A, "judged", sha)).read()
+    except Exception:
+        continue                           # queued or running; no verdict yet
+    cls = "FAIL" if "FAIL" in v else ("PASS" if "PASS" in v else None)
+    if cls:
+        got.append((sha, cls))
+got.sort()
+if got:
+    print(hashlib.sha256("\n".join("%s %s" % g for g in got).encode()).hexdigest()[:16])
+    print(" ".join("%s=%s" % (s[:12], c) for s, c in got))
+PY
+)
+    VKEY=$(sed -n 1p <<< "$out"); VSET=$(sed -n 2p <<< "$out")
+}
+# THE LANE'S OWN ARM, STILL ON ITS WAY. A request is the branch's when its
+# expect_sha is one of the branch's registered predictions (how `arms.sh`
+# queues one), when its purpose names the branch as its source, or when its
+# requester is the lane's own `ab_run.sh --who <name>` pair.
+INFLIGHT=""
+inflight_of() {   # <branch> <lane name> -> INFLIGHT="<queue|running>/<request id>", or ""
+    INFLIGHT=$(python3 - "$ARMS_DIR" "$DISPATCH_DIR" "$1" "$2" <<'PY'
+import glob, json, os, sys
+A, D, branch, name = sys.argv[1:5]
+shas = set()
+for pj in glob.glob(os.path.join(A, "pairs", "*.json")):
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    if str(p.get("source") or "").partition(":")[0] == branch and p.get("sha"):
+        shas.add(p["sha"])
+who = {name + "-base", name + "-fix", "arms-" + name + "-base", "arms-" + name + "-fix"}
+for d in ("running", "queue"):
+    for rq in sorted(glob.glob(os.path.join(D, d, "*.req"))):
+        try:
+            r = json.load(open(rq))
+        except Exception:
+            continue
+        if (r.get("expect_sha") in shas or r.get("requester") in who
+                or (" from %s:" % branch) in str(r.get("purpose") or "")):
+            print("%s/%s" % (d, r.get("id") or os.path.basename(rq)[:-4]))
+            sys.exit(0)
+PY
+)
+}
 #
 # The stale set is wider than `needs-rebase`'s because every one of these
 # labels already has an actor: the rows above, the audit outlet, or a person.
@@ -296,9 +380,11 @@ extend work this PR already carries.
 
 **If you are still waiting on something**, that is a finished session too, but
 say it where a reader can see it: a PR comment starting \`[lane.$4] waiting:\`
-naming what you are waiting for and what will resolve it. This job resumes a
-lane once per head sha per cause, so if the thing you are waiting for lands and
-nothing else on the PR changes, it will find you again on the quiet clock.
+naming what you are waiting for and what will resolve it. If it is an arm --
+a replicate you registered, say -- this job does not resume you while that arm
+is queued or running, and resumes you once when its verdict is judged; a push
+of your own is not a verdict. Anything else, it finds you again on the quiet
+clock.
 EOF
 }
 
@@ -387,16 +473,71 @@ prs_for() {   # <label> -> "num<TAB>headRefName<TAB>headRefOid<TAB>labels,comma,
 # stranded draft was refused as an unfiltered row. Only the LAST field may be
 # empty (a trailing delimiter is dropped harmlessly), so the one field that
 # routinely is goes there.
+#
+# THE CI CLASSIFIER IS ONE jq `def`, shared by this pickup and by `head_ci`
+# below, so the two questions "is this draft's head green" and "is this
+# resolved head green" cannot drift into two answers. `""` is what gh prints
+# for a conclusion still in flight and `//` does not catch it, so it reaches
+# the tests below as `""` -- neither all-success nor any-failure -- and reads
+# PENDING, which is what it is. NO RUNS AT ALL is NONE and never GREEN: a PR
+# that does not merge gets no runs, so an empty rollup is the conflict's
+# signature, not a pass.
+CI_STATE_JQ='def ci_state: [.statusCheckRollup[]? | (.conclusion // .state // "PENDING")] as $c
+              | if ($c | length) == 0 then "NONE"
+                elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
+                elif ($c | any(. == "FAILURE" or . == "ERROR" or . == "CANCELLED" or . == "TIMED_OUT")) then "RED"
+                else "PENDING" end; '
 stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>isDraft=<b> ci=<STATE> quiet=<secs><TAB>labels"
     gh pr list --repo "$GH_REPO" --state open --limit 100 \
         --json number,headRefName,headRefOid,isDraft,labels,updatedAt,statusCheckRollup \
-        --jq 'sort_by(.number)[] | select(.isDraft) | select(.headRefName | startswith("lane/"))
-              | [.statusCheckRollup[]? | (.conclusion // .state // "PENDING")] as $c
-              | (if ($c | length) == 0 then "NONE"
-                 elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
-                 elif ($c | any(. == "FAILURE" or . == "ERROR" or . == "CANCELLED" or . == "TIMED_OUT")) then "RED"
-                 else "PENDING" end) as $ci
+        --jq "$CI_STATE_JQ"'sort_by(.number)[] | select(.isDraft) | select(.headRefName | startswith("lane/"))
+              | ci_state as $ci
               | "\(.number)\t\(.headRefName)\t\(.headRefOid)\tisDraft=\(.isDraft) ci=\($ci) quiet=\((now - (.updatedAt | fromdateiso8601)) | floor)\t\(.labels | map(.name) | join(","))"' 2>/dev/null
+}
+
+# ------------------------------------------------ is the conflict still there
+# THE LANE'S LAST STEP IS A WAIT IT CANNOT MAKE. `resume_rebase` ends "once CI
+# is green on the new head, swap needs-rebase for fold-ready"; a lane cannot
+# sleep ten minutes, so it pushes the merge and exits with the swap undone.
+# The PR still carries `needs-rebase`, its head is new, no unit is running, so
+# every guard below reads a fresh cause and resumes it -- for a conflict that
+# no longer exists. Each resume spends one of four attempts: #234 wasted one
+# on 2026-09-25, and #237 was handed to the owner as `blocked:needs-owner` at
+# 14:25Z with a clean head whose CI went green minutes later. So the label
+# path first asks the question the label is about, on a fresh fetch.
+REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
+TIP_SHA=""; TIP_FETCHED=""
+MERGE_STATE=""
+merge_state() {   # <branch> <head> -> MERGE_STATE=CLEAN|CONFLICT|UNKNOWN, TIP_SHA set
+    MERGE_STATE=UNKNOWN
+    # Once per tick: every row is judged against the same trunk head, and the
+    # comment names it. The tracking ref, not FETCH_HEAD, for fold.sh's reason
+    # (tip_state): several jobs fetch in this checkout.
+    if [ -z "$TIP_FETCHED" ]; then
+        TIP_FETCHED=1
+        git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null \
+            && TIP_SHA=$(git -C "$REPO" rev-parse -q --verify "refs/remotes/origin/$TIP^{commit}" 2>/dev/null)
+    fi
+    [ -n "$TIP_SHA" ] || return 0
+    # The head the ROW names, not whatever the branch holds now: the CI state
+    # is read for that sha too, and a verdict about a neighbouring commit is
+    # not one. Fetched only when this object store does not have it already.
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null \
+        || git -C "$REPO" fetch -q origin "+refs/heads/$1:refs/remotes/origin/$1" 2>/dev/null
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null || return 0
+    # merge-tree exits 0 on a clean merge, 1 on a conflict, anything else on
+    # an error. Only the first two are answers; the rest keeps UNKNOWN, and
+    # UNKNOWN is handled exactly as before this check existed.
+    git -C "$REPO" merge-tree --write-tree --no-messages "$TIP_SHA" "$2" >/dev/null 2>&1
+    case $? in 0) MERGE_STATE=CLEAN ;; 1) MERGE_STATE=CONFLICT ;; esac
+    return 0
+}
+# The CI state of the head, from the same classifier as the draft pickup, with
+# the head it describes so a push between the pickup and this read cannot
+# lend one commit's green to another.
+head_ci() {   # <pr> -> "<headRefOid>\t<STATE>", or nothing
+    gh pr view "$1" --repo "$GH_REPO" --json headRefOid,statusCheckRollup \
+        --jq "$CI_STATE_JQ"'"\(.headRefOid)\t\(ci_state)"' 2>/dev/null
 }
 
 # ONE STREAM, ONE BODY. The two pickups ask GitHub different questions and
@@ -473,6 +614,71 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
             continue
         fi
 
+        # ------------------------------ needs-rebase: does it still conflict?
+        # Before the lane name, the marker, the liveness check, the cap and the
+        # resume: the swap needs no lane, and a head that merges cleanly is not
+        # a cause for one. Only a CLEAN answer changes anything; CONFLICT and
+        # UNKNOWN (no fetch, no object, a merge-tree error) fall through to the
+        # resume this job always did.
+        merge_note=""; merge_why=""
+        if [ "$label" = needs-rebase ]; then
+            merge_state "$branch" "$head"
+            if [ "$MERGE_STATE" = CLEAN ]; then
+                hc=$(head_ci "$pr"); ci_head="${hc%%$'\t'*}"; ci="${hc#*$'\t'}"
+                [ -n "$hc" ] && [ "$ci_head" != "$hc" ] || { ci_head=""; ci=UNKNOWN; }
+                if [ -n "$ci_head" ] && [ "$ci_head" != "$head" ]; then
+                    # The branch moved between the pickup and this read. The next
+                    # tick sees the new head as its own row; acting now would
+                    # join one commit's merge to another's CI.
+                    [ "$mode" = list ] && { echo "#$pr $branch: head moved (${head:0:10} -> ${ci_head:0:10}) during this tick; next tick"; continue; }
+                    say "#$pr: head moved from ${head:0:10} to ${ci_head:0:10} during this tick; judged next tick"
+                    continue
+                fi
+                case "$ci" in
+                GREEN)
+                    # THE LANE'S OWN LAST STEP, done here. No resume, so no
+                    # attempt; the head has merged the trunk and been built.
+                    [ "$mode" = list ] && { echo "#$pr $branch @ ${head:0:10}: merges cleanly into $TIP ${TIP_SHA:0:10}, CI GREEN; WOULD RELABEL fold-ready (no resume)"; continue; }
+                    if label_rm "$pr" needs-rebase && label_add "$pr" fold-ready; then
+                        say "#$pr: ${head:0:10} merges cleanly into $TIP ${TIP_SHA:0:10} and CI is GREEN; relabelled needs-rebase -> fold-ready, lane not resumed"
+                        comment "$pr" "[job.handback] Relabelled \`needs-rebase\` -> \`fold-ready\`, and **did not resume** the lane: head \`${head:0:10}\` merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` (checked with \`git merge-tree\` on a fresh fetch) and CI on that head is **GREEN**. That swap was the lane's own last step, which it could not wait for; no attempt was spent on it."
+                    else
+                        say "  WARNING: could not swap needs-rebase -> fold-ready on #$pr; retried next tick"
+                    fi
+                    continue ;;
+                PENDING)
+                    # WAITING, NOT FAILING. No marker for the cause and no
+                    # resume; the log line is once per head, so a ten-minute
+                    # run is one line, not twenty.
+                    [ "$mode" = list ] && { echo "#$pr $branch @ ${head:0:10}: merges cleanly into $TIP ${TIP_SHA:0:10}, CI PENDING; waiting (no resume)"; continue; }
+                    if [ ! -f "$H/done/pending-$pr-$head" ]; then
+                        echo "$TIP_SHA" > "$H/done/pending-$pr-$head"
+                        say "#$pr: ${head:0:10} merges cleanly into $TIP ${TIP_SHA:0:10}; CI PENDING, waiting (not resumed)"
+                    fi
+                    continue ;;
+                esac
+                # RED, NONE or UNKNOWN: resumed as before, but told the truth.
+                # The brief's "no longer merges into" is not it any more, and
+                # the cause file says which of the label's two causes this is.
+                cause_act=$(sed -n 's/^action=//p' "$H/cause/$pr-$head" 2>/dev/null | head -1)
+                case "$ci" in
+                RED)
+                    if [ "$cause_act" = resume_stale_ci ]; then
+                        merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\`, and its red is the stale-CI cause: it ran before the trunk moved, and only bringing \`$TIP\` in refreshes it"
+                    elif git -C "$REPO" merge-base --is-ancestor "$TIP_SHA" "$head" 2>/dev/null; then
+                        merge_why="the head already contains \`$TIP\` at \`${TIP_SHA:0:10}\` and CI on it is RED: that is a live failure on this branch, not a base that moved, and fixing it is the task"
+                    else
+                        merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` (the conflict no longer reproduces) but CI on it is RED; merge \`$TIP\` in and read the failing check"
+                    fi ;;
+                NONE)
+                    merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` but has NO CI run at all, which is not green: check the head commit's message for the retired skip-ci marker, or push \`git commit --allow-empty -m 'ci: build this head'\`" ;;
+                *)
+                    merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\`, but its CI state could not be read" ;;
+                esac
+                merge_note=$'\n'"**Checked before this resume:** $merge_why."$'\n'
+            fi
+        fi
+
         # How the cause reads to a person on the PR. A label says itself; the
         # strand causes are not labels and there is nothing on the PR to point
         # at, so they have to be said in words or the comment names a label
@@ -502,9 +708,19 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # and the second session re-reads the same NOTES.md and the same diff.
         # When the lane pushes, the head moves and a fresh conflict is a fresh
         # cause.
-        marker="$H/done/$label-$pr-$head"
+        #
+        # EXCEPT THE ARM CAUSE, which is keyed on the verdicts (see the table
+        # above): a lane pushes in answer to a verdict, and that push is not a
+        # second verdict. With nothing judged on disk for the branch -- the
+        # label set by hand, or an arms dir this host cannot read -- there is
+        # no verdict set to key on, and it keeps the head key it always had.
+        marker="$H/done/$label-$pr-$head"; keyed="at ${head:0:10}"
+        if [ "$label" = draft-strand-arm ]; then
+            verdicts_of "$branch"
+            [ -z "$VKEY" ] || { marker="$H/done/$label-$pr-v$VKEY"; keyed="on verdicts $VSET"; }
+        fi
         if [ -f "$marker" ]; then
-            [ "$mode" = list ] && echo "#$pr $branch: $label already actioned at ${head:0:10} ($(head -1 "$marker"))"
+            [ "$mode" = list ] && echo "#$pr $branch: $label already actioned $keyed ($(head -1 "$marker"))"
             continue
         fi
 
@@ -572,6 +788,22 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # ------------------------------------------ the strand's own two gates
         uncounted=""
         case "$label" in draft-strand-*)
+            # ITS OWN ARM IS IN FLIGHT: THE LANE IS WAITING, AND RIGHTLY. Its
+            # replicate is queued or running on a device, and the verdict that
+            # arm produces is the next new cause; resumed now, it is told what
+            # it already knew and spends one of DRAFT_STRAND_MAX on it. #245
+            # was capped exactly so. No marker for the cause -- the verdict has
+            # not landed -- and one log line per request, not one per tick.
+            inflight_of "$branch" "$name"
+            if [ -n "$INFLIGHT" ]; then
+                [ "$mode" = list ] && { echo "#$pr $branch: draft, lane $name not running, but its arm is in flight ($INFLIGHT); waiting on it"; continue; }
+                inflight_marker="$H/done/inflight-$pr-${INFLIGHT#*/}"
+                if [ ! -f "$inflight_marker" ]; then
+                    echo "$INFLIGHT" > "$inflight_marker"
+                    say "#$pr: lane $name is stranded in draft but its arm is in flight ($INFLIGHT); not resuming until it is judged"
+                fi
+                continue
+            fi
             # WAITING IS NOT STRANDED. `draft-strand-quiet` fires on a clock and
             # nothing else, so before it does, the clock has to have run long
             # enough that the thing the lane was waiting for would have landed.
@@ -632,6 +864,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         # `$act`, not `$action`: one label can carry two causes and the cause
         # file's `action=` (whitelisted above) says which brief to print.
         "$act" "$pr" "$branch" "$head" "$name" "$cause" >> "$WORK/briefs/$name.md"
+        [ -z "$merge_note" ] || printf '%s\n' "$merge_note" >> "$WORK/briefs/$name.md"
         out=$(bash "$LANE_SH" resume "$name" 2>&1); rc=$?
         [ "$rc" -eq 0 ] || truncate -s "$size" "$WORK/briefs/$name.md"
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
@@ -641,7 +874,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
             say "#$pr: resumed lane.$name on $label -- $out"
             comment "$pr" "[job.handback] Resumed \`lane.$name\`: $said, so nothing else could act on it -- \`board.sh\`, \`fleet.py\` and \`fold.sh\` all skip drafts, and that is right while a lane is working.
 
-The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, and at once per head sha per cause.
+The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, at once per head sha for the quiet clock, and at once per new judged verdict for an arm -- pushing in answer to a verdict does not bring you back here, and nor does waiting on an arm that is still queued.
 
 This job does **not** mark a PR ready: the definition of done includes \`NOTES.md\`, the \`Files:\` line and the prediction refs, none of which a script can check. That call stays with the lane."
             resumed=1
@@ -655,6 +888,9 @@ This job does **not** mark a PR ready: the definition of done includes \`NOTES.m
                 resume_stale_ci) why="${cause:+ (its red is stale: \`$cause\`, which ran before the current head of \`$TIP\`)}" ;;
                 *)               why="${cause:+ (conflicting in \`$cause\`)}" ;;
             esac
+            # A clean head says so instead: "conflicting in" is fold.sh's
+            # record of an earlier head, and the lane acts on this sentence.
+            [ -z "$merge_why" ] || why=" -- $merge_why"
             comment "$pr" "[job.handback] Resumed \`lane.$name\` on \`$label\` at \`${head:0:10}\`$why. The handback was appended to its brief: merge \`origin/$TIP\` (never rebase -- it would un-ancestor any registered prediction), resolve, push, then re-apply \`fold-ready\`. This job resumes a lane once per head sha, so pushing is what makes another handback possible."
             resumed=1
         elif grep -q 'LANE_MAX_ATTEMPTS' <<< "$out"; then
