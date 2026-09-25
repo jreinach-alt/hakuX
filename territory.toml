@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 172
+wave = 173
 updated_utc = "2026-09-25T14:45:00Z"
 
 
@@ -560,7 +560,6 @@ files = [
     "accel/tcg/cpu-exec.c",
     "accel/tcg/translate-all.c",
 "accel/tcg/tb-maint.c", "accel/tcg/cputlb.c", "accel/**/*.h",
-         "hw/xbox/nv2a/pgraph/vk/instance.c",
          "hw/xbox/nv2a/pgraph/glsl/psh.h",
          "hw/xbox/nv2a/pgraph/swizzle.c",
          "hw/xbox/nv2a/pfifo.c",
@@ -810,10 +809,10 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
 
 [lane.wparamgeom223]
-issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamgeom223-*.json", "docs/lanes/wparamgeom223/**"]
+issues = []
+files = ["docs/lanes/wparamgeom223/**", "docs/lanes/wparam223/NOTES.md"]
 standing = false
-note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note)."
+note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note). WAVE 173 (host session): FINISHED as analysis -- PR #246 refuted the uniform w scale (the missing triangles are 2^120+ RATIO cases; a scale cannot change a ratio), corrected wparam223 NOTES section 4 and withdrew section 5; the code was reverted, so #246 is NOTES only. glsl/geom.c and the predictions glob pass to [lane.wparamclip223] for the geometry-shader clip #246 names as the next step; this row keeps its own docs and docs/lanes/wparam223/NOTES.md (edited by #246) until #246 folds, then retires."
 
 [lane.vshnobegin242]
 issues = ["242"]
@@ -832,3 +831,9 @@ issues = []
 files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/status.sh"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 171 (host session): the host's own two-line follow-up to PR #231 -- board.sh's tick prompt still said 'Dispatch AT MOST ONE this tick' and status.sh 'at most one per tick', contradicting roles/board.md's 'up to three', and the board obeyed the prompt (07:39 PDT tick). No NOTES dir: the commit message is the record. Retire on fold."
+
+[lane.wparamclip223]
+issues = ["223"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "docs/testing/predictions/wparamclip223-*.json", "docs/lanes/wparamclip223/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 173 (host session, 2026-09-25 08:00 PDT) for #223: the second step both NOTES name -- for a filled triangle with exactly one negative-w vertex, compute silicon's external wedge in the geometry shader, clip it to the guard band and emit it as positive-w geometry so the host clipper never sees a negative w. Priced offline first; Thor W_param arm (must_move bitri w-0.00 / 1.88e-37 / 3.76e-37 / 7.52e-37, about 563k px; the quads and ratio-1 rows must_not_move). vk/instance.c from [free] for PGRAPH_GEOM_MAX_OUTPUT_VERTICES. Ahead of #13 on geom.c by magnitude (563k vs 32,628 px). Brief: briefs/wparamclip223.md."
