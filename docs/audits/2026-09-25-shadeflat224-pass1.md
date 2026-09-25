@@ -78,7 +78,7 @@ code reads correct, so this is a coverage gap, not a defect.
 ### L2 (LOW). `get_draw_mode()` maps ADJ to ADJ regardless of shade and polygon mode
 `prim_rewrite.c:109-119`. If `pg->primitive_mode` were ever ADJ while
 CONTROL_3 read SMOOTH (or FRONTFACEMODE read LINE), `set_geom_state` would
-produce `{ADJ, smooth}` and trip the new assert in `gen_geom` (`geom.c:103`).
+produce `{ADJ, smooth}` and trip the new assert in `gen_geom` (`geom.c:104`).
 No path found that does this: replay restores CONTROL_3 and SETUPRASTER from
 the queue entry. So there is no failure scenario today. It is a trap for the
 next person who adds a replay path.
