@@ -1,0 +1,45 @@
+From da77078d9a6ac5341c6eabee04f5f91db21e14e5 Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 00:00:30 -0700
+Subject: [PATCH] hakuX #31: ClipF at clip_top 8, 12, 16 and 64, for the first
+ triangle
+
+The second triangle is settled (the 4-grid at phase 2). The first anchors
+at 32 / 34 / 6 at clip_top 32 / 35 / 4, and no selector over 27 geometric
+features fits all 44 recovered anchors with fewer than four literals.
+These four separate row alignment, column parity and column phase. 35
+and 4 stay in as controls.
+---
+ src/tests/wbuf_tests.cpp | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/src/tests/wbuf_tests.cpp b/src/tests/wbuf_tests.cpp
+index c36da3b..cd4d71c 100644
+--- a/src/tests/wbuf_tests.cpp
++++ b/src/tests/wbuf_tests.cpp
+@@ -334,7 +334,7 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+         };
+   }
+ 
+-  for (int i = 0; i < 5; i++) {
++  for (int i = 0; i < 9; i++) {
+     int depthf = 6;
+     bool zbias = false;
+     bool zslope = true;
+@@ -353,7 +353,12 @@ WBufTests::WBufTests(TestHost &host, std::string output_dir, const Config &confi
+     // 32/128/224/35 known, 48 anchor rules remain; at 4 the absolute 4-grid at
+     // phase 2 is the only one predicting 6, and the 47 coarse-grid rules
+     // predict 2, 10, 18 or 34 (hakuX docs/testing/wbuf_clip_phase_choice.py).
+-    uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : (i == 3 ? 35 : 4);
++    // i >= 5: clip_top 8, 12, 16, 64, for the FIRST triangle. It anchors at
++    // 32 / 34 / 6 at clip_top 32 / 35 / 4, which neither the quad snap nor the
++    // 4-grid gives alone; these separate row alignment and column phase
++    // (hakuX #31, lane.wbuf31fix's --selectors search).
++    static constexpr uint32_t kExtraClipTop[] = {35, 4, 8, 12, 16, 64};
++    uint32_t clip_top = (i < 3) ? kVertSampleCoords[3 + 6 * i] : kExtraClipTop[i - 3];
+ 
+     tests_[MakeTestName(kPrimFloorClip, depthf, zbias, zslope, vsh, clip_left, clip_top)] =
+         [this, depthf, zbias, zslope, vsh, clip_left, clip_top]() {
+-- 
+2.43.0
+

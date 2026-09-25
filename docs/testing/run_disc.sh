@@ -160,13 +160,68 @@ ADB_TIMEOUT="${PULL_TIMEOUT:-600}" \
 # broken". Check for the file instead of trusting the exit status.
 [ -s "$HDD" ] || { echo "pull reported success but $HDD is missing or empty"; exit 1; }
 rm -rf "$RESULTS"
-python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" | tail -1
+# PROGRAM=vsh: nxdk_vsh_tests. From DVD it always writes e:\nxdk_vsh_tests (the
+# dispatcher passes that as GUEST_DIR), so every earlier run's files are still
+# there beside this one's. The manifest carries each file's guest-clock times,
+# which is what lets vsh_score.py refuse a file older than this run's log.
+#
+# That guard trusts log.txt to be THIS run's, and on its own it is not: main.cpp
+# replaces the log only once it runs, so a run that dies before main() (an apk
+# that aborts on boot, an XBE that fails to load) leaves the previous run's log
+# and files on the image, and they scored as a complete, identical run (audit
+# M1, PR #229). So the host keeps, per device, the created time of the last
+# log.txt it extracted from that device's image. A log with that same created
+# time is the one we already saw: this run never replaced it. No guest/host
+# clock comparison is involved, which is the point -- the guest clock's offset
+# from the host's is unknown. The record is written to the results dir as
+# .previous_log_created for vsh_score.py, which then refuses every file.
+EXTRACT_EXTRA=()
+VSH_LEDGER="${VSH_LOG_LEDGER:-$HOME/hakux-work/vsh-last-log-${DEVICE_LABEL:-${SERIAL:-x}}}"
+if [ "${PROGRAM:-pgraph}" = vsh ]; then
+    mkdir -p "$RESULTS"
+    EXTRACT_EXTRA=(--manifest "$RESULTS/.fatx_times.json")
+    [ -s "$VSH_LEDGER" ] && cp "$VSH_LEDGER" "$RESULTS/.previous_log_created"
+fi
+python3 "$HERE/extract_results.py" "$HDD" -d "$GUEST_DIR" -o "$RESULTS" \
+    ${EXTRACT_EXTRA[@]+"${EXTRACT_EXTRA[@]}"} | tail -1
+VSH_LOG_CREATED=""
+if [ "${PROGRAM:-pgraph}" = vsh ]; then
+    VSH_LOG_CREATED=$(python3 -c 'import json,sys
+print((json.load(open(sys.argv[1])).get("log.txt") or {}).get("created") or "")' \
+        "$RESULTS/.fatx_times.json" 2>/dev/null)
+    if [ -n "$VSH_LOG_CREATED" ]; then
+        mkdir -p "$(dirname "$VSH_LEDGER")"
+        printf '%s\n' "$VSH_LOG_CREATED" > "$VSH_LEDGER"
+    fi
+fi
 # The image is the whole point of the fixed path: take it back off the disk
 # before the next run needs the room.
 rm -f "$HDD"
 echo "results: $RESULTS ($(ls "$RESULTS" 2>/dev/null | wc -l) files)"
 if [ "$TIMED_OUT" = 1 ]; then
     echo "  ^ PARTIAL: the guest did not exit. The tail of"
-    echo "    $RESULTS/pgraph_progress_log.txt names the test it stopped on."
+    if [ "${PROGRAM:-pgraph}" = vsh ]; then
+        echo "    $RESULTS/log.txt names the test it stopped on."
+    else
+        echo "    $RESULTS/pgraph_progress_log.txt names the test it stopped on."
+    fi
     exit 1
+fi
+# A vsh run is complete when ITS LOG SAYS SO, not when the process went away
+# or when it took about as long as the last one. main.cpp deletes log.txt at
+# start and writes this line after the last suite; an ASSERT, a crash or a
+# guest that never reached the tests leaves it absent.
+if [ "${PROGRAM:-pgraph}" = vsh ]; then
+    VSH_PREV=$(tr -d '\r\n' < "$RESULTS/.previous_log_created" 2>/dev/null)
+    if [ -n "$VSH_LOG_CREATED" ] && [ "$VSH_LOG_CREATED" = "$VSH_PREV" ]; then
+        echo "vsh: STALE LOG -- log.txt was created $VSH_LOG_CREATED, the same log the"
+        echo "     previous run on this device left; this run never started the program"
+        exit 1
+    fi
+    if grep -q "Testing completed normally" "$RESULTS/log.txt" 2>/dev/null; then
+        echo "vsh: log.txt says Testing completed normally"
+    else
+        echo "vsh: INCOMPLETE -- $RESULTS/log.txt has no 'Testing completed normally'"
+        exit 1
+    fi
 fi
