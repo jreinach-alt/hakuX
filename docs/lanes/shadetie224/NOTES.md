@@ -98,3 +98,12 @@ and run1.log for PARTIAL COVERAGE or UtilAcceptVsock.
 - If Lighting_normals regresses, the mechanism is refuted, not the leg. The
   next thing to price is the LT's truncating multiply/add (`ltN+trunc` in
   price.py), which this suite cannot tell apart.
+
+## 5. State at end of session 1 (2026-09-25)
+
+Waiting on the arm. The prediction is committed at 437a73388f with live
+refs (a = 0a4e284536, b = 6765c1f5e9). The arms job will run it and post a
+`[job.arms]` verdict on PR #252. When it lands: read scores1.tsv `status` for
+`unreadable`, and run1.log for PARTIAL COVERAGE and UtilAcceptVsock. Then
+mark the PR ready if every leg holds. If the must_move leg fails, record it
+here as a refutation.
