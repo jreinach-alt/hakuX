@@ -109,3 +109,19 @@ the host deletes the drop-in; say so in the PR body.
 **Fix:** write each snapshot file to a temp path in the same directory and `mv` it into place. A rename swaps the inode, so a bash process already reading the old file keeps its inode. Consider per-worker snapshot directories too, so one worker's re-exec never touches the scripts another worker runs.
 
 **Proof:** a fragment where one process sources a long script from `$SNAP` while `snapshot_scripts` rewrites it with different content. It is red with `cp -f` (a garbled line or a parse error) and green with temp plus `mv`, with the mutant shown.
+
+## Defects 14-17 (added 2026-09-25 13:10 PDT; from the host's tests-that-never-run inventory)
+
+- **14. An env pref nobody requested runs on every request.**
+  - **What happened:** the Nova's `x1box_prefs.xml` held `env_vars = VK_LAYER_ENABLES=VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT` from at least 02:09 PDT, with no dispatcher marker. Khronos sync validation ran on every Nova request, including the release sweep's Nova suites and every arm. Master's W buffering aborted twice with `std::bad_alloc` inside `libVkLayer_khronos_validation.so` (from `pgraph_vk_clear_surface`).
+  - **Why nothing caught it:** `dispatcher.sh`'s rule of touching nothing without a marker is right for a human's setting, but that rule made the problem invisible. The host cleared it by hand under a hold.
+  - **Fix:** on every request, read the device's `env_vars` (one run-as read, already cheap) and record it in `result.json` as `device_env`. When it is non-empty and the request asked for none, log `WARNING: unrequested device env: …` into `run1.log`, and let `ab_compare`/`scoreboard` treat an arm whose two halves differ in `device_env` as not comparable.
+- **15. WSL-interop pulls truncate PNGs.**
+  - **What happened:** W_param had 56 and 51 unreadable captures in two arms today (UtilAcceptVsock), and dry3 shows the same. PR #249 voids the arm, but the pull itself is not fixed.
+  - **Fix:** after a pull, verify each PNG ends in `IEND` and matches the device-side size, and re-pull what does not, up to twice, before scoring.
+- **16. The `blank` heuristic gives false positives** (`score_sweep.py:229-230`). 13 of the 15 `blank` rows are near-exact against goldens that are themselves at least 99% one colour (#297).
+  - **Fix:** do not tag `blank` when the golden itself is at least 99% one colour; score the row normally.
+- **17. One golden root.** `dispatcher.sh:46/:1039` scores against a single golden root, and `jobs/arms.sh:353-374` drops suites with no golden directory. So the 16 tests added at 6743b6a, 11 of which now have console references at `~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/`, can never be scored (#293).
+  - **Fix:** accept an ordered list of golden roots. For each suite the first root that has the test wins, and `result.json` records which root scored each row. lane.sweepcover owns `queue_full_sweep.sh`'s `--base-iso` side, so coordinate through #293.
+
+Order: 14 first, because it silently changes every measurement. Then 15, 17 and 16.
