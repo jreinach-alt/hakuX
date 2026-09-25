@@ -505,6 +505,31 @@ void pgraph_glsl_set_psh_state(PGRAPHState *pg, PshState *state)
         }
 
         state->conv_tex[i] = kernel;
+
+        /* Y16 and R16B16 looked up as a colour reach the combiner as the
+         * texel's four bytes in A8R8G8B8 order -- R16B16 (b2, b1, b0, b3),
+         * Y16 (1, b1, b0, 1) -- not as 16-bit fields narrowed to eight bits.
+         * Measured on Volume_texture Y16 / R16B16 (#283), whose texels are
+         * raw RGBA8888 bytes: silicon's green and blue there are b1 and b0,
+         * where the {G,R,R,G} / {ONE,R,R,ONE} views give b1 in both.  Every
+         * 2D capture of these formats is blind to it, because the test's
+         * converter writes each field as a byte twice (y * 257, {b,b,r,r}).
+         *
+         * Point sampling only: one texel per fetch, so the bytes can be
+         * split back out of the 16-bit value exactly.  A filtered fetch
+         * blends each byte on its own on silicon, which a blended 16-bit
+         * value cannot be split back into. */
+        unsigned int mag_filter = GET_MASK(filter, NV_PGRAPH_TEXFILTER0_MAG);
+        /* MAG has no defines of its own; it shares MIN's encoding. */
+        bool point_sampled =
+            (min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0 ||
+             min_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_NEARESTLOD) &&
+            mag_filter == NV_PGRAPH_TEXFILTER0_MIN_BOX_LOD0;
+        state->tex_bytes16[i] =
+            point_sampled && !state->snorm_tex[i] &&
+            (state->tex_hilo16[i] ||
+             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_SZ_Y16 ||
+             color_format == NV097_SET_TEXTURE_FORMAT_COLOR_LU_IMAGE_Y16);
     }
 
     state->surface_zeta_format = pg->surface_shape.zeta_format;
@@ -3358,6 +3383,28 @@ static MString* psh_convert(struct PixelShader *ps)
             }
             mstring_append_fmt(preflight, "uniform %s texSamp%d;\n",
                                sampler_type, i);
+
+            /* The texel's bytes, split back out of the 16-bit fields the
+             * view swizzle put in .r/.g (R16B16: .r = b2|b3<<8, .g =
+             * b0|b1<<8; Y16: .g = b0|b1<<8).  See tex_bytes16.  A texel a
+             * later bump or dot-product stage consumes keeps its fields. */
+            if (ps->state->tex_bytes16[i] && !stage_consumed_raw(ps, i)) {
+                if (ps->state->tex_hilo16[i]) {
+                    mstring_append_fmt(
+                        vars,
+                        "{ uvec2 fields = uvec2(round(t%d.rg * 65535.0));\n"
+                        "  t%d = vec4(fields.x & 255u, fields.y >> 8,\n"
+                        "             fields.y & 255u, fields.x >> 8) / 255.0; }\n",
+                        i, i);
+                } else {
+                    mstring_append_fmt(
+                        vars,
+                        "{ uint field = uint(round(t%d.g * 65535.0));\n"
+                        "  t%d = vec4(255u, field >> 8, field & 255u, 255u)"
+                        " / 255.0; }\n",
+                        i, i);
+                }
+            }
 
             /* Channels flagged signed on a texture the sampler holds
              * unsigned: two's complement over 127, the SNORM reading.  A
