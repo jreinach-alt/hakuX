@@ -3897,3 +3897,18 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (host, 2026-09-25): the whole intro/attract FMV of a commercial title, 30-90% of each frame, on every boot; no golden, so no px figure"
+
+[issue.311]
+title = "Grabbed by the Ghoulies: the title screen and attract loop decay from 29 to 1-2 fps within minutes"
+component = "games"
+disposition = "defect"
+suites = []
+no_suites = "A PERFORMANCE COLLAPSE IN A COMMERCIAL TITLE (hands-off, on its title screen); no pgraph suite can see a frame rate."
+status = "open"
+status_note = "FILED 2026-09-25 (host session) from lane.gamecheck's #265 re-check: 29 -> 1-2 gfps within ~2 min of boot on the Nova at e48514f980, reproduced by a control run without frame capture after the validation layers were cleared. A measurement target for lane.perfbase / lane.tcgchurn (#68)."
+dispatch_state = "available"
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+game_visible = true
+impact_basis = "game-visible (host, 2026-09-25): a commercial title unplayable-slow on its own title screen; no golden, so no px figure"
