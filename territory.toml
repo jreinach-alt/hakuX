@@ -776,3 +776,9 @@ issues = ["223"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/wparam223-*.json", "docs/lanes/wparam223/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md."
+
+[lane.shade224]
+issues = ["224"]
+files = ["docs/testing/predictions/shade224-*.json", "docs/lanes/shade224/**"]
+standing = false
+note = "DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, unowned. Analysis-first: classify by primitive x shade x W_ and edge vs interior, and say whether W_Fixed_*_Smooth is the same residual as #223 (lane.wparam223, PR #228). Docs and prediction files only claimed; any hw/ fix is a board-request. Attempt 1, opus-5."
