@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 168
-updated_utc = "2026-09-25T14:00:00Z"
+wave = 169
+updated_utc = "2026-09-25T14:45:00Z"
 
 
 [retired.hilodot10]
@@ -813,3 +813,9 @@ issues = ["223"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamgeom223-*.json", "docs/lanes/wparamgeom223/**"]
 standing = false
 note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T14:36:19Z), on PR #235's fold (21946df29b), which freed glsl/geom.c. #223's structural residual (NOTES section 4 on PR #228: external triangles at extreme w, 2.2M px of W_param) via section 5's per-primitive uniform positive scale in the geometry shader. Arm pre-specified in briefs/wparamgeom223.md (Thor, W_param). #13 waits for geom.c after this lane (tracker order note)."
+
+[lane.vshnobegin242]
+issues = ["242"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshnobegin242-*.json", "docs/lanes/vshnobegin242/**"]
+standing = false
+note = "DISPATCHED AT WAVE 169 (job.board, 2026-09-25T14:45:00Z). #242: a lone SET_VERTEX4F outside Begin/End never runs the vertex program, so nxdk_vsh_tests Exceptional Float reads all zeros (found by lane.toolsmith, verdict on #112 item 4). Mechanism fully read in the issue; fix is in pgraph.c SET_VERTEX4F, reusing #234's evaluator. Arm pre-specified in briefs/vshnobegin242.md (Thor, nxdk_vsh_tests). hw/xbox/nv2a/pgraph/pgraph.c was free."
