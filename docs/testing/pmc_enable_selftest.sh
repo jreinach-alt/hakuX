@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
-# Check pmc_read's register table against what real NV2A silicon reads (#188),
-# without building the emulator.
+# Check pmc_read's register table against what real NV2A silicon reads
+# (#188 NV_PMC_ENABLE, #190 the 0x160 / 0x204-0x2FC read-1 region), without
+# building the emulator.
 #
 #   docs/testing/pmc_enable_selftest.sh
 #
@@ -12,7 +13,9 @@
 # code that is no longer in the tree. If the anchors stop matching, this fails
 # loudly instead of testing nothing.
 #
-# The second half checks that pmc_write is still the no-op #188 found it as.
+# The second half checks that pmc_write is still the no-op #188 found it as,
+# and #190 widened it: #190's region begins one dword after #188's register
+# and is modelled on the read side only, for the same reason.
 # That is not tidiness: writing 0 to NV_PMC_ENABLE HALTED THE PHYSICAL CONSOLE
 # in the sweep that found this register, and #188 is explicit that the
 # bit-field semantics are not established -- bits 20 and 24 are assigned by
@@ -94,6 +97,43 @@ if grep -qE \
     echo "  Writing 0 to this register halted the physical console, and #188" >&2
     echo "  does not establish which bits gate what. A write model needs the" >&2
     echo "  envytools cross-reference #188 asks for, not this lane." >&2
+    fail=1
+fi
+# #190's region gets the same refusal, and needs its own pattern: the guard
+# above is anchored on 0x200, so `case 0x204 ... 0x2FC:` in pmc_write -- the
+# exact shape #190's own read arm has -- would have walked straight past it.
+# Any 0x2xx offset is refused wholesale rather than the measured 63: the
+# reason is the neighbouring register that halted the console, and that reason
+# does not stop at 0x2FC. 0x160 is named separately.
+#
+# Two patterns, because a range has two ends. The first catches an arm that
+# BEGINS in the region; the second catches one that ENDS in it, which is the
+# hole pass 2 of #188's audit measured and named (P2: `case 0x1FC ... 0x2FC:`
+# passed both guards, 8 checks 0 failures). That shape was contrived while the
+# region was unmodelled; now that pmc_read answers 0x204-0x2FC, it is the
+# shape a write model would actually arrive in.
+#
+# THE REACH, written down rather than left in the regex -- the thing pass 2
+# asked for. Caught: any case label or range endpoint spelled in hex as 0x160
+# or 0x2xx, and 0x160 in decimal. NOT caught: a range whose BOTH endpoints
+# lie outside the region while spanning it (`case 0x100 ... 0x400:`), and
+# decimal 516-764. Grep cannot evaluate an interval; closing that properly
+# means parsing the case labels and comparing numbers, which is the write
+# lane's job to build if it wants the guard to be airtight. Both holes are
+# mutants in docs/lanes/cloud190/mutants.py (K1, K2), expected GREEN, so the
+# limit is a measurement someone can re-run rather than a sentence to trust.
+if grep -qE \
+    '^[[:space:]]*case[[:space:]]+(0[xX]0*(160|2[0-9A-Fa-f][0-9A-Fa-f])|352)[[:space:]]*(\.\.\.|:)' \
+        "$TMP/pmc_write_extract.c" \
+   || grep -qE \
+    '^[[:space:]]*case[[:space:]]+.*\.\.\.[[:space:]]*(0[xX]0*(160|2[0-9A-Fa-f][0-9A-Fa-f])|352)[[:space:]]*:' \
+        "$TMP/pmc_write_extract.c"; then
+    echo "REFUSED: pmc_write has a case in #190's read-1 region." >&2
+    echo "  0x160 and 0x204-0x2FC read 0x00000001 on silicon. Nothing" >&2
+    echo "  measured says what a WRITE there does, and the region begins" >&2
+    echo "  one dword after the register whose write halted the console." >&2
+    echo "  Whether the region is 63 live registers, an alias or a fixed" >&2
+    echo "  unimplemented-read pattern is also untested -- see #190." >&2
     fail=1
 fi
 if grep -qiE '0[xX]0*1110000' "$TMP/pmc_write_extract.c"; then
