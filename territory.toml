@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 185
+wave = 186
 updated_utc = "2026-09-25T18:30:00Z"
 
 
@@ -877,3 +877,9 @@ issues = ["266"]
 files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md."
+
+[lane.boardprio]
+issues = []
+files = ["docs/testing/jobs/board.sh", "docs/testing/jobs/roles/board.md", "docs/testing/jobs/selftest.d/97-board-priority.sh", "docs/lanes/boardprio/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 186 (host session, 2026-09-25 12:20 PDT) on the owner's request: dispatch by expected improvement. board_filter sorts startable issues by the tracker's game_visible, then impact_px + impact_onestep_px//4, then oldest; roles/board.md says take them in listed order and keep the impact fields current. Brief: briefs/boardprio.md."
