@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 153
+wave = 154
 updated_utc = "2026-09-25T07:30:00Z"
 
 
@@ -379,6 +379,8 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 
 [free]
 #
+# NAMED OUT AT WAVE 154 (job.board): glsl/vsh-prog.c, vsh.c and vsh-ff.c, granted to
+# lane.wparam223 for #223's W param residual (the w-zero/Inf and RCC paths).
 # RELEASED AT WAVE 116 (job.board) by retiring lane.glerr86 (PR #128 merged
 # 2026-09-19T12:59:28Z, fold commit 6ca12eb803): gl/shaders.c.
 #
@@ -593,9 +595,6 @@ files = [
 # 01538395b7 (job.board). pmc.c itself is NOT here -- reclaimed the same
 # tick by [lane.cloud190] below, so it never touches [free].
          "hw/xbox/nv2a/nv2a_regs.h",
-         "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c",
-         "hw/xbox/nv2a/pgraph/glsl/vsh-prog.c",
-         "hw/xbox/nv2a/pgraph/glsl/vsh.c",
 # NAMED OUT AT WAVE 133: prim_rewrite.c, granted to lane.primpv13 for #13's
 # provoking-vertex trade (rewrite_triangle_fan's emit_tri_pv rotation vs.
 # geom.c's edge-priority order, 32,628 decisive px) (job.board).
@@ -800,3 +799,9 @@ issues = ["31"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31fix-*.json", "docs/lanes/wbuf31fix/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 151 (host session) as the psh.c half of #31, once lane.xbox closed the measurement on silicon: ClipF's second triangle anchors 4*floor(ct/4)+2 (34 at ct=35, 6.001 at ct=4; 47 coarse-grid rules refuted); ClipF's first triangle anchors 32/34/6 at ct 32/35/4, which neither the 4-grid nor the shipped quad snap fits -- so the job is the SELECTOR, proven offline against every recovered anchor before psh.c changes. psh.c taken from [free] (released there at wave 146). wbuf_anchor_recover.py is in the row so its --pairs framing can read the silicon runs. Brief: briefs/wbuf31fix.md."
+
+[lane.wparam223]
+issues = ["223"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/wparam223-*.json", "docs/lanes/wparam223/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md."
