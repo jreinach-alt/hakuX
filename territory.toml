@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 173
-updated_utc = "2026-09-25T14:45:00Z"
+wave = 174
+updated_utc = "2026-09-25T15:15:00Z"
 
 
 [retired.hilodot10]
@@ -837,3 +837,15 @@ issues = ["223"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "docs/testing/predictions/wparamclip223-*.json", "docs/lanes/wparamclip223/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 173 (host session, 2026-09-25 08:00 PDT) for #223: the second step both NOTES name -- for a filled triangle with exactly one negative-w vertex, compute silicon's external wedge in the geometry shader, clip it to the guard band and emit it as positive-w geometry so the host clipper never sees a negative w. Priced offline first; Thor W_param arm (must_move bitri w-0.00 / 1.88e-37 / 3.76e-37 / 7.52e-37, about 563k px; the quads and ratio-1 rows must_not_move). vk/instance.c from [free] for PGRAPH_GEOM_MAX_OUTPUT_VERTICES. Ahead of #13 on geom.c by magnitude (563k vs 32,628 px). Brief: briefs/wparamclip223.md."
+
+[lane.clrwin88]
+issues = ["88"]
+files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/issue88-*.json", "docs/lanes/clrwin88/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #88: #91 is fixed on master (PR #237), and #237's own arm ran with the colour-wins decline applied and held Swap at 165,447, so the trade decision #207 declined is gone. Re-apply the four-line same-offset policy PR #148 (lane/clrsurf91, closed) carried; do NOT port the gate half. Arm: ColorIntoZeta_ZB 131,495 -> 10,766, ZetaIntoColor 102,255 -> 71,663, Swap must_not_move, Swap_ZB predicted by the lane. vk/surface.c was free (lane.clrwb91 retired). Brief: briefs/clrwin88.md."
+
+[lane.shadetie224]
+issues = ["224"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/shadetie224-*.json", "docs/lanes/shadetie224/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
