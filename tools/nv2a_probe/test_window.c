@@ -53,6 +53,34 @@ int main(void)
     CHECK(nv2a_offset_writable(0x00DFFC), "last dword of PTV");
     CHECK(!nv2a_offset_writable(0x00E000), "the seam after PTV must be refused");
 
+#ifdef PROBE_ALLOW_HAZARDS
+    /* THE EMULATOR-ONLY BUILD (probe/Makefile, PROBE_ALLOW_HAZARDS=y).
+     *
+     * This configuration is compiled here for two reasons. First, so that the
+     * branch exists as code somebody builds rather than as an #ifdef nothing
+     * has ever preprocessed. Second, and the point: the flag is supposed to
+     * remove the hazard refusal and NOTHING ELSE. If it ever grows into "and
+     * the window check too", the rows below are what says so -- a build that
+     * can write outside the modelled blocks is not a relaxation, it is a
+     * different program.
+     */
+    CHECK(nv2a_offset_write_allowed(0x000200),
+          "the hazard build must ALLOW NV_PMC_ENABLE -- that is what it is for");
+    CHECK(nv2a_offset_write_allowed(0x680504),
+          "and the PLL coefficients too");
+    CHECK(nv2a_hazard_name(0x000200) != 0,
+          "the hazard list itself is still present and nameable");
+    CHECK(!nv2a_offset_write_allowed(0x800000),
+          "USER must STILL be refused in the hazard build");
+    CHECK(!nv2a_offset_write_allowed(0x700000),
+          "unmodelled space must STILL be refused in the hazard build");
+    CHECK(!nv2a_offset_write_allowed(0x00E000),
+          "the seam after PTV must STILL be refused in the hazard build");
+    CHECK(!nv2a_offset_write_allowed(0x000001),
+          "unaligned must STILL be refused in the hazard build");
+    CHECK(!nv2a_offset_write_allowed(0xFFFFFFFF),
+          "wrap must STILL be refused in the hazard build");
+#else
     /* Hazards: inside the allow-list, still refused. */
     CHECK(nv2a_offset_writable(0x000200), "0x200 IS inside a writable block");
     CHECK(!nv2a_offset_write_allowed(0x000200), "NV_PMC_ENABLE must be refused");
@@ -62,6 +90,7 @@ int main(void)
     CHECK(!nv2a_offset_write_allowed(0x003200), "pushbuffer cache control refused");
     CHECK(nv2a_offset_write_allowed(0x000140), "a harmless register still allowed");
     CHECK(nv2a_offset_readable(0x000200), "hazards stay READABLE");
+#endif
 
     if (fails) { printf("%d check(s) failed\n", fails); return 1; }
     printf("all allow-list checks passed\n");
