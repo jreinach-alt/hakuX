@@ -12,8 +12,12 @@ the smaller edge cases".
   1. `game_visible = true`: `[game]`, or `[game; impact N px]` when it also has px
   2. `impact_px + impact_onestep_px // 4` descending: `[impact N px]`, with the
      breakdown `= S structural + O one-step / 4` when one-step px count
-  3. a tracker row with no impact fields: `[no impact estimate]`
-  4. no tracker row: `[no tracker row]`
+  3. a tracker row with no impact fields: `[no impact estimate]`, and, ranked
+     with it, a row whose impact value is present but not a finite number:
+     `[impact unreadable: impact_px='big']`
+  4. a measured zero (fields present, score <= 0): `[impact 0 px, measured]`
+     -- below the unestimated rows (host decision 2026-09-25)
+  5. no tracker row: `[no tracker row]`
 
   Oldest issue first inside each tier and inside any score tie. What is
   startable (SKIP, SKIP_PREFIX), the cap, the audit outlet and the window
@@ -21,8 +25,10 @@ the smaller edge cases".
 - If the tracker cannot be read, every line says `[tracker unreadable]` and
   the order is oldest first. It must never print nothing: an empty capacity
   list reads as "no work", which is the defect the positive gate exists to end.
-  A non-integer impact value counts as 0 for the same reason (one bad row must
-  not empty the list).
+  An impact value is read as any finite int or float (a size-times-
+  tractability product comes out as a float) by its integer part; anything
+  else is shown as unreadable rather than raising (one bad row must not empty
+  the list) and rather than read as a measured zero (audit pass 1, M1).
 - The tick brief's capacity paragraph and `roles/board.md` now say "in the
   order listed" instead of "severity bucket, then oldest", and the role file
   says the board keeps `impact_px`, `impact_onestep_px`, `game_visible` and

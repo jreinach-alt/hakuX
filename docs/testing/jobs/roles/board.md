@@ -34,18 +34,20 @@ So, every tick, in this order:
   list prints them**, skipping any whose files are not free or that has a
   blocker: that list is sorted by expected improvement (game-visible first,
   then `impact_px + impact_onestep_px // 4` descending, then rows with no
-  estimate, then measured zeros, then issues with no tracker row, oldest first
-  inside each), and each line carries the key it was sorted on. The host
-  session holds the owner's delegation for `decision-needed` and
-  `regression-accepted` calls (owner, 2026-09-24): route those to the host
-  with a `[board]` comment on the issue or PR, and keep dispatching other
-  work; never idle waiting for the owner. For EACH one: write its
-  brief to `briefs/<lane>.md` on the `board` branch, write and push its row,
-  start it with `docs/testing/lane.sh start <name> <brief> <issue>`, and label
+  estimate or an unreadable one, then measured zeros, then issues with no
+  tracker row, oldest first inside each), and each line carries the key it
+  was sorted on. Write impact values as numbers (int or float); a string
+  prints as `[impact unreadable]`. For EACH one: write its brief to
+  `briefs/<lane>.md` on the `board` branch, write and push its row, start it
+  with `docs/testing/lane.sh start <name> <brief> <issue>`, and label
   the issue `lane:<name>`. If `lane.sh` prints REFUSED, the fleet is at its
   cap: stop dispatching locally, do not retry, do not start a session any
   other way. The brief is still the work, so write three good briefs, not
   three thin ones. If turns run short, dispatch fewer.
+- The host session holds the owner's delegation for `decision-needed` and
+  `regression-accepted` calls (owner, 2026-09-24): route those to the host
+  with a `[board]` comment on the issue or PR, and keep dispatching other
+  work; never idle waiting for the owner.
 - **The audit outlet, which is not yours to start.** `jobs/board.sh` runs
   `jobs/cloud.sh` at the top of every tick, before either gate below is read,
   and it claims one unit: a `needs-remediation` PR, a `needs-audit-2` PR, a

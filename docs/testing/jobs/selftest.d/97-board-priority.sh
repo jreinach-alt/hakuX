@@ -44,9 +44,14 @@ chmod +x "$BP/bin/"*
 #   #302  800,000 structural             -> 800,000
 #   #303  1,200,000 one-step only        -> 300,000, BELOW #302; weighted 1:1
 #                                           it would be 1,200,000 and above it
-#   #270, #310, #320  50,000 each        -> a tie, oldest first
+#   #270, #310, #320  50,000 each        -> a tie, oldest first; #310 is
+#                                           the FLOAT 50000.0, which must rank
+#                                           by its value, not as a measured 0
 #   #305  5,000 structural               -> 5,000
-#   #280, #290, #304  rows, no estimate  -> a tie, oldest first
+#   #280, #290, #304  rows, no estimate  -> a tie, oldest first; #290
+#                                           holds a STRING and #304 a nan: both
+#                                           unreadable, ranked with the
+#                                           unestimated rows, never "measured"
 #   #296, #306, #312  measured zero      -> BELOW the unestimated rows (host
 #                                           decision 2026-09-25: an unknown
 #                                           may be large, a measured zero is
@@ -73,7 +78,7 @@ title = "tie a"
 impact_px = 50000
 [issue.310]
 title = "tie b"
-impact_px = 50000
+impact_px = 50000.0
 [issue.320]
 title = "tie c"
 impact_px = 50000
@@ -85,8 +90,10 @@ impact_onestep_px = 0
 title = "no estimate a"
 [issue.290]
 title = "no estimate b"
+impact_px = "big"
 [issue.304]
 title = "no estimate c"
+impact_onestep_px = nan
 [issue.296]
 title = "zero a"
 impact_px = 0
@@ -145,6 +152,12 @@ check "the labels still follow the key" \
     has '#305 [impact 5,000 px] small structural  [harness]'
 check "a row with no impact fields says so" \
     has '#280 [no impact estimate] no estimate a'
+check "a float estimate ranks by its value (the tie above) and shows it" \
+    has '#310 [impact 50,000 px] tie b'
+check "a string estimate is unreadable, not a measured zero" \
+    has "#290 [impact unreadable: impact_px='big'] no estimate b"
+check "a nan estimate is unreadable, not a measured zero" \
+    has "#304 [impact unreadable: impact_onestep_px=nan] no estimate c"
 check "a measured zero says it was measured" \
     has '#296 [impact 0 px, measured] zero a'
 check "an issue with no tracker row says so" \

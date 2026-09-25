@@ -114,7 +114,7 @@ GH_REPO="${GH_REPO:-jreinach-alt/hakuX}"
 # oldest first.
 board_filter() {   # <issues|prs> <the JSON array gh printed>
     python3 - "$1" "$2" "$SELF/.." <<'PY'
-import json, sys
+import json, math, sys
 mode = sys.argv[1]
 # An issue no lane may be started on. Everything else open is startable.
 SKIP = {"claimed:cloud", "decision-needed", "upstream", "unmodellable",
@@ -168,17 +168,36 @@ def rank(r):
     row = tracker.get(str(r.get("number")))
     if not isinstance(row, dict):
         return (4, 0, n), "[no tracker row]"
-    # A malformed value counts as zero rather than raising: one bad row must
-    # not empty the whole list.
-    px, one = (v if isinstance(v, int) and not isinstance(v, bool) else 0
-               for v in (row.get("impact_px"), row.get("impact_onestep_px")))
+    # A value is read as a finite real number -- int OR float: the role file
+    # asks for size times tractability, a product that a TOML writer emits as
+    # 746668.0 -- and used by its integer part. Anything else that is present
+    # (a string, nan, inf) is UNREADABLE: it must neither raise (one bad row
+    # must not empty the whole list) nor be read as 0, because a measured zero
+    # is a tier of its own that dispatches last and says "measured". An
+    # unreadable row ranks with the unestimated ones and names the bad field.
+    vals, bad = [], []
+    for f in ("impact_px", "impact_onestep_px"):
+        v = row.get(f)
+        if (isinstance(v, (int, float)) and not isinstance(v, bool)
+                and math.isfinite(v)):
+            vals.append(int(v))
+        else:
+            vals.append(0)
+            if v is not None:
+                bad.append("%s=%r" % (f, v))
+    px, one = vals
     score = px + one // 4
     size = "impact {:,} px".format(score)
     if one:
         size += " = {:,} structural + {:,} one-step / 4".format(px, one)
+    unread = "impact unreadable: " + ", ".join(bad)
     if row.get("game_visible") is True:
+        if bad:
+            return (0, -score, n), "[game; %s]" % unread
         key = "[game]" if not score else "[game; %s]" % size
         return (0, -score, n), key
+    if bad:
+        return (2, 0, n), "[%s]" % unread
     if "impact_px" in row or "impact_onestep_px" in row:
         if score <= 0:
             return (3, 0, n), "[impact 0 px, measured]"
