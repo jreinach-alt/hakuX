@@ -223,7 +223,11 @@ class Fatx:
         return self.image.read(start, self.bytes_per_cluster)
 
     def listdir(self, cluster):
-        """Yield (name, attributes, first_cluster, size, mtime) for one directory."""
+        """Yield (name, attributes, first_cluster, size, mtime, ctime) for one directory.
+
+        The field order is xemu_fatx_import.c's: modified, then created, then
+        accessed, each a time word then a date word.
+        """
         for chain_cluster in self._chain(cluster):
             data = self._cluster_bytes(chain_cluster)
             for pos in range(0, len(data), 64):
@@ -238,8 +242,9 @@ class Fatx:
                 attributes = entry[1]
                 name = entry[2:2 + name_len].decode("latin-1")
                 first_cluster, size = struct.unpack("<II", entry[44:52])
-                mtime, mdate = struct.unpack("<HH", entry[52:56])
-                yield name, attributes, first_cluster, size, _fatx_time(mdate, mtime)
+                mtime, mdate, ctime, cdate = struct.unpack("<HHHH", entry[52:60])
+                yield (name, attributes, first_cluster, size,
+                       _fatx_time(mdate, mtime), _fatx_time(cdate, ctime))
 
     def read_file(self, first_cluster, size):
         out = bytearray()
@@ -255,7 +260,7 @@ class Fatx:
         for part in [p for p in path.split("/") if p]:
             if not attributes & ATTR_DIRECTORY:
                 raise ExtractError(f"{path}: {part} is not inside a directory")
-            for name, attrs, first, sz, _mt in self.listdir(cluster):
+            for name, attrs, first, sz, _mt, _ct in self.listdir(cluster):
                 if name.lower() == part.lower():
                     cluster, attributes, size = first, attrs, sz
                     break
@@ -264,13 +269,13 @@ class Fatx:
         return attributes, cluster, size
 
 
-def extract(fs, cluster, out_dir, prefix="", newer_than=None):
+def extract(fs, cluster, out_dir, prefix="", newer_than=None, manifest=None):
     count = total = 0
     os.makedirs(out_dir, exist_ok=True)
-    for name, attributes, first, size, mtime in fs.listdir(cluster):
+    for name, attributes, first, size, mtime, ctime in fs.listdir(cluster):
         if attributes & ATTR_DIRECTORY:
             sub, subtotal = extract(fs, first, out_dir, prefix + name + "::",
-                                    newer_than)
+                                    newer_than, manifest)
             count += sub
             total += subtotal
             continue
@@ -282,6 +287,11 @@ def extract(fs, cluster, out_dir, prefix="", newer_than=None):
         data = fs.read_file(first, size)
         with open(os.path.join(out_dir, prefix + name), "wb") as handle:
             handle.write(data)
+        if manifest is not None:
+            manifest[prefix + name] = {
+                "bytes": len(data),
+                "modified": mtime.isoformat() if mtime else None,
+                "created": ctime.isoformat() if ctime else None}
         count += 1
         total += len(data)
     return count, total
@@ -304,6 +314,13 @@ def main(argv=None):
                              "how a single run's output is isolated.")
     parser.add_argument("--list", action="store_true",
                         help="list the directory instead of extracting")
+    parser.add_argument("--manifest", metavar="JSON",
+                        help="also write each extracted file's guest-clock "
+                             "created/modified times here. A program with a "
+                             "fixed output directory (nxdk_vsh_tests writes "
+                             "e:\\nxdk_vsh_tests on every run) leaves earlier "
+                             "runs' files beside this run's, and these times "
+                             "are what tells them apart.")
     args = parser.parse_args(argv)
 
     offset, size = PARTITIONS[args.partition]
@@ -317,14 +334,20 @@ def main(argv=None):
         raise ExtractError(f"{args.dir} is not a directory")
 
     if args.list:
-        for name, attrs, _first, sz, _mt in fs.listdir(cluster):
+        for name, attrs, _first, sz, _mt, _ct in fs.listdir(cluster):
             kind = "dir " if attrs & ATTR_DIRECTORY else "file"
             print(f"  {kind} {sz:>10}  {_mt}  {name}")
         return 0
 
     cutoff = (datetime.datetime.fromisoformat(args.newer_than)
               if args.newer_than else None)
-    count, total = extract(fs, cluster, args.output, newer_than=cutoff)
+    manifest = {} if args.manifest else None
+    count, total = extract(fs, cluster, args.output, newer_than=cutoff,
+                           manifest=manifest)
+    if manifest is not None:
+        import json
+        with open(args.manifest, "w") as handle:
+            json.dump(manifest, handle, indent=1, sort_keys=True)
     print(f"extracted {count} files ({total / (1 << 20):.1f} MiB) to {args.output}")
     return 0
 

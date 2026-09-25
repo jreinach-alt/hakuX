@@ -89,7 +89,7 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
-make_isolation_discs.py"
+make_isolation_discs.py vsh_score.py"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -115,7 +115,7 @@ snapshot_scripts() {
     mkdir -p "$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
-             sweep_queue.sh make_isolation_discs.py; do
+             sweep_queue.sh make_isolation_discs.py vsh_score.py; do
         [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
     done
 }
@@ -807,8 +807,30 @@ print('\n'.join(r.get('only_tests') or []))" "$req" > "$onlyfile" 2>/dev/null ||
     # disc_id, so nothing downstream could tell. A missing file is the cheap
     # failure; a plausible wrong one is the expensive failure this campaign
     # keeps paying for.
-    local base_iso
+    local base_iso program
     base_iso=$(jq_get "$req" base_iso "")
+    # WHICH TEST PROGRAM the disc carries. "pgraph" is every request before
+    # this field existed. "vsh" is nxdk_vsh_tests: a different config file, a
+    # different output directory, and a result that is diffed against the
+    # console's printed values rather than scored against pgraph goldens -- so
+    # it has no stock disc to fall back to, and a vsh request without its own
+    # base_iso is refused here rather than built from the pgraph disc.
+    program=$(jq_get "$req" program pgraph)
+    case "$program" in
+        pgraph) ;;
+        vsh)
+            if [ -z "$base_iso" ]; then
+                echo "program vsh needs a base_iso; there is no stock vsh disc" > "$rdir/ERROR"
+                log "  VSH WITHOUT BASE ISO -- refusing"
+                mv "$req" "$rdir/request.json"
+                return 0
+            fi ;;
+        *)
+            echo "unknown program '$program'" > "$rdir/ERROR"
+            log "  UNKNOWN PROGRAM $program -- refusing"
+            mv "$req" "$rdir/request.json"
+            return 0 ;;
+    esac
     if [ -n "$base_iso" ]; then
         if [ ! -f "$base_iso" ]; then
             echo "base_iso named by the request does not exist: $base_iso" \
@@ -875,6 +897,11 @@ except OSError:
 # stays comparable with new ones. Any OTHER base iso is tagged, loudly.
 STOCK = '/home/justin/nxdk_pgraph_tests_xiso.iso'
 pre = '' if os.path.abspath(iso) == STOCK else 'iso:%s/' % tag
+# A vsh disc is a different PROGRAM, not a different composition of the same
+# one. The prefix keeps its id from ever equalling a pgraph disc_id, so no
+# pgraph comparison can pair with it even on a suite name the two might share.
+if r.get('program', 'pgraph') == 'vsh':
+    pre = 'vsh:' + pre
 if o:
     pre += 'only%d:%s/' % (len(o), hashlib.sha1(','.join(o).encode()).hexdigest()[:6])
 if len(s)==1 and not k:
@@ -891,6 +918,40 @@ PYEOF
     for r in $(seq 1 "$runs"); do
         local args=() gdir="d$(echo "$id$r" | md5sum | cut -c1-6)"
         local s
+        if [ "$program" = vsh ]; then
+            # nxdk_vsh_tests: vsh_tests.cnf, not the pgraph JSON, and no
+            # output-dir to choose -- from DVD it always writes
+            # e:\nxdk_vsh_tests. make_test_iso.py reads the program off the
+            # image and refuses a mismatch, an unknown suite, or a rebooting
+            # build; a refusal here is the request's ERROR, not a run that
+            # burns 900 s on a hung guest.
+            gdir="nxdk_vsh_tests"
+            for s in "${SUITE_LIST[@]}"; do args+=(--suite "$s"); done
+            if ! python3 "$HERE/make_test_iso.py" "$base_iso" --program vsh \
+                    -o "$rdir/disc$r.iso" "${args[@]}" >>"$rdir/run$r.log" 2>&1; then
+                { echo "make_test_iso.py refused the vsh disc:"
+                  tail -3 "$rdir/run$r.log" | sed 's/^/  /'; } > "$rdir/ERROR"
+                log "  VSH DISC REFUSED"
+                rm -f "$rdir/disc$r.iso"; mv "$req" "$rdir/request.json"
+                return 0
+            fi
+            touch "$LEASE"
+            PROGRAM=vsh SERIAL="$SERIAL" DEVICE_ISO_ROOT="$DEVICE_ISO_ROOT" \
+                DEVICE_LABEL="$DEVICE_LABEL" HAKUX_DEVICE_LEASE="$LEASE" \
+                CAPTURE_LOG="$rdir/logcat$r.txt" \
+                bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
+                "$rdir/captures$r" 900 >>"$rdir/run$r.log" 2>&1
+            # Scored whatever it returned, so the verdict it reached (TIMEOUT,
+            # INCOMPLETE, STALE LOG) goes in the result, not only in run$r.log.
+            echo $? > "$rdir/run_disc$r.rc"
+            rm -f "$rdir/disc$r.iso"
+            local vsuites=()
+            for s in "${SUITE_LIST[@]}"; do vsuites+=(--suite "$s"); done
+            python3 "$HERE/vsh_score.py" "$rdir/captures$r" "${vsuites[@]}" \
+                --json "$rdir/vsh$r.json" --tsv "$rdir/vsh$r.tsv" \
+                > "$rdir/vsh$r.txt" 2>&1
+            continue
+        fi
         for s in "${SUITE_LIST[@]}"; do args+=(--suite "${s//_/ }"); done
         for s in "${SKIP_LIST[@]:-}"; do [ -n "$s" ] && args+=(--skip-test "$s"); done
         for s in "${ONLY_LIST[@]:-}"; do [ -n "$s" ] && args+=(--only-test "$s"); done
@@ -909,10 +970,17 @@ PYEOF
     done
 
     REQ_ENV_JSON="$req_env" \
-    python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" "$SNAP" <<'PYEOF'
+    python3 - "$rdir" "$sha" "$disc_id" "$requester" "$purpose" "$ref" "$SNAP" "$program" <<'PYEOF'
 import csv, glob, json, os, subprocess, sys
-rdir, sha, disc, who, purpose, ref, snap = sys.argv[1:8]
+rdir, sha, disc, who, purpose, ref, snap, program = sys.argv[1:9]
 meta = dict(apk_sha=sha, disc_id=disc, requester=who, purpose=purpose, ref=ref)
+# WHICH PROGRAM RAN. Every result says so, pgraph included, so that "absent"
+# never has to be read as "pgraph": a reader pooling results filters on this
+# field, and a vsh result also carries kind "vsh", which no pgraph reader
+# (ab_compare, scoreboard, sweep tooling) treats as a disc result.
+meta["program"] = program
+if program == "vsh":
+    meta["kind"] = "vsh"
 # THE ENVIRONMENT THIS RUN ACTUALLY RAN WITH, deliberately NOT folded into
 # disc_id. disc_id says whether two runs scored the same captures, and an env
 # A/B scores exactly the same captures on purpose -- putting env in there would
@@ -977,6 +1045,24 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
                      exact=sum(1 for r in rows if int(r["differing"] or 0) == 0),
                      px=sum(int(r["differing"] or 0) for r in rows),
                      progress_log_proof=proof))
+# A vsh run has no scores TSV: vsh_score.py wrote a verdict per test against
+# the console's printed values. `captures` counts the tests whose .txt came
+# back from THIS run (a STALE file is an earlier run's), so the 0-captures
+# failure below means the same thing for both programs.
+for j in sorted(glob.glob(os.path.join(rdir, "vsh*.json"))):
+    v = json.load(open(j))
+    c = v.get("counts", {})
+    rcf = os.path.join(rdir, "run_disc%s.rc" % os.path.basename(j)[3:-5])
+    rc = int(open(rcf).read().strip()) if os.path.exists(rcf) else None
+    runs.append(dict(json=os.path.basename(j),
+                     captures=sum(c.get(k, 0) for k in ("IDENTICAL", "DIFFERS", "NO-REFERENCE")),
+                     identical=c.get("IDENTICAL", 0), differs=c.get("DIFFERS", 0),
+                     missing=c.get("MISSING", 0), stale=c.get("STALE", 0),
+                     no_reference=c.get("NO-REFERENCE", 0),
+                     log_completed=bool(v.get("log_completed")),
+                     log_stale=bool(v.get("log_stale")),
+                     run_disc_exit=rc,
+                     staleness=v.get("staleness", "")))
 # Which device produced this. A scoreboard column that mixes two handhelds
 # is the same failure as one that mixes two binaries, and apk_sha could not
 # catch that one either -- it was perfectly consistent and consistently old.
@@ -1004,7 +1090,7 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
     for row in csv.DictReader(open(t), delimiter="\t"):
         if row.get("suite"):
             suites.add(row["suite"])
-for s in sorted(suites):
+for s in sorted(suites if program != "vsh" else ()):
     gd = os.path.join("/home/justin/goldens/results", s)
     have = len([f for f in os.listdir(gd)]) if os.path.isdir(gd) else 0
     got = sum(1 for t in sorted(glob.glob(os.path.join(rdir, "scores1.tsv")))
@@ -1013,6 +1099,15 @@ for s in sorted(suites):
     cov[s] = dict(scored=got, goldens=have,
                   partial=bool(have and got < have))
 meta["captures_vs_goldens"] = cov
+if program == "vsh":
+    # The oracle is the console's text, not the golden tree; say which.
+    meta["vsh_scorer_sha256"] = "unknown"
+    try:
+        import hashlib
+        with open(os.path.join(snap, "vsh_score.py"), "rb") as fh:
+            meta["vsh_scorer_sha256"] = hashlib.sha256(fh.read()).hexdigest()[:12]
+    except Exception:
+        pass
 json.dump(meta, open(os.path.join(rdir, "result.json"), "w"), indent=2)
 print("captures:", sum(r["captures"] for r in runs),
       "partial:", [s for s, c in cov.items() if c["partial"]])

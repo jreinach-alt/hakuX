@@ -13,6 +13,14 @@ moved: the new file and a rebuilt root directory table are appended, and the
 volume descriptor is repointed at the new table.
 
 See pgraph-harness.md for how the resulting image is used.
+
+``--program vsh`` does the same for nxdk_vsh_tests, whose config is not JSON:
+``d:\\vsh_tests.cnf``, one suite name per line. That program ASSERTs and waits
+forever when the file is missing (debug_output.cpp PrintAssertAndWaitForever),
+and runs EVERY suite when the file names none it knows -- so a vsh disc is
+written only with a cnf naming known suites, never with the pgraph JSON, and
+``--inspect`` says whether an image will run to completion before anything is
+queued for it.
 """
 
 import argparse
@@ -26,6 +34,34 @@ HEADER_SECTOR = 32  # 0x10000
 CONFIG_NAME = "nxdk_pgraph_tests_config.json"
 ATTR_DIRECTORY = 0x10
 ATTR_ARCHIVE = 0x20
+
+# nxdk_vsh_tests. The suite names are the program's own Name() strings, as its
+# DUMP_CONFIG_FILE build writes them and as the 2026-09-25 console cnfs used
+# them (main.cpp register_suites, hakux/completion-marker @ c3dde45). The list
+# is closed on purpose: process_config() keeps only suites it recognises and,
+# when that leaves none, runs ALL of them -- a typo is a full-program run
+# filed as the one suite that was asked for.
+VSH_CNF_NAME = "vsh_tests.cnf"
+VSH_SUITES = (
+    "AmericasArmyShader",
+    "CPU Shader Tests",
+    "Exceptional Float",
+    "ILU RCP Tests",
+    "MAC Add Tests",
+    "MAC mov",
+    "Paired ILU Tests",
+    "SpyVsSpy",
+    "Vertex Data Array Format Tests",
+)
+# Strings in default.xbe that say which program a disc carries and how it ends.
+# RUNTIME_CONFIG_PATH is compiled in as a literal, so each program names its
+# own config file. The reboot message exists only in a build without
+# ENABLE_SHUTDOWN (main.cpp's #else branch), and on hakuX a guest reboot boots
+# the same disc again: the program reruns until the run's timeout, the way a
+# pgraph disc without --shutdown-on-completion did (overnight-2026-09-12-log.md).
+XBE_VSH_MARK = b"d:\\vsh_tests.cnf"
+XBE_PGRAPH_MARK = CONFIG_NAME.encode()
+XBE_VSH_REBOOTS = b"Rebooting in 4 seconds"
 
 
 class XisoError(Exception):
@@ -274,11 +310,109 @@ def _suites_with_skips(args):
     return suites
 
 
+def vsh_cnf(args):
+    """The vsh_tests.cnf payload for ``--program vsh``, or SystemExit.
+
+    One suite per line, in the order given; process_config() skips '#' lines.
+    """
+    if args.only_test or args.skip_test:
+        raise SystemExit(
+            "--only-test/--skip-test are pgraph-disc options. nxdk_vsh_tests "
+            "has its own '-Test' syntax, and nothing here writes it yet.")
+    if args.config:
+        raise SystemExit("--config is the pgraph JSON; a vsh disc is written "
+                         "from --suite only")
+    if not args.suite:
+        raise SystemExit(
+            "--program vsh needs at least one --suite. Without %s the program "
+            "ASSERTs and waits forever." % VSH_CNF_NAME)
+    unknown = [s for s in args.suite if s not in VSH_SUITES]
+    if unknown:
+        raise SystemExit(
+            "not an nxdk_vsh_tests suite: %s. The program ignores unknown names "
+            "and, left with none, runs every suite. Known: %s"
+            % (", ".join(repr(s) for s in unknown), ", ".join(VSH_SUITES)))
+    lines = ["# written by hakuX make_test_iso.py --program vsh"] + list(args.suite)
+    return ("\n".join(lines) + "\n").encode("ascii")
+
+
+def _root(data):
+    root_sector, root_size = read_header(data)
+    return root_sector, root_size
+
+
+def _read_named(data, name):
+    """Bytes of one root-directory file, or None."""
+    root_sector, root_size = _root(data)
+    found = lookup(data, root_sector, root_size, name)
+    if found is None:
+        return None
+    start, length, _attributes = found
+    return bytes(data[start * SECTOR:start * SECTOR + length])
+
+
+def inspect_image(data):
+    """What an image will do when booted, read off the image itself.
+
+    program:  "vsh" / "pgraph" by the config path compiled into default.xbe,
+              "unknown" when neither is there.
+    reboots:  a vsh build that reboots at completion (no ENABLE_SHUTDOWN).
+    cnf:      the suite lines of vsh_tests.cnf, or None when the file is absent.
+    problems: every reason this disc would not run to completion; empty is good.
+    """
+    xbe = _read_named(data, "default.xbe") or b""
+    if XBE_VSH_MARK in xbe:
+        program = "vsh"
+    elif XBE_PGRAPH_MARK in xbe:
+        program = "pgraph"
+    else:
+        program = "unknown"
+    out = {"program": program, "reboots": False, "cnf": None,
+           "pgraph_config": _read_named(data, CONFIG_NAME) is not None,
+           "problems": []}
+    if program != "vsh":
+        return out
+    out["reboots"] = XBE_VSH_REBOOTS in xbe
+    raw = _read_named(data, VSH_CNF_NAME)
+    if raw is not None:
+        out["cnf"] = [ln.strip() for ln in raw.decode("latin-1").splitlines()
+                      if ln.strip() and not ln.startswith(("#", "-"))]
+    if out["cnf"] is None:
+        out["problems"].append(
+            "no %s on the disc: nxdk_vsh_tests ASSERTs and waits forever, and "
+            "the run burns its whole timeout with the device awake" % VSH_CNF_NAME)
+    else:
+        known = [s for s in out["cnf"] if s in VSH_SUITES]
+        if not known:
+            out["problems"].append(
+                "%s names no known suite (%s): the program falls back to running "
+                "EVERY suite" % (VSH_CNF_NAME, ", ".join(out["cnf"]) or "empty"))
+    if out["reboots"]:
+        out["problems"].append(
+            "default.xbe is a rebooting build (no ENABLE_SHUTDOWN): on hakuX the "
+            "reboot boots the same disc again and the program reruns until the "
+            "timeout. Build with -DCMAKE_CXX_FLAGS=...-DENABLE_SHUTDOWN")
+    if out["pgraph_config"]:
+        out["problems"].append(
+            "a vsh disc carries %s, which only the pgraph program reads: this "
+            "disc was built as the wrong program" % CONFIG_NAME)
+    return out
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("iso", help="stock nxdk_pgraph_tests_xiso.iso")
-    parser.add_argument("-o", "--output", required=True, help="image to write")
+    parser.add_argument("iso", help="stock nxdk_pgraph_tests_xiso.iso, or an "
+                                    "nxdk_vsh_tests image with --program vsh")
+    parser.add_argument("-o", "--output", help="image to write")
+    parser.add_argument("--program", choices=("pgraph", "vsh"), default="pgraph",
+                        help="which test program the base image carries "
+                             "(default: %(default)s). Refused when the image's "
+                             "default.xbe says otherwise.")
+    parser.add_argument("--inspect", action="store_true",
+                        help="write nothing: print what ISO will do as JSON, "
+                             "exit 1 if it would not run to completion, or if "
+                             "it is not the --program named")
     parser.add_argument("--config", metavar="FILE",
                         help="use this JSON verbatim instead of generating one "
                              "(start from the sample-config.json on the disc to "
@@ -334,25 +468,57 @@ def main(argv=None):
 
     args = parser.parse_args(argv)
 
+    with open(args.iso, "rb") as handle:
+        data = bytearray(handle.read())
+
+    base = inspect_image(data)
+    if args.inspect:
+        # The image AS IT STANDS, which is what a pre-built disc will boot.
+        print(json.dumps(base, indent=2))
+        problems = list(base["problems"])
+        if base["program"] != args.program:
+            problems.insert(0, "%s is a %s disc, not --program %s"
+                            % (args.iso, base["program"], args.program))
+        for problem in problems:
+            print("refused: %s" % problem, file=sys.stderr)
+        return 1 if problems else 0
+
+    if not args.output:
+        parser.error("-o/--output is required unless --inspect")
     if args.shard_count and args.shard_index >= args.shard_count:
         parser.error("--shard-index must be less than --shard-count")
 
-    if args.config:
-        with open(args.config, "r", encoding="utf-8") as handle:
-            config = json.load(handle)
-    else:
-        config = default_config(args)
-    payload = json.dumps(config, indent=2).encode("utf-8")
+    # THE PROGRAM IS READ OFF THE IMAGE, NOT TRUSTED FROM THE CALLER. A vsh
+    # image given the pgraph treatment gets nxdk_pgraph_tests_config.json,
+    # which it never reads, and no vsh_tests.cnf, on which it hangs.
+    # "unknown" still builds as pgraph, as every image did before the program
+    # was read at all: a pgraph XBE that does not carry the literal is not a
+    # reason to refuse a disc that has always worked.
+    if base["program"] != args.program and not (
+            args.program == "pgraph" and base["program"] == "unknown"):
+        raise XisoError("%s carries the %s program, not --program %s"
+                        % (args.iso, base["program"], args.program))
 
-    with open(args.iso, "rb") as handle:
-        data = bytearray(handle.read())
+    if args.program == "vsh":
+        if base["reboots"]:
+            raise XisoError(next(p for p in base["problems"] if "reboot" in p))
+        config_name = VSH_CNF_NAME
+        payload = vsh_cnf(args)
+    else:
+        config_name = CONFIG_NAME
+        if args.config:
+            with open(args.config, "r", encoding="utf-8") as handle:
+                config = json.load(handle)
+        else:
+            config = default_config(args)
+        payload = json.dumps(config, indent=2).encode("utf-8")
 
     root_sector, root_size = read_header(data)
     entries = read_directory(data, root_sector, root_size)
     names = {name.lower(): name for name, _s, _l, _a in entries}
-    if CONFIG_NAME.lower() in names:
-        entries = [e for e in entries if e[0].lower() != CONFIG_NAME.lower()]
-        print("replacing the existing %s" % names[CONFIG_NAME.lower()])
+    if config_name.lower() in names:
+        entries = [e for e in entries if e[0].lower() != config_name.lower()]
+        print("replacing the existing %s" % names[config_name.lower()])
 
     # Append the payload, then the rebuilt root table, on fresh sectors.
     if len(data) % SECTOR:
@@ -362,7 +528,7 @@ def main(argv=None):
     if len(data) % SECTOR:
         data.extend(b"\x00" * (SECTOR - len(data) % SECTOR))
 
-    entries.append((CONFIG_NAME, payload_sector, len(payload), ATTR_ARCHIVE))
+    entries.append((config_name, payload_sector, len(payload), ATTR_ARCHIVE))
     table, table_size = build_directory(entries)
 
     table_sector = len(data) // SECTOR
@@ -375,9 +541,15 @@ def main(argv=None):
     with open(args.output, "wb") as handle:
         handle.write(data)
 
-    verify(args.output, payload)
+    verify(args.output, payload, config_name)
+    if args.program == "vsh":
+        with open(args.output, "rb") as handle:
+            written = inspect_image(handle.read())
+        if written["problems"]:
+            raise XisoError("wrote %s but it would not run: %s"
+                            % (args.output, "; ".join(written["problems"])))
     print("wrote %s (%.1f MiB), %s is %d bytes"
-          % (args.output, len(data) / (1 << 20), CONFIG_NAME, len(payload)))
+          % (args.output, len(data) / (1 << 20), config_name, len(payload)))
     return 0
 
 
@@ -403,7 +575,7 @@ def lookup(data, sector, size, name):
             return None
 
 
-def verify(path, expected_payload):
+def verify(path, expected_payload, config_name=CONFIG_NAME):
     """Re-read the image we just wrote and check it round-trips."""
     with open(path, "rb") as handle:
         data = handle.read()
@@ -421,12 +593,13 @@ def verify(path, expected_payload):
         if found[:2] != (start, length):
             raise XisoError("%r resolves to the wrong extent" % name)
 
-    found = lookup(data, root_sector, root_size, CONFIG_NAME)
+    found = lookup(data, root_sector, root_size, config_name)
     start, length, _attributes = found
     written = data[start * SECTOR:start * SECTOR + length]
     if written != expected_payload:
-        raise XisoError("%s did not round-trip" % CONFIG_NAME)
-    json.loads(written)  # catches truncation; the guest parser is stricter
+        raise XisoError("%s did not round-trip" % config_name)
+    if config_name == CONFIG_NAME:
+        json.loads(written)  # catches truncation; the guest parser is stricter
 
 
 if __name__ == "__main__":

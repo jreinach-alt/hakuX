@@ -117,6 +117,9 @@ typedef struct NV2AState {
     struct {
         uint32_t pending_interrupts;
         uint32_t enabled_interrupts;
+        /* NV_PMC_ENABLE, stored over its implemented bits only; gates
+         * nothing. See pmc_write(). */
+        uint32_t enable;
     } pmc;
 
     struct {
@@ -243,6 +246,7 @@ void nv2a_reg_log_write(int block, hwaddr addr, unsigned int size, uint64_t val)
     void n##_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size);
 
 DEFINE_PROTO(pmc)
+void pmc_reset(NV2AState *d);
 DEFINE_PROTO(pbus)
 DEFINE_PROTO(pfifo)
 DEFINE_PROTO(prma)

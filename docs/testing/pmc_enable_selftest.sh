@@ -13,16 +13,16 @@
 # code that is no longer in the tree. If the anchors stop matching, this fails
 # loudly instead of testing nothing.
 #
-# The second half checks that pmc_write is still the no-op #188 found it as,
-# and #190 widened it: #190's region begins one dword after #188's register
-# and is modelled on the read side only, for the same reason.
-# That is not tidiness: writing 0 to NV_PMC_ENABLE HALTED THE PHYSICAL CONSOLE
-# in the sweep that found this register, and #188 is explicit that the
-# bit-field semantics are not established -- bits 20 and 24 are assigned by
-# nothing in this tree, and the one state anyone has measured is an idle
-# console. Modelling a write means modelling a halt on a guess. So the
-# write path stays a silent no-op, and this says so in a way that a later edit
-# has to notice.
+# NV_PMC_ENABLE's write side is modelled as STORAGE AND NOTHING ELSE (#188,
+# after #203 measured the implemented bits): pmc_write and pmc_reset are
+# extracted as well and driven by the C half, which checks the stored value
+# and that a write to it touches no other state. Which engine each bit gates
+# is unmeasured, so gating is what the C half refuses.
+#
+# #190's region (0x160, 0x204-0x2FC) is still read-side only, and the grep
+# guards below still refuse a write arm there: it begins one dword after the
+# register whose write of 0 halted the physical console, and nothing measured
+# says what a write into it does.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SRC="$HERE/../../hw/xbox/nv2a/pmc.c"
@@ -41,11 +41,14 @@ trap 'rm -rf "$TMP"' EXIT
 # pmc_write had changed. Both were reproduced in audit pass 1 (L1, L2).
 START=$(grep -n '^uint64_t pmc_read(' "$SRC" | cut -d: -f1)
 WSTART=$(grep -n '^void pmc_write(' "$SRC" | cut -d: -f1)
-if [ -z "$START" ] || [ -z "$WSTART" ] || [ "$WSTART" -le "$START" ]; then
+RSTART=$(grep -n '^void pmc_reset(' "$SRC" | cut -d: -f1)
+if [ -z "$START" ] || [ -z "$WSTART" ] || [ -z "$RSTART" ] \
+   || [ "$WSTART" -le "$START" ]; then
     echo "anchors not found in pmc.c -- the functions moved, were renamed," >&2
     echo "or pmc_write no longer follows pmc_read." >&2
     echo "  '^uint64_t pmc_read('  : ${START:-MISSING}" >&2
     echo "  '^void pmc_write('     : ${WSTART:-MISSING}" >&2
+    echo "  '^void pmc_reset('     : ${RSTART:-MISSING}" >&2
     exit 2
 fi
 
@@ -58,6 +61,7 @@ end_of_function() {
 }
 END=$(end_of_function "$START")   || { echo "pmc_read has no closing brace at column 0" >&2; exit 2; }
 WEND=$(end_of_function "$WSTART") || { echo "pmc_write has no closing brace at column 0" >&2; exit 2; }
+REND=$(end_of_function "$RSTART") || { echo "pmc_reset has no closing brace at column 0" >&2; exit 2; }
 if [ "$END" -ge "$WSTART" ]; then
     echo "pmc_read's closing brace ($END) is not before pmc_write ($WSTART):" >&2
     echo "brace-matching by column-0 '}' has stopped working on this file." >&2
@@ -65,6 +69,7 @@ if [ "$END" -ge "$WSTART" ]; then
 fi
 sed -n "${START},${END}p"   "$SRC" > "$TMP/pmc_read_extract.c"
 sed -n "${WSTART},${WEND}p" "$SRC" > "$TMP/pmc_write_extract.c"
+sed -n "${RSTART},${REND}p" "$SRC" > "$TMP/pmc_reset_extract.c"
 
 # A silent mis-extract compiles to something empty and "passes", so both
 # halves are confirmed to contain what they are named for.
@@ -75,36 +80,20 @@ for want in 'uint64_t pmc_read' 'NV_PMC_BOOT_0' 'nv2a_reg_log_read'; do
 done
 grep -q 'void pmc_write' "$TMP/pmc_write_extract.c" || {
     echo "write extract is missing pmc_write" >&2; exit 2; }
+grep -q 'void pmc_reset' "$TMP/pmc_reset_extract.c" || {
+    echo "reset extract is missing pmc_reset" >&2; exit 2; }
 
-# --- the write path must still be the no-op #188 measured around ---
+# --- #190's region must still have no write model ---
 #
-# Anchored on the CODE, not on prose: a comment mentioning NV_PMC_ENABLE in
-# pmc_write is fine and in fact likely, so the check is for a case label and
-# for the measured constant appearing on the write side.
-#
-# On the OFFSET as well as the macro. Audit pass 1 (M1) built the other
-# spelling -- `case 0x200:` in pmc_write -- and this script reported 8 checks,
-# 0 failures against a tree carrying a write model for the halting register.
-# Every existing arm in pmc_write uses a macro, but the offset is what a
-# future editor copies out of nv2a_regs.h (0x00000200) or a probe log
-# (0xFD400200), so the guard has to know both. The `...` alternative catches
-# the GCC range form, which is how #190's block (0x204-0x2FC) would arrive.
+# Anchored on the CODE, not on prose: the check is for a case label, so a
+# comment mentioning an offset is fine.
 fail=0
-if grep -qE \
-    '^[[:space:]]*case[[:space:]]+(NV_PMC_ENABLE|0[xX]0*200|512)[[:space:]]*(\.\.\.|:)' \
-        "$TMP/pmc_write_extract.c"; then
-    echo "REFUSED: pmc_write has a case for NV_PMC_ENABLE (0x200)." >&2
-    echo "  Writing 0 to this register halted the physical console, and #188" >&2
-    echo "  does not establish which bits gate what. A write model needs the" >&2
-    echo "  envytools cross-reference #188 asks for, not this lane." >&2
-    fail=1
-fi
-# #190's region gets the same refusal, and needs its own pattern: the guard
-# above is anchored on 0x200, so `case 0x204 ... 0x2FC:` in pmc_write -- the
-# exact shape #190's own read arm has -- would have walked straight past it.
-# Any 0x2xx offset is refused wholesale rather than the measured 63: the
-# reason is the neighbouring register that halted the console, and that reason
-# does not stop at 0x2FC. 0x160 is named separately.
+# Any 0x2xx offset but 0x200 itself is refused wholesale rather than the
+# measured 63: the reason is the neighbouring register that halted the
+# console, and that reason does not stop at 0x2FC. 0x160 is named separately.
+# 0x200 is excluded because NV_PMC_ENABLE now HAS a write arm (#188), and
+# `case 0x200:` is a spelling of it rather than of #190's region; until #188
+# the guard that refused it lived here too (pmc188/mutants.py M1-M1c).
 #
 # Two patterns, because a range has two ends. The first catches an arm that
 # BEGINS in the region; the second catches one that ENDS in it, which is the
@@ -115,18 +104,21 @@ fi
 #
 # THE REACH, written down rather than left in the regex -- the thing pass 2
 # asked for. Caught: any case label or range endpoint spelled in hex as 0x160
-# or 0x2xx, and 0x160 in decimal. NOT caught: a range whose BOTH endpoints
-# lie outside the region while spanning it (`case 0x100 ... 0x400:`), and
-# decimal 516-764. Grep cannot evaluate an interval; closing that properly
+# or 0x2xx other than 0x200, and 0x160 in decimal. NOT caught here: a range
+# whose BOTH endpoints lie outside the region while spanning it
+# (`case 0x100 ... 0x400:`), and decimal 516-764. Since #188 gave 0x200 a
+# write arm, a spanning range that includes 0x200 is refused by gcc as a
+# duplicate case instead (cloud190's K1 now goes red; see
+# docs/lanes/cloud-188/NOTES.md). Grep cannot evaluate an interval; closing that properly
 # means parsing the case labels and comparing numbers, which is the write
 # lane's job to build if it wants the guard to be airtight. Both holes are
 # mutants in docs/lanes/cloud190/mutants.py (K1, K2), expected GREEN, so the
 # limit is a measurement someone can re-run rather than a sentence to trust.
 if grep -qE \
-    '^[[:space:]]*case[[:space:]]+(0[xX]0*(160|2[0-9A-Fa-f][0-9A-Fa-f])|352)[[:space:]]*(\.\.\.|:)' \
+    '^[[:space:]]*case[[:space:]]+(0[xX]0*(160|2(0[1-9A-Fa-f]|[1-9A-Fa-f][0-9A-Fa-f]))|352)[[:space:]]*(\.\.\.|:)' \
         "$TMP/pmc_write_extract.c" \
    || grep -qE \
-    '^[[:space:]]*case[[:space:]]+.*\.\.\.[[:space:]]*(0[xX]0*(160|2[0-9A-Fa-f][0-9A-Fa-f])|352)[[:space:]]*:' \
+    '^[[:space:]]*case[[:space:]]+.*\.\.\.[[:space:]]*(0[xX]0*(160|2(0[1-9A-Fa-f]|[1-9A-Fa-f][0-9A-Fa-f]))|352)[[:space:]]*:' \
         "$TMP/pmc_write_extract.c"; then
     echo "REFUSED: pmc_write has a case in #190's read-1 region." >&2
     echo "  0x160 and 0x204-0x2FC read 0x00000001 on silicon. Nothing" >&2
@@ -136,17 +128,14 @@ if grep -qE \
     echo "  unimplemented-read pattern is also untested -- see #190." >&2
     fail=1
 fi
-if grep -qiE '0[xX]0*1110000' "$TMP/pmc_write_extract.c"; then
-    echo "REFUSED: the measured read-back constant appears in pmc_write." >&2
-    echo "  0x01110000 is what silicon READS. Nothing measured says what" >&2
-    echo "  happens when it is written." >&2
-    fail=1
-fi
 [ "$fail" -eq 0 ] || exit 1
 
 CC="${CC:-gcc}"
 "$CC" -std=gnu11 -Wall -Wextra -Wformat=2 -Werror \
       -I"$TMP" -I"$(dirname "$REGS")" -I"$HERE" \
       -o "$TMP/t" "$HERE/pmc_enable_selftest.c" || {
-    echo "the extracted pmc_read did not compile cleanly" >&2; exit 1; }
+    echo "the extracted pmc_read/pmc_write/pmc_reset did not compile" >&2
+    echo "cleanly against the stubs -- a new call in one of them (an engine" >&2
+    echo "reset on an NV_PMC_ENABLE write, say) lands here first" >&2
+    exit 1; }
 "$TMP/t"
