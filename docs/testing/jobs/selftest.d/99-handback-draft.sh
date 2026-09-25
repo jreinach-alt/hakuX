@@ -119,8 +119,9 @@ check "the original brief is still under it" grep -q "the original brief" "$B"
 # the prose and proves nothing. An invocation is `gh pr <verb>` at the start of
 # a command; a mention is preceded by a backtick.
 hd_verbs=$(grep -oE '(^|[^`])gh pr [a-z]+' "$HERE/handback.sh" | sed 's/.*gh pr //' | sort -u | tr '\n' ' ')
-check "the job calls only gh pr list and gh pr comment -- it never marks one ready" \
-    [ "$hd_verbs" = "comment list " ]
+# `view` is head_ci's read of one PR's CI state (lane.handbackresolved): a read.
+check "the job calls only gh pr list, view and comment -- it never marks one ready" \
+    [ "$hd_verbs" = "comment list view " ]
 check "and says on the PR that the call stays with the lane" hd_said "does **not** mark a PR ready"
 
 # WAITING IS NOT FAILING. lane.sh counts every resume as an attempt; the
@@ -292,7 +293,14 @@ if command -v jq >/dev/null 2>&1; then
 import re, sys
 src = open(sys.argv[1], encoding="utf-8").read()
 fn = re.search(r"^stranded_drafts\(\).*?\n\}", src, re.S | re.M).group(0)
-print(re.search(r"--jq '(.*?)'", fn, re.S).group(1))
+# The classifier is a shared jq `def` (CI_STATE_JQ) prefixed to the query, so
+# the program gh runs is that def followed by the single-quoted body.
+m = re.search(r"--jq \"\$CI_STATE_JQ\"'(.*?)'", fn, re.S)
+if m:
+    d = re.search(r"^CI_STATE_JQ='(.*?)'$", src, re.S | re.M).group(1)
+    print(d + m.group(1))
+else:
+    print(re.search(r"--jq '(.*?)'", fn, re.S).group(1))
 PYQ
 )
     fixture='[{"number":9,"headRefName":"lane/x","headRefOid":"ab","isDraft":true,

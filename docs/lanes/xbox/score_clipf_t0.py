@@ -17,4 +17,7 @@ import wbuf_anchor_recover as w  # noqa: E402
 
 for ct in (4, 8, 12, 16, 64):
     w.PRIMS["ClipF-150-%03d" % ct] = (w.FLOOR, 150, ct, "FloorQuad")
+    # _QUADS is built from PRIMS at import; a capture added after it would
+    # read second_of_quad False on its second triangle.
+    w._QUADS.add("ClipF-150-%03d" % ct)
 sys.exit(w.main())
