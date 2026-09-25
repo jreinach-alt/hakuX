@@ -3778,3 +3778,107 @@ impact_onestep_px = 0
 impact_basis = "2026-09-25 inventory (host session): not a renderer defect: removes 134,902 px of phantom residual from the score by correcting the golden; harness/data work"
 game_visible = false
 
+[issue.291]
+title = "Coverage: the sweep never scores 640 retired Depth buffer goldens (11% of the corpus; Depth/stencil is a 62% floor)"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage, not px: 640 goldens (11% of the corpus) that no current disc emits; the v2025-03-14 disc does"
+game_visible = false
+
+[issue.292]
+title = "Coverage: Blend TestDetailed (1,568 goldens, 28% of the corpus) is outside the standing sweep"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 1,568 goldens (28% of the corpus) reachable only on the interactive disc"
+game_visible = false
+
+[issue.293]
+title = "Coverage: the 16 tests added at 6743b6a never run in the harness (sweep disc is the 2026-09-01 release)"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 16 tests (11 with new console references from lane.xbox) that no harness path scores"
+game_visible = false
+
+[issue.294]
+title = "Coverage: Texture render target::RenderTextureLoop is skipped by every sweep, so its golden is never scored"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 1 golden, skipped on purpose because the old disc contaminates the tests after it"
+game_visible = false
+
+[issue.295]
+title = "Coverage: 20 goldens no current disc can produce (renamed or compiled-out tests) still count in the coverage denominators"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage: 20 unproducible goldens that keep PARTIAL COVERAGE warnings permanently on"
+game_visible = false
+
+[issue.296]
+title = "Coverage: Clipping precision (48 tests) and PVIDEO (23) save nothing -- record them as deliberately unscored"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Owned by lane.sweepcover (wave 189)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): coverage bookkeeping: 71 interactive-only tests that save no capture, to be recorded rather than left looking missing"
+game_visible = false
+
+[issue.297]
+title = "13 near-exact captures tagged `blank` have unowned residuals: Depth_buffer_fixed_function 10 x 24 px, Texture_BRDF 3 x 614 px"
+component = "harness"
+disposition = "harness"
+suites = []
+no_suites = "coverage/scoring gap: goldens or tests the harness never scores, not a rendered-output residual"
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 13:05 PDT (host session) from the tests-that-never-run inventory (2,229 of 5,608 goldens never scored; 1,656 of 4,590 corpus tests never run). Scorer heuristic is lane.toolsmith's (score_sweep.py); the residuals need a look (the DBFF rows may share #272's 24-bit mechanism)."
+blocked_on = ""
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (host session): small residual (2,082 px) mislabelled `blank`; the label hides it from triage"
+game_visible = false

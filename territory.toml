@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 188
+wave = 189
 updated_utc = "2026-09-25T19:40:00Z"
 
 
@@ -899,3 +899,9 @@ issues = ["283"]
 files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c", "docs/testing/predictions/texvol283-*.json", "docs/lanes/texvol283/**"]
 standing = false
 note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #283: Y16 and R16B16 volume textures differ (107,781 px; possibly #10 Y16/R16B16 classes). briefs/texvol283.md."
+
+[lane.sweepcover]
+issues = ["291", "292", "293", "294", "295", "296"]
+files = ["docs/testing/scoreboard.py", "docs/testing/collect_sweep.sh", "docs/testing/queue_full_sweep.sh", "docs/testing/jobs/selftest.d/88-sweep-cover.sh", "docs/lanes/sweepcover/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 189 (host session, 2026-09-25 13:10 PDT) from the tests-that-never-run inventory: URGENT first -- scoreboard.py and collect_sweep.sh count an unreadable row as exact, and the two running sweeps (z-a-now-2b04d4d422, z-b-v040j1) are the evidence for the owner's score table and the 0.5 release; then queue_full_sweep.sh legs for the unscored goldens (#291 depth-2025, #292 Blend interactive, #294 RenderTextureLoop), the 6743b6a base-iso option (#293), and the unscoreable list (#295, #296). Brief: briefs/sweepcover.md."
