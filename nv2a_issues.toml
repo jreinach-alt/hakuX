@@ -3467,3 +3467,24 @@ status = "open"
 dispatch_state = "available"
 status_note = "DISPATCHED (job.board, 2026-09-25T18:30Z) as [lane.vtxarr262], briefs/vtxarr262.md, territory wave 184; vk/draw.c taken from lane.remote (#256 folded), vk/surface.c not granted. PRIOR: FILED 2026-09-25 11:20 PDT (host session) from lane.xbox's new silicon references (PR #261; #112 comment 5837123665): DynamicUpdateLoop renders a colour into surface_a_ four times and draws a quad whose DIFFUSE array (UB_D3D) points at that memory; silicon shows red/green/blue/yellow, hakuX 84a67b9cf8 all red -- 96,000 px (3 quads x 32,000). No golden covered this suite before; the console captures at ~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/ serve as an extra --goldens root. Likely mechanism (to confirm): the vertex-array upload/cache does not invalidate on a GPU surface write to its range -- #184's class through a different consumer."
 blocked_on = ""
+
+[issue.265]
+title = "Game re-check: Retro Tech Dad's hakuX 0.3.1 glitch list on today's build (Nova)"
+component = "games"
+disposition = "research"
+suites = []
+no_suites = "commercial titles, no goldens: the evidence is frames from soak runs and held-device captures, judged against the reviewer's description"
+status = "open"
+dispatch_state = "available"
+status_note = "OPENED 2026-09-25 11:50 PDT (host session) on the owner's go-ahead; lane.gamecheck dispatched at territory wave 185. Nova games: Galleon (#77), RalliSport Challenge 2, Spikeout, Grabbed by the Ghoulies, Conker, Crimson Skies (confirm fe418afedf), Tork (audio)."
+blocked_on = ""
+
+[issue.266]
+title = "W buffering: 24-bit depth on the FloorQuad family, ~1.5M structural px with no owner (ZBuf24D 0/16 exact; two blank WBuf24D captures)"
+component = "pgraph"
+disposition = "defect"
+suites = ["W buffering"]
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 11:50 PDT (host session) from PR #222's fix arm 1790321693-arms-wbuf31fix-fix-301236: W buffering 1,955,022 structural px, of which #31's TriV 105,628; ZBuf24D FloorQuad 874,418 (0/16 exact), WBuf24D FloorQuad two blank captures 460,868, WBuf24F FloorQuad 158,050, ZBuf24D Wall/RoofQuad 277,308; 16-bit formats and ZBuf24F nearly exact. ~1.06 M sits in captures tagged blank/white-content/label-differs -- re-measure before fixing. lane.wbufdepth24 dispatched at territory wave 185."
+blocked_on = ""
