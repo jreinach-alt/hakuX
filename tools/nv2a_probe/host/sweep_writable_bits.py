@@ -199,6 +199,13 @@ def main() -> int:
                          "value never lands in something nobody has identified. "
                          "Reads are unrestricted either way, so undeclared "
                          "registers are still discovered, just not poked.")
+    ap.add_argument("--allow-hazards", action="store_true",
+                    help="accept a probe built with PROBE_ALLOW_HAZARDS, whose "
+                         "own hazard refusal is compiled out. That build is "
+                         "for the EMULATOR; on hardware it is the wrong XBE, "
+                         "and without this flag the driver refuses the session "
+                         "rather than trusting whoever deployed it. The "
+                         "host-side hazard list still applies either way.")
     args = ap.parse_args()
 
     start, end = int(args.start, 0), int(args.end, 0)
@@ -231,7 +238,8 @@ def main() -> int:
             "the sweep could write to the very register it uses to detect that "
             "something has gone wrong." % CANARY_OFF)
 
-    srv = ProbeServer(args.workdir, port=args.port)
+    srv = ProbeServer(args.workdir, port=args.port,
+                      allow_hazards=args.allow_hazards)
     print("hazard list: %d registers will not be written at all" % len(hazards))
     print("listening on %s:%d -- launch the probe on the console" % srv.addr)
     print("sweeping %s 0x%06X..0x%06X (%d registers)"

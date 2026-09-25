@@ -182,6 +182,59 @@ def run_score(args):
         print()
 
 
+def run_where(args):
+    """Where in the frame does a capture set differ from the golden?
+
+    `--score` answers "which model is stack C", and answers it over a region
+    chosen in advance.  This answers the prior question a prediction leg needs:
+    is the dispatcher's whole-capture `differing` column a fact about stack C,
+    or about the rest of the frame too?  A leg registered on a capture whose
+    differences are ALL inside the stack C region is a leg about stack C; on
+    any other capture the number moves for reasons this issue does not own.
+    """
+    eqns = O.UNSIGNED if args.unsigned else O.UNSIGNED + O.SIGNED
+    n = pure = inside = clean = 0
+    rows = []
+    for name, eqn, sf, df in _cases(eqns):
+        cp = os.path.join(args.captures, PREFIX + name + ".png")
+        gp = os.path.join(args.goldens, name + ".png")
+        if not (os.path.exists(cp) and os.path.exists(gp)):
+            continue
+        c, g = O.load(cp), O.load(gp)
+        if c.shape != g.shape:
+            continue
+        n += 1
+        d = (c != g).any(axis=2)
+        tot = int(d.sum())
+        sc = int(d[Y0:Y0 + H, CX:CX + W].sum())
+        if tot == 0:
+            clean += 1
+        if sc:
+            inside += 1
+        if sc and sc == tot:
+            pure += 1
+        rows.append((name, tot, sc))
+
+    print("differing pixels vs the golden, %d captures" % n)
+    print("  bit-exact everywhere                      %4d" % clean)
+    print("  any difference inside the stack C region  %4d" % inside)
+    print("  EVERY differing pixel inside stack C      %4d" % pure)
+    print()
+    print("  the last line is the set a prediction leg may be registered on:")
+    print("  for those captures the whole-capture count IS the stack C count.")
+    if args.where != "-":
+        for name in args.where.split(","):
+            hit = [r for r in rows if r[0] == name.strip()]
+            if not hit:
+                print("  no such capture: %s" % name.strip())
+                continue
+            nm, tot, sc = hit[0]
+            print("  %-34s total %7d   stack C %7d   %s"
+                  % (nm, tot, sc,
+                     "PURE" if tot and sc == tot else
+                     "clean" if not tot else "MIXED"))
+
+
 def run_bands(args):
     """Per-band render-target alpha, model by model, on one capture."""
     name = args.bands
@@ -217,14 +270,21 @@ def main():
     ap.add_argument("--unsigned", action="store_true",
                     help="exclude the 448 signed captures, where #43 is live")
     ap.add_argument("--bands", metavar="TEST")
+    ap.add_argument("--where", nargs="?", const="-", metavar="TEST,TEST",
+                    help="split each capture's differing pixels into the "
+                         "stack C region and the rest; name captures to "
+                         "report individually")
     args = ap.parse_args()
-    if not (args.equivalence or args.score or args.bands):
-        ap.error("pick at least one of --equivalence, --score, --bands")
+    if not (args.equivalence or args.score or args.bands or args.where):
+        ap.error("pick at least one of --equivalence, --score, --bands, "
+                 "--where")
     rc = 0
     if args.equivalence:
         run_equivalence(args)
     if args.score:
         run_score(args)
+    if args.where:
+        run_where(args)
     if args.bands:
         rc = run_bands(args) or 0
     return rc
