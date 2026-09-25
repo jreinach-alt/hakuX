@@ -1,0 +1,37 @@
+{
+  "registered_utc": "2026-09-25T15:30:38Z",
+  "who": "lane.remote",
+  "issue": "184",
+  "prediction": "THE FIX, AND WHAT IT CAN REACH. #184 (comment 5827596169, measured on desktop Vulkan): on the six collapsing Clear::TestSurfaceFmt captures pgraph_vk_bind_textures is never called for swatches 1-5, because every call site's gate opens only on texture_state_gen or texture_vram_gen, and a clear or a draw into the source surface moves neither. pgraph_vk_surface_written_while_sampled() (vk/draw.c), called after every draw and clear into a surface, bumps texture_state_gen, but only for a stage whose tex_surface_direct view IS that surface. The collapsing captures hold an s2t COPY (HC) or, for R5G6B5, a VRAM upload (NU). The fix is confined to that function's body; its six call sites are unchanged. It also bumps texture_state_gen when any stage's bound TextureBinding covers guest memory that overlaps the written surface's [vram_addr, vram_addr + size). Once the gate opens, the existing paths do the rest: an s2t copy recopies because the write advanced draw_time, and a VRAM binding downloads the draw_dirty surface first, which is what X1R5G5B5 already does every swatch.\nARMS: A = 38789df7 (master, 0.4.0-j1-2229-g38789df7), B = 38789df7 plus the fix (one commit). Both are desktop Vulkan (llvmpipe, [display.quality] surface_scale = 1) on the disc at /tmp/pgraph-run/scan_vk/iso_pre_clear.iso (suites Clear and Pixel shader, 33 captures), 3 runs each, alternating. Reproduced on A before any code existed, 2 runs byte-identical on all 8 SCF/SFC captures. clear_surface_fmt.py split (diff = aliased + residual): SFC_A8R8G8B8 81,840 = 81,840 + 0; SCF_R5G6B5 40,920 = 40,920 + 0; SCF_X8R8G8B8_Z8R8G8B8 81,840 = 81,840 + 0; SCF_X8R8G8B8_O8R8G8B8 81,840 = 81,840 + 0; SCF_X1A7R8G8B8_Z1A7R8G8B8 81,936 = 81,920 + 16; SCF_X1A7R8G8B8_O1A7R8G8B8 98,208 = 81,840 + 16,368; both X1R5G5B5 captures 0.\nTHE ABSOLUTES, AND WHERE EACH COMES FROM. Aliasing goes to zero on all six. Each quad then shows its own clear. Its error is priced from the base's quad 0 and the renderer's alpha rule for the format, not guessed. pgraph_glsl_surface_pad_alpha_mode() gives the clear a ZERO pad for X8R8G8B8_Z and a ONE pad for X8R8G8B8_O, and NONE, so the raw clear alpha, for A8R8G8B8 and both X1A7 formats. X1A7 has no sampled_pad_alpha override on Vulkan (vk/constants.h: B8G8R8A8, 8-bit alpha, a measured negative). The goldens store (X << 7) | (alpha & 0x7F) for X1A7: 00 01 7f 00 7e 7f for _Z and 80 81 ff 80 fe ff for _O over the six clear alphas 00 01 7f 80 fe ff. The base's centre mark (4x4) reads alpha ff on X1A7, where the golden has 7f on _Z and ff on _O. PREDICTED per capture in B: SFC_A8R8G8B8 = 0, SCF_R5G6B5 = 0, SCF_X8R8G8B8_Z8R8G8B8 = 0, SCF_X8R8G8B8_O8R8G8B8 = 0. SCF_X1A7R8G8B8_Z1A7R8G8B8 = 49,200, per quad 16 / 16 / 16 / 16,384 / 16,384 / 16,384: raw alpha 80, fe and ff lose the X bit on quads 3-5, and every quad's mark reads ff for 7f. SCF_X1A7R8G8B8_O1A7R8G8B8 = 49,104, per quad 16,368 / 16,368 / 16,368 / 0 / 0 / 0: raw alpha 00, 01 and 7f lack the X bit on quads 0-2, and 80, fe and ff already carry it. The X1A7 residuals are pad-bit defects of their own (#60's family), not #184's, and this fix does not touch them.\nREGISTERED LEGS: the six absolutes above; better = 6, worse = 0; must_not_move on the 27 other captures (the 24 Clear/C* depth clears, both X1R5G5B5 captures, Pixel_shader/Passthru at 50,984), bit-identical.\nPROSE LEGS, checked by script on B's captures: clear_surface_fmt.py reads alias '.....' on all 8 SCF/SFC captures, and the X1A7 per-quad splits are exactly as above.\nUNCOMFORTABLE OUTCOMES NAMED NOW: (1) R5G6B5 not 0 means its VRAM binding does not refresh even with the gate open. My claim that the bind downloads the draw_dirty surface first would then be wrong, and the fix incomplete. (2) An X1A7 per-quad split other than the one above means the raw-alpha reading is wrong for some clear value. I will report it, not refit it. (3) Any must_not_move capture moving means the invalidation reaches beyond this test. That would be a finding, and possibly a second instance of the same staleness. (4) The absolutes are desktop llvmpipe values. The fleet's Vulkan devices disagreed with these on SFC_A8R8G8B8 and SFC_X1R5G5B5_Z1R5G5B5 before (lane.clrvk184's table), so this registration is hand-queued desktop only.",
+  "a_ref": "38789df7",
+  "b_ref": "b0470969",
+  "must_not_move": [
+    "Clear/C*",
+    "Clear/SCF_X1R5G5B5_O1R5G5B5",
+    "Clear/SFC_X1R5G5B5_Z1R5G5B5",
+    "Pixel_shader/*"
+  ],
+  "expect": {
+    "Clear/SFC_A8R8G8B8": 0,
+    "Clear/SCF_R5G6B5": 0,
+    "Clear/SCF_X8R8G8B8_Z8R8G8B8": 0,
+    "Clear/SCF_X8R8G8B8_O8R8G8B8": 0,
+    "Clear/SCF_X1A7R8G8B8_Z1A7R8G8B8": 49200,
+    "Clear/SCF_X1A7R8G8B8_O1A7R8G8B8": 49104
+  },
+  "expect_counts": {
+    "better": 6,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Clear",
+      "Pixel shader"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop Vulkan A/B -- hand-queue only, see the prediction text"
+}
