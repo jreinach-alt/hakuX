@@ -285,6 +285,32 @@ verdict on #234 and #233, and then runs `gh pr ready 234` if it is clean.
 If the fix half is lost to adb interop again, that is still a host fault
 (toolsmith's dispatch defect 3), not a result.
 
+## Attempt 4 (2026-09-25): arm 2 judged PASS, PR marked ready
+
+Attempt 3 did not finish because it was waiting on the self-queued re-run. It
+could not sleep, so it stopped. The re-run pair came back DONE, with no
+interop errors. `ab_run.sh --resume ... --expect
+vshconst-writeback-must-not-move.json` gives **VERDICT: PASS, all 306
+registered checks hold**. The prediction was PRE-REGISTERED (bound sha256
+02a801ea...c8f4a5).
+
+| | A f2e8ef8ba8 (apk b4db00b5e5c2) | B 9ff7f6d67a (apk 236e448d37fa) |
+|---|---|---|
+| captures | 306 | 306 |
+| exact | 129 | 129 |
+| status `ok` / `white-content` / `unreadable` | 299 / 7 / 0 | 299 / 7 / 0 |
+| differing total | 6,454,403 | 6,454,403 |
+
+Arm B has no movers, and all 306 shared captures are byte-identical between
+the arms. The status column is the same on every (suite, test) row. The
+seven `white-content` rows are in Vertex shader independence tests and W
+param, in both arms. No status turned `unreadable`, so this is not the
+unreadable-scores-as-exact trap from #224's arm.
+
+Attempt 4 merged origin/master with `git merge`, not a rebase, so b_ref stays
+an ancestor. It then marked #234 ready. Still owed after it folds: the
+handheld ILU RCP Tests run through `request.sh --program vsh` once #229 folds.
+
 ## Do not repeat
 
 - `nv2a_index.py blast` on `vsh-prog.c` or `vsh.c` answers "No indexed suite
