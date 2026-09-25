@@ -270,6 +270,7 @@ def main(argv=None):
     t0 = time.time()
     unreachable_since = None
     seen_running = False
+    dark = not (cfg["settings"].get("network") or {}).get("enable")
     while True:
         time.sleep(10)
         el = time.time() - t0
@@ -285,8 +286,15 @@ def main(argv=None):
                 return 4
             return 3
         if st == "unreachable":
+            # With networking off in the config -- which check_config insists
+            # on -- the XBE never answers ping, so a run in progress LOOKS
+            # unreachable from the first second to the last (measured on the
+            # first #31 run, 2026-09-25). Only a network-enabled XBE can be
+            # told apart from a dead console here; a dark one waits for the
+            # overall timeout above.
             unreachable_since = unreachable_since or time.time()
-            if time.time() - unreachable_since > a.unreachable_min * 60:
+            seen_running = seen_running or dark   # the XBE has the console
+            if not dark and time.time() - unreachable_since > a.unreachable_min * 60:
                 prov["result"] = "UNREACHABLE"
                 json.dump(prov, open(os.path.join(a.out, "PROVENANCE.json"), "w"), indent=2)
                 print("OWNER: the console at %s stopped answering ping %.0f s into a run of %s. "
