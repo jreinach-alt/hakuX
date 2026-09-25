@@ -99,3 +99,13 @@ everything) refusing it, and the old arms.sh refusing it too. After it folds,
 the host deletes the drop-in; say so in the PR body.
 
 **Defect 12b (same area, one line):** `queue_full_sweep.sh v0.4.0-j1` resolved the annotated tag to its **tag object** (`df3978f7b9`), not its commit (`aeb4a096b6`), and wrote that into all 100 requests' `ref`. The build would still peel it, but every result row and "hw commits behind tip" then names a sha that is not a commit. Resolve `"$ref^{commit}"`. The host withdrew those requests to `queue/withdrawn/` and re-queued them by commit on 2026-09-25.
+
+## Defect 13 (added 2026-09-25 11:40 PDT; found by lane.xbox): a worker's re-exec corrupts the other device's run in flight
+
+`snapshot_scripts` copies the scripts into the shared `$SNAP` with `cp -f` (dispatcher.sh:118), **in place**, and bash reads a running script lazily, by byte offset.
+- **What happened:** at 11:11:16 the Nova worker saw its scripts change on disk (the host had fast-forwarded the checkout) and re-execed. That rewrote `$SNAP/run_disc.sh` under the Thor, which was mid-way through it. The Thor's bash then read the new file at the old offset (`line 137: cess: command not found`). The run reported "the emulator never started" with 0 captures, and lane.xbox's `1790359588-xbox-full6743-dry1` was voided.
+- **It recurs** at every fold that touches a SCRIPT_DEPS file, and it looks like a device failure. Details: https://github.com/jreinach-alt/hakuX/pull/238#issuecomment-5837670338
+
+**Fix:** write each snapshot file to a temp path in the same directory and `mv` it into place. A rename swaps the inode, so a bash process already reading the old file keeps its inode. Consider per-worker snapshot directories too, so one worker's re-exec never touches the scripts another worker runs.
+
+**Proof:** a fragment where one process sources a long script from `$SNAP` while `snapshot_scripts` rewrites it with different content. It is red with `cp -f` (a garbled line or a parse error) and green with temp plus `mv`, with the mutant shown.
