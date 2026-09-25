@@ -121,6 +121,59 @@ a leak into the column; ZS0/Depth_Clamp: a broken emitted shader). ZBuf*,
 LargeZ, LineStrip and the non-W blast-radius suites were dropped, with the
 reason in the prediction.
 
+### The verdict (attempt 3, 2026-09-25): PASS, 371 of 371 checks
+
+`[job.arms] VERDICT: PASS` on #222, judged 01:07 PDT by ab_compare.py from the
+Thor pair `1790321693-arms-wbuf31fix-{base-301205,fix-301236}`. The two arms
+ran the same disc and the same classifier. Prediction sha256 `876c7df6a494`,
+bound at queue time.
+
+**Legs that carried pixels.** Only the three ClipF depth captures changed. The
+table sets arm A → arm B beside the offline `sel` prediction. The ab_compare
+figure is differing px, i.e. the ±1 and wrong columns summed.
+
+| capture | arm A | arm B | predicted (±1 + wrong) |
+|---|---:|---:|---:|
+| ClipF-150-032 ZS1_ZB | 206,009 | 42,224 | 44,050 |
+| ClipF-150-128 ZS1_ZB | 159,250 | 24,500 | 24,500 |
+| ClipF-150-224 ZS1_ZB | 112,210 | 14,700 | 14,700 |
+
+- Each of the three improved by far more than half, and 128 and 224 match the
+  emulation to the pixel.
+- The paired `_Z` rows in the verdict are the depth captures' second channel:
+  2,121 → 179, 1,237 → 133 and 895 → 37.
+- Better 6, worse 0, same 564. Exact stayed at 116 → 116.
+- Every must_not_move glob held: Floor/Roof, TriH, TriV/Wall/ClipW, ZS0 and
+  Depth_Clamp. So the emitted GLSL compiles on the device. The glslc gap
+  below is therefore closed by the arm.
+
+**Leg M, from `wbuf_anchor_recover.py --ours` on arm B's result**
+(`dispatch/results/1790321693-arms-wbuf31fix-fix-301236`):
+
+| triangle | hardware interval | arm B | distance |
+|---|---|---|---:|
+| ClipF-032 t1 | [73585.9574, 73585.9619] | [73585.8085, 73585.8092] | 0.15 |
+| ClipF-128 t1 | [30771.1983, 30771.2110] | [30771.3595, 30771.3644] | 0.15 |
+| ClipF-224 t1 | [16800.8127, 16800.8212] | [16800.9319, 16800.9446] | 0.11 |
+| ClipF-032 t0 (must stand still) | [75289.2175, 75289.2351] | [75290.1825, 75290.1850] | 0.95 |
+
+- All three t1 offsets moved a full rung, about 1,700 / 460 / 185 units, and
+  each landed within 1.0 of hardware's interval.
+- t0 stayed at its arm A anchor (row 32), so the flat-top clause did not
+  misfire.
+- The residual under 1.0 is the ±1 band, which is one float32 ULP. It is not
+  an anchor error.
+
+### Why attempt 2 did not finish
+
+It did finish, in the waiting state `roles/lane.md` defines. The arm and CI
+were both pending on the head it pushed, so it posted
+`[lane.wbuf31fix] waiting:` and stopped. Attempt 3 is the handback resume
+after the PASS verdict. It merged origin/master (`fd564b224f`) and
+regenerated `nv2a_index.json` from the pinned trees rather than hand-merging
+it. The arm's refs `1883f0fd52` and `63a24f9834` remain ancestors, because
+nothing was rebased.
+
 ### Not done, and what the next lane should know
 
 - **glslc was not permitted in this sandbox,** so the emitted GLSL has only
