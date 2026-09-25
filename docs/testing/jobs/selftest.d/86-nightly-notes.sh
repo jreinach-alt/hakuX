@@ -149,3 +149,102 @@ check "FALSIFIED: the replaced code lists 40 commits and names no emulator work"
     emu_section_misses_the_work "$NB/legacy.md"
 check "  and the check is not vacuous: it passes on the new notes" \
     emu_section_names_the_work "$NB/new.md"
+
+# ------------------------------------------------ the range is by ancestry
+# THE SECOND DEFECT. nightly-2026-09-25 built 82e460e863 over nightly-2026-09-24
+# (3fe18366cd): 14 non-merge commits were new in the build, the notes listed
+# the 4 COMMITTED on 09-24, and said "0 emulator". The window was
+# `git log --since=<yesterday 00:30>`, a window over commit dates, and a lane
+# commit keeps the date it was written: 637b4f1d2a (nv2a/gl) was written 09-19
+# and folded at 09-24 23:41, and no date window starting 09-24 can see it.
+#
+# The fixture is that shape: yesterday's nightly tag, then a lane commit
+# written three days ago that reaches the tip through a fold merge made now.
+# Two decoy tags pin the choice of base, with the right one in the middle: an
+# older ancestor, and a newer-named tag that is NOT an ancestor, forked from
+# the root. Picking either as the base puts "before yesterday's nightly" in the
+# range, and the log-line check names the tag that must have been chosen.
+echo "== nightly_build.sh: the notes cover <previous nightly>..HEAD, not a date window"
+FIX3="$NB/late-fold"
+git -c init.defaultBranch=master init -q "$FIX3"
+git -C "$FIX3" config user.email s@t; git -C "$FIX3" config user.name s
+dated() {   # <when> <repo> <subject> <path...> -- commit_touching at a fixed date
+    local when=$1; shift
+    GIT_AUTHOR_DATE="$when" GIT_COMMITTER_DATE="$when" commit_touching "$@"
+}
+YDAY=$(date -d yesterday +%F)
+dated "$(date -d '5 days ago 12:00' -Iseconds)" "$FIX3" "base" README.md
+git -C "$FIX3" tag nightly-2000-01-01
+dated "$(date -d '2 days ago 12:00' -Iseconds)" "$FIX3" "docs: before yesterday's nightly" docs/old.md
+dated "$(date -d 'yesterday 00:10' -Iseconds)" "$FIX3" "harness: the tip yesterday's nightly built" docs/testing/jobs/y.sh
+git -C "$FIX3" tag "nightly-$YDAY"
+git -C "$FIX3" checkout -q -b lane/late "nightly-$YDAY"
+dated "$(date -d '3 days ago 12:00' -Iseconds)" "$FIX3" \
+    "nv2a/gl: clear to the surface's pad-bit constant" hw/xbox/nv2a/pgraph/gl/surface.c
+git -C "$FIX3" checkout -q -b lane/elsewhere nightly-2000-01-01
+commit_touching "$FIX3" "never merged" docs/elsewhere.md
+git -C "$FIX3" tag nightly-9999-12-31
+git -C "$FIX3" checkout -q master
+git -C "$FIX3" merge -q --no-ff --no-edit -m "fold: PR #172 lane/late -- the late fold" lane/late
+commit_touching "$FIX3" "harness: committed today" docs/testing/jobs/today.sh
+
+# Both scripts get the SAME window argument: the old default, yesterday 00:30.
+SINCE3=$(date -d 'yesterday 00:30' -Iseconds)
+run_notes3() {   # <script> <outfile>
+    NIGHTLY_TREE="$FIX3" NIGHTLY_OUT="$NB/must-not-exist" \
+        bash "$1" notes "$SINCE3" >"$2" 2>"$2.err"
+}
+late_fold_is_listed_as_emulator() {   # <notes file>
+    sed -n '/^### Emulator$/,/^### [HD]/p' "$1" \
+        | grep -qxF -- "- nv2a/gl: clear to the surface's pad-bit constant"
+}
+late_fold_is_missing() { ! late_fold_is_listed_as_emulator "$1"; }
+
+run_notes3 "$NIGHTLY" "$NB/late.md"; rc=$?
+check "late-fold fixture: notes mode exits 0" [ "$rc" = 0 ]
+check "THE CHECK: a commit written 3 days ago, folded today, is listed under Emulator" \
+    late_fold_is_listed_as_emulator "$NB/late.md"
+check "  the range reaches the tip: today's harness commit is listed" \
+    grep -qxF -- '- harness: committed today' "$NB/late.md"
+check "  the base is the NEWEST ancestor tag: nothing at or before it is listed" \
+    bash -c '! grep -qF "before yesterday" "$1" && ! grep -qF "the tip yesterday" "$1"' _ "$NB/late.md"
+check "  a newer-named tag that is not an ancestor is not the base" \
+    bash -c '! grep -qF "never merged" "$1"' _ "$NB/late.md"
+check "  the tally counts the same range: 2 did the work, 1 emulator, 1 harness, 1 merge" \
+    grep -qF '_2 commit(s) did the work: 1 emulator, 1 harness, 0 other. 1 merge commit(s) are not listed._' "$NB/late.md"
+check "  the log line names the tag it counted from" \
+    grep -qF "3 commit(s) since nightly-$YDAY" "$NB/late.md.err"
+check "  a tag-based range prints no fallback note" \
+    bash -c '! grep -qF "tag is an ancestor of this build" "$1"' _ "$NB/late.md"
+check "the tagless fixture falls back to the date window, and SAYS so in the notes" \
+    grep -qF 'tag is an ancestor of this build, so this lists commits DATED since 2000-01-01' "$NB/new.md"
+
+# Falsification: the replaced selection, verbatim from nightly_build.sh at
+# 48f0618aff (the SINCE default and the `git log --since` it fed), with the
+# same classification, over the same fixture and the same argument -- so the
+# only difference between the two runs is the range.
+cat > "$NB/legacy-range.sh" <<'LEGACY'
+#!/usr/bin/env bash
+set -u
+cd "$NIGHTLY_TREE" || exit 1
+SINCE="${2:-$(date -d 'yesterday 00:30' -Iseconds)}"
+SUB_EMU=(); cur=""; area=""
+flush() { [ "$area" = emu ] && SUB_EMU+=("- $cur"); return 0; }
+while IFS= read -r line; do
+    case "$line" in
+        $'\x01'*) flush; cur="${line#$'\x01'}"; area=other ;;
+        hw/*|target/*|accel/*|ui/*|audio/*) area=emu ;;
+    esac
+done < <(git log --no-merges --since="$SINCE" --format=$'\x01%s' --name-only HEAD 2>/dev/null)
+flush
+if [ "${#SUB_EMU[@]}" -gt 0 ]; then echo "### Emulator"; echo; printf '%s\n' "${SUB_EMU[@]}"; echo; fi
+echo "### Harness and tooling"; echo
+git log --no-merges --since="$SINCE" --format='- %s' HEAD
+LEGACY
+run_notes3 "$NB/legacy-range.sh" "$NB/late-legacy.md"
+check "the falsification ran: the replaced range still sees today's commit" \
+    grep -qxF -- '- harness: committed today' "$NB/late-legacy.md"
+check "FALSIFIED: the replaced date window omits the late-folded emulator commit" \
+    late_fold_is_missing "$NB/late-legacy.md"
+check "  and the check is not vacuous: it passes on the new notes" \
+    late_fold_is_listed_as_emulator "$NB/late.md"

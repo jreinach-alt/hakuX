@@ -19,6 +19,8 @@
 # Two modes:
 #   nightly_build.sh                    build, write the notes, publish
 #   nightly_build.sh notes [SINCE]      write the notes to stdout and stop
+#                                       (SINCE only matters if no nightly-* tag
+#                                       is an ancestor of HEAD; see RANGE below)
 #
 # `notes` exists so the note-writing -- the part with all the judgement in it
 # -- is testable without a device, a toolchain or an hour. It builds nothing
@@ -199,6 +201,40 @@ OTHER_CAP=8
 # unchanged, so a fixture can name its own window.
 SINCE="${2:-$(date -d 'yesterday 00:30' -Iseconds 2>/dev/null || date -v-1d -Iseconds)}"
 
+# THE RANGE IS BY ANCESTRY, and $SINCE is only the fallback. The window above
+# is over COMMIT dates, and a lane's commits keep the dates they were written
+# and reach master in a fold days later -- so nightly-2026-09-25 listed 4 of
+# the 14 commits it added over nightly-2026-09-24 and said "0 emulator" while
+# 637b4f1d2a (nv2a/gl, written 09-19, folded 09-24 23:41) was in the build.
+# "What is new in this build" is `<previous nightly>..HEAD`, whatever dates
+# the commits carry.
+#
+# The previous nightly is the newest nightly-* tag that is an ancestor of
+# HEAD. Newest by NAME, not by creatordate: the tags are lightweight (gh
+# release create makes them), so their "creator date" is the tagged commit's
+# date -- nightly-2026-09-24 reads 2026-09-21 -- and the name is the day it
+# was published. Today's own tag is skipped, so a same-day rerun still
+# reports against yesterday. The tags are made on origin by `gh release`, so
+# fetch them first; a failure there only means the fallback below says so.
+git fetch -q origin 'refs/tags/nightly-*:refs/tags/nightly-*' 2>/dev/null || true
+BASE_TAG=""
+while IFS= read -r t; do
+    [ "$t" = "nightly-$DAY" ] && continue
+    git merge-base --is-ancestor "$t" HEAD 2>/dev/null && { BASE_TAG=$t; break; }
+done < <(git tag -l 'nightly-*' --sort=-refname 2>/dev/null)
+if [ -n "$BASE_TAG" ]; then
+    RANGE=("$BASE_TAG..HEAD")
+    WINDOW="since $BASE_TAG ($(git rev-parse --short "$BASE_TAG^{commit}"))"
+    NONE_LINE="No commits since \`$BASE_TAG\`."
+    RANGE_NOTE=""
+else
+    RANGE=(--since="$SINCE" HEAD)
+    WINDOW="dated since $SINCE"
+    NONE_LINE="No commits in the last day."
+    RANGE_NOTE="> No earlier \`nightly-*\` tag is an ancestor of this build, so this lists commits DATED since $SINCE. A commit written before then and folded after it is in the build but not in this list."
+    say "WARNING: no nightly-* tag is an ancestor of HEAD; falling back to commits dated since $SINCE"
+fi
+
 # --no-merges. A `fold: PR #131 lane/notespath -- ...` subject describes the
 # lane, not the change, and the commits it folds are listed anyway -- so a
 # merge adds a line that says nothing and hides one that does. Merges are
@@ -233,13 +269,13 @@ while IFS= read -r line; do
 # 2026-09-20 the notes said "No commits in the last day" about a 34-hour-old
 # checkout while 89 commits landed on the trunk. The range and the binary must
 # be answers about the same ref, so neither may be implicit.
-done < <(git log --no-merges --since="$SINCE" --format=$'\x01%s' --name-only HEAD 2>/dev/null)
+done < <(git log --no-merges --format=$'\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
 flush_commit
 
 N_WORK=$((N_EMU + N_HARN + N_OTHER))
-TOTAL=$(git log --since="$SINCE" --oneline HEAD 2>/dev/null | wc -l)
+TOTAL=$(git log --oneline "${RANGE[@]}" 2>/dev/null | wc -l)
 N_MERGE=$((TOTAL - N_WORK))
-say "$TOTAL commit(s) since $SINCE: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
+say "$TOTAL commit(s) $WINDOW: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
 
 BODY="$OUT/$DAY.notes.md"
 # A capped section says how many it left out, per section, so the counts in
@@ -263,6 +299,9 @@ TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHE
     # binary is not exactly this commit, this one says this commit may not be
     # the one a reader is owed.
     [ -n "$STALE_NOTE" ] && echo "$STALE_NOTE"
+    # And the range: said whenever it is the date-window fallback, because
+    # that window is the one that silently dropped every late fold.
+    [ -n "$RANGE_NOTE" ] && echo "$RANGE_NOTE"
     echo
     if [ "$N_WORK" -gt 0 ]; then
         section "Emulator"            "$N_EMU"   ${SUB_EMU[@]+"${SUB_EMU[@]}"}
@@ -273,13 +312,13 @@ TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHE
         # $STALE_NOTE is empty exactly when origin answered AND this tree is
         # its tip, so here the window really is the trunk's window and the
         # flat sentence is true.
-        echo "No commits in the last day."
+        echo "$NONE_LINE"
     else
         # Behind, or origin unreachable. An empty window is then a fact about
         # a tree we could not confirm is the trunk -- and the bare sentence
         # above is precisely what nightly-2026-09-20 and -21 printed while 89
         # commits landed on master. Say what it is a fact ABOUT.
-        echo "No commits in the last day **on this tree** -- see the note above; this is not confirmed to be the trunk."
+        echo "${NONE_LINE%.} **on this tree** -- see the note above; this is not confirmed to be the trunk."
     fi
     echo
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
