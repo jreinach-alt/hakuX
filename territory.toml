@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 191
-updated_utc = "2026-09-25T20:00:00Z"
+wave = 192
+updated_utc = "2026-09-25T20:30:00Z"
 
 
 [retired.hilodot10]
@@ -791,11 +791,11 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T18:05Z (job.board): DO NOT COMMENT ON PR #244. handback.sh keys draft-strand-quiet on the PR updatedAt, and the 17:40Z board comment reset that clock (quiet 1275s of 7200s at 18:05Z), so handback resumes the lane by itself once 7200s pass with nothing new on the PR (~19:40Z). The board does not resume it: roles/board.md leaves draft lanes to handback, and a board resume would spend an attempt handback does not. If it is still un-resumed at ~19:50Z, look at handback.sh list before anything else. PRIOR TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see. WAVE 188 (host session, owner's impact-first rule): psh.c LENT to lane.wbufdepth24 for #266's one-line D24 gl_FragDepth saturate (~1.13 M px on 26 rows) -- this lane's #244 is stalled (arm REFUSED, head conflicting) and worth 0 scored px; its psh.c hunk is already on its branch ~800 lines from the D24 block. psh.c returns here when #266's PR folds, for #244's master merge and re-arm."
 
 
-[lane.wparamclip223]
+[retired.wparamclip223]
 issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/vk/instance.c", "docs/testing/predictions/wparamclip223-*.json", "docs/lanes/wparamclip223/**"]
-standing = false
-note = "DISPATCHED AT TERRITORY WAVE 173 (host session, 2026-09-25 08:00 PDT) for #223: the second step both NOTES name -- for a filled triangle with exactly one negative-w vertex, compute silicon's external wedge in the geometry shader, clip it to the guard band and emit it as positive-w geometry so the host clipper never sees a negative w. Priced offline first; Thor W_param arm (must_move bitri w-0.00 / 1.88e-37 / 3.76e-37 / 7.52e-37, about 563k px; the quads and ratio-1 rows must_not_move). vk/instance.c from [free] for PGRAPH_GEOM_MAX_OUTPUT_VERTICES. Ahead of #13 on geom.c by magnitude (563k vs 32,628 px). Brief: briefs/wparamclip223.md."
+files = []
+retired_utc = "2026-09-25T20:30:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T20:30Z): PR #250 MERGED 2026-09-25T20:10:35Z (fold 8e683b3a26), no open PR on lane/wparamclip223. glsl/geom.c and vk/instance.c RELEASED; geom.c re-claimed this tick by lane.wparamff223 (#223's ff and quad families, ~1.64 M px). #223 stays open. NOTES section 9 of docs/lanes/wparamclip223 is the hand-off."
 
 [retired.clrwin88]
 issues = []
@@ -928,3 +928,21 @@ issues = ["281"]
 files = ["docs/testing/predictions/nanattr281-*.json", "docs/lanes/nanattr281/**"]
 standing = false
 note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #281: NaN vertex attributes (Attrib float NaNs/NaNq), 29,172 px, ours differs from the console by 14,586 px each. LOCATE-FIRST for the same reason as zetaswap275: pgraph.c is lane.vshsubneg255's (adjacent defect, #255), vsh-prog.c is lane.vshr12280's, vsh-ff.c is lane.shadetie224b's. briefs/nanattr281.md."
+
+[lane.wparamff223]
+issues = ["223"]
+files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamff223-*.json", "docs/lanes/wparamff223/**"]
+standing = false
+note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #223's ff bitri + ff quad families (1,640,455 px after PR #250's one-negative wedge, which folded as 8e683b3a26). PRICE OFFLINE FIRST with docs/lanes/wparamclip223/wedge_price.py: swap vsh-ff.c's divide for the prog path's homogeneous carry and see whether ff bitri reaches 0 coverage mismatch; if it does the fix is vsh-ff.c, which is lane.shadetie224b's (PR #263 in audit) -- report the function and ask, do not edit. geom.c is claimed here only for the ff-quad two-negative-vertex rule. vk/instance.c released to [free]. Brief: briefs/wparamff223.md."
+
+[lane.spheremap273]
+issues = ["273"]
+files = ["docs/testing/predictions/spheremap273-*.json", "docs/lanes/spheremap273/**"]
+standing = false
+note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #273: Texgen with texture matrix, SphereMap_Arbitrary and SphereMap_RotateX draw the whole 455x289 quad wrong (262,990 px, one mechanism). LOCATE-FIRST: vsh-ff.c (the guessed area, :699) is lane.shadetie224b's; name the function and the change and ask. Brief: briefs/spheremap273.md."
+
+[lane.x1a7271]
+issues = ["271"]
+files = ["docs/testing/predictions/x1a7271-*.json", "docs/lanes/x1a7271/**"]
+standing = false
+note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #271: X1A7R8G8B8 expanded 7-bit alpha not stored or read back (229,376 px recoverable, ceiling 409,382). PR #176's design (glsl/psh.c + vk/draw.c write, vk/texture.c read) fits 32/32 golden halves but all three files are held (lane.wbufdepth24 psh.c, lane.vtxarr262/remote vk/draw.c, lane.texvol283 vk/texture.c), so this lane re-derives the design against master, prices it offline, and reports the exact hunks per file; the code lands when the holders fold. Brief: briefs/x1a7271.md."
