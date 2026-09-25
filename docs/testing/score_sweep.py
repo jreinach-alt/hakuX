@@ -78,6 +78,15 @@ STARTING = re.compile(r"Starting \[(\d+)/(\d+)\] (.+?)::(.+)")
 Z16_NAME = re.compile(r"(^|_)z16_|^[WZ]Buf16[DF]_")
 
 
+# The statuses whose `differing` is a measurement. `unreadable`, `size` and
+# `no-golden` write 0 there because there is no number, and a 0 in that column
+# reads as bit-identical to anything that does not check this set -- which is
+# how 52 truncated W_param captures became "repaired to exact" on #224's arm.
+# ab_compare.py and dispatcher.sh's result writer carry copies; the selftest
+# fragment 51-dispatch-hardening.sh fails if the three drift apart.
+SCORED_STATUSES = ("ok", "blank", "label-differs", "white-content")
+
+
 def depth_bits(test):
     """16 or 24: the width of the depth value stored in a ``_ZB`` capture."""
     return 16 if Z16_NAME.search(test) else 24
@@ -340,8 +349,7 @@ def main():
                                              args.disc_id or "unknown",
                                              args.label or "unlabelled"))
 
-    scored = [r for r in rows if r[3] in ("ok", "blank", "label-differs",
-                                          "white-content")]
+    scored = [r for r in rows if r[3] in SCORED_STATUSES]
     blanks = [r for r in rows if r[3] == "blank"]
     stale = [r for r in rows if r[3] == "label-differs"]
     exact = [r for r in scored if r[4] == 0]
@@ -394,6 +402,11 @@ def main():
         s["ma"] = max(s["ma"], ma)
         s["blank"] += status == "blank"
 
+    if not suites:
+        # Nothing scored -- a lost run, or every capture unreadable. The
+        # counts above already say so; a per-suite table of nothing would
+        # only raise ValueError out of the max() below.
+        return 0
     order = sorted(suites.items(), key=lambda kv: (kv[1]["exact"] / kv[1]["n"],
                                                    -kv[1]["px"] / max(kv[1]["tot"], 1)))
     w = max(len(k) for k in suites) + 1

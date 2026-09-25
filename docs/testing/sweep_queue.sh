@@ -22,7 +22,6 @@
 set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SERIAL="${SERIAL:-$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1; exit}')}"
 PKG="${PKG:-com.jreinach.hakux.debug}"
 ACT="$PKG/com.rfandango.haku_x.LauncherActivity"
 HDD="/sdcard/Android/data/$PKG/files/x1box/hdd.img"
@@ -30,10 +29,27 @@ DEVISO="/storage/E6C6-D7AA/Games/XBox/sweep.iso"
 LEASE="${HAKUX_DEVICE_LEASE:-/tmp/hakux-device-lease}"
 
 STATE="${SWEEP_STATE:?set SWEEP_STATE to a working directory}"
-BASE_ISO="${BASE_ISO:?set BASE_ISO to the stock nxdk_pgraph_tests xiso}"
-GOLDENS="${GOLDENS:?set GOLDENS to goldens/results}"
-RESULTS="${RESULTS:?set RESULTS to the sweep results dir}"
-BASELINE_APK="${BASELINE_APK:?set BASELINE_APK to the APK the sweep measures}"
+# THE SWEEP'S DEVICE IS RECORDED AT START AND READ BACK BY EVERY OTHER VERB.
+# `pause` used to take whichever adb device happened to be listed first, so
+# on a two-handheld host it could force-stop the app on the device the sweep
+# was NOT running on -- in the middle of someone else's run. And the four
+# build inputs below were demanded at top level, so `pause` and `resume`
+# exited on a missing BASE_ISO before doing anything; they need none of them.
+if [ "${1:-status}" = start ]; then
+    SERIAL="${SERIAL:-$(adb devices | tr -d '\r' | awk 'NR>1 && $2=="device"{print $1; exit}')}"
+    [ -n "$SERIAL" ] || { echo "no adb device; set SERIAL"; exit 1; }
+else
+    SERIAL="${SERIAL:-$(cat "$STATE/serial" 2>/dev/null)}"
+    [ -n "$SERIAL" ] || [ "${1:-status}" = status ] || {
+        echo "no $STATE/serial (the sweep was never started here); set SERIAL"; exit 1; }
+fi
+case "${1:-status}" in
+    start)
+        BASE_ISO="${BASE_ISO:?set BASE_ISO to the stock nxdk_pgraph_tests xiso}"
+        GOLDENS="${GOLDENS:?set GOLDENS to goldens/results}"
+        RESULTS="${RESULTS:?set RESULTS to the sweep results dir}"
+        BASELINE_APK="${BASELINE_APK:?set BASELINE_APK to the APK the sweep measures}" ;;
+esac
 
 mkdir -p "$STATE"
 QUEUE="$STATE/queue.txt"; DONE="$STATE/done.tsv"; LOG="$STATE/run.log"
@@ -188,6 +204,7 @@ case "${1:-status}" in
     [ -n "${2:-}" ] && cp "$2" "$QUEUE"
     [ -f "$QUEUE" ] || { echo "no queue; pass one: sweep_queue.sh start queue.txt"; exit 1; }
     touch "$DONE"; rm -f "$PAUSE" "$IDLE"
+    echo "$SERIAL" > "$STATE/serial"
     worker & echo $! > "$PID"
     echo "started (pid $(cat "$PID")), $(wc -l < "$QUEUE") queued"
     ;;

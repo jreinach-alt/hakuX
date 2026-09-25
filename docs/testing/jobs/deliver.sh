@@ -115,6 +115,21 @@ need_gh() {
 #     FORWARD.
 cache_path() { printf '%s/%s.json\n' "$CACHE" "$1"; }
 
+# THE SWEEP STAMP: when a scan last READ THE FEED SUCCESSFULLY, for every lane
+# at once. The per-lane `scanned` field is written only by cache_merge, so a
+# lane that had no delivery or report comment in the window kept its old
+# stamp, and check_coverage.py then asked "is hakux-comments.timer running?"
+# about a timer that had run hourly and exited 0 (clrwb91 at 3.8 h, vshconst
+# and xbox at 6.8 h, 2026-09-25 07:02 PDT). A quiet lane is not an unscanned
+# one. Written ONLY on a successful read: a failed scan (exit 3) leaves it
+# alone, so a stopped or failing sweep still ages it. Not *.json, so nothing
+# that reads lane files ever reads it as one.
+sweep_stamp() {
+    mkdir -p "$CACHE" || return 1
+    date -u +%Y-%m-%dT%H:%M:%SZ > "$CACHE/.sweep-scanned.tmp" &&
+        mv -f "$CACHE/.sweep-scanned.tmp" "$CACHE/.sweep-scanned"
+}
+
 # merge <lane> <kind:delivered|reported> <iso> <thread> <url>
 #
 # Validated and built in memory, then renamed into place: a half-written JSON
@@ -251,6 +266,7 @@ cmd_scan() {
         echo "deliver: scan could NOT read the comments feed (gh exited $rc); the cache is unchanged and every lane's brief age is now a lower bound" >&2
         return 3
     fi
+    sweep_stamp || echo "deliver: WARNING: could not write $CACHE/.sweep-scanned" >&2
     [ -n "$rows" ] || { echo "scanned since $since: the feed was empty -- no comments at all in the window, and the call succeeded"; return 0; }
     # ONE MERGE PER (lane, kind), AND THE MAX IS TAKEN HERE, NOT BY THE FEED'S
     # ORDER. Each merge is a python process, and a thirty-day cold scan is

@@ -1,0 +1,235 @@
+# dispatch-hardening (lane.toolsmith), 2026-09-25
+
+Brief: dispatcher hardening, defects 0-10. PR #249.
+Base: master @ 0a4e284536, which is after #206 folded.
+Everything here is harness work, so there is no arm and no prediction.
+
+All eleven defects are fixed in this PR. `jobs/selftest.sh` passes 1253 checks
+with 0 failing. `ab_selftest.sh` passes 14 of 14. `preflight.sh` passes.
+The new checks are in `jobs/selftest.d/51-dispatch-hardening.sh`, parts A-I,
+plus four additions to `66-deliveries.sh`. Every part that has a mutant was
+confirmed red against it: the mutant is built in a symlink tree, and the check
+that it differs from the real file runs first.
+
+## Defect 0: an unreadable capture read as "repaired to exact" (top priority)
+
+What changed:
+
+- `ab_compare.py` now has `SCORED_STATUSES`: ok, blank, label-differs and
+  white-content. That is score_sweep's own `scored` set.
+- A capture is VOID if any run in either arm has a status outside that set,
+  or if the capture is missing from one arm. A void capture is in no class and
+  in no total. It is listed by suite and cause right under the counts.
+- A registered leg that lands on a void capture is neither held nor broken.
+- A global `expect_counts` leg is void if ANY capture is.
+- If there are void legs and no real failures, the verdict is
+  `VERDICT: INCOMPLETE -- ...`. That line deliberately contains neither PASS
+  nor FAIL, because arms.sh classifies a verdict by those substrings, and an
+  unmeasured arm must set no label and supersede nothing.
+- A real FAIL still reads FAIL, and lists the void legs below it.
+- `--probe` refuses a void capture, so ab_bisect skips the step instead of
+  reading median 0 as exact.
+- The dispatcher's result writer now counts only scored rows in
+  `runs[].captures`, `exact` and `captures_vs_goldens`. It records the rest as
+  `runs[].unscored`. A run that is all unreadable therefore hits the existing
+  0-captures ERROR.
+- The three copies of the status set (score_sweep, ab_compare, dispatcher)
+  are checked for equality by selftest part B.
+
+**Deviation from the brief's literal wording.** The brief says "anything but
+`ok`" is void. I made void mean anything outside the scorer's `scored` set.
+`blank`, `white-content` and `label-differs` are all computed from both
+images' pixels. A blank capture that starts to draw is exactly the movement a
+fix exists to produce, so voiding it would void real must-move legs.
+`unreadable`, `size` and `no-golden` write `differing = 0` because there is no
+number to write, and those are the three that faked results.
+
+Falsified on the real pair `42c014b32fab` (#224; fix
+`1790327180-arms-shadeflat224-fix-820924`):
+
+| ab_compare | better | W_param better | repaired to exact | VOID | verdict |
+|---|---:|---:|---:|---:|---|
+| master (`/tmp` worktree at 0a4e284536) | 64 | 52 | 52 | - | FAIL, 53 of 461 checks |
+| this branch | 12 | 0 | 0 | 56 (W_param, B unreadable) | INCOMPLETE, 3 void legs |
+
+The 12 remaining movers are the real ones. The prediction's
+`expect_counts better=12` would have matched them, but that leg is void,
+because 56 captures could not be counted.
+
+## Defect 1: the sweep preemption. Deleted
+
+I deleted it rather than fixing it:
+
+- `preempt_sweep` never ran. `dispatcher.log` begins 09-12 11:03 and has zero
+  "preempting the sweep" or "resuming the sweep" lines.
+- The pid in `night19/sq_g0/pid` (2771299, written 09-12 00:25) is not a
+  live process.
+- Master's `sweep_queue.sh pause` with only `SWEEP_STATE` set exits with
+  `BASE_ISO: set BASE_ISO to ...`. It called `adb devices` once and did
+  nothing else.
+
+The corpus sweep is `z-sweep-*` queue work now, sorted last, so nothing needs
+the hook. `SWEEP_STATE`, `SWEEP_DEVICE`, `sweep_running` and the status line
+went with it. `docs/orchestration.md` says so where the old rule was stated.
+
+`sweep_queue.sh` stays as a standalone tool, and two of its bugs are fixed:
+
+- `start` records the device in `$STATE/serial`, and every other verb reads
+  it back.
+- The four build inputs are demanded only by `start`.
+
+Selftest part D checks it: with the thor listed first by adb, `pause`
+force-stops on ee317437 only and needs no build inputs.
+
+I left `sweep_queue.sh` and `make_isolation_discs.py` in `SCRIPT_DEPS`. It
+does no harm, and changing the list only churns 97's closure check.
+
+## Defect 2: unbounded adb calls in the serve path
+
+- `adb_call <secs> <what> [--in FILE] args` is new, in devices.sh.
+  dispatcher.sh and run_disc.sh already source devices.sh, and the snapshot
+  already ships it.
+- Deadlines: the install gets 300 s (`ADB_INSTALL_TIMEOUT`). The pref
+  read/write/read-back, the title check and the force-stops get 30 s
+  (`ADB_QUICK_TIMEOUT`). `adb devices` gets 30 s.
+- A hang is written to `ADB_HUNG_FILE`, which is per device and cleared at
+  each claim. It has to be a file because most calls sit in a pipe or a
+  `$(...)`.
+- `adb_error` puts the hung call into the ERROR line. The worker then leaves
+  through the post-claim exit it would have taken anyway.
+- `apply_env_pref` keeps its marker on a hang. Previously, when clearing, an
+  unreadable prefs file dropped the marker, and a hang would have left the env
+  on the device with nothing remembering it.
+
+Falsified against master's real dispatcher.sh in a scratch worktree, using a
+fake adb that never returns from `install`:
+
+| dispatcher.sh | outcome |
+|---|---|
+| master | still blocked when the outer 40 s timeout fired (exit 124). adb was asked to `install -r`, there was no ERROR, and the last log line was `binary e3b0c44298fc` |
+| this branch | returned in 6 s. ERROR: `install failed: adb hung -- adb install -r (no answer in 5s)` |
+
+Selftest part C covers the same thing: C1 for install, C2 for the env-pref
+calls, and a mutant that is adb_call without `timeout`.
+
+Not covered: `soak_title.sh`'s own calls. It has always used
+`timeout 120 adb`, so it is bounded, but it has no retry. The frame capture
+was already bounded.
+
+## Defect 3: WSL interop
+
+- **The signature cannot be matched per call.** `1790325543-arms-vshconst-base`
+  logged four `UtilAcceptVsock` lines in `run1.log`, although run_disc sends
+  those calls' stderr to `/dev/null`. The line is written past the call's own
+  redirection.
+- `adb_call` therefore retries on the exit status. A failed call (not a hung
+  one) is retried twice more, after 2 s and then 6 s. Every routed call is
+  safe to repeat. The pref write re-reads its input file (`--in`) on each try.
+- **Unverified:** whether an interop drop-out gives adb a non-zero exit. If
+  it does not, the retry never fires. The backstop below does not depend on
+  it.
+- **Backstop:** if a run has 0 captures and `run*.log` carries the signature,
+  the ERROR is `adb interop failure: ...`. The attempt is moved to
+  `<id>.interop1` and the request is requeued once, with `interop_requeued`
+  set. A second loss is final and says so. A startup crash takes precedence,
+  because the crash is then the real cause. Selftest part F runs the whole
+  disc path of serve_one with stubbed programs.
+- **arms.sh:** a sha now counts as run only when two distinct refs have a
+  clean result for it. So the ARM ERROR advice to "delete judged/<sha> and
+  pairs/<sha>.json" works on a half-run pair. Selftest part E checks it, with
+  a mutant.
+- **Not done: native Linux adb with `ADB_SERVER_SOCKET=tcp:<win>:5037`.**
+  The brief says to prove it on one run first. That needs the Windows adb
+  server listening beyond localhost (`adb -a`, a restart of the server the
+  devices hang off). That is a host-side change, and a lane may not touch a
+  device directly. It is still the better fix, since it removes per-call
+  interop entirely. For the owner or host.
+
+Counted today: 12 run logs under `dispatch/results` carry the signature, from
+09-13 to 09-25 (the brief had five). They include
+`1790327180-arms-shadeflat224-fix-820924`, which is the #224 arm that
+Defect 0 is about.
+
+## Defect 4: score_sweep on an empty run
+
+It returns after the counts when nothing was scored. Master's version raised
+`ValueError: max() iterable argument is empty` on `--out /nonexistent`; this
+one exits 0. The jobs-selftest runner has no numpy, so this was checked by
+hand and has no fragment.
+
+## Defects 5-10
+
+- **5. Shader cache.**
+  - `clear_shader_caches_on_apk_change` runs after the install. When the apk
+    differs from the one this device last ran, it removes
+    `files/spv_cache files/vk_pipeline_cache.bin files/shader_module_keys.bin`
+    via `run-as`. Those are the paths `MainActivity.flushShaderCaches()`
+    removes.
+  - It is recorded per device (`$D/.shader_cache_apk.<label>`), only after a
+    successful clear.
+  - `result.json` gains `shader_cache` on both the disc and soak paths.
+  - I chose this over "before every run". A same-apk soak keeps its warm
+    cache, so its first minute is not shader warm-up. The two arms of an A/B
+    are different apks, so each arm starts cold anyway, which removes the
+    coupling lane.xbox raised.
+  - Selftest part H: the first run clears, the same apk keeps the cache, and
+    a new apk clears again.
+- **6. Logcat spec.**
+  - Added `libc:F` (bionic's assert text), `DEBUG:F` (the tombstone:
+    `Abort message:` plus an unwinder backtrace of every thread, which the
+    hakuX handler's frame-pointer walk cannot give), `hakuX-stderr:E` and
+    `hakuX-vk:I`.
+  - `hakuX-stderr` is the app's pump for the process's stderr, and pgraph
+    prints the offending format there before it aborts. The spec had dropped
+    it all along.
+  - `hakuX-vk` is one line, the app's own cache-wipe notice.
+  - The hakuX crash handler logs the signal, the pc and an FP backtrace, but
+    never the abort message.
+  - **Unmeasured:** how loud `hakuX-stderr` is on a run that does not crash.
+    The first logcat after this folds should be compared by line count with
+    the one before it. If it floods, narrow it; do not drop it.
+- **7. Fast crash.**
+  - run_disc.sh reads the capture for `Caught signal|Fatal signal|assertion
+    ... failed` in the appear loop. On a hit it reports
+    `the emulator started and CRASHED ... (Ns): <line>` plus the assert line,
+    and stops waiting.
+  - Without a CAPTURE_LOG it says a sub-second crash cannot be ruled out.
+  - The dispatcher's 0-captures ERROR quotes the crash.
+  - Selftest part G, with a mutant.
+- **8. Lane allowlist.**
+  - The two `docs/testing/*` rules are replaced by explicit prefixes, with and
+    without `./`, for request.sh, ab_run.sh, preflight.sh, ab_compare.py,
+    ab_bisect.sh, diff_specimen.py, check_territory.py, check_coverage.py and
+    jobs/selftest.sh. `lane_preflight.sh` does not exist.
+  - Proven with a headless `claude -p` (haiku, acceptEdits,
+    `--allowedTools "$(cat allowed-tools.lane)"`, run in a scratch dir with
+    no project hooks) running `docs/testing/ab_run.sh --help`. Master's list
+    gave `REFUSED: This command requires approval`, with one entry in
+    `permission_denials`. This list gave `RAN`, with none.
+  - `request.sh` has no `--help`, and its bare invocation is not harmless, so
+    ab_run.sh was the harmless one.
+- **9. Sweep stamp.**
+  - `deliver.sh scan` writes `delivery-cache/.sweep-scanned` on every
+    successful read, including an empty window, and never on exit 3.
+  - check_coverage takes the newer of that stamp and the lane's own
+    `scanned`.
+  - `66-deliveries.sh` now ages the sweep stamp in its "nobody refreshed"
+    fixture, and adds three checks: a quiet lane under a fresh sweep, an
+    empty scan stamps, and a failed scan does not.
+- **10. Tracker source.**
+  - check_territory loads `nv2a_issues.toml` through `board_files` and
+    prints its source.
+  - On the live board, the stale "#13 walled by wparamclip223" note and both
+    #91 notes are gone. Master's version printed them from the 09-18
+    working-tree copy.
+
+## For the next lane
+
+- Do not match the WSL interop signature on a call's stderr; it bypasses
+  the redirection. Match the run log, or fix the transport.
+- A verdict line may never contain PASS or FAIL unless it means that.
+  arms.sh reads it by substring.
+- `score_sweep`'s `SCORED_STATUSES` has two copies, in ab_compare.py and in
+  dispatcher.sh's result writer. Selftest part B fails if they drift. Change
+  all three together.
+- The selftest runner has no numpy, so score_sweep cannot be driven there.
