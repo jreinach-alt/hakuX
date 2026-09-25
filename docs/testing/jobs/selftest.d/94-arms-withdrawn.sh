@@ -19,7 +19,9 @@ mkdir -p "$WR"
 g() { git -C "$WR" -c user.name=t -c user.email=t@t -c commit.gpgsign=false "$@"; }
 g init -q -b master
 mkdir -p "$WR/src" "$WR/docs/lanes/wd"
-for f in a b c; do echo "$f 0" > "$WR/src/$f.c"; done
+# Twenty lines each, and every candidate APPENDS one: a one-line edit must stay
+# above git's 50% rename-similarity threshold, or (f) cannot be a rename at all.
+for f in a b c; do seq -f "$f %g" 0 19 > "$WR/src/$f.c"; done
 echo notes > "$WR/docs/lanes/wd/NOTES.md"
 g add -A; g commit -qm base
 A_REF=$(g rev-parse HEAD)
@@ -27,12 +29,12 @@ g update-ref refs/remotes/origin/master "$A_REF"
 
 # The refuted candidate: two code files, and the lane's NOTES alongside them.
 g checkout -q -b cand
-echo "a 1" > "$WR/src/a.c"; echo "b 1" > "$WR/src/b.c"; echo "notes: tried it" > "$WR/docs/lanes/wd/NOTES.md"
+echo "a 1" >> "$WR/src/a.c"; echo "b 1" >> "$WR/src/b.c"; echo "notes: tried it" > "$WR/docs/lanes/wd/NOTES.md"
 g commit -qam candidate
 B_REF=$(g rev-parse HEAD)
 # A second, separate candidate on src/c.c, for the three-arm branch.
 g checkout -q -b cand2 master
-echo "c 1" > "$WR/src/c.c"; g commit -qam candidate2
+echo "c 1" >> "$WR/src/c.c"; g commit -qam candidate2
 C_REF=$(g rev-parse HEAD)
 
 branch() {   # <name> <start> [<file-to-revert>...]  -> refs/remotes/origin/lane/<name>
@@ -55,6 +57,12 @@ g update-ref refs/remotes/origin/lane/pass "$(g rev-parse HEAD)"
 g checkout -q -B wd-three "$C_REF"; g merge -q --no-edit "$B_REF" >/dev/null
 g checkout -q "$A_REF" -- src/a.c src/b.c; g commit -qm "revert the refuted half"
 g update-ref refs/remotes/origin/lane/three "$(g rev-parse HEAD)"
+# (f) the refuted code is kept but MOVED: src/b.c reverted, src/a.c renamed with
+# its refuted content intact. A rename-detecting diff lists only src/a2.c for the
+# branch, which misses the arm's src/a.c and would withdraw a live FAIL (#260 M1).
+g checkout -q -B wd-moved "$B_REF"
+g checkout -q "$A_REF" -- src/b.c; g mv src/a.c src/a2.c; g commit -qm "revert b, move a"
+g update-ref refs/remotes/origin/lane/moved "$(g rev-parse HEAD)"
 g checkout -q master
 
 # ------------------------------------------------------------ the verdicts
@@ -79,13 +87,14 @@ wpair pass   wd-pass-arm   225 2026-09-25T01:00:00Z "$A_REF" "$B_REF" "$PASSV"
 wpair three  wd-first-pass  301 2026-09-25T01:00:00Z "$A_REF" "$C_REF" "$PASSV"
 wpair three  wd-middle-fail 302 2026-09-25T02:00:00Z "$A_REF" "$B_REF" "$FAILV"
 wpair three  wd-last-pass   303 2026-09-25T03:00:00Z "$A_REF" "$C_REF" "$PASSV"
+wpair moved  wd-moved-arm  224 2026-09-25T01:00:00Z "$A_REF" "$B_REF" "$FAILV"
 
 wst() {   # <arms.sh> <branch>
     HAKUX_WORK="$WW" DISPATCH_DIR="$WW/dispatch" HAKUX_REPO_DIR="$WR" HAKUX_TIP=master bash "$1" state "lane/$2" 2>&1
 }
 cases() {   # <arms.sh> -> one "<case> <STATE> <withdrawn names>" line per case
     local s c
-    for c in full part intact pass three; do
+    for c in full part intact pass three moved; do
         s=$(wst "$1" "$c")
         echo "$c $(sed -n '1s/^STATE=//p' <<< "$s") [$(sed -n 's/^withdrawn //p' <<< "$s" | tr '\n' ' ')]"
     done
@@ -94,7 +103,8 @@ WANT="full none [wd-full-arm.json ]
 part regressed []
 intact regressed []
 pass verified []
-three verified [wd-middle-fail.json ]"
+three verified [wd-middle-fail.json ]
+moved regressed []"
 
 got=$(cases "$TESTING/jobs/arms.sh")
 line() { grep "^$1 " <<< "$got"; }
@@ -108,6 +118,8 @@ check "(c) a branch whose FAIL code is intact stays regressed" [ "$(line intact)
 check "(d) a PASS on a branch with no code change stays verified" [ "$(line pass)" = "pass verified []" ]
 check "(e) of three arms, only the middle FAIL is withdrawn, and the PASSes count" \
     [ "$(line three)" = "three verified [wd-middle-fail.json ]" ]
+check "(f) a refuted file moved with its content intact stays regressed" \
+    [ "$(line moved)" = "moved regressed []" ]
 check "every case exactly as specified" [ "$got" = "$WANT" ]
 
 # ------------------------------------------------ the tick takes the label off
@@ -156,4 +168,6 @@ mutant "any overlap withdraws: a partial revert reads withdrawn" \
     'if not code or have is None or code & have:' 'if not code or have is None or code <= have:' part
 mutant "withdrawal ignores the verdict: a PASS is withdrawn too" \
     'if r["cls"] != "FAIL" or not r["a"] or not r["b"]:' 'if not r["a"] or not r["b"]:' pass
+mutant "rename detection on: a moved refuted file reads as gone" \
+    '"diff", "--no-renames", "--name-only"' '"diff", "--name-only"' moved
 rm -rf "$WD"

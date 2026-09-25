@@ -609,8 +609,11 @@ import os, subprocess, sys
 A, index, branch, ovr_sha, ovr_verdict, repo, base, head = sys.argv[1:9]
 
 def names(*args):                         # git diff --name-only, or None when git cannot say
+    # --no-renames: porcelain diff detects renames by default, and a renamed file
+    # would then list only its NEW path -- a `git mv` of refuted code would read
+    # as the code being gone (PR #260 audit M1). Delete+add keeps the old path.
     try:
-        out = subprocess.run(["git", "-C", repo, "diff", "--name-only"] + list(args),
+        out = subprocess.run(["git", "-C", repo, "diff", "--no-renames", "--name-only"] + list(args),
                              capture_output=True, text=True, timeout=60)
     except Exception:
         return None
