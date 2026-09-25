@@ -71,4 +71,65 @@ fi
 for f in $SNAPPED; do
     check "snapshot source exists: $f" test -f "$TESTING/$f"
 done
-unset DD
+
+echo "== dispatch deploy: the snapshot is closed under what its scripts run"
+# WHY. Equality of the two lists is not the invariant the deploy needs (audit
+# pass 1 on #206, M2). A worker execs $SNAP/dispatcher.sh, so $HERE IS $SNAP
+# for everything it runs, and a sibling that is not copied there does not
+# exist. preempt_sweep ran `bash "$HERE/sweep_queue.sh" pause`, which was in
+# neither list: exit 127, nothing checked it, and the sweep was never parked
+# before the dispatcher installed over its device. The check above was green
+# the whole time, because both lists agreed on leaving it out.
+#
+# So: every sibling a shipped file runs from its own directory must be
+# shipped. The four ways they do it here: $HERE/x (or $SNAP/x), the inline
+# `$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/x` that soak_title.sh and
+# run_disc.sh source devices.sh through, os.path.join(HERE, "x") in Python,
+# and a Python import, which resolves against the script's own directory.
+# Only names of files that exist beside the scripts count; a comment naming
+# one counts too, which errs towards shipping more.
+unshipped() {   # <dir> <shipped...> -> "<ref> <- <file>" for each sibling left out
+    python3 - "$@" <<'PY'
+import os, re, sys
+d, shipped = sys.argv[1], set(sys.argv[2:])
+ref = re.compile(r'''(?:\$\{?(?:HERE|SNAP)\}?"?/|pwd\)"?/|os\.path\.join\(\s*HERE\s*,\s*["'])([A-Za-z0-9_.-]+\.(?:sh|py))''')
+imp = re.compile(r'^\s*(?:import|from)\s+([A-Za-z_]\w*)', re.M)
+for f in sorted(shipped):
+    try:
+        text = open(os.path.join(d, f), errors="replace").read()
+    except OSError:
+        continue
+    found = {m.group(1) for m in ref.finditer(text)} | \
+            {m.group(1) + ".py" for m in imp.finditer(text)}
+    for r in sorted(found - shipped - {f}):
+        if os.path.isfile(os.path.join(d, r)):
+            print("%s <- %s" % (r, f))
+PY
+}
+gap=$(unshipped "$TESTING" $SNAPPED)
+if [ -z "$gap" ]; then
+    ok "every sibling a shipped script runs is shipped ($(printf '%s' "$SNAPPED" | wc -w) files)"
+else
+    bad "a shipped script runs a sibling the snapshot does not carry -- in a worker it does not exist:"
+    printf '%s\n' "$gap" | sed 's/^/       /'
+fi
+# The check must be able to fail, once per form it claims to read. Each
+# mutant is a copy of the shipped files with one reference appended to its
+# dispatcher.sh, pointing at an EMPTY placeholder: the copies are only read,
+# never run, and there is nothing in the placeholder to run if they were.
+DM="$T/deploy-mutant"
+for form in '$HERE/probe_only.sh' \
+            '$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/probe_only.sh' \
+            'os.path.join(HERE, "probe_only.py")' \
+            'import probe_only'; do
+    rm -rf "$DM"; mkdir -p "$DM"
+    for f in $SNAPPED; do cp "$TESTING/$f" "$DM/$f" 2>/dev/null; done
+    : > "$DM/probe_only.sh"; : > "$DM/probe_only.py"
+    printf '\n%s\n' "$form" >> "$DM/dispatcher.sh"
+    case "$(unshipped "$DM" $SNAPPED)" in
+        *"probe_only."*" <- dispatcher.sh"*) ok "the closure check sees a sibling run as: $form" ;;
+        *) bad "the closure check is BLIND to a sibling run as: $form" ;;
+    esac
+done
+rm -rf "$DM"
+unset DD DM gap

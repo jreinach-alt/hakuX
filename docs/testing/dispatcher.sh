@@ -80,8 +80,16 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # for eighteen hours with two healthy devices idle.
 #
 # The two sets must be the same set. Keep this in sync with snapshot_scripts.
+#
+# AND THE SET MUST BE CLOSED: every sibling a shipped script runs from its own
+# directory ($HERE/x, $(cd ... && pwd)/x, os.path.join(HERE, "x"), a Python
+# import) is shipped too, because in a worker $HERE IS $SNAP and anything not
+# copied there does not exist. preempt_sweep ran $HERE/sweep_queue.sh, which
+# was in neither list, and that script runs make_isolation_discs.py (audit
+# pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
-affinity.py captures.py make_test_iso.py extract_results.py"
+affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
+make_isolation_discs.py"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -106,7 +114,8 @@ BUILD_TREE="${DISPATCH_BUILD_TREE:-$D/build-tree}"
 snapshot_scripts() {
     mkdir -p "$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
-             affinity.py captures.py make_test_iso.py extract_results.py; do
+             affinity.py captures.py make_test_iso.py extract_results.py \
+             sweep_queue.sh make_isolation_discs.py; do
         [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
     done
 }
