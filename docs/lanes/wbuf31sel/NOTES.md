@@ -105,6 +105,11 @@ the old evidence pinned. Report which capture, and do not refit.
 Before trusting the verdict, check both arms' `scores1.tsv` status column for
 `unreadable`, and each `run1.log` for UtilAcceptVsock and PARTIAL COVERAGE.
 
+**Status 2026-09-25: waiting.** The arm is queued by committing the
+prediction, and CI runs on the head. Two signals resolve this: the `[job.arms]`
+verdict comment on PR #244, and green CI. PR #244 stays draft until the verdict
+is in and its status column is checked.
+
 No shader-cache version bump is needed: `vk/glsl.c` keys SPIR-V on a hash of
 the GLSL text, and no ShaderState field changed.
 
