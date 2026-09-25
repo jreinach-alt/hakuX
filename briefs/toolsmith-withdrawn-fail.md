@@ -95,3 +95,7 @@ and `status.sh`. A `z-*` request waiting for hours is the design, not a stall.
 request, in which the arms job still queues a pair. Show the mutant (count
 everything) refusing it, and the old arms.sh refusing it too. After it folds,
 the host deletes the drop-in; say so in the PR body.
+everything) refusing it, and the old arms.sh refusing it too. After it folds,
+the host deletes the drop-in; say so in the PR body.
+
+**Defect 12b (same area, one line):** `queue_full_sweep.sh v0.4.0-j1` resolved the annotated tag to its **tag object** (`df3978f7b9`), not its commit (`aeb4a096b6`), and wrote that into all 100 requests' `ref`. The build would still peel it, but every result row and "hw commits behind tip" then names a sha that is not a commit. Resolve `"$ref^{commit}"`. The host withdrew those requests to `queue/withdrawn/` and re-queued them by commit on 2026-09-25.
