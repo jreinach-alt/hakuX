@@ -136,3 +136,10 @@ before anyone claims the fix's full reach.
   found the defect, which was in the copy, not the cache.
 * 165,447 is not the golden: the quad is `E91A24` vs `E91624`, a separate
   depth-precision gap under both policies.
+
+## State at end of session 1 (2026-09-25)
+
+Waiting: the arms job runs `issue91-writeback.json` and posts a `[job.arms]`
+verdict on PR #237; CI runs on the head. The PR stays draft until the
+verdict. `preflight` passes except `coverage`, which fails on #91's own row
+on `origin/board`, not on this lane's files.
