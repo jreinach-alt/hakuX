@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 189
-updated_utc = "2026-09-25T19:40:00Z"
+wave = 190
+updated_utc = "2026-09-25T20:00:00Z"
 
 
 [retired.hilodot10]
@@ -905,3 +905,22 @@ issues = ["291", "292", "293", "294", "295", "296"]
 files = ["docs/testing/scoreboard.py", "docs/testing/collect_sweep.sh", "docs/testing/queue_full_sweep.sh", "docs/testing/jobs/selftest.d/88-sweep-cover.sh", "docs/lanes/sweepcover/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 189 (host session, 2026-09-25 13:10 PDT) from the tests-that-never-run inventory: URGENT first -- scoreboard.py and collect_sweep.sh count an unreadable row as exact, and the two running sweeps (z-a-now-2b04d4d422, z-b-v040j1) are the evidence for the owner's score table and the 0.5 release; then queue_full_sweep.sh legs for the unscored goldens (#291 depth-2025, #292 Blend interactive, #294 RenderTextureLoop), the 6743b6a base-iso option (#293), and the unscoreable list (#295, #296). Brief: briefs/sweepcover.md."
+
+
+[lane.goldencorr287]
+issues = ["287"]
+files = ["docs/testing/predictions/goldencorr287-*.json", "docs/lanes/goldencorr287/**"]
+standing = false
+note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #287: TexFmt_R6G5B5's golden is the outlier, our output is byte-identical to the console (134,902 phantom px). Scoring/data work, no hw/ file. It must locate the golden or override mechanism first and ask for that path by board-request; score_sweep.py is lane.toolsmith's and scoreboard.py is lane.sweepcover's and neither is granted. briefs/goldencorr287.md."
+
+[lane.zetaswap275]
+issues = ["275"]
+files = ["docs/testing/predictions/zetaswap275-*.json", "docs/lanes/zetaswap275/**"]
+standing = false
+note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #275: Color_zeta_overlap Swap, 165,447 px, console matches the golden. LOCATE-FIRST: no hw/ file claimed because every plausible file (vk/surface.c, pgraph.c, psh.c, vk/draw.c) is held by another lane; the lane names the function and asks. Must not undo #91's accepted colour-wins trade. briefs/zetaswap275.md."
+
+[lane.nanattr281]
+issues = ["281"]
+files = ["docs/testing/predictions/nanattr281-*.json", "docs/lanes/nanattr281/**"]
+standing = false
+note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #281: NaN vertex attributes (Attrib float NaNs/NaNq), 29,172 px, ours differs from the console by 14,586 px each. LOCATE-FIRST for the same reason as zetaswap275: pgraph.c is lane.vshsubneg255's (adjacent defect, #255), vsh-prog.c is lane.vshr12280's, vsh-ff.c is lane.shadetie224b's. briefs/nanattr281.md."
