@@ -90,3 +90,32 @@ Arms queued: base `1790361025-vtxarr262-base-3284261`, fix `1790361025-vtxarr262
 Preflight passes (`--allow-tracker`) at the head that carries the regenerated index.
 On resume: check `scores1.tsv` for `unreadable` and `run1.log` for PARTIAL COVERAGE / UtilAcceptVsock.
 Then hand-score Surface_as_vertex_array in both arms against the console root, and record it here.
+
+## Attempt 2 (resumed 2026-09-25 20:32Z)
+
+**Why attempt 1 did not finish:** it ended correctly, waiting on the device arm, with
+the PR in draft. The handback job resumed it once CI went green on `1c1c666bad`.
+
+**What the first pair measured.** Both arms finished on the Nova (apks `851650a27937`
+and `cf2d5d9d29d4`), 72 captures each, 0 `unreadable`, no PARTIAL COVERAGE or
+UtilAcceptVsock in `run1.log`. `ab_compare.py --expect` returns **PASS, 73/73 machine
+legs**, and all 72 captures are byte-identical between the arms. So the must_not_move
+set held.
+
+**The must-move leg was not measured.** Neither arm contains any `Surface_as_vertex_array`
+capture. The suite is not on the stock dispatcher disc. The progress log runs the
+other six suites and ends "Testing completed normally" without mentioning it. The
+refs6743 dry run captured the suite only because it passed
+`--base-iso .../2026-09-25-refs6743/refs6743.iso` (the pristine 6743b6a XBE).
+Next lane: **a suite without a published golden is probably not on the stock disc
+either.** Give request.sh that suite's `--base-iso`, and check the progress log for
+the suite name before you trust an arm.
+
+**Re-queued, the must-move leg only** (Thor, refs6743 disc, `--no-expect` naming the
+registered prediction, which already says this leg is hand-scored):
+base `1790368380-vtxarr262-base-iso-1676913` (342d21c43f), fix
+`1790368384-vtxarr262-fix-iso-1679009` (74ac01608d). On resume:
+`score_sweep.py --goldens ~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console`
+over both runs' `captures1`. Expect base DynamicUpdateLoop 96,000 and fix 0. The other
+four should stay as they are (RenderScalePattern 18,136 at delta 1). Check that
+`Surface_as_vertex_array::*` files exist in both before scoring.
