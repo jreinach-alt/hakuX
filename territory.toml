@@ -800,3 +800,10 @@ issues = ["31"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31fix-*.json", "docs/lanes/wbuf31fix/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 151 (host session) as the psh.c half of #31, once lane.xbox closed the measurement on silicon: ClipF's second triangle anchors 4*floor(ct/4)+2 (34 at ct=35, 6.001 at ct=4; 47 coarse-grid rules refuted); ClipF's first triangle anchors 32/34/6 at ct 32/35/4, which neither the 4-grid nor the shipped quad snap fits -- so the job is the SELECTOR, proven offline against every recovered anchor before psh.c changes. psh.c taken from [free] (released there at wave 146). wbuf_anchor_recover.py is in the row so its --pairs framing can read the silicon runs. Brief: briefs/wbuf31fix.md."
+
+
+[lane.cloud-audit2-216]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-216, audit pass 2 of PR #216 on branch claude/handoff-on-hardware, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 216` removes this row when the unit ends."
