@@ -114,19 +114,40 @@ def main():
                 # what the aa-path pixels are: is ours brighter or darker, and
                 # is the pixel on a golden edge or in the interior
                 dl = lum(ox) - lum(gx)
+                mag = np.abs(ox - gx).max(2)
+                two = mag == 2
+                d_gold = np.abs(gx - gp).max(2)
                 rows.append(dict(
                     capture=X, prim=prim, flag=flag,
                     wrong=int(wrong.sum()),
                     ceiling_gold=int(s_gold.sum()),
+                    ceiling_gold_label=int((struct(gx, gp) & ~body).sum()),
+                    ceiling_gold_any=int(((d_gold > 0) & body).sum()),
+                    ceiling_gold_gt2=int(((d_gold > 2) & body).sum()),
                     ceiling_cons=int(s_cons.sum()),
                     cons_vs_gold=int(struct(kx, gx).sum()),
                     cons_vs_gold_plain=int(struct(kp, gp).sum()),
+                    # the falsifier: console's own smoothing change, landing
+                    # on pixels the golden footprint called not-smoothing
+                    falsifier_hit=int((s_cons & out).sum()),
+                    falsifier_hit_dil=int((dilate(s_cons) & out).sum()),
                     **{c: int(cls[c].sum()) for c in CLASSES},
+                    **{c + '_d2': int((cls[c] & two).sum()) for c in CLASSES[1:]},
                     aa_edge=int((aa & edge).sum()),
                     aa_interior=int((aa & ~edge).sum()),
                     aa_darker=int((aa & (dl < 0)).sum()),
                     aa_brighter=int((aa & (dl > 0)).sum()),
                     shared_edge=int((cls['shared'] & edge).sum()),
+                    # outside the footprint, split by whether OUR AA path
+                    # changed the pixel at all (any channel, any amount):
+                    # silicon's AA path moves 0 px on every no-op capture
+                    # (aapath286.py), so a pixel ours moved is ours alone
+                    out_moved=int((out & (np.abs(ox - op).max(2) > 0)).sum()),
+                    out_moved_gt2=int((out & (np.abs(ox - op).max(2) > 0) & ~two).sum()),
+                    # what a bit-transparent AA path would leave outside the
+                    # footprint: ours(P)'s own error over the same region
+                    out_if_transparent=int((body & ~fp & wrong_p).sum()),
+                    out_still_gt2=int((out & (np.abs(ox - op).max(2) == 0) & ~two).sum()),
                     # ours inside silicon's footprint: how much of silicon's
                     # own smoothed-vs-plain change do we get wrong
                     fp_hit=int((wrong & s_gold).sum()),
