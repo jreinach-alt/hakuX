@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 178
+wave = 179
 updated_utc = "2026-09-25T17:00:00Z"
 
 
@@ -844,3 +844,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-249, audit pass 2 of PR #249 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 249` removes this row when the unit ends."
+
+[lane.handbackstrand]
+issues = []
+files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-strand.sh", "docs/lanes/handbackstrand/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 179 (host session, 2026-09-25 10:05 PDT). Harness defect, no tracker issue: handback keys a draft-strand-arm resume on the HEAD sha ($H/done/$label-$pr-$head, handback.sh:625), so a lane that pushes while waiting on its verdict -- a replicate registration, NOTES, a master merge -- is resumed again with nothing new, and at DRAFT_STRAND_MAX=3 its PR is labelled blocked:needs-owner (#245: three resumes in 22 minutes while its replicate sat queued; host cleared it). Fix: key the cause on the set of judged verdicts, and do not strand-resume while the branch's own request is queued or running. Brief: briefs/handbackstrand.md."
