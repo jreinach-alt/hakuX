@@ -1331,79 +1331,79 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2444",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2473",
    "symbols": [],
    "text": "/* FIXME: Allocate big buffer up front and re-alloc if necessary."
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2445",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2474",
    "symbols": [],
    "text": "* FIXME: Consider swizzle in shader"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2471",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2500",
    "symbols": [],
    "text": "/* FIXME: Replace this with a hw accelerated version */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2520",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2549",
    "symbols": [],
    "text": "/* FIXME: Respect write enable at last TOU? */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2641",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2670",
    "symbols": [],
    "text": "// FIXME: Don't query GL for texture binding"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2645",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2674",
    "symbols": [],
    "text": "// FIXME: Replace with FBO to not disturb current state"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2665",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2696",
    "symbols": [],
    "text": "/* FIXME: Replace this scaling */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2961",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2992",
    "symbols": [],
    "text": "/* FIXME: Support same color/zeta surface target? One GL texture"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2977",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3008",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3096",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3127",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3159",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3190",
    "symbols": [],
    "text": "/* FIXME: Refactor */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3214",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3245",
    "symbols": [],
    "text": "/* FIXME: Cannot monitor for reads/writes; flush now */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3333",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3364",
    "symbols": [
     "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE"
    ],
@@ -1411,7 +1411,7 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3388",
+   "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3419",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -2966,61 +2966,61 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3261",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3274",
    "symbols": [],
    "text": "* An unmapped colour surface format used to abort(), which takes"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3428",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3441",
    "symbols": [],
    "text": "// FIXME: We don't need to be so aggressive flushing the command list"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3440",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3453",
    "symbols": [],
    "text": "* FIXME: Support same color/zeta surface target? One VkImage"
   },
   {
    "kind": "STUB",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3506",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3519",
    "symbols": [],
    "text": "NV2A_UNIMPLEMENTED(\"Same color & zeta surface offset\");"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3621",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3634",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3712",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3725",
    "symbols": [],
    "text": "// FIXME: Refactor"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3757",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3770",
    "symbols": [],
    "text": "// FIXME: Cannot monitor for reads/writes; flush now"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3772",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3785",
    "symbols": [],
    "text": "// FIXME: Move to common?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3983",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3996",
    "symbols": [],
    "text": "pgraph_vk_reload_surface_scale_factor(pg); // FIXME: Move internal"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:4018",
+   "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:4031",
    "symbols": [],
    "text": "// FIXME: We should download all surfaces to ram, but need to"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "8d7edec29d9b14aeb1fee6c46781b7d40300fd29",
+  "emulator_commit": "f48439516043b5364e073cd36e7571e214232612",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2845,
@@ -7873,7 +7873,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8: switch (texture_fmt) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2821",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2852",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    },
@@ -7898,7 +7898,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3291",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3304",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_A8R8G8B8];"
    }
@@ -7935,7 +7935,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_B8:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3283",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3296",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_B8];"
    }
@@ -8029,7 +8029,7 @@
     "text": "case NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5:"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3287",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3300",
     "role": "REF",
     "text": "[NV097_SET_SURFACE_FORMAT_COLOR_LE_R5G6B5];"
    }
@@ -8322,22 +8322,22 @@
   ],
   "NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2867",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2898",
     "role": "REF",
     "text": "(pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2898",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:2929",
     "role": "REF",
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3304",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3335",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3337",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3368",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
@@ -8347,17 +8347,17 @@
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3332",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3345",
     "role": "REF",
     "text": "(pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3364",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3377",
     "role": "REF",
     "text": "if (pg->surface_type != NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE) {"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3836",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3849",
     "role": "REF",
     "text": "bool swizzle = (pg->surface_type == NV097_SET_SURFACE_FORMAT_TYPE_SWIZZLE);"
    }
@@ -8408,7 +8408,7 @@
     "text": "[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = { 2 },"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3940",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3953",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z16] = zeta_d16;"
    }
@@ -8450,22 +8450,22 @@
     "text": "// Pack depth+stencil into NV097_SET_SURFACE_FORMAT_ZETA_Z24S8"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3943",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3956",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3950",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3963",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3957",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3970",
     "role": "TABLE-ENTRY",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8] ="
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3961",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3974",
     "role": "REF",
     "text": "r->kelvin_surface_zeta_vk_map[NV097_SET_SURFACE_FORMAT_ZETA_Z24S8]"
    }
@@ -17543,7 +17543,7 @@
     "text": "pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3258",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3289",
     "role": "READ",
     "text": "GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    },
@@ -17858,7 +17858,7 @@
     "text": "uint32_t setupraster = pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3784",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3797",
     "role": "READ",
     "text": "GET_MASK(pgraph_vk_reg_r(pg, NV_PGRAPH_SETUPRASTER),"
    }
@@ -18343,7 +18343,7 @@
   ],
   "NV_PGRAPH_SETUPRASTER_Z_FORMAT": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3259",
+    "loc": "hw/xbox/nv2a/pgraph/gl/surface.c:3290",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    },
@@ -18358,7 +18358,7 @@
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT, z_format);"
    },
    {
-    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3785",
+    "loc": "hw/xbox/nv2a/pgraph/vk/surface.c:3798",
     "role": "REF",
     "text": "NV_PGRAPH_SETUPRASTER_Z_FORMAT);"
    }

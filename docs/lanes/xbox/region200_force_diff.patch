@@ -1,0 +1,33 @@
+From 0bbd900000d039d5b96363ff91cf74bc1ff6ad6d Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 07:41:27 -0700
+Subject: [PATCH] hakuX #200: force the per-test PGRAPH region diff on
+
+hakuX's dispatcher pins enable_pgraph_region_diff false in every disc
+config, so an emulator dry run of the stock instrument never runs the
+diff. Forcing it here makes the dry run exercise exactly the code the
+console runs. Reads only.
+---
+ src/main.cpp | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..b8ae282 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -456,7 +456,11 @@ static void Shutdown() {
+ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+                            std::vector<std::shared_ptr<TestSuite>>& test_suites, const std::string& output_directory,
+                            std::shared_ptr<FTPLogger> ftp_logger) {
+-  auto config = TestSuite::Config{runtime_config.enable_progress_log(), runtime_config.enable_pgraph_region_diff(),
++  // hakuX #200: the per-test register diff is ALWAYS on in this build. hakuX's
++  // dispatcher writes enable_pgraph_region_diff false into every disc config
++  // (make_test_iso.py), and the emulator dry run must exercise the same code
++  // the console will run. Reads only; nothing here writes MMIO.
++  auto config = TestSuite::Config{runtime_config.enable_progress_log(), true,
+                                   runtime_config.delay_milliseconds_between_tests(), std::move(ftp_logger)};
+ 
+ #define REG_TEST(CLASS_NAME)                                                   \
+-- 
+2.43.0
+
