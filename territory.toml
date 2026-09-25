@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 197
+wave = 198
 updated_utc = "2026-09-25T21:15:00Z"
 
 
@@ -991,3 +991,9 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-260, remediation of PR #260 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 260` removes this row when the unit ends."
+
+[lane.turnipfork]
+issues = ["68"]
+files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
+standing = false
+note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:57:51Z), on the owner's request: a hakuX-built Adreno driver (a Turnip fork loaded through the existing libadrenotools picker or bundled in the APK). ENGINEERING PERSONA (principal GPU driver engineer). GATE 0 FIRST, no build work before it: classify every candidate as T0 plain Vulkan / T1 our Turnip, no root / T2 needs root or custom kernel / T3 impossible (silicon, signed firmware), with evidence, and post it on #68. The owner asked to know up front if anything needs deeper access than a menu-loaded driver; T2/T3 are dropped, not built. The host relays Gate 0 to the owner. Candidates: hardware clip/viewport controls vs the #223 geometry-shader wedge; zero-copy guest RAM (#184/#262 class); NV2A depth formats (#266); combiner compile stutter; driver CPU share; GMEM. Mesa tree outside the repo (~/hakux-work/mesa-turnipfork). No hw/ or android/ edits before Gate 1 (board grant). Driver prefs are device config: set under a hold, restore T30, read back. Brief: briefs/turnipfork.md."
