@@ -1,5 +1,12 @@
 # shadetie224: #224 family B, the fixed-function lighting tie
 
+> **Outcome: lt(N) is REFUTED on the device and withdrawn (section 6).** It
+> made all 18 family-B Flat captures exact, as predicted. But it also moved a
+> flat Lighting_range/Directional specular block from silicon's blue 224 to
+> 225, and 19 other lit captures got worse. Sections 2 and 3 describe the
+> candidate as it was registered, before that verdict. The branch now
+> carries no code change.
+
 Lane brief: find a float pipeline in vsh-ff.c's lighting path that puts
 Shade model's normal 3 on silicon's side of the tie (blue 60, ours 59). It must
 leave the 178.5 tie of normal 1 at 179, and it must be derived from something
@@ -107,3 +114,108 @@ refs (a = 0a4e284536, b = 6765c1f5e9). The arms job will run it and post a
 `unreadable`, and run1.log for PARTIAL COVERAGE and UtilAcceptVsock. Then
 mark the PR ready if every leg holds. If the must_move leg fails, record it
 here as a refutation.
+
+**Why session 1 did not finish:** it ended correctly, waiting on a ~90 min
+arm with no way to sleep. `jobs/handback.sh` resumed it (attempt 2) once the
+verdict was in.
+
+## 6. The verdict: must_move held, the mechanism is refuted
+
+`[job.arms]` FAIL on PR #252, 20 of 346 checks violated. a = 0a4e284536
+(`1790350154-arms-shadetie224-base-95329`), b = 6765c1f5e9 (`...-fix-95351`).
+Full text: `$WORK/arms/pairs/b5347566b510...verdict.txt`.
+
+**Status column:** both arms show `ok` for 370 of 370 captures. Neither
+run1.log has PARTIAL COVERAGE or UtilAcceptVsock, and the disc is identical
+in both arms. The 18 "now exact" are real, not unreadable captures scored
+as 0.
+
+| leg | result |
+|---|---|
+| expect = 0, the 18 Fixed/W_Fixed Flat carrying B | **all 18 went to 0** (e.g. W_Fixed_QuadStrip_Flat 125,652 -> 0) |
+| expect = 0, the six B-free | stayed 0 |
+| must_not_move, Prog*/FixedTex* | held |
+| (no leg) the 24 Fixed/W_Fixed Smooth | all better, by 834 to 20,595 each |
+| must_not_regress | **20 worse**: see below |
+
+Regressions (base -> fix):
+
+- **Lighting_range/Directional: 792 -> 66,328.** Exactly +65,536: one
+  256x256 block, every pixel `(255,255,224)` -> `(255,255,225)`. The base
+  has 0 off-by-one pixels there, so silicon writes 224.
+- Lighting_control: 10 worse (+13..+97) and 6 better (-41..-58). The
+  NoSpec rows all move by the same +52 or -58.
+- Specular: 5 worse, including Pow24_0 +321, and 5 better. Specular_back: 4
+  worse and 5 better.
+
+The Directional block is the decisive one. It is a flat, uniformly lit
+area where lt(N) pushes a byte across a truncation step, **away** from
+silicon. Section 3 registered "a capture that gets WORSE there refutes the
+mechanism, not the leg", so rounding the normal at the XF->LT boundary, as
+implemented, is not silicon's rule. Every mover in the other suites is a
+1-LSB class, and they are mixed in direction. That is the signature of a
+rule that is near silicon's but not the same.
+
+What the verdict does establish: family B **is** a precision effect on the
+light path's inputs. Moving N by at most 2^-14 relative fixed all 18
+captures exactly and did not move one B-free capture. So the brief's
+"world in which must_move fails" (a reduced-precision store before the
+interpolator, moving 59 to 61) did not happen.
+
+### Third tie point: Lighting_range/Directional
+
+The inputs, from nxdk_pgraph_tests `src/tests/lighting_range_tests.cpp`:
+
+- The light is a directional light, dir (0,0,1). Its ambient is 0.05 grey,
+  its diffuse (1,1,0) and its specular (0,0,1). Scene ambient is 0.031373,
+  emission 0.
+- SPECULAR_PARAMS are the six raw words 0xBF56C33A, 0xC038C729, 0x4043165A,
+  0xBF34DCE5, 0xC020743F, 0x40333D06. Specular is on, with
+  LIGHT_CONTROL SEPARATE_SPECULAR | ALPHA_FROM_MATERIAL_SPECULAR.
+- The mesh is FlatMeshGridModel. The quad normals are
+  (±0.099014754, ±0.099014754, -0.990147543).
+- The combiner is diffuse + specular.
+
+The blue in that block is specular, because the light's diffuse has no
+blue. So the refuting tie runs through the specular power function, not
+through N.L x diffuse. The next candidate has to be priced against all
+three points: Shade_model n=3 (60), n=1 (179) and this block (224). It is
+not priced here. price.py models diffuse only; extending it needs vsh-ff.c's
+specular-params evaluation.
+
+## 7. Withdrawn, and what the next lane should do
+
+The vsh-ff.c change is reverted (353f68c938) and master is merged in
+(f533edc352). The diff against master is now docs only: this file,
+price.py, register.py, and the refuted prediction, kept as the record.
+
+**The `regressed` label will stay.** `arms.sh` works it out from the
+verdicts on disk, per issue, for this branch. Only a newer #224 verdict can
+supersede the FAIL. I did not queue a withdrawal arm: a docs-only head builds
+master's binary, so the two arms would be one APK. ab_compare refuses that
+without `--allow-same-binary`, which is the noise-floor mode, and a PASS
+there would test nothing. The PR carries no pixel change. Folding it needs
+one of two things. The owner can add `regression-accepted:224` (the
+"regression" is on a sha this diff no longer contains), or the PR can be
+closed and these notes carried by a later #224 lane. A harness rule that
+drops a FAIL once the branch no longer touches the arm's files would cover
+this case in general.
+
+For the next #224 family-B lane:
+
+- Do not re-run lt(N) on the whole normal. This arm refutes it.
+- Candidates that are still unpriced: the LT's truncating multiply and add
+  (`ltN+trunc`, identical to lt(N) on Shade_model, so it needs the
+  Directional point to separate them); lt() on N.L only, or on the
+  diffuse product only (leaving the specular path's inputs alone); and
+  round-to-nearest in place of truncation at one named stage. Price each
+  against all three ties, and against the Lighting_control NoSpec rows,
+  which move as a single block of 52 or 58 px.
+- If none fits all three with an argument that is independent of them,
+  the capture to ask for is an nxdk_pgraph_tests case. It would be
+  Shade_model's light and material with one flat quad per normal, the
+  normal's z stepped across the 0.3333 tie at 1-ulp spacing (±8 ulp), and
+  a second row stepping the Directional specular setup's normal z the same
+  way. It needs no specular for row 1 and no diffuse blue for row 2. Each
+  quad's byte then reads off which side of the tie silicon puts that input
+  on, and the rounding point is a measurement, not a fit.
