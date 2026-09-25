@@ -225,3 +225,42 @@ fix `1790353899-arms-vshnobegin242-fix-1227042` (queued). No verdict yet.
 Waiting only for the `[job.arms]` verdict on the runs3 prediction. The
 judging instructions under attempt 3 still apply. The PR stays draft and
 `regressed` until that verdict supersedes the single-run FAIL.
+
+## Attempt 5 (2026-09-25 ~18:30Z, resumed by the host brief)
+
+### Why attempt 4 did not finish
+
+It ended WAITING, on purpose, for the runs3 verdict. The verdict landed at
+18:03Z (PASS), but handback keys its resumes on the branch head, and that
+head had already been used for attempt 4's resume. So nothing resumed this
+lane until the host did it by hand. lane.handbackstrand owns that fix.
+
+### Verdict: PASS, 403 of 403
+
+`[job.arms] VERDICT: PASS -- all 403 registered checks hold` for
+`vshnobegin242-must-not-move-runs3.json` (a_ref a8691063e6, b_ref 6e3b1aff8b).
+It supersedes the single-run FAIL. The PR label is `verified`.
+
+What I checked before trusting it:
+- `scores1..3.tsv` in both arms have 404 rows each and 0 `unreadable`.
+- No run log in either arm says PARTIAL COVERAGE.
+- One `UtilAcceptVsock ... accept4 failed 110` line appears in base run1 and
+  one in fix run3. Neither cost a capture, since the row counts are full.
+
+So the four GeometrySuperscreen movers in the single-run FAIL were device
+noise, as attempt 2 read them.
+
+### Merge
+
+The PR was CONFLICTING again after 32 more master commits. I merged
+`origin/master` without rebasing; the only conflict was `nv2a_index.json`. I
+took master's copy and rebuilt it over `fold-pins/nxdk_pgraph_tests` @
+6743b6a with `--support fold-pins/pbkitplusplus` @ e91d509. `check --tests
+--support` says it matches. After the merge, every prediction ref
+(21946df29b, bd552105ed, a8691063e6, 6e3b1aff8b) is still an ancestor of
+HEAD.
+
+### State at the end of attempt 5: DONE
+
+The PR is marked ready. #255 (negative subnormals becoming +0) is the
+follow-up in this same file. It is deliberately not folded in here.
