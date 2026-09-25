@@ -141,7 +141,7 @@ Queued (Nova, 240 s, frames every 2 s):
 
 ## 5. The fix hunk (named, not applied)
 
-`docs/lanes/ghoul311/fix-keep-armed.patch`: under XBOX, do not
+`docs/lanes/ghoul311/fix-keep-armed.diff.txt`: under XBOX, do not
 `tlb_unprotect_code` when a page empties (`tb-maint.c:1812-1815`, the only
 disarm site). The next `tb_page_add` then finds the code bit still clear and
 the walk does not happen. It needs a grant on `accel/tcg/tb-maint.c`
