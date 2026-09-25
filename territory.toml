@@ -737,6 +737,13 @@ standing = false
 note = "LABELLED `cloud` WAVE 144 (job.board): briefs/190.md already existed (written, never used while pmc.c was held by lane.pmc188/PR #198) and is still exactly right -- read-only model, pmc_read returns the measured 0x00000001 for 0x160 and each dword in 0x204-0x2FC except 0x200 (#188's, left alone), falsifier is a desktop-build test, needs device: no, needs NDK: no. #190 is lowest severity of the three PMC issues by the filer's own reading, so on severity alone it would run last, but #189's first step needs no files at all (see briefs/189.md, labelled cloud the same tick with no territory claim) and #200's brief is stale (its analysis half was already answered directly, see issue.200 status_note CORRECTED) so neither collides with or outranks this claim for the one file that matters. Claims pmc.c only -- nv2a_regs.h is NOT this row's, it went to [free]."
 
 
+[lane.vklayer34]
+issues = ["34"]
+files = ["android/app/build.gradle.kts", "docs/lanes/vklayer34/**", "docs/testing/vk_validation_android.md"]
+standing = false
+note = "DISPATCHED WAVE 150 (job.board): #34's desktop half is closed (all eight findings zero); the open item is the Adreno confirmation, blocked on nothing packaging the validation layer in android/. lane.remote's claim on vk/* was files = [] by wave 147, so nothing collides. Brief briefs/vklayer34.md."
+
+
 [retired.clrvk184]
 issues = []
 retired_utc = "2026-09-21T14:04:00Z"
