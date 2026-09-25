@@ -259,9 +259,34 @@ check "...on the SUMMARY line, which is the only line the idle watchdog prints" 
 # second apart in that order. Seconds of skew are not what the three-hour
 # threshold is about, and the honest fixture is therefore a stale scan under a
 # stale delivery -- the note has to say which of the two you are looking at.
-brief_cache 10 9; out="$(cov_d)"
+#
+# "Nobody has refreshed" means the SWEEP stamp is old too: the scans above
+# wrote a fresh one, which is what a running timer does.
+sweep_at() {   # <hours ago> -> $DDISP/delivery-cache/.sweep-scanned
+    date -u -d "@$(( $(date +%s) - ${1%.*} * 3600 ))" +%Y-%m-%dT%H:%M:%SZ \
+        > "$DDISP/delivery-cache/.sweep-scanned"
+}
+sweep_at 9; brief_cache 10 9; out="$(cov_d)"
 check "a delivery cache nobody has refreshed for 9h says so rather than reading fresh" \
     grep -q "cache last refreshed 9.0h ago" <<< "$out"
+# A QUIET LANE IS NOT AN UNSCANNED ONE (2026-09-25: clrwb91 at 3.8h, vshconst
+# and xbox at 6.8h, while the timer ran hourly and exited 0). The lane's own
+# `scanned` is 9h old because no comment of its landed in any window since;
+# the sweep read the feed an hour ago.
+sweep_at 1; brief_cache 10 9; out="$(cov_d)"
+check "a quiet lane under a sweep that ran 1h ago is not reported as an unrefreshed cache" \
+    bash -c 'grep -q "last brief 10.0h" <<< "$1" && ! grep -q "cache last refreshed" <<< "$1"' _ "$out"
+sweep_at 9
+env PATH="$DBIN:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" DELIVER_FEED="$qfeed" \
+    bash "$DSRC/jobs/deliver.sh" scan --since 2026-09-01T00:00:00Z >/dev/null 2>&1
+check "a successful scan -- even of an empty window -- stamps the sweep" \
+    bash -c '[ "$(cat "$1")" \> "$(date -u -d "10 minutes ago" +%Y-%m-%dT%H:%M:%SZ)" ]' _ "$DDISP/delivery-cache/.sweep-scanned"
+sweep_at 9; DSTAMP="$(cat "$DDISP/delivery-cache/.sweep-scanned")"
+env PATH="$DD/bin-dead:$PATH" GH_REPO="example/hakux" DISPATCH_DIR="$DDISP" \
+    bash "$DSRC/jobs/deliver.sh" scan --since 2026-09-01T00:00:00Z >/dev/null 2>&1
+check "a FAILED scan leaves the sweep stamp alone, so a failing timer still ages it" \
+    test "$(cat "$DDISP/delivery-cache/.sweep-scanned")" = "$DSTAMP"
+unset DSTAMP
 rm -f "$DDISP/delivery-cache/alpha.json"; out="$(cov_d)"
 check "no delivery on record reads 'never', not 'a long time ago'" \
     grep -q "last brief never" <<< "$out"
