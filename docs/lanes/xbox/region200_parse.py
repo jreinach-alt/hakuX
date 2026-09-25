@@ -29,6 +29,15 @@ The canary is checked per block. If BOOT_0 is not 0x02A000A3 the read path is
 not trustworthy and the whole log is refused, because a byte-swapped MMIO
 window has produced confident nonsense here before.
 
+Amended before the console run (after the Thor dry run): the instrument's
+`DumpDiff` formats the label into `char line[64]`, so a long
+`Suite::Test` is TRUNCATED and loses its newline, and the next line (the
+BOOT_0 canary) is glued onto the label. Thirty `Texture shadow comparator`
+names collapsed into shared prefixes that way. So tests are named from the
+log's own `Starting [k/N] Suite::Test` line, which carries the full name
+and immediately precedes the test's block, and a canary glued onto a label
+line is checked like any other.
+
 This file writes nothing unless --json is given.
 """
 import argparse
@@ -65,22 +74,43 @@ for _i in range(4):
     REGS[0x1A34 + 4 * _i] = ("TEXPALETTE%d" % _i, 0x00000032, 0)
 
 LABEL = re.compile(r"^PGRAPH-DIFF (.+?)\s*$")
+STARTING = re.compile(r"^Starting \[\d+/\d+\] (.+?)\s*$")
+GLUED = re.compile(r"PMC BOOT_0\(canary\) 0x[0-9A-Fa-f]{8} = 0x([0-9A-Fa-f]{8})\s*$")
 PMC = re.compile(r"^PMC (\S+) 0x([0-9A-Fa-f]{8}) = 0x([0-9A-Fa-f]{8})\s*$")
 REG = re.compile(r"^0x([0-9A-Fa-f]{8}): 0x([0-9A-Fa-f]{8}) => 0x([0-9A-Fa-f]{8})\s*$")
 
 
 def parse(lines):
-    label, blocks, canary_bad, completed = None, 0, [], False
+    label, blocks, canary_bad, completed, started = None, 0, [], False, None
+    truncated = 0
     seen = {}  # offset -> {"set", "toggle", "dnw_set", "dnw_toggle", "n", "tests"}
     tests, other_regs = set(), set()
     for raw in lines:
         line = raw.rstrip("\r\n")
         if "Testing completed normally" in line:
             completed = True
+        m = STARTING.match(line)
+        if m:
+            started = m.group(1)
+            continue
         m = LABEL.match(line)
         if m:
             label, blocks = m.group(1), blocks + 1
+            g = GLUED.search(label)
+            if g:
+                truncated += 1
+                label = label[:g.start()]
+                if int(g.group(1), 16) != CANARY:
+                    canary_bad.append((label, g.group(1)))
             if not label.startswith("SUITE-RESIDUAL "):
+                if started is None or not started.startswith(label):
+                    raise ValueError("diff block %r does not follow its test's "
+                                     "Starting line (last: %r)" % (label, started))
+                # One Starting line names exactly one block: consume it, or a
+                # block whose own Starting line is missing would be credited
+                # to the previous test whenever the truncated label is also a
+                # prefix of that test's name.
+                label, started = started, None
                 tests.add(label)
             continue
         m = PMC.match(line)
@@ -107,7 +137,8 @@ def parse(lines):
         if (frm | to) & (hole | dnw):
             s["tests"].add(label or "(before any label)")
     return dict(blocks=blocks, tests=tests, completed=completed,
-                canary_bad=canary_bad, seen=seen, other_regs=other_regs)
+                canary_bad=canary_bad, seen=seen, other_regs=other_regs,
+                truncated=truncated)
 
 
 def main(argv=None):
@@ -118,8 +149,9 @@ def main(argv=None):
     a = ap.parse_args(argv)
     with open(a.log, errors="replace") as fh:
         r = parse(fh)
-    print("%s: %d diff blocks, %d tests, log %s" % (
-        a.log, r["blocks"], len(r["tests"]),
+    print("%s: %d diff blocks, %d tests (%d labels truncated by the "
+          "instrument, named from Starting lines), log %s" % (
+        a.log, r["blocks"], len(r["tests"]), r["truncated"],
         "COMPLETED" if r["completed"] else "has NO completion marker"))
     if not r["blocks"]:
         print("REFUSED: no PGRAPH-DIFF block; the instrument did not run")

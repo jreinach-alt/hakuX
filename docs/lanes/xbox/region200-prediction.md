@@ -88,3 +88,30 @@ synthetic logs: a middle-line-only bit, a bad canary, and no instrument.
 The numbers go on #200. The parser's JSON for both sides is committed as a
 scored result. The raw logs stay on the host under
 `~/hakux-work/hardware/runs/2026-09-25-region200/`.
+
+## Amendment, after the Thor dry run and before the console run
+
+The dry run (`1790347539-xbox-region200-dryrun-3236568`) completed normally
+in 592 s. It produced 800 diff blocks, 782 tests plus 18 suite residuals, and
+no crash signal.
+
+It also exposed an instrument defect in `8158852`:
+
+- `DumpDiff` formats `PGRAPH-DIFF <Suite>::<Test>` into `char line[64]`.
+- A long name is truncated and loses its newline, which glues the BOOT_0
+  canary line onto the label.
+- 239 of the 800 labels were cut this way. Thirty long
+  `Texture shadow comparator` names collapsed into shared prefixes.
+
+**The XBE is NOT changed.** A fix would be a new XBE, which would need a new
+dry run, and the console would no longer run the bytes the dry run cleared.
+The parser changes instead, before any console data exists:
+
+- **Test names** come from the log's `Starting [k/N] Suite::Test` line. It
+  carries the full name, immediately precedes the block, and is consumed by
+  exactly one block.
+- **A glued canary** is checked like any other.
+
+The hole logic is untouched. Three new synthetic mutants each fail for their
+own reason: a glued bad canary, a block missing its `Starting` line, and the
+good case. The console config lists the dry run's 782 tests by full name.
