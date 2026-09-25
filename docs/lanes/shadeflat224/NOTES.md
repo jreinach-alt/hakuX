@@ -15,6 +15,21 @@ accepted the unreadable diagnosis (and withdrew its #223 heads-up), but the FAIL
 and `regressed` stand because W_param's must_not_move legs have no valid
 measurement. See section 4d.
 
+**Attempt 4 (2026-09-25, handback on `needs-rebase`): the replicate PASSED,
+all 461 checks, W_param readable and byte-identical (section 4e). `regressed`
+is gone and the PR carries `verified`. The fold then hit a conflict in
+`docs/testing/nv2a_index.json`. The host session resolved it on the branch at
+07:01 PDT (merge `0d66f70611`, index regenerated) and bumped
+`SHADER_STATE_LAYOUT_VERSION` (`32319107ab`) as lane.xbox asked, in parallel
+with this handback; this attempt reproduced both independently, found them
+identical, dropped its unpushed duplicates, and verified the head (section 6).**
+
+Why attempt 3 did not finish: it did, as a wait. It committed and pushed the
+replicate prediction, which queued the arm, and stopped. The arm PASSED at
+04:05 PDT. Later, the fold job could not merge the branch because master had
+also regenerated `nv2a_index.json`, so the handback resumed the lane on
+`needs-rebase`.
+
 Why attempt 1 did not finish: it did, as a wait. It pushed the registered
 prediction, posted the wait and stopped. Attempt 2 is the handback on the
 verdict.
@@ -237,6 +252,27 @@ When the verdict lands, read every mover's `[status]` tag before its "better"
 or "worse". A PASS with W_param at 110 of 110 readable settles the legs. Any
 `unreadable` row is a void leg again, not a result.
 
+### 4e. Replicate verdict: PASS, all 461 checks
+
+`[job.arms] VERDICT: PASS -- all 461 registered checks hold`, judged 04:05
+PDT. Pair A = `1790332452-arms-shadeflat224-base-1762566` (a6bb4a13d4),
+B = `1790332452-arms-shadeflat224-fix-1762588` (3ce8778094), one run each.
+
+- Movers: exactly the 12 registered `*Tex` Quad/QuadStrip Flat captures, with
+  the same B values as the first run (6, 104, 115, 29, 14, 24). Every
+  magnitude bound in section 3 holds again.
+- Counts: better 12, worse 0, same 439, noise 0. Exact 96 -> 96.
+- Byte check: **12 of 451 captures differ**, and they are the 12 movers. So
+  every W_param capture (110 of 110) was readable in both arms and
+  byte-identical between them. No `unreadable` row anywhere. The first run's
+  56 unreadable rows were the WSL interop pull, as diagnosed.
+- Front_face is a FLOOR in both arms (24 of 36 goldens scored), as in every
+  arm on record for that suite. It is a must_not_move leg and did not move.
+
+The arms job marked the first FAIL superseded and applied `verified`;
+`regressed` cleared by itself. **#223's W_param residual is unchanged by this
+PR**, now measured rather than inferred.
+
 ## 5. Do not repeat
 
 - A plain revert of the flat branch fixes the texture and breaks the v3
@@ -249,3 +285,37 @@ or "worse". A PASS with W_param at 110 of 110 readable settles the legs. Any
   disagree about adjacency on the second draw.
 - Do not read a verdict's "now exact" before its `[status ...]` tag. A
   move to `unreadable` is a capture that failed to open, scored as 0.
+
+## 6. After the verdict: the merge conflict and the shader-cache version
+
+Both items below were done twice, once by the host session directly on the
+branch (07:01 PDT, pushed) and once in this worktree (unpushed, rejected on
+push). The two resolutions were identical, so this attempt dropped its own
+commits and kept the host's; only NOTES is this attempt's. Recorded here so
+the next resume does not do it a third time.
+
+- **`nv2a_index.json` conflict (fold at `9925a927c2`).** Master had also
+  regenerated the index (line moves from other folds). A generated file is
+  regenerated, not hand-merged: take master's copy, then
+  `nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support
+  /home/justin/pbkitplusplus` on the merged tree. Both sides and the local
+  tests checkout are at `tests_commit 6743b6ab`, so no suite could drop out.
+  Result 951 symbols / 2841 sites / 104 suites, the same as both parents;
+  `check` passes. The diff against master is `loc` moves in this lane's
+  files only. (Host: merge `0d66f70611`, then `b9dd2dce1e` after the
+  renderer.c comment moved lines again.)
+- **`SHADER_STATE_LAYOUT_VERSION` 1 -> 2 in `vk/renderer.c`** (host commit
+  `32319107ab`), on lane.xbox's request (#235 comment, #238). The fix arm
+  persisted geometry-shader keys with
+  `primitive_mode = PRIM_TYPE_TRIANGLES_ADJACENCY` into both handhelds'
+  `shader_module_keys.bin`. A build without the enum regenerates every key at
+  startup and aborts at `geom.c`'s `default: assert(false)` before any guest
+  code runs. The wipe is keyed on struct sizes plus this version, and a new
+  enum value changes no size, so nothing else tells the two sides apart. With
+  the bump, every switch across #235 wipes the cache instead. This changes
+  no pixel: it only decides when the on-disk cache is discarded. The
+  registered refs (a6bb4a13d4 / 3ce8778094) are unchanged; the bump is on the
+  head, not in the arm, and the arm's question (which diagonal, which
+  provoking vertex) is not asked of it.
+- The devices' caches are already poisoned by the fix arm, independent of this
+  PR; lane.xbox has asked the owner about clearing them (#238).
