@@ -265,11 +265,73 @@ PR #260, decision #257 option 3.
   - Three mutants, run from copies inside the fragment, each red on its named
     case: no `docs/` restriction (a), any-overlap-withdraws (b), and a PASS
     withdrawn too (d).
-- FALSIFICATION_PLACEHOLDER
-- **Real check.** `arms.sh state lane/shadetie224` on the host:
-  `STATE=none`, `withdrawn shadetie224-ltnormal.json`, naming
+- **Falsification.** The fragment was copied into a scratch worktree at
+  `origin/master` (`d709a8d1fa`), and master's own arms.sh was never swapped.
+  (a) is red there for the reason this defect exists: "a fully reverted
+  refuted branch is not regressed" FAILs, because the old code says
+  `regressed`. (e) and the tick's label removal are red too. (b), (c) and (d)
+  are green, since the old code already gets those right. The three mutant
+  anchors are absent from the old file, as expected. That run had 1372
+  passes and 10 failures, all 10 in this fragment.
+- **Real check.** `arms.sh state lane/shadetie224` on the host, re-run
+  2026-09-25 after merging master: `STATE=none`,
+  `withdrawn shadetie224-ltnormal.json`, naming
   `hw/xbox/nv2a/pgraph/glsl/vsh-ff.c` as the code that is gone.
-- SELFTEST_PLACEHOLDER
+
+## Defect 12: arms backpressure counted the idle tier
+
+- **The shape.** The workers serve `queue/` in glob order, so `z-*` (the
+  full-corpus sweep, one request per suite) sorts behind every arm. arms.sh
+  counted every `.req`, though. A queued sweep of about 100 requests held
+  `waiting` above `ARMS_QUEUE_MAX=4`, and no lane's arm was queued. The host's
+  stopgap, `ARMS_QUEUE_MAX=1000`, removes backpressure entirely.
+- **The fix.** `waiting` counts only the requests that are not `z-*`. The
+  refusal line prints both counts: `queue has N waiting ahead of the idle
+  tier, M idle-tier z-* behind it`.
+- **The other readers.**
+  - `status.sh` (summary and queue line) and `board-status.sh` now print the
+    idle tier apart.
+  - `idle-watchdog.sh` and `backlog-gate.sh` already split `z-*` out.
+  - `fleet.py`'s `queue_stall` is correct as it stands. Its busy evidence
+    needs a claimer running something that sorts after the waiting request,
+    and nothing sorts after `z-*` except another `z-*`. An idle worker would
+    claim a `z-*` itself. So a `z-*` waiting behind real work is never
+    counted as a stall. It was left unchanged.
+- **Defect 12b.** `queue_full_sweep.sh` now resolves `"$REF^{commit}"`, so an
+  annotated tag peels to its commit instead of the tag object.
+- **Proof.** Fragment `94-arms-idle-tier.sh`, with its own work dir and
+  dispatch dir:
+  - 100 `z-*` requests plus 1 normal request: the pair is queued.
+  - 100 `z-*` requests plus 4 normal requests: refused, and the line names
+    both counts. This keeps a no-backpressure fix red.
+  - The mutant that counts every request refuses the pair (red).
+  - Against master's arms.sh in the scratch worktree, the queueing legs are
+    red.
+- **After the fold,** the host deletes
+  `~/.config/systemd/user/hakux-arms.service.d/zsweep-backpressure.conf`.
+
+## Defect 13: a worker's re-snapshot rewrote the other worker's running script
+
+- **The shape.** `snapshot_scripts` used `cp -f` into the shared `$SNAP`, which
+  rewrites the file in place. bash reads a running script by byte offset. On
+  2026-09-25 the Thor read the new `run_disc.sh` at the old offset, and the
+  run was voided.
+- **The fix.** Each file is written to `$SNAP/.<f>.tmp.$$` and then `mv`'d
+  into place. The rename swaps the inode, so a running bash keeps the old
+  inode. An unchanged file (`cmp -s`) is not touched at all.
+  - Per-worker snapshot directories were considered and not done. The
+    rename alone closes the race, and a per-worker `$SNAP` would change the
+    path every re-exec and every other reader of `$D/bin` depends on.
+- **Proof.** Fragment `97-dispatch-snapshot-rename.sh` is exact, not a race.
+  v1 starts with `sleep 2` (8 bytes), and v2 is built so that its byte 8
+  starts `echo GARBLED`.
+  - With the fix, the running v1 prints `v1-done`, the snapshot holds v2,
+    and no temp file is left behind.
+  - The mutant (`cp -f` in place) prints `GARBLED v2-done` (red).
+  - Master's dispatcher.sh in the scratch worktree fails the `v1-done` leg
+    (red).
+- **Selftest,** on the branch after merging master (defects 11 to 13):
+  `bash docs/testing/jobs/selftest.sh` gave 1393 passed, 0 failed.
 
 ## For the next lane
 

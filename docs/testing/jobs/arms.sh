@@ -71,7 +71,7 @@ LOG="$WORK/logs/arms/tick.log"
 say() { echo "$(say_time_s) $*" | tee -a "$LOG"; }
 [ -f "$WORK/limits.env" ] && . "$WORK/limits.env"
 MAX_PAIRS="${ARMS_MAX_PAIRS_PER_TICK:-2}"   # pairs queued per tick; both handhelds busy is the goal, a 40-deep queue is not
-QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait
+QUEUE_MAX="${ARMS_QUEUE_MAX:-4}"            # do not queue when this many requests already wait ahead of the z-* idle tier
 # Default watermark: two days back, not "now". Seeded at "now" on the first
 # install, it made every prediction the lanes had pushed THAT DAY read as
 # history, and the first tick queued nothing while PR #102's live arm sat
@@ -749,7 +749,13 @@ fi
 
 # ------------------------------------------------------------------- queue
 queued=0
-waiting=$(ls "$D"/queue/*.req 2>/dev/null | wc -l)
+# BACKPRESSURE COUNTS ONLY WHAT AN ARM WOULD WAIT BEHIND. The workers serve
+# queue/ in glob order, and `z-*` is the idle tier (the full-corpus sweep, one
+# request per suite): every arm sorts ahead of it. Counting it too let a queued
+# ~100-suite sweep hold `waiting` over ARMS_QUEUE_MAX for hours, so the most
+# urgent work starved behind the least (dispatch-hardening defect 12).
+waiting=$(ls "$D"/queue/*.req 2>/dev/null | grep -vc '/z-[^/]*$')
+idle_tier=$(ls "$D"/queue/z-*.req 2>/dev/null | wc -l)
 while read -r sha path src; do
     [ -n "$sha" ] || continue
     # A marker already on the host may predate tell_skip; announce it once.
@@ -775,7 +781,7 @@ while read -r sha path src; do
         echo "WOULD QUEUE $sha $src who=$who issue=#$issue a=$a b=$b suites=[$suites]"; continue
     fi
     [ "$queued" -lt "$MAX_PAIRS" ] || { say "pair cap $MAX_PAIRS reached this tick; $src waits"; continue; }
-    [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting (ARMS_QUEUE_MAX=$QUEUE_MAX); $src waits"; continue; }
+    [ "$waiting" -lt "$QUEUE_MAX" ] || { say "queue has $waiting waiting ahead of the idle tier, $idle_tier idle-tier z-* behind it (ARMS_QUEUE_MAX=$QUEUE_MAX counts the first); $src waits"; continue; }
     name=$(echo "${who:-arm}" | sed 's/^lane\.//; s/[^A-Za-z0-9_-]/_/g' | cut -c1-24)
     # runs_per_arm is optional. The first version tested "${runs:-1}" and never
     # assigned it, so a prediction without the field handed request.sh
