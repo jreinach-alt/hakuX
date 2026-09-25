@@ -15,6 +15,7 @@
 int main(void)
 {
     const char *topo = getenv("HAKUX_TOPO");
+    hakux_place_vcpu_once();   /* HAKUX_PLACE_VCPU pins this thread */
     hakux_hostbench_maybe_run();
     if (topo && topo[0] && strcmp(topo, "0") != 0) {
         pause();

@@ -4496,6 +4496,13 @@ static void tcg_out_tb_start(TCGContext *s)
     tcg_out_bti(s, BTI_J);
 
 #ifdef XBOX
+    /* HAKUX_PLACE_VCPU: first translation runs on the vCPU thread. */
+    if (unlikely(!hb_place_state)) {
+        hakux_place_vcpu_once();
+    }
+#endif
+
+#ifdef XBOX
     if (xbox_ram_size) {
         /*
          * Preamble: check active/cb_count once per TB and cache

@@ -794,6 +794,70 @@ static void hakux_topo_start(const char *spec)
     }
 }
 
+/* ------------------------------------------------------------------------
+ * vCPU placement prototype: HAKUX_PLACE_VCPU=prime | <hex cpu mask>.
+ *
+ * XEMU_OPT_THREAD_AFFINITY, the fork's own pinning, is compiled out (it
+ * defaults to 0 and the Android CMake never sets it), and its 90%-of-max
+ * threshold would have put qemu-main AND every thread it spawns on the one
+ * prime core. This pins only the vCPU thread, identified as the thread that
+ * generates code: called from tcg_out_tb_start, so on the first translation.
+ * "prime" = the CPUs whose cpuinfo_max_freq equals the highest (cpu7, the
+ * Cortex-X3, on SD 8 Gen 2).
+ */
+static int hb_place_state;   /* 0 = not yet looked, 1 = done */
+
+static hb_mask hb_prime_mask(void)
+{
+    long long f[HB_MAX_CPUS], max = 0;
+    int i, n = hb_ncpus();
+    hb_mask m = 0;
+    char path[96];
+    for (i = 0; i < n; i++) {
+        snprintf(path, sizeof(path),
+                 "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", i);
+        f[i] = hb_read_ll(path);
+        if (f[i] > max) {
+            max = f[i];
+        }
+    }
+    for (i = 0; i < n && max > 0; i++) {
+        if (f[i] == max) {
+            m |= 1ul << i;
+        }
+    }
+    return m;
+}
+
+static void hakux_place_vcpu_once(void)
+{
+    const char *spec;
+    hb_mask m;
+    if (hb_place_state) {
+        return;
+    }
+    hb_place_state = 1;
+    spec = getenv("HAKUX_PLACE_VCPU");
+    if (!spec || !spec[0] || strcmp(spec, "0") == 0) {
+        const char *topo = getenv("HAKUX_TOPO");
+        if (topo && topo[0] && strcmp(topo, "0") != 0) {
+            /* Name the vCPU tid so the sampler's rows can be read by role
+             * in the unpinned arm too. */
+            hb_log("place vcpu tid=%ld spec=none -> NOT PINNED",
+                   (long)syscall(__NR_gettid));
+        }
+        return;
+    }
+    m = strcmp(spec, "prime") == 0 ? hb_prime_mask()
+                                   : strtoul(spec, NULL, 16);
+    if (m == 0) {
+        hb_log("place vcpu spec=%s -> empty mask, not pinned", spec);
+        return;
+    }
+    hb_log("place vcpu tid=%ld spec=%s mask=0x%lx -> %s", (long)syscall(__NR_gettid),
+           spec, m, hb_setaffinity(m) == 0 ? "PINNED" : "FAILED");
+}
+
 /* The one entry point: two getenv() calls when neither is set. */
 static void hakux_hostbench_maybe_run(void)
 {
