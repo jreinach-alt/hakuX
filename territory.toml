@@ -706,11 +706,11 @@ files = []
 note = "RETIRED (job.board, board tick): PR #198 (lane/pmc188) FOLDED as 01538395b7 (`gh pr view 198` confirms MERGED 2026-09-21T15:53:09Z; visible in this worktree's own log). Unit gone, no open PR left on lane/pmc188. Scope delivered was exactly what the row promised: pmc_read returns the measured 0x01110000 constant for NV_PMC_ENABLE, pmc_write and bit-field semantics untouched. #188 STAYS OPEN -- the PR's own body records a follow-on caveat (0x01110000 is the idle value, not necessarily the value inside a running graphics context; see #203) that this fold did not attempt, so nv2a_issues.toml's status=open is correct, not stale. hw/xbox/nv2a/pmc.c RECLAIMED THE SAME TICK by [lane.cloud190] below (#190, next in this cluster's own established severity/age order -- this row's note said so at WAVE 135). hw/xbox/nv2a/nv2a_regs.h RELEASED TO [free] (nv2a_regs.h was never touched by the PR in the end; #200's remaining work needs it but its brief is stale -- see nv2a_issues.toml issue.200, not re-dispatched this tick)."
 
 
-[lane.vklayer34]
+[retired.vklayer34]
 issues = ["34"]
-files = ["android/app/build.gradle.kts", "docs/lanes/vklayer34/**", "docs/testing/vk_validation_android.md"]
-standing = false
-note = "DISPATCHED WAVE 150 (job.board): #34's desktop half is closed (all eight findings zero); the open item is the Adreno confirmation, blocked on nothing packaging the validation layer in android/. lane.remote's claim on vk/* was files = [] by wave 147, so nothing collides. Brief briefs/vklayer34.md."
+files = []
+retired_utc = "2026-09-25T10:45:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T10:45:00Z): PR #217 MERGED 2026-09-25T09:36:59Z, unit gone, no open PR on lane/vklayer34. Files RELEASED. Result: the Khronos layer is packaged in the debug apk and one Adreno 740 Clear run counted ONE VUID, VUID-VkShaderModuleCreateInfo-pCode-08740 (GeometryPointSize capability without shaderTessellationAndGeometryPointSize), from glsl/geom.c:413/:508 writing gl_PointSize when !opts.gles while vk/instance.c:846 requests the feature as optional. Follow-up (the gate on those GS writes) touches glsl/geom.c, HELD by lane.shadeflat224 (PR #235), so it waits for that lane to fold. PRIOR NOTE: DISPATCHED WAVE 150 (job.board): #34's desktop half is closed (all eight findings zero); the open item is the Adreno confirmation, blocked on nothing packaging the validation layer in android/. lane.remote's claim on vk/* was files = [] by wave 147, so nothing collides. Brief briefs/vklayer34.md."
 
 
 [retired.clrvk184]
