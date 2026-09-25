@@ -35,7 +35,7 @@ lesson generalises: a coverage number without a validator is a guess.)*
 
 | what | evidence | issue |
 |---|---|---|
-| `NV_PMC_ENABLE` (0x200) — **read landed, write still nowhere** | silicon reads `0x01110000` with the console idle; `pmc_read` has returned that constant since PR #198. `pmc_write` still drops it via `default:`, deliberately — writing 0 halted the console outright, and what each bit gates is unestablished | #188 |
+| `NV_PMC_ENABLE` (0x200) — **read landed, write still nowhere, and the read is state-blind** | silicon reads `0x01110000` with the console idle; `pmc_read` has returned that constant since PR #198. It now also reads **`0x13111113` under a graphics load**, so the constant is right for the one state it was measured in and wrong for the rendering one. That second word is the read-back of `pb_init()`'s unconditional all-ones write, so it fixes the **implemented-bit mask** and leaves **what each bit gates unestablished** — see `nv2a-probe-pmc-findings.md`. `pmc_write` still drops it via `default:`, deliberately — writing 0 halted the console outright | #188 |
 | `NV_PMC_BOOT_1` (0x004) — the **MMIO endian switch** | not declared and not modelled. Hardware honours it: writing ones byte-swapped every subsequent access | #189 |
 | PMC reads `0x160`, `0x204`–`0x2FC` | silicon returns `1`, emulator returns `0` | #190 |
 | PVIDEO overlay composition | `d->vga.enable_overlay = true` is **commented out** in `pvideo.c`; `nv2a.c:1302` has `overlay_draw_line` commented out too | #110 |
