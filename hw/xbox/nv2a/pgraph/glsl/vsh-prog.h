@@ -28,4 +28,11 @@ void pgraph_glsl_gen_vsh_prog(uint16_t version, const uint32_t *tokens,
                               unsigned int length, MString *header,
                               MString *body);
 
+/*
+ * The constant register this instruction writes, or -1 if it writes none.
+ * A register past the end of the constant file is returned as is; the
+ * caller decides what to do with it.
+ */
+int pgraph_glsl_vsh_token_constant_write(const uint32_t *token);
+
 #endif
