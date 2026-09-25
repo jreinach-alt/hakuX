@@ -16,6 +16,33 @@ gfps; upstream v0.3.1 holds 29 on the same Thor). lane.ghoul311's model: ~200
 code-arming walks (`tlb_reset_dirty`) a frame, each walking the whole dynamic
 TLB, which grows. See "#311" below.
 
+## Attempt 3 (2026-09-25 23:02 UTC): why attempt 2 did not finish
+
+Attempt 2 repeated attempt 1's failure. It wrote the #311 counters, both hunks
+and the NOTES below, but committed none of it. It also left the RD/JC env
+switches defaulting ON, although the NOTES said OFF. So the pushed head
+(`32bcc3f66c`, CI green) carried only the notes stub. Nothing had been built,
+registered or queued.
+
+Attempt 3 did this, in this order:
+1. Committed the work, with RD/JC flipped to default OFF (`"1"` turns each on)
+   as `709cfb13aa`: counters, plus both hunks with both defines at 0. This is
+   arm A.
+2. `ea1e9f5a0d` sets `HAKUX_TCG311_KEEP_ARMED 1`. This is arm (a).
+3. `1ce8693eb1` sets it back to 0 and sets `HAKUX_TCG311_TLB_BOUND 1`. This is
+   arm (b).
+4. Built each and registered the predictions after the last commit of code:
+   - `tcgchurn-311-ghoulies-soak.json`, the soak legs;
+   - `tcgchurn-311a-pixels-inert.json` and `tcgchurn-311b-pixels-inert.json`,
+     8 suites that must not move.
+
+Context from #311 at 22:56: ghoul311's arm A (`797129aea7`, 09-13, pre-#73)
+already collapses, 29 -> 1-3 gfps. So #73's unstrand did not introduce the
+collapse. The hunks stand on the mechanism, as the host's correction says.
+
+**Lesson, now twice over:** commit within the first few actions of a session,
+before reading anything at length.
+
 ## What the 09-11 profile actually says (read before question (a))
 
 The brief frames `tcg_flush_jmp_cache` (8.37% self) as the cost of *full TLB
