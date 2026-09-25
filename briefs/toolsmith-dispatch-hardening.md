@@ -11,6 +11,37 @@ Files: docs/testing/dispatcher.sh, docs/testing/sweep_queue.sh, one new
 globs `[0-9][0-9]-*.sh`), docs/lanes/dispatch-hardening/NOTES.md.
 Needs device: no. Needs NDK: no. Prediction: none, because this is harness work with no arm.
 
+## Defect 0, the TOP priority (added 2026-09-25 03:10 PDT): an unreadable capture scores as "repaired to exact"
+
+This one produces FALSE VERDICTS, so fix it before anything else below.
+
+- `score_sweep.py:147-161` writes an `unreadable` capture as `differing = 0`
+  (`pixels = 0`).
+- `ab_compare.py` then counts a status change `ok -> unreadable` as "better ...
+  now exact".
+
+It happened on #224's arm, pair `42c014b32fab`, fix
+`1790327180-arms-shadeflat224-fix-820924`. That arm's pull hit WSL interop
+failures (defect 3), which left 56 W_param captures unreadable and the run at
+`54 of 110 (49.1%) PARTIAL COVERAGE`, while `result.json` still said 110 of 110.
+The verdict then reported 52 W_param "improvements" (5.12 M -> 1.70 M px).
+They were fake, and they were repeated on #223 before lane.shadeflat224 caught
+them from the status column.
+
+The same flaw can fake a PASS: a must_move leg "improving to exact" when it is
+really unreadable.
+
+What to do:
+
+- A capture whose status is anything but `ok`, in EITHER arm, is VOID for that
+  leg. It is neither better nor worse, and the verdict must list it as
+  unmeasured.
+- A verdict with void legs cannot be a clean PASS. Say which legs.
+- `result.json`'s coverage must agree with the run's own count.
+
+Falsify it on the old code with the real pair above. The old code must report
+52 better, and the new code 0 better with 56 void.
+
 ## Defect 1: the legacy sweep preemption cannot work
 
 - `sweep_queue.sh` demands `BASE_ISO`, `GOLDENS`, `RESULTS` and
