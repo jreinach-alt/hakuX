@@ -257,15 +257,7 @@ static void append_lighting(const VshState *state, MString *body,
 {
     append_lighting_constant(body, side, diffuse_a, specular_a);
 
-    /* The eye-space normal is a value the transform unit hands to the
-     * lighting unit, so it takes the same xf_s2lt rounding as the
-     * registers above; the transform itself (and texgen's use of tNormal)
-     * stays float32. Without it Shade model's normal 3 lights to
-     * 0.7000122 x 0.3333333 = 0.2333374, which colorPrecision() truncates
-     * to blue 59; its z rounded up to 0.3333435 gives silicon's 60, and none of
-     * the suite's other nine lit colours moves (docs/lanes/shadetie224,
-     * price.py). Issue #224. */
-    mstring_append_fmt(body, "  {\n  vec3 N = lt(%s);\n", side->normal);
+    mstring_append_fmt(body, "  {\n  vec3 N = %s;\n", side->normal);
     if (state->local_eye) {
         mstring_append(body,
             "  vec3 VPeye = normalize(eyePosition.xyz / eyePosition.w - tPosition.xyz / tPosition.w);\n"
