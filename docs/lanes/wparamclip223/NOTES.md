@@ -276,6 +276,73 @@ and `check` passes. Leave out `--support` and the build silently drops
 `resolved_tables` to 0. Both prediction refs are still ancestors. The PR
 still waits on the grid verdict, which is due around 18:50Z.
 
+**Why attempt 1 did not finish.** It only waited. The grid arm's first run was
+judged INCOMPLETE at 18:03Z, with 51 legs VOID. The re-queued pair was judged
+PASS at 18:40Z. Handback keys a resume on the branch head, so no resume
+followed the verdict, and the host resumed this lane (attempt 2) by brief.
+
+## 8. The grid arm: PASS, 451 of 451
+
+The pair `1790359706-arms-wparamclip223-{base-2930057,fix-2930907}` ran on
+Thor: a8691063e6 -> 537ffb91ed, apk 66a3ac8ef636 -> f6b4c1aa330b, 451 captures
+each. It was judged 2026-09-25 11:40 PDT. It replaces the INCOMPLETE run
+`1790357477/8`, whose 51 legs were VOID.
+
+I checked the arm by hand before trusting the verdict:
+
+- **Status column:** 0 `unreadable` in either `scores1.tsv`. Both arms have
+  438 `ok`, 10 `white-content` and 3 `label-differs`, on the same captures.
+- **`run1.log`:** 0 UtilAcceptVsock in either arm. PARTIAL COVERAGE appears for
+  Front_face only (24 of 36 goldens), in both arms.
+- **Movers:** exactly the 6 expect rows. The other 445 captures scored
+  identically, `w_gaps` and `w_gaps_tex_persp` included (145,687 in both arms),
+  so the gate leak from section 5 is closed.
+
+| capture | A (base) | B (fix) | expected |
+|---|---:|---:|---:|
+| prog bitri w-0.00 | 271,518 | **746** | 746 |
+| prog bitri w-1.88e-37 | 143,546 | **744** | 744 |
+| prog bitri w-3.76e-37 | 143,494 | **742** | 742 |
+| prog bitri w-7.52e-37 | 4,768 | **743** | 743 |
+| ff bitri w-0.25 | 442 | 314 | 314 |
+| ff bitri w-0.50 | 648 | 386 | 386 |
+
+That is -560,741 differing px on W_param. The four must-move rows now sit at
+the ~742 floor that the rows already drawing this geometry share: the shared
+diagonal plus texel specks (section 2).
+
+## 9. The ff and quad families (~1.64 M): not covered by this change
+
+After the arm, the zero_inf residual is 1,145,823 px on ff bitri and 494,632
+on ff quad, 1,640,455 in total. None of it moved, and this change cannot move
+it:
+
+- **ff quad** rows sit at 79,174, while `prog_..._quad` with the same vertices
+  and the same geometry shader sits at 0. Only the vertex shader differs, so
+  this residual is vsh-ff.c's vertex positions, not geometry.
+- **ff quad** halves also have two negative w (section 2), so the one-negative
+  wedge is never taken.
+- **ff bitri** extreme rows (w-0.00, -1.50e-36, -1.88e-37, -3.76e-37,
+  -7.52e-37, about 146k each): after vsh-ff.c's divide and truncation, N lands
+  exactly on P1-P2 at (320,240). The screen area is 0, so the gate correctly
+  refuses the wedge. The prog rows with the same test vertices do reach the
+  wedge. The ~146k residual is about one wedge's area (compare prog w-1.88e-37
+  at 143.5k), which suggests ff's divide collapses a geometry that silicon
+  keeps. That is an inference: I have not scored the ff golden's region.
+- **ff bitri** w-0.96e-34 and -3.08e-33: tri2 overflows float32 at ~8e35 px.
+  w-inf: 114,508, which the model also over-draws (section 2).
+
+What it would take: a separate lane on `hw/xbox/nv2a/pgraph/glsl/vsh-ff.c`.
+Make the ff transform carry homogeneous `(x, y, z, w)` through to the
+geometry shader, as the prog path does, instead of dividing it
+(`clampAwayZeroInf` and the divide at w = -0 / -inf). The wedge in this PR
+would then see a non-degenerate triangle for ff bitri. Price it offline first
+with `wedge_price.py` by swapping the ff vertex arithmetic for the prog one.
+If the ff bitri model then shows 0 coverage mismatch, the geom.c side needs no
+change. The ff quads also need a two-negative rule, and that rule must keep
+the 20 `prog_..._quad` rows at 0. `rcc_w_zero_inf` (2.36 M) is a different
+mechanism, and its leads are refuted (the brief's "Do not").
+
 ## For the next lane
 
 - A gate that tests for an exact zero must read the quantity silicon
