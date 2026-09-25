@@ -334,3 +334,17 @@ handheld ILU RCP Tests run through `request.sh --program vsh` once #229 folds.
   Build in your own worktree's gitignored `build-linux/` instead, pointing
   PKG_CONFIG_PATH/LD_LIBRARY_PATH at `$WORK/desktop/deps/prefix` (about 25 min
   cold).
+
+## Attempt 5 (2026-09-25, handback: merge conflict)
+
+Why attempt 4 did not finish: it did. It judged arm 2 PASS and marked #234
+ready. Then master moved, and the fold job could not merge the branch at
+`c7f3e27b1f` because both sides had regenerated `docs/testing/nv2a_index.json`.
+
+Resolution: `git merge origin/master` (no rebase, so the prediction's refs
+stay ancestors). I did not hand-merge the generated index. I rebuilt it on the
+merged tree with `nv2a_index.py build --tests ~/nxdk_pgraph_tests --support
+~/pbkitplusplus`. Both sides already had tests_commit 6743b6ab16, and
+`~/nxdk_pgraph_tests` is at that commit. `check` passes. Leaving out
+`--support` gives `resolved_tables: 0` and an index that does not match, so
+pass it. Nothing in the PR's work was re-opened or re-measured.
