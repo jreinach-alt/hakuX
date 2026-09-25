@@ -1563,13 +1563,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:84",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:313",
    "symbols": [],
    "text": "/* FIXME: Missing support for 2-sided-poly mode */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:264",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:498",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,17 +4652,17 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "938543d60da0c786b13503dd8ce85daace7a1119",
+  "emulator_commit": "77bc07d5e27b8a16a100165c1c5cc5c40d032b8d",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2845,
   "suites": 104,
   "support_dirs": [
-   "/tmp/claude-1000/-home-justin-hakuX/27043c55-bae4-438c-84be-38f8b4f9f22f/scratchpad/pin-pbkitplusplus"
+   "/tmp/wpc-pin/pbkitplusplus"
   ],
   "symbols": 951,
   "tests_commit": "6743b6ab164e760e8b995e969c762d829af5d52e",
-  "tests_root": "/tmp/claude-1000/-home-justin-hakuX/27043c55-bae4-438c-84be-38f8b4f9f22f/scratchpad/pin-nxdk_pgraph_tests",
+  "tests_root": "/tmp/wpc-pin/tests",
   "unread": 145
  },
  "schema": 1,
@@ -6626,7 +6626,7 @@
   ],
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:143",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:373",
     "role": "COMMENT",
     "text": "* set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened"
    },
@@ -8906,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:301",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:535",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
