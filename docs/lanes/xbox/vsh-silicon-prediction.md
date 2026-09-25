@@ -51,3 +51,24 @@ the log names.
 What neither stage does is compare the emulator. That comparison, hakuX
 against these captures, is the step these runs make possible, and it needs
 the vsh program running under the dispatcher.
+
+## Addendum, registered after stage 1 and before anything else runs
+
+**Stage 1 ran** (23:49:50 PDT, 53 s, "Testing completed normally", eight
+captures). All eight differ from their 2022 goldens, and **none of it is
+hardware**. The program switched from pbkit's debug font to IBM Plex Mono
+since 2022. Every difference has the same maximum delta (the text colour),
+sits in the text rows, and on `MAC_mov`, read by eye, the printed values are
+identical (`1.000000,2.000000,-3.000000,-4.123450`). A pixel diff against
+these goldens is a font diff.
+
+So the build gains a third local commit: `TextOverlay::Dump` writes each
+test's printed strings to `<name>.txt` beside its PNG. That text is the exact
+form of the result, and the emulator comparison will diff it too. This
+commit changes no pixel the tests draw. New XBE sha256
+`fb530b00f02f5aefe4331a6169eee87c057e96f2a550f6769bbc6fd2d66b342a`.
+
+Runs that follow: **stage 1b** repeats stage 1's six suites with this XBE
+(`E:\Apps\VshStage1b\`); its PNGs must be bit-identical to stage 1's, a
+control that the new commit draws nothing different. Then **stage 2** as
+registered (`E:\Apps\VshStage2\`), with this XBE.
