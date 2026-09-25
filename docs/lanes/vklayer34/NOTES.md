@@ -1,6 +1,6 @@
 # lane.vklayer34 -- #34 validation layer on Adreno
 
-Started 2026-09-24 from master @ ec1b67a92d. PR #217.
+Started 2026-09-24 from master @ ec1b67a92d. PR #217. Device doc: docs/testing/vk_validation_android.md.
 
 ## The brief's premise was false: the layer is already in every debug apk
 
@@ -55,7 +55,37 @@ Positive control (all must appear in logcat1.txt, tag hakuX-lane):
 
 ## Results
 
-(pending)
+Request `1790317606-vklayer34-4071708`: Thor (serial bdc158a5, Adreno 740,
+**system** driver), ref e2c9fef860, apk_sha `6b99875f661e`, Clear 32/32
+captures (26 exact). The logcat covers process start (23:27:23) to clean exit
+(`qemu_main returned 0`, 23:27:45). `count_vuids.py`: all 5 control lines OK.
+
+| n | sev | VUID |
+|---|---|---|
+| 1 | E | `VUID-VkShaderModuleCreateInfo-pCode-08740`: GeometryPointSize capability without `shaderTessellationAndGeometryPointSize` |
+
+**So the falsifier ("Adreno count = 0") is refuted by one VUID the desktop could
+not see.** Source: `glsl/geom.c:413` and `:508` write `gl_PointSize` in the GS
+when `!opts.gles`. `vk/instance.c:846` requests the feature as optional, so it
+is off on a device that lacks it. The fix is to gate those writes on the
+enabled feature, and it belongs to whoever takes #34's finding; it is not in
+this lane's Files. Spec consequence: without the feature a GS-emitted point
+has size 1.0.
+
+Not resolved: whether block 4 bites on its own. The `debug_utils enabled = 1`
+line does not say which extension list supplied it. Also, the layer caps each
+id at 10 reports by default, so a count above 10 would be a floor.
+
+Caveat that limits the result: this is the system Qualcomm driver. The fleet's
+normal configuration (adrenotools custom driver) bypasses the loader, so no
+layer can validate it.
+
+## Do not repeat
+
+- Don't write a gradle property to package the layer. It is already in
+  `src/debug/jniLibs` and a second copy fails the merge as a duplicate.
+- Don't read a zero VUID count from any pre-09-24 device logcat as evidence:
+  block 1 alone makes it structurally zero.
 
 ## For toolsmith (instrument owner), not done here
 
