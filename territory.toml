@@ -761,9 +761,3 @@ issues = ["50"]
 retired_utc = "2026-09-25T05:10:00Z"
 files = []
 note = "RETIRED (job.board, board tick wave 145): PR #210 (lane/fulldisc50) MERGED 2026-09-21T19:31:37Z as fa6863f2f0, unit gone, no open PR. The lane answered its brief without device time: the full-disc instability measurement already existed at n=13 (lane.blendrace50's runs), rate posted on #50. Held docs/lanes/fulldisc50/NOTES.md only; released. Dropping the stale `lane:fulldisc50` label; #50 stays open and dispatchable for the placement-vs-colour-assignment reading."
-
-[lane.cloud-audit1-206]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-206, audit pass 1 of PR #206 on branch claude/dispatch-script-deps, attempt 1 of 4 on claude-opus-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 206` removes this row when the unit ends."
