@@ -115,10 +115,22 @@ static inline bool nv2a_offset_writable(uint32_t off)
     return false;
 }
 
-/* The check the probe actually applies to a write. */
+/* The check the probe actually applies to a write. Both the command
+ * handler and the commit point call THIS, so there is one predicate to
+ * reason about rather than a pair that can drift apart.
+ *
+ * PROBE_ALLOW_HAZARDS is the emulator-only build (see probe/Makefile).
+ * It removes the hazard refusal and NOTHING ELSE: the window allow-list
+ * still applies, so even that build cannot write outside a modelled,
+ * write-enabled block. Both configurations are compiled and mutated by
+ * run_tests.sh; an #ifdef nothing builds is not a safety property. */
 static inline bool nv2a_offset_write_allowed(uint32_t off)
 {
+#ifdef PROBE_ALLOW_HAZARDS
+    return nv2a_offset_writable(off);
+#else
     return nv2a_offset_writable(off) && nv2a_hazard_name(off) == 0;
+#endif
 }
 
 #endif /* NV2A_WINDOW_H */

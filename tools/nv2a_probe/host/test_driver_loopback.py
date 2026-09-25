@@ -32,10 +32,11 @@ class FakeProbe(threading.Thread):
 
     daemon = True
 
-    def __init__(self, port, hang_once=True):
+    def __init__(self, port, hang_once=True, hello_suffix=""):
         super().__init__()
         self.port = port
         self.hang_once = hang_once
+        self.hello_suffix = hello_suffix
         self.hung = False
         self.regs = {}
         self.seq = 0
@@ -62,7 +63,8 @@ class FakeProbe(threading.Thread):
 
     def _serve(self, s):
         f = s.makefile("rwb")
-        f.write(b"HELLO 1 nv2a-probe base=FD000000 size=01000000\n")
+        f.write(("HELLO 1 nv2a-probe%s base=FD000000 size=01000000\n"
+                 % self.hello_suffix).encode())
         f.flush()
         while True:
             line = f.readline()
@@ -159,6 +161,46 @@ def main() -> int:
               "is_poison(off, None) matches a ban recorded for one value")
         check(not srv.poison.is_poison(0x000999, None),
               "an unrelated register is not banned")
+
+        print("== a HAZARDS-ALLOWED probe is refused unless it was asked for ==")
+        # The emulator-only build announces itself, and until this check the
+        # announcement was read by nothing: the suffix reached a log line and a
+        # human's eyes. An operator who builds the emulator variant and then
+        # FTPs the XBE to the console gets a probe with no hazard refusal in
+        # it, and nothing on this side says so.
+        srv3 = ProbeServer(wd, host="127.0.0.1", port=PORT + 2)
+        hazfake = FakeProbe(PORT + 2, hello_suffix="-HAZARDS-ALLOWED-EMULATOR-ONLY")
+        hazfake.start()
+        try:
+            try:
+                srv3.accept(timeout=10)
+                check(False, "the hazard-allowed build must not be accepted "
+                             "by default")
+            except ProbeError as e:
+                check("HAZARDS-ALLOWED" in str(e),
+                      "refused, naming the build: %s" % str(e)[:60])
+            srv3.allow_hazards = True
+            sess3 = srv3.accept(timeout=10)
+            check(sess3.hazards_allowed,
+                  "and accepted when the caller opted in, flagged as hazardous")
+            sess3.close()
+        finally:
+            hazfake.stop = True
+            srv3.close()
+
+        print("== a normal probe is NOT flagged as hazard-allowed ==")
+        # Without this row the check above passes for a driver that refuses
+        # every probe, which is not the property claimed.
+        srv4 = ProbeServer(wd, host="127.0.0.1", port=PORT + 3)
+        plainfake = FakeProbe(PORT + 3)
+        plainfake.start()
+        try:
+            sess4 = srv4.accept(timeout=10)
+            check(not sess4.hazards_allowed, "the safe build is accepted plainly")
+            sess4.close()
+        finally:
+            plainfake.stop = True
+            srv4.close()
 
         print("== poison survives a restart (it is persisted) ==")
         srv2 = ProbeServer(wd, host="127.0.0.1", port=PORT + 1)
