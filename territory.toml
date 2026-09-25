@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 145
-updated_utc = "2026-09-25T05:10:00Z"
+wave = 146
+updated_utc = "2026-09-25T05:30:00Z"
 
 
 [retired.hilodot10]
@@ -228,16 +228,11 @@ note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fo
 note = "RETIRED AT WAVE 110 (job.board): PR #102 MERGED 2026-09-19T10:56:48Z (fold commit 3d072c6ea6 on this branch's own log), pass 2 completed (three rounds, last one clean). Held files = [] (an audit reads, it does not edit). No release needed."
 
 
-[lane.remote]
-issues = ["34", "62", "158"]
-files = ["hw/xbox/nv2a/pgraph/gl/surface.c",
-         "hw/xbox/nv2a/pgraph/gl/blit.c",
-         "hw/xbox/nv2a/pgraph/gl/texture.c",
-         "hw/xbox/nv2a/pgraph/gl/renderer.c", "hw/xbox/nv2a/pgraph/gl/debug.c", "hw/xbox/nv2a/pgraph/glsl/common.c",
-         "hw/xbox/nv2a/pgraph/glsl/psh.c",
-         "target/**", "ui/**", "audio/**", "tests/**"]
-note = "gl/draw.c RELEASED 2026-09-19 (job.board): PR #162 folded as 11ddd94a66, lane.remote's own comment on #164 confirmed nothing of its remaining work touches gl/draw.c, and it asked in the open for the file to move rather than waiting to be asked. Granted to [lane.clrpad164] below for #164's clear-half fix at gl/draw.c:259. glsl/common.c GRANTED for #72: the GL renderer never emits noperspective because the gate is `noperspective && location` and location is Vulkan-only -- the Texture_perspective suite splits PERFECTLY on that bit, TexPerspective_Textured 9,014 vs Vulkan's 1. Condition on the grant: the fix must distinguish DESKTOP GL from GLES, because noperspective is core in desktop GLSL 1.30+ and needs GL_NV_shader_noperspective_interpolation on GLES, where the failure is a shader that does not compile. ORDERING: #71 before #60 -- #60's stale-format bug is HIDING #71, because refusing the s2t fast path for the wrong reason is doing useful work, and #60's fix regresses four captures by 31,948 px that are entirely thirty s2t decisions flipping false->true. Also holds the desktop build and the GL renderer as a CAPABILITY: renderer = 'OPENGL' produces captures, so GL-only defects are measurable there and nowhere else in the fleet. GLOB NARROWED AND #85 REASSIGNED AT WAVE 86 -- an allocation decision, not bookkeeping. gl/*.c was a glob; gl/surface.c is now NAMED OUT of it and granted to lane.swizzle87, which needs it together with vk/texture.c AS ONE CLAIM because #87's fix must land on both backends or its arm is void. This lane was asked for that file TWICE and delivered other work instead; it is a one-way cloud session with 71 unfolded commits and three unremediated findings, so #87 was serialising on the slower lane for no benefit -- the exact case this file's own rules say to GRANT rather than wait on. #85 MOVES WITH THE FILE: its mem_dirty gate is at gl/surface.c:2874-2892 in update_surface_part(), while #87's gates are at :1131 and :1487 in surface_to_texture_can_fastpath() and its caller -- different functions about 1,400 lines apart, verified at the tip, so one lane holds both without the edits meeting. THE REST OF gl/ IS STILL THIS LANE'S, now ENUMERATED rather than globbed so the next narrowing is visible: blit.c, draw.c, texture.c, shaders.c, renderer.c, debug.c. #86 stays here, in gl/shaders.c. glsl/psh.c GRANTED OUTRIGHT AT WAVE 87, and the delay was the ORCHESTRATOR'S FAULT rather than this lane's. Audit pass 2 found M1, M2 and L8 UNREMEDIATED -- psh.c is absent from this lane's entire unfolded diff -- and those three are the only thing between its 74 commits and the tree. The lane was twice told 'ask and I will grant it'. It did not ask, I did not follow up, AND THE FILE SAT IN [free] THE WHOLE TIME -- so a grant I could have made unilaterally at any moment blocked the largest body of finished work on the board for hours. Told-to-ask is not a handoff; it is a deadlock with a polite face. THE THREE, written out so they need no re-derivation: M1 (psh.c:2376) reads dotSTR%d.x/.y TWENTY LINES AFTER apply_border_adjustment() has rewritten the vector, and for a cubemap that call emits remapBorderCube which forces the major axis to +-1.0 rather than scaling in place -- so with a border enabled the signs sampled are NOT the dot signs the measured rule is stated in; fix by snapshotting the signs from the raw dot products BEFORE the call. M2 (psh.c:2381): the coordinate is a four-valued step function handed to an implicit-LOD texture(), so the fetch takes LOD 0 regardless of minification and the coarsest level on the straddling quad -- fix with textureLod(..., 0.0), available in all three targets pgraph_glsl_append_version emits. L8 (psh.c:2729): DOT_STR_3D_K is emitted into EVERY pixel shader whether or not a stage took the cube branch -- a logged decision is acceptable, silence is not. M1 IS UNREACHABLE BY ANYTHING ON THE TEST DISC, which is why no arm found it and why reading is the only evidence it will ever get. #86 AND gl/shaders.c MOVED OUT 2026-09-19 (job.board): the sentence above saying '#86 stays here' was wave-87 prose describing a claim that no longer holds it. lane.glerr86 -- an unmanaged/unworktreed session this row never tracked, the same shape as the swizzle87/padwrite precedent -- wrote the actual fix (7140d94731, a09ba73f2f, 540b0ec235, a9694a6340) and opened PR #128, now needs-audit-1/verified. Two lanes holding the same file for the same issue is the double-claim check_territory.py exists to catch; this lane's copy was the stale one, since it never wrote a line against shaders.c. See [lane.glerr86] below. CLOSED ISSUES RELEASED 2026-09-19 by the host session: #39, #51, #66, #71, #72 and #82 were closed on work that IS in master -- PR #45 folded as fa3d04f28e on 2026-09-18T23:11Z, 78 commits, and the nv2a index was regenerated over them in 24d1eaffb5. The row still claiming them is what made #138 read as ten issues blocked on a missing worktree; nothing was missing. #158 ADDED: the lane filed the analysis, the three files it needs (gl/renderer.c, glsl/psh.c, gl/texture.c) are already in this row, and it was holding off solely because the row did not name the issue -- which is the territory system working, and the row being stale is what made it wait. ISSUE-SWEEP FALSE NEGATIVE, checked 2026-09-20 (job.board): the sweep flagged #34/#60/#62/#158 as owned by a dead lane (no hakux-lane-* unit, no open PR on lane/remote -- no such branch exists). This session does not use that naming: it pushes to claude/docs-tooling-agentic-coding-u152m1 and opens numbered PRs directly (#176/#181/#183 this week, #183 MERGED 2026-09-20T13:55:23Z), so the branch-tip-inside-3.0d existence test holds and the row stays live for #34 and #158, untouched this tick -- read and confirmed current, nothing to do. #60 CLOSED on GitHub this tick, dropped from issues= above: the lane twice recommended closure (00:48Z and 13:57Z) on the grounds that its fix (a105a51a) is in master and re-verified 09-19, and the X1A7 residual it turned up is not #60's -- it is now instrumented (docs/testing/x1a7_forward_model.py, x1a7_clear_bytes.py) and tracked as #184. #62 STAYS OPEN, not closed: finding 2's fix was reverted this tick's session (unreachable dead code behind the is_converted gate, confirmed by the lane itself) and finding 4 (compare_surfaces() missing shape.color_format) remains genuinely unlanded, so the issue still names live work even though finding 2 is answered. RECHECKED WAVE 142 (job.board, 2026-09-21T14:04Z): sweep flagged #34/#62/#158 again as owned by a dead lane; re-verified directly rather than trusting the prior note -- branch tip is 5dd10ad8c6 (2026-09-20T13:32:48Z), inside 3.0d, no open PR from this branch right now (last one, #183, merged). The branch-tip-liveness test still holds and the row stays live for all three; nothing to do this tick either."
-
+[retired.remote]
+issues = []
+retired_utc = "2026-09-25T05:30:00Z"
+files = []
+note = "RETIRED (job.board, board tick wave 146), decision-needed #213 decided by the board under the owner's fully-automated policy: branch claude/docs-tooling-agentic-coding-u152m1 last moved 2026-09-20T13:32Z (tip 5dd10ad8c6), 4.6d quiet, no open PR, no unit. Its files (gl/surface.c, gl/blit.c, gl/texture.c, gl/renderer.c, gl/debug.c, glsl/common.c, glsl/psh.c, target/**, ui/**, audio/**, tests/**) are RELEASED to [free] and #34/#62/#158 return to the dispatch pool. Unfolded commits stay on that branch, untouched; nothing is deleted. If the session comes back it opens numbered PRs and claims files through a new row, as any lane does. The old row's history (grants of gl/draw.c, gl/shaders.c, gl/surface.c, glsl/psh.c, glsl/common.c and the wave-87 psh.c findings M1/M2/L8) is in this branch's git history before wave 146."
 
 [lane.toolsmith]
 issues = ["94", "95"]
@@ -553,6 +548,18 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = [
+# RELEASED AT WAVE 146 by retiring lane.remote (decision-needed #213):
+    "hw/xbox/nv2a/pgraph/gl/surface.c",
+    "hw/xbox/nv2a/pgraph/gl/blit.c",
+    "hw/xbox/nv2a/pgraph/gl/texture.c",
+    "hw/xbox/nv2a/pgraph/gl/renderer.c",
+    "hw/xbox/nv2a/pgraph/gl/debug.c",
+    "hw/xbox/nv2a/pgraph/glsl/common.c",
+    "hw/xbox/nv2a/pgraph/glsl/psh.c",
+    "target/**",
+    "ui/**",
+    "audio/**",
+    "tests/**",
 # RELEASED AT WAVE 97 by retiring lane.tier81fix: its two issues are closed and the
 # files were claimed by a lane with no agent. #90's second contributor is unimplemented
 # and lives in translate-all.c -- see [retired.tier81fix].
