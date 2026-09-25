@@ -782,6 +782,31 @@ void pgraph_gl_draw_end(NV2AState *d)
     NV2A_GL_DGROUP_END();
 }
 
+/* Whether gl/shaders.c attaches a geometry stage: always on desktop GL, and
+ * on GLES only with GL_EXT/OES_geometry_shader (see generate_shaders()). */
+static bool gl_geometry_stage_available(PGRAPHGLState *r)
+{
+#ifdef __ANDROID__
+    return r->geometry_shaders_supported;
+#else
+    return true;
+#endif
+}
+
+/*
+ * The binding's mode, except that adjacency topology needs a geometry stage
+ * to consume it.  Without one the rewrite is told `no_adjacency` and emits
+ * plain triangles, so draw them as such.
+ */
+static GLenum gl_draw_mode(PGRAPHGLState *r)
+{
+    GLenum mode = r->shader_binding->gl_primitive_mode;
+    if (mode == GL_TRIANGLES_ADJACENCY && !gl_geometry_stage_available(r)) {
+        return GL_TRIANGLES;
+    }
+    return mode;
+}
+
 void pgraph_gl_flush_draw(NV2AState *d)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -802,6 +827,7 @@ void pgraph_gl_flush_draw(NV2AState *d)
         .flat_shading = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CONTROL_3),
                                  NV_PGRAPH_CONTROL_3_SHADEMODE) ==
                         NV_PGRAPH_CONTROL_3_SHADEMODE_FLAT,
+        .no_adjacency = !gl_geometry_stage_available(r),
     };
 
     if (pg->draw_arrays_length) {
@@ -826,10 +852,10 @@ void pgraph_gl_flush_draw(NV2AState *d)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                          prim_rw.num_indices * sizeof(uint32_t),
                          prim_rw.indices, GL_STREAM_DRAW);
-            glDrawElements(r->shader_binding->gl_primitive_mode,
+            glDrawElements(gl_draw_mode(r),
                            prim_rw.num_indices, GL_UNSIGNED_INT, (void *)0);
         } else {
-            glMultiDrawArrays(r->shader_binding->gl_primitive_mode,
+            glMultiDrawArrays(gl_draw_mode(r),
                               pg->draw_arrays_start, pg->draw_arrays_count,
                               pg->draw_arrays_length);
         }
@@ -867,7 +893,7 @@ void pgraph_gl_flush_draw(NV2AState *d)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                          draw_index_count * sizeof(uint32_t), draw_indices,
                          GL_STREAM_DRAW);
-            glDrawElements(r->shader_binding->gl_primitive_mode,
+            glDrawElements(gl_draw_mode(r),
                            draw_index_count, GL_UNSIGNED_INT, (void *)0);
         } else {
             VertexKey k;
@@ -891,7 +917,7 @@ void pgraph_gl_flush_draw(NV2AState *d)
             } else {
                 nv2a_profile_inc_counter(NV2A_PROF_GEOM_BUFFER_UPDATE_4_NOTDIRTY);
             }
-            glDrawElements(r->shader_binding->gl_primitive_mode,
+            glDrawElements(gl_draw_mode(r),
                            pg->inline_elements_length, GL_UNSIGNED_INT,
                            (void *)0);
         }
@@ -936,10 +962,10 @@ void pgraph_gl_flush_draw(NV2AState *d)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                          prim_rw.num_indices * sizeof(uint32_t),
                          prim_rw.indices, GL_STREAM_DRAW);
-            glDrawElements(r->shader_binding->gl_primitive_mode,
+            glDrawElements(gl_draw_mode(r),
                            prim_rw.num_indices, GL_UNSIGNED_INT, (void *)0);
         } else {
-            glDrawArrays(r->shader_binding->gl_primitive_mode,
+            glDrawArrays(gl_draw_mode(r),
                          0, pg->inline_buffer_length);
         }
         android_log_gl_errors("pgraph_gl_flush_draw: inline_buffer");
@@ -958,10 +984,10 @@ void pgraph_gl_flush_draw(NV2AState *d)
             glBufferData(GL_ELEMENT_ARRAY_BUFFER,
                          prim_rw.num_indices * sizeof(uint32_t),
                          prim_rw.indices, GL_STREAM_DRAW);
-            glDrawElements(r->shader_binding->gl_primitive_mode,
+            glDrawElements(gl_draw_mode(r),
                            prim_rw.num_indices, GL_UNSIGNED_INT, (void *)0);
         } else {
-            glDrawArrays(r->shader_binding->gl_primitive_mode,
+            glDrawArrays(gl_draw_mode(r),
                          0, index_count);
         }
         android_log_gl_errors("pgraph_gl_flush_draw: inline_array");

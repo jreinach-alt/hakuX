@@ -39,6 +39,9 @@ static GLenum get_gl_primitive_mode(enum ShaderPrimitiveMode primitive_mode)
     case PRIM_TYPE_POINTS: return GL_POINTS;
     case PRIM_TYPE_LINES: return GL_LINES;
     case PRIM_TYPE_TRIANGLES: return GL_TRIANGLES;
+    /* Without a geometry stage gl/draw.c's gl_draw_mode() draws GL_TRIANGLES
+     * instead, and the rewrite emits no adjacency to match. */
+    case PRIM_TYPE_TRIANGLES_ADJACENCY: return GL_TRIANGLES_ADJACENCY;
     default:
         assert(!"Invalid primitive_mode");
         return 0;

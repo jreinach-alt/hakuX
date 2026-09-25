@@ -2,7 +2,9 @@
  * Geforce NV2A PGRAPH Primitive Index Rewrite
  *
  * Rewrites NV2A primitive types to triangle/line/point lists on CPU.
- * Handles provoking vertex placement for flat shading correctness.
+ * Handles provoking vertex placement for flat shading correctness, and
+ * emits flat quads as triangles-with-adjacency so the provoking vertex
+ * need not be a vertex of the triangle it colours.
  *
  * Copyright (c) 2026 Matt Borgerson
  *
@@ -42,13 +44,27 @@ typedef struct PrimAssemblyState {
     enum ShaderPolygonMode polygon_mode;
     bool last_provoking;
     bool flat_shading;
+    /* Set only by a renderer that draws without a geometry shader (GLES
+     * without GL_EXT_geometry_shader): adjacency topology has nothing to
+     * consume it there, so flat quads keep the v3-provoking diagonal. */
+    bool no_adjacency;
 } PrimAssemblyState;
 
 void pgraph_prim_rewrite_init(PrimRewriteBuf *buf);
 void pgraph_prim_rewrite_finalize(PrimRewriteBuf *buf);
+/* The topology CLASS of the rewritten stream: points, lines or triangles.
+ * PRIM_TYPE_TRIANGLES_ADJACENCY reads as PRIM_TYPE_TRIANGLES here. */
 enum ShaderPrimitiveMode
 pgraph_prim_rewrite_get_output_mode(enum ShaderPrimitiveMode primitive_mode,
                                     enum ShaderPolygonMode polygon_mode);
+/* The topology the rewritten stream is actually DRAWN with, which is what
+ * the geometry shader and the draw call must agree on.  It differs from
+ * get_output_mode() only for a flat, filled QUADS or QUAD_STRIP draw, which
+ * is PRIM_TYPE_TRIANGLES_ADJACENCY. */
+enum ShaderPrimitiveMode
+pgraph_prim_rewrite_get_draw_mode(enum ShaderPrimitiveMode primitive_mode,
+                                  enum ShaderPolygonMode polygon_mode,
+                                  bool flat_shading);
 
 PrimRewrite pgraph_prim_rewrite_indexed(PrimRewriteBuf *buf,
                                         PrimAssemblyState mode,

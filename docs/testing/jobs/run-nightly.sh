@@ -48,11 +48,10 @@ fi
 # without it "skipped, already running" and "failed" are the same number.
 flock -n -E 75 "$LOCK" bash -c '
     WT=$1; TIP=$2; REPO=$3; shift 3
-    # A failed fetch is NOT fatal here. The worktree still holds the last tip
-    # we had, and nightly_build.sh is the thing that decides what an
-    # unreachable origin means -- it labels the release rather than silently
-    # publishing as if it were current. Swallowing the night entirely at this
-    # layer would turn a reachability blip into a missing nightly.
+    # A failed fetch is NOT fatal here. nightly_build.sh is the thing that
+    # decides what an unreachable origin means, and it fetches again itself:
+    # if origin answers there, the night proceeds; if not, it refuses (exit 8)
+    # and says why in its log. The release body never carries the caveat.
     #
     # Resolved to a sha before the checkout, not used as the name FETCH_HEAD:
     # that file lives in the COMMON git dir, so run-trunk.sh fetching for the
@@ -61,7 +60,7 @@ flock -n -E 75 "$LOCK" bash -c '
         git -C "$WT" checkout -q --detach "$TRUNK" \
             || echo "run-nightly: checkout of $TRUNK failed; nightly_build.sh will see the tree is behind and refuse" >&2
     else
-        echo "run-nightly: fetch of origin/$TIP failed; nightly_build.sh will label the release" >&2
+        echo "run-nightly: fetch of origin/$TIP failed; nightly_build.sh will retry, and refuse if it cannot reach it either" >&2
     fi
     exec env NIGHTLY_TREE="$WT" NIGHTLY_TIP="$TIP" \
         bash "$WT/docs/testing/nightly_build.sh" "$@"
