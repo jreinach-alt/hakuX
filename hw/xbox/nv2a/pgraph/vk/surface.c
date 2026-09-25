@@ -3460,65 +3460,47 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
              * the only capture that discriminates, the colour write takes
              * 120,729 of the quad's 131,495 pixels.
              *
-             * So colour should take a surface zeta holds, and zeta should
-             * decline one colour holds -- the POLICY half of #66's chain. The
+             * So colour takes a surface zeta holds, and zeta declines one
+             * colour holds -- the POLICY half of #66's chain. The
              * gate half ("the binding is stale OR ABSENT", which is what makes
              * zeta's decline temporary rather than permanent) has been on this
              * side since 9161e3e14a (2024-07-27, upstream) as the
-             * `!current_binding` term above, so only the policy needs porting.
+             * `!current_binding` term above, so only the policy was ported.
              * That is also why ColorIntoZeta_ZB sat at exactly 131,495 here:
              * the value GL produced with its gate fixed and its policy still
              * symmetric, i.e. the depth write winning the whole quad. Issue
              * #88; GL's half is fada1d89d4, record in
              * docs/investigations/color-zeta-same-surface.md.
              *
-             * THE POLICY IS WITHDRAWN FROM THIS TIP, NOT ABANDONED. It was
-             * written at 67dc7724ee, it went to the device, and its two
-             * pre-registered absolutes landed to the pixel:
-             * ColorIntoZeta_ZB 131,495 -> 10,766 and ZetaIntoColor 102,255 ->
-             * 71,663, both predicted from the goldens' own histograms before
-             * the run. The mechanism is confirmed. What is NOT confirmed is
-             * its blast radius: on the same two A/B pairs
-             * Color_zeta_overlap/Swap went 165,447 -> 304,750 differing pixels
-             * against a must_not_move leg, reproduced across two independent
-             * discs, and no reading of this file explains it -- the decline
-             * cannot fire inside TestSwap(), which points colour and zeta at
-             * DIFFERENT addresses, so `surface == other` is false there.
+             * The policy was measured on the device at 67dc7724ee: both
+             * pre-registered absolutes landed to the pixel
+             * (ColorIntoZeta_ZB 131,495 -> 10,766, ZetaIntoColor 102,255 ->
+             * 71,663). It was withdrawn because Color_zeta_overlap/Swap went
+             * 165,447 -> 304,750 under it (#91). That was not this policy's
+             * defect: the decline only changed the upload order, which
+             * exposed a wrong depth staging offset in
+             * pgraph_vk_upload_surface_data() (#91, fixed in 9de95de849),
+             * and #237's arm ran with this decline in both arms and held
+             * Swap at 165,447 once the offset was fixed.
              *
-             * Shipping a confirmed mechanism with an unexplained 139,303 px
-             * regression attached is not a trade this lane gets to make, so
-             * the behaviour here is master's until #91's diagnosis arm
-             * (55bc6c6c2b -> bb0ddde27d, which still carries the policy and
-             * both probes) says where the 139,303 comes from.
-             *
-             * ONE DEFECT IN THE WITHDRAWN PATCH IS ALREADY KNOWN, found by
-             * reading rather than by the device, and it has to be fixed before
-             * it re-lands. The decline returned early with
-             * pg->surface_zeta.buffer_dirty cleared, on the argument that "no
-             * zeta binding means nothing was drawn into a zeta image, so the
-             * download tail below is correctly skipped". True for that call
-             * and false one call later: the early return also skips this
-             * function's own download tail -- the trailing
-             * `if (!upload && pg_surface->draw_dirty)`, cited by its condition
-             * rather than by a line number because L4 caught that habit twice
-             * -- which is the only place pg->surface_zeta.draw_dirty is
-             * cleared. It therefore stays set, and pgraph_vk_surface_update()'s
-             * download branch re-enters update_surface_part(d, false, false)
-             * on the strength of it. There the gate is open BECAUSE the
-             * binding is absent, so once colour has moved off the overlap
-             * address the call creates a fresh zeta surface and the tail
-             * downloads it over guest VRAM -- "create one and copy a fresh
-             * image back over VRAM the guest never rendered", which is
-             * verbatim the failure the decline's own comment claimed to
-             * prevent. Whether that is what moves Swap is a measurement, not a
-             * reading; that it is wrong is a reading.
+             * Zeta declines by clearing buffer_dirty and returning. The
+             * return also skips this function's download tail, the one
+             * place pg->surface_zeta.draw_dirty is cleared, so a zeta draw
+             * made while zeta is absent keeps it set and the download branch
+             * of pgraph_vk_surface_update() re-enters here: while colour
+             * still holds the address that declines again, and once colour
+             * has moved it creates a zeta surface and downloads it. That is
+             * a reading, not a measurement; the arm for #88 scores it.
              */
             SurfaceBinding *other = (color ? r->zeta_binding
                                            : r->color_binding);
             if (surface == other) {
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
                 if (!color) {
+                    /* Counted and logged as [surf91] declines=N (#88). */
                     surf91_overlap_probe(pg, target.vram_addr);
+                    pg_surface->buffer_dirty = false;
+                    return;
                 }
                 unbind_surface(d, !color);
             }
