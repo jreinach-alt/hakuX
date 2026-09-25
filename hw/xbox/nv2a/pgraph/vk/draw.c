@@ -1243,6 +1243,10 @@ static VkPrimitiveTopology get_primitive_topology(PGRAPHState *pg)
         return VK_PRIMITIVE_TOPOLOGY_LINE_LIST;
     case PRIM_TYPE_TRIANGLES:
         return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
+    /* A flat, filled quad (#224).  Needs the geometryShader feature, which
+     * vk/instance.c already requires. */
+    case PRIM_TYPE_TRIANGLES_ADJACENCY:
+        return VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY;
     default:
         assert(!"Invalid primitive_mode");
         return 0;
@@ -5094,8 +5098,10 @@ static bool try_enqueue_draw_indexed(PGRAPHState *pg, DrawQueue *q)
     }
 
     unsigned int verts_per_prim;
-    switch (pgraph_prim_rewrite_get_output_mode(
-                assembly.primitive_mode, assembly.polygon_mode)) {
+    switch (pgraph_prim_rewrite_get_draw_mode(
+                assembly.primitive_mode, assembly.polygon_mode,
+                assembly.flat_shading)) {
+    case PRIM_TYPE_TRIANGLES_ADJACENCY: verts_per_prim = 6; break;
     case PRIM_TYPE_TRIANGLES: verts_per_prim = 3; break;
     case PRIM_TYPE_LINES:     verts_per_prim = 2; break;
     default:                  verts_per_prim = 1; break;

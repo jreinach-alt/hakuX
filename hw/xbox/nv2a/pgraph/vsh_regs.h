@@ -194,6 +194,10 @@ enum ShaderPrimitiveMode {
     PRIM_TYPE_QUADS,
     PRIM_TYPE_QUAD_STRIP,
     PRIM_TYPE_POLYGON,
+    /* Never a guest mode: prim_rewrite.c's output for a flat, filled quad,
+     * six indices per triangle, (a, pv, b, pv, c, pv).  See
+     * pgraph_prim_rewrite_get_draw_mode(). */
+    PRIM_TYPE_TRIANGLES_ADJACENCY,
 };
 
 enum ShaderPolygonMode {

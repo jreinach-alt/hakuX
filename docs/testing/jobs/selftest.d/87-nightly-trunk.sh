@@ -142,17 +142,19 @@ notes_avoid_the_bare_sentence() {        # <notes file>
 notes_claim_to_be_the_trunk_falsely() { ! notes_do_not_claim_to_be_the_trunk "$1"; }
 notes_print_the_bare_sentence()       { ! notes_avoid_the_bare_sentence "$1"; }
 
+# Since 2026-09-25 the qualification is in the LOG, not the body: the owner's
+# standing order is that the public body carries no process commentary, and a
+# tree that needed the caveat is refused in build mode (below) instead. So
+# notes mode names the problem on stderr, and its body is the plain one.
 nt_notes "$NIGHTLY" "$BEHIND" "$NT/behind.md"; rc=$?
 check "notes mode on a tree behind the trunk still exits 0 and builds nothing" \
     bash -c '[ "$1" = 0 ] && [ ! -e "$2" ]' _ "$rc" "$NT/must-not-exist"
-check "THE CHECK: the notes say this tree is not the trunk, and name the tip" \
-    notes_do_not_claim_to_be_the_trunk "$NT/behind.md"
+check "THE CHECK: the log says this tree is not the trunk, and names the tip" \
+    notes_do_not_claim_to_be_the_trunk "$NT/behind.md.err"
 check "  the count is right: five commits behind" \
-    grep -qF '5 commit(s) behind' "$NT/behind.md"
-check "  and the empty window is not reported as the trunk's empty window" \
-    notes_avoid_the_bare_sentence "$NT/behind.md"
-check "  the reader is told what the qualification is about" \
-    grep -qF 'No commits in the last day **on this tree**' "$NT/behind.md"
+    grep -qF '5 commit(s) behind' "$NT/behind.md.err"
+check "  and the body carries none of it (nightly_body_has_no_caveat, from 86)" \
+    nightly_body_has_no_caveat "$NT/behind.md"
 
 # Build mode, same tree: it must refuse, before ./gradlew and before gh.
 GH_BEHIND="$NT/gh-behind.log"; : > "$GH_BEHIND"
@@ -185,6 +187,8 @@ check "  the release title carries the trunk's sha" \
 check "  and the notes call it the tip rather than qualifying it" \
     bash -c 'grep -qF "the tip of" "$1" && ! grep -qiE "behind|unreachable" "$1"' \
         _ "$NT/out-current/$DAY_L.notes.md"
+check "  the body gh was handed carries no warning or caveat line" \
+    nightly_body_has_no_caveat "$NT/out-current/$DAY_L.notes.md"
 check "  the day's five trunk commits are in the notes" \
     grep -qF 'target/i386: trunk commit 5, landed today' "$NT/out-current/$DAY_L.notes.md"
 
@@ -194,18 +198,46 @@ nt_notes "$NIGHTLY" "$CURRENT" "$NT/current-empty.md" "$(date -d '30 minutes ago
 check "at the tip with a genuinely empty window, the flat sentence is still used" \
     notes_print_the_bare_sentence "$NT/current-empty.md"
 
-# Origin unreachable: it must SAY so, not silently fall back to the local sha.
+# Origin unreachable: it used to publish with a caveat at the top of the body.
+# Since 2026-09-25 it refuses (exit 8) and says why in the log -- not silently
+# falling back to the local sha, and not putting the story in the release.
 UNREACH="$NT/unreachable"
 git clone -q "$ORIGIN" "$UNREACH"
 git -C "$UNREACH" remote set-url origin "$NT/no-such-repo.git"
+GH_UN="$NT/gh-unreachable.log"; : > "$GH_UN"
+NIGHTLY_TREE="$UNREACH" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-unreachable" \
+    SELFTEST_GH_LOG="$GH_UN" bash "$NIGHTLY" >"$NT/unreachable-build.log" 2>&1
+rc=$?
+check "build mode with origin unreachable refuses (exit 8)" [ "$rc" = 8 ]
+check "  the log names the cause and dates the last successful fetch" \
+    bash -c 'grep -qF "cannot reach origin/master" "$1" && grep -qF "last fetch:" "$1"' \
+        _ "$NT/unreachable-build.log"
+check "  before ./gradlew, and nothing was published" \
+    bash -c '[ -z "$(find "$1" -name "*.apk" 2>/dev/null)" ] && ! grep -q "release create" "$2"' \
+        _ "$NT/out-unreachable" "$GH_UN"
 nt_notes "$NIGHTLY" "$UNREACH" "$NT/unreachable.md"
-check "an unreachable origin is named in the notes, not silently ignored" \
-    bash -c 'grep -qF "origin was unreachable" "$1" && grep -qF "Could not reach" "$1"' \
-        _ "$NT/unreachable.md"
-check "  the last successful fetch is dated, so the reader can price the risk" \
-    grep -qF 'last fetched at' "$NT/unreachable.md"
-check "  and the empty window is qualified there too" \
-    notes_avoid_the_bare_sentence "$NT/unreachable.md"
+check "  notes mode logs it, and its body carries no caveat" \
+    bash -c 'grep -qF "REFUSING: cannot reach" "$1"' _ "$NT/unreachable.md.err"
+check "  (unreachable body)" nightly_body_has_no_caveat "$NT/unreachable.md"
+
+# A modified tracked file: the binary would not be the sha the body names. It
+# used to publish with "> Built with N modified tracked file(s)" at the top.
+DIRTY_T="$NT/dirty"
+git clone -q "$ORIGIN" "$DIRTY_T"
+echo "an edit nobody committed" >> "$DIRTY_T/README.md"
+GH_DIRTY="$NT/gh-dirty.log"; : > "$GH_DIRTY"
+NIGHTLY_TREE="$DIRTY_T" NIGHTLY_TIP=master NIGHTLY_OUT="$NT/out-dirty" \
+    SELFTEST_GH_LOG="$GH_DIRTY" bash "$NIGHTLY" >"$NT/dirty-build.log" 2>&1
+rc=$?
+check "build mode on a tree with a modified tracked file refuses (exit 7)" [ "$rc" = 7 ]
+check "  the log says why, and nothing was built or published" \
+    bash -c 'grep -qF "1 tracked file(s) modified" "$1" && [ -z "$(find "$2" -name "*.apk" 2>/dev/null)" ] && ! grep -q "release create" "$3"' \
+        _ "$NT/dirty-build.log" "$NT/out-dirty" "$GH_DIRTY"
+nt_notes "$NIGHTLY" "$DIRTY_T" "$NT/dirty.md"
+check "  notes mode on it: the body carries no caveat" \
+    nightly_body_has_no_caveat "$NT/dirty.md"
+check "  and the dirty tree really was the tip (so exit 7 is the dirt, not 5)" \
+    grep -qF "the tip of" "$NT/dirty.md"
 
 # Diverged, and ahead-only. The script documents a deliberate asymmetry here
 # -- a tree purely AHEAD of the trunk publishes with the old "unpushed" label,
@@ -236,6 +268,10 @@ check "a tree purely ahead of the trunk publishes, labelled unpushed" \
         _ "$NT/ahead.md"
 check "  and is not mislabelled as behind" \
     bash -c '! grep -qF "behind" "$1"' _ "$NT/ahead.md"
+check "  and carries no warning or caveat line" \
+    nightly_body_has_no_caveat "$NT/ahead.md"
+check "the empty-window control's body carries no caveat either" \
+    nightly_body_has_no_caveat "$NT/current-empty.md"
 
 # ------------------------------------------------- the unit, and its copies
 #
@@ -321,7 +357,10 @@ check "FALSIFIED: the replaced code claims to be the trunk while five behind" \
     notes_claim_to_be_the_trunk_falsely "$NT/legacy.md"
 check "FALSIFIED: and prints 'No commits in the last day.' while the trunk moved" \
     notes_print_the_bare_sentence "$NT/legacy.md"
-check "  not vacuous (1): the new notes name the trunk, on the same tree" \
-    notes_do_not_claim_to_be_the_trunk "$NT/behind.md"
-check "  not vacuous (2): the new notes avoid the bare sentence, on the same tree" \
-    notes_avoid_the_bare_sentence "$NT/behind.md"
+# The replaced code published whatever it wrote. The new code's answer to the
+# same tree is not a better-worded body but no release at all, plus a log that
+# names the trunk -- so that is what "not vacuous" is measured against.
+check "  not vacuous (1): on the same tree the new log names the trunk" \
+    notes_do_not_claim_to_be_the_trunk "$NT/behind.md.err"
+check "  not vacuous (2): and the new build publishes nothing from it" \
+    bash -c '! grep -q "release create" "$1"' _ "$GH_BEHIND"

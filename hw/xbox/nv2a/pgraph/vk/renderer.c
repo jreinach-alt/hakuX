@@ -57,8 +57,12 @@ typedef struct {
     uint32_t shader_state_layout;
 } GpuDriverIdentity;
 
-/* Bump when ShaderState/PshState/VshState change layout but not size. */
-#define SHADER_STATE_LAYOUT_VERSION 1
+/* Bump when ShaderState/PshState/VshState change layout but not size. A new
+ * enum VALUE counts: 2 is PRIM_TYPE_TRIANGLES_ADJACENCY (#224). Persisted
+ * geometry-shader keys carrying it abort any build without the case at
+ * startup (geom.c's default: assert), so builds on either side of it must
+ * see different versions and wipe the cache rather than regenerate it. */
+#define SHADER_STATE_LAYOUT_VERSION 2
 
 static void remove_directory_recursive(const char *path)
 {
