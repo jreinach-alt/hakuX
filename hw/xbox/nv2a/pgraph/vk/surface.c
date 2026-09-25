@@ -2984,6 +2984,19 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
         // Already scaled during compute. Adjust copy regions.
         regions[0].imageExtent = (VkExtent3D){ scaled_width, scaled_height, 1 };
         regions[1].imageExtent = regions[0].imageExtent;
+        /*
+         * The copy now reads unpack_buffer, where the unpack wrote depth at
+         * offset 0 -- not the staging buffer, whose offset regions[0] was
+         * built with. Left at staging_base, a zeta upload that was not the
+         * first staging allocation since the last reset copied its depth
+         * from the wrong place: in Color_zeta_overlap/Swap a colour upload
+         * of 640x480x4 went first, so staging_base equalled the depth size
+         * and the depth plane was read out of the stencil plane --
+         * 0x24242424 as a float, which packs back to depth 0. The zeta
+         * image then wrote 0x00000024 over the colour clear it was lifted
+         * from (#91). Stencil was right because regions[1] is set below.
+         */
+        regions[0].bufferOffset = 0;
         regions[1].bufferOffset =
             ROUND_UP(unpacked_depth_image_size,
                      r->device_props.limits.minStorageBufferOffsetAlignment);
