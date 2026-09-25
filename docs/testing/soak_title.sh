@@ -4,7 +4,10 @@
 #
 # Env: CAPTURE_LOG, LOGCAT_SPEC, PULL_GLOB, PULL_DEST, GUEST_FILES,
 #      AUDIO_CAPTURE_MB (arm the APU PCM capture at this size cap, and clear
-#      any previous capture first; disarmed again on the way out)
+#      any previous capture first; disarmed again on the way out),
+#      ROUTE_FILE (play this route with titles/route.sh while the title runs;
+#      without one the soak plays no input and only ever sees intros, attract
+#      demos and menus)
 #
 # Boot a real title, hold it for a while, keep the log, put the device back.
 #
@@ -20,6 +23,7 @@ set -u
 
 ISO="$1"
 SECONDS_TO_HOLD="${2:-60}"
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # Refuses rather than guesses when two handhelds are attached; see devices.sh.
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/devices.sh"
@@ -36,6 +40,8 @@ GUEST_FILES="${GUEST_FILES:-/sdcard/Android/data/$PKG/files}"
 AUDIO_CAPTURE_MB="${AUDIO_CAPTURE_MB:-}"
 AUDIO_MARKER="$GUEST_FILES/audio_capture.on"
 AUDIO_PCM="$GUEST_FILES/apu_monitor.s16le48k2ch.pcm"
+ROUTE_FILE="${ROUTE_FILE:-}"
+ROUTE_PID=""
 
 a() { timeout "${ADB_TIMEOUT:-120}" adb -s "$SERIAL" "$@"; }
 
@@ -86,6 +92,7 @@ disarm_audio() {
 # behind by a run that crashed or was interrupted is exactly how the device
 # came to be capturing audio for seven experiments that never asked for it.
 release() {
+    stop_route
     [ -n "$LOGCAT_PID" ] && kill "$LOGCAT_PID" 2>/dev/null
     a shell am force-stop "$PKG" >/dev/null 2>&1
     disarm_audio
@@ -109,22 +116,94 @@ if [ -n "$CAPTURE_LOG" ]; then
 fi
 
 a shell "am start -a android.intent.action.VIEW -n $ACT --es rom_path '$ISO'" >/dev/null 2>&1
+# In logcat, not only here: the verdict works in device time, and this line
+# and the `soak end` below bound the run in that clock.
+a shell log -t hakuX-route "'soak start'" >/dev/null 2>&1
+
+# The route runs beside the hold loop rather than inside it, so a long `wait`
+# in a route cannot starve the liveness check or the lease.
+start_route() {
+    [ -n "$ROUTE_FILE" ] || return 0
+    if [ ! -f "$HERE/titles/route.sh" ] || [ ! -f "$HERE/perf/pad.sh" ]; then
+        # A worker snapshot taken by an older snapshot_scripts does not carry
+        # the subdirectories (host memory: a new snapshot file misses the first
+        # re-exec). Say so where the verdict and a reader will both see it,
+        # rather than holding a title for twenty minutes with no input.
+        echo "ROUTE NOT PLAYED: $HERE/titles/route.sh or perf/pad.sh is missing from this snapshot"
+        return 0
+    fi
+    if [ ! -s "$ROUTE_FILE" ]; then
+        echo "ROUTE NOT PLAYED: $ROUTE_FILE is missing or empty"
+        return 0
+    fi
+    SERIAL="$SERIAL" bash "$HERE/titles/route.sh" "$ROUTE_FILE" &
+    ROUTE_PID=$!
+    echo "ROUTE started pid $ROUTE_PID from $ROUTE_FILE"
+}
+# By PID, never by pattern (CLAUDE.md). route.sh traps TERM, releases any
+# held button, recentres any moved stick, and logs `end`.
+stop_route() {
+    [ -n "$ROUTE_PID" ] || return 0
+    kill "$ROUTE_PID" 2>/dev/null
+    wait "$ROUTE_PID" 2>/dev/null
+    ROUTE_PID=""
+}
+start_route
 
 # Hold, but stop early if the guest dies -- a title that fails to boot should
 # not burn the whole window, and "it exited" is itself a result worth having.
-alive() { a shell 'ps -A -o NAME' | tr -d '\r' | grep -qx "$PKG:xemu"; }
+#
+# ONE FAILED adb CALL IS NOT A GUEST EXIT. This was a single `adb shell ps`
+# piped into grep, so an adb failure and an absent process were the same
+# answer: a WSL `UtilAcceptVsock` error ended a 180 s Ghoulies soak at 35 s on
+# 2026-09-25 as "guest exited" while the emulator was running. Now an adb
+# failure -- a non-zero exit, or output without the `NAME` header `ps` always
+# prints -- is retried up to three times, 2 s apart, and counted separately.
+# Three failures in a row answer "unknown", and unknown keeps holding: the
+# lease and the deadline still bound the run, and a real exit shows up on
+# the next probe that works.
+ADB_FAILURES=0
+probe() {   # 0 running, 1 not running, 2 adb failed
+    local out
+    out=$(a shell 'ps -A -o NAME' 2>&1) || { PROBE_ERR="$(printf '%s' "$out" | head -1)"; return 2; }
+    out=$(printf '%s\n' "$out" | tr -d '\r')
+    printf '%s\n' "$out" | grep -qx NAME || { PROBE_ERR="$(printf '%s' "$out" | head -1)"; return 2; }
+    printf '%s\n' "$out" | grep -qx "$PKG:xemu"
+}
+alive() {   # 0 running, 1 not running, 2 unknown after three adb failures
+    local try r
+    for try in 1 2 3; do
+        PROBE_ERR=""
+        probe; r=$?
+        [ "$r" = 2 ] || return "$r"
+        ADB_FAILURES=$((ADB_FAILURES+1))
+        echo "ADB: liveness probe failed (try $try/3): ${PROBE_ERR:-no output}"
+        [ "$try" = 3 ] || sleep "${SOAK_RETRY_S:-2}"
+    done
+    return 2
+}
+#
+# Wall clock, not a count of 5 s sleeps: a retried probe costs seconds, and a
+# 20-minute confirmation run should be 20 minutes whatever adb is doing.
 s=0
 appeared=0
+t0=$(date +%s)
 while [ "$s" -lt "$SECONDS_TO_HOLD" ]; do
-    sleep 5; s=$((s+5))
+    # SOAK_POLL_S / SOAK_RETRY_S exist for selftest.d/89, which drives this
+    # loop against a fake adb in seconds rather than minutes.
+    sleep "${SOAK_POLL_S:-5}"; s=$(( $(date +%s) - t0 ))
     touch "$LEASE"
-    if alive; then
+    alive; r=$?
+    if [ "$r" = 0 ]; then
         appeared=1
-    elif [ "$appeared" = 1 ]; then
+    elif [ "$r" = 1 ] && [ "$appeared" = 1 ]; then
         echo "guest exited after ${s}s of ${SECONDS_TO_HOLD}s"
         break
     fi
 done
+stop_route
+a shell log -t hakuX-route "'soak end'" >/dev/null 2>&1
+echo "adb_failures=$ADB_FAILURES"
 
 if [ "$appeared" = 0 ]; then
     echo "guest never appeared in ${SECONDS_TO_HOLD}s -- title did not boot"

@@ -88,7 +88,7 @@ SRC="${DISPATCH_SRC:-$TREE/docs/testing}"
 # pass 1 on #206, M2). selftest.d/97 checks the closure, not only equality.
 SCRIPT_DEPS="dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
 affinity.py captures.py make_test_iso.py extract_results.py sweep_queue.sh \
-make_isolation_discs.py vsh_score.py"
+make_isolation_discs.py vsh_score.py titles/route.sh perf/pad.sh"
 # WHERE BUILDS HAPPEN, AND IT IS NEVER $TREE.
 #
 # Until 2026-09-19 a build detached the SHARED checkout onto the requested
@@ -114,8 +114,10 @@ snapshot_scripts() {
     mkdir -p "$SNAP"
     for f in dispatcher.sh devices.sh soak_title.sh run_disc.sh score_sweep.py \
              affinity.py captures.py make_test_iso.py extract_results.py \
-             sweep_queue.sh make_isolation_discs.py vsh_score.py; do
-        [ -f "$SRC/$f" ] && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
+             sweep_queue.sh make_isolation_discs.py vsh_score.py \
+             titles/route.sh perf/pad.sh; do
+        # Two of these live in subdirectories, and cp does not make one.
+        [ -f "$SRC/$f" ] && mkdir -p "$SNAP/$(dirname "$f")" && cp -f "$SRC/$f" "$SNAP/$f" 2>/dev/null
     done
 }
 # Hash of the scripts as they are IN THE TREE. This used to return empty
@@ -731,10 +733,14 @@ serve_one() {
             log "  TITLE NOT FOUND"; mv "$req" "$rdir/request.json"; return 0
         fi
         touch "$LEASE"
+        # The route's text travels in the request (request.sh --route); the
+        # file soak_title.sh plays is written from it here, beside the result.
+        python3 -c 'import json,sys; r=json.load(open(sys.argv[1])).get("route") or ""; r and open(sys.argv[2],"w").write(r.rstrip("\n")+"\n")' "$req" "$rdir/route.txt"
         start_frame_capture "$rdir" "$frames_every" "$seconds"
         SERIAL="$SERIAL" CAPTURE_LOG="$rdir/logcat.txt" \
             PULL_GLOB="$pull_glob" PULL_DEST="$rdir/pulled" \
             AUDIO_CAPTURE_MB="$audio_capture" \
+            ROUTE_FILE="$([ -s "$rdir/route.txt" ] && echo "$rdir/route.txt")" \
             bash "$HERE/soak_title.sh" "$tpath" "$seconds" >>"$rdir/run.log" 2>&1
         # Before the result is written, so the count in result.json is final,
         # and unconditionally, so an early guest exit does not leave a
@@ -1341,7 +1347,7 @@ PYEOF
 # before it aborts. All three are emitted only on the way down, so they cost
 # nothing on a run that does not crash. hakuX-vk:I is one line, the app's own
 # "Cache identity mismatch: wiping" -- whether this run started cold.
-LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
+LOGCAT_SPEC="${LOGCAT_SPEC_OVERRIDE:-hakuX-crash:V hakuX-unhandled:W hakuX-audio:I hakuX-audiocap:I hakuX-build:I hakuX-perf:I hakuX-phase:I xemu-work:I hakuX-lane:I hakuX-tier1:D hakuX-pages:I hakuX:I hakuX-rw:I hakuX-stderr:E hakuX-vk:I hakuX-route:I hakuX-pace:I libc:F DEBUG:F VALIDATION:W ValidationLayer:W vulkan:W VulkanLoader:W *:S}"
 export LOGCAT_SPEC
 
 case "${1:-status}" in

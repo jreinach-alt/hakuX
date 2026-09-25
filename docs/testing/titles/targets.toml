@@ -1,0 +1,82 @@
+# Per-title targets for title_verdict.py, keyed on the canonical title_id of
+# /home/justin/hakux-work/titles/xemu-compat-2026-09-25.csv (the XBE
+# certificate's id; `canonical_title_id` column, which folds regional ids).
+#
+# A title with no entry here is judged on [defaults] with the generic route;
+# the verdict still finds nothing to key it on, so title_id is null until an
+# entry names its ISO. Entries need only what differs from the defaults.
+#
+#   name        the CSV's name
+#   iso         the ISO's file name per device, under that device's
+#               DEVICE_ISO_ROOT (devices.sh); this is how a run is matched
+#   target_fps  the title's OWN frame target. The Playable bar is 30 for
+#               every title; a title whose own target is 60 and that runs at
+#               30 is flagged below_own_target, not failed -- many Xbox games
+#               tie game speed to frame rate, so it may be in slow motion,
+#               and a human decides.
+#   route       its own route in routes/<route>.route (else generic)
+#   notes       free text; where a value came from
+
+[defaults]
+playable_fps = 30          # the owner's bar, 2026-09-25
+fps_share_min = 0.90       # of gameplay TIME at or above the bar
+# A window counts as at the bar at >= bar * this. Guest vblank is not
+# exactly 60 Hz everywhere (NTSC is 59.94), and a title locked to half of it
+# measures 29.97, which is the bar met, not missed.
+fps_tolerance = 0.95
+# "No dropouts in audio", made mechanical: the share of APU sink callbacks
+# that came up short after the first 10 s of gameplay. 0.1% of callbacks is
+# about one 5 ms shortfall every five seconds; set 0.0 for literal zero.
+audio_starve_max_share = 0.001
+screening_s = 600
+confirmation_s = 1200
+
+[titles."4D530021"]
+name = "Crimson Skies: High Road to Revenge"
+iso = { nova = "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso", thor = "Crimson Skies - High Road to Revenge (USA) (En,Fr,De,Zh,Ko).xiso.iso" }
+target_fps = 30
+route = "crimson-skies"
+notes = "Paces itself to 30 (perf/run_perf.sh). Route from run_perf.sh."
+
+[titles."4D530002"]
+name = "Fuzion Frenzy"
+iso = { nova = "Fuzion Frenzy (USA).xiso.iso" }
+target_fps = 60
+route = "fuzion-frenzy"
+notes = "Asks for every VBLANK (perf/bench_ff.sh). Route from bench_ff.sh."
+
+[titles."41540004"]
+name = "Galleon"
+iso = { nova = "Galleon (USA).xiso.iso", thor = "Galleon (USA).xiso.iso" }
+notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+
+[titles."4D53002D"]
+name = "Dead or Alive 3"
+iso = { thor = "Dead or Alive 3 (USA) (En,Ja).xiso.iso" }
+target_fps = 60
+notes = "A §11 soak title; a 60 fps fighter. Route: PR 2."
+
+[titles."49470018"]
+name = "JSRF: Jet Set Radio Future"
+iso = { thor = "JSRF - Jet Set Radio Future (USA).xiso.iso" }
+notes = "A §11 soak title; own target not yet measured, so the 30 default. Route: PR 2."
+
+[titles."4D530053"]
+name = "Grabbed by the Ghoulies"
+iso = { nova = "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso" }
+
+[titles."4D530051"]
+name = "Conker: Live & Reloaded"
+iso = { nova = "Conker Live & Reloaded.iso" }
+
+[titles."4D530039"]
+name = "RalliSport Challenge 2"
+iso = { nova = "RalliSport Challenge 2 (Japan, Europe).iso" }
+
+[titles."53450029"]
+name = "Spikeout: Battle Street"
+iso = { nova = "Spikeout - Battle Street (Europe).iso" }
+
+[titles."55530040"]
+name = "Tork: Prehistoric Punk"
+iso = { nova = "Tork - Prehistoric Punk (USA).iso" }
