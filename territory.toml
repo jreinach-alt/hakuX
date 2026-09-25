@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 202
-updated_utc = "2026-09-25T21:40:00Z"
+wave = 204
+updated_utc = "2026-09-25T22:10:00Z"
 
 
 [retired.hilodot10]
@@ -865,11 +865,12 @@ files = ["hw/xbox/nv2a/pgraph/vk/draw.c", "docs/testing/predictions/vtxarr262-*.
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 184 (job.board, 2026-09-25T18:30Z) for #262: a vertex array over memory the GPU just rendered into is never re-fetched (Surface as vertex array::DynamicUpdateLoop, 96,000 px against lane.xbox's console references, PR #261). vk/draw.c taken from lane.remote (PR #256 folded). vk/surface.c is NOT granted -- lane.remote holds it for #109; the lane must fix from draw.c or report the one-line surface.c change on #262. Brief: briefs/vtxarr262.md. Arm: Thor, register before building."
 
-[lane.gamecheck]
-issues = ["265"]
-files = ["docs/lanes/gamecheck/**"]
+[retired.gamecheck]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's go-ahead: re-check Retro Tech Dad's hakuX 0.3.1 glitch list (#265) on today's build, on the Nova only -- hands-off soaks through the dispatcher, then bounded (<= 60 min) holds with evdev input for scenes a soak cannot reach. Measures and reports; no code. Brief: briefs/gamecheck.md."
+retired_utc = "2026-09-25T22:10:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #267 MERGED 2026-09-25T21:25:34Z (fold 6341ee6aa5), no open PR on lane/gamecheck. docs/lanes/gamecheck/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's go-ahead: re-check Retro Tech Dad's hakuX 0.3.1 glitch list (#265) on today's build, on the Nova only -- hands-off soaks through the dispatcher, then bounded (<= 60 min) holds with evdev input for scenes a soak cannot reach. Measures and reports; no code. Brief: briefs/gamecheck.md."
 
 [lane.wbufdepth24]
 issues = ["266"]
@@ -943,11 +944,12 @@ standing = false
 retired_utc = "2026-09-25T21:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #305 MERGED 2026-09-25T20:56:21Z, analysis only, no open PR on lane/spheremap273, unit gone. predictions/spheremap273-*.json, docs/lanes/spheremap273/** RELEASED to [free]. #273 stays open. STANDING HOST DECISION carried over from the lane row: pgraph.c goes to the next #273 lane when lane.vshsubneg255's PR #288 folds (one file, one holder). PRIOR NOTE: DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #273: Texgen with texture matrix, SphereMap_Arbitrary and SphereMap_RotateX draw the whole 455x289 quad wrong (262,990 px, one mechanism). LOCATE-FIRST: vsh-ff.c (the guessed area, :699) is lane.shadetie224b's; name the function and the change and ask. Brief: briefs/spheremap273.md. HOST DECISION (2026-09-25T20:30:10Z) on the 20:22Z grant request: pgraph.c comes here when lane.vshsubneg255's PR #288 folds (different function, but one file one holder). PR #305 stays analysis-only until then."
 
-[lane.x1a7271]
-issues = ["271"]
-files = ["docs/testing/predictions/x1a7271-*.json", "docs/lanes/x1a7271/**"]
+[retired.x1a7271]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #271: X1A7R8G8B8 expanded 7-bit alpha not stored or read back (229,376 px recoverable, ceiling 409,382). PR #176's design (glsl/psh.c + vk/draw.c write, vk/texture.c read) fits 32/32 golden halves but all three files are held (lane.wbufdepth24 psh.c, lane.vtxarr262/remote vk/draw.c, lane.texvol283 vk/texture.c), so this lane re-derives the design against master, prices it offline, and reports the exact hunks per file; the code lands when the holders fold. Brief: briefs/x1a7271.md."
+retired_utc = "2026-09-25T22:10:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T22:10:00Z): PR #306 MERGED 2026-09-25T21:35:25Z (fold fab230935e), no open PR on lane/x1a7271. predictions/x1a7271-*.json, docs/lanes/x1a7271/** RELEASED to [free]. PRIOR NOTE: DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #271: X1A7R8G8B8 expanded 7-bit alpha not stored or read back (229,376 px recoverable, ceiling 409,382). PR #176's design (glsl/psh.c + vk/draw.c write, vk/texture.c read) fits 32/32 golden halves but all three files are held (lane.wbufdepth24 psh.c, lane.vtxarr262/remote vk/draw.c, lane.texvol283 vk/texture.c), so this lane re-derives the design against master, prices it offline, and reports the exact hunks per file; the code lands when the holders fold. Brief: briefs/x1a7271.md."
 
 [lane.titlerun]
 issues = []
