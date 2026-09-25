@@ -117,6 +117,15 @@ b_ref 47ee3f65e9, all must-not-move over the three Vertex shader suites,
 W param and Fog coord vec4. The prediction text names what would move each
 leg.
 
+## State at end of session (2026-09-25)
+
+- WAITING on the `[job.arms]` verdict for `vshconst-must-not-move.json` and on
+  CI for this head. Both are posted on PR #234. The PR stays in draft until the
+  arm is clean. Then mark it ready.
+- BLOCKED for the printed-value match: rdi.c bounds + constant writeback, both
+  outside this lane's files. Board request `board-requests/vshconst.md`,
+  comment on #233.
+
 ## Do not repeat
 
 - `nv2a_index.py blast` on `vsh-prog.c` or `vsh.c` answers "No indexed suite
@@ -126,3 +135,10 @@ leg.
 - No `.vsh` under `~/nxdk_pgraph_tests/src` writes a constant register, so on
   the pgraph disc this change can only move a capture through a compile
   failure or a pre-scan misfire.
+- Desktop Vulkan cannot run on this host: no `xvfb-run`/Xvfb, and SDL's
+  offscreen driver cannot create a Vulkan surface ("Failed to create main
+  window"). Use GL on llvmpipe, or the handheld.
+- `desktop_channel.sh build` checks out a ref in the SHARED `$WORK/desktop/tree`.
+  Build in your own worktree's gitignored `build-linux/` instead, pointing
+  PKG_CONFIG_PATH/LD_LIBRARY_PATH at `$WORK/desktop/deps/prefix` (about 25 min
+  cold).
