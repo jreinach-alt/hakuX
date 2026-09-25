@@ -40,6 +40,16 @@ FTP: passive, and the server ignores LIST's path argument, so it always CWDs
 first and lists bare (a recursive walk written the other way re-lists the root
 and finds nothing).
 
+--kind vsh runs nxdk_vsh_tests instead (branch hakux/completion-marker in
+~/nxdk_vsh_tests). Its shutdown and autorun are COMPILE-TIME, so there is no
+config to inspect: the runner reads the XBE's own bytes and refuses one that
+lacks the reboot message (a shutdown build compiles it out), the autorun
+entry, the completion line or the suite-list path. CFG is then a plain suite
+list, installed as `vsh_tests.cnf` beside the XBE -- and it MUST be there
+before launch, because a build that reads it ASSERTs inside the XBE when it
+is missing; the upload's size check is what guarantees it. Output lands in
+`E:\\Apps\\NAME\\nxdk_vsh_tests`, so NAME must be a fresh directory.
+
 --check does every refusal test above and stops before touching anything.
 
 Exit: 0 finished and fetched; 2 refused before launch; 3 launched but did not
@@ -59,6 +69,11 @@ import time
 
 COMPLETED = "Testing completed normally"
 LOG_NAME = "pgraph_progress_log.txt"
+VSH_LOG = "log.txt"
+VSH_CONFIG = "vsh_tests.cnf"
+# What a safe nxdk_vsh_tests build contains, by its own strings.
+VSH_MUST_HAVE = (b"Rebooting in 4 seconds", b"Run all and exit (automatic in",
+                 COMPLETED.encode(), b"d:\\" + VSH_CONFIG.encode())
 ROOT_CONFIG = ("/E/nxdk_pgraph_tests", "nxdk_pgraph_tests_config.json")
 
 
@@ -158,6 +173,17 @@ def check_config(cfg):
     return why
 
 
+def check_vsh(xbe_bytes, cfg_text):
+    why = []
+    for must in VSH_MUST_HAVE:
+        if must not in xbe_bytes:
+            why.append("the XBE does not contain %r -- not a safe nxdk_vsh_tests build"
+                       % must.decode("latin-1"))
+    if not [l for l in cfg_text.splitlines() if l.strip() and not l.startswith("#")]:
+        why.append("the suite list is empty; an empty list runs every suite")
+    return why
+
+
 def upload_tree(f, local, remote):
     """STOR every file under `local` into `remote`, verifying sizes by LIST."""
     try:
@@ -205,19 +231,27 @@ def main(argv=None):
     ap.add_argument("--unreachable-min", type=float, default=3.0,
                     help="how long without ping before the run is abandoned to a human")
     ap.add_argument("--check", action="store_true", help="refusal tests only; touch nothing")
+    ap.add_argument("--kind", choices=("pgraph", "vsh"), default="pgraph")
     a = ap.parse_args(argv)
 
     xbe = os.path.join(a.xbe_dir, "default.xbe")
     if not os.path.isfile(xbe):
         print("REFUSED: no default.xbe in %s" % a.xbe_dir); return 2
-    cfg = json.load(open(a.config))
-    why = check_config(cfg)
+    app = "/E/Apps/" + a.app
+    if a.kind == "vsh":
+        cfg = {"settings": {"network": {"enable": False}}}
+        why = check_vsh(open(xbe, "rb").read(), open(a.config).read())
+        outdir = "e:/Apps/%s/nxdk_vsh_tests" % a.app
+        log_name, config_name = VSH_LOG, VSH_CONFIG
+    else:
+        cfg = json.load(open(a.config))
+        why = check_config(cfg)
+        outdir = cfg["settings"].get("output_directory_path")
+        log_name, config_name = LOG_NAME, "nxdk_pgraph_tests_config.json"
     if why:
         for w in why:
             print("REFUSED: " + w)
         return 2
-    outdir = cfg["settings"]["output_directory_path"]
-    app = "/E/Apps/" + a.app
     con = Console(a.host)
 
     st = con.state()
@@ -226,7 +260,7 @@ def main(argv=None):
         return 2
     f = con.ftp()
     try:
-        if any(n == ROOT_CONFIG[1] for n, d, _ in (listing(f, ROOT_CONFIG[0]) or [])):
+        if a.kind == "pgraph" and any(n == ROOT_CONFIG[1] for n, d, _ in (listing(f, ROOT_CONFIG[0]) or [])):
             print("REFUSED: %s/%s exists and would silently win over this run's config"
                   % ROOT_CONFIG); return 2
         if listing(f, ftp_path(outdir)) is not None:
@@ -247,8 +281,7 @@ def main(argv=None):
     prov = {"started_utc": now_utc(), "host": a.host, "app": app,
             "xbe_sha256": sha256(xbe), "config_sha256": sha256(a.config),
             "output_directory_path": outdir}
-    with open(os.path.join(a.out, "config.json"), "w") as fh:
-        json.dump(cfg, fh, indent=2)
+    subprocess.run(["cp", a.config, os.path.join(a.out, "config" + os.path.splitext(a.config)[1])], check=True)
 
     f = con.ftp()
     try:
@@ -256,11 +289,11 @@ def main(argv=None):
         if os.path.exists(staging):
             subprocess.run(["rm", "-rf", staging], check=True)
         subprocess.run(["cp", "-r", a.xbe_dir, staging], check=True)
-        for stale in ("nxdk_pgraph_tests_config.json", "sample-config.json"):
+        for stale in ("nxdk_pgraph_tests_config.json", "sample-config.json", VSH_CONFIG):
             p = os.path.join(staging, stale)
             if os.path.exists(p):
                 os.unlink(p)
-        subprocess.run(["cp", a.config, os.path.join(staging, "nxdk_pgraph_tests_config.json")], check=True)
+        subprocess.run(["cp", a.config, os.path.join(staging, config_name)], check=True)
         say("uploading %s -> %s" % (a.xbe_dir, app))
         upload_tree(f, staging, app)
         path = "E:\\Apps\\%s\\default.xbe" % a.app
@@ -310,7 +343,7 @@ def main(argv=None):
         f = con.ftp()
         try:
             try:
-                log = retr(f, ftp_path(outdir), LOG_NAME).decode("utf-8", "replace")
+                log = retr(f, ftp_path(outdir), log_name).decode("utf-8", "replace")
             except ftplib.all_errors:
                 log = None
         finally:
