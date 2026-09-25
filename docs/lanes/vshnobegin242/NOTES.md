@@ -79,7 +79,7 @@ reset of a lone vertex's inline buffer.
 - `nv2a_index.json` was regenerated because the edit moved 190 sites by 16
   lines. The tests tree was at the index's provenance commit 6743b6ab16, and
   the build used `--support ~/pbkitplusplus`. `check --tests` matches.
-- Preflight passes on `8b0d0a4` (the head after the index commit).
+- Preflight passes on `a75312472b` (the head after the index commit).
 
 ## State at the end of attempt 1 (2026-09-25): WAITING
 
