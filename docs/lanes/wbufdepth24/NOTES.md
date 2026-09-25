@@ -123,3 +123,30 @@ Done this session:
   On a pass, mark #268 ready. On a fail, read `classify.py` miss@S on arm B
   before touching the line, and check the status column for `unreadable`.
 - Do not repeat: the session-1 CI red was a gitlab fetch flake, not code.
+
+## Session 3 (2026-09-25, resumed at 23:12Z)
+
+**Why session 2 did not finish:** it ended correctly in a wait for the
+`wbufdepth24-d24sat.json` arm, which has not run: both requests
+(`1790371358-arms-wbufdepth24-base-50897`, `-fix-50997`) are still in
+`dispatch/queue/`, nothing running. CI on `a3331bc91d` is green. The resume
+came from the quiet clock, not a verdict.
+
+Baselines landed (both ran on **Nova**; the Thor request was re-pinned, so
+there is no Thor baseline -- apk 851650a27937 at e48514f980):
+
+| run | WBuf24D FloorQuad V0_ZB0_ZS1 | V0_ZB1_ZS1 | their `_ZB` rows |
+|---|---|---|---|
+| -3948624 r1/r2 | blank 230,469 / 230,469 | blank 230,399 / 230,399 | ok, 0 px |
+| -3948651 r1/r2 | blank 230,469 / 230,469 | blank 230,399 / 230,399 | ok, 0 px |
+
+Blank on 4/4 runs, px counts identical, depth words exact: the colour
+draw is dropped while the depth plane agrees, which is what mechanism A
+predicts (the floor fragment at 0xFFFFFF+ fails LEQUAL against the clear).
+Both logcats: `Z24S8 host format 0x82, depth stored as float`.
+
+- **Waiting on:** the `[job.arms]` verdict for `wbufdepth24-d24sat.json`.
+  On a pass, `gh pr ready 268`. On a fail, read `classify.py` miss@S on arm
+  B and the status column for `unreadable` before touching the line.
+- Not merged master (45 behind) this session: the prediction is registered
+  and nothing here needs master's changes; fold will build the merge.
