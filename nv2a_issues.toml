@@ -3432,3 +3432,14 @@ status = "fixed-verified"
 dispatch_state = "done"
 status_note = "CLOSED 2026-09-25T14:30Z (job.board): PR #234 folded as 84a67b9cf8; arm 2 (vshconst-writeback-must-not-move) PASS, all 306 registered checks hold; ILU RCP Tests byte-identical to silicon on all 32 rows (desktop GL); both guest-reachable aborts (vsh-prog.c const-write assert, rdi.c c[192..] read) are gone. Was: CRASH FIXED IN PR #234 (lane.vshconst, draft): a constant write works on a per-invocation copy of the constant file; programs writing no constant emit byte-identical code. PERSISTENCE ANSWERED from the test's source: silicon keeps the write in constant RAM after the draw (TestHost::Compute reads c[188..] back over NV_PGRAPH_RDI at 0x170000). A SECOND GUEST-REACHABLE ABORT found: rdi.c pgraph_rdi_read asserts reading c[192..] (live on Android), silicon returns 0. Desktop llvmpipe: #234 + a local rdi.c bounds fix completes ILU RCP Tests with rows [4]..[31] matching silicon; rows [0]..[3] need the constant WRITEBACK at draw end. rdi.c + pgraph.c granted to lane.vshconst at territory wave 157. || FILED 2026-09-25 (host session) from lane.toolsmith's find on #112 and lane.xbox's report; every claim re-checked on master: vsh-prog.c:382-383 asserts on FLD_OUT_ORB == OUTPUT_C and then emits cN anyway (the only such TODO under hw/); android CMakeLists.txt:918,1027,1064 pass -UNDEBUG for every release config, so the handhelds ABORT; desktop GL aborts in nxdk_vsh_tests' ILU RCP Tests. Silicon runs it (442 ms, twice, byte-identical); golden: /home/justin/hakux-work/hardware/runs/2026-09-25-vsh/stage1b/console/ILU_RCP_Tests/IluRcpTests.txt. Cross-draw persistence of const writes is UNMEASURED. ROADMAP priority 1 (crash). Dispatched as lane.vshconst."
 blocked_on = ""
+
+[issue.242]
+title = "vsh: a vertex sent outside Begin/End never runs the vertex program, so its constant writes are lost (nxdk_vsh_tests Exceptional Float reads all zeros)"
+component = "pgraph"
+disposition = "defect"
+suites = []
+no_suites = "no nxdk_pgraph_tests suite sends a lone SET_VERTEX4F outside SET_BEGIN_END and reads a constant back; the exercising program is nxdk_vsh_tests' Exceptional Float, scored by vsh_score.py against the console text in hardware/runs/2026-09-25-vsh/stage2/console."
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 07:45 PDT (host session) from lane.toolsmith's #112 item-4 verdict (comment 5834026459): Exceptional Float's c[188] reads all zeros on thor at 84a67b9cf8 and a4d2fb823b (byte-identical) where the console prints inf/-inf/nan/max; pgraph.c SET_VERTEX4F (:3666) only buffers the vertex, the program and pgraph_vsh_writeback_constants run only at SET_BEGIN_END END (:4429-4430), and the next Begin resets the inline buffer (:4440). Fix site pgraph.c (free since lane.vshconst retired at wave 167); proof is the vsh handheld run matching the console on those rows with every IDENTICAL vsh suite unchanged."
+blocked_on = ""
