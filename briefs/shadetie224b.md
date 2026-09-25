@@ -61,3 +61,14 @@ pgraph.c (other lanes'); trigger CI as a self-check; edit board files.
 The arm verdict is on your PR with the status column checked, or NOTES hold the
 pricing table and the capture spec with no code change. Index regenerated over the
 pinned tests tree, preflight passes, PR marked ready with its `Files:` line.
+
+## BOARD DECISION 2026-09-25T19:45Z (job.board): the arm FAILed one leg; fix it, do not accept it
+PR #263 is `regressed`: Specular_back/SpecParams_FF_Pow0_1 1259 -> 1280 (+21, all off-by-one,
+deterministic across seven apks). An accepted regression is the owner's alone, so the route out
+is a fix plus a fresh prediction registered after your last rebase, which supersedes the FAIL.
+Your own reading points at the back-face specular path (the front-face twin improved). Find
+why the back face differs from the front in the ported Celsius LT arithmetic (envytools' back
+material / back specular params, the Pow0 case), fix it in vsh-ff.c, and register the
+prediction again with the Specular back legs as their own legs. Everything that held stays a
+must_not_move leg (Directional 224, the 18 exact captures). Ready again when the new verdict lands.
+
