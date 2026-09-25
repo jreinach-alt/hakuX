@@ -9,7 +9,7 @@ Source: gamecheck soak `1790365974-gamecheck-732876` and control
 Both carry the `hakuX-perf` pacing line and both `hakuX-pages` lines. The
 pages lines fire every 120 guest frames, so **window seconds / 120 is the mean
 guest frame time** for that window, with no smoothing. Tool:
-`/tmp/ghoul311_windows.py` (copied below as `windows.py`).
+`docs/lanes/ghoul311/windows.py`.
 
 ### The guest CPU is the slow side
 
