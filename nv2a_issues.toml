@@ -3457,3 +3457,13 @@ status_note = "FILED 2026-09-25 09:35 PDT (host session) from lane.vshnobegin242
 blocked_on = "PR #245 (#242's fix) must fold first: without it the lone vertex's program never runs, every Exceptional Float row reads 0, and this row cannot be seen."
 blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): vshnobegin242's base run 1790347581-vshnobegin242-3253522 (no fix) is all 0.000000; the signed-zero difference appears only in the fix run 1790347577-vshnobegin242-3252169."
 blocker_falsifier = "if the row were visible without #245, the base run would show a -0 or +0 distinction in the MaxSub row; it reads 0.000000 throughout."
+
+[issue.262]
+title = "Surface as vertex array: vertex fetch never sees later renders into memory bound as a vertex array (DynamicUpdateLoop, 96,000 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Surface as vertex array"]
+status = "open"
+dispatch_state = "available"
+status_note = "FILED 2026-09-25 11:20 PDT (host session) from lane.xbox's new silicon references (PR #261; #112 comment 5837123665): DynamicUpdateLoop renders a colour into surface_a_ four times and draws a quad whose DIFFUSE array (UB_D3D) points at that memory; silicon shows red/green/blue/yellow, hakuX 84a67b9cf8 all red -- 96,000 px (3 quads x 32,000). No golden covered this suite before; the console captures at ~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/ serve as an extra --goldens root. Likely mechanism (to confirm): the vertex-array upload/cache does not invalidate on a GPU surface write to its range -- #184's class through a different consumer."
+blocked_on = ""
