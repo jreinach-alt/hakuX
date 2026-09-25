@@ -95,7 +95,8 @@ this change does not touch it.
 ## The arm
 
 The prediction is `docs/testing/predictions/wbuf31sel-spanclip.json`:
-a_ref `21946df29b` (master), b_ref `f32946d5ea`. It has one leg,
+a_ref `d709a8d1fa` (master), b_ref `9848c0f227` (re-registered; the first
+registration named `21946df29b` / `f32946d5ea`, see below). It has one leg,
 must_not_move over `W_buffering/*` and `Depth_Clamp/*`. The positive evidence
 is the offline simulation above, because ClipF-300-008 is not on the disc and
 no golden can show it. The failure worlds are in the prediction's prose. In
@@ -109,6 +110,24 @@ Before trusting the verdict, check both arms' `scores1.tsv` status column for
 prediction, and CI runs on the head. Two signals resolve this: the `[job.arms]`
 verdict comment on PR #244, and green CI. PR #244 stays draft until the verdict
 is in and its status column is checked.
+
+### Why attempt 1 did not finish (resume, 2026-09-25 ~19:45Z)
+
+Two things stranded PR #244, neither a defect in the patch:
+
+- **The arm was REFUSED, not judged.** The `[job.arms]` verdict (16:31Z) says
+  the base arm `1790352053-arms-wbuf31sel-base-769582` had
+  `progress_log_proof` false, so ab_compare counts it absent. Nothing requeues
+  a refused arm with the same prediction.
+- **The head conflicted with master** on `docs/testing/nv2a_index.json`
+  (other folds regenerated it), so GitHub built no CI run on `dfd4fd3a98`.
+
+Attempt 2 merged `origin/master` (`d709a8d1fa`) as `9848c0f227`, regenerated
+the index over the pinned trees (tests `6743b6a`, pbkit `e91d509`; `check`
+passes), and re-registered the same prediction, same legs, on a_ref
+`d709a8d1fa` / b_ref `9848c0f227`. The emulator diff between those refs is
+this lane's `psh.c` change and nothing else. The lane waits again on the new
+`[job.arms]` verdict and CI on the new head.
 
 No shader-cache version bump is needed: `vk/glsl.c` keys SPIR-V on a hash of
 the GLSL text, and no ShaderState field changed.
