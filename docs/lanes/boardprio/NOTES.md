@@ -84,6 +84,18 @@ so the run reached the filter.
 `decision-needed` / `regression-accepted` calls: the board routes them with
 a `[board]` comment and keeps dispatching, never idling on the owner.
 
+## Attempt 3 (2026-09-25)
+
+**Why attempt 2 did not finish:** the decision and role-file line were
+committed and pushed (ee5e290acd, CI green), but the session ended before the
+PR body was replaced with the lane template and before `gh pr ready 270`:
+`.pr-body.md` was written but never PATCHed onto the PR. Same failure as
+attempt 1, one step later. No code changed in attempt 3: master (63 commits
+ahead) merges cleanly and touches none of this lane's files, so it was not
+merged in (that would only re-run CI on an identical diff). Preflight passes
+on ee5e290acd; the body was set via REST PATCH and read back, then marked
+ready.
+
 ## For the owner / the next lane
 
 - Real tracker today: #31, #38, #50 are measured zeros and now sort below
