@@ -1016,13 +1016,6 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #276: ZMinMaxControl NEARFAR ZCLAMP/ZCULL, 129,337 + 14,336 px, we draw what silicon culls. LOCATE-FIRST: the issue's guess vk/draw.c:2294 is lane.vtxarr262's; the lane derives which ZMIN_MAX_CONTROL bit each capture sets and names the function. Brief: briefs/zclamp276.md."
 
 
-[lane.cloud-audit2-260]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-260, audit pass 2 of PR #260 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 260` removes this row when the unit ends."
-
-
 [lane.dmasurf277]
 issues = ["277"]
 files = ["docs/testing/predictions/dmasurf277-*.json", "docs/lanes/dmasurf277/**"]
