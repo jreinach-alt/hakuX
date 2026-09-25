@@ -183,3 +183,25 @@ tests_commit) with `--support ~/pbkitplusplus`. `check` matches.
   the NOISE column for GeometrySuperscreen, `unreadable`, PARTIAL COVERAGE.
 - CI on the merged head.
 Once both are clean: `gh pr ready 245`.
+
+## Attempt 3 (2026-09-25 ~16:35Z, resumed by job.handback)
+
+### Why attempt 2 did not finish
+
+It ended WAITING, on purpose, for CI on the merged head and for the
+`[job.arms]` verdict on `vshnobegin242-must-not-move-runs3.json`. CI came back
+GREEN on `11365f15c8`. The 3-run arm has **not been queued yet**. The arms
+job's last tick (`$WORK/logs/arms/tick.log`) was at 16:00:59Z, and the runs3
+prediction was pushed at 16:15Z. Nothing refused it; no tick has run since.
+`arms.sh state lane/vshnobegin242` still reads `regressed` from the single-run
+FAIL alone, which is correct while nothing supersedes it.
+
+### State at the end of attempt 3: WAITING
+
+Waiting only for the runs3 `[job.arms]` verdict (about 3 x 2 runs of the
+10-suite pgraph disc on the next tick). Everything else in the definition of
+done holds: CI green, preflight passes, `Files:` matches the diff, and both
+predictions are committed with live refs. When it lands: read the NOISE column for
+GeometrySuperscreen, and check both arms for `unreadable` and PARTIAL
+COVERAGE. On a PASS, or on GeometrySuperscreen moving within its measured
+band, `gh pr ready 245`.
