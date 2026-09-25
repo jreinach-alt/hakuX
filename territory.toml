@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 163
-updated_utc = "2026-09-25T13:50:00Z"
+wave = 164
+updated_utc = "2026-09-25T14:00:00Z"
 
 
 [retired.hilodot10]
@@ -757,11 +757,12 @@ standing = false
 retired_utc = "2026-09-25T13:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T13:15Z): PR #228 MERGED (fold c5e8590f2a), no open PR on lane/wparam223. Files RELEASED to [free]: glsl/vsh-ff.c, predictions/wparam223-*.json, docs/lanes/wparam223/**. #223 stays open: its next lane is briefs/wparamgeom223.md (glsl/geom.c extreme-w scale), dispatched after PR #235 folds because geom.c is lane.shadeflat224s until then. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
 
-[lane.shade224]
+[retired.shade224]
 issues = []
-files = ["docs/testing/predictions/shade224-*.json", "docs/lanes/shade224/**"]
+files = []
 standing = false
-note = "DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, unowned. Analysis-first: classify by primitive x shade x W_ and edge vs interior, and say whether W_Fixed_*_Smooth is the same residual as #223 (lane.wparam223, PR #228). Docs and prediction files only claimed; any hw/ fix is a board-request. Attempt 1, opus-5. #224 MOVED to [lane.shadeflat224] at wave 157: this lane's analysis is done (PR #232, fold-ready) and family A's fix is a new lane on its board request."
+retired_utc = "2026-09-25T14:00:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T14:00Z): PR #232 MERGED 2026-09-25T13:30:22Z (fold 48f0618aff), no open PR on lane/shade224. Files RELEASED to [free]: docs/testing/predictions/shade224-*.json, docs/lanes/shade224/**. Its classification of #224 is the input to [lane.shadeflat224] (family A, PR #235 fold-ready); #224 stays open under that lane. PRIOR NOTE: DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, analysis-first, docs and prediction files only."
 
 [lane.vshconst]
 issues = ["233"]
