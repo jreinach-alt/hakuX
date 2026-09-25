@@ -43,12 +43,29 @@ jobs:
       # source: suite names from its constructors, hardware symbols from what
       # it pushes. pbkitplusplus carries the shared format tables that several
       # suites iterate instead of naming a format.
+      #
+      # PINNED, NOT THE TIP. Cloning upstream HEAD made this check a clock:
+      # every upstream commit reddened master and every open PR touching
+      # hw/xbox at once, with nothing in any of them wrong (09-21, fixed by
+      # #208's refresh; again 09-24 when "Texture render target" moved). The
+      # tests tree is the one the committed index names in
+      # provenance.tests_commit, so this check asks only "does the index
+      # describe THIS emulator tree", and moving to a newer upstream is a
+      # deliberate refresh: rebuild over the new checkout, commit the index,
+      # and bump PBKIT_SHA below if pbkitplusplus moved with it.
       - name: Check out the pgraph test sources
+        env:
+          PBKIT_SHA: e91d509e4f75d6d815807d80443e4e56aab89772
         run: |
-          git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests \
-              "$RUNNER_TEMP/nxdk_pgraph_tests"
-          git clone --depth 1 https://github.com/abaire/pbkitplusplus \
-              "$RUNNER_TEMP/pbkitplusplus"
+          tests_sha=$(python3 -c "import json; print(json.load(open('docs/testing/nv2a_index.json'))['provenance']['tests_commit'])")
+          echo "nxdk_pgraph_tests @ $tests_sha (from the index's provenance), pbkitplusplus @ $PBKIT_SHA"
+          fetch_at() {
+              git init -q "$2"
+              git -C "$2" fetch -q --depth 1 "https://github.com/abaire/$1" "$3"
+              git -C "$2" checkout -q FETCH_HEAD
+          }
+          fetch_at nxdk_pgraph_tests "$RUNNER_TEMP/nxdk_pgraph_tests" "$tests_sha"
+          fetch_at pbkitplusplus "$RUNNER_TEMP/pbkitplusplus" "$PBKIT_SHA"
 
       - name: Check the index matches the tree
         run: |
