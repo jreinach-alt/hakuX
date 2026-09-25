@@ -10,9 +10,10 @@ colour in kClearColors, draws a 4x4 black centre mark into it, and samples
 it back into the Nth quad on screen. clear_surface_fmt.py (docs/testing/)
 splits a capture's error into swatches that repeat an earlier swatch
 (#184's defect) and the rest. This prints the rest per swatch, a stale flag
-per swatch (S: its body is swatch 0's colour where the golden's is not), and
-the alpha of each swatch's body, which is where the pad-bit defects of the X
-formats show.
+per swatch, and the alpha of each swatch's body, which is where the pad-bit
+defects of the X formats show. A swatch is stale (S) when its whole 128x128
+region is pixel-identical to swatch 0's in the capture while the golden's two
+regions differ: the same texture drawn twice, which is #184's signature.
 
 Used on #184 (lane.remote, 2026-09-25). On desktop Vulkan the X1A7 pair
 stores the clear alpha's low 7 bits widened back to 8 by bit replication
@@ -55,15 +56,16 @@ def main(argv):
             continue
         ours, gold = load(ours_path), load(gold_path)
         per, alpha, stale = [], [], ""
-        body0_ours = ours[RECTS[0][1] + 8, RECTS[0][0] + 8, :3]
-        body0_gold = gold[RECTS[0][1] + 8, RECTS[0][0] + 8, :3]
-        for x, y in RECTS:
+        x0, y0 = RECTS[0]
+        ours0 = ours[y0:y0 + SIZE, x0:x0 + SIZE]
+        gold0 = gold[y0:y0 + SIZE, x0:x0 + SIZE]
+        for i, (x, y) in enumerate(RECTS):
             o = ours[y:y + SIZE, x:x + SIZE]
             g = gold[y:y + SIZE, x:x + SIZE]
             per.append(int((o != g).any(axis=2).sum()))
             alpha.append("%02x/%02x" % (o[8, 8, 3], g[8, 8, 3]))
-            is_stale = ((o[8, 8, :3] == body0_ours).all()
-                        and not (g[8, 8, :3] == body0_gold).all())
+            is_stale = (i > 0 and np.array_equal(o, ours0)
+                        and not np.array_equal(g, gold0))
             stale += "S" if is_stale else "."
         print("%-28s total %6d  per swatch %s  stale %s  body alpha ours/gold %s"
               % (cap, sum(per), per, stale, " ".join(alpha)))
