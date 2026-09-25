@@ -341,7 +341,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo "## capacity -- there is room under LANE_MAX and there is startable work"
     echo
     [ "${WINDOW_DEFER:-0}" = 1 ] && { echo "**START NO LANE AND CLAIM NO AUDIT THIS TICK.** $WINDOW_WHY. Dispatch resumes at $WINDOW_UNTIL and the list below is deliberately empty; do not go looking for startable issues yourself. Everything else in this brief is still yours: labels, the coverage gate, comments, briefs. This is a budget decision, not a failure -- do not open a decision-needed issue about it. ($WINDOW_FACTS)"; echo; }
-    echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch AT MOST ONE this tick, by your role file's order (severity bucket, then oldest), and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
+    echo "$lanes of ${LANE_MAX:-2} lanes are running. Every issue below is open, carries no \`lane:\` label, no \`claimed:cloud\`, and none of \`blocked:*\`, \`decision-needed\`, \`upstream\`, \`unmodellable\`, \`xbox-hardware\`, \`harness-status\` -- so a lane could be started on it. They are NOT all \`dispatchable\`; deciding that is your job (files free, no blocker), and only you may apply the label. Dispatch UP TO THREE this tick (roles/board.md), by your role file's order (severity bucket, then oldest), each on files that are free with no blocker, and label \`cloud\` the ones that need no device so the hourly cloud session takes the overflow. If \`lane.sh\` prints REFUSED you are at the cap: stop, do not retry."
     echo
     printf '%s\n' "${capacity:-none}"
     echo
@@ -357,7 +357,7 @@ brief="$WORK/briefs/board.$(date -u +%Y%m%dT%H%M%SZ).md"
     echo
     printf '%s\n' "${sweep:-none}"
     echo
-    echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when every list above is empty or every item on it has a label, a comment, an issue, or (for at most one capacity item) a running lane."
+    echo "Clear fleet items by the rules in your role file, in this order: fold-ready, blocked-on-a-free-file, reported-not-folded, dispatchable-not-dispatched, then the rest. Anything you cannot decide by rule becomes a decision-needed issue. Do not author code. End when every list above is empty or every item on it has a label, a comment, an issue, or (for up to three capacity items) a running lane."
 } > "$brief"
 bash "$JOBS/run-claude-job.sh" board "$WT" "$brief" "${BOARD_TURNS:-70}"; rc=$?
 # MARKED SEEN ONLY NOW, AND ONLY ON A TICK THAT RAN. The sweep rewrites the
