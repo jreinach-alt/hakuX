@@ -52,7 +52,7 @@ def after_read_case(old, new):
 
 MUTANTS = [
     # id, description, mutated source, expected exit, expected text in output
-    ("M0", "unmutated tree", ORIG, 0, "8 checks, 0 failures"),
+    ("M0", "unmutated tree", ORIG, 0, "16 checks, 0 failures"),
     ("M1", "pmc_write gains `case NV_PMC_ENABLE:`",
      in_write("    case NV_PMC_ENABLE:\n        d->pmc.pending_interrupts = val;\n        break;\n"),
      1, "REFUSED: pmc_write has a case for NV_PMC_ENABLE"),
@@ -71,10 +71,19 @@ MUTANTS = [
     ("M3", "the read reverts to 0",
      after_read_case("        r = 0x01110000;", "        r = 0;"),
      1, "FAIL NV_PMC_ENABLE"),
-    ("M4", "the case widens to NV_PMC_ENABLE + 4",
+    # M4 used to go red on `FAIL unmodelled 0x204`, the line #190's lane was
+    # told to change. It now goes red one step EARLIER and harder: 0x204 is
+    # inside #190's `case 0x204 ... 0x2FC:`, so widening #188's arm onto it is
+    # a duplicate case value and the compiler refuses the file. Recorded with
+    # the reason rather than just repointed, because the guard that catches
+    # this mutant is no longer this script -- it is gcc, and the assertion
+    # that used to carry it is gone. #190's own suite re-covers the widening
+    # question with mutants that still reach the assertions
+    # (docs/lanes/cloud190/mutants.py, N3/N4).
+    ("M4", "the case widens to NV_PMC_ENABLE + 4 -- now overlaps #190's range",
      after_read_case("    case NV_PMC_ENABLE:\n",
                      "    case NV_PMC_ENABLE:\n    case NV_PMC_ENABLE + 4:\n"),
-     1, "FAIL unmodelled 0x204"),
+     1, "duplicate (or overlapping) case value"),
     ("M5", "the constant lands on NV_PMC_BOOT_0's arm",
      ORIG.replace("        r = 0x02A000A3;", "        r = 0x01110000;", 1),
      1, "FAIL NV_PMC_BOOT_0"),
@@ -96,12 +105,12 @@ MUTANTS = [
     # byte-identical to the tree's (audit L1, L2).
     ("L1", "an unrelated later function contains the constant -- must PASS",
      ORIG + "\nstatic uint32_t pmc_enable_debug_mask(void)\n{\n    return 0x01110000;\n}\n",
-     0, "8 checks, 0 failures"),
+     0, "16 checks, 0 failures"),
     ("L2", "a helper using an unstubbed QEMU type sits between the two -- must PASS",
      ORIG.replace("\nvoid pmc_write(",
                   "\nstatic MemoryRegion *pmc_region(NV2AState *d)\n{\n"
                   "    return &d->mmio;\n}\n\nvoid pmc_write(", 1),
-     0, "8 checks, 0 failures"),
+     0, "16 checks, 0 failures"),
 ]
 
 
