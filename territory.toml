@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 181
-updated_utc = "2026-09-25T17:00:00Z"
+wave = 182
+updated_utc = "2026-09-25T17:45:00Z"
 
 
 [retired.hilodot10]
@@ -789,7 +789,7 @@ note = "WAVE 178 (job.board, 2026-09-25T17:00Z): PR #245 is a draft, CI green on
 issues = ["31"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md."
+note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see."
 
 
 [lane.wparamclip223]
