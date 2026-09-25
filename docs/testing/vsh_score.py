@@ -18,7 +18,9 @@ The verdict per test is one of
     MISSING       the console has it, this run ran that suite, and no file came back
     STALE         a file came back but is older than this run's log.txt -- the
                   program's output directory persists across runs, so this is an
-                  earlier run's answer and is not scored
+                  earlier run's answer and is not scored. When log.txt itself
+                  is the previous run's (run_disc.sh's .previous_log_created),
+                  every file is STALE and log_completed is false.
     NO-REFERENCE  this run wrote it and the console has nothing to compare with
 
 The PNG is secondary and reported beside the verdict: `png=identical` (same
@@ -99,25 +101,44 @@ def _parse(ts):
 def stale_keys(root):
     """Keys whose .txt predates this run's log.txt, per .fatx_times.json.
 
-    Returns (set, note). The run's start is log.txt's CREATED time: main.cpp
-    deletes the log and opens it fresh before the first suite.
+    Returns (set, note, log_is_stale). The run's start is log.txt's CREATED
+    time: main.cpp deletes the log and opens it fresh before the first suite.
+
+    That holds only if main.cpp ran. A run that died before it leaves the
+    previous run's log, and every file then postdates it. run_disc.sh writes
+    .previous_log_created, the created time of the last log.txt it extracted
+    from this device's image; a log with that same time is the one already
+    seen, so the whole directory is an earlier run's and every file is STALE.
     """
     path = os.path.join(root, ".fatx_times.json")
     if not os.path.exists(path):
-        return set(), "no .fatx_times.json: staleness NOT checked"
+        return set(), "no .fatx_times.json: staleness NOT checked", False
     times = json.load(open(path))
-    start = _parse((times.get("log.txt") or {}).get("created"))
+    created = (times.get("log.txt") or {}).get("created")
+    start = _parse(created)
     if start is None:
-        return set(), "no log.txt time in the manifest: staleness NOT checked"
+        return set(), "no log.txt time in the manifest: staleness NOT checked", False
+    prev_path = os.path.join(root, ".previous_log_created")
+    prev = open(prev_path).read().strip() if os.path.exists(prev_path) else ""
+    names = [n for n in times if "::" in n and n.endswith(".txt")]
+    def key(name):
+        suite, _, rest = name.partition("::")
+        return "%s/%s" % (suite, rest[:-4])
+    if prev and _parse(prev) == start:
+        return ({key(n) for n in names},
+                "log.txt created %s is the previous run's log on this device: "
+                "this run never started the program, and every file is an "
+                "earlier run's" % start.isoformat(), True)
     stale = set()
-    for name, t in times.items():
-        if "::" not in name or not name.endswith(".txt"):
-            continue
-        mod = _parse(t.get("modified"))
+    for name in names:
+        mod = _parse(times[name].get("modified"))
         if mod is None or mod + FATX_SLACK < start:
-            suite, _, rest = name.partition("::")
-            stale.add("%s/%s" % (suite, rest[:-4]))
-    return stale, "run started %s (log.txt created)" % start.isoformat()
+            stale.add(key(name))
+    note = "run started %s (log.txt created)" % start.isoformat()
+    if not prev:
+        note += "; no previous-log record, so a log left by an earlier run " \
+                "is NOT detected"
+    return stale, note, False
 
 
 def png_compare(a, b):
@@ -147,7 +168,9 @@ def score(results, references, suites=None):
                     open(ref[key]["txt"], "rb").read() != open(paths["txt"], "rb").read():
                 ref_dupes.append(key)
             ref.setdefault(key, {}).update(paths)
-    stale, stale_note = stale_keys(results)
+    stale, stale_note, log_stale = stale_keys(results)
+    if log_stale:
+        completed = False
 
     keys = sorted({k for k in ref if k.split("/", 1)[0] in ran} |
                   {k for k in ours if "txt" in ours[k]})
@@ -178,7 +201,8 @@ def score(results, references, suites=None):
     counts = {}
     for row in tests.values():
         counts[row["verdict"]] = counts.get(row["verdict"], 0) + 1
-    return {"program": "vsh", "log_completed": completed, "suites": ran,
+    return {"program": "vsh", "log_completed": completed, "log_stale": log_stale,
+            "suites": ran,
             "references": list(references), "reference_conflicts": ref_dupes,
             "staleness": stale_note, "counts": counts, "tests": tests}
 
@@ -208,7 +232,10 @@ def main(argv=None):
             return 2
     out = score(args.results, refs, args.suite or None)
 
-    if not out["log_completed"]:
+    if out["log_stale"]:
+        print("*** log.txt is the previous run's: this run never started the "
+              "program, and nothing below is its result")
+    elif not out["log_completed"]:
         print("*** log.txt has no '%s': this run did not finish, and anything "
               "MISSING below is missing for that reason" % COMPLETED)
     print("staleness: %s" % out["staleness"])

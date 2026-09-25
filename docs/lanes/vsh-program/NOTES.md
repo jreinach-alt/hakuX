@@ -112,5 +112,13 @@ and #223.
   run by its duration.
 - `e:\nxdk_vsh_tests` persists on hdd.img across runs. A file older than
   log.txt's created time is STALE, not a result.
+- log.txt persists too. A run that dies before main.cpp leaves the previous
+  run's log, and every file postdates it (audit M1, remediated 2026-09-25).
+  run_disc.sh keeps a per-device ledger (`VSH_LOG_LEDGER`, default
+  `~/hakux-work/vsh-last-log-<label>`) of the last extracted log's created
+  time. A log with the same time is the old one: run_disc.sh exits 1
+  "STALE LOG", and vsh_score marks every file STALE with `log_completed`
+  false. The first vsh run on a device has no record and says so in
+  `staleness`. The dispatcher now records `run_disc_exit` per vsh run.
 - Test FILE names are not log test names: log `Exceptional Float::ExceptionalFloat`
   writes `Exceptional_Float/Float.txt`. vsh_score keys on files.

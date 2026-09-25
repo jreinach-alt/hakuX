@@ -159,6 +159,79 @@ check "vsh_score: a changed value is DIFFERS"                 vsh_verdict two DI
 check "  ... and the differing line is printed"               grep -q -- "+0.0" "$VT/score.out"
 check "vsh_score: a file older than this run's log is STALE"  vsh_verdict three STALE
 check "vsh_score: a console test that never came back is MISSING" vsh_verdict four MISSING
+check "  ... and with no previous-log record it says a stale log is NOT detected" \
+    grep -q "no previous-log record" "$VT/score.out"
+
+# ------------------------------------------- a log the previous run left (M1)
+# PR #229 audit M1. A run that dies before main.cpp replaces log.txt leaves the
+# previous run's log and files on the image. Every file postdates that log, the
+# log says "Testing completed normally", and before the fix all of it scored
+# IDENTICAL and complete. THE FALSIFIER is the "identical to the last" run
+# below: run_disc.sh exits 0 on it and vsh_score calls it IDENTICAL without the
+# host-side record of the last log extracted from the device.
+#
+# run_disc.sh is driven for real, from a copy whose adb and extract_results.py
+# are fakes: the fake adb shows the guest for one poll and pulls a non-empty
+# image; the fake extractor writes the tree an image holding a log created at
+# $VR/image_log_created would give. Three runs, so neither "always stale" nor
+# "never stale" passes: a first run, a run that replaced the log, a run that
+# did not.
+VR="$VT/rundisc"; mkdir -p "$VR/testing" "$VR/bin"
+cp "$TESTING/run_disc.sh" "$TESTING/devices.sh" "$VR/testing/"
+cat > "$VR/testing/extract_results.py" <<'PY'
+import argparse, json, os
+ap = argparse.ArgumentParser()
+ap.add_argument("image"); ap.add_argument("-d"); ap.add_argument("-o")
+ap.add_argument("--manifest")
+a = ap.parse_args()
+created = open(os.path.join(os.environ["VR"], "image_log_created")).read().strip()
+os.makedirs(a.o, exist_ok=True)
+open(os.path.join(a.o, "log.txt"), "w").write(
+    "Starting S A::one\nTesting completed normally, closing log.\n")
+open(os.path.join(a.o, "S_A::one.txt"), "w").write("A\n1.0\n")
+json.dump({"log.txt": {"created": created, "modified": created},
+           "S_A::one.txt": {"created": created, "modified": created}},
+          open(a.manifest, "w"))
+print("extracted 2 files")
+PY
+cat > "$VR/bin/adb" <<'EOF'
+#!/usr/bin/env bash
+case "$*" in
+    *"ps -A"*) [ -e "$VR/seen" ] || { : > "$VR/seen"; echo "com.jreinach.hakux.debug:xemu"; } ;;
+    *" pull "*) echo img > "${@: -1}" ;;
+esac
+exit 0
+EOF
+chmod +x "$VR/bin/adb"
+vsh_rundisc() {   # <n> <log created time on the image>
+    echo "$2" > "$VR/image_log_created"; rm -f "$VR/seen"
+    VR="$VR" PATH="$VR/bin:$PATH" PROGRAM=vsh SERIAL=fake DEVICE_LABEL=fake \
+        HAKUX_HDD_SCRATCH="$VR/hdd.img" HAKUX_DEVICE_LEASE="$VR/lease" \
+        VSH_LOG_LEDGER="$VR/ledger" DEVISO=/x/fast.iso MISSES_TO_EXIT=1 \
+        bash "$VR/testing/run_disc.sh" "$VT/vsh.iso" nxdk_vsh_tests "$VR/cap$1" 30 \
+        > "$VR/run$1.log" 2>&1
+    echo $? > "$VR/rc$1"
+    python3 "$TESTING/vsh_score.py" "$VR/cap$1" --reference "$VT/ref" \
+        --json "$VR/vsh$1.json" --tsv "$VR/vsh$1.tsv" > "$VR/vsh$1.txt" 2>&1
+}
+vsh_rundisc 1 2026-09-25T10:00:00
+vsh_rundisc 2 2026-09-25T11:00:00
+vsh_rundisc 3 2026-09-25T11:00:00
+vsh_rc() { [ "$(cat "$VR/rc$1")" = "$2" ]; }
+vsh_run_verdict() { grep -qP "^S_A/one\t$2\t" "$VR/vsh$1.tsv"; }
+vsh_log_completed() {
+    python3 -c 'import json,sys; sys.exit(0 if json.load(open(sys.argv[1]))["log_completed"] == (sys.argv[2] == "true") else 1)' \
+        "$VR/vsh$1.json" "$2"
+}
+check "run_disc: a first vsh run with a completed log exits 0"          vsh_rc 1 0
+check "  ... and scores IDENTICAL"                                      vsh_run_verdict 1 IDENTICAL
+check "run_disc: a run that replaced the log exits 0"                   vsh_rc 2 0
+check "  ... and scores IDENTICAL, complete"                            vsh_run_verdict 2 IDENTICAL
+check "  ... (log_completed true)"                                      vsh_log_completed 2 true
+check "run_disc: a run whose log is identical to the last one's exits 1" vsh_rc 3 1
+check "  ... naming the stale log"                                      grep -q "STALE LOG" "$VR/run3.log"
+check "vsh_score: every file under the previous run's log is STALE"     vsh_run_verdict 3 STALE
+check "  ... and the run is not complete"                               vsh_log_completed 3 false
 
 # ------------------------------------------------------------ dispatcher.sh
 # vsh_score.py is run from the snapshot, so it must be shipped AND hashed.

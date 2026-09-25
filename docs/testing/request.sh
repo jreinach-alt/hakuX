@@ -979,6 +979,10 @@ if [ -n "$BASE_ISO" ] || [ "$PROGRAM" = vsh ]; then
             exit 2
         fi
         VSH_TMP=$(mktemp -d)
+        # A full copy of the base ISO lives here; an interrupted request must
+        # not leave it in /tmp.
+        trap 'rm -rf "$VSH_TMP"' EXIT
+        trap 'rm -rf "$VSH_TMP"; exit 130' INT TERM
         VSH_ARGS=()
         IFS=',' read -r -a VSH_SUITES <<<"$SUITES"
         for s in "${VSH_SUITES[@]}"; do
@@ -995,6 +999,7 @@ if [ -n "$BASE_ISO" ] || [ "$PROGRAM" = vsh ]; then
             exit 2
         fi
         rm -rf "$VSH_TMP"
+        trap - EXIT INT TERM
     else
         # pgraph with a named base ISO. An image the inspector cannot identify
         # stays accepted, as every base ISO was before this check; only one

@@ -941,6 +941,9 @@ PYEOF
                 CAPTURE_LOG="$rdir/logcat$r.txt" \
                 bash "$HERE/run_disc.sh" "$rdir/disc$r.iso" "$gdir" \
                 "$rdir/captures$r" 900 >>"$rdir/run$r.log" 2>&1
+            # Scored whatever it returned, so the verdict it reached (TIMEOUT,
+            # INCOMPLETE, STALE LOG) goes in the result, not only in run$r.log.
+            echo $? > "$rdir/run_disc$r.rc"
             rm -f "$rdir/disc$r.iso"
             local vsuites=()
             for s in "${SUITE_LIST[@]}"; do vsuites+=(--suite "$s"); done
@@ -1049,12 +1052,16 @@ for t in sorted(glob.glob(os.path.join(rdir, "scores*.tsv"))):
 for j in sorted(glob.glob(os.path.join(rdir, "vsh*.json"))):
     v = json.load(open(j))
     c = v.get("counts", {})
+    rcf = os.path.join(rdir, "run_disc%s.rc" % os.path.basename(j)[3:-5])
+    rc = int(open(rcf).read().strip()) if os.path.exists(rcf) else None
     runs.append(dict(json=os.path.basename(j),
                      captures=sum(c.get(k, 0) for k in ("IDENTICAL", "DIFFERS", "NO-REFERENCE")),
                      identical=c.get("IDENTICAL", 0), differs=c.get("DIFFERS", 0),
                      missing=c.get("MISSING", 0), stale=c.get("STALE", 0),
                      no_reference=c.get("NO-REFERENCE", 0),
                      log_completed=bool(v.get("log_completed")),
+                     log_stale=bool(v.get("log_stale")),
+                     run_disc_exit=rc,
                      staleness=v.get("staleness", "")))
 # Which device produced this. A scoreboard column that mixes two handhelds
 # is the same failure as one that mixes two binaries, and apk_sha could not
