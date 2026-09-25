@@ -155,7 +155,15 @@ used, because its replicate pair moved 0 of 451 captures outside Shade_model.
 
 ## 5. Result
 
-Pending.
+Pending. **Waiting (2026-09-25)** on the arms job's `[job.arms]` verdict for
+`wparamclip223-wedge.json` (a 0a4e284536, b 77bc07d5e2) on PR #250. When it
+lands:
+
+1. Check both arms' `scores1.tsv` status column for `unreadable`, and
+   `run1.log` for PARTIAL COVERAGE and UtilAcceptVsock.
+2. Judge the 19 new-path rows by hand against section 4's ranges.
+3. Run `wedge_price.py --capture-dir <B>/captures1` for coverage.
+4. Mark the PR ready.
 
 ## For the next lane
 
