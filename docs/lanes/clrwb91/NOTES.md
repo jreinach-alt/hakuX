@@ -178,3 +178,18 @@ event. Nondeterminism does not produce that signature.
 
 Master merged in with `git merge`, not a rebase, so both refs are still
 ancestors.
+
+## Session 3 (2026-09-25): merge conflict only
+
+Why session 2 did not finish: it did finish. It recorded the verdict, the
+PR was audited twice (clean), and it went fold-ready. Then master moved to
+`9d27ed5f94`, and the fold's merge conflicted in `docs/testing/nv2a_index.json`,
+so the fold handed the PR back.
+
+The conflict was one line, `provenance.emulator_commit`. I did not hand-merge
+it. I regenerated the index on the merged tree with
+`nv2a_index.py build`. The local `nxdk_pgraph_tests` is at master's
+`tests_commit` `6743b6ab`, so no suite is lost: the counts are still 104
+suites, 2841 sites and `resolved_tables` 1, and `check` passes. Master was
+merged in, not rebased onto, so the arm's refs `9c5f7416d8`/`9de95de849` are
+still ancestors. Nothing in the PR's work was re-opened.
