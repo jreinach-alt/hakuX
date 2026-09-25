@@ -988,12 +988,6 @@ standing = false
 note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
 
 
-[lane.cloud-remediate-260]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-260, remediation of PR #260 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 260` removes this row when the unit ends."
-
 [lane.turnipfork]
 issues = ["68"]
 files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
