@@ -94,6 +94,76 @@ replacement for those two lines:
 > every scorer (`score_sweep.py`, `ab_compare.py`, `dispatcher.sh`,
 > `scoreboard.py`) shares one `SCORED_STATUSES` tuple.
 
+## PR #299: sweep legs and the unscoreable list
+
+Branch `lane/sweepcover-legs`, stacked on #298.
+
+- `queue_full_sweep.sh` resolves `"$REF^{commit}"`. Fixture: an annotated tag
+  whose object (`837d639`) is not its commit (`11d2e46`). The mutant with a bare
+  `"$REF"` writes the tag object into the request, and that goes red.
+- Legs, each queued as `z-<label>.<leg>-001-<Suite>` with `arm = <label>.<leg>`,
+  so `collect_sweep.sh <label>.<leg>` builds its own column and every row keeps
+  its own `disc_id`:
+  - `--with-depth-2025`: `Depth buffer` on `~/hakux-work/iso-2025-03-14.iso`
+    (`DEPTH2025_ISO`) (#291);
+  - `--with-blend-interactive`: `Blend tests` on
+    `~/nxdk_pgraph_tests_xiso_interactive.iso` (`INTERACTIVE_ISO`) (#292);
+  - `--with-rtloop`: `Texture render target` with `only_tests =
+    [RenderTextureLoop]` on the stock disc (#294). The main sweep keeps its skip.
+- `--base-iso PATH` sets `base_iso` on every main request. Given no label, it
+  defaults to `<sha>-iso-<isoname>`, so a non-stock column can never be named
+  like a stock one. A missing disc is refused before anything is queued.
+- A user label containing `.` is refused, because `.` is reserved for legs. Of
+  the live sweeps, `a-now-2b04d4d422` and `b-v040j1` have no dot.
+- `collect_sweep.sh` now globs `z-<label>-[0-9][0-9][0-9]-*`. The old `-*`
+  would have collected a sweep labelled `fix-now` into the column `fix`.
+- `unscoreable_goldens.json` holds the 20 goldens from #295, all 20 verified
+  present under `/home/justin/goldens/results` on 2026-09-25, plus
+  Clipping_precision (48) and PVIDEO (23) as not captured by design (#296).
+  `scoreboard.py --unscoreable` (defaults to the file beside it) removes them
+  from each category's goldens and prints `N (+k unscoreable)` and a list
+  under the table. On the live `c866527e03` column: Rasterisation 502/502
+  (was ⚠️98%), Texture addressing 197/197 (was ⚠️99%), 2D/blit 45/45 (was
+  ⚠️98%). Depth/stencil stays ⚠️62% (#291), Blend stays ⚠️9% (#292), and
+  Render to texture stays 66/67 because of RenderTextureLoop (#294).
+- **Not done here:** `score_sweep.py`'s own PARTIAL COVERAGE print (lines
+  428-451) is lane.toolsmith's. It should read the same JSON:
+  `have -= len(unscoreable.get(name, ()) & set(golden names))`. Until it
+  does, arm logs keep printing Front_face 24 of 36.
+- The legs are unproven on a device. None was queued, because the brief
+  forbids re-queueing the running sweeps and a leg is only meaningful next to
+  a main column. The first real use is the next sweep:
+  `queue_full_sweep.sh --with-depth-2025 --with-blend-interactive
+  --with-rtloop <ref>`.
+
+## What lane.toolsmith needs for #293 (the 6743b6a disc)
+
+`queue_full_sweep.sh --base-iso <6743b6a disc>` queues the main sweep on that
+disc, but the 16 new tests still cannot score:
+
+1. **Enumeration.** `queue_full_sweep.sh` queues one request per directory in
+   `$GOLDENS`. `Fog_planar_vsh` and `Surface_as_vertex_array` have no directory
+   there; their console references are in
+   `~/hakux-work/hardware/runs/2026-09-25-refs6743/console-run/console/`. The
+   `Texture format XAlpha` tests would score inside `Texture_format` if a golden
+   existed, but they only have an instrumented capture. Either the references
+   are promoted into a golden root, or the sweep takes an extra root (my side,
+   once (2) exists).
+2. **`dispatcher.sh:46` / `:1039`.** `score_sweep.py --goldens "$GOLDENS"` uses
+   one fleet-wide root. It needs a per-request `goldens` field (default
+   `$GOLDENS`), like `base_iso` at `:882-916`, and the path should go into
+   `disc_id`/`result.json` so a column scored against another root is visible.
+   `:1181` hardcodes `/home/justin/goldens/results` for `captures_vs_goldens`
+   and needs the same value.
+3. **`jobs/arms.sh:373`.** `suites_for` drops every suite with no directory in
+   `$GOLDENS`, so an arm on a new suite is refused as empty. It should also
+   check the registration's golden root, if one is given.
+4. **`score_sweep.py`.** Unchanged for #293, since it already takes
+   `--goldens`. It should read `unscoreable_goldens.json` (see above).
+
+Once (2) exists, `queue_full_sweep.sh` gains `--goldens-root` and writes it
+into each request. That is a one-line change in `queue_one`.
+
 ## Do not repeat
 
 - Do not run the old `collect_sweep.sh` against a fixture as written: it writes
