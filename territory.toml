@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 160
-updated_utc = "2026-09-25T12:30:00Z"
+wave = 161
+updated_utc = "2026-09-25T13:15:00Z"
 
 
 [retired.hilodot10]
@@ -751,11 +751,12 @@ retired_utc = "2026-09-25T12:30:00Z"
 files = []
 note = "RETIRED (job.board, wave 160): PR #222 MERGED 2026-09-25T12:10:26Z (fold 3d3a646f8e), unit gone, no open PR on lane/wbuf31fix. glsl/psh.c and docs/testing/wbuf_anchor_recover.py RELEASED TO [free]. The fix landed: a top-cut triangle takes the 4-grid row anchor unless the edge is 8-aligned and the triangle is flat-topped; the arm PASSED 371 checks and the rule reproduces all 52 recovered anchors. WHAT IS LEFT on #31 is not this lane: 93 four-literal fits agree on every existing capture, and the one capture that separates them is a silicon run (ClipF clip_left 300, clip_top 8) on lane.xbox's console, not a dispatch. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 151 (host session) as the psh.c half of #31, once lane.xbox closed the measurement on silicon: ClipF's second triangle anchors 4*floor(ct/4)+2 (34 at ct=35, 6.001 at ct=4; 47 coarse-grid rules refuted); ClipF's first triangle anchors 32/34/6 at ct 32/35/4, which neither the 4-grid nor the shipped quad snap fits -- so the job is the SELECTOR, proven offline against every recovered anchor before psh.c changes. psh.c taken from [free] (released there at wave 146). wbuf_anchor_recover.py is in the row so its --pairs framing can read the silicon runs. Brief: briefs/wbuf31fix.md."
 
-[lane.wparam223]
-issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/wparam223-*.json", "docs/lanes/wparam223/**"]
+[retired.wparam223]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
+retired_utc = "2026-09-25T13:15:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T13:15Z): PR #228 MERGED (fold c5e8590f2a), no open PR on lane/wparam223. Files RELEASED to [free]: glsl/vsh-ff.c, predictions/wparam223-*.json, docs/lanes/wparam223/**. #223 stays open: its next lane is briefs/wparamgeom223.md (glsl/geom.c extreme-w scale), dispatched after PR #235 folds because geom.c is lane.shadeflat224s until then. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
 
 [lane.shade224]
 issues = []
