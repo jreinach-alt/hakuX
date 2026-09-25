@@ -116,17 +116,35 @@ Failing worlds:
 For the base arm's statuses on the suites nobody has run under hakuX yet,
 the prediction is only "equal in both arms", not "IDENTICAL to the console".
 
-## State at the end of attempt 1 (2026-09-25): WAITING
+## Verdict (attempt 2, 2026-09-25): HOLDS, every leg
 
-- Preflight passes on `9478a174e4`, and on this head.
-- Queued on Thor, 1 run each: fix `1790365377-vshsubneg255-441388` (6a183e3061)
-  and base `1790365379-vshsubneg255-441528` (d92ae5d7f3). No `[job.arms]`
-  comment will announce them, because they are not ab_compare arms. Results
-  land in `~/hakux-work/dispatch/results/<id>/`. Before believing either run,
-  read `vsh1.txt` (no MISSING, no STALE, "Testing completed normally") and
-  grep run1.log for `UtilAcceptVsock` and PARTIAL.
-- CI on the head: this is the first compile of the change, because this
-  session could not run a compiler.
+Attempt 1 did not finish because it was waiting. The two vsh runs and CI were
+both pending when the session ended, and that is a finished state. The mistake
+was ending with the PR still in draft and no reader-visible marker beyond the
+PR comment. The handback job resumed this lane with CI GREEN on `806d24916c`.
 
-Next attempt: score each leg in the tables above against both arms. Post the
-verdict on #288 and #255. If it holds and CI is green, `gh pr ready 288`.
+Runs (both `DONE`, "Testing completed normally", 10/10 captures, 0 MISSING,
+0 STALE, no `UtilAcceptVsock`, no PARTIAL). **Device: Nova (ee317437), not
+Thor.** The dispatcher placed them there. Thor and Nova agree per capture (0
+disagree in 3,040), so this does not change the verdict, but it is a Nova
+result.
+
+| arm | id | ref | apk | EF/Float | counts |
+|---|---|---|---|---|---|
+| fix | `1790365377-vshsubneg255-441388` | 6a183e3061 | 36d1981d723a | **IDENTICAL** | 3 IDENTICAL / 7 DIFFERS |
+| base | `1790365379-vshsubneg255-441528` | d92ae5d7f3 | 824d399f0280 | DIFFERS line 7 `0,0,0,0` | 2 / 8 |
+
+- Must move: -MaxSub and -MinSub both print `-0.000000` under the fix, so
+  Exceptional_Float/Float is IDENTICAL to the console. Neither failing world
+  (both stay, or one moves) occurred.
+- Must not move: a diff of the two `vsh1.txt` reports shows only the
+  staleness timestamp and the Exceptional Float block changed. Every other
+  suite has the same status and the same diff lines in both arms: ILU RCP
+  (IDENTICAL), MAC mov (IDENTICAL), MAC Add, Paired ILU, AmericasArmyShader,
+  SpyVsSpy and the three Vertex Data Array rows (DIFFERS, unchanged). Those
+  DIFFERS rows are pre-existing defects that this change does not touch.
+- Still not measured: MAC arithmetic on a subnormal (see above).
+
+Merged origin/master at the end (a merge, not a rebase, so both arm refs stay
+ancestors). The only conflict was `nv2a_index.json`, which was rebuilt over
+fold-pins nxdk_pgraph_tests @ 6743b6a with `--support` pbkitplusplus.
