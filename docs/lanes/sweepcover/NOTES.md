@@ -164,7 +164,18 @@ disc, but the 16 new tests still cannot score:
 Once (2) exists, `queue_full_sweep.sh` gains `--goldens-root` and writes it
 into each request. That is a one-line change in `queue_one`.
 
+## Why attempt 1 did not finish (2026-09-25)
+
+Attempt 1 ended waiting for CI on #298's head `6d422c2e0a`, with the PR still
+in draft, no `[lane.sweepcover] waiting:` comment, and the NOTES commit for
+#299/#293 (`9f3cf8745d`) not pushed. CI came back GREEN; handback resumed the
+lane at 22:05Z. Attempt 2 pushed the NOTES, re-ran the selftest, corrected the
+PR body and marked #298 ready. Nothing in the code was re-opened.
+
 ## Do not repeat
+
+- Do not end a session on a draft PR without a `waiting:` comment: nothing
+  but the handback job can find it.
 
 - Do not run the old `collect_sweep.sh` against a fixture as written: it writes
   `/home/justin/hakux-work/scoreboard/<label>` and regenerates the repo's
