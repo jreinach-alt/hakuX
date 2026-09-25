@@ -1,3 +1,58 @@
+## RESUME, 2026-09-25 about 00:15 PDT: your blocker is answered on silicon
+
+You stopped correctly (PR #222). No selector of three or fewer literals fitted
+the 44 anchors, and the best two-literal rule missed ClipF-150-032's t0, which
+is correct today. You asked for more clip_tops. lane.xbox has measured them on
+the console:
+
+- PR #226, branch `lane/xbox-wbuf31-t0`,
+  `docs/testing/xbox-wbuf31-clipf-t0-2026-09-25.md`
+- #31 comment 5828370433
+
+| clip_top | 4 | 8 | 12 | 16 | 32 | 35 | 64 |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| t0 on silicon | 6 | 8.000 | 13.999 | 16.000 | 32 | 34 | 63.999 |
+| t1 on silicon | 6 | 9.999 | 14.001 | 18.000 | 34 | 34 | 65.999 |
+
+- t1 is on the 4-grid at every clip_top. t0 takes ct or ct+2 every time, so
+  there is no third rule.
+- Every registered leg held, the geometry is exact, and the 14 known captures
+  are bit-identical to their goldens or to the earlier silicon runs.
+- lane.xbox ran your `--selectors` (at `37192979a2`) over the goldens plus all
+  three console runs:
+  - 52 anchors;
+  - 0 fit neither rule;
+  - still nothing with three or fewer literals;
+  - four-literal fits went from 333 to 75, and none of the 75 disagree at any
+    ClipF clip_top.
+- **Observed, NOT registered:** t0 took the quad snap exactly where clip_top is
+  a multiple of 8 (8, 16, 32, 64) and the 4-grid at 4 and 12. It is a
+  hypothesis your fit has to earn, not a finding.
+- To add the runs, pass
+  `/home/justin/hakux-work/hardware/runs/2026-09-25-wbuf31-t0/console-run/console`
+  as one more `--goldens` root. `docs/lanes/xbox/score_clipf_t0.py`, on #226's
+  branch, shows how to add 8, 12, 16 and 64 to `PRIMS` without editing the tool.
+
+**Now:**
+
+1. Re-run the fit over all 52 anchors. Among the 75, prefer a rule with a
+   mechanism, such as an alignment of the clip edge, over a list of literals.
+   Write in NOTES why you chose it. If any of the 75 disagree on an EXISTING
+   golden capture, name that capture: it is the discriminator the arm can
+   read.
+2. Then do steps 2 and 3 of the brief below as written.
+   - Register the arm. must_move is #31's residual captures, with direction and
+     size. must_not_move is psh.c's blast radius, including the ClipF clip_tops
+     that are correct today, such as ClipF-150-032.
+   - Commit and push, which queues the arm.
+   - Implement exactly the chosen selector in `wbufSlopeStep`.
+3. Keep working on PR #222. Retitle it when it becomes the fix, and keep its
+   `Files:` line equal to the diff, which psh.c now joins.
+
+The Nova is held for battery, so the Thor serves the arms.
+
+---
+
 # #31: anchor W-buffer slope offsets the way silicon does, now that silicon has answered
 
 Lane: wbuf31fix            Issue: #31
