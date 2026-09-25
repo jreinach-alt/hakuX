@@ -99,8 +99,21 @@ carryover, Fog vsh, Fog coord vec4, W param.
   golden is the only silicon reference, and it agrees with the test's stated
   intent.
 
-## State (2026-09-25)
+## State (2026-09-25, attempt 2)
 
-Waiting for the arms job to judge the prediction (`[job.arms]` on PR #290), and for CI
-on the head. The PR stays in draft until the verdict arrives. Then either mark it
-ready or diagnose the failing leg.
+Attempt 1 did not finish because it was waiting, not because it failed. It ended
+with the arm queued and CI pending, as roles/lane.md asks. handback.sh resumed
+this lane once both had resolved.
+
+Verdict (`[job.arms]` on PR #290, 22:28Z, Nova): **PASS, all 335 registered
+checks hold.** a=d709a8d1fa, b=8dce0cf12e.
+
+| | A | B |
+|---|---|---|
+| Multioutput | 32,768 (white-content) | 0 (ok) |
+| exact, 335 captures | 112 | 113 |
+| better / worse / same | | 1 / 0 / 334 |
+
+No capture regressed from exact. One capture differs byte-for-byte between the
+arms, the same count as the one mover. With one run per arm, ab_compare cannot
+attribute that difference. CI is green on 3bd5e3ea9f. PR marked ready.
