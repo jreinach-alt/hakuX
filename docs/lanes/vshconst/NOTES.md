@@ -258,6 +258,22 @@ Arm 1 (`vshconst-must-not-move.json`, GLSL only) stands as registered.
   misfired or the draw-end call order is wrong. Read the prediction's leg
   text before touching the leg.
 
+## Attempt 3 (2026-09-25): why attempt 2 did not finish, and the re-run
+
+Attempt 2 ended waiting on arm 2's `[job.arms]` verdict. That verdict came
+back **ARM ERROR**, and the cause was the host, not the patch. The base half
+(`1790327181-arms-vshconst-base-821044`) completed. The fix half
+(`1790327181-arms-vshconst-fix-821066`) ran 130 s, then its pull failed
+after three WSL `UtilAcceptVsock ... accept4 failed 110` errors. `adb` here
+is Windows `adb.exe` over WSL interop. Its logcat is a normal run with no
+signal and no assert. Arm 1 was lost the same way. The arms job does not
+re-queue a half-run pair, so attempt 3 re-ran the whole pair itself with
+`ab_run.sh --fix 9ff7f6d67a --parent f2e8ef8ba8 --expect
+docs/testing/predictions/vshconst-writeback-must-not-move.json`. Both APKs
+were cached. Rerunning both halves keeps the pair on the same device session.
+Attempt 3 also merged origin/master (0940056bf6, models.env only). It did not
+rebase, so b_ref 9ff7f6d67a is still an ancestor of the head.
+
 ## Do not repeat
 
 - `nv2a_index.py blast` on `vsh-prog.c` or `vsh.c` answers "No indexed suite
