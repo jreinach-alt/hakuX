@@ -1,6 +1,7 @@
 # lane.ghoul311 -- #311 Grabbed by the Ghoulies hands-off fps decay
 
-Status: 2026-09-25 21:15 UTC, waiting on four Nova soaks (section 4).
+Status: 2026-09-25 22:55 UTC (attempt 3), waiting on the since-when pair and
+two bisect soaks, all on the Thor (section 4).
 Diagnosis first; no source claimed.
 
 ## 1. What the existing logs already say (no new device time)
@@ -138,6 +139,37 @@ Queued (Nova, 240 s, frames every 2 s):
 | `1790370157-ghoul311-3058825` | f94b6e0ad1 | reproduction 2 |
 | `1790370309-ghoul311-3211642` | 797129aea7 | since-when A |
 | `1790370311-ghoul311-3215191` | 2af6def68a | since-when B |
+
+### Attempt 3 (resume, 22:50 UTC)
+
+Why attempt 2 did not finish: it ended correctly in a wait -- all four soaks
+were queued on the Nova, ~5 h behind, and nothing had run. It did not post the
+`[lane.ghoul311] waiting:` comment, so the resume came from the host moving
+the pair, not from a signal. Nothing is wrong with the pair or the prediction.
+
+The host re-queued the pair on the Thor at top priority as
+`0-0-1790370309-ghoul311-3211642` (A) and `0-0-1790370311-ghoul311-3215191`
+(B). At 22:50 UTC both were still in `queue/`, behind a texvol283 arm and a
+Lighting_normals run. **The pair is not a one-commit A/B:**
+`797129aea7..2af6def68a` is 390 commits, and 2af6def68a is only the last.
+
+Queued now, both `--device thor`, `#311 bisect` in the purpose, no
+prediction (a bisect point is classed by the section-4 thresholds, not by a
+new model):
+
+| request | ref | answers |
+|---|---|---|
+| `1790376674-ghoul311-3613035` | 7df72a6c98 (= 2af6def68a^) | #73's unstrand vs the other 389 commits, if A is good and B is bad |
+| `1790376677-ghoul311-3616328` | aeb4a096b6 (v0.4.0-j1) | does the 0.4 release have it? (not an ancestor of 2af6def68a; no pages line, so fps comes from frames) |
+
+How to judge them: gfps at 90-240 s from `hakuX-perf`, >= 25 good and <= 5 bad,
+plus the pages `pr/f` curve (`windows.py`). If A is good and B is bad, and
+7df72a6c98 is good, then #73 is the commit and section 5's hunk is the fix. If
+7df72a6c98 is bad, bisect `797129aea7..7df72a6c98`. If both A and B are bad,
+bisect `e64e336d27..797129aea7`. If both are good, bisect `2af6def68a..master`.
+
+Branch merged with origin/master (merge, not rebase; the prediction refs are
+unchanged).
 
 ## 5. The fix hunk (named, not applied)
 
