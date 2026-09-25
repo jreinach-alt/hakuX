@@ -1004,3 +1004,10 @@ issues = ["278"]
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-278, a cloud-class lane on issue #278, branch lane/cloud-278, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 278` removes this row when the unit ends."
+
+
+[lane.cloud-issue-279]
+issues = ["279"]
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-279, a cloud-class lane on issue #279, branch lane/cloud-279, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 279` removes this row when the unit ends."
