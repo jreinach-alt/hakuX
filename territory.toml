@@ -513,7 +513,6 @@ files = [
 # (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
 # [free] (lane.remote, #184 comment 5762957253).
 # TAKEN 2026-09-25 by [lane.clrwb91] (#91 write-back): vk/surface.c.
-    "hw/xbox/nv2a/pgraph/vk/texture.c",
     "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
     "docs/lanes/clrvk184/NOTES.md",
     "docs/lanes/clrsurf91/NOTES.md",
@@ -521,7 +520,6 @@ files = [
     "docs/testing/swatchorder50_readings.py",
 # RELEASED AT WAVE 146 by retiring lane.remote (decision-needed #213):
     "hw/xbox/nv2a/pgraph/gl/blit.c",
-    "hw/xbox/nv2a/pgraph/gl/texture.c",
     "hw/xbox/nv2a/pgraph/gl/renderer.c",
     "hw/xbox/nv2a/pgraph/gl/debug.c",
     "hw/xbox/nv2a/pgraph/glsl/common.c",
@@ -556,7 +554,6 @@ files = [
 # provoking-vertex trade (rewrite_triangle_fan's emit_tri_pv rotation vs.
 # geom.c's edge-priority order, 32,628 decisive px) (job.board).
          "hw/xbox/nv2a/pgraph/s3tc.c",
-         "hw/xbox/nv2a/pgraph/texture.c",
          "hw/xbox/nv2a/pgraph/vk/buffer.c",
          "hw/xbox/nv2a/pgraph/vk/command.c",
 # NAMED OUT AT WAVE 135 (job.board): vk/surface-compute.c, granted to
