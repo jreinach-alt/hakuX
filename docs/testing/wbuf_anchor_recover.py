@@ -120,7 +120,7 @@ PRIMS = {
     "TriH": (_trih(), 150, 0, "TriH"),
     "TriV": (_triv(), 150, 0, "TriV"),
 }
-for _ct in (4, 32, 35, 128, 224):
+for _ct in (4, 8, 12, 16, 32, 35, 64, 128, 224):
     # ClipF/ClipW exist only with zslope set, so their ZS0 baseline is the
     # unclipped quad: identical geometry, and floor(w) does not see the clip.
     #
@@ -235,8 +235,18 @@ def anchor(tri, clip, mode="shipped"):
     if not found:
         return None, cut
     c = 2.0 * math.floor(c / 2.0)
-    r = (4.0 * math.floor(r / 4.0) + 2.0) if (mode == "row4" and not cut) \
-        else 2.0 * math.floor(r / 2.0)
+    if mode == "sel":
+        # The selector chosen on 2026-09-25 (docs/lanes/wbuf31fix/NOTES.md):
+        # the 4-grid unless the clip cut the triangle, and when the window
+        # clip's own top edge cut it, still the 4-grid unless that edge is on
+        # the 8-row grid and the triangle is flat-topped.
+        ytop = min(v[1] for v in tri)
+        flat = sum(v[1] == ytop for v in tri) > 1
+        top_cut = clip[1] > 0.0 and ytop < clip[1]
+        grid = not cut or (top_cut and not (flat and clip[1] % 8.0 == 0.0))
+    else:
+        grid = mode == "row4" and not cut
+    r = (4.0 * math.floor(r / 4.0) + 2.0) if grid else 2.0 * math.floor(r / 2.0)
     return (c, r), cut
 
 
@@ -635,6 +645,17 @@ def main(argv=None):
     print("  shipped 2x2-quad snap reproduces %d/%d" % (len(agree_s), len(disc)))
     print("  row4 (4-grid row when the clip did not cut) reproduces %d/%d"
           % (len(agree_4), len(disc)))
+    def _sel(r):
+        tris, cl, ct, _ = PRIMS[r[0]]
+        a, _ = anchor(tris[r[1]], (float(cl), float(ct), float(W), float(H)),
+                      "sel")
+        return a[0 if r[2] == "x" else 1]
+    agree_x = [r for r in disc if abs(r[6] - _sel(r)) < 0.01]
+    print("  sel (row4, and a window-clip top cut takes the 4-grid unless the"
+          " edge is 8-aligned and the triangle flat-topped) reproduces %d/%d%s"
+          % (len(agree_x), len(disc), "" if len(agree_x) == len(disc) else
+             ": misses " + ", ".join(sorted({"%s/t%d" % r[:2] for r in disc
+                                             if r not in agree_x}))))
     print("  unexplained by either: %s"
           % ", ".join(sorted({r[0] for r in disc
                               if r not in agree_4 and r not in agree_s})))
@@ -687,7 +708,7 @@ interaction stops being free.""")
                 continue
             z1 = decode24(np, Image, p1)
             clip = (float(cl), float(ct), float(W), float(H))
-            acc = {"shipped": [0, 0, 0], "row4": [0, 0, 0]}
+            acc = {"shipped": [0, 0, 0], "row4": [0, 0, 0], "sel": [0, 0, 0]}
             for tri in tris:
                 m = coverage(np, tri, cl, ct) & (z1 != CLEAR24)
                 if m.sum() < 40:
@@ -708,8 +729,9 @@ interaction stops being free.""")
                     acc[mode][0] += e
                     acc[mode][1] += p
                     acc[mode][2] += int(m.sum()) - e - p
-            print("  %-16s shipped %8d/%6d/%8d   row4 %8d/%6d/%8d"
-                  % (cap, *acc["shipped"], *acc["row4"]))
+            print("  %-16s shipped %8d/%6d/%8d   row4 %8d/%6d/%8d   "
+                  "sel %8d/%6d/%8d"
+                  % (cap, *acc["shipped"], *acc["row4"], *acc["sel"]))
         print("  (compare against run-2026-09-10-wbuffer-adreno.tsv, which is"
               " bdc26fa5c8 on the Nova)")
     return 0
