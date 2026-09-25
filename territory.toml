@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 166
+wave = 167
 updated_utc = "2026-09-25T14:00:00Z"
 
 
@@ -800,3 +800,9 @@ issues = []
 files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/90-fold-index.sh", "docs/lanes/foldindex/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 166 (host session). Harness defect, no tracker issue: every hw PR regenerates docs/testing/nv2a_index.json, so each fold leaves every other open hw PR conflicting in that one generated file, and fold.sh hands each back to its lane (06:40-06:50 PDT 2026-09-25: #234, #235, #237; four handback sessions by 07:10). fold.sh already regenerates the index after a clean merge; this lane adds resolve_index_only beside resolve_root_notes (the unmerged set is exactly that file: take master's copy, regenerate over the PINNED trees -- provenance.tests_commit and the workflow's PBKIT_SHA, via worktrees under $WORK/fold-pins -- and refuse on any doubt). Brief: briefs/foldindex.md. selftest.d/90-fold-index.sh checked against the runner's two-digit glob; duplicate numbers sort by full name."
+
+[lane.handbackresolved]
+issues = []
+files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-resolved.sh", "docs/lanes/handbackresolved/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
