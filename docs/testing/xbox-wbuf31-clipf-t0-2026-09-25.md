@@ -27,21 +27,31 @@ normally first. The console run took 55 s and handed back to the dashboard.
 
 ## The verdict, as the registered tool reports it
 
-`wbuf_anchor_recover.py --selectors` (lane/wbuf31fix @ `37192979a2`), over the
-goldens plus all three silicon runs:
+`wbuf_anchor_recover.py --selectors` as on master (last changed `63a24f9834`),
+over the goldens plus all three silicon runs:
 
 ```
 52 anchors, 34 informative (quad != grid), 0 fit neither rule
 'grid iff P' over 54 literals: 201348 selectors of <= 3 literals tried
   fit every informative anchor: 1 literal 0, 2 literals 0, 3 literals 0
-  4 literals 'a | (b & (c | d))': 75 fit
-      54 rules rest on ClipF-150-032/t0, ClipF-150-008/t0, ClipF-150-016/t0, ClipF-150-064/t0
+  4 literals 'a | (b & (c | d))': 93 fit
+      72 rules rest on ClipF-150-008/t0, ClipF-150-016/t0, ClipF-150-032/t0, ClipF-150-064/t0
       21 rules rest on FloorQuad/t1, RoofQuad/t0, WallQuad/t0, ClipW-159-000/t0, ClipW-261-000/t0, ClipW-261-000/t1, ClipW-363-000/t0
-  ClipF clip_tops where the 75 four-literal fits disagree: none
+  ClipF clip_tops where the 93 four-literal fits disagree: none
 ```
 
-The run cut the four-literal fits from 333 to 75, and all 75 give one answer
-at every `ClipF` `clip_top`.
+The run cut the four-literal fits from 333 to 93, and all 93 give one answer
+at every `ClipF` `clip_top` (at `clip_left` 150).
+
+_Corrected 2026-09-25: this section first said 75 fits, 54 of them resting
+on the four ClipF anchors. That figure came from `score_clipf_t0.py` driving
+the tool at `37192979a2`. That version did not list clip_top 8, 12, 16 or 64,
+so the wrapper added them after `_QUADS` had already been built from PRIMS at
+import. Those four captures' second triangles were therefore scored with
+`second_of_quad` False, which is wrong for a quad. Master's tool lists all
+four at import, and the wrapper now adds to `_QUADS` too. The pre-run count
+(333) did not involve those captures and reproduces on master. The
+conclusion is unchanged._
 
 **An observation, not a registered result:** the first triangle took the
 quad snap at exactly the `clip_top` values that are multiples of 8 (8, 16,
