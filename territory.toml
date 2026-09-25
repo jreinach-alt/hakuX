@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 155
-updated_utc = "2026-09-25T07:40:00Z"
+wave = 156
+updated_utc = "2026-09-25T08:15:00Z"
 
 
 [retired.hilodot10]
@@ -773,12 +773,18 @@ note = "DISPATCHED AT TERRITORY WAVE 151 (host session) as the psh.c half of #31
 
 [lane.wparam223]
 issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/wparam223-*.json", "docs/lanes/wparam223/**"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/wparam223-*.json", "docs/lanes/wparam223/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md."
+note = "DISPATCHED AT TERRITORY WAVE 154 (job.board): #223, the largest suite residual (W param, 5,117,044 px over 110 captures). Vertex-shader files taken from [free] because the leads are #112 item 4's inherited _RCC signed-zero clamp and _MUL zero-forcing; psh.c stays with lane.wbuf31fix, so a fix that needs it is a board request, not a wait. Brief: briefs/223.md. FILES MOVED AT WAVE 156 (host session): vsh-prog.c and vsh.c go to [lane.vshconst] for #233, a ROADMAP priority-1 guest-reachable abort (vsh-prog.c:383). This lane's session ended with PR #228 (analysis only: docs/lanes/wparam223/**, touching neither file), and the RCC/MUL lead those files were claimed for was refuted by it. #223's next brief re-claims them if it needs them."
 
 [lane.shade224]
 issues = ["224"]
 files = ["docs/testing/predictions/shade224-*.json", "docs/lanes/shade224/**"]
 standing = false
 note = "DISPATCHED 2026-09-25T08:07Z (job.board, wave 155), briefs/shade224.md: #224 Shade model, 3,757,101 px over 168 captures, unowned. Analysis-first: classify by primitive x shade x W_ and edge vs interior, and say whether W_Fixed_*_Smooth is the same residual as #223 (lane.wparam223, PR #228). Docs and prediction files only claimed; any hw/ fix is a board-request. Attempt 1, opus-5."
+
+[lane.vshconst]
+issues = ["233"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "docs/testing/predictions/vshconst-*.json", "docs/lanes/vshconst/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #233, the assert(!\"TODO: Emulate writeable const registers\") at vsh-prog.c:383 that aborts every Android build (-UNDEBUG) when a vertex program writes a constant register; reproduced on desktop in nxdk_vsh_tests' ILU RCP Tests; silicon golden IluRcpTests.txt from lane.xbox's console run. Cross-draw persistence of const writes is UNMEASURED -- the lane settles it. Brief: briefs/vshconst.md."
