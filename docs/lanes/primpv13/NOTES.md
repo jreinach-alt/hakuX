@@ -1,0 +1,999 @@
+# lane.primpv13 -- #13's provoking-vertex trade in `prim_rewrite.c`
+
+Issue: #13. Base: master @ `1e184b134f`. PR #194.
+
+## The state this lane inherited
+
+`glsl/geom.c`'s derived edge-priority order landed (fold `ba31c26ee0`) and
+measured PRE-REGISTERED-PASS on 13 legs: `Tri` 58.22% -> 100.00%, nine other
+classes unchanged, `ALL` 85.12% -> 95.85%. `TFan` landed at the predicted
+**70.36%**, not 100%, and `QStrip/TFan` at **77.17%**, attributed to
+`rewrite_triangle_fan()` calling `emit_tri_pv()`.
+
+## What this lane changed
+
+`pv_placement_observable(mode)` -- `flat_shading || polygon_mode !=
+POLY_MODE_LINE` -- now gates the fan's provoking-vertex rotation.
+
+The reasoning, in the order it has to be read:
+
+1. The rotation exists so index 0 is the guest's provoking vertex. Vulkan
+   rasterises first-vertex-provoking (nothing in `vk/` enables
+   `VK_EXT_provoking_vertex`) and so does the *desktop* GL renderer —
+   **but not the Android one** (corrected after audit pass 1, LOW 1; this
+   line said "both renderers"): `gl/draw.c:535`'s
+   `glProvokingVertex(GL_FIRST_VERTEX_CONVENTION)` is inside
+   `#ifndef __ANDROID__`, so an Android GL build keeps GLES 3.x's *last*
+   -vertex default. It does not reach the conclusion — step 3 leaves every
+   edge's ordered `(i0,i1)` pair intact, so whichever endpoint the
+   rasteriser takes a `flat` varying from is the same endpoint on both
+   arms — and every device arm here is Vulkan. `geom.c:92` spells
+   `provoking_index` as the literal `"0"` only when the shade mode is FLAT.
+2. `needs_rewrite()` **already encodes exactly this** for
+   `PRIM_TYPE_TRIANGLES`: it declines to rewrite at all unless the draw is
+   flat AND last-provoking. The strip and the fan must be rewritten whatever
+   the state, because that is a topology change, and the provoking placement
+   rode along with it. That asymmetry *is* #13's residue.
+3. Under `POLY_MODE_LINE` the rotation is worse than useless. `geom.c` splits
+   `(A,B,C)` into `emit_line(B,C)`, `emit_line(C,A)`, `emit_line(A,B)`, so
+   rotating the triple is a **pure rotation of the edge list**: the multiset
+   of *ordered* `(i0,i1)` pairs is unchanged, only the paint order moves.
+4. Hence `vtxFogSpecial` -- which `glsl/common.c` qualifies `flat` in EVERY
+   shade mode, so it *is* observable under smooth shading -- does not change:
+   each `emit_line()` takes it from that edge's own first endpoint, not from
+   the triangle's index 0, and no edge's endpoints move.
+5. Under `POLY_MODE_FILL` and `POLY_MODE_POINT` step 3 does not hold: there
+   the rotation decides the triangle's provoking output vertex outright, and
+   with it the flat colour and `vtxFogSpecial`. Those keep it.
+
+So the trade is **narrowed, not abolished**: it survives only for a
+flat-shaded wireframe, where the colour must win over the paint order.
+
+## Flat shading is unchanged -- stated explicitly, as the brief asks
+
+`pv_placement_observable()` returns true whenever `flat_shading` is set, in
+every polygon mode, so `rewrite_triangle_fan()` behaves exactly as before on
+every flat-shaded draw. This is not an argument; it is the first term of the
+predicate, and the all-states A/B below measures it.
+
+## Four things worth the next lane's time
+
+### 1. The falsifier the brief named was measuring a renderer two folds old
+
+`line_priority.py`'s `our_edges()` was hand-listed when the tool was written
+(`68c5d92a69`) and **never updated by either fold**. Run as-is it scored:
+
+| block | hand-listed `ours` | what the tree actually emits |
+|---|---|---|
+| Tri | `(0,1) (1,2) (2,0)` | `(1,2) (2,0) (0,1)` |
+| QStrip | `(0,1) (1,3) (3,2) (2,0)` | `(2,0) (0,1) (1,3) (3,2)` |
+| Poly | `(0,1) (1,2) (2,3) ...` | `(1,2) (0,1) (2,3) ...` |
+| Quad | `(0,1) (1,2) (2,3) (3,0)` | `(1,2) (0,1) (2,3) (3,0)` |
+| LLoop, TFan | correct | correct (the two rotations cancel for TFan) |
+
+`order_for()` was worse: its index arithmetic (`_perm(3t, 3t+1, 3t+2, ...)`)
+was tacitly keyed to the *old* `our_edges` layout, so the `opp_abc` column --
+the derived rule itself -- was also being scored against the wrong slots.
+Both are now **derived** from `prim_rewrite()` composed with `geom.c`'s three
+`emit_line()` calls, and `silicon_tris()` states the tessellation once so a
+slot counts as internal exactly when its pair is absent from the emission.
+A future edit to either file now shows up as a changed score instead of as a
+silently wrong baseline.
+
+**Do not trust a tool's "ours" column without dating it against the tree.**
+
+### 2. "32,628 decisive pixels" is a population, not a residual
+
+#13's comments and this lane's brief both call the residue "32,628 decisive
+pixels". That is `9,731 + 22,897` -- the **size of the two classes** under the
+perpendicular model. The pixels actually naming the wrong edge are `2,884` +
+`5,228` = **8,112** there, and `3,119` + `5,801` = **8,920** under the
+footprint we draw. Registering 32,628 as the expected movement would have
+been 3-4x out either way.
+
+### 3. The judged instrument's DEFAULT footprint is stale, and it changes the numbers
+
+Caught after the first registration and before any device run, which is the
+only time it is fixable. `line_priority_arms.py` builds its decisive set from
+a model of **our own** footprint — the question is which edge *our* capture's
+colour names, so an edge our render covers but the model excludes reads as
+`unm` rather than as agreement. Its default is the perpendicular rectangle,
+justified in its docstring as "the footprint our renderer actually draws …
+[the wider rule is] what we do not yet implement".
+
+**That expired on 2026-09-13.** `80c23dcabe` landed the derived extent in
+`geom.c`'s `widen_lines` path the same day the docstring was written, and
+`7ce57a799b`/`e0c0a9974b` refined its cap on 2026-09-19. On Vulkan — every
+device arm — we draw the wider width now, so `--extent-rule` is the accurate
+model and the default is the stale one.
+
+It is not a rounding difference:
+
+| | perpendicular (default) | derived extent (`--extent-rule`) |
+|---|---:|---:|
+| decisive px, w 8–63.875 | 198,880 | **225,558** |
+| `opp_abc`, the derived rule | 99.93%, 98–100% per class | **100.00%, and 100.00% in each of eleven classes** |
+| TFan | 9,731 px @ 70.36% | 11,636 px @ **73.20%** |
+| QStrip/TFan | 22,897 px @ 77.17% | 24,009 px @ **75.84%** |
+| LLoop | 99.53% | **100.00%** |
+
+> **Both totals in this table moved by +12 / +10 in the audit remediation
+> below (LOW 2)**, to 225,570 and 198,890. Nothing else in it changed. The
+> cause is `LLoop`'s corrected segment direction crossing `decisive()`'s
+> threshold on a dozen pixels at ~1e-13; see the remediation section for the
+> measurement.
+
+225,558 is the figure `prim_rewrite.c`'s own file comment carries from #13's
+original derivation, phrasing and all ("100.00% of 225,558 decisive pixels, in
+each of eleven candidate classes separately") — the same instrument, the same
+window and, to within this lane's own +12 (LOW 2, below), the same answer. So
+the *first* #13 fold used the extent model and the *geom.c* fold used the
+perpendicular default — the two folds were judged on different instruments,
+and only one of them still describes the renderer.
+
+The docstring is fixed to say so and to tell a new arm to pass `--extent-rule`.
+**The default is deliberately left alone**, so the already-judged geom.c arm
+stays judgeable on its own footprint — though it no longer reproduces to the
+pixel: LOW 2 moved the perpendicular total to **198,890** from the 198,880
+that arm was judged against, with every percentage unchanged. The prediction
+was re-registered against the extent model with the perpendicular values kept
+alongside each leg, so it is judgeable either way.
+
+### 4. The offline model reproduces the device arm exactly, once the window matches
+
+`line_priority.py --rules` on its defaults does *not* reproduce the arm: it
+gives ALL = 203,023 px and Tri = 98.05%. The difference is entirely the width
+window -- the arm ran `--min-width 8 --max-width 63.875`, which also excludes
+the void `Line_0064.*`. With that window:
+
+| class | n | `ours` (offline) | arm B (device, measured) |
+|---|---:|---:|---:|
+| Tri | 45,760 | 100.00% | 100.00% |
+| QStrip | 35,560 | 100.00% | 100.00% |
+| LLoop | 31,548 | 99.53% | 99.53% |
+| QStrip/TFan | 22,897 | 77.17% | 77.17% |
+| Quad | 22,761 | 100.00% | 100.00% |
+| Poly | 15,235 | 100.00% | 100.00% |
+| Poly/TFan | 13,853 | 100.00% | 100.00% |
+| TFan | 9,731 | 70.36% | 70.36% |
+| LLoop/Tri | 1,305 | 100.00% | 100.00% |
+| Poly/Tri | 222 | 100.00% | 100.00% |
+| LLoop/TFan | 8 | 100.00% | 100.00% |
+| **ALL** | **198,880** | **95.85%** | **95.85%** |
+
+Eleven `n`s and twelve percentages, none fitted. That is what makes the
+predicted column below a prediction.
+
+> **One row of this table has since moved, and the reason matters.** After the
+> audit remediation below (LOW 2), the offline model gives LLoop/Tri **1,315**
+> and ALL **198,890** where this table records 1,305 and 198,880. That is not
+> the model drifting away from the device: `n` is the size of the *decisive
+> set*, which `decisive()` computes from the goldens and the footprint model
+> alone — it is device-independent, and the "arm B (device, measured)" column
+> above is that same offline computation applied to the arm's captures. The
+> 1,305 is a frozen printout from the tool as it stood on 2026-09-20 before
+> the LLoop direction was corrected; re-run `line_priority_arms.py` against
+> the *same* landed arm today and both columns read 1,315. Every percentage,
+> which is the device-dependent half, is unchanged.
+
+## The predicted arm
+
+`ours_patched` is not a second model: `patched_order(block)` comes out
+**identical to `order_for(block, "opp_abc")`** for every block -- i.e. the
+patch makes our emission the derived rule exactly -- and identical to `ours`
+for every block but `TFan`. Machine-checked, not asserted.
+
+Under `--extent-rule`, the footprint we actually draw (the judged column):
+
+| class | n | before | after | |
+|---|---:|---:|---:|---|
+| TFan | 11,636 | 73.20% | **100.00%** | leg 1 |
+| QStrip/TFan | 24,009 | 75.84% | **100.00%** | leg 2 |
+| nine others | 189,925 | 100.00% | 100.00% | leg 3 |
+| **ALL** | **225,570** | **96.05%** | **100.00%** | advisory |
+
+> **Two `n`s in this table moved with the two beside it**, and unlike those
+> two this one is edited in place rather than annotated-and-frozen, because it
+> mirrors the *registered* prediction and has to agree with it digit for
+> digit. It recorded `nine others` 189,913 and `ALL` 225,558 before the audit
+> remediation below (LOW 2); the +12 is entirely `LLoop/Tri`, 1,724 -> 1,736,
+> in a class reading 100.00% before and after. Leg 3's nine per-class `n`s
+> still sum to the `nine others` cell (189,925), and `189,925 + 11,636 +
+> 24,009 = 225,570`. No percentage moved and no leg's verdict moved.
+
+Under the perpendicular default (registered alongside, so the prediction is
+judgeable either way): TFan 9,731 px 70.36% -> 100.00%, QStrip/TFan 22,897 px
+77.17% -> 100.00%, ALL 198,890 px 95.85% -> 99.93% (198,880 before LOW 2; the
++10 is `LLoop/Tri` again, 1,305 -> 1,315), the 149 px left being `LLoop`'s
+known 99.53%.
+
+Pixels that actually change their answer: 3,119 (TFan) + 5,801 (QStrip/TFan)
+= **8,920** under the extent model, 2,884 + 5,228 = 8,112 under the
+perpendicular one. Both are the `moved` floors in leg 4.
+
+## Scope, measured rather than asserted
+
+Both revisions of `prim_rewrite.c` were compiled side by side (public symbols
+renamed, statics kept file-local) and their output diffed over every
+`(primitive_mode x polygon_mode x last_provoking x flat_shading x count)`
+combination -- 1508 states:
+
+```
+DIFF TRIANGLE_FAN   LINE  lastpv=0 flat=0 count= 6  n=12/12
+DIFF TRIANGLE_FAN   LINE  lastpv=1 flat=0 count= 6  n=12/12
+        old: 2 0 1 3 0 2 4 0 3 5 0 4
+        new: 0 1 2 0 2 3 0 3 4 0 4 5
+20 of 1508 (mode x polymode x lastpv x flat x count) states differ
+```
+
+Every differing state is `TRIANGLE_FAN` + `POLY_MODE_LINE` + smooth, at both
+provoking conventions, with an **identical index count**. That dump is also
+the direct evidence for the edge-list claim in step 3 above: `2 0 1` yields
+edges `(0,1) (1,2) (2,0)` and `0 1 2` yields `(1,2) (2,0) (0,1)` -- the same
+ordered pairs, rotated. A prior hand-trace of this same rotation got its
+*direction* backwards; this is why it was compiled rather than read.
+
+## What this lane did NOT do, and why
+
+**`rewrite_triangle_strip()` is untouched.** The same reasoning reaches it --
+a strip triangle is pre-rotated relative to a list triangle too, and `geom.c`
+cannot tell them apart either. The difference is evidence: the odd-`i` case
+is a **reflection** `(v1, v0, v2)`, not a rotation, so its composition with
+`geom.c`'s edge order is a different derivation, and the `Line width` corpus
+that pins these orders to the pixel draws **no `TRIANGLE_STRIP` under
+`POLY_MODE_LINE` at all** (the eleven classes are LLoop/Tri/QStrip/TFan/
+Poly/Quad and their mixtures -- no TStrip). Changing it would be a guess
+scored by nothing. If someone wants it, it needs a disc variant that draws a
+wireframe triangle strip first.
+
+**`glsl/geom.c` — SUPERSEDED, see the remediation section below.** This
+paragraph originally said the file was untouched because it was "another
+lane's territory", and **that was wrong**: `origin/board:territory.toml`
+line 618 has it in `[free]`, released by `[retired.linecap13]` at
+`2026-09-20T14:57:11Z`, five hours before this lane opened. What was true
+is narrower — `[lane.primpv13].files` names only `prim_rewrite.c`, and a
+lane may not widen its own row — which is a disclosure to the board, not
+another lane's claim. The stale comment is now corrected in `geom.c`
+itself; see below.
+
+**The extent rule** is still #13's larger half and is not this lane's.
+
+## Second-order item, disclosed rather than buried
+
+`geom.c`'s `POLY_MODE_LINE` body takes its depth slope from
+`calc_triz(0, 1, 2)`, which builds `m` and `b` relative to vertex 0. A fan
+triangle's `dz` is therefore now evaluated on the same basis a list
+triangle's already was. The plane's gradient is rotation-invariant, so this
+can move `dz` only by floating-point rounding, and it feeds `triMZ` (depth),
+never coverage. `Line width` disables the depth test, so it cannot show
+there at all. Named in the prediction as expected-to-move-direction-
+unpredicted rather than claimed inert.
+
+## Prediction
+
+`docs/testing/predictions/line-prim-rewrite-fan-provoking.json`,
+a_ref `4955050b31` -> b_ref `40ca2bcb22`, sha256
+`49cca16cc011b94a66d4ee81ac5a38f0c683ab3f2527ae559937734fc184500c`.
+Registered before any device run and committed with the refs it names.
+Re-registered **twice**, both times before any device run: once to correct
+the footprint model described in finding 3, and once in the audit-pass-1
+remediation below. The superseded values are restated inside the file
+alongside each leg, so each change is auditable rather than quiet.
+The judged command is
+`line_priority_arms.py --a <A> --b <B> --extent-rule --min-width 8 --max-width 63.875`. Legs
+1-4 are the class measurements from `line_priority_arms.py`; legs 5 and 6 are
+`must_not_move` globs covering 154 of `Shade_model`'s 168 captures -- all but
+the 14 `*_TriFan_Smooth_*` that may legitimately move. Leg 5
+(`*_TriFan_Flat_*`) is the trade's own guard: it is what fails, loudly, if the
+predicate is inverted or the `flat_shading` term is dropped.
+
+`2D_Lines/*` byte-identical is registered as an assertion about my own output
+and **not** counted as a falsifier: `PRIMITIVE_LINES` never reaches
+`rewrite_triangle_fan()`, so the patch forces it true.
+
+## Remediation of audit pass 1 (2026-09-20, `job.cloud`)
+
+`docs/audits/2026-09-20-primpv13-pass1.md`: 0 HIGH, 3 MEDIUM, 3 LOW. All six
+are addressed below. None asked for a different predicate and none disputed a
+number; `pv_placement_observable()` is unchanged.
+
+### MEDIUM 1 — a fourth reader of index 0, and it does move
+
+The comment that is the whole safety argument asked "does anything downstream
+actually READ index 0 of a rewritten triangle?" and enumerated
+`provoking_index`, `vtxFogSpecial` and `calc_triz`. It missed **`cylWrap`**,
+which is a literal `[0]`, not a `provoking_index`:
+
+```
+geom.c:310   vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], bvec4(...));   // emit_vertex
+geom.c:313   vtxT%d = mix(cylWrap(v_vtxT%d[0], v_vtxT%d[i0], ...),          // emit_vertex_fs
+geom.c:314                cylWrap(v_vtxT%d[0], v_vtxT%d[i1], ...), t);
+```
+
+Emitted whenever `state->cylinder_wrap[i]` is non-zero (a texture unit in WRAP
+address mode, `NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q`), in **both** the GL and the
+widened Vulkan paths, and **independently of the shade mode**.
+
+**Which way it moves.** `emit_tri_pv(hub, v1, v2, pv)` put the rim vertex at
+index 0 — `v2` under last-provoking, `v1` under first — and that vertex varies
+from fan triangle to fan triangle. The patch leaves `(hub, v1, v2)`, so the
+cylinder-wrap reference is now the **fan hub**, one reference for the whole
+fan. A rim vertex more than half a turn from the hub but less than half a turn
+from its old neighbour-reference (or the reverse) now takes a whole turn it did
+not take, moving its U or V by 1.0.
+
+**Tolerated, not measured, and now said so in three places** (the
+`prim_rewrite.c` comment, the prediction, here). The hub is arguably the better
+reference — it is what a `TRIANGLES` draw of the same geometry already gets —
+but this arm does not establish that, because **nothing in the registered disc
+draws it**: `Shade_model`'s line-mode prefix is `kUntexturedLM` and
+`Line width` is untextured, so a textured wireframe fan with WRAP addressing
+appears nowhere and every leg is silent on it. A clean verdict is not evidence
+about it either way. If a title regresses on textured wireframe geometry after
+this folds, start here.
+
+The other two index-0 readers were re-checked and do not move: `calc_triz` (a
+plane's gradient is rotation-invariant; feeds `triMZ`, not coverage), and the
+widened path's flat block at `geom.c:534-543`, which pins
+`vtxD0/vtxD1/vtxB0/vtxB1` to a literal `[0]` but is reached only under FLAT
+shading — a second reason the `flat_shading` term is load-bearing.
+
+### MEDIUM 2 — `geom.c:197-206` corrected where it is read, not routed
+
+Two errors, both fixed. The territory claim ("another lane's territory") was
+false — `origin/board:territory.toml:618` has `glsl/geom.c` in `[free]` since
+`2026-09-20T14:57:11Z`. And routing a correction in a PR body is not routing:
+the body leaves the reader's view the moment it merges, which is exactly how
+`line_priority.py`'s `ours` table went stale through two folds (finding 1
+above).
+
+So the six stale lines are corrected **in `geom.c` itself**, marked
+`SUPERSEDED` in place rather than replaced, so a reader meets the old claim and
+its correction together. `glsl/geom.c` is added to the PR's `Files:` line and
+disclosed to the board in a PR comment; it is comment-only, so the generated
+GLSL, and therefore both arms' binaries, are unchanged.
+
+### MEDIUM 3 — the arm's `PASS` line covers the scoping legs and nothing else
+
+`expect`, `expect_counts` and `must_not_regress` are all empty, so the
+machine-judged content is the nine `must_not_move` globs — 167 capture checks,
+every one of them a **scoping** leg. Legs 1–4 and 7, the claim the arm exists to
+test, live only in the prose string, and `ab_compare.judge()` never reads it.
+`ab_compare.py` guards post-hoc, tampered and unbound predictions; it has no
+guard for an empty `expect`, so `VERDICT: PASS -- all 167 registered checks
+hold` will print whether TFan lands at 100.00%, at 73.20% (patch never reached
+the binary) or at 47.57% (composition undone rather than completed).
+
+They stay prose — a class aggregate over many captures has no golden key for
+`expect` to name, and `must_not_regress` on the one capture pair that could
+carry it (`Shade_model/ProgLM_TriFan_Smooth_{First,Last}`) is drawn at the
+default line width, where paint order shows on a handful of corner pixels at
+most, so it could fail for reasons this lane did not model. What changed is the
+**disclosure**: the prediction now says, in its own text, that the automated
+verdict covers the scoping legs only; that legs 1–4 and 7 are judged by hand;
+**who** does it (whoever reads the `[job.arms]` verdict — the lane if resumed,
+else pass 2 or the board, *before* `fold-ready`); **what** they run (the judged
+command); and **where the answer goes** (a `[lane.primpv13] arm judged:` PR
+comment carrying the eleven class rows, and the same table appended here).
+
+### LOW 1 — the Android GL build is not first-provoking
+
+`gl/draw.c:535`'s `glProvokingVertex(GL_FIRST_VERTEX_CONVENTION)` is inside
+`#ifndef __ANDROID__ /* glProvokingVertex not available in GLES 3.x */`, so an
+Android GL build keeps GLES 3.x's last-vertex default. The conclusion survives
+(step 3 leaves every edge's ordered pair intact; every device arm is Vulkan),
+but the sentence was load-bearing prose repeated in four places. Corrected in
+all four: `prim_rewrite.c`, the prediction, these notes (step 1 above) and the
+PR body.
+
+### LOW 2 — the last hard-coded convention in the derived model, and it was wrong
+
+`line_priority.py`'s `prim_rewrite()` derived everything from the C except
+`LLoop`, which returned `(i, i+1)` unconditionally — and that is what
+`rewrite_line_loop()` emits under **first**-provoking, while the suite it models
+is `PROVOKING_VERTEX_LAST`. The C calls `emit_line_pv(v0, v1, pv = v1)`, and
+`emit_line_pv` emits `(b, a)` when the provoking vertex is not already first, so
+the real pairs are `(v1, v0)` with a closing `(v_first, v_last)`. It is now
+derived from a `last_provoking` parameter threaded through `our_edges()`.
+
+**The audit called this inert for the score; it is not quite, and the
+difference is worth recording.** It *is* inert in geometry — measured, not
+assumed: over every `LLoop` segment, both namings, seven widths × both footprint
+rules, `field()`'s coverage mask disagrees on **zero** pixels. But `t` and the
+colour lerp are taken from whichever endpoint is named first, so the two namings
+differ by ~1e-13 in colour, and a few pixels sitting exactly on `decisive()`'s
+`SEP` / `TOL*3` thresholds cross them. Whole effect:
+
+| | before | after |
+|---|---:|---:|
+| `--extent-rule` total decisive | 225,558 | 225,570 |
+| `--extent-rule` LLoop/Tri | 1,724 | 1,736 |
+| perpendicular total decisive | 198,880 | 198,890 |
+| perpendicular LLoop/Tri | 1,305 | 1,315 |
+
+One class, which reads 100.00% for every rule before and after. **Every figure
+legs 1, 2 and 4 rest on is unchanged** — TFan 11,636 at 73.20%, QStrip/TFan
+24,009 at 75.84%, `ALL` 96.05%, and the residue `225,570 − 216,650` is the same
+8,920. The prediction was re-registered (still before any device run) so that
+what the judged command prints matches what is registered.
+
+The lesson for the next lane, since it is the second time on this file: a
+number that "cannot be wrong today" is exactly the kind that goes stale quietly.
+`field()`'s dependence on which endpoint is named first is a real, if
+1e-13-sized, property of the instrument — it is not order-invariant by
+construction, only by arithmetic.
+
+### LOW 3 — "a guess scored by nothing" overstated the strip's evidence gap
+
+`Shade_model/ProgLM_TriStrip_*` — four captures, Flat/Smooth × First/Last — *is*
+`TRIANGLE_STRIP` under `POLY_MODE_LINE`, in this arm's own disc, and is
+registered under `must_not_move`. It is weak evidence (default line width, so
+overlap is confined to corners) but it is not nothing. The comment now reads
+"not decisively scored by the `Line width` corpus, and only weakly by
+`Shade_model/ProgLM_TriStrip_*` at width 1", so the next lane can price the
+strip rather than read a blocker as settled. The reflection-vs-rotation half of
+the argument stands unchanged.
+
+## Audit pass 2 remediation (2026-09-21)
+
+`docs/audits/2026-09-20-primpv13-pass2.md`: all six pass-1 scenarios closed,
+**1 new MEDIUM and 1 new LOW**, both consequences of the pass-1 remediation
+itself. Both are addressed here. The predicate is still unchanged, no
+percentage moved, and no leg's verdict moved.
+
+### NEW MEDIUM 1 — the `+12 / +10` correction reached four of six places
+
+The LOW-2 fix changed what `line_priority.py` prints (`225,558 -> 225,570`
+under `--extent-rule`, `198,880 -> 198,890` under the default) and the
+propagation stopped short of three shipped statements of those same numbers —
+one of them inside the prediction that was re-registered to fix exactly this.
+The failure the audit named is concrete: the hand-judge appointed by MEDIUM 3
+reads the tool's docstring and this file's leg table, runs the tool, gets
+`189,925` and `225,570`, and a twelve-pixel discrepancy **in the size of the
+group leg 3 declares unchanged** is the shape of the thing leg 3 forbids.
+
+| where | said | now says |
+|---|---|---|
+| `line_priority_arms.py:34-49` | `198,880` / `225,558` | `198,890` / `225,570`, plus why both moved and that #13's geom.c arm re-runs at 198,890 |
+| this file, the predicted-arm table | `189,913` / `225,558` / `198,880` | `189,925` / `225,570` / `198,890`, edited in place with a note, because it mirrors the registered prediction |
+| this file, the docstring section | "geom.c arm (198,880 px) stays reproducible" | stays *judgeable on its own footprint*; it no longer reproduces to the pixel |
+| prediction, calibration 1 | "exactly the figure … same answer" | the same answer **to within 12 px**, named as this lane's own LOW-2 correction |
+| prediction, calibration 2 | reproduces the landed arm's table | …and where two `n`s are +10 against that arm's record, and why |
+| `prim_rewrite.c:424` | "correct on 100.00% of 225,558 decisive pixels" | same, with a parenthetical that the instrument prints 225,570 today |
+
+`geom.c:184` carries the same `225,558` and is **deliberately left alone**: it
+attributes the figure to #13's derivation doc, which is where it came from,
+and calibration 1 now names both files and the difference. Editing it would
+have shifted every `geom.c` line number in this branch's prose by three —
+which is the other half of this pass (NEW LOW 1) reappearing in the fix for
+the first half.
+
+**Done before the arm fires.** No `[job.arms]` comment exists on #194, so
+nothing has been measured against any revision of the prediction; the
+re-registration is a correction, not a post-hoc edit. `must_not_move`,
+`expect`, `expect_counts`, `must_not_regress`, `disc`, `a_ref` and `b_ref` are
+byte-identical to the previous registration — only `registered_utc` and the
+prose moved, checked field by field rather than asserted.
+
+`225,570` and the nine per-class `n`s were **re-derived here**, not taken from
+the audit: `line_priority.py --rules --extent-rule --min-width 8 --max-width
+63.875` on this tip gives TFan 11,636, QStrip/TFan 24,009 and nine others
+summing to 189,925, total 225,570, `ours` 216,650 (96.05%), residue 8,920.
+
+### NEW LOW 1 — five `geom.c` citations were +16 stale by their own hunk
+
+The `SUPERSEDED` block added at `geom.c:196-221` in `f2433a8909` pushed every
+line below it down by 16, and the hand-written citations added in the same
+commit were not moved with it. `be2cc09ec7` regenerated `nv2a_index.json` for
+precisely that shift, so the machine-read index was re-derived and the prose
+beside it was not — which is this repo's oldest shape, one file deriving what
+the one next to it hard-codes.
+
+| citation in | said | now |
+|---|---|---|
+| `prim_rewrite.c:130` | `geom.c:422` | `geom.c:438` (and `:420`, where `fog_special_index` is chosen) |
+| `prim_rewrite.c:131` | `geom.c:535` | `geom.c:551` |
+| `prim_rewrite.c:144`, prediction | `geom.c:293-298` | `geom.c:310` and `geom.c:313-314` |
+| prediction, this file | `geom.c:517-527` | `geom.c:534-543` (the `else` arm itself, not a mechanical +16) |
+| this file, the cylWrap block | `geom.c:293`, `:296` | `geom.c:310`, `:313`, `:314` |
+
+Each was checked against `geom.c` on this tip rather than shifted by 16.
+`geom.c:92` (`provoking_index`) and `geom.c:197-206` (the superseded claim) sit
+above the insert and are unchanged.
+
+`prim_rewrite.c` grew five lines at `:424`, so `nv2a_index.json` is
+regenerated: one site moves, `prim_rewrite.c:609 -> :614`, against an
+unchanged `tests_commit 91a0de45ca` — the same tests tree the committed index
+was built from, checked before the build rather than after.
+
+**Not done, and said rather than left quiet:** the hand-judged half of this
+arm (legs 1-4 and 7) is still not run, because no `[job.arms]` verdict exists
+yet. That is MEDIUM 3's standing item, not a new one, and the prediction names
+who owes it and where the answer goes.
+
+---
+
+## Attempt 2 (2026-09-20): why attempt 1 did not finish, and what this one did
+
+### Why attempt 1 did not finish
+
+Not because a measurement failed and not because anything in the patch was
+wrong. The work was complete and pushed at `bb11b82199`, audited over three
+passes (pass 1, pass 2, pass 2b), and every finding closed. What it did not
+do before it stopped was **bring the trunk in**.
+
+The fold job then refused #194 every tick, for a reason that belongs to no
+commit on this branch: the PR's check rollup was FAILURE, and every failing
+check on `bb11b82199` had *started before `master`'s current head existed*
+(the latest, `check`, started 2026-09-21T03:06:37Z). GitHub does not re-run a
+PR's checks when its base moves, so that verdict described a tree that no
+longer existed and would have been refused forever. Re-running it would not
+have helped either -- the workflows check out this PR's own head, not
+`refs/pull/194/merge`, so the branch's own copy of whatever broke on the trunk
+is the copy that runs.
+
+A second, smaller thing: **this worktree was 9 commits behind its own remote
+branch.** The three audit passes and their two remediation commits were
+pushed from other sessions, so `HEAD` here was still `fd73e841b0` while
+`origin/lane/primpv13` was `bb11b82199`. Reading only the local `git log`
+would have shown a lane that had never been audited. Fast-forwarded first,
+before anything else, and `rev-list --left-right --count` is what showed it.
+
+### What attempt 2 did
+
+`git fetch origin master` + `git merge origin/master` -- **merge, never
+rebase**, because a rebase rewrites every sha and un-ancestors the registered
+prediction's `a_ref`/`b_ref`. 31 commits came in, **no conflicts**, and the
+merge touched nothing this lane owns: `git diff --stat bb11b82199..HEAD` over
+`docs/testing/jobs/`, `docs/testing/nv2a_index.json`,
+`docs/testing/predictions/` and `hw/` is empty. Nothing under `jobs/` moved,
+so `jobs/selftest.sh` was not required.
+
+Checked after the merge rather than assumed:
+
+- `a_ref 4955050b31` and `b_ref 40ca2bcb22` are both still ancestors of
+  `HEAD`. Merging is what keeps that true; this is the check that would have
+  failed had anyone rebased.
+- `sha256(docs/testing/predictions/line-prim-rewrite-fan-provoking.json)` is
+  `63979910e31cc6b62ea8ed64f9435ae104949c829c1837e9f33b18b8bf104c6e`, which is
+  what #194's body already carries. (The `f101bda3a8...` in the "Prediction"
+  section further up this file is the *first* registration's digest, superseded
+  by the footprint-model correction in `15c2fb9ae5`; the PR body is the current
+  one.)
+- `preflight.sh` passes on the merged head, tracker gate included -- `nv2a
+  index ok`, `territory ok`, `coverage ok`, `board files ok`, exit 0.
+- `git diff --stat origin/master...HEAD` is exactly the 12 paths on the PR's
+  `Files:` line.
+
+Merged head: `688fe5b8df`, pushed. **No work was re-opened, re-measured or
+extended** -- the handback was explicit that only the base had moved, and this
+attempt did not touch `prim_rewrite.c`, `geom.c`, the instruments or the
+prediction.
+
+### What is left, and it is not a measurement
+
+The `needs-rebase` -> `fold-ready` label flip, once CI is green on
+`688fe5b8df`. That head is a fresh build of an already-audited tree against a
+trunk it merges cleanly with, so there is nothing to debug in advance of it;
+if it goes red, the finding will be about `master`'s 31 new commits meeting
+this branch, not about the trade.
+
+The device arm is still unrun -- no `[job.arms]` comment exists on #194. That
+remains MEDIUM 3's standing item from audit pass 2, unchanged by this attempt:
+legs 1-4 and 7 are registered and judgeable, and nobody has measured them yet.
+
+
+---
+
+## Attempt 3 (2026-09-20): the red belongs to the trunk's tests tree, not to this branch
+
+### Why attempt 2 did not finish
+
+It did its whole job and stopped one signal short. Attempt 2 merged
+`origin/master` in (31 commits, no conflicts), pushed `fea1db47a1`, verified
+the prediction refs were still ancestors and that `preflight.sh` passed -- and
+then had nothing left to do but **wait for CI on the new head**, which is a
+finished session only if it *says so*. It did not post a
+`[lane.primpv13] waiting:` comment and did not stop deliberately; it simply
+ended. So when CI came back red at 05:05Z, no actor was pointed at it.
+
+Both handbacks this branch received were also **already spent by the time they
+were read**, which is worth recording because it cost most of attempt 3's
+opening:
+
+- The 22:02 handback said the red was stale (every failing check predated
+  `master`'s head). True of `bb11b82199`. **Not true of `fea1db47a1`**: its
+  failing `check` started `2026-09-21T05:05:38Z`, and `master`'s head
+  `94814d4731` was committed `2026-09-21T03:58:14Z`. The red on the current
+  head is LIVE. The handback's own instruction -- "read its date first" -- is
+  what showed this, and it pointed the opposite way to its conclusion.
+- The 22:34 handback said `lane/primpv13` no longer merges into `master`.
+  Also spent: GitHub now reports #194 `MERGEABLE`, and
+  `git merge-base --is-ancestor origin/master HEAD` is **true** -- `master` is
+  a strict ancestor, so the merge is a fast-forward and there is no conflict
+  to resolve. `git rev-list --left-right --count origin/master...HEAD` is
+  `0 16`. Nothing was resolved in attempt 3 because nothing was unresolved.
+
+The `needs-rebase` label was therefore describing a condition that no longer
+existed, and following it would have been a third session spent re-merging an
+already-merged branch.
+
+### What the red actually is, and whose it is
+
+`.github/workflows/nv2a-index.yml`, job `check`, failing in 16 seconds:
+
+```
+STALE INDEX - regenerate with: nv2a_index.py build --tests DIR
+  suites differ (committed 103, tests tree 104)
+  the tests tree has 1 suite(s) the index does NOT: Fog planar vsh
+  5 suite(s) changed content: Fog, Fog coord vec4, Fog inf coord,
+      Fog vsh, Texture format
+```
+
+That is the *upstream test program* moving, not this branch. The workflow does
+`git clone --depth 1 https://github.com/abaire/nxdk_pgraph_tests` -- **upstream
+HEAD, unpinned** -- and compares the committed index against whatever it finds.
+
+**Measured, not assumed.** Both trees were cloned locally and the check was run
+against a pristine `origin/master` extracted with `git archive`, using
+`master`'s own copy of `nv2a_index.py`:
+
+| tree | `tests_commit` | suites | `nv2a_index.py check` |
+|---|---|---|---|
+| `origin/master` (pristine) | `91a0de45ca` | 103 | **FAIL**, identical text |
+| `lane/primpv13` @ `fea1db47a1` | `91a0de45ca` | 103 | **FAIL**, identical text |
+
+Same provenance, same suite count, same failure, same named suite. This
+branch's only index edits are two emulator-side line numbers
+(`geom.c:224 -> :240`, `prim_rewrite.c:489 -> :614`) and the provenance
+`emulator_commit`. **The red reproduces on a base this lane never touched**,
+so it belongs to no lane.
+
+The trigger is datable. Upstream `nxdk_pgraph_tests` is four commits ahead of
+the pin:
+
+```
+6743b6a Adds more fog tests.                 <- adds "Fog planar vsh"
+d75fc17 Removes pixel shader program code and uses combiners directly.
+057e572 Adds tests for alpha channel behavior in X alpha modes.
+493296f Fixes zeta limit error when running surface as vertex array tests in bulk mode.
+```
+
+`6743b6a` was committed **2026-09-20 17:53:58 PDT** = `2026-09-21T00:53:58Z`.
+#198's `check` passed at `2026-09-20T22:38:05Z`, before it; ours ran at
+`2026-09-21T05:05:38Z`, after it. Every PR touching `hw/xbox/**`,
+`nv2a_index.py`, `nv2a_index.json` or `nv2a_issues.toml` has been red since
+that moment, and #194 is simply the first to run the workflow after it.
+
+### Why this lane cannot fix it, checked rather than claimed
+
+The root cause is a **host** disagreement: `/home/justin/nxdk_pgraph_tests` is
+at `91a0de45ca`, four commits behind the upstream that CI clones floating.
+(`/home/justin/pbkitplusplus` is behind too: host `e91d509e4f`, upstream
+`ba683441d5`.) Both were read without running git in them -- `.git/HEAD` and
+the ref file, via `python3`, since a lane must not run git in a tree that is
+not its worktree.
+
+Three ways out were each tested and each is closed to a lane:
+
+1. **Let `fold.sh` regenerate it.** `fold.sh` is the designated owner -- its
+   header says "THE INDEX IS REGENERATED, NEVER MERGED" and line 750 rebuilds
+   whenever the post-merge check fails. But `ci_green` is at **line 686** and
+   the index step at **line 748**: the CI gate runs first, so a red PR never
+   reaches the regeneration. Unreachable by construction.
+
+2. **Regenerate on this branch.** This would turn CI green and then fail
+   *inside* the fold instead. `fold.sh` would run its check against the host's
+   stale tree, get the **opposite** direction -- "the tests tree is MISSING 1
+   suite(s) the index has: Fog planar vsh" -- and call
+   `nv2a_index.py build` with neither `--allow-older-tests` nor
+   `--allow-suite-removal`. That build **refuses**; verified by running
+   fold.sh's exact invocation:
+
+   ```
+   REFUSING to rebuild the index from an older tests tree.
+     committed index built from: 91a0de45ca31
+     this checkout is at:        6743b6ab164e
+   ```
+
+   `fold.sh` would then take its `index regeneration FAILED` branch and
+   comment "Needs a person." So regenerating converts a red PR into a jammed
+   fold, and buys nothing. The #157 guard is doing its job here; the problem
+   is upstream of it.
+
+3. **Update the host tree.** `git -C /home/justin/nxdk_pgraph_tests fetch --all
+   && git -C /home/justin/nxdk_pgraph_tests merge --ff-only @{u}` -- which is
+   exactly what `describe_suite_drift()` prints as the remedy for the missing
+   direction. A lane must not run git in a tree that is not its worktree, so
+   this is the board's or the owner's, and it is the *only* one of the three
+   that fixes the cause.
+
+Board request written to `$DISPATCH_DIR/board-requests/primpv13.md`.
+
+### A second finding, offered and not acted on
+
+The build's ancestry guard is defeated by the workflow's own clone depth. A
+`--depth 1` checkout cannot see `91a0de45ca` at all, so the guard refuses with
+"that commit is not in this checkout at all -- it may simply be unfetched"
+even when the checkout is strictly **newer**. It only answered correctly here
+after `git fetch --unshallow`. Anyone told to "regenerate from a fresh clone"
+hits this and may reach for `--allow-older-tests`, which is precisely the flag
+that deletes the new suite. CI only runs `check`, so the shallow clone is
+harmless *there* -- but the remedy text the check prints is not safe to follow
+against a shallow tree.
+
+Not this lane's file and not fixed here. It is in the board request.
+
+### The gap that let this sit
+
+`fold.sh`'s own header documents a red that no actor can reach, for the stale
+case, and builds `stale_handback()` for it. This head is the **live** case of
+the same shape: #194 is not draft, is `MERGEABLE`, has no conflict, and its
+red is live -- so `stale_red()` returns 1 (correctly), `handback.sh` only
+resumes **draft** lane PRs, and `board.sh` only picks up PRs carrying no
+pipeline label. A finished, audited, trunk-merged PR whose red belongs to the
+trunk is reachable by nothing. That is the same "nothing in the harness could
+reach them" paragraph, through a new door.
+
+`needs-rebase` was removed, because its condition is verifiably gone.
+`fold-ready` was **not** added, because its condition -- CI green -- is not
+met, and asserting it would be a claim this lane cannot support.
+
+### State of the trade itself: unchanged and untouched
+
+Nothing in `prim_rewrite.c`, `geom.c`, the instruments or the prediction was
+opened in this attempt. The patch remains as audited over three passes with
+every finding closed. `a_ref 4955050b31` and `b_ref 40ca2bcb22` are still
+ancestors of `HEAD`. The device arm is still unrun -- no `[job.arms]` comment
+exists on #194 -- which remains MEDIUM 3's standing item, not a new one.
+
+**What the next session should not repeat:** do not re-merge `master` (it is
+already a strict ancestor), do not debug the `check` job as though it were
+this branch's (a pristine `origin/master` fails it identically), and do not
+regenerate `nv2a_index.json` here (the fold job's build will refuse it against
+the host's older tree). The one thing that moves this forward is updating the
+host's `nxdk_pgraph_tests` and `pbkitplusplus` checkouts; after that, master's
+index regenerates on the next fold, and merging that master in gives this
+branch a fresh head and a fresh, green run.
+
+### The local gate and CI disagree, and that is the cleanest proof of the cause
+
+`preflight.sh --allow-tracker` on this head passes with **`nv2a index ok`**,
+while CI's `check` on the same tree fails. Not a contradiction -- they read
+different tests trees:
+
+| actor | tests tree | at | verdict |
+|---|---|---|---|
+| `preflight.sh` (and `fold.sh`) | `/home/justin/nxdk_pgraph_tests` | `91a0de45ca` | **ok** |
+| `.github/workflows/nv2a-index.yml` | `git clone --depth 1` upstream | `6743b6ab16` | **STALE INDEX** |
+
+The committed index says `91a0de45ca`, so it agrees with the host and
+disagrees with upstream. Every gate is behaving correctly on the tree it can
+see; the disagreement *is* the defect, and it lives in neither the index nor
+this branch.
+
+## Audit pass 1b remediation (2026-09-21, `job.cloud`)
+
+`docs/audits/2026-09-20-primpv13-pass1b.md` re-read the **whole** diff after
+the arm landed rather than only what arrived since pass 2b: **1 MEDIUM, 3
+LOW**. The compiled change is untouched for the third pass running — the
+MEDIUM is in the falsifier this diff re-points, and `pv_placement_observable()`
+still reads `flat_shading || polygon_mode != POLY_MODE_LINE`. No percentage in
+any table moved and no leg's verdict moved.
+
+### MEDIUM 1 — the scoping column misread its own model, and the audit's own fix stops one mode short
+
+`changed_region()` built the region from the narrow perpendicular footprint
+while `decisive_xy()` was given `--extent-rule` — the wide
+hypot-approximation footprint we actually draw on Vulkan. The margin between
+the two grows with width and the one-pixel dilation stops covering it around
+w = 40, so the judged command the diff's own docstring mandates reported a
+non-zero `outside` against a footnote that calls it a must-be-zero.
+Reproduced here on the landed arm's two result directories before changing
+anything:
+
+| w | `outside` as shipped | after |
+|---:|---:|---:|
+| 8 – 32 (11 captures) | 0 | 0 |
+| 40 | 1 | 0 |
+| 48 | 2 | 0 |
+| 56 – 59 | 5, 6, 6, 7 | 0 |
+| 60 – 63 | 7, 8, 8, 9 | 0 |
+| 63.125 – 63.875 (7 captures) | 8, 8, 8, 8, 8, 9, 9 | 0 |
+
+**17 of 28, where the audit's prose says 12 of 27.** Its own table lists all
+seventeen non-zero rows and every value in them reproduces here to the digit,
+so the finding is right and only the sentence above the table is wrong; the
+window holds 28 captures, not 27. Every other column is byte-identical before
+and after: the eleven-class table, every per-capture `decisive`, `A names`,
+`B names`, `moved` and `A!=B px`.
+
+**The audit asked for the run's rule to be threaded through, and that is not
+enough.** Threading it fixes `--extent-rule` and leaves the DEFAULT reading
+`outside` 1 and 2 at w = 40 and 48 — measured, not reasoned: the arms really
+do differ out at the wider extent, so there the region is narrower than our
+own coverage for a second and entirely legitimate reason. `outside` is not a
+selection rule, it is a **bound** on where our renderer's pixels for those
+edges can be, and a bound that under-covers what we draw manufactures escapes.
+So the region now unions **both** models. The derived extent is the wider at
+every angle — `(max + min/2) / L` is 1.0 axis-aligned and 1.06 at 45°, never
+below 1 — so the union *is* the extent footprint today; writing it as a union
+rather than as "the wide one" is what keeps it sound if a third model is added.
+All 28 captures now read 0 under **both** rules, each measured by a full sweep
+of the window rather than inferred from the two that had moved.
+
+**The widened region still has power, which is the check a wider bound owes.**
+At the widest width it covers 76,383 px of 307,200 — **24.9% of the frame,
+230,817 px still excluded** — and a single differing pixel planted at an
+excluded coordinate is counted (`outside=1`). A scoping check that could no
+longer report a non-zero would be worth less than no check.
+
+### LOW 2 — `opp_acb` is back in the per-block table, and it separates in TWO blocks
+
+`report_rules()`'s per-block breakdown had swapped it out for `ours_patched`.
+The row is five columns wide now and carries both; the aggregate table above
+it was already scoring all of `SCHEMES`, which is why this was LOW.
+
+**The audit says the goldens separate `opp_acb` "in exactly one block"; they
+separate it in two.** Re-derived here rather than copied —
+`line_priority.py --rules --extent-rule --min-width 8 --max-width 63.875` on
+this tip, which is the restored column:
+
+| candidates in | n | `opp_abc` | `opp_acb` |
+|---|---:|---:|---:|
+| Tri | 52,411 | 100.00% | **88.83%** |
+| QStrip | 40,139 | 100.00% | **79.46%** |
+| the other nine classes | 133,020 | 100.00% | 100.00% |
+
+`QStrip` at 79.46% is the audit's figure to the digit; `Tri` at 88.83% is a
+second separation it did not name, on the largest class in the corpus. So the
+column is worth more than the finding claimed, and 92,550 of 225,570 decisive
+pixels sit in a block where it discriminates. (`opp_acb` pools to 93.75%
+overall, which is the aggregate table's figure and the one that hides where
+the disagreement is — the argument for the per-block row in one line.)
+
+The header field also went 12 → 15. At 12 it printed
+`oursours_patchednearest_centre`, three names run together over correctly
+aligned cells, so every column in the row was mislabelled by sight. That was
+true before this change and would have been worse with five columns.
+
+### LOW 3 — the arm's hand-judged table, in the lane's record
+
+The prediction says the eleven class rows go in a `[lane.primpv13] arm judged:`
+comment **and** in this file. Audit pass 1b ran the hand-judged half and posted
+the comment; an auditor may not edit a lane file, so the second half was filed
+rather than done. It is done here, and the table is this remediation's own run
+of the judged command rather than a copy of the audit's:
+
+```
+python3 docs/testing/line_priority_arms.py \
+    --a .../1789968297-arms-primpv13-base-2094212 \
+    --b .../1789968297-arms-primpv13-fix-2094234 \
+    --extent-rule --min-width 8 --max-width 63.875
+```
+
+```
+class                     n   A names   B names    unm A    unm B     moved
+Tri*                  52411   100.00%   100.00%    0.00%    0.00%         0
+QStrip*               40139   100.00%   100.00%    0.00%    0.00%         0
+LLoop                 35571   100.00%   100.00%    0.00%    0.00%         0
+Quad*                 26549   100.00%   100.00%    0.00%    0.00%         0
+QStrip/TFan*          24009    75.84%   100.00%    0.00%    0.00%      5801
+Poly*                 19355   100.00%   100.00%    0.00%    0.00%         0
+Poly/TFan*            13764   100.00%   100.00%    0.00%    0.00%         0
+TFan*                 11636    73.20%   100.00%    0.00%    0.00%      3119
+LLoop/Tri*             1736   100.00%   100.00%    0.00%    0.00%         0
+Poly/Tri*               272   100.00%   100.00%    0.00%    0.00%         0
+LLoop/TFan*             128   100.00%   100.00%    0.00%    0.00%         0
+ALL                  225570    96.05%   100.00%    0.00%    0.00%      8920
+```
+
+| leg | registered | measured | |
+|---|---|---|---|
+| 1 | TFan 11,636 px, 73.20% → 100.00% | 11,636, 73.20% → 100.00% | **met** |
+| 2 | QStrip/TFan 24,009 px, 75.84% → 100.00% | 24,009, 75.84% → 100.00% | **met** |
+| 3 | nine other classes unchanged, `moved` 0 each | all nine 100.00%/100.00%, `moved` 0 | **met** |
+| 4 | `moved` ≥ 3,119 TFan and ≥ 5,801 QStrip/TFan | 3,119 and 5,801 | **met** |
+| 7 | ALL 96.05% → 100.00% over 225,570 | identical | **met** (advisory) |
+
+Legs 5 and 6 are the `must_not_move` globs and were machine-judged by the
+`[job.arms]` PASS. So all seven legs are now discharged and the figures come
+from two independent runs of the tool on the same two result directories.
+
+**What this still does not establish**, restated so nothing over-reads it:
+`cylWrap()`'s reference vertex still moves for a textured wireframe fan in
+WRAP address mode, nothing in the registered disc draws one, and no leg above
+is sensitive to it. That is the tolerated, disclosed item from pass 1's
+MEDIUM 1 and this measurement does not touch it.
+
+### LOW 1 — the index's `provenance` home path: reviewed, NOT fixed, and why
+
+`be2cc09ec7` moved `support_dirs` and `tests_root` from `/home/user/...` to
+`/home/justin/...` because that is where this host's checkouts are. No gate
+reads either field — `cmd_check()` compares `symbols`, `sites` and `suites`
+only — so it is churn plus an operator's home path in a public repository,
+not a failure.
+
+Not fixed here, deliberately. The durable fix is in `nv2a_index.py`, which
+should record a basename or nothing, and that file is outside this lane. The
+tempting local fix — put master's `/home/user/...` back — is worse than the
+problem: it would make the committed provenance assert a tree the index was
+not generated from, which is the one thing a provenance block is for. Left
+for the generator, and stated here rather than left silent.
+
+### What did NOT change
+
+The prediction file is **untouched**. Its sha256 is still
+`63979910e31c…`, which is what the `[job.arms]` verdict names and what the PR
+body carries; the arm has been judged, so any edit to it now would be a
+post-hoc edit of a bound prediction. Nothing in it cites the `outside` column,
+so nothing in it went stale. `Files:` is unchanged too — every path this
+remediation touched was already on it.
+
+`origin/master` has moved 18 commits ahead again, and it is **still not worth
+merging**: its `nv2a_index.json` carries the same `tests_commit 91a0de45ca`
+and the same 103 suites, so the trunk's `check` red is exactly where attempt 3
+left it and a merge would buy a new head with the same failing gate.
+
+## Attempt 4 (2026-09-21): the trunk fixed the cause; merge it and resolve the index
+
+### Why attempt 3 did not finish
+
+Attempt 3 ended on a correct diagnosis with no actor: the `check` red on
+`bf247ede15` belonged to the trunk (a pristine `origin/master` failed it
+identically), the fix was to update the host's `nxdk_pgraph_tests` checkout,
+and a lane may not run git in a tree that is not its worktree. So it wrote a
+board request and stopped. That was the right stop; nothing on this branch
+could have turned the check green.
+
+Between then and now the trunk moved:
+
+| what | before | now |
+|---|---|---|
+| host `/home/justin/nxdk_pgraph_tests` | `91a0de45ca` | `6743b6ab16` |
+| `origin/master` index `tests_commit` | `91a0de45ca` (103 suites) | `6743b6ab16` (104 suites), via PR #208 lane/indexfresh |
+| `origin/master` | `94814d4731` | `bda6c52d9c` (20 commits) |
+
+Also, my local worktree was 5 commits behind `origin/lane/primpv13`: the
+auditor's pass 2c and its remediation had been pushed to the branch. Fast-
+forwarded before merging, so the merge commit is on top of `bf247ede15`, the
+head the handback names.
+
+### The merge conflict, and how it was resolved
+
+`git merge origin/master` conflicted on exactly one file:
+`docs/testing/nv2a_index.json`. Both sides had rebuilt it: master over the
+newer tests tree (a new suite, "Fog planar vsh"), this branch over the
+emulator changes (two `geom.c` sites and one `prim_rewrite.c` site moved, one
+`prim_rewrite.c` COMMENT site added). A textual merge of a derived file is
+wrong by construction, and `fold.sh`'s header says so ("REGENERATED, NEVER
+MERGED"). Resolution:
+
+1. `git checkout --theirs` -- master's copy as the base, so the resolution
+   starts from the newer suite list.
+2. `nv2a_index.py build --tests /home/justin/nxdk_pgraph_tests --support
+   /home/justin/pbkitplusplus` -- the host tree now sits at the same commit
+   master's index names, so the build's ancestry guard has nothing to refuse.
+3. `nv2a_index.py check` against the same trees: `index matches the tree
+   (951 symbols, 2841 sites, 104 suites)`.
+4. `git diff origin/master -- docs/testing/nv2a_index.json` shows ONLY this
+   branch's emulator-side deltas plus provenance (`emulator_commit`,
+   `tests_root`): geom.c 224->240, 261->277, prim_rewrite.c 489->614, and
+   the added prim_rewrite.c:142 site. No suite added or dropped relative to
+   master. That is the diff a correct merge of a derived file must have.
+
+Merge commit `525310f8cd`. `preflight.sh --allow-tracker` on it: `nv2a index
+ok`, `territory ok`, `coverage ok`, `board files ok`, passed.
+
+### What was not touched
+
+`prim_rewrite.c`, `geom.c`, `line_priority.py`, `line_priority_arms.py` and
+the registered prediction were not opened. The patch is as audited over
+passes 1, 1b, 2, 2b and 2c. `a_ref 4955050b31` / `b_ref 40ca2bcb22` remain
+ancestors of `HEAD` (checked after the push). The device arm is still
+MEDIUM 3's standing item and still unrun.
+
+**What the next session should not repeat:** if `nv2a_index.json` conflicts
+again, do not hand-merge it and do not take either side verbatim; take
+master's, rebuild over the host tree, and confirm the diff against master is
+only this branch's emulator-side sites.

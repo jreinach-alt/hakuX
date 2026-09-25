@@ -84,6 +84,96 @@ static inline bool needs_rewrite(PrimAssemblyState mode)
     }
 }
 
+/*
+ * Does anything downstream actually READ index 0 of a rewritten triangle?
+ *
+ * Vulkan rasterises first-vertex-provoking (nothing in vk/ enables
+ * VK_EXT_provoking_vertex) and so does the desktop GL renderer, but NOT the
+ * Android one: gl/draw.c's glProvokingVertex(GL_FIRST_VERTEX_CONVENTION) sits
+ * inside `#ifndef __ANDROID__ / glProvokingVertex not available in GLES 3.x`,
+ * so an Android GL build keeps GLES 3.x's LAST-vertex default.  That does not
+ * reach the conclusion below, for the reason the edge-list argument gives: the
+ * rotation leaves every emitted line's (i0, i1) pair intact, so whichever
+ * endpoint the rasteriser takes a `flat` varying from, it takes the same one
+ * on both arms.  It is written out here because the sentence "both renderers
+ * are first-provoking" is load-bearing prose that is false in one build.
+ *
+ * glsl/geom.c spells its provoking_index as the literal "0" exactly when the
+ * shade mode is FLAT, as "index" otherwise.
+ * So under SMOOTH shading the rotation buys nothing.  needs_rewrite() above
+ * already says as much for PRIM_TYPE_TRIANGLES, which it declines to rewrite
+ * AT ALL unless the draw is flat and last-provoking; the strip and the fan
+ * have to be rewritten regardless, because that is a topology change, and
+ * the provoking placement rode along with it.
+ *
+ * Under POLY_MODE_LINE the rotation is not merely useless, it is wrong.
+ * geom.c splits a triangle (A, B, C) into the edges (B,C), (C,A), (A,B) in
+ * that order, so rotating the triple is a pure ROTATION OF THE EDGE LIST:
+ * every edge keeps both endpoints and its direction, and only the paint
+ * order changes.  That paint order is the rule #13 derived from the `Line
+ * width` goldens, and a TRIANGLE_FAN was arriving pre-rotated by one
+ * relative to the TRIANGLES draw beside it -- which geom.c cannot
+ * compensate for, because GeomState::primitive_mode is the REWRITTEN mode
+ * and cannot tell a fan triangle from a list triangle.  That left the TFan
+ * and QStrip/TFan classes at 73.20% and 75.84% where every other class had
+ * reached 100.00% -- 8,920 decisive pixels naming the wrong edge, over the
+ * 35,645 the two classes hold.  (#13's comments call the residue "32,628
+ * decisive pixels"; that figure is the POPULATION of the two classes under
+ * the perpendicular footprint model this emulator stopped drawing in
+ * 80c23dcabe, not the pixels that are wrong inside it.)
+ *
+ * WHO ELSE READS INDEX 0 ON THAT PATH.  Three readers, and the third is the
+ * one this comment used to miss.
+ *
+ * (1) vtxFogSpecial is `flat` in EVERY shade mode (glsl/common.c), but each
+ * emit_line() takes it from that EDGE's own first endpoint rather than from
+ * the triangle's index 0 -- geom.c:438 uses `index` (chosen at geom.c:420),
+ * and the widened path pins it to the edge's own i0 (geom.c:551).  Rotating
+ * the triple does not change any edge's own endpoints, so every edge carries
+ * the value it carried before, in a different order.  Unchanged.
+ *
+ * (2) calc_triz(0, 1, 2) takes the depth slope relative to vertex 0, so a fan
+ * triangle's dz is now evaluated on the same basis a list triangle's already
+ * was.  A plane's gradient is rotation-invariant, so this can move dz only by
+ * rounding; it feeds triMZ, not coverage.
+ *
+ * (3) cylWrap DOES move, and it is a literal [0] rather than a
+ * provoking_index.  When a texture unit is in WRAP address mode
+ * (state->cylinder_wrap[i] non-zero, from NV_PGRAPH_TEXADDRESS0_WRAP_U/V/P/Q)
+ * geom.c:310 emits `vtxT%d = cylWrap(v_vtxT%d[0], v_vtxT%d[index], ...)` in
+ * emit_vertex(), and geom.c:313-314 the same `v_vtxT%d[0]` reference in
+ * emit_vertex_fs()'s lerp -- in BOTH the GL and the widened Vulkan paths, and
+ * independently of the shade mode.  Cylinder wrap adjusts each vertex's
+ * texture coordinate by whole turns relative to the input primitive's vertex
+ * 0, so moving vertex 0 moves the reference.  Direction: it was the rim
+ * vertex the rotation put there (v2 under last-provoking, v1 under first),
+ * which VARIES per fan triangle; it is now the fan HUB, the same vertex for
+ * every triangle of the fan.  A rim vertex more than half a turn from the hub
+ * but less than half a turn from its old neighbour-reference (or the reverse)
+ * now takes a whole turn it did not take, moving its U or V by 1.0.
+ *
+ * This is TOLERATED, not measured, and it is arguably the better reference --
+ * one reference per fan rather than a different one per triangle is what a
+ * TRIANGLES draw of the same geometry already gets, which is the consistency
+ * the rest of this change is for.  But no golden here exercises it: a
+ * textured wireframe fan with WRAP addressing is drawn by nothing in the
+ * registered disc (`Shade_model`'s line-mode prefix is kUntexturedLM and
+ * `Line width` is untextured), so the arm cannot see it either way and will
+ * come back clean whether or not it matters.  If a title regresses on
+ * textured wireframe geometry, start here.
+ *
+ * POLY_MODE_FILL and POLY_MODE_POINT keep it, because there the rotation is
+ * NOT a reorder: it decides the triangle's provoking output vertex outright,
+ * and with it the flat colour and vtxFogSpecial.
+ *
+ * So #13's trade is not abolished, it is narrowed to its one real corner --
+ * a flat-shaded wireframe, where the colour must win over the paint order.
+ */
+static inline bool pv_placement_observable(PrimAssemblyState mode)
+{
+    return mode.flat_shading || mode.polygon_mode != POLY_MODE_LINE;
+}
+
 static unsigned int max_output_indices(enum ShaderPrimitiveMode mode,
                                        enum ShaderPolygonMode polygon_mode,
                                        unsigned int input_count)
@@ -230,6 +320,23 @@ static void rewrite_triangles(PrimRewrite *r, const uint32_t *idx,
     }
 }
 
+/*
+ * DELIBERATELY NOT given the pv_placement_observable() treatment the fan gets
+ * below, though the same reasoning reaches it: under POLY_MODE_LINE a strip
+ * triangle is pre-rotated relative to a list triangle too, and geom.c cannot
+ * tell them apart either.  The difference is evidence.  The odd-i case below
+ * is a REFLECTION (v1, v0, v2), not a rotation, so its composition with
+ * geom.c's edge order is a different derivation from the fan's -- and the
+ * `Line width` corpus, which is what pins these orders to the pixel, draws no
+ * TRIANGLE_STRIP at all under POLY_MODE_LINE.  So the strip's order is not
+ * decisively scored by that corpus, and only weakly by
+ * Shade_model/ProgLM_TriStrip_* -- four real POLY_MODE_LINE strip captures,
+ * but at the default line width, where overlap is confined to a handful of
+ * corner pixels.  That is evidence, just not enough to price a change on; the
+ * reflection-vs-rotation half of the argument stands on its own.  The next
+ * lane can price this rather than read it as settled.
+ * See docs/lanes/primpv13/NOTES.md.
+ */
 static void rewrite_triangle_strip(PrimRewrite *r, const uint32_t *idx,
                                    uint32_t base, unsigned int count,
                                    bool last_provoking)
@@ -248,9 +355,17 @@ static void rewrite_triangle_strip(PrimRewrite *r, const uint32_t *idx,
     }
 }
 
+/*
+ * `place_pv` is pv_placement_observable(): with it false the fan triangle is
+ * handed on in its natural (hub, v1, v2) order, which is the same order a
+ * TRIANGLES draw arrives in, so geom.c's one derived edge order fits both.
+ * The emission COUNT is identical either way, so -- exactly as for the three
+ * rewrite_*_line() functions below -- no counter can tell the two apart and
+ * only the captures can.
+ */
 static void rewrite_triangle_fan(PrimRewrite *r, const uint32_t *idx,
                                  uint32_t base, unsigned int count,
-                                 bool last_provoking)
+                                 bool last_provoking, bool place_pv)
 {
     if (count < 3) {
         return;
@@ -261,9 +376,13 @@ static void rewrite_triangle_fan(PrimRewrite *r, const uint32_t *idx,
     for (unsigned int i = 0; i + 2 < count; i++) {
         uint32_t v1 = idx_at(idx, i + 1, base);
         uint32_t v2 = idx_at(idx, i + 2, base);
-        uint32_t pv = last_provoking ? v2 : v1;
 
-        emit_tri_pv(r, hub, v1, v2, pv);
+        if (!place_pv) {
+            emit_tri(r, hub, v1, v2);
+            continue;
+        }
+
+        emit_tri_pv(r, hub, v1, v2, last_provoking ? v2 : v1);
     }
 }
 
@@ -305,7 +424,12 @@ static void rewrite_quads(PrimRewrite *r, const uint32_t *idx, uint32_t base,
  * It is correct on 100.00% of 225,558 decisive pixels, in each of eleven
  * candidate classes separately, against 78.51% for the order that was here
  * before -- which the goldens refute rather than merely beat.  See
- * docs/investigations/line-width-residual.md.
+ * docs/investigations/line-width-residual.md.  (225,558 is what the
+ * instrument printed at #13's derivation; it prints 225,570 today, +12 from
+ * line_priority.py's LLoop segment direction being corrected on 2026-09-20 --
+ * a dozen pixels crossing decisive()'s thresholds at ~1e-13, all in
+ * LLoop/Tri, which reads 100.00% before and after.  Every percentage in this
+ * paragraph is unchanged.)
  *
  * The emission COUNT is unchanged in all three functions, so no counter can
  * tell the two orders apart; only the captures can.
@@ -462,7 +586,8 @@ static void rewrite_indices(PrimRewrite *r, const PrimAssemblyState *mode,
         rewrite_triangle_strip(r, idx, base, num_indices, mode->last_provoking);
         break;
     case PRIM_TYPE_TRIANGLE_FAN:
-        rewrite_triangle_fan(r, idx, base, num_indices, mode->last_provoking);
+        rewrite_triangle_fan(r, idx, base, num_indices, mode->last_provoking,
+                             pv_placement_observable(*mode));
         break;
     case PRIM_TYPE_QUADS:
         if (mode->polygon_mode == POLY_MODE_LINE) {

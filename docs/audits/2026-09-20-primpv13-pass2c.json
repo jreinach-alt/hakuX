@@ -1,0 +1,68 @@
+[
+  {
+    "pass2_id": "P1B-M1",
+    "severity": "MEDIUM",
+    "file": "docs/testing/line_priority_arms.py",
+    "line": "150",
+    "verdict": "CLOSED",
+    "summary": "changed_region() unions every footprint model (for rule in (False, True)) instead of hard-coding the narrow perpendicular one, so the judged command this file's own docstring mandates no longer reports a violated must-be-zero. Verified by running the command verbatim on the arm's two result directories under BOTH rules: outside = 0 on all 28 captures under --extent-rule and 0 on all 28 under the default. The eleven-class table under --extent-rule is identical to pass 1b's and to the one NOTES.md now carries (ALL 225570, 96.05% -> 100.00%, moved 8920).",
+    "scenario": "Pass 1b's scenario -- the next person judging an arm the way line_priority_arms.py instructs (--extent-rule) meets a non-zero 'outside' against a footnote calling it a must-be-zero, and either spends a remediation cycle hunting a scoping escape that does not exist or learns the column is noisy and stops reading it -- can no longer occur on this arm under either rule.",
+    "evidence": "Re-measured, not accepted. (1) Both runs of `line_priority_arms.py --a .../1789968297-arms-primpv13-base-2094212 --b .../1789968297-arms-primpv13-fix-2094234 [--extent-rule] --min-width 8 --max-width 63.875` give outside = 0 on every one of 28 captures. (2) 'No other column moves' is structural, not lucky: changed_region() is called once, at :280, its result feeds only scope[test] = (diff.sum(), (diff & ~reg).sum()), and scope is read only to print 'outside'; A!=B px is diff.sum() and never sees the region. (3) The cost of the widening, measured at every width against the real capture pair: the region grew 2.9-4.1% of its own area (at w=63.875, 74,198 -> 76,383 px of a 307,200-px frame, i.e. 2,185 px, 0.7% of the frame's exclusion given up), and 17 of 28 captures read non-zero under the perpendicular region against 0 of 28 under the union. Those 17 values -- 1,2,5,6,6,7,7,8,8,9,8,8,8,8,8,9,9 from w=40 to w=63.875 -- reproduce pass 1b's table to the digit, and they are ALSO what the threaded-rule fix pass 1b asked for would give in default mode, since threading extent_rule=False reproduces the perpendicular region exactly. (4) Positive control run rather than believed: at w=63.875 the region is 76,383 px of 307,200 (24.86%, 230,817 excluded, both figures as documented); a single differing pixel planted at each of three excluded coordinates (0,0), (245,29), (479,639) gives outside = 1, and one planted at included (236,232) gives outside = 0. (5) The soundness argument holds: (max + min/2)/L as a function of edge angle is cos t + sin t / 2 on [0,45] -- 1.0 axis-aligned, 1.118 maximum at 26.57 degrees, 1.0607 at 45, never below 1 -- so the derived extent contains the perpendicular footprint at every angle and the union IS the extent footprint today.",
+    "remediation": "none required"
+  },
+  {
+    "pass2_id": "P1B-L1",
+    "severity": "LOW",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "provenance",
+    "verdict": "CLOSED",
+    "summary": "Reviewed and deliberately not fixed, with the reason logged at NOTES.md:909-922 rather than left silent -- which is the outcome the finding itself asked for. The load-bearing half is verified rather than accepted: cmd_check() (nv2a_index.py:1065) compares symbols and sites in its loop at :1072 plus the suite sets separately, and reads neither tests_root nor support_dirs.",
+    "scenario": "Pass 1b's scenario -- two lanes regenerate the index on different hosts and both folds conflict on a provenance line carrying information nobody uses -- is unchanged by this remediation and was explicitly not fixed here, because the durable fix is in nv2a_index.py (record a basename or nothing) and that file is outside this lane. The finding named silence, not the churn, as the unacceptable outcome.",
+    "evidence": "The remediation's argument against the tempting local fix is better than the finding's: restoring master's /home/user/... would make the committed provenance assert a tree the index was not generated from, which is the one thing a provenance block exists to record. Checked at nv2a_index.py:1065-1140 that no gate reads either field.",
+    "remediation": "Recommend the board route a nv2a_index.py change (record a basename, or nothing) as its own unit; master already carries /home/user/... from another host, so the conflict is trunk-wide."
+  },
+  {
+    "pass2_id": "P1B-L2",
+    "severity": "LOW",
+    "file": "docs/testing/line_priority.py",
+    "line": "519",
+    "verdict": "CLOSED",
+    "summary": "opp_acb is back in report_rules()'s per-block table, the row is five columns wide and the header field went 12 -> 15. Re-derived from the goldens on this tip rather than read: `line_priority.py --rules --extent-rule --min-width 8 --max-width 63.875` prints Tri 52411 at opp_acb 88.83% and QStrip 40139 at 79.46% against opp_abc's 100.00% in both, with the other nine classes at 100.00%.",
+    "scenario": "Pass 1b's scenario -- a future edit that slides our order onto a rival is caught by the changed `ours` column, but WHICH rival it slid to is no longer visible without a re-run -- can no longer occur: the column that discriminates is printed again, in the two blocks where the corpus separates it.",
+    "evidence": "The remediation corrected the finding rather than copying it: the audit said the goldens separate opp_acb 'in exactly one block' and they separate it in two, the larger of which (Tri, 52,411 px) the audit did not name -- 92,550 of 225,570 decisive pixels sit in a block where the column discriminates. opp_acb's aggregate 93.75% is confirmed in the same run, which is the pooling the per-block row exists to undo. The header-width claim is true as printed: at 15, ours_patched and nearest_centre are separated by exactly one space, the tightest the five names admit; at 12 the header read 'oursours_patchednearest_centre' over correctly aligned cells.",
+    "remediation": "none required"
+  },
+  {
+    "pass2_id": "P1B-L3",
+    "severity": "LOW",
+    "file": "docs/lanes/primpv13/NOTES.md",
+    "line": "858",
+    "verdict": "CLOSED",
+    "summary": "The eleven class rows, the verbatim command and the five-leg table are now in the lane's own record at NOTES.md:858-907, which is the half of the prediction's WHERE THE ANSWER GOES an auditor may not write. The figures are the remediation's own run and they match mine to the digit on all eleven classes and all four totals -- two independent runs of the tool on the same two result directories.",
+    "scenario": "Pass 1b's scenario -- the arm's hand-judged answer existing only inside an audit review comment, where the lane's record does not carry it -- can no longer occur.",
+    "evidence": "Verified by running the judged command myself and diffing the table: Tri 52411, QStrip 40139, LLoop 35571, Quad 26549, QStrip/TFan 24009 at 75.84% -> 100.00% moved 5801, Poly 19355, Poly/TFan 13764, TFan 11636 at 73.20% -> 100.00% moved 3119, LLoop/Tri 1736, Poly/Tri 272, LLoop/TFan 128, ALL 225570 96.05% -> 100.00% moved 8920. Legs 1, 2, 3, 4 and 7 met at the registered figures; legs 5 and 6 machine-judged by the [job.arms] PASS. See NEW-L1 for the PR half of the same sentence.",
+    "remediation": "none required"
+  },
+  {
+    "pass2_id": "NEW-L1",
+    "severity": "LOW",
+    "file": "docs/testing/line_priority_arms.py",
+    "line": "168",
+    "verdict": "NEW FINDING",
+    "summary": "The changed_region() docstring understates the alternative it rejects by a factor of eight, and contradicts itself four sentences apart. It says threading the rule through 'leaves the DEFAULT reading 1 and 2 px outside at w = 40 and 48'; threading extent_rule=False gives exactly the perpendicular region, which the same docstring says made 17 of the window's 28 captures non-zero. The residual is 1,2,5,6,6,7,7,8,8,9,8,8,8,8,8,9,9 px on seventeen captures from w = 40 upward.",
+    "scenario": "Someone simplifying changed_region() -- reasonable, since the union costs a doubled inner loop -- reads '1 and 2 px at w = 40 and 48', judges the union over-engineering for a two-pixel residual, reverts to the threaded form, and seventeen captures go non-zero again on the default rule. That is the exact cycle pass 1b already spent.",
+    "evidence": "Measured at every width in the window against the real capture pair, with both regions computed side by side: perpendicular vs union region size and outside count per capture (see the MEDIUM-1 table in the .md record). 17 of 28 non-zero under perpendicular, 0 of 28 under the union. LOW and not MEDIUM because it is a statement about a REJECTED alternative in a comment -- no shipped behaviour, no scored number and no leg's verdict depends on it -- and the error runs against its own argument, making the union look less necessary than it is, so it cannot mislead anyone into shipping the weaker region.",
+    "remediation": "One sentence: replace the clause with 'leaves the DEFAULT reading 1-9 px outside on 17 of the window's 28 captures, w = 40 upward'. Not sent back for a cycle: an auditor may not edit a lane file, and the correction is on the record here, beside the file, in the same fold."
+  },
+  {
+    "pass2_id": null,
+    "severity": "STANDING",
+    "file": "docs/testing/nv2a_index.json",
+    "line": "provenance",
+    "verdict": "NOT A FINDING ABOUT THIS DIFF",
+    "summary": "CI's `check` is FAILURE on 81a358e41d (run 35576491118, started 2026-09-21T08:10:14Z) with the NV2A index staleness; both `build` jobs are SUCCESS, the rollup is current for this head and the PR is MERGEABLE. The red is trunk-wide, verified against origin/master rather than inherited from pass 1b.",
+    "scenario": "fold.sh waits for a green head, so this PR does not fold until the trunk's index is refreshed and this branch gets a fresh run. That is the board's unit, not this lane's, and the fold and handback jobs already know how to drive it; pass 2b set fold-ready under the identical condition.",
+    "evidence": "Parsed both revisions of docs/testing/nv2a_index.json: origin/master and this head carry the same 103 suites, the same 951 symbols and the same provenance.tests_commit 91a0de45ca31, and neither contains 'Fog planar vsh' -- the suite CI's freshly cloned tests tree has. So every branch cut from master is red on this check until the host's nxdk_pgraph_tests checkout is advanced and the index regenerated ON master. preflight.sh --allow-tracker passes here with 'nv2a index ok' because it reads the host's older checkout: two gates, two trees, by construction.",
+    "remediation": "Not this lane's. Recommend the board route the index refresh as its own unit; when it lands, #194 needs a base merge and a push to get a fresh run, because GitHub does not re-run a PR's checks when its base moves."
+  }
+]
