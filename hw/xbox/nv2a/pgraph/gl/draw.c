@@ -213,6 +213,55 @@ static bool blend_equation_is_signed(uint32_t equation)
            equation == NV_PGRAPH_BLEND_EQN_FUNC_REVERSE_SUBTRACT_SIGNED;
 }
 
+#ifndef __ANDROID__
+/*
+ * #164/#59: the CLEAR half of the surface pad-bit write side, the counterpart
+ * of the raster half pgraph_gl_draw_begin() gained in #158.
+ *
+ * The shared pgraph_get_clear_color()'s alpha switch (pgraph.c) has no case
+ * for the four pad formats and falls through to `default: *a = 1.0f`. That is
+ * the _O constant by coincidence -- which is why the _O twins have been
+ * bit-exact all along -- and the wrong constant for _Z. So without this a _Z
+ * surface holds alpha 1 where CLEAR_SURFACE wrote and, since #158, alpha 0
+ * where the raster drew: one surface, two answers, where hardware gives 0 for
+ * both. pgraph_vk_get_clear_color() has had this since #59.
+ *
+ * READ FROM THE SAME EXPRESSION the raster half reads
+ * (pgraph_glsl_surface_pad_alpha_mode of surface_shape.color_format), not a
+ * second per-format table: two independent derivations of one per-format fact
+ * is how #48's clear and sampler halves came apart (audit M3/P4).
+ *
+ * GATED ON THE CAPABILITY FLAG, which the Vulkan copy does not need to be.
+ * Ungated, a GL part without GL_ARB_blend_func_extended would clear to the pad
+ * constant while drawing without it -- the same internal inconsistency this
+ * fixes, with the operands swapped. The flag ties the two halves together, so
+ * a part that cannot stamp also does not clear to the stamp, which is bit-for
+ * -bit this renderer's behaviour before #158.
+ *
+ * NOT COMPILED ON GLES, for the reason the blend path is not (audit pass 1,
+ * H1): the flag is never set there, so this would be dead code -- but the
+ * three sites' exclusions disagreeing about HOW GLES is excluded is exactly
+ * what H1 was about, and this is the fourth site. Note the consequence for
+ * anyone measuring this: on a GLES build the change is a guaranteed no-op by
+ * construction, so an arm that means to observe it must run desktop OpenGL,
+ * which is where #158's own 236-capture arm ran.
+ */
+static void pgraph_gl_get_clear_color(PGRAPHState *pg, float rgba[4])
+{
+    pgraph_get_clear_color(pg, rgba);
+
+    if (!pgraph_glsl_dual_src_pad_supported()) {
+        return;
+    }
+
+    switch (pgraph_glsl_surface_pad_alpha_mode(pg->surface_shape.color_format)) {
+    case PSH_PAD_ALPHA_ZERO: rgba[3] = 0.0f; break;
+    case PSH_PAD_ALPHA_ONE:  rgba[3] = 1.0f; break;
+    default: break;
+    }
+}
+#endif
+
 void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
 {
     PGRAPHState *pg = &d->pgraph;
@@ -256,7 +305,11 @@ void pgraph_gl_clear_surface(NV2AState *d, uint32_t parameter)
                          ? GL_TRUE : GL_FALSE);
 
         GLfloat rgba[4];
+#ifdef __ANDROID__
         pgraph_get_clear_color(pg, rgba);
+#else
+        pgraph_gl_get_clear_color(pg, rgba);
+#endif
         glClearColor(rgba[0], rgba[1], rgba[2], rgba[3]);
     }
 
