@@ -143,3 +143,38 @@ Waiting: the arms job runs `issue91-writeback.json` and posts a `[job.arms]`
 verdict on PR #237; CI runs on the head. The PR stays draft until the
 verdict. `preflight` passes except `coverage`, which fails on #91's own row
 on `origin/board`, not on this lane's files.
+
+## Session 2 (2026-09-25): the verdict
+
+Why session 1 did not finish: it stopped on purpose to wait for the arm,
+which takes about 90 minutes. The lane had no way to sleep, so it recorded
+the wait and left the PR in draft. That was the waiting state `handback.sh`
+resumes from, and it was not a failure.
+
+`[job.arms] VERDICT: PASS -- all 13 registered checks hold` (judged 03:01
+PDT). Base `1790328745-arms-clrwb91-base-1258384`, fix
+`1790328746-arms-clrwb91-fix-1258418`. Both are DONE with 0 unreadable
+captures.
+
+| capture | A (9c5f7416d8) | B (9de95de849) |
+|---|---|---|
+| Color_zeta_overlap/Swap | 304,750 | **165,447** |
+| other 10 captures | same | same (8 exact stay exact) |
+
+I read leg (2) from the captures myself, not from the score:
+
+| arm | FFE91A24 (quad) | background | 00FFFFFF |
+|---|---|---|---|
+| A | 165,447 | `00000024` × 139,303 | 2,450 |
+| B | 165,447 | **`FE242424`** × 139,303 | 2,450 |
+
+B's background is the golden's value, with no third value. The count moved
+for the reason the model gives.
+
+One run per arm, so the byte-level check marks the change "not
+attributable". But Swap is deterministic on silicon, the population moved
+wholesale to the golden's exact word, and the diagnostic trace named the
+event. Nondeterminism does not produce that signature.
+
+Master merged in with `git merge`, not a rebase, so both refs are still
+ancestors.
