@@ -1,0 +1,41 @@
+{
+  "registered_utc": "2026-09-25T16:13:37Z",
+  "who": "lane.vshnobegin242",
+  "issue": "242",
+  "prediction": "#242, re-registered with 3 runs per arm on the merged refs (a = master a8691063e6, b = the lane's merge of it, 6e3b1aff8b); supersedes vshnobegin242-must-not-move.json. Same patch, same legs, same reasoning as that file: SET_VERTEX4F's last component with no primitive open calls pgraph_vsh_writeback_constants for that one vertex and then pgraph_reset_inline_buffers; the inside-Begin/End path is textually unchanged, and no .vsh on the pgraph disc writes a constant. WHY AGAIN: the single-run arm (1790347943-arms-vshnobegin242-*) FAILed on 4 Vertex_shader_rounding_tests captures that are two swaps, not a move. With the label strip masked, the BASE arm (master, no patch) itself rendered one stray image in each half of GeometrySuperscreen (at 0.5000 and 0.9990); the FIX arm rendered the SAME two stray images, byte for byte, one test earlier or later (0.4999 and 1.0000). Every other capture of the suite is identical across arms, and no earlier run on disk shows the stray image at all. A patch that cannot run on this disc does not relocate a frame that master also produces, so this is read as device nondeterminism, and 3 runs per arm measure its band. WHAT WOULD MOVE EACH LEG is as in the superseded file; a move outside the measured band on any leg refutes the patch, not the leg.",
+  "a_ref": "a8691063e6",
+  "b_ref": "6e3b1aff8b",
+  "must_not_move": [
+    "Degenerate_begin_end/*",
+    "SetVertexData/*",
+    "Attrib_setter/*",
+    "3D_primitive/*",
+    "Material_color/*",
+    "Overlapping_draw_modes/*",
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/*",
+    "W_param/*",
+    "Fog_gen/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D primitive",
+      "Attrib setter",
+      "Degenerate begin end",
+      "Fog gen",
+      "Material color",
+      "Overlapping draw modes",
+      "SetVertexData",
+      "Vertex shader independence tests",
+      "Vertex shader rounding tests",
+      "W param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "runs_per_arm": 3
+}

@@ -1,0 +1,40 @@
+{
+  "registered_utc": "2026-09-25T14:45:31Z",
+  "who": "lane.vshnobegin242",
+  "issue": "242",
+  "prediction": "#242: SET_VERTEX4F's last component with no primitive open now calls pgraph_vsh_writeback_constants for that one vertex and then pgraph_reset_inline_buffers. Every leg on this pgraph disc is MUST-NOT-MOVE; the must-move half of this lane is nxdk_vsh_tests Exceptional Float (Exceptional_Float/Float.txt goes from all 0.000000 to the console's 'inf,-inf,nan,nan / 3.402823e+38,-3.402823e+38,0,-0 / 0,-0,0,-0'), scored by vsh_score.py in a separate request.sh --program vsh run, which ab_compare cannot judge. WHAT WOULD MOVE EACH LEG. The new code runs only when a vertex's 4th component arrives with primitive_mode == PRIM_TYPE_INVALID; the inside-Begin/End path is textually unchanged. (1) Degenerate begin end: its Begin-without-End sends vertices with a primitive OPEN, so the new branch must not fire; a move means the branch fires inside a primitive (primitive_mode read wrong). (2) SetVertexData, Attrib setter, 3D primitive, Material color, Overlapping draw modes: inline-vertex and array draws. If any of them sends a vertex outside Begin/End, the new reset clears an inline buffer the next Begin would have cleared anyway; a move means some path consumes the inline buffer between that lone vertex and the next Begin (a draw from a stale buffer). (3) Vertex shader independence/rounding tests, W param, Fog gen: vertex-program draws. No .vsh on the pgraph disc writes a constant register (lane.vshconst NOTES), so pgraph_vsh_writeback_constants returns at its pre-scan; a move means the pre-scan misfires on a lone vertex and a CPU-evaluated 'write' replaced a constant. A MOVE ON ANY LEG REFUTES THE PATCH, NOT THE LEG.",
+  "a_ref": "21946df29b",
+  "b_ref": "bd552105ed",
+  "must_not_move": [
+    "Degenerate_begin_end/*",
+    "SetVertexData/*",
+    "Attrib_setter/*",
+    "3D_primitive/*",
+    "Material_color/*",
+    "Overlapping_draw_modes/*",
+    "Vertex_shader_independence_tests/*",
+    "Vertex_shader_rounding_tests/*",
+    "W_param/*",
+    "Fog_gen/*"
+  ],
+  "expect": {},
+  "expect_counts": {},
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D primitive",
+      "Attrib setter",
+      "Degenerate begin end",
+      "Fog gen",
+      "Material color",
+      "Overlapping draw modes",
+      "SetVertexData",
+      "Vertex shader independence tests",
+      "Vertex shader rounding tests",
+      "W param"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
