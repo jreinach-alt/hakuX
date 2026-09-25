@@ -32,6 +32,18 @@ disc `Texgen,Texgen with texture matrix`.
   goldens cannot separate them. A tilted-normal test would be needed.
 - Whether CSV1 keeps 3 or 5 for R: not observable by any test (spheremap273 section 4).
 
+## Preflight
+
+- nv2a index: my pgraph.c hunk moved 257 sites. I regenerated it over the
+  fold-pins trees at tests_commit 6743b6ab (80ef756386), and `check` matches.
+- coverage: FAILED, and it is the board's to fix. #273's blocker in
+  nv2a_issues.toml (origin/board) names only lane.vshsubneg255, which retired
+  when PR #288 folded. Lanes may not edit that file. CI does not run this gate.
+  Everything else passes.
+
 ## State
 
-Waiting on the arm (the arms job queues it from the committed prediction).
+Waiting on the arm. The arms job queues it from the committed prediction and
+posts a `[job.arms]` verdict on PR #330. When it lands, judge the two must-move
+legs by hand (<= 1,000 differing, max_rgb <= 2), read the status column for
+`unreadable`, then mark the PR ready.
