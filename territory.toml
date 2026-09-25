@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 200
+wave = 201
 updated_utc = "2026-09-25T21:15:00Z"
 
 
@@ -961,9 +961,9 @@ note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z): the perfor
 
 [lane.perfarch]
 issues = ["68"]
-files = ["tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json"]
+files = ["tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "android/app/build.gradle.kts", "android/app/src/main/cpp/CMakeLists.txt"]
 standing = false
-note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), the owner's pitch: an engineering-persona lane (principal performance engineer) that designs hakuX for the Snapdragon 8 Gen 2 / Adreno 740 and makes the Xbox's CPU/GPU concurrency a strength rather than a defect source: x86 TSO via RCpc (LDAPR/STLR) or ordering at MMIO doorbells instead of today's elide-everything (tcg_gen_mb under XBOX; full DMBs cost +34%), CTR_EL0 DIC/IDC cache maintenance, AArch64 codegen, big.LITTLE placement and thermals, Adreno/Turnip tiling and CPU-side draw cost, 'speculate then validate' run-ahead. Deliverables: docs/investigations/perf-architecture.md (ranked, evidence-graded) and flagged prototypes with arms. tcg/** and util/cacheflush.c were unlisted. Brief: briefs/perfarch.md."
+note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z), the owner's pitch: an engineering-persona lane (principal performance engineer) that designs hakuX for the Snapdragon 8 Gen 2 / Adreno 740 and makes the Xbox's CPU/GPU concurrency a strength rather than a defect source: x86 TSO via RCpc (LDAPR/STLR) or ordering at MMIO doorbells instead of today's elide-everything (tcg_gen_mb under XBOX; full DMBs cost +34%), CTR_EL0 DIC/IDC cache maintenance, AArch64 codegen, big.LITTLE placement and thermals, Adreno/Turnip tiling and CPU-side draw cost, 'speculate then validate' run-ahead. Deliverables: docs/investigations/perf-architecture.md (ranked, evidence-graded) and flagged prototypes with arms. tcg/** and util/cacheflush.c were unlisted. Brief: briefs/perfarch.md. GRANTED (host session, 2026-09-25T21:03:27Z, owner-delegated) on the lane's #68 request: android/app/build.gradle.kts and android/app/src/main/cpp/CMakeLists.txt (both unlisted) for three measured build changes ONLY: minSdk 26 -> 29 (native TLS; drops Android 8/9, which no hakuX-capable Snapdragon still ships), -march=armv8.2-a (inline LSE atomics), -fvisibility=hidden. Each change is A/B'd separately. The PR touches android/, so it needs audit. The files return to [free] when that PR folds; lane.turnipfork will want CMakeLists.txt later to bundle a driver."
 
 [lane.tcgchurn]
 issues = ["68"]
