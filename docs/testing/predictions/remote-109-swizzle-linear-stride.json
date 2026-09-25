@@ -36,5 +36,8 @@
     "skip_tests": [],
     "only_tests": [],
     "source": "stated on the --register command line"
-  }
+  },
+  "title": "desktop OpenGL A/B -- hand-queue only, see the prediction text",
+  "amended_utc": "2026-09-25T14:43:09Z",
+  "amendment": "ROUTING ONLY, LEGS UNCHANGED. `title` added so [job.arms] reads this as hand-queued and does not run it on the fleet: the Android APK defaults to the Vulkan renderer (SettingsActivity.kt, renderer default \"vulkan\"), where this GL-only fix is absent and Swizzle is 0 in both arms, so a fleet arm would judge expect Surface_pitch/Swizzle=8192 and better=1 as FAILs that measure nothing. The version judged is sha256 6e1e8c2442c69dea2caf799f81276bc28ecf582cac1d477983e1a8f31a5db12e (commit e156200f), PASS 75/75 on desktop GL, reported on #109."
 }
