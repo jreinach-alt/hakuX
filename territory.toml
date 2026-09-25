@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 187
+wave = 188
 updated_utc = "2026-09-25T19:40:00Z"
 
 
@@ -786,9 +786,9 @@ note = "RETIRED (job.board, board tick 2026-09-25T19:40:00Z): PR #245 MERGED (fo
 
 [lane.wbuf31sel]
 issues = ["31"]
-files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
+files = ["docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T18:05Z (job.board): DO NOT COMMENT ON PR #244. handback.sh keys draft-strand-quiet on the PR updatedAt, and the 17:40Z board comment reset that clock (quiet 1275s of 7200s at 18:05Z), so handback resumes the lane by itself once 7200s pass with nothing new on the PR (~19:40Z). The board does not resume it: roles/board.md leaves draft lanes to handback, and a board resume would spend an attempt handback does not. If it is still un-resumed at ~19:50Z, look at handback.sh list before anything else. PRIOR TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see."
+note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T18:05Z (job.board): DO NOT COMMENT ON PR #244. handback.sh keys draft-strand-quiet on the PR updatedAt, and the 17:40Z board comment reset that clock (quiet 1275s of 7200s at 18:05Z), so handback resumes the lane by itself once 7200s pass with nothing new on the PR (~19:40Z). The board does not resume it: roles/board.md leaves draft lanes to handback, and a board resume would spend an attempt handback does not. If it is still un-resumed at ~19:50Z, look at handback.sh list before anything else. PRIOR TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see. WAVE 188 (host session, owner's impact-first rule): psh.c LENT to lane.wbufdepth24 for #266's one-line D24 gl_FragDepth saturate (~1.13 M px on 26 rows) -- this lane's #244 is stalled (arm REFUSED, head conflicting) and worth 0 scored px; its psh.c hunk is already on its branch ~800 lines from the D24 block. psh.c returns here when #266's PR folds, for #244's master merge and re-arm."
 
 
 [lane.wparamclip223]
@@ -874,9 +874,9 @@ note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on
 
 [lane.wbufdepth24]
 issues = ["266"]
-files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json"]
+files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json", "hw/xbox/nv2a/pgraph/glsl/psh.c"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md."
+note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md. WAVE 188 (host session): + glsl/psh.c, the D24 gl_FragDepth write only (case DEPTH_FORMAT_D24, near line 3647), granted on the lane's request (#266 comment 5838034022). Do not touch the slope-offset code or #31's rule; the file returns to lane.wbuf31sel when this PR folds."
 
 [lane.boardprio]
 issues = []
