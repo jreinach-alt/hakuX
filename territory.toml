@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 176
-updated_utc = "2026-09-25T15:50:00Z"
+wave = 177
+updated_utc = "2026-09-25T16:35:00Z"
 
 
 [retired.hilodot10]
@@ -771,11 +771,12 @@ retired_utc = "2026-09-25T14:50:00Z"
 note = "RETIRED (host session, 2026-09-25T14:50:00Z): PR #237 MERGED 2026-09-25T14:45:36Z (fold af5bedd1b0), no open PR on lane/clrwb91, unit inactive (attempts exhausted, but the work finished: the host re-merged the index twice and cleared a false blocked:needs-owner). Files RELEASED: hw/xbox/nv2a/pgraph/vk/surface.c, docs/testing/predictions/issue91-writeback.json, docs/lanes/clrwb91/NOTES.md. PRIOR NOTE: WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
 
 
-[lane.handbackresolved]
+[retired.handbackresolved]
 issues = []
-files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-resolved.sh", "docs/lanes/handbackresolved/**"]
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
+retired_utc = "2026-09-25T16:35:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T16:35:00Z): PR #241 MERGED 2026-09-25T16:00:25Z (fold d124ff4961), no open PR on lane/handbackresolved, unit gone. RELEASED TO [free]: docs/testing/jobs/handback.sh, selftest.d/99-handback-resolved.sh and docs/lanes/handbackresolved/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
 
 
 [lane.vshnobegin242]
