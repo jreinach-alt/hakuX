@@ -142,11 +142,15 @@ uint64_t hakux_tlb68_rdo;       /* tlb_reset_dirty on any other thread */
 uint64_t hakux_tlb68_rdoe;
 uint64_t hakux_tlb68_rdo_ns;
 uint64_t hakux_tlb68_sd;        /* tlb_set_dirty (notdirty write re-enable) */
+uint64_t hakux_tlb68_rs;        /* dynamic TLB resizes, any mode (#311 rs) */
+uint64_t hakux_tlb68_ka;        /* hunk (a): pages kept armed on emptying */
+uint64_t hakux_tlb68_kafb;      /* hunk (a): ... disarmed by the fallback */
 static __thread bool hakux_tlb68_arming;
 
 /*
  * Fix switches, read once from the environment so one binary carries both
- * arms (request.sh --env). Default ON; "0" restores the old path.
+ * arms (request.sh --env). Default OFF (#311 arms must differ from master
+ * only by counters and one hunk); "1" turns a fix on.
  *
  *   HAKUX_TCG68_RD  tlb_reset_dirty / tlb_set_dirty walk only the modes in
  *                   tlb.c.dirty instead of all NB_MMU_MODES. Exact, not a
@@ -157,7 +161,7 @@ static __thread bool hakux_tlb68_arming;
 static int hakux_tlb68_env(const char *name)
 {
     const char *v = getenv(name);
-    return !(v && v[0] == '0');
+    return v && v[0] == '1';
 }
 
 static int hakux_tlb68_fix_rd = -1;
@@ -202,7 +206,7 @@ void hakux_tlb68_tick(CPUState *cpu)
     static uint64_t p_cause[HAKUX_TLB68_NCAUSE];
     static uint64_t p_ff, p_ffe, p_pf, p_pfl, p_jc, p_jcns, p_jct, p_jci,
                     p_jcx, p_rd, p_rdc, p_rde, p_rdm, p_rdh, p_rdns, p_rdo,
-                    p_rdoe, p_rdons, p_sd;
+                    p_rdoe, p_rdons, p_sd, p_rs, p_ka, p_kafb;
     static unsigned window;
     int64_t now = get_clock();
     struct timespec ts;
@@ -212,6 +216,7 @@ void hakux_tlb68_tick(CPUState *cpu)
     char sz[96];
     int off = 0;
     MMUIdxMap dm;
+    size_t tn = 0;
 
     if (prev_ns && now - prev_ns < 2 * NANOSECONDS_PER_SECOND) {
         return;
@@ -231,6 +236,12 @@ void hakux_tlb68_tick(CPUState *cpu)
     rdo = qatomic_read(&hakux_tlb68_rdo);
     rdoe = qatomic_read(&hakux_tlb68_rdoe);
     rdons = qatomic_read(&hakux_tlb68_rdo_ns);
+
+    /* #311 tn: the largest fast table over every mode, dirty or not. */
+    for (int i = 0; i < NB_MMU_MODES; i++) {
+        tn = MAX(tn, (size_t)(cpu_tlb_fast(cpu, i)->mask
+                              >> CPU_TLB_ENTRY_BITS) + 1);
+    }
 
     /* Size of every dirty mode's fast table, "idx:n" pairs. */
     dm = qatomic_read(&cpu->neg.tlb.c.dirty);
@@ -253,7 +264,9 @@ void hakux_tlb68_tick(CPUState *cpu)
               " rd=%" PRIu64 " rdc=%" PRIu64 " rde=%" PRIu64 " rdm=%" PRIu64
               " rdh=%" PRIu64 " rdus=%" PRIu64
               " rdo=%" PRIu64 " rdoe=%" PRIu64 " rdous=%" PRIu64
-              " sd=%" PRIu64 " dm=0x%x sz=%s fx=rd%djc%d",
+              " sd=%" PRIu64 " dm=0x%x sz=%s"
+              " tw=%" PRIu64 " tn=%zu rs=%" PRIu64
+              " ka=%" PRIu64 " kafb=%" PRIu64 " fx=rd%djc%dka%dtb%d",
               window++, (now - prev_ns) / 1000000,
               (cpu_ns - prev_cpu_ns) / 1000000,
               hakux_tlb68_ff - p_ff, hakux_tlb68_ff_empty - p_ffe,
@@ -272,7 +285,11 @@ void hakux_tlb68_tick(CPUState *cpu)
               hakux_tlb68_rdh - p_rdh, (hakux_tlb68_rd_ns - p_rdns) / 1000,
               rdo - p_rdo, rdoe - p_rdoe, (rdons - p_rdons) / 1000,
               hakux_tlb68_sd - p_sd, (unsigned)dm, sz[0] ? sz : "-",
-              hakux_tlb68_rd_on(), hakux_tlb68_jc_on());
+              (hakux_tlb68_rde - p_rde) + (rdoe - p_rdoe), tn,
+              hakux_tlb68_rs - p_rs,
+              hakux_tlb68_ka - p_ka, hakux_tlb68_kafb - p_kafb,
+              hakux_tlb68_rd_on(), hakux_tlb68_jc_on(),
+              HAKUX_TCG311_KEEP_ARMED, HAKUX_TCG311_TLB_BOUND);
 
     for (int i = 0; i < HAKUX_TLB68_NCAUSE; i++) {
         p_cause[i] = c[i];
@@ -286,6 +303,7 @@ void hakux_tlb68_tick(CPUState *cpu)
     p_rdns = hakux_tlb68_rd_ns;
     p_rdo = rdo; p_rdoe = rdoe; p_rdons = rdons;
     p_sd = hakux_tlb68_sd;
+    p_rs = hakux_tlb68_rs; p_ka = hakux_tlb68_ka; p_kafb = hakux_tlb68_kafb;
     prev_ns = now;
     prev_cpu_ns = cpu_ns;
 }
@@ -416,7 +434,19 @@ static void tlb_mmu_resize_locked(CPUTLBDesc *desc, CPUTLBDescFast *fast,
     rate = desc->window_max_entries * 100 / old_size;
 
     if (rate > 70) {
+#if defined(XBOX) && HAKUX_TCG311_TLB_BOUND
+        /*
+         * #311 hunk (b): a ceiling on what tlb_reset_dirty() walks. Every
+         * code-arming walk visits every entry of every dirty mode, so its
+         * cost is the table size, and upstream lets i386 grow to 2^20. The
+         * Xbox has 64 MiB, 16k pages, and one address space. Correctness is
+         * untouched: a smaller direct-mapped TLB only misses more, and a
+         * miss refills through tlb_fill like any other.
+         */
+        new_size = MIN(old_size << 1, 1 << HAKUX_TLB_MAX_BITS);
+#else
         new_size = MIN(old_size << 1, 1 << CPU_TLB_DYN_MAX_BITS);
+#endif
     } else if (rate < 30 && window_expired) {
         size_t ceil = pow2ceil(desc->window_max_entries);
         size_t expected_rate = desc->window_max_entries * 100 / ceil;
@@ -443,6 +473,9 @@ static void tlb_mmu_resize_locked(CPUTLBDesc *desc, CPUTLBDescFast *fast,
         }
         return;
     }
+#ifdef XBOX
+    hakux_tlb68_rs++;
+#endif
 
     g_free(fast->table);
     g_free(desc->fulltlb);
@@ -1424,6 +1457,16 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
      * Only evict the old entry to the victim tlb if it's for a
      * different page; otherwise just overwrite the stale data.
      */
+#if defined(XBOX) && HAKUX_TCG311_TLB_BOUND
+    /*
+     * #311 hunk (b): a same-page refill overwrites a slot that is already
+     * counted in n_used_entries. Upstream increments it again below, so the
+     * use rate tlb_mmu_resize_locked() reads drifts up with every refill (an
+     * x86 store to a page first filled by a load, to set PTE.D, is one) and
+     * the table doubles at flushes for pages it does not hold.
+     */
+    bool same_page_refill = tlb_hit_page_anyprot(te, addr_page);
+#endif
     if (!tlb_hit_page_anyprot(te, addr_page) && !tlb_entry_is_empty(te)) {
         unsigned vidx = desc->vindex++ % CPU_VTLB_SIZE;
         CPUTLBEntry *tv = &desc->vtable[vidx];
@@ -1476,6 +1519,9 @@ void tlb_set_page_full(CPUState *cpu, int mmu_idx,
                     MMU_DATA_STORE, prot & PAGE_WRITE);
 
     copy_tlb_helper_locked(te, &tn);
+#if defined(XBOX) && HAKUX_TCG311_TLB_BOUND
+    if (!same_page_refill)
+#endif
     tlb_n_used_entries_inc(cpu, mmu_idx);
     qemu_spin_unlock(&tlb->c.lock);
 }

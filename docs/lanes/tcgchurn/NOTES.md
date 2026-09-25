@@ -1,6 +1,20 @@
 # lane.tcgchurn -- #68 translation-cache churn
 
-Base: master @ 724a0dd868. PR #309.
+Base: master @ 724a0dd868, merged with origin/master @ 90a8dc1c1a on
+2026-09-25 (attempt 2). PR #309.
+
+## Attempt 2 (2026-09-25): why attempt 1 did not finish
+
+Attempt 1 wrote the `[tlb68]` instrument and the RD/JC switches below but
+left all of it **uncommitted** in the worktree: no build, no push, no arm.
+The session ended (turn cap) before the first commit. Nothing was lost; it is
+committed as `5a492f7d6b`, unbuilt at the time. Lesson for the next attempt:
+commit before building.
+
+Attempt 2 was redirected by the host to **#311** (in-game collapse to 1-2
+gfps; upstream v0.3.1 holds 29 on the same Thor). lane.ghoul311's model: ~200
+code-arming walks (`tlb_reset_dirty`) a frame, each walking the whole dynamic
+TLB, which grows. See "#311" below.
 
 ## What the 09-11 profile actually says (read before question (a))
 
@@ -125,3 +139,86 @@ Now it walks `tlb.c.dirty`. `tlb_set_dirty` (every notdirty write) likewise.
   A = `HAKUX_TCG68_RD=0 HAKUX_TCG68_JC=0`, B = defaults.
 - Crimson Skies soaks, both arms on one device (nova), three per arm.
 - Pixel must-not-move: master vs this commit, eight unrelated suites, equality.
+
+## #311: counters and the two candidate hunks (attempt 2)
+
+### Counters added to the `[tlb68]` line
+
+| field | counts |
+|---|---|
+| `tw` | entries walked by `tlb_reset_dirty`, every thread (= `rde` + `rdoe`) |
+| `tn` | the largest fast-table size over ALL modes, at the line |
+| `rs` | dynamic TLB resizes (either direction) in the window |
+| `ka`, `kafb` | hunk (a): pages kept armed on emptying; disarmed later by its fallback |
+| `fx=rd?jc?ka?tb?` | RD / JC env switches, and the two #311 build defines |
+
+`tw / rdc` is ghoul311's `tw/pr` (entries per arming walk). Their
+pre-registration (#311 comment 5839584187): `tw/pr` <= 4.2k at ~20 s, >= 64k
+at ~120 s; refuted if it stays within 2x of its 20 s value while the frame
+collapses. The A arm below measures it.
+
+**RD and JC now default OFF** (attempt 1 had them on). They are unmeasured,
+and the #311 arms must differ from master only by counters plus one hunk.
+`HAKUX_TCG68_RD=1` / `HAKUX_TCG68_JC=1` turn them on for their own arm later.
+
+### The hunks: one build define each, `#error` if both
+
+`include/accel/tcg/hakux-tlb68.h`: `HAKUX_TCG311_KEEP_ARMED` (a) and
+`HAKUX_TCG311_TLB_BOUND` (b), both default 0. A binary with both on does not
+compile, so an arm names its hunk by sha.
+
+**(b) bounds the walk.** Two parts in `cputlb.c`, both under the define:
+1. **The cap.** The dynamic TLB grows to at most `1 << 13` entries per MMU
+   index, against `CPU_TLB_DYN_MAX_BITS` = 20 for i386.
+2. **An accounting fix,** found reading `tlb_set_page_full` (ghoul311 saw
+   it too). A same-page refill takes the `tlb_hit_page_anyprot` branch, so it
+   skips the decrement, but it still increments `n_used_entries`. An x86
+   store to a page first filled by a load (to set PTE.D) is one such refill.
+   The use rate that `tlb_mmu_resize_locked` reads therefore drifts up without
+   more pages in use, and the table doubles at flushes. With the fix, a
+   same-page refill does not count.
+
+- **Correctness:** none at stake. A smaller direct-mapped TLB only misses
+  more, and a miss refills through `tlb_fill`. The count only steers sizing.
+- **Cost:** more TLB misses, if a title's working set exceeds 8k pages
+  between flushes.
+
+**(a) keeps an emptied page armed.** In `tb-maint.c`,
+`tb_invalidate_phys_page_range__locked` does not `tlb_unprotect_code` when
+the page empties. The next `tb_page_add` then calls `tlb_protect_code`.
+`physical_memory_test_and_clear_dirty` finds the code bit already clear, so it
+skips `physical_memory_dirty_bits_cleared` -> `tlb_reset_dirty_range_all`
+(`system/physmem.c:1277`). No walk happens.
+
+- **What could go stale:** nothing that can go stale today. The hazard in this
+  area runs the other way: a page that HOLDS a block but is NOT armed, so a
+  store skips `notdirty_write` and the block outlives the code it translated.
+  Keeping a page armed only sends more stores through `notdirty_write`. That
+  path invalidates whatever is on the page (here, nothing). It then sets dirty
+  with `DIRTY_CLIENTS_NOCODE`, so the code bit stays clear. It calls
+  `tlb_set_dirty` only when `!physical_memory_is_clean`, which is false while
+  the code bit is clear.
+- **Why it cannot go stale:** the next `tb_page_add` relies on one
+  invariant: "code bit clear => no TLB entry writes this page without
+  `TLB_NOTDIRTY`". A page that never emptied already relies on the same
+  invariant. It holds because `tlb_set_page_full` adds `TLB_NOTDIRTY` whenever
+  `physical_memory_is_clean`, and `tlb_set_dirty` is gated as above. DMA
+  (`invalidate_and_set_dirty`) strips the code bit too. So does anything else
+  that sets the code bit, such as the fallback's `tlb_unprotect_code`: the
+  next `tb_page_add` then sees it dirty and walks, exactly as upstream. An
+  empty-but-armed page is also not a new state: `tb_flush` empties every
+  page list and disarms nothing.
+- **What guest behaviour would break it:** none for correctness. For cost:
+  a title that turns an ex-code page into a hot data buffer, because every
+  store to it would take the slow path forever. That is why hunk (a) has a
+  **runtime fallback**. A page that takes `HAKUX_TCG311_ARMED_IDLE_WRITES`
+  (512) invalidation calls while empty is disarmed after all, which is the
+  upstream path one step late. `kafb` counts those disarms. A high `kafb` with
+  a low `ka` would mean the fallback carries the load and (a) is buying
+  nothing.
+
+**Which to arm first.** If ghoul311's since-when pair shows #73's unstrand
+(`2af6def68a`) introduced the collapse, then (a) is the natural fix. It
+reverses the re-arm churn #73 exposed, and it does not re-strand blocks: the
+page list still empties, and only the dirty bit is left alone. (b) attacks the
+unit cost instead, and would matter even if the re-arm rate were old.

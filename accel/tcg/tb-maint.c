@@ -520,6 +520,13 @@ struct PageDesc {
     uint16_t empties;
     bool small_blocks;
 #endif
+#if defined(XBOX) && HAKUX_TCG311_KEEP_ARMED
+    /*
+     * #311 hunk (a): invalidations that found this page already empty and
+     * still armed since it last emptied. Under @lock, like first_tb.
+     */
+    uint16_t armed_idle;
+#endif
 };
 
 void page_table_config_init(void)
@@ -1851,10 +1858,52 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
     }
 #endif
 
+#if defined(XBOX) && HAKUX_TCG311_KEEP_ARMED
+    /*
+     * #311 hunk (a): a page that has just been emptied stays armed.
+     *
+     * Upstream disarms it here so later stores go fast, and the next block
+     * translated on it re-arms it through tlb_protect_code(), a walk of every
+     * TLB entry. Grabbed by the Ghoulies empties and refills the same code
+     * pages every frame (pr == ev), so it paid 80-250 walks a frame, each
+     * growing with the TLB. Left armed, DIRTY_MEMORY_CODE stays clear, so
+     * tb_page_add()'s tlb_protect_code() finds nothing to clear and
+     * physical_memory_test_and_clear_dirty() skips the walk.
+     *
+     * What could go stale: nothing new. The hazard in this area is a page that
+     * holds a block but is NOT armed, so a store skips notdirty_write() and
+     * the block outlives the code it translated. Keeping a page armed is the
+     * other direction: it only sends more stores through notdirty_write(),
+     * which invalidates whatever is on the page (here, nothing) and leaves
+     * DIRTY_MEMORY_CODE clear (DIRTY_CLIENTS_NOCODE). The invariant a later
+     * tb_page_add() relies on -- code-dirty clear means no TLB entry writes
+     * this page without TLB_NOTDIRTY -- is the one it already relies on for a
+     * page that never emptied: tlb_set_page_full() adds TLB_NOTDIRTY while
+     * physical_memory_is_clean(), and tlb_set_dirty() runs only once it is
+     * not. Anything that does set the code-dirty bit (tlb_unprotect_code(),
+     * below) makes the next tb_page_add() walk, exactly as before.
+     *
+     * What the guest could do to make it cost: turn an ex-code page into a
+     * hot data buffer, whose every store would now take the slow path. So a
+     * page that sees HAKUX_TCG311_ARMED_IDLE_WRITES invalidation calls while
+     * empty is disarmed after all, the upstream path one step late.
+     */
+    if (!p->first_tb) {
+        if (tbs_seen) {
+            p->armed_idle = 0;
+            hakux_tlb68_ka++;
+        } else if (++p->armed_idle >= HAKUX_TCG311_ARMED_IDLE_WRITES) {
+            p->armed_idle = 0;
+            hakux_tlb68_kafb++;
+            tlb_unprotect_code(start);
+        }
+    }
+#else
     /* if no code remaining, no need to continue to use slow writes */
     if (!p->first_tb) {
         tlb_unprotect_code(start);
     }
+#endif
 
     if (unlikely(current_tb_modified)) {
         page_collection_unlock(pages);

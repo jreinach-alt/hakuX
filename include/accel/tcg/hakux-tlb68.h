@@ -9,6 +9,41 @@
 
 #ifdef XBOX
 
+/*
+ * #311 fix candidates, one build define each. At most one may be on, so a
+ * binary can only ever carry one of them and an arm names its hunk by sha.
+ *
+ *   HAKUX_TCG311_KEEP_ARMED  (hunk a) a page whose last block is discarded
+ *       stays armed for code-write detection, so re-adding a block there does
+ *       not pay tlb_reset_dirty's whole-TLB walk. See tb-maint.c.
+ *   HAKUX_TCG311_TLB_BOUND   (hunk b) the dynamic TLB counts a same-page
+ *       refill once, not twice, and never grows past 1 << HAKUX_TLB_MAX_BITS
+ *       entries per MMU index, so the walk has a ceiling. See cputlb.c.
+ */
+#ifndef HAKUX_TCG311_KEEP_ARMED
+#define HAKUX_TCG311_KEEP_ARMED 0
+#endif
+#ifndef HAKUX_TCG311_TLB_BOUND
+#define HAKUX_TCG311_TLB_BOUND 0
+#endif
+#if HAKUX_TCG311_KEEP_ARMED && HAKUX_TCG311_TLB_BOUND
+#error "#311: one fix hunk per binary; turn one of the two off"
+#endif
+
+/*
+ * Hunk (a)'s fallback: writes an emptied, still-armed page may take through
+ * the notdirty slow path before it is disarmed after all, as upstream would
+ * have done at once. Bounds what a title that turns a code page into a hot
+ * data buffer can pay.
+ */
+#define HAKUX_TCG311_ARMED_IDLE_WRITES 512
+
+/* Hunk (b)'s ceiling: 2^13 entries per MMU index (upstream i386: 2^20). */
+#define HAKUX_TLB_MAX_BITS 13
+
+extern uint64_t hakux_tlb68_ka;     /* pages kept armed on emptying */
+extern uint64_t hakux_tlb68_kafb;   /* ... disarmed later by the fallback */
+
 /* Why a full TLB flush was asked for. Set by the caller, consumed once. */
 enum {
     HAKUX_TLB68_OTHER,
