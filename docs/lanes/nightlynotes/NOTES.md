@@ -1,7 +1,9 @@
 # lane.nightlynotes
 
-Two things: the release notes that reported the harness instead of the
-emulator, and the 78-second nightly the brief asked me to check.
+Two briefs under one lane name. The first (§0-§3, folded) was the notes that
+reported the harness instead of the emulator, and the 78-second nightly. The
+second (§4, 2026-09-25) is the notes that dropped every late fold, and the
+caveats that came out of the public body.
 
 ## 0. Why attempt 1 did not finish, and what attempt 2 did
 
@@ -371,3 +373,124 @@ which is the designed state for it, and `ci_report` comments once per
 (PR, head, state), not once a tick. It will fold on the first tick after
 `86-fold-regressed.sh` goes green on master. Nothing else stands in its way,
 and no push to this branch can change that.
+
+## 4. Second brief (2026-09-25): the range is by ancestry, and the body carries no caveats
+
+### Why attempt 1 of this brief did not finish
+
+Attempt 1 wrote the whole range fix and its fixture, ran the jobs selftest
+green (1193 passed), and set up a scratch worktree for the old-file
+falsification. Then it stopped. It had **not committed anything and had not
+opened a PR**: the work was two modified files in the worktree, no branch
+push, and no claim on the board. The lane contract puts the draft PR first
+for exactly this reason, and attempt 1 left it until last. The session ended
+before it got there. Nothing in the work was wrong. Attempt 2 committed that
+diff as-is (`5cf6e55a07`), opened #240 before changing anything else, and
+then did the part of the brief that came from the owner's standing order.
+
+### The defect
+
+`git log --since=<yesterday 00:30>` is a window over **commit dates**. A lane's
+commits keep the dates they were written and reach master in a fold days
+later, so they never fall inside a later window. `nightly-2026-09-25` built
+`82e460e863` over `nightly-2026-09-24` (`3fe18366cd`). That added 14 non-merge
+commits. The notes listed 4 and said 0 emulator, and `637b4f1d2a nv2a/gl`
+(written 09-19, folded 09-24 23:41) was missing.
+
+### The fix
+
+The range is `<base>..HEAD`. The base is the newest `nightly-*` tag that is an
+ancestor of HEAD, skipping today's own tag so that a same-day rerun still
+reports against yesterday. `TOTAL`, the tally and the log line all read the
+same `RANGE` array. The `--since` window is kept only as a fallback for when no
+tag qualifies. It is logged as a `WARNING` through `say()`, which writes to the
+day's `$LOG` and to stdout, i.e. the unit's journal. It is never written into
+the body.
+
+- **Sorted by NAME, not `--sort=-creatordate` as the brief suggested.** The
+  tags are lightweight (`gh release create` makes them), so their creatordate
+  is the tagged commit's date. Measured: `nightly-2026-09-24` reads
+  2026-09-21, and 09-12, -13, -14 and -18 all read 2026-09-10, so creatordate
+  cannot order them. The name is the publish day. The fixture has a
+  newer-named tag that is not an ancestor, to pin that ancestry is checked
+  as well.
+- **`notes [SINCE]` is kept, not replaced by `notes [BASE-REF]`.** The base is
+  now derived from the tags in the fixture's own repo, which is the thing
+  worth testing, so a fixture sets it by placing a tag. SINCE still controls
+  the fallback, and the tagless fixtures use it.
+
+### The standing order: every caveat out of the body
+
+The body used to open with up to three blockquotes: the dirty-tree line,
+`$STALE_NOTE` (behind / origin unreachable), and in attempt 1's version a
+date-window fallback note. All three are gone from the body. The provenance
+suffixes ("**origin was unreachable**...", "**N commit(s) behind**") and the
+"No commits in the last day **on this tree** -- see the note above" sentence
+are gone too, because they were the same caveat inside the "built from" line.
+Each case now either refuses or cannot happen:
+
+| case | before | now |
+|---|---|---|
+| behind the trunk | notes caveat; build refused (exit 5) | build refused (exit 5), reason in the log |
+| origin unreachable | **published**, with a caveat | build **refused (exit 8)**, reason and last-fetch time in the log |
+| modified tracked file | **published**, with "not exactly this commit" | build **refused (exit 7)**, before gradlew |
+| no ancestor tag | (attempt 1: a note in the body) | date-window fallback, `WARNING` in the log |
+| purely ahead | "built from **unpushed** ..." | unchanged. That is the "built from" line the brief says to keep, not a caveat |
+
+About refusing when origin is unreachable: `run-nightly.sh`'s comment argued
+that this turns a reachability blip into a missing nightly. That is true, but
+origin and `gh release` are the same host. A night that cannot fetch from
+GitHub almost never could have published to it, so the refusal costs close to
+nothing. `run-nightly.sh`'s comment and its "will label the release" message
+are updated to match. That is a fifth file on the PR, and so is
+`87-nightly-trunk.sh`, whose checks read the caveats out of the body.
+
+On the intended path none of these arise. `run-nightly.sh` hands over a
+worktree that is checked out at the fetched tip and never edited.
+
+### Proof
+
+- `docs/testing/jobs/selftest.sh` on this branch: **1205 passed, 0 failed**.
+- The same new `86`/`87` fragments against the **real old file** (a scratch
+  worktree at `458bd186c4`, fragments copied in, `nightly_build.sh`
+  untouched): **1189 passed, 16 failed**. All 16 are in those two fragments:
+  the late-fold check, the tally and log-line checks, the log-only fallback,
+  the caveat-free-body checks for every scenario, and the exit-7 and exit-8
+  refusals. Every other fragment is green, so the red comes from the script
+  and not from the setup.
+- The words, from the old file over the late-fold fixture (a commit dated
+  09-22 merged today onto a `nightly-<yesterday>` tag), exit 0:
+  `2 commit(s) since 2026-09-24T00:30:00-07:00: 0 emulator, 1 harness`, and
+  its body has only `### Harness and tooling / - harness: committed today`.
+  The new file: `3 commit(s) since nightly-2026-09-24 (a0730c2): 1 emulator`,
+  and `- nv2a/gl: clear to the surface's pad-bit constant` under
+  `### Emulator`.
+- The caveat predicate `nightly_body_has_no_caveat` is not vacuous. It is red
+  on the old body's actual top lines (the unreachable-origin blockquote),
+  reconstructed in the fixture.
+
+### Tonight, and nightly-2026-09-25
+
+Run over the real trunk (`458bd186c4`), the new script counts from
+`nightly-2026-09-24` and lists **10 emulator commits**, including
+`637b4f1d2a`, `40ca2bcb22`'s #194 work and #188. At 00:30 on 09-26 the base
+will be `nightly-2026-09-25`.
+
+**`nightly-2026-09-25` should be regenerated.** The host's hand-appended
+correction is process commentary at the end of a public body, which is what
+the standing order removes. The corrected body is committed at
+`docs/lanes/nightlynotes/nightly-2026-09-25.notes.md`. It was generated by
+the new script over a tree at `82e460e863` and has the brief's numbers
+exactly: 14 commits did the work, 1 emulator (`637b4f1d2a`), 8 harness,
+5 other, 7 merges. Apply it with
+`gh release edit nightly-2026-09-25 --notes-file <that file>`, optionally
+with one trailing `_Notes updated <UTC>._` line. I did not apply it: editing
+a published release is outward-facing and not in this brief.
+
+### For the next lane
+
+- A notes-mode stderr on a behind tree says `REFUSING` even though notes mode
+  refuses nothing. It is stating what build mode would do, and 87 relies on
+  that line naming the trunk sha.
+- The fallback only fires on a repo with no ancestor `nightly-*` tag. On the
+  real trunk that is never true now. It exists for fixtures and fresh clones.
