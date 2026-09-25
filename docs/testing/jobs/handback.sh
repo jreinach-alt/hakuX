@@ -387,16 +387,71 @@ prs_for() {   # <label> -> "num<TAB>headRefName<TAB>headRefOid<TAB>labels,comma,
 # stranded draft was refused as an unfiltered row. Only the LAST field may be
 # empty (a trailing delimiter is dropped harmlessly), so the one field that
 # routinely is goes there.
+#
+# THE CI CLASSIFIER IS ONE jq `def`, shared by this pickup and by `head_ci`
+# below, so the two questions "is this draft's head green" and "is this
+# resolved head green" cannot drift into two answers. `""` is what gh prints
+# for a conclusion still in flight and `//` does not catch it, so it reaches
+# the tests below as `""` -- neither all-success nor any-failure -- and reads
+# PENDING, which is what it is. NO RUNS AT ALL is NONE and never GREEN: a PR
+# that does not merge gets no runs, so an empty rollup is the conflict's
+# signature, not a pass.
+CI_STATE_JQ='def ci_state: [.statusCheckRollup[]? | (.conclusion // .state // "PENDING")] as $c
+              | if ($c | length) == 0 then "NONE"
+                elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
+                elif ($c | any(. == "FAILURE" or . == "ERROR" or . == "CANCELLED" or . == "TIMED_OUT")) then "RED"
+                else "PENDING" end; '
 stranded_drafts() {   # -> "num<TAB>branch<TAB>head<TAB>isDraft=<b> ci=<STATE> quiet=<secs><TAB>labels"
     gh pr list --repo "$GH_REPO" --state open --limit 100 \
         --json number,headRefName,headRefOid,isDraft,labels,updatedAt,statusCheckRollup \
-        --jq 'sort_by(.number)[] | select(.isDraft) | select(.headRefName | startswith("lane/"))
-              | [.statusCheckRollup[]? | (.conclusion // .state // "PENDING")] as $c
-              | (if ($c | length) == 0 then "NONE"
-                 elif ($c | all(. == "SUCCESS" or . == "SKIPPED" or . == "NEUTRAL")) then "GREEN"
-                 elif ($c | any(. == "FAILURE" or . == "ERROR" or . == "CANCELLED" or . == "TIMED_OUT")) then "RED"
-                 else "PENDING" end) as $ci
+        --jq "$CI_STATE_JQ"'sort_by(.number)[] | select(.isDraft) | select(.headRefName | startswith("lane/"))
+              | ci_state as $ci
               | "\(.number)\t\(.headRefName)\t\(.headRefOid)\tisDraft=\(.isDraft) ci=\($ci) quiet=\((now - (.updatedAt | fromdateiso8601)) | floor)\t\(.labels | map(.name) | join(","))"' 2>/dev/null
+}
+
+# ------------------------------------------------ is the conflict still there
+# THE LANE'S LAST STEP IS A WAIT IT CANNOT MAKE. `resume_rebase` ends "once CI
+# is green on the new head, swap needs-rebase for fold-ready"; a lane cannot
+# sleep ten minutes, so it pushes the merge and exits with the swap undone.
+# The PR still carries `needs-rebase`, its head is new, no unit is running, so
+# every guard below reads a fresh cause and resumes it -- for a conflict that
+# no longer exists. Each resume spends one of four attempts: #234 wasted one
+# on 2026-09-25, and #237 was handed to the owner as `blocked:needs-owner` at
+# 14:25Z with a clean head whose CI went green minutes later. So the label
+# path first asks the question the label is about, on a fresh fetch.
+REPO="${HAKUX_REPO_DIR:-/home/justin/hakuX}"
+TIP_SHA=""; TIP_FETCHED=""
+MERGE_STATE=""
+merge_state() {   # <branch> <head> -> MERGE_STATE=CLEAN|CONFLICT|UNKNOWN, TIP_SHA set
+    MERGE_STATE=UNKNOWN
+    # Once per tick: every row is judged against the same trunk head, and the
+    # comment names it. The tracking ref, not FETCH_HEAD, for fold.sh's reason
+    # (tip_state): several jobs fetch in this checkout.
+    if [ -z "$TIP_FETCHED" ]; then
+        TIP_FETCHED=1
+        git -C "$REPO" fetch -q origin "+refs/heads/$TIP:refs/remotes/origin/$TIP" 2>/dev/null \
+            && TIP_SHA=$(git -C "$REPO" rev-parse -q --verify "refs/remotes/origin/$TIP^{commit}" 2>/dev/null)
+    fi
+    [ -n "$TIP_SHA" ] || return 0
+    # The head the ROW names, not whatever the branch holds now: the CI state
+    # is read for that sha too, and a verdict about a neighbouring commit is
+    # not one. Fetched only when this object store does not have it already.
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null \
+        || git -C "$REPO" fetch -q origin "+refs/heads/$1:refs/remotes/origin/$1" 2>/dev/null
+    git -C "$REPO" cat-file -e "$2^{commit}" 2>/dev/null || return 0
+    # merge-tree exits 0 on a clean merge, 1 on a conflict, anything else on
+    # an error. Only the first two are answers; the rest keeps UNKNOWN, and
+    # UNKNOWN is handled exactly as before this check existed.
+    git -C "$REPO" merge-tree --write-tree --no-messages "$TIP_SHA" "$2" >/dev/null 2>&1
+    case $? in 0) MERGE_STATE=CLEAN ;; 1) MERGE_STATE=CONFLICT ;; esac
+    return 0
+}
+# The CI state of the head, from the same classifier as the draft pickup, with
+# the head it describes so a push between the pickup and this read cannot
+# lend one commit's green to another.
+head_ci() {   # <pr> -> "<headRefOid>\t<STATE>", or nothing
+    gh pr view "$1" --repo "$GH_REPO" --json headRefOid,statusCheckRollup \
+        --jq "$CI_STATE_JQ"'"\(.headRefOid)\t\(ci_state)"' 2>/dev/null
 }
 
 # ONE STREAM, ONE BODY. The two pickups ask GitHub different questions and
@@ -471,6 +526,71 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         if [ -n "$skip" ]; then
             [ "$mode" = list ] && echo "#$pr $branch: $label but also $skip; already moved on"
             continue
+        fi
+
+        # ------------------------------ needs-rebase: does it still conflict?
+        # Before the lane name, the marker, the liveness check, the cap and the
+        # resume: the swap needs no lane, and a head that merges cleanly is not
+        # a cause for one. Only a CLEAN answer changes anything; CONFLICT and
+        # UNKNOWN (no fetch, no object, a merge-tree error) fall through to the
+        # resume this job always did.
+        merge_note=""; merge_why=""
+        if [ "$label" = needs-rebase ]; then
+            merge_state "$branch" "$head"
+            if [ "$MERGE_STATE" = CLEAN ]; then
+                hc=$(head_ci "$pr"); ci_head="${hc%%$'\t'*}"; ci="${hc#*$'\t'}"
+                [ -n "$hc" ] && [ "$ci_head" != "$hc" ] || { ci_head=""; ci=UNKNOWN; }
+                if [ -n "$ci_head" ] && [ "$ci_head" != "$head" ]; then
+                    # The branch moved between the pickup and this read. The next
+                    # tick sees the new head as its own row; acting now would
+                    # join one commit's merge to another's CI.
+                    [ "$mode" = list ] && { echo "#$pr $branch: head moved (${head:0:10} -> ${ci_head:0:10}) during this tick; next tick"; continue; }
+                    say "#$pr: head moved from ${head:0:10} to ${ci_head:0:10} during this tick; judged next tick"
+                    continue
+                fi
+                case "$ci" in
+                GREEN)
+                    # THE LANE'S OWN LAST STEP, done here. No resume, so no
+                    # attempt; the head has merged the trunk and been built.
+                    [ "$mode" = list ] && { echo "#$pr $branch @ ${head:0:10}: merges cleanly into $TIP ${TIP_SHA:0:10}, CI GREEN; WOULD RELABEL fold-ready (no resume)"; continue; }
+                    if label_rm "$pr" needs-rebase && label_add "$pr" fold-ready; then
+                        say "#$pr: ${head:0:10} merges cleanly into $TIP ${TIP_SHA:0:10} and CI is GREEN; relabelled needs-rebase -> fold-ready, lane not resumed"
+                        comment "$pr" "[job.handback] Relabelled \`needs-rebase\` -> \`fold-ready\`, and **did not resume** the lane: head \`${head:0:10}\` merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` (checked with \`git merge-tree\` on a fresh fetch) and CI on that head is **GREEN**. That swap was the lane's own last step, which it could not wait for; no attempt was spent on it."
+                    else
+                        say "  WARNING: could not swap needs-rebase -> fold-ready on #$pr; retried next tick"
+                    fi
+                    continue ;;
+                PENDING)
+                    # WAITING, NOT FAILING. No marker for the cause and no
+                    # resume; the log line is once per head, so a ten-minute
+                    # run is one line, not twenty.
+                    [ "$mode" = list ] && { echo "#$pr $branch @ ${head:0:10}: merges cleanly into $TIP ${TIP_SHA:0:10}, CI PENDING; waiting (no resume)"; continue; }
+                    if [ ! -f "$H/done/pending-$pr-$head" ]; then
+                        echo "$TIP_SHA" > "$H/done/pending-$pr-$head"
+                        say "#$pr: ${head:0:10} merges cleanly into $TIP ${TIP_SHA:0:10}; CI PENDING, waiting (not resumed)"
+                    fi
+                    continue ;;
+                esac
+                # RED, NONE or UNKNOWN: resumed as before, but told the truth.
+                # The brief's "no longer merges into" is not it any more, and
+                # the cause file says which of the label's two causes this is.
+                cause_act=$(sed -n 's/^action=//p' "$H/cause/$pr-$head" 2>/dev/null | head -1)
+                case "$ci" in
+                RED)
+                    if [ "$cause_act" = resume_stale_ci ]; then
+                        merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\`, and its red is the stale-CI cause: it ran before the trunk moved, and only bringing \`$TIP\` in refreshes it"
+                    elif git -C "$REPO" merge-base --is-ancestor "$TIP_SHA" "$head" 2>/dev/null; then
+                        merge_why="the head already contains \`$TIP\` at \`${TIP_SHA:0:10}\` and CI on it is RED: that is a live failure on this branch, not a base that moved, and fixing it is the task"
+                    else
+                        merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` (the conflict no longer reproduces) but CI on it is RED; merge \`$TIP\` in and read the failing check"
+                    fi ;;
+                NONE)
+                    merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\` but has NO CI run at all, which is not green: check the head commit's message for the retired skip-ci marker, or push \`git commit --allow-empty -m 'ci: build this head'\`" ;;
+                *)
+                    merge_why="the head merges cleanly into \`$TIP\` at \`${TIP_SHA:0:10}\`, but its CI state could not be read" ;;
+                esac
+                merge_note=$'\n'"**Checked before this resume:** $merge_why."$'\n'
+            fi
         fi
 
         # How the cause reads to a person on the PR. A label says itself; the
@@ -632,6 +752,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
         # `$act`, not `$action`: one label can carry two causes and the cause
         # file's `action=` (whitelisted above) says which brief to print.
         "$act" "$pr" "$branch" "$head" "$name" "$cause" >> "$WORK/briefs/$name.md"
+        [ -z "$merge_note" ] || printf '%s\n' "$merge_note" >> "$WORK/briefs/$name.md"
         out=$(bash "$LANE_SH" resume "$name" 2>&1); rc=$?
         [ "$rc" -eq 0 ] || truncate -s "$size" "$WORK/briefs/$name.md"
         if [ "$rc" -eq 0 ] && [ -n "$uncounted" ]; then
@@ -655,6 +776,9 @@ This job does **not** mark a PR ready: the definition of done includes \`NOTES.m
                 resume_stale_ci) why="${cause:+ (its red is stale: \`$cause\`, which ran before the current head of \`$TIP\`)}" ;;
                 *)               why="${cause:+ (conflicting in \`$cause\`)}" ;;
             esac
+            # A clean head says so instead: "conflicting in" is fold.sh's
+            # record of an earlier head, and the lane acts on this sentence.
+            [ -z "$merge_why" ] || why=" -- $merge_why"
             comment "$pr" "[job.handback] Resumed \`lane.$name\` on \`$label\` at \`${head:0:10}\`$why. The handback was appended to its brief: merge \`origin/$TIP\` (never rebase -- it would un-ancestor any registered prediction), resolve, push, then re-apply \`fold-ready\`. This job resumes a lane once per head sha, so pushing is what makes another handback possible."
             resumed=1
         elif grep -q 'LANE_MAX_ATTEMPTS' <<< "$out"; then

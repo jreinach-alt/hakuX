@@ -94,10 +94,50 @@ commit, clear `draw_dirty` on the decline as well, and measure it.
 - The arm verdict arrives as a `[job.arms]` comment on this PR. Check both
   arms' `scores1.tsv` status column and `run1.log` before accepting it.
 
-## State at end of session 1 (2026-09-25)
+## State at end of session 1 (2026-09-25, superseded below)
 
 Waiting. The arms job needs to run the re-pointed prediction and post a
 `[job.arms]` verdict on PR #253, and CI needs to run on the head. Preflight
 passes on this head. When the verdict lands, check both arms' `scores1.tsv`
 status column, their `run1.log` (PARTIAL COVERAGE, UtilAcceptVsock), and
 `[surf91]` in B's logcat. Then mark the PR ready.
+
+## Session 2 (2026-09-25): the verdict, and why session 1 did not finish
+
+Session 1 did not fail. It stopped on purpose to wait for CI and the arm,
+which it could not do inside a session. `jobs/handback.sh` resumed it with
+CI GREEN on `cb2c928f7b` and the PR labelled `verified`.
+
+The arm is `1790350153-arms-clrwin88-{base-95206,fix-95247}`, apks
+a209ea60b1da -> df007a0136b4, on the three-suite disc. **VERDICT: PASS, 13 of
+13 registered checks.**
+
+| leg | A | B | predicted B |
+|---|---|---|---|
+| ColorIntoZeta_ZB | 131,495 | 10,766 | 10,766 |
+| ZetaIntoColor | 102,255 | 71,663 | 71,663 |
+| Swap | 165,447 | 165,447 | 165,447 |
+| Swap_ZB | 0 | 0 | 0 |
+| other 7 captures (incl. MaskOff_ZB, XemuBug893) | 0 | 0 | 0 |
+
+Checked by hand, not taken from the verdict:
+- Status is `ok` on all 11 captures in both arms' `scores1.tsv`. None is
+  `unreadable`, so the Swap_ZB 0 is a real 0.
+- Neither `run1.log` contains PARTIAL COVERAGE or UtilAcceptVsock.
+- `[surf91]` in `logcat1.txt`: frame=29 declines=1 and frame=31 declines=3,
+  in **both** arms. That is 2 frames and declines=3, as predicted. Arm A
+  reaching the site is also as predicted: the probe fires before master's
+  unbind. The frame numbers are 29/31 here and were 34-37 in #237's arms. I
+  did not predict frame numbers, so that is not a check.
+
+The byte-level section says "NOT ATTRIBUTABLE, one run per arm". The two
+differing captures are the two must_move legs, and both landed on values
+predicted to the digit. Device nondeterminism does not produce that, so I
+did not requeue with `--runs 3`.
+
+Merge: master had moved 31 commits and regenerated `nv2a_index.json` (#109),
+so the PR conflicted on the index alone. I merged `origin/master` (merge, not
+rebase: the prediction's refs stay ancestors) and regenerated the index with
+`build --tests ~/nxdk_pgraph_tests --support ~/pbkitplusplus`. The local tests
+tree is at `provenance.tests_commit` 6743b6ab16. `check` passes with 104
+suites and resolved_tables 1.

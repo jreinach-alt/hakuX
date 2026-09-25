@@ -1483,3 +1483,75 @@ has used, on both renderers, for the whole campaign. It is also where #164's
 clear-half fix is measurable: desktop OpenGL, `SCF_X8R8G8B8_Z8R8G8B8`
 98,208 → 0 and `SFC_X1R5G5B5_Z1R5G5B5` 49,104 → 0, with `iso_surf1` 0 better
 / 0 worse / 236 same beside it and a same-binary control at 0 / 0 / 236.
+
+## #109: the swizzle stride, measured and fixed (2026-09-25)
+
+**Where it started.** PR #115 registered a GL-vs-Vulkan arm at `4129a349e6`
+asking which of two models our renderers follow for a swizzled surface whose
+pitch is smaller than `width * bpp`. The arms job cannot run a renderer
+variant, so the board routed it here (territory wave 153). Result, on #109 in
+5828843964: VERDICT FAIL 3/17. All three violations were the Vulkan-only #59
+pad write side at that ref, forecast in 5828665488 before any run. The
+discriminating capture split cleanly: **GL is Model E, Vulkan is Model H.**
+Wave 162 granted `gl/surface.c` for the fix.
+
+**The defect.** A swizzled surface has no pitch: `generate_swizzle_masks()`
+interleaves x and y and nothing else. Every GL site that staged one through a
+linear intermediate used `surface->pitch` as that buffer's row stride. At pitch
+256 on a 128-wide A8R8G8B8 surface the rows overlap, and the read-back is
+`dest(x, y) = src(x - 64, y + 1)` for `x >= 64`. The fix (`e4fb7c24`) adds
+`surface_swizzle_linear_pitch()` (`width * bpp`) and uses it at every staging
+site in `gl/surface.c`:
+- `surface_download_to_buffer()`: the desktop readback stride, the downscale
+  loop and `swizzle_rect`, plus its Android RGBA8 branch;
+- the Android depth16 and z24s8 helpers;
+- the unswizzle in `pgraph_gl_upload_surface_data()`.
+
+Linear surfaces keep the guest's pitch.
+
+**Registered before the code**, on #109 in 5834083923. The draft is sha256
+`bf0f60dc...`, and the committed file differs from it only in `b_ref` and
+`registered_utc`. File: `docs/testing/predictions/remote-109-swizzle-linear-stride.json`,
+judged as registered at sha256 `6e1e8c24...` (commit `e156200f`). `1349125a`
+then added a `title` so `[job.arms]` treats it as hand-queued, because the
+fleet APK defaults to Vulkan, where the fix is absent. No leg changed.
+
+**Measured**, desktop GL, `surface_scale = 1`, the registered 8-suite disc,
+3 runs per arm alternating. The base `0.4.0-j1-2173-g84a67b9c`, sha256
+`5dc4737e9b04`, is arm A; `0.4.0-j1-2174-ge4fb7c24`, sha256 `f1f4934be561`, is
+arm B. No capture is `unreadable` in any of the eight scores files.
+
+| | A (84a67b9c) | B (e4fb7c24) |
+|---|---:|---:|
+| `Surface_pitch/Swizzle`, every run | 12,224 | **8,192** |
+| per quad q0 / q1 / q2 / q3 | 2,048 / 2,048 / 2,048 / 6,080 | 2,048 / 2,048 / 2,048 / **2,048** |
+| q3 signature, of 8,128 (golden 4,096) | 8,128 | **4,096** |
+| q3 top-right quadrant, non-green | 4,032 | **0** |
+| totals, every run | 943,576 px, 49 exact | 939,544 px, 49 exact |
+| `surface_scale = 2`, one run | **aborts**: `gl/surface.c:2473` assert, exit 134, 59 captures | **completes**, 73 captures |
+
+`ab_compare.py`: **PASS, all 75 registered checks hold**, `PRE-REGISTERED`.
+The counts are better 1 / worse 0 / same 72, and the byte check found only the
+mover different. At scale 2, B's Swizzle reads 10,240: 2,048 on q0 and q1, and
+3,072 on q2 and q3 alike. That leg was not registered. It is recorded because
+q2 (exact pitch) and q3 (undersized) now read the same, which is the silicon
+relation.
+
+**Re-run it.** Build the disc with `make_test_iso.py --suite` for each of the
+eight suites, `--progress-log --shutdown-on-completion`. Run each binary under
+`xemu.toml` `renderer = 'OPENGL'`, `[display.quality] surface_scale = 1`, from a
+fresh HDD with the shader caches cleared. Score with `score_sweep.py --flat`
+and judge with `ab_compare.py --expect` on the prediction. For the per-quad
+legs, run `docs/lanes/remote/swizzle_pitch_quads.py CAPTURE [GOLDEN]` on the
+Swizzle capture.
+
+**Not covered.**
+- The Android branches compile, checked with `-D__ANDROID__ -fsyntax-only`
+  against stubs, but cannot run here. By reading, the z24s8 helper's swizzled
+  buffer was `pitch * height` while every row wrote `width * 4`, so an
+  undersized-pitch swizzled zeta surface wrote past the allocation. It is now
+  sized from the same stride. Nothing on the disc reaches it.
+- The extent sites (`pitch * height` as a surface's size in the dirty ranges
+  and DMA asserts) are #109's silicon question and are untouched.
+- Vulkan's deferred download still stages at `dl->pitch`, but `vk/surface.c`
+  is not this lane's. On this capture Vulkan read Model H in every run.

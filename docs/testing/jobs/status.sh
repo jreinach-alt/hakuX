@@ -129,7 +129,7 @@ if [ $have_sd = 1 ]; then
             echo "| $n | $(issue_of_brief "$n") | $att | $m | $(ago "$t") | $(pr_for_branch "lane/$n") |"
         done
     else
-        echo "none. The board dispatches at most one per tick when an issue is dispatchable and files are free."
+        echo "none. The board dispatches up to three per tick when issues are dispatchable and their files are free."
     fi
 else
     echo "(systemd --user not reachable from here)"
