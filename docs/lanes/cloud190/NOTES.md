@@ -1,9 +1,105 @@
 # lane.cloud190 -- #190: PMC reads 1 at 0x160 and across 0x204-0x2FC
 
-Status: work done, attempt 1. One hunk in `pmc_read` (+41 lines, no deletions),
+Status: **work done and unchanged since attempt 1; marked ready in attempt 2,
+waiting on PR #214 to fold.** One hunk in `pmc_read` (+41 lines, no deletions),
 the existing PMC selftest extended to cover it, a committed mutant suite, and
 two documentation rows corrected. PR #211. `Prediction: none` and no device
-time -- see "Why there is no arm" below.
+time -- see "Why there is no arm" below. The brief's "Done when" is met on
+everything this lane owns: both `build` jobs are SUCCESS, and #190 carries the
+`[lane.cloud190]` note confirming #188's register was left alone. The one red
+check is the NV2A index, and attempt 2 reproduced it on a pristine master
+worktree with none of this branch's content present -- see below.
+
+## Why attempt 1 did not finish
+
+It ended with #211 **still in draft** while CI was red, and a draft is skipped
+by `board.sh`, `fleet.py` and `fold.sh` alike -- so nothing could act on it and
+it sat 79h. Attempt 1 diagnosed the red correctly and stopped, which was the
+right call on the facts it had, but it stopped in the one state the harness had
+no actor for. `jobs/handback.sh` is that actor now, and it is what resumed this
+lane. The lesson is narrow and it is about where the work was left, not what
+the work concluded: **a finished lane says so in a place a reader can see, and
+marks the PR ready.** A wait recorded only in a lane's own notes is invisible.
+
+Attempt 2 changed no code. `hw/xbox/nv2a/pmc.c` and both selftest files are
+byte-identical to attempt 1's; the diff is still the same seven paths.
+
+## Attempt 2: the red is the trunk's, reproduced rather than reasoned
+
+Attempt 1 argued the red was not this lane's from the index blob being
+identical to master's. That was sound but indirect -- and it was weaker than it
+needed to be, because `nv2a_index.py check` *does* read `hw/xbox/**`, which is
+exactly where this lane's only behavioural change lives. So attempt 2 ran the
+gate two trees, against upstream's real tip rather than this host's clone:
+
+| tree | index check vs upstream tip | result |
+|---|---|---|
+| this branch | `nv2a_index.py check` | `1 suite(s) changed content ...: Texture render target`, exit 1 |
+| **pristine `origin/master` worktree** (`3fe18366cd`, none of this branch in it) | same command, master's own script and index | **byte-identical message, exit 1** |
+
+That is the discriminator attempt 1 lacked: the failure survives the removal of
+every line this lane wrote, including the `pmc.c` hunk the index reads. The red
+is the trunk's.
+
+The drift window is now pinned rather than inferred. Upstream
+`nxdk_pgraph_tests` tip is `c6755886df`, **committed 2026-09-21T16:54Z**. The
+last green run on this workflow was master `01538395b7` at 15:53Z; every run
+after 21:24Z is red. The index's own `provenance.tests_commit` is `6743b6ab16`
+(PR #208's refresh). So the gate went red one hour after the last green run,
+because upstream moved and the check clones upstream's tip at run time.
+
+### The resolver has a number: PR #214
+
+`lane/indexpin`, **open, ready, and its own `check` PASSES**: it makes
+`nv2a-index.yml` fetch the tests tree at the index's own
+`provenance.tests_commit` instead of cloning `HEAD`. Its comment names both
+occurrences of this failure, 09-21 and 09-24. When #214 folds, master's index
+and the tree the check compares it against are the same commit by
+construction, and merging master into this branch turns #211's `check` green
+with no content change here.
+
+**So this lane is waiting, not blocked, and the thing it waits on is named.**
+The earlier note's "the durable fix is pinning the clone -- ideally deriving the
+pin from the index's own `provenance.tests_commit`" is exactly what #214 does;
+that recommendation is discharged, not outstanding.
+
+### Still do not regenerate the index from this host
+
+Unchanged from attempt 1, and attempt 2 confirmed the reason numerically: the
+only tests tree this host can reach is `6743b6ab16`, which is *already* the
+commit the committed index was built from. Rebuilding here re-commits the
+identical answer while looking like a fix, and it would go red again at
+upstream's next commit. `nv2a_index.json` is not this lane's file.
+
+### A structural finding for whoever owns the fold
+
+`fold.sh` already knows how to cure a stale index -- line 57, "THE INDEX IS
+REGENERATED, NEVER MERGED", implemented at line 750. But that rebuild sits
+**downstream of the `ci_green` gate at line 686**, which the stale index is
+what trips. So the job's own remedy is unreachable from the state that needs
+it: a PR red *only* on the index check can never get far enough into the fold
+for the fold to rebuild the index. `stale_red` does not rescue it either --
+this PR's failing runs started 21:40:20Z, thirty-four minutes *after* master's
+tip `3fe18366cd` was committed at 21:06:23Z, so the red does not read as stale
+and the handback path does not fire. #214 fixes the cause and makes this moot;
+it is recorded because the gate-ordering will outlive the drift.
+
+### Preflight's two failures are the board's, and also reproduced
+
+`preflight.sh` fails on the **coverage** gate, not the tracker gate, so
+`--allow-tracker` does not clear it -- it only reveals the second row:
+
+| row | with default flags | with `--allow-tracker` |
+|---|---|---|
+| `#207` tracker says `open`, GitHub says CLOSED | FAILED | suppressed |
+| `#213` open issue with neither a lane nor a blocker | -- | FAILED |
+
+Both reproduce byte-identically running **master's own `check_coverage.py`**,
+and neither can be this lane's in principle: the gate prints `board read from:
+territory.toml <- origin/board, nv2a_issues.toml <- origin/board`, so it reads
+the board branch and never this branch at all. This lane's diff contains no
+board file. Every other preflight step is ok, including `nv2a index` locally
+and `territory`.
 
 ## The brief, and what actually changed
 
@@ -216,8 +312,13 @@ is that 64 offsets now answer 1 instead of 0 to any guest read, at all times.
 
 ## The red `check` is the trunk's, and folding this re-arms it on master
 
-PR #211's `check` (workflow **NV2A index**) is FAILURE, on both of the first
-two heads, and it belongs to no lane:
+> **Superseded in part by attempt 2, above.** Everything below still holds, and
+> attempt 2 strengthened it (pristine-master reproduction) rather than
+> corrected it. Two things moved: the durable fix this section asks for now
+> exists as **PR #214**, and the red is on all four heads, not the first two.
+
+PR #211's `check` (workflow **NV2A index**) is FAILURE, on all four heads, and
+it belongs to no lane:
 
 | check | result |
 |---|---|
@@ -246,7 +347,8 @@ the trunk**; and the same failure already cost PR #198 two handbacks earlier
 the same day. The durable fix is pinning the clone -- ideally deriving the pin
 from the index's own `provenance.tests_commit`, so the gate compares the index
 against the tree it was built from rather than against whatever upstream did
-overnight.
+overnight. **ANSWERED: PR #214 `lane/indexpin` does exactly that, and its own
+`check` passes.** Nobody needs to act on this paragraph again.
 
 ## What the next lane should not repeat
 
