@@ -1,10 +1,145 @@
 # lane.wbuf31fix NOTES (#31)
 
-2026-09-24, master @ 76e973ebeb. Brief: find the selector between the 2x2-quad
-anchor snap and the absolute 4-grid (phase 2), prove it offline against every
-recovered anchor, then implement it in `wbufSlopeStep`.
+## Attempt 2, 2026-09-25: silicon answered, and a selector now fits
 
-## Result: no selector fits. There is a fourth input.
+**Why attempt 1 stopped.** It did not run out of turns. It stopped by design,
+blocked: no selector of three or fewer literals fitted, and the best rule
+missed ClipF-032 t0, which is correct today (see "Attempt 1" below). It asked
+for ClipF at clip_top 8, 12, 16 and 64. lane.xbox measured them on the console
+(PR #226, `/home/justin/hakux-work/hardware/runs/2026-09-25-wbuf31-t0`).
+
+Base: merged origin/master @ 82e460e863 as `1883f0fd52`, which is `a_ref`.
+The fix is `63a24f9834`, which is `b_ref`.
+
+### The fit over 52 anchors
+
+`wbuf_anchor_recover.py` now lists ClipF at 4, 8, 12, 16, 32, 35, 64, 128 and
+224 in `PRIMS`. To reproduce, pass all four roots:
+
+    python3 docs/testing/wbuf_anchor_recover.py \
+      --goldens /home/justin/goldens/results \
+      --goldens .../2026-09-25-wbuf31-clipf35/console-run/console \
+      --goldens .../2026-09-25-wbuf31-clipf04/console-run/console \
+      --goldens .../2026-09-25-wbuf31-t0/console-run/console --selectors --simulate
+
+- 52 anchors (LargeZ and TriV excluded), 34 of them informative. 0 fit
+  neither rule.
+- 1, 2 and 3 literals: 0 fits among 201,348 selectors.
+- 4 literals, `a | (b & (c | d))`: **93 fit.** lane.xbox counted 75 with the
+  same tool at `37192979a2`. This lane did not chase the difference, because
+  the conclusion below holds for every one of the 93.
+- **All 93 give the same anchor on every existing capture, and at every
+  informative ClipF clip_top from 1 to 127** (the tool's own scan). No existing golden separates them, so the arm has
+  no discriminator among them. The only split is TriV, where 3 of the 93
+  (the `c%8<4` ones) vote differently. That split is on the column, and TriV
+  has pb == 0, so no rule that edits the row can reach it.
+
+What each anchor needs (y-dominant only; x-dominant anchors are columns and
+stay on the 2x2 snap in every rule):
+
+| observation | clip_top | silicon row | needs | cut by |
+|---|---|---|---|---|
+| TriH x24 | 0 | 4k+2 | grid (12 informative) | nothing |
+| FloorQuad t0, t1; RoofQuad t0 | 0 | 0 | quad | surface edge |
+| ClipF t1 | 4, 8, 12, 16, 32, 35, 64, 128, 224 | 4*floor(ct/4)+2 | grid | window clip top |
+| ClipF t0 (flat-topped) | 4, 12 | 6, 14 | grid | window clip top |
+| ClipF t0 (flat-topped) | 8, 16, 32, 64 | ct | quad | window clip top |
+| ClipF t0 | 35 | 34 | either | window clip top |
+
+### The chosen selector, and why
+
+    grid = !cut || (topCut && !(flatTop && clip.y % 8 == 0))
+    topCut = clip.y > 0 && ytop < clip.y        (the window clip's own top edge)
+
+It is one of the 93, in the family
+`!cut | (cut_top_by_clip & (!flat_top | !ct%8==0))`. Reasons for choosing it:
+
+1. **It keeps the shipped term.** `!cut` is the rule measured on 24 TriH
+   triangles. The new clause adds only what silicon forced.
+2. **Its mechanism is about the clip edge, as the brief asked.** "Which edge
+   made the first row" separates the surface edge (Floor/Roof, 2x2 snap) from
+   the window clip's top (ClipF, 4-grid). The exception is "the window clip's
+   top is 8-row aligned", which is a property of the clip rect, not of the
+   anchor column. The `r%8` twins are the same rule on these data (r == ct
+   for every ClipF t0 that has a vote). I took `ct` because a clip rect is
+   what a coarse-tile rasteriser would align to.
+3. **Its inputs are ones the shader already has.** It needs the three
+   vertices and the clip rect, and nothing from the span walk. Two rivals fail
+   here: `second_of_quad` (which half of a QUAD) cannot be seen from three
+   vertices, and `B_quad_covered_at_c` / `span_starts_at_clip` depend on the
+   traversal-derived anchor column.
+4. **Real games see it least.** With no window clip, region 0 is the whole
+   surface, `clip.y` is 0, `topCut` is false, and the behaviour is exactly
+   the shipped code's. The new clause fires only on a triangle cut by a
+   window clip whose top edge is below row 0.
+
+**Weakest part: `flatTop`.** It is interchangeable with `span_starts_at_clip`,
+`B_quad_covered_at_c` and `second_of_quad` on every capture that exists: all
+four separate ClipF t0 from t1, and nothing else tests them. **The silicon
+capture that would separate them:** ClipF with clip_left 300 at clip_top 8.
+There t0's first span starts AT the clip, so `span_starts_at_clip` would vote
+grid (row 10) while `flatTop` votes quad (row 8). This is a one-line change to
+`wbuf31_clipf_phase.patch` (clip_left for one variant). This lane has not
+requested it.
+
+`wbuf_anchor_recover.py` has the rule as anchor mode `sel`, scored in the
+summary line (`sel ... reproduces 52/76`; the 24 misses are all TriV, which
+every rule misses) and in `--simulate`.
+
+### Offline prediction (float32 emulation, `--simulate`, WBuf24D ZB0)
+
+exact / +-1 / wrong, per capture. `row4` is the code on master.
+
+| capture | row4 (master) | sel (this change) |
+|---|---|---|
+| ClipF-150-032 (golden) | 281 / 16,520 / 189,489 | 162,240 / 44,050 / 0 |
+| ClipF-150-128 (golden) | 0 / 0 / 159,250 | 134,750 / 24,500 / 0 |
+| ClipF-150-224 (golden) | 0 / 0 / 112,210 | 97,510 / 14,700 / 0 |
+| ClipF-150-004 (console only) | 0 / 0 / 220,010 | 67,391 / 152,619 / 0 |
+| ClipF-150-008 (console only) | 21,093 / 5,097 / 191,860 | 21,093 / 180,357 / 16,600 |
+| ClipF-150-012 (console only) | 0 / 0 / 216,090 | 23,546 / 192,544 / 0 |
+| ClipF-150-016 (console only) | 13,056 / 9,774 / 191,300 | 117,657 / 96,473 / 0 |
+| ClipF-150-064 (console only) | 4,553 / 2,960 / 183,097 | 113,941 / 76,669 / 0 |
+| every other capture | unchanged | unchanged |
+
+The +-1 remainder depends on one float32 ULP of the offset in the driver, so
+the arm's pixel counts are prose bands. The decisive leg is M in the
+prediction: the recovered t1 offsets must land within 1.0 of hardware's
+intervals. ClipF-008 still has 16,600 "wrong" pixels in the emulation, even
+though its anchor is right. That capture is not on the golden disc, so the
+arm cannot read it. It is worth a look if the optional variant-disc run below
+ever happens.
+
+### The arm
+
+`docs/testing/predictions/wbuf31fix-topcut-grid.json`, a `1883f0fd52` ->
+b `63a24f9834`. Movers: the three ClipF depth captures, each predicted to
+improve by at least half (must_not_regress, plus prose sizes). Guards: eight
+must_not_move globs, each tied to the patch change that would move it
+(Floor/Roof: the `clip.y > 0` guard; TriH: the `!cut` term; TriV/Wall/ClipW:
+a leak into the column; ZS0/Depth_Clamp: a broken emitted shader). ZBuf*,
+LargeZ, LineStrip and the non-W blast-radius suites were dropped, with the
+reason in the prediction.
+
+### Not done, and what the next lane should know
+
+- **glslc was not permitted in this sandbox,** so the emitted GLSL has only
+  been checked by reading it (`.scratch/emit_wbuf.py` extracts it; scratch,
+  not committed). The ZS0 and Depth_Clamp legs catch a compile error.
+- The optional emulator-side check of the -035/-004 variants was not built.
+- `wbuf31_blocker_audit.py` and `wbuf_clip_phase_choice.py` produce
+  byte-identical output against master's tool and this one.
+- Do not "tidy" `flatTop` into `second_of_quad`: the shader cannot see it.
+
+---
+
+## Attempt 1, 2026-09-24, master @ 76e973ebeb
+
+Brief: find the selector between the 2x2-quad anchor snap and the absolute
+4-grid (phase 2), prove it offline against every recovered anchor, then
+implement it in `wbufSlopeStep`.
+
+### Result (superseded by attempt 2): no selector fitted the 44 anchors of the time.
 
 No selector framed over the geometric inputs reproduces every anchor. The
 closest miss exactly one anchor, and it is always the same one:
