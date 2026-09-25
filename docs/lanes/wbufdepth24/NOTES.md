@@ -92,3 +92,29 @@ channel step. Count words, not channels.
   `_ZB` rows must_not_move), arm.
 - Do not repeat: the scorer's structural channel count on `_ZB` rows counts a
   carried +1/+2 as a 254 step; decode words.
+
+## Session 2 (2026-09-25, resumed)
+
+**Why session 1 did not finish:** it ended correctly in a wait (baselines
+queued, psh.c grant not yet answered) but left PR #268 in draft with no
+`waiting:` comment. The CI red on `2b4c4f29e3` was not ours: the runner's
+meson fetch of berkeley-softfloat-3 from gitlab.com got "connection reset".
+
+Resolved since: the board **granted psh.c** (D24 block only, wave 188).
+The Nova baseline `-3948651` lost captures to a host-side validation layer
+(cleared by the host); the Thor baseline `-3948624` was re-pinned to the Nova
+and is still running. The arm re-measures arm A anyway, so the fix does not
+wait on it.
+
+Done this session:
+- merged origin/master (`753feafde3`, arm A);
+- `c2336637cf` (arm B): `gl_FragDepth = min(zfloor, 16777215.0) / 2^24`
+  in the D24 case only;
+- registered `docs/testing/predictions/wbufdepth24-d24sat.json`: 18 colour
+  rows (2 WBuf24D V0 ZS1 blanks + 16 ZBuf24D quads, 1,130,494 px in arm A)
+  to <=10% each, bound in prose; `*Buf16*` and `*Buf24F*` must_not_move;
+  `*Buf24D*` must_not_regress.
+- Other D24 rows (LargeZ, ClipF/ClipW, Trunc, TriV/TriH) carry 2-146 px of
+  saturated misses each -- may move better; not claimed.
+- #272 is not priced by this arm: a 2-5 unit word offset on drawn pixels is
+  not a dropped fragment, and its suite is not on this disc.
