@@ -3537,3 +3537,243 @@ impact_px = 1493336
 impact_onestep_px = 0
 game_visible = false
 impact_basis = "2026-09-25 inventory (host session): W buffering 24-bit FloorQuad: ZBuf24D 874,418 (0/16 exact) + two blank WBuf24D captures 460,868 + WBuf24F 158,050, from PR #222's fix arm 1790321693; ~1.06 M of the suite sits in non-ok captures, so this may shrink after lane.wbufdepth24 re-measures"
+
+[issue.271]
+title = "X1A7 surface format: the expanded 7-bit alpha is not stored or read back (411,154 px; orphaned between #60 and #184)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Blend surface", "Surface format", "Clear"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 229376
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high confidence: PR #176's model fits 32/32 golden halves and predicts the four DstAlpha captures (229,376) go to 0; ceiling 409,382 (excludes 1,772 px fixed-function blending cannot reproduce)"
+game_visible = false
+
+[issue.272]
+title = "Depth buffer fixed function: 24-bit depth reads 2-5 units high across the receding quad near maximum depth (323,036 px; same signature as #266)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Depth buffer fixed function"]
+status = "open"
+dispatch_state = ""
+blocked_on = "WAITS FOR #266's MECHANISM (lane.wbufdepth24), set 2026-09-25 (host session): the same signature -- ours 2-5 depth units high across the receding quad near maximum depth -- so the lane that names #266's mechanism prices it here first. Dispatch a separate lane only if #266's mechanism does not cover these captures."
+blocker_tested = "CONFIRMED BY READING 2026-09-25 (host session): the inventory decoded both suites' depth captures and found the same 2-5-unit-high offset near maximum depth (#266 issue body; this issue's body)."
+blocker_falsifier = "if the signatures differed, #266's FloorQuad rows and these z24 rows would disagree in where on the quad the error sits or in its sign; the inventory found them the same."
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 275358
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: the two identical z24 full-range captures alone are 275,358; up to all 14 (323,036); same signature as #266, so lane.wbufdepth24's mechanism may cover both"
+game_visible = false
+
+[issue.273]
+title = "Texgen with texture matrix: SphereMap_Arbitrary and SphereMap_RotateX draw the whole quad wrong (262,990 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Texgen with texture matrix"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 262990
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: both captures are wholly wrong (131,495 each, 0 one-step) while the other seven matrices are exact or within rounding, so one mechanism explains all of it"
+game_visible = false
+
+[issue.274]
+title = "Antialiasing tests: a surface created over CPU-written memory shows different texture content (CreateSurfaceWith*, 235,488 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Antialiasing tests"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 235488
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: three identical, AA-mode-independent captures (78,496 each), 0 exact; #36's investigation ruled them not a smoothing defect"
+game_visible = false
+
+[issue.275]
+title = "Color zeta overlap residual after #88/#91: Swap 165,447 px from a single colour pair; the rest is within silicon's own variance"
+component = "pgraph"
+disposition = "defect"
+suites = ["Color zeta overlap"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 165447
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: Swap in full (165,447; the console matches the golden there); at most 51,669 more on ZetaIntoColor; ~0 on ColorIntoZeta_ZB (its gap is smaller than the console's own nondeterminism)"
+game_visible = false
+
+[issue.276]
+title = "ZMinMaxControl: we draw geometry silicon culls under NEARFAR ZCLAMP / ZCULL (143,673 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["ZMinMaxControl"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 129337
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium-high: the 8 NEARFAR_ZCLAMP captures (129,337) share one wrong outcome; #19's run-alone check classed them as real emulator defects"
+game_visible = false
+
+[issue.277]
+title = "DMA corruption around surfaces: a file read into a bound surface keeps the old colour (xemuReadFromFileIntoSurface, 90,912 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["DMA corruption around surfaces"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 90912
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: one capture, whole region wrong; silicon shows the file's white and we still show the colour from before the read"
+game_visible = false
+
+[issue.278]
+title = "Fog exceptional value: with an INF fog coordinate, exp and exp2 fog come out opposite to silicon (85,268 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Fog exceptional value"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 85268
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: 16 captures, 0 exact, one inverted fogged/unfogged outcome per mode; #19's run-alone check classed them as real defects"
+game_visible = false
+
+[issue.279]
+title = "Pixel shader: DOT_ZW draws the whole quad one wrong colour (65,536 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Pixel shader"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 65536
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: one capture, the whole quad a single wrong colour"
+game_visible = false
+
+[issue.280]
+title = "Vertex shader independence: R12 must read back the original oPos after a paired MAC+ILU write (Multioutput, 32,768 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Vertex shader independence tests"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 32768
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): high: one capture, half the geometry wrong; XDK-compiled vertex shaders emit this R12/oPos pattern, so game relevance is medium-high"
+game_visible = false
+
+[issue.281]
+title = "Attrib float: NaN vertex attributes (NaNs/NaNq) differ from silicon by 14.6k px each (29,232 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Attrib float"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 29172
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): medium: ours differs from the console by 14,586 px per capture while the console differs from the golden by 60 and 0 px"
+game_visible = false
+
+[issue.282]
+title = "Texel-tie boundary shift across the lighting and bump suites: nearest-sample ties break differently from silicon (334,945 px, no rule derived)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Lighting spotlight", "Lighting control", "Material color source", "Combiner", "Lighting accumulation", "Specular back", "Specular", "Texture border color", "Lighting range", "Bump map", "Bump env lum"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 33494
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): low: one mechanism class (0-334,945) but no rule derived; #9 recorded that silicon breaks ties down below texel 128 and up from 144; expected set to 10% of the ceiling until a rule is priced"
+game_visible = false
+
+[issue.283]
+title = "Volume texture: Y16 and R16B16 volume textures differ (107,781 px; possibly #10's Y16/R16B16 classes)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Volume texture"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 10778
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): low: 0-107,781; may share #10's Y16/R16B16 decode classes; expected 10% of the ceiling"
+game_visible = false
+
+[issue.284]
+title = "Texture anisotropy: Anisotropy-2/4/8 differ (60,074 px); the investigation found the host's filter, not our sampler"
+component = "pgraph"
+disposition = "defect"
+suites = ["Texture anisotropy"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): low recoverability: docs/investigations/anisotropy-is-the-hosts-filter-not-ours.md found the sampler set correctly and the difference in the host's own filter"
+game_visible = false
+
+[issue.285]
+title = "Surface format: Fmt_G8B8 differs (31,820 px)"
+component = "pgraph"
+disposition = "defect"
+suites = ["Surface format"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 3182
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): low: 0-31,820; one capture, no mechanism named; expected 10% of the ceiling"
+game_visible = false
+
+[issue.286]
+title = "3D primitive smoothing: residual beyond #36's unmodellable ruling, bounded at 175,704 px by silicon's own smoothed/unsmoothed difference"
+component = "pgraph"
+disposition = "defect"
+suites = ["3D primitive"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 17570
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): low: at most 175,704 (the 09-12 investigation's ceiling: silicon's own smoothed vs unsmoothed difference); the rest of the 605,744 is not smoothing; expected 10% of the ceiling"
+game_visible = false
+
+[issue.287]
+title = "Golden correction: TexFmt_R6G5B5's golden is the outlier; our output is byte-identical to the console (134,902 phantom px)"
+component = "harness"
+disposition = "harness"
+suites = ["Texture format"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 (host session) from the unowned-residual inventory; see the issue body for captures, runs and history."
+impact_px = 0
+impact_onestep_px = 0
+impact_basis = "2026-09-25 inventory (host session): not a renderer defect: removes 134,902 px of phantom residual from the score by correcting the golden; harness/data work"
+game_visible = false
