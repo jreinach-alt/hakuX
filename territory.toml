@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 207
-updated_utc = "2026-09-25T22:50:00Z"
+wave = 208
+updated_utc = "2026-09-25T23:40:00Z"
 
 
 [retired.hilodot10]
@@ -917,11 +917,18 @@ standing = false
 note = "DISPATCHED AT TERRITORY WAVE 189 (host session, 2026-09-25 13:10 PDT) from the tests-that-never-run inventory: URGENT first -- scoreboard.py and collect_sweep.sh count an unreadable row as exact, and the two running sweeps (z-a-now-2b04d4d422, z-b-v040j1) are the evidence for the owner's score table and the 0.5 release; then queue_full_sweep.sh legs for the unscored goldens (#291 depth-2025, #292 Blend interactive, #294 RenderTextureLoop), the 6743b6a base-iso option (#293), and the unscoreable list (#295, #296). Brief: briefs/sweepcover.md."
 
 
-[lane.goldencorr287]
-issues = ["287"]
-files = ["docs/testing/predictions/goldencorr287-*.json", "docs/lanes/goldencorr287/**", "docs/testing/golden_overrides/**"]
+[retired.goldencorr287]
+issues = []
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #287: TexFmt_R6G5B5's golden is the outlier, our output is byte-identical to the console (134,902 phantom px). Scoring/data work, no hw/ file. It must locate the golden or override mechanism first and ask for that path by board-request; score_sweep.py is lane.toolsmith's and scoreboard.py is lane.sweepcover's and neither is granted. briefs/goldencorr287.md. GRANTED (host session, 2026-09-25T22:28:57Z) on board-requests/goldencorr287.md: docs/testing/golden_overrides/** (new path) for the #287 override PNG (a byte copy of console set K) and its README provenance row. It moves no score until the scorer reads it: that hook is lane.toolsmith's defect 17 (an ordered list of golden roots), with golden_overrides as the first root. dispatcher.sh is lent to lane.titlerun until its first PR folds."
+retired_utc = "2026-09-25T23:40:00Z"
+note = "RETIRED (job.board, wave 208): PR #300 MERGED 2026-09-25T23:20:36Z (fold b07ecc56fc), unit gone, no open PR. The analysis half is done (#287 verified: ours is byte-identical to console set K, 134,902 phantom px are the golden's). The PNG + README half was granted (docs/testing/golden_overrides/**) but did not land in #300 -- the branch is deleted -- so it moves to lane.goldovr287. docs/lanes/goldencorr287/** and docs/testing/predictions/goldencorr287-*.json RELEASED."
+
+[lane.goldovr287]
+issues = ["287"]
+files = ["docs/testing/golden_overrides/**", "docs/lanes/goldovr287/**"]
+standing = false
+note = "DISPATCHED AT WAVE 208 (job.board, 2026-09-25T23:40:00Z). #287 data half: commit the TexFmt_R6G5B5 override PNG (byte copy of console set K, sha256 07dedad9...) and the README provenance row that lane.goldencorr287 was granted but did not land before PR #300 folded. Inert until lane.toolsmith's defect-17 hook reads golden_overrides/ first; no score moves, no hw/ file, no device. briefs/goldovr287.md."
 
 [retired.zetaswap275]
 issues = []
