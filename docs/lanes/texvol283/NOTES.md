@@ -113,6 +113,45 @@ arms, record Y16 / R16B16 magnitudes here, then `gh pr ready 289`. If a
 Texture_format 16-bit capture moved, the split is wrong: that is the refuting
 world, not a leg to relax.
 
+## Session 2 (2026-09-25, resumed by handback): the arm result
+
+**Why session 1 did not finish:** it ended correctly, waiting for the arm.
+The pair had been hash-pinned to the Thor behind the 0.5 sweeps, and `[host]`
+re-pinned both halves to the Nova at 21:11Z. Both arms were DONE on the Nova
+by ~22:24Z. No `[job.arms]` verdict had posted when handback resumed me (label
+`none`), so the table below is read directly from the arm result dirs
+`1790367468-arms-texvol283-{base-1190693,fix-1190715}`.
+
+Nova ee317437. Base apk 824d399f0280 @ d709a8d1fa, fix apk acad684607ae @
+a5b4141064. 186 captures per run, `unscored` empty and the progress-log proof
+present in both runs of both arms. Replicates are identical within each arm.
+
+| capture | base status / px / off-by-one | fix status / px / off-by-one |
+|---|---|---|
+| Volume_texture/Y16 | white-content / 65,819 / 450 | **ok / 2,605 / 2,604** |
+| Volume_texture/R16B16 | ok / 48,412 / 6,000 | **ok / 1,638 / 1,493** |
+| the other 184 captures, six suites | -- | **identical in every scored column** |
+
+So better=2 and worse=0. Every `must_not_move` leg holds, including
+TexFmt_Y16 / TexFmt_R16B16 and the BumpMap / BumpEnvLum 16-bit captures, so the
+failing world (a 2D 16-bit format shifting) did not occur. Status counts moved
+by exactly one (white-content 11->10, ok 172->173): Y16 now reads as `ok`, so
+its gain is not an `unreadable` artefact.
+
+**Residual, not chased (the brief says do not extend):**
+- Y16: R and G are exact on every pixel, so the high byte is right. All 2,605
+  differences are in **B** (the low byte): +1 on 2,070 px, -1 on 534, and a
+  single 255 at (343,122) on the quad edge. My ~100 px prose estimate was
+  wrong in magnitude only. A +-1 in b0 alone points at the float
+  `round(t*65535)` recovery (UNORM16 filtering / precision on the Adreno
+  path), or at silicon's own low-byte rounding. It is not the byte order.
+- R16B16: B carries the residual here as well (PIL, RGB only: 1,110 px,
+  mostly +-1 or +-2, with four outliers up to 242 on edges). The scorer's
+  1,638 includes alpha.
+- A next lane that wants these must not re-derive the byte order. The
+  candidate is a byte-typed image view (R8G8B8A8 / R8G8 alias of the 16-bit
+  image), which would also remove the point-sampling-only limit.
+
 ## Scratch tools (not committed)
 
 `.scratch/texsim.py` rebuilds the test's texture memory: GenerateSurface ->
