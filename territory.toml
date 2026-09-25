@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 210
+wave = 211
 updated_utc = "2026-09-25T23:55:00Z"
 
 
@@ -597,7 +597,6 @@ files = [
          "docs/lanes/wbufclip/NOTES.md",
   "docs/testing/jobs/handback.sh",
   "docs/testing/jobs/selftest.d/99-handback-strand.sh",
-  "hw/xbox/nv2a/pgraph/vk/surface.c",
 ]
 
 
@@ -1014,9 +1013,9 @@ note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start ha
 
 [lane.ghoul311]
 issues = ["311"]
-files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**"]
+files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**", "hw/xbox/nv2a/pgraph/vk/surface.c"]
 standing = false
-note = "STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
+note = "GRANTED hw/xbox/nv2a/pgraph/vk/surface.c from [free] (host session, 2026-09-26T00:05Z): the #311 code review (bisect311/code-review.md) names 21cacb354a -- a retired dirty surface keeps its guest-memory access watch and update_surface_part's `*surface = target` overwrites it, so watches leak one per reuse and every TLB fill walks the list. The fix arm unregisters the watch in get_shelved_surface()/get_any_compatible_invalid_surface(). PRIOR NOTE: STARTED at wave 197 (job.board, 2026-09-25T20:56Z; the wave-195 start had hit an approval prompt, no attempt was spent). DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
 
 
 [lane.turnipfork]
