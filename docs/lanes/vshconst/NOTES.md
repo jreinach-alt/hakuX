@@ -65,7 +65,14 @@ What this does and does not show:
 2. `vsh.c` `pgraph_glsl_vsh_fog_write`: `mov oFog, c[n]` is now COMPUTED, not
    CONST, when the program writes c[n] anywhere.
 
-## What it does NOT do: carry the write out of the draw
+## Attempt 1 stopped here (superseded by attempt 2, below)
+
+Attempt 1 did not finish because the rest of the job was in files the lane
+did not hold. It ended in a deliberate waiting+blocked state: the
+translator fix pushed, the arm registered, and a board request for rdi.c and
+the writeback. Wave 157 granted `rdi.c` and `pgraph.c` (not `gl/draw.c` or
+`vk/draw.c`, which went to lane.shadeflat224). What attempt 1 wrote about the
+gap, kept for the record:
 
 Silicon persists the write (above), and xemu still doesn't: the value lives
 in a GLSL local and is gone when the invocation ends. `pg->vsh_constants`
@@ -117,14 +124,132 @@ b_ref 47ee3f65e9, all must-not-move over the three Vertex shader suites,
 W param and Fog coord vec4. The prediction text names what would move each
 leg.
 
-## State at end of session (2026-09-25)
+## State at end of attempt 1 (2026-09-25, superseded)
 
-- WAITING on the `[job.arms]` verdict for `vshconst-must-not-move.json` and on
-  CI for this head. Both are posted on PR #234. The PR stays in draft until the
-  arm is clean. Then mark it ready.
-- BLOCKED for the printed-value match: rdi.c bounds + constant writeback, both
-  outside this lane's files. Board request `board-requests/vshconst.md`,
-  comment on #233.
+- Waited on the `[job.arms]` verdict for `vshconst-must-not-move.json` and on
+  CI. Blocked on rdi.c and the writeback, both then outside this lane's files.
+
+## Attempt 2 (2026-09-25): the writeback and the RDI bound
+
+### What changed
+
+1. `pgraph/rdi.c` `pgraph_rdi_read`: a vertex-constant read past c[191]
+   returns 0 instead of asserting. That matches silicon (rows [4]..[31]).
+2. `pgraph/pgraph.c` `pgraph_vsh_writeback_constants`, called in
+   `SET_BEGIN_END` right after `renderer->ops.draw_end` and before
+   `pgraph_reset_inline_buffers`, so GL and Vulkan both get it from one
+   place. In program mode (CSV0_D MODE == 2), if
+   `pgraph_glsl_vsh_token_constant_write` fires on any token of the bound
+   program, the program runs on the CPU for the draw's last vertex. The
+   components it writes to c[0..191] go into `pg->vsh_constants`, marked
+   dirty like a `SET_TRANSFORM_CONSTANT` would mark them. RDI then reads
+   them, and the next draw uploads them. That is the cross-draw persistence
+   silicon shows.
+3. **The CPU evaluator is the upstream `nv2a_vsh_cpu` emulator, not a new
+   one.** `LAUNCH_TRANSFORM_PROGRAM` already uses it. It is compiled on
+   Android (CMakeLists.txt:670-673; `nv2a_vsh_emulator_stub.c` is in no
+   source list). Its parsed-program cache moved into a helper,
+   `pgraph_vsh_cpu_program`, that both callers share. For LAUNCH the parse,
+   the cache and the v0 hash behave exactly as before. It still asserts on a
+   parse failure, and the draw path skips instead.
+4. It steps the program one instruction at a time (`nv2a_vsh_emu_apply`)
+   instead of calling `nv2a_vsh_emu_execute`, because the emulator does not
+   bounds-check and asserts are live on Android:
+   - an A0-relative read past c[191], or through an unknown A0, and a read of
+     R13..R15, are repointed at a safe register and marked unknown;
+   - a constant write past c[191] is dropped (no register there);
+   - an o-register index >= 13 is dropped;
+   - a write to R12 goes to o0, which is what R12 is.
+5. Silicon's float rules: denormals are flushed to a zero of the same sign
+   on the way in (constants, inputs) and after every step (written
+   registers). That is what makes RCP(+-MaxSub/MinSub) = +-inf and
+   RCP(+-FLT_MAX) = +-0. The emulator's own RCP would give -8.5e37 for
+   -MaxSub, and silicon prints -inf.
+
+### Where the evaluation cannot know the value (the brief's "say so")
+
+A per-component "known" mask runs alongside the emulator. Only components
+that are known are written back. The rest keep their old value and are
+counted in an `NV2A_DPRINTF`. A component is unknown when it depends on:
+
+- **an input read from a vertex array** (DRAW_ARRAYS, inline elements,
+  inline array): the last vertex's value is in guest memory, and this path
+  does not fetch it. Attributes with `count == 0` are constant for the draw
+  (`inline_value`) and are known. In an inline-buffer draw every
+  attribute's `inline_value` is the last vertex's, so all are known.
+- **a temporary, o0/R12 or A0 read before the program writes it.** The GLSL
+  path starts them at 0. Silicon starts them with whatever the previous
+  vertex left, which nothing here can know.
+- **a relative read through an unknown A0**, or past c[191].
+
+The op model is conservative. Component-wise ops (MOV MUL ADD MAD MIN MAX
+SLT SGE, ILU MOV) are tracked per component, and the scalar ILU ops
+(RCP RCC RSQ EXP LOG) on the one component they read. DP3/DPH/DP4/DST/LIT/ARL
+are known only if every component of every input is. That can leave a known
+value unwritten, but it never writes a guessed one.
+
+What the evaluation ASSUMES and has not measured:
+
+- **The last vertex's write is the one that survives.** The brief's shape.
+  It is irrelevant when every vertex writes the same value (ILU RCP Tests,
+  and any write that depends only on constants). For a write that depends on
+  inline-buffer inputs it is a real assumption. A console run whose vertices
+  write different values, then read back, would settle it.
+- **No vertex sees another vertex's write inside one draw.** The GLSL copy
+  `c_rw` starts from the draw's constants for every vertex, and the CPU pass
+  does the same. On silicon vertex N may read vertex N-1's write. Nothing
+  here has measured that.
+- The pass reads both units' inputs before either writes, as the emulator
+  and silicon do. The GLSL translation emits the MAC write before the ILU
+  op, so a paired instruction whose ILU reads the constant its MAC writes
+  differs between the in-draw GLSL and the written-back value. No known
+  program does that.
+- Emulator op semantics (e.g. ARL truncation, MUL zero rule) are
+  nv2a_vsh_cpu's and not the GLSL's. Where they differ, the written-back
+  value follows nv2a_vsh_cpu, which its author tested against hardware.
+
+### Measurements (attempt 2)
+
+Same desktop recipe as attempt 1: OpenGL on llvmpipe, disc
+`nxdk_vsh_tests-c3dde45-shutdown.iso` with `vsh_tests.cnf` = ILU RCP Tests
+only, a fresh copy of `x1box/hdd.img`, and `vsh_score.py` against
+`hardware/runs/2026-09-25-vsh/stage1b/console`. The base `hdd.img` has no
+`nxdk_vsh_tests` directory (extract_results: "not found"), so the file cannot
+be left over from an older run. The runner was scratch (`/tmp/vshconst-run/run.sh`,
+mirroring `desktop_channel.sh cmd_run`).
+
+| build | RUN_EXIT | ILU_RCP_Tests/IluRcpTests |
+|---|---|---|
+| d9c0ed0b8e (lane on a6bb4a13d4) | 0 | **IDENTICAL**, all rows [0]..[31] |
+| 9ff7f6d67a (merged with master f2e8ef8ba8) | 0 | **IDENTICAL**, all rows [0]..[31] |
+
+The guest log reads `Completed IluRcpTests 417ms / Testing completed
+normally`. Attempt 1's run of the GLSL-only fix plus an rdi.c-only patch
+printed 0.000000 for rows [0]..[3], so the writeback is what moves those
+rows. That run is the falsifier. The PNG differs (123498 px), which is the
+known desktop-GL-vs-console font/raster gap; the verdict is on the text.
+
+Vulkan is not run: this host cannot run it (see Do not repeat). The
+writeback is renderer-independent (CPU, in pgraph.c), so the handheld
+checks the Vulkan GLSL of `c_rw` and the whole path on Adreno.
+
+### Arm 2
+
+`docs/testing/predictions/vshconst-writeback-must-not-move.json`: a_ref
+f2e8ef8ba8 (master), b_ref 9ff7f6d67a (master + the lane). All
+must-not-move over Vertex shader independence/rounding/swizzle, W param, Fog
+coord vec4, Fog vsh, Fog gen (FF and VS captures) and SetVertexData. The
+prediction names the change that would move each leg. The pgraph.c blast
+names 87 suites. The writeback returns at the mode check for
+fixed-function draws, so the live legs are the vertex-program suites. Fog gen
+FF and SetVertexData check that the call order at draw end disturbs nothing.
+Arm 1 (`vshconst-must-not-move.json`, GLSL only) stands as registered.
+
+### Still owed
+
+- The handheld: `request.sh --program vsh ... --suites "ILU RCP Tests"`,
+  once #229 folds. It is the run that counts.
+- The two arms' `[job.arms]` verdicts.
 
 ## Do not repeat
 
@@ -138,6 +263,13 @@ leg.
 - Desktop Vulkan cannot run on this host: no `xvfb-run`/Xvfb, and SDL's
   offscreen driver cannot create a Vulkan surface ("Failed to create main
   window"). Use GL on llvmpipe, or the handheld.
+- Do not write a second CPU vertex-program emulator. `nv2a_vsh_cpu` is
+  built on both desktop and Android. It does NOT bounds-check relative
+  reads, and it asserts on out-of-range writes, so guard each step as
+  `pgraph_vsh_writeback_constants` does. Do not call
+  `nv2a_vsh_emu_execute` on guest data.
+- `nv2a_vsh_cpu_rcp` gives a finite result for a denormal input. Silicon
+  gives +-inf. Flush denormals before and after each step.
 - `desktop_channel.sh build` checks out a ref in the SHARED `$WORK/desktop/tree`.
   Build in your own worktree's gitignored `build-linux/` instead, pointing
   PKG_CONFIG_PATH/LD_LIBRARY_PATH at `$WORK/desktop/deps/prefix` (about 25 min
