@@ -248,6 +248,15 @@ still pending on the new head. At resume, the second arm had no verdict yet
 and CI's two build jobs were still pending. So the wait stands. The PR stays
 in draft until the grid arm's `[job.arms]` verdict lands.
 
+The 17:22Z session also ended waiting. Handback resumed it again at 17:25Z on
+the NOTES-only head `19bfb7b448`, with CI pending there (`check` green, both
+`build` jobs queued) and the label still `regressed` from the first arm. The
+grid arm still had no `[job.arms]` comment then, about 8 minutes after it was
+registered against a run of about 90 minutes. Nothing had changed, so the wait
+still holds. This is the third draft-strand resume of the lane. If handback
+caps at `DRAFT_STRAND_MAX=3`, then when the verdict lands it needs an operator
+to resume the lane, not handback.
+
 ## For the next lane
 
 - A gate that tests for an exact zero must read the quantity silicon
