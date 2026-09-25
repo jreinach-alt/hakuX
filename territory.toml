@@ -850,10 +850,3 @@ issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-strand.sh", "docs/lanes/handbackstrand/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 179 (host session, 2026-09-25 10:05 PDT). Harness defect, no tracker issue: handback keys a draft-strand-arm resume on the HEAD sha ($H/done/$label-$pr-$head, handback.sh:625), so a lane that pushes while waiting on its verdict -- a replicate registration, NOTES, a master merge -- is resumed again with nothing new, and at DRAFT_STRAND_MAX=3 its PR is labelled blocked:needs-owner (#245: three resumes in 22 minutes while its replicate sat queued; host cleared it). Fix: key the cause on the set of judged verdicts, and do not strand-resume while the branch's own request is queued or running. Brief: briefs/handbackstrand.md."
-
-
-[lane.cloud-audit1-253]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-253, audit pass 1 of PR #253 on branch lane/clrwin88, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 253` removes this row when the unit ends."
