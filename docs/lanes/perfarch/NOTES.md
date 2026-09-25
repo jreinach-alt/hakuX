@@ -4,6 +4,21 @@ Brief: performance architecture for the Snapdragon 8 Gen 2 and Adreno 740
 (#68 family). Base: master @ 724a0dd868. PR #308.
 Deliverable 1: `docs/investigations/perf-architecture.md`.
 
+## Attempt 2 (resumed 2026-09-25 ~23:00 UTC): still WAITING, PR kept draft
+
+Attempt 1 did not finish because none of the nine Nova soaks had run: it
+posted a `waiting:` comment and stopped, as the role asks. On resume, all
+nine are still in `queue/` (positions 164-172 of 193), behind the rest of
+the master sweep `0-a-now-8e683b3a26-*` (59), a `b` sweep (100), and
+`xbox`/`vtxarr262` requests. Nothing to judge yet.
+
+#308 stays **draft** on purpose. Marking it ready invites a fold, and a fold
+that retires `lane/perfarch` can leave the soaks' refs `9181cb4c13` and
+`5f4abcc368` unfetchable before the dispatcher builds them, voiding all
+nine runs. The brief's done-when also needs one arm verdict. Next resume:
+check `results/` for the nine ids, run the judges below, fill section 8,
+post the table on #68, then `gh pr ready 308`.
+
 ## State at 2026-09-25 ~21:05 UTC: WAITING on the Nova
 
 Nine requests are queued, all `--device nova`, behind a master sweep
