@@ -1563,13 +1563,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:326",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:338",
    "symbols": [],
    "text": "/* FIXME: Missing support for 2-sided-poly mode */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:511",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:523",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -1849,73 +1849,73 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:290",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:429",
    "symbols": [],
    "text": "\"  if (d <= lightLocalRange(%d)) {\\n\"  /* FIXME: Double check that range is inclusive */"
   },
   {
-   "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:367",
+   "kind": "MARKED",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:469",
    "symbols": [],
-   "text": "assert(false);"
+   "text": "* (\"XXX spotlight\"), so it stays float32 and is rounded into"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:660",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:789",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:681",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:810",
    "symbols": [],
    "text": "/* FIXME: could be nicer if some channels share the same texgen */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:683",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:812",
    "symbols": [],
    "text": "/* TODO: TexGen View Model missing! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:702",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:831",
    "symbols": [],
    "text": "/* FIXME: u, r and m only have to be calculated once */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:704",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:833",
    "symbols": [],
    "text": "//FIXME: tNormal before or after normalization? Always normalize?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:707",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:836",
    "symbols": [],
    "text": "/* FIXME: This would consume 1 division fewer and *might* be"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:722",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:851",
    "symbols": [],
    "text": "/* FIXME: u and r only have to be calculated once, can share the one from SPHERE_MAP */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:735",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:864",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:850",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:977",
    "symbols": [],
    "text": "/* FIXME: Do we have to clamp here? */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:867",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:994",
    "symbols": [],
    "text": "assert(!\"Invalid foggen mode\");"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "45d23f946522e73e87f4cf21573fff7f2cb262bf",
+  "emulator_commit": "4136c7bedfd35d3ed33e6a8433994ed9ac3bce38",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2845,
@@ -6626,7 +6626,7 @@
   ],
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:386",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:398",
     "role": "COMMENT",
     "text": "* set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened"
    },
@@ -8906,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:548",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:560",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
