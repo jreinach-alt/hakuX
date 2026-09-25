@@ -1460,6 +1460,201 @@ static void update_uniforms(PGRAPHState *pg, SurfaceBinding *surface)
               r->display.blend_active ? 0.5f : 0.0f);
 }
 
+/*
+ * #303 PROBE (lane.fmv303, diagnostic only; set HAKUX_FMV303_PROBE=1).
+ *
+ * Spikeout's Sofdec FMV shows 16x16 blocks whose colour inverts to Cr=0 with
+ * Y and Cb intact. This asks WHERE that zero lives: in guest RAM (the guest
+ * wrote it, so a CPU-side defect) or only in what the GPU sampled (a missed
+ * upload). At each displayed frame it reads the texture stages and PVIDEO
+ * registers as they stand, and summarises the guest bytes behind each
+ * enabled source: zero-byte fraction, mean, a hash, and the count of aligned
+ * 8x8-texel blocks that are entirely zero. Registers are read racily and
+ * nothing here asserts, so a torn read can only make a line wrong, not abort.
+ * Tag "hakuX" with a [fmv303] prefix: it is in every logcat spec.
+ */
+#ifdef __ANDROID__
+#define FMV303_LOG(...) __android_log_print(ANDROID_LOG_INFO, "hakuX", __VA_ARGS__)
+#else
+#define FMV303_LOG(...) do { \
+        fprintf(stderr, __VA_ARGS__); fprintf(stderr, "\n"); } while (0)
+#endif
+
+typedef struct Fmv303Stats {
+    size_t len;
+    double zero_frac, mean;
+    uint32_t hash;
+    unsigned int zero_blocks, blocks;
+} Fmv303Stats;
+
+static Fmv303Stats fmv303_stats(const uint8_t *p, size_t len, bool linear,
+                                unsigned int width, unsigned int height,
+                                unsigned int pitch, unsigned int bpp)
+{
+    Fmv303Stats s = { .len = len, .hash = 2166136261u };
+    size_t zeros = 0;
+    uint64_t sum = 0;
+    for (size_t i = 0; i < len; i++) {
+        zeros += p[i] == 0;
+        sum += p[i];
+        s.hash = (s.hash ^ p[i]) * 16777619u;
+    }
+    s.zero_frac = len ? (double)zeros / len : 0;
+    s.mean = len ? (double)sum / len : 0;
+
+    if (linear && pitch && bpp) {
+        for (unsigned int by = 0; by + 8 <= height; by += 8) {
+            for (unsigned int bx = 0; bx + 8 <= width; bx += 8) {
+                bool all_zero = true;
+                for (unsigned int y = by; y < by + 8 && all_zero; y++) {
+                    size_t o = (size_t)y * pitch + (size_t)bx * bpp;
+                    if (o + 8 * bpp > len) {
+                        all_zero = false;
+                        break;
+                    }
+                    for (unsigned int k = 0; k < 8 * bpp; k++) {
+                        if (p[o + k]) {
+                            all_zero = false;
+                            break;
+                        }
+                    }
+                }
+                s.blocks++;
+                s.zero_blocks += all_zero;
+            }
+        }
+    } else if (bpp) {
+        /* Swizzled: an aligned 8x8 texel block is 64*bpp contiguous bytes. */
+        size_t chunk = 64 * bpp;
+        for (size_t o = 0; o + chunk <= len; o += chunk) {
+            bool all_zero = true;
+            for (size_t k = 0; k < chunk; k++) {
+                if (p[o + k]) {
+                    all_zero = false;
+                    break;
+                }
+            }
+            s.blocks++;
+            s.zero_blocks += all_zero;
+        }
+    }
+    return s;
+}
+
+static void fmv303_probe(PGRAPHState *pg)
+{
+    static int enabled = -1;
+    static unsigned long frame;
+    static unsigned long lines;
+    static uint32_t last_sig;
+
+    if (enabled < 0) {
+        const char *e = getenv("HAKUX_FMV303_PROBE");
+        enabled = e && e[0] == '1';
+        if (enabled) {
+            FMV303_LOG("[fmv303] probe on");
+        }
+    }
+    if (!enabled || lines > 20000) {
+        return;
+    }
+    frame++;
+
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
+    size_t vram_size = memory_region_size(d->vram);
+
+    /* A signature of the bound sources, so a change is logged at once. */
+    uint32_t sig = 0;
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        sig = sig * 31 + pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4);
+        sig = sig * 31 + pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);
+        sig = sig * 31 + pgraph_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4);
+    }
+    sig = sig * 31 + d->pvideo.regs[NV_PVIDEO_BUFFER];
+    sig = sig * 31 + d->pvideo.regs[NV_PVIDEO_OFFSET];
+    if (sig == last_sig && frame % 30) {
+        return;
+    }
+    last_sig = sig;
+
+    uint32_t pv_buffer = d->pvideo.regs[NV_PVIDEO_BUFFER];
+    uint32_t pv_format = d->pvideo.regs[NV_PVIDEO_FORMAT];
+    uint32_t pv_size_in = d->pvideo.regs[NV_PVIDEO_SIZE_IN];
+    uint32_t pv_base = d->pvideo.regs[NV_PVIDEO_BASE];
+    uint32_t pv_offset = d->pvideo.regs[NV_PVIDEO_OFFSET];
+    FMV303_LOG("[fmv303] f=%lu pvideo buf=%08x fmt=%08x size_in=%08x "
+               "base=%08x off=%08x",
+               frame, pv_buffer, pv_format, pv_size_in, pv_base, pv_offset);
+    lines++;
+
+    if ((pv_buffer & NV_PVIDEO_BUFFER_0_USE) && pv_size_in != 0xFFFFFFFF) {
+        unsigned int w = GET_MASK(pv_size_in, NV_PVIDEO_SIZE_IN_WIDTH);
+        unsigned int h = GET_MASK(pv_size_in, NV_PVIDEO_SIZE_IN_HEIGHT);
+        unsigned int pitch = GET_MASK(pv_format, NV_PVIDEO_FORMAT_PITCH);
+        size_t addr = (size_t)pv_base + pv_offset;
+        size_t len = (size_t)pitch * h;
+        if (addr < vram_size && len <= vram_size - addr) {
+            Fmv303Stats s = fmv303_stats(d->vram_ptr + addr, len, true,
+                                         w, h, pitch, 2);
+            FMV303_LOG("[fmv303] f=%lu pvideo %ux%u pitch=%u len=%zu "
+                       "zero=%.4f mean=%.1f hash=%08x zblk=%u/%u",
+                       frame, w, h, pitch, s.len, s.zero_frac, s.mean,
+                       s.hash, s.zero_blocks, s.blocks);
+            lines++;
+        }
+    }
+
+    for (int i = 0; i < NV2A_MAX_TEXTURES; i++) {
+        uint32_t ctl0 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL0_0 + i * 4);
+        if (!(ctl0 & NV_PGRAPH_TEXCTL0_0_ENABLE)) {
+            continue;
+        }
+        uint32_t fmt = pgraph_reg_r(pg, NV_PGRAPH_TEXFMT0 + i * 4);
+        uint32_t ctl1 = pgraph_reg_r(pg, NV_PGRAPH_TEXCTL1_0 + i * 4);
+        uint32_t rect = pgraph_reg_r(pg, NV_PGRAPH_TEXIMAGERECT0 + i * 4);
+        hwaddr offset = pgraph_reg_r(pg, NV_PGRAPH_TEXOFFSET0 + i * 4);
+        unsigned int color = GET_MASK(fmt, NV_PGRAPH_TEXFMT0_COLOR);
+        unsigned int dim = GET_MASK(fmt, NV_PGRAPH_TEXFMT0_DIMENSIONALITY);
+        BasicColorFormatInfo f = pgraph_get_color_format_info(color);
+
+        unsigned int w, h, pitch;
+        if (f.linear) {
+            w = GET_MASK(rect, NV_PGRAPH_TEXIMAGERECT0_WIDTH);
+            h = GET_MASK(rect, NV_PGRAPH_TEXIMAGERECT0_HEIGHT);
+            pitch = GET_MASK(ctl1, NV_PGRAPH_TEXCTL1_0_IMAGE_PITCH);
+        } else {
+            w = 1u << GET_MASK(fmt, NV_PGRAPH_TEXFMT0_BASE_SIZE_U);
+            h = 1u << GET_MASK(fmt, NV_PGRAPH_TEXFMT0_BASE_SIZE_V);
+            pitch = 0;
+        }
+
+        hwaddr dma_len = 0;
+        uint8_t *base = nv_dma_map(d, GET_MASK(fmt, NV_PGRAPH_TEXFMT0_CONTEXT_DMA)
+                                          ? pg->dma_b : pg->dma_a,
+                                   &dma_len);
+        size_t len = f.linear ? (size_t)pitch * h
+                              : (size_t)w * h * f.bytes_per_pixel;
+        size_t addr = base ? (size_t)(base - d->vram_ptr) + offset : SIZE_MAX;
+        if (!f.bytes_per_pixel || dim != 2 || offset >= dma_len ||
+            addr >= vram_size || len == 0 || len > vram_size - addr) {
+            FMV303_LOG("[fmv303] f=%lu tex%d color=%02x dim=%u %ux%u "
+                       "pitch=%u addr=%zx unreadable",
+                       frame, i, color, dim, w, h, pitch, addr);
+            lines++;
+            continue;
+        }
+        Fmv303Stats s = fmv303_stats(d->vram_ptr + addr, len, f.linear, w, h,
+                                     pitch, f.bytes_per_pixel);
+        FMV303_LOG("[fmv303] f=%lu tex%d color=%02x %s %ux%u pitch=%u "
+                   "addr=%zx len=%zu zero=%.4f mean=%.1f hash=%08x "
+                   "zblk=%u/%u",
+                   frame, i, color, f.linear ? "lin" : "swz", w, h, pitch,
+                   addr, s.len, s.zero_frac, s.mean, s.hash, s.zero_blocks,
+                   s.blocks);
+        lines++;
+    }
+}
+
 static void render_display(PGRAPHState *pg, SurfaceBinding *surface)
 {
     NV2AState *d = container_of(pg, NV2AState, pgraph);
@@ -1488,6 +1683,8 @@ static void render_display(PGRAPHState *pg, SurfaceBinding *surface)
     }
 
     pgraph_vk_upload_surface_data(d, surface, !tcg_enabled());
+
+    fmv303_probe(pg);
 
     disp->pvideo.state = get_pvideo_state(pg);
     if (disp->pvideo.state.enabled) {
