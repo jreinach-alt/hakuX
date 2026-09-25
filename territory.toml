@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 179
+wave = 180
 updated_utc = "2026-09-25T17:00:00Z"
 
 
@@ -804,11 +804,12 @@ files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/issue88-*
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #88: #91 is fixed on master (PR #237), and #237's own arm ran with the colour-wins decline applied and held Swap at 165,447, so the trade decision #207 declined is gone. Re-apply the four-line same-offset policy PR #148 (lane/clrsurf91, closed) carried; do NOT port the gate half. Arm: ColorIntoZeta_ZB 131,495 -> 10,766, ZetaIntoColor 102,255 -> 71,663, Swap must_not_move, Swap_ZB predicted by the lane. vk/surface.c was free (lane.clrwb91 retired). Brief: briefs/clrwin88.md."
 
-[lane.shadetie224]
-issues = ["224"]
-files = ["docs/testing/predictions/shadetie224-*.json", "docs/lanes/shadetie224/**"]
+[retired.shadetie224]
+issues = []
+files = []
 standing = false
-note = "NARROWED AT WAVE 178 (job.board, 2026-09-25T17:00Z): PR #252 is ANALYSIS ONLY -- the lit-normal candidate was refuted by the arm (Lighting_range/Directional 792 -> 66,328, 20 must_not_regress legs) and its vsh-ff.c change reverted (353f68c938), so glsl/vsh-ff.c is RELEASED to [free]. The PR carries `regressed`, which arms.sh recomputes per issue from verdicts on disk and nothing docs-only can supersede: see the decision-needed issue opened this tick. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
+retired_utc = "2026-09-25T17:10:00Z"
+note = "RETIRED (host session, 2026-09-25T17:10:00Z): lane.shadetie224's arm refuted its lit-normal candidate (PR #252: 18 family-B Flat captures exact, Lighting_range/Directional 792 -> 66,328); the vsh-ff.c change was reverted and #252 is CLOSED unmerged by decision #257 (option 2) because its regressed label cannot clear. The analysis lands from [lane.shadetie224-notes] with no registered prediction. docs/lanes/shadetie224/** passes to that row; predictions/shadetie224-*.json RELEASED. PRIOR NOTE: NARROWED AT WAVE 178 (job.board, 2026-09-25T17:00Z): PR #252 is ANALYSIS ONLY -- the lit-normal candidate was refuted by the arm (Lighting_range/Directional 792 -> 66,328, 20 must_not_regress legs) and its vsh-ff.c change reverted (353f68c938), so glsl/vsh-ff.c is RELEASED to [free]. The PR carries `regressed`, which arms.sh recomputes per issue from verdicts on disk and nothing docs-only can supersede: see the decision-needed issue opened this tick. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
 
 [retired.foldindex]
 issues = []
@@ -850,3 +851,9 @@ issues = []
 files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handback-strand.sh", "docs/lanes/handbackstrand/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 179 (host session, 2026-09-25 10:05 PDT). Harness defect, no tracker issue: handback keys a draft-strand-arm resume on the HEAD sha ($H/done/$label-$pr-$head, handback.sh:625), so a lane that pushes while waiting on its verdict -- a replicate registration, NOTES, a master merge -- is resumed again with nothing new, and at DRAFT_STRAND_MAX=3 its PR is labelled blocked:needs-owner (#245: three resumes in 22 minutes while its replicate sat queued; host cleared it). Fix: key the cause on the set of judged verdicts, and do not strand-resume while the branch's own request is queued or running. Brief: briefs/handbackstrand.md."
+
+[lane.shadetie224-notes]
+issues = []
+files = ["docs/lanes/shadetie224/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 180 (host session): decision #257 option 2 -- the host lands lane.shadetie224's refuted-candidate analysis (NOTES sections 6-7 carry family B's next step) on a fresh branch with NO registered prediction; the judged prediction is kept under docs/lanes/shadetie224/ as a record, outside docs/testing/predictions/, so arms.sh never collects it. Docs only; retire on fold."

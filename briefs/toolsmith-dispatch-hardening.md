@@ -203,3 +203,9 @@ The board row adds the two new ones at dispatch.
 The PR has the lane body (its `Files:` line equal to
 `git diff --stat origin/master...HEAD`), `jobs/selftest.sh` is green,
 `preflight.sh` passes, NOTES are written, and the PR is marked ready.
+
+## Defect 11 (added 2026-09-25 10:10 PDT; decision #257 option 3): a withdrawn FAIL can never clear
+
+`arms.sh` recomputes `regressed` from the newest verdict on disk. When a lane's arm refutes its candidate and the lane **reverts the code**, the branch's head is docs-only. That head builds master's binary, so no arm can supersede the FAIL, and the PR is stuck `regressed` forever. It happened on #252 (#224 family B). The only exit was an owner override that records an acceptance which is not one, and #257 rejected that.
+
+**Fix:** a FAIL whose registered code is absent from the branch head is `withdrawn`. `regressed` must not be computed from it, and the verdict comment stays as the record. Decide "absent" from the diff: the arm's b_ref touched files that `git diff origin/master...HEAD` no longer touches. Selftest it with a refuted-then-reverted branch, and against the old arms.sh.
