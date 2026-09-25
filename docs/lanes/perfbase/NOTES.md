@@ -63,6 +63,15 @@ with two independent sources (VBLANK timer count against the flip clock).
 - `bench_ff.sh`: calls the `run_perf.sh` beside it, not the copy in
   `~/hakux-work/perf`.
 
+## Attempt 1 ended waiting, not failed (2026-09-25)
+
+Attempt 1 landed the line, the tooling and the prediction (head `fbc9c48c6d`,
+CI green), then stopped: the Nova was held by lane.gamecheck until 21:22 UTC,
+so no baseline run could start, and there was nothing else on the brief that
+did not need the device. It left the PR in draft without a `waiting:` comment,
+which is why handback had to find it. Attempt 2 (resumed 22:52 UTC) merged
+master (59 commits, clean) and picks up the device work.
+
 ## Device log
 
 (prefs per run, raw logs under `/home/justin/hakux-work/perf/2026-09-26/`)
