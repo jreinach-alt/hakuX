@@ -235,3 +235,17 @@ by reading (five steps above), the `_O` twins' long-standing bit-exactness is
 the same mechanism observed from the other side, and the Vulkan counterpart has
 shipped this since #59. What is missing is a device-scale falsification, and
 what it needs is a desktop-OpenGL arm.
+
+## Attempt 2 (2026-09-24): base moved, merge only
+
+Why the previous attempt did not finish: it did -- the PR was ready and
+audited (pass 1: 0 HIGH, 0 MEDIUM). The fold job then refused head
+`f332875938` because its `check` run predated master's current head
+(`ec1b67a92d`, PR #214 pinning the NV2A index check's test sources). Nothing
+on this branch was at fault; only the base moved. (This worktree was also
+238 commits behind its own remote branch at resume; fast-forwarded first.)
+
+This attempt: `git merge origin/master` (clean, no conflicts), preflight,
+push. No code, prediction or measurement changed. The arm's limitation stated
+above (the change is `#ifndef __ANDROID__`, so the device arm cannot see it)
+still stands.
