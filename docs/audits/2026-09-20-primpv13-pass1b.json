@@ -1,0 +1,75 @@
+{
+  "audit": "pass1b",
+  "pr": 194,
+  "lane": "primpv13",
+  "issue": "13",
+  "written_utc": "2026-09-21T07:30:00Z",
+  "by": "job.cloud (audit1 unit, attempt 1 of 4)",
+  "base": "94814d4731",
+  "head": "e86fcc8fff",
+  "note": "Second pass 1. The board re-set needs-audit-1 on 2026-09-21T06:00 after the arm landed. docs/audits/2026-09-20-primpv13-pass1.md holds the FIRST pass-1 record and was not overwritten; this record uses the same 'b' suffix convention as pass2b.",
+  "findings": [
+    {
+      "id": "M1",
+      "severity": "MEDIUM",
+      "file": "docs/testing/line_priority_arms.py",
+      "line": 159,
+      "summary": "changed_region() hard-codes the perpendicular footprint while decisive_xy() is given the run's --extent-rule, so the scoping column 'outside' -- documented as 'It must be 0' -- is non-zero in the mode this diff now instructs every arm to use.",
+      "scenario": "Run the prediction's own THE JUDGED COMMAND (--extent-rule) on this arm's two result dirs: 'outside' is non-zero on 12 of 27 captures, rising with width to 9 px at w=63.875, with no explanation anywhere in the lane's record. The next reader either spends a cycle hunting an emulator scoping escape that does not exist, or learns to discount the column -- and the column is the only check for a real scoping escape.",
+      "evidence": "Confirmed by experiment: threading extent_rule through changed_region() (signature, the lp.field call at :159, the call site at :246) drives every 'outside' to 0 on all 27 captures and changes NO other number -- the eleven-class table and every per-capture decisive/moved/A!=B px are identical. Scratch copy deleted, not committed.",
+      "remediation": "Thread the footprint rule through changed_region(), or -- if the narrow region is wanted deliberately -- correct the footnote that says a non-zero value is a scoping bug."
+    },
+    {
+      "id": "L1",
+      "severity": "LOW",
+      "file": "docs/testing/nv2a_index.json",
+      "line": 4654,
+      "summary": "The regeneration in be2cc09ec7 committed an operator's home directory into provenance.tests_root and provenance.support_dirs (/home/user/... -> /home/justin/...).",
+      "scenario": "No gate reads these: cmd_check compares symbols, sites and suites only (nv2a_index.py:1072, :1133) and nv2a_index.py:706 takes tests_root from the FRESHLY built index. So the cost is a one-line conflict in a shared board file whenever two machines regenerate, plus a home path in a public repository.",
+      "remediation": "Decision to log. The durable fix is in the generator (record a basename or nothing), not in this lane; master already carries /home/user/... from another host. 'Reviewed, not fixed, because the fix is in nv2a_index.py' is acceptable; silence is not."
+    },
+    {
+      "id": "L2",
+      "severity": "LOW",
+      "file": "docs/testing/line_priority.py",
+      "line": 521,
+      "summary": "report_rules()'s per-block table swapped opp_acb out for ours_patched; opp_acb is the one rival the goldens separate from the derived rule, and they separate it in exactly one block (QStrip, 100.00% vs 79.46%).",
+      "scenario": "A later edit that slid our order onto opp_acb still shows as a changed 'ours' column, so it is caught -- what is lost is seeing WHICH rival it slid to without re-running. The aggregate table above still scores all of SCHEMES, which is why this is LOW.",
+      "remediation": "Widen the row to five columns. One line."
+    },
+    {
+      "id": "L3",
+      "severity": "LOW",
+      "file": "docs/testing/predictions/line-prim-rewrite-fan-provoking.json",
+      "line": 4,
+      "summary": "The prediction requires its hand-judged table to be recorded in a '[lane.primpv13] arm judged:' PR comment AND appended to docs/lanes/primpv13/NOTES.md. This audit supplies the numbers and posts them on the PR; the NOTES.md half is a lane-file edit an auditor may not make.",
+      "scenario": "The arm's real result lives only in a review comment; the next reader of NOTES.md sees a predicted table with no measured one beside it and re-runs the judge, or folds on the [job.arms] PASS, which covers only the scoping legs.",
+      "remediation": "Append the eleven class rows from section A to docs/lanes/primpv13/NOTES.md."
+    }
+  ],
+  "hand_judged_arm": {
+    "run_by": "this audit",
+    "command": "python3 docs/testing/line_priority_arms.py --a 1789968297-arms-primpv13-base-2094212 --b 1789968297-arms-primpv13-fix-2094234 --extent-rule --min-width 8 --max-width 63.875",
+    "b_ref_is_head_binary": "git diff 40ca2bcb22 HEAD -- hw/ has no non-comment line",
+    "prediction_sha256": "63979910e31cc6b62ea8ed64f9435ae104949c829c1837e9f33b18b8bf104c6e",
+    "legs": {
+      "1": {"registered": "TFan 11636 px, 73.20% -> 100.00%", "measured": "11636, 73.20% -> 100.00%", "verdict": "met"},
+      "2": {"registered": "QStrip/TFan 24009 px, 75.84% -> 100.00%", "measured": "24009, 75.84% -> 100.00%", "verdict": "met"},
+      "3": {"registered": "nine other classes unchanged, moved 0 each", "measured": "all nine 100.00%/100.00%, moved 0 (incl. Poly/TFan 13764 and LLoop/TFan 128, the two that could have failed)", "verdict": "met"},
+      "4": {"registered": "moved >= 3119 TFan, >= 5801 QStrip/TFan", "measured": "3119 and 5801", "verdict": "met"},
+      "5": {"registered": "Shade_model/*_TriFan_Flat_* byte-identical", "measured": "machine-judged by must_not_move", "verdict": "met"},
+      "6": {"registered": "Shade_model/*_Tri_*, *_TriStrip_*, *_Quad_*, *_QuadStrip_*, *_Poly_* byte-identical", "measured": "machine-judged by must_not_move", "verdict": "met"},
+      "7": {"registered": "ALL 96.05% -> 100.00% over 225570", "measured": "identical", "verdict": "met (advisory)"}
+    },
+    "not_established": "cylWrap()'s reference vertex still moves for a textured wireframe fan in WRAP address mode; nothing in the registered disc draws one and no leg is sensitive to it. Disclosed in prim_rewrite.c:140-163, the prediction and NOTES.md; unchanged by this measurement."
+  },
+  "ci": {
+    "check": "FAILURE on e86fcc8fff (run 35565715733)",
+    "cause": "NV2A index staleness: CI's nxdk_pgraph_tests checkout has 104 suites incl. 'Fog planar vsh'; the committed index has 103.",
+    "belongs_to_this_pr": false,
+    "proof": "provenance.tests_commit is 91a0de45ca31 on BOTH origin/master and this head; be2cc09ec7 regenerated against the same tests checkout, so suites (103), symbols (951), gaps (498) and unread (145) are unchanged and only sites moved (2840 -> 2841). Every branch cut from master is red on this check.",
+    "consequence": "fold.sh waits for a green head, so this blocks the fold; it is a board matter, not a remediation item."
+  },
+  "verdict": "needs-remediation",
+  "counts": {"HIGH": 0, "MEDIUM": 1, "LOW": 3}
+}

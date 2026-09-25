@@ -1,0 +1,90 @@
+[
+  {
+    "pass1_id": "M1",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+    "line": "122",
+    "verdict": "CLOSED",
+    "summary": "prim_rewrite.c:122-165 now asks the index-0 question and answers it with three numbered readers, and (3) is cylWrap, named as a literal [0] rather than a provoking_index, in emit_vertex() and emit_vertex_fs(), in both the GL and widened Vulkan paths, and independent of the shade mode. The direction is stated and correct, and the same paragraph is in the prediction and NOTES.md:291-300, so it survives the PR body's deletion at merge. Marked TOLERATED, not measured.",
+    "scenario": "Pass 1's scenario -- the comment that is the change's entire safety argument asserting an enumeration of index-0 readers that omits a fourth, so a reader takes 'nothing downstream reads index 0' as settled -- can no longer occur: the reader is named, with its direction, in the comment, the prediction and the notes.",
+    "evidence": "Checked emit_tri_pv() rather than taking the direction: p == c emits (c, a, b), so a fan triangle (hub, v1, v2) with pv = v2 put v2 at index 0 and with pv = v1 put v1 there, both rim vertices varying per triangle; unrotated, index 0 is the hub. The 'nothing in the disc draws it' half is stronger than the remediation argued and I confirmed it independently over ~/nxdk_pgraph_tests/src/tests/: exactly three files draw a TRIANGLE_FAN under a LINE polygon mode (edge_flag_tests.cpp, line_width_tests.cpp, shade_model_tests.cpp) and none of the three contains TEXTURE_ADDRESS, WRAP or any texture-stage call; the only files setting a WRAP address mode are texture_border_tests.cpp and texture_wrap_mode_tests.cpp, neither of which draws a line-mode fan and neither of which is in the disc. So state->cylinder_wrap[i] is zero on every fan capture the arm will take. The flat block re-check also holds: it is the else arm of if (state->smooth_shading), reached only under FLAT shading, where the predicate keeps the rotation.",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": "M2",
+    "severity": "MEDIUM",
+    "file": "hw/xbox/nv2a/pgraph/glsl/geom.c",
+    "line": "196",
+    "verdict": "CLOSED",
+    "summary": "geom.c:196-221 now carries the old claim, the word SUPERSEDED, the reason (pv_placement_observable gates the rotation on flat_shading || polygon_mode != POLY_MODE_LINE, so a smooth wireframe fan arrives unrotated), the narrowing of the collision to the flat-shaded wireframe corner, and a pointer to NOTES.md. The 32,628 -> 8,920 correction is repeated there. The territory half is closed by the route the gates accept: geom.c is still in [free] on origin/board, no lane row claims it, it is on the PR's Files: line, the taking is disclosed in a PR comment to the board, and the lane did not edit the board's row.",
+    "scenario": "Pass 1's scenario -- the next lane on #13 reading geom.c, believing the TFan residue is open and still blocked by a flat-shading collision, and re-deriving or mispricing work already in the tree -- can no longer occur: the reader meets the old sentence and its correction together in the file where the edge order lives.",
+    "evidence": "The edit is comment-only: the entire hunk is inside the block comment preceding the body = \"  float dz = calc_triz(0, 1, 2)[3].x;\" assignment, touching no string literal, no mstring_append* argument and no control flow, so the generated GLSL and both arms' binaries are unchanged and b_ref 40ca2bcb22 still names the binary the prediction is about. Both 40ca2bcb22 and 4955050b31 are still ancestors of the tip. Parsed origin/board:territory.toml with tomllib rather than grepping: [free].files has 42 entries and contains hw/xbox/nv2a/pgraph/glsl/geom.c; no [lane.*] row's files list contains it. preflight.sh on this tip: territory ok, coverage ok, board files ok.",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": "M3",
+    "severity": "MEDIUM",
+    "file": "docs/testing/predictions/line-prim-rewrite-fan-provoking.json",
+    "line": "5",
+    "verdict": "CLOSED",
+    "summary": "The prediction now carries a section headed WHAT THIS PREDICTION'S AUTOMATED VERDICT COVERS, AND WHAT IT DOES NOT, opening 'Read this before acting on any [job.arms] PASS on PR #194'. It states that expect/expect_counts/must_not_regress are empty deliberately, that ab_compare.judge() never reads the prose, that a PASS means only that the other 154 Shade_model captures and 2D_Lines did not move, and that TFan could be at 73.20%, 47.57% or anywhere else with an identical verdict line. It then names WHO (whoever reads the [job.arms] verdict, before fold-ready), WHAT (the judged command) and WHERE (a [lane.primpv13] arm judged: PR comment plus the same table in NOTES.md).",
+    "scenario": "Pass 1's scenario -- the board reading VERDICT: PASS, labelling fold-ready and folding, when the automated half covers only the scoping globs -- can no longer occur without the reader having been told, in the file that travels with the arm, exactly what that PASS does not cover and who owes the rest.",
+    "evidence": "The nine must_not_move globs are byte-identical to the previous registration; expect, expect_counts, must_not_regress, disc, a_ref and b_ref are unchanged; only registered_utc and the prose moved. Standing item this pass cannot discharge: no [job.arms] comment exists on #194 yet, so the hand-judged half is not run and is not runnable here. Whoever reads that verdict owes the eleven class rows before fold-ready goes on.",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": "L1",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+    "line": "90",
+    "verdict": "CLOSED",
+    "summary": "Corrected in all four places, with the conclusion kept and its reason restated: prim_rewrite.c:90-100, the prediction's THIS ARM paragraph, the PR body's point 1, and NOTES.md:22-27. Vulkan and the desktop GL renderer are first-provoking; the Android GL build keeps GLES 3.x's last-vertex default because glProvokingVertex sits inside #ifndef __ANDROID__.",
+    "scenario": "Pass 1's scenario -- a load-bearing sentence repeated in four places being false in one build -- can no longer occur.",
+    "evidence": "A tree-wide grep for 'both renderers' finds no surviving instance of the claim: prim_rewrite.c:98 is the correction quoting the old sentence to name it, and the other seven hits are unrelated files (AGENTS.md, psh.c, vsh.c, blit.c, texture.c, nv2a.c, an investigation doc).",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": "L2",
+    "severity": "LOW",
+    "file": "docs/testing/line_priority.py",
+    "line": "92",
+    "verdict": "CLOSED",
+    "summary": "LLoop is now derived from a last_provoking parameter and matches the C line for line. The remediation's report that the correction was NOT inert in the score is itself correct: +12 decisive px under --extent-rule and +10 under the default, in one class reading 100.00% under every rule before and after, with every figure legs 1, 2 and 4 rest on unchanged. The prediction was re-registered on the new numbers before any device run.",
+    "scenario": "Pass 1's scenario -- the one listed value surviving a rewrite whose whole justification was 'derived rather than listed', going stale silently if last_provoking ever became a variable of an arm -- can no longer occur: there is no hard-coded convention left in the model.",
+    "evidence": "Re-derived rather than taken. The C: rewrite_line_loop() computes pv = last_provoking ? v1 : v0 per segment and pv = last_provoking ? v_first : v_last for the close, and emit_line_pv(a, b, p) emits (a, b) when p == a and (b, a) otherwise, so under PROVOKING_VERTEX_LAST it emits (v1, v0) for each of the n-1 segments and (v_first, v_last) for the close -- exactly the new branch's [(i+1, i) for i in range(n-1)] + [(0, n-1)]. The score, re-run against ~/goldens/results on this tip: --extent-rule gives 225570 px, ours_patched and opp_abc 100.00%, ours 216650 96.05%, TFan 11636 73.20%->100.00%, QStrip/TFan 24009 75.84%->100.00%, LLoop/Tri 1736, and the other eight classes as registered; the default gives 198890 px, ours_patched 198741 99.93%, ours 190629 95.85%, LLoop/Tri 1315, and calibration-2's eleven ns and twelve percentages digit for digit. Residues 225570-216650 = 8920 and 198741-190629 = 8112, both unchanged; leg 7's 149 px is 198890-198741. Leg 3's nine ns sum to 189925 and 189925 + 11636 + 24009 = 225570. sha256 of the file on disk is 49cca16cc011b94a66d4ee81ac5a38f0c683ab3f2527ae559937734fc184500c, which the PR body's Prediction: line carries, and no [job.arms] comment exists on #194.",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": "L3",
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+    "line": "328",
+    "verdict": "CLOSED",
+    "summary": "prim_rewrite.c:328-340 now says the strip's order is 'not decisively scored by that corpus, and only weakly by Shade_model/ProgLM_TriStrip_* -- four real POLY_MODE_LINE strip captures, but at the default line width, where overlap is confined to a handful of corner pixels', and closes with 'the next lane can price this rather than read it as settled'. The same rewording is in the PR body's Deliberately not done.",
+    "scenario": "Pass 1's scenario -- a blocker written into a code comment being read as settled, so the next lane does not price the strip -- can no longer occur.",
+    "evidence": "Read in the diff and in the file. The reflection-vs-rotation half of the argument is left standing on its own, which is what pass 1 said it could do.",
+    "remediation": "none required"
+  },
+  {
+    "pass1_id": null,
+    "severity": "MEDIUM",
+    "file": "docs/testing/line_priority_arms.py",
+    "line": "34",
+    "verdict": "NEW",
+    "summary": "f2433a8909 changed what line_priority.py prints (225,558 -> 225,570 under --extent-rule, 198,880 -> 198,890 under the default) and propagated it to the registered prediction, the PR body, line_priority.py's own docstring and two of NOTES.md's three tables -- each of those two with an explicit SUPERSEDED-style blockquote. Three statements of the same numbers still assert the old ones: (a) line_priority_arms.py:34-38, the docstring of the tool the prediction names as the judged command, which says 'arms already judged against it (#13's geom.c arm, 198,880 decisive px) stay reproducible' and 'the perpendicular set is 198,880 px and the derived-extent set is 225,558' -- the first being the stated REASON for leaving the default alone, which the same commit broke by +10; (b) NOTES.md:185-195, the lane's leg table, recording nine others 189,913 and ALL 225,558 (now 189,925 and 225,570) and 198,880 in the prose beneath, with no note, while the tables at :112-124 and :146-174 on either side each have one; (c) the registered prediction's calibration 1, which says 225,570 'is exactly the figure and the phrasing prim_rewrite.c's own file comment carries ... same answer', where prim_rewrite.c:424 and geom.c:184 carry 225,558.",
+    "scenario": "MEDIUM 3's remediation appoints a hand-judge who runs line_priority_arms.py --extent-rule --min-width 8 --max-width 63.875 over the two arms before fold-ready goes on. That judge reads the tool's own docstring ('the derived-extent set is 225,558'), then the lane's leg table ('nine others 189,913', 'ALL 225,558'), then gets 189,925 and 225,570 from the run. Leg 3's claim is that the nine other classes are UNCHANGED and moved is 0 on each one, so a 12-pixel discrepancy in the size of exactly that group is the shape of the thing leg 3 forbids -- arriving with no note beside it and with the two adjacent tables explicitly annotated as HAVING moved. Either the judge spends the session separating an instrument change from a device change, or records leg 3 as failed. The only safe judge is one who reads solely the registered prediction's per-class list, which is correct -- but the prediction is also what points them at NOTES.md and at the tool.",
+    "evidence": "Re-ran both invocations against ~/goldens/results on be2cc09ec7: 225570 px (LLoop/Tri 1736, nine-others sum 189925) and 198890 px (LLoop/Tri 1315, ours_patched 198741, ours 190629). grep on this tip: line_priority_arms.py:35 and :37-38 carry 198,880 and 225,558; NOTES.md:189 carries 189,913, :190 carries 225,558 and :194 carries 198,880; prim_rewrite.c:424 carries 225,558 and geom.c:184 carries 225,558; the PR body's residue sentence still carries the superseded intermediate pair 198,731 - 190,619 (now 198,741 - 190,629, difference unchanged at 8,112). BLAST RADIUS, stated so this is not escalated past what it is: twelve pixels and ten pixels, in a class that reads 100.00% under every rule before and after. No percentage moves, no code is affected, no leg's verdict changes, and the prediction's own per-class numbers for leg 3 are right. This is a MEDIUM because three shipped artifacts state a false number about the instrument, not because any measurement is wrong.",
+    "remediation": "Three sentence-edits: line_priority_arms.py:34-38 to 198,890 / 225,570, saying plainly that the default's totals moved by +10 in this lane's LOW-2 fix so #13's geom.c arm re-runs at 198,890 with every percentage unchanged; NOTES.md:185-195 to 189,925 / 225,570 / 198,890, or a blockquote matching the two beside it; and calibration 1 in the prediction to say the figure is 225,570 AGAINST the 225,558 that prim_rewrite.c:424 and geom.c:184 carry from #13's derivation, the 12-px difference being this lane's own LOW-2 correction -- which is the honest version of the calibration and is still a calibration. DO THIS BEFORE THE ARM FIRES: the arms job runs every registered prediction whose refs are live, 40ca2bcb22 is live now, and once a verdict exists editing the prediction is post-hoc. Free this minute, impossible an hour after."
+  },
+  {
+    "pass1_id": null,
+    "severity": "LOW",
+    "file": "hw/xbox/nv2a/pgraph/prim_rewrite.c",
+    "line": "130",
+    "verdict": "NEW",
+    "summary": "Every geom.c line citation the remediation added is 16 lines stale, by its own hunk. prim_rewrite.c:130 says geom.c:422 (actually 438); :131 says geom.c:535 (actually 551); :143 and the prediction say geom.c:293-298 for cylWrap (actually 310, 313-314); the prediction and NOTES.md:324 say geom.c:517-527 for the widened flat block (actually 533-543); NOTES.md:295-296 say geom.c:293 and geom.c:296 (actually 310 and 313). All five were right against fd73e841b0 and all five are +16 out against be2cc09ec7, which is the net size of the SUPERSEDED comment added at geom.c:196-221 in the same commit.",
+    "scenario": "A reader following prim_rewrite.c:143's 'geom.c:293-298 emits vtxT%d = cylWrap(...)' lands on a C comment that itself discusses cylWrap and gl_in[0] rather than on the emission, so the citation looks confirmed rather than wrong and is believed instead of checked; the same for the other four. Harm is small and these rot at the next fold regardless.",
+    "evidence": "grep -n on this tip: cylWrap emissions at geom.c:310 and 313-314, fog_special_index at :420 with its use at :438, the widened pin at :551, the flat block's four literal-[0] assignments at :540-543. The shift was known to the lane: be2cc09ec7 regenerated nv2a_index.json for precisely it (geom.c:224 -> 240, geom.c:261 -> 277, provenance.tests_commit unchanged at 91a0de45ca, suites 103 unchanged, sites 2840 -> 2841), so the machine-read index was re-derived and the hand-written citations beside it were not.",
+    "remediation": "Five numbers, already computed here; cheapest while the same three files are open for the MEDIUM."
+  }
+]
