@@ -130,8 +130,9 @@ def png_compare(a, b):
     ia, ib = Image.open(a).convert("RGB"), Image.open(b).convert("RGB")
     if ia.size != ib.size:
         return "size %dx%d vs %dx%d" % (ia.size + ib.size)
-    diff = ImageChops.difference(ia, ib).convert("L").point(lambda v: 255 if v else 0)
-    return "%dpx" % sum(1 for v in diff.getdata() if v)
+    same = ImageChops.difference(ia, ib).convert("L").point(
+        lambda v: 255 if v else 0).histogram()[0]
+    return "%dpx" % (ia.size[0] * ia.size[1] - same)
 
 
 def score(results, references, suites=None):
