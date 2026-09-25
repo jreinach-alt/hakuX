@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 201
-updated_utc = "2026-09-25T21:15:00Z"
+wave = 202
+updated_utc = "2026-09-25T21:40:00Z"
 
 
 [retired.hilodot10]
@@ -922,17 +922,19 @@ standing = false
 retired_utc = "2026-09-25T21:15:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T21:15:00Z): PR #301 MERGED 2026-09-25T20:30:27Z (fold 248f1312c7), no open PR on lane/zetaswap275, unit gone. predictions/zetaswap275-*.json, docs/lanes/zetaswap275/** RELEASED to [free]. #275 and #272 stay open: the WIDENED plan (derive silicon's depth arithmetic from DBFF's grid, hold out Swap/ZetaIntoColor) is not started -- it needs a fresh dispatch on vsh-ff.c + psh.c, both to be claimed then. PRIOR NOTE: DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #275: Color_zeta_overlap Swap, 165,447 px, console matches the golden. LOCATE-FIRST: no hw/ file claimed because every plausible file (vk/surface.c, pgraph.c, psh.c, vk/draw.c) is held by another lane; the lane names the function and asks. Must not undo #91's accepted colour-wins trade. briefs/zetaswap275.md. WIDENED (host session, 2026-09-25T20:30:10Z), accepting the lane's recommendation: #275's Swap is #272's defect (the fixed-function perspective depth transform, vsh-ff.c:884 feeding psh.c zfloor), so #272 joins this lane. Next: derive silicon's depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor, price it offline. #275 closes into #272 when PR #301 folds."
 
-[lane.nanattr281]
+[retired.nanattr281]
 issues = ["281"]
-files = ["docs/testing/predictions/nanattr281-*.json", "docs/lanes/nanattr281/**", "hw/xbox/nv2a/pgraph/glsl/vsh.c"]
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #281: NaN vertex attributes (Attrib float NaNs/NaNq), 29,172 px, ours differs from the console by 14,586 px each. LOCATE-FIRST for the same reason as zetaswap275: pgraph.c is lane.vshsubneg255's (adjacent defect, #255), vsh-prog.c is lane.vshr12280's, vsh-ff.c is lane.shadetie224b's. briefs/nanattr281.md. GRANTED (host session, 2026-09-25T20:30:10Z, on the lane's 20:02Z request): glsl/vsh.c (unlisted) for part 1, the sign-bit NaN map on oD0/oB0/oD1/oB1 in pgraph_glsl_gen_vsh. Part 2 (vsh-prog.c _MUL, a NaN product -> +NaN) waits: vsh-prog.c is lane.vshr12280's and PASSES HERE when PR #290 folds. Register the arm after that, on concrete refs."
+retired_utc = "2026-09-25T21:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T21:40Z): PR #302 MERGED 2026-09-25T21:05:37Z (fold 215ed58e95), no open PR on lane/nanattr281, unit gone. vsh.c, predictions/nanattr281-*.json, docs/lanes/nanattr281/** RELEASED to [free]. #281 stays open: part 2 (vsh-prog.c _MUL, a NaN product -> +NaN) waits on lane.vshr12280's PR #290 folding; read docs/lanes/nanattr281/NOTES.md before re-dispatching."
 
-[lane.wparamff223]
+[retired.wparamff223]
 issues = ["223"]
-files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamff223-*.json", "docs/lanes/wparamff223/**", "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c"]
+files = []
 standing = false
-note = "DISPATCHED AT WAVE 192 (job.board, 2026-09-25T20:30Z). #223's ff bitri + ff quad families (1,640,455 px after PR #250's one-negative wedge, which folded as 8e683b3a26). PRICE OFFLINE FIRST with docs/lanes/wparamclip223/wedge_price.py: swap vsh-ff.c's divide for the prog path's homogeneous carry and see whether ff bitri reaches 0 coverage mismatch; if it does the fix is vsh-ff.c, which is lane.shadetie224b's (PR #263 in audit) -- report the function and ask, do not edit. geom.c is claimed here only for the ff-quad two-negative-vertex rule. vk/instance.c released to [free]. Brief: briefs/wparamff223.md. HOST DECISION (2026-09-25T20:30:10Z): build hunk (B) in geom.c append_wedge() now (check w_gaps first, as NOTES say); hunk (A) needs vsh-ff.c, which comes here when lane.shadetie224b's PR #263 folds. GRANTED (host session, 2026-09-25T20:59:17Z): glsl/vsh-ff.c, the pass-on recorded at wave 194. PR #263 folded and lane.shadetie224b retired at wave 197, which left the file unowned. Build hunk (A) (position tail, vsh-ff.c:878-887) with hunk (B) (geom.c append_wedge), and register one arm for both."
+retired_utc = "2026-09-25T21:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T21:40Z): PR #304 MERGED 2026-09-25T21:16:01Z (fold 8af1bbb18e), analysis; no open PR on lane/wparamff223, unit gone. geom.c, vsh-ff.c, predictions/wparamff223-*.json, docs/lanes/wparamff223/** RELEASED to [free]. #223 stays open: the fold names the vsh-ff.c carry hunk and recommends a geom.c degenerate-tri rule -- a code lane for those is the next #223 dispatch."
 
 [retired.spheremap273]
 issues = []
@@ -997,3 +999,24 @@ issues = ["68"]
 files = ["tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json"]
 standing = false
 note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:57:51Z), on the owner's request: a hakuX-built Adreno driver (a Turnip fork loaded through the existing libadrenotools picker or bundled in the APK). ENGINEERING PERSONA (principal GPU driver engineer). GATE 0 FIRST, no build work before it: classify every candidate as T0 plain Vulkan / T1 our Turnip, no root / T2 needs root or custom kernel / T3 impossible (silicon, signed firmware), with evidence, and post it on #68. The owner asked to know up front if anything needs deeper access than a menu-loaded driver; T2/T3 are dropped, not built. The host relays Gate 0 to the owner. Candidates: hardware clip/viewport controls vs the #223 geometry-shader wedge; zero-copy guest RAM (#184/#262 class); NV2A depth formats (#266); combiner compile stutter; driver CPU share; GMEM. Mesa tree outside the repo (~/hakux-work/mesa-turnipfork). No hw/ or android/ edits before Gate 1 (board grant). Driver prefs are device config: set under a hold, restore T30, read back. Brief: briefs/turnipfork.md."
+
+
+[lane.wparamcode223]
+issues = ["223"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "hw/xbox/nv2a/pgraph/glsl/geom.c", "docs/testing/predictions/wparamcode223-*.json", "docs/lanes/wparamcode223/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #223, on PR #304's fold (8af1bbb18e): build hunk (A) (vsh-ff.c position tail: nv2a 0*x=0 multiply + homogeneous carry past 2^19, priced ff bitri 1,601 / ff quad 2,126 coverage px) and hunk (B) (geom.c append_wedge: a one-negative zero-grid-area triangle draws nothing), together, with the must-not-move gate over w_gaps* first. Brief: briefs/wparamcode223.md."
+
+
+[lane.zdepth272]
+issues = ["272", "275"]
+files = ["docs/testing/predictions/zdepth272-*.json", "docs/lanes/zdepth272/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #272 (#275's Swap folds in): derive silicon's fixed-function depth arithmetic from DBFF's grid, hold out Swap and ZetaIntoColor. LOCATE-FIRST: vsh-ff.c:~884 is lane.wparamcode223's and psh.c zfloor is lane.wbufdepth24's; the lane names the hunk and asks. Check PR #268's NOTES first (same signature as #266). Brief: briefs/zdepth272.md."
+
+
+[lane.zclamp276]
+issues = ["276"]
+files = ["docs/testing/predictions/zclamp276-*.json", "docs/lanes/zclamp276/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 202 (job.board, 2026-09-25T21:40Z) for #276: ZMinMaxControl NEARFAR ZCLAMP/ZCULL, 129,337 + 14,336 px, we draw what silicon culls. LOCATE-FIRST: the issue's guess vk/draw.c:2294 is lane.vtxarr262's; the lane derives which ZMIN_MAX_CONTROL bit each capture sets and names the function. Brief: briefs/zclamp276.md."
