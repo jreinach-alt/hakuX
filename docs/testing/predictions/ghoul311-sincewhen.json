@@ -1,0 +1,25 @@
+{
+  "registered_utc": "2026-09-25T21:04:59Z",
+  "who": "ghoul311",
+  "issue": "311",
+  "prediction": "SINCE WHEN, and the mechanism leg. Soak, Grabbed by the Ghoulies, Nova, 240 s, frames every 2 s, hands-off, one soak per arm. Read with docs/lanes/ghoul311/windows.py (per-120-frame hakuX-pages windows; ms/frame = window s / 120; pr = tlb_protect_code arming walks). 'at 120s' = the window whose end is nearest 120 s; 'at 20s' likewise. MODEL: every invalidation empties its page and the next execution re-arms it with a walk of the whole TLB, whose cost grows as the TLB is resized up. a_ref 797129aea7 is master just before 2af6def68a: tier-1 promotion stranded CF_INVALID blocks on page lists, and all four hot store pages (0x183xxx, 0x184xxx, 0x1c5xxx, 0x549xxx) carry tier-1 promotions in the gamecheck soak, so their lists never empty and are never re-armed. b_ref 2af6def68a unstrands them, so each invalidation empties the page. PREDICTED: A pr/f at 120s <= 25 and ms/frame at 120s <= 100; B pr/f at 120s >= 120 and ms/frame at 120s >= 200 and (ms-33)/pr at 120s >= 0.9 ms. REFUTES THE MODEL: A with pr/f <= 25 still at >= 200 ms/frame at 120s and ai/visited not above 0.5 (then the collapse is not re-arm cost). NOT A REFUTATION, RECORDED AS A SECOND GROWTH: A collapses with ai/visited > 0.5 (the pre-fix page-list clog grows instead). Must-not-move is the pair's own 20s window: both arms at 20s <= 70 ms/frame.",
+  "a_ref": "797129aea7",
+  "b_ref": "2af6def68a",
+  "must_not_move": [],
+  "expect": {
+    "A/pr_per_frame_at_120s_max": 25,
+    "A/ms_per_frame_at_120s_max": 100,
+    "B/pr_per_frame_at_120s_min": 120,
+    "B/ms_per_frame_at_120s_min": 200,
+    "B/ms_minus_33_per_pr_at_120s_min_us": 900,
+    "AB/ms_per_frame_at_20s_max": 70
+  },
+  "expect_counts": {},
+  "must_not_regress": [],
+  "title": "Grabbed by the Ghoulies (USA) (En,Fr,De,Es,It).xiso.iso",
+  "device": "nova",
+  "seconds": 240,
+  "frames_every": 2,
+  "runs_per_arm": 1,
+  "judge": "python3 docs/lanes/ghoul311/windows.py <a_result> <b_result>, read by hand against expect"
+}
