@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 146
-updated_utc = "2026-09-25T05:30:00Z"
+wave = 147
+updated_utc = "2026-09-25T05:45:00Z"
 
 
 [retired.hilodot10]
@@ -144,13 +144,6 @@ issues = ["77"]
 files = []
 retired_utc = "2026-09-19T13:20:55Z"
 note = "RETIRED AT WAVE 117 (job.board): the pass-1 audit this row tracked has finished -- PR #143 now carries needs-remediation (audit found HIGH/MEDIUM), not needs-audit-1, and the outlet has already claimed the next unit against it (see [lane.cloud-remediate-143] below). Held files = [] throughout (an audit reads, it does not edit)."
-
-[lane.clrsurf91]
-issues = ["91", "88"]
-files = ["hw/xbox/nv2a/pgraph/vk/draw.c", "hw/xbox/nv2a/pgraph/vk/surface.c"]
-standing = false
-note = "DISPATCHED WAVE 116 (job.board). #91's status_note already names the mechanism and the site: the golden's clear colour 0xFE242424 becomes 0x00000024 in arm B -- bits 8-31 (Z24S8 depth) zeroed, bits 0-7 (stencil) preserved -- which is the exact signature of a depth-only clear of 0 reaching the COLOUR surface during Color_zeta_overlap::Swap. The inline clear path (vk/draw.c:6774, :6870) is already confirmed correctly guarded (write_zeta && r->zeta_binding); the fall-through pipeline clear path is where to look, per the issue's own falsifier. #91 gates #88's fold (#88's colour-wins policy is exonerated on its own two targets but cannot ship while it exposes this pre-existing Swap defect). Both files were sitting in [free] since lane.blitsafe retired at wave 110 -- claimed together because the fix (or its falsifier) is expected to touch the clear-surface call site in draw.c and the surface-binding state it reads in surface.c. #91's own falsifier is pre-written: two diagnosis arms (--only-tests 'Color zeta overlap::Swap' solo, at #88's own arm refs) already separated contamination from an intrinsic cause and found it intrinsic -- read nv2a_issues.toml #91's status_note in full before writing any code, it is long but it is the whole investigation."
-
 
 [retired.glerr86]
 issues = ["86"]
@@ -548,6 +541,17 @@ note = "RETIRED AT WAVE 97: #99 was closed 2026-09-19T00:20Z as a duplicate of #
 # state: a lane row whose agent has finished asserts coverage that does not
 # exist, and check_coverage.py cannot tell the difference.
 files = [
+# RELEASED AT WAVE 147 (host session): vk/draw.c + vk/surface.c by retiring lane.clrsurf91
+# (PR #148 closed, #207); the other paths were dropped by 19f97aa4 into NEITHER a row nor
+# [free] (lane.remote, #184 comment 5762957253).
+    "hw/xbox/nv2a/pgraph/vk/draw.c",
+    "hw/xbox/nv2a/pgraph/vk/surface.c",
+    "hw/xbox/nv2a/pgraph/vk/texture.c",
+    "hw/xbox/nv2a/pgraph/vk/surface-compute.c",
+    "docs/lanes/clrvk184/NOTES.md",
+    "docs/lanes/clrsurf91/NOTES.md",
+    "docs/lanes/blendarm50/NOTES.md",
+    "docs/testing/swatchorder50_readings.py",
 # RELEASED AT WAVE 146 by retiring lane.remote (decision-needed #213):
     "hw/xbox/nv2a/pgraph/gl/surface.c",
     "hw/xbox/nv2a/pgraph/gl/blit.c",
@@ -761,3 +765,15 @@ issues = ["50"]
 retired_utc = "2026-09-25T05:10:00Z"
 files = []
 note = "RETIRED (job.board, board tick wave 145): PR #210 (lane/fulldisc50) MERGED 2026-09-21T19:31:37Z as fa6863f2f0, unit gone, no open PR. The lane answered its brief without device time: the full-disc instability measurement already existed at n=13 (lane.blendrace50's runs), rate posted on #50. Held docs/lanes/fulldisc50/NOTES.md only; released. Dropping the stale `lane:fulldisc50` label; #50 stays open and dispatchable for the placement-vs-colour-assignment reading."
+
+[retired.clrsurf91]
+issues = []
+retired_utc = "2026-09-25T05:45:00Z"
+files = []
+note = "RETIRED AT WAVE 147 (host session): PR #148 CLOSED unmerged 2026-09-25T05:11Z by owner decision #207 (not accepted: the lane withdrew its #91 claim, the golden requires the write-back the change declines, and it was pixel-inert on master). vk/draw.c and vk/surface.c RELEASED to [free]; #91 and #88 return to the pool with #91's corrected mechanism on the issue. Branch lane/clrsurf91 kept for salvage (the independent pass-1 M1 repair)."
+
+[lane.remote]
+issues = ["184"]
+files = []
+standing = false
+note = "CLAIMED AT WAVE 147 (host session) on lane.remote's own request after it came back 2026-09-24 and closed out #62/#158: #184's open measurement -- one desktop Vulkan Clear run with pgraph_vk_bind_textures' three exits counted per bind, to find which source the stale refill reads and why X1R5G5B5 is exempt while R5G6B5 is not. files = [] BY DESIGN: the lane instruments locally, measures, reverts and verifies its tree clean, and reports on #184; a fix is a separate claim of vk/texture.c and friends, which are in [free]. Brief: briefs/184.md. This is a new row; [retired.remote] is the wave-146 retirement of the old one and stays as history."
