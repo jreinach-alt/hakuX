@@ -1563,13 +1563,13 @@
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:84",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:326",
    "symbols": [],
    "text": "/* FIXME: Missing support for 2-sided-poly mode */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:264",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:511",
    "symbols": [],
    "text": "assert(false);"
   },
@@ -4652,7 +4652,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "d1823383ec70670ac3fbbafa0b78844f97766191",
+  "emulator_commit": "537ffb91ed8aca07925997637ad7b85414ed9cf3",
   "gaps": 497,
   "resolved_tables": 1,
   "sites": 2845,
@@ -6626,7 +6626,7 @@
   ],
   "NV097_SET_FRONT_POLYGON_MODE_V_FILL": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:143",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:386",
     "role": "COMMENT",
     "text": "* set NV097_SET_FRONT_POLYGON_MODE_V_FILL can still land in the widened"
    },
@@ -8906,7 +8906,7 @@
   ],
   "NV097_SET_TEXTURE_ADDRESS": [
    {
-    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:301",
+    "loc": "hw/xbox/nv2a/pgraph/glsl/geom.c:548",
     "role": "COMMENT",
     "text": "/* Cylinder wrap (NV097_SET_TEXTURE_ADDRESS WRAP_U/V/P/Q):"
    },
