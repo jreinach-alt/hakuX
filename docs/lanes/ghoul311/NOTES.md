@@ -1,6 +1,7 @@
 # lane.ghoul311 -- #311 Grabbed by the Ghoulies hands-off fps decay
 
-Status: started 2026-09-25 20:57 UTC. Diagnosis first; no source claimed.
+Status: 2026-09-25 21:15 UTC, waiting on four Nova soaks (section 4).
+Diagnosis first; no source claimed.
 
 ## 1. What the existing logs already say (no new device time)
 
@@ -102,3 +103,55 @@ Prediction for that counter, per arming walk (`tw/pr`):
   ms/frame - 33 ~= pr/f x tw/pr x k at a single k across all windows.
 - **Refuted** if `tw/pr` stays within 2x of its 20 s value while the frame
   time collapses.
+
+## 4. Since when: the pair around 2af6def68a (registered, queued)
+
+No `v0.3.1` tag exists (v0.3.2, v0.3.3-j1 and v0.4.0-j1 do). v0.4.0-j1
+(2026-09-10) has no `hakuX-perf` or `hakuX-pages` line at all, so its fps
+could only be read off captured frames. The better bound is in the code:
+`2af6def68a` (2026-09-14, "unstranding #73's blocks") changed when a page
+empties. Before it, tier-1 promotion left CF_INVALID blocks stranded on page
+lists for the life of the buffer, so a page carrying one never emptied and was
+never re-armed. In the gamecheck soak, the tier-1 `consume` lines put
+promotions on all four hot store pages: 0x549458 -> 54940c, 0x184725/0x18478f
+-> 184278, 0x183a54 -> 183ac0, and 0x1c5a15 -> 1c5518. After 2af6def68a, every
+invalidation empties the page and pays the arming walk (`pr == ev`).
+
+Prediction `docs/testing/predictions/ghoul311-sincewhen.json`
+(sha256 `05acabbe548622279bc6de55f03f8c6fcb3a2ab312f0f5a9788bf230972f4216`,
+committed in 18e5dda13a before either arm was queued). a_ref `797129aea7`,
+b_ref `2af6def68a`:
+
+- A: pr/f at 120 s <= 25, ms/frame at 120 s <= 100
+- B: pr/f at 120 s >= 120, ms/frame at 120 s >= 200, (ms-33)/pr >= 0.9 ms
+- both arms <= 70 ms/frame at 20 s
+- refutes the model: A at pr/f <= 25 still >= 200 ms/frame with ai/visited
+  <= 0.5
+- a second growth, not a refutation: A collapses with ai/visited > 0.5 (the
+  pre-fix page-list clog grows instead)
+
+Queued (Nova, 240 s, frames every 2 s):
+
+| request | ref | role |
+|---|---|---|
+| `1790370153-ghoul311-3053340` | f94b6e0ad1 (master + notes) | reproduction 1 |
+| `1790370157-ghoul311-3058825` | f94b6e0ad1 | reproduction 2 |
+| `1790370309-ghoul311-3211642` | 797129aea7 | since-when A |
+| `1790370311-ghoul311-3215191` | 2af6def68a | since-when B |
+
+## 5. The fix hunk (named, not applied)
+
+`docs/lanes/ghoul311/fix-keep-armed.patch`: under XBOX, do not
+`tlb_unprotect_code` when a page empties (`tb-maint.c:1812-1815`, the only
+disarm site). The next `tb_page_add` then finds the code bit still clear and
+the walk does not happen. It needs a grant on `accel/tcg/tb-maint.c`
+(lane.tcgchurn's). Its arm is master vs master+hunk, predicted from the pair
+above once the pair lands.
+
+## What the next lane should not repeat
+
+- `docs/testing/perf/profile_guest.sh` drives the device with adb directly;
+  a lane cannot use it, and the dispatch soak path has no simpleperf hook.
+  The pages windows (per 120 frames) are the profiler available to a lane.
+- Do not read the pages `n=` per-page counts as per-window: they are
+  cumulative (never reset), so difference them.
