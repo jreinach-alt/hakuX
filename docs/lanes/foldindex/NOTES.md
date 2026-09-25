@@ -66,7 +66,9 @@ named locals and matches it by itself.
 
 ## Measured
 
-- `bash docs/testing/jobs/selftest.sh`: **1212 passed, 0 failed**. Run
+- `bash docs/testing/jobs/selftest.sh`: **1212 passed, 0 failed** on the
+  branch, and **1236 passed, 0 failed** after merging master @ 21946df29b
+  (the full run now takes about 10 min). Run
   standalone, the new fragment gives 31 passed, 0 failed.
 - Mutants, each red on its own check:
   - `onepath` (delete the exactly-one-path test): (b) red. The index got
