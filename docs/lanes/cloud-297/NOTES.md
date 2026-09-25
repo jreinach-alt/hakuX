@@ -9,7 +9,7 @@ Status: **done.** This is analysis only: no hw/ file edited and no prediction re
 |---|---:|---|---|
 | `Depth_buffer_fixed_function/z24_C{n,y}_FZy_M{000003,3fc002,7f8001,bf4000,feffff}` (10) | 24 | the two edges the test places at kZNear; silicon draws them (z stored 0), we draw nothing | **#272**, low end of its affine z24 error (below) |
 | `Depth_buffer_fixed_function/z24_C{n,y}_FZn_M000003` (2, not on #297's list) | 24 | the same 24 px, mirrored: silicon rejects them (z 8 >= 3), we draw them (z 0) | **#272**, same point |
-| `Texture_BRDF/BRDF_e0_l0, _e0_l1, _e1_l0` (3) | 614 | a textured wedge in the bottom-right corner, silicon's only ink; we do not rasterise it | **new issue** (proposed row below) |
+| `Texture_BRDF/BRDF_e0_l0, _e0_l1, _e1_l0` (3) | 614 | a textured wedge in the bottom-right corner, silicon's only ink; we do not rasterise it | **#315** (opened by this lane; proposed row below) |
 | scorer: `blank` rule, `score_sweep.py:229-230` | | fires on all 13 because the golden has > 4 colours | lane.toolsmith, change below |
 
 Every figure is from run `1790359589-xbox-full6743-dry2-2802408` (thor, ref 84a67b9cf8,
@@ -129,10 +129,10 @@ The differing count is 614 in both outcomes, so **a count cannot tell these apar
 the pixel. No arm is registered, for the same reason: `ab_compare` scores `differing`, and
 a must-not-move on 614 is blind to the one change that matters.
 
-**Proposed tracker row** (for the board; lanes do not edit `nv2a_issues.toml`):
+**Proposed tracker row for #315** (for the board; lanes do not edit `nv2a_issues.toml`):
 
 ```toml
-[issue.NEW]
+[issue.315]
 title = "Texture_BRDF: PS_TEXTUREMODES_BRDF unimplemented, and silicon's only ink (a 614-px corner wedge) is not rasterised"
 disposition = "defect"
 suites = ["Texture BRDF"]
