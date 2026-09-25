@@ -797,10 +797,3 @@ issues = ["189"]
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-189, a cloud-class lane on issue #189, branch lane/cloud-189, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 189` removes this row when the unit ends."
-
-
-[lane.cloud-remediate-216]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-216, remediation of PR #216 on branch claude/handoff-on-hardware, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 216` removes this row when the unit ends."
