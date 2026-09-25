@@ -88,7 +88,34 @@ Both are in the board request and on #233.
 
 ## Measurements
 
-(filled in below as they land)
+Desktop build of 47ee3f65e9, built in this worktree's gitignored
+`build-linux/` against `$WORK/desktop/deps/prefix`, so the shared desktop
+tree was never touched. Disc: `~/hakux-work/vsh-build/nxdk_vsh_tests-c3dde45-shutdown.iso`
+with `vsh_tests.cnf` = `ILU RCP Tests` only (toolsmith's `make_test_iso.py
+--program vsh`, from PR #229's branch). Renderer: OpenGL on llvmpipe.
+
+| run | result |
+|---|---|
+| master (toolsmith, 09-19 binary, #112) | abort `vsh-prog.c:383` TODO assert |
+| 47ee3f65e9, GL | **translator assert gone**, no GL compile error in the log; aborts later at `rdi.c:31` `pgraph_rdi_read` when the test reads c[192] back, RUN_EXIT=134 |
+| 47ee3f65e9 + a LOCAL, UNCOMMITTED rdi.c patch (reads past c[191] return 0; reverted afterwards, tree clean) | run completes, RUN_EXIT=0; `vsh_score.py` DIFFERS: rows [4]..[31] match silicon's zeros; rows [0]..[3] print 0.000000 where silicon prints the RCP results |
+
+So on desktop the crash is fixed, and the printed-value match is **blocked**
+on two things outside this lane's files (below). Rows [0]..[3] read 0 because
+the value written in the GLSL never reaches `pg->vsh_constants`, and that
+array is what RDI reads.
+
+Not verified here: Vulkan. This host has no Xvfb (`xvfb-run: command not
+found`), and the tree builds no standalone glslang. The Vulkan dialect of
+`vec4 c_rw[192] = c;` (`c` is a member of an anonymous uniform block there)
+is exercised first on the handheld. The handheld run of `request.sh --program
+vsh` after #229 folds should show IluRcpTests completing (no abort) and
+DIFFERS on rows [0]..[3] until the writeback lands.
+
+Arm: `docs/testing/predictions/vshconst-must-not-move.json`, a_ref a6bb4a13d4,
+b_ref 47ee3f65e9, all must-not-move over the three Vertex shader suites,
+W param and Fog coord vec4. The prediction text names what would move each
+leg.
 
 ## Do not repeat
 
