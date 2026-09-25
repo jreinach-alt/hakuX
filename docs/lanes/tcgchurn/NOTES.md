@@ -40,6 +40,19 @@ Context from #311 at 22:56: ghoul311's arm A (`797129aea7`, 09-13, pre-#73)
 already collapses, 29 -> 1-3 gfps. So #73's unstrand did not introduce the
 collapse. The hunks stand on the mechanism, as the host's correction says.
 
+5. Queued 7 soaks on the Thor (240 s, `--frames-every 0`):
+   - Ghoulies on A / (a) / (b): `1790377875-lane.tcgchurn-98466`, `-100712`
+     and `-100787`;
+   - Crimson and JSRF on (a) and (b), `-101077`, `-101313`, `-101517` and
+     `-101755`.
+   Preflight passed at `ca81f248bd`. Posted on #311 and #68.
+
+**State at session end: WAITING** on the soak results and on the arms job's
+pixel verdicts. The PR stays draft until they are judged. The next session
+reads the gfps and `[tlb68]` lines against the legs in
+`tcgchurn-311-ghoulies-soak.json`, then marks #309 ready with the verdict,
+or records the refutation.
+
 **Lesson, now twice over:** commit within the first few actions of a session,
 before reading anything at length.
 
