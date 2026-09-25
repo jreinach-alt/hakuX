@@ -19,6 +19,8 @@
 # Two modes:
 #   nightly_build.sh                    build, write the notes, publish
 #   nightly_build.sh notes [SINCE]      write the notes to stdout and stop
+#                                       (SINCE only matters if no nightly-* tag
+#                                       is an ancestor of HEAD; see RANGE below)
 #
 # `notes` exists so the note-writing -- the part with all the judgement in it
 # -- is testable without a device, a toolchain or an hour. It builds nothing
@@ -101,11 +103,17 @@ say "nightly $DAY  branch=$BRANCH  head=$SHA"
 #               one at every place a person looks -- the tag, the date, the
 #               APK. A missing nightly at least reads as a missing nightly,
 #               and this exits non-zero so systemd records it as a failure.
-#   unreachable label. We cannot know the tip, so we cannot claim to be it;
-#               the notes say the fetch failed and when this host last
-#               succeeded. Silently falling back to the local sha is today's
-#               failure with a different cause.
+#   unreachable refuse too (exit 8). We cannot know the tip, so we cannot
+#               claim to be it. This used to publish with a caveat at the top
+#               of the release body; the owner's standing order (2026-09-25,
+#               AGENTS.md PR #239) is that the public body carries no process
+#               commentary, so a build that needs one is not published. It
+#               costs little: origin and `gh release` are the same host, so a
+#               night that cannot fetch almost never could have published.
 #   at the tip  the normal path, and the only one that publishes.
+#
+# Every refusal, and every WARNING, goes to say() -- the day's $LOG and the
+# unit's journal -- and never into the release body.
 #
 # `ahead` keeps the old unpushed-HEAD label rather than becoming a fourth
 # refusal: it is the same question (can anyone else rebuild this?) asked
@@ -115,7 +123,7 @@ say "nightly $DAY  branch=$BRANCH  head=$SHA"
 # and the release says "unpushed" in its first line. A tree that is ahead AND
 # behind is diverged, and the `elif` order is deliberate: behind is tested
 # first, so divergence refuses.
-TRUNK_OK=0; TRUNK=""; BEHIND=0; AHEAD=0; STALE_NOTE=""
+TRUNK_OK=0; TRUNK=""; BEHIND=0; AHEAD=0
 if git fetch -q origin "$TIP" 2>>"${LOG:-/dev/null}"; then
     TRUNK_OK=1
     TRUNK=$(git rev-parse --short FETCH_HEAD)
@@ -129,13 +137,11 @@ if [ "$TRUNK_OK" = 0 ]; then
     FH=$(git rev-parse --git-path FETCH_HEAD 2>/dev/null)
     LAST_FETCH="never"
     [ -n "$FH" ] && [ -e "$FH" ] && LAST_FETCH=$(date -r "$FH" '+%F %H:%M %Z' 2>/dev/null || echo unknown)
-    say "WARNING: cannot reach origin/$TIP; cannot confirm $SHA is the trunk (last fetch: $LAST_FETCH)"
-    PROV="built from \`$SHA\` on \`$BRANCH\` -- **origin was unreachable**, so this is the last sha this host had, not necessarily the trunk's tip"
-    STALE_NOTE="> Could not reach \`origin/$TIP\` at build time (this host last fetched at $LAST_FETCH). The sha below is what was on disk; it may be behind the trunk."
+    say "REFUSING: cannot reach origin/$TIP, so $SHA cannot be confirmed as the trunk (last fetch: $LAST_FETCH)"
+    PROV="built from \`$SHA\` on \`$BRANCH\`"
 elif [ "$BEHIND" -gt 0 ]; then
     say "REFUSING: HEAD $SHA is $BEHIND commit(s) behind origin/$TIP ($TRUNK); the nightly publishes the trunk or nothing"
-    PROV="built from \`$SHA\` on \`$BRANCH\` -- **$BEHIND commit(s) behind \`origin/$TIP\`** (\`$TRUNK\`)"
-    STALE_NOTE="> This tree is $BEHIND commit(s) behind \`origin/$TIP\` (\`$TRUNK\`). A nightly must publish the trunk's tip, so this build is refused."
+    PROV="built from \`$SHA\` on \`$BRANCH\`"
 elif [ "$AHEAD" -gt 0 ]; then
     say "WARNING: $AHEAD commit(s) not on origin/$TIP; the release will say so"
     PROV="built from **unpushed** \`$SHA\` on \`$BRANCH\` ($AHEAD commits ahead of origin/$TIP)"
@@ -146,14 +152,28 @@ fi
 # Refuse BEFORE ./gradlew, not after: ten minutes of build time spent on a
 # tree we already know is stale buys nothing, and the exit code is the signal.
 # Not in `notes` mode -- that mode publishes nothing, and its job is to show
-# what the body would say, banner included, which is what the mutant reads.
+# what the body would say; the refusal is in its stderr.
 if [ "$MODE" = build ] && [ "$BEHIND" -gt 0 ]; then
     say "nothing published; the nightly must run from a tree at origin/$TIP (jobs/run-nightly.sh keeps one)"
     exit 5
 fi
+if [ "$MODE" = build ] && [ "$TRUNK_OK" = 0 ]; then
+    say "nothing published; origin/$TIP was unreachable, so this tree cannot be shown to be the trunk"
+    exit 8
+fi
 
+# A modified tracked file means the binary is not exactly $SHA. That used to be
+# a line at the top of the release body; now it refuses, since the body names
+# $SHA and would otherwise be false. run-nightly.sh's worktree is only ever
+# checked out, never edited, so on the intended path this does not fire.
 DIRTY=$(git status --porcelain | grep -v '^??' | wc -l)
-[ "$DIRTY" -gt 0 ] && say "WARNING: $DIRTY tracked file(s) modified; build is not the commit"
+if [ "$DIRTY" -gt 0 ]; then
+    if [ "$MODE" = build ]; then
+        say "REFUSING: $DIRTY tracked file(s) modified; the binary would not be $SHA. Nothing published"
+        exit 7
+    fi
+    say "WARNING: $DIRTY tracked file(s) modified; a build here would refuse (exit 7)"
+fi
 
 # ------------------------------------------------------------ the day's work
 #
@@ -199,6 +219,40 @@ OTHER_CAP=8
 # unchanged, so a fixture can name its own window.
 SINCE="${2:-$(date -d 'yesterday 00:30' -Iseconds 2>/dev/null || date -v-1d -Iseconds)}"
 
+# THE RANGE IS BY ANCESTRY, and $SINCE is only the fallback. The window above
+# is over COMMIT dates, and a lane's commits keep the dates they were written
+# and reach master in a fold days later -- so nightly-2026-09-25 listed 4 of
+# the 14 commits it added over nightly-2026-09-24 and said "0 emulator" while
+# 637b4f1d2a (nv2a/gl, written 09-19, folded 09-24 23:41) was in the build.
+# "What is new in this build" is `<previous nightly>..HEAD`, whatever dates
+# the commits carry.
+#
+# The previous nightly is the newest nightly-* tag that is an ancestor of
+# HEAD. Newest by NAME, not by creatordate: the tags are lightweight (gh
+# release create makes them), so their "creator date" is the tagged commit's
+# date -- nightly-2026-09-24 reads 2026-09-21 -- and the name is the day it
+# was published. Today's own tag is skipped, so a same-day rerun still
+# reports against yesterday. The tags are made on origin by `gh release`, so
+# fetch them first; a failure there only means the fallback below, which logs.
+git fetch -q origin 'refs/tags/nightly-*:refs/tags/nightly-*' 2>/dev/null || true
+BASE_TAG=""
+while IFS= read -r t; do
+    [ "$t" = "nightly-$DAY" ] && continue
+    git merge-base --is-ancestor "$t" HEAD 2>/dev/null && { BASE_TAG=$t; break; }
+done < <(git tag -l 'nightly-*' --sort=-refname 2>/dev/null)
+if [ -n "$BASE_TAG" ]; then
+    RANGE=("$BASE_TAG..HEAD")
+    WINDOW="since $BASE_TAG ($(git rev-parse --short "$BASE_TAG^{commit}"))"
+    NONE_LINE="No commits since \`$BASE_TAG\`."
+else
+    RANGE=(--since="$SINCE" HEAD)
+    WINDOW="dated since $SINCE"
+    NONE_LINE="No commits in the last day."
+    # Logged, not printed in the body: the release body carries no process
+    # commentary (owner, 2026-09-25). The log is where a short list is chased.
+    say "WARNING: no nightly-* tag is an ancestor of HEAD; falling back to commits dated since $SINCE"
+fi
+
 # --no-merges. A `fold: PR #131 lane/notespath -- ...` subject describes the
 # lane, not the change, and the commits it folds are listed anyway -- so a
 # merge adds a line that says nothing and hides one that does. Merges are
@@ -233,13 +287,13 @@ while IFS= read -r line; do
 # 2026-09-20 the notes said "No commits in the last day" about a 34-hour-old
 # checkout while 89 commits landed on the trunk. The range and the binary must
 # be answers about the same ref, so neither may be implicit.
-done < <(git log --no-merges --since="$SINCE" --format=$'\x01%s' --name-only HEAD 2>/dev/null)
+done < <(git log --no-merges --format=$'\x01%s' --name-only "${RANGE[@]}" 2>/dev/null)
 flush_commit
 
 N_WORK=$((N_EMU + N_HARN + N_OTHER))
-TOTAL=$(git log --since="$SINCE" --oneline HEAD 2>/dev/null | wc -l)
+TOTAL=$(git log --oneline "${RANGE[@]}" 2>/dev/null | wc -l)
 N_MERGE=$((TOTAL - N_WORK))
-say "$TOTAL commit(s) since $SINCE: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
+say "$TOTAL commit(s) $WINDOW: $N_EMU emulator, $N_HARN harness, $N_OTHER other, $N_MERGE merge(s)"
 
 BODY="$OUT/$DAY.notes.md"
 # A capped section says how many it left out, per section, so the counts in
@@ -258,28 +312,15 @@ TALLY="$N_WORK commit(s) did the work: $N_EMU emulator, $N_HARN harness, $N_OTHE
 {
     echo "Automated nightly. $PROV."
     echo
-    [ "$DIRTY" -gt 0 ] && echo "> Built with $DIRTY modified tracked file(s): the binary is not exactly this commit."
-    # The same shape of warning, one question earlier: the dirty line says the
-    # binary is not exactly this commit, this one says this commit may not be
-    # the one a reader is owed.
-    [ -n "$STALE_NOTE" ] && echo "$STALE_NOTE"
-    echo
     if [ "$N_WORK" -gt 0 ]; then
         section "Emulator"            "$N_EMU"   ${SUB_EMU[@]+"${SUB_EMU[@]}"}
         section "Harness and tooling" "$N_HARN"  ${SUB_HARN[@]+"${SUB_HARN[@]}"}
         section "Docs and the rest"   "$N_OTHER" ${SUB_OTHER[@]+"${SUB_OTHER[@]}"}
         echo "_${TALLY}_"
-    elif [ -z "$STALE_NOTE" ]; then
-        # $STALE_NOTE is empty exactly when origin answered AND this tree is
-        # its tip, so here the window really is the trunk's window and the
-        # flat sentence is true.
-        echo "No commits in the last day."
     else
-        # Behind, or origin unreachable. An empty window is then a fact about
-        # a tree we could not confirm is the trunk -- and the bare sentence
-        # above is precisely what nightly-2026-09-20 and -21 printed while 89
-        # commits landed on master. Say what it is a fact ABOUT.
-        echo "No commits in the last day **on this tree** -- see the note above; this is not confirmed to be the trunk."
+        # A tree that is not the trunk never reaches publish (exit 5 or 8
+        # above), so this sentence is only ever published about the trunk.
+        echo "$NONE_LINE"
     fi
     echo
     echo "Installs alongside an official hakuX build and upgrades a previous fork build in place."
