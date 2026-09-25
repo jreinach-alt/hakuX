@@ -257,6 +257,16 @@ still holds. This is the third draft-strand resume of the lane. If handback
 caps at `DRAFT_STRAND_MAX=3`, then when the verdict lands it needs an operator
 to resume the lane, not handback.
 
+The 17:32Z resume (attempt 2) found the cause of `ci=NONE` on `4dec2330c4`:
+the PR was CONFLICTING. Master had folded #253 and #249, and both regenerated
+`nv2a_index.json`. That was an index-only conflict, so the fix was to merge
+`origin/master`, not rebase, and regenerate the index over tests 6743b6a and
+pbkitplusplus e91d509. The result has 104 suites, matching master, and
+`check` passes. Both prediction refs, a8691063e6 and 537ffb91ed, are still
+ancestors, so the grid arm is unaffected. preflight passes. The grid arm still
+has no verdict: it was registered at 17:17Z and takes about 90 minutes. So the
+PR stays in draft, waiting on that verdict alone.
+
 ## For the next lane
 
 - A gate that tests for an exact zero must read the quantity silicon
