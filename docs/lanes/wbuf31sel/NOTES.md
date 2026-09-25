@@ -132,6 +132,27 @@ this lane's `psh.c` change and nothing else. The lane waits again on the new
 No shader-cache version bump is needed: `vk/glsl.c` keys SPIR-V on a hash of
 the GLSL text, and no ShaderState field changed.
 
+### Why attempt 2 did not finish, and the verdict (resume, 2026-09-25 ~23:10Z)
+
+Attempt 2 ended correctly, waiting: the re-registered arm was queued and CI had
+not built the head. Nothing was wrong with it. Handback resumed the lane with
+both resolved:
+
+- **Arm verdict: PASS**, `[job.arms]` 16:04 PDT. a `d709a8d1fa`
+  (`1790365513-arms-wbuf31sel-base-476580`), b `9848c0f227`
+  (`...-fix-476626`). 570 captures per arm, progress-log proof yes on both.
+  0 movers, and all 570 are byte-identical between the arms. Exact 116 -> 116.
+- **Status column checked:** both `scores1.tsv` read ok 500, white-content 59,
+  label-differs 9, blank 2. No `unreadable`, and the two arms match. Neither
+  `run1.log` contains UtilAcceptVsock or PARTIAL COVERAGE.
+- **CI GREEN** on `09cfd49a7b`.
+
+Master had moved 91 commits ahead by then, and the PR conflicted again, only on
+`nv2a_index.json`. Attempt 3 merged `origin/master` as `b77e03eb78` and
+regenerated the index over the same pins; `check` passes. Neither `psh.c` nor
+`wbuf_anchor_recover.py` differs between the judged b_ref `9848c0f227` and
+that merge, so the verdict still covers the patch. Nothing was re-registered.
+
 ## For the next lane
 
 - Do not re-run the 4-literal search hoping for a tier-V fit. There is none
