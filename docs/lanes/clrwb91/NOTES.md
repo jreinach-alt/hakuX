@@ -197,3 +197,35 @@ still ancestors. Nothing in the PR's work was re-opened.
 Waiting: CI on head `487dae0ba4`. When it is green, run
 `gh-label.sh rm 237 needs-rebase` and `gh-label.sh add 237 fold-ready`.
 Preflight passes on this head, and the PR is ready (not draft) and MERGEABLE.
+
+## Session 4 (2026-09-25): second index conflict, same resolution
+
+Why session 3 did not finish: it did finish its task. It resolved the
+first index conflict, pushed `487dae0ba4`/`404ab2e533`, and stopped to wait
+for CI. Before the fold could take it, master moved again (the vshconst
+fold, #234, at `84a67b9cf8`) and that fold also regenerated
+`docs/testing/nv2a_index.json`, so the same file conflicted a second time
+and the PR was handed back at 07:15 PDT.
+
+Resolution, identical in kind to session 3: `git merge origin/master`
+(never a rebase; the arm's refs `9c5f7416d8`/`9de95de849` stay ancestors),
+take neither side's index by hand, and regenerate it on the merged tree:
+
+```
+python3 docs/testing/nv2a_index.py build --tests ~/nxdk_pgraph_tests --support ~/pbkitplusplus
+python3 docs/testing/nv2a_index.py check --tests ~/nxdk_pgraph_tests --support ~/pbkitplusplus
+```
+
+Two things the next lane should not repeat:
+
+* `build` without `--tests` refuses (0 suites found), and `build` without
+  `--support ~/pbkitplusplus` silently writes `resolved_tables: 0` where
+  master has 1. Both flags are needed to reproduce master's provenance.
+  The local tests tree is still at master's `tests_commit` `6743b6ab`, so
+  nothing is lost: 104 suites, 2845 sites, `check` passes.
+* This file will conflict on every fold that regenerates the index while
+  this PR waits. That is a property of the index, not of this PR's work,
+  and nothing in the PR was re-opened.
+
+Waiting: CI on the new merge head. When green, `gh-label.sh rm 237
+needs-rebase` then `gh-label.sh add 237 fold-ready`.

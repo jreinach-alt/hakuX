@@ -28,7 +28,15 @@ uint32_t pgraph_rdi_read(PGRAPHState *pg, unsigned int select,
     switch(select) {
     case RDI_INDEX_VTX_CONSTANTS0:
     case RDI_INDEX_VTX_CONSTANTS1:
-        assert((address / 4) < NV2A_VERTEXSHADER_CONSTANTS);
+        /*
+         * #233: past c[191] there is no register, and silicon reads 0 there:
+         * nxdk_vsh_tests' ILU RCP Tests reads c[192..219] back and the
+         * console prints zeros for all of them.  A guest can ask, so this
+         * must not abort.
+         */
+        if ((address / 4) >= NV2A_VERTEXSHADER_CONSTANTS) {
+            break;
+        }
         r = pg->vsh_constants[address / 4][3 - address % 4];
         break;
     default:

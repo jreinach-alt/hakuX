@@ -35,6 +35,7 @@
 #include "util.h"
 #include "swizzle.h"
 #include "nv2a_vsh_emulator.h"
+#include "glsl/vsh-prog.h"
 
 #define PG_GET_MASK(reg, mask) GET_MASK(pgraph_reg_r(pg, reg), mask)
 #define PG_SET_MASK(reg, mask, value)        \
@@ -4023,6 +4024,399 @@ DEF_METHOD_INC(NV097, SET_EYE_DIRECTION)
     pg->ltctxa_dirty[NV_IGRAPH_XF_LTCTXA_EYED] = true;
 }
 
+/*
+ * The program starting at `program_start`, parsed for nv2a_vsh_cpu, or NULL
+ * if it does not parse.  Parsed once per upload of program data.
+ */
+static const Nv2aVshProgram *pgraph_vsh_cpu_program(PGRAPHState *pg,
+                                                    unsigned int program_start)
+{
+    /* Invalidate cache when program data has been uploaded */
+    if (pg->vsh_program_cache_gen != pg->vsh_program_data_gen) {
+        for (int i = 0; i < NV2A_MAX_TRANSFORM_PROGRAM_LENGTH; i++) {
+            if (pg->vsh_program_cache_valid[i]) {
+                nv2a_vsh_program_destroy(&pg->vsh_program_cache[i]);
+                pg->vsh_program_cache_valid[i] = false;
+            }
+        }
+        pg->vsh_program_cache_gen = pg->vsh_program_data_gen;
+    }
+
+    /* Use cached parsed program or parse and cache */
+    Nv2aVshProgram *program = &pg->vsh_program_cache[program_start];
+    if (!pg->vsh_program_cache_valid[program_start]) {
+        Nv2aVshParseResult result = nv2a_vsh_parse_program(
+                program,
+                pg->program_data[program_start],
+                NV2A_MAX_TRANSFORM_PROGRAM_LENGTH - program_start);
+        if (result != NV2AVPR_SUCCESS) {
+            return NULL;
+        }
+        pg->vsh_program_cache_valid[program_start] = true;
+        pg->vsh_last_v0_hash[program_start] = 0;
+    }
+
+    return program;
+}
+
+/* Silicon flushes a denormal to a zero of the same sign, in and out. */
+static float vsh_flush_denormal(float f)
+{
+    if (fpclassify(f) == FP_SUBNORMAL) {
+        return signbit(f) ? -0.0f : 0.0f;
+    }
+    return f;
+}
+
+/*
+ * Which components of the CPU evaluation hold the value silicon computes.
+ * A component is known when every value it was computed from is: the
+ * constants are, inputs are when the caller has them, and temporaries,
+ * outputs and A0 are not until the program writes them (silicon's values
+ * there come from whatever ran before).
+ */
+typedef struct VshKnown {
+    bool input[NV2A_VERTEXSHADER_ATTRIBUTES];
+    bool temp[12][4];
+    bool pos[4]; /* o0, which R12 reads */
+    bool context[NV2A_VERTEXSHADER_CONSTANTS][4];
+    bool a0;
+} VshKnown;
+
+/*
+ * Which components of `in` are known.  A relative read past c[191], or one
+ * through an unknown A0, is unknown, and `in` is pointed at c[0] so the
+ * emulator does not read past its array.
+ */
+static void vsh_input_known(const VshKnown *k, Nv2aVshInput *in,
+                            const float *a0, bool known[4])
+{
+    const bool *reg = NULL;
+    bool whole = false;
+
+    switch (in->type) {
+    case NV2ART_TEMPORARY:
+        if (in->index > 12) {
+            /* R13..R15 do not exist. */
+            in->index = 0;
+            memset(known, 0, 4 * sizeof(bool));
+            return;
+        }
+        reg = in->index == 12 ? k->pos : k->temp[in->index];
+        break;
+    case NV2ART_INPUT:
+        whole = k->input[in->index];
+        break;
+    case NV2ART_CONTEXT: {
+        int index = in->index;
+        if (in->is_relative) {
+            if (!k->a0) {
+                in->is_relative = false;
+                in->index = 0;
+                memset(known, 0, 4 * sizeof(bool));
+                return;
+            }
+            index += (int)a0[0];
+        }
+        if (index < 0 || index >= NV2A_VERTEXSHADER_CONSTANTS) {
+            in->is_relative = false;
+            in->index = 0;
+            memset(known, 0, 4 * sizeof(bool));
+            return;
+        }
+        reg = k->context[index];
+        break;
+    }
+    default:
+        memset(known, 0, 4 * sizeof(bool));
+        return;
+    }
+
+    for (int i = 0; i < 4; i++) {
+        known[i] = reg ? reg[in->swizzle[i]] : whole;
+    }
+}
+
+/* Which components of `op`'s result are known, from its inputs'. */
+static void vsh_result_known(const Nv2aVshOperation *op,
+                             bool in_known[3][4], bool known[4])
+{
+    int num_inputs = 0;
+    while (num_inputs < 3 && op->inputs[num_inputs].type != NV2ART_NONE) {
+        num_inputs++;
+    }
+
+    switch (op->opcode) {
+    case NV2AOP_MOV:
+    case NV2AOP_MUL:
+    case NV2AOP_ADD:
+    case NV2AOP_MAD:
+    case NV2AOP_MIN:
+    case NV2AOP_MAX:
+    case NV2AOP_SLT:
+    case NV2AOP_SGE:
+        /* Component-wise. */
+        for (int c = 0; c < 4; c++) {
+            known[c] = true;
+            for (int i = 0; i < num_inputs; i++) {
+                known[c] = known[c] && in_known[i][c];
+            }
+        }
+        return;
+    case NV2AOP_RCP:
+    case NV2AOP_RCC:
+    case NV2AOP_RSQ:
+    case NV2AOP_EXP:
+    case NV2AOP_LOG:
+        /* Scalar: the parser broadcast the one component it reads. */
+        for (int c = 0; c < 4; c++) {
+            known[c] = in_known[0][0];
+        }
+        return;
+    default: {
+        /* DP3, DPH, DP4, DST, LIT, ARL: known if all of it is. */
+        bool all = true;
+        for (int i = 0; i < num_inputs; i++) {
+            for (int c = 0; c < 4; c++) {
+                all = all && in_known[i][c];
+            }
+        }
+        for (int c = 0; c < 4; c++) {
+            known[c] = all;
+        }
+        return;
+    }
+    }
+}
+
+/*
+ * Point `op`'s outputs at registers the emulator accepts, and mark what they
+ * write as known or not.  Returns the constant components written, per
+ * register, in `written`.
+ */
+static void vsh_apply_outputs_known(VshKnown *k, Nv2aVshOperation *op,
+                                    const bool known[4],
+                                    uint8_t written[NV2A_VERTEXSHADER_CONSTANTS])
+{
+    for (int o = 0; o < 2; o++) {
+        Nv2aVshOutput *out = &op->outputs[o];
+        bool *reg = NULL;
+
+        switch (out->type) {
+        case NV2ART_TEMPORARY:
+            if (out->index == 12) {
+                /* R12 is o0. */
+                out->type = NV2ART_OUTPUT;
+                out->index = 0;
+                reg = k->pos;
+            } else if (out->index < 12) {
+                reg = k->temp[out->index];
+            } else {
+                out->type = NV2ART_NONE;
+            }
+            break;
+        case NV2ART_OUTPUT:
+            if (out->index == 0) {
+                reg = k->pos;
+            } else if (out->index >= 13) {
+                out->type = NV2ART_NONE;
+            }
+            break;
+        case NV2ART_CONTEXT:
+            if (out->index < NV2A_VERTEXSHADER_CONSTANTS) {
+                reg = k->context[out->index];
+                written[out->index] |= out->writemask;
+            } else {
+                /* No register there; the write goes nowhere. */
+                out->type = NV2ART_NONE;
+            }
+            break;
+        case NV2ART_ADDRESS:
+            k->a0 = known[0];
+            break;
+        default:
+            break;
+        }
+
+        if (reg) {
+            for (int c = 0; c < 4; c++) {
+                if (out->writemask & (NV2AWM_X >> c)) {
+                    reg[c] = known[c];
+                }
+            }
+        }
+    }
+}
+
+static void vsh_flush_outputs(const Nv2aVshExecutionState *state,
+                              const Nv2aVshOperation *op)
+{
+    for (int o = 0; o < 2; o++) {
+        const Nv2aVshOutput *out = &op->outputs[o];
+        float *reg;
+
+        switch (out->type) {
+        case NV2ART_TEMPORARY:
+            reg = &state->temp_regs[out->index * 4];
+            break;
+        case NV2ART_OUTPUT:
+            reg = &state->output_regs[out->index * 4];
+            break;
+        case NV2ART_CONTEXT:
+            reg = &state->context_regs[out->index * 4];
+            break;
+        default:
+            continue;
+        }
+        for (int c = 0; c < 4; c++) {
+            reg[c] = vsh_flush_denormal(reg[c]);
+        }
+    }
+}
+
+/*
+ * #233: a vertex program may write its own constant registers, and silicon
+ * keeps what it writes: nxdk_vsh_tests' ILU RCP Tests reads c[188..191] back
+ * over RDI after the draw and the console prints the program's results.  The
+ * GLSL translation keeps the write in a per-invocation copy, so nothing
+ * brings it back.  Do it here, from one place for both renderers: run the
+ * program on the CPU for the draw's last vertex and store what it wrote.
+ *
+ * Only values silicon's would equal are stored.  A write that depends on a
+ * per-vertex input read from a vertex array, on a temporary read before the
+ * program writes it, or on a relative read past c[191] keeps the old value.
+ */
+static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
+{
+    if (GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_D), NV_PGRAPH_CSV0_D_MODE) !=
+        2) {
+        return;
+    }
+    if (!pg->inline_buffer_length && !pg->inline_array_length &&
+        !pg->inline_elements_length && !pg->draw_arrays_length) {
+        return;
+    }
+
+    unsigned int program_start = GET_MASK(pgraph_reg_r(pg, NV_PGRAPH_CSV0_C),
+                                          NV_PGRAPH_CSV0_C_CHEOPS_PROGRAM_START);
+    unsigned int length = 0;
+    bool writes_constant = false;
+    for (unsigned int i = program_start; i < NV2A_MAX_TRANSFORM_PROGRAM_LENGTH;
+         i++) {
+        const uint32_t *token = pg->program_data[i];
+        length++;
+        writes_constant |= pgraph_glsl_vsh_token_constant_write(token) >= 0;
+        if (vsh_get_field(token, FLD_FINAL)) {
+            break;
+        }
+    }
+    if (!writes_constant) {
+        return;
+    }
+
+    const Nv2aVshProgram *program = pgraph_vsh_cpu_program(pg, program_start);
+    if (!program) {
+        NV2A_DPRINTF("vertex program at %u writes constants but does not "
+                     "parse; constants not written back\n", program_start);
+        return;
+    }
+
+    Nv2aVshCPUFullExecutionState full;
+    Nv2aVshExecutionState state =
+        nv2a_vsh_emu_initialize_full_execution_state(&full);
+    VshKnown known = { 0 };
+    uint8_t written[NV2A_VERTEXSHADER_CONSTANTS] = { 0 };
+
+    QEMU_BUILD_BUG_ON(sizeof(full.context_regs) != sizeof(pg->vsh_constants));
+    memcpy(full.context_regs, pg->vsh_constants, sizeof(full.context_regs));
+    for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS * 4; i++) {
+        full.context_regs[i] = vsh_flush_denormal(full.context_regs[i]);
+    }
+    memset(known.context, true, sizeof(known.context));
+
+    /*
+     * An attribute not read from an array holds one value for the whole
+     * draw.  In an inline-buffer draw every attribute's inline_value is the
+     * last vertex's.
+     */
+    for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
+        const VertexAttribute *attr = &pg->vertex_attributes[i];
+        for (int c = 0; c < 4; c++) {
+            full.input_regs[i * 4 + c] =
+                vsh_flush_denormal(attr->inline_value[c]);
+        }
+        known.input[i] = pg->inline_buffer_length || !attr->count;
+    }
+
+    for (unsigned int s = 0; s < length; s++) {
+        Nv2aVshStep step = program->steps[s];
+        bool mac_in[3][4] = { { false } };
+        bool ilu_in[3][4] = { { false } };
+        bool mac_known[4], ilu_known[4];
+
+        /* Both units read before either writes, as the emulator does. */
+        for (int i = 0; i < 3 && step.mac.opcode; i++) {
+            vsh_input_known(&known, &step.mac.inputs[i], state.address_reg,
+                            mac_in[i]);
+        }
+        if (step.ilu.opcode) {
+            vsh_input_known(&known, &step.ilu.inputs[0], state.address_reg,
+                            ilu_in[0]);
+        }
+        vsh_result_known(&step.mac, mac_in, mac_known);
+        vsh_result_known(&step.ilu, ilu_in, ilu_known);
+        if (step.mac.opcode) {
+            vsh_apply_outputs_known(&known, &step.mac, mac_known, written);
+        }
+        if (step.ilu.opcode) {
+            vsh_apply_outputs_known(&known, &step.ilu, ilu_known, written);
+        }
+
+        nv2a_vsh_emu_apply(&state, &step);
+        vsh_flush_outputs(&state, &step.mac);
+        vsh_flush_outputs(&state, &step.ilu);
+
+        if (step.is_final) {
+            break;
+        }
+    }
+
+    unsigned int unknown = 0;
+    bool changed = false;
+    for (int r = 0; r < NV2A_VERTEXSHADER_CONSTANTS; r++) {
+        for (int c = 0; c < 4 && written[r]; c++) {
+            if (!(written[r] & (NV2AWM_X >> c))) {
+                continue;
+            }
+            if (!known.context[r][c]) {
+                unknown++;
+                continue;
+            }
+            uint32_t bits;
+            memcpy(&bits, &full.context_regs[r * 4 + c], sizeof(bits));
+            if (bits != pg->vsh_constants[r][c]) {
+                pg->vsh_constants[r][c] = bits;
+                pg->vsh_constants_dirty[r] = true;
+                pg->vsh_constants_any_dirty = true;
+                changed = true;
+            }
+        }
+    }
+    if (changed) {
+        /*
+         * A merged Vulkan draw reuses the queue's uniforms unless
+         * any_reg_gen has moved (try_enqueue_draw_arrays), so without this
+         * the third draw of a merge run would miss the second's writeback.
+         */
+        pg->any_reg_gen++;
+    }
+    if (unknown) {
+        NV2A_DPRINTF("vertex program at %u: %u constant components depend on "
+                     "per-vertex state; not written back\n", program_start,
+                     unknown);
+    }
+}
+
 DEF_METHOD(NV097, SET_BEGIN_END)
 {
     if (parameter == NV097_SET_BEGIN_END_OP_END) {
@@ -4033,6 +4427,7 @@ DEF_METHOD(NV097, SET_BEGIN_END)
         }
         nv2a_profile_inc_counter(NV2A_PROF_BEGIN_ENDS);
         d->pgraph.renderer->ops.draw_end(d);
+        pgraph_vsh_writeback_constants(pg);
         pgraph_reset_inline_buffers(pg);
         pg->primitive_mode = PRIM_TYPE_INVALID;
     } else {
@@ -4518,28 +4913,8 @@ DEF_METHOD(NV097, LAUNCH_TRANSFORM_PROGRAM)
     unsigned int program_start = parameter;
     assert(program_start < NV2A_MAX_TRANSFORM_PROGRAM_LENGTH);
 
-    /* Invalidate cache when program data has been uploaded */
-    if (pg->vsh_program_cache_gen != pg->vsh_program_data_gen) {
-        for (int i = 0; i < NV2A_MAX_TRANSFORM_PROGRAM_LENGTH; i++) {
-            if (pg->vsh_program_cache_valid[i]) {
-                nv2a_vsh_program_destroy(&pg->vsh_program_cache[i]);
-                pg->vsh_program_cache_valid[i] = false;
-            }
-        }
-        pg->vsh_program_cache_gen = pg->vsh_program_data_gen;
-    }
-
-    /* Use cached parsed program or parse and cache */
-    Nv2aVshProgram *program = &pg->vsh_program_cache[program_start];
-    if (!pg->vsh_program_cache_valid[program_start]) {
-        Nv2aVshParseResult result = nv2a_vsh_parse_program(
-                program,
-                pg->program_data[program_start],
-                NV2A_MAX_TRANSFORM_PROGRAM_LENGTH - program_start);
-        assert(result == NV2AVPR_SUCCESS);
-        pg->vsh_program_cache_valid[program_start] = true;
-        pg->vsh_last_v0_hash[program_start] = 0;
-    }
+    const Nv2aVshProgram *program = pgraph_vsh_cpu_program(pg, program_start);
+    assert(program);
 
     /* Skip execution if the input register (v0) hasn't changed since last
      * run of this same program — the output is deterministic. */
