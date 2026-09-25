@@ -1021,3 +1021,24 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-260, audit pass 2 of PR #260 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 260` removes this row when the unit ends."
+
+
+[lane.dmasurf277]
+issues = ["277"]
+files = ["docs/testing/predictions/dmasurf277-*.json", "docs/lanes/dmasurf277/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #277: xemuReadFromFileIntoSurface, 90,912 px, a file read into a bound surface keeps the old colour. LOCATE-FIRST: the issue's guess vk/surface.c:3406-3422 is lane.remote's; vk/draw.c is lane.vtxarr262's; the lane names the hunk and asks. Read #262/#184 NOTES first (same family). Brief: briefs/dmasurf277.md."
+
+
+[lane.g8b8285]
+issues = ["285"]
+files = ["docs/testing/predictions/g8b8285-*.json", "docs/lanes/g8b8285/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #285: Fmt_G8B8, 31,820 px, no mechanism named. Classify first (defect / stale capture / golden), date every capture against #271/#184's folds; code files are named-not-edited (vk/surface.c lane.remote, vk/draw.c lane.vtxarr262, psh.c lane.wbufdepth24). Brief: briefs/g8b8285.md."
+
+
+[lane.brdf315]
+issues = ["315"]
+files = ["docs/testing/predictions/brdf315-*.json", "docs/lanes/brdf315/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #315: PS_TEXTUREMODES_BRDF unimplemented plus a 614-px wedge silicon draws and we do not. Discriminating run first (pixel 639,479 at a ref containing 8e683b3a26), then fit the BRDF rule and name the psh.c hunk (psh.c is held; named-not-edited). Brief: briefs/brdf315.md."
