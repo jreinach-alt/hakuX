@@ -8,7 +8,16 @@ together, gate (B) on every capture a must-not-move glob covers, and arm it.
 **Status (2026-09-25):** both hunks built, both compiled, prediction
 `docs/testing/predictions/wparamcode223-carry-zeroarea.json` registered on
 a = `6341ee6aa5` (master), b = `8555c013c6` (master + this lane), 23 suites.
-Waiting on the arm.
+preflight passes.
+
+**Waiting (2026-09-25):** on the arms job's `[job.arms]` verdict for
+`wparamcode223-carry-zeroarea.json` on PR #321, and on CI for this head.
+On resume:
+
+- read scores1.tsv `status` for `unreadable`, and run1.log for PARTIAL
+  COVERAGE and UtilAcceptVsock, in both arms;
+- check the per-row prose tolerances in section 4 by hand;
+- then mark ready, or diagnose the failed leg.
 
 ## 1. Re-derived prices (ff_port.py, rerun here, unchanged tools)
 
