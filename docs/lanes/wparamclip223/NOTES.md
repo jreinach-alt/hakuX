@@ -238,6 +238,16 @@ build. a_ref a8691063e6 (master as merged), b_ref 537ffb91ed, on the same
   - An expect row is off by a few px with its coverage unchanged: the added
     shader lines moved texel rounding. Report it; do not refit.
 
+## 7. Why the session ended before done (resumed 2026-09-25T17:22Z)
+
+The previous session ended waiting, not failed. It had pushed `716bb8be58`
+with the grid-gate arm registered and posted a `waiting:` comment at 17:18Z.
+Handback resumed it four minutes later on the old `regressed` label, which
+belongs to the first arm (`wparamclip223-wedge.json`, section 5), and on CI
+still pending on the new head. At resume, the second arm had no verdict yet
+and CI's two build jobs were still pending. So the wait stands. The PR stays
+in draft until the grid arm's `[job.arms]` verdict lands.
+
 ## For the next lane
 
 - A gate that tests for an exact zero must read the quantity silicon
