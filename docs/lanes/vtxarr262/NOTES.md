@@ -82,3 +82,11 @@ territory).
   six suites, plus worse=0.
 
 Next lane: do not try to set DIRTY_MEMORY_NV2A from a GPU write (see above).
+
+## Status 2026-09-25 18:35Z: waiting on the arm
+
+Arms queued: base `1790361025-vtxarr262-base-3284261`, fix `1790361025-vtxarr262-fix-3284294`
+(resume: `docs/testing/ab_run.sh --resume <base>,<fix> --expect docs/testing/predictions/vtxarr262-surface-vertex-refetch.json`).
+Preflight passes (`--allow-tracker`) at the head that carries the regenerated index.
+On resume: check `scores1.tsv` for `unreadable` and `run1.log` for PARTIAL COVERAGE / UtilAcceptVsock.
+Then hand-score Surface_as_vertex_array in both arms against the console root, and record it here.
