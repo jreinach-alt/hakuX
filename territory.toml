@@ -28,7 +28,7 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 171
+wave = 172
 updated_utc = "2026-09-25T14:45:00Z"
 
 
@@ -784,11 +784,12 @@ retired_utc = "2026-09-25T08:40:00Z"
 files = []
 note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
 
-[lane.clrwb91]
-issues = ["91"]
-files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/issue91-writeback.json", "docs/lanes/clrwb91/NOTES.md"]
+[retired.clrwb91]
+issues = []
+files = []
 standing = false
-note = "WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
+retired_utc = "2026-09-25T14:50:00Z"
+note = "RETIRED (host session, 2026-09-25T14:50:00Z): PR #237 MERGED 2026-09-25T14:45:36Z (fold af5bedd1b0), no open PR on lane/clrwb91, unit inactive (attempts exhausted, but the work finished: the host re-merged the index twice and cleared a false blocked:needs-owner). Files RELEASED: hw/xbox/nv2a/pgraph/vk/surface.c, docs/testing/predictions/issue91-writeback.json, docs/lanes/clrwb91/NOTES.md. PRIOR NOTE: WRITTEN 2026-09-25 (job.board, wave 159) -- lane was RUNNING (PR #237 draft, attempt 1/opus-5-5, briefs/clrwb91.md) with no territory row; the row was owed at dispatch. #91: make the zeta-over-colour write-back land the golden's 0xFE242424 background (Swap 139,303 px) -- the write-back is REQUIRED, decline-shaped fixes cannot reach the target. Vulkan only, GL untouched. NARROWED FROM THE BRIEF'S OWN FILES: LINE -- hw/xbox/nv2a/pgraph/vk/draw.c is dropped from this claim: it is [lane.shadeflat224]'s (PR #235, draft, regressed; that lane also has it for the draw-mode mapping). vk/surface.c taken from [free] (released at wave 147 by retiring lane.clrsurf91). If clrwb91 needs a draw.c edit it is a board request, or a small hunk coordinated at fold with #235."
 
 [lane.nightlynotes]
 issues = []
