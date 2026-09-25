@@ -34,9 +34,30 @@ echo "profiling pid $PID for ${DUR}s"
 # off. --app re-enters the app's own context, which a debuggable package is
 # allowed to profile, and cpu-clock is a software event so no hardware counter
 # is needed. Output has to land somewhere the app can write.
-adb -s $S shell "run-as $PKG rm -f files/perf.data"
-adb -s $S shell "simpleperf record --app $PKG -e cpu-clock --call-graph dwarf,8192 --duration $DUR \
-  -f 1000 -o /data/local/tmp/perf.data" 2>&1 | tail -4
+#
+# THE OUTPUT FILE IS DELETED FIRST, AND A RECORD THAT DID NOT SAY IT RECORDED
+# IS NOT PULLED. Before 2026-09-25 this removed files/perf.data (a path it
+# never wrote) and pulled /data/local/tmp/perf.data unconditionally, so when
+# simpleperf refused ("Event type 'cpu-clock' is not supported on the device",
+# seen once on the Nova, then fine on the next call) the pull fetched an OLDER
+# session's profile -- 20 s, another pid -- and it reported like a real one.
+# The refusal has been transient, so one retry.
+adb -s $S shell "rm -f /data/local/tmp/perf.data; run-as $PKG rm -f files/perf.data"
+rec=""
+for attempt in 1 2; do
+    rec=$(adb -s $S shell "simpleperf record --app $PKG -e cpu-clock --call-graph dwarf,8192 --duration $DUR \
+      -f 1000 -o /data/local/tmp/perf.data" 2>&1)
+    echo "$rec" | tail -4
+    echo "$rec" | grep -q "Recorded for" && break
+    echo "simpleperf did not record (attempt $attempt)"
+    rec=""
+    command sleep 2
+done
+if [ -z "$rec" ]; then
+    adb -s $S shell am force-stop $PKG
+    echo "NO PROFILE: simpleperf recorded nothing; not pulling a stale file"
+    exit 1
+fi
 adb -s $S pull /data/local/tmp/perf.data "$OUT/${TAG}.data" 2>&1 | tail -1
 adb -s $S shell am force-stop $PKG
 echo "done"
