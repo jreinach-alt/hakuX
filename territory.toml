@@ -988,11 +988,11 @@ note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tic
 issues = ["303"]
 files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
 standing = false
-note = "DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
+note = "ROW WRITTEN, LANE NOT YET STARTED: at wave 195 lane.sh start returned an approval prompt in the board session (not REFUSED, no attempt spent), so the unit never started; the brief is committed. NEXT TICK: start it, do not retire this row as stale. DISPATCHED WAVE 195 (job.board), briefs/fmv303.md: #303, Spikeout's FMV covered in green columns (Y=U=V=0 through the YUV path, pattern differs per pass -> suspect a missed write/dirty before sample, family of #262/#184). vk/display.c is free; vk/texture.c, gl/texture.c, pgraph/texture.c are lane.texvol283's and are named-not-edited."
 
 
 [lane.ghoul311]
 issues = ["311"]
 files = ["docs/testing/predictions/ghoul311-*.json", "docs/lanes/ghoul311/**"]
 standing = false
-note = "DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
+note = "ROW WRITTEN, LANE NOT YET STARTED: at wave 195 lane.sh start returned an approval prompt in the board session (not REFUSED, no attempt spent), so the unit never started; the brief is committed. NEXT TICK: start it, do not retire this row as stale. DISPATCHED WAVE 195 (job.board), briefs/ghoul311.md: #311, Grabbed by the Ghoulies decays 29 -> 1-2 fps hands-off. Diagnosis first (simpleperf at 20 s / 120 s, hakuX-pages counters, bisect v0.3.1 / v0.4.0-j1 only if needed); no source claimed, a fix hunk is named on #311 for a grant. Coordinates with lane.perfbase/tcgchurn/perfarch (#68), whose files it does not touch."
