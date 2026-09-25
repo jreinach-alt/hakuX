@@ -970,13 +970,6 @@ standing = false
 note = "DISPATCHED AT THIS WAVE (host session, 2026-09-25T20:25:20Z) for #68 (and #73): ~35-40% of the guest thread is translation-cache bookkeeping in the 09-11 Crimson profile (tlb_reset_dirty 10.7%, tcg_flush_jmp_cache 8.4%, lookups ~11%). Counters first (full-TLB-flush triggers by cause; tlb_reset_dirty callers and walk lengths), mechanism per trigger, then a fix with a soak arm. accel/tcg/*.c were in [free]; target/i386/helper.c and target/i386/tcg/** sit under the [free] glob target/**. #68's held range test 937848c9e7 is a candidate. Brief: briefs/tcgchurn.md."
 
 
-[lane.cloud-issue-297]
-issues = ["297"]
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-297, a cloud-class lane on issue #297, branch lane/cloud-297, attempt 1 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 297` removes this row when the unit ends."
-
-
 [lane.fmv303]
 issues = ["303"]
 files = ["hw/xbox/nv2a/pgraph/vk/display.c", "docs/testing/predictions/fmv303-*.json", "docs/lanes/fmv303/**"]
