@@ -70,3 +70,28 @@ the diff stays `regressed`: a partial revert is not a withdrawal.
 - The PR carries the lane template with its `Files:` line.
 - Preflight passes, and the PR is marked ready. It touches the verdict path, so
   it gets `needs-audit-1`, like #249.
+
+## Defect 12 (added 2026-09-25 11:15 PDT, owner's ask): arms backpressure ignores queue priority
+
+The owner wants the device queue to put urgent work ahead of long runs. The
+dispatcher already does this: it serves `queue/` in ASCII order, `0-*` first,
+then epoch-named requests, then the `z-*` idle-priority full-corpus sweep
+(`queue_full_sweep.sh`), yielding between suites. **`arms.sh` does not.** Its
+backpressure counts every queued request, `waiting=$(ls "$D"/queue/*.req | wc -l)`
+(arms.sh:657), so a queued ~100-suite `z-*` sweep keeps `waiting` at or above
+`ARMS_QUEUE_MAX` (4). The arms job then never queues another lane's arm, and the
+most urgent work starves behind the least.
+
+The host has a stopgap in place: a systemd drop-in sets `ARMS_QUEUE_MAX=1000`
+(`~/.config/systemd/user/hakux-arms.service.d/zsweep-backpressure.conf`). That
+removes backpressure entirely, so it is not the fix.
+
+**Fix:** count only requests that sort ahead of the idle tier (not `z-*`), and
+print both counts in the "queue has N waiting" line. Audit every other
+queue-depth reader for the same mistake, such as `fleet.py`'s queue-stall check
+and `status.sh`. A `z-*` request waiting for hours is the design, not a stall.
+
+**Proof:** a fragment with a fake queue of 100 `z-*` requests plus 1 normal
+request, in which the arms job still queues a pair. Show the mutant (count
+everything) refusing it, and the old arms.sh refusing it too. After it folds,
+the host deletes the drop-in; say so in the PR body.
