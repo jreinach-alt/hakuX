@@ -30,9 +30,18 @@ Read that way the corpus is far more informative than "cannot select":
     where this model is inside hardware's interval everywhere else.  So the
     "4-pixel grid" recorded for `TriV` is a fit, not a measurement, and 105,600
     of the 619,349 residual pixels are a third unmodelled thing.
-  * `ClipF`s second triangle anchors at ``clip_top + 2``.  It is the one
-    exception, and it is the one the corpus cannot resolve: see the module
-    docstring of `--pairs`.
+  * `ClipF`s second triangle anchors at ``clip_top + 2`` on every golden.
+    Silicon settled it on 2026-09-25 (PRs #218, #221: clip_top 35 and 4): it
+    is the 4-grid, 34 and 6.  Its FIRST triangle anchors 32 / 34 / 6 at
+    clip_top 32 / 35 / 4, which neither rule gives on its own.
+
+`--selectors` frames what picks the rule, over every geometric fact a
+selector could read, against all of the above (pass the console runs as
+extra `--goldens` roots).  On 2026-09-24 no selector of up to three literals
+fits; nine two-literal rules miss exactly one anchor, all of them the same
+one, ClipF-150-032's first triangle; and every four-literal fit repairs that
+one anchor with a clause that nothing else in the corpus tests.  That is a
+fourth input, not a selector.  docs/lanes/wbuf31fix/NOTES.md has the table.
 
 The oracle validates against itself in two ways, both printed:
 
@@ -111,19 +120,21 @@ PRIMS = {
     "TriH": (_trih(), 150, 0, "TriH"),
     "TriV": (_triv(), 150, 0, "TriV"),
 }
-for _ct in (32, 35, 128, 224):
+for _ct in (4, 32, 35, 128, 224):
     # ClipF/ClipW exist only with zslope set, so their ZS0 baseline is the
     # unclipped quad: identical geometry, and floor(w) does not see the clip.
     #
-    # 35 has no golden yet.  It is the variant `wbuf31_clipf_phase.patch` adds
-    # upstream and the only clip_top that separates the rules #31's ClipF
-    # residual rests on -- see `wbuf_clip_phase_choice.py`.  The entry sits
-    # here so that the day the golden lands, reading it is one command and not
-    # a patch to this file: a missing capture is skipped below, so listing it
-    # early costs nothing and changes no current output.
+    # 4 and 35 have no published golden.  They are the variants
+    # `wbuf31_clipf_phase.patch` and `wbuf31_clipf04.patch` add, captured on
+    # the project console on 2026-09-25 (PRs #218, #221); pass those runs as
+    # extra --goldens roots.  A missing capture is skipped below, so listing
+    # them costs nothing and changes no output on the goldens alone.
     PRIMS["ClipF-150-%03d" % _ct] = (FLOOR, 150, _ct, "FloorQuad")
 for _cl in (159, 261, 363):
     PRIMS["ClipW-%03d-000" % _cl] = (WALL, _cl, 0, "WallQuad")
+# Drawn as one QUAD, split on v0-v2: triangle 1 is the quad's second half.
+# TriH and TriV are one TRIANGLES batch each, so their odd triangles are not.
+_QUADS = {k for k in PRIMS if not k.startswith(("TriH", "TriV"))}
 
 
 def inv_w_plane(tri):
@@ -229,6 +240,221 @@ def anchor(tri, clip, mode="shipped"):
     return (c, r), cut
 
 
+# --------------------------------------------------------------- selectors
+# Both anchoring rules are measured: the 2x2-quad snap of the first covered
+# pixel, and the absolute 4-grid at phase 2.  What is not known is what picks
+# one.  These are the geometric facts a selector could read, each a boolean,
+# all computed from the triangle and the clip rect alone (no capture), so
+# the same function scores the captures that exist and the ones that do not.
+
+
+def _first_span(poly):
+    r = math.ceil(min(v[1] for v in poly) - 0.5)
+    for _ in range(4):
+        lo, hi = _span(poly, r)
+        first, last = math.ceil(lo - 0.5), math.ceil(hi - 0.5) - 1
+        if hi > lo and last >= first:
+            return r, first, last
+        r += 1
+    return None
+
+
+def _span(poly, row):
+    yc, lo, hi = row + 0.5, 1e30, -1e30
+    n = len(poly)
+    for i in range(n):
+        a, b = poly[i], poly[(i + 1) % n]
+        if (a[1] <= yc) != (b[1] <= yc):
+            x = a[0] + (b[0] - a[0]) * (yc - a[1]) / (b[1] - a[1])
+            lo, hi = min(lo, x), max(hi, x)
+    return lo, hi
+
+
+def features(tri, cl, ct, second_of_quad):
+    """(first covered row, anchor column, {feature: bool}), or None if the
+    clip leaves nothing.  The column is the shipped one: the top vertex's,
+    clamped into the first covered span."""
+    poly, cut = _clip(tri, (float(cl), float(ct), float(W), float(H)))
+    fs = _first_span(poly) if poly else None
+    if fs is None:
+        return None
+    r, first, last = fs
+    xs, ys = [v[0] for v in tri], [v[1] for v in tri]
+    ytop = min(ys)
+    top = [v for v in tri if v[1] == ytop]
+    xtop = top[0][0]
+    c = min(max(math.floor(xtop), first), last)
+
+    def covered(px, py):
+        lo, hi = _span(poly, py)
+        return lo <= px + 0.5 <= hi
+
+    band, cq = 4 * (r // 4), 2 * (c // 2)
+    wide = _clip(tri, (float(cl), 0.0, float(W), float(H)))[0]
+    r0 = _first_span(wide)[0] if wide else r
+    f = {
+        "cut": cut,
+        "cut_left": min(xs) < cl,
+        "cut_right": max(xs) > W,
+        "cut_top_by_clip": ct > 0 and ytop < ct,
+        "cut_top_by_surface": ytop < 0,
+        "cut_bottom": max(ys) > H,
+        "flat_top": len(top) > 1,
+        "top_vertex_inside": cl <= xtop <= W and ct <= ytop <= H,
+        "xtop_in_first_span": first <= math.floor(xtop) <= last,
+        "span_starts_at_clip": first == cl,
+        "span_ends_at_clip": last == W - 1,
+        "clip_top_0": ct == 0,
+        "x_dominant": dominant_axis(tri) == "x",
+        "second_of_quad": second_of_quad,
+        "rows_removed_by_clip": r > r0,
+        "rows_removed%4==0": (r - r0) % 4 == 0,
+        "ct%8==0": ct % 8 == 0,
+        "c%2==0": c % 2 == 0,
+        "first%2==0": first % 2 == 0,
+        "B_quad_covered_at_c": any(covered(cq + i, band + 2 + j)
+                                   for i in (0, 1) for j in (0, 1)),
+        "A_quad_covered_at_c": any(covered(cq + i, band + j)
+                                   for i in (0, 1) for j in (0, 1)),
+    }
+    for k in (8, 16, 32):
+        f["r%%%d==0" % k] = r % k == 0
+    for k in (4, 8, 16):
+        f["c%%%d<%d" % (k, k // 2)] = c % k < k // 2
+    return r, c, f
+
+
+def _selectors(rows):
+    """Score every selector of up to four literals against the recovered
+    anchors, and print the clip_tops that would separate the survivors."""
+    import itertools
+    obs = []
+    for cap, ti, ax, _n, lo, hi, a_hw, _s, _4 in rows:
+        if cap.startswith(("LargeZ", "TriV")):
+            continue
+        tris, cl, ct, _ = PRIMS[cap]
+        r, c, f = features(tris[ti], cl, ct, cap in _QUADS and ti == 1)
+        a = c if ax == "x" else r
+        quad, grid = 2 * (a // 2), 4 * (a // 4) + 2
+        hw = round(a_hw)
+        exact = abs(a_hw - hw) < 0.02
+        cls = ("both" if quad == grid == hw else "quad" if quad == hw
+               else "grid" if grid == hw else "NEITHER") if exact else "NEITHER"
+        obs.append(dict(cap=cap, t=ti, ax=ax, hw=a_hw, quad=quad, grid=grid,
+                        cls=cls, r=r, c=c, f=f))
+
+    print()
+    print("=" * 78)
+    print("SELECTOR FRAMING: which rule each anchor needs, and what picks it")
+    print("=" * 78)
+    print("%-15s %2s %2s %8s %5s %5s %-7s %4s %4s  true features"
+          % ("capture", "t", "ax", "A_hw", "quad", "grid", "needs", "row", "col"))
+    for o in obs:
+        print("%-15s %2d %2s %8.3f %5d %5d %-7s %4d %4d  %s"
+              % (o["cap"], o["t"], o["ax"], o["hw"], o["quad"], o["grid"],
+                 o["cls"], o["r"], o["c"],
+                 " ".join(k for k, v in o["f"].items() if v)))
+    inf = [o for o in obs if o["cls"] in ("quad", "grid")]
+    bad = [o for o in obs if o["cls"] == "NEITHER"]
+    print("\n%d anchors, %d informative (quad != grid), %d fit neither rule%s"
+          % (len(obs), len(inf), len(bad),
+             "" if not bad else ": " + ", ".join(
+                 "%s/t%d" % (o["cap"], o["t"]) for o in bad)))
+
+    names = list(obs[0]["f"])
+    lits = [(k, True) for k in names] + [(k, False) for k in names]
+    vec = {l: tuple(o["f"][l[0]] == l[1] for o in inf) for l in lits}
+    want = tuple(o["cls"] == "grid" for o in inf)
+
+    def nm(l):
+        return ("" if l[1] else "!") + l[0]
+
+    def misses(v):
+        return [o for o, p, q in zip(inf, v, want) if p != q]
+
+    tried, fit1, fit2, near = 0, [], [], []
+    for l in lits:
+        tried += 1
+        m = misses(vec[l])
+        (fit1 if not m else near).append((nm(l), m))
+    for a, b in itertools.combinations(lits, 2):
+        for op, v in (("&", tuple(p and q for p, q in zip(vec[a], vec[b]))),
+                      ("|", tuple(p or q for p, q in zip(vec[a], vec[b])))):
+            tried += 1
+            m = misses(v)
+            (fit2 if not m else near).append(("%s %s %s" % (nm(a), op, nm(b)), m))
+    fit3 = 0
+    for a, b, c in itertools.combinations(lits, 3):
+        A, B, C = vec[a], vec[b], vec[c]
+        for v in (tuple(p and q and s for p, q, s in zip(A, B, C)),
+                  tuple(p or q or s for p, q, s in zip(A, B, C)),
+                  tuple((p and q) or s for p, q, s in zip(A, B, C)),
+                  tuple((p and s) or q for p, q, s in zip(A, B, C)),
+                  tuple((q and s) or p for p, q, s in zip(A, B, C)),
+                  tuple((p or q) and s for p, q, s in zip(A, B, C)),
+                  tuple((p or s) and q for p, q, s in zip(A, B, C)),
+                  tuple((q or s) and p for p, q, s in zip(A, B, C))):
+            tried += 1
+            fit3 += v == want
+    print("'grid iff P' over %d literals: %d selectors of <= 3 literals tried"
+          % (len(lits), tried))
+    print("  fit every informative anchor: 1 literal %d, 2 literals %d, "
+          "3 literals %d" % (len(fit1), len(fit2), fit3))
+    one = sorted((p for p in near if len(p[1]) == 1), key=lambda p: p[0])
+    print("  miss exactly one anchor: %d, and the anchor each misses:" % len(one))
+    for p, m in one:
+        print("    %-52s misses %s/t%d" % (p, m[0]["cap"], m[0]["t"]))
+
+    # Four literals, a | (b & (c | d)): the shape a two-rule core plus one
+    # exception clause takes.  Record which anchors the exception clause is
+    # the only thing reproducing -- that is the rule's actual evidence.
+    fit4 = []
+    for a in lits:
+        for b in lits:
+            if b == a:
+                continue
+            for c, d in itertools.combinations(lits, 2):
+                v = tuple(p or (q and (s or t)) for p, q, s, t
+                          in zip(vec[a], vec[b], vec[c], vec[d]))
+                if v == want:
+                    fit4.append((a, b, c, d))
+    carried = {}
+    for a, b, c, d in fit4:
+        only = tuple("%s/t%d" % (o["cap"], o["t"]) for o in inf
+                     if o["f"][a[0]] != a[1] and o["f"][b[0]] == b[1]
+                     and not (o["f"][c[0]] == c[1] or o["f"][d[0]] == d[1]))
+        carried[only] = carried.get(only, 0) + 1
+    print("  4 literals 'a | (b & (c | d))': %d fit; the anchors their "
+          "exception clause alone reproduces:" % len(fit4))
+    for k, n in sorted(carried.items(), key=lambda kv: -kv[1]):
+        print("    %4d rules rest on %s" % (n, ", ".join(k) or "(nothing)"))
+
+    # A capture that splits the survivors is one where they disagree.  Score
+    # ClipF at every clip_top that leaves a triangle and makes quad != grid.
+    print("\n  ClipF clip_tops where the %d four-literal fits disagree "
+          "(grid votes / total), t0 and t1:" % len(fit4))
+    shown = 0
+    for ct in range(1, 128):
+        cells = []
+        for ti in (0, 1):
+            ft = features(FLOOR[ti], 150, ct, ti == 1)
+            if ft is None or ft[0] % 4 not in (0, 1):
+                cells.append(None)
+                continue
+            g = sum((ft[2][a[0]] == a[1]) or ((ft[2][b[0]] == b[1]) and (
+                ft[2][c[0]] == c[1] or ft[2][d[0]] == d[1]))
+                for a, b, c, d in fit4)
+            cells.append(g)
+        split = [g for g in cells if g is not None and 0 < g < len(fit4)]
+        if split:
+            shown += 1
+            print("    clip_top %3d   t0 %s   t1 %s" % (ct, *(
+                "--" if g is None else "%d/%d" % (g, len(fit4)) for g in cells)))
+    if not shown:
+        print("    none: every ClipF clip_top gets one answer from all of them")
+    return fit4
+
+
 # ------------------------------------------------------------------ raster
 
 
@@ -269,8 +495,11 @@ def decode24(np, Image, path):
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--goldens", default="/home/justin/goldens/results",
-                    help="golden results root (holds W_buffering/)")
+    ap.add_argument("--goldens", action="append", metavar="ROOT",
+                    help="results root holding W_buffering/; repeatable, and "
+                         "the first root holding a capture wins.  Default "
+                         "/home/justin/goldens/results.  A console run's "
+                         "`console-run/console` directory has the same layout")
     ap.add_argument("--ours", metavar="RESULTDIR", action="append",
                     help="also bound the offset from OUR capture in this "
                          "dispatcher result directory, and print it beside "
@@ -284,7 +513,13 @@ def main(argv=None):
     ap.add_argument("--pairs", action="store_true",
                     help="print the two capture pairs that refute a selector "
                          "over (plane, clip, first covered pixel, top vertex)")
+    ap.add_argument("--selectors", action="store_true",
+                    help="frame every selector between the 2x2-quad snap and "
+                         "the 4-grid over the geometric features, score it "
+                         "against every recovered anchor, and print the "
+                         "clip_tops that would separate the survivors")
     args = ap.parse_args(argv)
+    roots = args.goldens or ["/home/justin/goldens/results"]
 
     try:
         import numpy as np
@@ -293,17 +528,24 @@ def main(argv=None):
         print("needs numpy and pillow: %s" % e, file=sys.stderr)
         return 2
 
-    root = os.path.join(args.goldens, "W_buffering")
-    if not os.path.isdir(root):
-        print("no W_buffering under %s" % args.goldens, file=sys.stderr)
-        return 2
+    for r in roots:
+        if not os.path.isdir(os.path.join(r, "W_buffering")):
+            print("no W_buffering under %s" % r, file=sys.stderr)
+            return 2
+
+    def cap_path(name):
+        for r in roots:
+            p = os.path.join(r, "W_buffering", name)
+            if os.path.exists(p):
+                return p
+        return os.path.join(roots[0], "W_buffering", name)
 
     print("=" * 78)
     print("CONTROL: floor(w) from the recovered plane vs hardware's own ZS0")
     print("=" * 78)
     for name in ("FloorQuad", "RoofQuad", "WallQuad", "TriH", "TriV"):
         tris, cl, ct, _ = PRIMS[name]
-        p = os.path.join(root, "WBuf24D_%s_V1_ZB0_ZS0_ZB.png" % name)
+        p = cap_path("WBuf24D_%s_V1_ZB0_ZS0_ZB.png" % name)
         if not os.path.exists(p):
             continue
         z0 = decode24(np, Image, p)
@@ -328,8 +570,8 @@ def main(argv=None):
     rows = []
     for cap in PRIMS:
         tris, cl, ct, base = PRIMS[cap]
-        p1 = os.path.join(root, "WBuf24D_%s_V1_ZB0_ZS1_ZB.png" % cap)
-        p0 = os.path.join(root, "WBuf24D_%s_V1_ZB0_ZS0_ZB.png" % base)
+        p1 = cap_path("WBuf24D_%s_V1_ZB0_ZS1_ZB.png" % cap)
+        p0 = cap_path("WBuf24D_%s_V1_ZB0_ZS0_ZB.png" % base)
         if not (os.path.exists(p0) and os.path.exists(p1)):
             continue
         z1 = decode24(np, Image, p1)
@@ -401,6 +643,9 @@ def main(argv=None):
              ", ".join("%s/t%d=%.3f" % (r[0], r[1], r[6]) for r in noint[:6])
              + (" ..." if len(noint) > 6 else "") or "none"))
 
+    if args.selectors:
+        _selectors(rows)
+
     if args.pairs:
         print()
         print("=" * 78)
@@ -437,7 +682,7 @@ interaction stops being free.""")
         f32 = np.float32
         for cap in PRIMS:
             tris, cl, ct, base = PRIMS[cap]
-            p1 = os.path.join(root, "WBuf24D_%s_V1_ZB0_ZS1_ZB.png" % cap)
+            p1 = cap_path("WBuf24D_%s_V1_ZB0_ZS1_ZB.png" % cap)
             if not os.path.exists(p1):
                 continue
             z1 = decode24(np, Image, p1)
