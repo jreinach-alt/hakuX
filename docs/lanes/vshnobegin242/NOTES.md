@@ -205,3 +205,23 @@ predictions are committed with live refs. When it lands: read the NOISE column f
 GeometrySuperscreen, and check both arms for `unreadable` and PARTIAL
 COVERAGE. On a PASS, or on GeometrySuperscreen moving within its measured
 band, `gh pr ready 245`.
+
+## Attempt 4 (2026-09-25 16:32Z, resumed by job.handback)
+
+### Why attempt 3 did not finish
+
+It ended WAITING, on purpose, for the runs3 verdict. The handback resume came
+64 s after attempt 3's own push, because the push changed the head. Nothing
+was resolved, and CI on `ab9b03c855` was still pending.
+
+### What changed since attempt 3
+
+The arms tick at 16:31:39Z queued the runs3 prediction:
+base `1790353899-arms-vshnobegin242-base-1226684` (running at 16:32Z), and
+fix `1790353899-arms-vshnobegin242-fix-1227042` (queued). No verdict yet.
+
+### State at the end of attempt 4: WAITING
+
+Waiting only for the `[job.arms]` verdict on the runs3 prediction. The
+judging instructions under attempt 3 still apply. The PR stays draft and
+`regressed` until that verdict supersedes the single-run FAIL.
