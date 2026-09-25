@@ -8,9 +8,11 @@ than an hour to learn. The measured results are in
 
 ## 1. The instrument is not in this repository
 
-The per-test PGRAPH register diff lives as **uncommitted modifications to a
-sibling checkout**, `~/nxdk_pgraph_tests`, which is not a submodule and not
-tracked here. Four files:
+The per-test PGRAPH register diff was written as uncommitted modifications to a
+sibling checkout, `~/nxdk_pgraph_tests`, which is not a submodule and not
+tracked here. **That checkout has since been reverted and is clean**, so the
+patch below is now the only copy: apply it before building, or you get an
+uninstrumented XBE. Four files:
 
 ```
 src/pgraph_diff_token.h      src/tests/test_suite.h
@@ -44,7 +46,9 @@ divergence it exists to find. Filter on the host, where both sides are visible.
 ## 2. What else exists only on this host
 
 - **Built artifacts:** `~/nxdk_pgraph_tests/build-xbe/src/xbe/xbe_file/default.xbe`
-  and the ISO beside it.
+  and the ISO beside it. Built from the instrumented tree before it was
+  reverted; a rebuild from the clean checkout without the patch loses the
+  instrument.
 - **On the console:** `E:\Apps\PgraphPerTest\` — the XBE, its resources and
   `nxdk_pgraph_tests_config.json`. Launch it with
   `SITE EXEC E:\Apps\PgraphPerTest\default.xbe` over FTP. The older
@@ -110,7 +114,8 @@ diagnosis was right and the remedy is unnecessary: the prerequisite is
 
 `nv2a-hardware-gap-list.md` list A says **PVIDEO overlay composition is
 "modelled nowhere"**, citing `d->vga.enable_overlay` and `overlay_draw_line`
-being commented out. **That is wrong and should be struck.** Those are fossils
+being commented out. **That is wrong, and the row has been struck** (the gap
+list now carries a dated note in its place). Those are fossils
 of the legacy QEMU VGA path — `VGACommonState` has no such fields anywhere in
 the tree and `nv2a_overlay_draw_line` does not exist, so they were never a
 switch anyone could flip. The overlay *is* composited, in the renderer's
@@ -132,12 +137,14 @@ show agreement on both sides and mean nothing.
 
 ## 6. Open state at handoff
 
+As of 2026-09-24 23:30 PDT; labels move hourly, so read the PRs, not this.
+
 | item | state |
 |---|---|
 | #201 per-test diff + probe fixes | folded |
 | #202 `-NaNs_NaNs` third explanation | folded |
-| #203 `NV_PMC_ENABLE` under load | open, `needs-audit-2` |
-| #206 dispatcher `SCRIPT_DEPS` + two guards | open, `needs-audit-1` |
+| #203 `NV_PMC_ENABLE` under load | open, `fold-ready` |
+| #206 dispatcher `SCRIPT_DEPS` + two guards | open, `fold-ready` |
 
 **#206 matters beyond its own diff.** It fixes a one-line defect that idled
 both handhelds for eighteen hours: `SCRIPT_DEPS` (the re-exec trigger) covered
@@ -172,7 +179,7 @@ E:\Apps\PgraphPerTest\default.xbe`, then poll
 `RETR <outdir>/pgraph_progress_log.txt` until it contains
 `SUITE-RESIDUAL Texture format`. Takes about ninety seconds for five tests.
 
-## 7. A note on choosing the next thing
+## 8. A note on choosing the next thing
 
 `ROADMAP.md` says in as many words that "every pgraph test passes" is the wrong
 target: priority 1 is crashes and hangs, priority 2 is the ~300 tests over

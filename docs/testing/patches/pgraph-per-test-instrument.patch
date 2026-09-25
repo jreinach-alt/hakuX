@@ -67,7 +67,7 @@ index bef0f8d..a9f44a1 100644
    std::vector<uint8_t> new_registers;
    new_registers.resize(PGRAPH_REGISTER_ARRAY_SIZE);
    pb_fetch_pgraph_registers(new_registers.data());
-@@ -44,16 +86,46 @@ void PGRAPHDiffToken::DumpDiff() const {
+@@ -44,16 +86,49 @@ void PGRAPHDiffToken::DumpDiff() const {
    auto old_vals = reinterpret_cast<const uint32_t*>(registers);
    auto new_vals = reinterpret_cast<const uint32_t*>(new_registers.data());
  
@@ -77,12 +77,15 @@ index bef0f8d..a9f44a1 100644
 +  char line[64];
 +
 +  if (label) {
-+    snprintf(line, sizeof(line), "PGRAPH-DIFF %s\n", label);
-+    PrintMsg("%s", line);
++    // Built as a std::string, not in `line`: a suite::test label runs past 50
++    // characters, and snprintf would cut it and drop the newline, fusing the
++    // PMC canary onto the marker line.
++    const std::string marker = std::string("PGRAPH-DIFF ") + label + "\n";
++    PrintMsg("%s", marker.c_str());
 +    if (enable_progress_log) {
-+      Logger::Log() << line;
++      Logger::Log() << marker;
 +    }
-+    remote += line;
++    remote += marker;
 +
 +    const std::string pmc = read_pmc_watch();
 +    PrintMsg("%s", pmc.c_str());
