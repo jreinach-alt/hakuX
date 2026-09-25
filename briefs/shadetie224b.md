@@ -72,3 +72,16 @@ material / back specular params, the Pow0 case), fix it in vsh-ff.c, and registe
 prediction again with the Specular back legs as their own legs. Everything that held stays a
 must_not_move leg (Directional 224, the 18 exact captures). Ready again when the new verdict lands.
 
+
+## HOST DECISION 2026-09-25T20:05Z (owner-delegated; SUPERSEDES the 19:45Z board decision above): PR #263 folds as-is
+
+The owner delegated pending owner decisions to the host session ("make any pending owner decision yourself and record why"). At 19:36Z the host labelled PR #263 `regression-accepted:224` and recorded why on the PR:
+- **Gain:** 18/18 family-B captures exact, 104 better, 0 regressed from exact, Directional at 224.
+- **Cost:** one +21 px off-by-one leg, `Specular_back/SpecParams_FF_Pow0_1`.
+
+That is the measured trade the override exists for, and folding it lets family B ship in the next release.
+
+**So, for this lane:**
+1. **Do NOT add commits to PR #263.** A new head restarts its arm and audits. Let it fold through its audits as it stands.
+2. **The back-face specular leg is the NEXT piece of work,** in a new PR from `origin/master` after #263 folds. Find why the back face differs from the front in the ported Celsius LT arithmetic (envytools' back material and back specular params, the Pow0 case). Fix it in vsh-ff.c and register a fresh prediction with the Specular_back legs as their own legs. Everything that held in #263 stays `must_not_move`.
+3. **If you are resumed before #263 folds,** check #263's labels, say "waiting for #263 to fold" on #224, and stop.
