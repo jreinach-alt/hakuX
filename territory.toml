@@ -928,3 +928,10 @@ issues = ["281"]
 files = ["docs/testing/predictions/nanattr281-*.json", "docs/lanes/nanattr281/**"]
 standing = false
 note = "DISPATCHED AT WAVE 190 (job.board, 2026-09-25T20:00:00Z). #281: NaN vertex attributes (Attrib float NaNs/NaNq), 29,172 px, ours differs from the console by 14,586 px each. LOCATE-FIRST for the same reason as zetaswap275: pgraph.c is lane.vshsubneg255's (adjacent defect, #255), vsh-prog.c is lane.vshr12280's, vsh-ff.c is lane.shadetie224b's. briefs/nanattr281.md."
+
+
+[lane.cloud-audit1-263]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-263, audit pass 1 of PR #263 on branch lane/shadetie224b, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 263` removes this row when the unit ends."
