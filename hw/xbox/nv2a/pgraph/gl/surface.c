@@ -1957,6 +1957,25 @@ static void surface_copy_shrink_row(uint8_t *out, const uint8_t *in,
     }
 }
 
+/*
+ * Row stride of the LINEAR buffer a swizzled surface is staged through, on the
+ * way into swizzle_rect() or out of unswizzle_rect(). The swizzled layout has
+ * no pitch -- generate_swizzle_masks() interleaves the bits of x and y and
+ * nothing else -- so the buffer is width * bpp whatever SET_SURFACE_PITCH says.
+ * surface->pitch in its place is equivalent only when the two are equal. An
+ * oversized pitch just wastes space. An undersized one overlaps the rows:
+ * Surface_pitch::Swizzle's 128x128 target at pitch 256 read back as
+ * dest(x, y) = src(x - 64, y + 1) for x >= 64, where silicon keeps
+ * src(x, y) (#109).
+ *
+ * A linear surface is never staged: its rows go straight to guest memory at
+ * the guest's own pitch.
+ */
+static unsigned int surface_swizzle_linear_pitch(const SurfaceBinding *surface)
+{
+    return surface->width * surface->fmt.bytes_per_pixel;
+}
+
 #ifdef __ANDROID__
 static bool android_surface_download_depth16_to_guest(NV2AState *d,
                                                       SurfaceBinding *surface,
@@ -1970,6 +1989,8 @@ static bool android_surface_download_depth16_to_guest(NV2AState *d,
     const unsigned int read_width = surface->width * factor;
     const unsigned int read_height = surface->height * factor;
     const unsigned int rgba_stride = read_width * 4;
+    const unsigned int guest_pitch =
+        swizzle ? surface_swizzle_linear_pitch(surface) : surface->pitch;
     GLuint pack_texture = 0;
     uint8_t *rgba_pixels = NULL;
     uint8_t *rgba_linear = NULL;
@@ -2072,7 +2093,7 @@ static bool android_surface_download_depth16_to_guest(NV2AState *d,
 
     for (unsigned int y = 0; y < surface->height; y++) {
         const uint8_t *src_row = rgba_linear + y * surface->width * 4;
-        uint8_t *dst_row = linear_guest + y * surface->pitch;
+        uint8_t *dst_row = linear_guest + y * guest_pitch;
 
 #ifdef __aarch64__
         android_neon_pack_depth16_row_to_guest(src_row, dst_row, surface->width);
@@ -2086,7 +2107,7 @@ static bool android_surface_download_depth16_to_guest(NV2AState *d,
 
     if (swizzle) {
         swizzle_rect(swizzle_buf, surface->width, surface->height, pixels,
-                     surface->pitch, surface->fmt.bytes_per_pixel);
+                     guest_pitch, surface->fmt.bytes_per_pixel);
     }
 
     ok = true;
@@ -2127,8 +2148,12 @@ static bool android_surface_download_z24s8_to_guest(NV2AState *d,
     const unsigned int read_height = surface->height * scale;
     const unsigned int output_width = downscale ? surface->width : read_width;
     const unsigned int output_height = downscale ? surface->height : read_height;
-    const unsigned int output_pitch = downscale ? surface->pitch
-                                                : surface->pitch * scale;
+    /* A swizzled download is staged at the layout's own stride, which is also
+     * what sizes swizzle_buf below: at an undersized pitch, pitch * height is
+     * short of the width * 4 bytes every row writes. */
+    const unsigned int output_pitch =
+        swizzle ? output_width * surface->fmt.bytes_per_pixel
+                : (downscale ? surface->pitch : surface->pitch * scale);
     GLuint pack_texture = 0;
     uint8_t *depth_pixels = NULL;
     uint8_t *stencil_pixels = NULL;
@@ -2396,6 +2421,8 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
         const unsigned int read_width = surface->width * factor;
         const unsigned int read_height = surface->height * factor;
         const unsigned int rgba_stride = read_width * 4;
+        const unsigned int guest_pitch =
+            swizzle ? surface_swizzle_linear_pitch(surface) : surface->pitch;
         uint8_t *rgba_pixels = g_malloc(read_height * rgba_stride);
         uint8_t *rgba_linear = rgba_pixels;
         uint8_t *linear_guest = pixels;
@@ -2421,11 +2448,11 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
 
         android_surface_rgba8_to_guest(surface, rgba_linear, surface->width * 4,
                                        surface->width, surface->height,
-                                       linear_guest, surface->pitch);
+                                       linear_guest, guest_pitch);
 
         if (swizzle) {
             swizzle_rect(linear_guest, surface->width, surface->height, pixels,
-                         surface->pitch, surface->fmt.bytes_per_pixel);
+                         guest_pitch, surface->fmt.bytes_per_pixel);
             g_free(linear_guest);
         }
 
@@ -2438,6 +2465,8 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
 #endif
 
     uint8_t *gl_read_buf = pixels;
+    const unsigned int guest_pitch =
+        swizzle ? surface_swizzle_linear_pitch(surface) : surface->pitch;
 
     uint8_t *swizzle_buf = pixels;
     if (swizzle) {
@@ -2462,7 +2491,7 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
     glo_readpixels(
 #endif
         surface->fmt.gl_format, surface->fmt.gl_type, surface->fmt.bytes_per_pixel,
-        pg->surface_scale_factor * surface->pitch,
+        pg->surface_scale_factor * guest_pitch,
         pg->surface_scale_factor * surface->width,
         pg->surface_scale_factor * surface->height, flip, gl_read_buf);
     android_log_surface_download_errors("surface_download_to_buffer: post-read",
@@ -2470,21 +2499,21 @@ static void surface_download_to_buffer(NV2AState *d, SurfaceBinding *surface,
 
     /* FIXME: Replace this with a hw accelerated version */
     if (downscale) {
-        assert(surface->pitch >= (surface->width * surface->fmt.bytes_per_pixel));
+        assert(guest_pitch >= (surface->width * surface->fmt.bytes_per_pixel));
         uint8_t *out = swizzle_buf, *in = pg->scale_buf;
         for (unsigned int y = 0; y < surface->height; y++) {
             surface_copy_shrink_row(out, in, surface->width,
                                     surface->fmt.bytes_per_pixel,
                                     pg->surface_scale_factor);
-            in += surface->pitch * pg->surface_scale_factor *
+            in += guest_pitch * pg->surface_scale_factor *
                   pg->surface_scale_factor;
-            out += surface->pitch;
+            out += guest_pitch;
         }
     }
 
     if (swizzle) {
         swizzle_rect(swizzle_buf, surface->width, surface->height, pixels,
-                     surface->pitch, surface->fmt.bytes_per_pixel);
+                     guest_pitch, surface->fmt.bytes_per_pixel);
         g_free(swizzle_buf);
     }
 
@@ -2652,13 +2681,15 @@ void pgraph_gl_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 
     uint8_t *data = d->vram_ptr;
     uint8_t *buf = data + surface->vram_addr;
+    unsigned int buf_pitch = surface->pitch;
 
     if (surface->swizzle) {
+        buf_pitch = surface_swizzle_linear_pitch(surface);
         buf = (uint8_t*)g_malloc(surface->size);
         unswizzle_rect(data + surface->vram_addr,
                        surface->width, surface->height,
                        buf,
-                       surface->pitch,
+                       buf_pitch,
                        surface->fmt.bytes_per_pixel);
     }
 
@@ -2668,7 +2699,7 @@ void pgraph_gl_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     uint8_t *optimal_buf = buf;
     unsigned int optimal_pitch = surface->width * surface->fmt.bytes_per_pixel;
 
-    if (surface->pitch != optimal_pitch) {
+    if (buf_pitch != optimal_pitch) {
         optimal_buf = (uint8_t *)g_malloc(surface->height * optimal_pitch);
 
         uint8_t *src = buf;
@@ -2676,7 +2707,7 @@ void pgraph_gl_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
         unsigned int irow;
         for (irow = 0; irow < surface->height; irow++) {
             memcpy(dst, src, optimal_pitch);
-            src += surface->pitch;
+            src += buf_pitch;
             dst += optimal_pitch;
         }
     }
