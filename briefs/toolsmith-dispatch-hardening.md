@@ -68,6 +68,24 @@ What to do:
   record `ERROR: adb interop failure` rather than a silent zero, and requeue
   it once.
 
+**Recurrence, 2026-09-25 02:15-02:30:** `1790327181-arms-vshconst-fix-821066`
+"ran 130s", then "pull failed or timed out" after three of the same errors.
+Its logcat shows a normal run, and the captures were lost in the pull. That is
+the second arm lost in about 40 minutes.
+
+**The fix to evaluate first:** stop spawning `adb.exe` through interop for
+every call. A native Linux `adb` client with
+`ADB_SERVER_SOCKET=tcp:<windows-host>:5037` talks to the Windows adb server
+over TCP, so no per-call interop is involved. The owner's USB setup stays on
+Windows. Prove it on one run before switching the dispatcher.
+
+**Related arms.sh gap:** a HALF-run pair cannot be re-queued. `already_ran()`
+counts a sha as run if either half's result is DONE (the `RAN` set). The ARM
+ERROR comment's advice ("delete judged/<sha> and pairs/<sha>.json to have the
+job queue it again") therefore does nothing when one half survived, as with
+vshconst above. Either count a sha as run only when both halves ran, or make
+the comment tell the lane to re-run with `ab_run.sh`.
+
 ## Defect 4 (minor): score_sweep.py crashes on an empty run
 
 `score_sweep.py:399` does `max(len(k) for k in suites)`, which raises
