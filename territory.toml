@@ -1044,10 +1044,3 @@ issues = ["315"]
 files = ["docs/testing/predictions/brdf315-*.json", "docs/lanes/brdf315/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 203 (job.board, 2026-09-25T21:50Z) for #315: PS_TEXTUREMODES_BRDF unimplemented plus a 614-px wedge silicon draws and we do not. Discriminating run first (pixel 639,479 at a ref containing 8e683b3a26), then fit the BRDF rule and name the psh.c hunk (psh.c is held; named-not-edited). Brief: briefs/brdf315.md."
-
-
-[lane.cloud-remediate-270]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-270, remediation of PR #270 on branch lane/boardprio, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 270` removes this row when the unit ends."
