@@ -115,3 +115,18 @@ Failing worlds:
 
 For the base arm's statuses on the suites nobody has run under hakuX yet,
 the prediction is only "equal in both arms", not "IDENTICAL to the console".
+
+## State at the end of attempt 1 (2026-09-25): WAITING
+
+- Preflight passes on `9478a174e4`, and on this head.
+- Queued on Thor, 1 run each: fix `1790365377-vshsubneg255-441388` (6a183e3061)
+  and base `1790365379-vshsubneg255-441528` (d92ae5d7f3). No `[job.arms]`
+  comment will announce them, because they are not ab_compare arms. Results
+  land in `~/hakux-work/dispatch/results/<id>/`. Before believing either run,
+  read `vsh1.txt` (no MISSING, no STALE, "Testing completed normally") and
+  grep run1.log for `UtilAcceptVsock` and PARTIAL.
+- CI on the head: this is the first compile of the change, because this
+  session could not run a compiler.
+
+Next attempt: score each leg in the tables above against both arms. Post the
+verdict on #288 and #255. If it holds and CI is green, `gh pr ready 288`.
