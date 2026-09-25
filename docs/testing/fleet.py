@@ -190,102 +190,218 @@ def age(iso):
 # header says why it exists: "a jammed fleet and a running fleet rendered
 # identically". It solved the RENDERING. Nothing escalated the numbers, so on
 # 2026-09-20 four arms sat unclaimed -- the oldest for eighteen hours -- with
-# two healthy handhelds, and the page said so the whole time.
+# two healthy handhelds, and the page said so the whole time. The cause was a
+# stale $DISPATCH_DIR/bin/affinity.py pinning them to `desktop`, which claims
+# only desktop pins. That is one cause; the check is deliberately about the
+# SYMPTOM, because any cause that leaves work unclaimed looks the same from
+# here and all of them are worth waking the board for.
 #
-# The cause was a pin to a lane no worker serves (dispatcher.sh:508). That is
-# one cause; the check is deliberately about the SYMPTOM, because any cause
-# that leaves work unclaimed looks the same from here and all of them are
-# worth waking the board for.
+# AGE IS NOT THE SYMPTOM, AND NEITHER IS LATER WORK FINISHING FIRST. The first
+# version of this check fired on "a result landed after this was queued",
+# which on a queue served in arrival order is true of every request that is
+# not at the head (PR #206, audit pass 1, H1). Ranking queue epochs instead --
+# "something queued after me was served first" -- fails one level down:
+# affinity.py pins an A/B pair to one handheld, so the other handheld serves
+# later work, correctly, while the pair waits for its own device.
+# selftest.d/98 holds that case, and both of those rules fail it.
 #
-# TWO EXCLUSIONS, both of which would otherwise fire every twenty minutes for
-# nothing -- and a FAIL the board cannot clear spends a window each time.
+# WHAT SEPARATES THE TWO IS WHAT EACH CLAIMER DOES. A worker walks the queue in
+# glob order and claims the first request affinity lets it have (the worker
+# loop in dispatcher.sh; desktop_channel.sh's serve loop is the same
+# protocol). So a claimer that is running X -- claimed after R was queued, X
+# sorting after R -- walked past R: R was not its to take. So did a claimer
+# that has sat idle for longer than a worker tick with R queued. When EVERY
+# live claimer has done one or the other, nothing is going to claim R.
+# Anything less, and R may be waiting for the one that has not.
 #
-#   z-*  is the full-corpus sweep. dispatcher.sh serves in ASCII order
-#        precisely so those yield to every agent request, so a z- request
-#        waiting hours is the design working, not a stall.
-#   held devices are a deliberate out-of-service, not a fault. If every
-#        serving lane is held there is nobody to claim anything and saying so
-#        would be noise.
+# That evidence goes stale when something that decides R's pin changes: the
+# set of live lanes (lanes/, hold/), or, for a request naming a prediction,
+# where its siblings run or ran (running/, results/ -- affinity.py's rule 2).
+# Evidence older than the last such change is not counted.
 #
-# `running` is NOT part of the condition. The incident had one arm running on
-# the nova while four others were unclaimable, so "0 running" would have
-# missed it the moment anything started.
-QUEUE_STALL_MIN = int(os.environ.get("FLEET_QUEUE_STALL_MIN", "120"))
+# A HOLD IS NOT A STALL. A request only a held device can take is reported as
+# waiting on the hold, on stdout, and never costs a FAIL.
+#
+# The glob order is the workers' own: they run with LANG=C.UTF-8 (read from
+# /proc/<pid>/environ on 2026-09-24), so bash sorts `queue/*.req` by
+# codepoint, which is what sorting the file names here does. Names are
+# compared WITH the `.req`, as the glob sees them: `123-a.req` sorts after
+# `123-a-b.req`, while the bare ids sort the other way round.
+#
+# QUEUE_SETTLE_S is a few worker ticks. An idle worker walks the queue every
+# ~20s at most (a 10s sleep on an empty queue, 5s after a pass that claimed
+# nothing, plus the walk), so a request younger than this, or a claimer quiet
+# for less than this, has not provably been seen by a whole walk.
+QUEUE_SETTLE_S = int(os.environ.get("FLEET_QUEUE_SETTLE_S", "120"))
 
 
-def queue_stall(threshold_min=None):
-    """Agent requests the fleet has demonstrably passed over.
+def _mtime(path):
+    try:
+        return os.stat(path).st_mtime
+    except OSError:
+        return 0.0
 
-    Returns (stalled, all_held). `stalled` is [(id, age_seconds)], oldest
-    first. Never raises: this file is also run from a scratch copy by
-    selftest.d/93, where $DISPATCH_DIR has no queue at all.
 
-    THE CONDITION IS "PASSED OVER", NOT "OLD". A request sitting behind a long
-    queue on a busy fleet is waiting its turn; a request still sitting while
-    the fleet FINISHED OTHER WORK is being skipped. The second is the failure
-    worth waking anyone for, and the difference is one comparison: did a
-    result land after this was queued.
+def _req(path):
+    """(request, pin, rule-2 key) the way affinity.py reads them.
+
+    An unreadable or malformed request reads as unpinned, which is also what
+    the workers make of it: affinity.py prints nothing for it, or dies, and
+    either way dispatcher.sh's `want` is empty and any worker may claim it.
     """
-    if threshold_min is None:
-        threshold_min = QUEUE_STALL_MIN
+    try:
+        with open(path) as fh:
+            req = json.load(fh)
+    except Exception:
+        return {}, "", ""
+    if not isinstance(req, dict):
+        return {}, "", ""
+    s = lambda v: v.strip() if isinstance(v, str) else ""
+    return req, s(req.get("device")), os.path.basename(s(req.get("expect")))
+
+
+def queue_stall(now=None, settle_s=None):
+    """Queued requests that every live claimer has walked past.
+
+    Returns (stalled, on_hold, blind):
+      stalled  [(id, age_s, evidence)] -- nothing is going to claim these;
+      on_hold  [(id, age_s, labels)]   -- only a held device can take these;
+      blind    None, or why the queue could not be judged at all.
+    Both lists oldest first. Never raises: this file also runs from scratch
+    copies (selftest.d/93, /55) whose $DISPATCH_DIR has no queue at all.
+    """
+    now = time.time() if now is None else now
+    settle_s = QUEUE_SETTLE_S if settle_s is None else settle_s
     qdir = os.path.join(D, "queue")
     try:
-        names = [n for n in os.listdir(qdir) if n.endswith(".req")]
-    except Exception:
-        return [], False
-    now = time.time()
-    pending = []
-    for n in names:
-        if n.startswith("z-"):          # idle-priority sweep: designed to wait
-            continue
-        path = os.path.join(qdir, n)
-        queued = None
-        try:
-            with open(path) as fh:
-                queued = json.load(fh).get("queued_utc") or None
-        except Exception:
-            pass
-        t = None
-        if queued:
-            try:
-                t = datetime.datetime.strptime(queued, "%Y-%m-%dT%H:%M:%SZ") \
-                    .replace(tzinfo=datetime.timezone.utc).timestamp()
-            except Exception:
-                t = None
-        if t is None:
-            try:
-                t = os.path.getmtime(path)
-            except Exception:
-                continue
-        if now - t > threshold_min * 60:
-            pending.append((n[:-4], t))
-    if not pending:
-        return [], False
-    # Newest completed result. A result directory is named with the epoch of
-    # the CLAIM, not of the queueing, so its mtime is what says "the fleet was
-    # working at this time" -- which is all this needs.
-    newest_result = 0.0
+        queued = sorted(n for n in os.listdir(qdir) if n.endswith(".req"))
+    except OSError:
+        return [], [], None
+    if not queued:
+        return [], [], None
+    # Liveness is affinity.py's own kill -0 test, not a second copy of it: the
+    # scheduler decides who is serving, and this has to agree with it.
+    # Imported here and not at the top because the scratch copies above carry
+    # no affinity.py -- and have no queue, so they never reach this line.
     try:
-        rdir = os.path.join(D, "results")
-        for e in os.scandir(rdir):
-            if e.is_dir():
-                newest_result = max(newest_result, e.stat().st_mtime)
-    except Exception:
-        newest_result = 0.0
-    stalled = [(i, now - t) for i, t in pending if newest_result > t]
-    stalled.sort(key=lambda r: -r[1])
-    if not stalled:
-        return [], False
-    # Deliberately out of service is not a stall.
+        import affinity
+    except ImportError as e:
+        return [], [], ("affinity.py is not beside fleet.py (%s), so liveness "
+                        "cannot be read the way the scheduler reads it" % e)
+    live = set(affinity.serving(D))
     try:
-        lanes = {l for l in os.listdir(os.path.join(D, "lanes"))
-                 if not l.endswith(".lastbrief")}
         held = {h for h in os.listdir(os.path.join(D, "hold"))
                 if not h.endswith(".why") and h != "lifted"}
-    except Exception:
-        lanes, held = set(), set()
-    all_held = bool(lanes) and lanes.issubset(held)
-    return stalled, all_held
+    except OSError:
+        held = set()
+    pooled_unheld = set(affinity.pooled(D)) - held
+    handhelds_held = held - set(affinity.OFFPOOL)
+
+    # What each claimer is running, and when it claimed it. The owner file is
+    # written at the claim (dispatcher.sh's serve_one, desktop_channel.sh's
+    # dc_serve_one), and the rename into running/ keeps the request's own
+    # mtime, so the two times are the claim and the queueing.
+    rdir = os.path.join(D, "running")
+    busy, between, last, sib = {}, set(), 0.0, {}
+    try:
+        owners = [n for n in os.listdir(rdir) if n.endswith(".owner")]
+    except OSError:
+        owners = []
+    for n in owners:
+        op = os.path.join(rdir, n)
+        try:
+            with open(op) as fh:
+                lane = fh.read().strip()
+        except OSError:
+            continue
+        claimed = _mtime(op)
+        last = max(last, claimed)
+        rq = n[:-len(".owner")] + ".req"
+        if not os.path.exists(os.path.join(rdir, rq)):
+            # The request has left running/ and its owner file is not swept
+            # yet: that claimer is between two requests, not idle.
+            between.add(lane)
+            continue
+        _, _, key = _req(os.path.join(rdir, rq))
+        busy.setdefault(lane, []).append((rq, claimed, _mtime(os.path.join(rdir, rq))))
+        if key:
+            sib[key] = max(sib.get(key, 0.0), claimed)
+    # Every claim and every finish adds an entry to results/<id>/, so the
+    # newest directory mtime is the last time any claimer did anything. Only
+    # a result newer than some running claim can re-pin that claim's siblings
+    # (affinity.py rule 2), so only those request files are opened.
+    first_claim = min((c for runs in busy.values() for _, c, _ in runs),
+                      default=None)
+    try:
+        entries = list(os.scandir(os.path.join(D, "results")))
+    except OSError:
+        entries = []
+    for e in entries:
+        try:
+            if not e.is_dir():
+                continue
+            m = e.stat().st_mtime
+        except OSError:
+            continue
+        last = max(last, m)
+        if first_claim is not None and m >= first_claim:
+            _, _, key = _req(os.path.join(e.path, "request.json"))
+            if key:
+                sib[key] = max(sib.get(key, 0.0), m)
+    # The last time the set of claimers changed: a lane registering or
+    # releasing (lanes/), a worker restarting under a new pid (its own lane
+    # file), a hold placed or lifted (hold/).
+    epoch = max([_mtime(os.path.join(D, "lanes")), _mtime(os.path.join(D, "hold"))]
+                + [_mtime(os.path.join(D, "lanes", l)) for l in live])
+
+    stalled, on_hold = [], []
+    for name in queued:
+        path = os.path.join(qdir, name)
+        written = _mtime(path)
+        age = now - written
+        if not written or age <= settle_s:
+            continue                   # no whole walk has provably seen it
+        rid = name[:-len(".req")]
+        _, pin, key = _req(path)
+        if pin:                        # affinity.py rule 1
+            if pin in held:
+                on_hold.append((rid, age, pin))
+                continue
+            claimers = {pin} & live
+        elif handhelds_held and not pooled_unheld:
+            on_hold.append((rid, age, ",".join(sorted(handhelds_held))))
+            continue
+        else:
+            claimers = set(live)
+        if not claimers:
+            if now - epoch > settle_s:
+                stalled.append((rid, age, (
+                    "pinned to %s, which no live worker serves and nobody "
+                    "has held" % pin) if pin else
+                    "no dispatch worker is alive and no device is held"))
+            continue
+        changed = max(epoch, sib.get(key, 0.0))
+        quiet_since = max(written, last, epoch)
+        evidence = []
+        for lane in sorted(claimers):
+            ev = None
+            if lane in busy:
+                for x, claimed, xw in busy[lane]:
+                    if x > name and claimed > changed and \
+                            (xw > written or claimed > written + settle_s):
+                        ev = "%s claimed %s after it" % (lane, x[:-len(".req")])
+                        break
+            elif lane not in between and now - quiet_since > settle_s:
+                ev = "%s idle, nothing claimed or finished for %s" \
+                     % (lane, age_s(now - quiet_since))
+            if ev is None:
+                break                  # this one may yet take it
+            evidence.append(ev)
+        else:
+            stalled.append((rid, age, "; ".join(evidence)))
+    stalled.sort(key=lambda r: -r[1])
+    on_hold.sort(key=lambda r: -r[1])
+    return stalled, on_hold, None
 
 
 # A PR the machine has already picked up is not the board's to act on. These
@@ -851,27 +967,6 @@ def main():
     # This one UNDER-reports it: the lane is editing files nothing knows it
     # holds, so a second lane can be handed the same file and both preflights
     # will pass.
-    stalled, stall_all_held = queue_stall()
-    if stalled and not stall_all_held:
-        oldest_id, oldest_s = stalled[0]
-        print("FAIL: %d dispatch request(s) have waited over %dh with devices "
-              "serving -- oldest %s at %s. Work nobody claims is invisible: "
-              "status.sh renders it identically to a busy fleet. Check the "
-              "pin with `python3 docs/testing/affinity.py $DISPATCH_DIR "
-              "$DISPATCH_DIR/queue/<id>.req` -- a pin to a lane that is "
-              "registered but served by no worker is claimed by nobody "
-              "(dispatcher.sh:508) -- then `$DISPATCH_DIR/hold/` and whether "
-              "$DISPATCH_DIR/bin is the current snapshot."
-              % (len(stalled), QUEUE_STALL_MIN // 60, oldest_id,
-                 age_s(oldest_s)),
-              file=sys.stderr)
-        rc = 1
-    elif stalled and stall_all_held:
-        # Not a fault and not a wake-up: somebody took the fleet out of
-        # service on purpose and the queue filling up behind that is expected.
-        print("\nqueue: %d request(s) waiting and every serving lane is held "
-              "-- deliberate, not a stall. `rm $DISPATCH_DIR/hold/<lane>` "
-              "returns it to service." % len(stalled))
     if unclaimed:
         print("FAIL: %d lane(s) are RUNNING with no territory row -- %s. "
               "Nothing can see them: check_territory.py cannot detect a "
@@ -879,6 +974,34 @@ def main():
               "(files = [] is a valid claim), validate, commit, PUSH."
               % (len(unclaimed), ", ".join(unclaimed)), file=sys.stderr)
         rc = 1
+    # A REQUEST EVERY LIVE CLAIMER HAS WALKED PAST (see queue_stall). The FAIL
+    # carries each claimer's evidence, because "who skipped it, doing what" is
+    # the first thing anyone clearing it needs; the next is the snapshot, since
+    # a stale $DISPATCH_DIR/bin is how 2026-09-20 happened. A request waiting
+    # on a hold is said on stdout and costs nothing: a hold is somebody's
+    # decision, and waking the board for it every tick would be noise.
+    stalled, on_hold, qblind = queue_stall()
+    if qblind:
+        print("FAIL: QUEUE-BLIND -- %s. The dispatch queue was not judged."
+              % qblind, file=sys.stderr)
+        rc = 1
+    if stalled:
+        rid, age_secs, why = stalled[0]
+        print("FAIL: %d dispatch request(s) passed over by every live claimer "
+              "-- oldest %s, queued %s ago: %s. Nothing will claim it. Check "
+              "whether the workers run a stale snapshot (`diff -q "
+              "docs/testing/affinity.py $DISPATCH_DIR/bin/affinity.py`; that "
+              "is how four arms sat unclaimed for eighteen hours on "
+              "2026-09-20), then the request's `device` field against "
+              "$DISPATCH_DIR/lanes/."
+              % (len(stalled), rid, age_s(age_secs), why), file=sys.stderr)
+        rc = 1
+    if on_hold:
+        rid, age_secs, labels = on_hold[0]
+        print("\nqueue: %d request(s) can only run on a held device -- oldest "
+              "%s, queued %s ago, held: %s. Deliberate, not a stall; `rm "
+              "$DISPATCH_DIR/hold/<label>` returns a device to service."
+              % (len(on_hold), rid, age_s(age_secs), labels))
     return rc
 
 
