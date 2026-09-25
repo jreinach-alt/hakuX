@@ -98,3 +98,9 @@ carryover, Fog vsh, Fog coord vec4, W param.
 - Console set K (hardware/runs/2026-09-19-calib) does not cover this suite. The
   golden is the only silicon reference, and it agrees with the test's stated
   intent.
+
+## State (2026-09-25)
+
+Waiting for the arms job to judge the prediction (`[job.arms]` on PR #290), and for CI
+on the head. The PR stays in draft until the verdict arrives. Then either mark it
+ready or diagnose the failing leg.
