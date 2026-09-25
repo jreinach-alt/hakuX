@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 186
-updated_utc = "2026-09-25T18:30:00Z"
+wave = 187
+updated_utc = "2026-09-25T19:40:00Z"
 
 
 [retired.hilodot10]
@@ -778,11 +778,11 @@ retired_utc = "2026-09-25T16:35:00Z"
 note = "RETIRED (job.board, board tick 2026-09-25T16:35:00Z): PR #241 MERGED 2026-09-25T16:00:25Z (fold d124ff4961), no open PR on lane/handbackresolved, unit gone. RELEASED TO [free]: docs/testing/jobs/handback.sh, selftest.d/99-handback-resolved.sh and docs/lanes/handbackresolved/**. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 167 (host session, 2026-09-25 07:55 PDT). Harness defect, no tracker issue: handback.sh resumes a needs-rebase lane without asking whether the head still conflicts, so a lane that resolved its conflict and exited while CI ran is resumed again (#234: vshconst's wasted second handback, 13:50Z) and, at the attempt cap, its PR is labelled blocked:needs-owner for nothing (#237 at 14:25:34Z; the host cleared it). Fix: merge-tree the head against the trunk before resuming; clean+GREEN -> do the lane's own label swap, clean+PENDING -> wait, conflict or RED -> resume as today. Brief: briefs/handbackresolved.md. handback.sh released at wave 105 and unlisted since; selftest.d/99-handback-resolved.sh is a new name under the runner's two-digit glob."
 
 
-[lane.vshnobegin242]
+[retired.vshnobegin242]
 issues = ["242"]
-files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshnobegin242-*.json", "docs/lanes/vshnobegin242/**"]
-standing = false
-note = "WAVE 178 (job.board, 2026-09-25T17:00Z): PR #245 is a draft, CI green on 224b6cb34b, `regressed` + `blocked:needs-owner`; the label was set by jobs/handback.sh at DRAFT_STRAND_MAX=3, NOT because the lane failed: the lane exited legitimately waiting on the arm verdict for vshnobegin242-must-not-move-runs3.json (base 1790353899-arms-vshnobegin242-base-1226684 running, fix ...-fix-1227042 queued at 16:31Z). NEXT TICK: when that [job.arms] verdict posts, clear the strand count (`rm $HANDBACK/strand/vshnobegin242`), drop blocked:needs-owner, and let handback resume the lane with the verdict -- nobody else will. #255 and #200 wait behind this PR (both need pgraph.c / #245 folded). PRIOR NOTE: DISPATCHED AT WAVE 169 (job.board, 2026-09-25T14:45:00Z). #242: a lone SET_VERTEX4F outside Begin/End never runs the vertex program, so nxdk_vsh_tests Exceptional Float reads all zeros (found by lane.toolsmith, verdict on #112 item 4). Mechanism fully read in the issue; fix is in pgraph.c SET_VERTEX4F, reusing #234's evaluator. Arm pre-specified in briefs/vshnobegin242.md (Thor, nxdk_vsh_tests). hw/xbox/nv2a/pgraph/pgraph.c was free."
+files = []
+retired_utc = "2026-09-25T19:40:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T19:40:00Z): PR #245 MERGED (fold d92ae5d7f3, labelled folded,verified); row was still lane.vshnobegin242. pgraph.c RELEASED and re-claimed this tick by lane.vshsubneg255 (#255)."
 
 [lane.wbuf31sel]
 issues = ["31"]
@@ -890,3 +890,21 @@ issues = []
 files = []
 standing = false
 note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-250, audit pass 1 of PR #250 on branch lane/wparamclip223, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 250` removes this row when the unit ends."
+
+[lane.vshsubneg255]
+issues = ["255"]
+files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshsubneg255-*.json", "docs/lanes/vshsubneg255/**"]
+standing = false
+note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #255: a negative subnormal vertex input reaches its constant as +0; silicon keeps -0 (nxdk_vsh_tests Exceptional Float MaxSub row). Fix is one function in pgraph.c (pgraph_vsh_writeback_constants and its float path). briefs/255.md."
+
+[lane.vshr12280]
+issues = ["280"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "docs/testing/predictions/vshr12280-*.json", "docs/lanes/vshr12280/**"]
+standing = false
+note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #280: R12 must read back the original oPos after a paired MAC+ILU write (Vertex shader independence Multioutput, 32,768 px; game-visible, XDK vertex shaders emit the pattern). Likely area vsh-prog.c `#define R12 oPos`. briefs/vshr12280.md."
+
+[lane.texvol283]
+issues = ["283"]
+files = ["hw/xbox/nv2a/pgraph/vk/texture.c", "hw/xbox/nv2a/pgraph/gl/texture.c", "hw/xbox/nv2a/pgraph/texture.c", "docs/testing/predictions/texvol283-*.json", "docs/lanes/texvol283/**"]
+standing = false
+note = "DISPATCHED AT WAVE 187 (job.board, 2026-09-25T19:40:00Z). #283: Y16 and R16B16 volume textures differ (107,781 px; possibly #10 Y16/R16B16 classes). briefs/texvol283.md."
