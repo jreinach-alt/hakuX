@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 182
-updated_utc = "2026-09-25T17:45:00Z"
+wave = 183
+updated_utc = "2026-09-25T18:05:00Z"
 
 
 [retired.hilodot10]
@@ -789,7 +789,7 @@ note = "WAVE 178 (job.board, 2026-09-25T17:00Z): PR #245 is a draft, CI green on
 issues = ["31"]
 files = ["hw/xbox/nv2a/pgraph/glsl/psh.c", "docs/testing/wbuf_anchor_recover.py", "docs/testing/predictions/wbuf31sel-*.json", "docs/lanes/wbuf31sel/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see."
+note = "DISPATCHED AT TERRITORY WAVE 170 (host session, 2026-09-25 07:55 PDT) for #31: lane.xbox's console capture (PR #243; #31 comment 5834223393) anchors ClipF-300-008 t0 at 10.000 -- the 4-grid -- so master's flatTop clause (PR #222, glsl/psh.c) is refuted; 57 four-literal fits survive. This lane picks a survivor computable from the shader's own inputs (three vertices + clip rect; span_starts_at_clip needs the traversal column and may not qualify -- if none qualifies, that is the finding), encodes it in psh.c, and arms W buffering + Depth Clamp must_not_move (the variant is not on the golden disc). Successor to retired lane.wbuf31fix, whose inbox has no reader. Brief: briefs/wbuf31sel.md. TICK 2026-09-25T18:05Z (job.board): DO NOT COMMENT ON PR #244. handback.sh keys draft-strand-quiet on the PR updatedAt, and the 17:40Z board comment reset that clock (quiet 1275s of 7200s at 18:05Z), so handback resumes the lane by itself once 7200s pass with nothing new on the PR (~19:40Z). The board does not resume it: roles/board.md leaves draft lanes to handback, and a board resume would spend an attempt handback does not. If it is still un-resumed at ~19:50Z, look at handback.sh list before anything else. PRIOR TICK 2026-09-25T17:45Z (job.board): PR #244 is STRANDED, not waiting. Its one [job.arms] verdict (16:31Z, posted twice) is REFUSED -- base arm 1790352053-arms-wbuf31sel-base-769582 run 1 has progress_log_proof false, so the arm is ABSENT and nothing requeues it; the PR is also CONFLICTING (mergeable_state=dirty, base 21946df29b is behind master, so no CI has run on dfd4fd3a98); the lane has not run since its 14:50Z comment and handback has not resumed it (no [job.handback] comment). The lane must re-register/requeue the base arm on a head merged with master (index regenerated over the pinned trees). Commented on the PR; if handback has not resumed it by the next tick the board resumes it once, since a REFUSED verdict is a state handback does not appear to see."
 
 
 [lane.wparamclip223]
@@ -847,8 +847,15 @@ files = ["docs/testing/jobs/handback.sh", "docs/testing/jobs/selftest.d/99-handb
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 179 (host session, 2026-09-25 10:05 PDT). Harness defect, no tracker issue: handback keys a draft-strand-arm resume on the HEAD sha ($H/done/$label-$pr-$head, handback.sh:625), so a lane that pushes while waiting on its verdict -- a replicate registration, NOTES, a master merge -- is resumed again with nothing new, and at DRAFT_STRAND_MAX=3 its PR is labelled blocked:needs-owner (#245: three resumes in 22 minutes while its replicate sat queued; host cleared it). Fix: key the cause on the set of judged verdicts, and do not strand-resume while the branch's own request is queued or running. Brief: briefs/handbackstrand.md."
 
-[lane.shadetie224-notes]
+[retired.shadetie224-notes]
 issues = []
-files = ["docs/lanes/shadetie224/**"]
+files = []
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 180 (host session): decision #257 option 2 -- the host lands lane.shadetie224's refuted-candidate analysis (NOTES sections 6-7 carry family B's next step) on a fresh branch with NO registered prediction; the judged prediction is kept under docs/lanes/shadetie224/ as a record, outside docs/testing/predictions/, so arms.sh never collects it. Docs only; retire on fold. TICK 2026-09-25T17:20Z (job.board): PR #259 is docs-only, CI green, labelled fold-ready. The NEXT #224 family-B lane (capture spec for more tie normals, NOTES sections 6-7, files glsl/vsh-ff.c + docs/lanes/shadetie224/**) dispatches the tick after #259 folds -- its brief needs those NOTES on master."
+retired_utc = "2026-09-25T18:05:00Z"
+note = "RETIRED (job.board, board tick 2026-09-25T18:05Z): PR #259 MERGED (fold 2b04d4d422), no open PR on lane/shadetie224-notes. docs/lanes/shadetie224/** passes to [lane.shadetie224b]; nothing else was held. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 180 (host session): decision #257 option 2 -- the host lands lane.shadetie224's refuted-candidate analysis (NOTES sections 6-7 carry family B's next step) on a fresh branch with NO registered prediction; the judged prediction is kept under docs/lanes/shadetie224/ as a record, outside docs/testing/predictions/, so arms.sh never collects it."
+
+[lane.shadetie224b]
+issues = ["224"]
+files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/shadetie224b-*.json", "docs/lanes/shadetie224/**"]
+standing = false
+note = "DISPATCHED AT TERRITORY WAVE 183 (job.board, 2026-09-25T18:05Z), on #259's fold (2b04d4d422), which put docs/lanes/shadetie224/NOTES.md on master. #224 family B, the 1-LSB fixed-function lighting tie (884,185 px), take two: lt(N) on the whole normal is REFUTED (NOTES section 6: Lighting_range/Directional 792 -> 66,328), so the job is to price the unpriced candidates (lt on N.L only or the diffuse product only, the LT's truncating multiply/add, round-to-nearest at one named stage) against THREE tie points -- Shade_model n=3 (60), n=1 (179) and Directional's specular blue (224) -- and the Lighting_control NoSpec rows, with an independent argument; failing that, the finding is the nxdk_pgraph_tests capture spec in NOTES section 7. Fresh lane name (shadetie224b) so the refuted lane's attempt counter is not inherited. glsl/vsh-ff.c was free. Brief: briefs/shadetie224b.md."
