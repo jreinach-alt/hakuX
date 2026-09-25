@@ -794,3 +794,10 @@ issues = []
 retired_utc = "2026-09-25T08:40:00Z"
 files = []
 note = "RETIRED AT WAVE 158 (host session): PR #211 (the measured read-1 region at 0x160 and 0x204-0x2FC) FOLDED as f2e8ef8ba8 after audit passes 1 and 2; unit gone. hw/xbox/nv2a/pmc.c RELEASED to [free] -- #188's next cloud session needs it (briefs/188.md)."
+
+
+[lane.cloud-audit2-222]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-222, audit pass 2 of PR #222 on branch lane/wbuf31fix, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 222` removes this row when the unit ends."
