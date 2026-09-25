@@ -1,0 +1,199 @@
+{
+ "log": "/home/justin/hakux-work/hardware/runs/2026-09-25-region200/emulator/pgraph_progress_log.txt",
+ "blocks": 800,
+ "tests": 782,
+ "completed": true,
+ "registers": {
+  "NSOURCE": null,
+  "TRAPPED_ADDR": null,
+  "SURFACE": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 799,
+   "tests": []
+  },
+  "CSV0_D": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 87,
+   "tests": []
+  },
+  "CSV0_C": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 33,
+   "tests": []
+  },
+  "CSV1_B": null,
+  "CSV1_A": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 13,
+   "tests": []
+  },
+  "CHEOPS_OFFSET": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 24,
+   "tests": []
+  },
+  "ANTIALIASING": null,
+  "BLEND": null,
+  "CONTROL_0": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 43,
+   "tests": []
+  },
+  "CONTROL_1": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 17,
+   "tests": []
+  },
+  "CONTROL_2": null,
+  "CONTROL_3": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 13,
+   "tests": []
+  },
+  "SETUPRASTER": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 24,
+   "tests": []
+  },
+  "SHADERCTL": null,
+  "SHADOWCTL": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 289,
+   "tests": []
+  },
+  "TEXFMT0": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 95,
+   "tests": []
+  },
+  "TEXFMT1": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 5,
+   "tests": []
+  },
+  "TEXFMT2": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 2,
+   "tests": []
+  },
+  "TEXFMT3": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 4,
+   "tests": []
+  },
+  "TEXPALETTE0": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 9,
+   "tests": []
+  },
+  "TEXPALETTE1": null,
+  "TEXPALETTE2": null,
+  "TEXPALETTE3": null,
+  "ZCOMPRESSOCCLUDE": {
+   "set": 0,
+   "toggle": 0,
+   "dnw_set": 0,
+   "dnw_toggle": 0,
+   "n": 16,
+   "tests": []
+  }
+ },
+ "other_offsets": [
+  6156,
+  6244,
+  6248,
+  6272,
+  6276,
+  6304,
+  6308,
+  6336,
+  6340,
+  6368,
+  6372,
+  6400,
+  6404,
+  6408,
+  6432,
+  6436,
+  6440,
+  6464,
+  6468,
+  6472,
+  6528,
+  6532,
+  6536,
+  6540,
+  6556,
+  6572,
+  6576,
+  6588,
+  6592,
+  6596,
+  6600,
+  6604,
+  6608,
+  6612,
+  6616,
+  6620,
+  6624,
+  6628,
+  6632,
+  6644,
+  6676,
+  6680,
+  6684,
+  6688,
+  6692,
+  6696,
+  6700,
+  6704,
+  6792,
+  6800,
+  6844
+ ]
+}

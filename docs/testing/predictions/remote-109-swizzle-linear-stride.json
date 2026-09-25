@@ -1,0 +1,43 @@
+{
+  "registered_utc": "2026-09-25T14:31:51Z",
+  "who": "lane.remote",
+  "issue": "109",
+  "prediction": "THE FIX, AND THE ONE QUANTITY IT CHANGES. A swizzled surface has no pitch: generate_swizzle_masks() interleaves the bits of x and y only. Every GL site that stages a swizzled surface through a LINEAR intermediate used surface->pitch as that intermediate's row stride, which is equivalent to width*bpp only when they are equal. An undersized pitch overlaps rows (Model E, dest(x,y) = src(x - pitch/bpp, y+1) for x >= pitch/bpp, measured on #109 in comment 5828843964). An oversized one only wastes space. The fix makes the intermediate's stride width*bpp at every such site in gl/surface.c: surface_download_to_buffer()'s desktop path, including its downscale loop and the readback stride; the same function's Android RGBA8 branch; the Android depth16 and z24s8 download helpers; and pgraph_gl_upload_surface_data()'s unswizzle. A LINEAR surface is untouched, because there the stride is the guest's real row pitch in VRAM.\nARMS: A = 84a67b9cf8 (master), B = 84a67b9cf8 plus the fix (one commit), both desktop OpenGL with [display.quality] surface_scale = 1, on the 8-suite disc of the registered #109 arm (make_test_iso.py, the 8 suites below, progress log on), 3 runs each, alternating. Reproduced on A before any code existed (2026-09-25, one run): Surface_pitch/Swizzle = 12,224 = 2,048 on each of q0, q1 and q2 plus 6,080 on q3; q3's golden-free signature surface(x+64, y) == surface(x, y+1) holds at 8,128 of 8,128 positions; 0 captures unreadable.\nREGISTERED LEGS: Surface_pitch/Swizzle = 8,192 in B, i.e. exactly -4,032, q3's Model E component and nothing else. The 8,192 left are pitch-independent: the checkerboard's coloured cells take a LATER CPU write to the same texture address, on all four quads including the two at exact pitch. better = 1 and worse = 0. must_not_move covers every other capture on the disc (72, the seven suite globs), bit-identical: an oversized or exact pitch gives the same bytes under either stride, and nothing else on this disc stages a swizzled surface at an undersized pitch.\nPROSE LEGS, checked by script on the same captures (swz_quads.py / swz_signature.py, posted with the result): in B, each of q0..q3 reads 2,048 (the race, untouched); q3's un-swizzled top-right quadrant has 0 non-green pixels (A: 4,032, rows 0-62); q3's signature holds at 4,096, the golden's value (A: 8,128).\nSCALE-2 LEG, one run per binary, not judged by ab_compare because an aborted arm has no DONE: at surface_scale = 2, A ABORTS on Surface pitch::Swizzle at the downscale loop's assert(surface->pitch >= width * bpp) (reproduced on 84a67b9cf8: exit 134, 59 captures, progress log ends 'Starting [1/1] Surface pitch::Swizzle'). B completes the disc with progress-log proof and 73 captures. With the stride fixed for swizzled surfaces, that assert applies only to linear ones, where an undersized pitch is not this registration's subject and keeps its assert.\nNOT MEASURED: the Android branches compile in CI and cannot run here. By reading, the z24s8 helper allocates its swizzled intermediate as pitch*height and writes width*4 per row, so an undersized-pitch swizzled zeta surface writes width*4 - pitch bytes past the allocation. The same change sizes it correctly. Nothing on this disc reaches it (the test's zeta pitch is the framebuffer's, 2,560). Vulkan is untouched.\nUNCOMFORTABLE OUTCOMES NAMED NOW: if the race's count moves in B while q3's Model E component goes to 0, the expect leg fails with the fix right. The per-quad reading separates the two, and I will report the leg as FAILED, not refit it. If any must_not_move capture moves, the fix has a reach I did not predict, and that is a finding, not noise. Before trusting any verdict, both arms' scores are checked for status 'unreadable', which scores as 0.",
+  "a_ref": "84a67b9c",
+  "b_ref": "e4fb7c24",
+  "must_not_move": [
+    "Color_Zeta_Disable/*",
+    "Null_surface/*",
+    "Surface_clip/*",
+    "Surface_format/*",
+    "Texture_Framebuffer_Blit/*",
+    "Texture_perspective/*",
+    "Texture_perspective_enable/*"
+  ],
+  "expect": {
+    "Surface_pitch/Swizzle": 8192
+  },
+  "expect_counts": {
+    "better": 1,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "Color Zeta Disable",
+      "Null surface",
+      "Surface clip",
+      "Surface format",
+      "Surface pitch",
+      "Texture Framebuffer Blit",
+      "Texture perspective",
+      "Texture perspective enable"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  },
+  "title": "desktop OpenGL A/B -- hand-queue only, see the prediction text",
+  "amended_utc": "2026-09-25T14:43:09Z",
+  "amendment": "ROUTING ONLY, LEGS UNCHANGED. `title` added so [job.arms] reads this as hand-queued and does not run it on the fleet: the Android APK defaults to the Vulkan renderer (SettingsActivity.kt, renderer default \"vulkan\"), where this GL-only fix is absent and Swizzle is 0 in both arms, so a fleet arm would judge expect Surface_pitch/Swizzle=8192 and better=1 as FAILs that measure nothing. The version judged is sha256 6e1e8c2442c69dea2caf799f81276bc28ecf582cac1d477983e1a8f31a5db12e (commit e156200f), PASS 75/75 on desktop GL, reported on #109."
+}
