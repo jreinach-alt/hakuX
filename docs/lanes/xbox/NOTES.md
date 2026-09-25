@@ -27,3 +27,12 @@ owner if the console stops answering.
   captures give anchor recovery byte-identical to the goldens' (66 anchors),
   so the console stands in for the 1.0 goldens on `W buffering`. Registered
   `wbuf31-clipf35-prediction.md`, then built the `clip_top = 35` XBE.
+- 2026-09-25. #31 RESULT: on silicon `ClipF-150-035` t1 anchors at **34** -- the
+  absolute 4-grid at phase 2, `TriH`'s rule. `ct+2` refuted. C1, C2 and C3 all
+  held, and every existing-test capture was bit-identical to its golden.
+  `docs/testing/xbox-wbuf31-clipf35-2026-09-25.md`. 47 coarse-grid rules
+  (grids 8/16/32, no mechanism) still fit, and a variant at `clip_top` 36-39
+  would exclude them.
+- Runner lesson (fixed in `lane/xbox-runner`): with networking off, an XBE
+  never answers ping, so a run in progress LOOKS unreachable. It went dark
+  at SITE EXEC and answered ping again 49 s later, back at the dashboard.
