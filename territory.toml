@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 195
-updated_utc = "2026-09-25T20:45:00Z"
+wave = 196
+updated_utc = "2026-09-25T21:10:00Z"
 
 
 [retired.hilodot10]

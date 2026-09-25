@@ -3912,3 +3912,17 @@ impact_px = 0
 impact_onestep_px = 0
 game_visible = true
 impact_basis = "game-visible (host, 2026-09-25): a commercial title unplayable-slow on its own title screen; no golden, so no px figure"
+
+[issue.315]
+title = "Texture_BRDF: PS_TEXTUREMODES_BRDF unimplemented, and silicon's only ink (a 614-px corner wedge) is not rasterised"
+component = "pgraph"
+disposition = "defect"
+suites = ["Texture BRDF"]
+status = "open"
+dispatch_state = "available"
+blocked_on = ""
+status_note = "FILED 2026-09-25 by lane cloud-297 (PR #313, docs/lanes/cloud-297/NOTES.md section 2). 3 captures x 614 px, deterministic (7 of 7 runs 09-13..09-25). psh.c:3123 emits t2 = vec4(0). The wedge (x 579..639, y 460..479) is the clear colour on ours, not (0,0,0,0), so it is not rasterised either. Neither cube appears on silicon. Pixel (639,479) on a post-8e683b3a26 capture decides whether #223's wedge covers the geometry half. FILES: defect 1 needs glsl/psh.c, which is lane.wbufdepth24's; a lane on this claims it by board request or after that lane retires."
+impact_px = 1842
+impact_onestep_px = 0
+impact_basis = "2026-09-25 (lane cloud-297): 3 captures x 614 px; games: low, BRDF texture mode is rare in shipped titles"
+game_visible = false
