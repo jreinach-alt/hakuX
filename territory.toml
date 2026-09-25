@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 177
-updated_utc = "2026-09-25T16:35:00Z"
+wave = 178
+updated_utc = "2026-09-25T17:00:00Z"
 
 
 [retired.hilodot10]
@@ -783,7 +783,7 @@ note = "RETIRED (job.board, board tick 2026-09-25T16:35:00Z): PR #241 MERGED 202
 issues = ["242"]
 files = ["hw/xbox/nv2a/pgraph/pgraph.c", "docs/testing/predictions/vshnobegin242-*.json", "docs/lanes/vshnobegin242/**"]
 standing = false
-note = "DISPATCHED AT WAVE 169 (job.board, 2026-09-25T14:45:00Z). #242: a lone SET_VERTEX4F outside Begin/End never runs the vertex program, so nxdk_vsh_tests Exceptional Float reads all zeros (found by lane.toolsmith, verdict on #112 item 4). Mechanism fully read in the issue; fix is in pgraph.c SET_VERTEX4F, reusing #234's evaluator. Arm pre-specified in briefs/vshnobegin242.md (Thor, nxdk_vsh_tests). hw/xbox/nv2a/pgraph/pgraph.c was free."
+note = "WAVE 178 (job.board, 2026-09-25T17:00Z): PR #245 is a draft, CI green on 224b6cb34b, `regressed` + `blocked:needs-owner`; the label was set by jobs/handback.sh at DRAFT_STRAND_MAX=3, NOT because the lane failed: the lane exited legitimately waiting on the arm verdict for vshnobegin242-must-not-move-runs3.json (base 1790353899-arms-vshnobegin242-base-1226684 running, fix ...-fix-1227042 queued at 16:31Z). NEXT TICK: when that [job.arms] verdict posts, clear the strand count (`rm $HANDBACK/strand/vshnobegin242`), drop blocked:needs-owner, and let handback resume the lane with the verdict -- nobody else will. #255 and #200 wait behind this PR (both need pgraph.c / #245 folded). PRIOR NOTE: DISPATCHED AT WAVE 169 (job.board, 2026-09-25T14:45:00Z). #242: a lone SET_VERTEX4F outside Begin/End never runs the vertex program, so nxdk_vsh_tests Exceptional Float reads all zeros (found by lane.toolsmith, verdict on #112 item 4). Mechanism fully read in the issue; fix is in pgraph.c SET_VERTEX4F, reusing #234's evaluator. Arm pre-specified in briefs/vshnobegin242.md (Thor, nxdk_vsh_tests). hw/xbox/nv2a/pgraph/pgraph.c was free."
 
 [lane.wbuf31sel]
 issues = ["31"]
@@ -806,9 +806,9 @@ note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #88:
 
 [lane.shadetie224]
 issues = ["224"]
-files = ["hw/xbox/nv2a/pgraph/glsl/vsh-ff.c", "docs/testing/predictions/shadetie224-*.json", "docs/lanes/shadetie224/**"]
+files = ["docs/testing/predictions/shadetie224-*.json", "docs/lanes/shadetie224/**"]
 standing = false
-note = "DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
+note = "NARROWED AT WAVE 178 (job.board, 2026-09-25T17:00Z): PR #252 is ANALYSIS ONLY -- the lit-normal candidate was refuted by the arm (Lighting_range/Directional 792 -> 66,328, 20 must_not_regress legs) and its vsh-ff.c change reverted (353f68c938), so glsl/vsh-ff.c is RELEASED to [free]. The PR carries `regressed`, which arms.sh recomputes per issue from verdicts on disk and nothing docs-only can supersede: see the decision-needed issue opened this tick. PRIOR NOTE: DISPATCHED AT TERRITORY WAVE 174 (job.board, 2026-09-25T15:15Z) for #224 family B: the 1-LSB fixed-function lighting tie, ours (0,85,59) vs silicon (0,85,60), 884,185 px over 18 Fixed/W_Fixed Flat captures (docs/lanes/shade224/NOTES.md section 1B). Find a float pipeline that lands on silicon's side of both known ties WITHOUT fitting a rule to two points; if none has an independent argument the finding is a capture spec for more tie normals. glsl/vsh-ff.c was free (lane.wparam223 retired). Brief: briefs/shadetie224.md."
 
 [retired.foldindex]
 issues = []
