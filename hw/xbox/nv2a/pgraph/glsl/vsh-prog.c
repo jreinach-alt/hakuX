@@ -294,9 +294,20 @@ static MString *decode_swizzle(const uint32_t *shader_token,
     }
 }
 
+/*
+ * The constant file a program reads and writes.  The uniform `c` is
+ * read-only, so a program that writes a constant register works on a
+ * per-invocation copy of it instead (see pgraph_glsl_gen_vsh_prog).
+ */
+#define VSH_CONST_FILE "c"
+#define VSH_CONST_FILE_RW "c_rw"
+/* A write past the end of the constant file lands here and is never read. */
+#define VSH_CONST_FILE_RW_OOB "_c_rw_oob"
+
 static MString *decode_opcode_input(const uint32_t *shader_token,
                                     VshParameterType param,
-                                    VshFieldName neg_field, int reg_num)
+                                    VshFieldName neg_field, int reg_num,
+                                    const char *c_file)
 {
     /* This function decodes a vertex shader opcode parameter into a string.
      * Input A, B or C is controlled via the Param and NEG fieldnames,
@@ -324,9 +335,9 @@ static MString *decode_opcode_input(const uint32_t *shader_token,
         reg_num = convert_c_register(vsh_get_field(shader_token, FLD_CONST));
         if (vsh_get_field(shader_token, FLD_A0X) > 0) {
             //FIXME: does this really require the "correction" doe in convert_c_register?!
-            snprintf(tmp, sizeof(tmp), "c[A0+%d]", reg_num);
+            snprintf(tmp, sizeof(tmp), "%s[A0+%d]", c_file, reg_num);
         } else {
-            snprintf(tmp, sizeof(tmp), "c[%d]", reg_num);
+            snprintf(tmp, sizeof(tmp), "%s[%d]", c_file, reg_num);
         }
         break;
     default:
@@ -380,10 +391,18 @@ static MString *decode_opcode(const uint32_t *shader_token,
 
         bool write_fog_register = false;
         if (vsh_get_field(shader_token, FLD_OUT_ORB) == OUTPUT_C) {
-            assert(!"TODO: Emulate writeable const registers");
-            mstring_append_fmt(ret, "c%d",
-                               convert_c_register(vsh_get_field(
-                                   shader_token, FLD_OUT_ADDRESS)));
+            /*
+             * #233: a write to a constant register.  It lands in the
+             * program's copy of the constant file, so later instructions
+             * of the same run read it back.  The address has no A0 form.
+             */
+            int c_reg = convert_c_register(
+                vsh_get_field(shader_token, FLD_OUT_ADDRESS));
+            if (c_reg >= 0 && c_reg < NV2A_VERTEXSHADER_CONSTANTS) {
+                mstring_append_fmt(ret, VSH_CONST_FILE_RW "[%d]", c_reg);
+            } else {
+                mstring_append(ret, VSH_CONST_FILE_RW_OOB);
+            }
         } else {
             int out_reg = vsh_get_field(shader_token, FLD_OUT_ADDRESS) & 0xF;
             mstring_append(ret,out_reg_name[out_reg]);
@@ -431,7 +450,7 @@ static MString *decode_opcode(const uint32_t *shader_token,
     return ret;
 }
 
-static MString *decode_token(const uint32_t *shader_token)
+static MString *decode_token(const uint32_t *shader_token, const char *c_file)
 {
     MString *ret;
 
@@ -449,7 +468,8 @@ static MString *decode_token(const uint32_t *shader_token)
                             vsh_get_field(shader_token, FLD_C_MUX),
                             FLD_C_NEG,
                             (vsh_get_field(shader_token, FLD_C_R_HIGH) << 2)
-                                | vsh_get_field(shader_token, FLD_C_R_LOW));
+                                | vsh_get_field(shader_token, FLD_C_R_LOW),
+                            c_file);
 
     MString *mac_suffix = NULL;
     if (mac != MAC_NOP) {
@@ -459,7 +479,8 @@ static MString *decode_token(const uint32_t *shader_token)
                 decode_opcode_input(shader_token,
                                     vsh_get_field(shader_token, FLD_A_MUX),
                                     FLD_A_NEG,
-                                    vsh_get_field(shader_token, FLD_A_R));
+                                    vsh_get_field(shader_token, FLD_A_R),
+                                    c_file);
             mstring_append(inputs_mac, ", ");
             mstring_append(inputs_mac, mstring_get_str(input_a));
             mstring_unref(input_a);
@@ -469,7 +490,8 @@ static MString *decode_token(const uint32_t *shader_token)
                 decode_opcode_input(shader_token,
                                     vsh_get_field(shader_token, FLD_B_MUX),
                                     FLD_B_NEG,
-                                    vsh_get_field(shader_token, FLD_B_R));
+                                    vsh_get_field(shader_token, FLD_B_R),
+                                    c_file);
             mstring_append(inputs_mac, ", ");
             mstring_append(inputs_mac, mstring_get_str(input_b));
             mstring_unref(input_b);
@@ -723,6 +745,27 @@ static const char* vsh_header =
     "  return t;\n"
     "}\n";
 
+int pgraph_glsl_vsh_token_constant_write(const uint32_t *token)
+{
+    if (vsh_get_field(token, FLD_OUT_O_MASK) == 0) {
+        return -1;
+    }
+    if (vsh_get_field(token, FLD_OUT_ORB) != OUTPUT_C) {
+        return -1;
+    }
+
+    /* Only the unit the output mux selects reaches the register. */
+    if (vsh_get_field(token, FLD_OUT_MUX) == OMUX_MAC) {
+        if (vsh_get_field(token, FLD_MAC) == MAC_NOP) {
+            return -1;
+        }
+    } else if (vsh_get_field(token, FLD_ILU) == ILU_NOP) {
+        return -1;
+    }
+
+    return convert_c_register(vsh_get_field(token, FLD_OUT_ADDRESS));
+}
+
 void pgraph_glsl_gen_vsh_prog(uint16_t version, const uint32_t *tokens,
                               unsigned int length, MString *header,
                               MString *body)
@@ -733,9 +776,35 @@ void pgraph_glsl_gen_vsh_prog(uint16_t version, const uint32_t *tokens,
     bool has_final = false;
     int slot;
 
+    /*
+     * #233: a program may write its own constant registers.  ILU RCP Tests
+     * does it for every result, and silicon keeps the value in the constant
+     * RAM: the test reads c[188..191] back over RDI after the draw.  Here
+     * the write is visible to the rest of the same run only; nothing carries
+     * it into the next draw or back to the CPU copy yet.
+     *
+     * Only a program that writes a constant gets the copy, so every other
+     * program's GLSL is unchanged.
+     */
+    const char *c_file = VSH_CONST_FILE;
+    for (slot = 0; slot < length; slot++) {
+        const uint32_t *cur_token = &tokens[slot * VSH_TOKEN_SIZE];
+        if (pgraph_glsl_vsh_token_constant_write(cur_token) >= 0) {
+            c_file = VSH_CONST_FILE_RW;
+            mstring_append(body,
+                "  vec4 " VSH_CONST_FILE_RW "[" stringify(
+                    NV2A_VERTEXSHADER_CONSTANTS) "] = " VSH_CONST_FILE ";\n"
+                "  vec4 " VSH_CONST_FILE_RW_OOB ";\n");
+            break;
+        }
+        if (vsh_get_field(cur_token, FLD_FINAL)) {
+            break;
+        }
+    }
+
     for (slot=0; slot < length; slot++) {
         const uint32_t* cur_token = &tokens[slot * VSH_TOKEN_SIZE];
-        MString *token_str = decode_token(cur_token);
+        MString *token_str = decode_token(cur_token, c_file);
         mstring_append_fmt(body,
                            "  /* Slot %d: 0x%08X 0x%08X 0x%08X 0x%08X */\n"
                            "  %s\n",
