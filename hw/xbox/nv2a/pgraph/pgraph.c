@@ -4075,7 +4075,14 @@ static const Nv2aVshProgram *pgraph_vsh_cpu_program(PGRAPHState *pg,
     return program;
 }
 
-/* Silicon flushes a denormal to a zero of the same sign, in and out. */
+/*
+ * The ILU flushes a denormal to a zero of the same sign, in and out; the MAC
+ * does not (#255).  On the console, nxdk_vsh_tests' ILU RCP Tests prints
+ * rcp(-MaxSub) = -inf and rcp(-Max) = 0, not -0: the printf there only signs
+ * a value below zero, so the negative denormal RCP computes came back as a
+ * zero.  Exceptional Float's MAC MOV of -MaxSub and -MinSub prints -0, so
+ * those came back below zero, not flushed.
+ */
 static float vsh_flush_denormal(float f)
 {
     if (fpclassify(f) == FP_SUBNORMAL) {
@@ -4264,28 +4271,78 @@ static void vsh_apply_outputs_known(VshKnown *k, Nv2aVshOperation *op,
     }
 }
 
-static void vsh_flush_outputs(const Nv2aVshExecutionState *state,
-                              const Nv2aVshOperation *op)
+static float *vsh_output_reg(const Nv2aVshExecutionState *state,
+                             const Nv2aVshOutput *out)
 {
-    for (int o = 0; o < 2; o++) {
-        const Nv2aVshOutput *out = &op->outputs[o];
-        float *reg;
+    switch (out->type) {
+    case NV2ART_TEMPORARY:
+        return &state->temp_regs[out->index * 4];
+    case NV2ART_OUTPUT:
+        return &state->output_regs[out->index * 4];
+    case NV2ART_CONTEXT:
+        return &state->context_regs[out->index * 4];
+    default:
+        return NULL;
+    }
+}
 
-        switch (out->type) {
-        case NV2ART_TEMPORARY:
-            reg = &state->temp_regs[out->index * 4];
-            break;
-        case NV2ART_OUTPUT:
-            reg = &state->output_regs[out->index * 4];
-            break;
-        case NV2ART_CONTEXT:
-            reg = &state->context_regs[out->index * 4];
-            break;
-        default:
+static void vsh_flush_all(Nv2aVshCPUFullExecutionState *full)
+{
+    float *regs[] = { full->input_regs, full->output_regs, full->temp_regs,
+                      full->context_regs };
+    size_t counts[] = { ARRAY_SIZE(full->input_regs),
+                        ARRAY_SIZE(full->output_regs),
+                        ARRAY_SIZE(full->temp_regs),
+                        ARRAY_SIZE(full->context_regs) };
+
+    for (size_t r = 0; r < ARRAY_SIZE(regs); r++) {
+        for (size_t i = 0; i < counts[r]; i++) {
+            regs[r][i] = vsh_flush_denormal(regs[r][i]);
+        }
+    }
+}
+
+/*
+ * Run one step: the MAC on the registers as they are, the ILU on a copy with
+ * every denormal flushed, its result flushed as it is written back.  Both
+ * units read before either writes, and the ILU's write lands last, as in
+ * nv2a_vsh_emu_apply.
+ */
+static void vsh_apply_step(Nv2aVshCPUFullExecutionState *full,
+                           Nv2aVshExecutionState *state,
+                           const Nv2aVshStep *step)
+{
+    if (!step->ilu.opcode) {
+        nv2a_vsh_emu_apply(state, step);
+        return;
+    }
+
+    Nv2aVshCPUFullExecutionState ilu_full;
+    /* This clears ilu_full, so copy the registers in after it. */
+    Nv2aVshExecutionState ilu_state =
+        nv2a_vsh_emu_initialize_full_execution_state(&ilu_full);
+    ilu_full = *full;
+    vsh_flush_all(&ilu_full);
+
+    Nv2aVshStep mac = *step;
+    mac.ilu.opcode = NV2AOP_NOP;
+    nv2a_vsh_emu_apply(state, &mac);
+
+    Nv2aVshStep ilu = *step;
+    ilu.mac.opcode = NV2AOP_NOP;
+    nv2a_vsh_emu_apply(&ilu_state, &ilu);
+
+    for (int o = 0; o < 2; o++) {
+        const Nv2aVshOutput *out = &step->ilu.outputs[o];
+        const float *src = vsh_output_reg(&ilu_state, out);
+        float *dst = vsh_output_reg(state, out);
+        if (!src) {
             continue;
         }
         for (int c = 0; c < 4; c++) {
-            reg[c] = vsh_flush_denormal(reg[c]);
+            if (out->writemask & (NV2AWM_X >> c)) {
+                dst[c] = vsh_flush_denormal(src[c]);
+            }
         }
     }
 }
@@ -4345,9 +4402,6 @@ static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
 
     QEMU_BUILD_BUG_ON(sizeof(full.context_regs) != sizeof(pg->vsh_constants));
     memcpy(full.context_regs, pg->vsh_constants, sizeof(full.context_regs));
-    for (int i = 0; i < NV2A_VERTEXSHADER_CONSTANTS * 4; i++) {
-        full.context_regs[i] = vsh_flush_denormal(full.context_regs[i]);
-    }
     memset(known.context, true, sizeof(known.context));
 
     /*
@@ -4358,8 +4412,7 @@ static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
     for (int i = 0; i < NV2A_VERTEXSHADER_ATTRIBUTES; i++) {
         const VertexAttribute *attr = &pg->vertex_attributes[i];
         for (int c = 0; c < 4; c++) {
-            full.input_regs[i * 4 + c] =
-                vsh_flush_denormal(attr->inline_value[c]);
+            full.input_regs[i * 4 + c] = attr->inline_value[c];
         }
         known.input[i] = pg->inline_buffer_length || !attr->count;
     }
@@ -4388,9 +4441,7 @@ static void pgraph_vsh_writeback_constants(PGRAPHState *pg)
             vsh_apply_outputs_known(&known, &step.ilu, ilu_known, written);
         }
 
-        nv2a_vsh_emu_apply(&state, &step);
-        vsh_flush_outputs(&state, &step.mac);
-        vsh_flush_outputs(&state, &step.ilu);
+        vsh_apply_step(&full, &state, &step);
 
         if (step.is_final) {
             break;
