@@ -59,3 +59,12 @@ owner if the console stops answering.
   them. A dispatcher dry run cannot exercise the diff at all unless the XBE
   forces it on, because `make_test_iso.py` pins `enable_pgraph_region_diff`
   false.
+- 2026-09-25. Idle-time references, at the owner's request (the console
+  turns itself off after 10 idle hours): silicon captures of `Fog planar vsh`
+  (6 tests) and `Surface as vertex array` (5), which nothing had captured
+  before. Pristine `6743b6a`, C1 16/16. The first comparison finds hakuX's
+  `DynamicUpdateLoop` wrong by 96,000 px: when a surface is rendered to and
+  then read as a vertex array, hakuX keeps the stale vertex data.
+  `docs/testing/xbox-refs6743-2026-09-25.md`. `Clipping precision` is
+  interactive-only and saves nothing. `PVIDEO` writes `NV_PMC_ENABLE` and
+  waits for the power switch.
