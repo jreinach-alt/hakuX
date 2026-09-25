@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 161
-updated_utc = "2026-09-25T13:15:00Z"
+wave = 162
+updated_utc = "2026-09-25T13:30:00Z"
 
 
 [retired.hilodot10]
@@ -540,7 +540,6 @@ files = [
     "docs/lanes/blendarm50/NOTES.md",
     "docs/testing/swatchorder50_readings.py",
 # RELEASED AT WAVE 146 by retiring lane.remote (decision-needed #213):
-    "hw/xbox/nv2a/pgraph/gl/surface.c",
     "hw/xbox/nv2a/pgraph/gl/blit.c",
     "hw/xbox/nv2a/pgraph/gl/texture.c",
     "hw/xbox/nv2a/pgraph/gl/renderer.c",
@@ -735,9 +734,9 @@ note = "RETIRED AT WAVE 147 (host session): PR #148 CLOSED unmerged 2026-09-25T0
 
 [lane.remote]
 issues = ["184", "109"]
-files = []
+files = ["hw/xbox/nv2a/pgraph/gl/surface.c", "docs/testing/predictions/remote-109-*.json", "docs/lanes/remote/**"]
 standing = false
-note = "CLAIMED AT WAVE 147 (host session) on lane.remote's own request after it came back 2026-09-24 and closed out #62/#158: #184's open measurement -- one desktop Vulkan Clear run with pgraph_vk_bind_textures' three exits counted per bind, to find which source the stale refill reads and why X1R5G5B5 is exempt while R5G6B5 is not. files = [] BY DESIGN: the lane instruments locally, measures, reverts and verifies its tree clean, and reports on #184; a fix is a separate claim of vk/texture.c and friends, which are in [free]. Brief: briefs/184.md. This is a new row; [retired.remote] is the wave-146 retirement of the old one and stays as history. #109 ADDED AT TERRITORY WAVE 153: run PR #115's registered GL-vs-Vulkan arm (docs/testing/predictions/undersized-pitch-swizzle-layout.json on master; a_ref/b_ref 4129a349e6, differing only in xemu.toml [display] renderer) on desktop renderers -- the arms job cannot run it (it skips a ref-with-renderer as 'does not resolve'), lane.xbox found no console run is needed, and this lane has both desktop renderers. files = [] still: a measurement, reported on #109."
+note = "CLAIMED AT WAVE 147 (host session) on lane.remote's own request after it came back 2026-09-24 and closed out #62/#158: #184's open measurement -- one desktop Vulkan Clear run with pgraph_vk_bind_textures' three exits counted per bind, to find which source the stale refill reads and why X1R5G5B5 is exempt while R5G6B5 is not. files = [] BY DESIGN: the lane instruments locally, measures, reverts and verifies its tree clean, and reports on #184; a fix is a separate claim of vk/texture.c and friends, which are in [free]. Brief: briefs/184.md. This is a new row; [retired.remote] is the wave-146 retirement of the old one and stays as history. #109 ADDED AT TERRITORY WAVE 153: run PR #115's registered GL-vs-Vulkan arm (docs/testing/predictions/undersized-pitch-swizzle-layout.json on master; a_ref/b_ref 4129a349e6, differing only in xemu.toml [display] renderer) on desktop renderers -- the arms job cannot run it (it skips a ref-with-renderer as 'does not resolve'), lane.xbox found no console run is needed, and this lane has both desktop renderers. files = [] still: a measurement, reported on #109. GRANTED AT WAVE 162 (host session, answering its 09:22Z comment on #184): gl/surface.c for #109's GL fix (Model E -> Model H on the undersized pitch; register the fix arm first -- Swizzle -4,032 exactly -- then the code), plus its predictions and docs/lanes/remote/**. vk/draw.c for #184's fix (extend pgraph_vk_surface_written_while_sampled so a write to a surface invalidates every stage bound from its range) is PROMISED when PR #235 folds and lane.shadeflat224 releases it."
 
 [lane.xbox]
 issues = ["112", "110"]
