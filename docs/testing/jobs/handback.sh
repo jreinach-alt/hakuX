@@ -67,7 +67,8 @@
 # AND WAITING IS NOT FAILING, so a strand resume does not spend one of the
 # four attempts behind the escalation policy (`lane.sh` counts every resume;
 # this job puts the counter back). What bounds it instead is DRAFT_STRAND_MAX
-# per lane, plus the same once-per-head-sha key as every other cause.
+# per lane, plus a once-per-cause key: the head sha for the quiet clock, the
+# set of judged verdicts for an arm (see the strand table below).
 #
 # WHAT IT DOES NOT DO. It resolves nothing and it starts nothing itself: the
 # actor is `docs/testing/lane.sh resume`, which already counts the attempt,
@@ -110,9 +111,92 @@ HANDBACK_ROWS=(
 #                       (`arms.sh` labels the PR `verified` or `regressed`)
 #   draft-strand-quiet  nothing has happened on the PR for DRAFT_STRAND_SECS
 #
-# Two keys, not one, on purpose: the marker is `$label-$pr-$head`, so a
-# verdict that lands AFTER a quiet resume is still a new cause at the same
-# head, while a second quiet tick at that head is not.
+# Two keys, not one, on purpose: a verdict that lands AFTER a quiet resume is
+# still a new cause at the same head, while a second quiet tick at that head is
+# not. The quiet marker is `$label-$pr-$head`; the arm marker is keyed on the
+# VERDICTS, below, because the head is not what an arm resume is about.
+#
+# A NEW HEAD IS NOT A NEW VERDICT. The arm cause used the head key too until
+# 2026-09-25, so a lane that reacted to its verdict by pushing -- registering a
+# replicate, committing NOTES, merging master -- was strand-resumed again, with
+# nothing new to read, on the next tick. lane.vshnobegin242 (#245) was resumed
+# at 16:10Z, 16:29Z and 16:32Z on ONE judged FAIL and labelled
+# `blocked:needs-owner` at 16:42Z while the replicate it had correctly
+# registered sat queued on the Thor. So the arm marker is a hash of the
+# `(prediction sha, verdict)` pairs judged for the branch, and it moves only
+# when `arms.sh` judges another one.
+ARMS_DIR="$WORK/arms"
+DISPATCH_DIR="${DISPATCH_DIR:-$WORK/dispatch}"
+VKEY=""; VSET=""
+verdicts_of() {   # <branch> -> VKEY (hash) and VSET (short list), or both "" if none judged
+    # THE SAME READ `arms.sh state` MAKES, not a second opinion: a pair's
+    # branch is the part of its `source` before the colon, its verdict is
+    # judged/<sha> as the judge wrote it, and only a line saying FAIL or PASS
+    # is a verdict (FAIL first, as there). UNJUDGED and ERROR supersede nothing
+    # there and are not new information here. Not by CALLING `arms.sh state`:
+    # it rewrites $ARMS_DIR/log/label-index.tsv with `>`, and an arms tick
+    # reading that index mid-judge would see it truncated.
+    local out
+    out=$(python3 - "$ARMS_DIR" "$1" <<'PY'
+import glob, hashlib, json, os, sys
+A, branch = sys.argv[1:3]
+got = []
+for pj in sorted(glob.glob(os.path.join(A, "pairs", "*.json"))):
+    if pj.endswith(".verdict.json"):
+        continue
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    sha, src = p.get("sha"), str(p.get("source") or "")
+    if not sha or src.partition(":")[0] != branch:
+        continue
+    try:
+        v = open(os.path.join(A, "judged", sha)).read()
+    except Exception:
+        continue                           # queued or running; no verdict yet
+    cls = "FAIL" if "FAIL" in v else ("PASS" if "PASS" in v else None)
+    if cls:
+        got.append((sha, cls))
+got.sort()
+if got:
+    print(hashlib.sha256("\n".join("%s %s" % g for g in got).encode()).hexdigest()[:16])
+    print(" ".join("%s=%s" % (s[:12], c) for s, c in got))
+PY
+)
+    VKEY=$(sed -n 1p <<< "$out"); VSET=$(sed -n 2p <<< "$out")
+}
+# THE LANE'S OWN ARM, STILL ON ITS WAY. A request is the branch's when its
+# expect_sha is one of the branch's registered predictions (how `arms.sh`
+# queues one), when its purpose names the branch as its source, or when its
+# requester is the lane's own `ab_run.sh --who <name>` pair.
+INFLIGHT=""
+inflight_of() {   # <branch> <lane name> -> INFLIGHT="<queue|running>/<request id>", or ""
+    INFLIGHT=$(python3 - "$ARMS_DIR" "$DISPATCH_DIR" "$1" "$2" <<'PY'
+import glob, json, os, sys
+A, D, branch, name = sys.argv[1:5]
+shas = set()
+for pj in glob.glob(os.path.join(A, "pairs", "*.json")):
+    try:
+        p = json.load(open(pj))
+    except Exception:
+        continue
+    if str(p.get("source") or "").partition(":")[0] == branch and p.get("sha"):
+        shas.add(p["sha"])
+who = {name + "-base", name + "-fix", "arms-" + name + "-base", "arms-" + name + "-fix"}
+for d in ("running", "queue"):
+    for rq in sorted(glob.glob(os.path.join(D, d, "*.req"))):
+        try:
+            r = json.load(open(rq))
+        except Exception:
+            continue
+        if (r.get("expect_sha") in shas or r.get("requester") in who
+                or (" from %s:" % branch) in str(r.get("purpose") or "")):
+            print("%s/%s" % (d, r.get("id") or os.path.basename(rq)[:-4]))
+            sys.exit(0)
+PY
+)
+}
 #
 # The stale set is wider than `needs-rebase`'s because every one of these
 # labels already has an actor: the rows above, the audit outlet, or a person.
@@ -296,9 +380,11 @@ extend work this PR already carries.
 
 **If you are still waiting on something**, that is a finished session too, but
 say it where a reader can see it: a PR comment starting \`[lane.$4] waiting:\`
-naming what you are waiting for and what will resolve it. This job resumes a
-lane once per head sha per cause, so if the thing you are waiting for lands and
-nothing else on the PR changes, it will find you again on the quiet clock.
+naming what you are waiting for and what will resolve it. If it is an arm --
+a replicate you registered, say -- this job does not resume you while that arm
+is queued or running, and resumes you once when its verdict is judged; a push
+of your own is not a verdict. Anything else, it finds you again on the quiet
+clock.
 EOF
 }
 
@@ -622,9 +708,19 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # and the second session re-reads the same NOTES.md and the same diff.
         # When the lane pushes, the head moves and a fresh conflict is a fresh
         # cause.
-        marker="$H/done/$label-$pr-$head"
+        #
+        # EXCEPT THE ARM CAUSE, which is keyed on the verdicts (see the table
+        # above): a lane pushes in answer to a verdict, and that push is not a
+        # second verdict. With nothing judged on disk for the branch -- the
+        # label set by hand, or an arms dir this host cannot read -- there is
+        # no verdict set to key on, and it keeps the head key it always had.
+        marker="$H/done/$label-$pr-$head"; keyed="at ${head:0:10}"
+        if [ "$label" = draft-strand-arm ]; then
+            verdicts_of "$branch"
+            [ -z "$VKEY" ] || { marker="$H/done/$label-$pr-v$VKEY"; keyed="on verdicts $VSET"; }
+        fi
         if [ -f "$marker" ]; then
-            [ "$mode" = list ] && echo "#$pr $branch: $label already actioned at ${head:0:10} ($(head -1 "$marker"))"
+            [ "$mode" = list ] && echo "#$pr $branch: $label already actioned $keyed ($(head -1 "$marker"))"
             continue
         fi
 
@@ -692,6 +788,22 @@ while IFS=$'\t' read -r label action stale pr branch head extra labels; do
         # ------------------------------------------ the strand's own two gates
         uncounted=""
         case "$label" in draft-strand-*)
+            # ITS OWN ARM IS IN FLIGHT: THE LANE IS WAITING, AND RIGHTLY. Its
+            # replicate is queued or running on a device, and the verdict that
+            # arm produces is the next new cause; resumed now, it is told what
+            # it already knew and spends one of DRAFT_STRAND_MAX on it. #245
+            # was capped exactly so. No marker for the cause -- the verdict has
+            # not landed -- and one log line per request, not one per tick.
+            inflight_of "$branch" "$name"
+            if [ -n "$INFLIGHT" ]; then
+                [ "$mode" = list ] && { echo "#$pr $branch: draft, lane $name not running, but its arm is in flight ($INFLIGHT); waiting on it"; continue; }
+                inflight_marker="$H/done/inflight-$pr-${INFLIGHT#*/}"
+                if [ ! -f "$inflight_marker" ]; then
+                    echo "$INFLIGHT" > "$inflight_marker"
+                    say "#$pr: lane $name is stranded in draft but its arm is in flight ($INFLIGHT); not resuming until it is judged"
+                fi
+                continue
+            fi
             # WAITING IS NOT STRANDED. `draft-strand-quiet` fires on a clock and
             # nothing else, so before it does, the clock has to have run long
             # enough that the thing the lane was waiting for would have landed.
@@ -762,7 +874,7 @@ It wants a person now. Either the lane is waiting on something this job cannot s
             say "#$pr: resumed lane.$name on $label -- $out"
             comment "$pr" "[job.handback] Resumed \`lane.$name\`: $said, so nothing else could act on it -- \`board.sh\`, \`fleet.py\` and \`fold.sh\` all skip drafts, and that is right while a lane is working.
 
-The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, and at once per head sha per cause.
+The resolved state went into its brief (\`${head:0:10}\`: \`$cause\`), because a lane resumed with no new information repeats what it did before. **This did not spend one of the lane's attempts**: waiting on a ten-minute CI run or a ninety-minute arm is not a failed pass, and the escalation policy is for failed passes. It is bounded instead at \`DRAFT_STRAND_MAX=$DRAFT_STRAND_MAX\` per lane, at once per head sha for the quiet clock, and at once per new judged verdict for an arm -- pushing in answer to a verdict does not bring you back here, and nor does waiting on an arm that is still queued.
 
 This job does **not** mark a PR ready: the definition of done includes \`NOTES.md\`, the \`Files:\` line and the prediction refs, none of which a script can check. That call stays with the lane."
             resumed=1
