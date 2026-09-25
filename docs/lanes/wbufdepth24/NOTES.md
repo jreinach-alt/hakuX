@@ -76,3 +76,19 @@ territory; not touched here). The V0 +2 is a fixed-function z transform
 precision question. These are ZB rows where the scorer's "structural" count
 is inflated: a +1 or +2 that carries out of the low byte reads as a 254-255
 channel step. Count words, not channels.
+
+## Status 2026-09-25 (session 1)
+
+- Nova's logcat on the baseline: `Z24S8 host format 0x82, depth stored as
+  float` (D32_SFLOAT_S8_UINT), as mechanism A requires. Thor to be read from
+  its baseline.
+- Clear path (`pgraph.c` ~5084) stores 0xFFFFFF / 2^24 on a float image, so
+  `min(zfloor, 16777215.0) / 2^24` is bit-equal to the clear and LEQUAL passes.
+- **Waiting on:** (1) baselines `1790362749-wbufdepth24-3948624` (Thor) and
+  `-3948651` (Nova), 2 runs each -- rerun `classify.py RESULT 1` and `... 2` on
+  both, and check the two blanks are blank on every run; (2) the board's
+  answer to the psh.c grant request on #266. With the grant: one-line fix,
+  register `wbufdepth24-d24sat.json` (26 colour rows down, 16-bit / F24 /
+  `_ZB` rows must_not_move), arm.
+- Do not repeat: the scorer's structural channel count on `_ZB` rows counts a
+  carried +1/+2 as a 254 step; decode words.
