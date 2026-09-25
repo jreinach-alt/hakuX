@@ -1,0 +1,39 @@
+From dc9e79bf0f8aad5aee5fc3c66daa9e4d2a0b9a7b Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 00:09:53 -0700
+Subject: [PATCH] hakuX #112 item 1: seven Viewport offsets for the sub-step
+ rounding threshold
+
+D1-D6 and C1 exactly as registered in hakuX docs/testing/predictions/
+2026-09-19-viewport-substep-threshold.md: remainders 25/32, 9/16, 5/8,
+15/16, a negative twin, a one-pixel translation, and a 3/4 control outside
+the window. The existing twelve are unchanged and re-run as the gate.
+---
+ src/tests/viewport_tests.cpp | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/src/tests/viewport_tests.cpp b/src/tests/viewport_tests.cpp
+index aa47829..e5f3e9c 100644
+--- a/src/tests/viewport_tests.cpp
++++ b/src/tests/viewport_tests.cpp
+@@ -24,6 +24,17 @@ static constexpr ViewportTests::Viewport kTestCases[] = {
+     {{-0.531250f, -0.531250f, 0, 0}, {2.0f, 0, 0, 0}},
+     {{1.0, 1.0, 0, 0}, {2.0f, 0, 0, 0}},
+     {{-1.0, -1.0, 0, 0}, {2.0f, 0, 0, 0}},
++
++    // hakuX #112 item 1: the sub-step rounding threshold. Registered in hakuX
++    // docs/testing/predictions/2026-09-19-viewport-substep-threshold.md; all
++    // seven are dyadic and exact in fp32, and must be transcribed exactly.
++    {{0.548828125f, 0.548828125f, 0, 0}, {0, 0, 0, 0}},    // D1: remainder 25/32
++    {{0.53515625f, 0.53515625f, 0, 0}, {0, 0, 0, 0}},      // D2: 9/16 exactly
++    {{0.5390625f, 0.5390625f, 0, 0}, {0, 0, 0, 0}},        // D3: 5/8
++    {{0.55859375f, 0.55859375f, 0, 0}, {0, 0, 0, 0}},      // D4: 15/16
++    {{-0.451171875f, -0.451171875f, 0, 0}, {0, 0, 0, 0}},  // D5: D1's negative twin
++    {{1.548828125f, 1.548828125f, 0, 0}, {0, 0, 0, 0}},    // D6: D1 plus one pixel
++    {{0.234375f, 0.234375f, 0, 0}, {0, 0, 0, 0}},          // C1: 3/4, outside the window
+ };
+ 
+ static std::string MakeTestName(const ViewportTests::Viewport &vp) {
+-- 
+2.43.0
+

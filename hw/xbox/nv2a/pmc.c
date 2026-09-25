@@ -62,44 +62,11 @@ uint64_t pmc_read(void *opaque, hwaddr addr, unsigned int size)
         r = d->pmc.enabled_interrupts;
         break;
     case NV_PMC_ENABLE:
-        /* Measured on real NV2A silicon (#188): two independent read-only
-         * sweeps, with a reboot between them, both read 0x01110000 here --
-         * 1,024 of 1,024 PMC dwords reproducible. We returned 0.
-         *
-         * The state it was read in is part of the measurement: the console
-         * freshly out of the dashboard, drive quiescent, engines idle, and no
-         * write issued in either sweep. Both sweeps were that same state, so
-         * 1,024/1,024 bounds REPEATABILITY, not state-independence -- which
-         * is the property a hardcoded constant actually needs.
-         * nv2a-probe-pmc-findings.md says as much of its own numbers.
-         *
-         * A bare constant, deliberately -- but NOT because the header and the
-         * measurement contradict each other, which an earlier version of this
-         * comment claimed and two documents in this tree refute. The header
-         * puts _PFIFO at bit 8 and _PGRAPH at bit 12, and the measured word
-         * has both of those bits CLEAR. In the same sweep PGRAPH read 0/2048
-         * non-zero, so "PGRAPH is not enabled" is what the header PREDICTS
-         * for this word, not a refutation of it. (PFIFO read 382/2048
-         * non-zero, which settles nothing either way: a disabled engine's
-         * registers can still hold reset defaults.) And
-         * nv2a-mapping-programme.md:168 already reads bit 16 as PTIMER,
-         * cross-checked against PTIMER reading 992/1024 non-zero in that same
-         * survey.
-         *
-         * What is unestablished, and what the envytools cross-reference #188
-         * asks for should settle: what bits 20 and 24 gate, and what this
-         * register reads on a machine that is actually rendering. Until then
-         * no field decomposition here -- which does mean we answer "PFIFO and
-         * PGRAPH are down" to any guest that asks, at all times, including
-         * mid-frame. The 0 we used to return said exactly the same thing and
-         * was further from silicon in the one state anyone has measured.
-         *
-         * Nor is the write side modelled, for a blunter reason: writing 0 to
-         * this register halted the physical console outright -- no ICMP, ARP
-         * FAILED, power cycle. Writes stay a silent no-op via pmc_write's
-         * `default` until someone establishes what each bit gates.
-         */
-        r = 0x01110000;
+        /* Stored state (#188). pmc_reset() gives the idle value silicon reads,
+         * pmc_write() stores what the guest writes over the implemented bits,
+         * and nothing else reads or acts on it. The measurement, and every
+         * choice this model makes, is recorded at pmc_write(). */
+        r = d->pmc.enable;
         break;
     case 0x160:
     case 0x204 ... 0x2FC:
@@ -183,8 +150,62 @@ void pmc_write(void *opaque, hwaddr addr, uint64_t val, unsigned int size)
         d->pmc.enabled_interrupts = val;
         nv2a_update_irq(d);
         break;
+    case NV_PMC_ENABLE:
+        /* Storage over the ten implemented bits, and NOTHING ELSE (#188).
+         *
+         * What was measured on real NV2A silicon (#188, #203;
+         * docs/testing/nv2a-probe-pmc-findings.md, "NV_PMC_ENABLE (0x200)"):
+         *  - idle, no write issued: 0x01110000 (bits 16, 20, 24). Two sweeps,
+         *    reboot between, 1,024/1,024 dwords reproducible. pmc_reset().
+         *  - after pbkit's pb_init() writes 0xFFFFFFFF, which every graphics
+         *    title does: 0x13111113. So bits 0, 1, 4, 8, 12, 16, 20, 24, 25
+         *    and 28 are implemented and every other bit ignores a 1. That
+         *    read is n = 1 with no artifact in this tree (the findings' own
+         *    "Provenance" section says so), and it is the whole basis of the
+         *    mask below.
+         * pb_kill() writes back the value pb_init() saved, and the only other
+         * writes in pbkit clear and re-set bit 12. Storage makes all three
+         * round-trip, which a constant read never did: it told a guest
+         * "0x01110000" mid-frame, right after that guest wrote all-ones.
+         *
+         * GATE NOTHING. Which engine any bit gates is UNMEASURED. envytools
+         * names 12 PGRAPH and 28 PVIDEO for NV4:G80, but an all-ones write
+         * sets every implemented bit whatever it controls, so the read-back
+         * separates no hypothesis, and 0, 1, 20 and 25 are named by nothing.
+         * So a write here resets no engine, halts nothing on 0 (silicon did
+         * halt when 0 was written -- NV_PMC_ENABLE_ALL_DISABLE -- and that is
+         * deliberately not modelled either), and no other block consults
+         * d->pmc.enable. Wiring bit 12 to PGRAPH or bit 28 to PVIDEO here
+         * would model an assignment no measurement supports; the experiment
+         * that would is a selective one-bit write from a known baseline, on
+         * the register that has halted the console once. PVIDEO is #110's.
+         *
+         * THE ONE CHOICE THE DATA DOES NOT SETTLE: bits 16, 20 and 24 read 1
+         * before any write, so "settable" and "hardwired to 1" predict the
+         * same value for every read anyone has taken. After a write that
+         * CLEARS one of them, this model reads back 0 -- storage, the same as
+         * the seven bits observed to go 0 -> 1. Chosen because it is the
+         * smaller claim (one mask, no second hardwired set) and because every
+         * write pbkit issues reads back identically under both. Falsifier: on
+         * silicon, write 0x13101113 (bit 20 alone cleared; unnamed, and not
+         * the PTIMER/PCRTC candidates 16 and 24) and read it back. 0x13111113
+         * means bit 20 is hardwired: OR it into the read here, repeat for 16
+         * and 24, and change the selftest line that asserts storage.
+         *
+         * Width: like INTR_EN_0 above, a write replaces the whole word
+         * whatever `size` is. Nothing measured says what a sub-dword write
+         * does to this register, and no guest code seen issues one. */
+        d->pmc.enable = val & 0x13111113;
+        break;
     default:
         break;
     }
+}
+
+/* The idle value, measured with no write issued (#188): bits 16, 20, 24.
+ * What a guest reads before it writes anything; see pmc_write(). */
+void pmc_reset(NV2AState *d)
+{
+    d->pmc.enable = 0x01110000;
 }
 
