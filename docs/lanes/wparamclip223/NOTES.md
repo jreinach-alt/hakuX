@@ -267,6 +267,15 @@ ancestors, so the grid arm is unaffected. preflight passes. The grid arm still
 has no verdict: it was registered at 17:17Z and takes about 90 minutes. So the
 PR stays in draft, waiting on that verdict alone.
 
+The 17:36Z resume (attempt 2) found the previous session ended for the same
+reason: it was waiting on the grid arm, which still had no verdict. Master
+had folded #256 in the meantime, and the index conflicted again. As before,
+the fix was to merge `origin/master` and regenerate the index over tests
+6743b6a with `--support` pbkitplusplus e91d509. The result has 104 suites
+and `check` passes. Leave out `--support` and the build silently drops
+`resolved_tables` to 0. Both prediction refs are still ancestors. The PR
+still waits on the grid verdict, which is due around 18:50Z.
+
 ## For the next lane
 
 - A gate that tests for an exact zero must read the quantity silicon
