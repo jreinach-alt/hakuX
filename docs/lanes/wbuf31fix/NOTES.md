@@ -130,6 +130,16 @@ reason in the prediction.
 - `wbuf31_blocker_audit.py` and `wbuf_clip_phase_choice.py` produce
   byte-identical output against master's tool and this one.
 - Do not "tidy" `flatTop` into `second_of_quad`: the shader cannot see it.
+- The nv2a index was regenerated (`979d57c41e`), and only psh.c sites moved.
+  preflight passes.
+
+### State at the end of attempt 2: waiting
+
+PR #222 is in draft. It is waiting on two things: CI on the head, and the
+arms job's `[job.arms]` verdict for `wbuf31fix-topcut-grid.json`. On resume,
+read the verdict and run `wbuf_anchor_recover.py --ours <arm B result>` for
+leg M. Then mark the PR ready if M holds and no guard moved. If M fails, read
+it as a diagnosis first; do not revert on reflex.
 
 ---
 
