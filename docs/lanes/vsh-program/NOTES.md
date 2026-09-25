@@ -122,3 +122,43 @@ and #223.
   `staleness`. The dispatcher now records `run_disc_exit` per vsh run.
 - Test FILE names are not log test names: log `Exceptional Float::ExceptionalFloat`
   writes `Exceptional_Float/Float.txt`. vsh_score keys on files.
+
+## Attempt 2, 2026-09-25: the handheld proof is blocked on queue permission
+
+**Why attempt 1 did not finish:** it did everything that could run before the
+fold. Workers run master's snapshot, so the handheld proof could only happen
+after #229 folded (`6e99456e70`) and the dispatcher re-execed (06:06:49). That
+was the right place to stop, not a failure.
+
+**What happened in attempt 2:** I reset the branch to `origin/master @
+6e99456e70`. The dispatch queue was empty, `hold/` said `lifted`, and the ISO
+and the console references (`stage1b` ILU_RCP_Tests, `stage2`
+Exceptional_Float) are all on disk. Then the queue step failed.
+**This lane session's permission mode refuses to run `docs/testing/request.sh`.**
+Every form came back "This command requires approval": with `--wait` and
+without, absolute path and relative path, backgrounded and not. The
+session is non-interactive, so nobody can approve it. I did NOT get round the
+refusal by wrapping the script in python3 or `bash -c`: a denied call is a
+decision, not an obstacle.
+
+**No handheld run exists yet.** There are no verdicts to post on #112, #223
+or #233, and none are implied.
+
+**Unblock:** grant the lane `Bash(docs/testing/request.sh:*)`, or have the
+host queue these two:
+
+```
+docs/testing/request.sh --who vsh --purpose "vsh: Exceptional Float + MAC mov vs silicon" \
+  --program vsh --base-iso /home/justin/hakux-work/vsh-build/nxdk_vsh_tests-c3dde45-shutdown.iso \
+  --suites "Exceptional Float,MAC mov" --device thor --no-expect "vsh text diff vs console" --wait
+docs/testing/request.sh --who vsh --purpose "vsh: ILU RCP vs silicon (#233)" \
+  --program vsh --base-iso /home/justin/hakux-work/vsh-build/nxdk_vsh_tests-c3dde45-shutdown.iso \
+  --suites "ILU RCP Tests" --device nova --no-expect "vsh text diff vs console" --wait
+```
+
+Score each with `vsh_score.py <result>/nxdk_vsh_tests --reference
+.../stage2/console --reference .../stage1b/console`. Before reading any
+verdict, check `log_completed` and that no row is MISSING or STALE. As of this
+writing #234 is OPEN, so master still has #233's abort. If the RCP run ends
+with no log marker and IluRcpTests MISSING, that confirms #233 on Android;
+re-run it once #234 folds.
