@@ -27,6 +27,7 @@ triangles-with-adjacency, `(a, v3, b, v3, c, v3)`:
 | `gl/shaders.c`, `gl/renderer.h` | `GL_TRIANGLES_ADJACENCY` (value-guarded define for GLES 3.0/3.1 headers) |
 | `gl/draw.c` | `no_adjacency` when there is no geometry stage; `gl_draw_mode()` draws `GL_TRIANGLES` then |
 | `docs/testing/geom_dump/dump.c` | adjacency cases for vk, GL, GLES 3.20 |
+| `docs/testing/nv2a_index.json` | regenerated for the line moves (951 symbols / 2841 sites, unchanged) |
 
 `pgraph_prim_rewrite_get_output_mode()` is kept as the topology class and
 maps ADJ -> TRIANGLES, so `psh.c`'s stipple test is unchanged. The Vulkan
@@ -114,7 +115,21 @@ W_param.
 
 ## 4. Verdict
 
-(pending: the `[job.arms]` comment on the PR)
+**Waiting (2026-09-25).** The prediction is committed and pushed with its refs,
+so the host's arms job queues it. The signal that resolves the wait is the
+`[job.arms]` verdict comment on PR #235. On resume:
+
+1. Read the verdict. Then check the magnitude table in section 3 by hand
+   against the b arm's `scores1.tsv`, because `ab_compare` cannot state
+   "<= Smooth sibling + 200".
+2. If the 12 do not move at all, suspect wiring before the model: is the
+   pipeline's topology ADJ, and did the geometry shader compile? A failed
+   Vulkan compile draws nothing, so the untextured Flat quads would jump
+   too. Look for the arm's logcat shader-compile errors.
+3. Record it here, then mark the PR ready.
+
+Preflight passes on 574bb4f7d3. The nv2a index was regenerated: line moves
+only, with the tests tree at the committed provenance.
 
 ## 5. Do not repeat
 
