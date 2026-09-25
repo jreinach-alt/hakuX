@@ -30,11 +30,17 @@ One console run of the whole `6743b6a` disc does three things:
 - **XBE:** pristine `6743b6a`, sha256 `8612681afa58…`. This is the same binary
   as PR #261, and its Thor dry run of four suites was clean.
 - **Suites:** all 102 in the index, excluding:
-  - `PVIDEO`, which writes `NV_PMC_ENABLE` directly and waits for the power
-    switch;
-  - `Clipping precision`, which is interactive-only and saves nothing;
+  - `PVIDEO` and `Clipping precision`, both interactive-only: every draw
+    ends in `FinishDrawNoSave`, so they save nothing, and the automated runner
+    skips them. _Corrected (#296): this first cited PVIDEO's `NV_PMC_ENABLE`
+    write as the reason. The write is real but runs only interactively._
   - `Texture render target::RenderTextureLoop` alone, excluded as in the
     calibration. It disables the texture stage for the tests after it.
+    _Amended before the console run (#294): upstream moved the stage setup
+    into each test at `448d0e6` (2026-09-14), before `6743b6a`, so the
+    contamination the skip guarded against is gone. The test gets its own
+    leg: a one-test Thor dry run, then its own place in the console run,
+    scored like every other capture._
 - **Emulator dry run:** on the Thor through the dispatcher, in three requests
   so that each stays under the 1800 s disc timeout:
   - part 1 (1 suites): Blend tests
