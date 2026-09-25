@@ -331,6 +331,52 @@ static void surf92_probe(bool color, bool gate_open,
                target->vram_addr);
 }
 
+/*
+ * #91 DIAGNOSTIC TRACE (lane.clrwb91). NOT FOR MERGE: this commit exists to
+ * be built and run once, and the commit after it removes it.
+ *
+ * Under #88's decline, Color_zeta_overlap/Swap's background comes back as
+ * 0x00000024 (depth 0, stencil 0x24) where master and silicon leave the
+ * 0xFE242424 colour clear. Reading has not found the event that zeroes the
+ * depth half of the aliased zeta image while keeping its stencil half, so
+ * this logs every surface resolve, eviction, creation, upload, download and
+ * zeta clear, each with one VRAM word sampled from a background pixel
+ * (10 px in from the bottom-right corner, outside Swap's quad and text).
+ * The first event whose sampled word reads 0x00000024 names the writer.
+ */
+static unsigned long g_wb91_lines;
+#define WB91_MAX_LINES 6000
+
+#define WB91_LOG(fmt, ...) do { \
+        if (g_wb91_lines < WB91_MAX_LINES) { \
+            g_wb91_lines++; \
+            SURF92_LOG("[wb91] f=%d " fmt, g_nv2a->pgraph.frame_time, \
+                       ##__VA_ARGS__); \
+        } \
+    } while (0)
+
+static uint32_t wb91_px_at(NV2AState *d, hwaddr base, unsigned int pitch,
+                           unsigned int width, unsigned int height,
+                           unsigned int bpp)
+{
+    if (width < 16 || height < 16 || bpp != 4) {
+        return 0xDEADDEAD;
+    }
+    hwaddr off = base + (hwaddr)(height - 10) * pitch + (hwaddr)(width - 10) * 4;
+    if (off + 4 > memory_region_size(d->vram)) {
+        return 0xDEADDEAD;
+    }
+    uint32_t v;
+    memcpy(&v, d->vram_ptr + off, sizeof(v));
+    return v;
+}
+
+static uint32_t wb91_px(NV2AState *d, SurfaceBinding const *s)
+{
+    return wb91_px_at(d, s->vram_addr, s->pitch, s->width, s->height,
+                      s->fmt.bytes_per_pixel);
+}
+
 static void memcpy_image(void *dst, void const *src, int dst_stride,
                          int src_stride, int height)
 {
@@ -798,6 +844,9 @@ static bool download_surface_record_deferred(NV2AState *d,
     r->staging_dst_offset = aligned_offset + staging_size;
     surface_vram_written(r, surface->vram_addr,
                          surface->pitch * surface->height, surface);
+    WB91_LOG("dlrec %s addr=0x%08" HWADDR_PRIx " %ux%u partial=%d idx=%d",
+             surface->color ? "C" : "Z", surface->vram_addr, surface->width,
+             surface->height, (int)partial, r->num_deferred_downloads - 1);
     return true;
 }
 
@@ -862,6 +911,15 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
         } else {
             memcpy_image(dl->dest_ptr, src, dl->pitch,
                          dl->width * dl->bytes_per_pixel, dl->height);
+        }
+
+        if (!dl->partial) {
+            hwaddr base = dl->dest_ptr - d->vram_ptr;
+            WB91_LOG("dldone %s addr=0x%08" HWADDR_PRIx " idx=%d live=%d "
+                     "px=0x%08x",
+                     dl->color ? "C" : "Z", base, i, dl->surface != NULL,
+                     wb91_px_at(d, base, dl->pitch, dl->width, dl->height,
+                                dl->bytes_per_pixel));
         }
 
         /* Clean up surface flags now that data is in VRAM */
@@ -1545,6 +1603,9 @@ static void download_surface(NV2AState *d, SurfaceBinding *surface, bool force)
                        surface->download_row_count < surface->height;
 
     download_surface_to_buffer(d, surface, d->vram_ptr + surface->vram_addr);
+    WB91_LOG("dlsync %s addr=0x%08" HWADDR_PRIx " px=0x%08x",
+             surface->color ? "C" : "Z", surface->vram_addr,
+             wb91_px(d, surface));
 
     surface_vram_written(r, surface->vram_addr, surface->pitch * surface->height, surface);
     memory_region_set_client_dirty(d->vram, surface->vram_addr,
@@ -2761,6 +2822,12 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
                  surface->width, surface->height, surface->pitch,
                  surface->fmt.bytes_per_pixel);
 
+    WB91_LOG("upload %s addr=0x%08" HWADDR_PRIx " force=%d pend=%d init=%d "
+             "layout=%d px=0x%08x",
+             surface->color ? "C" : "Z", surface->vram_addr, (int)force,
+             (int)surface->upload_pending, (int)surface->initialized,
+             (int)surface->image_layout, wb91_px(d, surface));
+
     surface->upload_pending = false;
     surface->draw_time = pg->draw_time;
 
@@ -3435,6 +3502,16 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
 
         SURF_TIMER_INIT(_gt1);
         SurfaceBinding *surface = pgraph_vk_surface_get(d, target.vram_addr);
+        WB91_LOG("usp up=%d %s tgt=0x%08" HWADDR_PRIx " had=%d bdirty=%d "
+                 "mem=%d found=%s other=0x%08" HWADDR_PRIx " vpx=0x%08x",
+                 (int)upload, color ? "C" : "Z", target.vram_addr,
+                 current_binding != NULL, (int)pg_surface->buffer_dirty,
+                 (int)mem_dirty,
+                 surface ? (surface->color ? "C" : "Z") : "-",
+                 (color ? r->zeta_binding : r->color_binding) ?
+                     (color ? r->zeta_binding : r->color_binding)->vram_addr :
+                     (hwaddr)0,
+                 wb91_px(d, &target));
         if (surface != NULL) {
             /*
              * FIXME: Support same color/zeta surface target? One VkImage
@@ -3506,6 +3583,14 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 NV2A_UNIMPLEMENTED("Same color & zeta surface offset");
                 if (!color) {
                     surf91_overlap_probe(pg, target.vram_addr);
+                    /* DIAGNOSTIC ONLY: #88's decline (4726557b0f), restored
+                     * so this trace reproduces the 0x00000024 background. */
+                    WB91_LOG("decline up=%d addr=0x%08" HWADDR_PRIx
+                             " pdd=%d",
+                             (int)upload, target.vram_addr,
+                             (int)pg_surface->draw_dirty);
+                    pg_surface->buffer_dirty = false;
+                    return;
                 }
                 unbind_surface(d, !color);
             }
@@ -3648,6 +3733,9 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                  * 42 of 80 captures differing between three runs of the same
                  * binary.
                  */
+                WB91_LOG("evict %s addr=0x%08" HWADDR_PRIx " sdd=%d",
+                         surface->color ? "C" : "Z", surface->vram_addr,
+                         (int)surface->draw_dirty);
                 surface->shelved_dirty = surface->draw_dirty;
                 if (surface->draw_dirty) {
                     OPT_STAT_INC(sd_eviction_dl);
@@ -3666,20 +3754,30 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
             SURF_TIMER_INIT(_gt2);
             bool unshelved = false;
             bool shelf_stale = false;
+            const char *wb91_kind = "fresh";
+            hwaddr wb91_from = 0;
             surface = get_shelved_surface(r, target.vram_addr, &target);
             if (surface) {
                 shelf_stale = surface->vram_newer;
+                wb91_kind = "shelf";
+                wb91_from = surface->vram_addr;
                 migrate_surface_image(&target, surface);
                 unshelved = true;
             } else {
                 surface = get_any_compatible_invalid_surface(r, &target);
                 if (surface) {
+                    wb91_kind = "invalid";
+                    wb91_from = surface->vram_addr;
                     migrate_surface_image(&target, surface);
                 } else {
                     surface = g_malloc(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
                 }
             }
+            WB91_LOG("create %s addr=0x%08" HWADDR_PRIx " kind=%s "
+                     "from=0x%08" HWADDR_PRIx " stale=%d mem=%d",
+                     color ? "C" : "Z", target.vram_addr, wb91_kind,
+                     wb91_from, (int)shelf_stale, (int)mem_dirty);
             SURF_TIMER_ACC(create_ns, _gt2);
 
             *surface = target;
@@ -3752,6 +3850,11 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
     }
 
     if (!upload && pg_surface->draw_dirty) {
+        WB91_LOG("taildl %s binding=0x%08" HWADDR_PRIx,
+                 color ? "C" : "Z",
+                 (color ? r->color_binding : r->zeta_binding) ?
+                     (color ? r->color_binding : r->zeta_binding)->vram_addr :
+                     (hwaddr)0);
         SURF_TIMER_INIT(_st3);
         if (!tcg_enabled()) {
             // FIXME: Cannot monitor for reads/writes; flush now
@@ -3857,6 +3960,18 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
             }
         }
         SURF_TIMER_ACC(upload_ns, _su0);
+    }
+
+    /* Colour-only clears are skipped: pbkit paints its text with them, a few
+     * hundred per frame, and they would spend the line budget. */
+    if (upload && (!pg->clearing || zeta_write)) {
+        WB91_LOG("su %s cw=%d zw=%d c=0x%08" HWADDR_PRIx
+                 " z=0x%08" HWADDR_PRIx " zinit=%d",
+                 pg->clearing ? "clear" : "draw", (int)color_write,
+                 (int)zeta_write,
+                 r->color_binding ? r->color_binding->vram_addr : (hwaddr)0,
+                 r->zeta_binding ? r->zeta_binding->vram_addr : (hwaddr)0,
+                 r->zeta_binding ? (int)r->zeta_binding->initialized : -1);
     }
 
     // Sanity check color and zeta dimensions match
