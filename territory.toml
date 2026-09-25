@@ -877,3 +877,10 @@ issues = ["266"]
 files = ["docs/lanes/wbufdepth24/**", "docs/testing/predictions/wbufdepth24-*.json"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 185 (host session, 2026-09-25 11:55 PDT) on the owner's question about the unowned 1.85 M W-buffering residual: #266, 24-bit depth on the FloorQuad family (~1.5 M structural px; ZBuf24D 0/16 exact; two blank WBuf24D captures). Re-measure on both handhelds, classify, price mechanisms offline, then request code files through the board. Brief: briefs/wbufdepth24.md."
+
+
+[lane.cloud-audit1-245]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit1-245, audit pass 1 of PR #245 on branch lane/vshnobegin242, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit1 245` removes this row when the unit ends."
