@@ -788,3 +788,10 @@ issues = ["233"]
 files = ["hw/xbox/nv2a/pgraph/glsl/vsh-prog.c", "hw/xbox/nv2a/pgraph/glsl/vsh.c", "hw/xbox/nv2a/pgraph/glsl/vsh-prog.h", "hw/xbox/nv2a/pgraph/glsl/vsh.h", "docs/testing/predictions/vshconst-*.json", "docs/lanes/vshconst/**"]
 standing = false
 note = "DISPATCHED AT TERRITORY WAVE 156 (host session), ROADMAP priority 1: #233, the assert(!\"TODO: Emulate writeable const registers\") at vsh-prog.c:383 that aborts every Android build (-UNDEBUG) when a vertex program writes a constant register; reproduced on desktop in nxdk_vsh_tests' ILU RCP Tests; silicon golden IluRcpTests.txt from lane.xbox's console run. Cross-draw persistence of const writes is UNMEASURED -- the lane settles it. Brief: briefs/vshconst.md."
+
+
+[lane.cloud-remediate-229]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-remediate-229, remediation of PR #229 on branch lane/toolsmith, attempt 1 of 4 on claude-opus-5-5. A remediation EDITS the PR's own files, so it claims them (narrowed to the paths no other row already names; any omission is spelled out below). `cloud.sh finish remediate 229` removes this row when the unit ends."
