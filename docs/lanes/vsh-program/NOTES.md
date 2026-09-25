@@ -162,3 +162,50 @@ verdict, check `log_completed` and that no row is MISSING or STALE. As of this
 writing #234 is OPEN, so master still has #233's abort. If the RCP run ends
 with no log marker and IluRcpTests MISSING, that confirms #233 on Android;
 re-run it once #234 folds.
+
+## Attempt 3, 2026-09-25: the handheld proof ran, and the verdicts are posted
+
+**Why attempt 2 did not finish:** the lane's permission mode refused
+`docs/testing/request.sh`, and I would not wrap the script to get round the
+refusal. The host queued the four runs instead. The fix for next time is to
+call the script as `bash docs/testing/request.sh`, because the allowlist
+prefix is literal (hardening item 8).
+
+| request | build | device | log marker | run_disc | verdicts |
+|---|---|---|---|---|---|
+| `1790344835-vsh-2413308` | `a4d2fb823b` (no #234) | thor | absent, stops at `Starting MAC mov` | 1 | Float DIFFERS, mov MISSING; logcat `fault in abort` / `pgraph_glsl_gen_vsh_prog` |
+| `1790344836-vsh-2413360` | `a4d2fb823b` | nova | absent, stops at `Starting ILU RCP Tests` | 1 | RCP MISSING; same abort (#233 confirmed on Android) |
+| `1790346001-vsh-2643051` | `84a67b9cf8` (has #234) | thor | `Testing completed normally` | 0 | Float **DIFFERS**, MAC mov **IDENTICAL**, 0 missing/stale |
+| `1790346001-vsh-2643087` | `84a67b9cf8` | nova | `Testing completed normally` | 0 | ILU RCP **IDENTICAL**, 0 missing/stale |
+
+The harness behaved as designed on the crashed runs. It refused to call them
+complete, and it recorded MISSING rather than a match.
+
+**Exceptional Float's zeros are not a float-handling result.** The test's
+draw lambda sends `SET_VERTEX4F` with no Begin/End. Silicon runs the program
+for that vertex, and c[188] = v0. hakuX only buffers the vertex
+(`pgraph.c` SET_VERTEX4F), never draws it or runs the writeback (that happens
+only at SET_BEGIN_END END), and the next Begin resets the buffer, so the
+preset c[188]=0 is read back. Even finite ±Max reads 0. **New defect, no open
+issue:** a vertex outside Begin/End does not execute the vertex program. It
+is left for the board to file. #112 item 4 (`_MUL` zero, `_RCC` clamp) is
+still unconfirmed.
+
+**Scope of the IDENTICAL rows (lane.xbox's caveat, checked in the code).** From
+#234 on, c[188..191] are written by `pgraph_vsh_writeback_constants`
+(`pgraph.c:4289`, nv2a_vsh_emu on the CPU) at End. MAC mov and ILU RCP both
+draw inside Begin/End, so both rows are that evaluator's output, not the
+GLSL's. They say nothing about #223 or the GLSL RCC path.
+
+Posted on #233, #112 and #223.
+
+**Unexplained, not chased:** the PNG column reports nonzero pixel diffs on the
+IDENTICAL rows (mov 11976 px, RCP 123498 px). The text is the verdict, and the
+PNG diff has not been checked for being a font or overlay difference. Read it
+before treating it as signal.
+
+## Do not repeat (attempt 3)
+
+- Read what drives a vsh test (Begin/End or not) before you attribute a
+  DIFFERS to the arithmetic. Exceptional Float looked like a NaN/Inf finding,
+  but it is a vertex-submission finding.
