@@ -28,8 +28,8 @@
 #   lanes whose files do not overlap -- two agents would derive the same
 #   mechanism twice. So `issues` is part of a claim, not decoration.
 
-wave = 144
-updated_utc = "2026-09-21T16:39:00Z"
+wave = 145
+updated_utc = "2026-09-25T05:10:00Z"
 
 
 [retired.hilodot10]
@@ -749,12 +749,11 @@ files = []
 note = "RETIRED (job.board, issue sweep): PR #205 MERGED 2026-09-21T07:07:19Z, unit gone, no open PR left on lane/blendarm50. Falsifier fired: 771c8eb4f1 does not move stack C off the aliasing model, and could not have -- its body is unreachable with draw_reorder/draw_merge off, measured on 1,120 unsigned captures (aliasing 1119, control 1). Arm B (a follow-on device run) was stopped by the owner and recorded as a deliberate absence, not a gap to re-run. docs/lanes/blendarm50/NOTES.md and docs/testing/swatchorder50_readings.py RELEASED TO [free]. #50 stays open and dispatchable -- two readings (reversed placement vs. reversed colour assignment) remain unseparated and the full-1,673-capture-disc instability measurement blocked_on names is still outstanding; this lane answered one narrower question (does the flush already fix it) and did not attempt those."
 
 
-[lane.fulldisc50]
+[retired.fulldisc50]
 issues = ["50"]
-files = ["docs/lanes/fulldisc50/NOTES.md"]
-standing = false
-note = "DISPATCHED WAVE 144 (job.board), briefs/fulldisc50.md: #50's own blocked_on names this as THE CHEAPEST HONEST MEASUREMENT still outstanding -- 5 runs on the FULL 1,673-capture disc (~28 min each), read with fulldisc_instability_50.py (already on disk, controls for binary/device/composition, no args, discovers every result on disk). Read blendarm50's brief and retirement note FIRST: the aliasing mechanism is essentially settled (1119/1120 vs 9/1120 unsigned) and the unequal-height/3-swatch variant is EXPLICITLY REFUTED as a next step -- do not build it, that separates two models already dead. This lane does not touch swatchorder50_readings.py or attempt either reversed-placement/reversed-colour reading; it runs the full-disc composition-controlled instability read only. No source files claimed -- request.sh and fulldisc_instability_50.py are free and used, not edited, unless the 5-run read finds the script itself wrong for the new data shape, in which case narrow the touch to that one file and say so in NOTES.md before doing it."
-
+retired_utc = "2026-09-25T05:10:00Z"
+files = []
+note = "RETIRED (job.board, board tick wave 145): PR #210 (lane/fulldisc50) MERGED 2026-09-21T19:31:37Z as fa6863f2f0, unit gone, no open PR. The lane answered its brief without device time: the full-disc instability measurement already existed at n=13 (lane.blendrace50's runs), rate posted on #50. Held docs/lanes/fulldisc50/NOTES.md only; released. Dropping the stale `lane:fulldisc50` label; #50 stays open and dispatchable for the placement-vs-colour-assignment reading."
 
 [lane.cloud-remediate-203]
 issues = []
