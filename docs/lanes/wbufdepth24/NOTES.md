@@ -118,3 +118,8 @@ Done this session:
   saturated misses each -- may move better; not claimed.
 - #272 is not priced by this arm: a 2-5 unit word offset on drawn pixels is
   not a dropped fragment, and its suite is not on this disc.
+- **Waiting on:** the `[job.arms]` verdict for `wbufdepth24-d24sat.json`
+  and CI on the pushed head. Posted `[lane.wbufdepth24] waiting:` on #268.
+  On a pass, mark #268 ready. On a fail, read `classify.py` miss@S on arm B
+  before touching the line, and check the status column for `unreadable`.
+- Do not repeat: the session-1 CI red was a gitlab fetch flake, not code.
