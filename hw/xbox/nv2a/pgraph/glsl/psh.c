@@ -2441,27 +2441,39 @@ static MString* psh_convert(struct PixelShader *ps)
                  * Roof and Floor both ways, all three ClipW both ways, and
                  * ClipFs first triangle -- so the regime is selected on that
                  * bit rather than on size.  The three exceptions are ClipFs
-                 * SECOND triangle at each clip top, below; do not read the
+                 * SECOND triangle at each clip top; do not read the
                  * thirteen as sixteen.
                  *
-                 * Deliberately not done here, both measured:
+                 * A triangle cut by the window clip's own TOP edge (clip.y > 0,
+                 * top vertex above it) takes the 4-grid too, unless that edge
+                 * is on the 8-row grid and the triangle is flat-topped, which
+                 * keeps the 2x2 snap.  Measured on the project console on
+                 * 2026-09-25 (PRs #218, #221, #226) with `ClipF` at clip_top
+                 * 4, 8, 12, 16, 32, 35 and 64: its second triangle anchors at
+                 * 4*floor(ct/4)+2 at every one, its flat-topped first at ct
+                 * where ct is a multiple of 8 and at 4*floor(ct/4)+2 where it
+                 * is not.  A top cut by the surface edge (Floor, Roof, Wall,
+                 * ClipW, all at clip_top 0) keeps the 2x2 snap.  This rule
+                 * reproduces all 52 recovered anchors outside TriV; the flat
+                 * top is one of four literals no capture yet separates.  See
+                 * docs/lanes/wbuf31fix/NOTES.md.
+                 *
+                 * Deliberately not done here, measured:
                  *   - the COLUMN stays on the 2-grid.  `TriV` is the only
                  *     capture whose anchor is a column, and NO integer column
                  *     reproduces its offsets: the best is 164, off by -122,
                  *     +658, +1547 and +2555 units on the four residues, where
                  *     this model is exact to under a unit everywhere else.  A
                  *     4-grid column would replace a wrong answer with a wrong
-                 *     answer and move no pixel -- TriV has pb == 0 exactly.
-                 *   - `ClipF`s second triangle wants clip_top+2 and is left
-                 *     alone.  The clip cuts it, so this rule gives it clip_top,
-                 *     which is wrong -- but the same triangle at clip_top 0
-                 *     wants clip_top+0, and the OTHER triangle of the same quad
-                 *     at the same clip wants clip_top+0 too, so no rule over
-                 *     (plane, clip, first covered pixel, top vertex) separates
-                 *     them.  See docs/investigations/wbuffer-slope-offset.md. */
+                 *     answer and move no pixel -- TriV has pb == 0 exactly. */
                 "    c = 2.0 * floor(c * 0.5);\n"
-                "    r = cut ? 2.0 * floor(r * 0.5)\n"
-                "        : 4.0 * floor(r * 0.25) + 2.0;\n"
+                "    float ytop = min(p0.y, min(p1.y, p2.y));\n"
+                "    bool flatTop = (p0.y == ytop ? 1 : 0) + (p1.y == ytop ? 1 : 0)\n"
+                "                 + (p2.y == ytop ? 1 : 0) > 1;\n"
+                "    bool topCut = clip.y > 0.0 && ytop < clip.y;\n"
+                "    bool grid = !cut || (topCut && !(flatTop && mod(clip.y, 8.0) == 0.0));\n"
+                "    r = grid ? 4.0 * floor(r * 0.25) + 2.0\n"
+                "        : 2.0 * floor(r * 0.5);\n"
                 "    float step = abs(pa) >= abs(pb) ? pa : pb;\n"
                 "    float i1 = 1.0 / p0.w + pa * (c + 0.5 - p0.x) + pb * (r + 0.5 - p0.y);\n"
                 "    float i2 = i1 + step;\n"
