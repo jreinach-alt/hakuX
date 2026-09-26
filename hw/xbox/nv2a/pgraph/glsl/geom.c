@@ -131,10 +131,16 @@ bool pgraph_glsl_need_geom(const GeomState *state)
  * below is emitted so that it winds the same way, so a culled draw culls
  * exactly what it culled before.
  *
- * Anything this cannot do exactly -- no negative w, two or three of them, a
- * screen triangle of zero area, or any non-finite value -- returns false
- * BEFORE emitting a vertex, and the caller emits the triangle unchanged, as
- * it always has.  Two negative vertices: the host clipper keeps the w > 0
+ * A one-negative triangle whose q are finite and whose grid area is exactly
+ * zero, with every |pz| < 2^19, returns true having emitted nothing: its
+ * three snapped points are collinear, so the w > 0 part projects to a line
+ * and silicon draws nothing (W_param ff bitri tri1 at the extreme
+ * multipliers, and w_gaps, where the host clipper painted a half-plane).
+ *
+ * Anything else this cannot do exactly -- no negative w, two or three of
+ * them, a screen triangle of zero area, or any non-finite value -- returns
+ * false BEFORE emitting a vertex, and the caller emits the triangle
+ * unchanged, as it always has.  Two negative vertices: the host clipper keeps the w > 0
  * part, the region round the positive vertex; three: nothing.  Both are left
  * alone -- W_param's prog and ff quads (two negative w in each half) are the
  * control, and they already match silicon.
@@ -265,6 +271,12 @@ static void append_wedge(MString *output, const GeomState *state,
         "  vec2 g1 = pz[1].xy - pz[0].xy;\n"
         "  vec2 g2 = pz[2].xy - pz[0].xy;\n"
         "  float garea = kahan_det(g1.x, g2.y, g2.x, g1.y);\n"
+        /* Zero area on the grid: silicon draws nothing, and the host would
+         * paint a half-plane or the like from the ulp-off q.  Only below
+         * 2^19, where pz is the snapped grid and its differences are exact;
+         * a vertex at 1e35 px swallows the others' offsets. */
+        "  vec2 pmax = max(max(abs(pz[0].xy), abs(pz[1].xy)), abs(pz[2].xy));\n"
+        "  if (garea == 0.0 && max(pmax.x, pmax.y) < 524288.0) { return true; }\n"
         "  if (!(abs(garea) > 0.0) || wedge_bad(garea)) { return false; }\n"
         "  if (!(abs(area) > 0.0) || wedge_bad(area)) { return false; }\n"
         /* mu = 1 - lambda_N; the corners bound it over the surface. */
