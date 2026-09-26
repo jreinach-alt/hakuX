@@ -1,0 +1,41 @@
+Proposed fix hunk for #311 -- NOT APPLIED. accel/tcg/tb-maint.c is
+lane.tcgchurn's; this is named here for the board to grant.
+
+Keep a page armed for code-write detection when its last block is discarded.
+The next tb_page_add() on that page then finds DIRTY_MEMORY_CODE still clear,
+physical_memory_test_and_clear_dirty() returns false, and the whole-TLB walk in
+tlb_reset_dirty() does not happen. This restores the arming behaviour the
+pre-2af6def68a build had by accident (stranded tier-1 blocks kept the hot pages
+non-empty), without the stale-translation bug that fix removed.
+
+Cost it moves elsewhere: stores to a page that once held code keep taking the
+notdirty slow path after the code is gone, each finding an empty page list.
+On Ghoulies' hot pages that is already the steady state (pr == ev: every
+disarm is re-armed within the window). A title that turns a code page into a
+hot data buffer pays it; must-not-move rows are Spikeout, RalliSport 2 and a
+Crimson Skies soak.
+
+hakux_tlb_protect_calls then counts tb_page_add() calls on an empty page, not
+walks; a walk counter belongs inside the `if (dirty)` of
+physical_memory_test_and_clear_dirty() for DIRTY_MEMORY_CODE.
+
+--- a/accel/tcg/tb-maint.c
++++ b/accel/tcg/tb-maint.c
+@@ -1810,9 +1810,17 @@
+ #endif
+
+-    /* if no code remaining, no need to continue to use slow writes */
++    /*
++     * If no code remains, upstream disarms the page so writes go fast again.
++     * Under XBOX the page stays armed (#311): Grabbed by the Ghoulies stores
++     * into four code pages every frame, each store empties the page, and the
++     * next execution re-arms it with a walk of every TLB entry -- 80-250 walks
++     * a frame, each costing up to ~1.6 ms once the TLB has grown.
++     */
++#ifndef XBOX
+     if (!p->first_tb) {
+         tlb_unprotect_code(start);
+     }
++#endif
+
+     if (unlikely(current_tb_modified)) {

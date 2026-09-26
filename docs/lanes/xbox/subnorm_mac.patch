@@ -1,0 +1,147 @@
+From 330e4a8e5e5f3126a6ae8a0f6f296f6fc7b5371e Mon Sep 17 00:00:00 2001
+From: t <t@t>
+Date: Fri, 25 Sep 2026 16:40:34 -0700
+Subject: [PATCH] hakuX #255: SUBNORM_MAC -- raw MAC bits on subnormal operands
+
+CPU Shader Tests' almost_equal() passes any hardware +-0 within FLT_EPSILON
+of the CPU value and never checks the sign of zero, so a silicon flush of
+a subnormal passes silently. SUBNORM_MAC runs MOV/MUL/ADD/MAD on operands
+chosen to separate input flush, output flush and the sign of a flushed
+zero, and writes every case's raw result bits to SUBNORM_MAC_raw.txt.
+---
+ src/tests/cpu_shader_tests.cpp | 93 ++++++++++++++++++++++++++++++++++
+ src/tests/cpu_shader_tests.h   |  2 +
+ 2 files changed, 95 insertions(+)
+
+diff --git a/src/tests/cpu_shader_tests.cpp b/src/tests/cpu_shader_tests.cpp
+index 1afc983..253ea36 100644
+--- a/src/tests/cpu_shader_tests.cpp
++++ b/src/tests/cpu_shader_tests.cpp
+@@ -2,7 +2,11 @@
+ 
+ #include <pbkit/pbkit.h>
+ 
++#include <windows.h>
++
+ #include <cfloat>
++#include <cstdio>
++#include <string>
+ 
+ #include "../test_host.h"
+ #include "SDL_stdinc.h"
+@@ -134,6 +138,7 @@ CpuShaderTests::CpuShaderTests(TestHost &host, std::string output_dir)
+   tests_["MUL"] = [this]() { TestMul(); };
+   tests_["SGE"] = [this]() { TestSge(); };
+   tests_["SLT"] = [this]() { TestSlt(); };
++  tests_["SUBNORM_MAC"] = [this]() { TestSubnormalMac(); };
+ }
+ 
+ void CpuShaderTests::Initialize() {
+@@ -559,3 +564,91 @@ void CpuShaderTests::TestSlt() {
+   };
+   Test("SLT", 2, kSlt, sizeof(kSlt), nv2a_vsh_cpu_slt, __LINE__, CPUTF_NONE, explicit_tests);
+ }
++
++// hakuX #255/#288: what silicon's MAC unit does with subnormal operands.
++//
++// The suite's own comparison cannot see it: almost_equal() passes any hardware
++// +-0 whose CPU value is within FLT_EPSILON, and never checks the sign of zero,
++// so a flushed subnormal passes silently. This writes the raw hardware bits of
++// every case to <output_dir>\SUBNORM_MAC_raw.txt and compares nothing. The
++// operands pin each question down:
++//   MOV: does reading a constant through a temporary keep a subnormal?
++//   MUL: subnormal x large normal (input flush), normal x normal landing in the
++//        subnormal range (output flush), the sign of any flushed zero, and a
++//        normal control.
++//   ADD: subnormal + 0, MinNormal - MaxSubnormal (a subnormal result), sums
++//        that are normal only if the inputs are kept, and -0 + -0.
++//   MAD: a subnormal product before the add, MinNormal*0.5 into the subnormal
++//        range, and a subnormal addend.
++void CpuShaderTests::TestSubnormalMac() {
++  static constexpr uint32_t kMaxSub = 0x007FFFFF, kMinSub = 0x00000001, kMinNorm = 0x00800000,
++                            kHalfSub = 0x00400000, kNeg = 0x80000000, kP24 = 0x4B800000, kP100 = 0x71800000,
++                            kM70 = 0x1C800000, kM64 = 0x1F800000, kM60 = 0x21800000, kHalf = 0x3F000000,
++                            kOne = 0x3F800000;
++  struct Case {
++    const char *op;
++    const uint32_t *shader;
++    uint32_t shader_size;
++    uint32_t num_inputs;
++    uint32_t in[12];
++  };
++  static const Case kCases[] = {
++      {"MOV", kMov, sizeof(kMov), 1, {kMaxSub, kNeg | kMaxSub, kMinSub, kNeg | kMinSub}},
++      {"MOV", kMov, sizeof(kMov), 1, {kHalfSub, kNeg | kHalfSub, kMinNorm, kNeg}},
++      {"MUL", kMul, sizeof(kMul), 2, {kMaxSub, kNeg | kMaxSub, kMinSub, kNeg | kMinSub, kP24, kP24, kP100, kP100}},
++      {"MUL", kMul, sizeof(kMul), 2, {kM70, kNeg | kM70, kM64, kM60, kM70, kM70, kM64, kM60}},
++      {"ADD", kAdd, sizeof(kAdd), 2, {kMaxSub, kMaxSub, kNeg | kMaxSub, kMinNorm, 0, kMaxSub, 0, kNeg | kMaxSub}},
++      {"ADD", kAdd, sizeof(kAdd), 2, {kMinNorm, kOne, kNeg, kNeg | kMinSub, kMaxSub, kMinSub, kNeg, kNeg | kMinSub}},
++      {"MAD", kMad, sizeof(kMad), 3,
++       {kMaxSub, kM70, kM70, kNeg | kMaxSub, kP24, kM70, kM70, kOne, 0, 0, kMinNorm, 0}},
++      {"MAD", kMad, sizeof(kMad), 3,
++       {kOne, kMinNorm, kMinNorm, 0, kOne, kHalf, kNeg | kHalf, 0, kMaxSub, 0, 0, kMaxSub}},
++  };
++
++  auto as_float = [](uint32_t v) { return *reinterpret_cast<float *>(&v); };
++
++  std::list<TestHost::Results> results;
++  std::list<TestHost::Computation> computations;
++  for (const auto &c : kCases) {
++    results.emplace_back(c.op);
++    const Case *cp = &c;
++    auto prepare = [cp, as_float](const std::shared_ptr<VertexShaderProgram> &shader) {
++      for (uint32_t i = 0; i < cp->num_inputs; ++i) {
++        shader->SetUniformF(96 + i, as_float(cp->in[i * 4]), as_float(cp->in[i * 4 + 1]),
++                            as_float(cp->in[i * 4 + 2]), as_float(cp->in[i * 4 + 3]));
++      }
++    };
++    computations.push_back({c.shader, c.shader_size, prepare, nullptr, &results.back()});
++  }
++  host_.Compute(computations);
++
++  std::string text;
++  char line[160];
++  auto res = results.begin();
++  for (const auto &c : kCases) {
++    const float *hw = res->cOut[0];
++    ++res;
++    for (uint32_t k = 0; k < 4; ++k) {
++      int n = snprintf(line, sizeof(line), "%s a=0x%08X", c.op, c.in[k]);
++      if (c.num_inputs > 1) {
++        n += snprintf(line + n, sizeof(line) - n, " b=0x%08X", c.in[4 + k]);
++      }
++      if (c.num_inputs > 2) {
++        n += snprintf(line + n, sizeof(line) - n, " c=0x%08X", c.in[8 + k]);
++      }
++      snprintf(line + n, sizeof(line) - n, " hw=0x%08X\n", *reinterpret_cast<const uint32_t *>(&hw[k]));
++      text += line;
++    }
++  }
++  PrintMsg("%s", text.c_str());
++
++  // Never asserts: a failed write must not become a way for the program to
++  // stop on the console.
++  CreateDirectory(output_dir_.c_str(), nullptr);
++  std::string path = output_dir_ + "\\SUBNORM_MAC_raw.txt";
++  FILE *fh = fopen(path.c_str(), "wb");
++  if (fh) {
++    fwrite(text.data(), 1, text.size(), fh);
++    fclose(fh);
++  }
++}
+diff --git a/src/tests/cpu_shader_tests.h b/src/tests/cpu_shader_tests.h
+index 0f75005..7fd6e5b 100644
+--- a/src/tests/cpu_shader_tests.h
++++ b/src/tests/cpu_shader_tests.h
+@@ -39,6 +39,8 @@ class CpuShaderTests : public TestSuite {
+   void TestMul();
+   void TestSge();
+   void TestSlt();
++  // hakuX #255: raw MAC bits on subnormal operands, every case written out.
++  void TestSubnormalMac();
+ 
+   void Test(const char* name, uint32_t num_inputs, const uint32_t* shader, uint32_t shader_size,
+             const std::function<void(float*, const float*)>& cpu_op, uint32_t assert_line, uint32_t flags = CPUTF_NONE,
+-- 
+2.43.0
+

@@ -38,6 +38,8 @@
 #include "tb-internal.h"
 #include "internal-common.h"
 #include "tb-cache-hints.h"
+#include "qemu/timer.h"
+#include "accel/tcg/hakux-tlb68.h"
 #ifdef CONFIG_USER_ONLY
 #include "user/page-protection.h"
 #define runstate_is_running()  true
@@ -517,6 +519,13 @@ struct PageDesc {
      */
     uint16_t empties;
     bool small_blocks;
+#endif
+#if defined(XBOX) && HAKUX_TCG311_KEEP_ARMED
+    /*
+     * #311 hunk (a): invalidations that found this page already empty and
+     * still armed since it last emptied. Under @lock, like first_tb.
+     */
+    uint16_t armed_idle;
 #endif
 };
 
@@ -1294,6 +1303,46 @@ static void tb_jmp_cache_inval_tb(TranslationBlock *tb)
     CPUState *cpu;
 
     if (tb_cflags(tb) & CF_PCREL) {
+#ifdef XBOX
+        /*
+         * #68: do not wipe every CPU's whole jump cache per discarded block.
+         * target/i386 sets CF_PCREL unconditionally, so this branch ran for
+         * EVERY discard -- 4096 stores each, 8.37% self of the guest thread
+         * in the 2026-09-11 Crimson Skies profile.
+         *
+         * What could go stale: a jump-cache slot still pointing at this TB,
+         * so a later lookup at that virtual pc runs code the guest has since
+         * rewritten.
+         *
+         * Why it cannot: the only readers of jc->array[].tb are tb_lookup()
+         * (cpu-exec.c), which takes a slot only if tb_cflags(tb) == s.cflags
+         * EXACTLY, and s.cflags never carries CF_INVALID (curr_cflags(), or
+         * cflags_next_tb, which tb_lookup() asserts). do_tb_phys_invalidate()
+         * set CF_INVALID under jmp_lock before calling here, so the slot now
+         * misses on every lookup and the htable path decides, exactly as if
+         * the slot were NULL. A slot is revived only if this same TB is
+         * RECYCLED (translate-all.c clears CF_INVALID), and recycling requires
+         * inv_tb_lookup_cmp(): same phys page(s), pc/flags/cs_base/cflags, and
+         * the same code bytes by ihash. The slot's virtual pc still maps to
+         * that phys page, because any TLB flush covering it clears its jump
+         * cache page (tlb_flush_page_by_mmuidx_async_0, the range flush, the
+         * full flush) -- the same invariant every CF_PCREL jump-cache hit
+         * already relies on. So a revived slot runs the translation of the
+         * bytes that are actually there. TBs are never freed individually;
+         * tb_flush() frees them all and wipes every jump cache itself.
+         *
+         * What would break it: a reader of the jump cache that masks
+         * CF_INVALID (tb_lookup_cmp does, but it reads the htable, not
+         * this), a path that clears CF_INVALID other than a recycle through
+         * inv_tb_lookup_cmp, or freeing a single TB's memory without
+         * tb_flush(). None is guest-driven. HAKUX_TCG68_JC=0 restores this.
+         */
+        if (hakux_tlb68_jc_on()) {
+            hakux_tlb68_jcx++;
+            return;
+        }
+        hakux_tlb68_jci++;
+#endif
         /* A TB may be at any virtual address */
         CPU_FOREACH(cpu) {
             tcg_flush_jmp_cache(cpu);
@@ -1809,10 +1858,52 @@ tb_invalidate_phys_page_range__locked(CPUState *cpu,
     }
 #endif
 
+#if defined(XBOX) && HAKUX_TCG311_KEEP_ARMED
+    /*
+     * #311 hunk (a): a page that has just been emptied stays armed.
+     *
+     * Upstream disarms it here so later stores go fast, and the next block
+     * translated on it re-arms it through tlb_protect_code(), a walk of every
+     * TLB entry. Grabbed by the Ghoulies empties and refills the same code
+     * pages every frame (pr == ev), so it paid 80-250 walks a frame, each
+     * growing with the TLB. Left armed, DIRTY_MEMORY_CODE stays clear, so
+     * tb_page_add()'s tlb_protect_code() finds nothing to clear and
+     * physical_memory_test_and_clear_dirty() skips the walk.
+     *
+     * What could go stale: nothing new. The hazard in this area is a page that
+     * holds a block but is NOT armed, so a store skips notdirty_write() and
+     * the block outlives the code it translated. Keeping a page armed is the
+     * other direction: it only sends more stores through notdirty_write(),
+     * which invalidates whatever is on the page (here, nothing) and leaves
+     * DIRTY_MEMORY_CODE clear (DIRTY_CLIENTS_NOCODE). The invariant a later
+     * tb_page_add() relies on -- code-dirty clear means no TLB entry writes
+     * this page without TLB_NOTDIRTY -- is the one it already relies on for a
+     * page that never emptied: tlb_set_page_full() adds TLB_NOTDIRTY while
+     * physical_memory_is_clean(), and tlb_set_dirty() runs only once it is
+     * not. Anything that does set the code-dirty bit (tlb_unprotect_code(),
+     * below) makes the next tb_page_add() walk, exactly as before.
+     *
+     * What the guest could do to make it cost: turn an ex-code page into a
+     * hot data buffer, whose every store would now take the slow path. So a
+     * page that sees HAKUX_TCG311_ARMED_IDLE_WRITES invalidation calls while
+     * empty is disarmed after all, the upstream path one step late.
+     */
+    if (!p->first_tb) {
+        if (tbs_seen) {
+            p->armed_idle = 0;
+            hakux_tlb68_ka++;
+        } else if (++p->armed_idle >= HAKUX_TCG311_ARMED_IDLE_WRITES) {
+            p->armed_idle = 0;
+            hakux_tlb68_kafb++;
+            tlb_unprotect_code(start);
+        }
+    }
+#else
     /* if no code remaining, no need to continue to use slow writes */
     if (!p->first_tb) {
         tlb_unprotect_code(start);
     }
+#endif
 
     if (unlikely(current_tb_modified)) {
         page_collection_unlock(pages);

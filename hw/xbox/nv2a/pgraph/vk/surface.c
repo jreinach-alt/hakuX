@@ -351,6 +351,24 @@ static void memcpy_image(void *dst, void const *src, int dst_stride,
     }
 }
 
+/*
+ * A swizzled surface has no pitch: generate_swizzle_masks() interleaves the
+ * bits of x and y and nothing else, so the surface is width * height * bpp
+ * bytes whatever the guest's pitch says. A CPU site that stages one through a
+ * linear buffer has to lay that buffer out at width * bpp. At the guest's
+ * pitch an undersized pitch (pitch < width * bpp) overlaps the rows, and the
+ * read-back is dest(x, y) = src(x - pitch / bpp, y + 1): Model E on #109, the
+ * defect gl/surface.c had. The deferred download also read past its
+ * pitch * height buffer on the last row. These are the CPU paths; a 4-byte
+ * swizzled surface normally takes the compute ones, which have no pitch, so
+ * on the test corpus only a forced run reaches them with an undersized pitch.
+ */
+static unsigned int swizzle_linear_pitch(unsigned int width,
+                                         unsigned int bytes_per_pixel)
+{
+    return width * bytes_per_pixel;
+}
+
 static bool check_surface_overlaps_range(const SurfaceBinding *surface,
                                          hwaddr range_start, hwaddr range_len)
 {
@@ -852,12 +870,14 @@ void pgraph_vk_complete_staged_downloads(NV2AState *d, PGRAPHVkState *r)
         void *src = staging->mapped + dl->staging_offset;
 
         if (dl->swizzle) {
+            unsigned int linear_pitch =
+                swizzle_linear_pitch(dl->width, dl->bytes_per_pixel);
             g_autofree uint8_t *swizzle_buf =
-                (uint8_t *)g_malloc(dl->pitch * dl->height);
-            memcpy_image(swizzle_buf, src, dl->pitch,
+                (uint8_t *)g_malloc(linear_pitch * dl->height);
+            memcpy_image(swizzle_buf, src, linear_pitch,
                          dl->width * dl->bytes_per_pixel, dl->height);
             swizzle_rect(swizzle_buf, dl->width, dl->height, dl->dest_ptr,
-                         dl->pitch, dl->bytes_per_pixel);
+                         linear_pitch, dl->bytes_per_pixel);
             nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
         } else {
             memcpy_image(dl->dest_ptr, src, dl->pitch,
@@ -1503,13 +1523,16 @@ static void download_surface_to_buffer(NV2AState *d, SurfaceBinding *surface,
         memcpy(pixels, mapped_memory_ptr, downloaded_image_size);
         nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
     } else {
-        memcpy_image(gl_read_buf, mapped_memory_ptr, surface->pitch,
+        unsigned int guest_pitch = surface->swizzle ?
+            swizzle_linear_pitch(surface->width, surface->fmt.bytes_per_pixel) :
+            surface->pitch;
+        memcpy_image(gl_read_buf, mapped_memory_ptr, guest_pitch,
                      surface->width * surface->fmt.bytes_per_pixel,
                      dl_height);
 
         if (surface->swizzle) {
             swizzle_rect(swizzle_buf, surface->width, surface->height, pixels,
-                         surface->pitch, surface->fmt.bytes_per_pixel);
+                         guest_pitch, surface->fmt.bytes_per_pixel);
             nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
             g_free(swizzle_buf);
         }
@@ -1971,10 +1994,49 @@ static void surface_access_callback(void *opaque, MemoryRegion *mr, hwaddr addr,
     }
 }
 
+/*
+ * #311: live CPU access watches this file holds (inserts minus removes),
+ * logged every 5 s with the process-wide cb_count beside it. A watch that
+ * outlives its access_cb pointer can never be removed, and every guest TLB
+ * fill walks all of them (mem_access_callback_address_matches), so a count
+ * that climbs without bound is the leak and a flat one rules it out.
+ */
+extern volatile int32_t *xbox_ram_fp_cb_count_ptr;   /* tcg/tcg.c */
+static long surface_live_watches;
+static unsigned long surface_watch_inserts;
+
+static void surface_watch_log_periodic(PGRAPHVkState *r)
+{
+    static int64_t next_ns;
+    int64_t now = qemu_clock_get_ns(QEMU_CLOCK_REALTIME);
+    if (now < next_ns) {
+        return;
+    }
+    next_ns = now + 5 * NANOSECONDS_PER_SECOND;
+
+    int shelved = 0, invalid = 0, active = 0;
+    SurfaceBinding *s;
+    QTAILQ_FOREACH(s, &r->surfaces, entry) {
+        active++;
+    }
+    QTAILQ_FOREACH(s, &r->shelved_surfaces, entry) {
+        shelved++;
+    }
+    QTAILQ_FOREACH(s, &r->invalid_surfaces, entry) {
+        invalid++;
+    }
+    SURF92_LOG("[watch311] live=%ld inserts=%lu cb_count=%d "
+               "active=%d shelved=%d invalid=%d",
+               surface_live_watches, surface_watch_inserts,
+               xbox_ram_fp_cb_count_ptr ? *xbox_ram_fp_cb_count_ptr : -1,
+               active, shelved, invalid);
+}
+
 static void unregister_cpu_access_callback(SurfaceBinding *surface)
 {
     if (tcg_enabled() && surface->access_cb) {
         mem_access_callback_remove_by_ref(qemu_get_cpu(0), surface->access_cb);
+        surface_live_watches--;
     }
     /* Clearing this is what makes register/unregister safe to call in any
      * order: a surface can now be retired with its watch still up, and both
@@ -1993,6 +2055,8 @@ static void register_cpu_access_callback(NV2AState *d, SurfaceBinding *surface)
             surface->access_cb = mem_access_callback_insert(
                 qemu_get_cpu(0), d->vram, surface->vram_addr, surface->size,
                 &surface_access_callback, d);
+            surface_live_watches++;
+            surface_watch_inserts++;
         }
     }
 }
@@ -2787,14 +2851,17 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
 
     g_autofree uint8_t *swizzle_buf = NULL;
     uint8_t *gl_read_buf = NULL;
+    unsigned int buf_pitch = surface->pitch;
 
     if (surface->swizzle && !use_compute_to_unswizzle) {
+        buf_pitch = swizzle_linear_pitch(surface->width,
+                                         surface->fmt.bytes_per_pixel);
         swizzle_buf = (uint8_t*)g_malloc(surface->size);
         gl_read_buf = swizzle_buf;
         unswizzle_rect(data + surface->vram_addr,
                        surface->width, surface->height,
                        swizzle_buf,
-                       surface->pitch,
+                       buf_pitch,
                        surface->fmt.bytes_per_pixel);
         nv2a_profile_inc_counter(NV2A_PROF_SURF_SWIZZLE);
     } else {
@@ -2834,7 +2901,7 @@ void pgraph_vk_upload_surface_data(NV2AState *d, SurfaceBinding *surface,
     } else {
         memcpy_image(mapped_memory_ptr, gl_read_buf,
                      surface->width * surface->fmt.bytes_per_pixel,
-                     surface->pitch, surface->height);
+                     buf_pitch, surface->height);
     }
 
     vmaFlushAllocation(r->allocator, copy_buffer->allocation, staging_base,
@@ -3671,12 +3738,26 @@ static void update_surface_part(NV2AState *d, bool upload, bool color)
                 if (surface) {
                     migrate_surface_image(&target, surface);
                 } else {
-                    surface = g_malloc(sizeof(SurfaceBinding));
+                    surface = g_malloc0(sizeof(SurfaceBinding));
                     create_surface_image(pg, &target);
                 }
             }
             SURF_TIMER_ACC(create_ns, _gt2);
 
+            /*
+             * A slot retired dirty kept its watch (see
+             * unregister_cpu_access_callback_if_clean), and the assignment
+             * below drops the only pointer to it; surface_put's own
+             * unregister then sees NULL, and the watch outlives the process.
+             * One leaked per reuse, and every guest TLB fill walks them all:
+             * Ghoulies fell from 29 to 1-2 fps within a minute (#311).
+             * Releasing it here loses nothing. The watch exists so a guest
+             * write can cancel the writeback a retired surface still owes,
+             * and that handler only walks the shelved and invalid lists,
+             * which this slot has just left; the assignment replaces its
+             * address and draw_dirty, so the old writeback is gone anyway.
+             */
+            unregister_cpu_access_callback(surface);
             *surface = target;
             set_surface_label(pg, surface);
 
@@ -3866,6 +3947,7 @@ void pgraph_vk_surface_update(NV2AState *d, bool upload, bool color_write,
         prune_invalid_surfaces(r, num_invalid_surfaces_to_keep);
         SURF_TIMER_ACC(expire_ns, _se0);
     }
+    surface_watch_log_periodic(r);
 
     NV2A_PHASE_TIMER_END_EXCL(surface_update);
 }
