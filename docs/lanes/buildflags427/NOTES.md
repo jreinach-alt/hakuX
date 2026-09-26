@@ -85,6 +85,20 @@ is capped at 30. The soak ends at 240 s, before that collapse.
 leg is filed as `dispatch/board-requests/buildflags427.md`: two 30 s captures,
 one per APK, on the Thor.
 
+## State at the end of session 1 (2026-09-26 13:55 PDT)
+
+Waiting on three things outside the session:
+- the four soaks `1790455170-buildflags427-*`, with about eight Thor
+  requests queued ahead of them;
+- the arms job's `[job.arms]` verdict on `buildflags427-pgraph-inert.json`;
+- the host's two simpleperf captures (board request).
+
+On resume:
+1. Run `ghoul311/gfps.py --from 110 --to 240` on the four soaks.
+2. Run `symcheck.py` on the dispatcher-built `dispatch/builds/15d9406b81.apk`
+   and `6cd1a58b64.apk` (leg F0).
+3. Fill the table, merge master, and mark the PR ready.
+
 ## For the next lane
 
 - Do not use `-fvisibility=hidden` without first marking JNI and `SDL_main`
