@@ -1165,10 +1165,3 @@ issues = ["372"]
 files = ["hw/xbox/nv2a/pgraph/vk/surface.c", "docs/testing/predictions/blinx372d-*.json", "docs/lanes/blinx372d/**"]
 standing = false
 note = "BRIEFED AT TERRITORY WAVE 249, NOT STARTED (job.board, 2026-09-26T14:14:00Z; `lane.sh start` needs an approval the non-interactive board session cannot get, so the HOST runs `docs/testing/lane.sh start blinx372d briefs/blinx372d.md 372`), briefs/blinx372d.md: #372's code half. lane.blinx372c (PR #388, folded) named the site: the incompatible-binding eviction in vk/surface.c update_surface_part does two synchronous pgraph_vk_finish(SURFACE_DOWN) per frame (Sub 34.5 ms of a 64-70 ms frame); the hunk is a GPU-side image->buffer->image copy. vk/surface.c was released by lane.surfwatch382 (PR #387 folded a5b5b628f2), which the hunk depends on (its CPU-access watch becomes the only guard against a stale CPU read)."
-
-
-[lane.cloud-issue-271]
-issues = ["271"]
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-issue-271, a cloud-class lane on issue #271, branch lane/cloud-271, attempt 2 of 4 on claude-opus-5-5. Claims no files: the session's brief is the issue and the files it will touch are not known at claim time -- the row exists so check_territory.py and fleet.py can SEE the session, which they could not before. `cloud.sh finish issue 271` removes this row when the unit ends."
