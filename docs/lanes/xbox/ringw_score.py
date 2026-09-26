@@ -1,7 +1,11 @@
 #!/usr/bin/env python3
 """Score the #53 ring-weights run (ringw-run.md) on one captures root.
 
-    ringw_score.py <captures root>
+    ringw_score.py <captures root> [--cases M0,M1,...] [--baseline M0]
+
+--cases picks which cases to read (default: the original run's 15); the
+baseline case must step exactly 4 (leg C0). ringw-boundary-run.md uses
+--cases N0,...,N7 --baseline N0.
 
 <captures root> is a console run's `console/` (Ring_weights/Test.png) or a
 dispatcher result's `captures1/` (Ring_weights::Test.png). Values are the red
@@ -83,11 +87,15 @@ def window_start(vals, prime):
 
 
 def main():
-    if len(sys.argv) != 2:
-        sys.exit(__doc__)
-    root = sys.argv[1]
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("root")
+    ap.add_argument("--cases", default=",".join(CASES))
+    ap.add_argument("--baseline", default="M0")
+    a = ap.parse_args()
+    root, cases, base = a.root, a.cases.split(","), a.baseline
     res = {}
-    for k in CASES:
+    for k in cases:
         pp, _ = find(root, k + "a_FF")
         sp, sname = find(root, k + "b_")
         if not pp or not sp:
@@ -109,10 +117,10 @@ def main():
             k, sname, "ok" if sep >= SEP else "FAIL(%.1f)" % sep, starts, steps,
             "" if steps is not None else "  unreadable: %s" % notes))
     ok = lambda k: res.get(k) and res[k][0] and res[k][2] is not None
-    c0 = ok("M0") and set(res["M0"][2]) == {4}
-    print("C0 M0 steps all 4: %s" % ("holds" if c0 else "FAILS -- the weights have no baseline"))
+    c0 = ok(base) and set(res[base][2]) == {4}
+    print("C0 %s steps all 4: %s" % (base, "holds" if c0 else "FAILS -- the weights have no baseline"))
     p1 = True
-    for k in ["M%d" % i for i in range(1, 9)]:
+    for k in [c for c in cases if c != base and c[0] in "MN"]:
         if ok(k):
             st = set(res[k][2])
             const = len(st) == 1
@@ -123,7 +131,10 @@ def main():
             p1 = False
             print("   %s unreadable" % k)
     print("P1 each method's step is constant: %s" % ("holds" if p1 else "FAILS"))
-    if all(ok(k) for k in ("C0", "C1", "C2", "M6")):
+    if not any(c in cases for c in ("C0", "C1", "C2")):
+        p2 = True
+        print("P2 not part of this run")
+    elif all(ok(k) for k in ("C0", "C1", "C2", "M6")):
         f1 = (res["C1"][1][0] - res["C0"][1][0]) % 6
         f2 = (res["C2"][1][0] - res["C1"][1][0]) % 6
         m6 = sorted({(s - 4) % 6 for s in res["M6"][2]})
@@ -133,7 +144,7 @@ def main():
         p2 = False
         print("P2 not read: a C case or M6 unreadable")
     for k in ("B1", "B2", "B3"):
-        if res.get(k):
+        if k in cases and res.get(k):
             print("   %s (recorded) starts %s steps %s" % (k, res[k][1], res[k][2]))
     return 0 if (c0 and p1 and p2) else 1
 
