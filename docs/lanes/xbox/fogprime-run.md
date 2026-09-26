@@ -3,6 +3,14 @@
 **Status: PRE-REGISTERED.** This file was committed and pushed before the XBE
 ran anywhere.
 
+**Result (2026-09-25):** see
+[`xbox-fogprime-2026-09-25.md`](../../testing/xbox-fogprime-2026-09-25.md).
+The outcome is X: silicon carries six per-vertex slots from the priming
+draw's last two quads. **V3 as registered below could not hold:** the six
+radial tests ran with no FF radial draw before them, and their goldens
+need Fog gen's FF tests first. That is my error; the results doc covers
+it.
+
 It binds a run to
 [`docs/testing/predictions/2026-09-19-fog-radial-carryover-priming.md`](../../testing/predictions/2026-09-19-fog-radial-carryover-priming.md)
 (PR #179), which registered the models (S, S-first, T, H, X), the windows, the
