@@ -1152,3 +1152,10 @@ issues = ["34"]
 files = ["hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/instance.c", "docs/testing/predictions/vkpointsize34-*.json", "docs/lanes/vkpointsize34/**"]
 standing = false
 note = "BRIEFED AT WAVE 233, NOT STARTED (job.board, 2026-09-26T06:40Z; `lane.sh start` needs approval the non-interactive board session cannot get -- the HOST runs `docs/testing/lane.sh start vkpointsize34 briefs/vkpointsize34.md 34`; the row holds its files meanwhile) for #34's one Adreno VUID (pCode-08740, GeometryPointSize without shaderTessellationAndGeometryPointSize): gate the three gl_PointSize writes in glsl/geom.c on the enabled feature. geom.c and vk/instance.c came free when lane.wparamclip223 (PR #250) folded. Findings 1-4 of the issue body are not in this lane. Brief: briefs/vkpointsize34.md."
+
+
+[lane.cloud-audit2-347]
+issues = []
+files = []
+standing = false
+note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet), not by a board tick: unit hakux-lane-cloud-audit2-347, audit pass 2 of PR #347 on branch lane/pshqueue, attempt 1 of 4 on claude-opus-5-5. Claims no files: an audit reads the diff and writes docs/audits/ on the PR's own branch, it does not edit the tree it is auditing. `cloud.sh finish audit2 347` removes this row when the unit ends."
