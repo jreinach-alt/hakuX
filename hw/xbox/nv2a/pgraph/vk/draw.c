@@ -7408,6 +7408,7 @@ void pgraph_vk_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta)
                  pgraph_color_write_enabled(pg), pgraph_zeta_write_enabled(pg));
 
     PGRAPHVkState *r = pg->vk_renderer_state;
+    NV2AState *d = container_of(pg, NV2AState, pgraph);
 
     /* FIXME: Does this apply to CLEARs too? */
     color = color && pgraph_color_write_enabled(pg);
@@ -7420,8 +7421,8 @@ void pgraph_vk_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta)
     }
 
     if (r->color_binding) {
-        r->color_binding->draw_dirty |= color;
         if (color) {
+            pgraph_vk_surface_watch_mark_dirty(d, r->color_binding);
             r->color_binding->draw_generation++;
         }
         r->color_binding->frame_time = pg->frame_time;
@@ -7429,8 +7430,8 @@ void pgraph_vk_set_surface_dirty(PGRAPHState *pg, bool color, bool zeta)
     }
 
     if (r->zeta_binding) {
-        r->zeta_binding->draw_dirty |= zeta;
         if (zeta) {
+            pgraph_vk_surface_watch_mark_dirty(d, r->zeta_binding);
             r->zeta_binding->draw_generation++;
         }
         r->zeta_binding->frame_time = pg->frame_time;
