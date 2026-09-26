@@ -2400,3 +2400,8 @@ perflog build, on Crimson. lane.local read it (5850579748).
   `begin_pre_draw()` outside `Draw`. With either on, I3 can fail by design;
   the checker says so.
 - The inline clear stays untimed, as it was.
+- Comparing with older soaks (audit pass 1, LOW-2). On a line from before
+  this fix, the children of `Draw` and `Pipe` read higher, by the nested
+  finish they counted twice. `Draw`, and so `BUSY`, reads lower on a title
+  that clears through the fall-through path, whose pre-draw and recording
+  were outside `Draw`. Neither difference is the title's.
