@@ -57,6 +57,13 @@ it with A's non-NEARFAR sibling first (`Ctrl_ZCLAMP`, `Ctrl_WBuf_ZCULL`,
 `CtrlFixed_WBuf_ZCULL`): a mover that equals its sibling's new residual is
 base drift, not the hunk.
 
+## State at session end (2026-09-25)
+
+Waiting on the arms job's `[job.arms]` verdict for `cullnf276-nearfar.json`
+and on CI for the head. `docs/testing/nv2a_index.json` was regenerated (tests
+6743b6a) for the two new symbols; preflight passes. The PR stays draft until
+the verdict is read and cited.
+
 ## Do not repeat
 
 - Do not rebase this branch: the prediction names 41be7c432c.
