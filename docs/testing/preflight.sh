@@ -98,23 +98,33 @@ if [ -n "${RENDER_COVERAGE:-}" ]; then
     step "coverage"; render_coverage "$RENDER_COVERAGE"; exit 0
 fi
 
+# EVERY LOG THIS RUN WRITES LIVES IN ITS OWN DIRECTORY. They were twenty
+# fixed /tmp/preflight-* paths, and the fold job and every lane run this
+# script, often in the same minute: one run truncated the report another was
+# about to read. The fold refused PR #367 twice with "psh_differ report ...
+# produced no report" on a sha that passes alone (dispatch-hardening defect
+# 26). The directory is removed on a pass and kept on a failure, so the path a
+# failure prints still exists when someone reads it.
+PF_TMP=$(mktemp -d "${TMPDIR:-/tmp}/preflight.XXXXXX") || { echo "preflight: mktemp failed" >&2; exit 2; }
+trap '[ "$fail" = 0 ] && rm -rf "$PF_TMP"' EXIT
+
 # 1. psh_differ, as .github/workflows/desktop.yml runs it. carve.py refuses to
 #    carve a function it was not told about, so a new PGRAPHState reader in
 #    psh.c stops the build here rather than on a runner.
 step "psh_differ build"
-if make -C docs/testing/psh_differ >/tmp/preflight-make.log 2>&1; then ok; else
-    bad; tail -5 /tmp/preflight-make.log
+if make -C docs/testing/psh_differ >"$PF_TMP/make.log" 2>&1; then ok; else
+    bad; tail -5 "$PF_TMP/make.log"
 fi
 
 if [ $fail -eq 0 ]; then
     step "psh_differ report"
-    ./docs/testing/psh_differ/build/psh-differ >/tmp/preflight-differ.log 2>/tmp/preflight-differ.err
-    if grep -q 'does not generate' /tmp/preflight-differ.err; then
-        bad; echo "  a baseline no longer generates a shader:"; head -5 /tmp/preflight-differ.err
-    elif ! grep -q '^TOTAL' /tmp/preflight-differ.log; then
-        bad; echo "  produced no report"; tail -5 /tmp/preflight-differ.log
+    ./docs/testing/psh_differ/build/psh-differ >"$PF_TMP/differ.log" 2>"$PF_TMP/differ.err"
+    if grep -q 'does not generate' "$PF_TMP/differ.err"; then
+        bad; echo "  a baseline no longer generates a shader:"; head -5 "$PF_TMP/differ.err"
+    elif ! grep -q '^TOTAL' "$PF_TMP/differ.log"; then
+        bad; echo "  produced no report"; tail -5 "$PF_TMP/differ.log"
     else
-        ok; grep -E '^TOTAL' /tmp/preflight-differ.log | sed 's/^/  /'
+        ok; grep -E '^TOTAL' "$PF_TMP/differ.log" | sed 's/^/  /'
     fi
 fi
 
@@ -124,13 +134,13 @@ fi
 #     hw/audio/ac97_int.h, so a field added to AC97LinkState without a
 #     decision about whether it is guest state stops here.
 step "aci_vmstate"
-if make -C docs/testing/aci_vmstate run >/tmp/preflight-aci.log 2>&1; then
+if make -C docs/testing/aci_vmstate run >"$PF_TMP/aci.log" 2>&1; then
     ok
-    grep -E 'guest state reproduced' /tmp/preflight-aci.log | sed 's/^/  /'
+    grep -E 'guest state reproduced' "$PF_TMP/aci.log" | sed 's/^/  /'
 else
     bad
-    grep -E 'FAIL|error:' /tmp/preflight-aci.log | head -8 | sed 's/^/  /'
-    echo "  full output: /tmp/preflight-aci.log"
+    grep -E 'FAIL|error:' "$PF_TMP/aci.log" | head -8 | sed 's/^/  /'
+    echo "  full output: $PF_TMP/aci.log"
 fi
 
 # 2. The nv2a index, as .github/workflows/nv2a-index.yml runs it. It records
@@ -177,7 +187,7 @@ if [ -z "$TESTS" ] || [ ! -d "$TESTS" ]; then
     echo "  Pass --tests DIR. Do not push on an unchecked index: it is the"
     echo "  gate that fails most often, because it records source line numbers."
 elif python3 docs/testing/nv2a_index.py check --tests "$TESTS" \
-        ${SUPPORT:+--support "$SUPPORT"} >/tmp/preflight-index.log 2>&1; then
+        ${SUPPORT:+--support "$SUPPORT"} >"$PF_TMP/index.log" 2>&1; then
     ok
 else
     INDEX_TIP="${HAKUX_TIP:-master}"
@@ -214,10 +224,10 @@ PYROOTS
         echo "  the index is whole-tree, so you would commit other lanes'"
         echo "  churn and collide with every concurrent lane at the fold."
         echo "  PUT THIS IN YOUR REPORT so the orchestrator sees it:"
-        sed 's/^/    /' /tmp/preflight-index.log
+        sed 's/^/    /' "$PF_TMP/index.log"
     else
         bad
-        sed 's/^/  /' /tmp/preflight-index.log
+        sed 's/^/  /' "$PF_TMP/index.log"
         if [ "$INDEX_MINE" != "(unattributable)" ]; then
             echo "  YOUR changes under $INDEX_ROOTS, which is why this is yours:"
             printf '    %s\n' $INDEX_MINE
@@ -234,11 +244,11 @@ fi
 #    conflict. That went unnoticed on 2026-09-13 and the next brief was written
 #    from a reverted table.
 step "territory"
-if python3 docs/testing/check_territory.py >/tmp/preflight-territory.log 2>&1; then
+if python3 docs/testing/check_territory.py >"$PF_TMP/territory.log" 2>&1; then
     ok
 else
     bad
-    sed 's/^/  /' /tmp/preflight-territory.log
+    sed 's/^/  /' "$PF_TMP/territory.log"
 fi
 
 # 4. Issue coverage. Like the territory check this is not a CI gate -- CI does
@@ -250,11 +260,11 @@ fi
 #    check_coverage.py exits 0 both when it checked and when it failed open,
 #    so the exit code cannot tell those apart and the WORDS have to.
 step "coverage"
-if python3 docs/testing/check_coverage.py >/tmp/preflight-coverage.log 2>&1; then
-    render_coverage /tmp/preflight-coverage.log
+if python3 docs/testing/check_coverage.py >"$PF_TMP/coverage.log" 2>&1; then
+    render_coverage "$PF_TMP/coverage.log"
 else
     bad
-    sed 's/^/  /' /tmp/preflight-coverage.log
+    sed 's/^/  /' "$PF_TMP/coverage.log"
 fi
 
 # 5. THE BOARD FILES, which a lane is contractually barred from editing and
@@ -407,5 +417,6 @@ if [ $fail -eq 0 ]; then
     echo "preflight passed - safe to push"
 else
     echo "preflight FAILED - fix before pushing, do not spend a CI run finding out"
+    echo "  this run's logs: $PF_TMP"
 fi
 exit $fail
