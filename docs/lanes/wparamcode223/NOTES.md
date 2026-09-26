@@ -136,7 +136,7 @@ worse.
 
 The divide is the cause: the bitri extremes fell from ~146k to ~3.2k, not
 the "stays ~146k" that would have refuted it.  The magnitudes in section 4's
-prose were too optimistic for 10 bitri rows (a ~3.2k residual each) and for
+prose were too optimistic for 8 bitri rows (a ~3.2k residual each) and for
 w_gaps (a 31.7k residual).  Those residuals need a different rule; this lane
 has not identified it.
 
@@ -147,7 +147,7 @@ W_param is fully covered.  There is no UtilAcceptVsock.
 
 ## For the next lane
 
-- **Residuals after this PR:** 10 ff bitri rows at ~3.2k each, bitri w-inf
+- **Residuals after this PR:** 8 ff bitri rows at ~3.2k each, bitri w-inf
   at 511, and w_gaps / w_gaps_tex_persp at 31,743.  Start from B's
   captures in `dispatch/results/1790373302-arms-wparamcode223-fix-991557`,
   not from #304's prices, because those predate both hunks.
