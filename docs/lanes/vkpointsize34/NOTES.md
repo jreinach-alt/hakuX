@@ -103,6 +103,28 @@ on). A was built on a Sep 24 base and B on today's master. B's six values
 master since 1790361025-vtxarr262-base (`clear_recent.py`), so the move came
 from master, not from this fix. The same-base pixel check is the fleet arm.
 
-## Waiting
-On the arms job's `[job.arms]` verdict for `vkpointsize34-fleet-inert.json`
-on PR #371. When it is PASS, mark the PR ready.
+## Why attempt 2 did not finish
+It ended correctly, on a `[lane.vkpointsize34] waiting:` comment naming the
+arms job's verdict (outside the session). The resume that followed carried an
+addendum written about attempt 1 ("half the fix in, no arm queued"); by then
+the fix was committed and the arm was queued. Nothing was lost.
+
+## Fleet arm verdict (2026-09-26, attempt 3)
+`ab_compare.py --a 1790408995-arms-vkpointsize34-base-14733
+--b 1790408995-arms-vkpointsize34-fix-14755
+--expect docs/testing/predictions/vkpointsize34-fleet-inert.json`:
+
+| | A base | B fix |
+|---|---|---|
+| ref / apk_sha | 6550967a5e / b5f276b45557 | 97f221cac0 / 3abe701ef94d |
+| captures, progress-log proof | 78, yes | 78, yes |
+| feature in logcat | `available` | `available` |
+| Clear / Point_params / Point_size differing | 131,040 / 13,128 / 20,579 | same |
+
+better 0, worse 0, same 78; every capture is byte-identical between the arms.
+**VERDICT: PASS, all 78 registered checks hold.** ab_compare prints
+"UNBOUND" because the arms job queued the arm without `request.sh --expect`.
+The prediction was committed at 07:34Z, before either arm ran.
+
+Both legs pass: VUID 1 -> 0 on the system driver (survey above), and no pixel
+moves on the fleet driver, which has the feature.
