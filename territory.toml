@@ -572,7 +572,7 @@ note = "RETIRED (hostops 2026-09-26 13:15 PDT): PR #415 MERGED, no open PR on la
 # exist, and check_coverage.py cannot tell the difference.
 # CLAIMED (hostops, 2026-09-26T03:35Z): glsl/psh.h -> lane.pshqueue (granted at wave 222; [free] still listed it, failing check_territory).
 # CLAIMED (hostops, 2026-09-26 6:45 AM PDT): gl/texture.c -> lane.pshaniso284 (granted 6:40 AM; [free] still listed it, failing check_territory).
-files = ["docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
+files = ["docs/testing/titles/visual_score.py", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json", "docs/testing/jobs/fold.sh", "docs/testing/jobs/selftest.d/74-fold-multi.sh", "docs/lanes/foldcancel/NOTES.md", "docs/testing/titles/routes/**", "docs/testing/titles/targets.toml", "docs/testing/title_verdict.py", "docs/testing/titles/table.py", "docs/lanes/titleplay/**", "docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/cloudclaim/**", "docs/testing/nightly_build.sh", "docs/testing/jobs/selftest.d/86-nightly-notes.sh", "docs/lanes/nightlynotes/**", "docs/testing/predictions/tiecode282-*.json", "docs/lanes/tiecode282/**", "tools/turnip/**", "docs/investigations/adreno-driver-feasibility.md", "docs/lanes/turnipfork/**", "docs/testing/predictions/turnipfork-*.json", "tcg/tcg-op.c", "tcg/aarch64/**", "util/cacheflush.c", "tools/bench/**", "docs/investigations/perf-architecture.md", "docs/lanes/perfarch/**", "docs/testing/predictions/perfarch-*.json", "docs/testing/predictions/doa413-*.json", "docs/lanes/doa413/**", "hw/xbox/nv2a/pgraph/glsl/geom.c", "hw/xbox/nv2a/pgraph/glsl/geom.h", "hw/xbox/nv2a/pgraph/vk/renderer.c", "docs/testing/predictions/cull13-*.json", "docs/lanes/cull13/**", "subprojects/nv2a_vsh_cpu.wrap", "subprojects/packagefiles/nv2a_vsh_cpu/**", "docs/testing/predictions/vshcpu345-*.json", "docs/lanes/vshcpu345/**", 
 # RELEASED AT WAVE 158 by retiring lane.cloud190: PR #211 folded as f2e8ef8ba8 (#190 fixed).
     "hw/xbox/nv2a/pmc.c",
 # RELEASED (job.board wave 249) by retiring lane.fmv303 (PR #317 folded bb1f437bb7): vk/display.c.
@@ -1221,12 +1221,6 @@ files = []
 standing = false
 retired_utc = "2026-09-26T20:40:00Z"
 note = "RETIRED (job.board 2026-09-26T20:40Z): PR #417 MERGED (fold 7e6a4ac88a), unit gone. Files RELEASED to [free]: docs/testing/predictions/doa413-*.json, docs/lanes/doa413/**."
-
-[lane.visual404]
-issues = ["404"]
-files = ["docs/testing/titles/visual_score.py", "docs/testing/jobs/selftest.d/99-visual-score.sh", "docs/lanes/visual404/**", "docs/testing/predictions/visual404-*.json"]
-standing = false
-note = "STARTED (hostops 2026-09-26 13:18 PDT), briefs/visual404.md: #404 unblocked on lane.local's board request (host.md): #397 pass-1 table posted (5849041338) and the flow fix is live. Offline, no device time: detectors + positive controls (Galleon #77 stipple, MechAssault red box) on the titleplay-p1 route frames."
 
 [lane.forza414]
 issues = ["414"]
