@@ -35,6 +35,21 @@ To read it:
 `python3 docs/lanes/blinx372c/stallread.py <logcat> --window 135,265 --spec
 <result.json> --prediction docs/testing/predictions/blinx372c-demo-soak.json`
 
+### Why attempt 1 did not finish
+
+Attempt 1 stopped at the block above, which was correct. It then waited on its own
+background poll for the host's update window, and that poll died when the
+session ended. At 05:10 PDT hostops ran dispatcher_update_window.sh (dispatcher
+tree to 6c25a829ef, which includes #381) and resumed this lane.
+
+### Attempt 2 (2026-09-26 PDT)
+
+- `$DISPATCH_DIR/bin/dispatcher.sh` names `hakuX-stall` 3 times, so the snapshot is current.
+- Queued `1790424874-blinx372c-754046` (the command above, `--purpose` added)
+  on ref 6c25a829ef, pinned to the Thor. It sits ahead of the `z-b-v040j1-*`
+  sweep. request.sh warns that `--frames-every` costs frame rate, so P5 (fps)
+  compares only against soaks that also captured frames.
+
 ## 2. Registered before the soak
 
 `docs/testing/predictions/blinx372c-demo-soak.json` (sha256 475ff4d9...).
