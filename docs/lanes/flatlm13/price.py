@@ -14,6 +14,7 @@ Rules:
   whole   every edge of a quad / the polygon takes p (silicon; needs geom.c)
 
   price.py CAPDIR
+  price.py --verify CAPDIR_A CAPDIR_B    B == orient(A), pixel for pixel
 """
 import os
 import sys
@@ -82,6 +83,28 @@ def recolour(o, prim, rule):
     return out
 
 
+def verify(cap_a, cap_b):
+    """The arm's magnitude leg: B must be A recoloured by `orient`, pixel for
+    pixel.  Exit 1 if any of the six captures is not."""
+    bad = 0
+    print("%-28s %6s %6s %6s %8s" % ("capture", "A", "orient", "B",
+                                     "B!=pred"))
+    for prim in ("Quad", "QuadStrip", "Poly"):
+        for pv in ("First", "Last"):
+            test = "ProgLM_%s_Flat_%s" % (prim, pv)
+            g = load(os.path.join(G, test + ".png"))
+            a = load(os.path.join(cap_a, "Shade_model::%s.png" % test))
+            b = load(os.path.join(cap_b, "Shade_model::%s.png" % test))
+            pred = recolour(a, prim, "orient")
+            off = int(np.any(pred != b, axis=2).sum())
+            bad += off != 0
+            print("%-28s %6d %6d %6d %8d" % (test, colour_px(g, a),
+                                             colour_px(g, pred),
+                                             colour_px(g, b), off))
+    print("VERIFY %s" % ("FAIL" if bad else "PASS"))
+    return 1 if bad else 0
+
+
 def main(cap):
     print("%-28s %6s %6s %6s" % ("capture", "now", "orient", "whole"))
     for prim in ("Quad", "QuadStrip", "Poly"):
@@ -95,4 +118,6 @@ def main(cap):
 
 
 if __name__ == "__main__":
+    if sys.argv[1] == "--verify":
+        sys.exit(verify(sys.argv[2], sys.argv[3]))
     main(sys.argv[1])

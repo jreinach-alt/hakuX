@@ -1,0 +1,38 @@
+{
+  "registered_utc": "2026-09-26T14:52:21Z",
+  "who": "lane.flatlm13",
+  "issue": "13",
+  "prediction": "#13 class C (docs/lanes/flatlm13/NOTES.md).  Silicon draws a flat line-mode QUADS / QUAD_STRIP / POLYGON in ONE colour per quad/polygon, fixed by the primitive (v3 of each quad, v(2k+3) of each strip quad, v0 of the polygon) and independent of FLAT_SHADE_OP.  geom.c takes a LINE's flat colour from its first endpoint, so b_ref emits each edge that touches that vertex from it (quads (v2,v3)->(v3,v2), strip (v1,v3)->(v3,v1), polygon (v4,v0)->(v0,v4)).  Paint order unchanged; smooth output byte-identical (rewrite_edges.sh).\n\nMUST MOVE, better (expect_counts better=6, worse=0): Shade_model/ProgLM_{Quad,QuadStrip,Poly}_Flat_{First,Last}.  Source that moves them: emit_edge_flat() in the three rewrite_*_line() functions.  Bound, from price.py on the 8555c013c6 capture: colour px 1388->974 (Quad), 1275->761 (QuadStrip), 994->540 (Poly) per capture, i.e. differing drops by ~414 / ~514 / ~454.  The exact magnitude leg is NOT judged by ab_compare (expect_counts only says the six move better): lane.flatlm13 runs `docs/lanes/flatlm13/price.py --verify A/captures1 B/captures1` (committed with this file; its A==B control FAILs) and cites it on the PR.  B's capture must equal price.py's `orient` recolour of A's, pixel for pixel; a pixel that differs there is a coverage change from reversing an edge, reported as such and not refit.\n\nMUST NOT MOVE, bit-identical: every other Shade_model capture (ProgLM Smooth, ProgLM Tri/TriStrip/TriFan, Prog_, ProgTex_, Fixed*, W_*), Front_face, Line_width, 3D_primitive, Edge_flag.  What would move them: the flat_shading gate failing (every suite but Shade_model resets SMOOTH in setup, test_suite.cpp:177); a fill-path change (none: only POLY_MODE_LINE paths gained the argument).\n\nWORLD IN WHICH THIS FAILS: a Flat capture moves WORSE or only partly -> reversing an edge changed its coverage (line direction is observable in our rasteriser), and the orient recolour of A will locate the pixels; report, do not refit.  Better != 6 because of a capture outside the six -> read its status column and the run's PARTIAL COVERAGE lines before blaming the hunk.",
+  "a_ref": "02374a6847",
+  "b_ref": "970c382ed1",
+  "must_not_move": [
+    "Shade_model/Fixed*",
+    "Shade_model/W_*",
+    "Shade_model/Prog_*",
+    "Shade_model/ProgTex_*",
+    "Shade_model/ProgLM_Tri*",
+    "Shade_model/ProgLM_*_Smooth_*",
+    "Front_face/*",
+    "Line_width/*",
+    "3D_primitive/*",
+    "Edge_flag/*"
+  ],
+  "expect": {},
+  "expect_counts": {
+    "better": 6,
+    "worse": 0
+  },
+  "must_not_regress": [],
+  "disc": {
+    "suites": [
+      "3D primitive",
+      "Edge flag",
+      "Front face",
+      "Line width",
+      "Shade model"
+    ],
+    "skip_tests": [],
+    "only_tests": [],
+    "source": "stated on the --register command line"
+  }
+}
