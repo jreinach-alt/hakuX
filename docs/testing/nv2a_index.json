@@ -1854,61 +1854,61 @@
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:789",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:867",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:810",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:888",
    "symbols": [],
    "text": "/* FIXME: could be nicer if some channels share the same texgen */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:812",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:890",
    "symbols": [],
    "text": "/* TODO: TexGen View Model missing! */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:831",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:909",
    "symbols": [],
    "text": "/* FIXME: u, r and m only have to be calculated once */"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:833",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:911",
    "symbols": [],
    "text": "//FIXME: tNormal before or after normalization? Always normalize?"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:836",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:914",
    "symbols": [],
    "text": "/* FIXME: This would consume 1 division fewer and *might* be"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:851",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:929",
    "symbols": [],
    "text": "/* FIXME: u and r only have to be calculated once, can share the one from SPHERE_MAP */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:864",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:942",
    "symbols": [],
    "text": "assert(false);"
   },
   {
    "kind": "MARKED",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:977",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1055",
    "symbols": [],
    "text": "/* FIXME: Do we have to clamp here? */"
   },
   {
    "kind": "ABORT",
-   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:994",
+   "loc": "hw/xbox/nv2a/pgraph/glsl/vsh-ff.c:1072",
    "symbols": [],
    "text": "assert(!\"Invalid foggen mode\");"
   },
@@ -4645,7 +4645,7 @@
   ]
  },
  "provenance": {
-  "emulator_commit": "39c41fbb5cf80cb3bbb9fa6ef701762dc3794c78",
+  "emulator_commit": "247d38356a6d5cbc414a5be3ff5829b4b77d6cee",
   "gaps": 496,
   "resolved_tables": 1,
   "sites": 2880,
