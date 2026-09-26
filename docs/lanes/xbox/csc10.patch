@@ -1,0 +1,385 @@
+diff --git a/src/CMakeLists.txt b/src/CMakeLists.txt
+index 91453be..4f1217d 100644
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -195,6 +195,7 @@ add_dependencies(
+ add_executable(
+         nxdk_pgraph_tests
+         tests/alpha_func_tests.cpp
++        tests/color_space_conversion_tests.cpp
+         tests/alpha_func_tests.h
+         tests/antialiasing_tests.cpp
+         tests/antialiasing_tests.h
+diff --git a/src/main.cpp b/src/main.cpp
+index 1dfd467..9cb3056 100644
+--- a/src/main.cpp
++++ b/src/main.cpp
+@@ -38,6 +38,7 @@
+ #include "test_driver.h"
+ #include "test_host.h"
+ #include "tests/alpha_func_tests.h"
++#include "tests/color_space_conversion_tests.h"
+ #include "tests/antialiasing_tests.h"
+ #include "tests/attribute_carryover_tests.h"
+ #include "tests/attribute_explicit_setter_tests.h"
+@@ -473,6 +474,7 @@ static void RegisterSuites(TestHost& host, RuntimeConfig& runtime_config,
+   // -- Begin REG_TEST --
+ 
+   REG_TEST(AlphaFuncTests)
++  REG_TEST(ColorSpaceConversionTests)
+   REG_TEST(AntialiasingTests)
+   REG_TEST(AttributeCarryoverTests)
+   REG_TEST(AttributeExplicitSetterTests)
+diff --git a/src/tests/color_space_conversion_tests.cpp b/src/tests/color_space_conversion_tests.cpp
+new file mode 100644
+index 0000000..a8c22c8
+--- /dev/null
++++ b/src/tests/color_space_conversion_tests.cpp
+@@ -0,0 +1,293 @@
++#include "color_space_conversion_tests.h"
++
++#include <SDL.h>
++#include <pbkit/pbkit.h>
++
++#include <memory>
++#include <utility>
++
++#include "debug_output.h"
++#include "shaders/passthrough_vertex_shader.h"
++#include "test_host.h"
++#include "texture_format.h"
++
++static constexpr char kSuiteName[] = "Color space conversion";
++
++static constexpr int kTex = 256;
++
++// The palette: cell (i, j) covers texels [16i, 16i + 16) x [16j, 16j + 16). R comes from the column, G and B from the
++// row, A from both, so every cell is a distinct (R, G, B, A).
++static constexpr uint8_t kR[16] = {0, 8, 16, 17, 32, 64, 96, 127, 128, 160, 192, 224, 235, 240, 254, 255};
++static constexpr uint8_t kGB[16][2] = {{128, 128}, {0, 0},     {255, 255}, {0, 255},  {255, 0},  {128, 0},
++                                       {0, 128},   {128, 255}, {255, 128}, {16, 240}, {240, 16}, {17, 238},
++                                       {238, 17},  {64, 192},  {192, 64},  {100, 150}};
++static constexpr uint8_t kA[4] = {255, 191, 127, 64};
++
++// Raw YUV cells, {Y0, U, Y1, V}: 8 columns of 32 texels by 4 rows of 64.
++static constexpr uint8_t kYUV[32][4] = {
++    {200, 60, 200, 130}, {60, 130, 60, 200},   {130, 200, 130, 60}, {16, 128, 16, 128},  {235, 128, 235, 128},
++    {128, 128, 128, 128}, {81, 90, 81, 240},   {145, 54, 145, 34},  {41, 240, 41, 110},  {50, 90, 220, 170},
++    {220, 170, 50, 90},   {0, 0, 0, 0},        {255, 255, 255, 255}, {255, 0, 255, 0},   {0, 255, 0, 255},
++    {128, 0, 128, 255},   {128, 255, 128, 0},  {17, 238, 17, 17},   {238, 17, 238, 238}, {100, 150, 100, 50},
++    {150, 50, 150, 150},  {64, 192, 64, 64},   {192, 64, 192, 192}, {32, 96, 160, 224},  {224, 160, 96, 32},
++    {10, 20, 30, 40},     {250, 240, 230, 220}, {90, 128, 180, 128}, {180, 128, 90, 128}, {128, 16, 128, 128},
++    {128, 128, 128, 16},  {128, 240, 128, 240},
++};
++
++// The bump source for BumpS/BumpT: raw (R, G, B) = (128, 64, 192). psh.c reads dS from B and dT from G, so the raw
++// offsets are (-0.5, +0.5) and converted ones are very different.
++static constexpr uint32_t kBumpSource = 0xFF8040C0;
++// The luminance source for Lum: raw (R, G, B) = (160, 96, 224), three distinct candidates for L.
++static constexpr uint32_t kLumSource = 0xFFA060E0;
++static constexpr float kBumpMat = 0.125f;
++
++// Layouts, in framebuffer pixels.
++static constexpr float kPalLeft = 128.f, kPalTop = 72.f, kPalSize = 384.f;
++static constexpr float kYuvLeft = 64.f, kYuvTop = 72.f, kYuvRight = 576.f, kYuvBottom = 456.f;
++static constexpr float kRefLeft = 48.f, kBumpLeft = 336.f, kRampTop = 96.f, kRampSize = 256.f;
++
++static void SetColorSpaceConvert(bool csc) {
++  // SetupControl0's value (stencil write on, fixed Z, no W buffering, texture perspective on) with only the colour
++  // space field forced.
++  uint32_t control0 = NV097_SET_CONTROL0_STENCIL_WRITE_ENABLE | NV097_SET_CONTROL0_Z_FORMAT_FIXED |
++                      NV097_SET_CONTROL0_TEXTURE_PERSPECTIVE_ENABLE;
++  if (csc) {
++    control0 |= NV097_SET_CONTROL0_COLOR_SPACE_CONVERT_CRYCB_TO_RGB;
++  }
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_CONTROL0, control0);
++  Pushbuffer::End();
++}
++
++static uint32_t PaletteTexel(int x, int y, int variant) {
++  int i = x / 16;
++  int j = y / 16;
++  if (variant & 1) {
++    i = 15 - i;
++  }
++  if (variant & 2) {
++    j = 15 - j;
++  }
++  return (static_cast<uint32_t>(kA[(i + j) & 3]) << 24) | (static_cast<uint32_t>(kR[i]) << 16) |
++         (static_cast<uint32_t>(kGB[j][0]) << 8) | kGB[j][1];
++}
++
++template <typename F>
++static SDL_Surface *MakeSurface(F texel) {
++  SDL_Surface *surface = SDL_CreateRGBSurfaceWithFormat(0, kTex, kTex, 32, SDL_PIXELFORMAT_ARGB8888);
++  ASSERT(surface && "Failed to create SDL surface");
++  SDL_LockSurface(surface);
++  for (int y = 0; y < kTex; ++y) {
++    auto row = reinterpret_cast<uint32_t *>(static_cast<uint8_t *>(surface->pixels) + y * surface->pitch);
++    for (int x = 0; x < kTex; ++x) {
++      row[x] = texel(x, y);
++    }
++  }
++  SDL_UnlockSurface(surface);
++  return surface;
++}
++
++ColorSpaceConversionTests::ColorSpaceConversionTests(TestHost &host, std::string output_dir, const Config &config)
++    : TestSuite(host, std::move(output_dir), kSuiteName, config) {
++  for (auto csc : {false, true}) {
++    const std::string s = csc ? "_On" : "_Off";
++    tests_["CSC_Palette" + s] = [this, csc, s]() { TestPalette("CSC_Palette" + s, csc); };
++    tests_["CSC_YUY2" + s] = [this, csc, s]() { TestYUV("CSC_YUY2" + s, false, csc); };
++    tests_["CSC_UYVY" + s] = [this, csc, s]() { TestYUV("CSC_UYVY" + s, true, csc); };
++    tests_["CSC_BumpS" + s] = [this, csc, s]() { TestBump("CSC_BumpS" + s, false, csc); };
++    tests_["CSC_BumpT" + s] = [this, csc, s]() { TestBump("CSC_BumpT" + s, true, csc); };
++    tests_["CSC_Lum" + s] = [this, csc, s]() { TestLum("CSC_Lum" + s, csc); };
++  }
++  tests_["CSC_Stages_Tex0_On"] = [this]() { TestStages("CSC_Stages_Tex0_On", 0, true); };
++  tests_["CSC_Stages_Tex1_On"] = [this]() { TestStages("CSC_Stages_Tex1_On", 1, true); };
++  tests_["CSC_Stages_Tex3_On"] = [this]() { TestStages("CSC_Stages_Tex3_On", 3, true); };
++  tests_["CSC_Stages_Tex1_Off"] = [this]() { TestStages("CSC_Stages_Tex1_Off", 1, false); };
++}
++
++void ColorSpaceConversionTests::Initialize() {
++  TestSuite::Initialize();
++
++  auto shader = std::make_shared<PassthroughVertexShader>();
++  host_.SetVertexShaderProgram(shader);
++
++  Pushbuffer::Begin();
++  Pushbuffer::Push(NV097_SET_ALPHA_TEST_ENABLE, false);
++  Pushbuffer::Push(NV097_SET_CULL_FACE_ENABLE, false);
++  Pushbuffer::End();
++}
++
++void ColorSpaceConversionTests::CommonSetup(int enabled_stages) {
++  host_.SetBlend(false);
++  for (int stage = 0; stage < 4; ++stage) {
++    host_.SetTextureStageEnabled(stage, stage < enabled_stages);
++    auto &ts = host_.GetTextureStage(stage);
++    ts.SetTextureDimensions(kTex, kTex);
++    ts.SetImageDimensions(kTex, kTex);
++    ts.SetFilter(0, TextureStage::K_QUINCUNX, TextureStage::MIN_BOX_LOD0, TextureStage::MAG_BOX_LOD0);
++  }
++}
++
++void ColorSpaceConversionTests::UploadPalette(int stage, int variant) {
++  host_.SetTextureFormat(GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8), stage);
++  SDL_Surface *surface = MakeSurface([variant](int x, int y) { return PaletteTexel(x, y, variant); });
++  int err = host_.SetTexture(surface, stage);
++  SDL_FreeSurface(surface);
++  ASSERT(!err && "Failed to set palette texture");
++}
++
++void ColorSpaceConversionTests::UploadUniform(int stage, uint32_t argb) {
++  host_.SetTextureFormat(GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8), stage);
++  SDL_Surface *surface = MakeSurface([argb](int, int) { return argb; });
++  int err = host_.SetTexture(surface, stage);
++  SDL_FreeSurface(surface);
++  ASSERT(!err && "Failed to set uniform texture");
++}
++
++// A screen-space quad, clockwise, with the same texture coordinates on all four stages.
++void ColorSpaceConversionTests::DrawQuad(float left, float top, float right, float bottom, float s0, float t0,
++                                         float s1, float t1) {
++  auto corner = [this](float x, float y, float s, float t) {
++    host_.SetTexCoord0(s, t);
++    host_.SetTexCoord1(s, t);
++    host_.SetTexCoord2(s, t);
++    host_.SetTexCoord3(s, t);
++    host_.SetVertex(x, y, 1.0f);
++  };
++  host_.Begin(TestHost::PRIMITIVE_QUADS);
++  corner(left, top, s0, t0);
++  corner(right, top, s1, t0);
++  corner(right, bottom, s1, t1);
++  corner(left, bottom, s0, t1);
++  host_.End();
++
++  while (pb_busy()) {
++    /* Wait for completion... */
++  }
++}
++
++void ColorSpaceConversionTests::Finish(const std::string &name, bool csc) {
++  pb_printat(0, 0, "%s CSC %d\n", name.c_str(), csc ? 1 : 0);
++  pb_draw_text_screen();
++  FinishDraw(name);
++}
++
++void ColorSpaceConversionTests::TestPalette(const std::string &name, bool csc) {
++  CommonSetup(1);
++  UploadPalette(0, 0);
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE);
++  host_.SetFinalCombiner0Just(TestHost::SRC_TEX0);
++  host_.SetFinalCombiner1Just(TestHost::SRC_TEX0, true);
++
++  host_.PrepareDraw(0xFF000000);
++  SetColorSpaceConvert(csc);
++  DrawQuad(kPalLeft, kPalTop, kPalLeft + kPalSize, kPalTop + kPalSize, 0.f, 0.f, 1.f, 1.f);
++  Finish(name, csc);
++}
++
++void ColorSpaceConversionTests::TestStages(const std::string &name, int output_stage, bool csc) {
++  CommonSetup(4);
++  for (int stage = 0; stage < 4; ++stage) {
++    UploadPalette(stage, stage);
++  }
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE, TestHost::STAGE_2D_PROJECTIVE,
++                              TestHost::STAGE_2D_PROJECTIVE, TestHost::STAGE_2D_PROJECTIVE);
++  static constexpr TestHost::CombinerSource kSources[4] = {TestHost::SRC_TEX0, TestHost::SRC_TEX1, TestHost::SRC_TEX2,
++                                                           TestHost::SRC_TEX3};
++  host_.SetFinalCombiner0Just(kSources[output_stage]);
++  host_.SetFinalCombiner1Just(kSources[output_stage], true);
++
++  host_.PrepareDraw(0xFF000000);
++  SetColorSpaceConvert(csc);
++  DrawQuad(kPalLeft, kPalTop, kPalLeft + kPalSize, kPalTop + kPalSize, 0.f, 0.f, 1.f, 1.f);
++  Finish(name, csc);
++}
++
++void ColorSpaceConversionTests::TestYUV(const std::string &name, bool uyvy, bool csc) {
++  CommonSetup(1);
++  auto &format = GetTextureFormatInfo(uyvy ? NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_YB8CR8YA8CB8
++                                           : NV097_SET_TEXTURE_FORMAT_COLOR_LC_IMAGE_CR8YB8CB8YA8);
++  host_.SetTextureFormat(format, 0);
++
++  static constexpr uint32_t kPitch = kTex * 2;
++  auto *bytes = new uint8_t[kPitch * kTex];
++  for (int y = 0; y < kTex; ++y) {
++    uint8_t *row = bytes + y * kPitch;
++    for (int x = 0; x < kTex; x += 2) {
++      const uint8_t *c = kYUV[(y / 64) * 8 + x / 32];
++      uint8_t *p = row + x * 2;
++      if (uyvy) {
++        p[0] = c[1];
++        p[1] = c[0];
++        p[2] = c[3];
++        p[3] = c[2];
++      } else {
++        p[0] = c[0];
++        p[1] = c[1];
++        p[2] = c[2];
++        p[3] = c[3];
++      }
++    }
++  }
++  int err = host_.SetRawTexture(bytes, kTex, kTex, 1, kPitch, 2, false, 0);
++  delete[] bytes;
++  ASSERT(!err && "Failed to set YUV texture");
++
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE);
++  host_.SetFinalCombiner0Just(TestHost::SRC_TEX0);
++  host_.SetFinalCombiner1Just(TestHost::SRC_TEX0, true);
++
++  host_.PrepareDraw(0xFF000000);
++  SetColorSpaceConvert(csc);
++  // A linear texture takes texel coordinates.
++  DrawQuad(kYuvLeft, kYuvTop, kYuvRight, kYuvBottom, 0.f, 0.f, static_cast<float>(kTex), static_cast<float>(kTex));
++  Finish(name, csc);
++}
++
++void ColorSpaceConversionTests::TestBump(const std::string &name, bool vertical, bool csc) {
++  CommonSetup(2);
++  UploadUniform(0, kBumpSource);
++  host_.SetTextureFormat(GetTextureFormatInfo(NV097_SET_TEXTURE_FORMAT_COLOR_SZ_A8R8G8B8), 1);
++  SDL_Surface *surface = MakeSurface([vertical](int x, int y) {
++    const uint32_t v = static_cast<uint32_t>(vertical ? y : x);
++    return 0xFF008080 | (v << 16);
++  });
++  int err = host_.SetTexture(surface, 1);
++  SDL_FreeSurface(surface);
++  ASSERT(!err && "Failed to set ramp texture");
++  // One matrix word per axis, so each ramp reads one offset. The method's words land as s += w0 * dS + w3 * dT and
++  // t += w1 * dS + w2 * dT (pgraph.c's SET_TEXTURE_SET_BUMP_ENV_MAT swizzle; the G8B8 _R90 goldens favour it):
++  // BumpS uses w0 (dS along s), BumpT uses w2 (dT along t).
++  if (vertical) {
++    host_.GetTextureStage(1).SetBumpEnv(0.f, 0.f, kBumpMat, 0.f);
++  } else {
++    host_.GetTextureStage(1).SetBumpEnv(kBumpMat, 0.f, 0.f, 0.f);
++  }
++  host_.SetFinalCombiner0Just(TestHost::SRC_TEX1);
++  host_.SetFinalCombiner1Just(TestHost::SRC_TEX1, true);
++
++  host_.PrepareDraw(0xFF000000);
++  SetColorSpaceConvert(csc);
++  // Left: the whole ramp read directly, one pixel per texel, which is the colour table for every texel. Right: the
++  // middle half, two pixels per texel, displaced by the bump source.
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE, TestHost::STAGE_2D_PROJECTIVE);
++  DrawQuad(kRefLeft, kRampTop, kRefLeft + kRampSize, kRampTop + kRampSize, 0.f, 0.f, 1.f, 1.f);
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE, TestHost::STAGE_BUMPENVMAP);
++  DrawQuad(kBumpLeft, kRampTop, kBumpLeft + kRampSize, kRampTop + kRampSize, 0.25f, 0.25f, 0.75f, 0.75f);
++  Finish(name, csc);
++}
++
++void ColorSpaceConversionTests::TestLum(const std::string &name, bool csc) {
++  CommonSetup(2);
++  UploadUniform(0, kLumSource);
++  UploadPalette(1, 0);
++  // A zero matrix: the lookup is not displaced, and the output is the palette texel times scale * L + offset.
++  host_.GetTextureStage(1).SetBumpEnv(0.f, 0.f, 0.f, 0.f, 1.f, 0.f);
++  host_.SetShaderStageProgram(TestHost::STAGE_2D_PROJECTIVE, TestHost::STAGE_BUMPENVMAP_LUMINANCE);
++  host_.SetFinalCombiner0Just(TestHost::SRC_TEX1);
++  host_.SetFinalCombiner1Just(TestHost::SRC_TEX1, true);
++
++  host_.PrepareDraw(0xFF000000);
++  SetColorSpaceConvert(csc);
++  DrawQuad(kPalLeft, kPalTop, kPalLeft + kPalSize, kPalTop + kPalSize, 0.f, 0.f, 1.f, 1.f);
++  Finish(name, csc);
++}
+diff --git a/src/tests/color_space_conversion_tests.h b/src/tests/color_space_conversion_tests.h
+new file mode 100644
+index 0000000..7f2370c
+--- /dev/null
++++ b/src/tests/color_space_conversion_tests.h
+@@ -0,0 +1,48 @@
++#ifndef NXDK_PGRAPH_TESTS_COLOR_SPACE_CONVERSION_TESTS_H
++#define NXDK_PGRAPH_TESTS_COLOR_SPACE_CONVERSION_TESTS_H
++
++#include <string>
++
++#include "test_suite.h"
++
++class TestHost;
++
++/**
++ * hakuX #10: what NV097_SET_CONTROL0's COLOR_SPACE_CONVERT field (CRYCB_TO_RGB) does to texture samples.
++ *
++ * The harness sets the field only when stage 0 holds a YUV texture (NV2AState::SetupControl0), and the Bump map /
++ * Bump env lum goldens show stage 1's A8R8G8B8 texels converted while it is set. Every test here forces the field on
++ * or off explicitly after PrepareDraw, so the same textures are seen both ways:
++ *
++ *   Palette   one stage, 256 designed A8R8G8B8 texels (16 x 16 cells): the converter applied to RGB data.
++ *   Stages    four stages, each a mirrored copy of the palette; the final combiner selects TEX0, TEX1 or TEX3.
++ *   YUY2/UYVY designed raw bytes (32 cells): which byte lands in which channel with the field off.
++ *   BumpS/T   a uniform A8R8G8B8 bump source and a ramp in stage 1, drawn once without and once with BUMPENVMAP
++ *             (one matrix word per axis): the displacement read from the ramp says whether the offsets come from
++ *             raw or converted bytes.
++ *   Lum       BUMPENVMAP_LUMINANCE with a zero matrix over the palette: the luminance source, and the order of the
++ *             luminance multiply against the conversion.
++ *
++ * Blending, culling and the alpha test are off, and every stage samples nearest, so each cell reads back exactly.
++ */
++class ColorSpaceConversionTests : public TestSuite {
++ public:
++  ColorSpaceConversionTests(TestHost &host, std::string output_dir, const Config &config);
++
++  void Initialize() override;
++
++ private:
++  void TestPalette(const std::string &name, bool csc);
++  void TestStages(const std::string &name, int output_stage, bool csc);
++  void TestYUV(const std::string &name, bool uyvy, bool csc);
++  void TestBump(const std::string &name, bool vertical, bool csc);
++  void TestLum(const std::string &name, bool csc);
++
++  void CommonSetup(int enabled_stages);
++  void UploadPalette(int stage, int variant);
++  void UploadUniform(int stage, uint32_t argb);
++  void DrawQuad(float left, float top, float right, float bottom, float s0, float t0, float s1, float t1);
++  void Finish(const std::string &name, bool csc);
++};
++
++#endif  // NXDK_PGRAPH_TESTS_COLOR_SPACE_CONVERSION_TESTS_H
