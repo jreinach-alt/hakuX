@@ -224,3 +224,17 @@ into arm 2.
   refuses the verdict ~90 device-minutes later.
 - Do not widen the rule to power-of-two triangles. Arm 1 measured silicon
   "up" on every tie row of five such draws.
+
+## Waiting (2026-09-26, attempt 2)
+
+On three things outside this session:
+- the arms job's `[job.arms]` verdict for `tiecode282-pow2.json` (a e673558587, b 1462da29d2);
+- dispatch requests `1790419139-tiecode282-trt-base-4031902` and
+  `1790419143-tiecode282-trt-fix-4032233`, judged with
+  `ab_compare.py --a <base> --b <fix> --expect docs/lanes/tiecode282/tiecode282-trt.json`;
+- CI on the head.
+
+If all pass: post both verdicts and fill in section 7's result, then mark the PR
+ready and release psh.c and psh.h. If Pixel_shader or 3D_as_2D still move, the
+gate did not reach them, so read which leg length they have. If Palette,
+Volume or the checkerboard lose their gains, the gate is too wide.
