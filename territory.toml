@@ -1292,12 +1292,6 @@ standing = false
 note = "STARTED (hostops 2026-09-26 15:00 PDT, 0.5 order 00(a)), briefs/jcache425.md: #425, 0.5 perf lever 2 (up to 13.6% of the vCPU thread, a bound). Granted the unheld lookup-path files; tb-maint.c stays with lane.tbchurn424 (a hunk there is a board request, sequenced by the host). Carries the owner's external ideas on block chaining and flag translation to PRICE. #429 stays queued behind tbchurn424 (translate-all.c, and cpu-exec.c now here)."
 
 
-[lane.cloud-audit2-420]
-issues = []
-files = []
-standing = false
-note = "WRITTEN AT CLAIM by jobs/cloud.sh (the audit outlet): unit hakux-lane-cloud-audit2-420, audit pass 2 of PR #420 on branch lane/pilotgate, attempt 1 of 4. Claims no files. RESTORED (hostops 2026-09-26 15:08 PDT): a second, duplicate claim by the outlet 50 s later (gh pr list --label had not yet seen claimed:cloud) failed at systemd-run, and its drop path removed this row while the unit was running. `cloud.sh finish audit2 420` removes it when the unit ends."
-
 [lane.claimrace]
 issues = []
 files = ["docs/testing/jobs/cloud.sh", "docs/testing/jobs/selftest.d/73-cloud-claim.sh", "docs/lanes/claimrace/NOTES.md"]
