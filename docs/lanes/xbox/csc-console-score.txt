@@ -1,0 +1,28 @@
+K1 Palette_Off is the texels: holds
+K2 Stages_Tex1_Off is variant 1: holds
+K3 BumpMap_YUY2_L identical to the reference: holds
+K3 BumpEnvLum_YUY2_L identical to the reference: holds
+K4 BumpS_Off displacement -16.00 texels (spread -16.25..-15.75), raw prediction -16.0: holds
+Q  BumpS_On displacement -16.00 texels (spread -16.25..-15.75); rivals {'raw': -16.0, 'converted Cb=G,Cr=B': 0.25, 'converted Cb=B,Cr=G': -0.25} -> fits: ['raw']
+K4 BumpT_Off displacement +16.00 texels (spread 15.75..16.25), raw prediction +16.0: holds
+Q  BumpT_On displacement +16.00 texels (spread 15.75..16.25); rivals {'raw': 16.0, 'converted Cb=G,Cr=B': 26.25, 'converted Cb=B,Cr=G': -24.25} -> fits: ['raw']
+A1 Palette_On, Cb=G,Cr=B: 36 of 36 in-range cells exact
+A1 Palette_On, Cb=B,Cr=G: 6 of 36 in-range cells exact, e.g. [((5, 11), (64, 17, 238, 255), (231, 12, 0, 255), (0, 106, 255, 255)), ((5, 12), (64, 238, 17, 191), (0, 106, 255, 191), (231, 12, 0, 191))]
+A1 cell (254,0,0) reads (72, 255, 18, 64), predicted (72, 255, 18); one assignment fits: ['Cb=G,Cr=B'] -> holds
+Q  Palette_On, all 256 cells, Cb=G,Cr=B kr=127: 241 exact; off cells e.g. [((11, 1), (224, 0, 0, 255), (37, 255, 0, 255), (35, 255, 0, 255)), ((11, 4), (224, 255, 0, 64), (37, 255, 255, 64), (35, 255, 255, 64)), ((11, 5), (224, 128, 0, 255), (37, 255, 241, 255), (35, 255, 241, 255)), ((12, 1), (235, 0, 0, 191), (50, 255, 0, 191), (48, 255, 0, 191))]
+Q  Palette_On, all 256 cells, Cb=G,Cr=B kr=128: 256 exact; off cells e.g. []
+Q  Palette_On cells equal to the unconverted texel: 0 of 256
+B1 Stages_Tex0_On: 36 of 36 in-range cells converted (holds); 0 of 256 cells unconverted
+B1 Stages_Tex1_On: 36 of 36 in-range cells converted (holds); 0 of 256 cells unconverted
+B1 Stages_Tex3_On: 36 of 36 in-range cells converted (holds); 0 of 256 cells unconverted
+Q  YUY2_Off raw slots: {'R': ['Y'], 'G': ['U'], 'B': ['V'], 'A': ['255']}
+Q  YUY2_Off equals YUY2_On in every cell: False
+Q  YUY2_On against hakuX's decode, kr=127: 62 of 64 texels exact (26 of 26 in range)
+Q  YUY2_On against hakuX's decode, kr=128: 64 of 64 texels exact (26 of 26 in range)
+Q  UYVY_Off raw slots: {'R': ['Y'], 'G': ['U'], 'B': ['V'], 'A': ['255']}
+Q  UYVY_Off equals UYVY_On in every cell: False
+Q  UYVY_On against hakuX's decode, kr=127: 62 of 64 texels exact (26 of 26 in range)
+Q  UYVY_On against hakuX's decode, kr=128: 64 of 64 texels exact (26 of 26 in range)
+Q  CSC_Lum_Off best luminance models (cells exact of 256): [(256, 'raw R', 'trunc', '/255', 'none'), (132, 'raw R', 'round', '/255', 'none'), (112, 'raw R', 'round', '/256', 'none'), (104, 'raw R', 'trunc', '/256', 'none')]
+Q  CSC_Lum_On best luminance models (cells exact of 256): [(256, 'raw R', 'trunc', '/255', 'convert after multiply Cb=G,Cr=B'), (155, 'raw R', 'round', '/255', 'convert after multiply Cb=G,Cr=B'), (140, 'raw R', 'round', '/256', 'convert after multiply Cb=G,Cr=B'), (111, 'raw R', 'trunc', '/256', 'convert after multiply Cb=G,Cr=B')]
+VERDICT: all registered legs hold  (K1 ok, K2 ok, K3 ok, K4 ok, A1 ok, B1 ok)
